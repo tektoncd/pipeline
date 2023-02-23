@@ -139,14 +139,6 @@ func outputTestResourceSetup() {
 				Value: "true",
 			}},
 		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "source-image",
-			Namespace: "marshmallow",
-		},
-		Spec: resourcev1alpha1.PipelineResourceSpec{
-			Type: "image",
-		},
 	}}
 
 	outputTestResources = make(map[string]v1beta1.PipelineResourceInterface)
@@ -337,53 +329,6 @@ func TestValidOutputResources(t *testing.T) {
 				},
 			},
 		},
-	}, {
-		name: "image resource in output with pipelinerun with owner",
-		desc: "image resource declared as output with pipelinerun owner reference should not generate any steps",
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-output-steps",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					Kind: "PipelineRun",
-					Name: "pipelinerun",
-				}},
-			},
-			Spec: v1beta1.TaskRunSpec{
-				Resources: &v1beta1.TaskRunResources{
-					Outputs: []v1beta1.TaskResourceBinding{{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							Name: "source-workspace",
-							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "source-image",
-							},
-						},
-						Paths: []string{"pipeline-task-name"},
-					}},
-				},
-			},
-		},
-		task: &v1beta1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskSpec{
-				Resources: &v1beta1.TaskResources{
-					Outputs: []v1beta1.TaskResource{{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "image",
-						}}},
-				},
-			},
-		},
-		wantSteps: []v1beta1.Step{{
-			Name:    "create-dir-source-workspace-9l9zj",
-			Image:   "busybox",
-			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
-		}},
-		wantVolumes: nil,
 	}, {
 		name: "git resource in output",
 		desc: "git resource declared in output without pipelinerun owner reference",
@@ -762,51 +707,6 @@ func TestValidOutputResources(t *testing.T) {
 			},
 		}},
 	}, {
-		name: "image resource as output",
-		desc: "image resource defined only in output",
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-only-output-step",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					Kind: "PipelineRun",
-					Name: "pipelinerun",
-				}},
-			},
-			Spec: v1beta1.TaskRunSpec{
-				Resources: &v1beta1.TaskRunResources{
-					Outputs: []v1beta1.TaskResourceBinding{{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							Name: "source-workspace",
-							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "source-image",
-							},
-						},
-					}},
-				},
-			},
-		},
-		task: &v1beta1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskSpec{
-				Resources: &v1beta1.TaskResources{
-					Outputs: []v1beta1.TaskResource{{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "image",
-						}}},
-				},
-			},
-		},
-		wantSteps: []v1beta1.Step{{
-			Name:    "create-dir-source-workspace-9l9zj",
-			Image:   "busybox",
-			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
-		}},
-	}, {
 		name: "Resource with TargetPath as output",
 		desc: "Resource with TargetPath defined only in output",
 		taskRun: &v1beta1.TaskRun{
@@ -824,7 +724,7 @@ func TestValidOutputResources(t *testing.T) {
 						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
 							Name: "source-workspace",
 							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "source-image",
+								Name: "source-git",
 							},
 						},
 					}},
@@ -841,7 +741,7 @@ func TestValidOutputResources(t *testing.T) {
 					Outputs: []v1beta1.TaskResource{{
 						ResourceDeclaration: v1beta1.ResourceDeclaration{
 							Name:       "source-workspace",
-							Type:       "image",
+							Type:       "git",
 							TargetPath: "/workspace",
 						}}},
 				},
@@ -851,46 +751,6 @@ func TestValidOutputResources(t *testing.T) {
 			Name:    "create-dir-source-workspace-9l9zj",
 			Image:   "busybox",
 			Command: []string{"mkdir", "-p", "/workspace"},
-		}},
-	}, {
-		desc: "image output resource with no steps",
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-output-steps",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskRunSpec{
-				Resources: &v1beta1.TaskRunResources{
-					Outputs: []v1beta1.TaskResourceBinding{{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							Name: "source-workspace",
-							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "source-image",
-							},
-						},
-					}},
-				},
-			},
-		},
-		task: &v1beta1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskSpec{
-				Resources: &v1beta1.TaskResources{
-					Outputs: []v1beta1.TaskResource{{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "image",
-						}}},
-				},
-			},
-		},
-		wantSteps: []v1beta1.Step{{
-			Name:    "create-dir-source-workspace-9l9zj",
-			Image:   "busybox",
-			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 		}},
 	}, {
 		desc: "multiple image output resource with no steps",
@@ -905,14 +765,14 @@ func TestValidOutputResources(t *testing.T) {
 						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
 							Name: "source-workspace",
 							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "source-image",
+								Name: "source-git",
 							},
 						},
 					}, {
 						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
 							Name: "source-workspace-1",
 							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "source-image",
+								Name: "source-git",
 							},
 						},
 					}},
@@ -929,11 +789,11 @@ func TestValidOutputResources(t *testing.T) {
 					Outputs: []v1beta1.TaskResource{{
 						ResourceDeclaration: v1beta1.ResourceDeclaration{
 							Name: "source-workspace",
-							Type: "image",
+							Type: "git",
 						}}, {
 						ResourceDeclaration: v1beta1.ResourceDeclaration{
 							Name: "source-workspace-1",
-							Type: "image",
+							Type: "git",
 						}}},
 				},
 			},

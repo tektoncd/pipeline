@@ -65,14 +65,14 @@ func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {
 					{
 						ResourceDeclaration: v1beta1.ResourceDeclaration{
 							Name:     "resource-to-provide",
-							Type:     resourcev1alpha1.PipelineResourceTypeImage,
+							Type:     resourcev1alpha1.PipelineResourceTypeGit,
 							Optional: false,
 						},
 					},
 					{
 						ResourceDeclaration: v1beta1.ResourceDeclaration{
 							Name:     "optional-resource-to-provide",
-							Type:     resourcev1alpha1.PipelineResourceTypeImage,
+							Type:     resourcev1alpha1.PipelineResourceTypeGit,
 							Optional: true,
 						},
 					},
@@ -108,13 +108,13 @@ func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {
 			"resource-to-provide": {
 				ObjectMeta: metav1.ObjectMeta{Name: "example-image"},
 				Spec: resourcev1alpha1.PipelineResourceSpec{
-					Type: resourcev1alpha1.PipelineResourceTypeImage,
+					Type: resourcev1alpha1.PipelineResourceTypeGit,
 				},
 			},
 			"optional-resource-to-provide": {
 				ObjectMeta: metav1.ObjectMeta{Name: "example-image"},
 				Spec: resourcev1alpha1.PipelineResourceSpec{
-					Type: resourcev1alpha1.PipelineResourceTypeImage,
+					Type: resourcev1alpha1.PipelineResourceTypeGit,
 				},
 			},
 		},
@@ -367,19 +367,6 @@ func TestValidateResolvedTaskResources_InvalidResources(t *testing.T) {
 			},
 		},
 	}
-	testimageinput := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
-		Spec: v1beta1.TaskSpec{
-			Resources: &v1beta1.TaskResources{
-				Inputs: []v1beta1.TaskResource{{
-					ResourceDeclaration: v1beta1.ResourceDeclaration{
-						Name: "testimageinput",
-						Type: resourcev1alpha1.PipelineResourceTypeImage,
-					},
-				}},
-			},
-		},
-	}
 	testrequiredgitinput := &v1beta1.Task{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
 		Spec: v1beta1.TaskSpec{
@@ -407,19 +394,6 @@ func TestValidateResolvedTaskResources_InvalidResources(t *testing.T) {
 			},
 		},
 	}
-	testimageoutput := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
-		Spec: v1beta1.TaskSpec{
-			Resources: &v1beta1.TaskResources{
-				Outputs: []v1beta1.TaskResource{{
-					ResourceDeclaration: v1beta1.ResourceDeclaration{
-						Name: "testimageoutput",
-						Type: resourcev1alpha1.PipelineResourceTypeImage,
-					},
-				}},
-			},
-		},
-	}
 	testrequiredgitoutput := &v1beta1.Task{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
 		Spec: v1beta1.TaskSpec{
@@ -440,15 +414,15 @@ func TestValidateResolvedTaskResources_InvalidResources(t *testing.T) {
 			Resources: &v1beta1.TaskResources{
 				Inputs: []v1beta1.TaskResource{{
 					ResourceDeclaration: v1beta1.ResourceDeclaration{
-						Name:     "requiredimageinput",
-						Type:     resourcev1alpha1.PipelineResourceTypeImage,
+						Name:     "requiredgitinput",
+						Type:     resourcev1alpha1.PipelineResourceTypeGit,
 						Optional: false,
 					},
 				}},
 				Outputs: []v1beta1.TaskResource{{
 					ResourceDeclaration: v1beta1.ResourceDeclaration{
-						Name:     "requiredimageoutput",
-						Type:     resourcev1alpha1.PipelineResourceTypeImage,
+						Name:     "requiredgitoutput",
+						Type:     resourcev1alpha1.PipelineResourceTypeGit,
 						Optional: false,
 					},
 				}},
@@ -473,24 +447,24 @@ func TestValidateResolvedTaskResources_InvalidResources(t *testing.T) {
 	}, {
 		name: "input-resource-mismatch",
 		rtr: &resources.ResolvedTaskResources{
-			TaskSpec: &testimageinput.Spec,
+			TaskSpec: &testinput.Spec,
 			Inputs:   map[string]*resourcev1alpha1.PipelineResource{"testimageinput": r},
 		},
 	}, {
 		name: "input-resource-missing",
 		rtr: &resources.ResolvedTaskResources{
-			TaskSpec: &testimageinput.Spec,
+			TaskSpec: &testinput.Spec,
 		},
 	}, {
 		name: "output-resource-mismatch",
 		rtr: &resources.ResolvedTaskResources{
-			TaskSpec: &testimageoutput.Spec,
+			TaskSpec: &testoutput.Spec,
 			Outputs:  map[string]*resourcev1alpha1.PipelineResource{"testimageoutput": r},
 		},
 	}, {
 		name: "output-resource-missing",
 		rtr: &resources.ResolvedTaskResources{
-			TaskSpec: &testimageoutput.Spec,
+			TaskSpec: &testoutput.Spec,
 		},
 	}, {
 		name: "extra-input-resource",

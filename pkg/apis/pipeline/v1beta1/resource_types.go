@@ -42,9 +42,6 @@ const (
 
 	// PipelineResourceTypeStorage indicates that this source is a storage blob resource.
 	PipelineResourceTypeStorage PipelineResourceType = resource.PipelineResourceTypeStorage
-
-	// PipelineResourceTypeImage indicates that this source is a docker Image.
-	PipelineResourceTypeImage PipelineResourceType = resource.PipelineResourceTypeImage
 )
 
 // AllResourceTypes can be used for validation to check if a provided Resource type is one of the known types.

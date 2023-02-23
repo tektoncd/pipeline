@@ -1880,16 +1880,6 @@ func TestGetResourcesFromBindings(t *testing.T) {
 			},
 			Resources: []v1beta1.PipelineResourceBinding{
 				gitSweetResourceBinding,
-				{
-					Name: "image-resource",
-					ResourceSpec: &resourcev1alpha1.PipelineResourceSpec{
-						Type: resourcev1alpha1.PipelineResourceTypeImage,
-						Params: []v1beta1.ResourceParam{{
-							Name:  "url",
-							Value: "gcr.io/sven",
-						}},
-					},
-				},
 			},
 		},
 	}
@@ -1910,16 +1900,6 @@ func TestGetResourcesFromBindings(t *testing.T) {
 		t.Errorf("Missing expected resource git-resource: %v", m)
 	} else if d := cmp.Diff(r, r1); d != "" {
 		t.Errorf("Expected resources didn't match actual %s", diff.PrintWantGot(d))
-	}
-
-	r2, ok := m["image-resource"]
-	if !ok {
-		t.Errorf("Missing expected resource image-resource: %v", m)
-	} else if r2.Spec.Type != resourcev1alpha1.PipelineResourceTypeImage ||
-		len(r2.Spec.Params) != 1 ||
-		r2.Spec.Params[0].Name != "url" ||
-		r2.Spec.Params[0].Value != "gcr.io/sven" {
-		t.Errorf("Did not get expected image resource, got %v", r2.Spec)
 	}
 }
 
@@ -2520,10 +2500,6 @@ func TestValidateResourceBindings_Missing(t *testing.T) {
 		Spec: v1beta1.PipelineSpec{
 			Resources: []v1beta1.PipelineDeclaredResource{
 				gitDeclaredResource,
-				{
-					Name: "image-resource",
-					Type: resourcev1alpha1.PipelineResourceTypeImage,
-				},
 			},
 		},
 	}
@@ -2531,12 +2507,12 @@ func TestValidateResourceBindings_Missing(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun"},
 		Spec: v1beta1.PipelineRunSpec{
 			PipelineRef: &v1beta1.PipelineRef{Name: "pipeline"},
-			Resources:   []v1beta1.PipelineResourceBinding{gitSweetResourceBinding},
+			Resources:   []v1beta1.PipelineResourceBinding{},
 		},
 	}
 	err := ValidateResourceBindings(&p.Spec, pr)
 	if err == nil {
-		t.Fatalf("Expected error indicating `image-resource` was missing but got no error")
+		t.Fatalf("Expected error indicating `git-resource` was missing but got no error")
 	}
 }
 

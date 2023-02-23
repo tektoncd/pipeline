@@ -87,12 +87,11 @@ const (
 var (
 	defaultActiveDeadlineSeconds = int64(config.DefaultTimeoutMinutes * 60 * 1.5)
 	images                       = pipeline.Images{
-		EntrypointImage:          "override-with-entrypoint:latest",
-		NopImage:                 "override-with-nop:latest",
-		GitImage:                 "override-with-git:latest",
-		ShellImage:               "busybox",
-		GsutilImage:              "gcr.io/google.com/cloudsdktool/cloud-sdk",
-		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
+		EntrypointImage: "override-with-entrypoint:latest",
+		NopImage:        "override-with-nop:latest",
+		GitImage:        "override-with-git:latest",
+		ShellImage:      "busybox",
+		GsutilImage:     "gcr.io/google.com/cloudsdktool/cloud-sdk",
 	}
 	now                      = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
 	ignoreLastTransitionTime = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")
@@ -257,8 +256,8 @@ var (
 				}},
 				Outputs: []v1beta1.TaskResource{{
 					ResourceDeclaration: v1beta1.ResourceDeclaration{
-						Name: "myimage",
-						Type: resourcev1alpha1.PipelineResourceTypeImage,
+						Name: "workspace",
+						Type: resourcev1alpha1.PipelineResourceTypeGit,
 					},
 				}},
 			},
@@ -271,7 +270,6 @@ var (
 						"--my-arg=$(inputs.params.myarg)",
 						"--my-arg-with-default=$(inputs.params.myarghasdefault)",
 						"--my-arg-with-default2=$(inputs.params.myarghasdefault2)",
-						"--my-additional-arg=$(outputs.resources.myimage.url)",
 						"--my-taskname-arg=$(context.task.name)",
 						"--my-taskrun-arg=$(context.taskRun.name)",
 					},
@@ -313,16 +311,6 @@ var (
 			Params: []resourcev1alpha1.ResourceParam{{
 				Name:  "URL",
 				Value: "https://foobar.git",
-			}},
-		},
-	}
-	imageResource = &resourcev1alpha1.PipelineResource{
-		ObjectMeta: objectMeta("image-resource", "foo"),
-		Spec: resourcev1alpha1.PipelineResourceSpec{
-			Type: resourcev1alpha1.PipelineResourceTypeImage,
-			Params: []resourcev1alpha1.ResourceParam{{
-				Name:  "URL",
-				Value: "gcr.io/kristoff/sven",
 			}},
 		},
 	}
@@ -715,9 +703,9 @@ spec:
       resourceRef:
         name: git-resource
     outputs:
-    - name: myimage
+    - name: workspace
       resourceRef:
-        name: image-resource
+        name: git-resource
   taskRef:
     apiVersion: a1
     name: test-task-with-substitution
@@ -902,7 +890,7 @@ spec:
 		TaskRuns:          taskruns,
 		Tasks:             []*v1beta1.Task{simpleTask, saTask, templatedTask, outputTask},
 		ClusterTasks:      []*v1beta1.ClusterTask{clustertask},
-		PipelineResources: []*resourcev1alpha1.PipelineResource{gitResource, anotherGitResource, imageResource},
+		PipelineResources: []*resourcev1alpha1.PipelineResource{gitResource, anotherGitResource},
 	}
 	for _, tc := range []struct {
 		name       string
@@ -951,13 +939,13 @@ spec:
 			},
 		}}, []stepForExpectedPod{
 			{
-				name:  "create-dir-myimage-mssqb",
+				name:  "create-dir-workspace-mz4c7",
 				image: "busybox",
 				cmd:   "mkdir",
-				args:  []string{"-p", "/workspace/output/myimage"},
+				args:  []string{"-p", "/workspace/output/workspace"},
 			},
 			{
-				name:  "git-source-workspace-mz4c7",
+				name:  "git-source-workspace-9l9zj",
 				image: "override-with-git:latest",
 				cmd:   "/ko-app/git-init",
 				args: []string{"-url", "https://foo.git",
@@ -977,7 +965,6 @@ spec:
 					"--my-arg=foo",
 					"--my-arg-with-default=bar",
 					"--my-arg-with-default2=thedefault",
-					"--my-additional-arg=gcr.io/kristoff/sven",
 					"--my-taskname-arg=test-task-with-substitution",
 					"--my-taskrun-arg=test-taskrun-substitution",
 				},
@@ -987,15 +974,6 @@ spec:
 				image: "myotherimage",
 				cmd:   "/mycmd",
 				args:  []string{"--my-other-arg=https://foo.git"},
-			},
-			{
-				name:  "image-digest-exporter-9l9zj",
-				image: "override-with-imagedigest-exporter-image:latest",
-				cmd:   "/ko-app/imagedigestexporter",
-				args: []string{
-					"-images",
-					"[{\"name\":\"myimage\",\"type\":\"image\",\"url\":\"gcr.io/kristoff/sven\",\"digest\":\"\",\"OutputImageDir\":\"/workspace/output/myimage\"}]",
-				},
 			},
 		}),
 	}, {
@@ -1216,7 +1194,7 @@ spec:
 		TaskRuns:          taskruns,
 		Tasks:             []*v1beta1.Task{simpleTask, saTask, templatedTask, outputTask},
 		ClusterTasks:      []*v1beta1.ClusterTask{clustertask},
-		PipelineResources: []*resourcev1alpha1.PipelineResource{gitResource, anotherGitResource, imageResource},
+		PipelineResources: []*resourcev1alpha1.PipelineResource{gitResource, anotherGitResource},
 	}
 	for _, tc := range []struct {
 		name       string
