@@ -33,7 +33,7 @@ require (
 	k8s.io/code-generator v0.25.4
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280
-	knative.dev/pkg v0.0.0-20221123011842-b78020c16606
+	knative.dev/pkg v0.0.0-20230221152827-2d84369c105d
 	sigs.k8s.io/yaml v1.3.0
 )
 
@@ -199,7 +199,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shurcooL/githubv4 v0.0.0-20190718010115-4ba037080260 // indirect
 	github.com/shurcooL/graphql v0.0.0-20181231061246-d48a9a75455f // indirect
-	github.com/sirupsen/logrus v1.9.0
+	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/testify v1.8.1
 	github.com/vbatts/tar-split v0.11.2 // indirect
