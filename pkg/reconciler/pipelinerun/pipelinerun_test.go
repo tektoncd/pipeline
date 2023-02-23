@@ -73,12 +73,11 @@ import (
 
 var (
 	images = pipeline.Images{
-		EntrypointImage:          "override-with-entrypoint:latest",
-		NopImage:                 "override-with-nop:latest",
-		GitImage:                 "override-with-git:latest",
-		ShellImage:               "busybox",
-		GsutilImage:              "gcr.io/google.com/cloudsdktool/cloud-sdk",
-		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
+		EntrypointImage: "override-with-entrypoint:latest",
+		NopImage:        "override-with-nop:latest",
+		GitImage:        "override-with-git:latest",
+		ShellImage:      "busybox",
+		GsutilImage:     "gcr.io/google.com/cloudsdktool/cloud-sdk",
 	}
 
 	ignoreResourceVersion    = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion")

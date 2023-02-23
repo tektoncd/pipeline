@@ -159,11 +159,6 @@ spec:
         type: git
         description: "The input is code from a git repository"
         optional: true
-    outputs:
-      - name: optionalimage
-        type: image
-        description: "The output is a Docker image"
-        optional: true
 `
 
 	v1TaskYaml = `
@@ -171,7 +166,7 @@ metadata:
   name: %s
   namespace: %s
   annotations: {
-    tekton.dev/v1beta1Resources: '{"inputs":[{"name":"git-repo","type":"git","description":"The input is code from a git repository","optional":true}],"outputs":[{"name":"optionalimage","type":"image","description":"The output is a Docker image","optional":true}]}'
+    tekton.dev/v1beta1Resources: '{"inputs":[{"name":"git-repo","type":"git","description":"The input is code from a git repository","optional":true}]}'
   }
 spec:
   steps:

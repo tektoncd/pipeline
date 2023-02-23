@@ -662,7 +662,7 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 			Resources: []PipelineDeclaredResource{{
 				Name: "great-resource", Type: PipelineResourceTypeGit,
 			}, {
-				Name: "wonderful-resource", Type: PipelineResourceTypeImage,
+				Name: "wonderful-resource", Type: PipelineResourceTypeGit,
 			}},
 			Tasks: []PipelineTask{{
 				Name:    "bar",
@@ -955,7 +955,7 @@ func TestValidateDeclaredResources_Success(t *testing.T) {
 		resources: []PipelineDeclaredResource{{
 			Name: "great-resource", Type: PipelineResourceTypeGit,
 		}, {
-			Name: "wonderful-resource", Type: PipelineResourceTypeImage,
+			Name: "wonderful-resource", Type: PipelineResourceTypeGit,
 		}},
 		tasks: []PipelineTask{{
 			Name:    "bar",
@@ -965,7 +965,7 @@ func TestValidateDeclaredResources_Success(t *testing.T) {
 					Name: "some-workspace", Resource: "great-resource",
 				}},
 				Outputs: []PipelineTaskOutputResource{{
-					Name: "some-imagee", Resource: "wonderful-resource",
+					Name: "some-workspace", Resource: "wonderful-resource",
 				}},
 			},
 		}, {
@@ -982,11 +982,11 @@ func TestValidateDeclaredResources_Success(t *testing.T) {
 		resources: []PipelineDeclaredResource{{
 			Name: "great-resource", Type: PipelineResourceTypeGit,
 		}, {
-			Name: "awesome-resource", Type: PipelineResourceTypeImage,
+			Name: "awesome-resource", Type: PipelineResourceTypeGit,
 		}, {
 			Name: "yet-another-great-resource", Type: PipelineResourceTypeGit,
 		}, {
-			Name: "yet-another-awesome-resource", Type: PipelineResourceTypeImage,
+			Name: "yet-another-awesome-resource", Type: PipelineResourceTypeGit,
 		}},
 		tasks: []PipelineTask{{
 			Name:    "foo",
@@ -2380,7 +2380,7 @@ func TestValidatePipelineWithFinalTasks_Success(t *testing.T) {
 				Resources: []PipelineDeclaredResource{{
 					Name: "great-resource", Type: PipelineResourceTypeGit,
 				}, {
-					Name: "wonderful-resource", Type: PipelineResourceTypeImage,
+					Name: "wonderful-resource", Type: PipelineResourceTypeGit,
 				}},
 				Tasks: []PipelineTask{{
 					Name:    "non-final-task",

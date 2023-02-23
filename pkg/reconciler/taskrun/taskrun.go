@@ -737,13 +737,6 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1beta1.TaskSpec, tr *v1
 		return nil, err
 	}
 
-	// Get actual resource
-	err = resources.AddOutputImageDigestExporter(c.Images.ImageDigestExporterImage, tr, ts, c.resourceLister.PipelineResources(tr.Namespace).Get)
-	if err != nil {
-		logger.Errorf("Failed to create a pod for taskrun: %s due to output image resource error %v", tr.Name, err)
-		return nil, err
-	}
-
 	ts, err = resources.AddInputResource(ctx, c.KubeClientSet, c.Images, rtr.TaskName, ts, tr, inputResources)
 	if err != nil {
 		logger.Errorf("Failed to create a pod for taskrun: %s due to input resource error %v", tr.Name, err)
