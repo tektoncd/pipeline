@@ -21,10 +21,12 @@ limitations under the License.
 //
 // Despite defining a Reconciler, each of the packages here are expected to
 // expose a controller constructor like:
-//    func NewController(...) *controller.Impl { ... }
+//
+//	func NewController(...) *controller.Impl { ... }
+//
 // These constructors will:
-// 1. Construct the Reconciler,
-// 2. Construct a controller.Impl with that Reconciler,
-// 3. Wire the assorted informers this Reconciler watches to call appropriate
-//   enqueue methods on the controller.
+//  1. Construct the Reconciler,
+//  2. Construct a controller.Impl with that Reconciler,
+//  3. Wire the assorted informers this Reconciler watches to call appropriate
+//     enqueue methods on the controller.
 package reconciler

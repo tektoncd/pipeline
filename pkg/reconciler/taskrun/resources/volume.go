@@ -36,14 +36,14 @@ func GetPVCVolume(name string) corev1.Volume {
 // Specifically, they have the following structure as defined by
 // (pkg/apis/resource/v1alpha1/storage.ArtifactBucket).GetSecretsVolumes():
 //
-// corev1.Volume{
-//   Name: fmt.Sprintf("volume-bucket-%s", sec.SecretName),
-//   VolumeSource: corev1.VolumeSource{
-//     Secret: &corev1.SecretVolumeSource{
-//       SecretName: sec.SecretName,
-//     },
-//   },
-// }
+//	corev1.Volume{
+//	  Name: fmt.Sprintf("volume-bucket-%s", sec.SecretName),
+//	  VolumeSource: corev1.VolumeSource{
+//	    Secret: &corev1.SecretVolumeSource{
+//	      SecretName: sec.SecretName,
+//	    },
+//	  },
+//	}
 //
 // Any new volumes that don't match this structure are added regardless of whether they are already
 // present in the list of volumes.
