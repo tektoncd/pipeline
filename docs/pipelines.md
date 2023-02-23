@@ -682,7 +682,7 @@ The user can design the `Pipeline` to solve their use case as such:
 
 ```yaml
 tasks:
-...
+#...
 - name: manual-approval
   runAfter:
     - tests
@@ -779,7 +779,7 @@ tasks:
 ---
 ## main pipeline
 tasks:
-...
+#...
 - name: approve-build-deploy-slack
   runAfter:
     - tests
@@ -824,7 +824,7 @@ Taking the use case above, a user who wants to guard `manual-approval` only can 
 
 ```yaml
 tasks:
-...
+#...
 - name: manual-approval
   runAfter:
     - tests
@@ -1664,9 +1664,9 @@ spec:
       taskSpec:
         apiVersion: example.dev/v1alpha1
         kind: Example
-          spec:
-            field1: value1
-            field2: value2
+        spec:
+          field1: value1
+          field2: value2
 ```
 
 **For `v1beta1.CustomRun`**
@@ -1677,9 +1677,9 @@ spec:
       taskSpec:
         apiVersion: example.dev/v1alpha1
         kind: Example
-          customSpec:
-            field1: value1
-            field2: value2
+        customSpec:
+          field1: value1
+          field2: value2
 ```
 
 If the custom task controller supports the in-line or embedded task spec, this will create a `Run/CustomRun` of a custom task of
@@ -1823,15 +1823,15 @@ We try to list as many known Custom Tasks as possible here so that users can eas
 
 #### v1alpha1.Run
 
-| Custom Task | Description |
-|:---|:--- |
-| [Pipeline Loops][pipeline-loops]| Runs a `Pipeline` in a loop with varying `Parameter` values.
-| [Common Expression Language][cel]| Provides Common Expression Language support in Tekton Pipelines.
-| [Wait][wait]| Waits a given amount of time, specified by a `Parameter` named "duration", before succeeding.
-| [Approvals][approvals-alpha]| Pauses the execution of `PipelineRuns` and waits for manual approvals. Version up to (and including) 0.5.0 
-| [Pipelines in Pipelines][pipelines-in-pipelines]| Defines and executes a `Pipeline` in a `Pipeline`. 
-| [Task Group][task-group]| Groups `Tasks` together as a `Task`.
-| [Pipeline in a Pod][pipeline-in-pod]| Runs `Pipeline` in a `Pod`.
+| Custom Task                                      | Description                                                                                                |
+|:-------------------------------------------------|:-----------------------------------------------------------------------------------------------------------|
+| [Pipeline Loops][pipeline-loops]                 | Runs a `Pipeline` in a loop with varying `Parameter` values.                                               |
+| [Common Expression Language][cel]                | Provides Common Expression Language support in Tekton Pipelines.                                           |
+| [Wait][wait]                                     | Waits a given amount of time, specified by a `Parameter` named "duration", before succeeding.              |
+| [Approvals][approvals-alpha]                     | Pauses the execution of `PipelineRuns` and waits for manual approvals. Version up to (and including) 0.5.0 |
+| [Pipelines in Pipelines][pipelines-in-pipelines] | Defines and executes a `Pipeline` in a `Pipeline`.                                                         |
+| [Task Group][task-group]                         | Groups `Tasks` together as a `Task`.                                                                       |
+| [Pipeline in a Pod][pipeline-in-pod]             | Runs `Pipeline` in a `Pod`.                                                                                |
 
 [pipeline-loops]: https://github.com/tektoncd/experimental/tree/f60e1cd8ce22ed745e335f6f547bb9a44580dc7c/pipeline-loops
 [task-loops]: https://github.com/tektoncd/experimental/tree/f60e1cd8ce22ed745e335f6f547bb9a44580dc7c/task-loops
