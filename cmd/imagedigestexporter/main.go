@@ -33,7 +33,9 @@ var (
 	terminationMessagePath = flag.String("terminationMessagePath", "/tekton/termination", "Location of file containing termination message")
 )
 
-/* The input of this go program will be a JSON string with all the output PipelineResources of type
+/*
+	The input of this go program will be a JSON string with all the output PipelineResources of type
+
 Image, which will include the path to where the index.json file will be located. The program will
 read the related index.json file(s) and log another JSON string including the name of the image resource
 and the digests.
