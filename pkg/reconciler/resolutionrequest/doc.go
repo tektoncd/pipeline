@@ -21,8 +21,8 @@ that global settings and constraints are enforced independent of
 the "type" of ResolutionRequest being resolved.
 
 Examples of the kinds of global settings that need to be enforced include:
-	* Ensuring that the object's Status fields are correctly initialized.
-	* Ensuring that all ResolutionRequests eventually get timed out.
-	* Ensuring that ResolutionRequests with populated Data field are marked as complete.
+  - Ensuring that the object's Status fields are correctly initialized.
+  - Ensuring that all ResolutionRequests eventually get timed out.
+  - Ensuring that ResolutionRequests with populated Data field are marked as complete.
 */
 package resolutionrequest

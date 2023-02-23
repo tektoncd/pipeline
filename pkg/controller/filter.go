@@ -33,10 +33,10 @@ import (
 // For example, a controller impl that wants to be notified of updates to Runs
 // which reference a Task with apiVersion "example.dev/v0" and kind "Example":
 //
-//     runinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-//       FilterFunc: FilterRunRef("example.dev/v0", "Example"),
-//       Handler:    controller.HandleAll(impl.Enqueue),
-//     })
+//	runinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+//	  FilterFunc: FilterRunRef("example.dev/v0", "Example"),
+//	  Handler:    controller.HandleAll(impl.Enqueue),
+//	})
 func FilterRunRef(apiVersion, kind string) func(interface{}) bool {
 	return func(obj interface{}) bool {
 		r, ok := obj.(*v1alpha1.Run)
@@ -66,10 +66,10 @@ func FilterRunRef(apiVersion, kind string) func(interface{}) bool {
 // For example, a controller impl that wants to be notified of updates to TaskRuns that are controlled by
 // a Run which references a custom task with apiVersion "example.dev/v0" and kind "Example":
 //
-//     taskruninformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-//       FilterFunc: FilterOwnerRunRef("example.dev/v0", "Example"),
-//       Handler:    controller.HandleAll(impl.Enqueue),
-//     })
+//	taskruninformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+//	  FilterFunc: FilterOwnerRunRef("example.dev/v0", "Example"),
+//	  Handler:    controller.HandleAll(impl.Enqueue),
+//	})
 func FilterOwnerRunRef(runLister listersalpha.RunLister, apiVersion, kind string) func(interface{}) bool {
 	return func(obj interface{}) bool {
 		object, ok := obj.(metav1.Object)
