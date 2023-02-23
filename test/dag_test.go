@@ -40,14 +40,15 @@ const sleepDuration = 15 * time.Second
 
 // TestDAGPipelineRun creates a graph of arbitrary Tasks, then looks at the corresponding
 // TaskRun start times to ensure they were run in the order intended, which is:
-//                               |
-//                        pipeline-task-1
-//                       /               \
-//   pipeline-task-2-parallel-1    pipeline-task-2-parallel-2
-//                       \                /
-//                        pipeline-task-3
-//                               |
-//                        pipeline-task-4
+//
+//	                            |
+//	                     pipeline-task-1
+//	                    /               \
+//	pipeline-task-2-parallel-1    pipeline-task-2-parallel-2
+//	                    \                /
+//	                     pipeline-task-3
+//	                            |
+//	                     pipeline-task-4
 func TestDAGPipelineRun(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
