@@ -148,6 +148,7 @@ func (tpl *Template) ToAffinityAssistantTemplate() *AffinityAssistantTemplate {
 }
 
 // PodTemplate holds pod specific configuration
+//
 //nolint:revive
 type PodTemplate = Template
 
