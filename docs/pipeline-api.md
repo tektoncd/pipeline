@@ -5960,9 +5960,9 @@ RunStatus
 <h3 id="tekton.dev/v1alpha1.VerificationPolicy">VerificationPolicy
 </h3>
 <div>
-<p>VerificationPolicy defines the Tekton resources and corresponding authorities to verify.
-The VerificationPolicy is used in trusted resources to store the public keys to verify
-Tekton resources.</p>
+<p>VerificationPolicy defines the rules to verify Tekton resources.
+VerificationPolicy can config the mapping from resources to a list of public
+keys, so when verifying the resources we can use the corresponding public keys.</p>
 </div>
 <table>
 <thead>
@@ -6028,9 +6028,9 @@ VerificationPolicySpec
 </em>
 </td>
 <td>
-<p>Resources defines the patterns of Resources names that should be subject to this policy.
-For example, we may want to apply this Policy only from a certain github repo.
-Then the ResourcesPattern should include the path. If using gitresolver, and we want to config keys from a certain git repo.
+<p>Resources defines the patterns of resources sources that should be subject to this policy.
+For example, we may want to apply this Policy from a certain GitHub repo.
+Then the ResourcesPattern should be valid regex. E.g. If using gitresolver, and we want to config keys from a certain git repo.
 <code>ResourcesPattern</code> can be <code>https://github.com/tektoncd/catalog.git</code>, we will use regex to filter out those resources.</p>
 </td>
 </tr>
@@ -6188,7 +6188,7 @@ the controller, but was unused as there is no controller for PipelineResource.</
 (<em>Appears on:</em><a href="#tekton.dev/v1alpha1.VerificationPolicySpec">VerificationPolicySpec</a>)
 </p>
 <div>
-<p>The Authority block defines the rules for validating signatures.</p>
+<p>The Authority block defines the keys for validating signatures.</p>
 </div>
 <table>
 <thead>
@@ -6219,7 +6219,7 @@ KeyRef
 </em>
 </td>
 <td>
-<p>Key defines the type of key to validate the resource.</p>
+<p>Key contains the public key to validate the resource.</p>
 </td>
 </tr>
 </tbody>
@@ -6295,6 +6295,14 @@ structs.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1alpha1.HashAlgorithm">HashAlgorithm
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.KeyRef">KeyRef</a>)
+</p>
+<div>
+<p>HashAlgorithm defines the hash algorithm used for the public key</p>
+</div>
 <h3 id="tekton.dev/v1alpha1.KeyRef">KeyRef
 </h3>
 <p>
@@ -6341,7 +6349,9 @@ string
 <td>
 <code>hashAlgorithm</code><br/>
 <em>
-string
+<a href="#tekton.dev/v1alpha1.HashAlgorithm">
+HashAlgorithm
+</a>
 </em>
 </td>
 <td>
@@ -6376,8 +6386,8 @@ string
 </td>
 <td>
 <p>Pattern defines a resource pattern. Regex is created to filter resources based on <code>Pattern</code>
-Examples patterns:
-Github resource: <a href="https://github.com/tektoncd/catalog.git">https://github.com/tektoncd/catalog.git</a>, <a href="https://github.com/tektoncd/*">https://github.com/tektoncd/*</a>
+Example patterns:
+GitHub resource: <a href="https://github.com/tektoncd/catalog.git">https://github.com/tektoncd/catalog.git</a>, <a href="https://github.com/tektoncd/*">https://github.com/tektoncd/*</a>
 Bundle resource: gcr.io/tekton-releases/catalog/upstream/git-clone, gcr.io/tekton-releases/catalog/upstream/*
 Hub resource: <a href="https://artifacthub.io/*">https://artifacthub.io/*</a>,</p>
 </td>
@@ -6587,9 +6597,9 @@ Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https
 </em>
 </td>
 <td>
-<p>Resources defines the patterns of Resources names that should be subject to this policy.
-For example, we may want to apply this Policy only from a certain github repo.
-Then the ResourcesPattern should include the path. If using gitresolver, and we want to config keys from a certain git repo.
+<p>Resources defines the patterns of resources sources that should be subject to this policy.
+For example, we may want to apply this Policy from a certain GitHub repo.
+Then the ResourcesPattern should be valid regex. E.g. If using gitresolver, and we want to config keys from a certain git repo.
 <code>ResourcesPattern</code> can be <code>https://github.com/tektoncd/catalog.git</code>, we will use regex to filter out those resources.</p>
 </td>
 </tr>
