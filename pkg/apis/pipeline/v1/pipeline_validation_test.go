@@ -1128,6 +1128,21 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			}},
 		}},
 	}, {
+		name: "valid string parameter variables in matrix include",
+		params: []ParamSpec{{
+			Name: "baz", Type: ParamTypeString,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: &Matrix{
+				Include: []MatrixInclude{{
+					Name: "build-1",
+					Params: []Param{{
+						Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.baz)"}},
+					}}}},
+		}},
+	}, {
 		name: "object param - using single individual variable in string param",
 		params: []ParamSpec{{
 			Name: "myObject",
@@ -1550,7 +1565,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 		}},
 		expectedError: apis.FieldError{
 			Message: `non-existent variable in "$(params.does-not-exist)"`,
-			Paths:   []string{"[0].matrix[a-param].value[0]"},
+			Paths:   []string{"[0].matrix.params[a-param].value[0]"},
 		},
 	}, {
 		name: "invalid pipeline task with a matrix parameter combined with missing param from the param declarations",
@@ -1567,7 +1582,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 		}},
 		expectedError: apis.FieldError{
 			Message: `non-existent variable in "$(params.does-not-exist)"`,
-			Paths:   []string{"[0].matrix[a-param].value[2]"},
+			Paths:   []string{"[0].matrix.params[a-param].value[2]"},
 		},
 	}, {
 		name: "invalid pipeline task with two matrix parameters and one of them missing from the param declarations",
@@ -1581,12 +1596,32 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 				Params: []Param{{
 					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.foo)"}},
 				}, {
-					Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.does-not-exist)"}},
+					Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.does-not-exist)"}}}}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.does-not-exist)"`,
+			Paths:   []string{"[0].matrix.params[b-param].value[0]"},
+		},
+	}, {
+		name: "invalid pipeline task with two matrix include parameters and one of them missing from the param declarations",
+		params: []ParamSpec{{
+			Name: "foo", Type: ParamTypeString,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "foo-task",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			Matrix: &Matrix{
+				Include: []MatrixInclude{{
+					Params: []Param{{
+						Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.foo)"},
+					}, {
+						Name: "b-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.does-not-exist)"},
+					}},
 				}}},
 		}},
 		expectedError: apis.FieldError{
 			Message: `non-existent variable in "$(params.does-not-exist)"`,
-			Paths:   []string{"[0].matrix[b-param].value[0]"},
+			Paths:   []string{"[0].matrix.include.params[1]"},
 		},
 	}, {
 		name: "invalid object key in the input of the when expression",
@@ -1730,7 +1765,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 		}},
 		expectedError: apis.FieldError{
 			Message: `non-existent variable in "$(params.myObject.non-exist-key)"`,
-			Paths:   []string{"[0].matrix[b-param].value[0]"},
+			Paths:   []string{"[0].matrix.params[b-param].value[0]"},
 		},
 		api: "alpha",
 	}, {
@@ -2409,7 +2444,6 @@ func TestValidateFinalTasks_Failure(t *testing.T) {
 		})
 	}
 }
-
 func TestContextValid(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -3063,6 +3097,40 @@ func Test_validateMatrix(t *testing.T) {
 					Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
 				}}},
 		}},
+	}, {
+		name: "parameters in include matrix are strings",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Include: []MatrixInclude{{
+					Name: "test",
+					Params: []Param{{
+						Name: "foobar", Value: ParamValue{Type: ParamTypeString, StringVal: "foo"},
+					}, {
+						Name: "barfoo", Value: ParamValue{Type: ParamTypeString, StringVal: "bar"}},
+					}}},
+			},
+		}},
+	}, {
+		name: "parameters in include matrix are arrays",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Include: []MatrixInclude{{
+					Name: "test",
+					Params: []Param{{
+						Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo"}},
+					}, {
+						Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar"}}},
+					}}},
+			},
+		}},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: parameters of type string only are allowed, but got param type array",
+			Paths:   []string{"[0].matrix.include.params[barfoo], [0].matrix.include.params[foobar]"},
+		},
 	}, {
 		name: "parameters in matrix contain results references",
 		tasks: PipelineTaskList{{

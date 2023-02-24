@@ -304,7 +304,7 @@ func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldErr
 		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "matrix", config.AlphaAPIFields))
 		errs = errs.Also(pt.Matrix.validateCombinationsCount(ctx))
 	}
-	errs = errs.Also(validateParameterInOneOfMatrixOrParams(pt.Matrix, pt.Params))
+	errs = errs.Also(pt.Matrix.validateParameterInOneOfMatrixOrParams(pt.Params))
 	errs = errs.Also(pt.Matrix.validateParamTypes())
 	return errs
 }

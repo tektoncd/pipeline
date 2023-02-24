@@ -524,32 +524,6 @@ func validatePipelineParametersVariablesInTaskParameters(params []Param, prefix 
 	return errs
 }
 
-// validatePipelineParametersVariablesInMatrixParameters validates matrix param value
-// that may contain the reference(s) to other params to make sure those references are used appropriately.
-func validatePipelineParametersVariablesInMatrixParameters(matrix []Param, prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
-	for _, param := range matrix {
-		for idx, arrayElement := range param.Value.ArrayVal {
-			errs = errs.Also(validateArrayVariable(arrayElement, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaFieldIndex("value", idx).ViaFieldKey("matrix", param.Name))
-		}
-	}
-	return errs
-}
-
-func validateParameterInOneOfMatrixOrParams(matrix *Matrix, params []Param) (errs *apis.FieldError) {
-	matrixParameterNames := sets.NewString()
-	if matrix != nil {
-		for _, param := range matrix.Params {
-			matrixParameterNames.Insert(param.Name)
-		}
-	}
-	for _, param := range params {
-		if matrixParameterNames.Has(param.Name) {
-			errs = errs.Also(apis.ErrMultipleOneOf("matrix["+param.Name+"]", "params["+param.Name+"]"))
-		}
-	}
-	return errs
-}
-
 // validateParamStringValue validates the param value field of string type
 // that may contain references to other isolated array/object params other than string param.
 func validateParamStringValue(param Param, prefix string, paramNames sets.String, arrayVars sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {

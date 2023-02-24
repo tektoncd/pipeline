@@ -162,7 +162,7 @@ func validatePipelineParametersVariables(tasks []PipelineTask, prefix string, pa
 	for idx, task := range tasks {
 		errs = errs.Also(validatePipelineParametersVariablesInTaskParameters(task.Params, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
 		if task.IsMatrixed() {
-			errs = errs.Also(validatePipelineParametersVariablesInMatrixParameters(task.Matrix.Params, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
+			errs = errs.Also(task.Matrix.validatePipelineParametersVariablesInMatrixParameters(prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
 		}
 		errs = errs.Also(task.When.validatePipelineParametersVariables(prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
 	}
