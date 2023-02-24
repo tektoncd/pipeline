@@ -1,3 +1,20 @@
+# v1.18.4 (2023-02-20)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.18.3 (2023-02-03)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+* **Dependency Update**: Upgrade smithy to 1.27.2 and correct empty query list serialization.
+
+# v1.18.2 (2023-01-25)
+
+* **Documentation**: Doc only change to update wording in a key topic
+
+# v1.18.1 (2023-01-23)
+
+* No change notes available for this release.
+
 # v1.18.0 (2023-01-05)
 
 * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
