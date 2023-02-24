@@ -1,3 +1,2225 @@
+# Release (2023-02-20)
+
+## General Highlights
+* **Dependency Update**: Updated to the latest SDK module versions
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2`: v1.17.5
+  * **Bug Fix**: fix int overflow bug on 32 bit architecture
+* `github.com/aws/aws-sdk-go-v2/service/auditmanager`: [v1.24.0](service/auditmanager/CHANGELOG.md#v1240-2023-02-20)
+  * **Feature**: This release introduces a ServiceQuotaExceededException to the UpdateAssessmentFrameworkShare API operation.
+* `github.com/aws/aws-sdk-go-v2/service/connect`: [v1.47.0](service/connect/CHANGELOG.md#v1470-2023-02-20)
+  * **Feature**: Reasons for failed diff has been approved by SDK Reviewer
+
+# Release (2023-02-17)
+
+## General Highlights
+* **Dependency Update**: Updated to the latest SDK module versions
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/apprunner`: [v1.17.0](service/apprunner/CHANGELOG.md#v1170-2023-02-17)
+  * **Feature**: This release supports removing MaxSize limit for AutoScalingConfiguration.
+* `github.com/aws/aws-sdk-go-v2/service/glue`: [v1.43.0](service/glue/CHANGELOG.md#v1430-2023-02-17)
+  * **Feature**: Release of Delta Lake Data Lake Format for Glue Studio Service
+
+# Release (2023-02-16)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/emr`: [v1.23.0](service/emr/CHANGELOG.md#v1230-2023-02-16)
+  * **Feature**: This release provides customers the ability to define a timeout period for procuring capacity during a resize operation for Instance Fleet clusters. Customers can specify this timeout using the ResizeSpecifications parameter supported by RunJobFlow, ModifyInstanceFleet and AddInstanceFleet APIs.
+* `github.com/aws/aws-sdk-go-v2/service/grafana`: [v1.12.0](service/grafana/CHANGELOG.md#v1120-2023-02-16)
+  * **Feature**: With this release Amazon Managed Grafana now supports inbound Network Access Control that helps you to restrict user access to your Grafana workspaces
+* `github.com/aws/aws-sdk-go-v2/service/ivs`: [v1.20.3](service/ivs/CHANGELOG.md#v1203-2023-02-16)
+  * **Documentation**: Doc-only update. Updated text description in DeleteChannel, Stream, and StreamSummary.
+* `github.com/aws/aws-sdk-go-v2/service/wafv2`: [v1.25.1](service/wafv2/CHANGELOG.md#v1251-2023-02-16)
+  * **Documentation**: Added a notice for account takeover prevention (ATP). The interface incorrectly lets you to configure ATP response inspection in regional web ACLs in Region US East (N. Virginia), without returning an error. ATP response inspection is only available in web ACLs that protect CloudFront distributions.
+
+# Release (2023-02-15)
+
+## General Highlights
+* **Dependency Update**: Updated to the latest SDK module versions
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/accessanalyzer`: [v1.19.3](service/accessanalyzer/CHANGELOG.md#v1193-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/account`: [v1.9.1](service/account/CHANGELOG.md#v191-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/acm`: [v1.17.3](service/acm/CHANGELOG.md#v1173-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/acmpca`: [v1.21.2](service/acmpca/CHANGELOG.md#v1212-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/alexaforbusiness`: [v1.15.2](service/alexaforbusiness/CHANGELOG.md#v1152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/amp`: [v1.16.2](service/amp/CHANGELOG.md#v1162-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/amplify`: [v1.13.2](service/amplify/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/amplifybackend`: [v1.14.2](service/amplifybackend/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/amplifyuibuilder`: [v1.9.2](service/amplifyuibuilder/CHANGELOG.md#v192-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/apigateway`: [v1.16.3](service/apigateway/CHANGELOG.md#v1163-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/apigatewaymanagementapi`: [v1.11.2](service/apigatewaymanagementapi/CHANGELOG.md#v1112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/apigatewayv2`: [v1.13.3](service/apigatewayv2/CHANGELOG.md#v1133-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/appconfig`: [v1.17.1](service/appconfig/CHANGELOG.md#v1171-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/appconfigdata`: [v1.6.1](service/appconfigdata/CHANGELOG.md#v161-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/appflow`: [v1.24.2](service/appflow/CHANGELOG.md#v1242-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/appintegrations`: [v1.14.2](service/appintegrations/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/applicationautoscaling`: [v1.17.3](service/applicationautoscaling/CHANGELOG.md#v1173-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/applicationcostprofiler`: [v1.10.2](service/applicationcostprofiler/CHANGELOG.md#v1102-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/applicationdiscoveryservice`: [v1.15.2](service/applicationdiscoveryservice/CHANGELOG.md#v1152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/applicationinsights`: [v1.17.3](service/applicationinsights/CHANGELOG.md#v1173-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/appmesh`: [v1.17.2](service/appmesh/CHANGELOG.md#v1172-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/apprunner`: [v1.16.2](service/apprunner/CHANGELOG.md#v1162-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/appstream`: [v1.20.2](service/appstream/CHANGELOG.md#v1202-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/appsync`: [v1.19.2](service/appsync/CHANGELOG.md#v1192-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/arczonalshift`: [v1.1.3](service/arczonalshift/CHANGELOG.md#v113-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/athena`: [v1.22.2](service/athena/CHANGELOG.md#v1222-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/auditmanager`: [v1.23.2](service/auditmanager/CHANGELOG.md#v1232-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/autoscalingplans`: [v1.13.2](service/autoscalingplans/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/backup`: [v1.20.1](service/backup/CHANGELOG.md#v1201-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/backupgateway`: [v1.9.2](service/backupgateway/CHANGELOG.md#v192-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/backupstorage`: [v1.1.2](service/backupstorage/CHANGELOG.md#v112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/batch`: [v1.21.3](service/batch/CHANGELOG.md#v1213-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/billingconductor`: [v1.5.2](service/billingconductor/CHANGELOG.md#v152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/braket`: [v1.17.2](service/braket/CHANGELOG.md#v1172-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/budgets`: [v1.14.2](service/budgets/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/chime`: [v1.22.2](service/chime/CHANGELOG.md#v1222-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/chimesdkidentity`: [v1.10.2](service/chimesdkidentity/CHANGELOG.md#v1102-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/chimesdkmediapipelines`: [v1.2.2](service/chimesdkmediapipelines/CHANGELOG.md#v122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/chimesdkmeetings`: [v1.14.3](service/chimesdkmeetings/CHANGELOG.md#v1143-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/chimesdkmessaging`: [v1.12.2](service/chimesdkmessaging/CHANGELOG.md#v1122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/chimesdkvoice`: [v1.1.2](service/chimesdkvoice/CHANGELOG.md#v112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/cleanrooms`: [v1.0.2](service/cleanrooms/CHANGELOG.md#v102-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/cloud9`: [v1.17.2](service/cloud9/CHANGELOG.md#v1172-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/cloudcontrol`: [v1.11.3](service/cloudcontrol/CHANGELOG.md#v1113-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/clouddirectory`: [v1.13.2](service/clouddirectory/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/cloudhsm`: [v1.13.2](service/cloudhsm/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/cloudhsmv2`: [v1.14.2](service/cloudhsmv2/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/cloudsearchdomain`: [v1.12.2](service/cloudsearchdomain/CHANGELOG.md#v1122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/cloudtrail`: [v1.24.0](service/cloudtrail/CHANGELOG.md#v1240-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Feature**: This release adds an InsufficientEncryptionPolicyException type to the StartImport endpoint
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/cloudtraildata`: [v1.0.2](service/cloudtraildata/CHANGELOG.md#v102-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/cloudwatchevents`: [v1.15.3](service/cloudwatchevents/CHANGELOG.md#v1153-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs`: [v1.20.3](service/cloudwatchlogs/CHANGELOG.md#v1203-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/codeartifact`: [v1.16.2](service/codeartifact/CHANGELOG.md#v1162-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/codebuild`: [v1.20.3](service/codebuild/CHANGELOG.md#v1203-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/codecatalyst`: [v1.1.2](service/codecatalyst/CHANGELOG.md#v112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/codecommit`: [v1.14.2](service/codecommit/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/codedeploy`: [v1.16.3](service/codedeploy/CHANGELOG.md#v1163-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/codeguruprofiler`: [v1.13.2](service/codeguruprofiler/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/codegurureviewer`: [v1.17.2](service/codegurureviewer/CHANGELOG.md#v1172-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/codepipeline`: [v1.14.2](service/codepipeline/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/codestar`: [v1.13.2](service/codestar/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/codestarconnections`: [v1.14.2](service/codestarconnections/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/codestarnotifications`: [v1.14.2](service/codestarnotifications/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/cognitoidentity`: [v1.15.2](service/cognitoidentity/CHANGELOG.md#v1152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider`: [v1.22.2](service/cognitoidentityprovider/CHANGELOG.md#v1222-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/cognitosync`: [v1.12.2](service/cognitosync/CHANGELOG.md#v1122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/comprehend`: [v1.21.2](service/comprehend/CHANGELOG.md#v1212-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/comprehendmedical`: [v1.15.2](service/comprehendmedical/CHANGELOG.md#v1152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/computeoptimizer`: [v1.21.1](service/computeoptimizer/CHANGELOG.md#v1211-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/configservice`: [v1.29.3](service/configservice/CHANGELOG.md#v1293-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/connect`: [v1.46.1](service/connect/CHANGELOG.md#v1461-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/connectcampaigns`: [v1.2.3](service/connectcampaigns/CHANGELOG.md#v123-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/connectcases`: [v1.2.3](service/connectcases/CHANGELOG.md#v123-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/connectcontactlens`: [v1.13.2](service/connectcontactlens/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/connectparticipant`: [v1.15.2](service/connectparticipant/CHANGELOG.md#v1152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/controltower`: [v1.1.2](service/controltower/CHANGELOG.md#v112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/costandusagereportservice`: [v1.15.2](service/costandusagereportservice/CHANGELOG.md#v1152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/costexplorer`: [v1.25.2](service/costexplorer/CHANGELOG.md#v1252-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/customerprofiles`: [v1.23.1](service/customerprofiles/CHANGELOG.md#v1231-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/databasemigrationservice`: [v1.23.3](service/databasemigrationservice/CHANGELOG.md#v1233-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/databrew`: [v1.21.3](service/databrew/CHANGELOG.md#v1213-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/dataexchange`: [v1.18.2](service/dataexchange/CHANGELOG.md#v1182-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/datapipeline`: [v1.14.2](service/datapipeline/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/datasync`: [v1.22.1](service/datasync/CHANGELOG.md#v1221-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/dax`: [v1.12.2](service/dax/CHANGELOG.md#v1122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/detective`: [v1.18.2](service/detective/CHANGELOG.md#v1182-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/devicefarm`: [v1.15.2](service/devicefarm/CHANGELOG.md#v1152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/devopsguru`: [v1.22.2](service/devopsguru/CHANGELOG.md#v1222-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/directconnect`: [v1.18.3](service/directconnect/CHANGELOG.md#v1183-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/directoryservice`: [v1.16.3](service/directoryservice/CHANGELOG.md#v1163-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/dlm`: [v1.14.4](service/dlm/CHANGELOG.md#v1144-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/docdbelastic`: [v1.1.2](service/docdbelastic/CHANGELOG.md#v112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/drs`: [v1.10.2](service/drs/CHANGELOG.md#v1102-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/dynamodb`: [v1.18.3](service/dynamodb/CHANGELOG.md#v1183-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/dynamodbstreams`: [v1.14.3](service/dynamodbstreams/CHANGELOG.md#v1143-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/ebs`: [v1.16.4](service/ebs/CHANGELOG.md#v1164-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/ec2instanceconnect`: [v1.15.2](service/ec2instanceconnect/CHANGELOG.md#v1152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/ecr`: [v1.18.3](service/ecr/CHANGELOG.md#v1183-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/ecrpublic`: [v1.15.2](service/ecrpublic/CHANGELOG.md#v1152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/ecs`: [v1.23.3](service/ecs/CHANGELOG.md#v1233-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/efs`: [v1.19.4](service/efs/CHANGELOG.md#v1194-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+  * **Documentation**: Documentation update for EFS to support IAM best practices.
+* `github.com/aws/aws-sdk-go-v2/service/eks`: [v1.27.3](service/eks/CHANGELOG.md#v1273-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/elasticinference`: [v1.12.2](service/elasticinference/CHANGELOG.md#v1122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/elasticsearchservice`: [v1.18.3](service/elasticsearchservice/CHANGELOG.md#v1183-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/elastictranscoder`: [v1.14.2](service/elastictranscoder/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/emr`: [v1.22.3](service/emr/CHANGELOG.md#v1223-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/emrcontainers`: [v1.17.1](service/emrcontainers/CHANGELOG.md#v1171-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/emrserverless`: [v1.5.2](service/emrserverless/CHANGELOG.md#v152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/eventbridge`: [v1.18.3](service/eventbridge/CHANGELOG.md#v1183-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/evidently`: [v1.10.2](service/evidently/CHANGELOG.md#v1102-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/finspace`: [v1.9.2](service/finspace/CHANGELOG.md#v192-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/finspacedata`: [v1.14.2](service/finspacedata/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/firehose`: [v1.16.3](service/firehose/CHANGELOG.md#v1163-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/fis`: [v1.14.2](service/fis/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/fms`: [v1.22.3](service/fms/CHANGELOG.md#v1223-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/forecast`: [v1.25.2](service/forecast/CHANGELOG.md#v1252-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/forecastquery`: [v1.13.2](service/forecastquery/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/frauddetector`: [v1.23.0](service/frauddetector/CHANGELOG.md#v1230-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Feature**: This release introduces Lists feature which allows customers to reference a set of values in Fraud Detector's rules. With Lists, customers can dynamically manage these attributes in real time. Lists can be created/deleted and its contents can be modified using the Fraud Detector API.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/fsx`: [v1.28.3](service/fsx/CHANGELOG.md#v1283-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/gamelift`: [v1.17.2](service/gamelift/CHANGELOG.md#v1172-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/gamesparks`: [v1.2.2](service/gamesparks/CHANGELOG.md#v122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/glacier`: [v1.14.3](service/glacier/CHANGELOG.md#v1143-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/globalaccelerator`: [v1.16.2](service/globalaccelerator/CHANGELOG.md#v1162-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/glue`: [v1.42.0](service/glue/CHANGELOG.md#v1420-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Feature**: Fix DirectJDBCSource not showing up in CLI code gen
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/grafana`: [v1.11.2](service/grafana/CHANGELOG.md#v1112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/greengrass`: [v1.15.3](service/greengrass/CHANGELOG.md#v1153-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/greengrassv2`: [v1.21.3](service/greengrassv2/CHANGELOG.md#v1213-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/groundstation`: [v1.17.2](service/groundstation/CHANGELOG.md#v1172-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/guardduty`: [v1.17.3](service/guardduty/CHANGELOG.md#v1173-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/health`: [v1.16.2](service/health/CHANGELOG.md#v1162-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/healthlake`: [v1.15.2](service/healthlake/CHANGELOG.md#v1152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/honeycode`: [v1.13.2](service/honeycode/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/identitystore`: [v1.16.2](service/identitystore/CHANGELOG.md#v1162-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/imagebuilder`: [v1.22.2](service/imagebuilder/CHANGELOG.md#v1222-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/inspector`: [v1.13.2](service/inspector/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/inspector2`: [v1.11.3](service/inspector2/CHANGELOG.md#v1113-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/iot`: [v1.34.2](service/iot/CHANGELOG.md#v1342-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/iot1clickdevicesservice`: [v1.11.2](service/iot1clickdevicesservice/CHANGELOG.md#v1112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/iot1clickprojects`: [v1.12.2](service/iot1clickprojects/CHANGELOG.md#v1122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/iotanalytics`: [v1.14.2](service/iotanalytics/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/iotdataplane`: [v1.14.2](service/iotdataplane/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/iotdeviceadvisor`: [v1.17.2](service/iotdeviceadvisor/CHANGELOG.md#v1172-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/iotevents`: [v1.15.2](service/iotevents/CHANGELOG.md#v1152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/ioteventsdata`: [v1.13.2](service/ioteventsdata/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/iotfleethub`: [v1.13.2](service/iotfleethub/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/iotfleetwise`: [v1.3.2](service/iotfleetwise/CHANGELOG.md#v132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/iotjobsdataplane`: [v1.12.2](service/iotjobsdataplane/CHANGELOG.md#v1122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/iotroborunner`: [v1.1.2](service/iotroborunner/CHANGELOG.md#v112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/iotsecuretunneling`: [v1.15.2](service/iotsecuretunneling/CHANGELOG.md#v1152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/iotsitewise`: [v1.27.2](service/iotsitewise/CHANGELOG.md#v1272-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/iotthingsgraph`: [v1.14.2](service/iotthingsgraph/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/iottwinmaker`: [v1.10.2](service/iottwinmaker/CHANGELOG.md#v1102-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/iotwireless`: [v1.24.2](service/iotwireless/CHANGELOG.md#v1242-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/ivs`: [v1.20.2](service/ivs/CHANGELOG.md#v1202-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/ivschat`: [v1.3.2](service/ivschat/CHANGELOG.md#v132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/kafka`: [v1.19.2](service/kafka/CHANGELOG.md#v1192-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/kafkaconnect`: [v1.9.2](service/kafkaconnect/CHANGELOG.md#v192-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/kendra`: [v1.38.3](service/kendra/CHANGELOG.md#v1383-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/kendraranking`: [v1.0.4](service/kendraranking/CHANGELOG.md#v104-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/keyspaces`: [v1.1.2](service/keyspaces/CHANGELOG.md#v112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/kinesis`: [v1.17.4](service/kinesis/CHANGELOG.md#v1174-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/kinesisanalytics`: [v1.14.2](service/kinesisanalytics/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2`: [v1.16.2](service/kinesisanalyticsv2/CHANGELOG.md#v1162-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/kinesisvideo`: [v1.15.3](service/kinesisvideo/CHANGELOG.md#v1153-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/kinesisvideoarchivedmedia`: [v1.14.3](service/kinesisvideoarchivedmedia/CHANGELOG.md#v1143-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/kinesisvideomedia`: [v1.11.3](service/kinesisvideomedia/CHANGELOG.md#v1113-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/kinesisvideosignaling`: [v1.11.3](service/kinesisvideosignaling/CHANGELOG.md#v1113-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/kinesisvideowebrtcstorage`: [v1.2.3](service/kinesisvideowebrtcstorage/CHANGELOG.md#v123-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/kms`: [v1.20.3](service/kms/CHANGELOG.md#v1203-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/lakeformation`: [v1.19.2](service/lakeformation/CHANGELOG.md#v1192-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/lambda`: [v1.29.2](service/lambda/CHANGELOG.md#v1292-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/lexmodelbuildingservice`: [v1.17.2](service/lexmodelbuildingservice/CHANGELOG.md#v1172-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/lexmodelsv2`: [v1.28.1](service/lexmodelsv2/CHANGELOG.md#v1281-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/lexruntimeservice`: [v1.13.2](service/lexruntimeservice/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/lexruntimev2`: [v1.17.1](service/lexruntimev2/CHANGELOG.md#v1171-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/licensemanager`: [v1.17.2](service/licensemanager/CHANGELOG.md#v1172-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/licensemanagerlinuxsubscriptions`: [v1.1.2](service/licensemanagerlinuxsubscriptions/CHANGELOG.md#v112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/licensemanagerusersubscriptions`: [v1.2.2](service/licensemanagerusersubscriptions/CHANGELOG.md#v122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/lightsail`: [v1.25.3](service/lightsail/CHANGELOG.md#v1253-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/location`: [v1.21.2](service/location/CHANGELOG.md#v1212-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/lookoutequipment`: [v1.17.2](service/lookoutequipment/CHANGELOG.md#v1172-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/lookoutmetrics`: [v1.19.2](service/lookoutmetrics/CHANGELOG.md#v1192-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/lookoutvision`: [v1.15.2](service/lookoutvision/CHANGELOG.md#v1152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/m2`: [v1.4.2](service/m2/CHANGELOG.md#v142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/machinelearning`: [v1.15.2](service/machinelearning/CHANGELOG.md#v1152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/macie`: [v1.15.2](service/macie/CHANGELOG.md#v1152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/macie2`: [v1.26.2](service/macie2/CHANGELOG.md#v1262-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/managedblockchain`: [v1.14.2](service/managedblockchain/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/marketplacecatalog`: [v1.15.2](service/marketplacecatalog/CHANGELOG.md#v1152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/marketplacecommerceanalytics`: [v1.12.2](service/marketplacecommerceanalytics/CHANGELOG.md#v1122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/marketplaceentitlementservice`: [v1.12.2](service/marketplaceentitlementservice/CHANGELOG.md#v1122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/marketplacemetering`: [v1.14.3](service/marketplacemetering/CHANGELOG.md#v1143-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/mediaconnect`: [v1.18.2](service/mediaconnect/CHANGELOG.md#v1182-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/mediaconvert`: [v1.31.1](service/mediaconvert/CHANGELOG.md#v1311-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/medialive`: [v1.29.2](service/medialive/CHANGELOG.md#v1292-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/mediapackage`: [v1.20.2](service/mediapackage/CHANGELOG.md#v1202-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/mediapackagevod`: [v1.21.2](service/mediapackagevod/CHANGELOG.md#v1212-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/mediastore`: [v1.13.2](service/mediastore/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/mediastoredata`: [v1.13.2](service/mediastoredata/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/mediatailor`: [v1.22.2](service/mediatailor/CHANGELOG.md#v1222-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/memorydb`: [v1.12.2](service/memorydb/CHANGELOG.md#v1122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/mgn`: [v1.17.2](service/mgn/CHANGELOG.md#v1172-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/migrationhub`: [v1.13.2](service/migrationhub/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/migrationhubconfig`: [v1.13.2](service/migrationhubconfig/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/migrationhuborchestrator`: [v1.1.2](service/migrationhuborchestrator/CHANGELOG.md#v112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/migrationhubrefactorspaces`: [v1.9.1](service/migrationhubrefactorspaces/CHANGELOG.md#v191-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/migrationhubstrategy`: [v1.7.2](service/migrationhubstrategy/CHANGELOG.md#v172-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/mobile`: [v1.12.2](service/mobile/CHANGELOG.md#v1122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/mq`: [v1.14.2](service/mq/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/mturk`: [v1.14.2](service/mturk/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/mwaa`: [v1.14.2](service/mwaa/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/networkfirewall`: [v1.24.2](service/networkfirewall/CHANGELOG.md#v1242-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/networkmanager`: [v1.17.2](service/networkmanager/CHANGELOG.md#v1172-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/nimble`: [v1.16.2](service/nimble/CHANGELOG.md#v1162-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/oam`: [v1.1.3](service/oam/CHANGELOG.md#v113-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/omics`: [v1.1.2](service/omics/CHANGELOG.md#v112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/opensearch`: [v1.14.2](service/opensearch/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/opensearchserverless`: [v1.1.3](service/opensearchserverless/CHANGELOG.md#v113-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/opsworks`: [v1.14.2](service/opsworks/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/opsworkscm`: [v1.15.2](service/opsworkscm/CHANGELOG.md#v1152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/organizations`: [v1.18.2](service/organizations/CHANGELOG.md#v1182-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/outposts`: [v1.27.2](service/outposts/CHANGELOG.md#v1272-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/panorama`: [v1.11.2](service/panorama/CHANGELOG.md#v1112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/personalize`: [v1.23.2](service/personalize/CHANGELOG.md#v1232-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/personalizeevents`: [v1.13.2](service/personalizeevents/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/personalizeruntime`: [v1.13.2](service/personalizeruntime/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/pi`: [v1.16.3](service/pi/CHANGELOG.md#v1163-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/pinpoint`: [v1.18.2](service/pinpoint/CHANGELOG.md#v1182-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/pinpointemail`: [v1.12.2](service/pinpointemail/CHANGELOG.md#v1122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoice`: [v1.11.2](service/pinpointsmsvoice/CHANGELOG.md#v1112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2`: [v1.1.2](service/pinpointsmsvoicev2/CHANGELOG.md#v112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/pipes`: [v1.1.2](service/pipes/CHANGELOG.md#v112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/polly`: [v1.25.1](service/polly/CHANGELOG.md#v1251-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/pricing`: [v1.18.2](service/pricing/CHANGELOG.md#v1182-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/privatenetworks`: [v1.2.0](service/privatenetworks/CHANGELOG.md#v120-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Feature**: This release introduces a new StartNetworkResourceUpdate API, which enables return/replacement of hardware from a NetworkSite.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/proton`: [v1.20.1](service/proton/CHANGELOG.md#v1201-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/qldb`: [v1.15.2](service/qldb/CHANGELOG.md#v1152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/qldbsession`: [v1.14.2](service/qldbsession/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/quicksight`: [v1.31.2](service/quicksight/CHANGELOG.md#v1312-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/ram`: [v1.17.3](service/ram/CHANGELOG.md#v1173-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/rbin`: [v1.8.3](service/rbin/CHANGELOG.md#v183-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/rds`: [v1.40.3](service/rds/CHANGELOG.md#v1403-2023-02-15)
+  * **Documentation**: Database Activity Stream support for RDS for SQL Server.
+* `github.com/aws/aws-sdk-go-v2/service/rdsdata`: [v1.13.2](service/rdsdata/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/redshiftdata`: [v1.18.2](service/redshiftdata/CHANGELOG.md#v1182-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/redshiftserverless`: [v1.4.3](service/redshiftserverless/CHANGELOG.md#v143-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/rekognition`: [v1.23.2](service/rekognition/CHANGELOG.md#v1232-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/resiliencehub`: [v1.8.2](service/resiliencehub/CHANGELOG.md#v182-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/resourceexplorer2`: [v1.2.3](service/resourceexplorer2/CHANGELOG.md#v123-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/resourcegroups`: [v1.14.3](service/resourcegroups/CHANGELOG.md#v1143-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi`: [v1.14.3](service/resourcegroupstaggingapi/CHANGELOG.md#v1143-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/robomaker`: [v1.18.2](service/robomaker/CHANGELOG.md#v1182-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/rolesanywhere`: [v1.1.2](service/rolesanywhere/CHANGELOG.md#v112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/route53domains`: [v1.14.2](service/route53domains/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/route53recoverycluster`: [v1.11.2](service/route53recoverycluster/CHANGELOG.md#v1112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/route53recoverycontrolconfig`: [v1.11.2](service/route53recoverycontrolconfig/CHANGELOG.md#v1112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/route53recoveryreadiness`: [v1.9.2](service/route53recoveryreadiness/CHANGELOG.md#v192-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/route53resolver`: [v1.16.3](service/route53resolver/CHANGELOG.md#v1163-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/rum`: [v1.9.2](service/rum/CHANGELOG.md#v192-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/s3outposts`: [v1.14.2](service/s3outposts/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/sagemaker`: [v1.68.1](service/sagemaker/CHANGELOG.md#v1681-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/sagemakera2iruntime`: [v1.15.2](service/sagemakera2iruntime/CHANGELOG.md#v1152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/sagemakeredge`: [v1.13.2](service/sagemakeredge/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/sagemakerfeaturestoreruntime`: [v1.13.2](service/sagemakerfeaturestoreruntime/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/sagemakergeospatial`: [v1.1.2](service/sagemakergeospatial/CHANGELOG.md#v112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/sagemakermetrics`: [v1.0.5](service/sagemakermetrics/CHANGELOG.md#v105-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/sagemakerruntime`: [v1.18.3](service/sagemakerruntime/CHANGELOG.md#v1183-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/savingsplans`: [v1.12.2](service/savingsplans/CHANGELOG.md#v1122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/scheduler`: [v1.1.2](service/scheduler/CHANGELOG.md#v112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/schemas`: [v1.15.2](service/schemas/CHANGELOG.md#v1152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/secretsmanager`: [v1.18.4](service/secretsmanager/CHANGELOG.md#v1184-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/securityhub`: [v1.28.2](service/securityhub/CHANGELOG.md#v1282-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/securitylake`: [v1.2.2](service/securitylake/CHANGELOG.md#v122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/serverlessapplicationrepository`: [v1.12.2](service/serverlessapplicationrepository/CHANGELOG.md#v1122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/servicecatalog`: [v1.16.2](service/servicecatalog/CHANGELOG.md#v1162-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/servicecatalogappregistry`: [v1.16.3](service/servicecatalogappregistry/CHANGELOG.md#v1163-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/servicediscovery`: [v1.19.2](service/servicediscovery/CHANGELOG.md#v1192-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/servicequotas`: [v1.14.3](service/servicequotas/CHANGELOG.md#v1143-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/sesv2`: [v1.16.2](service/sesv2/CHANGELOG.md#v1162-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/sfn`: [v1.17.3](service/sfn/CHANGELOG.md#v1173-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/shield`: [v1.18.2](service/shield/CHANGELOG.md#v1182-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/signer`: [v1.14.2](service/signer/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/simspaceweaver`: [v1.1.2](service/simspaceweaver/CHANGELOG.md#v112-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/sms`: [v1.13.2](service/sms/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/snowball`: [v1.18.1](service/snowball/CHANGELOG.md#v1181-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/snowdevicemanagement`: [v1.9.2](service/snowdevicemanagement/CHANGELOG.md#v192-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/ssm`: [v1.35.3](service/ssm/CHANGELOG.md#v1353-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/ssmcontacts`: [v1.14.2](service/ssmcontacts/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/ssmincidents`: [v1.20.2](service/ssmincidents/CHANGELOG.md#v1202-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/ssmsap`: [v1.2.2](service/ssmsap/CHANGELOG.md#v122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/sso`: [v1.12.2](service/sso/CHANGELOG.md#v1122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/ssoadmin`: [v1.16.2](service/ssoadmin/CHANGELOG.md#v1162-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/ssooidc`: [v1.14.2](service/ssooidc/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/storagegateway`: [v1.18.3](service/storagegateway/CHANGELOG.md#v1183-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/support`: [v1.14.2](service/support/CHANGELOG.md#v1142-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/supportapp`: [v1.2.2](service/supportapp/CHANGELOG.md#v122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/swf`: [v1.14.4](service/swf/CHANGELOG.md#v1144-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/synthetics`: [v1.17.3](service/synthetics/CHANGELOG.md#v1173-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/textract`: [v1.20.2](service/textract/CHANGELOG.md#v1202-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/timestreamquery`: [v1.15.2](service/timestreamquery/CHANGELOG.md#v1152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/timestreamwrite`: [v1.15.2](service/timestreamwrite/CHANGELOG.md#v1152-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/transcribe`: [v1.25.2](service/transcribe/CHANGELOG.md#v1252-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/transcribestreaming`: [v1.9.2](service/transcribestreaming/CHANGELOG.md#v192-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/transfer`: [v1.28.3](service/transfer/CHANGELOG.md#v1283-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/translate`: [v1.17.2](service/translate/CHANGELOG.md#v1172-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/voiceid`: [v1.12.2](service/voiceid/CHANGELOG.md#v1122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/waf`: [v1.12.2](service/waf/CHANGELOG.md#v1122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/wafregional`: [v1.13.3](service/wafregional/CHANGELOG.md#v1133-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/wafv2`: [v1.25.0](service/wafv2/CHANGELOG.md#v1250-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Feature**: For protected CloudFront distributions, you can now use the AWS WAF Fraud Control account takeover prevention (ATP) managed rule group to block new login attempts from clients that have recently submitted too many failed login attempts.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/wellarchitected`: [v1.18.2](service/wellarchitected/CHANGELOG.md#v1182-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/wisdom`: [v1.12.2](service/wisdom/CHANGELOG.md#v1122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/workdocs`: [v1.13.3](service/workdocs/CHANGELOG.md#v1133-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/worklink`: [v1.13.2](service/worklink/CHANGELOG.md#v1132-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/workmail`: [v1.18.2](service/workmail/CHANGELOG.md#v1182-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/workmailmessageflow`: [v1.12.2](service/workmailmessageflow/CHANGELOG.md#v1122-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/workspaces`: [v1.28.3](service/workspaces/CHANGELOG.md#v1283-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/workspacesweb`: [v1.9.2](service/workspacesweb/CHANGELOG.md#v192-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+* `github.com/aws/aws-sdk-go-v2/service/xray`: [v1.16.3](service/xray/CHANGELOG.md#v1163-2023-02-15)
+  * **Announcement**: When receiving an error response in restJson-based services, an incorrect error type may have been returned based on the content of the response. This has been fixed via PR #2012 tracked in issue #1910.
+  * **Bug Fix**: Correct error type parsing for restJson services.
+
+# Release (2023-02-14)
+
+## General Highlights
+* **Dependency Update**: Updated to the latest SDK module versions
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/appconfig`: [v1.17.0](service/appconfig/CHANGELOG.md#v1170-2023-02-14)
+  * **Feature**: AWS AppConfig now offers the option to set a version label on hosted configuration versions. Version labels allow you to identify specific hosted configuration versions based on an alternate versioning scheme that you define.
+* `github.com/aws/aws-sdk-go-v2/service/datasync`: [v1.22.0](service/datasync/CHANGELOG.md#v1220-2023-02-14)
+  * **Feature**: With this launch, we are giving customers the ability to use older SMB protocol versions, enabling them to use DataSync to copy data to and from their legacy storage arrays.
+* `github.com/aws/aws-sdk-go-v2/service/ec2`: [v1.86.0](service/ec2/CHANGELOG.md#v1860-2023-02-14)
+  * **Feature**: With this release customers can turn host maintenance on or off when allocating or modifying a supported dedicated host. Host maintenance is turned on by default for supported hosts.
+
+# Release (2023-02-13)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/account`: [v1.9.0](service/account/CHANGELOG.md#v190-2023-02-13)
+  * **Feature**: This release of the Account Management API enables customers to view and manage whether AWS Opt-In Regions are enabled or disabled for their Account. For more information, see https://docs.aws.amazon.com/accounts/latest/reference/manage-acct-regions.html
+* `github.com/aws/aws-sdk-go-v2/service/appconfigdata`: [v1.6.0](service/appconfigdata/CHANGELOG.md#v160-2023-02-13)
+  * **Feature**: AWS AppConfig now offers the option to set a version label on hosted configuration versions. If a labeled hosted configuration version is deployed, its version label is available in the GetLatestConfiguration response.
+* `github.com/aws/aws-sdk-go-v2/service/snowball`: [v1.18.0](service/snowball/CHANGELOG.md#v1180-2023-02-13)
+  * **Feature**: Adds support for EKS Anywhere on Snowball. AWS Snow Family customers can now install EKS Anywhere service on Snowball Edge Compute Optimized devices.
+
+# Release (2023-02-10)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/autoscaling`: [v1.27.0](service/autoscaling/CHANGELOG.md#v1270-2023-02-10)
+  * **Feature**: You can now either terminate/replace, ignore, or wait for EC2 Auto Scaling instances on standby or protected from scale in. Also, you can also roll back changes from a failed instance refresh.
+* `github.com/aws/aws-sdk-go-v2/service/connect`: [v1.46.0](service/connect/CHANGELOG.md#v1460-2023-02-10)
+  * **Feature**: This update provides the Wisdom session ARN for contacts enabled for Wisdom in the chat channel.
+* `github.com/aws/aws-sdk-go-v2/service/ec2`: [v1.85.0](service/ec2/CHANGELOG.md#v1850-2023-02-10)
+  * **Feature**: Adds support for waiters that automatically poll for an imported snapshot until it reaches the completed state.
+* `github.com/aws/aws-sdk-go-v2/service/polly`: [v1.25.0](service/polly/CHANGELOG.md#v1250-2023-02-10)
+  * **Feature**: Amazon Polly adds two new neural Japanese voices - Kazuha, Tomoko
+* `github.com/aws/aws-sdk-go-v2/service/sagemaker`: [v1.68.0](service/sagemaker/CHANGELOG.md#v1680-2023-02-10)
+  * **Feature**: Amazon SageMaker Autopilot adds support for selecting algorithms in CreateAutoMLJob API.
+* `github.com/aws/aws-sdk-go-v2/service/sns`: [v1.20.2](service/sns/CHANGELOG.md#v1202-2023-02-10)
+  * **Documentation**: This release adds support for SNS X-Ray active tracing as well as other updates.
+
+# Release (2023-02-09)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/chimesdkmeetings`: [v1.14.2](service/chimesdkmeetings/CHANGELOG.md#v1142-2023-02-09)
+  * **Documentation**: Documentation updates for Chime Meetings SDK
+* `github.com/aws/aws-sdk-go-v2/service/emrcontainers`: [v1.17.0](service/emrcontainers/CHANGELOG.md#v1170-2023-02-09)
+  * **Feature**: EMR on EKS allows configuring retry policies for job runs through the StartJobRun API. Using retry policies, a job cause a driver pod to be restarted automatically if it fails or is deleted. The job's status can be seen in the DescribeJobRun and ListJobRun APIs and monitored using CloudWatch events.
+* `github.com/aws/aws-sdk-go-v2/service/lexmodelsv2`: [v1.28.0](service/lexmodelsv2/CHANGELOG.md#v1280-2023-02-09)
+  * **Feature**: AWS Lex now supports Network of Bots.
+* `github.com/aws/aws-sdk-go-v2/service/lexruntimev2`: [v1.17.0](service/lexruntimev2/CHANGELOG.md#v1170-2023-02-09)
+  * **Feature**: AWS Lex now supports Network of Bots.
+* `github.com/aws/aws-sdk-go-v2/service/lightsail`: [v1.25.2](service/lightsail/CHANGELOG.md#v1252-2023-02-09)
+  * **Documentation**: Documentation updates for Lightsail
+* `github.com/aws/aws-sdk-go-v2/service/migrationhubrefactorspaces`: [v1.9.0](service/migrationhubrefactorspaces/CHANGELOG.md#v190-2023-02-09)
+  * **Feature**: This release adds support for creating environments with a network fabric type of NONE
+* `github.com/aws/aws-sdk-go-v2/service/workdocs`: [v1.13.2](service/workdocs/CHANGELOG.md#v1132-2023-02-09)
+  * **Documentation**: Doc only update for the WorkDocs APIs.
+* `github.com/aws/aws-sdk-go-v2/service/workspaces`: [v1.28.2](service/workspaces/CHANGELOG.md#v1282-2023-02-09)
+  * **Documentation**: Removed Windows Server 2016 BYOL and made changes based on IAM campaign.
+
+# Release (2023-02-08)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/backup`: [v1.20.0](service/backup/CHANGELOG.md#v1200-2023-02-08)
+  * **Feature**: This release added one attribute (resource name) in the output model of our 9 existing APIs in AWS backup so that customers will see the resource name at the output. No input required from Customers.
+* `github.com/aws/aws-sdk-go-v2/service/cloudfront`: [v1.25.0](service/cloudfront/CHANGELOG.md#v1250-2023-02-08)
+  * **Feature**: CloudFront Origin Access Control extends support to AWS Elemental MediaStore origins.
+* `github.com/aws/aws-sdk-go-v2/service/glue`: [v1.41.0](service/glue/CHANGELOG.md#v1410-2023-02-08)
+  * **Feature**: DirectJDBCSource + Glue 4.0 streaming options
+
+# Release (2023-02-07)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/transfer`: [v1.28.2](service/transfer/CHANGELOG.md#v1282-2023-02-07)
+  * **Documentation**: Updated the documentation for the ImportCertificate API call, and added examples.
+
+# Release (2023-02-06)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/computeoptimizer`: [v1.21.0](service/computeoptimizer/CHANGELOG.md#v1210-2023-02-06)
+  * **Feature**: AWS Compute optimizer can now infer if Kafka is running on an instance.
+* `github.com/aws/aws-sdk-go-v2/service/customerprofiles`: [v1.23.0](service/customerprofiles/CHANGELOG.md#v1230-2023-02-06)
+  * **Feature**: This release deprecates the PartyType and Gender enum data types from the Profile model and replaces them with new PartyTypeString and GenderString attributes, which accept any string of length up to 255.
+* `github.com/aws/aws-sdk-go-v2/service/frauddetector`: [v1.22.0](service/frauddetector/CHANGELOG.md#v1220-2023-02-06)
+  * **Feature**: My AWS Service (Amazon Fraud Detector) - This release introduces Cold Start Model Training which optimizes training for small datasets and adds intelligent methods for treating unlabeled data. You can now train Online Fraud Insights or Transaction Fraud Insights models with minimal historical-data.
+* `github.com/aws/aws-sdk-go-v2/service/mediaconvert`: [v1.31.0](service/mediaconvert/CHANGELOG.md#v1310-2023-02-06)
+  * **Feature**: The AWS Elemental MediaConvert SDK has added improved scene change detection capabilities and a bandwidth reduction filter, along with video quality enhancements, to the AVC encoder.
+* `github.com/aws/aws-sdk-go-v2/service/outposts`: [v1.27.0](service/outposts/CHANGELOG.md#v1270-2023-02-06)
+  * **Feature**: Adds OrderType to Order structure. Adds PreviousOrderId and PreviousLineItemId to LineItem structure. Adds new line item status REPLACED. Increases maximum length of pagination token.
+
+# Release (2023-02-03)
+
+## General Highlights
+* **Dependency Update**: Updated to the latest SDK module versions
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/autoscaling`: [v1.26.2](service/autoscaling/CHANGELOG.md#v1262-2023-02-03)
+  * **Dependency Update**: Upgrade smithy to 1.27.2 and correct empty query list serialization.
+* `github.com/aws/aws-sdk-go-v2/service/cloudformation`: [v1.26.2](service/cloudformation/CHANGELOG.md#v1262-2023-02-03)
+  * **Dependency Update**: Upgrade smithy to 1.27.2 and correct empty query list serialization.
+* `github.com/aws/aws-sdk-go-v2/service/cloudsearch`: [v1.14.1](service/cloudsearch/CHANGELOG.md#v1141-2023-02-03)
+  * **Dependency Update**: Upgrade smithy to 1.27.2 and correct empty query list serialization.
+* `github.com/aws/aws-sdk-go-v2/service/cloudwatch`: [v1.25.2](service/cloudwatch/CHANGELOG.md#v1252-2023-02-03)
+  * **Dependency Update**: Upgrade smithy to 1.27.2 and correct empty query list serialization.
+* `github.com/aws/aws-sdk-go-v2/service/docdb`: [v1.20.2](service/docdb/CHANGELOG.md#v1202-2023-02-03)
+  * **Dependency Update**: Upgrade smithy to 1.27.2 and correct empty query list serialization.
+* `github.com/aws/aws-sdk-go-v2/service/ec2`: [v1.84.1](service/ec2/CHANGELOG.md#v1841-2023-02-03)
+  * **Dependency Update**: Upgrade smithy to 1.27.2 and correct empty query list serialization.
+* `github.com/aws/aws-sdk-go-v2/service/elasticache`: [v1.26.2](service/elasticache/CHANGELOG.md#v1262-2023-02-03)
+  * **Dependency Update**: Upgrade smithy to 1.27.2 and correct empty query list serialization.
+* `github.com/aws/aws-sdk-go-v2/service/elasticbeanstalk`: [v1.15.1](service/elasticbeanstalk/CHANGELOG.md#v1151-2023-02-03)
+  * **Dependency Update**: Upgrade smithy to 1.27.2 and correct empty query list serialization.
+* `github.com/aws/aws-sdk-go-v2/service/elasticloadbalancing`: [v1.15.2](service/elasticloadbalancing/CHANGELOG.md#v1152-2023-02-03)
+  * **Dependency Update**: Upgrade smithy to 1.27.2 and correct empty query list serialization.
+* `github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2`: [v1.19.3](service/elasticloadbalancingv2/CHANGELOG.md#v1193-2023-02-03)
+  * **Dependency Update**: Upgrade smithy to 1.27.2 and correct empty query list serialization.
+* `github.com/aws/aws-sdk-go-v2/service/iam`: [v1.19.2](service/iam/CHANGELOG.md#v1192-2023-02-03)
+  * **Dependency Update**: Upgrade smithy to 1.27.2 and correct empty query list serialization.
+* `github.com/aws/aws-sdk-go-v2/service/neptune`: [v1.19.2](service/neptune/CHANGELOG.md#v1192-2023-02-03)
+  * **Dependency Update**: Upgrade smithy to 1.27.2 and correct empty query list serialization.
+* `github.com/aws/aws-sdk-go-v2/service/proton`: [v1.20.0](service/proton/CHANGELOG.md#v1200-2023-02-03)
+  * **Feature**: Add new GetResourcesSummary API
+* `github.com/aws/aws-sdk-go-v2/service/rds`: [v1.40.2](service/rds/CHANGELOG.md#v1402-2023-02-03)
+  * **Dependency Update**: Upgrade smithy to 1.27.2 and correct empty query list serialization.
+* `github.com/aws/aws-sdk-go-v2/service/redshift`: [v1.27.2](service/redshift/CHANGELOG.md#v1272-2023-02-03)
+  * **Documentation**: Corrects descriptions of the parameters for the API operations RestoreFromClusterSnapshot, RestoreTableFromClusterSnapshot, and CreateCluster.
+  * **Dependency Update**: Upgrade smithy to 1.27.2 and correct empty query list serialization.
+* `github.com/aws/aws-sdk-go-v2/service/ses`: [v1.15.1](service/ses/CHANGELOG.md#v1151-2023-02-03)
+  * **Dependency Update**: Upgrade smithy to 1.27.2 and correct empty query list serialization.
+* `github.com/aws/aws-sdk-go-v2/service/sns`: [v1.20.1](service/sns/CHANGELOG.md#v1201-2023-02-03)
+  * **Dependency Update**: Upgrade smithy to 1.27.2 and correct empty query list serialization.
+* `github.com/aws/aws-sdk-go-v2/service/sqs`: [v1.20.2](service/sqs/CHANGELOG.md#v1202-2023-02-03)
+  * **Dependency Update**: Upgrade smithy to 1.27.2 and correct empty query list serialization.
+* `github.com/aws/aws-sdk-go-v2/service/sts`: [v1.18.3](service/sts/CHANGELOG.md#v1183-2023-02-03)
+  * **Dependency Update**: Upgrade smithy to 1.27.2 and correct empty query list serialization.
+
+# Release (2023-02-02)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/appconfig`: [v1.16.0](service/appconfig/CHANGELOG.md#v1160-2023-02-02)
+  * **Feature**: AWS AppConfig introduces KMS customer-managed key (CMK) encryption of configuration data, along with AWS Secrets Manager as a new configuration data source. S3 objects using SSE-KMS encryption and SSM Parameter Store SecureStrings are also now supported.
+* `github.com/aws/aws-sdk-go-v2/service/ec2`: [v1.84.0](service/ec2/CHANGELOG.md#v1840-2023-02-02)
+  * **Feature**: Documentation updates for EC2.
+* `github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2`: [v1.19.2](service/elasticloadbalancingv2/CHANGELOG.md#v1192-2023-02-02)
+  * **Documentation**: The GWLB Flex Health Check project updates the default values of healthy-threshold-count from 3 to 5 and unhealthy-threshold-count from 3 to 2
+* `github.com/aws/aws-sdk-go-v2/service/quicksight`: [v1.31.0](service/quicksight/CHANGELOG.md#v1310-2023-02-02)
+  * **Feature**: QuickSight support for Radar Chart and Dashboard Publish Options
+
+# Release (2023-02-01)
+
+## General Highlights
+* **Dependency Update**: Updated to the latest SDK module versions
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/devopsguru`: [v1.22.0](service/devopsguru/CHANGELOG.md#v1220-2023-02-01)
+  * **Feature**: This release adds filter support ListAnomalyForInsight API.
+* `github.com/aws/aws-sdk-go-v2/service/forecast`: [v1.25.0](service/forecast/CHANGELOG.md#v1250-2023-02-01)
+  * **Feature**: This release will enable customer select INCREMENTAL as ImportModel in Forecast's CreateDatasetImportJob API. Verified latest SDK containing required attribute, following https://w.amazon.com/bin/view/AWS-Seer/Launch/Trebuchet/
+* `github.com/aws/aws-sdk-go-v2/service/iam`: [v1.19.1](service/iam/CHANGELOG.md#v1191-2023-02-01)
+  * **Documentation**: Documentation updates for AWS Identity and Access Management (IAM).
+* `github.com/aws/aws-sdk-go-v2/service/mediatailor`: [v1.22.0](service/mediatailor/CHANGELOG.md#v1220-2023-02-01)
+  * **Feature**: The AWS Elemental MediaTailor SDK for Channel Assembly has added support for program updates, and the ability to clip the end of VOD sources in programs.
+* `github.com/aws/aws-sdk-go-v2/service/sns`: [v1.20.0](service/sns/CHANGELOG.md#v1200-2023-02-01)
+  * **Feature**: Additional attributes added for set-topic-attributes.
+
+# Release (2023-01-31)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/appsync`: [v1.19.0](service/appsync/CHANGELOG.md#v1190-2023-01-31)
+  * **Feature**: This release introduces the feature to support EventBridge as AppSync data source.
+* `github.com/aws/aws-sdk-go-v2/service/cloudtrail`: [v1.23.0](service/cloudtrail/CHANGELOG.md#v1230-2023-01-31)
+  * **Feature**: Add new "Channel" APIs to enable users to manage channels used for CloudTrail Lake integrations, and "Resource Policy" APIs to enable users to manage the resource-based permissions policy attached to a channel.
+* `github.com/aws/aws-sdk-go-v2/service/cloudtraildata`: [v1.0.0](service/cloudtraildata/CHANGELOG.md#v100-2023-01-31)
+  * **Release**: New AWS service client module
+  * **Feature**: Add CloudTrail Data Service to enable users to ingest activity events from non-AWS sources into CloudTrail Lake.
+* `github.com/aws/aws-sdk-go-v2/service/codeartifact`: [v1.16.0](service/codeartifact/CHANGELOG.md#v1160-2023-01-31)
+  * **Feature**: This release introduces a new DeletePackage API, which enables deletion of a package and all of its versions from a repository.
+* `github.com/aws/aws-sdk-go-v2/service/ec2`: [v1.83.0](service/ec2/CHANGELOG.md#v1830-2023-01-31)
+  * **Feature**: This launch allows customers to associate up to 8 IP addresses to their NAT Gateways to increase the limit on concurrent connections to a single destination by eight times from 55K to 440K.
+* `github.com/aws/aws-sdk-go-v2/service/groundstation`: [v1.17.0](service/groundstation/CHANGELOG.md#v1170-2023-01-31)
+  * **Feature**: DigIF Expansion changes to the Customer APIs.
+* `github.com/aws/aws-sdk-go-v2/service/iot`: [v1.34.0](service/iot/CHANGELOG.md#v1340-2023-01-31)
+  * **Feature**: Added support for IoT Rules Engine Cloudwatch Logs action batch mode.
+* `github.com/aws/aws-sdk-go-v2/service/opensearch`: [v1.14.0](service/opensearch/CHANGELOG.md#v1140-2023-01-31)
+  * **Feature**: Amazon OpenSearch Service adds the option for a VPC endpoint connection between two domains when the local domain uses OpenSearch version 1.3 or 2.3. You can now use remote reindex to copy indices from one VPC domain to another without a reverse proxy.
+* `github.com/aws/aws-sdk-go-v2/service/polly`: [v1.24.0](service/polly/CHANGELOG.md#v1240-2023-01-31)
+  * **Feature**: Amazon Polly adds two new neural American English voices - Ruth, Stephen
+* `github.com/aws/aws-sdk-go-v2/service/sagemaker`: [v1.67.0](service/sagemaker/CHANGELOG.md#v1670-2023-01-31)
+  * **Feature**: Amazon SageMaker Automatic Model Tuning now supports more completion criteria for Hyperparameter Optimization.
+* `github.com/aws/aws-sdk-go-v2/service/securityhub`: [v1.28.0](service/securityhub/CHANGELOG.md#v1280-2023-01-31)
+  * **Feature**: New fields have been added to the AWS Security Finding Format. Compliance.SecurityControlId is a unique identifier for a security control across standards. Compliance.AssociatedStandards contains all enabled standards in which a security control is enabled.
+
+# Release (2023-01-30)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/cloudformation`: [v1.26.0](service/cloudformation/CHANGELOG.md#v1260-2023-01-30)
+  * **Feature**: This feature provides a method of obtaining which regions a stackset has stack instances deployed in.
+* `github.com/aws/aws-sdk-go-v2/service/ec2`: [v1.82.0](service/ec2/CHANGELOG.md#v1820-2023-01-30)
+  * **Feature**: We add Prefix Lists as a new route destination option for LocalGatewayRoutes. This will allow customers to create routes to Prefix Lists. Prefix List routes will allow customers to group individual CIDR routes with the same target into a single route.
+
+# Release (2023-01-27)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/appstream`: [v1.20.0](service/appstream/CHANGELOG.md#v1200-2023-01-27)
+  * **Feature**: Fixing the issue where Appstream waiters hang for fleet_started and fleet_stopped.
+* `github.com/aws/aws-sdk-go-v2/service/mediatailor`: [v1.21.0](service/mediatailor/CHANGELOG.md#v1210-2023-01-27)
+  * **Feature**: This release introduces the As Run logging type, along with API and documentation updates.
+* `github.com/aws/aws-sdk-go-v2/service/outposts`: [v1.26.0](service/outposts/CHANGELOG.md#v1260-2023-01-27)
+  * **Feature**: Adding support for payment term in GetOrder, CreateOrder responses.
+* `github.com/aws/aws-sdk-go-v2/service/sagemaker`: [v1.66.0](service/sagemaker/CHANGELOG.md#v1660-2023-01-27)
+  * **Feature**: This release supports running SageMaker Training jobs with container images that are in a private Docker registry.
+* `github.com/aws/aws-sdk-go-v2/service/sagemakerruntime`: [v1.18.0](service/sagemakerruntime/CHANGELOG.md#v1180-2023-01-27)
+  * **Feature**: Amazon SageMaker Runtime which supports InvokeEndpointAsync asynchronously can now invoke endpoints with custom timeout values. Asynchronous invocations support longer processing times.
+
+# Release (2023-01-26)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/eventbridge`: [v1.18.0](service/eventbridge/CHANGELOG.md#v1180-2023-01-26)
+  * **Feature**: Minor comments for Redshift Serverless workgroup target support.
+
+# Release (2023-01-25)
+
+## General Highlights
+* **Dependency Update**: Updated to the latest SDK module versions
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/ec2`: [v1.81.0](service/ec2/CHANGELOG.md#v1810-2023-01-25)
+  * **Feature**: This release adds new functionality that allows customers to provision IPv6 CIDR blocks through Amazon VPC IP Address Manager (IPAM) as well as allowing customers to utilize IPAM Resource Discovery APIs.
+* `github.com/aws/aws-sdk-go-v2/service/m2`: [v1.4.0](service/m2/CHANGELOG.md#v140-2023-01-25)
+  * **Feature**: Add returnCode, batchJobIdentifier in GetBatchJobExecution response, for user to view the batch job execution result & unique identifier from engine. Also removed unused headers from REST APIs
+* `github.com/aws/aws-sdk-go-v2/service/polly`: [v1.23.0](service/polly/CHANGELOG.md#v1230-2023-01-25)
+  * **Feature**: Add 5 new neural voices - Sergio (es-ES), Andres (es-MX), Remi (fr-FR), Adriano (it-IT) and Thiago (pt-BR).
+* `github.com/aws/aws-sdk-go-v2/service/redshiftserverless`: [v1.4.1](service/redshiftserverless/CHANGELOG.md#v141-2023-01-25)
+  * **Documentation**: Added query monitoring rules as possible parameters for create and update workgroup operations.
+* `github.com/aws/aws-sdk-go-v2/service/sagemaker`: [v1.65.0](service/sagemaker/CHANGELOG.md#v1650-2023-01-25)
+  * **Feature**: SageMaker Inference Recommender now decouples from Model Registry and could accept Model Name to invoke inference recommendations job; Inference Recommender now provides CPU/Memory Utilization metrics data in recommendation output.
+* `github.com/aws/aws-sdk-go-v2/service/sts`: [v1.18.2](service/sts/CHANGELOG.md#v1182-2023-01-25)
+  * **Documentation**: Doc only change to update wording in a key topic
+
+# Release (2023-01-24)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/route53`: [v1.27.0](service/route53/CHANGELOG.md#v1270-2023-01-24)
+  * **Feature**: Amazon Route 53 now supports the Asia Pacific (Melbourne) Region (ap-southeast-4) for latency records, geoproximity records, and private DNS for Amazon VPCs in that region.
+* `github.com/aws/aws-sdk-go-v2/service/ssmsap`: [v1.2.0](service/ssmsap/CHANGELOG.md#v120-2023-01-24)
+  * **Feature**: This release provides updates to documentation and support for listing operations performed by AWS Systems Manager for SAP.
+
+# Release (2023-01-23)
+
+## General Highlights
+* **Dependency Update**: Updated to the latest SDK module versions
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/lambda`: [v1.29.0](service/lambda/CHANGELOG.md#v1290-2023-01-23)
+  * **Feature**: Release Lambda RuntimeManagementConfig, enabling customers to better manage runtime updates to their Lambda functions. This release adds two new APIs, GetRuntimeManagementConfig and PutRuntimeManagementConfig, as well as support on existing Create/Get/Update function APIs.
+* `github.com/aws/aws-sdk-go-v2/service/sagemaker`: [v1.64.0](service/sagemaker/CHANGELOG.md#v1640-2023-01-23)
+  * **Feature**: Amazon SageMaker Inference now supports P4de instance types.
+
+# Release (2023-01-20)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/ec2`: [v1.80.0](service/ec2/CHANGELOG.md#v1800-2023-01-20)
+  * **Feature**: C6in, M6in, M6idn, R6in and R6idn instances are powered by 3rd Generation Intel Xeon Scalable processors (code named Ice Lake) with an all-core turbo frequency of 3.5 GHz.
+* `github.com/aws/aws-sdk-go-v2/service/ivs`: [v1.20.0](service/ivs/CHANGELOG.md#v1200-2023-01-20)
+  * **Feature**: API and Doc update. Update to arns field in BatchGetStreamKey. Also updates to operations and structures.
+* `github.com/aws/aws-sdk-go-v2/service/quicksight`: [v1.30.0](service/quicksight/CHANGELOG.md#v1300-2023-01-20)
+  * **Feature**: This release adds support for data bars in QuickSight table and increases pivot table field well limit.
+
+# Release (2023-01-19)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/appflow`: [v1.24.0](service/appflow/CHANGELOG.md#v1240-2023-01-19)
+  * **Feature**: Adding support for Salesforce Pardot connector in Amazon AppFlow.
+* `github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs`: [v1.20.0](service/cloudwatchlogs/CHANGELOG.md#v1200-2023-01-19)
+  * **Feature**: Bug fix - Removed the regex pattern validation from CoralModel to avoid potential security issue.
+* `github.com/aws/aws-sdk-go-v2/service/codeartifact`: [v1.15.0](service/codeartifact/CHANGELOG.md#v1150-2023-01-19)
+  * **Feature**: Documentation updates for CodeArtifact
+* `github.com/aws/aws-sdk-go-v2/service/connect`: [v1.45.0](service/connect/CHANGELOG.md#v1450-2023-01-19)
+  * **Feature**: Amazon Connect Chat introduces Persistent Chat, allowing customers to resume previous conversations with context and transcripts carried over from previous chats, eliminating the need to repeat themselves and allowing agents to provide personalized service with access to entire conversation history.
+* `github.com/aws/aws-sdk-go-v2/service/connectparticipant`: [v1.15.0](service/connectparticipant/CHANGELOG.md#v1150-2023-01-19)
+  * **Feature**: This release updates Amazon Connect Participant's GetTranscript api to provide transcripts of past chats on a persistent chat session.
+* `github.com/aws/aws-sdk-go-v2/service/ec2`: [v1.79.0](service/ec2/CHANGELOG.md#v1790-2023-01-19)
+  * **Feature**: Adds SSM Parameter Resource Aliasing support to EC2 Launch Templates. Launch Templates can now store parameter aliases in place of AMI Resource IDs. CreateLaunchTemplateVersion and DescribeLaunchTemplateVersions now support a convenience flag, ResolveAlias, to return the resolved parameter value.
+* `github.com/aws/aws-sdk-go-v2/service/glue`: [v1.40.0](service/glue/CHANGELOG.md#v1400-2023-01-19)
+  * **Feature**: Release Glue Studio Hudi Data Lake Format for SDK/CLI
+* `github.com/aws/aws-sdk-go-v2/service/groundstation`: [v1.16.0](service/groundstation/CHANGELOG.md#v1160-2023-01-19)
+  * **Feature**: Add configurable prepass and postpass times for DataflowEndpointGroup. Add Waiter to allow customers to wait for a contact that was reserved through ReserveContact
+* `github.com/aws/aws-sdk-go-v2/service/medialive`: [v1.29.0](service/medialive/CHANGELOG.md#v1290-2023-01-19)
+  * **Feature**: AWS Elemental MediaLive adds support for SCTE 35 preRollMilliSeconds.
+* `github.com/aws/aws-sdk-go-v2/service/opensearch`: [v1.13.0](service/opensearch/CHANGELOG.md#v1130-2023-01-19)
+  * **Feature**: This release adds the enhanced dry run option, that checks for validation errors that might occur when deploying configuration changes and provides a summary of these errors, if any. The feature will also indicate whether a blue/green deployment will be required to apply a change.
+* `github.com/aws/aws-sdk-go-v2/service/panorama`: [v1.11.0](service/panorama/CHANGELOG.md#v1110-2023-01-19)
+  * **Feature**: Added AllowMajorVersionUpdate option to OTAJobConfig to make appliance software major version updates opt-in.
+* `github.com/aws/aws-sdk-go-v2/service/sagemaker`: [v1.63.0](service/sagemaker/CHANGELOG.md#v1630-2023-01-19)
+  * **Feature**: HyperParameterTuningJobs now allow passing environment variables into the corresponding TrainingJobs
+
+# Release (2023-01-18)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/cloudwatch`: [v1.25.0](service/cloudwatch/CHANGELOG.md#v1250-2023-01-18)
+  * **Feature**: Enable cross-account streams in CloudWatch Metric Streams via Observability Access Manager.
+* `github.com/aws/aws-sdk-go-v2/service/efs`: [v1.19.1](service/efs/CHANGELOG.md#v1191-2023-01-18)
+  * **Documentation**: Documentation updates for EFS access points limit increase
+* `github.com/aws/aws-sdk-go-v2/service/wafv2`: [v1.24.2](service/wafv2/CHANGELOG.md#v1242-2023-01-18)
+  * **Documentation**: Improved the visibility of the guidance for updating AWS WAF resources, such as web ACLs and rule groups.
+
+# Release (2023-01-17)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/billingconductor`: [v1.5.0](service/billingconductor/CHANGELOG.md#v150-2023-01-17)
+  * **Feature**: This release adds support for SKU Scope for pricing plans.
+* `github.com/aws/aws-sdk-go-v2/service/imagebuilder`: [v1.22.0](service/imagebuilder/CHANGELOG.md#v1220-2023-01-17)
+  * **Feature**: Add support for AWS Marketplace product IDs as input during CreateImageRecipe for the parent-image parameter. Add support for listing third-party components.
+* `github.com/aws/aws-sdk-go-v2/service/networkfirewall`: [v1.24.0](service/networkfirewall/CHANGELOG.md#v1240-2023-01-17)
+  * **Feature**: Network Firewall now allows creation of dual stack endpoints, enabling inspection of IPv6 traffic.
+
+# Release (2023-01-13)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/connect`: [v1.44.0](service/connect/CHANGELOG.md#v1440-2023-01-13)
+  * **Feature**: This release updates the responses of UpdateContactFlowContent, UpdateContactFlowMetadata, UpdateContactFlowName and DeleteContactFlow API with empty responses.
+* `github.com/aws/aws-sdk-go-v2/service/ec2`: [v1.78.0](service/ec2/CHANGELOG.md#v1780-2023-01-13)
+  * **Feature**: Documentation updates for EC2.
+* `github.com/aws/aws-sdk-go-v2/service/outposts`: [v1.25.0](service/outposts/CHANGELOG.md#v1250-2023-01-13)
+  * **Feature**: This release adds POWER_30_KVA as an option for PowerDrawKva. PowerDrawKva is part of the RackPhysicalProperties structure in the CreateSite request.
+* `github.com/aws/aws-sdk-go-v2/service/resourcegroups`: [v1.14.0](service/resourcegroups/CHANGELOG.md#v1140-2023-01-13)
+  * **Feature**: AWS Resource Groups customers can now turn on Group Lifecycle Events in their AWS account. When you turn this on, Resource Groups monitors your groups for changes to group state or membership. Those changes are sent to Amazon EventBridge as events that you can respond to using rules you create.
+
+# Release (2023-01-12)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/cleanrooms`: [v1.0.0](service/cleanrooms/CHANGELOG.md#v100-2023-01-12)
+  * **Release**: New AWS service client module
+  * **Feature**: Initial release of AWS Clean Rooms
+* `github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs`: [v1.19.0](service/cloudwatchlogs/CHANGELOG.md#v1190-2023-01-12)
+  * **Feature**: Bug fix: logGroupName is now not a required field in GetLogEvents, FilterLogEvents, GetLogGroupFields, and DescribeLogStreams APIs as logGroupIdentifier can be provided instead
+* `github.com/aws/aws-sdk-go-v2/service/lambda`: [v1.28.0](service/lambda/CHANGELOG.md#v1280-2023-01-12)
+  * **Feature**: Add support for MaximumConcurrency parameter for SQS event source. Customers can now limit the maximum concurrent invocations for their SQS Event Source Mapping.
+* `github.com/aws/aws-sdk-go-v2/service/mediaconvert`: [v1.30.0](service/mediaconvert/CHANGELOG.md#v1300-2023-01-12)
+  * **Feature**: The AWS Elemental MediaConvert SDK has added support for compact DASH manifest generation, audio normalization using TruePeak measurements, and the ability to clip the sample range in the color corrector.
+* `github.com/aws/aws-sdk-go-v2/service/secretsmanager`: [v1.18.1](service/secretsmanager/CHANGELOG.md#v1181-2023-01-12)
+  * **Documentation**: Update documentation for new ListSecrets and DescribeSecret parameters
+
+# Release (2023-01-11)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/kendra`: [v1.38.0](service/kendra/CHANGELOG.md#v1380-2023-01-11)
+  * **Feature**: This release adds support to new document types - RTF, XML, XSLT, MS_EXCEL, CSV, JSON, MD
+
+# Release (2023-01-10)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/location`: [v1.21.0](service/location/CHANGELOG.md#v1210-2023-01-10)
+  * **Feature**: This release adds support for two new route travel models, Bicycle and Motorcycle which can be used with Grab data source.
+* `github.com/aws/aws-sdk-go-v2/service/rds`: [v1.40.0](service/rds/CHANGELOG.md#v1400-2023-01-10)
+  * **Feature**: This release adds support for configuring allocated storage on the CreateDBInstanceReadReplica, RestoreDBInstanceFromDBSnapshot, and RestoreDBInstanceToPointInTime APIs.
+
+# Release (2023-01-09)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/ecrpublic`: [v1.15.0](service/ecrpublic/CHANGELOG.md#v1150-2023-01-09)
+  * **Feature**: This release for Amazon ECR Public makes several change to bring the SDK into sync with the API.
+* `github.com/aws/aws-sdk-go-v2/service/kendraranking`: [v1.0.0](service/kendraranking/CHANGELOG.md#v100-2023-01-09)
+  * **Release**: New AWS service client module
+  * **Feature**: Introducing Amazon Kendra Intelligent Ranking, a new set of Kendra APIs that leverages Kendra semantic ranking capabilities to improve the quality of search results from other search services (i.e. OpenSearch, ElasticSearch, Solr).
+* `github.com/aws/aws-sdk-go-v2/service/networkfirewall`: [v1.23.0](service/networkfirewall/CHANGELOG.md#v1230-2023-01-09)
+  * **Feature**: Network Firewall now supports the Suricata rule action reject, in addition to the actions pass, drop, and alert.
+* `github.com/aws/aws-sdk-go-v2/service/workspacesweb`: [v1.9.0](service/workspacesweb/CHANGELOG.md#v190-2023-01-09)
+  * **Feature**: This release adds support for a new portal authentication type: AWS IAM Identity Center (successor to AWS Single Sign-On).
+
+# Release (2023-01-06)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/acmpca`: [v1.21.0](service/acmpca/CHANGELOG.md#v1210-2023-01-06)
+  * **Feature**: Added revocation parameter validation: bucket names must match S3 bucket naming rules and CNAMEs conform to RFC2396 restrictions on the use of special characters in URIs.
+* `github.com/aws/aws-sdk-go-v2/service/auditmanager`: [v1.23.0](service/auditmanager/CHANGELOG.md#v1230-2023-01-06)
+  * **Feature**: This release introduces a new data retention option in your Audit Manager settings. You can now use the DeregistrationPolicy parameter to specify if you want to delete your data when you deregister Audit Manager.
+
+# Release (2023-01-05)
+
+## General Highlights
+* **Dependency Update**: Updated to the latest SDK module versions
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/accessanalyzer`: [v1.19.0](service/accessanalyzer/CHANGELOG.md#v1190-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/account`: [v1.8.0](service/account/CHANGELOG.md#v180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/acm`: [v1.17.0](service/acm/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/acmpca`: [v1.20.0](service/acmpca/CHANGELOG.md#v1200-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/alexaforbusiness`: [v1.15.0](service/alexaforbusiness/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/amp`: [v1.16.0](service/amp/CHANGELOG.md#v1160-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/amplify`: [v1.13.0](service/amplify/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/amplifybackend`: [v1.14.0](service/amplifybackend/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+  * **Feature**: Updated GetBackendAPIModels response to include ModelIntrospectionSchema json string
+* `github.com/aws/aws-sdk-go-v2/service/amplifyuibuilder`: [v1.9.0](service/amplifyuibuilder/CHANGELOG.md#v190-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/apigateway`: [v1.16.0](service/apigateway/CHANGELOG.md#v1160-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/apigatewaymanagementapi`: [v1.11.0](service/apigatewaymanagementapi/CHANGELOG.md#v1110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/apigatewayv2`: [v1.13.0](service/apigatewayv2/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/appconfig`: [v1.15.0](service/appconfig/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/appconfigdata`: [v1.5.0](service/appconfigdata/CHANGELOG.md#v150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/appflow`: [v1.23.0](service/appflow/CHANGELOG.md#v1230-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/appintegrations`: [v1.14.0](service/appintegrations/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/applicationautoscaling`: [v1.17.0](service/applicationautoscaling/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/applicationcostprofiler`: [v1.10.0](service/applicationcostprofiler/CHANGELOG.md#v1100-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/applicationdiscoveryservice`: [v1.15.0](service/applicationdiscoveryservice/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/applicationinsights`: [v1.17.0](service/applicationinsights/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/appmesh`: [v1.17.0](service/appmesh/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/apprunner`: [v1.16.0](service/apprunner/CHANGELOG.md#v1160-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+  * **Feature**: This release adds support of securely referencing secrets and configuration data that are stored in Secrets Manager and SSM Parameter Store by adding them as environment secrets in your App Runner service.
+* `github.com/aws/aws-sdk-go-v2/service/appstream`: [v1.19.0](service/appstream/CHANGELOG.md#v1190-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/appsync`: [v1.18.0](service/appsync/CHANGELOG.md#v1180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/arczonalshift`: [v1.1.0](service/arczonalshift/CHANGELOG.md#v110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/athena`: [v1.22.0](service/athena/CHANGELOG.md#v1220-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/auditmanager`: [v1.22.0](service/auditmanager/CHANGELOG.md#v1220-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/autoscaling`: [v1.26.0](service/autoscaling/CHANGELOG.md#v1260-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/autoscalingplans`: [v1.13.0](service/autoscalingplans/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/backup`: [v1.19.0](service/backup/CHANGELOG.md#v1190-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/backupgateway`: [v1.9.0](service/backupgateway/CHANGELOG.md#v190-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/backupstorage`: [v1.1.0](service/backupstorage/CHANGELOG.md#v110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/batch`: [v1.21.0](service/batch/CHANGELOG.md#v1210-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/billingconductor`: [v1.4.0](service/billingconductor/CHANGELOG.md#v140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/braket`: [v1.17.0](service/braket/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/budgets`: [v1.14.0](service/budgets/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/chime`: [v1.22.0](service/chime/CHANGELOG.md#v1220-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/chimesdkidentity`: [v1.10.0](service/chimesdkidentity/CHANGELOG.md#v1100-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/chimesdkmediapipelines`: [v1.2.0](service/chimesdkmediapipelines/CHANGELOG.md#v120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/chimesdkmeetings`: [v1.14.0](service/chimesdkmeetings/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/chimesdkmessaging`: [v1.12.0](service/chimesdkmessaging/CHANGELOG.md#v1120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/chimesdkvoice`: [v1.1.0](service/chimesdkvoice/CHANGELOG.md#v110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/cloud9`: [v1.17.0](service/cloud9/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/cloudcontrol`: [v1.11.0](service/cloudcontrol/CHANGELOG.md#v1110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/clouddirectory`: [v1.13.0](service/clouddirectory/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/cloudformation`: [v1.25.0](service/cloudformation/CHANGELOG.md#v1250-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/cloudfront`: [v1.24.0](service/cloudfront/CHANGELOG.md#v1240-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/cloudhsm`: [v1.13.0](service/cloudhsm/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/cloudhsmv2`: [v1.14.0](service/cloudhsmv2/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/cloudsearch`: [v1.14.0](service/cloudsearch/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/cloudsearchdomain`: [v1.12.0](service/cloudsearchdomain/CHANGELOG.md#v1120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/cloudtrail`: [v1.22.0](service/cloudtrail/CHANGELOG.md#v1220-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/cloudwatch`: [v1.24.0](service/cloudwatch/CHANGELOG.md#v1240-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/cloudwatchevents`: [v1.15.0](service/cloudwatchevents/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs`: [v1.18.0](service/cloudwatchlogs/CHANGELOG.md#v1180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/codeartifact`: [v1.14.0](service/codeartifact/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/codebuild`: [v1.20.0](service/codebuild/CHANGELOG.md#v1200-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/codecatalyst`: [v1.1.0](service/codecatalyst/CHANGELOG.md#v110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/codecommit`: [v1.14.0](service/codecommit/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/codedeploy`: [v1.16.0](service/codedeploy/CHANGELOG.md#v1160-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/codeguruprofiler`: [v1.13.0](service/codeguruprofiler/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/codegurureviewer`: [v1.17.0](service/codegurureviewer/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/codepipeline`: [v1.14.0](service/codepipeline/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/codestar`: [v1.13.0](service/codestar/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/codestarconnections`: [v1.14.0](service/codestarconnections/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/codestarnotifications`: [v1.14.0](service/codestarnotifications/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/cognitoidentity`: [v1.15.0](service/cognitoidentity/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider`: [v1.22.0](service/cognitoidentityprovider/CHANGELOG.md#v1220-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/cognitosync`: [v1.12.0](service/cognitosync/CHANGELOG.md#v1120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/comprehend`: [v1.21.0](service/comprehend/CHANGELOG.md#v1210-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/comprehendmedical`: [v1.15.0](service/comprehendmedical/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/computeoptimizer`: [v1.20.0](service/computeoptimizer/CHANGELOG.md#v1200-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/configservice`: [v1.29.0](service/configservice/CHANGELOG.md#v1290-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/connect`: [v1.43.0](service/connect/CHANGELOG.md#v1430-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+  * **Feature**: Documentation update for a new Initiation Method value in DescribeContact API
+* `github.com/aws/aws-sdk-go-v2/service/connectcampaigns`: [v1.2.0](service/connectcampaigns/CHANGELOG.md#v120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/connectcases`: [v1.2.0](service/connectcases/CHANGELOG.md#v120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/connectcontactlens`: [v1.13.0](service/connectcontactlens/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/connectparticipant`: [v1.14.0](service/connectparticipant/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/controltower`: [v1.1.0](service/controltower/CHANGELOG.md#v110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/costandusagereportservice`: [v1.15.0](service/costandusagereportservice/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/costexplorer`: [v1.25.0](service/costexplorer/CHANGELOG.md#v1250-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/customerprofiles`: [v1.22.0](service/customerprofiles/CHANGELOG.md#v1220-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/databasemigrationservice`: [v1.23.0](service/databasemigrationservice/CHANGELOG.md#v1230-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/databrew`: [v1.21.0](service/databrew/CHANGELOG.md#v1210-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/dataexchange`: [v1.18.0](service/dataexchange/CHANGELOG.md#v1180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/datapipeline`: [v1.14.0](service/datapipeline/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/datasync`: [v1.21.0](service/datasync/CHANGELOG.md#v1210-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/dax`: [v1.12.0](service/dax/CHANGELOG.md#v1120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/detective`: [v1.18.0](service/detective/CHANGELOG.md#v1180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/devicefarm`: [v1.15.0](service/devicefarm/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/devopsguru`: [v1.21.0](service/devopsguru/CHANGELOG.md#v1210-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/directconnect`: [v1.18.0](service/directconnect/CHANGELOG.md#v1180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/directoryservice`: [v1.16.0](service/directoryservice/CHANGELOG.md#v1160-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/dlm`: [v1.14.0](service/dlm/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/docdb`: [v1.20.0](service/docdb/CHANGELOG.md#v1200-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/docdbelastic`: [v1.1.0](service/docdbelastic/CHANGELOG.md#v110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/drs`: [v1.10.0](service/drs/CHANGELOG.md#v1100-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/dynamodb`: [v1.18.0](service/dynamodb/CHANGELOG.md#v1180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/dynamodbstreams`: [v1.14.0](service/dynamodbstreams/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/ebs`: [v1.16.0](service/ebs/CHANGELOG.md#v1160-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/ec2instanceconnect`: [v1.15.0](service/ec2instanceconnect/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/ecr`: [v1.18.0](service/ecr/CHANGELOG.md#v1180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/ecrpublic`: [v1.14.0](service/ecrpublic/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/ecs`: [v1.23.0](service/ecs/CHANGELOG.md#v1230-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/efs`: [v1.19.0](service/efs/CHANGELOG.md#v1190-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/eks`: [v1.27.0](service/eks/CHANGELOG.md#v1270-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/elasticache`: [v1.26.0](service/elasticache/CHANGELOG.md#v1260-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/elasticbeanstalk`: [v1.15.0](service/elasticbeanstalk/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/elasticinference`: [v1.12.0](service/elasticinference/CHANGELOG.md#v1120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/elasticloadbalancing`: [v1.15.0](service/elasticloadbalancing/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2`: [v1.19.0](service/elasticloadbalancingv2/CHANGELOG.md#v1190-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/elasticsearchservice`: [v1.18.0](service/elasticsearchservice/CHANGELOG.md#v1180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/elastictranscoder`: [v1.14.0](service/elastictranscoder/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/emr`: [v1.22.0](service/emr/CHANGELOG.md#v1220-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/emrcontainers`: [v1.16.0](service/emrcontainers/CHANGELOG.md#v1160-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/emrserverless`: [v1.5.0](service/emrserverless/CHANGELOG.md#v150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+  * **Feature**: Adds support for customized images. You can now provide runtime images when creating or updating EMR Serverless Applications.
+* `github.com/aws/aws-sdk-go-v2/service/eventbridge`: [v1.17.0](service/eventbridge/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/evidently`: [v1.10.0](service/evidently/CHANGELOG.md#v1100-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/finspace`: [v1.9.0](service/finspace/CHANGELOG.md#v190-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/finspacedata`: [v1.14.0](service/finspacedata/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/firehose`: [v1.16.0](service/firehose/CHANGELOG.md#v1160-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/fis`: [v1.14.0](service/fis/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/fms`: [v1.22.0](service/fms/CHANGELOG.md#v1220-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/forecast`: [v1.24.0](service/forecast/CHANGELOG.md#v1240-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/forecastquery`: [v1.13.0](service/forecastquery/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/frauddetector`: [v1.21.0](service/frauddetector/CHANGELOG.md#v1210-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/fsx`: [v1.28.0](service/fsx/CHANGELOG.md#v1280-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/gamelift`: [v1.17.0](service/gamelift/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/gamesparks`: [v1.2.0](service/gamesparks/CHANGELOG.md#v120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/glacier`: [v1.14.0](service/glacier/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/globalaccelerator`: [v1.16.0](service/globalaccelerator/CHANGELOG.md#v1160-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/glue`: [v1.39.0](service/glue/CHANGELOG.md#v1390-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/grafana`: [v1.11.0](service/grafana/CHANGELOG.md#v1110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/greengrass`: [v1.15.0](service/greengrass/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/greengrassv2`: [v1.21.0](service/greengrassv2/CHANGELOG.md#v1210-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/groundstation`: [v1.15.0](service/groundstation/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/guardduty`: [v1.17.0](service/guardduty/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/health`: [v1.16.0](service/health/CHANGELOG.md#v1160-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/healthlake`: [v1.15.0](service/healthlake/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/honeycode`: [v1.13.0](service/honeycode/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/iam`: [v1.19.0](service/iam/CHANGELOG.md#v1190-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/identitystore`: [v1.16.0](service/identitystore/CHANGELOG.md#v1160-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/imagebuilder`: [v1.21.0](service/imagebuilder/CHANGELOG.md#v1210-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/inspector`: [v1.13.0](service/inspector/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/inspector2`: [v1.11.0](service/inspector2/CHANGELOG.md#v1110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/iot`: [v1.33.0](service/iot/CHANGELOG.md#v1330-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/iot1clickdevicesservice`: [v1.11.0](service/iot1clickdevicesservice/CHANGELOG.md#v1110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/iot1clickprojects`: [v1.12.0](service/iot1clickprojects/CHANGELOG.md#v1120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/iotanalytics`: [v1.14.0](service/iotanalytics/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/iotdataplane`: [v1.14.0](service/iotdataplane/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/iotdeviceadvisor`: [v1.17.0](service/iotdeviceadvisor/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/iotevents`: [v1.15.0](service/iotevents/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/ioteventsdata`: [v1.13.0](service/ioteventsdata/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/iotfleethub`: [v1.13.0](service/iotfleethub/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/iotfleetwise`: [v1.3.0](service/iotfleetwise/CHANGELOG.md#v130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/iotjobsdataplane`: [v1.12.0](service/iotjobsdataplane/CHANGELOG.md#v1120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/iotroborunner`: [v1.1.0](service/iotroborunner/CHANGELOG.md#v110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/iotsecuretunneling`: [v1.15.0](service/iotsecuretunneling/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/iotsitewise`: [v1.27.0](service/iotsitewise/CHANGELOG.md#v1270-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/iotthingsgraph`: [v1.14.0](service/iotthingsgraph/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/iottwinmaker`: [v1.10.0](service/iottwinmaker/CHANGELOG.md#v1100-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/iotwireless`: [v1.24.0](service/iotwireless/CHANGELOG.md#v1240-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/ivs`: [v1.19.0](service/ivs/CHANGELOG.md#v1190-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/ivschat`: [v1.3.0](service/ivschat/CHANGELOG.md#v130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/kafka`: [v1.19.0](service/kafka/CHANGELOG.md#v1190-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/kafkaconnect`: [v1.9.0](service/kafkaconnect/CHANGELOG.md#v190-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/kendra`: [v1.37.0](service/kendra/CHANGELOG.md#v1370-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/keyspaces`: [v1.1.0](service/keyspaces/CHANGELOG.md#v110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/kinesis`: [v1.17.0](service/kinesis/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/kinesisanalytics`: [v1.14.0](service/kinesisanalytics/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2`: [v1.16.0](service/kinesisanalyticsv2/CHANGELOG.md#v1160-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/kinesisvideo`: [v1.15.0](service/kinesisvideo/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/kinesisvideoarchivedmedia`: [v1.14.0](service/kinesisvideoarchivedmedia/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/kinesisvideomedia`: [v1.11.0](service/kinesisvideomedia/CHANGELOG.md#v1110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/kinesisvideosignaling`: [v1.11.0](service/kinesisvideosignaling/CHANGELOG.md#v1110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/kinesisvideowebrtcstorage`: [v1.2.0](service/kinesisvideowebrtcstorage/CHANGELOG.md#v120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/kms`: [v1.20.0](service/kms/CHANGELOG.md#v1200-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/lakeformation`: [v1.19.0](service/lakeformation/CHANGELOG.md#v1190-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/lambda`: [v1.27.0](service/lambda/CHANGELOG.md#v1270-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/lexmodelbuildingservice`: [v1.17.0](service/lexmodelbuildingservice/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/lexmodelsv2`: [v1.27.0](service/lexmodelsv2/CHANGELOG.md#v1270-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/lexruntimeservice`: [v1.13.0](service/lexruntimeservice/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/lexruntimev2`: [v1.16.0](service/lexruntimev2/CHANGELOG.md#v1160-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/licensemanager`: [v1.17.0](service/licensemanager/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/licensemanagerlinuxsubscriptions`: [v1.1.0](service/licensemanagerlinuxsubscriptions/CHANGELOG.md#v110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/licensemanagerusersubscriptions`: [v1.2.0](service/licensemanagerusersubscriptions/CHANGELOG.md#v120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/lightsail`: [v1.25.0](service/lightsail/CHANGELOG.md#v1250-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+  * **Documentation**: Documentation updates for Amazon Lightsail.
+* `github.com/aws/aws-sdk-go-v2/service/location`: [v1.20.0](service/location/CHANGELOG.md#v1200-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/lookoutequipment`: [v1.17.0](service/lookoutequipment/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/lookoutmetrics`: [v1.19.0](service/lookoutmetrics/CHANGELOG.md#v1190-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/lookoutvision`: [v1.15.0](service/lookoutvision/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/m2`: [v1.3.0](service/m2/CHANGELOG.md#v130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/machinelearning`: [v1.15.0](service/machinelearning/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/macie`: [v1.15.0](service/macie/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/macie2`: [v1.26.0](service/macie2/CHANGELOG.md#v1260-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/managedblockchain`: [v1.14.0](service/managedblockchain/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/marketplacecatalog`: [v1.15.0](service/marketplacecatalog/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/marketplacecommerceanalytics`: [v1.12.0](service/marketplacecommerceanalytics/CHANGELOG.md#v1120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/marketplaceentitlementservice`: [v1.12.0](service/marketplaceentitlementservice/CHANGELOG.md#v1120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/marketplacemetering`: [v1.14.0](service/marketplacemetering/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/mediaconnect`: [v1.18.0](service/mediaconnect/CHANGELOG.md#v1180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/mediaconvert`: [v1.29.0](service/mediaconvert/CHANGELOG.md#v1290-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/medialive`: [v1.28.0](service/medialive/CHANGELOG.md#v1280-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/mediapackage`: [v1.20.0](service/mediapackage/CHANGELOG.md#v1200-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/mediapackagevod`: [v1.21.0](service/mediapackagevod/CHANGELOG.md#v1210-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/mediastore`: [v1.13.0](service/mediastore/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/mediastoredata`: [v1.13.0](service/mediastoredata/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/mediatailor`: [v1.20.0](service/mediatailor/CHANGELOG.md#v1200-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/memorydb`: [v1.12.0](service/memorydb/CHANGELOG.md#v1120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/mgn`: [v1.17.0](service/mgn/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/migrationhub`: [v1.13.0](service/migrationhub/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/migrationhubconfig`: [v1.13.0](service/migrationhubconfig/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/migrationhuborchestrator`: [v1.1.0](service/migrationhuborchestrator/CHANGELOG.md#v110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/migrationhubrefactorspaces`: [v1.8.0](service/migrationhubrefactorspaces/CHANGELOG.md#v180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/migrationhubstrategy`: [v1.7.0](service/migrationhubstrategy/CHANGELOG.md#v170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/mobile`: [v1.12.0](service/mobile/CHANGELOG.md#v1120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/mq`: [v1.14.0](service/mq/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/mturk`: [v1.14.0](service/mturk/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/mwaa`: [v1.14.0](service/mwaa/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+  * **Documentation**: MWAA supports Apache Airflow version 2.4.3.
+* `github.com/aws/aws-sdk-go-v2/service/neptune`: [v1.19.0](service/neptune/CHANGELOG.md#v1190-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/networkfirewall`: [v1.22.0](service/networkfirewall/CHANGELOG.md#v1220-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/networkmanager`: [v1.17.0](service/networkmanager/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/nimble`: [v1.16.0](service/nimble/CHANGELOG.md#v1160-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/oam`: [v1.1.0](service/oam/CHANGELOG.md#v110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/omics`: [v1.1.0](service/omics/CHANGELOG.md#v110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/opensearch`: [v1.12.0](service/opensearch/CHANGELOG.md#v1120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/opensearchserverless`: [v1.1.0](service/opensearchserverless/CHANGELOG.md#v110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/opsworks`: [v1.14.0](service/opsworks/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/opsworkscm`: [v1.15.0](service/opsworkscm/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/organizations`: [v1.18.0](service/organizations/CHANGELOG.md#v1180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/outposts`: [v1.24.0](service/outposts/CHANGELOG.md#v1240-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/panorama`: [v1.10.0](service/panorama/CHANGELOG.md#v1100-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/personalize`: [v1.23.0](service/personalize/CHANGELOG.md#v1230-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/personalizeevents`: [v1.13.0](service/personalizeevents/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/personalizeruntime`: [v1.13.0](service/personalizeruntime/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/pi`: [v1.16.0](service/pi/CHANGELOG.md#v1160-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/pinpoint`: [v1.18.0](service/pinpoint/CHANGELOG.md#v1180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/pinpointemail`: [v1.12.0](service/pinpointemail/CHANGELOG.md#v1120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoice`: [v1.11.0](service/pinpointsmsvoice/CHANGELOG.md#v1110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2`: [v1.1.0](service/pinpointsmsvoicev2/CHANGELOG.md#v110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/pipes`: [v1.1.0](service/pipes/CHANGELOG.md#v110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/polly`: [v1.22.0](service/polly/CHANGELOG.md#v1220-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/pricing`: [v1.18.0](service/pricing/CHANGELOG.md#v1180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/privatenetworks`: [v1.1.0](service/privatenetworks/CHANGELOG.md#v110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/proton`: [v1.19.0](service/proton/CHANGELOG.md#v1190-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/qldb`: [v1.15.0](service/qldb/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/qldbsession`: [v1.14.0](service/qldbsession/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/quicksight`: [v1.29.0](service/quicksight/CHANGELOG.md#v1290-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/ram`: [v1.17.0](service/ram/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/rbin`: [v1.8.0](service/rbin/CHANGELOG.md#v180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/rds`: [v1.39.0](service/rds/CHANGELOG.md#v1390-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+  * **Feature**: This release adds support for specifying which certificate authority (CA) to use for a DB instance's server certificate during DB instance creation, as well as other CA enhancements.
+* `github.com/aws/aws-sdk-go-v2/service/rdsdata`: [v1.13.0](service/rdsdata/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/redshift`: [v1.27.0](service/redshift/CHANGELOG.md#v1270-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/redshiftdata`: [v1.18.0](service/redshiftdata/CHANGELOG.md#v1180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/redshiftserverless`: [v1.4.0](service/redshiftserverless/CHANGELOG.md#v140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/rekognition`: [v1.23.0](service/rekognition/CHANGELOG.md#v1230-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/resiliencehub`: [v1.8.0](service/resiliencehub/CHANGELOG.md#v180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/resourceexplorer2`: [v1.2.0](service/resourceexplorer2/CHANGELOG.md#v120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/resourcegroups`: [v1.13.0](service/resourcegroups/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi`: [v1.14.0](service/resourcegroupstaggingapi/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/robomaker`: [v1.18.0](service/robomaker/CHANGELOG.md#v1180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/rolesanywhere`: [v1.1.0](service/rolesanywhere/CHANGELOG.md#v110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/route53`: [v1.26.0](service/route53/CHANGELOG.md#v1260-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/route53domains`: [v1.14.0](service/route53domains/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/route53recoverycluster`: [v1.11.0](service/route53recoverycluster/CHANGELOG.md#v1110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/route53recoverycontrolconfig`: [v1.11.0](service/route53recoverycontrolconfig/CHANGELOG.md#v1110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/route53recoveryreadiness`: [v1.9.0](service/route53recoveryreadiness/CHANGELOG.md#v190-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/route53resolver`: [v1.16.0](service/route53resolver/CHANGELOG.md#v1160-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/rum`: [v1.9.0](service/rum/CHANGELOG.md#v190-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/s3`: [v1.30.0](service/s3/CHANGELOG.md#v1300-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/s3control`: [v1.29.0](service/s3control/CHANGELOG.md#v1290-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/s3outposts`: [v1.14.0](service/s3outposts/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/sagemaker`: [v1.62.0](service/sagemaker/CHANGELOG.md#v1620-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/sagemakera2iruntime`: [v1.15.0](service/sagemakera2iruntime/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/sagemakeredge`: [v1.13.0](service/sagemakeredge/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/sagemakerfeaturestoreruntime`: [v1.13.0](service/sagemakerfeaturestoreruntime/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/sagemakergeospatial`: [v1.1.0](service/sagemakergeospatial/CHANGELOG.md#v110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/sagemakerruntime`: [v1.17.0](service/sagemakerruntime/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/savingsplans`: [v1.12.0](service/savingsplans/CHANGELOG.md#v1120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/scheduler`: [v1.1.0](service/scheduler/CHANGELOG.md#v110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/schemas`: [v1.15.0](service/schemas/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/secretsmanager`: [v1.18.0](service/secretsmanager/CHANGELOG.md#v1180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/securityhub`: [v1.27.0](service/securityhub/CHANGELOG.md#v1270-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/securitylake`: [v1.2.0](service/securitylake/CHANGELOG.md#v120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/serverlessapplicationrepository`: [v1.12.0](service/serverlessapplicationrepository/CHANGELOG.md#v1120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/servicecatalog`: [v1.16.0](service/servicecatalog/CHANGELOG.md#v1160-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/servicecatalogappregistry`: [v1.16.0](service/servicecatalogappregistry/CHANGELOG.md#v1160-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/servicediscovery`: [v1.19.0](service/servicediscovery/CHANGELOG.md#v1190-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/servicequotas`: [v1.14.0](service/servicequotas/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/ses`: [v1.15.0](service/ses/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/sesv2`: [v1.16.0](service/sesv2/CHANGELOG.md#v1160-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/sfn`: [v1.17.0](service/sfn/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/shield`: [v1.18.0](service/shield/CHANGELOG.md#v1180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/signer`: [v1.14.0](service/signer/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/simspaceweaver`: [v1.1.0](service/simspaceweaver/CHANGELOG.md#v110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/sms`: [v1.13.0](service/sms/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/snowball`: [v1.17.0](service/snowball/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/snowdevicemanagement`: [v1.9.0](service/snowdevicemanagement/CHANGELOG.md#v190-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/sns`: [v1.19.0](service/sns/CHANGELOG.md#v1190-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/sqs`: [v1.20.0](service/sqs/CHANGELOG.md#v1200-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/ssm`: [v1.35.0](service/ssm/CHANGELOG.md#v1350-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/ssmcontacts`: [v1.14.0](service/ssmcontacts/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/ssmincidents`: [v1.20.0](service/ssmincidents/CHANGELOG.md#v1200-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/ssmsap`: [v1.1.0](service/ssmsap/CHANGELOG.md#v110-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/sso`: [v1.12.0](service/sso/CHANGELOG.md#v1120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/ssoadmin`: [v1.16.0](service/ssoadmin/CHANGELOG.md#v1160-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/ssooidc`: [v1.14.0](service/ssooidc/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/storagegateway`: [v1.18.0](service/storagegateway/CHANGELOG.md#v1180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/sts`: [v1.18.0](service/sts/CHANGELOG.md#v1180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/support`: [v1.14.0](service/support/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/supportapp`: [v1.2.0](service/supportapp/CHANGELOG.md#v120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/swf`: [v1.14.0](service/swf/CHANGELOG.md#v1140-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/synthetics`: [v1.17.0](service/synthetics/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/textract`: [v1.20.0](service/textract/CHANGELOG.md#v1200-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/timestreamquery`: [v1.15.0](service/timestreamquery/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/timestreamwrite`: [v1.15.0](service/timestreamwrite/CHANGELOG.md#v1150-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/transcribe`: [v1.25.0](service/transcribe/CHANGELOG.md#v1250-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/transcribestreaming`: [v1.9.0](service/transcribestreaming/CHANGELOG.md#v190-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/transfer`: [v1.28.0](service/transfer/CHANGELOG.md#v1280-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/translate`: [v1.17.0](service/translate/CHANGELOG.md#v1170-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/voiceid`: [v1.12.0](service/voiceid/CHANGELOG.md#v1120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/waf`: [v1.12.0](service/waf/CHANGELOG.md#v1120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/wafregional`: [v1.13.0](service/wafregional/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/wafv2`: [v1.24.0](service/wafv2/CHANGELOG.md#v1240-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/wellarchitected`: [v1.18.0](service/wellarchitected/CHANGELOG.md#v1180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/wisdom`: [v1.12.0](service/wisdom/CHANGELOG.md#v1120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/workdocs`: [v1.13.0](service/workdocs/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/worklink`: [v1.13.0](service/worklink/CHANGELOG.md#v1130-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/workmail`: [v1.18.0](service/workmail/CHANGELOG.md#v1180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/workmailmessageflow`: [v1.12.0](service/workmailmessageflow/CHANGELOG.md#v1120-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/workspaces`: [v1.28.0](service/workspaces/CHANGELOG.md#v1280-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/workspacesweb`: [v1.8.0](service/workspacesweb/CHANGELOG.md#v180-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+* `github.com/aws/aws-sdk-go-v2/service/xray`: [v1.16.0](service/xray/CHANGELOG.md#v1160-2023-01-05)
+  * **Feature**: Add `ErrorCodeOverride` field to all error structs (aws/smithy-go#401).
+
+# Release (2023-01-04)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/applicationautoscaling`: [v1.16.0](service/applicationautoscaling/CHANGELOG.md#v1160-2023-01-04)
+  * **Feature**: Customers can now use the existing DescribeScalingActivities API to also see the detailed and machine-readable reasons for Application Auto Scaling not scaling their resources and, if needed, take the necessary corrective actions.
+* `github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs`: [v1.17.4](service/cloudwatchlogs/CHANGELOG.md#v1174-2023-01-04)
+  * **Documentation**: Update to remove sequenceToken as a required field in PutLogEvents calls.
+* `github.com/aws/aws-sdk-go-v2/service/ssm`: [v1.34.0](service/ssm/CHANGELOG.md#v1340-2023-01-04)
+  * **Feature**: Adding support for QuickSetup Document Type in Systems Manager
+
+# Release (2023-01-03)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/securitylake`: [v1.1.0](service/securitylake/CHANGELOG.md#v110-2023-01-03)
+  * **Feature**: Allow CreateSubscriber API to take string input that allows setting more descriptive SubscriberDescription field. Make souceTypes field required in model level for UpdateSubscriberRequest as it is required for every API call on the backend. Allow ListSubscribers take any String as nextToken param.
+
+# Release (2022-12-30)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/cloudfront`: [v1.23.0](service/cloudfront/CHANGELOG.md#v1230-2022-12-30)
+  * **Feature**: Extend response headers policy to support removing headers from viewer responses
+* `github.com/aws/aws-sdk-go-v2/service/iotfleetwise`: [v1.2.1](service/iotfleetwise/CHANGELOG.md#v121-2022-12-30)
+  * **Documentation**: Update documentation - correct the epoch constant value of default value for expiryTime field in CreateCampaign request.
+
+# Release (2022-12-29)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/apigateway`: [v1.15.28](service/apigateway/CHANGELOG.md#v11528-2022-12-29)
+  * **Documentation**: Documentation updates for Amazon API Gateway
+* `github.com/aws/aws-sdk-go-v2/service/emr`: [v1.21.0](service/emr/CHANGELOG.md#v1210-2022-12-29)
+  * **Feature**: Added GetClusterSessionCredentials API to allow Amazon SageMaker Studio to connect to EMR on EC2 clusters with runtime roles and AWS Lake Formation-based access control for Apache Spark, Apache Hive, and Presto queries.
+* `github.com/aws/aws-sdk-go-v2/service/secretsmanager`: [v1.17.0](service/secretsmanager/CHANGELOG.md#v1170-2022-12-29)
+  * **Feature**: Added owning service filter, include planned deletion flag, and next rotation date response parameter in ListSecrets.
+* `github.com/aws/aws-sdk-go-v2/service/wisdom`: [v1.11.0](service/wisdom/CHANGELOG.md#v1110-2022-12-29)
+  * **Feature**: This release extends Wisdom CreateContent and StartContentUpload APIs to support PDF and MicrosoftWord docx document uploading.
+
+# Release (2022-12-28)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/elasticache`: [v1.25.0](service/elasticache/CHANGELOG.md#v1250-2022-12-28)
+  * **Feature**: This release allows you to modify the encryption in transit setting, for existing Redis clusters. You can now change the TLS configuration of your Redis clusters without the need to re-build or re-provision the clusters or impact application availability.
+* `github.com/aws/aws-sdk-go-v2/service/networkfirewall`: [v1.21.0](service/networkfirewall/CHANGELOG.md#v1210-2022-12-28)
+  * **Feature**: AWS Network Firewall now provides status messages for firewalls to help you troubleshoot when your endpoint fails.
+* `github.com/aws/aws-sdk-go-v2/service/rds`: [v1.38.0](service/rds/CHANGELOG.md#v1380-2022-12-28)
+  * **Feature**: This release adds support for Custom Engine Version (CEV) on RDS Custom SQL Server.
+* `github.com/aws/aws-sdk-go-v2/service/route53recoverycontrolconfig`: [v1.10.0](service/route53recoverycontrolconfig/CHANGELOG.md#v1100-2022-12-28)
+  * **Feature**: Added support for Python paginators in the route53-recovery-control-config List* APIs.
+
+# Release (2022-12-27)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/memorydb`: [v1.11.0](service/memorydb/CHANGELOG.md#v1110-2022-12-27)
+  * **Feature**: This release adds support for MemoryDB Reserved nodes which provides a significant discount compared to on-demand node pricing. Reserved nodes are not physical nodes, but rather a billing discount applied to the use of on-demand nodes in your account.
+* `github.com/aws/aws-sdk-go-v2/service/transfer`: [v1.27.0](service/transfer/CHANGELOG.md#v1270-2022-12-27)
+  * **Feature**: Add additional operations to throw ThrottlingExceptions
+
+# Release (2022-12-23)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/connect`: [v1.42.0](service/connect/CHANGELOG.md#v1420-2022-12-23)
+  * **Feature**: Support for Routing Profile filter, SortCriteria, and grouping by Routing Profiles for GetCurrentMetricData API. Support for RoutingProfiles, UserHierarchyGroups, and Agents as filters, NextStatus and AgentStatusName for GetCurrentUserData. Adds ApproximateTotalCount to both APIs.
+* `github.com/aws/aws-sdk-go-v2/service/connectparticipant`: [v1.13.0](service/connectparticipant/CHANGELOG.md#v1130-2022-12-23)
+  * **Feature**: Amazon Connect Chat introduces the Message Receipts feature. This feature allows agents and customers to receive message delivered and read receipts after they send a chat message.
+* `github.com/aws/aws-sdk-go-v2/service/detective`: [v1.17.0](service/detective/CHANGELOG.md#v1170-2022-12-23)
+  * **Feature**: This release adds a missed AccessDeniedException type to several endpoints.
+* `github.com/aws/aws-sdk-go-v2/service/fsx`: [v1.27.0](service/fsx/CHANGELOG.md#v1270-2022-12-23)
+  * **Feature**: Fix a bug where a recent release might break certain existing SDKs.
+* `github.com/aws/aws-sdk-go-v2/service/inspector2`: [v1.10.0](service/inspector2/CHANGELOG.md#v1100-2022-12-23)
+  * **Feature**: Amazon Inspector adds support for scanning NodeJS 18.x and Go 1.x AWS Lambda function runtimes.
+
+# Release (2022-12-22)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/computeoptimizer`: [v1.19.0](service/computeoptimizer/CHANGELOG.md#v1190-2022-12-22)
+  * **Feature**: This release enables AWS Compute Optimizer to analyze and generate optimization recommendations for ecs services running on Fargate.
+* `github.com/aws/aws-sdk-go-v2/service/connect`: [v1.41.0](service/connect/CHANGELOG.md#v1410-2022-12-22)
+  * **Feature**: Amazon Connect Chat introduces the Idle Participant/Autodisconnect feature, which allows users to set timeouts relating to the activity of chat participants, using the new UpdateParticipantRoleConfig API.
+* `github.com/aws/aws-sdk-go-v2/service/iotdeviceadvisor`: [v1.16.0](service/iotdeviceadvisor/CHANGELOG.md#v1160-2022-12-22)
+  * **Feature**: This release adds the following new features: 1) Documentation updates for IoT Device Advisor APIs. 2) Updated required request parameters for IoT Device Advisor APIs. 3) Added new service feature: ability to provide the test endpoint when customer executing the StartSuiteRun API.
+* `github.com/aws/aws-sdk-go-v2/service/kinesisvideowebrtcstorage`: [v1.1.0](service/kinesisvideowebrtcstorage/CHANGELOG.md#v110-2022-12-22)
+  * **Feature**: Amazon Kinesis Video Streams offers capabilities to stream video and audio in real-time via WebRTC to the cloud for storage, playback, and analytical processing. Customers can use our enhanced WebRTC SDK and cloud APIs to enable real-time streaming, as well as media ingestion to the cloud.
+* `github.com/aws/aws-sdk-go-v2/service/rds`: [v1.37.0](service/rds/CHANGELOG.md#v1370-2022-12-22)
+  * **Feature**: Add support for managing master user password in AWS Secrets Manager for the DBInstance and DBCluster.
+* `github.com/aws/aws-sdk-go-v2/service/secretsmanager`: [v1.16.11](service/secretsmanager/CHANGELOG.md#v11611-2022-12-22)
+  * **Documentation**: Documentation updates for Secrets Manager
+
+# Release (2022-12-21)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/licensemanagerlinuxsubscriptions`: [v1.0.0](service/licensemanagerlinuxsubscriptions/CHANGELOG.md#v100-2022-12-21)
+  * **Release**: New AWS service client module
+  * **Feature**: AWS License Manager now offers cross-region, cross-account tracking of commercial Linux subscriptions on AWS. This includes subscriptions purchased as part of EC2 subscription-included AMIs, on the AWS Marketplace, or brought to AWS via Red Hat Cloud Access Program.
+* `github.com/aws/aws-sdk-go-v2/service/macie2`: [v1.25.0](service/macie2/CHANGELOG.md#v1250-2022-12-21)
+  * **Feature**: This release adds support for analyzing Amazon S3 objects that use the S3 Glacier Instant Retrieval (Glacier_IR) storage class.
+* `github.com/aws/aws-sdk-go-v2/service/sagemaker`: [v1.61.0](service/sagemaker/CHANGELOG.md#v1610-2022-12-21)
+  * **Feature**: This release enables adding RStudio Workbench support to an existing Amazon SageMaker Studio domain. It allows setting your RStudio on SageMaker environment configuration parameters and also updating the RStudioConnectUrl and RStudioPackageManagerUrl parameters for existing domains
+* `github.com/aws/aws-sdk-go-v2/service/ssm`: [v1.33.4](service/ssm/CHANGELOG.md#v1334-2022-12-21)
+  * **Documentation**: Doc-only updates for December 2022.
+* `github.com/aws/aws-sdk-go-v2/service/support`: [v1.13.22](service/support/CHANGELOG.md#v11322-2022-12-21)
+  * **Documentation**: Documentation updates for the AWS Support API
+* `github.com/aws/aws-sdk-go-v2/service/transfer`: [v1.26.0](service/transfer/CHANGELOG.md#v1260-2022-12-21)
+  * **Feature**: This release adds support for Decrypt as a workflow step type.
+
+# Release (2022-12-20)
+
+## General Highlights
+* **Dependency Update**: Updated to the latest SDK module versions
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/batch`: [v1.20.0](service/batch/CHANGELOG.md#v1200-2022-12-20)
+  * **Feature**: Adds isCancelled and isTerminated to DescribeJobs response.
+* `github.com/aws/aws-sdk-go-v2/service/ec2`: [v1.77.0](service/ec2/CHANGELOG.md#v1770-2022-12-20)
+  * **Feature**: Adds support for pagination in the EC2 DescribeImages API.
+* `github.com/aws/aws-sdk-go-v2/service/lookoutequipment`: [v1.16.0](service/lookoutequipment/CHANGELOG.md#v1160-2022-12-20)
+  * **Feature**: This release adds support for listing inference schedulers by status.
+* `github.com/aws/aws-sdk-go-v2/service/medialive`: [v1.27.0](service/medialive/CHANGELOG.md#v1270-2022-12-20)
+  * **Feature**: This release adds support for two new features to AWS Elemental MediaLive. First, you can now burn-in timecodes to your MediaLive outputs. Second, we now now support the ability to decode Dolby E audio when it comes in on an input.
+* `github.com/aws/aws-sdk-go-v2/service/nimble`: [v1.15.0](service/nimble/CHANGELOG.md#v1150-2022-12-20)
+  * **Feature**: Amazon Nimble Studio now supports configuring session storage volumes and persistence, as well as backup and restore sessions through launch profiles.
+* `github.com/aws/aws-sdk-go-v2/service/resourceexplorer2`: [v1.1.0](service/resourceexplorer2/CHANGELOG.md#v110-2022-12-20)
+  * **Feature**: Documentation updates for AWS Resource Explorer.
+* `github.com/aws/aws-sdk-go-v2/service/route53domains`: [v1.13.0](service/route53domains/CHANGELOG.md#v1130-2022-12-20)
+  * **Feature**: Use Route 53 domain APIs to change owner, create/delete DS record, modify IPS tag, resend authorization. New: AssociateDelegationSignerToDomain, DisassociateDelegationSignerFromDomain, PushDomain, ResendOperationAuthorization. Updated: UpdateDomainContact, ListOperations, CheckDomainTransferability.
+* `github.com/aws/aws-sdk-go-v2/service/sagemaker`: [v1.60.0](service/sagemaker/CHANGELOG.md#v1600-2022-12-20)
+  * **Feature**: Amazon SageMaker Autopilot adds support for new objective metrics in CreateAutoMLJob API.
+* `github.com/aws/aws-sdk-go-v2/service/transcribe`: [v1.24.0](service/transcribe/CHANGELOG.md#v1240-2022-12-20)
+  * **Feature**: Enable our batch transcription jobs for Swedish and Vietnamese.
+
+# Release (2022-12-19)
+
+## General Highlights
+* **Dependency Update**: Updated to the latest SDK module versions
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/athena`: [v1.21.0](service/athena/CHANGELOG.md#v1210-2022-12-19)
+  * **Feature**: Add missed InvalidRequestException in GetCalculationExecutionCode,StopCalculationExecution APIs. Correct required parameters (Payload and Type) in UpdateNotebook API. Change Notebook size from 15 Mb to 10 Mb.
+* `github.com/aws/aws-sdk-go-v2/service/ecs`: [v1.22.0](service/ecs/CHANGELOG.md#v1220-2022-12-19)
+  * **Feature**: This release adds support for alarm-based rollbacks in ECS, a new feature that allows customers to add automated safeguards for Amazon ECS service rolling updates.
+* `github.com/aws/aws-sdk-go-v2/service/kinesisvideo`: [v1.14.0](service/kinesisvideo/CHANGELOG.md#v1140-2022-12-19)
+  * **Feature**: Amazon Kinesis Video Streams offers capabilities to stream video and audio in real-time via WebRTC to the cloud for storage, playback, and analytical processing. Customers can use our enhanced WebRTC SDK and cloud APIs to enable real-time streaming, as well as media ingestion to the cloud.
+* `github.com/aws/aws-sdk-go-v2/service/kinesisvideowebrtcstorage`: [v1.0.0](service/kinesisvideowebrtcstorage/CHANGELOG.md#v100-2022-12-19)
+  * **Release**: New AWS service client module
+  * **Feature**: Amazon Kinesis Video Streams offers capabilities to stream video and audio in real-time via WebRTC to the cloud for storage, playback, and analytical processing. Customers can use our enhanced WebRTC SDK and cloud APIs to enable real-time streaming, as well as media ingestion to the cloud.
+* `github.com/aws/aws-sdk-go-v2/service/rds`: [v1.36.0](service/rds/CHANGELOG.md#v1360-2022-12-19)
+  * **Feature**: Add support for --enable-customer-owned-ip to RDS create-db-instance-read-replica API for RDS on Outposts.
+* `github.com/aws/aws-sdk-go-v2/service/sagemaker`: [v1.59.0](service/sagemaker/CHANGELOG.md#v1590-2022-12-19)
+  * **Feature**: AWS Sagemaker - Sagemaker Images now supports Aliases as secondary identifiers for ImageVersions. SageMaker Images now supports additional metadata for ImageVersions for better images management.
+
+# Release (2022-12-16)
+
+## Module Highlights
+* `github.com/aws/aws-sdk-go-v2/service/appflow`: [v1.22.0](service/appflow/CHANGELOG.md#v1220-2022-12-16)
+  * **Feature**: This release updates the ListConnectorEntities API action so that it returns paginated responses that customers can retrieve with next tokens.
+* `github.com/aws/aws-sdk-go-v2/service/cloudfront`: [v1.22.2](service/cloudfront/CHANGELOG.md#v1222-2022-12-16)
+  * **Documentation**: Updated documentation for CloudFront
+* `github.com/aws/aws-sdk-go-v2/service/datasync`: [v1.20.0](service/datasync/CHANGELOG.md#v1200-2022-12-16)
+  * **Feature**: AWS DataSync now supports the use of tags with task executions. With this new feature, you can apply tags each time you execute a task, giving you greater control and management over your task executions.
+* `github.com/aws/aws-sdk-go-v2/service/efs`: [v1.18.3](service/efs/CHANGELOG.md#v1183-2022-12-16)
+  * **Documentation**: General documentation updates for EFS.
+* `github.com/aws/aws-sdk-go-v2/service/guardduty`: [v1.16.6](service/guardduty/CHANGELOG.md#v1166-2022-12-16)
+  * **Documentation**: This release provides the valid characters for the Description and Name field.
+* `github.com/aws/aws-sdk-go-v2/service/iotfleetwise`: [v1.2.0](service/iotfleetwise/CHANGELOG.md#v120-2022-12-16)
+  * **Feature**: Updated error handling for empty resource names in "UpdateSignalCatalog" and "GetModelManifest" operations.
+* `github.com/aws/aws-sdk-go-v2/service/sagemaker`: [v1.58.0](service/sagemaker/CHANGELOG.md#v1580-2022-12-16)
+  * **Feature**: AWS sagemaker - Features: This release adds support for random seed, it's an integer value used to initialize a pseudo-random number generator. Setting a random seed will allow the hyperparameter tuning search strategies to produce more consistent configurations for the same tuning job.
+
 # Release (2022-12-15)
 
 ## General Highlights
