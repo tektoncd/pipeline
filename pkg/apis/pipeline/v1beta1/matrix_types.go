@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
 
@@ -143,6 +144,44 @@ func (m *Matrix) validateParamTypes() (errs *apis.FieldError) {
 					errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("parameters of type array only are allowed, but got param type %s", string(param.Value.Type)), "").ViaFieldKey("matrix.params", param.Name))
 				}
 			}
+		}
+	}
+	return errs
+}
+
+// validatePipelineParametersVariablesInMatrixParameters validates all pipeline paramater variables including Matrix.Params and Matrix.Include.Params
+// that may contain the reference(s) to other params to make sure those references are used appropriately.
+func (m *Matrix) validatePipelineParametersVariablesInMatrixParameters(prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
+	if m.hasInclude() {
+		for _, include := range m.Include {
+			for idx, param := range include.Params {
+				stringElement := param.Value.StringVal
+				// Matrix Include Params must be of type string
+				errs = errs.Also(validateStringVariable(stringElement, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaFieldIndex("", idx).ViaField("matrix.include.params", ""))
+			}
+		}
+	}
+	if m.hasParams() {
+		for _, param := range m.Params {
+			for idx, arrayElement := range param.Value.ArrayVal {
+				// Matrix Params must be of type array
+				errs = errs.Also(validateArrayVariable(arrayElement, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaFieldIndex("value", idx).ViaFieldKey("matrix.params", param.Name))
+			}
+		}
+	}
+	return errs
+}
+
+func (m *Matrix) validateParameterInOneOfMatrixOrParams(params []Param) (errs *apis.FieldError) {
+	matrixParameterNames := sets.NewString()
+	if m != nil {
+		for _, param := range m.Params {
+			matrixParameterNames.Insert(param.Name)
+		}
+	}
+	for _, param := range params {
+		if matrixParameterNames.Has(param.Name) {
+			errs = errs.Also(apis.ErrMultipleOneOf("matrix["+param.Name+"]", "params["+param.Name+"]"))
 		}
 	}
 	return errs
