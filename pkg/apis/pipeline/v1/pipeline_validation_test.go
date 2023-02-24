@@ -2970,8 +2970,8 @@ func Test_validateMatrix(t *testing.T) {
 				}}},
 		}},
 		wantErrs: &apis.FieldError{
-			Message: "invalid value: parameters of type array only are allowed in matrix",
-			Paths:   []string{"[0].matrix[foo]", "[0].matrix[bar]", "[1].matrix[baz]"},
+			Message: "invalid value: parameters of type array only are allowed, but got param type string",
+			Paths:   []string{"[0].matrix.params[foo]", "[0].matrix.params[bar]", "[1].matrix.params[baz]"},
 		},
 	}, {
 		name: "parameters in matrix are arrays",

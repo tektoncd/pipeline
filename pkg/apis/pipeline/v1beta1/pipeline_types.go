@@ -328,12 +328,12 @@ func (pt *PipelineTask) IsMatrixed() bool {
 
 // MatrixHasInclude return whether matrix has Include
 func (matrix *Matrix) MatrixHasInclude() bool {
-	return matrix != nil && len(matrix.Include) > 0
+	return matrix != nil && matrix.Include != nil && len(matrix.Include) > 0
 }
 
 // MatrixHasParams return whether matrix has Params
 func (matrix *Matrix) MatrixHasParams() bool {
-	return matrix != nil && len(matrix.Params) > 0
+	return matrix != nil && matrix.Params != nil && len(matrix.Params) > 0
 }
 
 func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldError) {
@@ -344,7 +344,7 @@ func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldErr
 		errs = errs.Also(pt.validateMatrixCombinationsCount(ctx))
 	}
 	errs = errs.Also(validateParameterInOneOfMatrixOrParams(pt.Matrix, pt.Params))
-	errs = errs.Also(validateParametersInTaskMatrix(pt.Matrix))
+	errs = errs.Also(validateParamTypesInMatrix(pt.Matrix))
 	return errs
 }
 

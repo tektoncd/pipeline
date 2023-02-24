@@ -154,6 +154,20 @@ spec:
 > It is still in a very early stage of development and is not yet fully functional.
 The `Include` section in the `Matrix` field exists, but is not yet functional.
 
+The `Matrix.Include` will take `Parameters` of type `"string"` only.
+
+```yaml
+    matrix:
+      include:
+        - name: s390x-no-race
+          params:
+              - name: GOARCH
+                value: "linux/s390x"
+              - name: flags
+                value: "-cover -v"
+  ...
+```
+
 ### Context Variables
 
 Similarly to the `Parameters` in the `Params` field, the `Parameters` in the `Matrix` field will accept
