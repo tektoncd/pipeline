@@ -190,12 +190,24 @@ func validatePipelineContextVariables(tasks []PipelineTask) *apis.FieldError {
 	var paramValues []string
 	for _, task := range tasks {
 		var matrixParams []Param
+		var includeParams []Param
 		if task.IsMatrixed() {
 			matrixParams = task.Matrix.Params
+			if task.Matrix.MatrixHasInclude() {
+				for _, include := range task.Matrix.Include {
+					includeParams = include.Params
+				}
+			}
 		}
 		for _, param := range append(task.Params, matrixParams...) {
 			paramValues = append(paramValues, param.Value.StringVal)
 			paramValues = append(paramValues, param.Value.ArrayVal...)
+		}
+
+		if task.Matrix.MatrixHasInclude() {
+			for _, param := range append(task.Params, includeParams...) {
+				paramValues = append(paramValues, param.Value.StringVal)
+			}
 		}
 	}
 	errs := validatePipelineContextVariablesInParamValues(paramValues, "context\\.pipelineRun", pipelineRunContextNames).
