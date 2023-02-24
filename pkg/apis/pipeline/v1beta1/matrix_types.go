@@ -19,6 +19,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/utils/strings/slices"
 	"knative.dev/pkg/apis"
 )
 
@@ -97,11 +98,49 @@ func createCombination(name string, value string, combination Params) Params {
 
 // CountCombinations returns the count of combinations of Parameters generated from the Matrix in PipelineTask.
 func (m *Matrix) CountCombinations() int {
+	// Iterate over matrix.params and compute count of all generated combinations
+	count := m.countGeneratedCombinationsFromParams()
+
+	// Add any additional combinations generated from matrix include params
+	count += m.countNewCombinationsFromInclude()
+
+	return count
+}
+
+// countGeneratedCombinationsFromParams returns the count of combinations of Parameters generated from the matrix
+// parameters
+func (m *Matrix) countGeneratedCombinationsFromParams() int {
+	if !m.hasParams() {
+		return 0
+	}
+	count := 1
+	for _, param := range m.Params {
+		count *= len(param.Value.ArrayVal)
+	}
+	return count
+}
+
+// countNewCombinationsFromInclude returns the count of combinations of Parameters generated from the matrix
+// include parameters
+func (m *Matrix) countNewCombinationsFromInclude() int {
+	if !m.hasInclude() {
+		return 0
+	}
+	if !m.hasParams() {
+		return len(m.Include)
+	}
 	count := 0
-	if m.hasParams() {
-		count = 1
-		for _, param := range m.Params {
-			count *= len(param.Value.ArrayVal)
+	matrixParamMap := m.Params.extractParamMapArrVals()
+	for _, include := range m.Include {
+		for _, param := range include.Params {
+			if val, exist := matrixParamMap[param.Name]; exist {
+				// If the matrix include param values does not exist, a new combination will be generated
+				if !slices.Contains(val, param.Value.StringVal) {
+					count++
+				} else {
+					break
+				}
+			}
 		}
 	}
 	return count
