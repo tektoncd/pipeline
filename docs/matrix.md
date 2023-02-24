@@ -50,6 +50,8 @@ The default maximum count of `TaskRuns` or `Runs` from a given `Matrix` is **256
 [config defaults](/config/config-defaults.yaml). When a `Matrix` in `PipelineTask` would generate more than the maximum
 `TaskRuns` or `Runs`, the `Pipeline` validation would fail.
 
+Note: The matrix combination count includes combinations generated from both `Matrix.Params` and `Matrix.Include.Params`.
+
 ```yaml
 apiVersion: v1
 kind: ConfigMap

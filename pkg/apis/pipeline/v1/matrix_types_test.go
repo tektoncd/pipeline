@@ -320,6 +320,91 @@ func TestPipelineTask_CountCombinations(t *testing.T) {
 				Name: "xyzzy", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"x", "y", "z", "z", "y"}},
 			}}},
 		want: 135,
+	}, {
+		name: "explicit combinations in the matrix",
+		matrix: &Matrix{
+			Include: []MatrixInclude{{
+				Name: "build-1",
+				Params: []Param{{
+					Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
+				}, {
+					Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"},
+				}},
+			}, {
+				Name: "build-2",
+				Params: []Param{{
+					Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-2"},
+				}, {
+					Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile2"},
+				}},
+			}, {
+				Name: "build-3",
+				Params: []Param{{
+					Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-3"},
+				}, {
+					Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile3"},
+				}},
+			}},
+		},
+		want: 3,
+	}, {
+		name: "params and include in matrix with overriding combinations params",
+		matrix: &Matrix{
+			Params: []Param{{
+				Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+			}, {
+				Name: "version", Value: ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
+			},
+			Include: []MatrixInclude{{
+				Name: "common-package",
+				Params: []Param{{
+					Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
+			}, {
+				Name: "s390x-no-race",
+				Params: []Param{{
+					Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+				}, {
+					Name: "flags", Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"}}},
+			}, {
+				Name: "go117-context",
+				Params: []Param{{
+					Name: "version", Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+				}, {
+					Name: "context", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/go117/context"}}},
+			}},
+		},
+		want: 6,
+	}, {
+		name: "params and include in matrix with overriding combinations params and one new combination",
+		matrix: &Matrix{
+			Params: []Param{{
+				Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+			}, {
+				Name: "version", Value: ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
+			},
+			Include: []MatrixInclude{{
+				Name: "common-package",
+				Params: []Param{{
+					Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
+			}, {
+				Name: "s390x-no-race",
+				Params: []Param{{
+					Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+				}, {
+					Name: "flags", Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"}}},
+			}, {
+				Name: "go117-context",
+				Params: []Param{{
+					Name: "version", Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+				}, {
+					Name: "context", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/go117/context"}}},
+			}, {
+				Name: "non-existent-arch",
+				Params: []Param{{
+					Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "I-do-not-exist"}},
+				}},
+			}},
+		want: 7,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
