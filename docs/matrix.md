@@ -156,7 +156,7 @@ The `Include` section in the `Matrix` field exists, but is not yet functional.
 
 The `Include` section in the `Matrix` will be specified with or without `Params` section adding a specific combination of input values for `Matrix Parameters` or defining explicit combinations in the `Matrix` without `Params`.
 
-Currently, it has validation to check that the include paramater is of type string, is in reference to a paramName or taskName, and does not exceed the max combination count.
+Currently, it has validation to check that the `Include` paramater is of type string, the parameter only exists in either a paramName or taskName, and does not exceed the max combination count.
 
 ### Context Variables
 

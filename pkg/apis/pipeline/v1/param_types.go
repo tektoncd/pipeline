@@ -317,17 +317,25 @@ func validatePipelineParametersVariablesInTaskParameters(params []Param, prefix 
 // validatePipelineParametersVariablesInMatrixParameters validates all params in matrix.params and matrix.include.params
 // that may contain the reference(s) to other params to make sure those references are used appropriately.
 func validatePipelineParametersVariablesInMatrixParameters(matrix *Matrix, prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
+	matrixParamNames := sets.NewString()
+
 	if matrix != nil {
 		if matrix.MatrixHasInclude() {
 			for _, include := range matrix.Include {
 				for idx, param := range include.Params {
+					if matrixParamNames.Has(param.Name) {
+						errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("params names must be unique, the same param: %s is defined multiple times at include.Param", param.Name), fmt.Sprintf("params[%d].name", idx)))
+					}
 					stringElement := param.Value.StringVal
 					errs = errs.Also(validateStringVariable(stringElement, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaFieldIndex("value", idx).ViaFieldKey("matrix", param.Name))
 				}
 			}
 		}
 		if matrix.MatrixHasParams() {
-			for _, param := range matrix.Params {
+			for i, param := range matrix.Params {
+				if matrixParamNames.Has(param.Name) {
+					errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("params names must be unique, the same param: %s is defined multiple times at Matrix.Param", param.Name), fmt.Sprintf("params[%d].name", i)))
+				}
 				for idx, arrayElement := range param.Value.ArrayVal {
 					errs = errs.Also(validateArrayVariable(arrayElement, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaFieldIndex("value", idx).ViaFieldKey("matrix", param.Name))
 				}
