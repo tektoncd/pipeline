@@ -630,8 +630,8 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 				}}},
 		},
 		wantErrs: &apis.FieldError{
-			Message: "invalid value: parameters of type array only are allowed in matrix",
-			Paths:   []string{"matrix[foo]", "matrix[bar]"},
+			Message: "invalid value: parameters of type array only are allowed, but got param type string",
+			Paths:   []string{"matrix.params[foo]", "matrix.params[bar]"},
 		},
 	}, {
 		name: "parameters in matrix are arrays",
@@ -642,6 +642,70 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 				}, {
 					Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
+				}}},
+		},
+	}, {
+		name: "parameters in include matrix are strings",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: &Matrix{
+				Include: []MatrixInclude{{
+					Name: "build-1",
+					Params: []Param{{
+						Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
+					}, {
+						Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"},
+					}}},
+				}},
+		},
+	}, {
+		name: "parameters in include matrix are objects",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: &Matrix{
+				Include: []MatrixInclude{{
+					Name: "build-1",
+					Params: []Param{{
+						Name: "barfoo", Value: ParamValue{Type: ParamTypeObject, ObjectVal: map[string]string{
+							"url":    "$(params.myObject.non-exist-key)",
+							"commit": "$(params.myString)",
+						}},
+					}, {
+						Name: "foobar", Value: ParamValue{Type: ParamTypeObject, ObjectVal: map[string]string{
+							"url":    "$(params.myObject.non-exist-key)",
+							"commit": "$(params.myString)",
+						}},
+					}},
+				}}},
+		},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: parameters of type string only are allowed, but got param type object",
+			Paths:   []string{"matrix.include.params[barfoo]", "matrix.include.params[foobar]"},
+		},
+	}, {
+		name: "parameters in include matrix are arrays",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: &Matrix{
+				Include: []MatrixInclude{{
+					Name: "build-1",
+					Params: []Param{{
+						Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+					}, {
+						Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}}}},
+				}}},
+		},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: parameters of type string only are allowed, but got param type array",
+			Paths:   []string{"matrix.include.params[barfoo]", "matrix.include.params[foobar]"},
+		},
+	}, {
+		name: "parameters in matrix contain results references",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.foo-task.results.a-result)"}},
 				}}},
 		},
 	}, {
