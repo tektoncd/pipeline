@@ -259,6 +259,16 @@ func (m *Matrix) convertTo(ctx context.Context, sink *v1.Matrix) {
 		param.convertTo(ctx, &new)
 		sink.Params = append(sink.Params, new)
 	}
+	if m.hasInclude() {
+		for _, include := range m.Include {
+			sink.Include = append(sink.Include, v1.MatrixInclude{Name: include.Name})
+			for _, param := range include.Params {
+				newIncludeParam := v1.Param{}
+				param.convertTo(ctx, &newIncludeParam)
+				sink.Include[len(sink.Include)-1].Params = append(sink.Include[len(sink.Include)-1].Params, newIncludeParam)
+			}
+		}
+	}
 }
 
 func (m *Matrix) convertFrom(ctx context.Context, source v1.Matrix) {
@@ -266,6 +276,15 @@ func (m *Matrix) convertFrom(ctx context.Context, source v1.Matrix) {
 		new := Param{}
 		new.convertFrom(ctx, param)
 		m.Params = append(m.Params, new)
+	}
+
+	for _, include := range source.Include {
+		m.Include = append(m.Include, MatrixInclude{Name: include.Name})
+		for _, p := range include.Params {
+			new := Param{}
+			new.convertFrom(ctx, p)
+			m.Include[len(m.Include)-1].Params = append(m.Include[len(m.Include)-1].Params, new)
+		}
 	}
 }
 

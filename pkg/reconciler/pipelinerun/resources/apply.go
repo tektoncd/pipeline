@@ -176,6 +176,9 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 			pipelineTask.Params = replaceParamValues(pipelineTask.Params, stringReplacements, arrayReplacements, objectReplacements)
 			if pipelineTask.IsMatrixed() {
 				pipelineTask.Matrix.Params = replaceParamValues(pipelineTask.Matrix.Params, stringReplacements, nil, nil)
+				for i := range pipelineTask.Matrix.Include {
+					pipelineTask.Matrix.Include[i].Params = replaceParamValues(pipelineTask.Matrix.Include[i].Params, stringReplacements, nil, nil)
+				}
 			}
 			pipelineTask.WhenExpressions = pipelineTask.WhenExpressions.ReplaceWhenExpressionsVariables(stringReplacements, arrayReplacements)
 			if pipelineTask.TaskRef != nil && pipelineTask.TaskRef.Params != nil {
@@ -225,6 +228,9 @@ func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, 
 		p.Tasks[i].Params = replaceParamValues(p.Tasks[i].Params, replacements, arrayReplacements, objectReplacements)
 		if p.Tasks[i].IsMatrixed() {
 			p.Tasks[i].Matrix.Params = replaceParamValues(p.Tasks[i].Matrix.Params, replacements, arrayReplacements, objectReplacements)
+			for j := range p.Tasks[i].Matrix.Include {
+				p.Tasks[i].Matrix.Include[j].Params = replaceParamValues(p.Tasks[i].Matrix.Include[j].Params, replacements, arrayReplacements, objectReplacements)
+			}
 		}
 		for j := range p.Tasks[i].Workspaces {
 			p.Tasks[i].Workspaces[j].SubPath = substitution.ApplyReplacements(p.Tasks[i].Workspaces[j].SubPath, replacements)
@@ -240,6 +246,9 @@ func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, 
 		p.Finally[i].Params = replaceParamValues(p.Finally[i].Params, replacements, arrayReplacements, objectReplacements)
 		if p.Finally[i].IsMatrixed() {
 			p.Finally[i].Matrix.Params = replaceParamValues(p.Finally[i].Matrix.Params, replacements, arrayReplacements, objectReplacements)
+			for j := range p.Finally[i].Matrix.Include {
+				p.Finally[i].Matrix.Include[j].Params = replaceParamValues(p.Finally[i].Matrix.Include[j].Params, replacements, arrayReplacements, objectReplacements)
+			}
 		}
 		for j := range p.Finally[i].Workspaces {
 			p.Finally[i].Workspaces[j].SubPath = substitution.ApplyReplacements(p.Finally[i].Workspaces[j].SubPath, replacements)

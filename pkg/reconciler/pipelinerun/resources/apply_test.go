@@ -2034,6 +2034,235 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 	}
 }
 
+func TestApplyReplacementsMatrix(t *testing.T) {
+	ctx := context.Background()
+	cfg := config.FromContextOrDefaults(ctx)
+	cfg.FeatureFlags.EnableAPIFields = config.BetaAPIFields
+	ctx = config.ToContext(ctx, cfg)
+	for _, tt := range []struct {
+		name     string
+		original v1beta1.PipelineSpec
+		params   []v1beta1.Param
+		expected v1beta1.PipelineSpec
+	}{{
+		name: "matrix params replacement",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewStructuredValues("default-value", "default-value-again"),
+			}, {
+				Name: "second-param", Type: v1beta1.ParamTypeString,
+			}},
+			Tasks: []v1beta1.PipelineTask{{
+				Matrix: &v1beta1.Matrix{
+					Params: v1beta1.Params{{
+						Name: "first-param", Value: *v1beta1.NewStructuredValues("$(params.first-param[1])"),
+					}, {
+						Name: "second-param", Value: *v1beta1.NewStructuredValues("$(params.second-param[0])"),
+					}}},
+			}},
+		},
+		params: v1beta1.Params{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value", "second-value-again")}},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewStructuredValues("default-value", "default-value-again"),
+			}, {
+				Name: "second-param", Type: v1beta1.ParamTypeString,
+			}},
+			Tasks: []v1beta1.PipelineTask{{
+				Matrix: &v1beta1.Matrix{
+					Params: v1beta1.Params{{
+						Name: "first-param", Value: *v1beta1.NewStructuredValues("default-value-again"),
+					}, {
+						Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value"),
+					}}},
+			}},
+		},
+	}, {
+		name: "matrix include replacement",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewStructuredValues("default-value", "default-value-again"),
+			}, {
+				Name: "second-param", Type: v1beta1.ParamTypeString,
+			},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Matrix: &v1beta1.Matrix{
+					Include: []v1beta1.MatrixInclude{{
+						Name: "build-1",
+						Params: v1beta1.Params{{
+							Name: "first-param", Value: *v1beta1.NewStructuredValues("$(params.first-param[1])"),
+						}, {
+							Name: "second-param", Value: *v1beta1.NewStructuredValues("$(params.second-param[0])"),
+						}}},
+					}},
+			}},
+		},
+		params: v1beta1.Params{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value", "second-value-again")}},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewStructuredValues("default-value", "default-value-again"),
+			}, {
+				Name: "second-param", Type: v1beta1.ParamTypeString,
+			}},
+			Tasks: []v1beta1.PipelineTask{{
+				Matrix: &v1beta1.Matrix{
+					Include: []v1beta1.MatrixInclude{{
+						Name: "build-1",
+						Params: v1beta1.Params{{
+							Name: "first-param", Value: *v1beta1.NewStructuredValues("default-value-again"),
+						}, {
+							Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value"),
+						}}},
+					}},
+			}},
+		},
+	}, {
+		name: "matrix include replacement",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewStructuredValues("default-value", "default-value-again"),
+			}, {
+				Name: "second-param", Type: v1beta1.ParamTypeString,
+			},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Matrix: &v1beta1.Matrix{
+					Include: []v1beta1.MatrixInclude{{
+						Name: "build-1",
+						Params: v1beta1.Params{{
+							Name: "first-param", Value: *v1beta1.NewStructuredValues("$(params.first-param[1])"),
+						}, {
+							Name: "second-param", Value: *v1beta1.NewStructuredValues("$(params.second-param[0])"),
+						}}},
+					}},
+			}},
+		},
+		params: v1beta1.Params{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value", "second-value-again")}},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewStructuredValues("default-value", "default-value-again"),
+			}, {
+				Name: "second-param", Type: v1beta1.ParamTypeString,
+			}},
+			Tasks: []v1beta1.PipelineTask{{
+				Matrix: &v1beta1.Matrix{
+					Include: []v1beta1.MatrixInclude{{
+						Name: "build-1",
+						Params: v1beta1.Params{{
+							Name: "first-param", Value: *v1beta1.NewStructuredValues("default-value-again"),
+						}, {
+							Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value"),
+						}}},
+					}},
+			}},
+		},
+	}, {
+		name: "matrix params with final tasks",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewStructuredValues("default-value", "default-value-again")},
+				{Name: "second-param", Type: v1beta1.ParamTypeArray},
+			},
+			Finally: []v1beta1.PipelineTask{{
+				Matrix: &v1beta1.Matrix{
+					Params: v1beta1.Params{{
+						Name: "final-task-first-param", Value: *v1beta1.NewStructuredValues("$(params.first-param[0])"),
+					}, {
+						Name: "final-task-second-param", Value: *v1beta1.NewStructuredValues("$(params.second-param[1])"),
+					}}},
+				WhenExpressions: v1beta1.WhenExpressions{{
+					Input:    "$(params.first-param[0])",
+					Operator: selection.In,
+					Values:   []string{"$(params.second-param[1])"},
+				}},
+			}},
+		},
+		params: v1beta1.Params{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value", "second-value-again")}},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewStructuredValues("default-value", "default-value-again")},
+				{Name: "second-param", Type: v1beta1.ParamTypeArray},
+			},
+			Finally: []v1beta1.PipelineTask{{
+				Matrix: &v1beta1.Matrix{
+					Params: v1beta1.Params{{
+						Name: "final-task-first-param", Value: *v1beta1.NewStructuredValues("default-value"),
+					}, {
+						Name: "final-task-second-param", Value: *v1beta1.NewStructuredValues("second-value-again"),
+					}}},
+				WhenExpressions: v1beta1.WhenExpressions{{
+					Input:    "default-value",
+					Operator: selection.In,
+					Values:   []string{"second-value-again"},
+				}},
+			}},
+		},
+	}, {
+		name: "matrix include params with final tasks",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewStructuredValues("default-value", "default-value-again")},
+				{Name: "second-param", Type: v1beta1.ParamTypeArray},
+			},
+			Finally: []v1beta1.PipelineTask{{
+				Matrix: &v1beta1.Matrix{
+					Include: []v1beta1.MatrixInclude{{
+						Name: "build-1",
+						Params: v1beta1.Params{{
+							Name: "final-task-first-param", Value: *v1beta1.NewStructuredValues("$(params.first-param[0])"),
+						}, {
+							Name: "final-task-second-param", Value: *v1beta1.NewStructuredValues("$(params.second-param[1])"),
+						}}},
+					}},
+				WhenExpressions: v1beta1.WhenExpressions{{
+					Input:    "$(params.first-param[0])",
+					Operator: selection.In,
+					Values:   []string{"$(params.second-param[1])"},
+				}},
+			}},
+		},
+		params: v1beta1.Params{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value", "second-value-again")}},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewStructuredValues("default-value", "default-value-again")},
+				{Name: "second-param", Type: v1beta1.ParamTypeArray},
+			},
+			Finally: []v1beta1.PipelineTask{{
+				Matrix: &v1beta1.Matrix{
+					Include: []v1beta1.MatrixInclude{{
+						Name: "build-1",
+						Params: v1beta1.Params{{
+							Name: "final-task-first-param", Value: *v1beta1.NewStructuredValues("default-value"),
+						}, {
+							Name: "final-task-second-param", Value: *v1beta1.NewStructuredValues("second-value-again"),
+						}}},
+					}},
+				WhenExpressions: v1beta1.WhenExpressions{{
+					Input:    "default-value",
+					Operator: selection.In,
+					Values:   []string{"second-value-again"},
+				}},
+			}},
+		},
+	},
+	} {
+		tt := tt // capture range variable
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			run := &v1beta1.PipelineRun{
+				Spec: v1beta1.PipelineRunSpec{
+					Params: tt.params,
+				},
+			}
+			got := ApplyParameters(ctx, &tt.original, run)
+			if d := cmp.Diff(&tt.expected, got); d != "" {
+				t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 	for _, tt := range []struct {
 		name               string
@@ -2327,6 +2556,76 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 					Params: []v1beta1.Param{{
 						Name:  "bParam",
 						Value: *v1beta1.NewStructuredValues(`$(tasks.aTask.results["a.Result"][3])`),
+					}}},
+			},
+		}},
+	}, {
+		name: "Test result substitution on minimal variable substitution expression - matrix include",
+		resolvedResultRefs: ResolvedResultRefs{{
+			Value: *v1beta1.NewStructuredValues("aResultValue"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "a.Result",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Matrix: &v1beta1.Matrix{
+					Include: []v1beta1.MatrixInclude{{
+						Name: "build-1",
+						Params: []v1beta1.Param{{
+							Name: "bParam", Value: *v1beta1.NewStructuredValues(`$(tasks.aTask.results["a.Result"])`)}},
+					}}},
+			},
+		}},
+		want: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Matrix: &v1beta1.Matrix{
+					Include: []v1beta1.MatrixInclude{{
+						Name: "build-1",
+						Params: []v1beta1.Param{{
+							Name: "bParam", Value: *v1beta1.NewStructuredValues("aResultValue")}},
+					}}},
+			},
+		}},
+	}, {
+		name: "Test array indexing result substitution on minimal variable substitution expression - matrix include",
+		resolvedResultRefs: ResolvedResultRefs{{
+			Value: *v1beta1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "a.Result",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Matrix: &v1beta1.Matrix{
+					Include: []v1beta1.MatrixInclude{{
+						Name: "build-1",
+						Params: []v1beta1.Param{{
+							Name:  "bParam",
+							Value: *v1beta1.NewStructuredValues(`$(tasks.aTask.results["a.Result"][1])`)}},
+					}}},
+			},
+		}},
+		want: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Matrix: &v1beta1.Matrix{
+					Include: []v1beta1.MatrixInclude{{
+						Name: "build-1",
+						Params: []v1beta1.Param{{
+							Name:  "bParam",
+							Value: *v1beta1.NewStructuredValues("arrayResultValueTwo")}},
 					}}},
 			},
 		}},
@@ -2676,6 +2975,78 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 					Params: []v1beta1.Param{{
 						Name:  "bParam",
 						Value: *v1beta1.NewStructuredValues("Result value --> arrayResultValueOne"),
+					}}},
+			},
+		}},
+	}, {
+		name: "Test result substitution on embedded variable substitution expression - matrix include",
+		resolvedResultRefs: ResolvedResultRefs{{
+			Value: *v1beta1.NewStructuredValues("aResultValue"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "aResult",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Matrix: &v1beta1.Matrix{
+					Include: []v1beta1.MatrixInclude{{
+						Name: "build-1",
+						Params: []v1beta1.Param{{
+							Name:  "bParam",
+							Value: *v1beta1.NewStructuredValues("Result value --> $(tasks.aTask.results.aResult)")}},
+					}}},
+			},
+		}},
+		want: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Matrix: &v1beta1.Matrix{
+					Include: []v1beta1.MatrixInclude{{
+						Name: "build-1",
+						Params: []v1beta1.Param{{
+							Name:  "bParam",
+							Value: *v1beta1.NewStructuredValues("Result value --> aResultValue")}},
+					}}},
+			},
+		}},
+	}, {
+		name: "Test array indexing result substitution on embedded variable substitution expression - matrix include",
+		resolvedResultRefs: ResolvedResultRefs{{
+			Value: *v1beta1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "aResult",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Matrix: &v1beta1.Matrix{
+					Include: []v1beta1.MatrixInclude{{
+						Name: "build-1",
+						Params: []v1beta1.Param{{
+							Name:  "bParam",
+							Value: *v1beta1.NewStructuredValues("Result value --> $(tasks.aTask.results.aResult[0])")}},
+					}}},
+			},
+		}},
+		want: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Matrix: &v1beta1.Matrix{
+					Include: []v1beta1.MatrixInclude{{
+						Name: "build-1",
+						Params: []v1beta1.Param{{
+							Name:  "bParam",
+							Value: *v1beta1.NewStructuredValues("Result value --> arrayResultValueOne")}},
 					}}},
 			},
 		}},
