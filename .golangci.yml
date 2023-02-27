@@ -36,6 +36,13 @@ linters:
   - unused
   - usestdlibvars
   - whitespace
+presets:
+  - format
+  - import
+  - metalinter
+  - module
+  - test
+  - unused
 output:
   uniq-by-line: false
 issues:

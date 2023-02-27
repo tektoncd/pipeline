@@ -41,9 +41,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/system"
-	"sigs.k8s.io/yaml"
-
 	_ "knative.dev/pkg/system/testing"
+	"sigs.k8s.io/yaml"
 )
 
 func TestGetSelector(t *testing.T) {

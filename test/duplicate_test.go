@@ -25,9 +25,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/tektoncd/pipeline/test/parse"
-
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/test/parse"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
