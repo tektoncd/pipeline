@@ -21,15 +21,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/uuid"
-
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"knative.dev/pkg/apis"
-
+	"github.com/google/uuid"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"knative.dev/pkg/apis"
 )
 
 // TektonEventType holds the types of cloud events sent by Tekton

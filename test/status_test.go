@@ -32,7 +32,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/parse"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/system"
 	knativetest "knative.dev/pkg/test"

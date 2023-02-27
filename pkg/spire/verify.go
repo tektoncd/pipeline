@@ -32,10 +32,9 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
-
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"go.uber.org/zap"
 )
 
 // VerifyTaskRunResults ensures that the TaskRun results are valid and have not been tampered with

@@ -22,7 +22,6 @@ import (
 	customruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/customrun"
 	customrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/customrun"
 	tkncontroller "github.com/tektoncd/pipeline/pkg/controller"
-
 	"github.com/tektoncd/pipeline/test/wait-task-beta/pkg/reconciler"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/clock"

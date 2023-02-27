@@ -22,15 +22,14 @@ import (
 	"path/filepath"
 	"strconv"
 
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/sets"
-
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/container"
 	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/substitution"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 const (

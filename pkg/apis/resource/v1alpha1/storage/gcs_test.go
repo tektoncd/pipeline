@@ -19,8 +19,6 @@ package storage_test
 import (
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -29,6 +27,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var images = pipeline.Images{

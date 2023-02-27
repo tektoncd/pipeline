@@ -25,9 +25,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/tektoncd/pipeline/pkg/credentials"
+	corev1 "k8s.io/api/core/v1"
 )
 
 const annotationPrefix = "tekton.dev/docker-"

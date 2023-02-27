@@ -21,15 +21,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-
 	cloudevents "github.com/cloudevents/sdk-go/v2"
-	lru "github.com/hashicorp/golang-lru"
-
 	"github.com/cloudevents/sdk-go/v2/event"
 	cetypes "github.com/cloudevents/sdk-go/v2/types"
 	"github.com/google/go-cmp/cmp"
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

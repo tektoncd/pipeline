@@ -25,8 +25,6 @@ import (
 	"testing"
 	"time"
 
-	"sigs.k8s.io/yaml"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/registry"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
@@ -43,6 +41,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
+	"sigs.k8s.io/yaml"
 )
 
 func TestGetSelector(t *testing.T) {

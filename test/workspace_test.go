@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/test/parse"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"

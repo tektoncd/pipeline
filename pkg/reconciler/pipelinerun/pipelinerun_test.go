@@ -67,7 +67,6 @@ import (
 	logtesting "knative.dev/pkg/logging/testing"
 	"knative.dev/pkg/reconciler"
 	"knative.dev/pkg/system"
-
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 )
 

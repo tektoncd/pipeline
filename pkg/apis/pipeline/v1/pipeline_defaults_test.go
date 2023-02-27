@@ -20,10 +20,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
-
-	"github.com/google/go-cmp/cmp"
 )
 
 func TestPipeline_SetDefaults(t *testing.T) {

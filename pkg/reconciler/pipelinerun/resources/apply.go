@@ -23,9 +23,8 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
-
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 )
 

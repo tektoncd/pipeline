@@ -23,14 +23,13 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/tektoncd/pipeline/test/parse"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	tkremote "github.com/tektoncd/pipeline/pkg/remote/oci"
+	"github.com/tektoncd/pipeline/test/parse"
 	"sigs.k8s.io/yaml"
 )
 

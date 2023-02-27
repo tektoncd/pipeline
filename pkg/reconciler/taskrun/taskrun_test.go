@@ -71,10 +71,8 @@ import (
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/ptr"
-
 	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/system"
-
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 )
 
