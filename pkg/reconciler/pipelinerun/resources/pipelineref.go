@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -172,12 +173,26 @@ func resolvePipeline(ctx context.Context, resolver remote.Resolver, name string)
 
 // readRuntimeObjectAsPipeline tries to convert a generic runtime.Object
 // into a v1beta1.PipelineObject type so that its meta and spec fields
-// can be read. An error is returned if the given object is not a
+// can be read. v1 object will be converted to v1beta1 and returned.
+// An error is returned if the given object is not a
 // PipelineObject or if there is an error validating or upgrading an
 // older PipelineObject into its v1beta1 equivalent.
+// TODO(#5541): convert v1beta1 obj to v1 once we use v1 as the stored version
 func readRuntimeObjectAsPipeline(ctx context.Context, obj runtime.Object) (v1beta1.PipelineObject, error) {
-	if pipeline, ok := obj.(v1beta1.PipelineObject); ok {
-		return pipeline, nil
+	switch obj := obj.(type) {
+	case v1beta1.PipelineObject:
+		return obj, nil
+	case *v1.Pipeline:
+		t := &v1beta1.Pipeline{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Pipeline",
+				APIVersion: "tekton.dev/v1beta1",
+			},
+		}
+		if err := t.ConvertFrom(ctx, obj); err != nil {
+			return nil, err
+		}
+		return t, nil
 	}
 
 	return nil, errors.New("resource is not a pipeline")
