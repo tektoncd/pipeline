@@ -18,9 +18,9 @@ import (
 )
 
 // FanOut produces combinations of Parameters of type String from a slice of Parameters of type Array.
-func FanOut(params []v1beta1.Param) Combinations {
+func FanOut(matrix v1beta1.Matrix) Combinations {
 	var combinations Combinations
-	for _, parameter := range params {
+	for _, parameter := range matrix.Params {
 		combinations = combinations.fanOut(parameter)
 	}
 	return combinations
