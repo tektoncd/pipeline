@@ -537,33 +537,51 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 	ctx = config.ToContext(ctx, cfg)
 	task := parse.MustParseV1beta1Task(t, taskYAMLString)
 	taskRef := &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
-	taskYAML := strings.Join([]string{
-		"kind: Task",
-		"apiVersion: tekton.dev/v1beta1",
-		taskYAMLString,
-	}, "\n")
-	resolved := test.NewResolvedResource([]byte(taskYAML), nil, sampleConfigSource.DeepCopy(), nil)
-	requester := test.NewRequester(resolved, nil)
-	tr := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef:            taskRef,
-			ServiceAccountName: "default",
-		},
-	}
-	fn := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default")
 
-	resolvedTask, resolvedConfigSource, err := fn(ctx, taskRef.Name)
-	if err != nil {
-		t.Fatalf("failed to call pipelinefn: %s", err.Error())
-	}
+	testcases := []struct {
+		name     string
+		taskYAML string
+	}{{
+		name: "v1beta1 task",
+		taskYAML: strings.Join([]string{
+			"kind: Task",
+			"apiVersion: tekton.dev/v1beta1",
+			taskYAMLString,
+		}, "\n"),
+	}, {
+		name: "v1 task",
+		taskYAML: strings.Join([]string{
+			"kind: Task",
+			"apiVersion: tekton.dev/v1",
+			taskYAMLString,
+		}, "\n"),
+	}}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			resolved := test.NewResolvedResource([]byte(tc.taskYAML), nil /* annotations */, sampleConfigSource.DeepCopy(), nil /* data error */)
+			requester := test.NewRequester(resolved, nil)
+			tr := &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+				Spec: v1beta1.TaskRunSpec{
+					TaskRef:            taskRef,
+					ServiceAccountName: "default",
+				},
+			}
+			fn := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default")
 
-	if d := cmp.Diff(sampleConfigSource, resolvedConfigSource); d != "" {
-		t.Errorf("configSources did not match: %s", diff.PrintWantGot(d))
-	}
+			resolvedTask, resolvedConfigSource, err := fn(ctx, taskRef.Name)
+			if err != nil {
+				t.Fatalf("failed to call pipelinefn: %s", err.Error())
+			}
 
-	if d := cmp.Diff(task, resolvedTask); d != "" {
-		t.Errorf("resolvedTask did not match: %s", diff.PrintWantGot(d))
+			if d := cmp.Diff(sampleConfigSource, resolvedConfigSource); d != "" {
+				t.Errorf("configSources did not match: %s", diff.PrintWantGot(d))
+			}
+
+			if d := cmp.Diff(task, resolvedTask); d != "" {
+				t.Errorf("resolvedTask did not match: %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 

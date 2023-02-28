@@ -292,33 +292,50 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 	ctx = config.ToContext(ctx, cfg)
 	pipeline := parse.MustParseV1beta1Pipeline(t, pipelineYAMLString)
 	pipelineRef := &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
-	pipelineYAML := strings.Join([]string{
-		"kind: Pipeline",
-		"apiVersion: tekton.dev/v1beta1",
-		pipelineYAMLString,
-	}, "\n")
 
-	resolved := test.NewResolvedResource([]byte(pipelineYAML), nil, sampleConfigSource.DeepCopy(), nil)
-	requester := test.NewRequester(resolved, nil)
-	fn := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        pipelineRef,
-			ServiceAccountName: "default",
-		},
-	})
+	testcases := []struct {
+		name         string
+		pipelineYAML string
+	}{{
+		name: "v1beta1 pipeline",
+		pipelineYAML: strings.Join([]string{
+			"kind: Pipeline",
+			"apiVersion: tekton.dev/v1beta1",
+			pipelineYAMLString,
+		}, "\n"),
+	}, {
+		name: "v1 pipeline",
+		pipelineYAML: strings.Join([]string{
+			"kind: Pipeline",
+			"apiVersion: tekton.dev/v1",
+			pipelineYAMLString,
+		}, "\n"),
+	}}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			resolved := test.NewResolvedResource([]byte(tc.pipelineYAML), nil /* annotations */, sampleConfigSource.DeepCopy(), nil /* data error */)
+			requester := test.NewRequester(resolved, nil)
+			fn := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef:        pipelineRef,
+					ServiceAccountName: "default",
+				},
+			})
 
-	resolvedPipeline, resolvedConfigSource, err := fn(ctx, pipelineRef.Name)
-	if err != nil {
-		t.Fatalf("failed to call pipelinefn: %s", err.Error())
-	}
+			resolvedPipeline, resolvedConfigSource, err := fn(ctx, pipelineRef.Name)
+			if err != nil {
+				t.Fatalf("failed to call pipelinefn: %s", err.Error())
+			}
 
-	if diff := cmp.Diff(pipeline, resolvedPipeline); diff != "" {
-		t.Error(diff)
-	}
+			if diff := cmp.Diff(pipeline, resolvedPipeline); diff != "" {
+				t.Error(diff)
+			}
 
-	if d := cmp.Diff(sampleConfigSource, resolvedConfigSource); d != "" {
-		t.Errorf("configsource did not match: %s", diff.PrintWantGot(d))
+			if d := cmp.Diff(sampleConfigSource, resolvedConfigSource); d != "" {
+				t.Errorf("configsource did not match: %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 

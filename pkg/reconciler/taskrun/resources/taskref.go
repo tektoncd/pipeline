@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -190,12 +191,26 @@ func resolveTask(ctx context.Context, resolver remote.Resolver, name string, kin
 
 // readRuntimeObjectAsTask tries to convert a generic runtime.Object
 // into a v1beta1.TaskObject type so that its meta and spec fields
-// can be read. An error is returned if the given object is not a
+// can be read. v1 object will be converted to v1beta1 and returned.
+// An error is returned if the given object is not a
 // TaskObject or if there is an error validating or upgrading an
 // older TaskObject into its v1beta1 equivalent.
+// TODO(#5541): convert v1beta1 obj to v1 once we use v1 as the stored version
 func readRuntimeObjectAsTask(ctx context.Context, obj runtime.Object) (v1beta1.TaskObject, error) {
-	if task, ok := obj.(v1beta1.TaskObject); ok {
-		return task, nil
+	switch obj := obj.(type) {
+	case v1beta1.TaskObject:
+		return obj, nil
+	case *v1.Task:
+		t := &v1beta1.Task{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Task",
+				APIVersion: "tekton.dev/v1beta1",
+			},
+		}
+		if err := t.ConvertFrom(ctx, obj); err != nil {
+			return nil, err
+		}
+		return t, nil
 	}
 	return nil, errors.New("resource is not a task")
 }
