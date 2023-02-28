@@ -14,7 +14,6 @@ linters-settings:
     packages-with-error-message:
     - k8s.io/apimachinery/pkg/util/clock: 'use k8s.io/utils/clock or k8s.io/utils/clock/testing'
 linters:
-  disable-all: true
   enable:
   - bodyclose
   - decorder
@@ -36,11 +35,24 @@ linters:
   - unused
   - usestdlibvars
   - whitespace
+  disable:
+  - ineffassign
+  - staticcheck
+# Enabling presets means that new linters that we automatically adopt new
+# linters that augment a preset. This also opts us in for replacement linters
+# when a linter is deprecated.
 presets:
+  - bugs
+  - comment
+  - complexity
+  - error
   - format
   - import
   - metalinter
   - module
+  - performance
+  - sql
+  - style
   - test
   - unused
 output:
