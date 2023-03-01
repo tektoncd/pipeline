@@ -685,8 +685,8 @@ spec:
 			// This PipelineRun is in progress now and the status should reflect that
 			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
 
-			verifyCustomRunOrRunStatusesCount(t, pipeline.RunControllerName, reconciledRun.Status, 1)
-			verifyCustomRunOrRunStatusesNames(t, pipeline.RunControllerName, reconciledRun.Status, tc.wantRun.Name)
+			verifyCustomRunOrRunStatusesCount(t, run, reconciledRun.Status, 1)
+			verifyCustomRunOrRunStatusesNames(t, run, reconciledRun.Status, tc.wantRun.Name)
 		})
 	}
 }
@@ -865,8 +865,8 @@ spec:
 			// This PipelineRun is in progress now and the status should reflect that
 			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
 
-			verifyCustomRunOrRunStatusesCount(t, pipeline.CustomRunControllerName, reconciledRun.Status, 1)
-			verifyCustomRunOrRunStatusesNames(t, pipeline.CustomRunControllerName, reconciledRun.Status, tc.wantRun.Name)
+			verifyCustomRunOrRunStatusesCount(t, customRun, reconciledRun.Status, 1)
+			verifyCustomRunOrRunStatusesNames(t, customRun, reconciledRun.Status, tc.wantRun.Name)
 		})
 	}
 }
@@ -1528,14 +1528,14 @@ status:
 	expectedChildReferences := []v1beta1.ChildStatusReference{{
 		TypeMeta: runtime.TypeMeta{
 			APIVersion: v1beta1.SchemeGroupVersion.String(),
-			Kind:       "TaskRun",
+			Kind:       taskRun,
 		},
 		Name:             taskRunName,
 		PipelineTaskName: "hello-world-1",
 	}, {
 		TypeMeta: runtime.TypeMeta{
 			APIVersion: v1beta1.SchemeGroupVersion.String(),
-			Kind:       "Run",
+			Kind:       run,
 		},
 		Name:             runName,
 		PipelineTaskName: "hello-world-1",
@@ -2157,7 +2157,7 @@ func TestReconcileOnCancelledRunFinallyPipelineRunWithFinalTaskAndRetries(t *tes
 	prs[0].Status.ChildReferences = append(prs[0].Status.ChildReferences, v1beta1.ChildStatusReference{
 		TypeMeta: runtime.TypeMeta{
 			APIVersion: v1beta1.SchemeGroupVersion.String(),
-			Kind:       "TaskRun",
+			Kind:       taskRun,
 		},
 		Name:             "test-pipeline-run-cancelled-run-finally-hello-world",
 		PipelineTaskName: "hello-world-1",
@@ -2338,7 +2338,7 @@ status:
 			initialChildReferences: []v1beta1.ChildStatusReference{{
 				TypeMeta: runtime.TypeMeta{
 					APIVersion: v1beta1.SchemeGroupVersion.String(),
-					Kind:       "TaskRun",
+					Kind:       taskRun,
 				},
 				Name:             "test-pipeline-run-stopped-run-finally-hello-world",
 				PipelineTaskName: "hello-world-1",
@@ -2362,7 +2362,7 @@ status:
 			initialChildReferences: []v1beta1.ChildStatusReference{{
 				TypeMeta: runtime.TypeMeta{
 					APIVersion: v1beta1.SchemeGroupVersion.String(),
-					Kind:       "TaskRun",
+					Kind:       taskRun,
 				},
 				Name:             "test-pipeline-run-stopped-run-finally-hello-world",
 				PipelineTaskName: "hello-world-1",
@@ -5263,7 +5263,7 @@ status:
 		{
 			TypeMeta: runtime.TypeMeta{
 				APIVersion: v1beta1.SchemeGroupVersion.String(),
-				Kind:       "TaskRun",
+				Kind:       taskRun,
 			},
 			Name:             taskRunDone.Name,
 			PipelineTaskName: "hello-world-1",
@@ -5377,7 +5377,7 @@ status:
 	runsStatus := make(map[string]*v1beta1.PipelineRunRunStatus)
 
 	for _, cr := range reconciledRun.Status.ChildReferences {
-		if cr.Kind == "TaskRun" {
+		if cr.Kind == taskRun {
 			trStatusForPipelineRun := &v1beta1.PipelineRunTaskRunStatus{
 				PipelineTaskName: cr.PipelineTaskName,
 				WhenExpressions:  cr.WhenExpressions,
@@ -5389,7 +5389,7 @@ status:
 			}
 
 			taskRunsStatus[cr.Name] = trStatusForPipelineRun
-		} else if cr.Kind == "CustomRun" {
+		} else if cr.Kind == customRun {
 			rStatusForPipelineRun := &v1beta1.PipelineRunRunStatus{
 				PipelineTaskName: cr.PipelineTaskName,
 				WhenExpressions:  cr.WhenExpressions,
@@ -5458,10 +5458,10 @@ spec:
 		t.Fatalf("Expected 2 ChildReferences but got %d", len(reconciledRun.Status.ChildReferences))
 	}
 	for _, cr := range reconciledRun.Status.ChildReferences {
-		if cr.Kind == "TaskRun" {
+		if cr.Kind == taskRun {
 			taskRunName = cr.Name
 		}
-		if cr.Kind == "CustomRun" {
+		if cr.Kind == customRun {
 			customRunName = cr.Name
 		}
 	}
@@ -5494,8 +5494,8 @@ spec:
 	// Verify that the reconciler found the existing TaskRun and Run instead of creating new ones.
 	verifyTaskRunStatusesCount(t, reconciledRun.Status, 1)
 	verifyTaskRunStatusesNames(t, reconciledRun.Status, taskRunName)
-	verifyCustomRunOrRunStatusesCount(t, pipeline.CustomRunControllerName, reconciledRun.Status, 1)
-	verifyCustomRunOrRunStatusesNames(t, pipeline.CustomRunControllerName, reconciledRun.Status, customRunName)
+	verifyCustomRunOrRunStatusesCount(t, customRun, reconciledRun.Status, 1)
+	verifyCustomRunOrRunStatusesNames(t, customRun, reconciledRun.Status, customRunName)
 }
 
 func TestReconcilePipeline_FinalTasks(t *testing.T) {
@@ -5577,14 +5577,14 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 		expectedChildReferences: []v1beta1.ChildStatusReference{{
 			TypeMeta: runtime.TypeMeta{
 				APIVersion: v1beta1.SchemeGroupVersion.String(),
-				Kind:       "TaskRun",
+				Kind:       taskRun,
 			},
 			Name:             "task-run-dag-task",
 			PipelineTaskName: "dag-task-1",
 		}, {
 			TypeMeta: runtime.TypeMeta{
 				APIVersion: v1beta1.SchemeGroupVersion.String(),
-				Kind:       "TaskRun",
+				Kind:       taskRun,
 			},
 			Name:             "task-run-final-task",
 			PipelineTaskName: "final-task-1",
@@ -5656,14 +5656,14 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 		expectedChildReferences: []v1beta1.ChildStatusReference{{
 			TypeMeta: runtime.TypeMeta{
 				APIVersion: v1beta1.SchemeGroupVersion.String(),
-				Kind:       "TaskRun",
+				Kind:       taskRun,
 			},
 			Name:             "task-run-dag-task",
 			PipelineTaskName: "dag-task-1",
 		}, {
 			TypeMeta: runtime.TypeMeta{
 				APIVersion: v1beta1.SchemeGroupVersion.String(),
-				Kind:       "TaskRun",
+				Kind:       taskRun,
 			},
 			Name:             "task-run-final-task",
 			PipelineTaskName: "final-task-1",
@@ -5737,14 +5737,14 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 		expectedChildReferences: []v1beta1.ChildStatusReference{{
 			TypeMeta: runtime.TypeMeta{
 				APIVersion: v1beta1.SchemeGroupVersion.String(),
-				Kind:       "TaskRun",
+				Kind:       taskRun,
 			},
 			Name:             "task-run-dag-task",
 			PipelineTaskName: "dag-task-1",
 		}, {
 			TypeMeta: runtime.TypeMeta{
 				APIVersion: v1beta1.SchemeGroupVersion.String(),
-				Kind:       "TaskRun",
+				Kind:       taskRun,
 			},
 			Name:             "task-run-final-task",
 			PipelineTaskName: "final-task-1",
@@ -5820,14 +5820,14 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 		expectedChildReferences: []v1beta1.ChildStatusReference{{
 			TypeMeta: runtime.TypeMeta{
 				APIVersion: v1beta1.SchemeGroupVersion.String(),
-				Kind:       "TaskRun",
+				Kind:       taskRun,
 			},
 			Name:             "task-run-dag-task-1",
 			PipelineTaskName: "dag-task-1",
 		}, {
 			TypeMeta: runtime.TypeMeta{
 				APIVersion: v1beta1.SchemeGroupVersion.String(),
-				Kind:       "TaskRun",
+				Kind:       taskRun,
 			},
 			Name:             "task-run-dag-task-2",
 			PipelineTaskName: "dag-task-2",
@@ -5894,7 +5894,7 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 		expectedChildReferences: []v1beta1.ChildStatusReference{{
 			TypeMeta: runtime.TypeMeta{
 				APIVersion: v1beta1.SchemeGroupVersion.String(),
-				Kind:       "TaskRun",
+				Kind:       taskRun,
 			},
 			Name:             "task-run-dag-task-1",
 			PipelineTaskName: "dag-task-1",
@@ -5983,7 +5983,7 @@ func checkTaskRunStatusFromChildRefs(ctx context.Context, t *testing.T, namespac
 	}
 
 	for _, childRef := range childRefs {
-		if childRef.Kind != "TaskRun" {
+		if childRef.Kind != taskRun {
 			continue
 		}
 		trName := childRef.Name
@@ -6031,7 +6031,7 @@ func getPipelineRun(pr, p string, status corev1.ConditionStatus, reason string, 
 			PipelineTaskName: k,
 			Name:             v,
 			TypeMeta: runtime.TypeMeta{
-				Kind:       "TaskRun",
+				Kind:       taskRun,
 				APIVersion: "tekton.dev/v1beta1",
 			},
 		})
@@ -7298,15 +7298,15 @@ status:
 func verifyTaskRunStatusesCount(t *testing.T, prStatus v1beta1.PipelineRunStatus, taskCount int) {
 	t.Helper()
 
-	if len(filterChildRefsForKind(prStatus.ChildReferences, "TaskRun")) != taskCount {
-		t.Errorf("Expected PipelineRun status ChildReferences to have %d tasks, but was %d", taskCount, len(filterChildRefsForKind(prStatus.ChildReferences, "TaskRun")))
+	if len(filterChildRefsForKind(prStatus.ChildReferences, taskRun)) != taskCount {
+		t.Errorf("Expected PipelineRun status ChildReferences to have %d tasks, but was %d", taskCount, len(filterChildRefsForKind(prStatus.ChildReferences, taskRun)))
 	}
 }
 func verifyTaskRunStatusesNames(t *testing.T, prStatus v1beta1.PipelineRunStatus, taskNames ...string) {
 	t.Helper()
 
 	tnMap := make(map[string]struct{})
-	for _, cr := range filterChildRefsForKind(prStatus.ChildReferences, "TaskRun") {
+	for _, cr := range filterChildRefsForKind(prStatus.ChildReferences, taskRun) {
 		tnMap[cr.Name] = struct{}{}
 	}
 
@@ -10157,11 +10157,11 @@ spec:
 	var runsCount, taskrunsCount, customrunsCount int
 	for _, childRef := range pr.Status.ChildReferences {
 		switch childRef.Kind {
-		case "TaskRun":
+		case taskRun:
 			taskrunsCount++
-		case "Run":
+		case run:
 			runsCount++
-		case "CustomRun":
+		case customRun:
 			customrunsCount++
 		}
 	}

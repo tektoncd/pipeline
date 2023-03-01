@@ -18,8 +18,10 @@ linters:
   - bodyclose
   - decorder
   - depguard
+  - dogsled
   - dupword
   - errcheck
+  - goconst
   - gocritic
   - gofmt
   - goimports
@@ -61,6 +63,8 @@ issues:
   exclude-rules:
   - path: _test\.go
     linters:
+    - goconst
+    - dogsled
     - errcheck
     - gosec
   - path: test/pipelinerun_test\.go

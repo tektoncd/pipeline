@@ -24,7 +24,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -201,11 +200,11 @@ func getChildObjectsFromPRStatusForTaskNames(ctx context.Context, prs v1beta1.Pi
 	for _, cr := range prs.ChildReferences {
 		if taskNames.Len() == 0 || taskNames.Has(cr.PipelineTaskName) {
 			switch cr.Kind {
-			case pipeline.TaskRunControllerName:
+			case taskRun:
 				trNames = append(trNames, cr.Name)
-			case pipeline.RunControllerName:
+			case run:
 				runNames = append(runNames, cr.Name)
-			case pipeline.CustomRunControllerName:
+			case customRun:
 				customRunNames = append(customRunNames, cr.Name)
 			default:
 				unknownChildKinds[cr.Name] = cr.Kind

@@ -292,7 +292,7 @@ func TestUpdatePipelineRunStatusFromChildRefs(t *testing.T) {
 			ChildReferences: []v1beta1.ChildStatusReference{{
 				TypeMeta: runtime.TypeMeta{
 					APIVersion: "tekton.dev/v1beta1",
-					Kind:       "CustomRun",
+					Kind:       customRun,
 				},
 				Name:             "pr-run-6-xxyyy",
 				PipelineTaskName: "task-6",
@@ -659,11 +659,11 @@ func TestValidateChildObjectsInPipelineRunStatus(t *testing.T) {
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
 					ChildReferences: []v1beta1.ChildStatusReference{
 						{
-							TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+							TypeMeta:         runtime.TypeMeta{Kind: taskRun},
 							Name:             "t1",
 							PipelineTaskName: "task-1",
 						}, {
-							TypeMeta:         runtime.TypeMeta{Kind: "Run"},
+							TypeMeta:         runtime.TypeMeta{Kind: run},
 							Name:             "r1",
 							PipelineTaskName: "run-1",
 						}, {
@@ -683,11 +683,11 @@ func TestValidateChildObjectsInPipelineRunStatus(t *testing.T) {
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
 					ChildReferences: []v1beta1.ChildStatusReference{
 						{
-							TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+							TypeMeta:         runtime.TypeMeta{Kind: taskRun},
 							Name:             "t1",
 							PipelineTaskName: "task-1",
 						}, {
-							TypeMeta:         runtime.TypeMeta{Kind: "Run"},
+							TypeMeta:         runtime.TypeMeta{Kind: run},
 							Name:             "r1",
 							PipelineTaskName: "run-1",
 						},
