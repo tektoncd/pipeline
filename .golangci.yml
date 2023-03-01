@@ -19,6 +19,7 @@ linters-settings:
 linters:
   enable:
   - bodyclose
+  - containedctx
   - decorder
   - depguard
   - dogsled
@@ -73,6 +74,21 @@ issues:
   - path: test/pipelinerun_test\.go
     linters:
     - unused
+  - path: pkg/apis/config/feature_flags_test.go
+    linters:
+    - containedctx
+  - path: pkg/pipelinerunmetrics/injection.go
+    linters:
+    - containedctx
+  - path: pkg/pod/creds_init_test.go
+    linters:
+    - containedctx
+  - path: pkg/taskrunmetrics/injection.go
+    linters:
+    - containedctx
+  - path: test/controller.go
+    linters:
+    - containedctx
   max-issues-per-linter: 0
   max-same-issues: 0
   include:
