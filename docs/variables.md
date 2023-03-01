@@ -100,15 +100,6 @@ variable via `resources.inputs.<resourceName>.<variableName>` or
 | `httpsProxy` | The value of the resource's `httpsProxy` parameter. |
 | `noProxy` | The value of the resource's `noProxy` parameter. |
 
-#### Variables for the `Image` type
-
-| Variable | Description |
-| -------- | ----------- |
-| `name` | The name of the resource. |
-| `type` | Type value of `"image"`. |
-| `url` | The complete path to the image. |
-| `digest` | The digest of the image. |
-
 #### Variables for the `GCS` type
 
 | Variable | Description |
