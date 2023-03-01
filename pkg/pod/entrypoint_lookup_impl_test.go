@@ -197,6 +197,7 @@ func TestBuildCommandMap(t *testing.T) {
 		desc    string
 		idx     v1.ImageIndex
 		wantErr bool
+		want    map[string][]string
 	}{{
 		// Valid multi-platform image even though some platforms only differ by variant or osversion.
 		desc: "valid index",
@@ -226,6 +227,13 @@ func TestBuildCommandMap(t *testing.T) {
 				Platform: &v1.Platform{OS: "windows", Architecture: "amd64", OSVersion: "4.5.6"},
 			},
 		}),
+		want: map[string][]string{
+			"linux/amd64":         nil,
+			"linux/arm64/7":       nil,
+			"linux/arm64/8":       nil,
+			"windows/amd64:1.2.3": nil,
+			"windows/amd64:4.5.6": nil,
+		},
 	}, {
 		desc: "valid index, with dupes",
 		idx: mutate.AppendManifests(empty.Index, mutate.IndexAddendum{
@@ -239,6 +247,9 @@ func TestBuildCommandMap(t *testing.T) {
 				Platform: &v1.Platform{OS: "linux", Architecture: "amd64"},
 			},
 		}),
+		want: map[string][]string{
+			"linux/amd64": nil,
+		},
 	}, {
 		desc: "invalid index, dupes with different digests",
 		idx: mutate.AppendManifests(empty.Index, mutate.IndexAddendum{
@@ -253,12 +264,40 @@ func TestBuildCommandMap(t *testing.T) {
 			},
 		}),
 		wantErr: true,
+	}, {
+		desc: "valid index, with unknown platform",
+		idx: mutate.AppendManifests(empty.Index, mutate.IndexAddendum{
+			Add: img,
+			Descriptor: v1.Descriptor{
+				Platform: &v1.Platform{OS: "linux", Architecture: "amd64"},
+			},
+		}, mutate.IndexAddendum{
+			Add: img,
+			Descriptor: v1.Descriptor{
+				Platform: &v1.Platform{OS: "unknown", Architecture: "unknown"},
+			},
+		}),
+		want: map[string][]string{
+			"linux/amd64": nil,
+		},
+	}, {
+		desc: "valid index, only unknown platform",
+		idx: mutate.AppendManifests(empty.Index, mutate.IndexAddendum{
+			Add: img,
+			Descriptor: v1.Descriptor{
+				Platform: &v1.Platform{OS: "unknown", Architecture: "unknown"},
+			},
+		}),
+		want: map[string][]string{},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			_, err := buildCommandMap(c.idx, true)
+			got, err := buildCommandMap(c.idx, true)
 			gotErr := (err != nil)
 			if gotErr != c.wantErr {
 				t.Fatalf("got err: %v, want err: %t", err, c.wantErr)
+			}
+			if d := cmp.Diff(c.want, got); d != "" && !c.wantErr {
+				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}

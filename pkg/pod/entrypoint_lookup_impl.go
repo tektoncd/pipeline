@@ -139,6 +139,11 @@ func buildCommandMap(idx v1.ImageIndex, hasArgs bool) (map[string][]string, erro
 	}
 	for _, desc := range mf.Manifests {
 		plat := desc.Platform.String()
+		// skip unknown platforms.
+		// Docker uses these to store attestation data: https://docs.docker.com/build/attestations/attestation-storage/#examples
+		if plat == "unknown/unknown" {
+			continue
+		}
 		if got, found := platToDigest[plat]; found && got != desc.Digest {
 			return nil, fmt.Errorf("duplicate unique image found for platform: %s: found %s and %s", plat, got, desc.Digest)
 		}
