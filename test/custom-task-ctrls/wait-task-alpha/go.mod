@@ -5,9 +5,9 @@ go 1.18
 require (
 	github.com/google/go-cmp v0.5.9
 	github.com/tektoncd/pipeline v0.45.0
-	k8s.io/api v0.26.1
-	k8s.io/apimachinery v0.26.1
-	k8s.io/client-go v0.25.4
+	k8s.io/api v0.26.2
+	k8s.io/apimachinery v0.26.2
+	k8s.io/client-go v0.26.2
 	k8s.io/utils v0.0.0-20230202215443-34013725500c
 	knative.dev/pkg v0.0.0-20221123011842-b78020c16606
 )
@@ -62,7 +62,7 @@ require (
 	go.uber.org/automaxprocs v1.4.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
-	golang.org/x/net v0.6.0 // indirect
+	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/oauth2 v0.4.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
