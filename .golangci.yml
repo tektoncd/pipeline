@@ -1,18 +1,21 @@
 # Documentation: https://golangci-lint.run/usage/configuration/
 linters-settings:
   errcheck:
-    exclude: .errcheck.txt
+    exclude-functions:
+      - (*github.com/tektoncd/pipeline/vendor/go.uber.org/zap.SugaredLogger).Sync
+      - flag.Set
+      - os.Setenv
+      - logger.Sync
+      - fmt.Fprintf
+      - fmt.Fprintln
+      - (io.Closer).Close
+      - updateConfigMap
   gomodguard:
     blocked:
       modules:
         - github.com/ghodss/yaml:
             recommendations:
               - sigs.k8s.io/yaml
-  depguard:
-    list-type: denylist
-    include-go-root: false
-    packages-with-error-message:
-    - k8s.io/apimachinery/pkg/util/clock: 'use k8s.io/utils/clock or k8s.io/utils/clock/testing'
 linters:
   enable:
   - bodyclose
@@ -29,8 +32,8 @@ linters:
   - govet
   - misspell
   - revive
-  - typecheck
   - thelper
+  - typecheck
   - unconvert
   - unused
   - usestdlibvars
@@ -64,10 +67,6 @@ issues:
     - errcheck
     - gosec
   - path: test/pipelinerun_test\.go
-    linters:
-    - unused
-  - path: pkg/reconciler/pipelinerun/pipelinerun_test\.go
-    # This 11,000+ line file is too big for unused code detection.
     linters:
     - unused
   max-issues-per-linter: 0
