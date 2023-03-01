@@ -135,8 +135,7 @@ func viewRegister(cfg *config.Metrics) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	prunTag := []tag.Key{}
-	trunTag := []tag.Key{}
+	var prunTag []tag.Key
 	switch cfg.PipelinerunLevel {
 	case config.PipelinerunLevelAtPipelinerun:
 		prunTag = []tag.Key{pipelineTag, pipelinerunTag}
@@ -151,6 +150,7 @@ func viewRegister(cfg *config.Metrics) error {
 		return errors.New("invalid config for PipelinerunLevel: " + cfg.PipelinerunLevel)
 	}
 
+	var trunTag []tag.Key
 	switch cfg.TaskrunLevel {
 	case config.TaskrunLevelAtTaskrun:
 		trunTag = []tag.Key{taskTag, taskrunTag}

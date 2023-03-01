@@ -112,7 +112,7 @@ func viewRegister(cfg *config.Metrics) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	prunTag := []tag.Key{}
+	var prunTag []tag.Key
 
 	switch cfg.PipelinerunLevel {
 	case config.PipelinerunLevelAtPipelinerun:

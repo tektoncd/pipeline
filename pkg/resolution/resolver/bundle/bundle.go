@@ -113,7 +113,7 @@ func GetEntry(ctx context.Context, keychain authn.Keychain, opts RequestOptions)
 			obj, err := readTarLayer(layerMap[l.Digest.String()])
 			if err != nil {
 				// This could still be a raw layer so try to read it as that instead.
-				obj, err = readRawLayer(layers[idx])
+				obj, _ = readRawLayer(layers[idx])
 			}
 			return &ResolvedResource{
 				data: obj,

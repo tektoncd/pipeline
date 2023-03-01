@@ -266,7 +266,7 @@ func filterResultsAndResources(results []v1beta1.PipelineResourceResult, specRes
 	for _, r := range results {
 		switch r.ResultType {
 		case v1beta1.TaskRunResultType:
-			taskRunResult := v1beta1.TaskRunResult{}
+			var taskRunResult v1beta1.TaskRunResult
 			if neededTypes[r.Key] == v1beta1.ResultsTypeString {
 				taskRunResult = v1beta1.TaskRunResult{
 					Name:  r.Key,

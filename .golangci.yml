@@ -41,7 +41,6 @@ linters:
   - usestdlibvars
   - whitespace
   disable:
-  - ineffassign
   - staticcheck
 # Enabling presets means that new linters that we automatically adopt new
 # linters that augment a preset. This also opts us in for replacement linters
@@ -70,6 +69,7 @@ issues:
     - dogsled
     - errcheck
     - gosec
+    - ineffassign
   - path: test/pipelinerun_test\.go
     linters:
     - unused
