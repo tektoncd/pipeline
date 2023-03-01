@@ -1,8 +1,0 @@
-(*github.com/tektoncd/pipeline/vendor/go.uber.org/zap.SugaredLogger).Sync
-flag.Set
-os.Setenv
-logger.Sync
-fmt.Fprintf
-fmt.Fprintln
-(io.Closer).Close
-updateConfigMap
