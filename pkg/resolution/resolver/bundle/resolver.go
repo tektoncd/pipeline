@@ -94,7 +94,7 @@ func (r *Resolver) Resolve(ctx context.Context, params []pipelinev1beta1.Param) 
 		return nil, err
 	}
 	namespace := common.RequestNamespace(ctx)
-	kc, err := k8schain.New(ctx, r.kubeClientSet, k8schain.Options{
+	kc, _ := k8schain.New(ctx, r.kubeClientSet, k8schain.Options{
 		Namespace:          namespace,
 		ServiceAccountName: opts.ServiceAccount,
 	})
