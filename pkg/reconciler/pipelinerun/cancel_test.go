@@ -22,7 +22,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	_ "github.com/tektoncd/pipeline/pkg/pipelinerunmetrics/fake" // Make sure the pipelinerunmetrics are setup
@@ -62,7 +61,7 @@ func TestCancelPipelineRun(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
 				ChildReferences: []v1beta1.ChildStatusReference{{
-					TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+					TypeMeta:         runtime.TypeMeta{Kind: taskRun},
 					Name:             "t1",
 					PipelineTaskName: "task-1",
 				}},
@@ -80,11 +79,11 @@ func TestCancelPipelineRun(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
 				ChildReferences: []v1beta1.ChildStatusReference{{
-					TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+					TypeMeta:         runtime.TypeMeta{Kind: taskRun},
 					Name:             "t1",
 					PipelineTaskName: "task-1",
 				}, {
-					TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+					TypeMeta:         runtime.TypeMeta{Kind: taskRun},
 					Name:             "t2",
 					PipelineTaskName: "task-2",
 				}},
@@ -102,11 +101,11 @@ func TestCancelPipelineRun(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
 				ChildReferences: []v1beta1.ChildStatusReference{{
-					TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+					TypeMeta:         runtime.TypeMeta{Kind: taskRun},
 					Name:             "t1",
 					PipelineTaskName: "task-1",
 				}, {
-					TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+					TypeMeta:         runtime.TypeMeta{Kind: taskRun},
 					Name:             "t2",
 					PipelineTaskName: "task-2",
 				}},
@@ -125,11 +124,11 @@ func TestCancelPipelineRun(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
 				ChildReferences: []v1beta1.ChildStatusReference{{
-					TypeMeta:         runtime.TypeMeta{Kind: "CustomRun"},
+					TypeMeta:         runtime.TypeMeta{Kind: customRun},
 					Name:             "t1",
 					PipelineTaskName: "task-1",
 				}, {
-					TypeMeta:         runtime.TypeMeta{Kind: "CustomRun"},
+					TypeMeta:         runtime.TypeMeta{Kind: customRun},
 					Name:             "t2",
 					PipelineTaskName: "task-2",
 				}},
@@ -148,11 +147,11 @@ func TestCancelPipelineRun(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
 				ChildReferences: []v1beta1.ChildStatusReference{{
-					TypeMeta:         runtime.TypeMeta{Kind: "CustomRun"},
+					TypeMeta:         runtime.TypeMeta{Kind: customRun},
 					Name:             "t1",
 					PipelineTaskName: "task-1",
 				}, {
-					TypeMeta:         runtime.TypeMeta{Kind: "CustomRun"},
+					TypeMeta:         runtime.TypeMeta{Kind: customRun},
 					Name:             "t2",
 					PipelineTaskName: "task-2",
 				}},
@@ -171,22 +170,22 @@ func TestCancelPipelineRun(t *testing.T) {
 			Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
 				ChildReferences: []v1beta1.ChildStatusReference{
 					{
-						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+						TypeMeta:         runtime.TypeMeta{Kind: taskRun},
 						Name:             "t1",
 						PipelineTaskName: "task-1",
 					},
 					{
-						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+						TypeMeta:         runtime.TypeMeta{Kind: taskRun},
 						Name:             "t2",
 						PipelineTaskName: "task-2",
 					},
 					{
-						TypeMeta:         runtime.TypeMeta{Kind: pipeline.RunControllerName},
+						TypeMeta:         runtime.TypeMeta{Kind: run},
 						Name:             "r1",
 						PipelineTaskName: "run-1",
 					},
 					{
-						TypeMeta:         runtime.TypeMeta{Kind: pipeline.RunControllerName},
+						TypeMeta:         runtime.TypeMeta{Kind: run},
 						Name:             "r2",
 						PipelineTaskName: "run-2",
 					},
@@ -211,22 +210,22 @@ func TestCancelPipelineRun(t *testing.T) {
 			Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
 				ChildReferences: []v1beta1.ChildStatusReference{
 					{
-						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+						TypeMeta:         runtime.TypeMeta{Kind: taskRun},
 						Name:             "t1",
 						PipelineTaskName: "task-1",
 					},
 					{
-						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+						TypeMeta:         runtime.TypeMeta{Kind: taskRun},
 						Name:             "t2",
 						PipelineTaskName: "task-2",
 					},
 					{
-						TypeMeta:         runtime.TypeMeta{Kind: pipeline.RunControllerName},
+						TypeMeta:         runtime.TypeMeta{Kind: run},
 						Name:             "r1",
 						PipelineTaskName: "run-1",
 					},
 					{
-						TypeMeta:         runtime.TypeMeta{Kind: pipeline.RunControllerName},
+						TypeMeta:         runtime.TypeMeta{Kind: run},
 						Name:             "r2",
 						PipelineTaskName: "run-2",
 					},
@@ -249,22 +248,22 @@ func TestCancelPipelineRun(t *testing.T) {
 			Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
 				ChildReferences: []v1beta1.ChildStatusReference{
 					{
-						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+						TypeMeta:         runtime.TypeMeta{Kind: taskRun},
 						Name:             "t1",
 						PipelineTaskName: "task-1",
 					},
 					{
-						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+						TypeMeta:         runtime.TypeMeta{Kind: taskRun},
 						Name:             "t2",
 						PipelineTaskName: "task-2",
 					},
 					{
-						TypeMeta:         runtime.TypeMeta{Kind: pipeline.CustomRunControllerName},
+						TypeMeta:         runtime.TypeMeta{Kind: customRun},
 						Name:             "cr1",
 						PipelineTaskName: "customrun-1",
 					},
 					{
-						TypeMeta:         runtime.TypeMeta{Kind: pipeline.CustomRunControllerName},
+						TypeMeta:         runtime.TypeMeta{Kind: customRun},
 						Name:             "cr2",
 						PipelineTaskName: "customrun-2",
 					},
@@ -393,7 +392,7 @@ func TestGetChildObjectsFromPRStatusForTaskNames(t *testing.T) {
 				ChildReferences: []v1beta1.ChildStatusReference{{
 					TypeMeta: runtime.TypeMeta{
 						APIVersion: v1alpha1.SchemeGroupVersion.String(),
-						Kind:       pipeline.RunControllerName,
+						Kind:       run,
 					},
 					Name:             "r1",
 					PipelineTaskName: "run-1",
@@ -409,7 +408,7 @@ func TestGetChildObjectsFromPRStatusForTaskNames(t *testing.T) {
 				ChildReferences: []v1beta1.ChildStatusReference{{
 					TypeMeta: runtime.TypeMeta{
 						APIVersion: v1beta1.SchemeGroupVersion.String(),
-						Kind:       pipeline.CustomRunControllerName,
+						Kind:       customRun,
 					},
 					Name:             "r1",
 					PipelineTaskName: "run-1",

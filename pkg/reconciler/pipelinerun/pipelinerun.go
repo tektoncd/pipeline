@@ -136,6 +136,16 @@ const (
 	ReasonResourceVerificationFailed = "ResourceVerificationFailed"
 )
 
+// constants used as kind descriptors for various types of runs; these constants
+// match their corresponding controller names. Given that it's odd to use a
+// "ControllerName" const in describing the type of run, we import these
+// constants (for consistency) but rename them (for ergonomic semantics).
+const (
+	taskRun   = pipeline.TaskRunControllerName
+	customRun = pipeline.CustomRunControllerName
+	run       = pipeline.RunControllerName
+)
+
 // Reconciler implements controller.Reconciler for Configuration resources.
 type Reconciler struct {
 	KubeClientSet     kubernetes.Interface
@@ -1333,7 +1343,7 @@ func validateChildObjectsInPipelineRunStatus(ctx context.Context, prs v1beta1.Pi
 
 	for _, cr := range prs.ChildReferences {
 		switch cr.Kind {
-		case "TaskRun", "Run", "CustomRun":
+		case taskRun, run, customRun:
 			continue
 		default:
 			err = multierror.Append(err, fmt.Errorf("child with name %s has unknown kind %s", cr.Name, cr.Kind))
@@ -1379,16 +1389,16 @@ func filterRunsForPipelineRunStatus(logger *zap.SugaredLogger, pr *v1beta1.Pipel
 		names = append(names, runObj.GetObjectMeta().GetName())
 		taskLabels = append(taskLabels, runObj.GetObjectMeta().GetLabels()[pipeline.PipelineTaskLabelKey])
 
-		switch run := runObj.(type) {
+		switch r := runObj.(type) {
 		case *v1beta1.CustomRun:
-			statuses = append(statuses, &run.Status)
+			statuses = append(statuses, &r.Status)
 			// We can't just get the gvk from the run's TypeMeta because that isn't populated for resources created through the fake client.
-			gvks = append(gvks, v1beta1.SchemeGroupVersion.WithKind(pipeline.CustomRunControllerName))
+			gvks = append(gvks, v1beta1.SchemeGroupVersion.WithKind(customRun))
 		case *v1alpha1.Run:
-			crStatus := runv1beta1.FromRunStatus(run.Status)
+			crStatus := runv1beta1.FromRunStatus(r.Status)
 			statuses = append(statuses, &crStatus)
 			// We can't just get the gvk from the run's TypeMeta because that isn't populated for resources created through the fake client.
-			gvks = append(gvks, v1alpha1.SchemeGroupVersion.WithKind(pipeline.RunControllerName))
+			gvks = append(gvks, v1alpha1.SchemeGroupVersion.WithKind(run))
 		}
 	}
 
@@ -1425,7 +1435,7 @@ func updatePipelineRunStatusFromChildRefs(logger *zap.SugaredLogger, pr *v1beta1
 			childRefByName[tr.Name] = &v1beta1.ChildStatusReference{
 				TypeMeta: runtime.TypeMeta{
 					APIVersion: v1beta1.SchemeGroupVersion.String(),
-					Kind:       pipeline.TaskRunControllerName,
+					Kind:       taskRun,
 				},
 				Name:             tr.Name,
 				PipelineTaskName: pipelineTaskName,

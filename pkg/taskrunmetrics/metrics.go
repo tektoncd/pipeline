@@ -40,6 +40,8 @@ import (
 	"knative.dev/pkg/metrics"
 )
 
+const anonymous = "anonymous"
+
 var (
 	pipelinerunTag = tag.MustNewKey("pipelinerun")
 	pipelineTag    = tag.MustNewKey("pipeline")
@@ -297,7 +299,7 @@ func (r *Recorder) DurationAndCount(ctx context.Context, tr *v1beta1.TaskRun, be
 		duration = tr.Status.CompletionTime.Sub(tr.Status.StartTime.Time)
 	}
 
-	taskName := "anonymous"
+	taskName := anonymous
 	if tr.Spec.TaskRef != nil {
 		taskName = tr.Spec.TaskRef.Name
 	}
@@ -409,7 +411,7 @@ func (r *Recorder) RecordPodLatency(ctx context.Context, pod *corev1.Pod, tr *v1
 	}
 
 	latency := scheduledTime.Sub(pod.CreationTimestamp.Time)
-	taskName := "anonymous"
+	taskName := anonymous
 	if tr.Spec.TaskRef != nil {
 		taskName = tr.Spec.TaskRef.Name
 	}
@@ -438,7 +440,7 @@ func (r *Recorder) CloudEvents(ctx context.Context, tr *v1beta1.TaskRun) error {
 		return fmt.Errorf("ignoring the metrics recording for %s , failed to initialize the metrics recorder", tr.Name)
 	}
 
-	taskName := "anonymous"
+	taskName := anonymous
 	if tr.Spec.TaskRef != nil {
 		taskName = tr.Spec.TaskRef.Name
 	}
