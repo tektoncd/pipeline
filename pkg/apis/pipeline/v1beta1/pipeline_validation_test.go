@@ -3135,6 +3135,236 @@ func TestContextInvalid(t *testing.T) {
 	}
 }
 
+func TestContextValidMatrix(t *testing.T) {
+	tests := []struct {
+		name  string
+		tasks []PipelineTask
+	}{{
+		name: "valid string context variable for Pipeline name",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipeline.name)"}},
+				}}},
+		}},
+	}, {
+		name: "valid string context variable for PipelineRun name",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipelineRun.name)"}},
+				}}},
+		}},
+	}, {
+		name: "valid string context variable for PipelineRun namespace",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipelineRun.namespace)"}},
+				}}},
+		}},
+	}, {
+		name: "valid string context variable for PipelineRun uid",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipelineRun.uid)"}},
+				}}},
+		}},
+	}, {
+		name: "valid array context variables for Pipeline and PipelineRun names",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipeline.name)", "and", "$(context.pipelineRun.name)"}},
+				}}},
+		}},
+	}, {
+		name: "valid string context variable for PipelineTask retries",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param", Value: ParamValue{StringVal: "$(context.pipelineTask.retries)"},
+				}}},
+		}},
+	}, {
+		name: "valid array context variable for PipelineTask retries",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipelineTask.retries)"}},
+				}}},
+		}},
+	}, {
+		name: "valid string context variable for Pipeline name in include params",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: &Matrix{
+				Include: []MatrixInclude{{
+					Name: "build-1",
+					Params: []Param{{
+						Name: "a-param-mat", Value: ParamValue{Type: ParamTypeString, StringVal: "$(context.pipeline.name)"}}},
+				}}},
+		}},
+	}, {
+		name: "valid string context variable for PipelineTask retries in matrix include",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: &Matrix{
+				Include: []MatrixInclude{{
+					Name: "build-1",
+					Params: []Param{{
+						Name: "a-param-mat", Value: ParamValue{Type: ParamTypeString, StringVal: "$(context.pipelineTask.retries)"}}},
+				}}},
+		}},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validatePipelineContextVariables(tt.tasks); err != nil {
+				t.Errorf("Pipeline.validatePipelineContextVariables() returned error for valid pipeline context variables: %v", err)
+			}
+		})
+	}
+}
+
+func TestContextInvalidMatrix(t *testing.T) {
+	tests := []struct {
+		name          string
+		tasks         []PipelineTask
+		expectedError apis.FieldError
+	}{{
+		name: "invalid string context variable for pipeline",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param-foo", Value: ParamValue{ArrayVal: []string{"$(context.pipeline.missing)"}},
+				}}},
+		}},
+		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
+			Message: `non-existent variable in "$(context.pipeline.missing)"`,
+			Paths:   []string{"value"},
+		}),
+	}, {
+		name: "invalid string context variable for pipelineRun",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param-foo", Value: ParamValue{ArrayVal: []string{"$(context.pipelineRun.missing)"}},
+				}}},
+		}},
+		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
+			Message: `non-existent variable in "$(context.pipelineRun.missing)"`,
+			Paths:   []string{"value"},
+		}),
+	}, {
+		name: "invalid string context variable for pipelineTask",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param-foo", Value: ParamValue{ArrayVal: []string{"$(context.pipelineTask.missing)"}},
+				}}},
+		}},
+		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
+			Message: `non-existent variable in "$(context.pipelineTask.missing)"`,
+			Paths:   []string{"value"},
+		}),
+	}, {
+		name: "invalid array context variables for pipeline, pipelineTask and pipelineRun",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param", Value: ParamValue{ArrayVal: []string{"$(context.pipeline.missing)", "$(context.pipelineTask.missing)", "$(context.pipelineRun.missing)"}},
+				}}},
+		}},
+		expectedError: *apis.ErrGeneric(`non-existent variable in "$(context.pipeline.missing)"`, "value").
+			Also(apis.ErrGeneric(`non-existent variable in "$(context.pipelineRun.missing)"`, "value")).
+			Also(apis.ErrGeneric(`non-existent variable in "$(context.pipelineTask.missing)"`, "value")),
+	}, {
+		name: "invalid string context variable for pipeline in include matrix",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: &Matrix{
+				Include: []MatrixInclude{{
+					Name: "build-1",
+					Params: []Param{{
+						Name: "a-param-foo", Value: ParamValue{Type: ParamTypeString, StringVal: "$(context.pipeline.missing)"}}},
+				}}},
+		}},
+		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
+			Message: `non-existent variable in "$(context.pipeline.missing)"`,
+			Paths:   []string{"value"},
+		}),
+	}, {
+		name: "invalid string context variable for pipelineRun in include matrix",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: &Matrix{
+				Include: []MatrixInclude{{
+					Name: "build-1",
+					Params: []Param{{
+						Name: "a-param-foo", Value: ParamValue{Type: ParamTypeString, StringVal: "$(context.pipelineRun.missing)"}}},
+				}}},
+		}},
+		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
+			Message: `non-existent variable in "$(context.pipelineRun.missing)"`,
+			Paths:   []string{"value"},
+		}),
+	}, {
+		name: "invalid string context variable for pipelineTask include matrix",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: &Matrix{
+				Include: []MatrixInclude{{
+					Name: "build-1",
+					Params: []Param{{
+						Name: "a-param-foo", Value: ParamValue{Type: ParamTypeString, StringVal: "$(context.pipelineTask.missing)"}}},
+				}}},
+		}},
+		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
+			Message: `non-existent variable in "$(context.pipelineTask.missing)"`,
+			Paths:   []string{"value"},
+		}),
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validatePipelineContextVariables(tt.tasks)
+			if err == nil {
+				t.Errorf("Pipeline.validatePipelineContextVariables() did not return error for invalid pipeline parameters: %s", tt.tasks[0].Params)
+			}
+			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("PipelineSpec.Validate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestPipelineTasksExecutionStatus(t *testing.T) {
 	tests := []struct {
 		name          string
