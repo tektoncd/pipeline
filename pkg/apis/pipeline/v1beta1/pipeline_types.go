@@ -161,34 +161,6 @@ type EmbeddedTask struct {
 	TaskSpec `json:",inline,omitempty"`
 }
 
-// Matrix is used to fan out Tasks in a Pipeline
-type Matrix struct {
-	// Params is a list of parameters used to fan out the pipelineTask
-	// Params takes only `Parameters` of type `"array"`
-	// Each array element is supplied to the `PipelineTask` by substituting `params` of type `"string"` in the underlying `Task`.
-	// The names of the `params` in the `Matrix` must match the names of the `params` in the underlying `Task` that they will be substituting.
-	// +listType=atomic
-	Params Params `json:"params,omitempty"`
-
-	// Include is a list of MatrixInclude which allows passing in specific combinations of Parameters into the Matrix.
-	// Note that Include is in preview mode and not yet supported.
-	// +optional
-	// +listType=atomic
-	Include []MatrixInclude `json:"include,omitempty"`
-}
-
-// MatrixInclude allows passing in a specific combinations of Parameters into the Matrix.
-// Note this struct is in preview mode and not yet supported
-type MatrixInclude struct {
-	// Name the specified combination
-	Name string `json:"name,omitempty"`
-
-	// Params takes only `Parameters` of type `"string"`
-	// The names of the `params` must match the names of the `params` in the underlying `Task`
-	// +listType=atomic
-	Params Params `json:"params,omitempty"`
-}
-
 // PipelineTask defines a task in a Pipeline, passing inputs from both
 // Params and from the output of previous tasks.
 type PipelineTask struct {
@@ -322,17 +294,7 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 
 // IsMatrixed return whether pipeline task is matrixed
 func (pt *PipelineTask) IsMatrixed() bool {
-	return pt.Matrix != nil && (pt.Matrix.MatrixHasParams() || pt.Matrix.MatrixHasInclude())
-}
-
-// MatrixHasInclude return whether matrix has Include
-func (matrix *Matrix) MatrixHasInclude() bool {
-	return matrix != nil && matrix.Include != nil && len(matrix.Include) > 0
-}
-
-// MatrixHasParams return whether matrix has Params
-func (matrix *Matrix) MatrixHasParams() bool {
-	return matrix != nil && matrix.Params != nil && len(matrix.Params) > 0
+	return pt.Matrix != nil && (pt.Matrix.hasParams() || pt.Matrix.hasInclude())
 }
 
 func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldError) {
@@ -340,19 +302,10 @@ func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldErr
 		// This is an alpha feature and will fail validation if it's used in a pipeline spec
 		// when the enable-api-fields feature gate is anything but "alpha".
 		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "matrix", config.AlphaAPIFields))
-		errs = errs.Also(pt.validateMatrixCombinationsCount(ctx))
+		errs = errs.Also(pt.Matrix.validateCombinationsCount(ctx))
 	}
 	errs = errs.Also(validateParameterInOneOfMatrixOrParams(pt.Matrix, pt.Params))
-	errs = errs.Also(validateParamTypesInMatrix(pt.Matrix))
-	return errs
-}
-
-func (pt *PipelineTask) validateMatrixCombinationsCount(ctx context.Context) (errs *apis.FieldError) {
-	matrixCombinationsCount := pt.GetMatrixCombinationsCount()
-	maxMatrixCombinationsCount := config.FromContextOrDefaults(ctx).Defaults.DefaultMaxMatrixCombinationsCount
-	if matrixCombinationsCount > maxMatrixCombinationsCount {
-		errs = errs.Also(apis.ErrOutOfBoundsValue(matrixCombinationsCount, 0, maxMatrixCombinationsCount, "matrix"))
-	}
+	errs = errs.Also(pt.Matrix.validateParamTypes())
 	return errs
 }
 
@@ -374,18 +327,6 @@ func (pt PipelineTask) validateEmbeddedOrType() (errs *apis.FieldError) {
 		}
 	}
 	return
-}
-
-// GetMatrixCombinationsCount returns the count of combinations of Parameters generated from the Matrix in PipelineTask.
-func (pt *PipelineTask) GetMatrixCombinationsCount() int {
-	if !pt.IsMatrixed() {
-		return 0
-	}
-	count := 1
-	for _, param := range pt.Matrix.Params {
-		count *= len(param.Value.ArrayVal)
-	}
-	return count
 }
 
 func (pt *PipelineTask) validateResultsFromMatrixedPipelineTasksNotConsumed(matrixedPipelineTasks sets.String) (errs *apis.FieldError) {
