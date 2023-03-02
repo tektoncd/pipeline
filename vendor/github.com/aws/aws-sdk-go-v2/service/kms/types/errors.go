@@ -27,7 +27,7 @@ func (e *AlreadyExistsException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *AlreadyExistsException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "AlreadyExistsException"
 	}
 	return *e.ErrorCodeOverride
@@ -60,7 +60,7 @@ func (e *CloudHsmClusterInUseException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *CloudHsmClusterInUseException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "CloudHsmClusterInUseException"
 	}
 	return *e.ErrorCodeOverride
@@ -122,7 +122,7 @@ func (e *CloudHsmClusterInvalidConfigurationException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *CloudHsmClusterInvalidConfigurationException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "CloudHsmClusterInvalidConfigurationException"
 	}
 	return *e.ErrorCodeOverride
@@ -154,7 +154,7 @@ func (e *CloudHsmClusterNotActiveException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *CloudHsmClusterNotActiveException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "CloudHsmClusterNotActiveException"
 	}
 	return *e.ErrorCodeOverride
@@ -181,7 +181,7 @@ func (e *CloudHsmClusterNotFoundException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *CloudHsmClusterNotFoundException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "CloudHsmClusterNotFoundException"
 	}
 	return *e.ErrorCodeOverride
@@ -216,7 +216,7 @@ func (e *CloudHsmClusterNotRelatedException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *CloudHsmClusterNotRelatedException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "CloudHsmClusterNotRelatedException"
 	}
 	return *e.ErrorCodeOverride
@@ -247,7 +247,7 @@ func (e *CustomKeyStoreHasCMKsException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *CustomKeyStoreHasCMKsException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "CustomKeyStoreHasCMKsException"
 	}
 	return *e.ErrorCodeOverride
@@ -300,7 +300,7 @@ func (e *CustomKeyStoreInvalidStateException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *CustomKeyStoreInvalidStateException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "CustomKeyStoreInvalidStateException"
 	}
 	return *e.ErrorCodeOverride
@@ -330,7 +330,7 @@ func (e *CustomKeyStoreNameInUseException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *CustomKeyStoreNameInUseException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "CustomKeyStoreNameInUseException"
 	}
 	return *e.ErrorCodeOverride
@@ -357,7 +357,7 @@ func (e *CustomKeyStoreNotFoundException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *CustomKeyStoreNotFoundException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "CustomKeyStoreNotFoundException"
 	}
 	return *e.ErrorCodeOverride
@@ -384,7 +384,7 @@ func (e *DependencyTimeoutException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *DependencyTimeoutException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "DependencyTimeoutException"
 	}
 	return *e.ErrorCodeOverride
@@ -410,7 +410,7 @@ func (e *DisabledException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *DisabledException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "DisabledException"
 	}
 	return *e.ErrorCodeOverride
@@ -438,7 +438,7 @@ func (e *ExpiredImportTokenException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *ExpiredImportTokenException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "ExpiredImportTokenException"
 	}
 	return *e.ErrorCodeOverride
@@ -466,7 +466,7 @@ func (e *IncorrectKeyException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *IncorrectKeyException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "IncorrectKeyException"
 	}
 	return *e.ErrorCodeOverride
@@ -494,7 +494,7 @@ func (e *IncorrectKeyMaterialException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *IncorrectKeyMaterialException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "IncorrectKeyMaterialException"
 	}
 	return *e.ErrorCodeOverride
@@ -524,7 +524,7 @@ func (e *IncorrectTrustAnchorException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *IncorrectTrustAnchorException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "IncorrectTrustAnchorException"
 	}
 	return *e.ErrorCodeOverride
@@ -550,7 +550,7 @@ func (e *InvalidAliasNameException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *InvalidAliasNameException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "InvalidAliasNameException"
 	}
 	return *e.ErrorCodeOverride
@@ -577,7 +577,7 @@ func (e *InvalidArnException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *InvalidArnException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "InvalidArnException"
 	}
 	return *e.ErrorCodeOverride
@@ -607,7 +607,7 @@ func (e *InvalidCiphertextException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *InvalidCiphertextException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "InvalidCiphertextException"
 	}
 	return *e.ErrorCodeOverride
@@ -633,7 +633,7 @@ func (e *InvalidGrantIdException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *InvalidGrantIdException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "InvalidGrantIdException"
 	}
 	return *e.ErrorCodeOverride
@@ -659,7 +659,7 @@ func (e *InvalidGrantTokenException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *InvalidGrantTokenException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "InvalidGrantTokenException"
 	}
 	return *e.ErrorCodeOverride
@@ -686,7 +686,7 @@ func (e *InvalidImportTokenException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *InvalidImportTokenException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "InvalidImportTokenException"
 	}
 	return *e.ErrorCodeOverride
@@ -727,7 +727,7 @@ func (e *InvalidKeyUsageException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *InvalidKeyUsageException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "InvalidKeyUsageException"
 	}
 	return *e.ErrorCodeOverride
@@ -754,7 +754,7 @@ func (e *InvalidMarkerException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *InvalidMarkerException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "InvalidMarkerException"
 	}
 	return *e.ErrorCodeOverride
@@ -781,7 +781,7 @@ func (e *KeyUnavailableException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *KeyUnavailableException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "KeyUnavailableException"
 	}
 	return *e.ErrorCodeOverride
@@ -808,7 +808,7 @@ func (e *KMSInternalException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *KMSInternalException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "KMSInternalException"
 	}
 	return *e.ErrorCodeOverride
@@ -836,7 +836,7 @@ func (e *KMSInvalidMacException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *KMSInvalidMacException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "KMSInvalidMacException"
 	}
 	return *e.ErrorCodeOverride
@@ -864,7 +864,7 @@ func (e *KMSInvalidSignatureException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *KMSInvalidSignatureException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "KMSInvalidSignatureException"
 	}
 	return *e.ErrorCodeOverride
@@ -903,7 +903,7 @@ func (e *KMSInvalidStateException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *KMSInvalidStateException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "KMSInvalidStateException"
 	}
 	return *e.ErrorCodeOverride
@@ -931,7 +931,7 @@ func (e *LimitExceededException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *LimitExceededException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "LimitExceededException"
 	}
 	return *e.ErrorCodeOverride
@@ -958,7 +958,7 @@ func (e *MalformedPolicyDocumentException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *MalformedPolicyDocumentException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "MalformedPolicyDocumentException"
 	}
 	return *e.ErrorCodeOverride
@@ -985,7 +985,7 @@ func (e *NotFoundException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *NotFoundException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "NotFoundException"
 	}
 	return *e.ErrorCodeOverride
@@ -1011,7 +1011,7 @@ func (e *TagException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *TagException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "TagException"
 	}
 	return *e.ErrorCodeOverride
@@ -1038,7 +1038,7 @@ func (e *UnsupportedOperationException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *UnsupportedOperationException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "UnsupportedOperationException"
 	}
 	return *e.ErrorCodeOverride
@@ -1066,7 +1066,7 @@ func (e *XksKeyAlreadyInUseException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *XksKeyAlreadyInUseException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "XksKeyAlreadyInUseException"
 	}
 	return *e.ErrorCodeOverride
@@ -1095,7 +1095,7 @@ func (e *XksKeyInvalidConfigurationException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *XksKeyInvalidConfigurationException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "XksKeyInvalidConfigurationException"
 	}
 	return *e.ErrorCodeOverride
@@ -1129,7 +1129,7 @@ func (e *XksKeyNotFoundException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *XksKeyNotFoundException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "XksKeyNotFoundException"
 	}
 	return *e.ErrorCodeOverride
@@ -1159,7 +1159,7 @@ func (e *XksProxyIncorrectAuthenticationCredentialException) ErrorMessage() stri
 	return *e.Message
 }
 func (e *XksProxyIncorrectAuthenticationCredentialException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "XksProxyIncorrectAuthenticationCredentialException"
 	}
 	return *e.ErrorCodeOverride
@@ -1189,7 +1189,7 @@ func (e *XksProxyInvalidConfigurationException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *XksProxyInvalidConfigurationException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "XksProxyInvalidConfigurationException"
 	}
 	return *e.ErrorCodeOverride
@@ -1220,7 +1220,7 @@ func (e *XksProxyInvalidResponseException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *XksProxyInvalidResponseException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "XksProxyInvalidResponseException"
 	}
 	return *e.ErrorCodeOverride
@@ -1249,7 +1249,7 @@ func (e *XksProxyUriEndpointInUseException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *XksProxyUriEndpointInUseException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "XksProxyUriEndpointInUseException"
 	}
 	return *e.ErrorCodeOverride
@@ -1278,7 +1278,7 @@ func (e *XksProxyUriInUseException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *XksProxyUriInUseException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "XksProxyUriInUseException"
 	}
 	return *e.ErrorCodeOverride
@@ -1308,7 +1308,7 @@ func (e *XksProxyUriUnreachableException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *XksProxyUriUnreachableException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "XksProxyUriUnreachableException"
 	}
 	return *e.ErrorCodeOverride
@@ -1337,7 +1337,7 @@ func (e *XksProxyVpcEndpointServiceInUseException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *XksProxyVpcEndpointServiceInUseException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "XksProxyVpcEndpointServiceInUseException"
 	}
 	return *e.ErrorCodeOverride
@@ -1368,7 +1368,7 @@ func (e *XksProxyVpcEndpointServiceInvalidConfigurationException) ErrorMessage()
 	return *e.Message
 }
 func (e *XksProxyVpcEndpointServiceInvalidConfigurationException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "XksProxyVpcEndpointServiceInvalidConfigurationException"
 	}
 	return *e.ErrorCodeOverride
@@ -1400,7 +1400,7 @@ func (e *XksProxyVpcEndpointServiceNotFoundException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *XksProxyVpcEndpointServiceNotFoundException) ErrorCode() string {
-	if e.ErrorCodeOverride == nil {
+	if e == nil || e.ErrorCodeOverride == nil {
 		return "XksProxyVpcEndpointServiceNotFoundException"
 	}
 	return *e.ErrorCodeOverride
