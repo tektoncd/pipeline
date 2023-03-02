@@ -111,10 +111,10 @@ github.com/aws/aws-sdk-go-v2/internal/shareddefaults
 github.com/aws/aws-sdk-go-v2/internal/strings
 github.com/aws/aws-sdk-go-v2/internal/sync/singleflight
 github.com/aws/aws-sdk-go-v2/internal/timeconv
-# github.com/aws/aws-sdk-go-v2/config v1.18.14
+# github.com/aws/aws-sdk-go-v2/config v1.18.15
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/config
-# github.com/aws/aws-sdk-go-v2/credentials v1.13.14
+# github.com/aws/aws-sdk-go-v2/credentials v1.13.15
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/credentials
 github.com/aws/aws-sdk-go-v2/credentials/ec2rolecreds
@@ -149,22 +149,22 @@ github.com/aws/aws-sdk-go-v2/service/ecrpublic/types
 # github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.23
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url
-# github.com/aws/aws-sdk-go-v2/service/kms v1.20.4
+# github.com/aws/aws-sdk-go-v2/service/kms v1.20.5
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/service/kms
 github.com/aws/aws-sdk-go-v2/service/kms/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/kms/types
-# github.com/aws/aws-sdk-go-v2/service/sso v1.12.3
+# github.com/aws/aws-sdk-go-v2/service/sso v1.12.4
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/service/sso
 github.com/aws/aws-sdk-go-v2/service/sso/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/sso/types
-# github.com/aws/aws-sdk-go-v2/service/ssooidc v1.14.3
+# github.com/aws/aws-sdk-go-v2/service/ssooidc v1.14.4
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/service/ssooidc
 github.com/aws/aws-sdk-go-v2/service/ssooidc/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/ssooidc/types
-# github.com/aws/aws-sdk-go-v2/service/sts v1.18.4
+# github.com/aws/aws-sdk-go-v2/service/sts v1.18.5
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/service/sts
 github.com/aws/aws-sdk-go-v2/service/sts/internal/endpoints
@@ -699,7 +699,7 @@ github.com/shurcooL/githubv4
 github.com/shurcooL/graphql
 github.com/shurcooL/graphql/ident
 github.com/shurcooL/graphql/internal/jsonutil
-# github.com/sigstore/sigstore v1.5.2
+# github.com/sigstore/sigstore v1.6.0
 ## explicit; go 1.18
 github.com/sigstore/sigstore/pkg/cryptoutils
 github.com/sigstore/sigstore/pkg/signature
@@ -749,7 +749,7 @@ github.com/stretchr/testify/require
 github.com/tektoncd/plumbing
 github.com/tektoncd/plumbing/cmd/combine
 github.com/tektoncd/plumbing/scripts
-# github.com/theupdateframework/go-tuf v0.5.2-0.20220930112810-3890c1e7ace4
+# github.com/theupdateframework/go-tuf v0.5.2
 ## explicit; go 1.18
 github.com/theupdateframework/go-tuf/encrypted
 # github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399
