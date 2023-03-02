@@ -535,31 +535,6 @@ func validatePipelineParametersVariablesInMatrixParameters(matrix []Param, prefi
 	return errs
 }
 
-// validateParamTypesInMatrix validates the type of parameter
-// for Matrix.Params and Matrix.Include.Params
-// Matrix.Params must be of type array. Matrix.Include.Params must be of type string.
-func validateParamTypesInMatrix(matrix *Matrix) (errs *apis.FieldError) {
-	if matrix != nil {
-		if matrix.MatrixHasInclude() {
-			for _, include := range matrix.Include {
-				for _, param := range include.Params {
-					if param.Value.Type != ParamTypeString {
-						errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("parameters of type string only are allowed, but got param type %s", string(param.Value.Type)), "").ViaFieldKey("matrix.include.params", param.Name))
-					}
-				}
-			}
-		}
-		if matrix.MatrixHasParams() {
-			for _, param := range matrix.Params {
-				if param.Value.Type != ParamTypeArray {
-					errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("parameters of type array only are allowed, but got param type %s", string(param.Value.Type)), "").ViaFieldKey("matrix.params", param.Name))
-				}
-			}
-		}
-	}
-	return errs
-}
-
 func validateParameterInOneOfMatrixOrParams(matrix *Matrix, params []Param) (errs *apis.FieldError) {
 	matrixParameterNames := sets.NewString()
 	if matrix != nil {

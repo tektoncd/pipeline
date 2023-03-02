@@ -193,7 +193,7 @@ func validatePipelineContextVariables(tasks []PipelineTask) *apis.FieldError {
 		var includeParams []Param
 		if task.IsMatrixed() {
 			matrixParams = task.Matrix.Params
-			if task.Matrix.MatrixHasInclude() {
+			if task.Matrix.hasInclude() {
 				for _, include := range task.Matrix.Include {
 					includeParams = include.Params
 				}
@@ -204,7 +204,7 @@ func validatePipelineContextVariables(tasks []PipelineTask) *apis.FieldError {
 			paramValues = append(paramValues, param.Value.ArrayVal...)
 		}
 
-		if task.Matrix.MatrixHasInclude() {
+		if task.Matrix.hasInclude() {
 			for _, param := range append(task.Params, includeParams...) {
 				paramValues = append(paramValues, param.Value.StringVal)
 			}

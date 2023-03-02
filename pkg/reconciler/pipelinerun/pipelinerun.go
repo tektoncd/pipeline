@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -40,7 +39,6 @@ import (
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
-	"github.com/tektoncd/pipeline/pkg/matrix"
 	"github.com/tektoncd/pipeline/pkg/pipelinerunmetrics"
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
@@ -834,9 +832,9 @@ func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.Resolved
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createTaskRuns")
 	defer span.End()
 	var taskRuns []*v1beta1.TaskRun
-	matrixCombinations := matrix.FanOut(*rpt.PipelineTask.Matrix).ToMap()
+	matrixCombinations := rpt.PipelineTask.Matrix.FanOut()
 	for i, taskRunName := range rpt.TaskRunNames {
-		params := matrixCombinations[strconv.Itoa(i)]
+		params := matrixCombinations[i]
 		taskRun, err := c.createTaskRun(ctx, taskRunName, params, rpt, pr, storageBasePath)
 		if err != nil {
 			return nil, err
@@ -909,9 +907,9 @@ func (c *Reconciler) createRunObjects(ctx context.Context, rpt *resources.Resolv
 	var runObjects []v1beta1.RunObject
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createRunObjects")
 	defer span.End()
-	matrixCombinations := matrix.FanOut(*rpt.PipelineTask.Matrix).ToMap()
+	matrixCombinations := rpt.PipelineTask.Matrix.FanOut()
 	for i, runObjectName := range rpt.RunObjectNames {
-		params := matrixCombinations[strconv.Itoa(i)]
+		params := matrixCombinations[i]
 		runObject, err := c.createRunObject(ctx, runObjectName, params, rpt, pr)
 		if err != nil {
 			return nil, err
