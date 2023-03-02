@@ -4118,10 +4118,33 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 					Operator: selection.In,
 					Values:   []string{"$(params.second-param[2])"},
 				}},
+				Matrix: &Matrix{
+					Params: []Param{
+						{Name: "final-task-first-param", Value: *NewStructuredValues("$(params.first-param[4])")},
+						{Name: "final-task-second-param", Value: *NewStructuredValues("$(params.second-param[4])")},
+					}},
 			}},
 		},
 		params:   []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
-		expected: fmt.Errorf("non-existent param references:[$(params.first-param[2]) $(params.first-param[3]) $(params.second-param[2]) $(params.second-param[3])]"),
+		expected: fmt.Errorf("non-existent param references:[$(params.first-param[2]) $(params.first-param[3]) $(params.first-param[4]) $(params.second-param[2]) $(params.second-param[3]) $(params.second-param[4])]"),
+	}, {
+		name: "parameter in matrix reference out of bound",
+		original: PipelineSpec{
+			Params: []ParamSpec{
+				{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+				{Name: "second-param", Type: ParamTypeArray},
+			},
+			Tasks: []PipelineTask{{
+				Matrix: &Matrix{
+					Params: []Param{
+						{Name: "first-task-first-param", Value: *NewStructuredValues("$(params.first-param[2])")},
+						{Name: "first-task-second-param", Value: *NewStructuredValues("static value")},
+					},
+				},
+			}},
+		},
+		params:   []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
+		expected: fmt.Errorf("non-existent param references:[$(params.first-param[2])]"),
 	}, {
 		name: "parameter references with bracket notation and special characters reference out of bound",
 		original: PipelineSpec{
