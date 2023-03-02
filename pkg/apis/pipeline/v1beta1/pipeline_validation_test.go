@@ -3358,14 +3358,11 @@ func enableFeatures(t *testing.T, features []string) func(context.Context) conte
 }
 
 func TestValidateParamArrayIndex_valid(t *testing.T) {
-	ctx := context.Background()
-	cfg := config.FromContextOrDefaults(ctx)
-	cfg.FeatureFlags.EnableAPIFields = config.BetaAPIFields
-	ctx = config.ToContext(ctx, cfg)
 	for _, tt := range []struct {
-		name     string
-		original PipelineSpec
-		params   []Param
+		name      string
+		original  PipelineSpec
+		params    []Param
+		apiFields string
 	}{{
 		name: "single parameter",
 		original: PipelineSpec{
@@ -3381,7 +3378,8 @@ func TestValidateParamArrayIndex_valid(t *testing.T) {
 				},
 			}},
 		},
-		params: []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
+		params:    []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
+		apiFields: config.BetaAPIFields,
 	}, {
 		name: "single parameter with when expression",
 		original: PipelineSpec{
@@ -3397,7 +3395,8 @@ func TestValidateParamArrayIndex_valid(t *testing.T) {
 				}},
 			}},
 		},
-		params: []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
+		params:    []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
+		apiFields: config.BetaAPIFields,
 	}, {
 		name: "pipeline parameter nested inside task parameter",
 		original: PipelineSpec{
@@ -3412,7 +3411,8 @@ func TestValidateParamArrayIndex_valid(t *testing.T) {
 				},
 			}},
 		},
-		params: nil, // no parameter values.
+		params:    nil, // no parameter values.
+		apiFields: config.BetaAPIFields,
 	}, {
 		name: "array parameter",
 		original: PipelineSpec{
@@ -3430,6 +3430,7 @@ func TestValidateParamArrayIndex_valid(t *testing.T) {
 		params: []Param{
 			{Name: "second-param", Value: *NewStructuredValues("second-value", "array")},
 		},
+		apiFields: config.BetaAPIFields,
 	}, {
 		name: "parameter evaluation with final tasks",
 		original: PipelineSpec{
@@ -3449,7 +3450,8 @@ func TestValidateParamArrayIndex_valid(t *testing.T) {
 				}},
 			}},
 		},
-		params: []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
+		params:    []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
+		apiFields: config.BetaAPIFields,
 	}, {
 		name: "parameter evaluation with both tasks and final tasks",
 		original: PipelineSpec{
@@ -3475,7 +3477,8 @@ func TestValidateParamArrayIndex_valid(t *testing.T) {
 				}},
 			}},
 		},
-		params: []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
+		params:    []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
+		apiFields: config.BetaAPIFields,
 	}, {
 		name: "parameter references with bracket notation and special characters",
 		original: PipelineSpec{
@@ -3499,6 +3502,7 @@ func TestValidateParamArrayIndex_valid(t *testing.T) {
 			{Name: "second/param", Value: *NewStructuredValues("second-value", "second-value-again")},
 			{Name: "fourth/param", Value: *NewStructuredValues("fourth-value", "fourth-value-again")},
 		},
+		apiFields: config.BetaAPIFields,
 	}, {
 		name: "single parameter in workspace subpath",
 		original: PipelineSpec{
@@ -3520,10 +3524,29 @@ func TestValidateParamArrayIndex_valid(t *testing.T) {
 				},
 			}},
 		},
-		params: []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
+		params:    []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
+		apiFields: config.BetaAPIFields,
+	}, {
+		name: "validation with alpha gate",
+		original: PipelineSpec{
+			Params: []ParamSpec{
+				{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+				{Name: "second-param", Type: ParamTypeString},
+			},
+			Tasks: []PipelineTask{{
+				Params: []Param{
+					{Name: "first-task-first-param", Value: *NewStructuredValues("$(params.first-param[1])")},
+					{Name: "first-task-second-param", Value: *NewStructuredValues("$(params.second-param[0])")},
+					{Name: "first-task-third-param", Value: *NewStructuredValues("static value")},
+				},
+			}},
+		},
+		params:    []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
+		apiFields: config.AlphaAPIFields,
 	},
 	} {
 		tt := tt // capture range variable
+		ctx := config.SetEnableAPIFields(context.Background(), tt.apiFields)
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := tt.original.ValidateParamArrayIndex(ctx, tt.params)
@@ -3535,15 +3558,12 @@ func TestValidateParamArrayIndex_valid(t *testing.T) {
 }
 
 func TestValidateParamArrayIndex_invalid(t *testing.T) {
-	ctx := context.Background()
-	cfg := config.FromContextOrDefaults(ctx)
-	cfg.FeatureFlags.EnableAPIFields = config.BetaAPIFields
-	ctx = config.ToContext(ctx, cfg)
 	for _, tt := range []struct {
-		name     string
-		original PipelineSpec
-		params   []Param
-		expected error
+		name      string
+		original  PipelineSpec
+		params    []Param
+		apiFields string
+		expected  error
 	}{{
 		name: "single parameter reference out of bound",
 		original: PipelineSpec{
@@ -3559,8 +3579,9 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 				},
 			}},
 		},
-		params:   []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
-		expected: fmt.Errorf("non-existent param references:[$(params.first-param[2]) $(params.second-param[2])]"),
+		params:    []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
+		apiFields: config.BetaAPIFields,
+		expected:  fmt.Errorf("non-existent param references:[$(params.first-param[2]) $(params.second-param[2])]"),
 	}, {
 		name: "single parameter reference with when expression out of bound",
 		original: PipelineSpec{
@@ -3576,8 +3597,9 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 				}},
 			}},
 		},
-		params:   []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
-		expected: fmt.Errorf("non-existent param references:[$(params.first-param[2]) $(params.second-param[2])]"),
+		params:    []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
+		apiFields: config.BetaAPIFields,
+		expected:  fmt.Errorf("non-existent param references:[$(params.first-param[2]) $(params.second-param[2])]"),
 	}, {
 		name: "pipeline parameter reference nested inside task parameter out of bound",
 		original: PipelineSpec{
@@ -3592,8 +3614,9 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 				},
 			}},
 		},
-		params:   nil, // no parameter values.
-		expected: fmt.Errorf("non-existent param references:[$(params.first-param[2]) $(params.second-param[2])]"),
+		params:    nil, // no parameter values.
+		apiFields: config.BetaAPIFields,
+		expected:  fmt.Errorf("non-existent param references:[$(params.first-param[2]) $(params.second-param[2])]"),
 	}, {
 		name: "array parameter reference out of bound",
 		original: PipelineSpec{
@@ -3611,7 +3634,8 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 		params: []Param{
 			{Name: "second-param", Value: *NewStructuredValues("second-value", "array")},
 		},
-		expected: fmt.Errorf("non-existent param references:[$(params.first-param[3]) $(params.second-param[4])]"),
+		apiFields: config.BetaAPIFields,
+		expected:  fmt.Errorf("non-existent param references:[$(params.first-param[3]) $(params.second-param[4])]"),
 	}, {
 		name: "object parameter reference out of bound",
 		original: PipelineSpec{
@@ -3631,7 +3655,8 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 		params: []Param{
 			{Name: "second-param", Value: *NewStructuredValues("second-value", "array")},
 		},
-		expected: fmt.Errorf("non-existent param references:[$(params.first-param[4]) $(params.second-param[4])]"),
+		apiFields: config.BetaAPIFields,
+		expected:  fmt.Errorf("non-existent param references:[$(params.first-param[4]) $(params.second-param[4])]"),
 	}, {
 		name: "parameter evaluation with final tasks reference out of bound",
 		original: PipelineSpec{
@@ -3651,8 +3676,9 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 				}},
 			}},
 		},
-		params:   []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
-		expected: fmt.Errorf("non-existent param references:[$(params.first-param[2]) $(params.second-param[2])]"),
+		params:    []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
+		apiFields: config.BetaAPIFields,
+		expected:  fmt.Errorf("non-existent param references:[$(params.first-param[2]) $(params.second-param[2])]"),
 	}, {
 		name: "parameter evaluation with both tasks and final tasks reference out of bound",
 		original: PipelineSpec{
@@ -3683,8 +3709,9 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 					}},
 			}},
 		},
-		params:   []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
-		expected: fmt.Errorf("non-existent param references:[$(params.first-param[2]) $(params.first-param[3]) $(params.first-param[4]) $(params.second-param[2]) $(params.second-param[3]) $(params.second-param[4])]"),
+		params:    []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
+		apiFields: config.BetaAPIFields,
+		expected:  fmt.Errorf("non-existent param references:[$(params.first-param[2]) $(params.first-param[3]) $(params.first-param[4]) $(params.second-param[2]) $(params.second-param[3]) $(params.second-param[4])]"),
 	}, {
 		name: "parameter in matrix reference out of bound",
 		original: PipelineSpec{
@@ -3701,8 +3728,9 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 				},
 			}},
 		},
-		params:   []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
-		expected: fmt.Errorf("non-existent param references:[$(params.first-param[2])]"),
+		params:    []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
+		apiFields: config.BetaAPIFields,
+		expected:  fmt.Errorf("non-existent param references:[$(params.first-param[2])]"),
 	}, {
 		name: "parameter references with bracket notation and special characters reference out of bound",
 		original: PipelineSpec{
@@ -3726,7 +3754,8 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 			{Name: "second/param", Value: *NewStructuredValues("second-value", "second-value-again")},
 			{Name: "fourth/param", Value: *NewStructuredValues("fourth-value", "fourth-value-again")},
 		},
-		expected: fmt.Errorf("non-existent param references:[$(params[\"first.param\"][2]) $(params[\"second/param\"][2]) $(params['fourth/param'][2]) $(params['third.param'][2])]"),
+		apiFields: config.BetaAPIFields,
+		expected:  fmt.Errorf("non-existent param references:[$(params[\"first.param\"][2]) $(params[\"second/param\"][2]) $(params['fourth/param'][2]) $(params['third.param'][2])]"),
 	}, {
 		name: "single parameter in workspace subpath reference out of bound",
 		original: PipelineSpec{
@@ -3748,13 +3777,57 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 				},
 			}},
 		},
-		params:   []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
-		expected: fmt.Errorf("non-existent param references:[$(params.first-param[2]) $(params.second-param[3])]"),
+		params:    []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
+		apiFields: config.BetaAPIFields,
+		expected:  fmt.Errorf("non-existent param references:[$(params.first-param[2]) $(params.second-param[3])]"),
+	}, {
+		name: "validation alpha feature gate",
+		original: PipelineSpec{
+			Params: []ParamSpec{
+				{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+				{Name: "second-param", Type: ParamTypeArray},
+			},
+			Tasks: []PipelineTask{{
+				Params: []Param{
+					{Name: "first-task-first-param", Value: *NewStructuredValues("$(params.first-param[2])")},
+					{Name: "first-task-second-param", Value: *NewStructuredValues("static value")},
+				},
+				Workspaces: []WorkspacePipelineTaskBinding{
+					{
+						Name:      "first-workspace",
+						Workspace: "first-workspace",
+						SubPath:   "$(params.second-param[3])",
+					},
+				},
+			}},
+		},
+		params:    []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
+		apiFields: config.AlphaAPIFields,
+		expected:  fmt.Errorf("non-existent param references:[$(params.first-param[2]) $(params.second-param[3])]"),
+	}, {
+		name: "stable gate not allowed",
+		original: PipelineSpec{
+			Params: []ParamSpec{
+				{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+				{Name: "second-param", Type: ParamTypeString},
+			},
+			Tasks: []PipelineTask{{
+				Params: []Param{
+					{Name: "first-task-first-param", Value: *NewStructuredValues("$(params.first-param[2])")},
+					{Name: "first-task-second-param", Value: *NewStructuredValues("$(params.second-param[2])")},
+					{Name: "first-task-third-param", Value: *NewStructuredValues("static value")},
+				},
+			}},
+		},
+		params:    []Param{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
+		apiFields: config.StableAPIFields,
+		expected:  fmt.Errorf(`invalid parameter expression %s: indexing into array params requires "enable-api-fields" feature gate to be "alpha" or "beta"`, []string{"$(params.first-param[2])", "$(params.second-param[2])"}),
 	},
 	} {
 		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+			ctx := config.SetEnableAPIFields(context.Background(), tt.apiFields)
 			err := tt.original.ValidateParamArrayIndex(ctx, tt.params)
 			if d := cmp.Diff(tt.expected.Error(), err.Error()); d != "" {
 				t.Errorf("ValidateParamArrayIndex() errors diff %s", diff.PrintWantGot(d))

@@ -430,10 +430,6 @@ func validateResultsFromMatrixedPipelineTasksNotConsumed(tasks []PipelineTask, f
 // error is returned when the array indexing reference is out of bound of the array param
 // e.g. if a param reference of $(params.array-param[2]) and the array param is of length 2.
 func (ps *PipelineSpec) ValidateParamArrayIndex(ctx context.Context, params Params) error {
-	if !config.CheckAlphaOrBetaAPIFields(ctx) {
-		return nil
-	}
-
 	// Collect all array params lengths
 	arrayParamsLengths := ps.Params.extractParamArrayLengths()
 	for k, v := range params.extractParamArrayLengths() {
@@ -469,6 +465,11 @@ func (ps *PipelineSpec) ValidateParamArrayIndex(ctx context.Context, params Para
 	arrayIndexParamRefs := []string{}
 	for _, p := range paramsRefs {
 		arrayIndexParamRefs = append(arrayIndexParamRefs, extractArrayIndexingParamRefs(p)...)
+	}
+
+	// if there are array indexing param references, the api feature gate needs to be set to `alpha` or `beta`
+	if len(arrayIndexParamRefs) > 0 && !config.CheckAlphaOrBetaAPIFields(ctx) {
+		return fmt.Errorf(`invalid parameter expression %s: indexing into array params requires "enable-api-fields" feature gate to be "alpha" or "beta"`, arrayIndexParamRefs)
 	}
 
 	return validateOutofBoundArrayParams(arrayIndexParamRefs, arrayParamsLengths)

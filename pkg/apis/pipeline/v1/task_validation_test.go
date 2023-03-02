@@ -1745,6 +1745,7 @@ func TestValidateParamArrayIndex(t *testing.T) {
 		name          string
 		params        []v1.Param
 		taskspec      *v1.TaskSpec
+		apiFields     string
 		expectedError error
 	}{{
 		name: "steps reference invalid",
@@ -1801,6 +1802,7 @@ func TestValidateParamArrayIndex(t *testing.T) {
 				}},
 			}},
 		},
+		apiFields:     config.BetaAPIFields,
 		expectedError: fmt.Errorf("non-existent param references:[%v]", strings.Join(stepsInvalidReferences, " ")),
 	}, {
 		name: "stepTemplate reference invalid",
@@ -1817,6 +1819,7 @@ func TestValidateParamArrayIndex(t *testing.T) {
 				Image: "$(params.array-params[3])",
 			},
 		},
+		apiFields:     config.BetaAPIFields,
 		expectedError: fmt.Errorf("non-existent param references:[%v]", "$(params.array-params[3])"),
 	}, {
 		name: "volumes reference invalid",
@@ -1879,6 +1882,7 @@ func TestValidateParamArrayIndex(t *testing.T) {
 			},
 			},
 		},
+		apiFields:     config.BetaAPIFields,
 		expectedError: fmt.Errorf("non-existent param references:[%v]", strings.Join(volumesInvalidReferences, " ")),
 	}, {
 		name: "workspaces reference invalid",
@@ -1895,6 +1899,7 @@ func TestValidateParamArrayIndex(t *testing.T) {
 				MountPath: "$(params.array-params[3])",
 			}},
 		},
+		apiFields:     config.BetaAPIFields,
 		expectedError: fmt.Errorf("non-existent param references:[%v]", "$(params.array-params[3])"),
 	}, {
 		name: "sidecar reference invalid",
@@ -1912,12 +1917,49 @@ func TestValidateParamArrayIndex(t *testing.T) {
 			},
 			},
 		},
+		apiFields:     config.BetaAPIFields,
+		expectedError: fmt.Errorf("non-existent param references:[%v]", "$(params.array-params[3])"),
+	}, {
+		name: "stable gate not allowed",
+		params: []v1.Param{{
+			Name:  "array-params",
+			Value: *v1.NewStructuredValues("bar", "foo"),
+		}},
+		taskspec: &v1.TaskSpec{
+			Params: []v1.ParamSpec{{
+				Name:    "array-params",
+				Default: v1.NewStructuredValues("bar", "foo"),
+			}},
+			Sidecars: []v1.Sidecar{{
+				Script: "$(params.array-params[3])",
+			},
+			},
+		},
+		apiFields:     config.StableAPIFields,
+		expectedError: fmt.Errorf(`invalid parameter expression %s: indexing into array params requires "enable-api-fields" feature gate to be "alpha" or "beta"`, []string{"$(params.array-params[3])"}),
+	}, {
+		name: "alpha gate allowed",
+		params: []v1.Param{{
+			Name:  "array-params",
+			Value: *v1.NewStructuredValues("bar", "foo"),
+		}},
+		taskspec: &v1.TaskSpec{
+			Params: []v1.ParamSpec{{
+				Name:    "array-params",
+				Default: v1.NewStructuredValues("bar", "foo"),
+			}},
+			Sidecars: []v1.Sidecar{{
+				Script: "$(params.array-params[3])",
+			},
+			},
+		},
+		apiFields:     config.AlphaAPIFields,
 		expectedError: fmt.Errorf("non-existent param references:[%v]", "$(params.array-params[3])"),
 	},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := config.ToContext(context.Background(), &config.Config{FeatureFlags: &config.FeatureFlags{EnableAPIFields: "alpha"}})
+			ctx := config.SetEnableAPIFields(context.Background(), tc.apiFields)
 			err := tc.taskspec.ValidateParamArrayIndex(ctx, tc.params)
 			if d := cmp.Diff(tc.expectedError.Error(), err.Error()); d != "" {
 				t.Errorf("validateParamArrayIndex() errors diff %s", diff.PrintWantGot(d))

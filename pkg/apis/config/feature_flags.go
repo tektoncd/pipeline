@@ -315,17 +315,17 @@ func NewFeatureFlagsFromConfigMap(config *corev1.ConfigMap) (*FeatureFlags, erro
 
 // EnableAlphaAPIFields enables alpha features in an existing context (for use in testing)
 func EnableAlphaAPIFields(ctx context.Context) context.Context {
-	return setEnableAPIFields(ctx, AlphaAPIFields)
+	return SetEnableAPIFields(ctx, AlphaAPIFields)
 }
 
 // EnableBetaAPIFields enables beta features in an existing context (for use in testing)
 func EnableBetaAPIFields(ctx context.Context) context.Context {
-	return setEnableAPIFields(ctx, BetaAPIFields)
+	return SetEnableAPIFields(ctx, BetaAPIFields)
 }
 
 // EnableStableAPIFields enables stable features in an existing context (for use in testing)
 func EnableStableAPIFields(ctx context.Context) context.Context {
-	return setEnableAPIFields(ctx, StableAPIFields)
+	return SetEnableAPIFields(ctx, StableAPIFields)
 }
 
 // CheckEnforceResourceVerificationMode returns true if the ResourceVerificationMode is EnforceResourceVerificationMode
@@ -348,7 +348,8 @@ func CheckAlphaOrBetaAPIFields(ctx context.Context) bool {
 	return cfg.FeatureFlags.EnableAPIFields == AlphaAPIFields || cfg.FeatureFlags.EnableAPIFields == BetaAPIFields
 }
 
-func setEnableAPIFields(ctx context.Context, want string) context.Context {
+// SetEnableAPIFields sets the config "enable-api-fields" to the "want" value
+func SetEnableAPIFields(ctx context.Context, want string) context.Context {
 	featureFlags, _ := NewFeatureFlagsFromMap(map[string]string{
 		"enable-api-fields": want,
 	})

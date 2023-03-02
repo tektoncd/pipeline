@@ -607,11 +607,6 @@ func isParamRefs(s string) bool {
 // - `trParams` are params from taskrun.
 // - `taskSpec` contains params declarations.
 func (ts *TaskSpec) ValidateParamArrayIndex(ctx context.Context, params Params) error {
-	cfg := config.FromContextOrDefaults(ctx)
-	if cfg.FeatureFlags.EnableAPIFields != config.AlphaAPIFields {
-		return nil
-	}
-
 	// Collect all array params lengths
 	arrayParamsLengths := ts.Params.extractParamArrayLengths()
 	for k, v := range params.extractParamArrayLengths() {
@@ -632,6 +627,11 @@ func (ts *TaskSpec) ValidateParamArrayIndex(ctx context.Context, params Params) 
 	arrayIndexParamRefs := []string{}
 	for _, p := range paramsRefs {
 		arrayIndexParamRefs = append(arrayIndexParamRefs, extractArrayIndexingParamRefs(p)...)
+	}
+
+	// if there are array indexing param references, the api feature gate needs to be set to `alpha` or `beta`
+	if len(arrayIndexParamRefs) > 0 && !config.CheckAlphaOrBetaAPIFields(ctx) {
+		return fmt.Errorf(`invalid parameter expression %s: indexing into array params requires "enable-api-fields" feature gate to be "alpha" or "beta"`, arrayIndexParamRefs)
 	}
 
 	return validateOutofBoundArrayParams(arrayIndexParamRefs, arrayParamsLengths)
