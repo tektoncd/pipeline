@@ -58,7 +58,7 @@ Further documentation available:
 ### v0.43
 
 - **Latest Release**: [v0.43.2][v0-43-2] (2023-01-10) ([docs][v0-43-2-docs], [examples][v0-43-2-examples])
-- **Initial Release**: [v0.43.0][v0-43-0] (2023-12-22)
+- **Initial Release**: [v0.43.0][v0-43-0] (2022-12-22)
 - **End of Life**: 2023-04-22
 - **Patch Releases**: [v0.43.0][v0-43-0], [v0.43.1][v0-43-1], [v0.43.2][v0-43-2]
  
@@ -76,6 +76,8 @@ Further documentation available:
 - **End of Life**: 2023-10-30
 - **Patch Releases**: [v0.41.0][v0-41-0], [v0.41.1][v0-41-1]
 
+## End of Life Releases
+
 ### v0.40
 
 - **Latest Release**: [v0.40.2][v0-40-2] (2022-10-03) ([docs][v0-40-2-docs], [examples][v0-40-2-examples])
@@ -89,8 +91,6 @@ Further documentation available:
 - **Initial Release**: [v0.39.0][v0-39-0] (2022-08-18)
 - **End of Life**: 2022-12-17
 - **Patch Releases**: [v0.39.0][v0-39-0]
-
-## End of Life Releases
 
 ### v0.38
 
