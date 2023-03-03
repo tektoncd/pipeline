@@ -325,7 +325,7 @@ github.com/go-git/go-billy/v5/helper/polyfill
 github.com/go-git/go-billy/v5/memfs
 github.com/go-git/go-billy/v5/osfs
 github.com/go-git/go-billy/v5/util
-# github.com/go-git/go-git/v5 v5.5.2
+# github.com/go-git/go-git/v5 v5.6.0
 ## explicit; go 1.13
 github.com/go-git/go-git/v5
 github.com/go-git/go-git/v5/config
@@ -647,10 +647,10 @@ github.com/opencontainers/image-spec/specs-go/v1
 # github.com/openzipkin/zipkin-go v0.3.0
 ## explicit; go 1.14
 github.com/openzipkin/zipkin-go/model
-# github.com/pjbgf/sha1cd v0.2.3
-## explicit; go 1.15
+# github.com/pjbgf/sha1cd v0.3.0
+## explicit; go 1.19
 github.com/pjbgf/sha1cd
-github.com/pjbgf/sha1cd/cgo
+github.com/pjbgf/sha1cd/internal
 github.com/pjbgf/sha1cd/ubc
 # github.com/pkg/errors v0.9.1
 ## explicit
