@@ -345,6 +345,60 @@ func TestTaskRunDefaulting(t *testing.T) {
 			"default-service-account": "tekton",
 			"default-pod-template":    "nodeSelector: { 'label': 'value' }",
 		},
+	}, {
+		name: "TaskRef with default resolver",
+		in: &v1beta1.TaskRun{
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{},
+			},
+		},
+		want: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{"app.kubernetes.io/managed-by": "tekton-pipelines"},
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Kind: "Task",
+					ResolverRef: v1beta1.ResolverRef{
+						Resolver: "git",
+					},
+				},
+				Timeout:            &metav1.Duration{Duration: time.Hour},
+				ServiceAccountName: "default",
+			},
+		},
+		defaults: map[string]string{
+			"default-resolver-type": "git",
+		},
+	}, {
+		name: "TaskRef user-provided resolver overwrites default resolver",
+		in: &v1beta1.TaskRun{
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					ResolverRef: v1beta1.ResolverRef{
+						Resolver: "custom resolver",
+					},
+				},
+			},
+		},
+		want: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{"app.kubernetes.io/managed-by": "tekton-pipelines"},
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Kind: "Task",
+					ResolverRef: v1beta1.ResolverRef{
+						Resolver: "custom resolver",
+					},
+				},
+				Timeout:            &metav1.Duration{Duration: time.Hour},
+				ServiceAccountName: "default",
+			},
+		},
+		defaults: map[string]string{
+			"default-resolver-type": "git",
+		},
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

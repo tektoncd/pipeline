@@ -82,3 +82,7 @@ data:
     # default-forbidden-env contains comma seperated environment variables that cannot be
     # overridden by podTemplate.
     default-forbidden-env:
+
+    # default-resolver-type contains the default resolver type to be used in the cluster,
+    # no default-resolver-type is specified by default
+    default-resolver-type:

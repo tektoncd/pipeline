@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -127,65 +128,116 @@ func TestGetPipelineSpec_Invalid(t *testing.T) {
 }
 
 func TestGetPipelineData_ResolutionSuccess(t *testing.T) {
-	pr := &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "mypipelinerun",
-		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{
-				ResolverRef: v1beta1.ResolverRef{
-					Resolver: "foo",
-					Params: []v1beta1.Param{{
-						Name: "bar",
-						Value: v1beta1.ParamValue{
-							Type:      v1beta1.ParamTypeString,
-							StringVal: "baz",
-						},
-					}},
-				},
-			},
-		},
-	}
-	sourceMeta := metav1.ObjectMeta{
+	sourceMeta := &metav1.ObjectMeta{
 		Name: "pipeline",
 	}
-	sourceSpec := v1beta1.PipelineSpec{
-		Tasks: []v1beta1.PipelineTask{{
-			Name: "pt1",
-			TaskRef: &v1beta1.TaskRef{
-				Kind: "Task",
-				Name: "tref",
-			},
-		}},
-	}
-	expectedConfigSource := &v1beta1.ConfigSource{
-		URI: "abc.com",
-		Digest: map[string]string{
-			"sha1": "a123",
-		},
+	sourceConfigSource := &v1beta1.ConfigSource{
+		URI:        "abc.com",
+		Digest:     map[string]string{"sha1": "a123"},
 		EntryPoint: "foo/bar",
 	}
 
-	getPipeline := func(ctx context.Context, n string) (v1beta1.PipelineObject, *v1beta1.ConfigSource, error) {
-		return &v1beta1.Pipeline{
-			ObjectMeta: *sourceMeta.DeepCopy(),
-			Spec:       *sourceSpec.DeepCopy(),
-		}, expectedConfigSource.DeepCopy(), nil
+	tests := []struct {
+		name               string
+		pr                 *v1beta1.PipelineRun
+		sourceMeta         *metav1.ObjectMeta
+		sourceSpec         *v1beta1.PipelineSpec
+		sourceConfigSource *v1beta1.ConfigSource
+		expectedSpec       *v1beta1.PipelineSpec
+		defaults           map[string]string
+	}{
+		{
+			name:               "resolve remote task with taskRef Name",
+			sourceMeta:         sourceMeta,
+			sourceConfigSource: sourceConfigSource,
+			pr: &v1beta1.PipelineRun{
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						ResolverRef: v1beta1.ResolverRef{
+							Resolver: "foo",
+						},
+					},
+				},
+			},
+			sourceSpec: &v1beta1.PipelineSpec{
+				Tasks: []v1beta1.PipelineTask{{
+					Name: "pt1",
+					TaskRef: &v1beta1.TaskRef{
+						Kind: "Task",
+						Name: "tref",
+					},
+				}},
+			},
+			expectedSpec: &v1beta1.PipelineSpec{
+				Tasks: []v1beta1.PipelineTask{{
+					Name: "pt1",
+					TaskRef: &v1beta1.TaskRef{
+						Kind: "Task",
+						Name: "tref",
+					},
+				}},
+			},
+		},
+		{
+			name:               "resolve remote task with taskRef resolver - default resolver configured",
+			sourceMeta:         sourceMeta,
+			sourceConfigSource: sourceConfigSource,
+			pr: &v1beta1.PipelineRun{
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						ResolverRef: v1beta1.ResolverRef{
+							Resolver: "foo",
+						},
+					},
+				},
+			},
+			sourceSpec: &v1beta1.PipelineSpec{
+				Tasks: []v1beta1.PipelineTask{{
+					Name:    "pt1",
+					TaskRef: &v1beta1.TaskRef{},
+				}},
+			},
+			expectedSpec: &v1beta1.PipelineSpec{
+				Tasks: []v1beta1.PipelineTask{{
+					Name: "pt1",
+					TaskRef: &v1beta1.TaskRef{
+						Kind: "Task",
+						ResolverRef: v1beta1.ResolverRef{
+							Resolver: "foo",
+						},
+					},
+				}},
+			},
+			defaults: map[string]string{
+				"default-resolver-type": "foo",
+			},
+		},
 	}
-	ctx := context.Background()
-	resolvedMeta, resolvedSpec, err := GetPipelineData(ctx, pr, getPipeline)
-	if err != nil {
-		t.Fatalf("Unexpected error getting mocked data: %v", err)
-	}
-	if sourceMeta.Name != resolvedMeta.Name {
-		t.Errorf("Expected name %q but resolved to %q", sourceMeta.Name, resolvedMeta.Name)
-	}
-	if d := cmp.Diff(sourceSpec, *resolvedSpec); d != "" {
-		t.Errorf(diff.PrintWantGot(d))
-	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := cfgtesting.SetDefaults(context.Background(), t, tc.defaults)
+			getPipeline := func(ctx context.Context, n string) (v1beta1.PipelineObject, *v1beta1.ConfigSource, error) {
+				return &v1beta1.Pipeline{
+					ObjectMeta: *tc.sourceMeta.DeepCopy(),
+					Spec:       *tc.sourceSpec.DeepCopy(),
+				}, tc.sourceConfigSource.DeepCopy(), nil
+			}
 
-	if d := cmp.Diff(expectedConfigSource, resolvedMeta.ConfigSource); d != "" {
-		t.Errorf("configsource did not match: %s", diff.PrintWantGot(d))
+			resolvedObjectMeta, resolvedPipelineSpec, err := GetPipelineData(ctx, tc.pr, getPipeline)
+			if err != nil {
+				t.Fatalf("did not expect error getting pipeline spec but got: %s", err)
+			}
+
+			if sourceMeta.Name != resolvedObjectMeta.Name {
+				t.Errorf("expected name %q but resolved to %q", sourceMeta.Name, resolvedObjectMeta.Name)
+			}
+			if d := cmp.Diff(tc.sourceConfigSource, resolvedObjectMeta.ConfigSource); d != "" {
+				t.Errorf("configSource did not match: %s", diff.PrintWantGot(d))
+			}
+			if d := cmp.Diff(tc.expectedSpec, resolvedPipelineSpec); d != "" {
+				t.Errorf("pipelineSpec did not match: %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 
