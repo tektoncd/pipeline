@@ -171,7 +171,8 @@ spec:
 	}
 }
 
-func TestPipelineRun(t *testing.T) {
+// TODO
+func TestPipelineRunaaa(t *testing.T) {
 	t.Parallel()
 	type tests struct {
 		name                   string
@@ -182,6 +183,28 @@ func TestPipelineRun(t *testing.T) {
 	}
 
 	tds := []tests{{
+		name: "fan-in and fan-out",
+		testSetup: func(ctx context.Context, t *testing.T, c *clients, namespace string, _ int) *v1beta1.Pipeline {
+			t.Helper()
+			tasks := getFanInFanOutTasks(t, namespace)
+			for _, task := range tasks {
+				if _, err := c.V1beta1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
+					t.Fatalf("Failed to create Task `%s`: %s", task.Name, err)
+				}
+			}
+
+			p := getFanInFanOutPipeline(t, namespace, tasks)
+			if _, err := c.V1beta1PipelineClient.Create(ctx, p, metav1.CreateOptions{}); err != nil {
+				t.Fatalf("Failed to create Pipeline `%s`: %s", p.Name, err)
+			}
+
+			return p
+		},
+		pipelineRunFunc:  getFanInFanOutPipelineRun,
+		expectedTaskRuns: []string{"create-file-kritis", "create-fan-out-1", "create-fan-out-2", "check-fan-in"},
+		// 1 from PipelineRun and 4 from Tasks defined in pipelinerun
+		expectedNumberOfEvents: 5,
+	}, {
 		name: "service account propagation and pipeline param",
 		testSetup: func(ctx context.Context, t *testing.T, c *clients, namespace string, index int) *v1beta1.Pipeline {
 			t.Helper()
@@ -553,6 +576,133 @@ spec:
 	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1beta1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 	}
+}
+
+func getFanInFanOutTasks(t *testing.T, namespace string) map[string]*v1beta1.Task {
+	t.Helper()
+	return map[string]*v1beta1.Task{
+		"create-file": parse.MustParseV1beta1Task(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  params:
+  - name: workspacepath-create
+  steps:
+  - args: ['-c', 'mkdir $(params.workspacepath-create)', 
+    'echo stuff > $(params.workspacepath-create)/stuff']
+    command: ['/bin/bash']
+    image: ubuntu
+    name: write-data-task-0-step-0
+  - args: ['-c', 'mkdir $(params.workspacepath-create)', 
+    'echo other > $(params.workspacepath-create)/other']
+    command: ['/bin/bash']
+    image: ubuntu
+    name: write-data-task-0-step-1
+  results:
+  - name: 
+`, helpers.ObjectNameForTest(t), namespace)),
+		"check-create-files-exists": parse.MustParseV1beta1Task(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  params:
+  - name: workspacepath-check
+  steps:
+  - args: ['-c', '[[ stuff == $(cat $(params.workspacepath-check)/stuff) ]]']
+    command: ['/bin/bash']
+    image: ubuntu
+    name: read-from-task-0
+  - args: ['-c', 'mkdir $(params.workspacepath-check)', 
+    'echo something > $(params.workspacepath-check)/something']
+    command: ['/bin/bash']
+    image: ubuntu
+    name: write-data-task-1
+`, helpers.ObjectNameForTest(t), namespace)),
+		"check-create-files-exists-2": parse.MustParseV1beta1Task(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  params:
+  - name: workspacepath-check
+  steps:
+  - args: ['-c', '[[ other == $(cat $(params.workspacepath-check)/other) ]]']
+    command: ['/bin/bash']
+    image: ubuntu
+    name: read-from-task-0
+  - args: ['-c', 'echo else > $(params.workspacepath-check)/else']
+    command: ['/bin/bash']
+    image: ubuntu
+    name: write-data-task-1
+`, helpers.ObjectNameForTest(t), namespace)),
+		"read-files": parse.MustParseV1beta1Task(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  params:
+  - name: workspacepath-read
+  steps:
+  - args: ['-c', '[[ something == $(cat $(params.workspacepath-read)/something) ]]']
+    command: ['/bin/bash']
+    image: ubuntu
+    name: read-from-task-0
+  - args: ['-c', '[[ else == $(cat $(params.workspacepath-read)/else) ]]']
+    command: ['/bin/bash']
+    image: ubuntu
+    name: read-from-task-1
+`, helpers.ObjectNameForTest(t), namespace)),
+	}
+}
+
+func getFanInFanOutPipeline(t *testing.T, namespace string, tasks map[string]*v1beta1.Task) *v1beta1.Pipeline {
+	t.Helper()
+	return parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  tasks:
+  - name: create-file-kritis
+    taskRef:
+      name: %s
+    params:
+    - name: workspacepath-create
+      value: brandnewspace
+  - name: create-fan-out-1
+    taskRef:
+      name: %s
+    params:
+    - name: workspacepath-check
+      value: brandnewspace
+  - name: create-fan-out-2
+    taskRef:
+      name: %s
+    params:
+    - name: workspacepath-check
+      value: brandnewspace
+  - name: check-fan-in
+    taskRef:
+      name: %s
+    params:
+    - name: workspacepath-read
+      value: readingspace
+`, helpers.ObjectNameForTest(t), namespace, tasks["create-file"].Name, tasks["check-create-files-exists"].Name,
+		tasks["check-create-files-exists-2"].Name, tasks["read-files"].Name))
+}
+
+func getFanInFanOutPipelineRun(t *testing.T, _ int, namespace string, pipelineName string) *v1beta1.PipelineRun {
+	t.Helper()
+	return parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: %s
+`, helpers.ObjectNameForTest(t), namespace, pipelineName))
 }
 
 func getPipelineRunServiceAccount(suffix int, namespace string) *corev1.ServiceAccount {
