@@ -86,7 +86,7 @@ the pipelines repo, a terminal window and a text editor.
 
 1. The YAMLs are now released! Anyone installing Tekton Pipelines will get the new version. Time to create a new GitHub release announcement:
 
-    1. Choose a name for the new release! The usual pattern is "< cat breed > < famous robot >" e.g. "Ragdoll Norby". Browse [the releases page](https://github.com/tektoncd/pipeline/releases) or run this command to check which names have already been used:
+    1. Choose a name for the new release! The usual pattern is "< cat breed > < famous robot >" e.g. "Ragdoll Norby". For LTS releases, add a suffix "LTS" in the name such as "< cat breed > < famous robot > LTS" e.g. "Ragdoll Norby LTS". Browse [the releases page](https://github.com/tektoncd/pipeline/releases) or run this command to check which names have already been used:
 
     ```bash
     curl \
