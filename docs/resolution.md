@@ -21,6 +21,8 @@ For new users getting started with Tekton Pipeline remote resolution, check out 
 These resolvers are enabled by setting the appropriate feature flag in the `resolvers-feature-flags`
 ConfigMap in the `tekton-pipelines-resolvers` namespace. See the [section in install.md](install.md#configuring-built-in-remote-task-and-pipeline-resolution) for details.
 
+The default resolver type can be configured by the `default-resolver-type` field in the `config-defaults` ConfigMap (`alpha` feature). See [additional-configs.md](./additional-configs.md) for details.
+
 ## Developer Howto: Writing a Resolver From Scratch
 
 For a developer getting started with writing a new Resolver, see

@@ -19,6 +19,7 @@ package v1beta1
 import (
 	"context"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"knative.dev/pkg/apis"
 )
 
@@ -31,6 +32,7 @@ func (p *Pipeline) SetDefaults(ctx context.Context) {
 
 // SetDefaults sets default values for the PipelineSpec's Params, Tasks, and Finally
 func (ps *PipelineSpec) SetDefaults(ctx context.Context) {
+	cfg := config.FromContextOrDefaults(ctx)
 	for i := range ps.Params {
 		ps.Params[i].SetDefaults(ctx)
 	}
@@ -39,6 +41,9 @@ func (ps *PipelineSpec) SetDefaults(ctx context.Context) {
 		if pt.TaskRef != nil {
 			if pt.TaskRef.Kind == "" {
 				pt.TaskRef.Kind = NamespacedTaskKind
+			}
+			if pt.TaskRef.Name == "" && pt.TaskRef.Resolver == "" {
+				pt.TaskRef.Resolver = ResolverName(cfg.Defaults.DefaultResolverType)
 			}
 		}
 		if pt.TaskSpec != nil {

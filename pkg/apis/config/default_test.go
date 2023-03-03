@@ -40,6 +40,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultServiceAccount:             "tekton",
 				DefaultManagedByLabelValue:        "something-else",
 				DefaultMaxMatrixCombinationsCount: 256,
+				DefaultResolverType:               "git",
 			},
 			fileName: config.GetDefaultsConfigName(),
 		},

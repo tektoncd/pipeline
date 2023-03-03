@@ -147,7 +147,7 @@ _In the above example the environment variable `TEST_TEKTON` will not be overrid
 
 ## Customizing basic execution parameters
 
-You can specify your own values that replace the default service account (`ServiceAccount`), timeout (`Timeout`), and Pod template (`PodTemplate`) values used by Tekton Pipelines in `TaskRun` and `PipelineRun` definitions. To do so, modify the ConfigMap `config-defaults` with your desired values.
+You can specify your own values that replace the default service account (`ServiceAccount`), timeout (`Timeout`), resolver (`Resolver`), and Pod template (`PodTemplate`) values used by Tekton Pipelines in `TaskRun` and `PipelineRun` definitions. To do so, modify the ConfigMap `config-defaults` with your desired values.
 
 The example below customizes the following:
 
@@ -156,9 +156,10 @@ The example below customizes the following:
 - the default `app.kubernetes.io/managed-by` label is applied to all Pods created to execute `TaskRuns`.
 - the default Pod template to include a node selector to select the node where the Pod will be scheduled by default. A list of supported fields is available [here](https://github.com/tektoncd/pipeline/blob/main/docs/podtemplates.md#supported-fields).
   For more information, see [`PodTemplate` in `TaskRuns`](./taskruns.md#specifying-a-pod-template) or [`PodTemplate` in `PipelineRuns`](./pipelineruns.md#specifying-a-pod-template).
-- the default `Workspace` configuration can be set for any `Workspaces` that a Task declares but that a TaskRun does not explicitly provide
+- the default `Workspace` configuration can be set for any `Workspaces` that a Task declares but that a TaskRun does not explicitly provide.
 - the default maximum combinations of `Parameters` in a `Matrix` that can be used to fan out a `PipelineTask`. For
 more information, see [`Matrix`](matrix.md).
+- the default resolver type to `git`.
 
 ```yaml
 apiVersion: v1
@@ -175,6 +176,7 @@ data:
   default-task-run-workspace-binding: |
     emptyDir: {}
   default-max-matrix-combinations-count: "1024"
+  default-resolver-type: "git"
 ```
 
 **Note:** The `_example` key in the provided [config-defaults.yaml](./../config/config-defaults.yaml)
@@ -288,6 +290,7 @@ Features currently in "alpha" are:
 | [Trusted Resources](./trusted-resources.md)                                                         | [TEP-0091](https://github.com/tektoncd/community/blob/main/teps/0091-trusted-resources.md)                                 | N/A                                                                  | `resource-verification-mode`  |
 | [`Provenance` field in Status](pipeline-api.md#provenance)                                          | [issue#5550](https://github.com/tektoncd/pipeline/issues/5550)                                                             | N/A                                                                  | `enable-provenance-in-status` |
 | [Larger Results via Sidecar Logs](#enabling-larger-results-using-sidecar-logs)                      | [TEP-0127](https://github.com/tektoncd/community/blob/main/teps/0127-larger-results-via-sidecar-logs.md)                   | [v0.43.0](https://github.com/tektoncd/pipeline/releases/tag/v0.43.0) | `results-from`                |
+| [Configure Default Resolver](./resolution.md#configuring-built-in-resolvers)                        | [TEP-0133](https://github.com/tektoncd/community/blob/main/teps/0133-configure-default-resolver.md)                        | N/A                                 |                                |
 
 ### Beta Features
 

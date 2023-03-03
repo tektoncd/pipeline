@@ -268,6 +268,48 @@ func TestPipelineRunDefaulting(t *testing.T) {
 			"default-service-account": "tekton",
 			"default-pod-template":    "nodeSelector: { 'label': 'value' }\nhostNetwork: true",
 		},
+	}, {
+		name: "PipelineRef uses default resolver",
+		in:   &v1beta1.PipelineRun{Spec: v1beta1.PipelineRunSpec{PipelineRef: &v1beta1.PipelineRef{}}},
+		want: &v1beta1.PipelineRun{
+			Spec: v1beta1.PipelineRunSpec{
+				ServiceAccountName: config.DefaultServiceAccountValue,
+				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+				PipelineRef: &v1beta1.PipelineRef{
+					ResolverRef: v1beta1.ResolverRef{
+						Resolver: "git",
+					},
+				},
+			},
+		},
+		defaults: map[string]string{
+			"default-resolver-type": "git",
+		},
+	}, {
+		name: "PipelineRef user-provided resolver overwrites default resolver",
+		in: &v1beta1.PipelineRun{
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					ResolverRef: v1beta1.ResolverRef{
+						Resolver: "hub",
+					},
+				},
+			},
+		},
+		want: &v1beta1.PipelineRun{
+			Spec: v1beta1.PipelineRunSpec{
+				ServiceAccountName: config.DefaultServiceAccountValue,
+				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+				PipelineRef: &v1beta1.PipelineRef{
+					ResolverRef: v1beta1.ResolverRef{
+						Resolver: "hub",
+					},
+				},
+			},
+		},
+		defaults: map[string]string{
+			"default-resolver-type": "git",
+		},
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

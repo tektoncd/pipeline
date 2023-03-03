@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	dfttesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
 )
@@ -37,9 +38,10 @@ func TestPipeline_SetDefaults(t *testing.T) {
 
 func TestPipelineSpec_SetDefaults(t *testing.T) {
 	cases := []struct {
-		desc string
-		ps   *v1.PipelineSpec
-		want *v1.PipelineSpec
+		desc     string
+		ps       *v1.PipelineSpec
+		want     *v1.PipelineSpec
+		defaults map[string]string
 	}{{
 		desc: "empty pipelineSpec must not change after setting defaults",
 		ps:   &v1.PipelineSpec{},
@@ -121,6 +123,54 @@ func TestPipelineSpec_SetDefaults(t *testing.T) {
 			}},
 		},
 	}, {
+		desc: "pipeline task with taskRef - with default resolver",
+		ps: &v1.PipelineSpec{
+			Tasks: []v1.PipelineTask{{
+				Name:    "foo",
+				TaskRef: &v1.TaskRef{},
+			}},
+		},
+		want: &v1.PipelineSpec{
+			Tasks: []v1.PipelineTask{{
+				Name: "foo",
+				TaskRef: &v1.TaskRef{
+					Kind: v1.NamespacedTaskKind,
+					ResolverRef: v1.ResolverRef{
+						Resolver: "git",
+					},
+				},
+			}},
+		},
+		defaults: map[string]string{
+			"default-resolver-type": "git",
+		},
+	}, {
+		desc: "pipeline task with taskRef - user-provided resolver overwrites default resolver",
+		ps: &v1.PipelineSpec{
+			Tasks: []v1.PipelineTask{{
+				Name: "foo",
+				TaskRef: &v1.TaskRef{
+					ResolverRef: v1.ResolverRef{
+						Resolver: "custom resolver",
+					},
+				},
+			}},
+		},
+		want: &v1.PipelineSpec{
+			Tasks: []v1.PipelineTask{{
+				Name: "foo",
+				TaskRef: &v1.TaskRef{
+					Kind: v1.NamespacedTaskKind,
+					ResolverRef: v1.ResolverRef{
+						Resolver: "custom resolver",
+					},
+				},
+			}},
+		},
+		defaults: map[string]string{
+			"default-resolver-type": "git",
+		},
+	}, {
 		desc: "final pipeline task with taskSpec - default param type must be " + string(v1.ParamTypeString),
 		ps: &v1.PipelineSpec{
 			Finally: []v1.PipelineTask{{
@@ -149,6 +199,9 @@ func TestPipelineSpec_SetDefaults(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.desc, func(t *testing.T) {
 			ctx := context.Background()
+			if len(tc.defaults) > 0 {
+				ctx = dfttesting.SetDefaults(context.Background(), t, tc.defaults)
+			}
 			tc.ps.SetDefaults(ctx)
 			if d := cmp.Diff(tc.want, tc.ps); d != "" {
 				t.Errorf("Mismatch of pipelineSpec after setting defaults: %s", diff.PrintWantGot(d))
