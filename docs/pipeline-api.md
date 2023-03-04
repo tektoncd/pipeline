@@ -2400,6 +2400,17 @@ Provenance
 <p>Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>spanContext</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>SpanContext contains tracing span context fields</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.PipelineRunTaskRunStatus">PipelineRunTaskRunStatus
@@ -5201,6 +5212,17 @@ Provenance
 <td>
 <em>(Optional)</em>
 <p>Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>spanContext</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>SpanContext contains tracing span context fields</p>
 </td>
 </tr>
 </tbody>
