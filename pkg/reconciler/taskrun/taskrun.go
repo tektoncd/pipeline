@@ -626,6 +626,8 @@ func (c *Reconciler) handlePodCreationError(tr *v1beta1.TaskRun, err error) erro
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
 	case k8serrors.IsAlreadyExists(err):
 		tr.Status.MarkResourceOngoing(podconvert.ReasonPending, "tried to create pod, but it already exists")
+	case isPodAdmissionFailed(err):
+		tr.Status.MarkResourceFailed(podconvert.ReasonPodAdmissionFailed, err)
 	default:
 		// The pod creation failed with unknown reason. The most likely
 		// reason is that something is wrong with the spec of the Task, that we could
@@ -637,7 +639,7 @@ func (c *Reconciler) handlePodCreationError(tr *v1beta1.TaskRun, err error) erro
 			msg += "invalid TaskSpec"
 		}
 		err = controller.NewPermanentError(errors.New(msg))
-		tr.Status.MarkResourceFailed(podconvert.ReasonCouldntGetTask, err)
+		tr.Status.MarkResourceFailed(podconvert.ReasonPodCreationFailed, err)
 	}
 	return err
 }
@@ -811,6 +813,11 @@ func isExceededResourceQuotaError(err error) bool {
 
 func isTaskRunValidationFailed(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "TaskRun validation failed")
+}
+
+func isPodAdmissionFailed(err error) bool {
+	return err != nil && k8serrors.IsForbidden(err) && (strings.Contains(err.Error(), "violates PodSecurity") ||
+		strings.Contains(err.Error(), "security context constraint"))
 }
 
 // updateStoppedSidecarStatus updates SidecarStatus for sidecars that were

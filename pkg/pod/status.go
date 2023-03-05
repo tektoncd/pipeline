@@ -69,6 +69,9 @@ const (
 	// is that the creation of the pod backing the TaskRun failed
 	ReasonPodCreationFailed = "PodCreationFailed"
 
+	// ReasonPodAdmissionFailed indicates that the TaskRun's pod failed to pass admission validation
+	ReasonPodAdmissionFailed = "PodAdmissionFailed"
+
 	// ReasonPending indicates that the pod is in corev1.Pending, and the reason is not
 	// ReasonExceededNodeResources or isPodHitConfigError
 	ReasonPending = "Pending"

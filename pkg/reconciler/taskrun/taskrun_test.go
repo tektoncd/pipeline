@@ -2824,8 +2824,25 @@ status:
 		err:            errors.New("this is a fatal error"),
 		expectedType:   apis.ConditionSucceeded,
 		expectedStatus: corev1.ConditionFalse,
-		expectedReason: podconvert.ReasonCouldntGetTask,
-	}}
+		expectedReason: podconvert.ReasonPodCreationFailed,
+	}, {
+		description: "errors violating PodSecurity fail the taskrun",
+		err: k8sapierrors.NewForbidden(k8sruntimeschema.GroupResource{Group: "foo", Resource: "bar"}, "baz",
+			errors.New("violates PodSecurity \"restricted:latest\": allowPrivilegeEscalation != false ("+
+				"containers \"prepare\", \"place-scripts\", \"test-task\", \"test-task\" must set securityContext."+
+				"allowPrivilegeEscalation=false)")),
+		expectedType:   apis.ConditionSucceeded,
+		expectedStatus: corev1.ConditionFalse,
+		expectedReason: podconvert.ReasonPodAdmissionFailed,
+	}, {
+		description: "errors validating security context constraint (Openshift) fail the taskrun",
+		err: k8sapierrors.NewForbidden(k8sruntimeschema.GroupResource{Group: "foo", Resource: "bar"}, "baz",
+			errors.New("unable to validate against any security context constraint: [provider restricted: .spec.securityContext.hostNetwork: Invalid value: true: Host network is not allowed to be used provider restricted: .spec.securityContext.hostPID: Invalid value: true: Host PID is not allowed to be used")),
+		expectedType:   apis.ConditionSucceeded,
+		expectedStatus: corev1.ConditionFalse,
+		expectedReason: podconvert.ReasonPodAdmissionFailed,
+	},
+	}
 	for _, tc := range testcases {
 		t.Run(tc.description, func(t *testing.T) {
 			c.handlePodCreationError(taskRun, tc.err)
