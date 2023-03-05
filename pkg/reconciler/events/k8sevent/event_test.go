@@ -134,6 +134,42 @@ func TestEmitK8sEventsOnConditions(t *testing.T) {
 			Status: corev1.ConditionFalse,
 		},
 		wantEvents: []string{"Warning Failed "},
+	}, {
+		name:   "match wildcard events through escaping",
+		before: nil,
+		after: &apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Message: "contains a * character",
+		},
+		wantEvents: []string{"Warning Failed contains a \\* character"},
+	}, {
+		name:   "match wildcard events literally",
+		before: nil,
+		after: &apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Message: "contains a * character",
+		},
+		wantEvents: []string{"Warning Failed contains a * character"},
+	}, {
+		name:   "match contains parenthesis events through escaping",
+		before: nil,
+		after: &apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Message: "contains (parenthesis)",
+		},
+		wantEvents: []string{"Warning Failed contains \\(parenthesis\\)"},
+	}, {
+		name:   "match contains parenthesis events through literally",
+		before: nil,
+		after: &apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Message: "contains (parenthesis)",
+		},
+		wantEvents: []string{"Warning Failed contains (parenthesis)"},
 	}}
 
 	for _, ts := range testcases {

@@ -54,6 +54,11 @@ func eventsFromChannel(c chan string, wantEvents []string) error {
 		case event := <-c:
 			foundEvents = append(foundEvents, event)
 			wantEvent := wantEvents[ii]
+			// If the event is an exact match, there is no need to use regular expressions for matching.
+			// This can avoid the need to escape special characters, such as *, in the event to match.
+			if wantEvent == event {
+				continue
+			}
 			matching, err := regexp.MatchString(wantEvent, event)
 			if err == nil {
 				if !matching {
