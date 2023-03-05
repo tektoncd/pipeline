@@ -7263,6 +7263,8 @@ spec:
 				t.Errorf("Pipeline.getTaskrunWorkspaces() did not return error for invalid workspace")
 			} else if d := cmp.Diff(tt.expectedError, err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("Pipeline.getTaskrunWorkspaces() errors diff %s", diff.PrintWantGot(d))
+			} else if !controller.IsPermanentError(err) {
+				t.Errorf("Pipeline.getTaskrunWorkspaces() not returned a permanent error for invalid workspace")
 			}
 		})
 	}
@@ -10077,5 +10079,70 @@ spec:
 
 			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionFalse, ReasonResourceVerificationFailed)
 		})
+	}
+}
+
+func TestReconcileForPipelineRunCreateRunFailed(t *testing.T) {
+	// TestReconcileForPipelineRunCreateRunFailed runs "Reconcile" on a PipelineRun that has permanent error.
+	// It verifies that reconcile is successful, no TaskRun is created, the PipelineTask is marked as CreateRunFailed, and the
+	// pipeline status updated and events generated.
+	ps := []*v1beta1.Pipeline{}
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-with-create-run-failed
+  namespace: foo
+spec:
+  pipelineSpec:
+    tasks:
+    - name: hello-world
+      taskRef:
+        name: unit-test-task
+      workspaces:
+      - name: source
+`)}
+
+	ts := []*v1beta1.Task{
+		parse.MustParseV1beta1Task(t, `
+metadata:
+  name: unit-test-task
+  namespace: foo
+spec:
+  workspaces:
+  - name: source
+  steps:
+  - image: alpine:latest
+    name: test
+    script: |
+      echo "hello world"
+    workspaces:
+    - name: source
+`)}
+
+	trs := []*v1beta1.TaskRun{}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	wantEvents := []string{
+		"Normal Started",
+		"Warning TaskRunCreationFailed",
+		"error creating TaskRun called test-pipeline-run-with-create-run-failed-hello-world for PipelineTask hello-world from PipelineRun test-pipeline-run-with-create-run-failed: expected workspace \"source\" to be provided by pipelinerun for pipeline task \"hello-world\"",
+		"error creating TaskRun called test-pipeline-run-with-create-run-failed-hello-world for PipelineTask hello-world from PipelineRun test-pipeline-run-with-create-run-failed: expected workspace \"source\" to be provided by pipelinerun for pipeline task \"hello-world\"",
+	}
+	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-with-create-run-failed", wantEvents, true)
+
+	if reconciledRun.Status.CompletionTime == nil {
+		t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
+	}
+
+	// The PipelineRun should be create run failed.
+	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "CreateRunFailed" {
+		t.Errorf("Expected PipelineRun to be create run failed, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
 	}
 }
