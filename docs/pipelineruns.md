@@ -1261,6 +1261,7 @@ False    | Failed             |           Yes           |                       
 False    | \[Error message\]  |           Yes           |                 The `PipelineRun` failed with a permanent error (usually validation).
 False    | Cancelled          |           Yes           |                                         The `PipelineRun` was cancelled successfully.
 False    | PipelineRunTimeout |           Yes           |                                                          The `PipelineRun` timed out.
+False    | CreateRunFailed    |           Yes           |                                        The `PipelineRun` create run resources failed.
 
 When a `PipelineRun` changes status, [events](events.md#pipelineruns) are triggered accordingly.
 
