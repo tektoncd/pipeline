@@ -78,6 +78,7 @@ func (ts *TaskSpec) ConvertTo(ctx context.Context, sink *v1.TaskSpec) error {
 		p.convertTo(ctx, &new)
 		sink.Params = append(sink.Params, new)
 	}
+	sink.DisplayName = ts.DisplayName
 	sink.Description = ts.Description
 	return nil
 }
@@ -134,6 +135,7 @@ func (ts *TaskSpec) ConvertFrom(ctx context.Context, source *v1.TaskSpec) error 
 		new.convertFrom(ctx, p)
 		ts.Params = append(ts.Params, new)
 	}
+	ts.DisplayName = source.DisplayName
 	ts.Description = source.Description
 	return nil
 }

@@ -1,0 +1,94 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: sum
+spec:
+  displayName: Sum the two provided integers
+  params:
+    - name: a
+      type: string
+      default: "1"
+      description: The first integer
+    - name: b
+      type: string
+      default: "1"
+      description: The second integer
+  results:
+    - name: sum
+      description: The sum of the two provided integers
+  steps:
+    - name: sum
+      image: bash:latest
+      script: |
+        #!/usr/bin/env bash
+        echo -n $(( "$(params.a)" + "$(params.b)" )) | tee $(results.sum.path)
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: sum-pipeline
+spec:
+  displayName: Sum Multiple Numbers
+  description: Calculate the sum of multiple numbers
+  params:
+    - name: a
+      type: string
+      default: "1"
+    - name: b
+      type: string
+      default: "1"
+    - name: c
+      type: string
+      default: "1"
+  tasks:
+    - name: sum-two-numbers
+      displayName: Calculate the first two numbers
+      description: Calculate the sum of the first two numbers
+      taskRef:
+        name: sum
+      params:
+        - name: a
+          value: "$(params.a)"
+        - name: b
+          value: "$(params.b)"
+    - name: sum-with-third-number
+      displayName: Sum with the third number
+      description: Calculate the sum of the first two numbers and the third number
+      taskRef:
+        name: sum
+      params:
+        - name: a
+          value: "$(tasks.sum-two-numbers.results.sum)"
+        - name: b
+          value: "$(params.c)"
+  finally:
+    - name: print-result
+      displayName: Print the result
+      description: Print the final result
+      params:
+        - name: sum
+          value: "$(tasks.sum-with-third-number.results.sum)"
+      taskSpec:
+        params:
+          - name: sum
+            type: string
+        steps:
+          - name: print
+            image: alpine
+            script: |
+              echo "$(params.sum)"
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: sum
+spec:
+  params:
+    - name: a
+      value: "1"
+    - name: b
+      value: "2"
+    - name: c
+      value: "3"
+  pipelineRef:
+    name: sum-pipeline

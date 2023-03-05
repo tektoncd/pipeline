@@ -54,6 +54,7 @@ func TestPipelineConversion(t *testing.T) {
 				Namespace: "bar",
 			},
 			Spec: v1beta1.PipelineSpec{
+				DisplayName: "pipeline-display-name",
 				Description: "test",
 				Tasks: []v1beta1.PipelineTask{{
 					Name:    "foo",
@@ -74,12 +75,15 @@ func TestPipelineConversion(t *testing.T) {
 				Namespace: "bar",
 			},
 			Spec: v1beta1.PipelineSpec{
+				DisplayName: "pipeline-display-name",
 				Description: "test",
 				Tasks: []v1beta1.PipelineTask{{
 					Name: "task-1",
 				}, {
-					Name:    "foo",
-					TaskRef: &v1beta1.TaskRef{Name: "example.com/my-foo-task"},
+					Name:        "foo",
+					DisplayName: "task-display-name",
+					Description: "task-description",
+					TaskRef:     &v1beta1.TaskRef{Name: "example.com/my-foo-task"},
 					TaskSpec: &v1beta1.EmbeddedTask{
 						TaskSpec: v1beta1.TaskSpec{
 							Steps: []v1beta1.Step{{
@@ -149,8 +153,10 @@ func TestPipelineConversion(t *testing.T) {
 					Value:       *v1beta1.NewStructuredValues("foo.bar"),
 				}},
 				Finally: []v1beta1.PipelineTask{{
-					Name:    "final-task",
-					TaskRef: &v1beta1.TaskRef{Name: "foo-task"},
+					Name:        "final-task",
+					DisplayName: "final-task-display-name",
+					Description: "final-task-description",
+					TaskRef:     &v1beta1.TaskRef{Name: "foo-task"},
 				}},
 			},
 		},

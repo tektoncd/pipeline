@@ -433,6 +433,10 @@
           "description": "Description is a user-facing description of the task that may be used to populate a UI.",
           "type": "string"
         },
+        "displayName": {
+          "description": "DisplayName is a user-facing name of the task that may be used to populate a UI.",
+          "type": "string"
+        },
         "kind": {
           "type": "string"
         },
@@ -1116,6 +1120,10 @@
           "description": "Description is a user-facing description of the pipeline that may be used to populate a UI.",
           "type": "string"
         },
+        "displayName": {
+          "description": "DisplayName is a user-facing name of the pipeline that may be used to populate a UI.",
+          "type": "string"
+        },
         "finally": {
           "description": "Finally declares the list of Tasks that execute just before leaving the Pipeline i.e. either after all Tasks are finished executing successfully or after a failure which would result in ending the Pipeline",
           "type": "array",
@@ -1167,6 +1175,14 @@
       "description": "PipelineTask defines a task in a Pipeline, passing inputs from both Params and from the output of previous tasks.",
       "type": "object",
       "properties": {
+        "description": {
+          "description": "Description is the description of this task within the context of a Pipeline. This description may be used to populate a UI.",
+          "type": "string"
+        },
+        "displayName": {
+          "description": "DisplayName is the display name of this task within the context of a Pipeline. This display name may be used to populate a UI.",
+          "type": "string"
+        },
         "matrix": {
           "description": "Matrix declares parameters used to fan out this task.",
           "$ref": "#/definitions/v1beta1.Matrix"
@@ -2640,6 +2656,10 @@
       "properties": {
         "description": {
           "description": "Description is a user-facing description of the task that may be used to populate a UI.",
+          "type": "string"
+        },
+        "displayName": {
+          "description": "DisplayName is a user-facing name of the task that may be used to populate a UI.",
           "type": "string"
         },
         "params": {

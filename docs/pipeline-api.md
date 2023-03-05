@@ -533,6 +533,19 @@ PipelineSpec
 <table>
 <tr>
 <td>
+<code>displayName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisplayName is a user-facing name of the pipeline that may be
+used to populate a UI.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>description</code><br/>
 <em>
 string
@@ -891,6 +904,19 @@ ParamSpecs
 <p>Params is a list of input parameters required to run the task. Params
 must be supplied as inputs in TaskRuns unless they declare a default
 value.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>displayName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisplayName is a user-facing name of the task that may be
+used to populate a UI.</p>
 </td>
 </tr>
 <tr>
@@ -2490,6 +2516,19 @@ TaskRunStatus
 <tbody>
 <tr>
 <td>
+<code>displayName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisplayName is a user-facing name of the pipeline that may be
+used to populate a UI.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>description</code><br/>
 <em>
 string
@@ -2602,6 +2641,32 @@ string
 <p>Name is the name of this task within the context of a Pipeline. Name is
 used as a coordinate with the <code>from</code> and <code>runAfter</code> fields to establish
 the execution order of tasks relative to one another.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>displayName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisplayName is the display name of this task within the context of a Pipeline.
+This display name may be used to populate a UI.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>description</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Description is the description of this task within the context of a Pipeline.
+This description may be used to populate a UI.</p>
 </td>
 </tr>
 <tr>
@@ -5308,6 +5373,19 @@ value.</p>
 </tr>
 <tr>
 <td>
+<code>displayName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisplayName is a user-facing name of the task that may be
+used to populate a UI.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>description</code><br/>
 <em>
 string
@@ -6932,6 +7010,19 @@ value.</p>
 </tr>
 <tr>
 <td>
+<code>displayName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisplayName is a user-facing name of the task that may be
+used to populate a UI.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>description</code><br/>
 <em>
 string
@@ -7288,6 +7379,19 @@ PipelineSpec
 <br/>
 <br/>
 <table>
+<tr>
+<td>
+<code>displayName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisplayName is a user-facing name of the pipeline that may be
+used to populate a UI.</p>
+</td>
+</tr>
 <tr>
 <td>
 <code>description</code><br/>
@@ -7675,6 +7779,19 @@ ParamSpecs
 <p>Params is a list of input parameters required to run the task. Params
 must be supplied as inputs in TaskRuns unless they declare a default
 value.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>displayName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisplayName is a user-facing name of the task that may be
+used to populate a UI.</p>
 </td>
 </tr>
 <tr>
@@ -9695,6 +9812,19 @@ TaskRunStatus
 <tbody>
 <tr>
 <td>
+<code>displayName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisplayName is a user-facing name of the pipeline that may be
+used to populate a UI.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>description</code><br/>
 <em>
 string
@@ -9807,6 +9937,32 @@ string
 <p>Name is the name of this task within the context of a Pipeline. Name is
 used as a coordinate with the <code>from</code> and <code>runAfter</code> fields to establish
 the execution order of tasks relative to one another.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>displayName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisplayName is the display name of this task within the context of a Pipeline.
+This display name may be used to populate a UI.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>description</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Description is the description of this task within the context of a Pipeline.
+This description may be used to populate a UI.</p>
 </td>
 </tr>
 <tr>
@@ -12738,6 +12894,19 @@ ParamSpecs
 <p>Params is a list of input parameters required to run the task. Params
 must be supplied as inputs in TaskRuns unless they declare a default
 value.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>displayName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisplayName is a user-facing name of the task that may be
+used to populate a UI.</p>
 </td>
 </tr>
 <tr>
