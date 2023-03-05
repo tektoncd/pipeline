@@ -28,6 +28,7 @@ weight: 201
   - [Specifying `Volumes`](#specifying-volumes)
   - [Specifying a `Step` template](#specifying-a-step-template)
   - [Specifying `Sidecars`](#specifying-sidecars)
+  - [Specifying a `DisplayName`](#specifying-a-display-name)
   - [Adding a description](#adding-a-description)
   - [Using variable substitution](#using-variable-substitution)
     - [Substituting parameters and resources](#substituting-parameters-and-resources)
@@ -1071,6 +1072,10 @@ If the configured `nop` image contains the exact command the `Sidecar`
 was executing before receiving a "stop" signal, the `Sidecar` keeps
 running, eventually causing the `TaskRun` to time out with an error.
 For more information, see [issue 1347](https://github.com/tektoncd/pipeline/issues/1347).
+
+### Specifying a display name
+
+The `displayName` field is an optional field that allows you to add a user-facing name to the task that may be used to populate a UI.
 
 ### Adding a description
 

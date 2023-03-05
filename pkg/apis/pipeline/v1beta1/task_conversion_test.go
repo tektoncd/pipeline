@@ -55,6 +55,7 @@ func TestTaskConversion(t *testing.T) {
 				Generation: 1,
 			},
 			Spec: v1beta1.TaskSpec{
+				DisplayName: "task-display-name",
 				Description: "test",
 				Steps: []v1beta1.Step{{
 					Image: "foo",
@@ -76,6 +77,7 @@ func TestTaskConversion(t *testing.T) {
 				Generation: 1,
 			},
 			Spec: v1beta1.TaskSpec{
+				DisplayName: "task-display-name",
 				Description: "test",
 				Steps: []v1beta1.Step{{
 					Name:            "step",

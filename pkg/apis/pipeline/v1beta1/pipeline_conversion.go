@@ -42,6 +42,7 @@ func (p *Pipeline) ConvertTo(ctx context.Context, to apis.Convertible) error {
 
 // ConvertTo implements apis.Convertible
 func (ps *PipelineSpec) ConvertTo(ctx context.Context, sink *v1.PipelineSpec) error {
+	sink.DisplayName = ps.DisplayName
 	sink.Description = ps.Description
 	sink.Tasks = nil
 	for _, t := range ps.Tasks {
@@ -95,6 +96,7 @@ func (p *Pipeline) ConvertFrom(ctx context.Context, from apis.Convertible) error
 
 // ConvertFrom implements apis.Convertible
 func (ps *PipelineSpec) ConvertFrom(ctx context.Context, source *v1.PipelineSpec) error {
+	ps.DisplayName = source.DisplayName
 	ps.Description = source.Description
 	ps.Tasks = nil
 	for _, t := range source.Tasks {
@@ -137,6 +139,8 @@ func (ps *PipelineSpec) ConvertFrom(ctx context.Context, source *v1.PipelineSpec
 
 func (pt PipelineTask) convertTo(ctx context.Context, sink *v1.PipelineTask) error {
 	sink.Name = pt.Name
+	sink.DisplayName = pt.DisplayName
+	sink.Description = pt.Description
 	if pt.TaskRef != nil {
 		sink.TaskRef = &v1.TaskRef{}
 		pt.TaskRef.convertTo(ctx, sink.TaskRef)
@@ -181,6 +185,8 @@ func (pt PipelineTask) convertTo(ctx context.Context, sink *v1.PipelineTask) err
 
 func (pt *PipelineTask) convertFrom(ctx context.Context, source v1.PipelineTask) error {
 	pt.Name = source.Name
+	pt.DisplayName = source.DisplayName
+	pt.Description = source.Description
 	if source.TaskRef != nil {
 		newTaskRef := TaskRef{}
 		newTaskRef.convertFrom(ctx, *source.TaskRef)

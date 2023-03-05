@@ -94,6 +94,8 @@ A `Pipeline` definition supports the following fields:
   - [`workspaces`](#specifying-workspaces) - Specifies a set of Workspaces that the `Pipeline` requires.
   - [`tasks`](#adding-tasks-to-the-pipeline):
       - [`name`](#adding-tasks-to-the-pipeline) - the name of this `Task` within the context of this `Pipeline`.
+      - [`displayName`](#adding-tasks-to-the-pipeline) - a user-facing name of this `Task` within the context of this `Pipeline`.
+      - [`description`](#adding-tasks-to-the-pipeline) - a description of this `Task` within the context of this `Pipeline`.
       - [`taskRef`](#adding-tasks-to-the-pipeline) - a reference to a `Task` definition.
       - [`taskSpec`](#adding-tasks-to-the-pipeline) - a specification of a `Task`.
       - [`resources`](#specifying-resources-in-pipelinetasks) - Specifies the [`PipelineResource`](resources.md) that
@@ -113,10 +115,13 @@ A `Pipeline` definition supports the following fields:
         multiple `TaskRuns` or `Runs`.
   - [`results`](#emitting-results-from-a-pipeline) - Specifies the location to which the `Pipeline` emits its execution
     results.
+  - [`displayName`](#specifying-a-display-name) - is a user-facing name of the pipeline that may be used to populate a UI.
   - [`description`](#adding-a-description) - Holds an informative description of the `Pipeline` object.
   - [`finally`](#adding-finally-to-the-pipeline) - Specifies one or more `Tasks` to be executed in parallel after
     all other tasks have completed.
     - [`name`](#adding-finally-to-the-pipeline) - the name of this `Task` within the context of this `Pipeline`.
+    - [`displayName`](#adding-finally-to-the-pipeline) - a user-facing name of this `Task` within the context of this `Pipeline`.
+    - [`description`](#adding-finally-to-the-pipeline) - a description of this `Task` within the context of this `Pipeline`.
     - [`taskRef`](#adding-finally-to-the-pipeline) - a reference to a `Task` definition.
     - [`taskSpec`](#adding-finally-to-the-pipeline) - a specification of a `Task`.
     - [`retries`](#using-the-retries-field) - Specifies the number of times to retry the execution of a `Task` after
@@ -1168,6 +1173,19 @@ In particular:
 >
 > Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
 > and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
+
+## Specifying a display name
+
+The `displayName` field is an optional field that allows you to add a user-facing name of the `Pipeline` that can be used to populate a UI. For example:
+
+```yaml
+spec:
+  displayName: "Code Scan"
+  tasks:
+    - name: scan
+      taskRef:
+        name: sonar-scan
+```
 
 ## Adding a description
 

@@ -80,6 +80,10 @@ func (*Pipeline) GetGroupVersionKind() schema.GroupVersionKind {
 
 // PipelineSpec defines the desired state of Pipeline.
 type PipelineSpec struct {
+	// DisplayName is a user-facing name of the pipeline that may be
+	// used to populate a UI.
+	// +optional
+	DisplayName string `json:"displayName,omitempty"`
 	// Description is a user-facing description of the pipeline that may be
 	// used to populate a UI.
 	// +optional
@@ -158,6 +162,16 @@ type PipelineTask struct {
 	// used as a coordinate with the `from` and `runAfter` fields to establish
 	// the execution order of tasks relative to one another.
 	Name string `json:"name,omitempty"`
+
+	// DisplayName is the display name of this task within the context of a Pipeline.
+	// This display name may be used to populate a UI.
+	// +optional
+	DisplayName string `json:"displayName,omitempty"`
+
+	// Description is the description of this task within the context of a Pipeline.
+	// This description may be used to populate a UI.
+	// +optional
+	Description string `json:"description,omitempty"`
 
 	// TaskRef is a reference to a task definition.
 	// +optional

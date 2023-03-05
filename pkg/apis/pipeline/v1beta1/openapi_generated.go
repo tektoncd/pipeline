@@ -943,6 +943,13 @@ func schema_pkg_apis_pipeline_v1beta1_EmbeddedTask(ref common.ReferenceCallback)
 							},
 						},
 					},
+					"displayName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DisplayName is a user-facing name of the task that may be used to populate a UI.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"description": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Description is a user-facing description of the task that may be used to populate a UI.",
@@ -2191,6 +2198,13 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineSpec(ref common.ReferenceCallback)
 				Description: "PipelineSpec defines the desired state of Pipeline.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"displayName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DisplayName is a user-facing name of the pipeline that may be used to populate a UI.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"description": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Description is a user-facing description of the pipeline that may be used to populate a UI.",
@@ -2311,6 +2325,20 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineTask(ref common.ReferenceCallback)
 					"name": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Name is the name of this task within the context of a Pipeline. Name is used as a coordinate with the `from` and `runAfter` fields to establish the execution order of tasks relative to one another.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"displayName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DisplayName is the display name of this task within the context of a Pipeline. This display name may be used to populate a UI.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"description": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Description is the description of this task within the context of a Pipeline. This description may be used to populate a UI.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -4790,6 +4818,13 @@ func schema_pkg_apis_pipeline_v1beta1_TaskSpec(ref common.ReferenceCallback) com
 									},
 								},
 							},
+						},
+					},
+					"displayName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DisplayName is a user-facing name of the task that may be used to populate a UI.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"description": {
