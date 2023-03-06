@@ -32,28 +32,24 @@ func TestStoreLoadWithContext(t *testing.T) {
 	defaultConfig := test.ConfigMapFromTestFile(t, "config-defaults")
 	featuresConfig := test.ConfigMapFromTestFile(t, "feature-flags-all-flags-set")
 	metricsConfig := test.ConfigMapFromTestFile(t, "config-observability")
-	trustedresourcesConfig := test.ConfigMapFromTestFile(t, "config-trusted-resources")
 	spireConfig := test.ConfigMapFromTestFile(t, "config-spire")
 
 	expectedDefaults, _ := config.NewDefaultsFromConfigMap(defaultConfig)
 	expectedFeatures, _ := config.NewFeatureFlagsFromConfigMap(featuresConfig)
 	metrics, _ := config.NewMetricsFromConfigMap(metricsConfig)
-	expectedTrustedResources, _ := config.NewTrustedResourcesConfigFromConfigMap(trustedresourcesConfig)
 	expectedSpireConfig, _ := config.NewSpireConfigFromConfigMap(spireConfig)
 
 	expected := &config.Config{
-		Defaults:         expectedDefaults,
-		FeatureFlags:     expectedFeatures,
-		Metrics:          metrics,
-		TrustedResources: expectedTrustedResources,
-		SpireConfig:      expectedSpireConfig,
+		Defaults:     expectedDefaults,
+		FeatureFlags: expectedFeatures,
+		Metrics:      metrics,
+		SpireConfig:  expectedSpireConfig,
 	}
 
 	store := config.NewStore(logtesting.TestLogger(t))
 	store.OnConfigChanged(defaultConfig)
 	store.OnConfigChanged(featuresConfig)
 	store.OnConfigChanged(metricsConfig)
-	store.OnConfigChanged(trustedresourcesConfig)
 	store.OnConfigChanged(spireConfig)
 
 	cfg := config.FromContext(store.ToContext(context.Background()))
@@ -67,15 +63,13 @@ func TestStoreLoadWithContext_Empty(t *testing.T) {
 	defaults, _ := config.NewDefaultsFromMap(map[string]string{})
 	featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{})
 	metrics, _ := config.NewMetricsFromConfigMap(&corev1.ConfigMap{Data: map[string]string{}})
-	trustedresources, _ := config.NewTrustedResourcesConfigFromMap(map[string]string{})
 	spireConfig, _ := config.NewSpireConfigFromMap(map[string]string{})
 
 	want := &config.Config{
-		Defaults:         defaults,
-		FeatureFlags:     featureFlags,
-		Metrics:          metrics,
-		TrustedResources: trustedresources,
-		SpireConfig:      spireConfig,
+		Defaults:     defaults,
+		FeatureFlags: featureFlags,
+		Metrics:      metrics,
+		SpireConfig:  spireConfig,
 	}
 
 	store := config.NewStore(logtesting.TestLogger(t))

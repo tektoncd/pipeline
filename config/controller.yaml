@@ -84,10 +84,6 @@ spec:
           mountPath: /etc/config-logging
         - name: config-registry-cert
           mountPath: /etc/config-registry-cert
-        # Mount secret for trusted resources
-        - name: verification-secrets
-          mountPath: /etc/verification-secrets
-          readOnly: true
         env:
         - name: SYSTEM_NAMESPACE
           valueFrom:
@@ -112,8 +108,6 @@ spec:
           value: config-leader-election
         - name: CONFIG_SPIRE
           value: config-spire
-        - name: CONFIG_TRUSTED_RESOURCES_NAME
-          value: config-trusted-resources
         - name: SSL_CERT_FILE
           value: /etc/config-registry-cert/cert
         - name: SSL_CERT_DIR
@@ -168,11 +162,6 @@ spec:
         - name: config-registry-cert
           configMap:
             name: config-registry-cert
-        # Mount secret for trusted resources
-        - name: verification-secrets
-          secret:
-            secretName: verification-secrets
-            optional: true
 ---
 apiVersion: v1
 kind: Service

@@ -69,37 +69,6 @@ Or patch the new values:
 kubectl patch configmap feature-flags -n tekton-pipelines -p='{"data":{"resource-verification-mode":"enforce"}}
 ```
 
-
-#### Config key at configmap (Deprecated)
-
-**Note:** key configuration in configmap is deprecated, the issue [#5852](https://github.com/tektoncd/pipeline/issues/5852) will track the deprecation. Please use [VerificationPolicy](#config-key-at-verificationpolicy) instead.
-
-Multiple keys reference should be separated by comma. If the resource can pass any key in the list, it will pass the verification.
-
-We currently hardcode SHA256 as hashfunc for loading public keys as verifiers.
-
-Public key files should be added into secret and mounted into controller volumes. To add keys into secret you may execute:
-
-```shell
-kubectl create secret generic verification-secrets \
-  --from-file=cosign.pub=./cosign.pub \
-    --from-file=cosign.pub=./cosign2.pub \
-  -n tekton-pipelines
-```
-
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: config-trusted-resources
-  namespace: tekton-pipelines
-  labels:
-    app.kubernetes.io/instance: default
-    app.kubernetes.io/part-of: tekton-pipelines
-data:
-  publickeys: "/etc/verification-secrets/cosign.pub, /etc/verification-secrets/cosign2.pub"
-```
-
 #### Config key at VerificationPolicy
 VerificationPolicy supports SecretRef or encoded public key data.
 
@@ -170,3 +139,45 @@ To learn more about `ConfigSource` please refer to resolvers doc for more contex
 
 `hashAlgorithm` is the algorithm for the public key, by default is `sha256`. It also supports `SHA224`, `SHA384`, `SHA512`.
 
+
+#### Migrate Config key at configmap to VerificationPolicy
+**Note:** key configuration in configmap is deprecated,
+The following usage of public keys in configmap can be migrated to VerificationPolicy/
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-trusted-resources
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+data:
+  publickeys: "/etc/verification-secrets/cosign.pub, /etc/verification-secrets/cosign2.pub"
+```
+
+To migrate to VerificationPolicy: Stores the public key files in a secret, and configure the secret ref in VerificationPolicy
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: VerificationPolicy
+metadata:
+  name: verification-policy-name
+  namespace: resource-namespace
+spec:
+  authorities:
+    - name: key1
+      key:
+        # secretRef refers to a secret in the cluster, this secret should contain public keys data
+        secretRef:
+          name: secret-name-cosign
+          namespace: secret-namespace
+        hashAlgorithm: sha256
+    - name: key2
+      key:
+        secretRef:
+          name: secret-name-cosign2
+          namespace: secret-namespace
+        hashAlgorithm: sha256
+```

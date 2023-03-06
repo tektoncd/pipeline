@@ -20,8 +20,8 @@ import "errors"
 var (
 	// ErrorResourceVerificationFailed is returned when trusted resources fails verification.
 	ErrorResourceVerificationFailed = errors.New("resource verification failed")
-	// ErrorEmptyVerificationConfig is returned when VerificationPolicy or config-trusted-resources configmap are founded
-	ErrorEmptyVerificationConfig = errors.New("no policies or config-trusted-resources configmap founded for verification")
+	// ErrorEmptyVerificationConfig is returned when no VerificationPolicy is founded
+	ErrorEmptyVerificationConfig = errors.New("no policies founded for verification")
 	// ErrorNoMatchedPolicies is returned when no policies are matched
 	ErrorNoMatchedPolicies = errors.New("no policies are matched")
 	// ErrorRegexMatch is returned when regex match returns error

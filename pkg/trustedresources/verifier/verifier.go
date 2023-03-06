@@ -33,7 +33,6 @@ import (
 	_ "github.com/sigstore/sigstore/pkg/signature/kms/azure"      // imported to execute init function to register azure kms
 	_ "github.com/sigstore/sigstore/pkg/signature/kms/gcp"        // imported to execute init function to register gcp kms
 	_ "github.com/sigstore/sigstore/pkg/signature/kms/hashivault" // imported to execute init function to register hashivault kms
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,26 +43,6 @@ const (
 	// keyReference is the prefix of secret reference
 	keyReference = "k8s://"
 )
-
-// FromConfigMap get all verifiers from configmap, k8s is provided to fetch secret from cluster
-func FromConfigMap(ctx context.Context, k8s kubernetes.Interface) ([]signature.Verifier, error) {
-	cfg := config.FromContextOrDefaults(ctx)
-	verifiers := []signature.Verifier{}
-	for key := range cfg.TrustedResources.Keys {
-		if key == "" {
-			continue
-		}
-		v, err := fromKeyRef(ctx, key, crypto.SHA256, k8s)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get verifier from keyref: %w", err)
-		}
-		verifiers = append(verifiers, v)
-	}
-	if len(verifiers) == 0 {
-		return nil, ErrorEmptyPublicKeys
-	}
-	return verifiers, nil
-}
 
 // FromPolicy get all verifiers from VerificationPolicy.
 // For each policy, loop the Authorities of the VerificationPolicy to fetch public key
