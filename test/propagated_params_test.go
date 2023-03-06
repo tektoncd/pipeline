@@ -169,7 +169,8 @@ metadata:
   name: propagated-parameters-fully
   namespace: %s
 spec:
-  timeout: 1h
+  timeouts: 
+    pipeline: 1h
   params:
   - name: HELLO
     value: "Hello World!"
@@ -279,7 +280,8 @@ metadata:
   name: propagated-parameters-task-level
   namespace: %s
 spec:
-  timeout: 1h
+  timeouts:
+    pipeline: 1h
   params:
   - name: HELLO
     value: "Pipeline Hello World!"
@@ -363,7 +365,8 @@ metadata:
   name: propagated-parameters-default-task-level
   namespace: %s
 spec:
-  timeout: 1h
+  timeouts: 
+    pipeline: 1h
   params:
   - name: HELLO
     value: "Hello World!"

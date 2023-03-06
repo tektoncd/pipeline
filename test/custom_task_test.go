@@ -296,7 +296,8 @@ metadata:
 spec:
   pipelineRef:
     name: %s
-  timeout: 5s
+  timeouts: 
+    pipeline: 5s
 `, helpers.ObjectNameForTest(t), namespace, pipeline.Name))
 	if _, err := c.V1beta1PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", pipeline.Name, err)
@@ -766,7 +767,9 @@ func TestWaitCustomTask_PipelineRun(t *testing.T) {
 					PipelineRef: &v1beta1.PipelineRef{
 						Name: p.Name,
 					},
-					Timeout: tc.prTimeout,
+					Timeouts: &v1beta1.TimeoutFields{
+						Pipeline: tc.prTimeout,
+					},
 				},
 			}
 			if _, err := c.V1beta1PipelineClient.Create(ctx, p, metav1.CreateOptions{}); err != nil {
@@ -799,7 +802,9 @@ func TestWaitCustomTask_PipelineRun(t *testing.T) {
 				Spec: v1beta1.PipelineRunSpec{
 					ServiceAccountName: "default",
 					PipelineRef:        &v1beta1.PipelineRef{Name: p.Name},
-					Timeout:            tc.prTimeout,
+					Timeouts: &v1beta1.TimeoutFields{
+						Pipeline: tc.prTimeout,
+					},
 				},
 				Status: v1beta1.PipelineRunStatus{
 					Status: duckv1.Status{
@@ -1054,7 +1059,9 @@ func TestWaitCustomTask_V1Beta1_PipelineRun(t *testing.T) {
 					PipelineRef: &v1beta1.PipelineRef{
 						Name: p.Name,
 					},
-					Timeout: tc.prTimeout,
+					Timeouts: &v1beta1.TimeoutFields{
+						Pipeline: tc.prTimeout,
+					},
 				},
 			}
 			if _, err := c.V1beta1PipelineClient.Create(ctx, p, metav1.CreateOptions{}); err != nil {
@@ -1087,7 +1094,9 @@ func TestWaitCustomTask_V1Beta1_PipelineRun(t *testing.T) {
 				Spec: v1beta1.PipelineRunSpec{
 					ServiceAccountName: "default",
 					PipelineRef:        &v1beta1.PipelineRef{Name: p.Name},
-					Timeout:            tc.prTimeout,
+					Timeouts: &v1beta1.TimeoutFields{
+						Pipeline: tc.prTimeout,
+					},
 				},
 				Status: v1beta1.PipelineRunStatus{
 					Status: duckv1.Status{

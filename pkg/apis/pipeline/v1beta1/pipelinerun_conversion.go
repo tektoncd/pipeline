@@ -67,10 +67,6 @@ func (prs PipelineRunSpec) ConvertTo(ctx context.Context, sink *v1.PipelineRunSp
 		sink.Timeouts = &v1.TimeoutFields{}
 		prs.Timeouts.convertTo(ctx, sink.Timeouts)
 	}
-	if prs.Timeout != nil {
-		sink.Timeouts = &v1.TimeoutFields{}
-		sink.Timeouts.Pipeline = prs.Timeout
-	}
 	sink.TaskRunTemplate = v1.PipelineTaskRunTemplate{}
 	sink.TaskRunTemplate.PodTemplate = prs.PodTemplate
 	sink.TaskRunTemplate.ServiceAccountName = prs.ServiceAccountName

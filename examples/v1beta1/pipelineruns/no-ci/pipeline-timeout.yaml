@@ -22,7 +22,8 @@ metadata:
   name: pipelinerun-timeout
 spec:
   # 1 hour and half timeout
-  timeout: 1h30m
+  timeouts:
+    pipeline: 1h30m
   pipelineSpec:
     params:
       - name: MORNING_GREETINGS

@@ -1482,7 +1482,8 @@ spec:
   customRef:
     apiVersion: example.dev/v0
     kind: Example
-  timeout: 1m0s
+  timeouts:
+  pipeline: 0h1m0s
 status:
   conditions:
   - status: Unknown
@@ -1538,12 +1539,8 @@ func TestReconcileForCustomTaskWithPipelineRunTimedOut(t *testing.T) {
 	// out and patched as cancelled.
 	for _, tc := range []struct {
 		name     string
-		timeout  *metav1.Duration
 		timeouts *v1beta1.TimeoutFields
 	}{{
-		name:    "spec.Timeout",
-		timeout: &metav1.Duration{Duration: 12 * time.Hour},
-	}, {
 		name:     "spec.Timeouts.Pipeline",
 		timeouts: &v1beta1.TimeoutFields{Pipeline: &metav1.Duration{Duration: 12 * time.Hour}},
 	}} {
@@ -1582,7 +1579,6 @@ status:
     kind: CustomRun
     apiVersion: example.dev/v0
 `)}
-			prs[0].Spec.Timeout = tc.timeout
 			prs[0].Spec.Timeouts = tc.timeouts
 
 			customRuns := []*v1beta1.CustomRun{mustParseCustomRunWithObjectMeta(t,
@@ -2214,55 +2210,6 @@ spec:
 	}
 }
 
-func TestReconcileWithTimeoutDeprecated(t *testing.T) {
-	// TestReconcileWithTimeoutDeprecated runs "Reconcile" on a PipelineRun that has timed out.
-	// It verifies that reconcile is successful, no TaskRun is created, the PipelineTask is marked as skipped, and the
-	// pipeline status updated and events generated.
-	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
-metadata:
-  name: test-pipeline-run-with-timeout
-  namespace: foo
-spec:
-  pipelineRef:
-    name: test-pipeline
-  serviceAccountName: test-sa
-  timeout: 12h0m0s
-status:
-  startTime: "2021-12-31T00:00:00Z"
-`)}
-	ts := []*v1beta1.Task{simpleHelloWorldTask}
-
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-	}
-	prt := newPipelineRunTest(t, d)
-	defer prt.Cancel()
-
-	wantEvents := []string{
-		"Warning Failed PipelineRun \"test-pipeline-run-with-timeout\" failed to finish within \"12h0m0s\"",
-	}
-	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-with-timeout", wantEvents, false)
-
-	if reconciledRun.Status.CompletionTime == nil {
-		t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
-	}
-
-	// The PipelineRun should be timed out.
-	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "PipelineRunTimeout" {
-		t.Errorf("Expected PipelineRun to be timed out, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
-
-	// Check that there is a skipped task for the expected reason
-	if len(reconciledRun.Status.SkippedTasks) != 1 {
-		t.Errorf("expected one skipped task, found %d", len(reconciledRun.Status.SkippedTasks))
-	} else if reconciledRun.Status.SkippedTasks[0].Reason != v1beta1.PipelineTimedOutSkip {
-		t.Errorf("expected skipped reason to be '%s', but was '%s", v1beta1.PipelineTimedOutSkip, reconciledRun.Status.SkippedTasks[0].Reason)
-	}
-}
-
 func TestReconcileWithTimeouts_Pipeline(t *testing.T) {
 	// TestReconcileWithTimeouts_Pipeline runs "Reconcile" on a PipelineRun that has timed out.
 	// It verifies that reconcile is successful, no TaskRun is created, the PipelineTask is marked as skipped, and the
@@ -2762,7 +2709,8 @@ metadata:
 spec:
   pipelineRef:
     name: test-pipeline
-  timeout: 1h0m0s
+  timeouts:
+    pipeline: 1h0m0s
 status:
   conditions:
   - message: running...
@@ -3303,7 +3251,8 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: hello-world
-  timeout: 1h0m0s
+  timeouts:
+    pipeline: 1h0m0s
 status:
   conditions:
   - status: "True"
@@ -3662,7 +3611,8 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: hello-world
-  timeout: 1h0m0s
+  timeouts:
+  pipeline: 1h0m0s
 status:
   conditions:
   - status: "True"
@@ -4166,7 +4116,8 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: hello-world
-  timeout: 1h0m0s
+  timeouts:
+    pipeline: 1h0m0s
 status:
   conditions:
   - lastTransitionTime: null
@@ -4666,7 +4617,8 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: hello-world
-  timeout: 1h0m0s
+  timeouts:
+    pipeline: 1h0m0s
 status:
   conditions:
   - status: "True"
@@ -4682,7 +4634,8 @@ spec:
   serviceAccountName: test-sa
   taskRef:
      name: hello-world
-  timeout: 1h0m0s
+  timeouts:
+    pipeline: 1h0m0s
 status:
   conditions:
   - status: "False"
@@ -6027,7 +5980,8 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
-  timeout: 1h0m0s
+  timeouts:
+    pipeline: 1h0m0s
 status:
   conditions:
   - reason: Failed
@@ -6353,7 +6307,8 @@ spec:
     bundle: %s
     name: test-pipeline
   serviceAccountName: test-sa
-  timeout: 1h0m0s
+  timeouts:
+    pipeline: 1h0m0s
 `, ref))}
 	ps := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
@@ -8208,7 +8163,8 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: taskwithresults
-  timeout: 1h0m0s
+  timeouts:
+    pipeline: 1h0m0s
 status:
  conditions:
   - type: Succeeded
@@ -8372,7 +8328,8 @@ spec:
   taskRef:
     name: taskwithresults
     kind: Task
-  timeout: 1h0m0s
+  timeouts:
+    pipeline: 1h0m0s
 status:
  conditions:
   - type: Succeeded
@@ -8589,7 +8546,8 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
-  timeout: 1h0m0s
+  timeouts:
+    pipeline: 1h0m0s
 status:
   conditions:
   - type: Succeeded
@@ -8613,7 +8571,8 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
-  timeout: 1h0m0s
+  timeouts:
+    pipeline: 1h0m0s
 status:
   conditions:
   - type: Succeeded
@@ -8723,7 +8682,8 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
-  timeout: 1h0m0s
+  timeouts:
+    pipeline: 1h0m0s
 status:
   conditions:
   - type: Succeeded
@@ -8747,7 +8707,8 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
-  timeout: 1h0m0s
+  timeouts:
+    pipeline: 1h0m0s
 status:
   conditions:
   - type: Succeeded
@@ -8771,7 +8732,8 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
-  timeout: 1h0m0s
+  timeouts:
+    pipeline: 1h0m0s
 status:
   conditions:
   - type: Succeeded
@@ -8795,7 +8757,8 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
-  timeout: 1h0m0s
+  timeouts:
+    pipeline: 1h0m0s
 status:
   conditions:
   - type: Succeeded
@@ -8909,7 +8872,8 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
-  timeout: 1h0m0s
+  timeouts:
+    pipeline: 1h0m0s
 status:
   conditions:
   - type: Succeeded
@@ -8933,7 +8897,8 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
-  timeout: 1h0m0s
+  timeouts:
+    pipeline: 1h0m0s
 status:
   conditions:
   - type: Succeeded
@@ -9351,7 +9316,8 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
-  timeout: 1h0m0s
+  timeouts:
+    pipeline: 1h0m0s
 status:
  conditions:
   - type: Succeeded

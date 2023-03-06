@@ -354,28 +354,6 @@ func TestPipelineRunConversionFromDeprecated(t *testing.T) {
 		in   *v1beta1.PipelineRun
 		want *v1beta1.PipelineRun
 	}{{
-		name: "timeout to timeouts",
-		in: &v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "bar",
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				Timeout: &metav1.Duration{Duration: 5 * time.Minute},
-			},
-		},
-		want: &v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "bar",
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				Timeouts: &v1beta1.TimeoutFields{
-					Pipeline: &metav1.Duration{Duration: 5 * time.Minute},
-				},
-			},
-		},
-	}, {
 		name: "bundle",
 		in: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{

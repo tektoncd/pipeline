@@ -525,7 +525,8 @@ spec:
   - name: password-vault
     secret:
       secretName: secret-password
-  timeout: 60s
+  timeouts:
+    pipeline: 60s
   pipelineSpec:
     tasks:
     - name: fetch-secure-data

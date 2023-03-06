@@ -87,20 +87,6 @@ func TestPipelineRun_Invalid(t *testing.T) {
 			Paths:   []string{"metadata.name"},
 		},
 	}, {
-		name: "negative pipeline timeout",
-		pr: v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "pipelinelinename",
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{
-					Name: "prname",
-				},
-				Timeout: &metav1.Duration{Duration: -48 * time.Hour},
-			},
-		},
-		want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeout"),
-	}, {
 		name: "wrong pipelinerun cancel",
 		pr: v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
@@ -527,19 +513,6 @@ func TestPipelineRun_Validate(t *testing.T) {
 				PipelineRef: &v1beta1.PipelineRef{
 					Name: "prname",
 				},
-			},
-		},
-	}, {
-		name: "no timeout",
-		pr: v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "pipelinename",
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{
-					Name: "prname",
-				},
-				Timeout: &metav1.Duration{Duration: 0},
 			},
 		},
 	}, {
@@ -1424,23 +1397,6 @@ func TestPipelineRun_InvalidTimeouts(t *testing.T) {
 			},
 		},
 		want: apis.ErrInvalidValue(`0s (no timeout) should be <= pipeline duration`, "spec.timeouts.finally"),
-	}, {
-		name: "Timeout and Timeouts both are set",
-		pr: v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "pipelinelinename",
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{
-					Name: "prname",
-				},
-				Timeout: &metav1.Duration{Duration: 10 * time.Minute},
-				Timeouts: &v1beta1.TimeoutFields{
-					Pipeline: &metav1.Duration{Duration: 10 * time.Minute},
-				},
-			},
-		},
-		want: apis.ErrDisallowedFields("spec.timeout", "spec.timeouts"),
 	}}
 
 	for _, tc := range tests {

@@ -43,17 +43,21 @@ func TestPipelineRunSpec_SetDefaults(t *testing.T) {
 			prs:  &v1beta1.PipelineRunSpec{},
 			want: &v1beta1.PipelineRunSpec{
 				ServiceAccountName: config.DefaultServiceAccountValue,
-				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+				},
 			},
 		},
 		{
-			desc: "timeout is not nil",
+			desc: "timeouts is not nil",
 			prs: &v1beta1.PipelineRunSpec{
-				Timeout: &metav1.Duration{Duration: 500 * time.Millisecond},
+				Timeouts: &v1beta1.TimeoutFields{},
 			},
 			want: &v1beta1.PipelineRunSpec{
 				ServiceAccountName: config.DefaultServiceAccountValue,
-				Timeout:            &metav1.Duration{Duration: 500 * time.Millisecond},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+				},
 			},
 		},
 		{
@@ -61,7 +65,9 @@ func TestPipelineRunSpec_SetDefaults(t *testing.T) {
 			prs:  &v1beta1.PipelineRunSpec{},
 			want: &v1beta1.PipelineRunSpec{
 				ServiceAccountName: config.DefaultServiceAccountValue,
-				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+				},
 			},
 		},
 		{
@@ -75,11 +81,13 @@ func TestPipelineRunSpec_SetDefaults(t *testing.T) {
 			},
 			want: &v1beta1.PipelineRunSpec{
 				ServiceAccountName: config.DefaultServiceAccountValue,
-				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 				PodTemplate: &pod.Template{
 					NodeSelector: map[string]string{
 						"label": "value",
 					},
+				},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 				},
 			},
 		},
@@ -117,7 +125,9 @@ func TestPipelineRunDefaulting(t *testing.T) {
 		want: &v1beta1.PipelineRun{
 			Spec: v1beta1.PipelineRunSpec{
 				ServiceAccountName: config.DefaultServiceAccountValue,
-				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+				},
 			},
 		},
 	}, {
@@ -128,6 +138,9 @@ func TestPipelineRunDefaulting(t *testing.T) {
 					Params: []v1beta1.ParamSpec{{
 						Name: "foo",
 					}},
+				},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 				},
 			},
 		},
@@ -140,7 +153,9 @@ func TestPipelineRunDefaulting(t *testing.T) {
 					}},
 				},
 				ServiceAccountName: config.DefaultServiceAccountValue,
-				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+				},
 			},
 		},
 	}, {
@@ -154,7 +169,9 @@ func TestPipelineRunDefaulting(t *testing.T) {
 			Spec: v1beta1.PipelineRunSpec{
 				PipelineRef:        &v1beta1.PipelineRef{Name: "foo"},
 				ServiceAccountName: config.DefaultServiceAccountValue,
-				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 5 * time.Minute},
+				},
 			},
 		},
 		wc: func(ctx context.Context) context.Context {
@@ -179,8 +196,10 @@ func TestPipelineRunDefaulting(t *testing.T) {
 		want: &v1beta1.PipelineRun{
 			Spec: v1beta1.PipelineRunSpec{
 				PipelineRef:        &v1beta1.PipelineRef{Name: "foo"},
-				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
 				ServiceAccountName: "tekton",
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 5 * time.Minute},
+				},
 			},
 		},
 		wc: func(ctx context.Context) context.Context {
@@ -206,12 +225,14 @@ func TestPipelineRunDefaulting(t *testing.T) {
 		want: &v1beta1.PipelineRun{
 			Spec: v1beta1.PipelineRunSpec{
 				PipelineRef:        &v1beta1.PipelineRef{Name: "foo"},
-				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
 				ServiceAccountName: "tekton",
 				PodTemplate: &pod.Template{
 					NodeSelector: map[string]string{
 						"label": "value",
 					},
+				},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 5 * time.Minute},
 				},
 			},
 		},
@@ -244,12 +265,14 @@ func TestPipelineRunDefaulting(t *testing.T) {
 		want: &v1beta1.PipelineRun{
 			Spec: v1beta1.PipelineRunSpec{
 				PipelineRef:        &v1beta1.PipelineRef{Name: "foo"},
-				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
 				ServiceAccountName: "tekton",
 				PodTemplate: &pod.Template{
 					NodeSelector: map[string]string{
 						"label2": "value2",
 					},
+				},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 5 * time.Minute},
 				},
 			},
 		},
@@ -286,7 +309,6 @@ func TestPipelineRunDefaulting(t *testing.T) {
 		want: &v1beta1.PipelineRun{
 			Spec: v1beta1.PipelineRunSpec{
 				PipelineRef:        &v1beta1.PipelineRef{Name: "foo"},
-				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
 				ServiceAccountName: "tekton",
 				PodTemplate: &pod.Template{
 					NodeSelector: map[string]string{
@@ -296,6 +318,9 @@ func TestPipelineRunDefaulting(t *testing.T) {
 						RunAsNonRoot: &ttrue,
 					},
 					HostNetwork: true,
+				},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 5 * time.Minute},
 				},
 			},
 		},

@@ -171,7 +171,8 @@ metadata:
   namespace: %s
 spec:
   serviceAccountName: default
-  timeout: 1h
+  timeouts:
+    pipeline: 1h
   pipelineSpec:
     tasks:
       - name: task1

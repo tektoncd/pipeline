@@ -84,18 +84,10 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 	errs = errs.Also(ps.validatePropagatedWorkspaces(ctx))
 
 	if ps.Timeout != nil {
-		// timeout should be a valid duration of at least 0.
-		if ps.Timeout.Duration < 0 {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", ps.Timeout.Duration.String()), "timeout"))
-		}
+		errs = errs.Also(apis.ErrDisallowedUpdateDeprecatedFields("timeout"))
 	}
 
 	if ps.Timeouts != nil {
-		if ps.Timeout != nil {
-			// can't have both at the same time
-			errs = errs.Also(apis.ErrDisallowedFields("timeout", "timeouts"))
-		}
-
 		// tasks timeout should be a valid duration of at least 0.
 		errs = errs.Also(validateTimeoutDuration("tasks", ps.Timeouts.Tasks))
 

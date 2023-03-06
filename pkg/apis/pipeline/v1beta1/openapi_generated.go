@@ -1745,7 +1745,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunSpec(ref common.ReferenceCallba
 					},
 					"timeout": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Timeout is the Time after which the Pipeline times out. Defaults to never. Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration\n\nDeprecated: use pipelineRunSpec.Timeouts.Pipeline instead",
+							Description: "Timeout is the Time after which the Pipeline times out. Defaults to never. Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration\n\nDeprecated: use pipelineRunSpec.Timeouts.Pipeline instead. It is only kept for backwards compatibility with older server versions.",
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},

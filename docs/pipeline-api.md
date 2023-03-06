@@ -7490,7 +7490,8 @@ Kubernetes meta/v1.Duration
 <p>Timeout is the Time after which the Pipeline times out.
 Defaults to never.
 Refer to Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
-<p>Deprecated: use pipelineRunSpec.Timeouts.Pipeline instead</p>
+<p>Deprecated: use pipelineRunSpec.Timeouts.Pipeline instead. It is only kept
+for backwards compatibility with older server versions.</p>
 </td>
 </tr>
 <tr>
@@ -9348,7 +9349,8 @@ Kubernetes meta/v1.Duration
 <p>Timeout is the Time after which the Pipeline times out.
 Defaults to never.
 Refer to Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
-<p>Deprecated: use pipelineRunSpec.Timeouts.Pipeline instead</p>
+<p>Deprecated: use pipelineRunSpec.Timeouts.Pipeline instead. It is only kept
+for backwards compatibility with older server versions.</p>
 </td>
 </tr>
 <tr>

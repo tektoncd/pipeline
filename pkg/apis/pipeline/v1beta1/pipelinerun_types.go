@@ -98,9 +98,6 @@ func (pr *PipelineRun) IsGracefullyStopped() bool {
 
 // PipelineTimeout returns the applicable timeout for the PipelineRun
 func (pr *PipelineRun) PipelineTimeout(ctx context.Context) time.Duration {
-	if pr.Spec.Timeout != nil {
-		return pr.Spec.Timeout.Duration
-	}
 	if pr.Spec.Timeouts != nil && pr.Spec.Timeouts.Pipeline != nil {
 		return pr.Spec.Timeouts.Pipeline.Duration
 	}
@@ -243,8 +240,8 @@ type PipelineRunSpec struct {
 	// Defaults to never.
 	// Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	//
-	// Deprecated: use pipelineRunSpec.Timeouts.Pipeline instead
-	//
+	// Deprecated: use pipelineRunSpec.Timeouts.Pipeline instead. It is only kept
+	// for backwards compatibility with older server versions.
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 	// PodTemplate holds pod specific configuration

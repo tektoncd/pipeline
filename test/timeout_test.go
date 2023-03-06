@@ -82,7 +82,8 @@ metadata:
 spec:
   pipelineRef:
     name: %s
-  timeout: 5s
+  timeouts: 
+    pipeline: 5s
 `, helpers.ObjectNameForTest(t), namespace, pipeline.Name))
 	if _, err := c.V1beta1PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", pipeline.Name, err)

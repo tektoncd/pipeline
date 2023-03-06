@@ -241,20 +241,6 @@ func TestPipelineRunHasTimedOut(t *testing.T) {
 	}
 
 	for _, tc := range tcs {
-		t.Run("pipeline.timeout "+tc.name, func(t *testing.T) {
-			pr := &v1beta1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
-				Spec: v1beta1.PipelineRunSpec{
-					Timeout: &metav1.Duration{Duration: tc.timeout},
-				},
-				Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: tc.starttime},
-				}},
-			}
-			if pr.HasTimedOut(context.Background(), testClock) != tc.expected {
-				t.Errorf("Expected HasTimedOut to be %t when using pipeline.timeout", tc.expected)
-			}
-		})
 		t.Run("pipeline.timeouts.pipeline "+tc.name, func(t *testing.T) {
 			pr := &v1beta1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Name: "foo"},

@@ -893,7 +893,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "timeout": {
-          "description": "Timeout is the Time after which the Pipeline times out. Defaults to never. Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration\n\nDeprecated: use pipelineRunSpec.Timeouts.Pipeline instead",
+          "description": "Timeout is the Time after which the Pipeline times out. Defaults to never. Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration\n\nDeprecated: use pipelineRunSpec.Timeouts.Pipeline instead. It is only kept for backwards compatibility with older server versions.",
           "$ref": "#/definitions/v1.Duration"
         },
         "timeouts": {
