@@ -55,177 +55,12 @@ func init() {
 	os.Setenv("PRIVATE_PASSWORD", password)
 }
 
-func TestTrustedResourcesVerify_ConfigMap_Success(t *testing.T) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	c, namespace, secretName, signer := setupResourceVerificationConfig(ctx, t, true, requireAnyGate(neededFeatureFlags))
-	knativetest.CleanupOnInterrupt(func() { removeResourceVerificationConfig(ctx, t, c, namespace, secretName) }, t.Logf)
-	defer removeResourceVerificationConfig(ctx, t, c, namespace, secretName)
-
-	// create pipelines
-	fqImageName := getTestImage(busyboxImage)
-	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  steps:
-  - image: %s
-    command: ['/bin/sh']
-    args: ['-c', 'echo hello']
-`, helpers.ObjectNameForTest(t), namespace, fqImageName))
-
-	signedTask, err := GetSignedTask(task, signer, "signedtask")
-	if err != nil {
-		t.Errorf("error getting signed task: %v", err)
-	}
-	if _, err := c.V1beta1TaskClient.Create(ctx, signedTask, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create Task: %s", err)
-	}
-
-	pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  tasks:
-  - name: task
-    taskRef:
-      name: %s
-      kind: Task
-`, helpers.ObjectNameForTest(t), namespace, signedTask.Name))
-
-	signedPipeline, err := GetSignedPipeline(pipeline, signer, "signedpipeline")
-	if err != nil {
-		t.Errorf("error getting signed pipeline: %v", err)
-	}
-
-	if _, err := c.V1beta1PipelineClient.Create(ctx, signedPipeline, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create Pipeline: %s", err)
-	}
-
-	pr := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  pipelineRef:
-    name: %s
-`, helpers.ObjectNameForTest(t), namespace, signedPipeline.Name))
-
-	t.Logf("Creating PipelineRun %s", pr.Name)
-	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create PipelineRun `%s`: %s", pr.Name, err)
-	}
-
-	t.Logf("Waiting for PipelineRun in namespace %s to succeed", namespace)
-	if err := WaitForPipelineRunState(ctx, c, pr.Name, timeout, PipelineRunSucceed(pr.Name), "PipelineRunSucceed", v1beta1Version); err != nil {
-		t.Errorf("Error waiting for PipelineRun to finish: %s", err)
-	}
-
-	pr, err = c.V1beta1PipelineRunClient.Get(ctx, pr.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Couldn't get expected PipelineRun %s: %s", pr.Name, err)
-	}
-
-	if pr.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
-		t.Errorf("Expected PipelineRun to succeed but instead found condition: %s", pr.Status.GetCondition(apis.ConditionSucceeded))
-	}
-}
-
-func TestTrustedResourcesVerify_ConfigMap_Error(t *testing.T) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	c, namespace, secretName, signer := setupResourceVerificationConfig(ctx, t, true, requireAnyGate(neededFeatureFlags))
-	knativetest.CleanupOnInterrupt(func() { removeResourceVerificationConfig(ctx, t, c, namespace, secretName) }, t.Logf)
-	defer removeResourceVerificationConfig(ctx, t, c, namespace, secretName)
-
-	// create pipelines
-	fqImageName := getTestImage(busyboxImage)
-	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  steps:
-  - image: %s
-    command: ['/bin/sh']
-    args: ['-c', 'echo hello']
-`, helpers.ObjectNameForTest(t), namespace, fqImageName))
-
-	signedTask, err := GetSignedTask(task, signer, "signedtask")
-	if err != nil {
-		t.Errorf("error getting signed task: %v", err)
-	}
-	// modify the task to fail the verification
-	signedTask.Annotations["foo"] = "bar"
-	if _, err := c.V1beta1TaskClient.Create(ctx, signedTask, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create Task: %s", err)
-	}
-
-	pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  tasks:
-  - name: task
-    taskRef:
-      name: %s
-      kind: Task
-`, helpers.ObjectNameForTest(t), namespace, signedTask.Name))
-
-	signedPipeline, err := GetSignedPipeline(pipeline, signer, "signedpipeline")
-	if err != nil {
-		t.Errorf("error getting signed pipeline: %v", err)
-	}
-
-	if _, err := c.V1beta1PipelineClient.Create(ctx, signedPipeline, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create Pipeline: %s", err)
-	}
-
-	pr := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  pipelineRef:
-    name: %s
-`, helpers.ObjectNameForTest(t), namespace, signedPipeline.Name))
-
-	t.Logf("Creating PipelineRun %s", pr.Name)
-	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create PipelineRun `%s`: %s", pr.Name, err)
-	}
-
-	t.Logf("Waiting for PipelineRun in namespace %s to fail", namespace)
-	if err := WaitForPipelineRunState(ctx, c, pr.Name, timeout, PipelineRunFailed(pr.Name), "PipelineRunFailed", v1beta1Version); err != nil {
-		t.Errorf("Error waiting for PipelineRun to finish: %s", err)
-	}
-
-	pr, err = c.V1beta1PipelineRunClient.Get(ctx, pr.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Couldn't get expected PipelineRun %s: %s", pr.Name, err)
-	}
-
-	if pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue() {
-		t.Errorf("Expected PipelineRun to fail but found condition: %s", pr.Status.GetCondition(apis.ConditionSucceeded))
-	}
-	if pr.Status.Conditions[0].Reason != pod.ReasonResourceVerificationFailed {
-		t.Errorf("Expected PipelineRun fail condition is: %s but got: %s", pod.ReasonResourceVerificationFailed, pr.Status.Conditions[0].Reason)
-	}
-}
-
 func TestTrustedResourcesVerify_VerificationPolicy_Success(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	c, namespace, secretName, signer := setupResourceVerificationConfig(ctx, t, false, requireAnyGate(neededFeatureFlags))
+	c, namespace, secretName, signer := setupResourceVerificationConfig(ctx, t, requireAnyGate(neededFeatureFlags))
 	knativetest.CleanupOnInterrupt(func() { removeResourceVerificationConfig(ctx, t, c, namespace, secretName) }, t.Logf)
 	defer removeResourceVerificationConfig(ctx, t, c, namespace, secretName)
 
@@ -323,7 +158,7 @@ func TestTrustedResourcesVerify_VerificationPolicy_Error(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	c, namespace, secretName, signer := setupResourceVerificationConfig(ctx, t, false, requireAnyGate(neededFeatureFlags))
+	c, namespace, secretName, signer := setupResourceVerificationConfig(ctx, t, requireAnyGate(neededFeatureFlags))
 	knativetest.CleanupOnInterrupt(func() { removeResourceVerificationConfig(ctx, t, c, namespace, secretName) }, t.Logf)
 	defer removeResourceVerificationConfig(ctx, t, c, namespace, secretName)
 
@@ -421,14 +256,14 @@ spec:
 	}
 }
 
-func setupResourceVerificationConfig(ctx context.Context, t *testing.T, keyInConfigMap bool, fn ...func(context.Context, *testing.T, *clients, string)) (*clients, string, string, signature.Signer) {
+func setupResourceVerificationConfig(ctx context.Context, t *testing.T, fn ...func(context.Context, *testing.T, *clients, string)) (*clients, string, string, signature.Signer) {
 	t.Helper()
 	c, ns := setup(ctx, t, requireAnyGate(neededFeatureFlags))
-	secretName, signer := setSecretAndConfig(ctx, t, c.KubeClient, ns, keyInConfigMap)
+	secretName, signer := setSecretAndConfig(ctx, t, c.KubeClient, ns)
 	return c, ns, secretName, signer
 }
 
-func setSecretAndConfig(ctx context.Context, t *testing.T, client kubernetes.Interface, namespace string, keyInConfigMap bool) (string, signature.Signer) {
+func setSecretAndConfig(ctx context.Context, t *testing.T, client kubernetes.Interface, namespace string) (string, signature.Signer) {
 	t.Helper()
 	// Note that this may not work if we run e2e tests in parallel since this feature flag require all tasks and pipelines
 	// to be signed and unsigned resources will fail. i.e. Don't add t.Parallel() for this test.
@@ -457,14 +292,6 @@ func setSecretAndConfig(ctx context.Context, t *testing.T, client kubernetes.Int
 		t.Error(err)
 		return "", nil
 	}
-	if keyInConfigMap {
-		configMapData = map[string]string{
-			config.PublicKeys: fmt.Sprintf("k8s://%s/verification-secrets", namespace),
-		}
-		if err := updateConfigMap(ctx, client, system.Namespace(), config.GetTrustedResourcesConfigName(), configMapData); err != nil {
-			t.Fatal(err)
-		}
-	}
 	return secret.Name, signer
 }
 
@@ -480,12 +307,6 @@ func resetSecretAndConfig(ctx context.Context, t *testing.T, client kubernetes.I
 		"resource-verification-mode": config.SkipResourceVerificationMode,
 	}
 	if err := updateConfigMap(ctx, client, system.Namespace(), config.GetFeatureFlagsConfigName(), configMapData); err != nil {
-		t.Fatal(err)
-	}
-	configMapData = map[string]string{
-		config.PublicKeys: "",
-	}
-	if err := updateConfigMap(ctx, client, system.Namespace(), config.GetTrustedResourcesConfigName(), configMapData); err != nil {
 		t.Fatal(err)
 	}
 	err := client.CoreV1().Secrets(namespace).Delete(ctx, secretName, metav1.DeleteOptions{})

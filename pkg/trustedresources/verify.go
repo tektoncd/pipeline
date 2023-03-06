@@ -22,7 +22,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"regexp"
 
@@ -76,26 +75,12 @@ func VerifyPipeline(ctx context.Context, pipelineObj v1beta1.PipelineObject, k8s
 }
 
 // verifyResource verifies resource which implements metav1.Object by provided signature and public keys from configmap or policies.
-// It will fetch public key from configmap first, if no keys are found then try to fetch keys from VerificationPolicy
+// It will fetch keys from VerificationPolicy
 // For verificationPolicies verifyResource will adopt the following rules to do verification:
 // 1. For each policy, check if the resource url is matching any of the `patterns` in the `resources` list. If matched then this policy will be used for verification.
 // 2. If multiple policies are matched, the resource needs to pass all of them to pass verification.
 // 3. To pass one policy, the resource can pass any public keys in the policy.
 func verifyResource(ctx context.Context, resource metav1.Object, k8s kubernetes.Interface, signature []byte, source string, policies []*v1alpha1.VerificationPolicy) error {
-	verifiers, err := verifier.FromConfigMap(ctx, k8s)
-	if err != nil && !errors.Is(err, verifier.ErrorEmptyPublicKeys) {
-		return fmt.Errorf("failed to get verifiers from configmap: %w", err)
-	}
-	if len(verifiers) != 0 {
-		for _, verifier := range verifiers {
-			// if one of the verifier passes verification, then this resource passes verification
-			if err := verifyInterface(resource, verifier, signature); err == nil {
-				return nil
-			}
-		}
-		return fmt.Errorf("%w: resource %s in namespace %s fails verification", ErrorResourceVerificationFailed, resource.GetName(), resource.GetNamespace())
-	}
-
 	if len(policies) == 0 {
 		return ErrorEmptyVerificationConfig
 	}

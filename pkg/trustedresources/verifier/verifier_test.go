@@ -29,7 +29,6 @@ import (
 	"github.com/sigstore/sigstore/pkg/signature"
 	fakekms "github.com/sigstore/sigstore/pkg/signature/kms/fake"
 	gcpkms "github.com/sigstore/sigstore/pkg/signature/kms/gcp"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -41,42 +40,6 @@ import (
 const (
 	namespace = "trusted-resources"
 )
-
-func TestFromConfigMap_Success(t *testing.T) {
-	ctx := context.Background()
-	keys, keypath := test.GetKeysFromFile(ctx, t)
-	ctx = test.SetupTrustedResourceKeyConfig(ctx, keypath, config.EnforceResourceVerificationMode)
-	v, err := FromConfigMap(ctx, fakek8s.NewSimpleClientset())
-	checkVerifier(t, keys, v[0])
-	if err != nil {
-		t.Errorf("couldn't construct expected verifier from config map: %v", err)
-	}
-}
-
-func TestFromConfigMap_Error(t *testing.T) {
-	tcs := []struct {
-		name          string
-		keyPath       string
-		expectedError error
-	}{{
-		name:          "wrong key path",
-		keyPath:       "wrongPath",
-		expectedError: ErrorFailedLoadKeyFile,
-	}, {
-		name:          "empty key path",
-		keyPath:       "",
-		expectedError: ErrorEmptyPublicKeys,
-	}}
-	for _, tc := range tcs {
-		t.Run(tc.name, func(t *testing.T) {
-			ctx := test.SetupTrustedResourceKeyConfig(context.Background(), tc.keyPath, config.EnforceResourceVerificationMode)
-			_, err := FromConfigMap(ctx, fakek8s.NewSimpleClientset())
-			if !errors.Is(err, tc.expectedError) {
-				t.Errorf("FromConfigMap got: %v, want: %v", err, tc.expectedError)
-			}
-		})
-	}
-}
 
 func TestFromPolicy_Success(t *testing.T) {
 	ctx := context.Background()

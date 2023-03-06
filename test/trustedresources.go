@@ -95,28 +95,6 @@ func GetUnsignedPipeline(name string) *v1beta1.Pipeline {
 	}
 }
 
-// SetupTrustedResourceKeyConfig config the public keys keypath in config-trusted-resources
-// and resource-verification-mode feature flag by given resourceVerificationMode for testing
-func SetupTrustedResourceKeyConfig(ctx context.Context, keypath string, resourceVerificationMode string) context.Context {
-	store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
-	cm := &corev1.ConfigMap{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "ConfigMap",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      config.TrustedTaskConfig,
-		},
-		Data: map[string]string{
-			config.PublicKeys: keypath,
-		},
-	}
-	store.OnConfigChanged(cm)
-	ctx = SetupTrustedResourceConfig(ctx, resourceVerificationMode)
-	return store.ToContext(ctx)
-}
-
 // SetupTrustedResourceConfig config the resource-verification-mode feature flag by given mode for testing
 func SetupTrustedResourceConfig(ctx context.Context, resourceVerificationMode string) context.Context {
 	store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
