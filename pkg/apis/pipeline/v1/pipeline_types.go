@@ -275,7 +275,7 @@ func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldErr
 		errs = errs.Also(pt.Matrix.validateCombinationsCount(ctx))
 	}
 	errs = errs.Also(pt.Matrix.validateParameterInOneOfMatrixOrParams(pt.Params))
-	errs = errs.Also(pt.Matrix.validateParamTypes())
+	errs = errs.Also(pt.Matrix.validateParams())
 	return errs
 }
 

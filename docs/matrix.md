@@ -71,7 +71,9 @@ For more information, see [installation customizations](install.md#customizing-b
 The `Matrix` will take `Parameters` of type `"array"` only, which will be supplied to the
 `PipelineTask` by substituting `Parameters` of type `"string"` in the underlying `Task`.
 The names of the `Parameters` in the `Matrix` must match the names of the `Parameters`
-in the underlying `Task` that they will be substituting.
+in the underlying `Task` that they will be substituting. The names of the `Parameters`
+in the `Matrix` must be unique. Specifying the same parameter multiple times will result
+in a validation error.
 
 In the example below, the *test* `Task` takes *browser* and *platform* `Parameters` of type
 `"string"`. A `Pipeline` used to fan out the `Task` using `Matrix` would have two `Parameters`
