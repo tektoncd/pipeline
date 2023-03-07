@@ -7479,10 +7479,10 @@ spec:
 			`
 spec:
   params:
-  - name: platform
-    value: linux
   - name: browser
     value: chrome
+  - name: platform
+    value: linux
   - name: version
     value: v0.33.0
   serviceAccountName: test-sa
@@ -7496,10 +7496,10 @@ spec:
 			`
 spec:
   params:
-  - name: platform
-    value: mac
   - name: browser
     value: chrome
+  - name: platform
+    value: mac
   - name: version
     value: v0.33.0
   serviceAccountName: test-sa
@@ -7513,10 +7513,10 @@ spec:
 			`
 spec:
   params:
-  - name: platform
-    value: windows
   - name: browser
     value: chrome
+  - name: platform
+    value: windows
   - name: version
     value: v0.33.0
   serviceAccountName: test-sa
@@ -7530,10 +7530,10 @@ spec:
 			`
 spec:
   params:
-  - name: platform
-    value: linux
   - name: browser
     value: safari
+  - name: platform
+    value: linux
   - name: version
     value: v0.33.0
   serviceAccountName: test-sa
@@ -7547,10 +7547,10 @@ spec:
 			`
 spec:
   params:
-  - name: platform
-    value: mac
   - name: browser
     value: safari
+  - name: platform
+    value: mac
   - name: version
     value: v0.33.0
   serviceAccountName: test-sa
@@ -7564,10 +7564,10 @@ spec:
 			`
 spec:
   params:
-  - name: platform
-    value: windows
   - name: browser
     value: safari
+  - name: platform
+    value: windows
   - name: version
     value: v0.33.0
   serviceAccountName: test-sa
@@ -7581,10 +7581,10 @@ spec:
 			`
 spec:
   params:
-  - name: platform
-    value: linux
   - name: browser
     value: firefox
+  - name: platform
+    value: linux
   - name: version
     value: v0.33.0
   serviceAccountName: test-sa
@@ -7598,10 +7598,10 @@ spec:
 			`
 spec:
   params:
-  - name: platform
-    value: mac
   - name: browser
     value: firefox
+  - name: platform
+    value: mac
   - name: version
     value: v0.33.0
   serviceAccountName: test-sa
@@ -7615,10 +7615,10 @@ spec:
 			`
 spec:
   params:
-  - name: platform
-    value: windows
   - name: browser
     value: firefox
+  - name: platform
+    value: windows
   - name: version
     value: v0.33.0
   serviceAccountName: test-sa
@@ -8003,10 +8003,10 @@ spec:
 			`
 spec:
   params:
-  - name: platform
-    value: linux
   - name: browser
     value: chrome
+  - name: platform
+    value: linux
   - name: version
     value: v0.33.0
   serviceAccountName: test-sa
@@ -8020,10 +8020,10 @@ spec:
 			`
 spec:
   params:
-  - name: platform
-    value: mac
   - name: browser
     value: chrome
+  - name: platform
+    value: mac
   - name: version
     value: v0.33.0
   serviceAccountName: test-sa
@@ -8037,10 +8037,10 @@ spec:
 			`
 spec:
   params:
-  - name: platform
-    value: windows
   - name: browser
     value: chrome
+  - name: platform
+    value: windows
   - name: version
     value: v0.33.0
   serviceAccountName: test-sa
@@ -8054,10 +8054,10 @@ spec:
 			`
 spec:
   params:
-  - name: platform
-    value: linux
   - name: browser
     value: safari
+  - name: platform
+    value: linux
   - name: version
     value: v0.33.0
   serviceAccountName: test-sa
@@ -8071,10 +8071,10 @@ spec:
 			`
 spec:
   params:
-  - name: platform
-    value: mac
   - name: browser
     value: safari
+  - name: platform
+    value: mac
   - name: version
     value: v0.33.0
   serviceAccountName: test-sa
@@ -8088,10 +8088,10 @@ spec:
 			`
 spec:
   params:
-  - name: platform
-    value: windows
   - name: browser
     value: safari
+  - name: platform
+    value: windows
   - name: version
     value: v0.33.0
   serviceAccountName: test-sa
@@ -8105,10 +8105,10 @@ spec:
 			`
 spec:
   params:
-  - name: platform
-    value: linux
   - name: browser
     value: firefox
+  - name: platform
+    value: linux
   - name: version
     value: v0.33.0
   serviceAccountName: test-sa
@@ -8122,10 +8122,10 @@ spec:
 			`
 spec:
   params:
-  - name: platform
-    value: mac
   - name: browser
     value: firefox
+  - name: platform
+    value: mac
   - name: version
     value: v0.33.0
   serviceAccountName: test-sa
@@ -8139,10 +8139,10 @@ spec:
 			`
 spec:
   params:
-  - name: platform
-    value: windows
   - name: browser
     value: firefox
+  - name: platform
+    value: windows
   - name: version
     value: v0.33.0
   serviceAccountName: test-sa
@@ -9020,10 +9020,10 @@ spec:
     apiVersion: example.dev/v0
     kind: Example
   params:
-  - name: platform
-    value: linux
   - name: browser
     value: chrome
+  - name: platform
+    value: linux
   - name: version
     value: v0.1
   serviceAccountName: test-sa
@@ -9039,10 +9039,10 @@ spec:
     apiVersion: example.dev/v0
     kind: Example
   params:
-  - name: platform
-    value: mac
   - name: browser
     value: chrome
+  - name: platform
+    value: mac
   - name: version
     value: v0.1
   serviceAccountName: test-sa
@@ -9058,10 +9058,10 @@ spec:
     apiVersion: example.dev/v0
     kind: Example
   params:
-  - name: platform
-    value: windows
   - name: browser
     value: chrome
+  - name: platform
+    value: windows
   - name: version
     value: v0.1
   serviceAccountName: test-sa
@@ -9077,10 +9077,10 @@ spec:
     apiVersion: example.dev/v0
     kind: Example
   params:
-  - name: platform
-    value: linux
   - name: browser
     value: safari
+  - name: platform
+    value: linux
   - name: version
     value: v0.1
   serviceAccountName: test-sa
@@ -9096,10 +9096,10 @@ spec:
     apiVersion: example.dev/v0
     kind: Example
   params:
-  - name: platform
-    value: mac
   - name: browser
     value: safari
+  - name: platform
+    value: mac
   - name: version
     value: v0.1
   serviceAccountName: test-sa
@@ -9115,10 +9115,10 @@ spec:
     apiVersion: example.dev/v0
     kind: Example
   params:
-  - name: platform
-    value: windows
   - name: browser
     value: safari
+  - name: platform
+    value: windows
   - name: version
     value: v0.1
   serviceAccountName: test-sa
@@ -9134,10 +9134,10 @@ spec:
     apiVersion: example.dev/v0
     kind: Example
   params:
-  - name: platform
-    value: linux
   - name: browser
     value: firefox
+  - name: platform
+    value: linux
   - name: version
     value: v0.1
   serviceAccountName: test-sa
@@ -9153,10 +9153,10 @@ spec:
     apiVersion: example.dev/v0
     kind: Example
   params:
-  - name: platform
-    value: mac
   - name: browser
     value: firefox
+  - name: platform
+    value: mac
   - name: version
     value: v0.1
   serviceAccountName: test-sa
@@ -9172,10 +9172,10 @@ spec:
     apiVersion: example.dev/v0
     kind: Example
   params:
-  - name: platform
-    value: windows
   - name: browser
     value: firefox
+  - name: platform
+    value: windows
   - name: version
     value: v0.1
   serviceAccountName: test-sa

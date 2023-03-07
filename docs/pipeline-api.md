@@ -1320,6 +1320,16 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.Combination">Combination
+(<code>map[string]string</code> alias)</h3>
+<div>
+<p>Combination holds a single combination from a Matrix with key as param.Name and value as param.Value</p>
+</div>
+<h3 id="tekton.dev/v1.Combinations">Combinations
+(<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Combination</code> alias)</h3>
+<div>
+<p>Combinations holds a list of combination for a given Matrix</p>
+</div>
 <h3 id="tekton.dev/v1.ConfigSource">ConfigSource
 </h3>
 <p>
@@ -8176,6 +8186,16 @@ int32
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.Combination">Combination
+(<code>map[string]string</code> alias)</h3>
+<div>
+<p>Combination holds a single combination from a Matrix with key as param.Name and value as param.Value</p>
+</div>
+<h3 id="tekton.dev/v1beta1.Combinations">Combinations
+(<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Combination</code> alias)</h3>
+<div>
+<p>Combinations holds a list of combination for a given Matrix</p>
+</div>
 <h3 id="tekton.dev/v1beta1.ConfigSource">ConfigSource
 </h3>
 <p>
@@ -8658,11 +8678,7 @@ The names of the <code>params</code> must match the names of the <code>params</c
 <h3 id="tekton.dev/v1beta1.Param">Param
 </h3>
 <p>
-<<<<<<< HEAD
-(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1beta1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>, <a href="#resolution.tekton.dev/v1beta1.ResolutionRequestSpec">ResolutionRequestSpec</a>)
-=======
-(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec</a>, <a href="#tekton.dev/v1beta1.Matrix">Matrix</a>, <a href="#tekton.dev/v1beta1.MatrixInclude">MatrixInclude</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>, <a href="#resolution.tekton.dev/v1beta1.ResolutionRequestSpec">ResolutionRequestSpec</a>)
->>>>>>> 88e27b27f (Remove Git, Storage and Generic PipelineResources)
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>, <a href="#resolution.tekton.dev/v1beta1.ResolutionRequestSpec">ResolutionRequestSpec</a>)
 </p>
 <div>
 <p>Param declares an ParamValues to use for the parameter called name.</p>
@@ -8863,7 +8879,6 @@ map[string]string
 </tr>
 </tbody>
 </table>
-<<<<<<< HEAD
 <h3 id="tekton.dev/v1beta1.Params">Params
 (<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param</code> alias)</h3>
 <p>
@@ -8872,66 +8887,6 @@ map[string]string
 <div>
 <p>Params is a list of Param</p>
 </div>
-<h3 id="tekton.dev/v1beta1.PipelineDeclaredResource">PipelineDeclaredResource
-</h3>
-<p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineSpec">PipelineSpec</a>)
-</p>
-<div>
-<p>PipelineDeclaredResource is used by a Pipeline to declare the types of the
-PipelineResources that it will required to run and names which can be used to
-refer to these PipelineResources in PipelineTaskResourceBindings.</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>name</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Name is the name that will be used by the Pipeline to refer to this resource.
-It does not directly correspond to the name of any PipelineResources Task
-inputs or outputs, and it does not correspond to the actual names of the
-PipelineResources that will be bound in the PipelineRun.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>type</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Type is the type of the PipelineResource.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>optional</code><br/>
-<em>
-bool
-</em>
-</td>
-<td>
-<p>Optional declares the resource as optional.
-optional: true - the resource is considered optional
-optional: false - the resource is considered required (default/equivalent of not specifying it)</p>
-</td>
-</tr>
-</tbody>
-</table>
-=======
->>>>>>> 88e27b27f (Remove Git, Storage and Generic PipelineResources)
 <h3 id="tekton.dev/v1beta1.PipelineObject">PipelineObject
 </h3>
 <div>
