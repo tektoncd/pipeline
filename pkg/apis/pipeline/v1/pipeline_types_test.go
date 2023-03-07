@@ -607,6 +607,21 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		},
 		wantErrs: apis.ErrMultipleOneOf("matrix[foobar]", "params[foobar]"),
 	}, {
+		name: "duplicate parameters in matrix.params",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}, {
+					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo-1", "bar-1"}},
+				}}},
+		},
+		wantErrs: &apis.FieldError{
+			Message: `parameter names must be unique, the parameter "foobar" is also defined at`,
+			Paths:   []string{"matrix.params[1].name"},
+		},
+	}, {
 		name: "parameters unique in matrix and params",
 		pt: &PipelineTask{
 			Name: "task",
@@ -617,6 +632,24 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 			Params: []Param{{
 				Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
 			}},
+		},
+	}, {
+		name: "duplicate parameters in matrix.include.params",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: &Matrix{
+				Include: []MatrixInclude{{
+					Name: "invalid-include",
+					Params: Params{{
+						Name: "foobar", Value: ParamValue{Type: ParamTypeString, StringVal: "foo"},
+					}, {
+						Name: "foobar", Value: ParamValue{Type: ParamTypeString, StringVal: "foo-1"},
+					}}},
+				}},
+		},
+		wantErrs: &apis.FieldError{
+			Message: `parameter names must be unique, the parameter "foobar" is also defined at`,
+			Paths:   []string{"matrix.include[0].params[1].name"},
 		},
 	}, {
 		name: "parameters in matrix are strings",

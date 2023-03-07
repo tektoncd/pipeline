@@ -150,6 +150,19 @@ func (ps Params) extractParamArrayLengths() map[string]int {
 	return arrayParamsLengths
 }
 
+// validateDuplicateParameters checks if a parameter with the same name is defined more than once
+func (ps Params) validateDuplicateParameters() (errs *apis.FieldError) {
+	taskParamNames := sets.NewString()
+	for i, param := range ps {
+		if taskParamNames.Has(param.Name) {
+			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("parameter names must be unique,"+
+				" the parameter \"%s\" is also defined at", param.Name), fmt.Sprintf("[%d].name", i)))
+		}
+		taskParamNames.Insert(param.Name)
+	}
+	return errs
+}
+
 // extractParamArrayLengths extract and return the lengths of all array params
 // Example of returned value: {"a-array-params": 2,"b-array-params": 2 }
 func (ps ParamSpecs) extractParamArrayLengths() map[string]int {
@@ -506,12 +519,9 @@ func ArrayReference(a string) string {
 
 // validatePipelineParametersVariablesInTaskParameters validates param value that
 // may contain the reference(s) to other params to make sure those references are used appropriately.
-func validatePipelineParametersVariablesInTaskParameters(params []Param, prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
-	taskParamNames := sets.NewString()
-	for i, param := range params {
-		if taskParamNames.Has(param.Name) {
-			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("params names must be unique, the same param: %s is defined multiple times at", param.Name), fmt.Sprintf("params[%d].name", i)))
-		}
+func validatePipelineParametersVariablesInTaskParameters(params Params, prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
+	errs = errs.Also(params.validateDuplicateParameters()).ViaField("params")
+	for _, param := range params {
 		switch param.Value.Type {
 		case ParamTypeArray:
 			for idx, arrayElement := range param.Value.ArrayVal {
@@ -524,7 +534,6 @@ func validatePipelineParametersVariablesInTaskParameters(params []Param, prefix 
 		default:
 			errs = errs.Also(validateParamStringValue(param, prefix, paramNames, arrayParamNames, objectParamNameKeys))
 		}
-		taskParamNames.Insert(param.Name)
 	}
 	return errs
 }
