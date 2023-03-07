@@ -1433,7 +1433,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineResourceResult(ref common.Referenc
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "PipelineResourceResult used to export the image name and digest as json",
+				Description: "PipelineResourceResult is used to write key/value pairs to TaskRun pod termination messages. The key/value pairs may come from the entrypoint binary, or represent a TaskRunResult. If they represent a TaskRunResult, the key is the name of the result and the value is the JSON-serialized value of the result.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"key": {
@@ -1452,8 +1452,9 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineResourceResult(ref common.Referenc
 					},
 					"resourceName": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
+							Description: "ResourceName may be used in tests, but it is not populated in termination messages. It is preserved here for backwards compatibility and will not be ported to v1.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"type": {

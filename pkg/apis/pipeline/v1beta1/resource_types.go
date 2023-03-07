@@ -23,10 +23,16 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
-// PipelineResourceResult used to export the image name and digest as json
+// PipelineResourceResult is used to write key/value pairs to TaskRun pod termination messages.
+// The key/value pairs may come from the entrypoint binary, or represent a TaskRunResult.
+// If they represent a TaskRunResult, the key is the name of the result and the value is the
+// JSON-serialized value of the result.
+// TODO(#6197): Rename this struct
 type PipelineResourceResult struct {
-	Key          string     `json:"key"`
-	Value        string     `json:"value"`
+	Key   string `json:"key"`
+	Value string `json:"value"`
+	// ResourceName may be used in tests, but it is not populated in termination messages.
+	// It is preserved here for backwards compatibility and will not be ported to v1.
 	ResourceName string     `json:"resourceName,omitempty"`
 	ResultType   ResultType `json:"type,omitempty"`
 }
