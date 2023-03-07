@@ -709,15 +709,6 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 				}}},
 		},
 	}, {
-		name: "parameters in matrix contain results references",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Params: []Param{{
-					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.foo-task.results.a-result)"}},
-				}}},
-		},
-	}, {
 		name: "count of combinations of parameters in the matrix exceeds the maximum",
 		pt: &PipelineTask{
 			Name: "task",
