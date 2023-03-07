@@ -17,7 +17,6 @@ package main
 
 import (
 	"flag"
-	"os"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/git"
@@ -58,17 +57,14 @@ func main() {
 	if err != nil {
 		logger.Fatalf("Error parsing revision %s of git repository: %s", fetchSpec.Revision, err)
 	}
-	resourceName := os.Getenv("TEKTON_RESOURCE_NAME")
 	output := []v1beta1.PipelineResourceResult{
 		{
-			Key:          "commit",
-			Value:        commit,
-			ResourceName: resourceName,
+			Key:   "commit",
+			Value: commit,
 		},
 		{
-			Key:          "url",
-			Value:        fetchSpec.URL,
-			ResourceName: resourceName,
+			Key:   "url",
+			Value: fetchSpec.URL,
 		},
 	}
 
