@@ -16,8 +16,10 @@ package v1
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"golang.org/x/exp/maps"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/strings/slices"
 	"knative.dev/pkg/apis"
@@ -51,49 +53,86 @@ type MatrixInclude struct {
 	Params Params `json:"params,omitempty"`
 }
 
-// FanOut produces combinations of Parameters of type String from a slice of Parameters of type Array.
-func (m *Matrix) FanOut() []Params {
-	var combinations []Params
-	for _, parameter := range m.Params {
-		combinations = fanOut(parameter, combinations)
+// Combination is a map, mainly defined to hold a single combination from a Matrix with key as param.Name and value as param.Value
+type Combination map[string]string
+
+// Combinations is a list of combinations
+type Combinations []Combination
+
+// ToParams transforms Combinations from a slice of map[string]string to a slice of Params
+// such that, these combinations can be directly consumed in creating taskRun/run object
+func (cs Combinations) ToParams() []Params {
+	listOfParams := make([]Params, len(cs))
+	for i := range cs {
+		var params Params
+		combination := cs[i]
+		order, _ := combination.sortCombination()
+		for _, key := range order {
+			params = append(params, Param{
+				Name:  key,
+				Value: ParamValue{Type: ParamTypeString, StringVal: combination[key]},
+			})
+		}
+		listOfParams[i] = params
 	}
-	return combinations
+	return listOfParams
 }
 
 // fanOut generates a new combination based on a given Parameter in the Matrix.
-func fanOut(param Param, combinations []Params) []Params {
-	if len(combinations) == 0 {
+func (cs Combinations) fanOut(param Param) Combinations {
+	if len(cs) == 0 {
 		return initializeCombinations(param)
 	}
-	return distribute(param, combinations)
+	return cs.distribute(param)
 }
 
 // distribute generates a new combination of Parameters by adding a new Parameter to an existing list of Combinations.
-func distribute(param Param, combinations []Params) []Params {
-	var expandedCombinations []Params
+func (cs Combinations) distribute(param Param) Combinations {
+	var expandedCombinations Combinations
 	for _, value := range param.Value.ArrayVal {
-		for _, combination := range combinations {
-			expandedCombinations = append(expandedCombinations, createCombination(param.Name, value, combination))
+		for _, combination := range cs {
+			newCombination := make(Combination)
+			maps.Copy(newCombination, combination)
+			newCombination[param.Name] = value
+			_, orderedCombination := newCombination.sortCombination()
+			expandedCombinations = append(expandedCombinations, orderedCombination)
 		}
 	}
 	return expandedCombinations
 }
 
 // initializeCombinations generates a new combination based on the first Parameter in the Matrix.
-func initializeCombinations(param Param) []Params {
-	var combinations []Params
+func initializeCombinations(param Param) Combinations {
+	var combinations Combinations
 	for _, value := range param.Value.ArrayVal {
-		combinations = append(combinations, createCombination(param.Name, value, []Param{}))
+		combinations = append(combinations, Combination{param.Name: value})
 	}
 	return combinations
 }
 
-func createCombination(name string, value string, combination Params) Params {
-	combination = append(combination, Param{
-		Name:  name,
-		Value: ParamValue{Type: ParamTypeString, StringVal: value},
+// sortCombination sorts the given Combination based on the param names to produce a deterministic ordering
+func (c Combination) sortCombination() ([]string, Combination) {
+	sortedCombination := make(Combination, len(c))
+	order := make([]string, 0, len(c))
+	for key := range c {
+		order = append(order, key)
+	}
+	sort.Slice(order, func(i, j int) bool {
+		return order[i] <= order[j]
 	})
-	return combination
+	for _, key := range order {
+		sortedCombination[key] = c[key]
+	}
+	return order, sortedCombination
+}
+
+// FanOut produces combinations of Parameters of type String from a slice of Parameters of type Array.
+func (m *Matrix) FanOut() Combinations {
+	var combinations Combinations
+	for _, parameter := range m.Params {
+		combinations = combinations.fanOut(parameter)
+	}
+	return combinations
 }
 
 // CountCombinations returns the count of combinations of Parameters generated from the Matrix in PipelineTask.

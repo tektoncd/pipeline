@@ -20,17 +20,19 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 )
 
-func TestMatrix_FanOut(t *testing.T) {
+func TestMatrix_FanOut_ToParams(t *testing.T) {
 	tests := []struct {
-		name   string
-		matrix Matrix
-		want   []Params
+		name           string
+		matrix         Matrix
+		want           Combinations
+		expectedParams []Params
 	}{{
 		name: "matrix with no params",
 		matrix: Matrix{
 			Params: Params{},
 		},
-		want: nil,
+		want:           nil,
+		expectedParams: nil,
 	}, {
 		name: "single array in matrix",
 		matrix: Matrix{
@@ -39,7 +41,14 @@ func TestMatrix_FanOut(t *testing.T) {
 				Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
 			}},
 		},
-		want: []Params{{
+		want: Combinations{{
+			"platform": "linux",
+		}, {
+			"platform": "mac",
+		}, {
+			"platform": "windows",
+		}},
+		expectedParams: []Params{{
 			{
 				Name:  "platform",
 				Value: ParamValue{Type: ParamTypeString, StringVal: "linux"},
@@ -65,84 +74,117 @@ func TestMatrix_FanOut(t *testing.T) {
 				Name:  "browser",
 				Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "safari", "firefox"}},
 			}}},
-		want: []Params{{
+		want: Combinations{{
+			"browser":  "chrome",
+			"platform": "linux",
+		}, {
+			"browser":  "chrome",
+			"platform": "mac",
+		}, {
+			"browser":  "chrome",
+			"platform": "windows",
+		}, {
+			"browser":  "safari",
+			"platform": "linux",
+		}, {
+			"browser":  "safari",
+			"platform": "mac",
+		}, {
+			"browser":  "safari",
+			"platform": "windows",
+		}, {
+			"browser":  "firefox",
+			"platform": "linux",
+		}, {
+			"browser":  "firefox",
+			"platform": "mac",
+		}, {
+			"browser":  "firefox",
+			"platform": "windows",
+		}},
+		expectedParams: []Params{{
 			{
-				Name:  "platform",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux"},
-			}, {
 				Name:  "browser",
 				Value: ParamValue{Type: ParamTypeString, StringVal: "chrome"},
-			},
-		}, {
-			{
-				Name:  "platform",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "mac"},
 			}, {
-				Name:  "browser",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "chrome"},
-			},
-		}, {
-			{
-				Name:  "platform",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "windows"},
-			}, {
-				Name:  "browser",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "chrome"},
-			},
-		}, {
-			{
 				Name:  "platform",
 				Value: ParamValue{Type: ParamTypeString, StringVal: "linux"},
-			}, {
-				Name:  "browser",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "safari"},
 			},
 		}, {
 			{
+				Name:  "browser",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "chrome"},
+			}, {
 				Name:  "platform",
 				Value: ParamValue{Type: ParamTypeString, StringVal: "mac"},
-			}, {
-				Name:  "browser",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "safari"},
 			},
 		}, {
 			{
+				Name:  "browser",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "chrome"},
+			}, {
 				Name:  "platform",
 				Value: ParamValue{Type: ParamTypeString, StringVal: "windows"},
-			}, {
-				Name:  "browser",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "safari"},
 			},
 		}, {
 			{
+				Name:  "browser",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "safari"},
+			}, {
 				Name:  "platform",
 				Value: ParamValue{Type: ParamTypeString, StringVal: "linux"},
-			}, {
-				Name:  "browser",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "firefox"},
-			},
-		}, {
+			}}, {
 			{
+				Name:  "browser",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "safari"},
+			}, {
 				Name:  "platform",
 				Value: ParamValue{Type: ParamTypeString, StringVal: "mac"},
-			}, {
-				Name:  "browser",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "firefox"},
 			},
 		}, {
 			{
+				Name:  "browser",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "safari"},
+			}, {
 				Name:  "platform",
 				Value: ParamValue{Type: ParamTypeString, StringVal: "windows"},
-			}, {
+			},
+		}, {
+			{
 				Name:  "browser",
 				Value: ParamValue{Type: ParamTypeString, StringVal: "firefox"},
+			}, {
+				Name:  "platform",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux"},
+			},
+		}, {
+			{
+				Name:  "browser",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "firefox"},
+			}, {
+				Name:  "platform",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "mac"},
+			},
+		}, {
+			{
+				Name:  "browser",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "firefox"},
+			}, {
+				Name:  "platform",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "windows"},
 			},
 		}},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if d := cmp.Diff(tt.want, tt.matrix.FanOut()); d != "" {
-				t.Errorf("Combinations of Parameters did not match the expected Params: %s", d)
+				t.Errorf("Combinations of Parameters did not match the expected Params: %s", diff.PrintWantGot(d))
+			}
+			c := tt.matrix.FanOut().ToParams()
+			for i := range c {
+				if d := cmp.Diff(tt.expectedParams[i], c[i]); d != "" {
+					t.Errorf("The formatted Combinations of Parameters did not match the expected Params: %s", diff.PrintWantGot(d))
+				}
 			}
 		})
 	}

@@ -798,7 +798,7 @@ func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.Resolved
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createTaskRuns")
 	defer span.End()
 	var taskRuns []*v1beta1.TaskRun
-	matrixCombinations := rpt.PipelineTask.Matrix.FanOut()
+	matrixCombinations := rpt.PipelineTask.Matrix.FanOut().ToParams()
 	for i, taskRunName := range rpt.TaskRunNames {
 		params := matrixCombinations[i]
 		taskRun, err := c.createTaskRun(ctx, taskRunName, params, rpt, pr)
@@ -872,7 +872,7 @@ func (c *Reconciler) createRunObjects(ctx context.Context, rpt *resources.Resolv
 	var runObjects []v1beta1.RunObject
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createRunObjects")
 	defer span.End()
-	matrixCombinations := rpt.PipelineTask.Matrix.FanOut()
+	matrixCombinations := rpt.PipelineTask.Matrix.FanOut().ToParams()
 	for i, runObjectName := range rpt.RunObjectNames {
 		params := matrixCombinations[i]
 		runObject, err := c.createRunObject(ctx, runObjectName, params, rpt, pr)
