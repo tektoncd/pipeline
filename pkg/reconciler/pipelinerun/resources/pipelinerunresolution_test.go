@@ -1963,7 +1963,7 @@ func TestResolvePipelineRun_VerificationFailed(t *testing.T) {
 		}}}
 
 	getTask := func(ctx context.Context, name string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error) {
-		return nil, nil, trustedresources.ErrorResourceVerificationFailed
+		return nil, nil, trustedresources.ErrResourceVerificationFailed
 	}
 	getTaskRun := func(name string) (*v1beta1.TaskRun, error) { return nil, nil }
 	pr := v1beta1.PipelineRun{
@@ -1976,8 +1976,8 @@ func TestResolvePipelineRun_VerificationFailed(t *testing.T) {
 		if err == nil {
 			t.Errorf("expected to get err but got nil")
 		}
-		if err != trustedresources.ErrorResourceVerificationFailed {
-			t.Errorf("expected to get %v but got %v", trustedresources.ErrorResourceVerificationFailed, err)
+		if err != trustedresources.ErrResourceVerificationFailed {
+			t.Errorf("expected to get %v but got %v", trustedresources.ErrResourceVerificationFailed, err)
 		}
 	}
 }

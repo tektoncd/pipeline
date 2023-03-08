@@ -98,7 +98,7 @@ func main() {
 	if err := subcommands.Process(flag.CommandLine.Args()); err != nil {
 		log.Println(err.Error())
 		switch err.(type) {
-		case subcommands.SubcommandSuccessful:
+		case subcommands.OK:
 			return
 		default:
 			os.Exit(1)

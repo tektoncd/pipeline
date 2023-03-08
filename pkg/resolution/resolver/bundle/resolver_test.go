@@ -493,7 +493,7 @@ func createRequest(p *params) *v1beta1.ResolutionRequest {
 }
 
 func createError(image, msg string) error {
-	return &resolutioncommon.ErrorGettingResource{
+	return &resolutioncommon.GetResourceError{
 		ResolverName: BundleResolverName,
 		Key:          "foo/rr",
 		Original:     fmt.Errorf("invalid tekton bundle %s, error: %s", image, msg),

@@ -51,77 +51,102 @@ func NewError(reason string, err error) *Error {
 }
 
 var (
-	// ErrorRequestInProgress is a sentinel value to indicate that
+	// ErrRequestInProgress is a sentinel value to indicate that
 	// a resource request is still in progress.
-	ErrorRequestInProgress = NewError("RequestInProgress", errors.New("Resource request is still in-progress"))
+	ErrRequestInProgress = NewError("RequestInProgress", errors.New("Resource request is still in-progress"))
+
+	// ErrorRequestInProgress is an alias to ErrRequestInProgress
+	//
+	// Deprecated: use ErrRequestInProgress instead.
+	ErrorRequestInProgress = ErrRequestInProgress
 )
 
-// ErrorInvalidResourceKey indicates that a string key given to the
+// InvalidResourceKeyError indicates that a string key given to the
 // Reconcile function does not match the expected "name" or "namespace/name"
 // format.
-type ErrorInvalidResourceKey struct {
+type InvalidResourceKeyError struct {
 	Key      string
 	Original error
 }
 
-var _ error = &ErrorInvalidResourceKey{}
+// ErrorInvalidResourceKey is an alias to type InvalidResourceKeyError.
+//
+// Deprecated: use type InvalidResourceKeyError instead.
+type ErrorInvalidResourceKey = InvalidResourceKeyError
 
-func (e *ErrorInvalidResourceKey) Error() string {
+var _ error = &InvalidResourceKeyError{}
+
+func (e *InvalidResourceKeyError) Error() string {
 	return fmt.Sprintf("invalid resource key %q: %v", e.Key, e.Original)
 }
 
-func (e *ErrorInvalidResourceKey) Unwrap() error {
+func (e *InvalidResourceKeyError) Unwrap() error {
 	return e.Original
 }
 
-// ErrorInvalidRequest is an error received when a
+// InvalidRequestError is an error received when a
 // resource request is badly formed for some reason: either the
 // parameters don't match the resolver's expectations or there is some
 // other structural issue.
-type ErrorInvalidRequest struct {
+type InvalidRequestError struct {
 	ResolutionRequestKey string
 	Message              string
 }
 
-var _ error = &ErrorInvalidRequest{}
+// ErrorInvalidRequest is an alias to type InvalidRequestError.
+//
+// Deprecated: use type InvalidRequestError instead.
+type ErrorInvalidRequest = InvalidRequestError
 
-func (e *ErrorInvalidRequest) Error() string {
+var _ error = &InvalidRequestError{}
+
+func (e *InvalidRequestError) Error() string {
 	return fmt.Sprintf("invalid resource request %q: %s", e.ResolutionRequestKey, e.Message)
 }
 
-// ErrorGettingResource is an error received during what should
+// GetResourceError is an error received during what should
 // otherwise have been a successful resource request.
-type ErrorGettingResource struct {
+type GetResourceError struct {
 	ResolverName string
 	Key          string
 	Original     error
 }
 
-var _ error = &ErrorGettingResource{}
+// ErrorGettingResource is an alias to type GetResourceError.
+//
+// Deprecated: use type GetResourceError instead.
+type ErrorGettingResource = GetResourceError
 
-func (e *ErrorGettingResource) Error() string {
+var _ error = &GetResourceError{}
+
+func (e *GetResourceError) Error() string {
 	return fmt.Sprintf("error getting %q %q: %v", e.ResolverName, e.Key, e.Original)
 }
 
-func (e *ErrorGettingResource) Unwrap() error {
+func (e *GetResourceError) Unwrap() error {
 	return e.Original
 }
 
-// ErrorUpdatingRequest is an error during any part of the update
+// UpdatingRequestError is an error during any part of the update
 // process for a ResolutionRequest, e.g. when attempting to patch the
 // ResolutionRequest with resolved data.
-type ErrorUpdatingRequest struct {
+type UpdatingRequestError struct {
 	ResolutionRequestKey string
 	Original             error
 }
 
-var _ error = &ErrorUpdatingRequest{}
+// ErrorUpdatingRequest is an alias to UpdatingRequestError
+//
+// Deprecated: use UpdatingRequestError instead.
+type ErrorUpdatingRequest = UpdatingRequestError
 
-func (e *ErrorUpdatingRequest) Error() string {
+var _ error = &UpdatingRequestError{}
+
+func (e *UpdatingRequestError) Error() string {
 	return fmt.Sprintf("error updating resource request %q with data: %v", e.ResolutionRequestKey, e.Original)
 }
 
-func (e *ErrorUpdatingRequest) Unwrap() error {
+func (e *UpdatingRequestError) Unwrap() error {
 	return e.Original
 }
 

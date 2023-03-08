@@ -92,15 +92,15 @@ func TestVerifyInterface_Task_Error(t *testing.T) {
 	}{{
 		name:          "Unsigned Task Fail Verification",
 		task:          unsignedTask,
-		expectedError: ErrorResourceVerificationFailed,
+		expectedError: ErrResourceVerificationFailed,
 	}, {
 		name:          "Empty task Fail Verification",
 		task:          nil,
-		expectedError: ErrorResourceVerificationFailed,
+		expectedError: ErrResourceVerificationFailed,
 	}, {
 		name:          "Tampered task Fail Verification",
 		task:          tamperedTask,
-		expectedError: ErrorResourceVerificationFailed,
+		expectedError: ErrResourceVerificationFailed,
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -227,19 +227,19 @@ func TestVerifyTask_VerificationPolicy_Error(t *testing.T) {
 		task:               tamperedTask,
 		source:             "git+https://github.com/tektoncd/catalog.git",
 		verificationPolicy: vps,
-		expectedError:      ErrorResourceVerificationFailed,
+		expectedError:      ErrResourceVerificationFailed,
 	}, {
 		name:               "task not matching pattern fails verification",
 		task:               signedTask,
 		source:             "wrong source",
 		verificationPolicy: vps,
-		expectedError:      ErrorNoMatchedPolicies,
+		expectedError:      ErrNoMatchedPolicies,
 	}, {
 		name:               "verification fails with empty policy",
 		task:               tamperedTask,
 		source:             "git+https://github.com/tektoncd/catalog.git",
 		verificationPolicy: []*v1alpha1.VerificationPolicy{},
-		expectedError:      ErrorEmptyVerificationConfig,
+		expectedError:      ErrEmptyVerificationConfig,
 	}, {
 		name:   "Verification fails with regex error",
 		task:   signedTask,
@@ -256,7 +256,7 @@ func TestVerifyTask_VerificationPolicy_Error(t *testing.T) {
 				},
 			},
 		},
-		expectedError: ErrorRegexMatch,
+		expectedError: ErrRegexMatch,
 	}, {
 		name:   "Verification fails with error from policy",
 		task:   signedTask,
@@ -281,7 +281,7 @@ func TestVerifyTask_VerificationPolicy_Error(t *testing.T) {
 				},
 			},
 		},
-		expectedError: verifier.ErrorDecodeKey,
+		expectedError: verifier.ErrDecodeKey,
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {

@@ -57,7 +57,7 @@ func (r *CRDRequester) Submit(ctx context.Context, resolver ResolverName, req Re
 		if err := r.createResolutionRequest(ctx, resolver, req); err != nil {
 			return nil, err
 		}
-		return nil, resolutioncommon.ErrorRequestInProgress
+		return nil, resolutioncommon.ErrRequestInProgress
 	}
 
 	if rr.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
@@ -66,7 +66,7 @@ func (r *CRDRequester) Submit(ctx context.Context, resolver ResolverName, req Re
 		// that it doesn't get deleted until the caller is done
 		// with it. Use appendOwnerReference and then submit
 		// update to ResolutionRequest.
-		return nil, resolutioncommon.ErrorRequestInProgress
+		return nil, resolutioncommon.ErrRequestInProgress
 	}
 
 	if rr.Status.GetCondition(apis.ConditionSucceeded).IsTrue() {

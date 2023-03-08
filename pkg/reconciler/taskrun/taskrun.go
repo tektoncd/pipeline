@@ -345,11 +345,11 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 
 	taskMeta, taskSpec, err := resources.GetTaskData(ctx, tr, getTaskfunc)
 	switch {
-	case errors.Is(err, remote.ErrorRequestInProgress):
+	case errors.Is(err, remote.ErrRequestInProgress):
 		message := fmt.Sprintf("TaskRun %s/%s awaiting remote resource", tr.Namespace, tr.Name)
 		tr.Status.MarkResourceOngoing(v1beta1.TaskRunReasonResolvingTaskRef, message)
 		return nil, nil, err
-	case errors.Is(err, trustedresources.ErrorResourceVerificationFailed):
+	case errors.Is(err, trustedresources.ErrResourceVerificationFailed):
 		logger.Errorf("TaskRun %s/%s referred task failed signature verification", tr.Namespace, tr.Name)
 		tr.Status.MarkResourceFailed(podconvert.ReasonResourceVerificationFailed, err)
 		return nil, nil, controller.NewPermanentError(err)

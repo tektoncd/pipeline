@@ -64,21 +64,21 @@ func (resolver *Resolver) Get(ctx context.Context, _, _ string) (runtime.Object,
 	}
 	resolved, err := resolver.requester.Submit(ctx, resolverName, req)
 	switch {
-	case errors.Is(err, resolutioncommon.ErrorRequestInProgress):
-		return nil, nil, remote.ErrorRequestInProgress
+	case errors.Is(err, resolutioncommon.ErrRequestInProgress):
+		return nil, nil, remote.ErrRequestInProgress
 	case err != nil:
 		return nil, nil, fmt.Errorf("error requesting remote resource: %w", err)
 	case resolved == nil:
-		return nil, nil, ErrorRequestedResourceIsNil
+		return nil, nil, ErrNilResource
 	default:
 	}
 	data, err := resolved.Data()
 	if err != nil {
-		return nil, nil, &ErrorAccessingData{original: err}
+		return nil, nil, &DataAccessError{original: err}
 	}
 	obj, _, err := scheme.Codecs.UniversalDeserializer().Decode(data, nil, nil)
 	if err != nil {
-		return nil, nil, &ErrorInvalidRuntimeObject{original: err}
+		return nil, nil, &InvalidRuntimeObjectError{original: err}
 	}
 	return obj, resolved.Source(), nil
 }

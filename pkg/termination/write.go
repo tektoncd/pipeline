@@ -49,7 +49,7 @@ func WriteMessage(path string, pro []v1beta1.PipelineResourceResult) error {
 	}
 
 	if len(jsonOutput) > MaxContainerTerminationMessageLength {
-		return aboveMax
+		return errTooLong
 	}
 
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0666)
@@ -68,7 +68,7 @@ func WriteMessage(path string, pro []v1beta1.PipelineResourceResult) error {
 type MessageLengthError string
 
 const (
-	aboveMax MessageLengthError = "Termination message is above max allowed size 4096, caused by large task result."
+	errTooLong MessageLengthError = "Termination message is above max allowed size 4096, caused by large task result."
 )
 
 func (e MessageLengthError) Error() string {

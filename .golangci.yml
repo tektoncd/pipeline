@@ -25,6 +25,9 @@ linters:
   - dogsled
   - dupword
   - errcheck
+  - errchkjson
+  - errname
+  # errorlint TODO: cleanup the issues this linter uncovers https://github.com/tektoncd/pipeline/issues/5899
   - goconst
   - gocritic
   - gofmt
@@ -89,6 +92,9 @@ issues:
   - path: test/controller.go
     linters:
     - containedctx
+  - path: internal/sidecarlogresults/sidecarlogresults_test\.go
+    linters:
+    - errchkjson
   max-issues-per-linter: 0
   max-same-issues: 0
   include:

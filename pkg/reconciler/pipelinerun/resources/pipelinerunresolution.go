@@ -714,9 +714,9 @@ func resolveTask(
 			// Instead, the child TaskRun's status will be the place recording the source of individual task.
 			t, _, err = getTask(ctx, pipelineTask.TaskRef.Name)
 			switch {
-			case errors.Is(err, remote.ErrorRequestInProgress):
+			case errors.Is(err, remote.ErrRequestInProgress):
 				return v1beta1.TaskSpec{}, "", "", err
-			case errors.Is(err, trustedresources.ErrorResourceVerificationFailed):
+			case errors.Is(err, trustedresources.ErrResourceVerificationFailed):
 				return v1beta1.TaskSpec{}, "", "", err
 			case err != nil:
 				return v1beta1.TaskSpec{}, "", "", &TaskNotFoundError{

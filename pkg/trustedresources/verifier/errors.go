@@ -18,24 +18,24 @@ package verifier
 import "errors"
 
 var (
-	// ErrorFailedLoadKeyFile is returned the key file cannot be read
-	ErrorFailedLoadKeyFile = errors.New("the key file cannot be read")
-	// ErrorDecodeKey is returned when the key cannot be decoded
-	ErrorDecodeKey = errors.New("key cannot be decoded")
-	// ErrorEmptyPublicKeys is returned when no public keys are founded
-	ErrorEmptyPublicKeys = errors.New("no public keys are founded")
-	// ErrorEmptySecretData is returned secret data is empty
-	ErrorEmptySecretData = errors.New("secret data is empty")
-	// ErrorSecretNotFound is returned when the secret is not found
-	ErrorSecretNotFound = errors.New("secret not found")
-	// ErrorMultipleSecretData is returned secret contains multiple data
-	ErrorMultipleSecretData = errors.New("secret contains multiple data")
-	// ErrorEmptyKey is returned when the key doesn't contain data or keyRef
-	ErrorEmptyKey = errors.New("key doesn't contain data or keyRef")
-	// ErrorK8sSpecificationInvalid is returned when kubernetes specification format is invalid
-	ErrorK8sSpecificationInvalid = errors.New("kubernetes specification should be in the format k8s://<namespace>/<secret>")
-	// ErrorLoadVerifier is returned when verifier cannot be loaded from the key
-	ErrorLoadVerifier = errors.New("verifier cannot to be loaded")
-	// ErrorAlgorithmInvalid is returned the hash algorithm is not supported
-	ErrorAlgorithmInvalid = errors.New("unknown digest algorithm")
+	// ErrFailedLoadKeyFile is returned the key file cannot be read
+	ErrFailedLoadKeyFile = errors.New("the key file cannot be read")
+	// ErrDecodeKey is returned when the key cannot be decoded
+	ErrDecodeKey = errors.New("key cannot be decoded")
+	// ErrEmptyPublicKeys is returned when no public keys are founded
+	ErrEmptyPublicKeys = errors.New("no public keys are founded")
+	// ErrEmptySecretData is returned secret data is empty
+	ErrEmptySecretData = errors.New("secret data is empty")
+	// ErrSecretNotFound is returned when the secret is not found
+	ErrSecretNotFound = errors.New("secret not found")
+	// ErrMultipleSecretData is returned secret contains multiple data
+	ErrMultipleSecretData = errors.New("secret contains multiple data")
+	// ErrEmptyKey is returned when the key doesn't contain data or keyRef
+	ErrEmptyKey = errors.New("key doesn't contain data or keyRef")
+	// ErrK8sSpecificationInvalid is returned when kubernetes specification format is invalid
+	ErrK8sSpecificationInvalid = errors.New("kubernetes specification should be in the format k8s://<namespace>/<secret>")
+	// ErrLoadVerifier is returned when verifier cannot be loaded from the key
+	ErrLoadVerifier = errors.New("verifier cannot to be loaded")
+	// ErrAlgorithmInvalid is returned the hash algorithm is not supported
+	ErrAlgorithmInvalid = errors.New("unknown digest algorithm")
 )

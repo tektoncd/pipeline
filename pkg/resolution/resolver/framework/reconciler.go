@@ -76,13 +76,13 @@ const defaultMaximumResolutionDuration = time.Minute
 func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		err = &resolutioncommon.ErrorInvalidResourceKey{Key: key, Original: err}
+		err = &resolutioncommon.InvalidResourceKeyError{Key: key, Original: err}
 		return controller.NewPermanentError(err)
 	}
 
 	rr, err := r.resolutionRequestLister.ResolutionRequests(namespace).Get(name)
 	if err != nil {
-		err := &resolutioncommon.ErrorGettingResource{ResolverName: "resolutionrequest", Key: key, Original: err}
+		err := &resolutioncommon.GetResourceError{ResolverName: "resolutionrequest", Key: key, Original: err}
 		return controller.NewPermanentError(err)
 	}
 
@@ -120,7 +120,7 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 	go func() {
 		validationError := r.resolver.ValidateParams(resolutionCtx, rr.Spec.Params)
 		if validationError != nil {
-			errChan <- &resolutioncommon.ErrorInvalidRequest{
+			errChan <- &resolutioncommon.InvalidRequestError{
 				ResolutionRequestKey: key,
 				Message:              validationError.Error(),
 			}
@@ -128,7 +128,7 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 		}
 		resource, resolveErr := r.resolver.Resolve(resolutionCtx, rr.Spec.Params)
 		if resolveErr != nil {
-			errChan <- &resolutioncommon.ErrorGettingResource{
+			errChan <- &resolutioncommon.GetResourceError{
 				ResolverName: r.resolver.GetName(resolutionCtx),
 				Key:          key,
 				Original:     resolveErr,
@@ -209,14 +209,14 @@ func (r *Reconciler) writeResolvedData(ctx context.Context, rr *v1beta1.Resoluti
 		},
 	})
 	if err != nil {
-		return r.OnError(ctx, rr, &resolutioncommon.ErrorUpdatingRequest{
+		return r.OnError(ctx, rr, &resolutioncommon.UpdatingRequestError{
 			ResolutionRequestKey: fmt.Sprintf("%s/%s", rr.Namespace, rr.Name),
 			Original:             fmt.Errorf("error serializing resource request patch: %w", err),
 		})
 	}
 	_, err = r.resolutionRequestClientSet.ResolutionV1beta1().ResolutionRequests(rr.Namespace).Patch(ctx, rr.Name, types.MergePatchType, patchBytes, metav1.PatchOptions{}, "status")
 	if err != nil {
-		return r.OnError(ctx, rr, &resolutioncommon.ErrorUpdatingRequest{
+		return r.OnError(ctx, rr, &resolutioncommon.UpdatingRequestError{
 			ResolutionRequestKey: fmt.Sprintf("%s/%s", rr.Namespace, rr.Name),
 			Original:             err,
 		})
