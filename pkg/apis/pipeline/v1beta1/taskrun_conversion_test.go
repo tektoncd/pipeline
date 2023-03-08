@@ -241,7 +241,7 @@ func TestTaskRunConversion(t *testing.T) {
 							RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 							EnableAPIFields:                  config.DefaultEnableAPIFields,
 							AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
-							ResourceVerificationMode:         config.DefaultResourceVerificationMode,
+							VerificationNoMatchPolicy:        config.DefaultNoMatchPolicyConfig,
 							ResultExtractionMethod:           config.DefaultResultExtractionMethod,
 							MaxResultSize:                    config.DefaultMaxResultSize,
 							CustomTaskVersion:                config.DefaultCustomTaskVersion,

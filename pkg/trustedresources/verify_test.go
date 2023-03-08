@@ -124,18 +124,13 @@ func TestVerifyInterface_Task_Error(t *testing.T) {
 	}
 }
 
-func TestVerifyTask_VerificationPolicy_Success(t *testing.T) {
-	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
-	ctx = test.SetupTrustedResourceConfig(ctx, config.EnforceResourceVerificationMode)
+func TestVerifyTask_Success(t *testing.T) {
 	signer256, _, k8sclient, vps := test.SetupVerificationPolicies(t)
-
 	unsignedTask := test.GetUnsignedTask("test-task")
-
 	signedTask, err := test.GetSignedTask(unsignedTask, signer256, "signed")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
-
 	signer384, _, pub, err := test.GenerateKeys(elliptic.P384(), crypto.SHA384)
 	if err != nil {
 		t.Fatalf("failed to generate keys %v", err)
@@ -172,27 +167,43 @@ func TestVerifyTask_VerificationPolicy_Success(t *testing.T) {
 		t.Fatal("fail to sign task", err)
 	}
 
+	mismatchedSource := "wrong source"
 	tcs := []struct {
-		name   string
-		task   v1beta1.TaskObject
-		source string
-		signer signature.SignerVerifier
+		name                      string
+		task                      v1beta1.TaskObject
+		source                    string
+		signer                    signature.SignerVerifier
+		verificationNoMatchPolicy string
 	}{{
-		name:   "signed git source task passes verification",
-		task:   signedTask,
-		source: "git+https://github.com/tektoncd/catalog.git",
+		name:                      "signed git source task passes verification",
+		task:                      signedTask,
+		source:                    "git+https://github.com/tektoncd/catalog.git",
+		verificationNoMatchPolicy: config.FailNoMatchPolicy,
 	}, {
-		name:   "signed bundle source task passes verification",
-		task:   signedTask,
-		source: "gcr.io/tekton-releases/catalog/upstream/git-clone",
+		name:                      "signed bundle source task passes verification",
+		task:                      signedTask,
+		source:                    "gcr.io/tekton-releases/catalog/upstream/git-clone",
+		verificationNoMatchPolicy: config.FailNoMatchPolicy,
 	}, {
-		name:   "signed task with sha384 key",
-		task:   signedTask384,
-		source: "gcr.io/tekton-releases/catalog/upstream/sha384",
+		name:                      "signed task with sha384 key",
+		task:                      signedTask384,
+		source:                    "gcr.io/tekton-releases/catalog/upstream/sha384",
+		verificationNoMatchPolicy: config.FailNoMatchPolicy,
+	}, {
+		name:                      "ignore no match policy skips verification when no matching policies",
+		task:                      unsignedTask,
+		source:                    mismatchedSource,
+		verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
+	}, {
+		name:                      "warn no match policy skips verification when no matching policies",
+		task:                      unsignedTask,
+		source:                    mismatchedSource,
+		verificationNoMatchPolicy: config.WarnNoMatchPolicy,
 	}}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
+			ctx := test.SetupTrustedResourceConfig(context.Background(), tc.verificationNoMatchPolicy)
 			err := VerifyTask(ctx, tc.task, k8sclient, tc.source, vps)
 			if err != nil {
 				t.Fatalf("VerifyTask() get err %v", err)
@@ -201,9 +212,9 @@ func TestVerifyTask_VerificationPolicy_Success(t *testing.T) {
 	}
 }
 
-func TestVerifyTask_VerificationPolicy_Error(t *testing.T) {
+func TestVerifyTask_Error(t *testing.T) {
 	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
-	ctx = test.SetupTrustedResourceConfig(ctx, config.EnforceResourceVerificationMode)
+	ctx = test.SetupTrustedResourceConfig(ctx, config.FailNoMatchPolicy)
 	sv, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 
 	unsignedTask := test.GetUnsignedTask("test-task")
@@ -216,6 +227,8 @@ func TestVerifyTask_VerificationPolicy_Error(t *testing.T) {
 	tamperedTask := signedTask.DeepCopy()
 	tamperedTask.Annotations["random"] = "attack"
 
+	matchingSource := "git+https://github.com/tektoncd/catalog.git"
+	mismatchedSource := "wrong source"
 	tcs := []struct {
 		name               string
 		task               v1beta1.TaskObject
@@ -225,21 +238,21 @@ func TestVerifyTask_VerificationPolicy_Error(t *testing.T) {
 	}{{
 		name:               "modified Task fails verification",
 		task:               tamperedTask,
-		source:             "git+https://github.com/tektoncd/catalog.git",
+		source:             matchingSource,
 		verificationPolicy: vps,
 		expectedError:      ErrResourceVerificationFailed,
 	}, {
 		name:               "task not matching pattern fails verification",
 		task:               signedTask,
-		source:             "wrong source",
+		source:             mismatchedSource,
 		verificationPolicy: vps,
 		expectedError:      ErrNoMatchedPolicies,
 	}, {
 		name:               "verification fails with empty policy",
 		task:               tamperedTask,
-		source:             "git+https://github.com/tektoncd/catalog.git",
+		source:             matchingSource,
 		verificationPolicy: []*v1alpha1.VerificationPolicy{},
-		expectedError:      ErrEmptyVerificationConfig,
+		expectedError:      ErrNoMatchedPolicies,
 	}, {
 		name:   "Verification fails with regex error",
 		task:   signedTask,
@@ -294,32 +307,43 @@ func TestVerifyTask_VerificationPolicy_Error(t *testing.T) {
 }
 
 func TestVerifyPipeline_Success(t *testing.T) {
-	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
-	ctx = test.SetupTrustedResourceConfig(ctx, config.EnforceResourceVerificationMode)
 	sv, _, k8sclient, vps := test.SetupVerificationPolicies(t)
-
 	unsignedPipeline := test.GetUnsignedPipeline("test-pipeline")
-
 	signedPipeline, err := test.GetSignedPipeline(unsignedPipeline, sv, "signed")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
 
+	mismatchedSource := "wrong source"
 	tcs := []struct {
-		name     string
-		pipeline v1beta1.PipelineObject
-		source   string
+		name                      string
+		pipeline                  v1beta1.PipelineObject
+		source                    string
+		verificationNoMatchPolicy string
 	}{{
-		name:     "Signed git source Task Passes Verification",
-		pipeline: signedPipeline,
-		source:   "git+https://github.com/tektoncd/catalog.git",
+		name:                      "signed git source pipeline passes verification",
+		pipeline:                  signedPipeline,
+		source:                    "git+https://github.com/tektoncd/catalog.git",
+		verificationNoMatchPolicy: config.FailNoMatchPolicy,
 	}, {
-		name:     "Signed bundle source Task Passes Verification",
-		pipeline: signedPipeline,
-		source:   "gcr.io/tekton-releases/catalog/upstream/git-clone",
+		name:                      "signed bundle source pipeline passes verification",
+		pipeline:                  signedPipeline,
+		source:                    "gcr.io/tekton-releases/catalog/upstream/git-clone",
+		verificationNoMatchPolicy: config.FailNoMatchPolicy,
+	}, {
+		name:                      "ignore no match policy skips verification when no matching policies",
+		pipeline:                  unsignedPipeline,
+		source:                    mismatchedSource,
+		verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
+	}, {
+		name:                      "warn no match policy skips verification when no matching policies",
+		pipeline:                  unsignedPipeline,
+		source:                    mismatchedSource,
+		verificationNoMatchPolicy: config.WarnNoMatchPolicy,
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
+			ctx := test.SetupTrustedResourceConfig(context.Background(), tc.verificationNoMatchPolicy)
 			err := VerifyPipeline(ctx, tc.pipeline, k8sclient, tc.source, vps)
 			if err != nil {
 				t.Fatalf("VerifyPipeline() get err: %v", err)
@@ -330,7 +354,7 @@ func TestVerifyPipeline_Success(t *testing.T) {
 
 func TestVerifyPipeline_Error(t *testing.T) {
 	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
-	ctx = test.SetupTrustedResourceConfig(ctx, config.EnforceResourceVerificationMode)
+	ctx = test.SetupTrustedResourceConfig(ctx, config.FailNoMatchPolicy)
 	sv, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 
 	unsignedPipeline := test.GetUnsignedPipeline("test-pipeline")
@@ -342,22 +366,43 @@ func TestVerifyPipeline_Error(t *testing.T) {
 	tamperedPipeline := signedPipeline.DeepCopy()
 	tamperedPipeline.Annotations["random"] = "attack"
 
+	matchingSource := "git+https://github.com/tektoncd/catalog.git"
+	mismatchedSource := "wrong source"
 	tcs := []struct {
-		name     string
-		pipeline v1beta1.PipelineObject
-		source   string
+		name               string
+		pipeline           v1beta1.PipelineObject
+		source             string
+		verificationPolicy []*v1alpha1.VerificationPolicy
 	}{{
-		name:     "Tampered Task Fails Verification with tampered content",
-		pipeline: tamperedPipeline,
-		source:   "git+https://github.com/tektoncd/catalog.git",
+		name:               "Tampered Task Fails Verification with tampered content",
+		pipeline:           tamperedPipeline,
+		source:             matchingSource,
+		verificationPolicy: vps,
 	}, {
-		name:     "Task Not Matching Pattern Fails Verification",
+		name:               "Task Not Matching Pattern Fails Verification",
+		pipeline:           signedPipeline,
+		source:             mismatchedSource,
+		verificationPolicy: vps,
+	}, {
+		name:     "Verification fails with regex error",
 		pipeline: signedPipeline,
-		source:   "wrong source",
+		source:   "git+https://github.com/tektoncd/catalog.git",
+		verificationPolicy: []*v1alpha1.VerificationPolicy{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "vp",
+				},
+				Spec: v1alpha1.VerificationPolicySpec{
+					Resources: []v1alpha1.ResourcePattern{{
+						Pattern: "^[",
+					}},
+				},
+			},
+		},
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			err := VerifyPipeline(ctx, tc.pipeline, k8sclient, tc.source, vps)
+			err := VerifyPipeline(ctx, tc.pipeline, k8sclient, tc.source, tc.verificationPolicy)
 			if err == nil {
 				t.Fatalf("VerifyPipeline() expects to get err but got nil")
 			}

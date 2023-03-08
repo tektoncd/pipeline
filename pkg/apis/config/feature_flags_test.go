@@ -42,16 +42,16 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				RunningInEnvWithInjectedSidecars: true,
 				RequireGitSSHSecretKnownHosts:    false,
 
-				DisableCredsInit:         config.DefaultDisableCredsInit,
-				AwaitSidecarReadiness:    config.DefaultAwaitSidecarReadiness,
-				EnableTektonOCIBundles:   config.DefaultEnableTektonOciBundles,
-				EnableAPIFields:          config.DefaultEnableAPIFields,
-				SendCloudEventsForRuns:   config.DefaultSendCloudEventsForRuns,
-				ResourceVerificationMode: config.DefaultResourceVerificationMode,
-				EnableProvenanceInStatus: config.DefaultEnableProvenanceInStatus,
-				ResultExtractionMethod:   config.DefaultResultExtractionMethod,
-				MaxResultSize:            config.DefaultMaxResultSize,
-				CustomTaskVersion:        config.DefaultCustomTaskVersion,
+				DisableCredsInit:          config.DefaultDisableCredsInit,
+				AwaitSidecarReadiness:     config.DefaultAwaitSidecarReadiness,
+				EnableTektonOCIBundles:    config.DefaultEnableTektonOciBundles,
+				EnableAPIFields:           config.DefaultEnableAPIFields,
+				SendCloudEventsForRuns:    config.DefaultSendCloudEventsForRuns,
+				VerificationNoMatchPolicy: config.DefaultNoMatchPolicyConfig,
+				EnableProvenanceInStatus:  config.DefaultEnableProvenanceInStatus,
+				ResultExtractionMethod:    config.DefaultResultExtractionMethod,
+				MaxResultSize:             config.DefaultMaxResultSize,
+				CustomTaskVersion:         config.DefaultCustomTaskVersion,
 			},
 			fileName: config.GetFeatureFlagsConfigName(),
 		},
@@ -65,7 +65,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableAPIFields:                  "alpha",
 				SendCloudEventsForRuns:           true,
 				EnforceNonfalsifiability:         "spire",
-				ResourceVerificationMode:         "enforce",
+				VerificationNoMatchPolicy:        config.FailNoMatchPolicy,
 				EnableProvenanceInStatus:         true,
 				ResultExtractionMethod:           "termination-message",
 				MaxResultSize:                    4096,
@@ -86,7 +86,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
 				RequireGitSSHSecretKnownHosts:    config.DefaultRequireGitSSHSecretKnownHosts,
 				SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
-				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
+				VerificationNoMatchPolicy:        config.DefaultNoMatchPolicyConfig,
 				ResultExtractionMethod:           config.DefaultResultExtractionMethod,
 				MaxResultSize:                    config.DefaultMaxResultSize,
 				CustomTaskVersion:                config.DefaultCustomTaskVersion,
@@ -104,7 +104,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
 				RequireGitSSHSecretKnownHosts:    config.DefaultRequireGitSSHSecretKnownHosts,
 				SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
-				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
+				VerificationNoMatchPolicy:        config.DefaultNoMatchPolicyConfig,
 				ResultExtractionMethod:           config.DefaultResultExtractionMethod,
 				MaxResultSize:                    config.DefaultMaxResultSize,
 				CustomTaskVersion:                config.DefaultCustomTaskVersion,
@@ -122,7 +122,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
 				RequireGitSSHSecretKnownHosts:    config.DefaultRequireGitSSHSecretKnownHosts,
 				SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
-				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
+				VerificationNoMatchPolicy:        config.DefaultNoMatchPolicyConfig,
 				ResultExtractionMethod:           config.DefaultResultExtractionMethod,
 				MaxResultSize:                    config.DefaultMaxResultSize,
 				CustomTaskVersion:                config.DefaultCustomTaskVersion,
@@ -134,7 +134,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableAPIFields:                  "alpha",
 				EnforceNonfalsifiability:         "spire",
 				EnableTektonOCIBundles:           true,
-				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
+				VerificationNoMatchPolicy:        config.DefaultNoMatchPolicyConfig,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
 				ResultExtractionMethod:           config.DefaultResultExtractionMethod,
@@ -146,7 +146,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		{
 			expectedConfig: &config.FeatureFlags{
 				EnableAPIFields:                  "stable",
-				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
+				VerificationNoMatchPolicy:        config.DefaultNoMatchPolicyConfig,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
 				ResultExtractionMethod:           config.ResultExtractionMethodSidecarLogs,
@@ -178,7 +178,7 @@ func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 		EnableAPIFields:                  config.DefaultEnableAPIFields,
 		SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
 		EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
-		ResourceVerificationMode:         config.DefaultResourceVerificationMode,
+		VerificationNoMatchPolicy:        config.DefaultNoMatchPolicyConfig,
 		EnableProvenanceInStatus:         config.DefaultEnableProvenanceInStatus,
 		ResultExtractionMethod:           config.DefaultResultExtractionMethod,
 		MaxResultSize:                    config.DefaultMaxResultSize,
@@ -222,7 +222,7 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 	}, {
 		fileName: "feature-flags-invalid-enable-api-fields",
 	}, {
-		fileName: "feature-flags-invalid-resource-verification-mode",
+		fileName: "feature-flags-invalid-trusted-resources-verification-no-match-policy",
 	}, {
 		fileName: "feature-flags-invalid-results-from",
 	}, {
@@ -245,45 +245,42 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 	}
 }
 
-func TestCheckEnforceResourceVerificationMode(t *testing.T) {
+func TestGetVerificationNoMatchPolicy(t *testing.T) {
 	ctx := context.Background()
-	if config.CheckEnforceResourceVerificationMode(ctx) {
-		t.Errorf("CheckCheckEnforceResourceVerificationMode got true but expected to be false")
-	}
-	store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
-	featureflags := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "feature-flags",
-		},
-		Data: map[string]string{
-			"resource-verification-mode": config.EnforceResourceVerificationMode,
-		},
-	}
-	store.OnConfigChanged(featureflags)
-	ctx = store.ToContext(ctx)
-	if !config.CheckEnforceResourceVerificationMode(ctx) {
-		t.Errorf("CheckCheckEnforceResourceVerificationMode got false but expected to be true")
-	}
-}
+	tcs := []struct {
+		name, noMatchPolicy, expected string
+	}{{
+		name:          "ignore no match policy",
+		noMatchPolicy: config.IgnoreNoMatchPolicy,
+		expected:      config.IgnoreNoMatchPolicy,
+	}, {
+		name:          "warn no match policy",
+		noMatchPolicy: config.WarnNoMatchPolicy,
+		expected:      config.WarnNoMatchPolicy,
+	}, {
+		name:          "fail no match policy",
+		noMatchPolicy: config.FailNoMatchPolicy,
+		expected:      config.FailNoMatchPolicy,
+	}}
 
-func TestCheckWarnResourceVerificationMode(t *testing.T) {
-	ctx := context.Background()
-	if config.CheckWarnResourceVerificationMode(ctx) {
-		t.Errorf("CheckWarnResourceVerificationMode got true but expected to be false")
-	}
-	store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
-	featureflags := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "feature-flags",
-		},
-		Data: map[string]string{
-			"resource-verification-mode": config.WarnResourceVerificationMode,
-		},
-	}
-	store.OnConfigChanged(featureflags)
-	ctx = store.ToContext(ctx)
-	if !config.CheckWarnResourceVerificationMode(ctx) {
-		t.Errorf("CheckWarnResourceVerificationMode got false but expected to be true")
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
+			featureflags := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "feature-flags",
+				},
+				Data: map[string]string{
+					"trusted-resources-verification-no-match-policy": tc.noMatchPolicy,
+				},
+			}
+			store.OnConfigChanged(featureflags)
+			ctx = store.ToContext(ctx)
+			got := config.GetVerificationNoMatchPolicy(ctx)
+			if d := cmp.Diff(tc.expected, got); d != "" {
+				t.Errorf("Unexpected feature flag config: %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 

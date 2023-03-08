@@ -270,7 +270,7 @@ func setSecretAndConfig(ctx context.Context, t *testing.T, client kubernetes.Int
 	// Note that this may not work if we run e2e tests in parallel since this feature flag require all tasks and pipelines
 	// to be signed and unsigned resources will fail. i.e. Don't add t.Parallel() for this test.
 	configMapData := map[string]string{
-		"resource-verification-mode": config.EnforceResourceVerificationMode,
+		"trusted-resources-verification-no-match-policy": config.FailNoMatchPolicy,
 	}
 	if err := updateConfigMap(ctx, client, system.Namespace(), config.GetFeatureFlagsConfigName(), configMapData); err != nil {
 		t.Fatal(err)
@@ -306,7 +306,7 @@ func removeResourceVerificationConfig(ctx context.Context, t *testing.T, c *clie
 func resetSecretAndConfig(ctx context.Context, t *testing.T, client kubernetes.Interface, secretName, namespace string) {
 	t.Helper()
 	configMapData := map[string]string{
-		"resource-verification-mode": config.SkipResourceVerificationMode,
+		"trusted-resources-verification-no-match-policy": config.IgnoreNoMatchPolicy,
 	}
 	if err := updateConfigMap(ctx, client, system.Namespace(), config.GetFeatureFlagsConfigName(), configMapData); err != nil {
 		t.Fatal(err)

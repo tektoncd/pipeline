@@ -708,9 +708,11 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 }
 
 func TestGetVerifiedTaskFunc_Success(t *testing.T) {
+	// This test case tests the success cases of trusted-resources-verification-no-match-policy when it is set to
+	// fail: passed matching policy verification
+	// warn and ignore: no matching policies.
 	ctx := context.Background()
-
-	signer, k8sclient, vps := test.SetupMatchAllVerificationPolicies(t, "trusted-resources")
+	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 	tektonclient := fake.NewSimpleClientset()
 
 	unsignedTask := test.GetUnsignedTask("test-task")
@@ -718,9 +720,15 @@ func TestGetVerifiedTaskFunc_Success(t *testing.T) {
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
-
-	resolvedUnsigned := test.NewResolvedResource(unsignedTaskBytes, nil, sampleConfigSource.DeepCopy(), nil)
-	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
+	noMatchPolicySource := &v1beta1.ConfigSource{
+		URI: "abc.com",
+		Digest: map[string]string{
+			"sha1": "a123",
+		},
+		EntryPoint: "foo/bar",
+	}
+	resolvedUnmatched := test.NewResolvedResource(unsignedTaskBytes, nil, noMatchPolicySource, nil)
+	requesterUnmatched := test.NewRequester(resolvedUnmatched, nil)
 
 	signedTask, err := test.GetSignedTask(unsignedTask, signer, "signed")
 	if err != nil {
@@ -730,66 +738,79 @@ func TestGetVerifiedTaskFunc_Success(t *testing.T) {
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
-
-	resolvedSigned := test.NewResolvedResource(signedTaskBytes, nil, sampleConfigSource.DeepCopy(), nil)
-	requesterSigned := test.NewRequester(resolvedSigned, nil)
-
-	tamperedTask := signedTask.DeepCopy()
-	tamperedTask.Annotations["random"] = "attack"
-	tamperedTaskBytes, err := json.Marshal(tamperedTask)
-	if err != nil {
-		t.Fatal("fail to marshal task", err)
+	matchPolicySource := &v1beta1.ConfigSource{
+		URI: "	https://github.com/tektoncd/catalog.git",
+		Digest: map[string]string{
+			"sha1": "a123",
+		},
+		EntryPoint: "foo/bar",
 	}
-	resolvedTampered := test.NewResolvedResource(tamperedTaskBytes, nil, sampleConfigSource.DeepCopy(), nil)
-	requesterTampered := test.NewRequester(resolvedTampered, nil)
+	resolvedMatched := test.NewResolvedResource(signedTaskBytes, nil, matchPolicySource, nil)
+	requesterMatched := test.NewRequester(resolvedMatched, nil)
 
 	taskRef := &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
 
 	testcases := []struct {
-		name                     string
-		requester                *test.Requester
-		resourceVerificationMode string
-		expected                 runtime.Object
+		name                      string
+		requester                 *test.Requester
+		verificationNoMatchPolicy string
+		policies                  []*v1alpha1.VerificationPolicy
+		expected                  runtime.Object
+		expectedSource            *v1beta1.ConfigSource
 	}{{
-		name:                     "signed task with enforce policy",
-		requester:                requesterSigned,
-		resourceVerificationMode: config.EnforceResourceVerificationMode,
-		expected:                 signedTask,
+		name:                      "signed task with matching policy pass verification with enforce no match policy",
+		requester:                 requesterMatched,
+		verificationNoMatchPolicy: config.FailNoMatchPolicy,
+		policies:                  vps,
+		expected:                  signedTask,
+		expectedSource:            matchPolicySource,
 	}, {
-		name:                     "unsigned task with warn policy",
-		requester:                requesterUnsigned,
-		resourceVerificationMode: config.WarnResourceVerificationMode,
-		expected:                 unsignedTask,
+		name:                      "signed task with matching policy pass verification with warn no match policy",
+		requester:                 requesterMatched,
+		verificationNoMatchPolicy: config.WarnNoMatchPolicy,
+		policies:                  vps,
+		expected:                  signedTask,
+		expectedSource:            matchPolicySource,
 	}, {
-		name:                     "signed task with warn policy",
-		requester:                requesterSigned,
-		resourceVerificationMode: config.WarnResourceVerificationMode,
-		expected:                 signedTask,
+		name:                      "signed task with matching policy pass verification with ignore no match policy",
+		requester:                 requesterMatched,
+		verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
+		policies:                  vps,
+		expected:                  signedTask,
+		expectedSource:            matchPolicySource,
 	}, {
-		name:                     "tampered task with warn policy",
-		requester:                requesterTampered,
-		resourceVerificationMode: config.SkipResourceVerificationMode,
-		expected:                 tamperedTask,
+		name:                      "warn unsigned task without matching policies",
+		requester:                 requesterUnmatched,
+		verificationNoMatchPolicy: config.WarnNoMatchPolicy,
+		policies:                  vps,
+		expected:                  unsignedTask,
+		expectedSource:            noMatchPolicySource,
 	}, {
-		name:                     "unsigned task with skip policy",
-		requester:                requesterUnsigned,
-		resourceVerificationMode: config.SkipResourceVerificationMode,
-		expected:                 unsignedTask,
+		name:                      "allow unsigned task without matching policies",
+		requester:                 requesterUnmatched,
+		verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
+		policies:                  vps,
+		expected:                  unsignedTask,
+		expectedSource:            noMatchPolicySource,
 	}, {
-		name:                     "signed task with skip policy",
-		requester:                requesterSigned,
-		resourceVerificationMode: config.SkipResourceVerificationMode,
-		expected:                 signedTask,
+		name:                      "warn no policies",
+		requester:                 requesterUnmatched,
+		verificationNoMatchPolicy: config.WarnNoMatchPolicy,
+		policies:                  []*v1alpha1.VerificationPolicy{},
+		expected:                  unsignedTask,
+		expectedSource:            noMatchPolicySource,
 	}, {
-		name:                     "tampered task with skip policy",
-		requester:                requesterTampered,
-		resourceVerificationMode: config.WarnResourceVerificationMode,
-		expected:                 tamperedTask,
+		name:                      "allow no policies",
+		requester:                 requesterUnmatched,
+		verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
+		policies:                  []*v1alpha1.VerificationPolicy{},
+		expected:                  unsignedTask,
+		expectedSource:            noMatchPolicySource,
 	},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx = test.SetupTrustedResourceConfig(ctx, tc.resourceVerificationMode)
+			ctx = test.SetupTrustedResourceConfig(ctx, tc.verificationNoMatchPolicy)
 			tr := &v1beta1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
 				Spec: v1beta1.TaskRunSpec{
@@ -797,7 +818,7 @@ func TestGetVerifiedTaskFunc_Success(t *testing.T) {
 					ServiceAccountName: "default",
 				},
 			}
-			fn := resources.GetVerifiedTaskFunc(ctx, k8sclient, tektonclient, tc.requester, tr, tr.Spec.TaskRef, "", "default", "default", vps)
+			fn := resources.GetVerifiedTaskFunc(ctx, k8sclient, tektonclient, tc.requester, tr, tr.Spec.TaskRef, "", "default", "default", tc.policies)
 
 			resolvedTask, source, err := fn(ctx, taskRef.Name)
 
@@ -809,7 +830,7 @@ func TestGetVerifiedTaskFunc_Success(t *testing.T) {
 				t.Errorf("resolvedTask did not match: %s", diff.PrintWantGot(d))
 			}
 
-			if d := cmp.Diff(sampleConfigSource, source); d != "" {
+			if d := cmp.Diff(tc.expectedSource, source); d != "" {
 				t.Errorf("configSources did not match: %s", diff.PrintWantGot(d))
 			}
 		})
@@ -818,7 +839,7 @@ func TestGetVerifiedTaskFunc_Success(t *testing.T) {
 
 func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
 	ctx := context.Background()
-	signer, k8sclient, vps := test.SetupMatchAllVerificationPolicies(t, "trusted-resources")
+	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 	tektonclient := fake.NewSimpleClientset()
 
 	unsignedTask := test.GetUnsignedTask("test-task")
@@ -826,49 +847,100 @@ func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
+	matchPolicySource := &v1beta1.ConfigSource{
+		URI: "https://github.com/tektoncd/catalog.git",
+		Digest: map[string]string{
+			"sha1": "a123",
+		},
+		EntryPoint: "foo/bar",
+	}
 
-	resolvedUnsigned := test.NewResolvedResource(unsignedTaskBytes, nil, sampleConfigSource.DeepCopy(), nil)
+	resolvedUnsigned := test.NewResolvedResource(unsignedTaskBytes, nil, matchPolicySource, nil)
 	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
 
 	signedTask, err := test.GetSignedTask(unsignedTask, signer, "signed")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
-
-	tamperedTask := signedTask.DeepCopy()
-	tamperedTask.Annotations["random"] = "attack"
-	tamperedTaskBytes, err := json.Marshal(tamperedTask)
+	signedTaskBytes, err := json.Marshal(signedTask)
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
-	resolvedTampered := test.NewResolvedResource(tamperedTaskBytes, nil, sampleConfigSource.DeepCopy(), nil)
-	requesterTampered := test.NewRequester(resolvedTampered, nil)
+
+	noMatchPolicySource := &v1beta1.ConfigSource{
+		URI: "abc.com",
+		Digest: map[string]string{
+			"sha1": "a123",
+		},
+		EntryPoint: "foo/bar",
+	}
+	resolvedUnmatched := test.NewResolvedResource(signedTaskBytes, nil, noMatchPolicySource, nil)
+	requesterUnmatched := test.NewRequester(resolvedUnmatched, nil)
+
+	modifiedTask := signedTask.DeepCopy()
+	modifiedTask.Annotations["random"] = "attack"
+	modifiedTaskBytes, err := json.Marshal(modifiedTask)
+	if err != nil {
+		t.Fatal("fail to marshal task", err)
+	}
+	resolvedModified := test.NewResolvedResource(modifiedTaskBytes, nil, matchPolicySource, nil)
+	requesterModified := test.NewRequester(resolvedModified, nil)
 
 	taskRef := &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
 
 	testcases := []struct {
-		name                     string
-		requester                *test.Requester
-		resourceVerificationMode string
-		expected                 runtime.Object
-		expectedErr              error
+		name                      string
+		requester                 *test.Requester
+		verificationNoMatchPolicy string
+		expected                  runtime.Object
+		expectedErr               error
 	}{{
-		name:                     "unsigned task with enforce policy",
-		requester:                requesterUnsigned,
-		resourceVerificationMode: config.EnforceResourceVerificationMode,
-		expected:                 nil,
-		expectedErr:              trustedresources.ErrResourceVerificationFailed,
+		name:                      "unsigned task with fails verification with fail no match policy",
+		requester:                 requesterUnsigned,
+		verificationNoMatchPolicy: config.FailNoMatchPolicy,
+		expected:                  nil,
+		expectedErr:               trustedresources.ErrResourceVerificationFailed,
 	}, {
-		name:                     "tampered task with enforce policy",
-		requester:                requesterTampered,
-		resourceVerificationMode: config.EnforceResourceVerificationMode,
-		expected:                 nil,
-		expectedErr:              trustedresources.ErrResourceVerificationFailed,
+		name:                      "unsigned task with fails verification with warn no match policy",
+		requester:                 requesterUnsigned,
+		verificationNoMatchPolicy: config.WarnNoMatchPolicy,
+		expected:                  nil,
+		expectedErr:               trustedresources.ErrResourceVerificationFailed,
+	}, {
+		name:                      "unsigned task with fails verification with ignore no match policy",
+		requester:                 requesterUnsigned,
+		verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
+		expected:                  nil,
+		expectedErr:               trustedresources.ErrResourceVerificationFailed,
+	}, {
+		name:                      "modified task fails verification with fail no match policy",
+		requester:                 requesterModified,
+		verificationNoMatchPolicy: config.FailNoMatchPolicy,
+		expected:                  nil,
+		expectedErr:               trustedresources.ErrResourceVerificationFailed,
+	}, {
+		name:                      "modified task fails verification with warn no match policy",
+		requester:                 requesterModified,
+		verificationNoMatchPolicy: config.WarnNoMatchPolicy,
+		expected:                  nil,
+		expectedErr:               trustedresources.ErrResourceVerificationFailed,
+	}, {
+		name:                      "modified task fails verification with ignore no match policy",
+		requester:                 requesterModified,
+		verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
+		expected:                  nil,
+		expectedErr:               trustedresources.ErrResourceVerificationFailed,
+	}, {
+		name:                      "unmatched task fails with fail no match policy",
+		requester:                 requesterUnmatched,
+		verificationNoMatchPolicy: config.FailNoMatchPolicy,
+		expected:                  nil,
+		expectedErr:               trustedresources.ErrResourceVerificationFailed,
 	},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx = test.SetupTrustedResourceConfig(ctx, tc.resourceVerificationMode)
+			ctx = test.SetupTrustedResourceConfig(ctx, tc.verificationNoMatchPolicy)
 			tr := &v1beta1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
 				Spec: v1beta1.TaskRunSpec{
@@ -935,30 +1007,26 @@ func TestGetVerifiedTaskFunc_GetFuncError(t *testing.T) {
 	}
 
 	testcases := []struct {
-		name                     string
-		requester                *test.Requester
-		resourceVerificationMode string
-		taskrun                  v1beta1.TaskRun
-		expectedErr              error
+		name        string
+		requester   *test.Requester
+		taskrun     v1beta1.TaskRun
+		expectedErr error
 	}{
 		{
-			name:                     "get error when oci bundle return error",
-			requester:                requesterUnsigned,
-			resourceVerificationMode: config.EnforceResourceVerificationMode,
-			taskrun:                  *trBundleError,
-			expectedErr:              fmt.Errorf(`failed to get task: failed to get keychain: serviceaccounts "default" not found`),
+			name:        "get error when oci bundle return error",
+			requester:   requesterUnsigned,
+			taskrun:     *trBundleError,
+			expectedErr: fmt.Errorf(`failed to get task: failed to get keychain: serviceaccounts "default" not found`),
 		},
 		{
-			name:                     "get error when remote resolution return error",
-			requester:                requesterUnsigned,
-			resourceVerificationMode: config.EnforceResourceVerificationMode,
-			taskrun:                  *trResolutionError,
-			expectedErr:              fmt.Errorf("failed to get task: error accessing data from remote resource: %v", resolvedUnsigned.DataErr),
+			name:        "get error when remote resolution return error",
+			requester:   requesterUnsigned,
+			taskrun:     *trResolutionError,
+			expectedErr: fmt.Errorf("failed to get task: error accessing data from remote resource: %v", resolvedUnsigned.DataErr),
 		},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx = test.SetupTrustedResourceConfig(ctx, tc.resourceVerificationMode)
 			store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
 			featureflags := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{

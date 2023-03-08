@@ -56,6 +56,7 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -202,7 +203,8 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		before = pr.Status.GetCondition(apis.ConditionSucceeded)
 	}
 
-	vp, err := getVerificationPolicies(ctx, c.verificationPolicyLister, pr.Namespace)
+	// list VerificationPolicies for trusted resources
+	vp, err := c.verificationPolicyLister.VerificationPolicies(pr.Namespace).List(labels.Everything())
 	if err != nil {
 		return fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %v", pr.Namespace, err)
 	}
@@ -312,11 +314,11 @@ func (c *Reconciler) resolvePipelineState(
 		// in the TaskRun reconciler.
 		trName := resources.GetTaskRunName(pr.Status.ChildReferences, task.Name, pr.Name)
 
-		vp, err := getVerificationPolicies(ctx, c.verificationPolicyLister, pr.Namespace)
+		// list VerificationPolicies for trusted resources
+		vp, err := c.verificationPolicyLister.VerificationPolicies(pr.Namespace).List(labels.Everything())
 		if err != nil {
 			return nil, fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %v", pr.Namespace, err)
 		}
-
 		fn := tresources.GetVerifiedTaskFunc(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, pr, task.TaskRef, trName, pr.Namespace, pr.Spec.ServiceAccountName, vp)
 
 		getRunObjectFunc := func(name string) (v1beta1.RunObject, error) {
@@ -1454,17 +1456,4 @@ func updatePipelineRunStatusFromChildRefs(logger *zap.SugaredLogger, pr *v1beta1
 		newChildRefs = append(newChildRefs, *childRefByName[k])
 	}
 	pr.Status.ChildReferences = newChildRefs
-}
-
-// getVerificationPolicies lists the verificationPolicies from given namespace
-func getVerificationPolicies(ctx context.Context, verificationPolicyLister alpha1listers.VerificationPolicyLister, namespace string) ([]*v1alpha1.VerificationPolicy, error) {
-	var verificationpolicies []*v1alpha1.VerificationPolicy
-	if config.CheckEnforceResourceVerificationMode(ctx) || config.CheckWarnResourceVerificationMode(ctx) {
-		var err error
-		verificationpolicies, err = verificationPolicyLister.VerificationPolicies(namespace).List(k8slabels.Everything())
-		if err != nil {
-			return nil, fmt.Errorf("failed to list VerificationPolicies: %w", err)
-		}
-	}
-	return verificationpolicies, nil
 }

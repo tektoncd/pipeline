@@ -18,4 +18,4 @@ metadata:
   name: feature-flags
   namespace: tekton-pipelines
 data:
-  resource-verification-mode: "wrong mode"
+  trusted-resources-verification-no-match-policy: "wrong value"

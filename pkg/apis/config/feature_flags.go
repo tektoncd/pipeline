@@ -33,14 +33,15 @@ const (
 	AlphaAPIFields = "alpha"
 	// BetaAPIFields is the value used for "enable-api-fields" when beta APIs should be usable as well.
 	BetaAPIFields = "beta"
-	// EnforceResourceVerificationMode is the value used for "resource-verification-mode" when verification is applied and fail the
-	// TaskRun or PipelineRun when verification fails
-	EnforceResourceVerificationMode = "enforce"
-	// WarnResourceVerificationMode is the value used for "resource-verification-mode" when verification is applied but only log
-	// the warning when verification fails
-	WarnResourceVerificationMode = "warn"
-	// SkipResourceVerificationMode is the value used for "resource-verification-mode" when verification is skipped
-	SkipResourceVerificationMode = "skip"
+	// FailNoMatchPolicy is the value used for "trusted-resources-verification-no-match-policy" to fail TaskRun or PipelineRun
+	// when no matching policies are found
+	FailNoMatchPolicy = "fail"
+	// WarnNoMatchPolicy is the value used for "trusted-resources-verification-no-match-policy" to log warning and skip verification
+	// when no matching policies are found
+	WarnNoMatchPolicy = "warn"
+	// IgnoreNoMatchPolicy is the value used for "trusted-resources-verification-no-match-policy" to skip verification
+	// when no matching policies are found
+	IgnoreNoMatchPolicy = "ignore"
 	// ResultExtractionMethodTerminationMessage is the value used for "results-from" as a way to extract results from tasks using kubernetes termination message.
 	ResultExtractionMethodTerminationMessage = "termination-message"
 	// ResultExtractionMethodSidecarLogs is the value used for "results-from" as a way to extract results from tasks using sidecar logs.
@@ -73,8 +74,8 @@ const (
 	EnforceNonfalsifiabilityNone = ""
 	// DefaultEnforceNonfalsifiability is the default value for "enforce-nonfalsifiability".
 	DefaultEnforceNonfalsifiability = EnforceNonfalsifiabilityNone
-	// DefaultResourceVerificationMode is the default value for "resource-verification-mode".
-	DefaultResourceVerificationMode = SkipResourceVerificationMode
+	// DefaultNoMatchPolicyConfig is the default value for "trusted-resources-verification-no-match-policy".
+	DefaultNoMatchPolicyConfig = IgnoreNoMatchPolicy
 	// DefaultEnableProvenanceInStatus is the default value for "enable-provenance-status".
 	DefaultEnableProvenanceInStatus = false
 	// DefaultResultExtractionMethod is the default value for ResultExtractionMethod
@@ -93,7 +94,7 @@ const (
 	enableAPIFields                     = "enable-api-fields"
 	sendCloudEventsForRuns              = "send-cloudevents-for-runs"
 	enforceNonfalsifiability            = "enforce-nonfalsifiability"
-	verificationMode                    = "resource-verification-mode"
+	verificationNoMatchPolicy           = "trusted-resources-verification-no-match-policy"
 	enableProvenanceInStatus            = "enable-provenance-in-status"
 	resultExtractionMethod              = "results-from"
 	maxResultSize                       = "max-result-size"
@@ -113,11 +114,16 @@ type FeatureFlags struct {
 	SendCloudEventsForRuns           bool
 	AwaitSidecarReadiness            bool
 	EnforceNonfalsifiability         string
-	ResourceVerificationMode         string
-	EnableProvenanceInStatus         bool
-	ResultExtractionMethod           string
-	MaxResultSize                    int
-	CustomTaskVersion                string
+	// VerificationNoMatchPolicy is the feature flag for "trusted-resources-verification-no-match-policy"
+	// VerificationNoMatchPolicy can be set to "ignore", "warn" and "fail" values.
+	// ignore: skip trusted resources verification when no matching verification policies found
+	// warn: skip trusted resources verification when no matching verification policies found and log a warning
+	// fail: fail the taskrun or pipelines run if no matching verification policies found
+	VerificationNoMatchPolicy string
+	EnableProvenanceInStatus  bool
+	ResultExtractionMethod    string
+	MaxResultSize             int
+	CustomTaskVersion         string
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -182,7 +188,7 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if err := setFeature(sendCloudEventsForRuns, DefaultSendCloudEventsForRuns, &tc.SendCloudEventsForRuns); err != nil {
 		return nil, err
 	}
-	if err := setResourceVerificationMode(cfgMap, DefaultResourceVerificationMode, &tc.ResourceVerificationMode); err != nil {
+	if err := setVerificationNoMatchPolicy(cfgMap, DefaultNoMatchPolicyConfig, &tc.VerificationNoMatchPolicy); err != nil {
 		return nil, err
 	}
 	if err := setFeature(enableProvenanceInStatus, DefaultEnableProvenanceInStatus, &tc.EnableProvenanceInStatus); err != nil {
@@ -292,18 +298,18 @@ func setMaxResultSize(cfgMap map[string]string, defaultValue int, feature *int) 
 	return nil
 }
 
-// setResourceVerificationMode sets the "resource-verification-mode" flag based on the content of a given map.
+// setVerificationNoMatchPolicy sets the "trusted-resources-verification-no-match-policy" flag based on the content of a given map.
 // If the value is invalid or missing then an error is returned.
-func setResourceVerificationMode(cfgMap map[string]string, defaultValue string, feature *string) error {
+func setVerificationNoMatchPolicy(cfgMap map[string]string, defaultValue string, feature *string) error {
 	value := defaultValue
-	if cfg, ok := cfgMap[verificationMode]; ok {
+	if cfg, ok := cfgMap[verificationNoMatchPolicy]; ok {
 		value = strings.ToLower(cfg)
 	}
 	switch value {
-	case EnforceResourceVerificationMode, WarnResourceVerificationMode, SkipResourceVerificationMode:
+	case FailNoMatchPolicy, WarnNoMatchPolicy, IgnoreNoMatchPolicy:
 		*feature = value
 	default:
-		return fmt.Errorf("invalid value for feature flag %q: %q", verificationMode, value)
+		return fmt.Errorf("invalid value for feature flag %q: %q", verificationNoMatchPolicy, value)
 	}
 	return nil
 }
@@ -328,18 +334,9 @@ func EnableStableAPIFields(ctx context.Context) context.Context {
 	return setEnableAPIFields(ctx, StableAPIFields)
 }
 
-// CheckEnforceResourceVerificationMode returns true if the ResourceVerificationMode is EnforceResourceVerificationMode
-// else returns false
-func CheckEnforceResourceVerificationMode(ctx context.Context) bool {
-	cfg := FromContextOrDefaults(ctx)
-	return cfg.FeatureFlags.ResourceVerificationMode == EnforceResourceVerificationMode
-}
-
-// CheckWarnResourceVerificationMode returns true if the ResourceVerificationMode is WarnResourceVerificationMode
-// else returns false
-func CheckWarnResourceVerificationMode(ctx context.Context) bool {
-	cfg := FromContextOrDefaults(ctx)
-	return cfg.FeatureFlags.ResourceVerificationMode == WarnResourceVerificationMode
+// GetVerificationNoMatchPolicy returns the "trusted-resources-verification-no-match-policy" value
+func GetVerificationNoMatchPolicy(ctx context.Context) string {
+	return FromContextOrDefaults(ctx).FeatureFlags.VerificationNoMatchPolicy
 }
 
 // CheckAlphaOrBetaAPIFields return true if the enable-api-fields is either set to alpha or set to beta

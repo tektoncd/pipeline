@@ -36,7 +36,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
-	"knative.dev/pkg/logging"
 )
 
 // GetPipelineFunc is a factory function that will use the given PipelineRef to return a valid GetPipeline function that
@@ -101,7 +100,7 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 }
 
 // GetVerifiedPipelineFunc is a wrapper of GetPipelineFunc and return the function to
-// verify the pipeline if resource-verification-mode is not "skip"
+// verify the pipeline if there are matching verification policies
 func GetVerifiedPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester, pipelineRun *v1beta1.PipelineRun, verificationpolicies []*v1alpha1.VerificationPolicy) rprp.GetPipeline {
 	get := GetPipelineFunc(ctx, k8s, tekton, requester, pipelineRun)
 	return func(context.Context, string) (v1beta1.PipelineObject, *v1beta1.ConfigSource, error) {
@@ -117,16 +116,8 @@ func GetVerifiedPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekt
 		if s != nil {
 			source = s.URI
 		}
-		logger := logging.FromContext(ctx)
-		if config.CheckEnforceResourceVerificationMode(ctx) || config.CheckWarnResourceVerificationMode(ctx) {
-			if err := trustedresources.VerifyPipeline(ctx, p, k8s, source, verificationpolicies); err != nil {
-				if config.CheckEnforceResourceVerificationMode(ctx) {
-					logger.Errorf("GetVerifiedPipelineFunc failed: %v", err)
-					return nil, nil, fmt.Errorf("GetVerifiedPipelineFunc failed: %w: %v", trustedresources.ErrResourceVerificationFailed, err)
-				}
-				logger.Warnf("GetVerifiedPipelineFunc failed: %v", err)
-				return p, s, nil
-			}
+		if err := trustedresources.VerifyPipeline(ctx, p, k8s, source, verificationpolicies); err != nil {
+			return nil, nil, fmt.Errorf("GetVerifiedPipelineFunc failed: %w: %v", trustedresources.ErrResourceVerificationFailed, err)
 		}
 		return p, s, nil
 	}
