@@ -27,8 +27,9 @@ import (
 const (
 	// TaskRunResultType default task run result value
 	TaskRunResultType ResultType = 1
-	// PipelineResourceResultType default pipeline result value
-	PipelineResourceResultType = 2
+	// reserved: 2
+	// was PipelineResourceResultType
+
 	// InternalTektonResultType default internal tekton result value
 	InternalTektonResultType = 3
 	// UnknownResultType default unknown result type value
