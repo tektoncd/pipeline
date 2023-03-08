@@ -41,6 +41,10 @@ const (
 // VerifyTask verifies the signature and public key against task.
 // source is from ConfigSource.URI, which will be used to match policy patterns. k8s is used to fetch secret from cluster
 func VerifyTask(ctx context.Context, taskObj v1beta1.TaskObject, k8s kubernetes.Interface, source string, policies []*v1alpha1.VerificationPolicy) error {
+	matchedPolicies, err := matchedPolicies(taskObj.TaskMetadata().Name, source, policies)
+	if err != nil {
+		return err
+	}
 	tm, signature, err := prepareObjectMeta(taskObj.TaskMetadata())
 	if err != nil {
 		return err
@@ -53,12 +57,16 @@ func VerifyTask(ctx context.Context, taskObj v1beta1.TaskObject, k8s kubernetes.
 		Spec:       taskObj.TaskSpec(),
 	}
 
-	return verifyResource(ctx, &task, k8s, signature, source, policies)
+	return verifyResource(ctx, &task, k8s, signature, source, matchedPolicies)
 }
 
 // VerifyPipeline verifies the signature and public key against pipeline.
 // source is from ConfigSource.URI, which will be used to match policy patterns, k8s is used to fetch secret from cluster
 func VerifyPipeline(ctx context.Context, pipelineObj v1beta1.PipelineObject, k8s kubernetes.Interface, source string, policies []*v1alpha1.VerificationPolicy) error {
+	matchedPolicies, err := matchedPolicies(pipelineObj.PipelineMetadata().Name, source, policies)
+	if err != nil {
+		return err
+	}
 	pm, signature, err := prepareObjectMeta(pipelineObj.PipelineMetadata())
 	if err != nil {
 		return err
@@ -71,26 +79,20 @@ func VerifyPipeline(ctx context.Context, pipelineObj v1beta1.PipelineObject, k8s
 		Spec:       pipelineObj.PipelineSpec(),
 	}
 
-	return verifyResource(ctx, &pipeline, k8s, signature, source, policies)
+	return verifyResource(ctx, &pipeline, k8s, signature, source, matchedPolicies)
 }
 
-// verifyResource verifies resource which implements metav1.Object by provided signature and public keys from configmap or policies.
-// It will fetch keys from VerificationPolicy
-// For verificationPolicies verifyResource will adopt the following rules to do verification:
-// 1. For each policy, check if the resource url is matching any of the `patterns` in the `resources` list. If matched then this policy will be used for verification.
-// 2. If multiple policies are matched, the resource needs to pass all of them to pass verification.
-// 3. To pass one policy, the resource can pass any public keys in the policy.
-func verifyResource(ctx context.Context, resource metav1.Object, k8s kubernetes.Interface, signature []byte, source string, policies []*v1alpha1.VerificationPolicy) error {
+// matchedPolicies filters out the policies by checking if the resource url (source) is matching any of the `patterns` in the `resources` list.
+func matchedPolicies(resourceName string, source string, policies []*v1alpha1.VerificationPolicy) ([]*v1alpha1.VerificationPolicy, error) {
 	if len(policies) == 0 {
-		return ErrorEmptyVerificationConfig
+		return nil, ErrorEmptyVerificationConfig
 	}
-
 	matchedPolicies := []*v1alpha1.VerificationPolicy{}
 	for _, p := range policies {
 		for _, r := range p.Spec.Resources {
 			matching, err := regexp.MatchString(r.Pattern, source)
 			if err != nil {
-				return fmt.Errorf("%v: %w", err, ErrorRegexMatch)
+				return matchedPolicies, fmt.Errorf("%v: %w", err, ErrorRegexMatch)
 			}
 			if matching {
 				matchedPolicies = append(matchedPolicies, p)
@@ -99,9 +101,16 @@ func verifyResource(ctx context.Context, resource metav1.Object, k8s kubernetes.
 		}
 	}
 	if len(matchedPolicies) == 0 {
-		return fmt.Errorf("%w: no matching policies are found for resource: %s against source: %s", ErrorNoMatchedPolicies, resource.GetName(), source)
+		return matchedPolicies, fmt.Errorf("%w: no matching policies are found for resource: %s against source: %s", ErrorNoMatchedPolicies, resourceName, source)
 	}
+	return matchedPolicies, nil
+}
 
+// verifyResource verifies resource which implements metav1.Object by provided signature and public keys from verification policies.
+// For matched policies, `verifyResource“ will adopt the following rules to do verification:
+// 1. If multiple policies are matched, the resource needs to pass all of them to pass verification. We use AND logic on matched policies.
+// 2. To pass one policy, the resource can pass any public keys in the policy. We use OR logic on public keys of one policy.
+func verifyResource(ctx context.Context, resource metav1.Object, k8s kubernetes.Interface, signature []byte, source string, matchedPolicies []*v1alpha1.VerificationPolicy) error {
 	for _, p := range matchedPolicies {
 		passVerification := false
 		verifiers, err := verifier.FromPolicy(ctx, k8s, p)
