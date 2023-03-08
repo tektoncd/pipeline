@@ -290,8 +290,6 @@ func filterResultsAndResources(results []v1beta1.PipelineResourceResult, specRes
 		case v1beta1.InternalTektonResultType:
 			// Internal messages are ignored because they're not used as external result
 			continue
-		case v1beta1.PipelineResourceResultType:
-			fallthrough
 		default:
 			pipelineResourceResults = append(pipelineResourceResults, r)
 			filteredResults = append(filteredResults, r)

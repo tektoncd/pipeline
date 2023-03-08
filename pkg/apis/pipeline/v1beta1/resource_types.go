@@ -63,8 +63,6 @@ func (r *ResultType) UnmarshalJSON(data []byte) error {
 	switch asString {
 	case "TaskRunResult":
 		*r = TaskRunResultType
-	case "PipelineResourceResult":
-		*r = PipelineResourceResultType
 	case "InternalTektonResult":
 		*r = InternalTektonResultType
 	default:

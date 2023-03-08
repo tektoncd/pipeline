@@ -870,7 +870,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Name: "step-pear",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
-						Message: `[{"key":"resultNameOne","value":"","type":2}, {"key":"resultNameTwo","value":"","type":3}, {"key":"resultNameThree","value":"","type":1}]`},
+						Message: `[{"key":"resultNameOne","value":"","type":3}, {"key":"resultNameThree","value":"","type":1}]`},
 				},
 			}},
 		},
@@ -880,17 +880,12 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
-							Message: `[{"key":"resultNameOne","value":"","type":2},{"key":"resultNameThree","value":"","type":1}]`,
+							Message: `[{"key":"resultNameThree","value":"","type":1}]`,
 						}},
 					Name:          "pear",
 					ContainerName: "step-pear",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.PipelineResourceResult{{
-					Key:        "resultNameOne",
-					Value:      "",
-					ResultType: v1beta1.PipelineResourceResultType,
-				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultNameThree",
 					Type:  v1beta1.ResultsTypeString,
@@ -908,7 +903,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Name: "step-pear",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
-						Message: `[{"key":"resultNameOne","value":"","type":"PipelineResourceResult"}, {"key":"resultNameTwo","value":"","type":"InternalTektonResult"}, {"key":"resultNameThree","value":"","type":"TaskRunResult"}]`,
+						Message: `[{"key":"resultNameTwo","value":"","type":"InternalTektonResult"}, {"key":"resultNameThree","value":"","type":"TaskRunResult"}]`,
 					},
 				},
 			}},
@@ -919,17 +914,12 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
-							Message: `[{"key":"resultNameOne","value":"","type":2},{"key":"resultNameThree","value":"","type":1}]`,
+							Message: `[{"key":"resultNameThree","value":"","type":1}]`,
 						}},
 					Name:          "pear",
 					ContainerName: "step-pear",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.PipelineResourceResult{{
-					Key:        "resultNameOne",
-					Value:      "",
-					ResultType: v1beta1.PipelineResourceResultType,
-				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultNameThree",
 					Type:  v1beta1.ResultsTypeString,
