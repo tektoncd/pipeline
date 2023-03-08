@@ -20,6 +20,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -116,7 +117,7 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 
 	// Start defined command
 	if err := cmd.Start(); err != nil {
-		if ctx.Err() == context.DeadlineExceeded {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			return context.DeadlineExceeded
 		}
 		return err
@@ -134,7 +135,7 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 
 	// Wait for command to exit
 	if err := cmd.Wait(); err != nil {
-		if ctx.Err() == context.DeadlineExceeded {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			return context.DeadlineExceeded
 		}
 		return err

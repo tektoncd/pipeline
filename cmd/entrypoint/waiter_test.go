@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -149,11 +150,11 @@ func TestRealWaiterWaitWithErrorWaitfile(t *testing.T) {
 		if err == nil {
 			t.Errorf("expected skipError upon encounter error waitfile")
 		}
-		switch typ := err.(type) {
-		case skipError:
+		var skipErr skipError
+		if errors.As(err, &skipErr) {
 			close(doneCh)
-		default:
-			t.Errorf("unexpected error type %T", typ)
+		} else {
+			t.Errorf("unexpected error type %T", err)
 		}
 	}()
 	delay := time.NewTimer(2 * testWaitPollingInterval)

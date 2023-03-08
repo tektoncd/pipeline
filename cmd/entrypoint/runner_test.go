@@ -165,8 +165,9 @@ func TestRealRunnerTimeout(t *testing.T) {
 	timeout := time.Millisecond
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+
 	if err := rr.Run(ctx, "sleep", "0.01"); err != nil {
-		if err != context.DeadlineExceeded {
+		if !errors.Is(err, context.DeadlineExceeded) {
 			t.Fatalf("unexpected error received: %v", err)
 		}
 	} else {

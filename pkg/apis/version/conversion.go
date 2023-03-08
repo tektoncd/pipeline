@@ -28,7 +28,7 @@ import (
 func SerializeToMetadata(meta *metav1.ObjectMeta, field interface{}, key string) error {
 	bytes, err := json.Marshal(field)
 	if err != nil {
-		return fmt.Errorf("error serializing field: %s", err)
+		return fmt.Errorf("error serializing field: %w", err)
 	}
 	if meta.Annotations == nil {
 		meta.Annotations = make(map[string]string)
@@ -46,7 +46,7 @@ func DeserializeFromMetadata(meta *metav1.ObjectMeta, to interface{}, key string
 	}
 	if str, ok := meta.Annotations[key]; ok {
 		if err := json.Unmarshal([]byte(str), to); err != nil {
-			return fmt.Errorf("error deserializing key %s from metadata: %s", key, err)
+			return fmt.Errorf("error deserializing key %s from metadata: %w", key, err)
 		}
 		delete(meta.Annotations, key)
 		if len(meta.Annotations) == 0 {

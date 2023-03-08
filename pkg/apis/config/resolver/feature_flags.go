@@ -68,7 +68,7 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		if cfg, ok := cfgMap[key]; ok {
 			value, err := strconv.ParseBool(cfg)
 			if err != nil {
-				return fmt.Errorf("failed parsing feature flags config %q: %v", cfg, err)
+				return fmt.Errorf("failed parsing feature flags config %q: %w", cfg, err)
 			}
 			*feature = value
 			return nil

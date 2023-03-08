@@ -60,9 +60,8 @@ func (e *InvalidRuntimeObjectError) Unwrap() error {
 }
 
 // Is returns true if the given error coerces into an error of this type.
-func (*InvalidRuntimeObjectError) Is(e error) bool {
-	_, ok := e.(*InvalidRuntimeObjectError)
-	return ok
+func (e *InvalidRuntimeObjectError) Is(that error) bool {
+	return errors.As(that, &e)
 }
 
 // DataAccessError is returned when remote resolution succeeded but
@@ -93,7 +92,6 @@ func (e *DataAccessError) Unwrap() error {
 }
 
 // Is returns true if the given error coerces into an error of this type.
-func (*DataAccessError) Is(e error) bool {
-	_, ok := e.(*DataAccessError)
-	return ok
+func (e *DataAccessError) Is(that error) bool {
+	return errors.As(that, &e)
 }

@@ -157,7 +157,7 @@ func (e Entrypointer) Go() error {
 			defer cancel()
 		}
 		err = e.Runner.Run(ctx, e.Command...)
-		if err == context.DeadlineExceeded {
+		if errors.Is(err, context.DeadlineExceeded) {
 			output = append(output, v1beta1.PipelineResourceResult{
 				Key:        "Reason",
 				Value:      "TimeoutExceeded",

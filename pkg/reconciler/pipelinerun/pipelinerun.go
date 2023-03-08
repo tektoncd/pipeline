@@ -206,7 +206,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 	// list VerificationPolicies for trusted resources
 	vp, err := c.verificationPolicyLister.VerificationPolicies(pr.Namespace).List(labels.Everything())
 	if err != nil {
-		return fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %v", pr.Namespace, err)
+		return fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %w", pr.Namespace, err)
 	}
 	getPipelineFunc := resources.GetVerifiedPipelineFunc(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, pr, vp)
 
@@ -317,7 +317,7 @@ func (c *Reconciler) resolvePipelineState(
 		// list VerificationPolicies for trusted resources
 		vp, err := c.verificationPolicyLister.VerificationPolicies(pr.Namespace).List(labels.Everything())
 		if err != nil {
-			return nil, fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %v", pr.Namespace, err)
+			return nil, fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %w", pr.Namespace, err)
 		}
 		fn := tresources.GetVerifiedTaskFunc(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, pr, task.TaskRef, trName, pr.Namespace, pr.Spec.ServiceAccountName, vp)
 
@@ -370,12 +370,12 @@ func (c *Reconciler) resolvePipelineState(
 				pr.Status.MarkFailed(ReasonResourceVerificationFailed, message)
 				return nil, controller.NewPermanentError(err)
 			}
-			switch err := err.(type) {
-			case *resources.TaskNotFoundError:
+			var nfErr *resources.TaskNotFoundError
+			if errors.As(err, &nfErr) {
 				pr.Status.MarkFailed(ReasonCouldntGetTask,
 					"Pipeline %s/%s can't be Run; it contains Tasks that don't exist: %s",
-					pipelineMeta.Namespace, pipelineMeta.Name, err)
-			default:
+					pipelineMeta.Namespace, pipelineMeta.Name, nfErr)
+			} else {
 				pr.Status.MarkFailed(ReasonFailedValidation,
 					"PipelineRun %s/%s can't be Run; couldn't resolve all references: %s",
 					pipelineMeta.Namespace, pr.Name, err)

@@ -63,7 +63,7 @@ func (c *defaultPVCHandler) CreatePersistentVolumeClaimsForWorkspaces(ctx contex
 		case apierrors.IsNotFound(err):
 			_, err := c.clientset.CoreV1().PersistentVolumeClaims(claim.Namespace).Create(ctx, claim, metav1.CreateOptions{})
 			if err != nil && !apierrors.IsAlreadyExists(err) {
-				errs = append(errs, fmt.Errorf("failed to create PVC %s: %s", claim.Name, err))
+				errs = append(errs, fmt.Errorf("failed to create PVC %s: %w", claim.Name, err))
 			}
 
 			if apierrors.IsAlreadyExists(err) {
@@ -75,7 +75,7 @@ func (c *defaultPVCHandler) CreatePersistentVolumeClaimsForWorkspaces(ctx contex
 				c.logger.Infof("Created PersistentVolumeClaim %s in namespace %s", claim.Name, claim.Namespace)
 			}
 		case err != nil:
-			errs = append(errs, fmt.Errorf("failed to retrieve PVC %s: %s", claim.Name, err))
+			errs = append(errs, fmt.Errorf("failed to retrieve PVC %s: %w", claim.Name, err))
 		}
 	}
 	return errorutils.NewAggregate(errs)

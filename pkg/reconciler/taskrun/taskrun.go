@@ -324,7 +324,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	// list VerificationPolicies for trusted resources
 	vp, err := c.verificationPolicyLister.VerificationPolicies(tr.Namespace).List(labels.Everything())
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %v", tr.Namespace, err)
+		return nil, nil, fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %w", tr.Namespace, err)
 	}
 	getTaskfunc := resources.GetTaskFuncFromTaskRun(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, tr, vp)
 
@@ -472,7 +472,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		if err := c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(ctx, tr.Spec.Workspaces, *kmeta.NewControllerRef(tr), tr.Namespace); err != nil {
 			logger.Errorf("Failed to create PVC for TaskRun %s: %v", tr.Name, err)
 			tr.Status.MarkResourceFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
-				fmt.Errorf("Failed to create PVC for TaskRun %s workspaces correctly: %s",
+				fmt.Errorf("Failed to create PVC for TaskRun %s workspaces correctly: %w",
 					fmt.Sprintf("%s/%s", tr.Namespace, tr.Name), err))
 			return controller.NewPermanentError(err)
 		}
@@ -914,8 +914,8 @@ func willOverwritePodSetAffinity(taskRun *v1beta1.TaskRun) bool {
 // isResourceQuotaConflictError returns a bool indicating whether the
 // k8 error is of kind resourcequotas or not
 func isResourceQuotaConflictError(err error) bool {
-	k8Err, ok := err.(k8serrors.APIStatus)
-	if !ok {
+	var k8Err k8serrors.APIStatus
+	if !errors.As(err, &k8Err) {
 		return false
 	}
 	k8ErrStatus := k8Err.Status()

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -181,7 +182,7 @@ func TestExtractResultsFromLogs_Failure(t *testing.T) {
 	logs := strings.NewReader(podLogs)
 
 	_, err := extractResultsFromLogs(logs, []v1beta1.PipelineResourceResult{}, 4096)
-	if err != ErrSizeExceeded {
+	if !errors.Is(err, ErrSizeExceeded) {
 		t.Fatalf("Expected error %v but got %v", ErrSizeExceeded, err)
 	}
 }

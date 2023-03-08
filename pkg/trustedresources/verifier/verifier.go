@@ -97,7 +97,7 @@ func fromKeyRef(ctx context.Context, keyRef string, hashAlgorithm crypto.Hash, k
 	}
 	raw, err := os.ReadFile(filepath.Clean(keyRef))
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrFailedLoadKeyFile, err)
+		return nil, fmt.Errorf("%w: %v", ErrFailedLoadKeyFile, err) // nolint -- needs errorlint cleanup
 	}
 	v, err := fromData(raw, hashAlgorithm)
 	if err != nil {
@@ -136,11 +136,11 @@ func fromSecret(ctx context.Context, secretRef string, hashAlgorithm crypto.Hash
 func fromData(raw []byte, hashAlgorithm crypto.Hash) (signature.Verifier, error) {
 	pubKey, err := cryptoutils.UnmarshalPEMToPublicKey(raw)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrDecodeKey, err)
+		return nil, fmt.Errorf("%w: %v", ErrDecodeKey, err) // nolint -- needs errorlint cleanup
 	}
 	v, err := signature.LoadVerifier(pubKey, hashAlgorithm)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrLoadVerifier, err)
+		return nil, fmt.Errorf("%w: %v", ErrLoadVerifier, err) // nolint -- needs errorlint cleanup
 	}
 	return v, nil
 }
@@ -156,7 +156,7 @@ func getKeyPairSecret(ctx context.Context, k8sRef string, k8s kubernetes.Interfa
 
 	s, err := k8s.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrSecretNotFound, err)
+		return nil, fmt.Errorf("%w: %v", ErrSecretNotFound, err) // nolint -- needs errorlint cleanup
 	}
 
 	return s, nil

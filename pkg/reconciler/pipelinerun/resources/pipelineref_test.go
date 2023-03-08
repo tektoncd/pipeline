@@ -817,7 +817,7 @@ func TestGetVerifiedPipelineFunc_GetFuncError(t *testing.T) {
 			name:        "get error when remote resolution return error",
 			requester:   requesterUnsigned,
 			pipelinerun: *prResolutionError,
-			expectedErr: fmt.Errorf("failed to get pipeline: error accessing data from remote resource: %v", resolvedUnsigned.DataErr),
+			expectedErr: fmt.Errorf("failed to get pipeline: error accessing data from remote resource: %w", resolvedUnsigned.DataErr),
 		},
 	}
 	for _, tc := range testcases {
