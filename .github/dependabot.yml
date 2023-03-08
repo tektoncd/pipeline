@@ -9,6 +9,9 @@ updates:
     - "dependencies"
     - "release-note-none"
     - "kind/misc"
+    ignore:
+    - dependency-name: "k8s.io/*"
+      update-types: ["version-update:semver-major", "version-update:semver-minor]
   - package-ecosystem: "gomod"
     directory: "/tools"
     schedule:
