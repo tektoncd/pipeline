@@ -857,13 +857,13 @@ func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
 		requester:                requesterUnsigned,
 		resourceVerificationMode: config.EnforceResourceVerificationMode,
 		expected:                 nil,
-		expectedErr:              trustedresources.ErrorResourceVerificationFailed,
+		expectedErr:              trustedresources.ErrResourceVerificationFailed,
 	}, {
 		name:                     "tampered task with enforce policy",
 		requester:                requesterTampered,
 		resourceVerificationMode: config.EnforceResourceVerificationMode,
 		expected:                 nil,
-		expectedErr:              trustedresources.ErrorResourceVerificationFailed,
+		expectedErr:              trustedresources.ErrResourceVerificationFailed,
 	},
 	}
 	for _, tc := range testcases {

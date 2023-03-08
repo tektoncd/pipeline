@@ -122,7 +122,7 @@ func GetVerifiedPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekt
 			if err := trustedresources.VerifyPipeline(ctx, p, k8s, source, verificationpolicies); err != nil {
 				if config.CheckEnforceResourceVerificationMode(ctx) {
 					logger.Errorf("GetVerifiedPipelineFunc failed: %v", err)
-					return nil, nil, fmt.Errorf("GetVerifiedPipelineFunc failed: %w: %v", trustedresources.ErrorResourceVerificationFailed, err)
+					return nil, nil, fmt.Errorf("GetVerifiedPipelineFunc failed: %w: %v", trustedresources.ErrResourceVerificationFailed, err)
 				}
 				logger.Warnf("GetVerifiedPipelineFunc failed: %v", err)
 				return p, s, nil

@@ -4974,12 +4974,12 @@ status:
 		{
 			name:          "unsigned task fails verification",
 			task:          []*v1beta1.Task{ts},
-			expectedError: trustedresources.ErrorResourceVerificationFailed,
+			expectedError: trustedresources.ErrResourceVerificationFailed,
 		},
 		{
 			name:          "modified task fails verification",
 			task:          []*v1beta1.Task{tamperedTask},
-			expectedError: trustedresources.ErrorResourceVerificationFailed,
+			expectedError: trustedresources.ErrResourceVerificationFailed,
 		},
 	}
 

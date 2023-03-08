@@ -151,7 +151,7 @@ func TestFromPolicy_Error(t *testing.T) {
 				},
 			},
 		},
-		expectedError: ErrorAlgorithmInvalid,
+		expectedError: ErrAlgorithmInvalid,
 	}, {
 		name: "key is empty",
 		policy: &v1alpha1.VerificationPolicy{
@@ -163,7 +163,7 @@ func TestFromPolicy_Error(t *testing.T) {
 				},
 			},
 		},
-		expectedError: ErrorEmptyKey,
+		expectedError: ErrEmptyKey,
 	}, {
 		name: "authority is empty",
 		policy: &v1alpha1.VerificationPolicy{
@@ -171,7 +171,7 @@ func TestFromPolicy_Error(t *testing.T) {
 				Authorities: []v1alpha1.Authority{},
 			},
 		},
-		expectedError: ErrorEmptyPublicKeys,
+		expectedError: ErrEmptyPublicKeys,
 	}, {
 		name: "from data error",
 		policy: &v1alpha1.VerificationPolicy{
@@ -186,7 +186,7 @@ func TestFromPolicy_Error(t *testing.T) {
 				},
 			},
 		},
-		expectedError: ErrorDecodeKey,
+		expectedError: ErrDecodeKey,
 	}, {
 		name: "from secret error",
 		policy: &v1alpha1.VerificationPolicy{
@@ -203,7 +203,7 @@ func TestFromPolicy_Error(t *testing.T) {
 				},
 			},
 		},
-		expectedError: ErrorSecretNotFound,
+		expectedError: ErrSecretNotFound,
 	}, {
 		name: "from kms error",
 		policy: &v1alpha1.VerificationPolicy{
@@ -283,17 +283,17 @@ func TestFromKeyRef_Error(t *testing.T) {
 		name:          "failed to read file",
 		keyref:        "wrongPath",
 		algorithm:     crypto.SHA256,
-		expectedError: ErrorFailedLoadKeyFile,
+		expectedError: ErrFailedLoadKeyFile,
 	}, {
 		name:          "failed to read from secret",
 		keyref:        fmt.Sprintf("k8s://%s/not-exist-secret", namespace),
 		algorithm:     crypto.SHA256,
-		expectedError: ErrorSecretNotFound,
+		expectedError: ErrSecretNotFound,
 	}, {
 		name:          "failed to read from data",
 		keyref:        keypath,
 		algorithm:     crypto.BLAKE2b_256,
-		expectedError: ErrorLoadVerifier,
+		expectedError: ErrLoadVerifier,
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -358,27 +358,27 @@ func TestFromSecret_Error(t *testing.T) {
 	}{{
 		name:          "no data in secret",
 		secretref:     fmt.Sprintf("k8s://%s/empty-secret", namespace),
-		expectedError: ErrorEmptySecretData,
+		expectedError: ErrEmptySecretData,
 	}, {
 		name:          "multiple data in secret",
 		secretref:     fmt.Sprintf("k8s://%s/multiple-data-secret", namespace),
-		expectedError: ErrorMultipleSecretData,
+		expectedError: ErrMultipleSecretData,
 	}, {
 		name:          "invalid data in secret",
 		secretref:     fmt.Sprintf("k8s://%s/invalid-data-secret", namespace),
-		expectedError: ErrorDecodeKey,
+		expectedError: ErrDecodeKey,
 	}, {
 		name:          "invalid secretref",
 		secretref:     "invalid-secretref",
-		expectedError: ErrorK8sSpecificationInvalid,
+		expectedError: ErrK8sSpecificationInvalid,
 	}, {
 		name:          "secretref has k8s prefix but contains invalid data",
 		secretref:     "k8s://ns/name/foo",
-		expectedError: ErrorK8sSpecificationInvalid,
+		expectedError: ErrK8sSpecificationInvalid,
 	}, {
 		name:          "secret doesn't exist",
 		secretref:     fmt.Sprintf("k8s://%s/not-exist-secret", namespace),
-		expectedError: ErrorSecretNotFound,
+		expectedError: ErrSecretNotFound,
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -404,12 +404,12 @@ func TestFromData_Error(t *testing.T) {
 		name:          "data in cannot be decoded",
 		data:          []byte("wrong key"),
 		algorithm:     crypto.SHA256,
-		expectedError: ErrorDecodeKey,
+		expectedError: ErrDecodeKey,
 	}, {
 		name:          "verifier cannot be loaded due to wrong algorithm",
 		data:          pub,
 		algorithm:     crypto.BLAKE2b_256,
-		expectedError: ErrorLoadVerifier,
+		expectedError: ErrLoadVerifier,
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -454,8 +454,8 @@ func TestMatchHashAlgorithm_Success(t *testing.T) {
 
 func TestHashAlgorithm_Error(t *testing.T) {
 	_, err := matchHashAlgorithm("SHA1")
-	if !errors.Is(err, ErrorAlgorithmInvalid) {
-		t.Errorf("hashAlgorithm got: %v, want: %v", err, ErrorAlgorithmInvalid)
+	if !errors.Is(err, ErrAlgorithmInvalid) {
+		t.Errorf("hashAlgorithm got: %v, want: %v", err, ErrAlgorithmInvalid)
 	}
 }
 

@@ -103,9 +103,9 @@ type Recorder struct {
 // initializes this singleton and returns the same recorder across any
 // subsequent invocations.
 var (
-	once        sync.Once
-	r           *Recorder
-	recorderErr error
+	once           sync.Once
+	r              *Recorder
+	errRegistering error
 )
 
 // NewRecorder creates a new metrics recorder instance
@@ -121,14 +121,14 @@ func NewRecorder(ctx context.Context) (*Recorder, error) {
 
 		cfg := config.FromContextOrDefaults(ctx)
 
-		recorderErr = viewRegister(cfg.Metrics)
-		if recorderErr != nil {
+		errRegistering = viewRegister(cfg.Metrics)
+		if errRegistering != nil {
 			r.initialized = false
 			return
 		}
 	})
 
-	return r, recorderErr
+	return r, errRegistering
 }
 
 func viewRegister(cfg *config.Metrics) error {

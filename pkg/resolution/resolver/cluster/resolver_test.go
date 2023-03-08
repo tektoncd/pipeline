@@ -326,7 +326,7 @@ func TestResolve(t *testing.T) {
 			resourceName:   exampleTask.Name,
 			namespace:      "other-ns",
 			expectedStatus: internal.CreateResolutionRequestFailureStatus(),
-			expectedErr: &resolutioncommon.ErrorGettingResource{
+			expectedErr: &resolutioncommon.GetResourceError{
 				ResolverName: ClusterResolverName,
 				Key:          "foo/rr",
 				Original:     errors.New(`tasks.tekton.dev "example-task" not found`),
@@ -338,7 +338,7 @@ func TestResolve(t *testing.T) {
 			namespace:         "other-ns",
 			allowedNamespaces: "foo,bar",
 			expectedStatus:    internal.CreateResolutionRequestFailureStatus(),
-			expectedErr: &resolutioncommon.ErrorInvalidRequest{
+			expectedErr: &resolutioncommon.InvalidRequestError{
 				ResolutionRequestKey: "foo/rr",
 				Message:              "access to specified namespace other-ns is not allowed",
 			},
@@ -349,7 +349,7 @@ func TestResolve(t *testing.T) {
 			namespace:         "other-ns",
 			blockedNamespaces: "foo,other-ns,bar",
 			expectedStatus:    internal.CreateResolutionRequestFailureStatus(),
-			expectedErr: &resolutioncommon.ErrorInvalidRequest{
+			expectedErr: &resolutioncommon.InvalidRequestError{
 				ResolutionRequestKey: "foo/rr",
 				Message:              "access to specified namespace other-ns is blocked",
 			},

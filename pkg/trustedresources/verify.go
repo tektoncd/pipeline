@@ -85,14 +85,14 @@ func VerifyPipeline(ctx context.Context, pipelineObj v1beta1.PipelineObject, k8s
 // matchedPolicies filters out the policies by checking if the resource url (source) is matching any of the `patterns` in the `resources` list.
 func matchedPolicies(resourceName string, source string, policies []*v1alpha1.VerificationPolicy) ([]*v1alpha1.VerificationPolicy, error) {
 	if len(policies) == 0 {
-		return nil, ErrorEmptyVerificationConfig
+		return nil, ErrEmptyVerificationConfig
 	}
 	matchedPolicies := []*v1alpha1.VerificationPolicy{}
 	for _, p := range policies {
 		for _, r := range p.Spec.Resources {
 			matching, err := regexp.MatchString(r.Pattern, source)
 			if err != nil {
-				return matchedPolicies, fmt.Errorf("%v: %w", err, ErrorRegexMatch)
+				return matchedPolicies, fmt.Errorf("%v: %w", err, ErrRegexMatch)
 			}
 			if matching {
 				matchedPolicies = append(matchedPolicies, p)
@@ -101,7 +101,7 @@ func matchedPolicies(resourceName string, source string, policies []*v1alpha1.Ve
 		}
 	}
 	if len(matchedPolicies) == 0 {
-		return matchedPolicies, fmt.Errorf("%w: no matching policies are found for resource: %s against source: %s", ErrorNoMatchedPolicies, resourceName, source)
+		return matchedPolicies, fmt.Errorf("%w: no matching policies are found for resource: %s against source: %s", ErrNoMatchedPolicies, resourceName, source)
 	}
 	return matchedPolicies, nil
 }
@@ -126,7 +126,7 @@ func verifyResource(ctx context.Context, resource metav1.Object, k8s kubernetes.
 		}
 		// if this policy fails the verification, should return error directly. No need to check other policies
 		if !passVerification {
-			return fmt.Errorf("%w: resource %s in namespace %s fails verification", ErrorResourceVerificationFailed, resource.GetName(), resource.GetNamespace())
+			return fmt.Errorf("%w: resource %s in namespace %s fails verification", ErrResourceVerificationFailed, resource.GetName(), resource.GetNamespace())
 		}
 	}
 	return nil
@@ -143,7 +143,7 @@ func verifyInterface(obj interface{}, verifier signature.Verifier, signature []b
 	h.Write(ts)
 
 	if err := verifier.VerifySignature(bytes.NewReader(signature), bytes.NewReader(h.Sum(nil))); err != nil {
-		return fmt.Errorf("%w:%v", ErrorResourceVerificationFailed, err.Error())
+		return fmt.Errorf("%w:%v", ErrResourceVerificationFailed, err.Error())
 	}
 
 	return nil
@@ -180,7 +180,7 @@ func prepareObjectMeta(in metav1.ObjectMeta) (metav1.ObjectMeta, []byte, error) 
 	// signature should be contained in annotation
 	sig, ok := in.Annotations[SignatureAnnotation]
 	if !ok {
-		return out, nil, ErrorSignatureMissing
+		return out, nil, ErrSignatureMissing
 	}
 	// extract signature
 	signature, err := base64.StdEncoding.DecodeString(sig)

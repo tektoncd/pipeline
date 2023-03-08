@@ -75,11 +75,11 @@ func FromPolicy(ctx context.Context, k8s kubernetes.Interface, policy *v1alpha1.
 			}
 			verifiers = append(verifiers, v)
 		default:
-			return nil, ErrorEmptyKey
+			return nil, ErrEmptyKey
 		}
 	}
 	if len(verifiers) == 0 {
-		return verifiers, ErrorEmptyPublicKeys
+		return verifiers, ErrEmptyPublicKeys
 	}
 	return verifiers, nil
 }
@@ -97,7 +97,7 @@ func fromKeyRef(ctx context.Context, keyRef string, hashAlgorithm crypto.Hash, k
 	}
 	raw, err := os.ReadFile(filepath.Clean(keyRef))
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrorFailedLoadKeyFile, err)
+		return nil, fmt.Errorf("%w: %v", ErrFailedLoadKeyFile, err)
 	}
 	v, err := fromData(raw, hashAlgorithm)
 	if err != nil {
@@ -116,10 +116,10 @@ func fromSecret(ctx context.Context, secretRef string, hashAlgorithm crypto.Hash
 		}
 		// only 1 public key should be in the secret
 		if len(s.Data) == 0 {
-			return nil, fmt.Errorf("secret %q contains no data %w", secretRef, ErrorEmptySecretData)
+			return nil, fmt.Errorf("secret %q contains no data %w", secretRef, ErrEmptySecretData)
 		}
 		if len(s.Data) > 1 {
-			return nil, fmt.Errorf("secret %q contains multiple data entries, only one is supported. %w", secretRef, ErrorMultipleSecretData)
+			return nil, fmt.Errorf("secret %q contains multiple data entries, only one is supported. %w", secretRef, ErrMultipleSecretData)
 		}
 		for _, raw := range s.Data {
 			v, err := fromData(raw, hashAlgorithm)
@@ -129,18 +129,18 @@ func fromSecret(ctx context.Context, secretRef string, hashAlgorithm crypto.Hash
 			return v, nil
 		}
 	}
-	return nil, fmt.Errorf("%w: secretRef %v is invalid", ErrorK8sSpecificationInvalid, secretRef)
+	return nil, fmt.Errorf("%w: secretRef %v is invalid", ErrK8sSpecificationInvalid, secretRef)
 }
 
 // fromData fetches the public key from raw data and returns the verifier
 func fromData(raw []byte, hashAlgorithm crypto.Hash) (signature.Verifier, error) {
 	pubKey, err := cryptoutils.UnmarshalPEMToPublicKey(raw)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrorDecodeKey, err)
+		return nil, fmt.Errorf("%w: %v", ErrDecodeKey, err)
 	}
 	v, err := signature.LoadVerifier(pubKey, hashAlgorithm)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrorLoadVerifier, err)
+		return nil, fmt.Errorf("%w: %v", ErrLoadVerifier, err)
 	}
 	return v, nil
 }
@@ -150,13 +150,13 @@ func fromData(raw []byte, hashAlgorithm crypto.Hash) (signature.Verifier, error)
 func getKeyPairSecret(ctx context.Context, k8sRef string, k8s kubernetes.Interface) (*v1.Secret, error) {
 	split := strings.Split(strings.TrimPrefix(k8sRef, keyReference), "/")
 	if len(split) != 2 {
-		return nil, ErrorK8sSpecificationInvalid
+		return nil, ErrK8sSpecificationInvalid
 	}
 	namespace, name := split[0], split[1]
 
 	s, err := k8s.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrorSecretNotFound, err)
+		return nil, fmt.Errorf("%w: %v", ErrSecretNotFound, err)
 	}
 
 	return s, nil
@@ -167,7 +167,7 @@ func matchHashAlgorithm(algorithmName v1alpha1.HashAlgorithm) (crypto.Hash, erro
 	normalizedAlgo := strings.ToLower(string(algorithmName))
 	algo, exists := v1alpha1.SupportedSignatureAlgorithms[v1alpha1.HashAlgorithm(normalizedAlgo)]
 	if !exists {
-		return crypto.SHA256, fmt.Errorf("%w: %s", ErrorAlgorithmInvalid, algorithmName)
+		return crypto.SHA256, fmt.Errorf("%w: %s", ErrAlgorithmInvalid, algorithmName)
 	}
 	return algo, nil
 }

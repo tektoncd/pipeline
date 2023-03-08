@@ -357,10 +357,10 @@ func (c *Reconciler) resolvePipelineState(
 			if tresources.IsGetTaskErrTransient(err) {
 				return nil, err
 			}
-			if errors.Is(err, remote.ErrorRequestInProgress) {
+			if errors.Is(err, remote.ErrRequestInProgress) {
 				return nil, err
 			}
-			if errors.Is(err, trustedresources.ErrorResourceVerificationFailed) {
+			if errors.Is(err, trustedresources.ErrResourceVerificationFailed) {
 				message := fmt.Sprintf("PipelineRun %s/%s referred task %s failed signature verification", pr.Namespace, pr.Name, task.Name)
 				pr.Status.MarkFailed(ReasonResourceVerificationFailed, message)
 				return nil, controller.NewPermanentError(err)
@@ -397,11 +397,11 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 
 	pipelineMeta, pipelineSpec, err := rprp.GetPipelineData(ctx, pr, getPipelineFunc)
 	switch {
-	case errors.Is(err, remote.ErrorRequestInProgress):
+	case errors.Is(err, remote.ErrRequestInProgress):
 		message := fmt.Sprintf("PipelineRun %s/%s awaiting remote resource", pr.Namespace, pr.Name)
 		pr.Status.MarkRunning(ReasonResolvingPipelineRef, message)
 		return nil
-	case errors.Is(err, trustedresources.ErrorResourceVerificationFailed):
+	case errors.Is(err, trustedresources.ErrResourceVerificationFailed):
 		message := fmt.Sprintf("PipelineRun %s/%s referred pipeline failed signature verification", pr.Namespace, pr.Name)
 		pr.Status.MarkFailed(ReasonResourceVerificationFailed, message)
 		return controller.NewPermanentError(err)
@@ -521,7 +521,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	}
 	pipelineRunState, err := c.resolvePipelineState(ctx, tasks, pipelineMeta.ObjectMeta, pr)
 	switch {
-	case errors.Is(err, remote.ErrorRequestInProgress):
+	case errors.Is(err, remote.ErrRequestInProgress):
 		message := fmt.Sprintf("PipelineRun %s/%s awaiting remote resource", pr.Namespace, pr.Name)
 		pr.Status.MarkRunning(v1beta1.TaskRunReasonResolvingTaskRef, message)
 		return nil

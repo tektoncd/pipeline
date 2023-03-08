@@ -690,5 +690,5 @@ func unregisterMetrics() {
 	// Allow the recorder singleton to be recreated.
 	once = sync.Once{}
 	r = nil
-	recorderErr = nil
+	errRegistering = nil
 }

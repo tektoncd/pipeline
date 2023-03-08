@@ -100,7 +100,7 @@ func GetVerifiedTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton c
 			if err := trustedresources.VerifyTask(ctx, t, k8s, source, verificationpolicies); err != nil {
 				if config.CheckEnforceResourceVerificationMode(ctx) {
 					logger.Errorf("GetVerifiedTaskFunc failed: %v", err)
-					return nil, nil, fmt.Errorf("GetVerifiedTaskFunc failed: %w: %v", trustedresources.ErrorResourceVerificationFailed, err)
+					return nil, nil, fmt.Errorf("GetVerifiedTaskFunc failed: %w: %v", trustedresources.ErrResourceVerificationFailed, err)
 				}
 				logger.Warnf("GetVerifiedTaskFunc failed: %v", err)
 				return t, s, nil

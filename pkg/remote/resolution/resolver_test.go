@@ -90,12 +90,12 @@ func TestGet_Errors(t *testing.T) {
 		expectedGetErr   error
 		resolvedResource remoteresource.ResolvedResource
 	}{{
-		submitErr:        resolutioncommon.ErrorRequestInProgress,
-		expectedGetErr:   remote.ErrorRequestInProgress,
+		submitErr:        resolutioncommon.ErrRequestInProgress,
+		expectedGetErr:   remote.ErrRequestInProgress,
 		resolvedResource: nil,
 	}, {
 		submitErr:        nil,
-		expectedGetErr:   ErrorRequestedResourceIsNil,
+		expectedGetErr:   ErrNilResource,
 		resolvedResource: nil,
 	}, {
 		submitErr:        genericError,
@@ -103,11 +103,11 @@ func TestGet_Errors(t *testing.T) {
 		resolvedResource: nil,
 	}, {
 		submitErr:        nil,
-		expectedGetErr:   &ErrorInvalidRuntimeObject{},
+		expectedGetErr:   &InvalidRuntimeObjectError{},
 		resolvedResource: notARuntimeObject,
 	}, {
 		submitErr:        nil,
-		expectedGetErr:   &ErrorAccessingData{},
+		expectedGetErr:   &DataAccessError{},
 		resolvedResource: invalidDataResource,
 	}} {
 		ctx := context.Background()

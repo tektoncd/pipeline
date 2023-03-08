@@ -20,14 +20,27 @@ import (
 	"fmt"
 )
 
-// SubcommandSuccessful is returned for successful subcommand executions.
-type SubcommandSuccessful struct {
+// OK is returned for successful subcommand executions.
+type OK struct {
 	message string
 }
 
-func (err SubcommandSuccessful) Error() string {
+func (err OK) Error() string {
 	return err.message
 }
+
+// SubcommandSuccessful is an alias for the OK type.
+//
+// Deprecated: replace usage with OK type.
+type SubcommandSuccessful = OK
+
+var (
+	// Compile-time check that OK is an error type.
+	_ error = OK{}
+	// Compile-time check that objects of type OK are cast to deprecated
+	// SubcommandSuccessful type.
+	_ SubcommandSuccessful = OK{}
+)
 
 // SubcommandError is returned for failed subcommand executions.
 type SubcommandError struct {
@@ -43,7 +56,7 @@ func (err SubcommandError) Error() string {
 // subcommand that the args call for. An error is returned to the caller to
 // indicate that a subcommand was matched and to pass back its success/fail
 // state. The returned error will be nil if no subcommand was matched to the
-// passed args, SubcommandSuccessful if args matched and the subcommand
+// passed args, OK if args matched and the subcommand
 // succeeded, or any other error if the args matched but the subcommand failed.
 func Process(args []string) error {
 	if len(args) == 0 {
@@ -60,7 +73,7 @@ func Process(args []string) error {
 			if err := entrypointInit(src, dst, steps); err != nil {
 				return SubcommandError{subcommand: InitCommand, message: err.Error()}
 			}
-			return SubcommandSuccessful{message: "Entrypoint initialization"}
+			return OK{message: "Entrypoint initialization"}
 		}
 	case CopyCommand:
 		// If invoked in "cp mode" (`entrypoint cp <src> <dst>`), simply copy
@@ -72,7 +85,7 @@ func Process(args []string) error {
 			if err := cp(src, dst); err != nil {
 				return SubcommandError{subcommand: CopyCommand, message: err.Error()}
 			}
-			return SubcommandSuccessful{message: fmt.Sprintf("Copied %s to %s", src, dst)}
+			return OK{message: fmt.Sprintf("Copied %s to %s", src, dst)}
 		}
 	case DecodeScriptCommand:
 		// If invoked in "decode-script" mode (`entrypoint decode-script <src>`),
@@ -82,13 +95,13 @@ func Process(args []string) error {
 			if err := decodeScript(src); err != nil {
 				return SubcommandError{subcommand: DecodeScriptCommand, message: err.Error()}
 			}
-			return SubcommandSuccessful{message: fmt.Sprintf("Decoded script %s", src)}
+			return OK{message: fmt.Sprintf("Decoded script %s", src)}
 		}
 	case StepInitCommand:
 		if err := stepInit(args[1:]); err != nil {
 			return SubcommandError{subcommand: StepInitCommand, message: err.Error()}
 		}
-		return SubcommandSuccessful{message: "Setup /step directories"}
+		return OK{message: "Setup /step directories"}
 	default:
 	}
 	return nil
