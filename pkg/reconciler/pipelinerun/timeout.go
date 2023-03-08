@@ -139,7 +139,7 @@ func timeoutPipelineTasksForTaskNames(ctx context.Context, logger *zap.SugaredLo
 		logger.Infof("cancelling TaskRun %s for timeout", taskRunName)
 
 		if _, err := clientSet.TektonV1beta1().TaskRuns(pr.Namespace).Patch(ctx, taskRunName, types.JSONPatchType, timeoutTaskRunPatchBytes, metav1.PatchOptions{}, ""); err != nil {
-			errs = append(errs, fmt.Errorf("Failed to patch TaskRun `%s` with cancellation: %s", taskRunName, err).Error())
+			errs = append(errs, fmt.Errorf("Failed to patch TaskRun `%s` with cancellation: %w", taskRunName, err).Error())
 			continue
 		}
 	}
@@ -148,7 +148,7 @@ func timeoutPipelineTasksForTaskNames(ctx context.Context, logger *zap.SugaredLo
 		logger.Infof("cancelling CustomRun %s for timeout", custonRunName)
 
 		if err := timeoutCustomRun(ctx, custonRunName, pr.Namespace, clientSet); err != nil {
-			errs = append(errs, fmt.Errorf("Failed to patch CustomRun `%s` with cancellation: %s", custonRunName, err).Error())
+			errs = append(errs, fmt.Errorf("Failed to patch CustomRun `%s` with cancellation: %w", custonRunName, err).Error())
 			continue
 		}
 	}
@@ -157,7 +157,7 @@ func timeoutPipelineTasksForTaskNames(ctx context.Context, logger *zap.SugaredLo
 		logger.Infof("cancelling Run %s for timeout", runName)
 
 		if err := timeoutRun(ctx, runName, pr.Namespace, clientSet); err != nil {
-			errs = append(errs, fmt.Errorf("Failed to patch Run `%s` with cancellation: %s", runName, err).Error())
+			errs = append(errs, fmt.Errorf("Failed to patch Run `%s` with cancellation: %w", runName, err).Error())
 			continue
 		}
 	}

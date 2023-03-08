@@ -227,38 +227,38 @@ func (r *Resolver) resolveAnonymousGit(ctx context.Context, params map[string]st
 	if err != nil {
 		var fetchErr git.NoMatchingRefSpecError
 		if !errors.As(err, &fetchErr) {
-			return nil, fmt.Errorf("unexpected fetch error: %v", err)
+			return nil, fmt.Errorf("unexpected fetch error: %w", err)
 		}
 	}
 
 	w, err := repository.Worktree()
 	if err != nil {
-		return nil, fmt.Errorf("worktree error: %v", err)
+		return nil, fmt.Errorf("worktree error: %w", err)
 	}
 
 	h, err := repository.ResolveRevision(plumbing.Revision(revision))
 	if err != nil {
-		return nil, fmt.Errorf("revision error: %v", err)
+		return nil, fmt.Errorf("revision error: %w", err)
 	}
 
 	err = w.Checkout(&git.CheckoutOptions{
 		Hash: *h,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("checkout error: %v", err)
+		return nil, fmt.Errorf("checkout error: %w", err)
 	}
 
 	path := params[pathParam]
 
 	f, err := filesystem.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("error opening file %q: %v", path, err)
+		return nil, fmt.Errorf("error opening file %q: %w", path, err)
 	}
 
 	buf := &bytes.Buffer{}
 	_, err = io.Copy(buf, f)
 	if err != nil {
-		return nil, fmt.Errorf("error reading file %q: %v", path, err)
+		return nil, fmt.Errorf("error reading file %q: %w", path, err)
 	}
 
 	return &resolvedGitResource{

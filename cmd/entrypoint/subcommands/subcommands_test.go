@@ -1,6 +1,7 @@
 package subcommands
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -24,6 +25,8 @@ func TestProcessSuccessfulSubcommands(t *testing.T) {
 		t.Fatalf("error writing source file: %v", err)
 	}
 
+	var ok OK
+
 	for _, tc := range []struct {
 		command string
 		args    []string
@@ -39,7 +42,7 @@ func TestProcessSuccessfulSubcommands(t *testing.T) {
 	} {
 		t.Run(tc.command, func(t *testing.T) {
 			returnValue := Process(append([]string{tc.command}, tc.args...))
-			if _, ok := returnValue.(OK); !ok {
+			if !errors.As(returnValue, &ok) {
 				t.Errorf("unexpected return value from command: %v", returnValue)
 			}
 		})
@@ -49,12 +52,12 @@ func TestProcessSuccessfulSubcommands(t *testing.T) {
 		tektonRoot = tmp
 
 		returnValue := Process([]string{StepInitCommand})
-		if _, ok := returnValue.(OK); !ok {
+		if !errors.As(returnValue, &ok) {
 			t.Errorf("unexpected return value from step-init command: %v", returnValue)
 		}
 
 		returnValue = Process([]string{StepInitCommand, "foo", "bar"})
-		if _, ok := returnValue.(OK); !ok {
+		if !errors.As(returnValue, &ok) {
 			t.Errorf("unexpected return value from step-init command w/ params: %v", returnValue)
 		}
 	})

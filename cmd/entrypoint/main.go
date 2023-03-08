@@ -18,6 +18,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -97,12 +98,11 @@ func main() {
 	}
 	if err := subcommands.Process(flag.CommandLine.Args()); err != nil {
 		log.Println(err.Error())
-		switch err.(type) {
-		case subcommands.OK:
+		var ok subcommands.OK
+		if errors.As(err, &ok) {
 			return
-		default:
-			os.Exit(1)
 		}
+		os.Exit(1)
 	}
 
 	// Copy credentials we're expecting from the legacy credentials helper (creds-init)
@@ -174,7 +174,7 @@ func main() {
 
 	if err := e.Go(); err != nil {
 		breakpointExitPostFile := e.PostFile + breakpointExitSuffix
-		switch t := err.(type) {
+		switch t := err.(type) { // nolint -- checking for multiple types with errors.As is ugly.
 		case skipError:
 			log.Print("Skipping step because a previous step failed")
 			os.Exit(1)

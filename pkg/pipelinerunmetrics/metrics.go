@@ -268,7 +268,7 @@ func (r *Recorder) RunningPipelineRuns(lister listers.PipelineRunLister) error {
 
 	prs, err := lister.List(labels.Everything())
 	if err != nil {
-		return fmt.Errorf("failed to list pipelineruns while generating metrics : %v", err)
+		return fmt.Errorf("failed to list pipelineruns while generating metrics : %w", err)
 	}
 
 	var runningPRs int

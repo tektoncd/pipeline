@@ -76,7 +76,7 @@ func (e *entrypointCache) get(ctx context.Context, ref name.Reference, namespace
 		ImagePullSecrets:   pullSecretsNames,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error creating k8schain: %v", err)
+		return nil, fmt.Errorf("error creating k8schain: %w", err)
 	}
 
 	desc, err := remote.Get(ref, remote.WithAuthFromKeychain(kc))

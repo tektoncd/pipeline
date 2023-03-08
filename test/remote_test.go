@@ -18,6 +18,7 @@ package test
 
 import (
 	"archive/tar"
+	"errors"
 	"io"
 	"net/http/httptest"
 	"net/url"
@@ -94,7 +95,7 @@ metadata:
 	}
 
 	actual := make([]byte, header.Size)
-	if _, err := reader.Read(actual); err != nil && err != io.EOF {
+	if _, err := reader.Read(actual); err != nil && !errors.Is(err, io.EOF) {
 		t.Errorf("failed to read contents of tar bundle: %v", err)
 	}
 

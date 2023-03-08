@@ -276,7 +276,7 @@ func extractEntireVariablesFromString(s, prefix string) ([]string, error) {
 	pattern := fmt.Sprintf(braceMatchingRegex, prefix, parameterSubstitution, parameterSubstitution, parameterSubstitution)
 	re, err := regexp.Compile(pattern)
 	if err != nil {
-		return nil, fmt.Errorf("Fail to parse regex pattern: %v", err)
+		return nil, fmt.Errorf("Fail to parse regex pattern: %w", err)
 	}
 
 	matches := re.FindAllStringSubmatch(s, -1)

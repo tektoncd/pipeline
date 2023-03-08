@@ -63,13 +63,13 @@ func (c *Reconciler) createAffinityAssistants(ctx context.Context, wb []v1beta1.
 				affinityAssistantStatefulSet := affinityAssistantStatefulSet(affinityAssistantName, pr, claimName, c.Images.NopImage, cfg.Defaults.DefaultAAPodTemplate)
 				_, err := c.KubeClientSet.AppsV1().StatefulSets(namespace).Create(ctx, affinityAssistantStatefulSet, metav1.CreateOptions{})
 				if err != nil {
-					errs = append(errs, fmt.Errorf("failed to create StatefulSet %s: %s", affinityAssistantName, err))
+					errs = append(errs, fmt.Errorf("failed to create StatefulSet %s: %w", affinityAssistantName, err))
 				}
 				if err == nil {
 					logger.Infof("Created StatefulSet %s in namespace %s", affinityAssistantName, namespace)
 				}
 			case err != nil:
-				errs = append(errs, fmt.Errorf("failed to retrieve StatefulSet %s: %s", affinityAssistantName, err))
+				errs = append(errs, fmt.Errorf("failed to retrieve StatefulSet %s: %w", affinityAssistantName, err))
 			}
 		}
 	}
@@ -97,7 +97,7 @@ func (c *Reconciler) cleanupAffinityAssistants(ctx context.Context, pr *v1beta1.
 		if w.PersistentVolumeClaim != nil || w.VolumeClaimTemplate != nil {
 			affinityAssistantStsName := getAffinityAssistantName(w.Name, pr.Name)
 			if err := c.KubeClientSet.AppsV1().StatefulSets(pr.Namespace).Delete(ctx, affinityAssistantStsName, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
-				errs = append(errs, fmt.Errorf("failed to delete StatefulSet %s: %s", affinityAssistantStsName, err))
+				errs = append(errs, fmt.Errorf("failed to delete StatefulSet %s: %w", affinityAssistantStsName, err))
 			}
 		}
 	}

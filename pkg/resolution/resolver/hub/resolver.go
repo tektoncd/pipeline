@@ -82,10 +82,10 @@ func (r *Resolver) ValidateParams(ctx context.Context, params []pipelinev1beta1.
 
 	paramsMap, err := populateDefaultParams(ctx, params)
 	if err != nil {
-		return fmt.Errorf("failed to populate default params: %v", err)
+		return fmt.Errorf("failed to populate default params: %w", err)
 	}
 	if err := r.validateParams(ctx, paramsMap); err != nil {
-		return fmt.Errorf("failed to validate params: %v", err)
+		return fmt.Errorf("failed to validate params: %w", err)
 	}
 
 	return nil
@@ -115,10 +115,10 @@ func (r *Resolver) Resolve(ctx context.Context, params []pipelinev1beta1.Param) 
 
 	paramsMap, err := populateDefaultParams(ctx, params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to populate default params: %v", err)
+		return nil, fmt.Errorf("failed to populate default params: %w", err)
 	}
 	if err := r.validateParams(ctx, paramsMap); err != nil {
-		return nil, fmt.Errorf("failed to validate params: %v", err)
+		return nil, fmt.Errorf("failed to validate params: %w", err)
 	}
 
 	resVer, err := resolveVersion(paramsMap[ParamVersion], paramsMap[ParamType])
@@ -133,7 +133,7 @@ func (r *Resolver) Resolve(ctx context.Context, params []pipelinev1beta1.Param) 
 		url := fmt.Sprintf(r.ArtifactHubURL, paramsMap[ParamKind], paramsMap[ParamCatalog], paramsMap[ParamName], paramsMap[ParamVersion])
 		resp := artifactHubResponse{}
 		if err := fetchHubResource(url, &resp); err != nil {
-			return nil, fmt.Errorf("fail to fetch Artifact Hub resource: %v", err)
+			return nil, fmt.Errorf("fail to fetch Artifact Hub resource: %w", err)
 		}
 		return &ResolvedHubResource{
 			URL:     url,
@@ -143,7 +143,7 @@ func (r *Resolver) Resolve(ctx context.Context, params []pipelinev1beta1.Param) 
 		url := fmt.Sprintf(r.TektonHubURL, paramsMap[ParamCatalog], paramsMap[ParamKind], paramsMap[ParamName], paramsMap[ParamVersion])
 		resp := tektonHubResponse{}
 		if err := fetchHubResource(url, &resp); err != nil {
-			return nil, fmt.Errorf("fail to fetch Tekton Hub resource: %v", err)
+			return nil, fmt.Errorf("fail to fetch Tekton Hub resource: %w", err)
 		}
 		return &ResolvedHubResource{
 			URL:     url,

@@ -163,7 +163,7 @@ func cancelPipelineTaskRunsForTaskNames(ctx context.Context, logger *zap.Sugared
 		logger.Infof("cancelling TaskRun %s", taskRunName)
 
 		if err := cancelTaskRun(ctx, taskRunName, pr.Namespace, clientSet); err != nil {
-			errs = append(errs, fmt.Errorf("Failed to patch TaskRun `%s` with cancellation: %s", taskRunName, err).Error())
+			errs = append(errs, fmt.Errorf("Failed to patch TaskRun `%s` with cancellation: %w", taskRunName, err).Error())
 			continue
 		}
 	}
@@ -172,7 +172,7 @@ func cancelPipelineTaskRunsForTaskNames(ctx context.Context, logger *zap.Sugared
 		logger.Infof("cancelling CustomRun %s", runName)
 
 		if err := cancelCustomRun(ctx, runName, pr.Namespace, clientSet); err != nil {
-			errs = append(errs, fmt.Errorf("Failed to patch CustomRun `%s` with cancellation: %s", runName, err).Error())
+			errs = append(errs, fmt.Errorf("Failed to patch CustomRun `%s` with cancellation: %w", runName, err).Error())
 			continue
 		}
 	}
@@ -181,7 +181,7 @@ func cancelPipelineTaskRunsForTaskNames(ctx context.Context, logger *zap.Sugared
 		logger.Infof("cancelling Run %s", runName)
 
 		if err := cancelRun(ctx, runName, pr.Namespace, clientSet); err != nil {
-			errs = append(errs, fmt.Errorf("Failed to patch Run `%s` with cancellation: %s", runName, err).Error())
+			errs = append(errs, fmt.Errorf("Failed to patch Run `%s` with cancellation: %w", runName, err).Error())
 			continue
 		}
 	}

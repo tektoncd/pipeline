@@ -20,6 +20,7 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"os/exec"
 	"testing"
 
@@ -60,7 +61,7 @@ func TestDropNetworking(t *testing.T) {
 
 		b1, err1 := withNetworking.CombinedOutput()
 		b2, err2 := withoutNetworking.CombinedOutput()
-		if err1 != err2 {
+		if !errors.Is(err1, err2) {
 			t.Errorf("Expected no errors, got %v %v", err1, err2)
 		}
 		if diff := cmp.Diff(string(b1), string(b2)); diff != "" {

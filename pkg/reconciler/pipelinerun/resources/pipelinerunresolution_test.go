@@ -2005,13 +2005,14 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 	}
 	for _, pt := range pts {
 		_, err := ResolvePipelineTask(context.Background(), pr, getTask, getTaskRun, nopGetRun, pt)
-		switch err := err.(type) {
-		case nil:
-			t.Fatalf("Expected error getting non-existent Tasks for Pipeline %s but got none", p.Name)
-		case *TaskNotFoundError:
+		var tnf *TaskNotFoundError
+		switch {
+		case err == nil:
+			t.Fatalf("Pipeline %s: want error, got nil", p.Name)
+		case errors.As(err, &tnf):
 			// expected error
 		default:
-			t.Fatalf("Expected specific error type returned by func for non-existent Task for Pipeline %s but got %s", p.Name, err)
+			t.Fatalf("Pipeline %s: Want %T, got %s of type %T", p.Name, tnf, err, err)
 		}
 	}
 }
@@ -2047,7 +2048,7 @@ func TestResolvePipelineRun_VerificationFailed(t *testing.T) {
 		if err == nil {
 			t.Errorf("expected to get err but got nil")
 		}
-		if err != trustedresources.ErrResourceVerificationFailed {
+		if !errors.Is(err, trustedresources.ErrResourceVerificationFailed) {
 			t.Errorf("expected to get %v but got %v", trustedresources.ErrResourceVerificationFailed, err)
 		}
 	}

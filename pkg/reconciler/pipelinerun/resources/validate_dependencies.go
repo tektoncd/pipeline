@@ -32,7 +32,7 @@ func ValidatePipelineTaskResults(state PipelineRunState) error {
 	for _, rpt := range state {
 		for _, ref := range v1beta1.PipelineTaskResultRefs(rpt.PipelineTask) {
 			if err := validateResultRef(ref, ptMap); err != nil {
-				return fmt.Errorf("invalid result reference in pipeline task %q: %s", rpt.PipelineTask.Name, err)
+				return fmt.Errorf("invalid result reference in pipeline task %q: %w", rpt.PipelineTask.Name, err)
 			}
 		}
 	}
@@ -50,7 +50,7 @@ func ValidatePipelineResults(ps *v1beta1.PipelineSpec, state PipelineRunState) e
 		refs := v1beta1.NewResultRefs(expressions)
 		for _, ref := range refs {
 			if err := validateResultRef(ref, ptMap); err != nil {
-				return fmt.Errorf("invalid pipeline result %q: %s", result.Name, err)
+				return fmt.Errorf("invalid pipeline result %q: %w", result.Name, err)
 			}
 		}
 	}

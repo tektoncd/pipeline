@@ -63,7 +63,7 @@ func (r *ResultType) UnmarshalJSON(data []byte) error {
 	var asString string
 
 	if err := json.Unmarshal(data, &asString); err != nil {
-		return fmt.Errorf("unsupported value type, neither int nor string: %v", multierror.Append(intErr, err).ErrorOrNil())
+		return fmt.Errorf("unsupported value type, neither int nor string: %w", multierror.Append(intErr, err).ErrorOrNil())
 	}
 
 	switch asString {

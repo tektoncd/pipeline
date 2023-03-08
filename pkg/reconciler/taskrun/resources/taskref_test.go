@@ -1022,7 +1022,7 @@ func TestGetVerifiedTaskFunc_GetFuncError(t *testing.T) {
 			name:        "get error when remote resolution return error",
 			requester:   requesterUnsigned,
 			taskrun:     *trResolutionError,
-			expectedErr: fmt.Errorf("failed to get task: error accessing data from remote resource: %v", resolvedUnsigned.DataErr),
+			expectedErr: fmt.Errorf("failed to get task: error accessing data from remote resource: %w", resolvedUnsigned.DataErr),
 		},
 	}
 	for _, tc := range testcases {

@@ -31,7 +31,7 @@ func ValidateBindings(ctx context.Context, decls []v1beta1.WorkspaceDeclaration,
 	// reason we'll invoke the same validation here.
 	for _, b := range binds {
 		if err := b.Validate(ctx); err != nil {
-			return fmt.Errorf("binding %q is invalid: %v", b.Name, err)
+			return fmt.Errorf("binding %q is invalid: %w", b.Name, err)
 		}
 	}
 

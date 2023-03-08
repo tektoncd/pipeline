@@ -157,7 +157,8 @@ func ReasonError(err error) (string, error) {
 	reason := ReasonResolutionFailed
 	resolutionError := err
 
-	if e, ok := err.(*Error); ok {
+	var e *Error
+	if errors.As(err, &e) {
 		reason = e.Reason
 		resolutionError = e.Unwrap()
 	}

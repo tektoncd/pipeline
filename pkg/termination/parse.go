@@ -36,7 +36,7 @@ func ParseMessage(logger *zap.SugaredLogger, msg string) ([]v1beta1.PipelineReso
 
 	var r []v1beta1.PipelineResourceResult
 	if err := json.Unmarshal([]byte(msg), &r); err != nil {
-		return nil, fmt.Errorf("parsing message json: %v, msg: %s", err, msg)
+		return nil, fmt.Errorf("parsing message json: %w, msg: %s", err, msg)
 	}
 
 	for i, rr := range r {

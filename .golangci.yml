@@ -27,7 +27,7 @@ linters:
   - errcheck
   - errchkjson
   - errname
-  # errorlint TODO: cleanup the issues this linter uncovers https://github.com/tektoncd/pipeline/issues/5899
+  - errorlint
   - goconst
   - gocritic
   - gofmt
