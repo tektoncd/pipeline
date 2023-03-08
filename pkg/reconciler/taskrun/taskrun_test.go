@@ -3762,7 +3762,7 @@ spec:
 					RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 					EnableAPIFields:                  config.DefaultEnableAPIFields,
 					AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
-					ResourceVerificationMode:         config.DefaultResourceVerificationMode,
+					VerificationNoMatchPolicy:        config.DefaultNoMatchPolicyConfig,
 					EnableProvenanceInStatus:         true,
 					ResultExtractionMethod:           config.DefaultResultExtractionMethod,
 					MaxResultSize:                    config.DefaultMaxResultSize,
@@ -4889,7 +4889,7 @@ status:
 		{
 			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
-				"resource-verification-mode": "enforce",
+				"trusted-resources-verification-no-match-policy": config.FailNoMatchPolicy,
 			},
 		},
 	}
@@ -4960,7 +4960,7 @@ status:
 		{
 			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
-				"resource-verification-mode": "enforce",
+				"trusted-resources-verification-no-match-policy": config.FailNoMatchPolicy,
 			},
 		},
 	}

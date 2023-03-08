@@ -54,19 +54,21 @@ metadata:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 data:
-  resource-verification-mode: "enforce"
+  trusted-resources-verification-no-match-policy: "fail"
 ```
 
-**Note:** `resource-verification-mode` needs to be set as `enforce` or `warn` to enable resource verification.
+`trusted-resources-verification-no-match-policy` configurations:
+ * `ignore`: if no matching policies are found, skip the verification, don't log, and don't fail the taskrun/pipelinerun
+ * `warn`:  if no matching policies are found, skip the verification, log a warning, and don't fail the taskrun/pipelinerun
+ * `fail`: Fail the taskrun/pipelinerun if no matching policies are found.
 
-`resource-verification-mode` configurations:
- * `enforce`: Failing verification will mark the taskruns/pipelineruns as failed.
- * `warn`: Log warning but don't fail the taskruns/pipelineruns.
- * `skip`: Directly skip the verification.
+ **Notes:**
+ * To skip the verification: make sure no policies exist and `trusted-resources-verification-no-match-policy` is set to `warn` or `ignore`.
+ * To enable the verification: install [VerificationPolicy](#config-key-at-verificationpolicy) to match the resources.
 
 Or patch the new values:
 ```bash
-kubectl patch configmap feature-flags -n tekton-pipelines -p='{"data":{"resource-verification-mode":"enforce"}}
+kubectl patch configmap feature-flags -n tekton-pipelines -p='{"data":{"trusted-resources-verification-no-match-policy":"fail"}}
 ```
 
 #### Config key at VerificationPolicy

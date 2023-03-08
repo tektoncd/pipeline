@@ -37,7 +37,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/kmeta"
-	"knative.dev/pkg/logging"
 )
 
 // This error is defined in etcd at
@@ -80,8 +79,8 @@ func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekto
 	return GetVerifiedTaskFunc(ctx, k8s, tekton, requester, taskrun, taskrun.Spec.TaskRef, taskrun.Name, taskrun.Namespace, taskrun.Spec.ServiceAccountName, verificationpolicies)
 }
 
-// GetVerifiedTaskFunc is a wrapper of GetTaskFunc and return the function to
-// verify the task if resource-verification-mode is not "skip"
+// GetVerifiedTaskFunc is a wrapper of GetTaskFunc and return the function to verify the task
+// if there are matching verification policies
 func GetVerifiedTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester,
 	owner kmeta.OwnerRefable, taskref *v1beta1.TaskRef, trName string, namespace, saName string, verificationpolicies []*v1alpha1.VerificationPolicy) GetTask {
 	get := GetTaskFunc(ctx, k8s, tekton, requester, owner, taskref, trName, namespace, saName)
@@ -95,16 +94,8 @@ func GetVerifiedTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton c
 		if s != nil {
 			source = s.URI
 		}
-		logger := logging.FromContext(ctx)
-		if config.CheckEnforceResourceVerificationMode(ctx) || config.CheckWarnResourceVerificationMode(ctx) {
-			if err := trustedresources.VerifyTask(ctx, t, k8s, source, verificationpolicies); err != nil {
-				if config.CheckEnforceResourceVerificationMode(ctx) {
-					logger.Errorf("GetVerifiedTaskFunc failed: %v", err)
-					return nil, nil, fmt.Errorf("GetVerifiedTaskFunc failed: %w: %v", trustedresources.ErrResourceVerificationFailed, err)
-				}
-				logger.Warnf("GetVerifiedTaskFunc failed: %v", err)
-				return t, s, nil
-			}
+		if err := trustedresources.VerifyTask(ctx, t, k8s, source, verificationpolicies); err != nil {
+			return nil, nil, fmt.Errorf("GetVerifiedTaskFunc failed: %w: %v", trustedresources.ErrResourceVerificationFailed, err)
 		}
 		return t, s, nil
 	}

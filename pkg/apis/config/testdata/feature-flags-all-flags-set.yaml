@@ -27,6 +27,6 @@ data:
   enable-api-fields: "alpha"
   send-cloudevents-for-runs: "true"
   enforce-nonfalsifiability: "spire"
-  resource-verification-mode: "enforce"
+  trusted-resources-verification-no-match-policy: "fail"
   enable-provenance-in-status: "true"
   custom-task-version: "v1beta1"

@@ -29,7 +29,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	taskrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/taskrun"
@@ -332,16 +331,12 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	logger := logging.FromContext(ctx)
 	tr.SetDefaults(ctx)
 
-	cfg := config.FromContextOrDefaults(ctx)
-	var verificationpolicies []*v1alpha1.VerificationPolicy
-	if cfg.FeatureFlags.ResourceVerificationMode == config.EnforceResourceVerificationMode || cfg.FeatureFlags.ResourceVerificationMode == config.WarnResourceVerificationMode {
-		var err error
-		verificationpolicies, err = c.verificationPolicyLister.VerificationPolicies(tr.Namespace).List(labels.Everything())
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %v", tr.Namespace, err)
-		}
+	// list VerificationPolicies for trusted resources
+	vp, err := c.verificationPolicyLister.VerificationPolicies(tr.Namespace).List(labels.Everything())
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %v", tr.Namespace, err)
 	}
-	getTaskfunc := resources.GetTaskFuncFromTaskRun(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, tr, verificationpolicies)
+	getTaskfunc := resources.GetTaskFuncFromTaskRun(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, tr, vp)
 
 	taskMeta, taskSpec, err := resources.GetTaskData(ctx, tr, getTaskfunc)
 	switch {

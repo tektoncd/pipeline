@@ -95,8 +95,8 @@ func GetUnsignedPipeline(name string) *v1beta1.Pipeline {
 	}
 }
 
-// SetupTrustedResourceConfig config the resource-verification-mode feature flag by given mode for testing
-func SetupTrustedResourceConfig(ctx context.Context, resourceVerificationMode string) context.Context {
+// SetupTrustedResourceConfig configures the trusted-resources-verification-no-match-policy feature flag with the given mode for testing
+func SetupTrustedResourceConfig(ctx context.Context, verificationNoMatchPolicy string) context.Context {
 	store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
 	featureflags := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -104,7 +104,7 @@ func SetupTrustedResourceConfig(ctx context.Context, resourceVerificationMode st
 			Name:      "feature-flags",
 		},
 		Data: map[string]string{
-			"resource-verification-mode": resourceVerificationMode,
+			"trusted-resources-verification-no-match-policy": verificationNoMatchPolicy,
 		},
 	}
 	store.OnConfigChanged(featureflags)

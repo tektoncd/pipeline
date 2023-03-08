@@ -2511,7 +2511,7 @@ status:
 		mustParseTaskRunWithObjectMeta(t, taskRunObjectMeta("test-pipeline-run-with-timeout-finaltask-1", "foo", "test-pipeline-run-with-timeout",
 			"test-pipeline", "finaltask-1", false), `
 spec:
-  
+
   serviceAccountName: test-sa
   taskRef:
     name: hello-world
@@ -4792,7 +4792,7 @@ metadata:
 					RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 					EnableAPIFields:                  config.DefaultEnableAPIFields,
 					AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
-					ResourceVerificationMode:         config.DefaultResourceVerificationMode,
+					VerificationNoMatchPolicy:        config.DefaultNoMatchPolicyConfig,
 					EnableProvenanceInStatus:         true,
 					ResultExtractionMethod:           config.DefaultResultExtractionMethod,
 					MaxResultSize:                    config.DefaultMaxResultSize,
@@ -9895,21 +9895,10 @@ spec:
 		t.Fatal("fail to sign pipeline", err)
 	}
 
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"resource-verification-mode": "enforce",
-			},
-		},
-	}
-	t.Logf("config maps: %s", cms)
-
 	d := test.Data{
 		PipelineRuns:         []*v1beta1.PipelineRun{prs},
 		Pipelines:            []*v1beta1.Pipeline{signedPipeline},
 		Tasks:                []*v1beta1.Task{signedTask},
-		ConfigMaps:           cms,
 		VerificationPolicies: vps,
 	}
 	prt := newPipelineRunTest(t, d)
@@ -9981,16 +9970,6 @@ spec:
 	}
 	tamperedPipeline.Annotations["random"] = "attack"
 
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"resource-verification-mode": "enforce",
-			},
-		},
-	}
-	t.Logf("config maps: %s", cms)
-
 	testCases := []struct {
 		name        string
 		pipelinerun []*v1beta1.PipelineRun
@@ -10028,7 +10007,6 @@ spec:
 				PipelineRuns:         tc.pipelinerun,
 				Pipelines:            tc.pipeline,
 				Tasks:                tc.task,
-				ConfigMaps:           cms,
 				VerificationPolicies: vps,
 			}
 			prt := newPipelineRunTest(t, d)

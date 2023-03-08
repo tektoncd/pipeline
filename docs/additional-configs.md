@@ -2,12 +2,12 @@
 ---
 title: "Additional Configuration Options"
 linkTitle: "Additional Configuration Options"
-weight: 109 
+weight: 109
 description: >
   Additional configurations when installing Tekton Pipelines
 ---
 -->
-  
+
 This document describes additional options to configure your Tekton Pipelines
 installation.
 
@@ -98,7 +98,7 @@ Environment variables can be configured in the following ways, mentioned in orde
 3. Environment variables specified via a `default` `PodTemplate`.
 4. Environment variables specified via a `PodTemplate`.
 
-The environment variables specified by a `PodTemplate` supercedes all other ways of specifying environment variables. However, there exists a configuration i.e. `default-forbidden-env`, the environment variable specified in this list cannot be updated via a `PodTemplate`. 
+The environment variables specified by a `PodTemplate` supercedes all other ways of specifying environment variables. However, there exists a configuration i.e. `default-forbidden-env`, the environment variable specified in this list cannot be updated via a `PodTemplate`.
 
 For example:
 
@@ -238,7 +238,9 @@ The default is `false`. For more information, see the [associated issue](https:/
 most stable features to be used. Set it to "alpha" to allow [alpha
 features](#alpha-features) to be used.
 
-- `resource-verification-mode`: Setting this flag to "enforce" will enforce verification of tasks/pipeline. Failing to verify will fail the taskrun/pipelinerun. "warn" will only log the err message and "skip" will skip the whole verification.
+- `trusted-resources-verification-no-match-policy`: Setting this flag to `fail` will fail the taskrun/pipelinerun if no matching policies found. Setting to `warn` will skip verification and log a warning if no matching policies are found, but not fail the taskrun/pipelinerun. Setting to `ignore` will skip verification if no matching policies found.
+Defaults to "ignore".
+
 - `results-from`: set this flag to "termination-message" to use the container's termination message to fetch results from. This is the default method of extracting results. Set it to "sidecar-logs" to enable use of a results sidecar logs to extract results instead of termination message.
 
 - `enable-provenance-in-status`: set this flag to "true" to enable recording
@@ -285,7 +287,7 @@ Features currently in "alpha" are:
 | [Matrix](./matrix.md)                                                                               | [TEP-0090](https://github.com/tektoncd/community/blob/main/teps/0090-matrix.md)                                            | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                               |
 | [Task-level Resource Requirements](compute-resources.md#task-level-compute-resources-configuration) | [TEP-0104](https://github.com/tektoncd/community/blob/main/teps/0104-tasklevel-resource-requirements.md)                   | [v0.39.0](https://github.com/tektoncd/pipeline/releases/tag/v0.39.0) |                               |
 | [Object Params and Results](pipelineruns.md#specifying-parameters)                                  | [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md)                     | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                               |                             |
-| [Trusted Resources](./trusted-resources.md)                                                         | [TEP-0091](https://github.com/tektoncd/community/blob/main/teps/0091-trusted-resources.md)                                 | N/A                                                                  | `resource-verification-mode`  |
+| [Trusted Resources](./trusted-resources.md)                                                         | [TEP-0091](https://github.com/tektoncd/community/blob/main/teps/0091-trusted-resources.md)                                 | N/A                                                                  | `trusted-resources-verification-no-match-policy`  |
 | [`Provenance` field in Status](pipeline-api.md#provenance)                                          | [issue#5550](https://github.com/tektoncd/pipeline/issues/5550)                                                             | N/A                                                                  | `enable-provenance-in-status` |
 | [Larger Results via Sidecar Logs](#enabling-larger-results-using-sidecar-logs)                      | [TEP-0127](https://github.com/tektoncd/community/blob/main/teps/0127-larger-results-via-sidecar-logs.md)                   | [v0.43.0](https://github.com/tektoncd/pipeline/releases/tag/v0.43.0) | `results-from`                |
 
@@ -313,7 +315,7 @@ To exceed this limit of 4096 bytes, you can enable larger results using sidecar 
 
 **Note**: to enable this feature, you need to grant `get` access to all `pods/log` to the `Tekton pipeline controller`. This means that the tekton pipeline controller has the ability to access the pod logs.
 
-1. Create a cluster role and rolebinding by applying the following spec to provide log access to `tekton-pipelines-controller`. 
+1. Create a cluster role and rolebinding by applying the following spec to provide log access to `tekton-pipelines-controller`.
 
 ```
 kubectl apply -f optional_config/enable-log-access-to-controller/
@@ -326,7 +328,7 @@ kubectl patch cm feature-flags -n tekton-pipelines -p '{"data":{"results-from":"
 ```
 
 3. If you want the size per result to be something other than 4096 bytes, you can set the `max-result-size` feature flag in bytes by setting `max-result-size: 8192(whatever you need here)`. **Note:** The value you can set here cannot exceed the size of the CRD limit of 1.5 MB.
- 
+
 ```
 kubectl patch cm feature-flags -n tekton-pipelines -p '{"data":{"max-result-size":"<VALUE-IN-BYTES>"}}'
 ```
