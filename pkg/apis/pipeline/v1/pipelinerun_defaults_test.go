@@ -25,12 +25,12 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	logtesting "knative.dev/pkg/logging/testing"
 )
 
 func TestPipelineRunSpec_SetDefaults(t *testing.T) {
@@ -143,10 +143,10 @@ func TestPipelineRunSpec_SetDefaults(t *testing.T) {
 func TestPipelineRunDefaulting(t *testing.T) {
 	const defaultTimeoutMinutes = 5
 	tests := []struct {
-		name string
-		in   *v1.PipelineRun
-		want *v1.PipelineRun
-		wc   func(context.Context) context.Context
+		name     string
+		in       *v1.PipelineRun
+		want     *v1.PipelineRun
+		defaults map[string]string
 	}{{
 		name: "empty no context",
 		in:   &v1.PipelineRun{},
@@ -205,16 +205,6 @@ func TestPipelineRunDefaulting(t *testing.T) {
 				},
 			},
 		},
-		wc: func(ctx context.Context) context.Context {
-			s := config.NewStore(logtesting.TestLogger(t))
-			s.OnConfigChanged(&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: config.GetDefaultsConfigName(),
-				},
-				Data: map[string]string{},
-			})
-			return s.ToContext(ctx)
-		},
 	}, {
 		name: "PipelineRef default config context with sa",
 		in: &v1.PipelineRun{
@@ -233,18 +223,9 @@ func TestPipelineRunDefaulting(t *testing.T) {
 				},
 			},
 		},
-		wc: func(ctx context.Context) context.Context {
-			s := config.NewStore(logtesting.TestLogger(t))
-			s.OnConfigChanged(&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: config.GetDefaultsConfigName(),
-				},
-				Data: map[string]string{
-					"default-timeout-minutes": strconv.Itoa(defaultTimeoutMinutes),
-					"default-service-account": "tekton",
-				},
-			})
-			return s.ToContext(ctx)
+		defaults: map[string]string{
+			"default-timeout-minutes": strconv.Itoa(defaultTimeoutMinutes),
+			"default-service-account": "tekton",
 		},
 	}, {
 		name: "PipelineRef pod template is coming from default config pod template",
@@ -269,19 +250,10 @@ func TestPipelineRunDefaulting(t *testing.T) {
 				},
 			},
 		},
-		wc: func(ctx context.Context) context.Context {
-			s := config.NewStore(logtesting.TestLogger(t))
-			s.OnConfigChanged(&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: config.GetDefaultsConfigName(),
-				},
-				Data: map[string]string{
-					"default-timeout-minutes": strconv.Itoa(defaultTimeoutMinutes),
-					"default-service-account": "tekton",
-					"default-pod-template":    "nodeSelector: { 'label': 'value' }",
-				},
-			})
-			return s.ToContext(ctx)
+		defaults: map[string]string{
+			"default-timeout-minutes": strconv.Itoa(defaultTimeoutMinutes),
+			"default-service-account": "tekton",
+			"default-pod-template":    "nodeSelector: { 'label': 'value' }",
 		},
 	}, {
 		name: "PipelineRef pod template nodeselector takes precedence over default config pod template nodeselector",
@@ -313,19 +285,10 @@ func TestPipelineRunDefaulting(t *testing.T) {
 				},
 			},
 		},
-		wc: func(ctx context.Context) context.Context {
-			s := config.NewStore(logtesting.TestLogger(t))
-			s.OnConfigChanged(&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: config.GetDefaultsConfigName(),
-				},
-				Data: map[string]string{
-					"default-timeout-minutes": strconv.Itoa(defaultTimeoutMinutes),
-					"default-service-account": "tekton",
-					"default-pod-template":    "nodeSelector: { 'label': 'value' }",
-				},
-			})
-			return s.ToContext(ctx)
+		defaults: map[string]string{
+			"default-timeout-minutes": strconv.Itoa(defaultTimeoutMinutes),
+			"default-service-account": "tekton",
+			"default-pod-template":    "nodeSelector: { 'label': 'value' }",
 		},
 	}, {
 		name: "PipelineRef pod template merges non competing fields with default config pod template",
@@ -364,28 +327,16 @@ func TestPipelineRunDefaulting(t *testing.T) {
 				},
 			},
 		},
-		wc: func(ctx context.Context) context.Context {
-			s := config.NewStore(logtesting.TestLogger(t))
-			s.OnConfigChanged(&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: config.GetDefaultsConfigName(),
-				},
-				Data: map[string]string{
-					"default-timeout-minutes": strconv.Itoa(defaultTimeoutMinutes),
-					"default-service-account": "tekton",
-					"default-pod-template":    "nodeSelector: { 'label': 'value' }\nhostNetwork: true",
-				},
-			})
-			return s.ToContext(ctx)
+		defaults: map[string]string{
+			"default-timeout-minutes": strconv.Itoa(defaultTimeoutMinutes),
+			"default-service-account": "tekton",
+			"default-pod-template":    "nodeSelector: { 'label': 'value' }\nhostNetwork: true",
 		},
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			ctx := cfgtesting.SetDefaults(context.Background(), t, tc.defaults)
 			got := tc.in
-			ctx := context.Background()
-			if tc.wc != nil {
-				ctx = tc.wc(ctx)
-			}
 			got.SetDefaults(ctx)
 			if !cmp.Equal(got, tc.want, ignoreUnexportedResources) {
 				d := cmp.Diff(got, tc.want, ignoreUnexportedResources)
