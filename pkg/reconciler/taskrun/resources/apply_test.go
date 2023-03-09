@@ -22,7 +22,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/workspace"
@@ -35,12 +34,6 @@ import (
 )
 
 var (
-	images = pipeline.Images{
-		EntrypointImage: "override-with-entrypoint:latest",
-		NopImage:        "override-with-nop:latest",
-		ShellImage:      "busybox",
-	}
-
 	simpleTaskSpec = &v1beta1.TaskSpec{
 		Sidecars: []v1beta1.Sidecar{{
 			Name:  "foo",
