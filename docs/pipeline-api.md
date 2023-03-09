@@ -1323,12 +1323,12 @@ string
 <h3 id="tekton.dev/v1.Combination">Combination
 (<code>map[string]string</code> alias)</h3>
 <div>
-<p>Combination holds a single combination from a Matrix with key as param.Name and value as param.Value</p>
+<p>Combination is a map, mainly defined to hold a single combination from a Matrix with key as param.Name and value as param.Value</p>
 </div>
 <h3 id="tekton.dev/v1.Combinations">Combinations
 (<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Combination</code> alias)</h3>
 <div>
-<p>Combinations holds a list of combination for a given Matrix</p>
+<p>Combinations is a list of combinations</p>
 </div>
 <h3 id="tekton.dev/v1.ConfigSource">ConfigSource
 </h3>
@@ -8189,12 +8189,12 @@ int32
 <h3 id="tekton.dev/v1beta1.Combination">Combination
 (<code>map[string]string</code> alias)</h3>
 <div>
-<p>Combination holds a single combination from a Matrix with key as param.Name and value as param.Value</p>
+<p>Combination is a map, mainly defined to hold a single combination from a Matrix with key as param.Name and value as param.Value</p>
 </div>
 <h3 id="tekton.dev/v1beta1.Combinations">Combinations
 (<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Combination</code> alias)</h3>
 <div>
-<p>Combinations holds a list of combination for a given Matrix</p>
+<p>Combinations is a list of combination</p>
 </div>
 <h3 id="tekton.dev/v1beta1.ConfigSource">ConfigSource
 </h3>
@@ -8968,7 +8968,11 @@ feature gate is enabled.</p>
 (<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskRunStatusFields">TaskRunStatusFields</a>)
 </p>
 <div>
-<p>PipelineResourceResult used to export the image name and digest as json</p>
+<p>PipelineResourceResult is used to write key/value pairs to TaskRun pod termination messages.
+The key/value pairs may come from the entrypoint binary, or represent a TaskRunResult.
+If they represent a TaskRunResult, the key is the name of the result and the value is the
+JSON-serialized value of the result.
+TODO(#6197): Rename this struct</p>
 </div>
 <table>
 <thead>
@@ -9006,6 +9010,8 @@ string
 </em>
 </td>
 <td>
+<p>ResourceName may be used in tests, but it is not populated in termination messages.
+It is preserved here for backwards compatibility and will not be ported to v1.</p>
 </td>
 </tr>
 <tr>
