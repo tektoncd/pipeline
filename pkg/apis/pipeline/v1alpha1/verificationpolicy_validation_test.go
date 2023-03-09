@@ -80,6 +80,26 @@ func TestVerificationPolicy_Invalid(t *testing.T) {
 		},
 		want: apis.ErrMissingField("authorities"),
 	}, {
+		name: "wrong mode",
+		verificationPolicy: &v1alpha1.VerificationPolicy{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "vp",
+			},
+			Spec: v1alpha1.VerificationPolicySpec{
+				Resources: []v1alpha1.ResourcePattern{{".*"}},
+				Authorities: []v1alpha1.Authority{
+					{
+						Name: "foo",
+						Key: &v1alpha1.KeyRef{
+							Data: "inlinekey",
+						},
+					},
+				},
+				Mode: "wrongMode",
+			},
+		},
+		want: apis.ErrInvalidValue(fmt.Sprintf("available values are: %s, %s, but got: %s", v1alpha1.ModeEnforce, v1alpha1.ModeWarn, "wrongMode"), "mode"),
+	}, {
 		name: "missing Authority key",
 		verificationPolicy: &v1alpha1.VerificationPolicy{
 			ObjectMeta: metav1.ObjectMeta{
@@ -277,6 +297,44 @@ func TestVerificationPolicy_Valid(t *testing.T) {
 							},
 						},
 					},
+				},
+			},
+		}, {
+			name: "enforce mode",
+			verificationPolicy: &v1alpha1.VerificationPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "vp",
+				},
+				Spec: v1alpha1.VerificationPolicySpec{
+					Resources: []v1alpha1.ResourcePattern{{".*"}},
+					Authorities: []v1alpha1.Authority{
+						{
+							Name: "foo",
+							Key: &v1alpha1.KeyRef{
+								KMS: "kms://key/path",
+							},
+						},
+					},
+					Mode: v1alpha1.ModeEnforce,
+				},
+			},
+		}, {
+			name: "warn mode",
+			verificationPolicy: &v1alpha1.VerificationPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "vp",
+				},
+				Spec: v1alpha1.VerificationPolicySpec{
+					Resources: []v1alpha1.ResourcePattern{{".*"}},
+					Authorities: []v1alpha1.Authority{
+						{
+							Name: "foo",
+							Key: &v1alpha1.KeyRef{
+								KMS: "kms://key/path",
+							},
+						},
+					},
+					Mode: v1alpha1.ModeWarn,
 				},
 			},
 		}}

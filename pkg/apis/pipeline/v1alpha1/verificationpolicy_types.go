@@ -62,6 +62,11 @@ type VerificationPolicySpec struct {
 	Resources []ResourcePattern `json:"resources"`
 	// Authorities defines the rules for validating signatures.
 	Authorities []Authority `json:"authorities"`
+	// Mode controls whether a failing policy will fail the taskrun/pipelinerun, or only log the warnings
+	// enforce - fail the taskrun/pipelinerun if verification fails (default)
+	// warn - don't fail the taskrun/pipelinerun if verification fails but log warnings
+	// +optional
+	Mode ModeType `json:"mode,omitempty"`
 }
 
 // ResourcePattern defines the pattern of the resource source
@@ -81,6 +86,15 @@ type Authority struct {
 	// Key contains the public key to validate the resource.
 	Key *KeyRef `json:"key,omitempty"`
 }
+
+// ModeType indicates the type of a mode for VerificationPolicy
+type ModeType string
+
+// Valid ModeType:
+const (
+	ModeWarn    ModeType = "warn"
+	ModeEnforce ModeType = "enforce"
+)
 
 // KeyRef defines the reference to a public key
 type KeyRef struct {

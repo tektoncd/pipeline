@@ -363,6 +363,7 @@ func getVerificationPolicy(name, namespace string, patterns []v1alpha1.ResourceP
 		Spec: v1alpha1.VerificationPolicySpec{
 			Resources:   patterns,
 			Authorities: authorities,
+			Mode:        v1alpha1.ModeEnforce,
 		},
 	}
 }

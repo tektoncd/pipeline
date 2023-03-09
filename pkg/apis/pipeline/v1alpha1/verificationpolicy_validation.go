@@ -55,6 +55,9 @@ func (vs *VerificationPolicySpec) Validate(ctx context.Context) (errs *apis.Fiel
 			errs = errs.Also(a.Key.Validate(ctx).ViaFieldIndex("key", i))
 		}
 	}
+	if vs.Mode != "" && vs.Mode != ModeEnforce && vs.Mode != ModeWarn {
+		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("available values are: %s, %s, but got: %s", ModeEnforce, ModeWarn, vs.Mode), "mode"))
+	}
 	return errs
 }
 

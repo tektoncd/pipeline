@@ -6161,6 +6161,22 @@ Then the ResourcesPattern should be valid regex. E.g. If using gitresolver, and 
 <p>Authorities defines the rules for validating signatures.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>mode</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.ModeType">
+ModeType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Mode controls whether a failing policy will fail the taskrun/pipelinerun, or only log the warnings
+enforce - fail the taskrun/pipelinerun if verification fails (default)
+warn - don&rsquo;t fail the taskrun/pipelinerun if verification fails but log warnings</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -6362,6 +6378,14 @@ HashAlgorithm
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1alpha1.ModeType">ModeType
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.VerificationPolicySpec">VerificationPolicySpec</a>)
+</p>
+<div>
+<p>ModeType indicates the type of a mode for VerificationPolicy</p>
+</div>
 <h3 id="tekton.dev/v1alpha1.ResourcePattern">ResourcePattern
 </h3>
 <p>
@@ -6615,6 +6639,22 @@ Then the ResourcesPattern should be valid regex. E.g. If using gitresolver, and 
 </td>
 <td>
 <p>Authorities defines the rules for validating signatures.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>mode</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.ModeType">
+ModeType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Mode controls whether a failing policy will fail the taskrun/pipelinerun, or only log the warnings
+enforce - fail the taskrun/pipelinerun if verification fails (default)
+warn - don&rsquo;t fail the taskrun/pipelinerun if verification fails but log warnings</p>
 </td>
 </tr>
 </tbody>
