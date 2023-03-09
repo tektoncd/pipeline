@@ -77,6 +77,7 @@ spec:
         secretRef:
           name:  %s
           namespace: %s
+  mode: enforce
 `, helpers.ObjectNameForTest(t), namespace, secretName, namespace))
 
 	if _, err := c.V1alpha1VerificationPolicyClient.Create(ctx, vp, metav1.CreateOptions{}); err != nil {
@@ -175,6 +176,7 @@ spec:
         secretRef:
           name:  %s
           namespace: %s
+  mode: enforce
 `, helpers.ObjectNameForTest(t), namespace, secretName, namespace))
 
 	if _, err := c.V1alpha1VerificationPolicyClient.Create(ctx, vp, metav1.CreateOptions{}); err != nil {
