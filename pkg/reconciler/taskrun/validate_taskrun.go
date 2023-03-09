@@ -33,6 +33,9 @@ import (
 // validateParams validates that all Pipeline Task, Matrix.Params and Matrix.Include parameters all have values, match the specified
 // type and object params have all the keys required
 func validateParams(ctx context.Context, paramSpecs []v1beta1.ParamSpec, params v1beta1.Params, matrixParams v1beta1.Params) error {
+	if paramSpecs == nil {
+		return nil
+	}
 	neededParamsNames, neededParamsTypes := neededParamsNamesAndTypes(paramSpecs)
 	providedParams := params
 	providedParams = append(providedParams, matrixParams...)
@@ -99,6 +102,7 @@ func wrongTypeParamsNames(params []v1beta1.Param, matrix v1beta1.Params, neededP
 			// passed to the task that aren't being used.
 			continue
 		}
+		// Matrix param replacements must be of type String
 		if neededParamsTypes[param.Name] != v1beta1.ParamTypeString {
 			wrongTypeParamNames = append(wrongTypeParamNames, param.Name)
 		}
@@ -160,7 +164,11 @@ func findMissingKeys(neededKeys, providedKeys map[string][]string) map[string][]
 // It also validates that all parameters have values, parameter types match the specified type and
 // object params have all the keys required
 func ValidateResolvedTask(ctx context.Context, params v1beta1.Params, matrix *v1beta1.Matrix, rtr *resources.ResolvedTask) error {
-	if err := validateParams(ctx, rtr.TaskSpec.Params, params, matrix.GetAllParams()); err != nil {
+	var paramSpecs v1beta1.ParamSpecs
+	if rtr != nil {
+		paramSpecs = rtr.TaskSpec.Params
+	}
+	if err := validateParams(ctx, paramSpecs, params, matrix.GetAllParams()); err != nil {
 		return fmt.Errorf("invalid input params for task %s: %w", rtr.TaskName, err)
 	}
 	return nil

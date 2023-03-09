@@ -1159,6 +1159,77 @@ func TestIsSkipped(t *testing.T) {
 			"mytask1": false,
 			"mytask2": true,
 		},
+	}, {
+		name: "matrix-params-contain-empty-arr",
+		state: PipelineRunState{{
+			// not skipped no empty arrs
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "mytask1",
+				TaskRef: &v1beta1.TaskRef{Name: "matrix-1"},
+				Matrix: &v1beta1.Matrix{
+					Params: []v1beta1.Param{{
+						Name: "a-param",
+						Value: v1beta1.ParamValue{
+							Type:     v1beta1.ParamTypeArray,
+							ArrayVal: []string{"foo", "bar"},
+						},
+					}}},
+			},
+			TaskRunName: "pipelinerun-matrix-empty-params",
+			TaskRun:     nil,
+			ResolvedTask: &resources.ResolvedTask{
+				TaskSpec: &task.Spec,
+			},
+		}, {
+			// skipped empty ArrayVal exist in matrix param
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "mytask2",
+				TaskRef: &v1beta1.TaskRef{Name: "matrix-2"},
+				Matrix: &v1beta1.Matrix{
+					Params: []v1beta1.Param{{
+						Name: "a-param",
+						Value: v1beta1.ParamValue{
+							Type:     v1beta1.ParamTypeArray,
+							ArrayVal: []string{},
+						},
+					}}},
+			},
+			TaskRunName: "pipelinerun-matrix-empty-params",
+			TaskRun:     nil,
+			ResolvedTask: &resources.ResolvedTask{
+				TaskSpec: &task.Spec,
+			},
+		}, {
+			// skipped empty ArrayVal exist in matrix param
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "mytask3",
+				TaskRef: &v1beta1.TaskRef{Name: "matrix-2"},
+				Matrix: &v1beta1.Matrix{
+					Params: []v1beta1.Param{{
+						Name: "a-param",
+						Value: v1beta1.ParamValue{
+							Type:     v1beta1.ParamTypeArray,
+							ArrayVal: []string{"foo", "bar"},
+						},
+					}, {
+						Name: "b-param",
+						Value: v1beta1.ParamValue{
+							Type:     v1beta1.ParamTypeArray,
+							ArrayVal: []string{},
+						},
+					}}},
+			},
+			TaskRunName: "pipelinerun-matrix-empty-params",
+			TaskRun:     nil,
+			ResolvedTask: &resources.ResolvedTask{
+				TaskSpec: &task.Spec,
+			},
+		}},
+		expected: map[string]bool{
+			"mytask1": false,
+			"mytask2": true,
+			"mytask3": true,
+		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			d, err := dagFromState(tc.state)
@@ -2436,6 +2507,16 @@ func TestResolvedPipelineRunTask_IsFinallySkipped(t *testing.T) {
 				Values:   []string{"none"},
 			}},
 		},
+	}, {
+		PipelineTask: &v1beta1.PipelineTask{
+			Name:    "final-task-7",
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+			Matrix: &v1beta1.Matrix{
+				Params: []v1beta1.Param{{
+					Name:  "platform",
+					Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{}},
+				}}},
+		},
 	}}
 
 	testCases := []struct {
@@ -2455,6 +2536,7 @@ func TestResolvedPipelineRunTask_IsFinallySkipped(t *testing.T) {
 				"final-task-4": true,
 				"final-task-5": false,
 				"final-task-6": true,
+				"final-task-7": true,
 			},
 		}, {
 			name:             "finally timeout not yet reached",
@@ -2467,6 +2549,7 @@ func TestResolvedPipelineRunTask_IsFinallySkipped(t *testing.T) {
 				"final-task-4": true,
 				"final-task-5": false,
 				"final-task-6": true,
+				"final-task-7": true,
 			},
 		}, {
 			name:            "pipeline timeout not yet reached",
@@ -2479,6 +2562,7 @@ func TestResolvedPipelineRunTask_IsFinallySkipped(t *testing.T) {
 				"final-task-4": true,
 				"final-task-5": false,
 				"final-task-6": true,
+				"final-task-7": true,
 			},
 		}, {
 			name:             "finally timeout passed",
@@ -2491,6 +2575,7 @@ func TestResolvedPipelineRunTask_IsFinallySkipped(t *testing.T) {
 				"final-task-4": true,
 				"final-task-5": true,
 				"final-task-6": true,
+				"final-task-7": true,
 			},
 		}, {
 			name:            "pipeline timeout passed",
@@ -2503,6 +2588,7 @@ func TestResolvedPipelineRunTask_IsFinallySkipped(t *testing.T) {
 				"final-task-4": true,
 				"final-task-5": true,
 				"final-task-6": true,
+				"final-task-7": true,
 			},
 		},
 	}

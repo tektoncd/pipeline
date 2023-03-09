@@ -495,6 +495,8 @@ const (
 	TasksTimedOutSkip SkippingReason = "PipelineRun Tasks timeout has been reached"
 	// FinallyTimedOutSkip means the task was skipped because the PipelineRun has passed its Timeouts.Finally.
 	FinallyTimedOutSkip SkippingReason = "PipelineRun Finally timeout has been reached"
+	// EmptyArrayInMatrixParams means the task was skipped because Matrix parameters contain empty array.
+	EmptyArrayInMatrixParams SkippingReason = "Matrix Parameters have an empty array"
 	// None means the task was not skipped
 	None SkippingReason = "None"
 )

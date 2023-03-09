@@ -188,6 +188,7 @@ Note that:
 - The names of the `Parameters` in the `Matrix` must be unique. Specifying the same parameter multiple times
 will result in a validation error.
 - A `Parameter` can be passed to either the `matrix` or `params` field, not both.
+- If the `Matrix` has an empty array `Parameter`, then the `PipelineTask` will be skipped.
 
 For further details on specifying `Parameters` in the `Pipeline` and passing them to
 `PipelineTasks`, see [documentation](pipelines.md#specifying-parameters).

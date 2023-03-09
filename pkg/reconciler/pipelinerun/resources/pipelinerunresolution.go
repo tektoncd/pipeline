@@ -383,6 +383,8 @@ func (t *ResolvedPipelineTask) skip(facts *PipelineRunFacts) TaskSkipStatus {
 		skippingReason = v1beta1.PipelineTimedOutSkip
 	case t.skipBecausePipelineRunTasksTimeoutReached(facts):
 		skippingReason = v1beta1.TasksTimedOutSkip
+	case t.skipBecauseEmptyArrayInMatrixParams():
+		skippingReason = v1beta1.EmptyArrayInMatrixParams
 	default:
 		skippingReason = v1beta1.None
 	}
@@ -499,6 +501,19 @@ func (t *ResolvedPipelineTask) skipBecausePipelineRunFinallyTimeoutReached(facts
 	return false
 }
 
+// skipBecauseEmptyArrayInMatrixParams returns true if the matrix parameters contain an empty array
+func (t *ResolvedPipelineTask) skipBecauseEmptyArrayInMatrixParams() bool {
+	if t.PipelineTask.IsMatrixed() {
+		for _, ps := range t.PipelineTask.Matrix.Params {
+			if len(ps.Value.ArrayVal) == 0 {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 // IsFinalTask returns true if a task is a finally task
 func (t *ResolvedPipelineTask) IsFinalTask(facts *PipelineRunFacts) bool {
 	return facts.isFinalTask(t.PipelineTask.Name)
@@ -521,6 +536,8 @@ func (t *ResolvedPipelineTask) IsFinallySkipped(facts *PipelineRunFacts) TaskSki
 			skippingReason = v1beta1.PipelineTimedOutSkip
 		case t.skipBecausePipelineRunFinallyTimeoutReached(facts):
 			skippingReason = v1beta1.FinallyTimedOutSkip
+		case t.skipBecauseEmptyArrayInMatrixParams():
+			skippingReason = v1beta1.EmptyArrayInMatrixParams
 		default:
 			skippingReason = v1beta1.None
 		}

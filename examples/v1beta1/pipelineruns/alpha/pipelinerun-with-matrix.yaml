@@ -20,7 +20,7 @@ kind: PipelineRun
 metadata:
   generateName: matrixed-pr-
 spec:
-  serviceAccountName: 'default'
+  serviceAccountName: "default"
   pipelineSpec:
     tasks:
       - name: platforms-and-browsers
@@ -51,3 +51,28 @@ spec:
             value: chrome
         taskRef:
           name: platform-browsers
+      - name: matrix-params-with-empty-array-skipped
+        matrix:
+          params:
+            - name: version
+              value: []
+        taskSpec:
+          params:
+            - name: version
+          steps:
+            - name: echo
+              image: ubuntu
+              script: exit 1
+    finally:
+      - name: matrix-params-with-empty-array-skipped-in-finally
+        matrix:
+          params:
+            - name: version
+              value: []
+        taskSpec:
+          params:
+            - name: version
+          steps:
+            - name: echo
+              image: ubuntu
+              script: exit 1
