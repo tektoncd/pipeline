@@ -3868,7 +3868,10 @@ SkippingReason
 <th>Description</th>
 </tr>
 </thead>
-<tbody><tr><td><p>&#34;PipelineRun Finally timeout has been reached&#34;</p></td>
+<tbody><tr><td><p>&#34;Matrix Parameters have an empty array&#34;</p></td>
+<td><p>EmptyArrayInMatrixParams means the task was skipped because Matrix parameters contain empty array.</p>
+</td>
+</tr><tr><td><p>&#34;PipelineRun Finally timeout has been reached&#34;</p></td>
 <td><p>FinallyTimedOutSkip means the task was skipped because the PipelineRun has passed its Timeouts.Finally.</p>
 </td>
 </tr><tr><td><p>&#34;PipelineRun was gracefully cancelled&#34;</p></td>

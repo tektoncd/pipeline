@@ -48,6 +48,9 @@ func TestValidateResolvedTask_ValidParams(t *testing.T) {
 					Name: "zoo",
 					Type: v1beta1.ParamTypeString,
 				}, {
+					Name: "matrixParam",
+					Type: v1beta1.ParamTypeString,
+				}, {
 					Name: "include",
 					Type: v1beta1.ParamTypeString,
 				}, {
@@ -110,6 +113,8 @@ func TestValidateResolvedTask_ValidParams(t *testing.T) {
 		Params: v1beta1.Params{{
 			Name:  "zoo",
 			Value: *v1beta1.NewStructuredValues("a", "b", "c"),
+		}, {
+			Name: "matrixParam", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{}},
 		}},
 		Include: []v1beta1.IncludeParams{{
 			Name: "build-1",
