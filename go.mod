@@ -27,9 +27,9 @@ require (
 	golang.org/x/oauth2 v0.6.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0
 	gopkg.in/square/go-jose.v2 v2.6.0
-	k8s.io/api v0.25.4
+	k8s.io/api v0.25.7
 	k8s.io/apimachinery v0.25.7
-	k8s.io/client-go v0.25.4
+	k8s.io/client-go v0.25.7
 	k8s.io/code-generator v0.25.4
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280
