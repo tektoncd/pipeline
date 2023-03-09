@@ -23,12 +23,12 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	logtesting "knative.dev/pkg/logging/testing"
 )
 
 var (
@@ -132,10 +132,10 @@ func TestTaskRunSpec_SetDefaults(t *testing.T) {
 
 func TestTaskRunDefaulting(t *testing.T) {
 	tests := []struct {
-		name string
-		in   *v1beta1.TaskRun
-		want *v1beta1.TaskRun
-		wc   func(context.Context) context.Context
+		name     string
+		in       *v1beta1.TaskRun
+		want     *v1beta1.TaskRun
+		defaults map[string]string
 	}{{
 		name: "empty no context",
 		in:   &v1beta1.TaskRun{},
@@ -182,17 +182,8 @@ func TestTaskRunDefaulting(t *testing.T) {
 				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
 			},
 		},
-		wc: func(ctx context.Context) context.Context {
-			s := config.NewStore(logtesting.TestLogger(t))
-			s.OnConfigChanged(&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: config.GetDefaultsConfigName(),
-				},
-				Data: map[string]string{
-					"default-timeout-minutes": "5",
-				},
-			})
-			return s.ToContext(ctx)
+		defaults: map[string]string{
+			"default-timeout-minutes": "5",
 		},
 	}, {
 		name: "TaskRef default config context with SA",
@@ -211,18 +202,9 @@ func TestTaskRunDefaulting(t *testing.T) {
 				ServiceAccountName: "tekton",
 			},
 		},
-		wc: func(ctx context.Context) context.Context {
-			s := config.NewStore(logtesting.TestLogger(t))
-			s.OnConfigChanged(&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: config.GetDefaultsConfigName(),
-				},
-				Data: map[string]string{
-					"default-timeout-minutes": "5",
-					"default-service-account": "tekton",
-				},
-			})
-			return s.ToContext(ctx)
+		defaults: map[string]string{
+			"default-timeout-minutes": "5",
+			"default-service-account": "tekton",
 		},
 	}, {
 		name: "TaskRun managed-by set in config",
@@ -241,18 +223,9 @@ func TestTaskRunDefaulting(t *testing.T) {
 				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
 			},
 		},
-		wc: func(ctx context.Context) context.Context {
-			s := config.NewStore(logtesting.TestLogger(t))
-			s.OnConfigChanged(&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: config.GetDefaultsConfigName(),
-				},
-				Data: map[string]string{
-					"default-timeout-minutes":        "5",
-					"default-managed-by-label-value": "something-else",
-				},
-			})
-			return s.ToContext(ctx)
+		defaults: map[string]string{
+			"default-timeout-minutes":        "5",
+			"default-managed-by-label-value": "something-else",
 		},
 	}, {
 		name: "TaskRun managed-by set in request and config (request wins)",
@@ -274,18 +247,9 @@ func TestTaskRunDefaulting(t *testing.T) {
 				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
 			},
 		},
-		wc: func(ctx context.Context) context.Context {
-			s := config.NewStore(logtesting.TestLogger(t))
-			s.OnConfigChanged(&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: config.GetDefaultsConfigName(),
-				},
-				Data: map[string]string{
-					"default-timeout-minutes":        "5",
-					"default-managed-by-label-value": "something-else",
-				},
-			})
-			return s.ToContext(ctx)
+		defaults: map[string]string{
+			"default-timeout-minutes":        "5",
+			"default-managed-by-label-value": "something-else",
 		},
 	}, {
 		name: "TaskRef pod template is coming from default config pod template",
@@ -309,19 +273,10 @@ func TestTaskRunDefaulting(t *testing.T) {
 				},
 			},
 		},
-		wc: func(ctx context.Context) context.Context {
-			s := config.NewStore(logtesting.TestLogger(t))
-			s.OnConfigChanged(&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: config.GetDefaultsConfigName(),
-				},
-				Data: map[string]string{
-					"default-timeout-minutes": "5",
-					"default-service-account": "tekton",
-					"default-pod-template":    "nodeSelector: { 'label': 'value' }",
-				},
-			})
-			return s.ToContext(ctx)
+		defaults: map[string]string{
+			"default-timeout-minutes": "5",
+			"default-service-account": "tekton",
+			"default-pod-template":    "nodeSelector: { 'label': 'value' }",
 		},
 	}, {
 		name: "TaskRef pod template NodeSelector takes precedence over default config pod template NodeSelector",
@@ -350,19 +305,10 @@ func TestTaskRunDefaulting(t *testing.T) {
 				},
 			},
 		},
-		wc: func(ctx context.Context) context.Context {
-			s := config.NewStore(logtesting.TestLogger(t))
-			s.OnConfigChanged(&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: config.GetDefaultsConfigName(),
-				},
-				Data: map[string]string{
-					"default-timeout-minutes": "5",
-					"default-service-account": "tekton",
-					"default-pod-template":    "nodeSelector: { 'label': 'value' }",
-				},
-			})
-			return s.ToContext(ctx)
+		defaults: map[string]string{
+			"default-timeout-minutes": "5",
+			"default-service-account": "tekton",
+			"default-pod-template":    "nodeSelector: { 'label': 'value' }",
 		},
 	}, {
 		name: "TaskRef pod template merges non competing fields with default config pod template",
@@ -394,28 +340,16 @@ func TestTaskRunDefaulting(t *testing.T) {
 				},
 			},
 		},
-		wc: func(ctx context.Context) context.Context {
-			s := config.NewStore(logtesting.TestLogger(t))
-			s.OnConfigChanged(&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: config.GetDefaultsConfigName(),
-				},
-				Data: map[string]string{
-					"default-timeout-minutes": "5",
-					"default-service-account": "tekton",
-					"default-pod-template":    "nodeSelector: { 'label': 'value' }",
-				},
-			})
-			return s.ToContext(ctx)
+		defaults: map[string]string{
+			"default-timeout-minutes": "5",
+			"default-service-account": "tekton",
+			"default-pod-template":    "nodeSelector: { 'label': 'value' }",
 		},
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			ctx := cfgtesting.SetDefaults(context.Background(), t, tc.defaults)
 			got := tc.in
-			ctx := context.Background()
-			if tc.wc != nil {
-				ctx = tc.wc(ctx)
-			}
 			got.SetDefaults(ctx)
 			if !cmp.Equal(got, tc.want, ignoreUnexportedResources) {
 				d := cmp.Diff(got, tc.want, ignoreUnexportedResources)
