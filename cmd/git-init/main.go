@@ -57,14 +57,18 @@ func main() {
 	if err != nil {
 		logger.Fatalf("Error parsing revision %s of git repository: %s", fetchSpec.Revision, err)
 	}
-	output := []v1beta1.PipelineResourceResult{
+	output := []v1beta1.TaskRunResult{
 		{
-			Key:   "commit",
-			Value: commit,
+			Name: "commit",
+			Value: v1beta1.ParamValue{
+				StringVal: commit,
+			},
 		},
 		{
-			Key:   "url",
-			Value: fetchSpec.URL,
+			Name: "url",
+			Value: v1beta1.ParamValue{
+				StringVal: fetchSpec.URL,
+			},
 		},
 	}
 

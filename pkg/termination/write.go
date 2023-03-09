@@ -30,12 +30,12 @@ const (
 )
 
 // WriteMessage writes the results to the termination message path.
-func WriteMessage(path string, pro []v1beta1.PipelineResourceResult) error {
+func WriteMessage[T v1beta1.TaskRunResult | v1beta1.PipelineResourceResult](path string, pro []T) error {
 	// if the file at path exists, concatenate the new values otherwise create it
 	// file at path already exists
 	fileContents, err := os.ReadFile(path)
 	if err == nil {
-		var existingEntries []v1beta1.PipelineResourceResult
+		var existingEntries []T
 		if err := json.Unmarshal(fileContents, &existingEntries); err == nil {
 			// append new entries to existing entries
 			pro = append(existingEntries, pro...)
