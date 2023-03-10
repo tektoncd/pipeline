@@ -639,6 +639,12 @@ func TestPipelineTaskResultRefs(t *testing.T) {
 			},
 		}},
 		Matrix: &v1.Matrix{
+			Include: []v1.MatrixInclude{{
+				Name: "build-1",
+				Params: []v1.Param{{
+					Name: "a-param", Value: *v1.NewStructuredValues("$(tasks.pt9.results.r9)"),
+				}},
+			}},
 			Params: []v1.Param{{
 				Value: *v1.NewStructuredValues("$(tasks.pt5.results.r5)", "$(tasks.pt6.results.r6)"),
 			}, {
@@ -670,6 +676,9 @@ func TestPipelineTaskResultRefs(t *testing.T) {
 	}, {
 		PipelineTask: "pt8",
 		Result:       "r8",
+	}, {
+		PipelineTask: "pt9",
+		Result:       "r9",
 	}}
 	if d := cmp.Diff(refs, expectedRefs, cmpopts.SortSlices(lessResultRef)); d != "" {
 		t.Errorf("%v", d)
