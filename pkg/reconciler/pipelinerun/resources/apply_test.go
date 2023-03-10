@@ -2034,6 +2034,262 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 	}
 }
 
+func TestApplyReplacementsMatrix(t *testing.T) {
+	ctx := context.Background()
+	cfg := config.FromContextOrDefaults(ctx)
+	cfg.FeatureFlags.EnableAPIFields = config.AlphaAPIFields
+	ctx = config.ToContext(ctx, cfg)
+	for _, tt := range []struct {
+		name     string
+		original v1beta1.PipelineSpec
+		params   []v1beta1.Param
+		expected v1beta1.PipelineSpec
+	}{{
+		name: "matrix params replacements",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name: "foo", Type: v1beta1.ParamTypeString,
+			}, {
+				Name: "bar", Type: v1beta1.ParamTypeArray,
+			}, {
+				Name: "rad", Type: v1beta1.ParamTypeObject,
+			}},
+			Tasks: []v1beta1.PipelineTask{{
+				Matrix: &v1beta1.Matrix{
+					Params: []v1beta1.Param{{
+						// string replacements from string param, array param and object param
+						Name: "first-param", Value: *v1beta1.NewStructuredValues("$(params.foo)", "$(params.bar[0])", "$(params.rad.key1)"),
+					}, {
+						// array replacement from array param
+						Name: "second-param", Value: *v1beta1.NewStructuredValues("$(params.bar)"),
+					}},
+				},
+			}},
+		},
+		params: []v1beta1.Param{
+			{Name: "foo", Value: *v1beta1.NewStructuredValues("foo")},
+			{Name: "bar", Value: *v1beta1.NewStructuredValues("b", "a", "r")},
+			{Name: "rad", Value: *v1beta1.NewObject(map[string]string{
+				"key1": "r",
+				"key2": "a",
+				"key3": "d",
+			})},
+		},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name: "foo", Type: v1beta1.ParamTypeString,
+			}, {
+				Name: "bar", Type: v1beta1.ParamTypeArray,
+			}, {
+				Name: "rad", Type: v1beta1.ParamTypeObject,
+			}},
+			Tasks: []v1beta1.PipelineTask{{
+				Matrix: &v1beta1.Matrix{
+					Params: []v1beta1.Param{{
+						// string replacements from string param, array param and object param
+						Name: "first-param", Value: *v1beta1.NewStructuredValues("foo", "b", "r"),
+					}, {
+						// array replacement from array param
+						Name: "second-param", Value: *v1beta1.NewStructuredValues("b", "a", "r"),
+					}},
+				},
+			}},
+		},
+	}, {
+		name: "matrix include params replacement",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name: "foo", Type: v1beta1.ParamTypeString,
+			}, {
+				Name: "bar", Type: v1beta1.ParamTypeArray,
+			}, {
+				Name: "rad", Type: v1beta1.ParamTypeObject,
+			}},
+			Tasks: []v1beta1.PipelineTask{{
+				Matrix: &v1beta1.Matrix{
+					Include: []v1beta1.MatrixInclude{{
+						Name: "build-1",
+						Params: v1beta1.Params{{
+							// string replacements from string param
+							Name: "first-param", Value: *v1beta1.NewStructuredValues("$(params.foo)"),
+						}, {
+							// string replacements from array param
+							Name: "second-param", Value: *v1beta1.NewStructuredValues("$(params.bar[0])"),
+						}, {
+							// string replacements from object param
+							Name: "third-param", Value: *v1beta1.NewStructuredValues("$(params.rad.key1)"),
+						}},
+					}},
+				},
+			}},
+		},
+		params: []v1beta1.Param{
+			{Name: "foo", Value: *v1beta1.NewStructuredValues("foo")},
+			{Name: "bar", Value: *v1beta1.NewStructuredValues("b", "a", "r")},
+			{Name: "rad", Value: *v1beta1.NewObject(map[string]string{
+				"key1": "r",
+				"key2": "a",
+				"key3": "d",
+			})},
+		},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name: "foo", Type: v1beta1.ParamTypeString,
+			}, {
+				Name: "bar", Type: v1beta1.ParamTypeArray,
+			}, {
+				Name: "rad", Type: v1beta1.ParamTypeObject,
+			}},
+			Tasks: []v1beta1.PipelineTask{{
+				Matrix: &v1beta1.Matrix{
+					Include: []v1beta1.MatrixInclude{{
+						Name: "build-1",
+						Params: []v1beta1.Param{{
+							// string replacements from string param
+							Name: "first-param", Value: *v1beta1.NewStructuredValues("foo"),
+						}, {
+							// string replacements from array param
+							Name: "second-param", Value: *v1beta1.NewStructuredValues("b"),
+						}, {
+							// string replacements from object param
+							Name: "third-param", Value: *v1beta1.NewStructuredValues("r"),
+						}},
+					}},
+				},
+			}},
+		},
+	}, {
+		name: "matrix params with final tasks",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name: "foo", Type: v1beta1.ParamTypeString,
+			}, {
+				Name: "bar", Type: v1beta1.ParamTypeArray,
+			}, {
+				Name: "rad", Type: v1beta1.ParamTypeObject,
+			}},
+			Finally: []v1beta1.PipelineTask{{
+				Matrix: &v1beta1.Matrix{
+					Params: []v1beta1.Param{{
+						// string replacements from string param, array param and object param
+						Name: "first-param", Value: *v1beta1.NewStructuredValues("$(params.foo)", "$(params.bar[0])", "$(params.rad.key1)"),
+					}, {
+						// array replacement from array param
+						Name: "second-param", Value: *v1beta1.NewStructuredValues("$(params.bar)"),
+					}},
+				},
+			}},
+		},
+		params: []v1beta1.Param{
+			{Name: "foo", Value: *v1beta1.NewStructuredValues("foo")},
+			{Name: "bar", Value: *v1beta1.NewStructuredValues("b", "a", "r")},
+			{Name: "rad", Value: *v1beta1.NewObject(map[string]string{
+				"key1": "r",
+				"key2": "a",
+				"key3": "d",
+			})},
+		},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name: "foo", Type: v1beta1.ParamTypeString,
+			}, {
+				Name: "bar", Type: v1beta1.ParamTypeArray,
+			}, {
+				Name: "rad", Type: v1beta1.ParamTypeObject,
+			}},
+			Finally: []v1beta1.PipelineTask{{
+				Matrix: &v1beta1.Matrix{
+					Params: []v1beta1.Param{{
+						// string replacements from string param, array param and object param
+						Name: "first-param", Value: *v1beta1.NewStructuredValues("foo", "b", "r"),
+					}, {
+						// array replacement from array param
+						Name: "second-param", Value: *v1beta1.NewStructuredValues("b", "a", "r"),
+					}},
+				},
+			}},
+		},
+	}, {
+		name: "matrix include params with final tasks",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name: "foo", Type: v1beta1.ParamTypeString,
+			}, {
+				Name: "bar", Type: v1beta1.ParamTypeArray,
+			}, {
+				Name: "rad", Type: v1beta1.ParamTypeObject,
+			}},
+			Finally: []v1beta1.PipelineTask{{
+				Matrix: &v1beta1.Matrix{
+					Include: []v1beta1.MatrixInclude{{
+						Name: "build-1",
+						Params: v1beta1.Params{{
+							// string replacements from string param
+							Name: "first-param", Value: *v1beta1.NewStructuredValues("$(params.foo)"),
+						}, {
+							// string replacements from array param
+							Name: "second-param", Value: *v1beta1.NewStructuredValues("$(params.bar[0])"),
+						}, {
+							// string replacements from object param
+							Name: "third-param", Value: *v1beta1.NewStructuredValues("$(params.rad.key1)"),
+						}},
+					}},
+				},
+			}},
+		},
+		params: []v1beta1.Param{
+			{Name: "foo", Value: *v1beta1.NewStructuredValues("foo")},
+			{Name: "bar", Value: *v1beta1.NewStructuredValues("b", "a", "r")},
+			{Name: "rad", Value: *v1beta1.NewObject(map[string]string{
+				"key1": "r",
+				"key2": "a",
+				"key3": "d",
+			})},
+		},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name: "foo", Type: v1beta1.ParamTypeString,
+			}, {
+				Name: "bar", Type: v1beta1.ParamTypeArray,
+			}, {
+				Name: "rad", Type: v1beta1.ParamTypeObject,
+			}},
+			Finally: []v1beta1.PipelineTask{{
+				Matrix: &v1beta1.Matrix{
+					Include: []v1beta1.MatrixInclude{{
+						Name: "build-1",
+						Params: []v1beta1.Param{{
+							// string replacements from string param
+							Name: "first-param", Value: *v1beta1.NewStructuredValues("foo"),
+						}, {
+							// string replacements from array param
+							Name: "second-param", Value: *v1beta1.NewStructuredValues("b"),
+						}, {
+							// string replacements from object param
+							Name: "third-param", Value: *v1beta1.NewStructuredValues("r"),
+						}},
+					}},
+				},
+			}},
+		},
+	},
+	} {
+		tt := tt // capture range variable
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			run := &v1beta1.PipelineRun{
+				Spec: v1beta1.PipelineRunSpec{
+					Params: tt.params,
+				},
+			}
+			got := ApplyParameters(ctx, &tt.original, run)
+			if d := cmp.Diff(&tt.expected, got); d != "" {
+				t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 	for _, tt := range []struct {
 		name               string
@@ -2648,12 +2904,30 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 			},
 		}},
 	}, {
-		name: "Test array indexing result substitution on embedded variable substitution expression - matrix",
+		name: "test result substitution for strings and arrays in matrix params",
 		resolvedResultRefs: ResolvedResultRefs{{
-			Value: *v1beta1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),
+			Value: *v1beta1.NewStructuredValues("foo"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
-				Result:       "aResult",
+				Result:       "foo",
+			},
+			FromTaskRun: "aTaskRun",
+		}, {
+			Value: *v1beta1.NewStructuredValues("b", "a", "r"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "bar",
+			},
+			FromTaskRun: "aTaskRun",
+		}, {
+			Value: *v1beta1.NewObject(map[string]string{
+				"key1": "r",
+				"key2": "a",
+				"key3": "d",
+			}),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "rad",
 			},
 			FromTaskRun: "aTaskRun",
 		}},
@@ -2663,9 +2937,10 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
 				Matrix: &v1beta1.Matrix{
 					Params: []v1beta1.Param{{
-						Name:  "bParam",
-						Value: *v1beta1.NewStructuredValues("Result value --> $(tasks.aTask.results.aResult[0])"),
-					}}},
+						// string replacements from string param, array param and object results
+						Name: "first-param", Value: *v1beta1.NewStructuredValues("$(tasks.aTask.results.foo)", "$(tasks.aTask.results.bar[0])", "$(tasks.aTask.results.rad.key1)"),
+					}},
+				},
 			},
 		}},
 		want: PipelineRunState{{
@@ -2673,10 +2948,69 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
 				Matrix: &v1beta1.Matrix{
-					Params: []v1beta1.Param{{
-						Name:  "bParam",
-						Value: *v1beta1.NewStructuredValues("Result value --> arrayResultValueOne"),
-					}}},
+					Params: v1beta1.Params{{
+						// string replacements from string param, array param and object results
+						Name: "first-param", Value: *v1beta1.NewStructuredValues("foo", "b", "r"),
+					}},
+				},
+			},
+		}},
+	}, {
+		name: "test result substitution for strings from string, arr, obj results in matrix include params",
+		resolvedResultRefs: ResolvedResultRefs{{
+			Value: *v1beta1.NewStructuredValues("foo"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "foo",
+			},
+			FromTaskRun: "aTaskRun",
+		}, {
+			Value: *v1beta1.NewStructuredValues("b", "a", "r"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "bar",
+			},
+			FromTaskRun: "aTaskRun",
+		}, {
+			Value: *v1beta1.NewObject(map[string]string{
+				"key1": "r",
+				"key2": "a",
+				"key3": "d",
+			}),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "rad",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Matrix: &v1beta1.Matrix{
+					Include: []v1beta1.MatrixInclude{{
+						Name: "build-1",
+						Params: v1beta1.Params{{
+							// string replacements from string results, array results and object results
+							Name: "first-param", Value: *v1beta1.NewStructuredValues("foo", "b", "r"),
+						}},
+					}},
+				},
+			},
+		}},
+		want: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Matrix: &v1beta1.Matrix{
+					Include: []v1beta1.MatrixInclude{{
+						Name: "build-1",
+						Params: []v1beta1.Param{{
+							// string replacements from string results, array results and object results
+							Name: "first-param", Value: *v1beta1.NewStructuredValues("foo", "b", "r"),
+						}},
+					}},
+				},
 			},
 		}},
 	}, {
