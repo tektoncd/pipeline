@@ -264,7 +264,7 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 
 // IsMatrixed return whether pipeline task is matrixed
 func (pt *PipelineTask) IsMatrixed() bool {
-	return pt.Matrix != nil && (pt.Matrix.hasParams() || pt.Matrix.hasInclude())
+	return pt.Matrix.HasParams() || pt.Matrix.HasInclude()
 }
 
 // extractAllParams extracts all the parameters in a PipelineTask:
@@ -273,10 +273,10 @@ func (pt *PipelineTask) IsMatrixed() bool {
 // - pt.Matrix.Include.Params
 func (pt *PipelineTask) extractAllParams() Params {
 	allParams := pt.Params
-	if pt.Matrix.hasParams() {
+	if pt.Matrix.HasParams() {
 		allParams = append(allParams, pt.Matrix.Params...)
 	}
-	if pt.Matrix.hasInclude() {
+	if pt.Matrix.HasInclude() {
 		for _, include := range pt.Matrix.Include {
 			allParams = append(allParams, include.Params...)
 		}

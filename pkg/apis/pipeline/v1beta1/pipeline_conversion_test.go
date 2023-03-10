@@ -115,7 +115,7 @@ func TestPipelineConversion(t *testing.T) {
 								ArrayVal: []string{"$(params.baz)", "and", "$(params.foo-is-baz)"},
 							},
 						}},
-						Include: []v1beta1.MatrixInclude{{
+						Include: v1beta1.IncludeParamsList{{
 							Name: "baz",
 							Params: v1beta1.Params{{
 								Name: "a-param", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "$(params.baz)"},

@@ -79,7 +79,7 @@ func (t ResolvedPipelineTask) isDone(facts *PipelineRunFacts) bool {
 // IsRunning returns true only if the task is neither succeeded, cancelled nor failed
 func (t ResolvedPipelineTask) IsRunning() bool {
 	switch {
-	case t.IsCustomTask() && t.IsMatrixed():
+	case t.IsCustomTask() && t.PipelineTask.IsMatrixed():
 		if len(t.RunObjects) == 0 {
 			return false
 		}
@@ -87,7 +87,7 @@ func (t ResolvedPipelineTask) IsRunning() bool {
 		if t.RunObject == nil {
 			return false
 		}
-	case t.IsMatrixed():
+	case t.PipelineTask.IsMatrixed():
 		if len(t.TaskRuns) == 0 {
 			return false
 		}
@@ -104,16 +104,11 @@ func (t ResolvedPipelineTask) IsCustomTask() bool {
 	return t.CustomTask
 }
 
-// IsMatrixed return true if the PipelineTask has a Matrix.
-func (t ResolvedPipelineTask) IsMatrixed() bool {
-	return t.PipelineTask.Matrix != nil && len(t.PipelineTask.Matrix.Params) > 0
-}
-
 // isSuccessful returns true only if the run has completed successfully
 // If the PipelineTask has a Matrix, isSuccessful returns true if all runs have completed successfully
 func (t ResolvedPipelineTask) isSuccessful() bool {
 	switch {
-	case t.IsCustomTask() && t.IsMatrixed():
+	case t.IsCustomTask() && t.PipelineTask.IsMatrixed():
 		if len(t.RunObjects) == 0 {
 			return false
 		}
@@ -125,7 +120,7 @@ func (t ResolvedPipelineTask) isSuccessful() bool {
 		return true
 	case t.IsCustomTask():
 		return t.RunObject != nil && t.RunObject.IsSuccessful()
-	case t.IsMatrixed():
+	case t.PipelineTask.IsMatrixed():
 		if len(t.TaskRuns) == 0 {
 			return false
 		}
@@ -156,7 +151,7 @@ func (t ResolvedPipelineTask) isFailure() bool {
 	var c *apis.Condition
 	var isDone bool
 	switch {
-	case t.IsCustomTask() && t.IsMatrixed():
+	case t.IsCustomTask() && t.PipelineTask.IsMatrixed():
 		if len(t.RunObjects) == 0 {
 			return false
 		}
@@ -175,7 +170,7 @@ func (t ResolvedPipelineTask) isFailure() bool {
 		c = t.RunObject.GetStatusCondition().GetCondition(apis.ConditionSucceeded)
 		isDone = t.RunObject.IsDone()
 		return isDone && c.IsFalse() && !t.isRunRetriable()
-	case t.IsMatrixed():
+	case t.PipelineTask.IsMatrixed():
 		if len(t.TaskRuns) == 0 {
 			return false
 		}
@@ -203,7 +198,7 @@ func (t ResolvedPipelineTask) isFailure() bool {
 // This should be removed once v1alpha1.Run is fully deprecated.
 func (t ResolvedPipelineTask) isRunRetriable() bool {
 	switch {
-	case t.IsMatrixed():
+	case t.PipelineTask.IsMatrixed():
 		if len(t.RunObjects) == 0 {
 			return true
 		}
@@ -228,7 +223,7 @@ func (t ResolvedPipelineTask) isRunRetriable() bool {
 // If the PipelineTask has a Matrix, isCancelled returns true if any run is cancelled due to PipelineRun-controlled timeout and all other runs are done.
 func (t ResolvedPipelineTask) isCancelledForTimeOut() bool {
 	switch {
-	case t.IsCustomTask() && t.IsMatrixed():
+	case t.IsCustomTask() && t.PipelineTask.IsMatrixed():
 		if len(t.RunObjects) == 0 {
 			return false
 		}
@@ -251,7 +246,7 @@ func (t ResolvedPipelineTask) isCancelledForTimeOut() bool {
 		return c != nil && c.IsFalse() &&
 			c.Reason == v1beta1.CustomRunReasonCancelled.String() &&
 			isRunOrCustomRunCancelledByPipelineRunTimeout(t.RunObject)
-	case t.IsMatrixed():
+	case t.PipelineTask.IsMatrixed():
 		if len(t.TaskRuns) == 0 {
 			return false
 		}
@@ -281,7 +276,7 @@ func (t ResolvedPipelineTask) isCancelledForTimeOut() bool {
 // If the PipelineTask has a Matrix, isCancelled returns true if any run is cancelled and all other runs are done.
 func (t ResolvedPipelineTask) isCancelled() bool {
 	switch {
-	case t.IsCustomTask() && t.IsMatrixed():
+	case t.IsCustomTask() && t.PipelineTask.IsMatrixed():
 		if len(t.RunObjects) == 0 {
 			return false
 		}
@@ -300,7 +295,7 @@ func (t ResolvedPipelineTask) isCancelled() bool {
 		}
 		c := t.RunObject.GetStatusCondition().GetCondition(apis.ConditionSucceeded)
 		return c != nil && c.IsFalse() && c.Reason == v1beta1.CustomRunReasonCancelled.String()
-	case t.IsMatrixed():
+	case t.PipelineTask.IsMatrixed():
 		if len(t.TaskRuns) == 0 {
 			return false
 		}
@@ -605,7 +600,7 @@ func ResolvePipelineTask(
 	}
 	rpt.CustomTask = isCustomTask(ctx, rpt)
 	switch {
-	case rpt.IsCustomTask() && rpt.IsMatrixed():
+	case rpt.IsCustomTask() && rpt.PipelineTask.IsMatrixed():
 		rpt.RunObjectNames = getNamesOfRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, pipelineTask.Matrix.CountCombinations())
 		for _, runName := range rpt.RunObjectNames {
 			run, err := getRun(runName)
@@ -625,7 +620,7 @@ func ResolvePipelineTask(
 		if run != nil {
 			rpt.RunObject = run
 		}
-	case rpt.IsMatrixed():
+	case rpt.PipelineTask.IsMatrixed():
 		rpt.TaskRunNames = GetNamesOfTaskRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, pipelineTask.Matrix.CountCombinations())
 		for _, taskRunName := range rpt.TaskRunNames {
 			if err := rpt.resolvePipelineRunTaskWithTaskRun(ctx, taskRunName, getTask, getTaskRun, pipelineTask); err != nil {
@@ -655,7 +650,7 @@ func (t *ResolvedPipelineTask) resolvePipelineRunTaskWithTaskRun(
 		}
 	}
 	if taskRun != nil {
-		if t.IsMatrixed() {
+		if t.PipelineTask.IsMatrixed() {
 			t.TaskRuns = append(t.TaskRuns, taskRun)
 		} else {
 			t.TaskRun = taskRun

@@ -3068,7 +3068,7 @@ func TestIsMatrixed(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Did not expect error when resolving PipelineRun: %v", err)
 			}
-			got := rpt.IsMatrixed()
+			got := rpt.PipelineTask.IsMatrixed()
 			if d := cmp.Diff(tc.want, got); d != "" {
 				t.Errorf("IsMatrixed: %s", diff.PrintWantGot(d))
 			}

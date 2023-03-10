@@ -116,10 +116,11 @@ type Param struct {
 	Value ParamValue `json:"value"`
 }
 
-func (ps Params) extractNames() []string {
-	names := []string{}
+// ExtractNames returns a set of unique names
+func (ps Params) ExtractNames() sets.String {
+	names := sets.String{}
 	for _, p := range ps {
-		names = append(names, p.Name)
+		names.Insert(p.Name)
 	}
 	return names
 }

@@ -639,7 +639,7 @@ func TestPipelineTaskResultRefs(t *testing.T) {
 			},
 		}},
 		Matrix: &v1beta1.Matrix{
-			Include: []v1beta1.MatrixInclude{{
+			Include: []v1beta1.IncludeParams{{
 				Name: "build-1",
 				Params: []v1beta1.Param{{
 					Name: "a-param", Value: *v1beta1.NewStructuredValues("$(tasks.pt9.results.r9)"),
