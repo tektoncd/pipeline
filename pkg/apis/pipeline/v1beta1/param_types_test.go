@@ -26,6 +26,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 func TestParamSpec_SetDefaults(t *testing.T) {
@@ -480,6 +481,52 @@ func TestArrayOrString(t *testing.T) {
 		}
 
 		if d := cmp.Diff(expected, tt.expected); d != "" {
+			t.Errorf(diff.PrintWantGot(d))
+		}
+	}
+}
+
+func TestExtractNames(t *testing.T) {
+	tests := []struct {
+		name   string
+		params v1beta1.Params
+		want   sets.String
+	}{{
+		name:   "no params",
+		params: v1beta1.Params{{}},
+		want:   sets.NewString(""),
+	}, {
+		name: "extract param names from ParamTypeString",
+		params: v1beta1.Params{{
+			Name: "IMAGE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "image-1"},
+		}, {
+			Name: "DOCKERFILE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
+		want: sets.NewString("IMAGE", "DOCKERFILE"),
+	}, {
+		name: "extract param names from ParamTypeArray",
+		params: v1beta1.Params{{
+			Name: "GOARCH", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+		}},
+		want: sets.NewString("GOARCH"),
+	}, {
+		name: "extract param names from ParamTypeString and ParamTypeArray",
+		params: v1beta1.Params{{
+			Name: "GOARCH", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+		}, {
+			Name: "IMAGE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "image-1"},
+		}},
+		want: sets.NewString("GOARCH", "IMAGE"),
+	}, {
+		name: "extract param name from duplicate params",
+		params: v1beta1.Params{{
+			Name: "duplicate", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+		}, {
+			Name: "duplicate", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "image-1"},
+		}},
+		want: sets.NewString("duplicate"),
+	}}
+	for _, tt := range tests {
+		if d := cmp.Diff(tt.want, v1beta1.Params.ExtractNames(tt.params)); d != "" {
 			t.Errorf(diff.PrintWantGot(d))
 		}
 	}

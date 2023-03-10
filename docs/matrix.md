@@ -74,10 +74,10 @@ The `Matrix.Include` is used to add explicit combinations to fan out a `Pipeline
       include:
         - name: s390x-no-race
           params:
-              - name: GOARCH
-                value: "linux/s390x"
-              - name: flags
-                value: "-cover -v"
+            - name: GOARCH
+              value: "linux/s390x"
+            - name: flags
+              value: "-cover -v"
   ...
 ```
 

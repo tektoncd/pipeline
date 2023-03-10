@@ -419,7 +419,7 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 			Name: "task-1",
 		}, {
 			Name: "task-2",
-			Params: []Param{{
+			Params: Params{{
 				Value: ParamValue{
 					Type:      "string",
 					StringVal: "$(tasks.task-1.results.result)",
@@ -436,7 +436,7 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 		}, {
 			Name: "task-2",
 			Matrix: &Matrix{
-				Params: []Param{{
+				Params: Params{{
 					Value: ParamValue{
 						Type: ParamTypeArray,
 						ArrayVal: []string{
@@ -572,10 +572,10 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		pt: &PipelineTask{
 			Name: "task",
 			Matrix: &Matrix{
-				Params: []Param{{
+				Params: Params{{
 					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 				}}},
-			Params: []Param{{
+			Params: Params{{
 				Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 			}},
 		},
@@ -585,13 +585,13 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		pt: &PipelineTask{
 			Name: "task",
 			Matrix: &Matrix{
-				Include: []MatrixInclude{{
+				Include: IncludeParamsList{{
 					Name: "duplicate-param",
 					Params: Params{{
 						Name: "duplicate", Value: ParamValue{Type: ParamTypeString, StringVal: "foo"},
 					}}},
 				}},
-			Params: []Param{{
+			Params: Params{{
 				Name: "duplicate", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 			}},
 		},
@@ -601,7 +601,7 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		pt: &PipelineTask{
 			Name: "task",
 			Matrix: &Matrix{
-				Params: []Param{{
+				Params: Params{{
 					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 				}, {
 					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo-1", "bar-1"}},
@@ -616,10 +616,10 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		pt: &PipelineTask{
 			Name: "task",
 			Matrix: &Matrix{
-				Params: []Param{{
+				Params: Params{{
 					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 				}}},
-			Params: []Param{{
+			Params: Params{{
 				Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
 			}},
 		},
@@ -628,7 +628,7 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		pt: &PipelineTask{
 			Name: "task",
 			Matrix: &Matrix{
-				Params: []Param{{
+				Params: Params{{
 					Name: "foo", Value: ParamValue{Type: ParamTypeString, StringVal: "foo"},
 				}, {
 					Name: "bar", Value: ParamValue{Type: ParamTypeString, StringVal: "bar"},
@@ -643,7 +643,7 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		pt: &PipelineTask{
 			Name: "task",
 			Matrix: &Matrix{
-				Params: []Param{{
+				Params: Params{{
 					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 				}, {
 					Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
@@ -654,7 +654,7 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		pt: &PipelineTask{
 			Name: "task",
 			Matrix: &Matrix{
-				Include: []MatrixInclude{{
+				Include: IncludeParamsList{{
 					Name: "invalid-include",
 					Params: Params{{
 						Name: "foobar", Value: ParamValue{Type: ParamTypeString, StringVal: "foo"},
@@ -672,9 +672,9 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		pt: &PipelineTask{
 			Name: "task",
 			Matrix: &Matrix{
-				Include: []MatrixInclude{{
+				Include: IncludeParamsList{{
 					Name: "build-1",
-					Params: []Param{{
+					Params: Params{{
 						Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
 					}, {
 						Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"},
@@ -686,9 +686,9 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		pt: &PipelineTask{
 			Name: "task",
 			Matrix: &Matrix{
-				Include: []MatrixInclude{{
+				Include: IncludeParamsList{{
 					Name: "build-1",
-					Params: []Param{{
+					Params: Params{{
 						Name: "barfoo", Value: ParamValue{Type: ParamTypeObject, ObjectVal: map[string]string{
 							"url":    "$(params.myObject.non-exist-key)",
 							"commit": "$(params.myString)",
@@ -710,9 +710,9 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		pt: &PipelineTask{
 			Name: "task",
 			Matrix: &Matrix{
-				Include: []MatrixInclude{{
+				Include: IncludeParamsList{{
 					Name: "build-1",
-					Params: []Param{{
+					Params: Params{{
 						Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 					}, {
 						Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}}}},
@@ -727,7 +727,7 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		pt: &PipelineTask{
 			Name: "task",
 			Matrix: &Matrix{
-				Params: []Param{{
+				Params: Params{{
 					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.foo-task.results.a-result)"}},
 				}}},
 		},
@@ -736,7 +736,7 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		pt: &PipelineTask{
 			Name: "task",
 			Matrix: &Matrix{
-				Params: []Param{{
+				Params: Params{{
 					Name: "platform", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
 				}, {
 					Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "firefox", "safari"}},
@@ -751,7 +751,7 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		pt: &PipelineTask{
 			Name: "task",
 			Matrix: &Matrix{
-				Params: []Param{{
+				Params: Params{{
 					Name: "platform", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac"}},
 				}, {
 					Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "firefox"}},
@@ -892,7 +892,7 @@ func TestPipelineTask_IsMatrixed(t *testing.T) {
 			name: "matrixed with params",
 			arg: arg{
 				Matrix: &Matrix{
-					Params: []Param{{Name: "platform", Value: ParamValue{ArrayVal: []string{"linux", "windows"}}}},
+					Params: Params{{Name: "platform", Value: ParamValue{ArrayVal: []string{"linux", "windows"}}}},
 				},
 			},
 			expected: true,
@@ -900,9 +900,9 @@ func TestPipelineTask_IsMatrixed(t *testing.T) {
 			name: "matrixed with include",
 			arg: arg{
 				Matrix: &Matrix{
-					Include: []MatrixInclude{{
+					Include: IncludeParamsList{{
 						Name: "build-1",
-						Params: []Param{{
+						Params: Params{{
 							Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
 						}, {
 							Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
@@ -914,12 +914,12 @@ func TestPipelineTask_IsMatrixed(t *testing.T) {
 			name: "matrixed with params and include",
 			arg: arg{
 				Matrix: &Matrix{
-					Params: []Param{{
+					Params: Params{{
 						Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
 					}},
-					Include: []MatrixInclude{{
+					Include: IncludeParamsList{{
 						Name: "common-package",
-						Params: []Param{{
+						Params: Params{{
 							Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
 					}},
 				},

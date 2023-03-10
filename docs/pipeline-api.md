@@ -1328,7 +1328,7 @@ string
 <h3 id="tekton.dev/v1.Combinations">Combinations
 (<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Combination</code> alias)</h3>
 <div>
-<p>Combinations is a list of combinations</p>
+<p>Combinations is a Combination list</p>
 </div>
 <h3 id="tekton.dev/v1.ConfigSource">ConfigSource
 </h3>
@@ -1478,6 +1478,47 @@ TaskSpec
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.IncludeParams">IncludeParams
+</h3>
+<div>
+<p>IncludeParams allows passing in a specific combinations of Parameters into the Matrix.
+Note this struct is in preview mode and not yet supported</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name the specified combination</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1.Params">
+Params
+</a>
+</em>
+</td>
+<td>
+<p>Params takes only <code>Parameters</code> of type <code>&quot;string&quot;</code>
+The names of the <code>params</code> must match the names of the <code>params</code> in the underlying <code>Task</code></p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1.Matrix">Matrix
 </h3>
 <p>
@@ -1514,59 +1555,15 @@ The names of the <code>params</code> in the <code>Matrix</code> must match the n
 <td>
 <code>include</code><br/>
 <em>
-<a href="#tekton.dev/v1.MatrixInclude">
-[]MatrixInclude
+<a href="#tekton.dev/v1.IncludeParamsList">
+IncludeParamsList
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Include is a list of MatrixInclude which allows passing in specific combinations of Parameters into the Matrix.
+<p>Include is a list of IncludeParams which allows passing in specific combinations of Parameters into the Matrix.
 Note that Include is in preview mode and not yet supported.</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="tekton.dev/v1.MatrixInclude">MatrixInclude
-</h3>
-<p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.Matrix">Matrix</a>)
-</p>
-<div>
-<p>MatrixInclude allows passing in a specific combinations of Parameters into the Matrix.
-Note this struct is in preview mode and not yet supported</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>name</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Name the specified combination</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>params</code><br/>
-<em>
-<a href="#tekton.dev/v1.Params">
-Params
-</a>
-</em>
-</td>
-<td>
-<p>Params takes only <code>Parameters</code> of type <code>&quot;string&quot;</code>
-The names of the <code>params</code> must match the names of the <code>params</code> in the underlying <code>Task</code></p>
 </td>
 </tr>
 </tbody>
@@ -1816,7 +1813,7 @@ map[string]string
 <h3 id="tekton.dev/v1.Params">Params
 (<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param</code> alias)</h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.Matrix">Matrix</a>, <a href="#tekton.dev/v1.MatrixInclude">MatrixInclude</a>, <a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.IncludeParams">IncludeParams</a>, <a href="#tekton.dev/v1.Matrix">Matrix</a>, <a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>)
 </p>
 <div>
 <p>Params is a list of Param</p>
@@ -8234,7 +8231,7 @@ int32
 <h3 id="tekton.dev/v1beta1.Combinations">Combinations
 (<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Combination</code> alias)</h3>
 <div>
-<p>Combinations is a list of combination</p>
+<p>Combinations is a Combination list</p>
 </div>
 <h3 id="tekton.dev/v1beta1.ConfigSource">ConfigSource
 </h3>
@@ -8614,6 +8611,47 @@ TaskSpec
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.IncludeParams">IncludeParams
+</h3>
+<div>
+<p>IncludeParams allows passing in a specific combinations of Parameters into the Matrix.
+Note this struct is in preview mode and not yet supported</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name the specified combination</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.Params">
+Params
+</a>
+</em>
+</td>
+<td>
+<p>Params takes only <code>Parameters</code> of type <code>&quot;string&quot;</code>
+The names of the <code>params</code> must match the names of the <code>params</code> in the underlying <code>Task</code></p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1beta1.Matrix">Matrix
 </h3>
 <p>
@@ -8650,59 +8688,15 @@ The names of the <code>params</code> in the <code>Matrix</code> must match the n
 <td>
 <code>include</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.MatrixInclude">
-[]MatrixInclude
+<a href="#tekton.dev/v1beta1.IncludeParamsList">
+IncludeParamsList
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Include is a list of MatrixInclude which allows passing in specific combinations of Parameters into the Matrix.
+<p>Include is a list of IncludeParams which allows passing in specific combinations of Parameters into the Matrix.
 Note that Include is in preview mode and not yet supported.</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="tekton.dev/v1beta1.MatrixInclude">MatrixInclude
-</h3>
-<p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Matrix">Matrix</a>)
-</p>
-<div>
-<p>MatrixInclude allows passing in a specific combinations of Parameters into the Matrix.
-Note this struct is in preview mode and not yet supported</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>name</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Name the specified combination</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>params</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.Params">
-Params
-</a>
-</em>
-</td>
-<td>
-<p>Params takes only <code>Parameters</code> of type <code>&quot;string&quot;</code>
-The names of the <code>params</code> must match the names of the <code>params</code> in the underlying <code>Task</code></p>
 </td>
 </tr>
 </tbody>
@@ -8922,7 +8916,7 @@ map[string]string
 <h3 id="tekton.dev/v1beta1.Params">Params
 (<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param</code> alias)</h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Matrix">Matrix</a>, <a href="#tekton.dev/v1beta1.MatrixInclude">MatrixInclude</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.IncludeParams">IncludeParams</a>, <a href="#tekton.dev/v1beta1.Matrix">Matrix</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>)
 </p>
 <div>
 <p>Params is a list of Param</p>

@@ -765,7 +765,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 		}()
 
 		switch {
-		case rpt.IsCustomTask() && rpt.IsMatrixed():
+		case rpt.IsCustomTask() && rpt.PipelineTask.IsMatrixed():
 			rpt.RunObjects, err = c.createRunObjects(ctx, rpt, pr)
 			if err != nil {
 				recorder.Eventf(pr, corev1.EventTypeWarning, "RunsCreationFailed", "Failed to create Runs %q: %v", rpt.RunObjectNames, err)
@@ -779,7 +779,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 				err = fmt.Errorf("error creating Run called %s for PipelineTask %s from PipelineRun %s: %w", rpt.RunObjectName, rpt.PipelineTask.Name, pr.Name, err)
 				return err
 			}
-		case rpt.IsMatrixed():
+		case rpt.PipelineTask.IsMatrixed():
 			rpt.TaskRuns, err = c.createTaskRuns(ctx, rpt, pr)
 			if err != nil {
 				recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunsCreationFailed", "Failed to create TaskRuns %q: %v", rpt.TaskRunNames, err)
@@ -812,7 +812,7 @@ func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.Resolved
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createTaskRuns")
 	defer span.End()
 	var taskRuns []*v1beta1.TaskRun
-	matrixCombinations := rpt.PipelineTask.Matrix.FanOut().ToParams()
+	matrixCombinations := rpt.PipelineTask.Matrix.FanOut()
 	for i, taskRunName := range rpt.TaskRunNames {
 		params := matrixCombinations[i]
 		taskRun, err := c.createTaskRun(ctx, taskRunName, params, rpt, pr)
@@ -886,7 +886,7 @@ func (c *Reconciler) createRunObjects(ctx context.Context, rpt *resources.Resolv
 	var runObjects []v1beta1.RunObject
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createRunObjects")
 	defer span.End()
-	matrixCombinations := rpt.PipelineTask.Matrix.FanOut().ToParams()
+	matrixCombinations := rpt.PipelineTask.Matrix.FanOut()
 	for i, runObjectName := range rpt.RunObjectNames {
 		params := matrixCombinations[i]
 		runObject, err := c.createRunObject(ctx, runObjectName, params, rpt, pr)

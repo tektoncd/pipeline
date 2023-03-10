@@ -386,6 +386,13 @@ spec:
           - chrome
           - safari
           - firefox
+        include:
+          - name: build-1
+            params:
+              - name: browser
+                value: chrome
+              - name: url
+                value: some-url
 ```
 
 For further information, read [`Matrix`](./matrix.md).
@@ -1261,6 +1268,13 @@ spec:
           value:
           - "foo"
           - "bar"
+        include:
+          - name: build-1
+            params:
+              - name: slack-channel
+                value: "foo"
+              - name: flags
+                value: "-v"
 ```
 
 For further information, read [`Matrix`](./matrix.md).
@@ -1720,6 +1734,11 @@ spec:
           value:
             - qux
             - thud
+        include:
+          - name: build-1
+            params:
+            - name: common-package
+              value: path-to-common-pkg
 ```
 
 For further information, read [`Matrix`](./matrix.md).

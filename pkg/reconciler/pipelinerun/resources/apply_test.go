@@ -2107,7 +2107,7 @@ func TestApplyReplacementsMatrix(t *testing.T) {
 			}},
 			Tasks: []v1beta1.PipelineTask{{
 				Matrix: &v1beta1.Matrix{
-					Include: []v1beta1.MatrixInclude{{
+					Include: []v1beta1.IncludeParams{{
 						Name: "build-1",
 						Params: v1beta1.Params{{
 							// string replacements from string param
@@ -2142,7 +2142,7 @@ func TestApplyReplacementsMatrix(t *testing.T) {
 			}},
 			Tasks: []v1beta1.PipelineTask{{
 				Matrix: &v1beta1.Matrix{
-					Include: []v1beta1.MatrixInclude{{
+					Include: []v1beta1.IncludeParams{{
 						Name: "build-1",
 						Params: []v1beta1.Param{{
 							// string replacements from string param
@@ -2221,7 +2221,7 @@ func TestApplyReplacementsMatrix(t *testing.T) {
 			}},
 			Finally: []v1beta1.PipelineTask{{
 				Matrix: &v1beta1.Matrix{
-					Include: []v1beta1.MatrixInclude{{
+					Include: []v1beta1.IncludeParams{{
 						Name: "build-1",
 						Params: v1beta1.Params{{
 							// string replacements from string param
@@ -2256,7 +2256,7 @@ func TestApplyReplacementsMatrix(t *testing.T) {
 			}},
 			Finally: []v1beta1.PipelineTask{{
 				Matrix: &v1beta1.Matrix{
-					Include: []v1beta1.MatrixInclude{{
+					Include: []v1beta1.IncludeParams{{
 						Name: "build-1",
 						Params: []v1beta1.Param{{
 							// string replacements from string param
@@ -2988,7 +2988,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
 				Matrix: &v1beta1.Matrix{
-					Include: []v1beta1.MatrixInclude{{
+					Include: []v1beta1.IncludeParams{{
 						Name: "build-1",
 						Params: v1beta1.Params{{
 							// string replacements from string results, array results and object results
@@ -3003,7 +3003,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
 				Matrix: &v1beta1.Matrix{
-					Include: []v1beta1.MatrixInclude{{
+					Include: []v1beta1.IncludeParams{{
 						Name: "build-1",
 						Params: []v1beta1.Param{{
 							// string replacements from string results, array results and object results
@@ -3261,7 +3261,7 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 					Name:  "retries",
 					Value: *v1beta1.NewStructuredValues("$(context.pipelineTask.retries)"),
 				}},
-				Include: []v1beta1.MatrixInclude{{
+				Include: []v1beta1.IncludeParams{{
 					Name: "build-1",
 					Params: []v1beta1.Param{{
 						Name:  "retries",
@@ -3281,7 +3281,7 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 					Name:  "retries",
 					Value: *v1beta1.NewStructuredValues("5"),
 				}},
-				Include: []v1beta1.MatrixInclude{{
+				Include: []v1beta1.IncludeParams{{
 					Name: "build-1",
 					Params: []v1beta1.Param{{
 						Name:  "retries",
@@ -3302,7 +3302,7 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 					Name:  "retries",
 					Value: *v1beta1.NewStructuredValues("$(context.pipelineTask.retries)"),
 				}},
-				Include: []v1beta1.MatrixInclude{{
+				Include: []v1beta1.IncludeParams{{
 					Name: "build-1",
 					Params: []v1beta1.Param{{
 						Name:  "retries",
@@ -3321,7 +3321,7 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 					Name:  "retries",
 					Value: *v1beta1.NewStructuredValues("0"),
 				}},
-				Include: []v1beta1.MatrixInclude{{
+				Include: []v1beta1.IncludeParams{{
 					Name: "build-1",
 					Params: []v1beta1.Param{{
 						Name:  "retries",

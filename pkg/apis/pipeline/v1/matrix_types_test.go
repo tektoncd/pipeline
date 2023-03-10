@@ -20,19 +20,17 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 )
 
-func TestMatrix_FanOut_ToParams(t *testing.T) {
+func TestMatrix_FanOut(t *testing.T) {
 	tests := []struct {
-		name           string
-		matrix         Matrix
-		want           Combinations
-		expectedParams []Params
+		name   string
+		matrix Matrix
+		want   []Params
 	}{{
 		name: "matrix with no params",
 		matrix: Matrix{
 			Params: Params{},
 		},
-		want:           nil,
-		expectedParams: nil,
+		want: []Params{},
 	}, {
 		name: "single array in matrix",
 		matrix: Matrix{
@@ -41,14 +39,7 @@ func TestMatrix_FanOut_ToParams(t *testing.T) {
 				Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
 			}},
 		},
-		want: Combinations{{
-			"platform": "linux",
-		}, {
-			"platform": "mac",
-		}, {
-			"platform": "windows",
-		}},
-		expectedParams: []Params{{
+		want: []Params{{
 			{
 				Name:  "platform",
 				Value: ParamValue{Type: ParamTypeString, StringVal: "linux"},
@@ -67,125 +58,67 @@ func TestMatrix_FanOut_ToParams(t *testing.T) {
 	}, {
 		name: "multiple arrays in matrix",
 		matrix: Matrix{
-			Params: []Param{{
-				Name:  "platform",
-				Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
+			Params: Params{{
+				Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
 			}, {
-				Name:  "browser",
-				Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "safari", "firefox"}},
-			}}},
-		want: Combinations{{
-			"browser":  "chrome",
-			"platform": "linux",
-		}, {
-			"browser":  "chrome",
-			"platform": "mac",
-		}, {
-			"browser":  "chrome",
-			"platform": "windows",
-		}, {
-			"browser":  "safari",
-			"platform": "linux",
-		}, {
-			"browser":  "safari",
-			"platform": "mac",
-		}, {
-			"browser":  "safari",
-			"platform": "windows",
-		}, {
-			"browser":  "firefox",
-			"platform": "linux",
-		}, {
-			"browser":  "firefox",
-			"platform": "mac",
-		}, {
-			"browser":  "firefox",
-			"platform": "windows",
-		}},
-		expectedParams: []Params{{
+				Name: "version", Value: ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
+			},
+			Include: IncludeParamsList{{}},
+		},
+		want: []Params{{
 			{
-				Name:  "browser",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "chrome"},
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
 			}, {
-				Name:  "platform",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux"},
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
 			},
 		}, {
 			{
-				Name:  "browser",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "chrome"},
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
 			}, {
-				Name:  "platform",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "mac"},
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
 			},
 		}, {
 			{
-				Name:  "browser",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "chrome"},
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
 			}, {
-				Name:  "platform",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "windows"},
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
 			},
 		}, {
 			{
-				Name:  "browser",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "safari"},
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
 			}, {
-				Name:  "platform",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux"},
-			}}, {
-			{
-				Name:  "browser",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "safari"},
-			}, {
-				Name:  "platform",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "mac"},
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
 			},
 		}, {
 			{
-				Name:  "browser",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "safari"},
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
 			}, {
-				Name:  "platform",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "windows"},
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
 			},
 		}, {
 			{
-				Name:  "browser",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "firefox"},
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
 			}, {
-				Name:  "platform",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux"},
-			},
-		}, {
-			{
-				Name:  "browser",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "firefox"},
-			}, {
-				Name:  "platform",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "mac"},
-			},
-		}, {
-			{
-				Name:  "browser",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "firefox"},
-			}, {
-				Name:  "platform",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "windows"},
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
 			},
 		}},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.matrix.FanOut()
 			if d := cmp.Diff(tt.want, tt.matrix.FanOut()); d != "" {
 				t.Errorf("Combinations of Parameters did not match the expected Params: %s", diff.PrintWantGot(d))
-			}
-			c := tt.matrix.FanOut().ToParams()
-			for i := range c {
-				if d := cmp.Diff(tt.expectedParams[i], c[i]); d != "" {
-					t.Errorf("The formatted Combinations of Parameters did not match the expected Params: %s", diff.PrintWantGot(d))
-				}
 			}
 		})
 	}
@@ -216,7 +149,7 @@ func TestMatrix_HasParams(t *testing.T) {
 		}, {
 			name: "matrixed with include",
 			matrix: &Matrix{
-				Include: []MatrixInclude{{
+				Include: IncludeParamsList{{
 					Name: "build-1",
 					Params: []Param{{
 						Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
@@ -228,12 +161,12 @@ func TestMatrix_HasParams(t *testing.T) {
 		}, {
 			name: "matrixed with params and include",
 			matrix: &Matrix{
-				Params: []Param{{
+				Params: Params{{
 					Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
 				}},
-				Include: []MatrixInclude{{
+				Include: IncludeParamsList{{
 					Name: "common-package",
-					Params: []Param{{
+					Params: Params{{
 						Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
 				}},
 			},
@@ -242,8 +175,8 @@ func TestMatrix_HasParams(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if d := cmp.Diff(tc.want, tc.matrix.hasParams()); d != "" {
-				t.Errorf("matrix.hasParams() bool diff %s", diff.PrintWantGot(d))
+			if d := cmp.Diff(tc.want, tc.matrix.HasParams()); d != "" {
+				t.Errorf("matrix.HasParams() bool diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -268,15 +201,15 @@ func TestMatrix_HasInclude(t *testing.T) {
 		{
 			name: "matrixed with params",
 			matrix: &Matrix{
-				Params: []Param{{Name: "platform", Value: ParamValue{ArrayVal: []string{"linux", "windows"}}}},
+				Params: Params{{Name: "platform", Value: ParamValue{ArrayVal: []string{"linux", "windows"}}}},
 			},
 			want: false,
 		}, {
 			name: "matrixed with include",
 			matrix: &Matrix{
-				Include: []MatrixInclude{{
+				Include: IncludeParamsList{{
 					Name: "build-1",
-					Params: []Param{{
+					Params: Params{{
 						Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
 					}, {
 						Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
@@ -286,12 +219,12 @@ func TestMatrix_HasInclude(t *testing.T) {
 		}, {
 			name: "matrixed with params and include",
 			matrix: &Matrix{
-				Params: []Param{{
+				Params: Params{{
 					Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
 				}},
-				Include: []MatrixInclude{{
+				Include: IncludeParamsList{{
 					Name: "common-package",
-					Params: []Param{{
+					Params: Params{{
 						Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
 				}},
 			},
@@ -300,8 +233,74 @@ func TestMatrix_HasInclude(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if d := cmp.Diff(tc.want, tc.matrix.hasInclude()); d != "" {
-				t.Errorf("matrix.hasInclude() bool diff %s", diff.PrintWantGot(d))
+			if d := cmp.Diff(tc.want, tc.matrix.HasInclude()); d != "" {
+				t.Errorf("matrix.HasInclude() bool diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestMatrix_GetAllParams(t *testing.T) {
+	testCases := []struct {
+		name   string
+		matrix *Matrix
+		want   Params
+	}{
+		{
+			name:   "nil matrix",
+			matrix: nil,
+			want:   nil,
+		},
+		{
+			name:   "empty matrix",
+			matrix: &Matrix{},
+			want:   nil,
+		},
+		{
+			name: "matrixed with params",
+			matrix: &Matrix{
+				Params: Params{{Name: "platform", Value: ParamValue{ArrayVal: []string{"linux", "windows"}}}},
+			},
+			want: Params{{Name: "platform", Value: ParamValue{ArrayVal: []string{"linux", "windows"}}}},
+		}, {
+			name: "matrixed with include",
+			matrix: &Matrix{
+				Include: IncludeParamsList{{
+					Name: "build-1",
+					Params: Params{{
+						Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
+					}, {
+						Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
+				}},
+			},
+			want: Params{{
+				Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
+			}, {
+				Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
+		},
+		{
+			name: "matrixed with params and include",
+			matrix: &Matrix{
+				Params: Params{{
+					Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+				}},
+				Include: IncludeParamsList{{
+					Name: "common-package",
+					Params: Params{{
+						Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
+				}},
+			},
+			want: Params{{
+				Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+			}, {
+				Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+			}},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if d := cmp.Diff(tc.want, tc.matrix.GetAllParams()); d != "" {
+				t.Errorf("matrix.GetAllParams() bool diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -315,12 +314,12 @@ func TestPipelineTask_CountCombinations(t *testing.T) {
 	}{{
 		name: "combinations count is zero",
 		matrix: &Matrix{
-			Params: []Param{{}}},
+			Params: Params{{}}},
 		want: 0,
 	}, {
 		name: "combinations count is one from one parameter",
 		matrix: &Matrix{
-			Params: []Param{{
+			Params: Params{{
 				Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo"}},
 			}}},
 
@@ -328,7 +327,7 @@ func TestPipelineTask_CountCombinations(t *testing.T) {
 	}, {
 		name: "combinations count is one from two parameters",
 		matrix: &Matrix{
-			Params: []Param{{
+			Params: Params{{
 				Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo"}},
 			}, {
 				Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar"}},
@@ -337,14 +336,14 @@ func TestPipelineTask_CountCombinations(t *testing.T) {
 	}, {
 		name: "combinations count is two from one parameter",
 		matrix: &Matrix{
-			Params: []Param{{
+			Params: Params{{
 				Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 			}}},
 		want: 2,
 	}, {
 		name: "combinations count is nine",
 		matrix: &Matrix{
-			Params: []Param{{
+			Params: Params{{
 				Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"f", "o", "o"}},
 			}, {
 				Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"b", "a", "r"}},
@@ -353,7 +352,7 @@ func TestPipelineTask_CountCombinations(t *testing.T) {
 	}, {
 		name: "combinations count is large",
 		matrix: &Matrix{
-			Params: []Param{{
+			Params: Params{{
 				Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"f", "o", "o"}},
 			}, {
 				Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"b", "a", "r"}},
@@ -366,7 +365,7 @@ func TestPipelineTask_CountCombinations(t *testing.T) {
 	}, {
 		name: "explicit combinations in the matrix",
 		matrix: &Matrix{
-			Include: []MatrixInclude{{
+			Include: IncludeParamsList{{
 				Name: "build-1",
 				Params: []Param{{
 					Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
@@ -398,7 +397,7 @@ func TestPipelineTask_CountCombinations(t *testing.T) {
 			}, {
 				Name: "version", Value: ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
 			},
-			Include: []MatrixInclude{{
+			Include: IncludeParamsList{{
 				Name: "common-package",
 				Params: []Param{{
 					Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
@@ -425,7 +424,7 @@ func TestPipelineTask_CountCombinations(t *testing.T) {
 			}, {
 				Name: "version", Value: ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
 			},
-			Include: []MatrixInclude{{
+			Include: IncludeParamsList{{
 				Name: "common-package",
 				Params: []Param{{
 					Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
