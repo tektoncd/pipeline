@@ -175,7 +175,13 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 			pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
 			pipelineTask.Params = replaceParamValues(pipelineTask.Params, stringReplacements, arrayReplacements, objectReplacements)
 			if pipelineTask.IsMatrixed() {
+				// Only string replacements from string, array or object results are supported
+				// We plan to support array replacements from array results soon (#5925)
 				pipelineTask.Matrix.Params = replaceParamValues(pipelineTask.Matrix.Params, stringReplacements, nil, nil)
+				for i := range pipelineTask.Matrix.Include {
+					// matrix include parameters can only be type string
+					pipelineTask.Matrix.Include[i].Params = replaceParamValues(pipelineTask.Matrix.Include[i].Params, stringReplacements, nil, nil)
+				}
 			}
 			pipelineTask.WhenExpressions = pipelineTask.WhenExpressions.ReplaceWhenExpressionsVariables(stringReplacements, arrayReplacements)
 			if pipelineTask.TaskRef != nil && pipelineTask.TaskRef.Params != nil {
@@ -224,7 +230,10 @@ func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, 
 	for i := range p.Tasks {
 		p.Tasks[i].Params = replaceParamValues(p.Tasks[i].Params, replacements, arrayReplacements, objectReplacements)
 		if p.Tasks[i].IsMatrixed() {
-			p.Tasks[i].Matrix.Params = replaceParamValues(p.Tasks[i].Matrix.Params, replacements, arrayReplacements, objectReplacements)
+			p.Tasks[i].Matrix.Params = replaceParamValues(p.Tasks[i].Matrix.Params, replacements, arrayReplacements, nil)
+			for j := range p.Tasks[i].Matrix.Include {
+				p.Tasks[i].Matrix.Include[j].Params = replaceParamValues(p.Tasks[i].Matrix.Include[j].Params, replacements, nil, nil)
+			}
 		}
 		for j := range p.Tasks[i].Workspaces {
 			p.Tasks[i].Workspaces[j].SubPath = substitution.ApplyReplacements(p.Tasks[i].Workspaces[j].SubPath, replacements)
@@ -239,7 +248,10 @@ func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, 
 	for i := range p.Finally {
 		p.Finally[i].Params = replaceParamValues(p.Finally[i].Params, replacements, arrayReplacements, objectReplacements)
 		if p.Finally[i].IsMatrixed() {
-			p.Finally[i].Matrix.Params = replaceParamValues(p.Finally[i].Matrix.Params, replacements, arrayReplacements, objectReplacements)
+			p.Finally[i].Matrix.Params = replaceParamValues(p.Finally[i].Matrix.Params, replacements, arrayReplacements, nil)
+			for j := range p.Finally[i].Matrix.Include {
+				p.Finally[i].Matrix.Include[j].Params = replaceParamValues(p.Finally[i].Matrix.Include[j].Params, replacements, nil, nil)
+			}
 		}
 		for j := range p.Finally[i].Workspaces {
 			p.Finally[i].Workspaces[j].SubPath = substitution.ApplyReplacements(p.Finally[i].Workspaces[j].SubPath, replacements)

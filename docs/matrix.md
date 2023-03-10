@@ -9,18 +9,23 @@ weight: 406
 
 - [Overview](#overview)
 - [Configuring a Matrix](#configuring-a-matrix)
-  - [Concurrency Control](#concurrency-control)
-  - [Parameters](#parameters)
-    - [Specifying both `params` and `matrix` in a `PipelineTask`](#specifying-both-params-and-matrix-in-a-pipelinetask)
-    - [Include](#Include)
-  - [Context Variables](#context-variables)
-  - [Results](#results)
-    - [Specifying Results in a Matrix](#specifying-results-in-a-matrix)
-    - [Results from fanned out PipelineTasks](#results-from-fanned-out-pipelinetasks)
-- [Fan Out](#fan-out)
+  - [Generating Combinations](#generating-combinations)
+  - [Explicit Combinations](#explicit-combinations)
+- [Concurrency Control](#concurrency-control)
+- [Parameters](#parameters)
+  - [Parameters in Matrix.Params](#parameters-in-matrixparams-1)
+  - [Parameters in Matrix.Include.Params](#parameters-in-matrixincludeparams)
+  - [Specifying both `params` and `matrix` in a `PipelineTask`](#specifying-both-params-and-matrix-in-a-pipelinetask)
+- [Context Variables](#context-variables)
+- [Results](#results)
+  - [Specifying Results in a Matrix](#specifying-results-in-a-matrix)
+    - [Results in Matrix.Params](#results-in-matrixparams)
+    - [Results in Matrix.Include.Params](#results-in-matrixincludeparams)
+  - [Results from fanned out PipelineTasks](#results-from-fanned-out-pipelinetasks)
+- [Retries](#retries)
+- [Examples](#examples)
   - [`PipelineTasks` with `Tasks`](#pipelinetasks-with-tasks)
   - [`PipelineTasks` with `Custom Tasks`](#pipelinetasks-with-custom-tasks)
-- [Retries](#retries)
 
 ## Overview
 
@@ -37,13 +42,46 @@ Documentation for specifying `Matrix` in a `Pipeline`:
 
 ## Configuring a Matrix
 
-A `Matrix` supports the following features:
-* [Concurrency Control](#concurrency-control)
-* [Parameters](#parameters)
-* [Context Variables](#context-variables)
-* [Results](#results)
+A `Matrix` allows you to generate combinations and specify explicit combinations to fan out a `PipelineTask`.
 
-### Concurrency Control
+### Generating Combinations
+
+The `Matrix.Params` is used to generate combinations to fan out a `PipelineTask`.
+
+```yaml
+    matrix:
+      params:
+        - name: platform
+          value:
+          - linux
+          - mac
+        - name: browser
+          value:
+          - safari
+          - chrome
+  ...
+```
+
+### Explicit Combinations
+
+> :warning: This feature is in a preview mode.
+> It is still in a very early stage of development and is not yet fully functional.
+
+The `Matrix.Include` is used to add explicit combinations to fan out a `PipelineTask`, but is not yet functional.
+
+```yaml
+    matrix:
+      include:
+        - name: s390x-no-race
+          params:
+              - name: GOARCH
+                value: "linux/s390x"
+              - name: flags
+                value: "-cover -v"
+  ...
+```
+
+## Concurrency Control
 
 The default maximum count of `TaskRuns` or `Runs` from a given `Matrix` is **256**. To customize the maximum count of
 `TaskRuns` or `Runs` generated from a given `Matrix`, configure the `default-max-matrix-combinations-count` in
@@ -66,61 +104,65 @@ data:
 
 For more information, see [installation customizations](install.md#customizing-basic-execution-parameters).
 
-### Parameters
+## Parameters
 
-The `Matrix` will take `Parameters` of type `"array"` only, which will be supplied to the
-`PipelineTask` by substituting `Parameters` of type `"string"` in the underlying `Task`.
-The names of the `Parameters` in the `Matrix` must match the names of the `Parameters`
-in the underlying `Task` that they will be substituting. The names of the `Parameters`
-in the `Matrix` must be unique. Specifying the same parameter multiple times will result
-in a validation error.
+`Matrix` takes in `Parameters` in two sections:
+- `Matrix.Params`: used to generate combinations to fan out the `PipelineTask`.
+- `Matrix.Include.Params`: used to specify specific combinations to fan out the `PipelineTask`.
 
-In the example below, the *test* `Task` takes *browser* and *platform* `Parameters` of type
-`"string"`. A `Pipeline` used to fan out the `Task` using `Matrix` would have two `Parameters`
-of type `"array"`, and it would execute nine `TaskRuns`:
-
-```yaml
-apiVersion: tekton.dev/v1beta1
-kind: Pipeline
-metadata:
-  name: platform-browser-tests
-spec:
-  params:
-    - name: platforms
-      type: array
-      default:
-        - linux
-        - mac
-        - windows
-    - name: browsers
-      type: array
-      default:
-        - chrome
-        - safari
-        - firefox
-  tasks:
-  - name: fetch-repository
-    taskRef:
-      name: git-clone
-    ...
-  - name: test
-    matrix:
-      params:
-        - name: platform
-          value: $(params.platforms)
-        - name: browser
-          value: $(params.browsers)
-    taskRef:
-      name: browser-test
-  ...
-```
-
-A `Parameter` can be passed to either the `matrix` or `params` field, not both.
+Note that:
+- The names of the `Parameters` in the `Matrix` must match the names of the `Parameters` in the underlying
+`Task` that they will be substituting.
+- The names of the `Parameters` in the `Matrix` must be unique. Specifying the same parameter multiple times
+will result in a validation error.
+- A `Parameter` can be passed to either the `matrix` or `params` field, not both.
 
 For further details on specifying `Parameters` in the `Pipeline` and passing them to
 `PipelineTasks`, see [documentation](pipelines.md#specifying-parameters).
 
-#### Specifying both `params` and `matrix` in a `PipelineTask`
+#### Parameters in Matrix.Params
+
+`Matrix.Params` supports string replacements from `Parameters` of type String, Array or Object.
+
+```yaml
+tasks:
+...
+- name: task-4
+  taskRef:
+    name: task-4
+  matrix:
+    params:
+    - name: param-one
+      value:
+      - $(params.foo) # string replacement from string param
+      - $(params.bar[0]) # string replacement from array param
+      - $(params.rad.key) # string replacement from object param
+    - name: param-two
+      value: $(params.bar) # array replacement from array param
+```
+#### Parameters in Matrix.Include.Params
+
+`Matrix.Include.Params` takes string replacements from `Parameters` of type String, Array or Object.
+
+```yaml
+tasks:
+...
+- name: task-4
+  taskRef:
+    name: task-4
+  matrix:
+    include:
+      - name: foo-bar-rad
+        params:
+        - name: foo
+          value: $(params.foo) # string replacement from string param
+        - name: bar
+          value: $(params.bar[0]) # string replacement from array param
+        - name: rad
+          value: $(params.rad.key) # string replacement from object param
+```
+
+### Specifying both `params` and `matrix` in a `PipelineTask`
 
 In the example below, the *test* `Task` takes *browser* and *platform* `Parameters` of type
 `"string"`. A `Pipeline` used to run the `Task` on three browsers (using `matrix`) and one
@@ -153,26 +195,7 @@ spec:
   ...
 ```
 
-### Include
-> :warning: This feature is in a preview mode.
-> It is still in a very early stage of development and is not yet fully functional.
-The `Include` section in the `Matrix` field exists, but is not yet functional.
-
-The `Matrix.Include` will take `Parameters` of type `"string"` only.
-
-```yaml
-    matrix:
-      include:
-        - name: s390x-no-race
-          params:
-              - name: GOARCH
-                value: "linux/s390x"
-              - name: flags
-                value: "-cover -v"
-  ...
-```
-
-### Context Variables
+## Context Variables
 
 Similarly to the `Parameters` in the `Params` field, the `Parameters` in the `Matrix` field will accept
 [context variables](variables.md) that will be substituted, including:
@@ -181,15 +204,19 @@ Similarly to the `Parameters` in the `Params` field, the `Parameters` in the `Ma
 * `Pipeline` name
 * `PipelineTask` retries
 
-### Results
+## Results
 
-#### Specifying Results in a Matrix
+### Specifying Results in a Matrix
 
 Consuming `Results` from previous `TaskRuns` or `Runs` in a `Matrix`, which would dynamically generate
 `TaskRuns` or `Runs` from the fanned out `PipelineTask`, is supported. Producing `Results` in from a
 `PipelineTask` with a `Matrix` is not yet supported - see [further details](#results-from-fanned-out-pipelinetasks).
 
-`Matrix` supports Results of type String that are passed in individually:
+See the end-to-end example in [`PipelineRun` with `Matrix` and `Results`][pr-with-matrix-and-results].
+
+#### Results in Matrix.Params
+
+`Matrix.Params` supports string replacements from `Results` of type String, Array or Object.
 
 ```yaml
 tasks:
@@ -201,15 +228,14 @@ tasks:
     params:
     - name: values
       value:
-      - (tasks.task-1.results.foo) # string
-      - (tasks.task-2.results.bar) # string
-      - (tasks.task-3.results.rad) # string
+      - $(tasks.task-1.results.foo) # string replacement from string result
+      - $(tasks.task-2.results.bar[0]) # string replacement from array result
+      - $(tasks.task-3.results.rad.key) # string replacement from object result
 ```
 
 For further information, see the example in [`PipelineRun` with `Matrix` and `Results`][pr-with-matrix-and-results].
 
-When we support `Results` of type Array at the `Pipeline` level, we will support passing Results into the `Matrix`.
-> Note: Results of type Array are not yet supported in the Pipeline level.
+We plan to add support passing whole Array `Results` into the `Matrix` (#5925):
 
 ```yaml
 tasks:
@@ -220,16 +246,80 @@ tasks:
   matrix:
     params:
     - name: values
-      value: (tasks.task-4.results.foo) # array
+      value: $(tasks.task-4.results.foo) # array
 ```
 
-#### Results from fanned out PipelineTasks
+#### Results in Matrix.Include.Params
+
+`Matrix.Include.Params` supports string replacements from `Results` of type String, Array or Object.
+
+```yaml
+tasks:
+...
+- name: task-4
+  taskRef:
+    name: task-4
+  matrix:
+    include:
+      - name: foo-bar-duh
+      params:
+        - name: foo
+          value: $(tasks.task-1.results.foo) # string replacement from string result
+        - name: bar
+          value: $(tasks.task-2.results.bar[0]) # string replacement from array result
+        - name: duh
+          value: $(tasks.task-2.results.duh.key) # string replacement from object result
+```
+
+### Results from fanned out PipelineTasks
 
 Consuming `Results` from fanned out `PipelineTasks` will not be in the supported in the initial iteration
 of `Matrix`. Supporting consuming `Results` from fanned out `PipelineTasks` will be revisited after array
 and object `Results` are supported.
 
-## Fan Out
+
+## Retries
+
+The `retries` field is used to specify the number of times a `PipelineTask` should be retried when its `TaskRun` or
+`Run` fails, see the [documentation][retries] for further details. When a `PipelineTask` is fanned out using `Matrix`,
+a given `TaskRun` or `Run` executed will be retried as much as the field in the `retries` field of the `PipelineTask`.
+
+For example, the `PipelineTask` in this `PipelineRun` will be fanned out into three `TaskRuns` each of which will be
+retried once:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: matrixed-pr-with-retries-
+spec:
+  pipelineSpec:
+    tasks:
+      - name: matrix-and-params
+        matrix:
+          params:
+            - name: platform
+              value:
+                - linux
+                - mac
+                - windows
+        params:
+          - name: browser
+            value: chrome
+        retries: 1
+        taskSpec:
+          params:
+            - name: platform
+            - name: browser
+          steps:
+            - name: echo
+              image: alpine
+              script: |
+                echo "$(params.platform) and $(params.browser)"
+                exit 1
+```
+
+## Examples
 
 ### `PipelineTasks` with `Tasks`
 
@@ -553,47 +643,6 @@ status:
       kind: Run
       name: matrixed-pr-4djw9-platforms-and-browsers-0
       pipelineTaskName: platforms-and-browsers
-```
-
-## Retries
-
-The `retries` field is used to specify the number of times a `PipelineTask` should be retried when its `TaskRun` or
-`Run` fails, see the [documentation][retries] for further details. When a `PipelineTask` is fanned out using `Matrix`,
-a given `TaskRun` or `Run` executed will be retried as much as the field in the `retries` field of the `PipelineTask`.
-
-For example, the `PipelineTask` in this `PipelineRun` will be fanned out into three `TaskRuns` each of which will be
-retried once:
-
-```yaml
-apiVersion: tekton.dev/v1beta1
-kind: PipelineRun
-metadata:
-  generateName: matrixed-pr-with-retries-
-spec:
-  pipelineSpec:
-    tasks:
-      - name: matrix-and-params
-        matrix:
-          params:
-            - name: platform
-              value:
-                - linux
-                - mac
-                - windows
-        params:
-          - name: browser
-            value: chrome
-        retries: 1
-        taskSpec:
-          params:
-            - name: platform
-            - name: browser
-          steps:
-            - name: echo
-              image: alpine
-              script: |
-                echo "$(params.platform) and $(params.browser)"
-                exit 1
 ```
 
 [cel]: https://github.com/tektoncd/experimental/tree/1609827ea81d05c8d00f8933c5c9d6150cd36989/cel
