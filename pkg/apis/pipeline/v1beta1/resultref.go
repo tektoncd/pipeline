@@ -208,19 +208,13 @@ func ParseResultName(resultName string) (string, string) {
 // in a PipelineTask and returns a list of any references that are found.
 func PipelineTaskResultRefs(pt *PipelineTask) []*ResultRef {
 	refs := []*ResultRef{}
-	var matrixParams []Param
-	if pt.IsMatrixed() {
-		matrixParams = pt.Matrix.Params
-	}
-	for _, p := range append(pt.Params, matrixParams...) {
+	for _, p := range pt.extractAllParams() {
 		expressions, _ := GetVarSubstitutionExpressionsForParam(p)
 		refs = append(refs, NewResultRefs(expressions)...)
 	}
-
 	for _, whenExpression := range pt.WhenExpressions {
 		expressions, _ := whenExpression.GetVarSubstitutionExpressions()
 		refs = append(refs, NewResultRefs(expressions)...)
 	}
-
 	return refs
 }
