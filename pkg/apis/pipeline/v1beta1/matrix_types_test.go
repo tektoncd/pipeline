@@ -114,7 +114,474 @@ func TestMatrix_FanOut(t *testing.T) {
 				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
 			},
 		}},
-	}}
+	}, {
+		name: "Fan out explicit combinations, no matrix params",
+		matrix: Matrix{
+			Include: IncludeParamsList{{
+				Name: "build-1",
+				Params: Params{{
+					Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
+				}, {
+					Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
+			}, {
+				Name: "build-2",
+				Params: Params{{
+					Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-2"},
+				}, {
+					Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile2"}}},
+			}, {
+				Name: "build-3",
+				Params: Params{{
+					Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-3"},
+				}, {
+					Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile3"}}},
+			}},
+		},
+		want: []Params{{
+			{
+				Name:  "DOCKERFILE",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"},
+			}, {
+				Name:  "IMAGE",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
+			},
+		}, {
+			{
+				Name:  "DOCKERFILE",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile2"},
+			}, {
+				Name:  "IMAGE",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "image-2"},
+			},
+		}, {
+			{
+				Name:  "DOCKERFILE",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile3"},
+			}, {
+				Name:  "IMAGE",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "image-3"},
+			},
+		}},
+	}, {
+		name: "matrix include unknown param name, append to all combinations",
+		matrix: Matrix{
+			Params: Params{{
+				Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+			}, {
+				Name: "version", Value: ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
+			},
+			Include: IncludeParamsList{{
+				Name: "common-package",
+				Params: Params{{
+					Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
+			}},
+		},
+		want: []Params{{
+			{
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
+			}, {
+				Name:  "package",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+			}, {
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+			},
+		}, {
+			{
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
+			}, {
+				Name:  "package",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+			}, {
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+			},
+		}, {
+			{
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+			}, {
+				Name:  "package",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+			}, {
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+			},
+		}, {
+			{
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
+			}, {
+				Name:  "package",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+			}, {
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+			},
+		}, {
+			{
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
+			}, {
+				Name:  "package",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+			}, {
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+			},
+		}, {
+			{
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+			}, {
+				Name:  "package",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+			}, {
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+			},
+		}},
+	}, {
+		name: "matrix include param value does not exist, generate a new combination",
+		matrix: Matrix{
+			Params: Params{{
+				Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+			}, {
+				Name: "version", Value: ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
+			},
+			Include: IncludeParamsList{{
+				Name: "non-existent-arch",
+				Params: Params{{
+					Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "I-do-not-exist"}}},
+			}},
+		},
+		want: []Params{{
+			{
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
+			}, {
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+			},
+		}, {
+			{
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
+			}, {
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+			},
+		}, {
+			{
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+			}, {
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+			},
+		}, {
+			{
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
+			}, {
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+			},
+		}, {
+			{
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
+			}, {
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+			},
+		}, {
+			{
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+			}, {
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+			},
+		}, {
+			{
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "I-do-not-exist"},
+			},
+		}},
+	}, {
+		name: "Matrix include filters single parameter and appends missing values",
+		matrix: Matrix{
+			Params: Params{{
+				Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+			}, {
+				Name: "version", Value: ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
+			},
+			Include: IncludeParamsList{{
+				Name: "s390x-no-race",
+				Params: Params{{
+					Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+				}, {
+					Name: "flags", Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"}}},
+			}},
+		},
+		want: []Params{{
+			{
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
+			}, {
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+			},
+		}, {
+			{
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
+			}, {
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+			},
+		}, {
+
+			{
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+			}, {
+				Name:  "flags",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"},
+			}, {
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+			},
+		}, {
+			{
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
+			}, {
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+			},
+		}, {
+			{
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
+			}, {
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+			},
+		}, {
+			{
+				Name:  "GOARCH",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+			}, {
+				Name:  "flags",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"},
+			}, {
+				Name:  "version",
+				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+			},
+		}},
+	},
+		{
+			name: "Matrix include filters multiple parameters and append new parameters",
+			matrix: Matrix{
+				Params: Params{{
+					Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+				}, {
+					Name: "version", Value: ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
+				},
+				Include: IncludeParamsList{
+					{
+						Name: "390x-no-race",
+						Params: Params{{
+							Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"}}, {
+							Name: "flags", Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"}}, {
+							Name: "version", Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"}}},
+					},
+					{
+						Name: "amd64-no-race",
+						Params: Params{{
+							Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"}}, {
+							Name: "flags", Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"}}, {
+							Name: "version", Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"}}},
+					},
+				},
+			},
+			want: []Params{{
+				{
+					Name:  "GOARCH",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
+				}, {
+					Name:  "flags",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"},
+				}, {
+					Name:  "version",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+				},
+			}, {
+				{
+					Name:  "GOARCH",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
+				}, {
+					Name:  "version",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+				},
+			}, {
+				{
+					Name:  "GOARCH",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+				}, {
+					Name:  "version",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+				},
+			}, {
+				{
+					Name:  "GOARCH",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
+				}, {
+					Name:  "version",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+				},
+			}, {
+				{
+					Name:  "GOARCH",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
+				}, {
+					Name:  "version",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+				},
+			}, {
+				{
+					Name:  "GOARCH",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+				}, {
+					Name:  "flags",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"},
+				}, {
+					Name:  "version",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+				},
+			}},
+		}, {
+			name: "Matrix params and include params handles filter, appending, and generating new combinations at once",
+			matrix: Matrix{
+				Params: Params{{
+					Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+				}, {
+					Name: "version", Value: ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
+				},
+				Include: IncludeParamsList{{
+					Name: "common-package",
+					Params: Params{{
+						Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
+				}, {
+					Name: "s390x-no-race",
+					Params: Params{{
+						Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+					}, {
+						Name: "flags", Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"}}},
+				}, {
+					Name: "go117-context",
+					Params: Params{{
+						Name: "version", Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+					}, {
+						Name: "context", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/go117/context"}}},
+				}, {
+					Name: "non-existent-arch",
+					Params: Params{{
+						Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "I-do-not-exist"}},
+					},
+				}},
+			},
+			want: []Params{{
+				{
+					Name:  "GOARCH",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
+				}, {
+					Name:  "context",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/go117/context"},
+				}, {
+					Name:  "package",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+				}, {
+					Name:  "version",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+				},
+			}, {
+				{
+					Name:  "GOARCH",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
+				}, {
+					Name:  "context",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/go117/context"},
+				}, {
+					Name:  "package",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+				}, {
+					Name:  "version",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+				},
+			}, {
+				{
+					Name:  "GOARCH",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+				}, {
+					Name:  "context",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/go117/context"},
+				}, {
+					Name:  "flags",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"},
+				}, {
+					Name:  "package",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+				}, {
+					Name:  "version",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+				},
+			}, {
+				{
+					Name:  "GOARCH",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
+				}, {
+					Name:  "package",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}, {
+					Name:  "version",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+				},
+			}, {
+				{
+					Name:  "GOARCH",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
+				}, {
+					Name:  "package",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+				}, {
+					Name:  "version",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+				},
+			}, {
+				{
+					Name:  "GOARCH",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+				}, {
+					Name:  "flags",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"},
+				}, {
+					Name:  "package",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+				}, {
+					Name:  "version",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+				},
+			}, {
+				{
+					Name:  "GOARCH",
+					Value: ParamValue{Type: ParamTypeString, StringVal: "I-do-not-exist"},
+				},
+			}},
+		}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if d := cmp.Diff(tt.want, tt.matrix.FanOut()); d != "" {

@@ -24,8 +24,10 @@ weight: 406
   - [Results from fanned out PipelineTasks](#results-from-fanned-out-pipelinetasks)
 - [Retries](#retries)
 - [Examples](#examples)
-  - [`PipelineTasks` with `Tasks`](#pipelinetasks-with-tasks)
-  - [`PipelineTasks` with `Custom Tasks`](#pipelinetasks-with-custom-tasks)
+  - [`Matrix` Combinations with `Matrix.Params` only](#-matrix--combinations-with--matrixparams--only)
+  - [`Matrix` Combinations with `Matrix.Params` and `Matrix.Include`](#-matrix--combinations-with--matrixparams--and--matrixinclude-)
+  - [`PipelineTasks` with `Tasks`](#-pipelinetasks--with--tasks-)
+  - [`PipelineTasks` with `Custom Tasks`](#-pipelinetasks--with--custom-tasks-)
 
 ## Overview
 
@@ -62,23 +64,93 @@ The `Matrix.Params` is used to generate combinations to fan out a `PipelineTask`
   ...
 ```
 
+Combinations generated
+
+```json!
+{ "platform": "linux", "browser": "safari" }
+{ "platform": "linux", "browser": "chrome"}
+{ "platform": "mac", "browser": "safari" }
+{ "platform": "mac", "browser": "chrome"}
+```
+[See another example](#-matrix--combinations-with--matrixparams--only)
+
 ### Explicit Combinations
 
-> :warning: This feature is in a preview mode.
-> It is still in a very early stage of development and is not yet fully functional.
-
-The `Matrix.Include` is used to add explicit combinations to fan out a `PipelineTask`, but is not yet functional.
+The `Matrix.Include` is used to add explicit combinations to fan out a `PipelineTask`.
 
 ```yaml
     matrix:
+      params:
+        - name: platform
+          value:
+          - linux
+          - mac
+        - name: browser
+          value:
+          - safari
+          - chrome
       include:
-        - name: s390x-no-race
+        - name: linux-url
           params:
-            - name: GOARCH
-              value: "linux/s390x"
-            - name: flags
-              value: "-cover -v"
+            - name: platform
+              value: linux
+            - name: url
+              value: some-url
+        - name: non-existent-browser
+          params:
+            - name: browser
+              value: "i-do-not-exist"
   ...
+```
+
+The first `Matrix.Include` clause adds `"url": "some-url"` only to the original `matrix` combinations that include `"platform": "linux"` and the second `Matrix.Include` clause cannot be added to any original `matrix` combination without overwriting any `params` of the original combinations, so it is added as an additional `matrix` combination:
+
+Combinations generated
+```json!
+{ "platform": "linux", "browser": "safari", "url": "some-url" }
+{ "platform": "linux", "browser": "chrome", "url": "some-url"}
+{ "platform": "mac", "browser": "safari" }
+{ "platform": "mac", "browser": "chrome"}
+{ "browser": "i-do-not-exist"}
+```
+
+[See another example](#-matrix--combinations-with--matrixparams--and--matrixinclude-)
+
+The `Matrix.Include` can also be used without `Matrix.Params` to generate explicit combinations to fan out a `PipelineTask`.
+
+```yaml
+    matrix:
+        include:
+          - name: build-1
+            params:
+              - name: IMAGE
+                value: "image-1"
+              - name: DOCKERFILE
+                value: "path/to/Dockerfile1"
+          - name: build-2
+            params:
+              - name: IMAGE
+                value: "image-2"
+              - name: DOCKERFILE
+                value: "path/to/Dockerfile2"
+          - name: build-3
+            params:
+              - name: IMAGE
+                value: "image-3"
+              - name: DOCKERFILE
+                value: "path/to/Dockerfile3"
+  ...
+```
+
+This configuration allows users to take advantage of `Matrix` to fan out without having an auto-populated `Matrix`. `Matrix` with include section without `Params` section creates the number of `TaskRuns` specified in the `Include` section with the specified `Parameters`.
+
+
+Combinations generated
+
+```json!
+{ "IMAGE": "image-1", "DOCKERFILE": "path/to/Dockerfile1" }
+{ "IMAGE": "image-2", "DOCKERFILE": "path/to/Dockerfile2"}
+{ "IMAGE": "image-3", "DOCKERFILE": "path/to/Dockerfile3}
 ```
 
 ## Concurrency Control
@@ -320,6 +392,123 @@ spec:
 ```
 
 ## Examples
+
+### `Matrix` Combinations with `Matrix.Params` only
+
+```yaml
+matrix:
+  params:
+    - name: GOARCH
+      value:
+        - "linux/amd64"
+        - "linux/ppc64le"
+        - "linux/s390x"
+    - name: version
+      value:
+        - "go1.17"
+        - "go1.18.1"
+```
+
+This `matrix` specification will result in six `taskRuns` with the following `matrix` combinations:
+
+```json!
+{ "GOARCH": "linux/amd64", "version": "go1.17" }
+{ "GOARCH": "linux/amd64", "version": "go1.18.1" }
+{ "GOARCH": "linux/ppc64le", "version": "go1.17" }
+{ "GOARCH": "linux/ppc64le", "version": "go1.18.1" }
+{ "GOARCH": "linux/s390x", "version": "go1.17" }
+{ "GOARCH": "linux/s390x", "version": "go1.18.1" }
+```
+
+Let's expand this use case to showcase a little more complex combinations in the next example.
+
+### `Matrix` Combinations with `Matrix.Params` and `Matrix.Include`
+
+Now, let's introduce `include` with a couple of `Parameters`: `"package"`, `"flags"` and `"context"`:
+
+```yaml
+      matrix:
+        params:
+          - name: GOARCH
+            value:
+              - "linux/amd64"
+              - "linux/ppc64le"
+              - "linux/s390x"
+          - name: version
+            value:
+              - "go1.17"
+              - "go1.18.1"
+        include:
+          - name: common-package
+            params:
+              - name: package
+                value: "path/to/common/package/"
+          - name: s390x-no-race
+            params:
+              - name: GOARCH
+                value: "linux/s390x"
+              - name: flags
+                value: "-cover -v"
+
+          - name: go117-context
+            params:
+              - name: version
+                value: "go1.17"
+              - name: context
+                value: "path/to/go117/context"
+          - name: non-existent-arch
+            params:
+                - name: GOARCH
+                  value: "I-do-not-exist"
+```
+
+The first `include` clause is added to all the original `matrix` combintations without overwriting any `parameters` of
+the original combinations:
+
+```json!
+{ "GOARCH": "linux/amd64", "version": "go1.17", **"package": "path/to/common/package/"** }
+{ "GOARCH": "linux/amd64", "version": "go1.18.1", **"package": "path/to/common/package/"** }
+{ "GOARCH": "linux/ppc64le", "version": "go1.17", **"package": "path/to/common/package/"** }
+{ "GOARCH": "linux/ppc64le", "version": "go1.18.1", **"package": "path/to/common/package/"** }
+{ "GOARCH": "linux/s390x", "version": "go1.17", **"package": "path/to/common/package/"** }
+{ "GOARCH": "linux/s390x", "version": "go1.18.1", **"package": "path/to/common/package/"** }
+```
+
+The second `include` clause adds `"flags": "-cover -v"` only to the original `matrix` combinations that include
+`"GOARCH": "linux/s390x"`:
+
+```json!
+{ "GOARCH": "linux/s390x", "version": "go1.17", "package": "path/to/common/package/", **"flags": "-cover -v"** }
+{ "GOARCH": "linux/s390x", "version": "go1.18.1", "package": "path/to/common/package/", **"flags": "-cover -v"** }
+```
+
+The third `include` clause adds `"context": "path/to/go117/context"` only to the original `matrix` combinations
+that include `"version": "go1.17"`:
+
+```json!
+{ "GOARCH": "linux/amd64", "version": "go1.17", "package": "path/to/common/package/", **"context": "path/to/go117/context"** }
+{ "GOARCH": "linux/ppc64le", "version": "go1.17", "package": "path/to/common/package/", **"context": "path/to/go117/context"** }
+{ "GOARCH": "linux/s390x", "version": "go1.17", "package": "path/to/common/package/", "flags": "-cover -v", **"context": "path/to/go117/context"** }
+```
+
+The fourth `include` clause cannot be added to any original `matrix` combination without overwriting any `params` of the
+original combinations, so it is added as an additional `matrix` combination:
+
+```json!
+* { **"GOARCH": "I-do-not-exist"** }
+```
+
+The above specification will result in seven `taskRuns` with the following matrix combinations:
+
+```json!
+{ "GOARCH": "linux/amd64", "version": "go1.17", "package": "path/to/common/package/", "context": "path/to/go117/context" }
+{ "GOARCH": "linux/amd64", "version": "go1.18.1", "package": "path/to/common/package/" }
+{ "GOARCH": "linux/ppc64le", "version": "go1.17", "package": "path/to/common/package/", "context": "path/to/go117/context" }
+{ "GOARCH": "linux/ppc64le", "version": "go1.18.1", "package": "path/to/common/package/" }
+{ "GOARCH": "linux/s390x", "version": "go1.17", "package": "path/to/common/package/", "flags": "-cover -v", "context": "path/to/go117/context" }
+{ "GOARCH": "linux/s390x", "version": "go1.18.1", "package": "path/to/common/package/", "flags": "-cover -v" }
+{ "GOARCH": "I-do-not-exist" }
+```
 
 ### `PipelineTasks` with `Tasks`
 

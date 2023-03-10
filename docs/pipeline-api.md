@@ -1481,8 +1481,7 @@ TaskSpec
 <h3 id="tekton.dev/v1.IncludeParams">IncludeParams
 </h3>
 <div>
-<p>IncludeParams allows passing in a specific combinations of Parameters into the Matrix.
-Note this struct is in preview mode and not yet supported</p>
+<p>IncludeParams allows passing in a specific combinations of Parameters into the Matrix.</p>
 </div>
 <table>
 <thead>
@@ -1562,8 +1561,7 @@ IncludeParamsList
 </td>
 <td>
 <em>(Optional)</em>
-<p>Include is a list of IncludeParams which allows passing in specific combinations of Parameters into the Matrix.
-Note that Include is in preview mode and not yet supported.</p>
+<p>Include is a list of IncludeParams which allows passing in specific combinations of Parameters into the Matrix.</p>
 </td>
 </tr>
 </tbody>
@@ -8614,8 +8612,7 @@ TaskSpec
 <h3 id="tekton.dev/v1beta1.IncludeParams">IncludeParams
 </h3>
 <div>
-<p>IncludeParams allows passing in a specific combinations of Parameters into the Matrix.
-Note this struct is in preview mode and not yet supported</p>
+<p>IncludeParams allows passing in a specific combinations of Parameters into the Matrix.</p>
 </div>
 <table>
 <thead>
@@ -8695,8 +8692,7 @@ IncludeParamsList
 </td>
 <td>
 <em>(Optional)</em>
-<p>Include is a list of IncludeParams which allows passing in specific combinations of Parameters into the Matrix.
-Note that Include is in preview mode and not yet supported.</p>
+<p>Include is a list of IncludeParams which allows passing in specific combinations of Parameters into the Matrix.</p>
 </td>
 </tr>
 </tbody>

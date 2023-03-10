@@ -1063,7 +1063,7 @@ func schema_pkg_apis_pipeline_v1beta1_IncludeParams(ref common.ReferenceCallback
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "IncludeParams allows passing in a specific combinations of Parameters into the Matrix. Note this struct is in preview mode and not yet supported",
+				Description: "IncludeParams allows passing in a specific combinations of Parameters into the Matrix.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"name": {
@@ -1133,7 +1133,7 @@ func schema_pkg_apis_pipeline_v1beta1_Matrix(ref common.ReferenceCallback) commo
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "Include is a list of IncludeParams which allows passing in specific combinations of Parameters into the Matrix. Note that Include is in preview mode and not yet supported.",
+							Description: "Include is a list of IncludeParams which allows passing in specific combinations of Parameters into the Matrix.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{

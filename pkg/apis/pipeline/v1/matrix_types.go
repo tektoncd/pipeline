@@ -35,7 +35,6 @@ type Matrix struct {
 	Params Params `json:"params,omitempty"`
 
 	// Include is a list of IncludeParams which allows passing in specific combinations of Parameters into the Matrix.
-	// Note that Include is in preview mode and not yet supported.
 	// +optional
 	// +listType=atomic
 	Include IncludeParamsList `json:"include,omitempty"`
@@ -45,7 +44,6 @@ type Matrix struct {
 type IncludeParamsList []IncludeParams
 
 // IncludeParams allows passing in a specific combinations of Parameters into the Matrix.
-// Note this struct is in preview mode and not yet supported
 type IncludeParams struct {
 	// Name the specified combination
 	Name string `json:"name,omitempty"`
@@ -64,11 +62,83 @@ type Combinations []Combination
 
 // FanOut returns an list of params that represent combinations
 func (m *Matrix) FanOut() []Params {
-	var combinations Combinations
+	var combinations, includeCombinations Combinations
+	includeCombinations = m.getIncludeCombinations()
+	if m.HasInclude() && !m.HasParams() {
+		// If there are only Matrix Include Parameters return explicit combinations
+		return includeCombinations.toParams()
+	}
+	// Generate combinations from Matrix Parameters
 	for _, parameter := range m.Params {
 		combinations = combinations.fanOutMatrixParams(parameter)
 	}
+	combinations = combinations.overwriteCombinations(includeCombinations)
+	combinations = combinations.addNewCombinations(includeCombinations)
 	return combinations.toParams()
+}
+
+// overwriteCombinations replaces any missing include params in the initial
+// matrix params combinations by overwriting the initial combinations with the
+// include combinations
+func (cs Combinations) overwriteCombinations(ics Combinations) Combinations {
+	for _, paramCombination := range cs {
+		for _, includeCombination := range ics {
+			if paramCombination.contains(includeCombination) {
+				includeCombination.overwrite(paramCombination)
+			}
+		}
+	}
+	return cs
+}
+
+// addNewCombinations creates a new combination for any include parameter
+// values that are missing entirely from the initial combinations and
+// returns all combinations
+func (cs Combinations) addNewCombinations(ics Combinations) Combinations {
+	for _, includeCombination := range ics {
+		if cs.shouldAddNewCombination(includeCombination) {
+			cs = append(cs, includeCombination)
+		}
+	}
+	return cs
+}
+
+// contains returns true if the include parameter name and value exists in combinations
+func (c Combination) contains(includeCombination Combination) bool {
+	for name, val := range includeCombination {
+		if _, exist := c[name]; exist {
+			if c[name] != val {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// overwrite the parameter name and value exists in combination with the include combination
+func (c Combination) overwrite(oldCombination Combination) Combination {
+	for name, val := range c {
+		oldCombination[name] = val
+	}
+	return oldCombination
+}
+
+// shouldAddNewCombination returns true if the include parameter name exists but the value is
+// missing from combinations
+func (cs Combinations) shouldAddNewCombination(includeCombination map[string]string) bool {
+	if len(includeCombination) == 0 {
+		return false
+	}
+	for _, paramCombination := range cs {
+		for name, val := range includeCombination {
+			if _, exist := paramCombination[name]; exist {
+				if paramCombination[name] == val {
+					return false
+				}
+			}
+		}
+	}
+	return true
 }
 
 // toParams transforms Combinations from a slice of map[string]string to a slice of Params
@@ -96,6 +166,20 @@ func (cs Combinations) fanOutMatrixParams(param Param) Combinations {
 		return initializeCombinations(param)
 	}
 	return cs.distribute(param)
+}
+
+// getIncludeCombinations generates combinations based on Matrix Include Parameters
+func (m *Matrix) getIncludeCombinations() Combinations {
+	var combinations Combinations
+	for i := range m.Include {
+		includeParams := m.Include[i].Params
+		newCombination := make(Combination)
+		for _, param := range includeParams {
+			newCombination[param.Name] = param.Value.StringVal
+		}
+		combinations = append(combinations, newCombination)
+	}
+	return combinations
 }
 
 // distribute generates a new Combination of Parameters by adding a new Parameter to an existing list of Combinations.
