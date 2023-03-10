@@ -3260,7 +3260,15 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 				Params: []v1beta1.Param{{
 					Name:  "retries",
 					Value: *v1beta1.NewStructuredValues("$(context.pipelineTask.retries)"),
-				}}},
+				}},
+				Include: []v1beta1.MatrixInclude{{
+					Name: "build-1",
+					Params: []v1beta1.Param{{
+						Name:  "retries",
+						Value: *v1beta1.NewStructuredValues("$(context.pipelineTask.retries)"),
+					}},
+				}},
+			},
 		},
 		want: v1beta1.PipelineTask{
 			Retries: 5,
@@ -3272,7 +3280,15 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 				Params: []v1beta1.Param{{
 					Name:  "retries",
 					Value: *v1beta1.NewStructuredValues("5"),
-				}}},
+				}},
+				Include: []v1beta1.MatrixInclude{{
+					Name: "build-1",
+					Params: []v1beta1.Param{{
+						Name:  "retries",
+						Value: *v1beta1.NewStructuredValues("5"),
+					}},
+				}},
+			},
 		},
 	}, {
 		description: "context retries replacement with no defined retries",
@@ -3285,7 +3301,15 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 				Params: []v1beta1.Param{{
 					Name:  "retries",
 					Value: *v1beta1.NewStructuredValues("$(context.pipelineTask.retries)"),
-				}}},
+				}},
+				Include: []v1beta1.MatrixInclude{{
+					Name: "build-1",
+					Params: []v1beta1.Param{{
+						Name:  "retries",
+						Value: *v1beta1.NewStructuredValues("$(context.pipelineTask.retries)"),
+					}},
+				}},
+			},
 		},
 		want: v1beta1.PipelineTask{
 			Params: []v1beta1.Param{{
@@ -3296,7 +3320,15 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 				Params: []v1beta1.Param{{
 					Name:  "retries",
 					Value: *v1beta1.NewStructuredValues("0"),
-				}}},
+				}},
+				Include: []v1beta1.MatrixInclude{{
+					Name: "build-1",
+					Params: []v1beta1.Param{{
+						Name:  "retries",
+						Value: *v1beta1.NewStructuredValues("0"),
+					}},
+				}},
+			},
 		},
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
