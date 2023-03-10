@@ -193,6 +193,19 @@ func (m *Matrix) hasParams() bool {
 	return m != nil && m.Params != nil && len(m.Params) > 0
 }
 
+func (m *Matrix) getParamNames() []string {
+	var names []string
+	if m.hasParams() {
+		names = m.Params.extractNames()
+	}
+	if m.hasInclude() {
+		for _, include := range m.Include {
+			names = append(names, include.Params.extractNames()...)
+		}
+	}
+	return names
+}
+
 func (m *Matrix) validateCombinationsCount(ctx context.Context) (errs *apis.FieldError) {
 	matrixCombinationsCount := m.CountCombinations()
 	maxMatrixCombinationsCount := config.FromContextOrDefaults(ctx).Defaults.DefaultMaxMatrixCombinationsCount
@@ -255,14 +268,9 @@ func (m *Matrix) validatePipelineParametersVariablesInMatrixParameters(prefix st
 }
 
 func (m *Matrix) validateParameterInOneOfMatrixOrParams(params []Param) (errs *apis.FieldError) {
-	matrixParameterNames := sets.NewString()
-	if m != nil {
-		for _, param := range m.Params {
-			matrixParameterNames.Insert(param.Name)
-		}
-	}
+	matrixParamNames := sets.NewString(m.getParamNames()...)
 	for _, param := range params {
-		if matrixParameterNames.Has(param.Name) {
+		if matrixParamNames.Has(param.Name) {
 			errs = errs.Also(apis.ErrMultipleOneOf("matrix["+param.Name+"]", "params["+param.Name+"]"))
 		}
 	}

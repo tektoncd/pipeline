@@ -594,7 +594,7 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		pt       *PipelineTask
 		wantErrs *apis.FieldError
 	}{{
-		name: "parameter duplicated in matrix and params",
+		name: "parameter duplicated in matrix.params and pipelinetask.params",
 		pt: &PipelineTask{
 			Name: "task",
 			Matrix: &Matrix{
@@ -606,6 +606,22 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 			}},
 		},
 		wantErrs: apis.ErrMultipleOneOf("matrix[foobar]", "params[foobar]"),
+	}, {
+		name: "parameter duplicated in matrix.include.params and pipelinetask.params",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: &Matrix{
+				Include: []MatrixInclude{{
+					Name: "duplicate-param",
+					Params: Params{{
+						Name: "duplicate", Value: ParamValue{Type: ParamTypeString, StringVal: "foo"},
+					}}},
+				}},
+			Params: []Param{{
+				Name: "duplicate", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}},
+		},
+		wantErrs: apis.ErrMultipleOneOf("matrix[duplicate]", "params[duplicate]"),
 	}, {
 		name: "duplicate parameters in matrix.params",
 		pt: &PipelineTask{
