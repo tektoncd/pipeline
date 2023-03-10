@@ -1,0 +1,68 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: mytask
+  annotations:
+    description: |
+      A task that does something cool with GOARCH and version
+spec:
+  params:
+    - name: GOARCH
+      default: ''
+    - name: version
+      default: ''
+    - name: flags
+      default: ''
+    - name: context
+      default: ''
+    - name: package
+      default: ''
+  steps:
+    - name: echo
+      image: alpine
+      script: |
+        echo $(params.GOARCH) and $(params.version) flags? $(params.flags) context? $(params.context) package? $(params.package)
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: matrixed-include-pr
+spec:
+  serviceAccountName: default
+  pipelineSpec:
+    tasks:
+      - name: matrix-include
+        matrix:
+          params:
+            - name: GOARCH
+              value:
+                - linux/amd64
+                - linux/ppc64le
+                - linux/s390x
+            - name: version
+              value:
+                - go1.17
+                - go1.18.1
+          include:
+            - name: common-package
+              params:
+                - name: package
+                  value: path/to/common/package/
+            - name: s390x-no-race
+              params:
+                - name: GOARCH
+                  value: linux/s390x
+                - name: flags
+                  value: '-cover -v'
+            - name: go117-context
+              params:
+                - name: version
+                  value: go1.17
+                - name: context
+                  value: path/to/go117/context
+            - name: non-existent-arch
+              params:
+                - name: GOARCH
+                  value: I-do-not-exist
+        taskRef:
+          name: mytask

@@ -1,0 +1,48 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: mytask
+  annotations:
+    description: |
+      A task that echoes image and dockerfile
+spec:
+  params:
+    - name: IMAGE
+    - name: DOCKERFILE
+  steps:
+    - name: echo
+      image: alpine
+      script: |
+        echo "$(params.IMAGE) and $(params.DOCKERFILE)"
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: explicit-combos
+spec:
+  serviceAccountName: 'default'
+  pipelineSpec:
+    tasks:
+      - name: matrix-include
+        matrix:
+          include:
+            - name: build-1
+              params:
+                - name: IMAGE
+                  value: image-1
+                - name: DOCKERFILE
+                  value: path/to/Dockerfile1
+            - name: build-2
+              params:
+                - name: IMAGE
+                  value: image-2
+                - name: DOCKERFILE
+                  value: path/to/Dockerfile2
+            - name: build-3
+              params:
+                - name: IMAGE
+                  value: image-3
+                - name: DOCKERFILE
+                  value: path/to/Dockerfile3
+        taskRef:
+          name: mytask
