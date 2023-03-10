@@ -112,7 +112,15 @@ type Param struct {
 // Params is a list of Param
 type Params []Param
 
-func (ps Params) extractParamValues() []string {
+func (ps Params) extractNames() []string {
+	names := []string{}
+	for _, p := range ps {
+		names = append(names, p.Name)
+	}
+	return names
+}
+
+func (ps Params) extractValues() []string {
 	pvs := []string{}
 	for i := range ps {
 		pvs = append(pvs, ps[i].Value.StringVal)

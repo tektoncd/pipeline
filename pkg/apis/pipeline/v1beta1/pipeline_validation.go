@@ -183,7 +183,7 @@ func validatePipelineContextVariables(tasks []PipelineTask) *apis.FieldError {
 	)
 	var paramValues []string
 	for _, task := range tasks {
-		paramValues = task.extractAllParams().extractParamValues()
+		paramValues = task.extractAllParams().extractValues()
 	}
 	errs := validatePipelineContextVariablesInParamValues(paramValues, "context\\.pipelineRun", pipelineRunContextNames).
 		Also(validatePipelineContextVariablesInParamValues(paramValues, "context\\.pipeline", pipelineContextNames)).
@@ -423,9 +423,9 @@ func (ps *PipelineSpec) ValidateParamArrayIndex(ctx context.Context, params Para
 
 	paramsRefs := []string{}
 	for i := range ps.Tasks {
-		paramsRefs = append(paramsRefs, ps.Tasks[i].Params.extractParamValues()...)
+		paramsRefs = append(paramsRefs, ps.Tasks[i].Params.extractValues()...)
 		if ps.Tasks[i].IsMatrixed() {
-			paramsRefs = append(paramsRefs, ps.Tasks[i].Matrix.Params.extractParamValues()...)
+			paramsRefs = append(paramsRefs, ps.Tasks[i].Matrix.Params.extractValues()...)
 		}
 		for j := range ps.Tasks[i].Workspaces {
 			paramsRefs = append(paramsRefs, ps.Tasks[i].Workspaces[j].SubPath)
@@ -437,9 +437,9 @@ func (ps *PipelineSpec) ValidateParamArrayIndex(ctx context.Context, params Para
 	}
 
 	for i := range ps.Finally {
-		paramsRefs = append(paramsRefs, ps.Finally[i].Params.extractParamValues()...)
+		paramsRefs = append(paramsRefs, ps.Finally[i].Params.extractValues()...)
 		if ps.Finally[i].IsMatrixed() {
-			paramsRefs = append(paramsRefs, ps.Finally[i].Matrix.Params.extractParamValues()...)
+			paramsRefs = append(paramsRefs, ps.Finally[i].Matrix.Params.extractValues()...)
 		}
 		for _, wes := range ps.Finally[i].WhenExpressions {
 			paramsRefs = append(paramsRefs, wes.Values...)
