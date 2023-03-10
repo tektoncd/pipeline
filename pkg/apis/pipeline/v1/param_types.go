@@ -116,8 +116,7 @@ type Param struct {
 	Value ParamValue `json:"value"`
 }
 
-// extractParamValuesFromParams get all param values from params
-func (ps Params) extractParamValuesFromParams() []string {
+func (ps Params) extractParamValues() []string {
 	pvs := []string{}
 	for i := range ps {
 		pvs = append(pvs, ps[i].Value.StringVal)

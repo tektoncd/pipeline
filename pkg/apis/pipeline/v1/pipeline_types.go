@@ -267,6 +267,23 @@ func (pt *PipelineTask) IsMatrixed() bool {
 	return pt.Matrix != nil && (pt.Matrix.hasParams() || pt.Matrix.hasInclude())
 }
 
+// extractAllParams extracts all the parameters in a PipelineTask:
+// - pt.Params
+// - pt.Matrix.Params
+// - pt.Matrix.Include.Params
+func (pt *PipelineTask) extractAllParams() Params {
+	allParams := pt.Params
+	if pt.Matrix.hasParams() {
+		allParams = append(allParams, pt.Matrix.Params...)
+	}
+	if pt.Matrix.hasInclude() {
+		for _, include := range pt.Matrix.Include {
+			allParams = append(allParams, include.Params...)
+		}
+	}
+	return allParams
+}
+
 func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldError) {
 	if pt.IsMatrixed() {
 		// This is an alpha feature and will fail validation if it's used in a pipeline spec

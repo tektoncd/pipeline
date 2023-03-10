@@ -183,26 +183,7 @@ func validatePipelineContextVariables(tasks []PipelineTask) *apis.FieldError {
 	)
 	var paramValues []string
 	for _, task := range tasks {
-		var matrixParams []Param
-		var includeParams []Param
-		if task.IsMatrixed() {
-			matrixParams = task.Matrix.Params
-			if task.Matrix.hasInclude() {
-				for _, include := range task.Matrix.Include {
-					includeParams = include.Params
-				}
-			}
-		}
-		for _, param := range append(task.Params, matrixParams...) {
-			paramValues = append(paramValues, param.Value.StringVal)
-			paramValues = append(paramValues, param.Value.ArrayVal...)
-		}
-
-		if task.Matrix.hasInclude() {
-			for _, param := range append(task.Params, includeParams...) {
-				paramValues = append(paramValues, param.Value.StringVal)
-			}
-		}
+		paramValues = task.extractAllParams().extractParamValues()
 	}
 	errs := validatePipelineContextVariablesInParamValues(paramValues, "context\\.pipelineRun", pipelineRunContextNames).
 		Also(validatePipelineContextVariablesInParamValues(paramValues, "context\\.pipeline", pipelineContextNames)).
@@ -442,9 +423,9 @@ func (ps *PipelineSpec) ValidateParamArrayIndex(ctx context.Context, params Para
 
 	paramsRefs := []string{}
 	for i := range ps.Tasks {
-		paramsRefs = append(paramsRefs, ps.Tasks[i].Params.extractParamValuesFromParams()...)
+		paramsRefs = append(paramsRefs, ps.Tasks[i].Params.extractParamValues()...)
 		if ps.Tasks[i].IsMatrixed() {
-			paramsRefs = append(paramsRefs, ps.Tasks[i].Matrix.Params.extractParamValuesFromParams()...)
+			paramsRefs = append(paramsRefs, ps.Tasks[i].Matrix.Params.extractParamValues()...)
 		}
 		for j := range ps.Tasks[i].Workspaces {
 			paramsRefs = append(paramsRefs, ps.Tasks[i].Workspaces[j].SubPath)
@@ -456,9 +437,9 @@ func (ps *PipelineSpec) ValidateParamArrayIndex(ctx context.Context, params Para
 	}
 
 	for i := range ps.Finally {
-		paramsRefs = append(paramsRefs, ps.Finally[i].Params.extractParamValuesFromParams()...)
+		paramsRefs = append(paramsRefs, ps.Finally[i].Params.extractParamValues()...)
 		if ps.Finally[i].IsMatrixed() {
-			paramsRefs = append(paramsRefs, ps.Finally[i].Matrix.Params.extractParamValuesFromParams()...)
+			paramsRefs = append(paramsRefs, ps.Finally[i].Matrix.Params.extractParamValues()...)
 		}
 		for _, wes := range ps.Finally[i].WhenExpressions {
 			paramsRefs = append(paramsRefs, wes.Values...)
