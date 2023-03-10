@@ -72,7 +72,7 @@ func missingParamsNames(neededParams sets.String, providedParams sets.String, pa
 	}
 	return missingParamsNamesWithNoDefaults
 }
-func wrongTypeParamsNames(params []v1beta1.Param, matrix []v1beta1.Param, neededParamsTypes map[string]v1beta1.ParamType) []string {
+func wrongTypeParamsNames(params []v1beta1.Param, matrix v1beta1.Params, neededParamsTypes map[string]v1beta1.ParamType) []string {
 	// TODO(#4723): validate that $(task.taskname.result.resultname) is invalid for array and object type.
 	// It should be used to refer string and need to add [*] to refer to array or object.
 	var wrongTypeParamNames []string
@@ -107,7 +107,7 @@ func wrongTypeParamsNames(params []v1beta1.Param, matrix []v1beta1.Param, needed
 }
 
 // MissingKeysObjectParamNames checks if all required keys of object type param definitions are provided in params or param definitions' defaults.
-func MissingKeysObjectParamNames(paramSpecs []v1beta1.ParamSpec, params []v1beta1.Param) map[string][]string {
+func MissingKeysObjectParamNames(paramSpecs []v1beta1.ParamSpec, params v1beta1.Params) map[string][]string {
 	neededKeys := make(map[string][]string)
 	providedKeys := make(map[string][]string)
 
@@ -159,7 +159,7 @@ func findMissingKeys(neededKeys, providedKeys map[string][]string) map[string][]
 // ValidateResolvedTask validates that all parameters declared in the TaskSpec are present in the taskrun
 // It also validates that all parameters have values, parameter types match the specified type and
 // object params have all the keys required
-func ValidateResolvedTask(ctx context.Context, params []v1beta1.Param, matrix *v1beta1.Matrix, rtr *resources.ResolvedTask) error {
+func ValidateResolvedTask(ctx context.Context, params v1beta1.Params, matrix *v1beta1.Matrix, rtr *resources.ResolvedTask) error {
 	if err := validateParams(ctx, rtr.TaskSpec.Params, params, matrix.GetAllParams()); err != nil {
 		return fmt.Errorf("invalid input params for task %s: %w", rtr.TaskName, err)
 	}

@@ -239,7 +239,7 @@ func (ps *PipelineRunSpec) validateInlineParameters(ctx context.Context) (errs *
 	return errs
 }
 
-func appendPipelineTaskParams(paramSpecForValidation map[string]ParamSpec, params []Param) map[string]ParamSpec {
+func appendPipelineTaskParams(paramSpecForValidation map[string]ParamSpec, params Params) map[string]ParamSpec {
 	for _, p := range params {
 		if pSpec, ok := paramSpecForValidation[p.Name]; ok {
 			if p.Value.ObjectVal != nil {

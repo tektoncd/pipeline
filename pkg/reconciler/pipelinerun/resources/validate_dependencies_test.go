@@ -36,7 +36,7 @@ func TestValidatePipelineTaskResults_ValidStates(t *testing.T) {
 		state: PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name: "pt1",
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "p1",
 					Value: *v1beta1.NewStructuredValues("foo"),
 				}},
@@ -59,7 +59,7 @@ func TestValidatePipelineTaskResults_ValidStates(t *testing.T) {
 		}, {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name: "pt2",
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "p",
 					Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.result)"),
 				}},
@@ -83,7 +83,7 @@ func TestValidatePipelineTaskResults_ValidStates(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name: "pt2",
 				Matrix: &v1beta1.Matrix{
-					Params: []v1beta1.Param{{
+					Params: v1beta1.Params{{
 						Name:  "p",
 						Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.result)", "foo"),
 					}}},
@@ -100,7 +100,7 @@ func TestValidatePipelineTaskResults_ValidStates(t *testing.T) {
 		}, {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name: "pt2",
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "p",
 					Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.a-dynamic-custom-task-result)"),
 				}},
@@ -127,7 +127,7 @@ func TestValidatePipelineTaskResults_IncorrectTaskName(t *testing.T) {
 		state: PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name: "pt1",
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "p1",
 					Value: *v1beta1.NewStructuredValues(missingPipelineTaskVariable),
 				}},
@@ -138,7 +138,7 @@ func TestValidatePipelineTaskResults_IncorrectTaskName(t *testing.T) {
 		state: PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name: "pt1",
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "p1",
 					Value: *v1beta1.NewStructuredValues(missingPipelineTaskVariable, "foo"),
 				}},
@@ -192,7 +192,7 @@ func TestValidatePipelineTaskResults_IncorrectResultName(t *testing.T) {
 		state: PipelineRunState{pt1, {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name: "pt2",
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "p1",
 					Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.result1)"),
 				}},
@@ -204,7 +204,7 @@ func TestValidatePipelineTaskResults_IncorrectResultName(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name: "pt2",
 				Matrix: &v1beta1.Matrix{
-					Params: []v1beta1.Param{{
+					Params: v1beta1.Params{{
 						Name:  "p1",
 						Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.result1)", "$(tasks.pt1.results.result2)"),
 					}}},
@@ -249,7 +249,7 @@ func TestValidatePipelineTaskResults_MissingTaskSpec(t *testing.T) {
 	state := PipelineRunState{pt1, {
 		PipelineTask: &v1beta1.PipelineTask{
 			Name: "pt2",
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "p1",
 				Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.result1)"),
 			}},
@@ -258,7 +258,7 @@ func TestValidatePipelineTaskResults_MissingTaskSpec(t *testing.T) {
 		PipelineTask: &v1beta1.PipelineTask{
 			Name: "pt3",
 			Matrix: &v1beta1.Matrix{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "p1",
 					Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.result1)", "$(tasks.pt1.results.result2)"),
 				}}},

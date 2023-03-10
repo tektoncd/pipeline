@@ -35,7 +35,7 @@ type Resolver struct {
 	requester       remoteresource.Requester
 	owner           kmeta.OwnerRefable
 	resolverName    string
-	params          []v1beta1.Param
+	params          v1beta1.Params
 	targetName      string
 	targetNamespace string
 }
@@ -44,7 +44,7 @@ var _ remote.Resolver = &Resolver{}
 
 // NewResolver returns an implementation of remote.Resolver capable
 // of performing asynchronous remote resolution.
-func NewResolver(requester remoteresource.Requester, owner kmeta.OwnerRefable, resolverName string, targetName string, targetNamespace string, params []v1beta1.Param) remote.Resolver {
+func NewResolver(requester remoteresource.Requester, owner kmeta.OwnerRefable, resolverName string, targetName string, targetNamespace string, params v1beta1.Params) remote.Resolver {
 	return &Resolver{
 		requester:       requester,
 		owner:           owner,
@@ -88,7 +88,7 @@ func (resolver *Resolver) List(_ context.Context) ([]remote.ResolvedObject, erro
 	return nil, nil
 }
 
-func buildRequest(resolverName string, owner kmeta.OwnerRefable, name string, namespace string, params []v1beta1.Param) (*resolutionRequest, error) {
+func buildRequest(resolverName string, owner kmeta.OwnerRefable, name string, namespace string, params v1beta1.Params) (*resolutionRequest, error) {
 	if name == "" {
 		name = owner.GetObjectMeta().GetName()
 		namespace = owner.GetObjectMeta().GetNamespace()

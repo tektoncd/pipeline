@@ -554,7 +554,7 @@ func (in *PipelineRunSpec) DeepCopyInto(out *PipelineRunSpec) {
 	}
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
-		*out = make([]Param, len(*in))
+		*out = make(Params, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -1026,7 +1026,7 @@ func (in *ResolverRef) DeepCopyInto(out *ResolverRef) {
 	*out = *in
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
-		*out = make([]Param, len(*in))
+		*out = make(Params, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -1511,7 +1511,7 @@ func (in *TaskRunInputs) DeepCopyInto(out *TaskRunInputs) {
 	*out = *in
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
-		*out = make([]Param, len(*in))
+		*out = make(Params, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -1606,7 +1606,7 @@ func (in *TaskRunSpec) DeepCopyInto(out *TaskRunSpec) {
 	}
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
-		*out = make([]Param, len(*in))
+		*out = make(Params, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

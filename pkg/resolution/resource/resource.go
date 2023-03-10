@@ -44,7 +44,7 @@ type Requester interface {
 type Request interface {
 	Name() string
 	Namespace() string
-	Params() []pipelinev1beta1.Param
+	Params() pipelinev1beta1.Params
 }
 
 // OwnedRequest is implemented by any type implementing Request that also needs

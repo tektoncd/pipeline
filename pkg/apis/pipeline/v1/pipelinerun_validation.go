@@ -190,7 +190,7 @@ func appendParamSpec(paramSpec []ParamSpec, params []ParamSpec) []ParamSpec {
 	return paramSpec
 }
 
-func appendParam(paramSpec []ParamSpec, params []Param) []ParamSpec {
+func appendParam(paramSpec []ParamSpec, params Params) []ParamSpec {
 	for _, p := range params {
 		skip := false
 		for _, ps := range paramSpec {

@@ -814,7 +814,7 @@ func resolvePipelineTaskResources(pt v1beta1.PipelineTask, ts *v1beta1.TaskSpec,
 }
 
 func (t *ResolvedPipelineTask) hasResultReferences() bool {
-	var matrixParams []v1beta1.Param
+	var matrixParams v1beta1.Params
 	if t.PipelineTask.IsMatrixed() {
 		matrixParams = t.PipelineTask.Params
 	}

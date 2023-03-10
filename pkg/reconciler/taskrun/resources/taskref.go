@@ -134,7 +134,7 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 		// Return an inline function that implements GetTask by calling Resolver.Get with the specified task type and
 		// casting it to a TaskObject.
 		return func(ctx context.Context, name string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error) {
-			var replacedParams []v1beta1.Param
+			var replacedParams v1beta1.Params
 			if ownerAsTR, ok := owner.(*v1beta1.TaskRun); ok {
 				stringReplacements, arrayReplacements := paramsFromTaskRun(ctx, ownerAsTR)
 				for k, v := range getContextReplacements("", ownerAsTR) {

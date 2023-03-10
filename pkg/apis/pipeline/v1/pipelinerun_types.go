@@ -223,7 +223,7 @@ type PipelineRunSpec struct {
 	PipelineSpec *PipelineSpec `json:"pipelineSpec,omitempty"`
 	// Params is a list of parameter names and values.
 	// +listType=atomic
-	Params []Param `json:"params,omitempty"`
+	Params Params `json:"params,omitempty"`
 
 	// Used for cancelling a pipelinerun (and maybe more later on)
 	// +optional

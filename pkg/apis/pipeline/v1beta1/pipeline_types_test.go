@@ -243,7 +243,7 @@ func TestPipelineTask_ValidateRegularTask_Success(t *testing.T) {
 	}, {
 		name: "pipeline task - use of params",
 		tasks: PipelineTask{
-			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Params: []Param{}}},
+			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Params: Params{}}},
 		},
 	}, {
 		name: "pipeline task - use of bundle with the feature flag set",

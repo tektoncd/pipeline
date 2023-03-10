@@ -223,7 +223,7 @@ spec:
 	}
 
 	// Validate the task's result reference to the custom task's result was resolved.
-	expectedTaskRunParams := []v1beta1.Param{{
+	expectedTaskRunParams := v1beta1.Params{{
 		Name: "input-result-from-custom-task-ref", Value: *v1beta1.NewStructuredValues("aResultValue"),
 	}, {
 		Name: "input-result-from-custom-task-spec", Value: *v1beta1.NewStructuredValues("aResultValue"),
@@ -523,7 +523,7 @@ func TestWaitCustomTask_Run(t *testing.T) {
 						APIVersion: apiVersion,
 						Kind:       kind,
 					},
-					Params: []v1beta1.Param{{Name: "duration", Value: v1beta1.ParamValue{Type: "string", StringVal: tc.duration}}},
+					Params: v1beta1.Params{{Name: "duration", Value: v1beta1.ParamValue{Type: "string", StringVal: tc.duration}}},
 				},
 			}
 
@@ -560,7 +560,7 @@ func TestWaitCustomTask_Run(t *testing.T) {
 						APIVersion: apiVersion,
 						Kind:       kind,
 					},
-					Params:             []v1beta1.Param{{Name: "duration", Value: v1beta1.ParamValue{Type: "string", StringVal: tc.duration}}},
+					Params:             v1beta1.Params{{Name: "duration", Value: v1beta1.ParamValue{Type: "string", StringVal: tc.duration}}},
 					ServiceAccountName: "default",
 				},
 				Status: v1alpha1.RunStatus{
@@ -753,7 +753,7 @@ func TestWaitCustomTask_PipelineRun(t *testing.T) {
 							APIVersion: apiVersion,
 							Kind:       kind,
 						},
-						Params: []v1beta1.Param{{Name: "duration", Value: v1beta1.ParamValue{Type: "string", StringVal: tc.runDuration}}},
+						Params: v1beta1.Params{{Name: "duration", Value: v1beta1.ParamValue{Type: "string", StringVal: tc.runDuration}}},
 					}},
 				},
 			}
@@ -818,7 +818,7 @@ func TestWaitCustomTask_PipelineRun(t *testing.T) {
 										APIVersion: apiVersion,
 										Kind:       kind,
 									},
-									Params: []v1beta1.Param{{
+									Params: v1beta1.Params{{
 										Name:  "duration",
 										Value: v1beta1.ParamValue{Type: "string", StringVal: tc.runDuration},
 									}},
@@ -1041,7 +1041,7 @@ func TestWaitCustomTask_V1Beta1_PipelineRun(t *testing.T) {
 							APIVersion: betaAPIVersion,
 							Kind:       kind,
 						},
-						Params: []v1beta1.Param{{Name: "duration", Value: v1beta1.ParamValue{Type: "string", StringVal: tc.customRunDuration}}},
+						Params: v1beta1.Params{{Name: "duration", Value: v1beta1.ParamValue{Type: "string", StringVal: tc.customRunDuration}}},
 					}},
 				},
 			}
@@ -1106,7 +1106,7 @@ func TestWaitCustomTask_V1Beta1_PipelineRun(t *testing.T) {
 										APIVersion: betaAPIVersion,
 										Kind:       kind,
 									},
-									Params: []v1beta1.Param{{
+									Params: v1beta1.Params{{
 										Name:  "duration",
 										Value: v1beta1.ParamValue{Type: "string", StringVal: tc.customRunDuration},
 									}},

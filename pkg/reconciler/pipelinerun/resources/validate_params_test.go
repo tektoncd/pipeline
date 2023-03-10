@@ -31,21 +31,21 @@ func TestValidateParamTypesMatching_Valid(t *testing.T) {
 		name        string
 		description string
 		pp          []v1beta1.ParamSpec
-		prp         []v1beta1.Param
+		prp         v1beta1.Params
 	}{{
 		name: "proper param types",
 		pp: []v1beta1.ParamSpec{
 			{Name: "correct-type-1", Type: v1beta1.ParamTypeString},
 			{Name: "correct-type-2", Type: v1beta1.ParamTypeArray},
 		},
-		prp: []v1beta1.Param{
+		prp: v1beta1.Params{
 			{Name: "correct-type-1", Value: stringValue},
 			{Name: "correct-type-2", Value: arrayValue},
 		},
 	}, {
 		name: "no params to get wrong",
 		pp:   []v1beta1.ParamSpec{},
-		prp:  []v1beta1.Param{},
+		prp:  v1beta1.Params{},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ps := &v1beta1.PipelineSpec{Params: tc.pp}
@@ -69,7 +69,7 @@ func TestValidateParamTypesMatching_Invalid(t *testing.T) {
 		name        string
 		description string
 		pp          []v1beta1.ParamSpec
-		prp         []v1beta1.Param
+		prp         v1beta1.Params
 	}{{
 		name: "string-array mismatch",
 		pp: []v1beta1.ParamSpec{
@@ -77,7 +77,7 @@ func TestValidateParamTypesMatching_Invalid(t *testing.T) {
 			{Name: "correct-type-2", Type: v1beta1.ParamTypeArray},
 			{Name: "incorrect-type", Type: v1beta1.ParamTypeString},
 		},
-		prp: []v1beta1.Param{
+		prp: v1beta1.Params{
 			{Name: "correct-type-1", Value: stringValue},
 			{Name: "correct-type-2", Value: arrayValue},
 			{Name: "incorrect-type", Value: arrayValue},
@@ -89,7 +89,7 @@ func TestValidateParamTypesMatching_Invalid(t *testing.T) {
 			{Name: "correct-type-2", Type: v1beta1.ParamTypeArray},
 			{Name: "incorrect-type", Type: v1beta1.ParamTypeArray},
 		},
-		prp: []v1beta1.Param{
+		prp: v1beta1.Params{
 			{Name: "correct-type-1", Value: stringValue},
 			{Name: "correct-type-2", Value: arrayValue},
 			{Name: "incorrect-type", Value: stringValue},
@@ -117,13 +117,13 @@ func TestValidateRequiredParametersProvided_Valid(t *testing.T) {
 		name        string
 		description string
 		pp          v1beta1.ParamSpecs
-		prp         []v1beta1.Param
+		prp         v1beta1.Params
 	}{{
 		name: "required string params provided",
 		pp: []v1beta1.ParamSpec{
 			{Name: "required-string-param", Type: v1beta1.ParamTypeString},
 		},
-		prp: []v1beta1.Param{
+		prp: v1beta1.Params{
 			{Name: "required-string-param", Value: stringValue},
 		},
 	}, {
@@ -131,7 +131,7 @@ func TestValidateRequiredParametersProvided_Valid(t *testing.T) {
 		pp: []v1beta1.ParamSpec{
 			{Name: "required-array-param", Type: v1beta1.ParamTypeArray},
 		},
-		prp: []v1beta1.Param{
+		prp: v1beta1.Params{
 			{Name: "required-array-param", Value: arrayValue},
 		},
 	}, {
@@ -139,7 +139,7 @@ func TestValidateRequiredParametersProvided_Valid(t *testing.T) {
 		pp: []v1beta1.ParamSpec{
 			{Name: "string-param", Type: v1beta1.ParamTypeString, Default: &stringValue},
 		},
-		prp: []v1beta1.Param{
+		prp: v1beta1.Params{
 			{Name: "another-string-param", Value: stringValue},
 		},
 	}} {
@@ -159,13 +159,13 @@ func TestValidateRequiredParametersProvided_Invalid(t *testing.T) {
 		name        string
 		description string
 		pp          v1beta1.ParamSpecs
-		prp         []v1beta1.Param
+		prp         v1beta1.Params
 	}{{
 		name: "required string param missing",
 		pp: []v1beta1.ParamSpec{
 			{Name: "required-string-param", Type: v1beta1.ParamTypeString},
 		},
-		prp: []v1beta1.Param{
+		prp: v1beta1.Params{
 			{Name: "another-string-param", Value: stringValue},
 		},
 	}, {
@@ -173,7 +173,7 @@ func TestValidateRequiredParametersProvided_Invalid(t *testing.T) {
 		pp: []v1beta1.ParamSpec{
 			{Name: "required-array-param", Type: v1beta1.ParamTypeArray},
 		},
-		prp: []v1beta1.Param{
+		prp: v1beta1.Params{
 			{Name: "another-array-param", Value: arrayValue},
 		},
 	}} {
@@ -189,7 +189,7 @@ func TestValidateObjectParamRequiredKeys_Invalid(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		pp   []v1beta1.ParamSpec
-		prp  []v1beta1.Param
+		prp  v1beta1.Params
 	}{{
 		name: "miss all required keys",
 		pp: []v1beta1.ParamSpec{
@@ -202,7 +202,7 @@ func TestValidateObjectParamRequiredKeys_Invalid(t *testing.T) {
 				},
 			},
 		},
-		prp: []v1beta1.Param{
+		prp: v1beta1.Params{
 			{
 				Name: "an-object-param",
 				Value: *v1beta1.NewObject(map[string]string{
@@ -221,7 +221,7 @@ func TestValidateObjectParamRequiredKeys_Invalid(t *testing.T) {
 				},
 			},
 		},
-		prp: []v1beta1.Param{
+		prp: v1beta1.Params{
 			{
 				Name: "an-object-param",
 				Value: *v1beta1.NewObject(map[string]string{
@@ -241,7 +241,7 @@ func TestValidateObjectParamRequiredKeys_Valid(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		pp   []v1beta1.ParamSpec
-		prp  []v1beta1.Param
+		prp  v1beta1.Params
 	}{{
 		name: "some keys are provided by default, and the rest are provided in value",
 		pp: []v1beta1.ParamSpec{
@@ -260,7 +260,7 @@ func TestValidateObjectParamRequiredKeys_Valid(t *testing.T) {
 				},
 			},
 		},
-		prp: []v1beta1.Param{
+		prp: v1beta1.Params{
 			{
 				Name: "an-object-param",
 				Value: *v1beta1.NewObject(map[string]string{
@@ -279,7 +279,7 @@ func TestValidateObjectParamRequiredKeys_Valid(t *testing.T) {
 				},
 			},
 		},
-		prp: []v1beta1.Param{
+		prp: v1beta1.Params{
 			{
 				Name: "an-object-param",
 				Value: *v1beta1.NewObject(map[string]string{
@@ -299,7 +299,7 @@ func TestValidateObjectParamRequiredKeys_Valid(t *testing.T) {
 				},
 			},
 		},
-		prp: []v1beta1.Param{
+		prp: v1beta1.Params{
 			{
 				Name: "an-object-param",
 				Value: *v1beta1.NewObject(map[string]string{

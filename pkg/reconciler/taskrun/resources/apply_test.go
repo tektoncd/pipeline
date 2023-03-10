@@ -514,7 +514,7 @@ var (
 
 	arrayTaskRun0Elements = &v1beta1.TaskRun{
 		Spec: v1beta1.TaskRunSpec{
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name: "array-param",
 				Value: v1beta1.ParamValue{
 					Type:     v1beta1.ParamTypeArray,
@@ -526,7 +526,7 @@ var (
 
 	arrayTaskRun1Elements = &v1beta1.TaskRun{
 		Spec: v1beta1.TaskRunSpec{
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "array-param",
 				Value: *v1beta1.NewStructuredValues("foo"),
 			}},
@@ -535,7 +535,7 @@ var (
 
 	arrayTaskRun3Elements = &v1beta1.TaskRun{
 		Spec: v1beta1.TaskRunSpec{
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "array-param",
 				Value: *v1beta1.NewStructuredValues("foo", "bar", "third"),
 			}},
@@ -544,7 +544,7 @@ var (
 
 	arrayTaskRunMultipleArrays = &v1beta1.TaskRun{
 		Spec: v1beta1.TaskRunSpec{
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "array-param",
 				Value: *v1beta1.NewStructuredValues("foo", "bar", "third"),
 			}, {
@@ -556,7 +556,7 @@ var (
 
 	arrayTaskRunWith1StringParam = &v1beta1.TaskRun{
 		Spec: v1beta1.TaskRunSpec{
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "array-param",
 				Value: *v1beta1.NewStructuredValues("middlefirst", "middlesecond"),
 			}, {
@@ -568,7 +568,7 @@ var (
 
 	arrayTaskRunWith1ObjectParam = &v1beta1.TaskRun{
 		Spec: v1beta1.TaskRunSpec{
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "array-param",
 				Value: *v1beta1.NewStructuredValues("middlefirst", "middlesecond"),
 			}, {
@@ -583,7 +583,7 @@ var (
 
 	arrayTaskRunMultipleArraysAndStrings = &v1beta1.TaskRun{
 		Spec: v1beta1.TaskRunSpec{
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "array-param1",
 				Value: *v1beta1.NewStructuredValues("1-param1", "2-param1", "3-param1", "4-param1"),
 			}, {
@@ -601,7 +601,7 @@ var (
 
 	arrayTaskRunMultipleArraysAndObject = &v1beta1.TaskRun{
 		Spec: v1beta1.TaskRunSpec{
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "array-param1",
 				Value: *v1beta1.NewStructuredValues("1-param1", "2-param1", "3-param1", "4-param1"),
 			}, {
@@ -738,7 +738,7 @@ func TestApplyArrayParameters(t *testing.T) {
 func TestApplyParameters(t *testing.T) {
 	tr := &v1beta1.TaskRun{
 		Spec: v1beta1.TaskRunSpec{
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "myimage",
 				Value: *v1beta1.NewStructuredValues("bar"),
 			}, {
@@ -805,7 +805,7 @@ func TestApplyParameters(t *testing.T) {
 func TestApplyParameters_ArrayIndexing(t *testing.T) {
 	tr := &v1beta1.TaskRun{
 		Spec: v1beta1.TaskRunSpec{
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "myimage",
 				Value: *v1beta1.NewStructuredValues("bar", "foo"),
 			}, {
@@ -876,7 +876,7 @@ func TestApplyObjectParameters(t *testing.T) {
 	// define the taskrun to test values provided by taskrun can overwrite the values provided in spec's default
 	tr := &v1beta1.TaskRun{
 		Spec: v1beta1.TaskRunSpec{
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name: "myObject",
 				Value: *v1beta1.NewObject(map[string]string{
 					"key1": "taskrun-value-for-key1",

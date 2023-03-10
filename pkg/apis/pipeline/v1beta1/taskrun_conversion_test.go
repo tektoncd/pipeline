@@ -76,7 +76,7 @@ func TestTaskRunConversion(t *testing.T) {
 				Debug: &v1beta1.TaskRunDebug{
 					Breakpoint: []string{breakpointOnFailure},
 				},
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "param-task-1",
 					Value: v1beta1.ParamValue{
 						ArrayVal: []string{"value-task-1"},
@@ -302,7 +302,7 @@ func TestTaskRunConversionFromDeprecated(t *testing.T) {
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
 						Resolver: "bundles",
-						Params: []v1beta1.Param{
+						Params: v1beta1.Params{
 							{Name: "bundle", Value: v1beta1.ParamValue{StringVal: "test-bundle", Type: "string"}},
 							{Name: "name", Value: v1beta1.ParamValue{StringVal: "test-bundle-name", Type: "string"}},
 							{Name: "kind", Value: v1beta1.ParamValue{StringVal: "Task", Type: "string"}},
@@ -464,7 +464,7 @@ func TestTaskRunConvertTo(t *testing.T) {
 			},
 			Spec: v1beta1.TaskRunSpec{
 				Retries: 1,
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "param-task-0",
 					Value: v1beta1.ParamValue{
 						StringVal: "param-value-string",
@@ -493,7 +493,7 @@ func TestTaskRunConvertTo(t *testing.T) {
 			},
 			Spec: v1.TaskRunSpec{
 				Retries: 1,
-				Params: []v1.Param{{
+				Params: v1.Params{{
 					Name: "param-task-0",
 					Value: v1.ParamValue{
 						StringVal: "param-value-string",
@@ -547,7 +547,7 @@ func TestTaskRunConvertFrom(t *testing.T) {
 			},
 			Spec: v1.TaskRunSpec{
 				Retries: 1,
-				Params: []v1.Param{{
+				Params: v1.Params{{
 					Name: "param-task-1",
 					Value: v1.ParamValue{
 						ArrayVal: []string{"value-task-1"},
@@ -567,7 +567,7 @@ func TestTaskRunConvertFrom(t *testing.T) {
 			},
 			Spec: v1beta1.TaskRunSpec{
 				Retries: 1,
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "param-task-1",
 					Value: v1beta1.ParamValue{
 						ArrayVal: []string{"value-task-1"},

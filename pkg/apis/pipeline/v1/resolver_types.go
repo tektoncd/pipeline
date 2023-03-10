@@ -34,5 +34,5 @@ type ResolverRef struct {
 	// the chosen resolver.
 	// +optional
 	// +listType=atomic
-	Params []Param `json:"params,omitempty"`
+	Params Params `json:"params,omitempty"`
 }

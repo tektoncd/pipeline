@@ -55,7 +55,7 @@ type RunSpec struct {
 	Spec *EmbeddedRunSpec `json:"spec,omitempty"`
 
 	// +optional
-	Params []v1beta1.Param `json:"params,omitempty"`
+	Params v1beta1.Params `json:"params,omitempty"`
 
 	// Used for cancelling a run (and maybe more later on)
 	// +optional

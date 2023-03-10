@@ -726,8 +726,8 @@ PipelineSpec
 <td>
 <code>params</code><br/>
 <em>
-<a href="#tekton.dev/v1.Param">
-[]Param
+<a href="#tekton.dev/v1.Params">
+Params
 </a>
 </em>
 </td>
@@ -1097,8 +1097,8 @@ TaskRunDebug
 <td>
 <code>params</code><br/>
 <em>
-<a href="#tekton.dev/v1.Param">
-[]Param
+<a href="#tekton.dev/v1.Params">
+Params
 </a>
 </em>
 </td>
@@ -1617,9 +1617,6 @@ IncludeParamsList
 </table>
 <h3 id="tekton.dev/v1.Param">Param
 </h3>
-<p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
-</p>
 <div>
 <p>Param declares an ParamValues to use for the parameter called name.</p>
 </div>
@@ -1837,7 +1834,7 @@ map[string]string
 <h3 id="tekton.dev/v1.Params">Params
 (<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param</code> alias)</h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.IncludeParams">IncludeParams</a>, <a href="#tekton.dev/v1.Matrix">Matrix</a>, <a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.IncludeParams">IncludeParams</a>, <a href="#tekton.dev/v1.Matrix">Matrix</a>, <a href="#tekton.dev/v1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
 <p>Params is a list of Param</p>
@@ -2162,8 +2159,8 @@ PipelineSpec
 <td>
 <code>params</code><br/>
 <em>
-<a href="#tekton.dev/v1.Param">
-[]Param
+<a href="#tekton.dev/v1.Params">
+Params
 </a>
 </em>
 </td>
@@ -3222,8 +3219,8 @@ resolution of the referenced Tekton resource, such as &ldquo;git&rdquo;.</p>
 <td>
 <code>params</code><br/>
 <em>
-<a href="#tekton.dev/v1.Param">
-[]Param
+<a href="#tekton.dev/v1.Params">
+Params
 </a>
 </em>
 </td>
@@ -4699,8 +4696,8 @@ string
 <td>
 <code>params</code><br/>
 <em>
-<a href="#tekton.dev/v1.Param">
-[]Param
+<a href="#tekton.dev/v1.Params">
+Params
 </a>
 </em>
 </td>
@@ -4885,8 +4882,8 @@ TaskRunDebug
 <td>
 <code>params</code><br/>
 <em>
-<a href="#tekton.dev/v1.Param">
-[]Param
+<a href="#tekton.dev/v1.Params">
+Params
 </a>
 </em>
 </td>
@@ -6023,8 +6020,8 @@ EmbeddedRunSpec
 <td>
 <code>params</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.Param">
-[]Param
+<a href="#tekton.dev/v1beta1.Params">
+Params
 </a>
 </em>
 </td>
@@ -6548,8 +6545,8 @@ EmbeddedRunSpec
 <td>
 <code>params</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.Param">
-[]Param
+<a href="#tekton.dev/v1beta1.Params">
+Params
 </a>
 </em>
 </td>
@@ -7211,8 +7208,8 @@ EmbeddedCustomRunSpec
 <td>
 <code>params</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.Param">
-[]Param
+<a href="#tekton.dev/v1beta1.Params">
+Params
 </a>
 </em>
 </td>
@@ -7574,8 +7571,8 @@ PipelineSpec
 <td>
 <code>params</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.Param">
-[]Param
+<a href="#tekton.dev/v1beta1.Params">
+Params
 </a>
 </em>
 </td>
@@ -7972,8 +7969,8 @@ TaskRunDebug
 <td>
 <code>params</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.Param">
-[]Param
+<a href="#tekton.dev/v1beta1.Params">
+Params
 </a>
 </em>
 </td>
@@ -8460,8 +8457,8 @@ EmbeddedCustomRunSpec
 <td>
 <code>params</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.Param">
-[]Param
+<a href="#tekton.dev/v1beta1.Params">
+Params
 </a>
 </em>
 </td>
@@ -8825,7 +8822,7 @@ IncludeParamsList
 <h3 id="tekton.dev/v1beta1.Param">Param
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>, <a href="#resolution.tekton.dev/v1beta1.ResolutionRequestSpec">ResolutionRequestSpec</a>)
+(<em>Appears on:</em><a href="#resolution.tekton.dev/v1beta1.ResolutionRequestSpec">ResolutionRequestSpec</a>)
 </p>
 <div>
 <p>Param declares an ParamValues to use for the parameter called name.</p>
@@ -9029,7 +9026,7 @@ map[string]string
 <h3 id="tekton.dev/v1beta1.Params">Params
 (<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param</code> alias)</h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.IncludeParams">IncludeParams</a>, <a href="#tekton.dev/v1beta1.Matrix">Matrix</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec</a>, <a href="#tekton.dev/v1beta1.IncludeParams">IncludeParams</a>, <a href="#tekton.dev/v1beta1.Matrix">Matrix</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
 <p>Params is a list of Param</p>
@@ -9394,8 +9391,8 @@ PipelineSpec
 <td>
 <code>params</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.Param">
-[]Param
+<a href="#tekton.dev/v1beta1.Params">
+Params
 </a>
 </em>
 </td>
@@ -10475,8 +10472,8 @@ resolution of the referenced Tekton resource, such as &ldquo;git&rdquo;.</p>
 <td>
 <code>params</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.Param">
-[]Param
+<a href="#tekton.dev/v1beta1.Params">
+Params
 </a>
 </em>
 </td>
@@ -12395,8 +12392,8 @@ TaskRunDebug
 <td>
 <code>params</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.Param">
-[]Param
+<a href="#tekton.dev/v1beta1.Params">
+Params
 </a>
 </em>
 </td>

@@ -54,7 +54,7 @@ var pipelineRunState = PipelineRunState{{
 	PipelineTask: &v1beta1.PipelineTask{
 		Name:    "bTask",
 		TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Name:  "bParam",
 			Value: *v1beta1.NewStructuredValues("$(tasks.aTask.results.aResult)"),
 		}},
@@ -83,7 +83,7 @@ var pipelineRunState = PipelineRunState{{
 	PipelineTask: &v1beta1.PipelineTask{
 		Name:    "bTask",
 		TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Name:  "bParam",
 			Value: *v1beta1.NewStructuredValues("$(tasks.aTask.results.missingResult)"),
 		}},
@@ -113,7 +113,7 @@ var pipelineRunState = PipelineRunState{{
 	PipelineTask: &v1beta1.PipelineTask{
 		Name:    "bTask",
 		TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Name:  "bParam",
 			Value: *v1beta1.NewStructuredValues("$(tasks.aCustomPipelineTask.results.aResult)"),
 		}},
@@ -139,7 +139,7 @@ var pipelineRunState = PipelineRunState{{
 	PipelineTask: &v1beta1.PipelineTask{
 		Name:    "cTask",
 		TaskRef: &v1beta1.TaskRef{Name: "cTask"},
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Name:  "cParam",
 			Value: *v1beta1.NewStructuredValues("$(tasks.cTask.results.cResult[1])"),
 		}},
@@ -165,7 +165,7 @@ var pipelineRunState = PipelineRunState{{
 	PipelineTask: &v1beta1.PipelineTask{
 		Name:    "dTask",
 		TaskRef: &v1beta1.TaskRef{Name: "dTask"},
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Name:  "dParam",
 			Value: *v1beta1.NewStructuredValues("$(tasks.dTask.results.dResult[3])"),
 		}},

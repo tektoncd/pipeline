@@ -41,7 +41,7 @@ func TestTaskRef_Valid(t *testing.T) {
 		taskRef: &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}},
 	}, {
 		name: "valid resolver with params",
-		taskRef: &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git", Params: []v1beta1.Param{{
+		taskRef: &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git", Params: v1beta1.Params{{
 			Name: "repo",
 			Value: v1beta1.ParamValue{
 				Type:      v1beta1.ParamTypeString,
@@ -110,7 +110,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 		name: "taskref params disallowed without resolver",
 		taskRef: &v1beta1.TaskRef{
 			ResolverRef: v1beta1.ResolverRef{
-				Params: []v1beta1.Param{},
+				Params: v1beta1.Params{},
 			},
 		},
 		wantErr: apis.ErrMissingField("resolver"),
@@ -138,7 +138,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 		taskRef: &v1beta1.TaskRef{
 			Name: "bar",
 			ResolverRef: v1beta1.ResolverRef{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "foo",
 					Value: v1beta1.ParamValue{
 						Type:      v1beta1.ParamTypeString,
@@ -153,7 +153,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 		taskRef: &v1beta1.TaskRef{
 			Bundle: "bar",
 			ResolverRef: v1beta1.ResolverRef{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "foo",
 					Value: v1beta1.ParamValue{
 						Type:      v1beta1.ParamTypeString,
@@ -169,7 +169,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 		taskRef: &v1beta1.TaskRef{
 			ResolverRef: v1beta1.ResolverRef{
 				Resolver: "some-resolver",
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "foo",
 					Value: v1beta1.ParamValue{
 						Type:      v1beta1.ParamTypeObject,

@@ -35,13 +35,13 @@ func nameHasher() hash.Hash {
 // will have the format {prefix}-{hash} where {prefix} is
 // given and {hash} is nameHasher(base) + nameHasher(param1) +
 // nameHasher(param2) + ...
-func GenerateDeterministicName(prefix, base string, params []v1beta1.Param) (string, error) {
+func GenerateDeterministicName(prefix, base string, params v1beta1.Params) (string, error) {
 	hasher := nameHasher()
 	if _, err := hasher.Write([]byte(base)); err != nil {
 		return "", err
 	}
 
-	sortedParams := make([]v1beta1.Param, len(params))
+	sortedParams := make(v1beta1.Params, len(params))
 	sort.SliceStable(sortedParams, func(i, j int) bool {
 		return sortedParams[i].Name < sortedParams[j].Name
 	})

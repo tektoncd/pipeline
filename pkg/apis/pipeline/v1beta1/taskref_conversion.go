@@ -34,7 +34,7 @@ func (tr TaskRef) convertBundleToResolver(sink *v1.TaskRef) {
 	if tr.Bundle != "" {
 		sink.ResolverRef = v1.ResolverRef{
 			Resolver: "bundles",
-			Params: []v1.Param{{
+			Params: v1.Params{{
 				Name:  "bundle",
 				Value: v1.ParamValue{StringVal: tr.Bundle, Type: v1.ParamTypeString},
 			}, {

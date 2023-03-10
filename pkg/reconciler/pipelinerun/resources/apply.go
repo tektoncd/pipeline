@@ -317,7 +317,7 @@ func propagateParams(t v1beta1.PipelineTask, stringReplacements map[string]strin
 	return t
 }
 
-func replaceParamValues(params []v1beta1.Param, stringReplacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) []v1beta1.Param {
+func replaceParamValues(params v1beta1.Params, stringReplacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) v1beta1.Params {
 	for i := range params {
 		params[i].Value.ApplyReplacements(stringReplacements, arrayReplacements, objectReplacements)
 	}

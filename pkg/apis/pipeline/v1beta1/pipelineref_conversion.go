@@ -32,7 +32,7 @@ func (pr PipelineRef) convertBundleToResolver(sink *v1.PipelineRef) {
 	if pr.Bundle != "" {
 		sink.ResolverRef = v1.ResolverRef{
 			Resolver: "bundles",
-			Params: []v1.Param{{
+			Params: v1.Params{{
 				Name:  "bundle",
 				Value: v1.ParamValue{StringVal: pr.Bundle, Type: v1.ParamTypeString},
 			}, {

@@ -348,7 +348,7 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	pipelineRef := &v1beta1.PipelineRef{
 		ResolverRef: v1beta1.ResolverRef{
 			Resolver: "git",
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "foo",
 				Value: *v1beta1.NewStructuredValues("$(params.resolver-param)"),
 			}, {
@@ -366,7 +366,7 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	resolved := test.NewResolvedResource([]byte(pipelineYAML), nil, sampleConfigSource.DeepCopy(), nil)
 	requester := &test.Requester{
 		ResolvedResource: resolved,
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Name:  "foo",
 			Value: *v1beta1.NewStructuredValues("bar"),
 		}, {
@@ -382,7 +382,7 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 		Spec: v1beta1.PipelineRunSpec{
 			PipelineRef:        pipelineRef,
 			ServiceAccountName: "default",
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "resolver-param",
 				Value: *v1beta1.NewStructuredValues("bar"),
 			}},
@@ -405,7 +405,7 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	pipelineRefNotMatching := &v1beta1.PipelineRef{
 		ResolverRef: v1beta1.ResolverRef{
 			Resolver: "git",
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "foo",
 				Value: *v1beta1.NewStructuredValues("$(params.resolver-param)"),
 			}, {
@@ -423,7 +423,7 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 		Spec: v1beta1.PipelineRunSpec{
 			PipelineRef:        pipelineRefNotMatching,
 			ServiceAccountName: "default",
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "resolver-param",
 				Value: *v1beta1.NewStructuredValues("banana"),
 			}},

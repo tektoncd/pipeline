@@ -182,7 +182,7 @@ func (in *RunSpec) DeepCopyInto(out *RunSpec) {
 	}
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
-		*out = make([]v1beta1.Param, len(*in))
+		*out = make(v1beta1.Params, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

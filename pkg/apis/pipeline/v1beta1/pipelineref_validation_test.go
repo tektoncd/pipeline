@@ -66,7 +66,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 		name: "pipelineref params disallowed without resolver",
 		ref: &v1beta1.PipelineRef{
 			ResolverRef: v1beta1.ResolverRef{
-				Params: []v1beta1.Param{},
+				Params: v1beta1.Params{},
 			},
 		},
 		wantErr: apis.ErrMissingField("resolver"),
@@ -94,7 +94,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 		ref: &v1beta1.PipelineRef{
 			Name: "bar",
 			ResolverRef: v1beta1.ResolverRef{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "foo",
 					Value: v1beta1.ParamValue{
 						Type:      v1beta1.ParamTypeString,
@@ -109,7 +109,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 		ref: &v1beta1.PipelineRef{
 			Bundle: "bar",
 			ResolverRef: v1beta1.ResolverRef{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "foo",
 					Value: v1beta1.ParamValue{
 						Type:      v1beta1.ParamTypeString,
@@ -125,7 +125,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 		ref: &v1beta1.PipelineRef{
 			ResolverRef: v1beta1.ResolverRef{
 				Resolver: "some-resolver",
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "foo",
 					Value: v1beta1.ParamValue{
 						Type:      v1beta1.ParamTypeObject,
@@ -164,7 +164,7 @@ func TestPipelineRef_Valid(t *testing.T) {
 		ref:  &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}},
 	}, {
 		name: "valid resolver with params",
-		ref: &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git", Params: []v1beta1.Param{{
+		ref: &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git", Params: v1beta1.Params{{
 			Name: "repo",
 			Value: v1beta1.ParamValue{
 				Type:      v1beta1.ParamTypeString,
