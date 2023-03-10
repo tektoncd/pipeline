@@ -22,9 +22,10 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
+	"github.com/tektoncd/pipeline/test/diff"
 )
 
 func TestValidateResolvedTask_ValidParams(t *testing.T) {
@@ -40,13 +41,14 @@ func TestValidateResolvedTask_ValidParams(t *testing.T) {
 				{
 					Name: "foo",
 					Type: v1beta1.ParamTypeString,
-				},
-				{
+				}, {
 					Name: "bar",
 					Type: v1beta1.ParamTypeString,
-				},
-				{
+				}, {
 					Name: "zoo",
+					Type: v1beta1.ParamTypeString,
+				}, {
+					Name: "include",
 					Type: v1beta1.ParamTypeString,
 				}, {
 					Name: "arrayResultRef",
@@ -81,7 +83,7 @@ func TestValidateResolvedTask_ValidParams(t *testing.T) {
 	rtr := &resources.ResolvedTask{
 		TaskSpec: &task.Spec,
 	}
-	p := []v1beta1.Param{{
+	p := v1beta1.Params{{
 		Name:  "foo",
 		Value: *v1beta1.NewStructuredValues("somethinggood"),
 	}, {
@@ -104,142 +106,329 @@ func TestValidateResolvedTask_ValidParams(t *testing.T) {
 			"key3": "val3",
 		}),
 	}}
-	m := []v1beta1.Param{{
-		Name:  "zoo",
-		Value: *v1beta1.NewStructuredValues("a", "b", "c"),
-	}}
-	if err := ValidateResolvedTask(ctx, p, &v1beta1.Matrix{Params: m}, rtr); err != nil {
-		t.Fatalf("Did not expect to see error when validating TaskRun with correct params but saw %v", err)
+	m := &v1beta1.Matrix{
+		Params: []v1beta1.Param{{
+			Name:  "zoo",
+			Value: *v1beta1.NewStructuredValues("a", "b", "c"),
+		}},
+		Include: []v1beta1.IncludeParams{{
+			Name: "build-1",
+			Params: v1beta1.Params{{
+				Name: "include", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "string-1"},
+			}},
+		}},
 	}
-
-	t.Run("alpha-extra-params", func(t *testing.T) {
-		ctx := config.ToContext(ctx, &config.Config{FeatureFlags: &config.FeatureFlags{EnableAPIFields: "alpha"}})
-		extra := v1beta1.Param{
-			Name:  "extra",
-			Value: *v1beta1.NewStructuredValues("i am an extra param"),
+	if err := ValidateResolvedTask(ctx, p, m, rtr); err != nil {
+		t.Errorf("Did not expect to see error when validating TaskRun with correct params but saw %v", err)
+	}
+}
+func TestValidateResolvedTask_ExtraValidParams(t *testing.T) {
+	ctx := context.Background()
+	tcs := []struct {
+		name   string
+		task   v1beta1.Task
+		params []v1beta1.Param
+		matrix *v1beta1.Matrix
+	}{{
+		name: "extra-str-param",
+		task: v1beta1.Task{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			Spec: v1beta1.TaskSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name: "foo",
+					Type: v1beta1.ParamTypeString,
+				}},
+			},
+		},
+		params: v1beta1.Params{{
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("string"),
+		}, {
+			Name:  "extrastr",
+			Value: *v1beta1.NewStructuredValues("extra"),
+		}},
+	}, {
+		name: "extra-arr-param",
+		task: v1beta1.Task{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			Spec: v1beta1.TaskSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name: "foo",
+					Type: v1beta1.ParamTypeString,
+				}},
+			},
+		},
+		params: v1beta1.Params{{
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("string"),
+		}, {
+			Name:  "extraArr",
+			Value: *v1beta1.NewStructuredValues("extra", "arr"),
+		}},
+	}, {
+		name: "extra-obj-param",
+		task: v1beta1.Task{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			Spec: v1beta1.TaskSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name: "foo",
+					Type: v1beta1.ParamTypeString,
+				}},
+			},
+		},
+		params: v1beta1.Params{{
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("string"),
+		}, {
+			Name: "myObjWithDefault",
+			Value: *v1beta1.NewObject(map[string]string{
+				"key2": "val2",
+				"key3": "val3",
+			}),
+		}},
+	}, {
+		name: "extra-param-matrix",
+		task: v1beta1.Task{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			Spec: v1beta1.TaskSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name: "include",
+					Type: v1beta1.ParamTypeString,
+				}},
+			},
+		},
+		params: v1beta1.Params{{}},
+		matrix: &v1beta1.Matrix{
+			Params: []v1beta1.Param{{
+				Name:  "extraArr",
+				Value: *v1beta1.NewStructuredValues("extra", "arr"),
+			}},
+			Include: []v1beta1.IncludeParams{{
+				Name: "build-1",
+				Params: v1beta1.Params{{
+					Name: "include", Value: *v1beta1.NewStructuredValues("string"),
+				}},
+			}},
+		},
+	}}
+	for _, tc := range tcs {
+		rtr := &resources.ResolvedTask{
+			TaskSpec: &tc.task.Spec,
 		}
-		extraarray := v1beta1.Param{
-			Name:  "extraarray",
-			Value: *v1beta1.NewStructuredValues("i", "am", "an", "extra", "array", "param"),
-		}
-		if err := ValidateResolvedTask(ctx, append(p, extra), &v1beta1.Matrix{Params: append(m, extraarray)}, rtr); err != nil {
-			t.Fatalf("Did not expect to see error when validating TaskRun with correct params but saw %v", err)
-		}
-	})
+		t.Run(tc.name, func(t *testing.T) {
+			if err := ValidateResolvedTask(ctx, tc.params, tc.matrix, rtr); err != nil {
+				t.Errorf("Did not expect to see error when validating TaskRun with correct params but saw %v", err)
+			}
+		})
+	}
 }
 
 func TestValidateResolvedTask_InvalidParams(t *testing.T) {
 	ctx := context.Background()
-	task := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
-				Image:   "myimage",
-				Command: []string{"mycmd"},
-			}},
-			Params: []v1beta1.ParamSpec{
-				{
+	tcs := []struct {
+		name    string
+		task    v1beta1.Task
+		params  []v1beta1.Param
+		matrix  *v1beta1.Matrix
+		wantErr string
+	}{{
+		name: "missing-params-string",
+		task: v1beta1.Task{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			Spec: v1beta1.TaskSpec{
+				Params: []v1beta1.ParamSpec{{
 					Name: "foo",
 					Type: v1beta1.ParamTypeString,
-				}, {
+				}},
+			},
+		},
+		params: v1beta1.Params{{
+			Name:  "missing",
+			Value: *v1beta1.NewStructuredValues("somethingfun"),
+		}},
+		matrix:  &v1beta1.Matrix{},
+		wantErr: "invalid input params for task : missing values for these params which have no default values: [foo]",
+	}, {
+		name: "missing-params-arr",
+		task: v1beta1.Task{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			Spec: v1beta1.TaskSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name: "foo",
+					Type: v1beta1.ParamTypeArray,
+				}},
+			},
+		},
+		params: v1beta1.Params{{
+			Name:  "missing",
+			Value: *v1beta1.NewStructuredValues("array", "param"),
+		}},
+		matrix:  &v1beta1.Matrix{},
+		wantErr: "invalid input params for task : missing values for these params which have no default values: [foo]",
+	}, {
+		name: "invalid-string-param",
+		task: v1beta1.Task{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			Spec: v1beta1.TaskSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name: "foo",
+					Type: v1beta1.ParamTypeString,
+				}},
+			},
+		},
+		params: v1beta1.Params{{
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("array", "param"),
+		}},
+		matrix:  &v1beta1.Matrix{},
+		wantErr: "invalid input params for task : param types don't match the user-specified type: [foo]",
+	}, {
+		name: "invalid-arr-param",
+		task: v1beta1.Task{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			Spec: v1beta1.TaskSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name: "foo",
+					Type: v1beta1.ParamTypeArray,
+				}},
+			},
+		},
+		params: v1beta1.Params{{
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("string"),
+		}},
+		matrix:  &v1beta1.Matrix{},
+		wantErr: "invalid input params for task : param types don't match the user-specified type: [foo]",
+	}, {name: "missing-param-in-matrix",
+		task: v1beta1.Task{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			Spec: v1beta1.TaskSpec{
+				Params: []v1beta1.ParamSpec{{
 					Name: "bar",
 					Type: v1beta1.ParamTypeArray,
-				},
-				{
+				}},
+			},
+		},
+		params: v1beta1.Params{{}},
+		matrix: &v1beta1.Matrix{
+			Params: v1beta1.Params{{
+				Name:  "missing",
+				Value: *v1beta1.NewStructuredValues("foo"),
+			}}},
+		wantErr: "invalid input params for task : missing values for these params which have no default values: [bar]",
+	}, {
+		name: "missing-param-in-matrix-include",
+		task: v1beta1.Task{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			Spec: v1beta1.TaskSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name: "bar",
+					Type: v1beta1.ParamTypeArray,
+				}},
+			},
+		},
+		params: v1beta1.Params{{}},
+		matrix: &v1beta1.Matrix{
+			Include: []v1beta1.IncludeParams{{
+				Name: "build-1",
+				Params: v1beta1.Params{{
+					Name: "missing", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "string"},
+				}},
+			}},
+		},
+		wantErr: "invalid input params for task : missing values for these params which have no default values: [bar]",
+	}, {
+		name: "invalid-arr-in-matrix-param",
+		task: v1beta1.Task{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			Spec: v1beta1.TaskSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name: "bar",
+					Type: v1beta1.ParamTypeArray,
+				}},
+			},
+		},
+		params: v1beta1.Params{{}},
+		matrix: &v1beta1.Matrix{
+			Params: v1beta1.Params{{
+				Name:  "bar",
+				Value: *v1beta1.NewStructuredValues("foo"),
+			}}},
+		wantErr: "invalid input params for task : param types don't match the user-specified type: [bar]",
+	}, {
+		name: "invalid-str-in-matrix-include-param",
+		task: v1beta1.Task{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			Spec: v1beta1.TaskSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name: "bar",
+					Type: v1beta1.ParamTypeArray,
+				}},
+			},
+		},
+		params: v1beta1.Params{{}},
+		matrix: &v1beta1.Matrix{
+			Include: []v1beta1.IncludeParams{{
+				Name: "build-1",
+				Params: v1beta1.Params{{
+					Name: "bar", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "string"},
+				}},
+			}},
+		},
+		wantErr: "invalid input params for task : param types don't match the user-specified type: [bar]",
+	}, {
+		name: "missing-params-obj",
+		task: v1beta1.Task{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			Spec: v1beta1.TaskSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name: "foo",
+					Type: v1beta1.ParamTypeArray,
+				}},
+			},
+		},
+		params: v1beta1.Params{{
+			Name: "missing-obj",
+			Value: *v1beta1.NewObject(map[string]string{
+				"key1":    "val1",
+				"misskey": "val2",
+			}),
+		}},
+		matrix:  &v1beta1.Matrix{},
+		wantErr: "invalid input params for task : missing values for these params which have no default values: [foo]",
+	}, {
+		name: "missing object param keys",
+		task: v1beta1.Task{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			Spec: v1beta1.TaskSpec{
+				Params: []v1beta1.ParamSpec{{
 					Name: "myObjWithoutDefault",
 					Type: v1beta1.ParamTypeObject,
 					Properties: map[string]v1beta1.PropertySpec{
 						"key1": {},
 						"key2": {},
 					},
-				}, {
-					Name: "myObjWithDefault",
-					Type: v1beta1.ParamTypeObject,
-					Properties: map[string]v1beta1.PropertySpec{
-						"key1": {},
-						"key2": {},
-						"key3": {},
-					},
-					Default: &v1beta1.ParamValue{
-						Type: v1beta1.ParamTypeObject,
-						ObjectVal: map[string]string{
-							"key1": "default",
-							// key2 is not provided by default nor taskrun, which is why error is epected.
-							// key3 is provided by taskrun
-						},
-					},
-				},
+				}},
 			},
 		},
-	}
-	tcs := []struct {
-		name   string
-		rtr    *resources.ResolvedTask
-		params []v1beta1.Param
-		matrix *v1beta1.Matrix
-	}{{
-		name: "missing-params",
-		rtr: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
-		},
-		params: []v1beta1.Param{{
-			Name:  "foobar",
-			Value: *v1beta1.NewStructuredValues("somethingfun"),
-		}},
-		matrix: &v1beta1.Matrix{
-			Params: []v1beta1.Param{{
-				Name:  "barfoo",
-				Value: *v1beta1.NewStructuredValues("bar", "foo"),
-			}},
-		},
-	}, {
-		name: "invalid-type-in-params",
-		rtr: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
-		},
-		params: []v1beta1.Param{{
-			Name:  "foo",
-			Value: *v1beta1.NewStructuredValues("bar", "foo"),
-		}},
-	}, {
-		name: "invalid-type-in-matrix",
-		rtr: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
-		},
-		matrix: &v1beta1.Matrix{
-			Params: []v1beta1.Param{{
-				Name:  "bar",
-				Value: *v1beta1.NewStructuredValues("bar", "foo"),
-			}}},
-	}, {
-		name: "missing object param keys",
-		rtr: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
-		},
-		params: []v1beta1.Param{{
-			Name:  "foo",
-			Value: *v1beta1.NewStructuredValues("test"),
-		}, {
-			Name:  "bar",
-			Value: *v1beta1.NewStructuredValues("a", "b"),
-		}, {
+		params: v1beta1.Params{{
 			Name: "myObjWithoutDefault",
 			Value: *v1beta1.NewObject(map[string]string{
 				"key1":    "val1",
 				"misskey": "val2",
 			}),
-		}, {
-			Name: "myObjWithDefault",
-			Value: *v1beta1.NewObject(map[string]string{
-				"key3": "val3",
-			}),
 		}},
-	},
-	}
+		matrix:  &v1beta1.Matrix{},
+		wantErr: "invalid input params for task : missing keys for these params which are required in ParamSpec's properties map[myObjWithoutDefault:[key2]]",
+	}}
 	for _, tc := range tcs {
+		rtr := &resources.ResolvedTask{
+			TaskSpec: &tc.task.Spec,
+		}
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ValidateResolvedTask(ctx, tc.params, tc.matrix, tc.rtr); err == nil {
-				t.Errorf("Expected to see error when validating invalid resolved TaskRun with wrong params but saw none")
+			err := ValidateResolvedTask(ctx, tc.params, tc.matrix, rtr)
+			if d := cmp.Diff(tc.wantErr, err.Error()); d != "" {
+				t.Errorf("Did not get the expected Error  %s", diff.PrintWantGot(d))
 			}
 		})
 	}

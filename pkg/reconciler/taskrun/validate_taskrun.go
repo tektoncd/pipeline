@@ -30,13 +30,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-func validateParams(ctx context.Context, paramSpecs []v1beta1.ParamSpec, params []v1beta1.Param, matrix *v1beta1.Matrix) error {
+// validateParams validates that all Pipeline Task, Matrix.Params and Matrix.Include parameters all have values, match the specified
+// type and object params have all the keys required
+func validateParams(ctx context.Context, paramSpecs []v1beta1.ParamSpec, params v1beta1.Params, matrixParams v1beta1.Params) error {
 	neededParamsNames, neededParamsTypes := neededParamsNamesAndTypes(paramSpecs)
-	var matrixParams []v1beta1.Param
-	if matrix != nil {
-		matrixParams = matrix.Params
-	}
-	providedParamsNames := providedParamsNames(append(params, matrixParams...))
+	providedParams := params
+	providedParams = append(providedParams, matrixParams...)
+	providedParamsNames := providedParams.ExtractNames()
 	if missingParamsNames := missingParamsNames(neededParamsNames, providedParamsNames, paramSpecs); len(missingParamsNames) != 0 {
 		return fmt.Errorf("missing values for these params which have no default values: %s", missingParamsNames)
 	}
@@ -46,42 +46,32 @@ func validateParams(ctx context.Context, paramSpecs []v1beta1.ParamSpec, params 
 	if missingKeysObjectParamNames := MissingKeysObjectParamNames(paramSpecs, params); len(missingKeysObjectParamNames) != 0 {
 		return fmt.Errorf("missing keys for these params which are required in ParamSpec's properties %v", missingKeysObjectParamNames)
 	}
-
 	return nil
 }
 
-func neededParamsNamesAndTypes(paramSpecs []v1beta1.ParamSpec) ([]string, map[string]v1beta1.ParamType) {
-	var neededParamsNames []string
+// neededParamsNamesAndTypes returns the needed parameter names and types based on the paramSpec
+func neededParamsNamesAndTypes(paramSpecs []v1beta1.ParamSpec) (sets.String, map[string]v1beta1.ParamType) {
+	neededParamsNames := sets.String{}
 	neededParamsTypes := make(map[string]v1beta1.ParamType)
-	neededParamsNames = make([]string, 0, len(paramSpecs))
 	for _, inputResourceParam := range paramSpecs {
-		neededParamsNames = append(neededParamsNames, inputResourceParam.Name)
+		neededParamsNames.Insert(inputResourceParam.Name)
 		neededParamsTypes[inputResourceParam.Name] = inputResourceParam.Type
 	}
 	return neededParamsNames, neededParamsTypes
 }
 
-func providedParamsNames(params []v1beta1.Param) []string {
-	providedParamsNames := make([]string, 0, len(params))
-	for _, param := range params {
-		providedParamsNames = append(providedParamsNames, param.Name)
-	}
-	return providedParamsNames
-}
-
-func missingParamsNames(neededParams []string, providedParams []string, paramSpecs []v1beta1.ParamSpec) []string {
-	missingParamsNames := list.DiffLeft(neededParams, providedParams)
+// missingParamsNames returns a slice of missing parameter names that have not been declared with a default value
+// in the paramSpec
+func missingParamsNames(neededParams sets.String, providedParams sets.String, paramSpecs []v1beta1.ParamSpec) []string {
+	missingParamsNames := neededParams.Difference(providedParams)
 	var missingParamsNamesWithNoDefaults []string
-	for _, param := range missingParamsNames {
-		for _, inputResourceParam := range paramSpecs {
-			if inputResourceParam.Name == param && inputResourceParam.Default == nil {
-				missingParamsNamesWithNoDefaults = append(missingParamsNamesWithNoDefaults, param)
-			}
+	for _, inputResourceParam := range paramSpecs {
+		if missingParamsNames.Has(inputResourceParam.Name) && inputResourceParam.Default == nil {
+			missingParamsNamesWithNoDefaults = append(missingParamsNamesWithNoDefaults, inputResourceParam.Name)
 		}
 	}
 	return missingParamsNamesWithNoDefaults
 }
-
 func wrongTypeParamsNames(params []v1beta1.Param, matrix []v1beta1.Param, neededParamsTypes map[string]v1beta1.ParamType) []string {
 	// TODO(#4723): validate that $(task.taskname.result.resultname) is invalid for array and object type.
 	// It should be used to refer string and need to add [*] to refer to array or object.
@@ -166,9 +156,11 @@ func findMissingKeys(neededKeys, providedKeys map[string][]string) map[string][]
 	return missings
 }
 
-// ValidateResolvedTask validates task inputs, params and output matches taskrun
+// ValidateResolvedTask validates that all parameters declared in the TaskSpec are present in the taskrun
+// It also validates that all parameters have values, parameter types match the specified type and
+// object params have all the keys required
 func ValidateResolvedTask(ctx context.Context, params []v1beta1.Param, matrix *v1beta1.Matrix, rtr *resources.ResolvedTask) error {
-	if err := validateParams(ctx, rtr.TaskSpec.Params, params, matrix); err != nil {
+	if err := validateParams(ctx, rtr.TaskSpec.Params, params, matrix.GetAllParams()); err != nil {
 		return fmt.Errorf("invalid input params for task %s: %w", rtr.TaskName, err)
 	}
 	return nil
