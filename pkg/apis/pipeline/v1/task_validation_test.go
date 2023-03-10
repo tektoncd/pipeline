@@ -1743,12 +1743,12 @@ func TestValidateParamArrayIndex(t *testing.T) {
 
 	tcs := []struct {
 		name          string
-		params        []v1.Param
+		params        v1.Params
 		taskspec      *v1.TaskSpec
 		expectedError error
 	}{{
 		name: "steps reference invalid",
-		params: []v1.Param{{
+		params: v1.Params{{
 			Name:  "array-params",
 			Value: *v1.NewStructuredValues("bar", "foo"),
 		}},
@@ -1804,7 +1804,7 @@ func TestValidateParamArrayIndex(t *testing.T) {
 		expectedError: fmt.Errorf("non-existent param references:[%v]", strings.Join(stepsInvalidReferences, " ")),
 	}, {
 		name: "stepTemplate reference invalid",
-		params: []v1.Param{{
+		params: v1.Params{{
 			Name:  "array-params",
 			Value: *v1.NewStructuredValues("bar", "foo"),
 		}},
@@ -1820,7 +1820,7 @@ func TestValidateParamArrayIndex(t *testing.T) {
 		expectedError: fmt.Errorf("non-existent param references:[%v]", "$(params.array-params[3])"),
 	}, {
 		name: "volumes reference invalid",
-		params: []v1.Param{{
+		params: v1.Params{{
 			Name:  "array-params",
 			Value: *v1.NewStructuredValues("bar", "foo"),
 		}},
@@ -1882,7 +1882,7 @@ func TestValidateParamArrayIndex(t *testing.T) {
 		expectedError: fmt.Errorf("non-existent param references:[%v]", strings.Join(volumesInvalidReferences, " ")),
 	}, {
 		name: "workspaces reference invalid",
-		params: []v1.Param{{
+		params: v1.Params{{
 			Name:  "array-params",
 			Value: *v1.NewStructuredValues("bar", "foo"),
 		}},
@@ -1898,7 +1898,7 @@ func TestValidateParamArrayIndex(t *testing.T) {
 		expectedError: fmt.Errorf("non-existent param references:[%v]", "$(params.array-params[3])"),
 	}, {
 		name: "sidecar reference invalid",
-		params: []v1.Param{{
+		params: v1.Params{{
 			Name:  "array-params",
 			Value: *v1.NewStructuredValues("bar", "foo"),
 		}},

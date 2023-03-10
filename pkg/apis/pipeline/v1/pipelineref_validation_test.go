@@ -49,7 +49,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 		name: "pipelineref params disallowed without beta feature gate",
 		ref: &v1.PipelineRef{
 			ResolverRef: v1.ResolverRef{
-				Params: []v1.Param{},
+				Params: v1.Params{},
 			},
 		},
 		wantErr: apis.ErrMissingField("resolver").Also(apis.ErrGeneric("resolver params requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"")),
@@ -57,7 +57,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 		name: "pipelineref params disallowed without resolver",
 		ref: &v1.PipelineRef{
 			ResolverRef: v1.ResolverRef{
-				Params: []v1.Param{},
+				Params: v1.Params{},
 			},
 		},
 		wantErr:     apis.ErrMissingField("resolver"),
@@ -77,7 +77,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 		ref: &v1.PipelineRef{
 			Name: "bar",
 			ResolverRef: v1.ResolverRef{
-				Params: []v1.Param{{
+				Params: v1.Params{{
 					Name: "foo",
 					Value: v1.ParamValue{
 						Type:      v1.ParamTypeString,
@@ -93,7 +93,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 		ref: &v1.PipelineRef{
 			ResolverRef: v1.ResolverRef{
 				Resolver: "some-resolver",
-				Params: []v1.Param{{
+				Params: v1.Params{{
 					Name: "foo",
 					Value: v1.ParamValue{
 						Type:      v1.ParamTypeObject,
@@ -140,7 +140,7 @@ func TestPipelineRef_Valid(t *testing.T) {
 		wc:   config.EnableAlphaAPIFields,
 	}, {
 		name: "alpha feature: valid resolver with params",
-		ref: &v1.PipelineRef{ResolverRef: v1.ResolverRef{Resolver: "git", Params: []v1.Param{{
+		ref: &v1.PipelineRef{ResolverRef: v1.ResolverRef{Resolver: "git", Params: v1.Params{{
 			Name: "repo",
 			Value: v1.ParamValue{
 				Type:      v1.ParamTypeString,

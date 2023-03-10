@@ -47,7 +47,7 @@ func TestTaskRef_Valid(t *testing.T) {
 		wc:      config.EnableAlphaAPIFields,
 	}, {
 		name: "beta feature: valid resolver with params",
-		taskRef: &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "git", Params: []v1.Param{{
+		taskRef: &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "git", Params: v1.Params{{
 			Name: "repo",
 			Value: v1.ParamValue{
 				Type:      v1.ParamTypeString,
@@ -97,7 +97,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 		name: "taskref params disallowed without beta feature gate",
 		taskRef: &v1.TaskRef{
 			ResolverRef: v1.ResolverRef{
-				Params: []v1.Param{},
+				Params: v1.Params{},
 			},
 		},
 		wantErr: apis.ErrMissingField("resolver").Also(apis.ErrGeneric("resolver params requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"")),
@@ -105,7 +105,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 		name: "taskref params disallowed without resolver",
 		taskRef: &v1.TaskRef{
 			ResolverRef: v1.ResolverRef{
-				Params: []v1.Param{},
+				Params: v1.Params{},
 			},
 		},
 		wantErr: apis.ErrMissingField("resolver"),
@@ -125,7 +125,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 		taskRef: &v1.TaskRef{
 			Name: "bar",
 			ResolverRef: v1.ResolverRef{
-				Params: []v1.Param{{
+				Params: v1.Params{{
 					Name: "foo",
 					Value: v1.ParamValue{
 						Type:      v1.ParamTypeString,
@@ -141,7 +141,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 		taskRef: &v1.TaskRef{
 			ResolverRef: v1.ResolverRef{
 				Resolver: "some-resolver",
-				Params: []v1.Param{{
+				Params: v1.Params{{
 					Name: "foo",
 					Value: v1.ParamValue{
 						Type:      v1.ParamTypeObject,

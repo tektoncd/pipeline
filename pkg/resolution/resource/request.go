@@ -24,12 +24,12 @@ var _ Request = &BasicRequest{}
 type BasicRequest struct {
 	name      string
 	namespace string
-	params    []v1beta1.Param
+	params    v1beta1.Params
 }
 
 // NewRequest returns an instance of a BasicRequest with the given name,
 // namespace and params.
-func NewRequest(name, namespace string, params []v1beta1.Param) Request {
+func NewRequest(name, namespace string, params v1beta1.Params) Request {
 	return &BasicRequest{name, namespace, params}
 }
 
@@ -46,6 +46,6 @@ func (req *BasicRequest) Namespace() string {
 }
 
 // Params are the map of parameters associated with this request
-func (req *BasicRequest) Params() []v1beta1.Param {
+func (req *BasicRequest) Params() v1beta1.Params {
 	return req.params
 }

@@ -51,7 +51,7 @@ func TestGetParams(t *testing.T) {
 	}, {
 		desc: "found",
 		spec: v1alpha1.RunSpec{
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "first",
 				Value: *v1beta1.NewStructuredValues("blah"),
 			}, {
@@ -67,7 +67,7 @@ func TestGetParams(t *testing.T) {
 	}, {
 		desc: "not found",
 		spec: v1alpha1.RunSpec{
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "first",
 				Value: *v1beta1.NewStructuredValues("blah"),
 			}, {
@@ -83,7 +83,7 @@ func TestGetParams(t *testing.T) {
 		// the specified name.
 		desc: "multiple with same name",
 		spec: v1alpha1.RunSpec{
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "first",
 				Value: *v1beta1.NewStructuredValues("blah"),
 			}, {

@@ -1423,7 +1423,7 @@ func buildPipelineStateWithLargeDependencyGraph(t *testing.T) PipelineRunState {
 				dependFrom = i - (i % 10)
 			}
 		}
-		params := []v1beta1.Param{}
+		params := v1beta1.Params{}
 		var alpha byte
 		for alpha = 'a'; alpha <= 'j'; alpha++ {
 			params = append(params, v1beta1.Param{
@@ -1474,7 +1474,7 @@ func buildPipelineStateWithMultipleTaskResults(t *testing.T, includeWhen bool) P
 		},
 	}}
 	for i := 2; i < 400; i++ {
-		var params []v1beta1.Param
+		var params v1beta1.Params
 		whenExpressions := v1beta1.WhenExpressions{}
 		var alpha byte
 		// the task has a reference to multiple task results (a through j) from each parent task - causing a redundant references
@@ -2720,7 +2720,7 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 				APIVersion: "v1beta1",
 			},
 			Matrix: &v1beta1.Matrix{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "foobar",
 					Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 				}, {
@@ -2783,7 +2783,7 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 				APIVersion: "example.dev/v0",
 			},
 			Matrix: &v1beta1.Matrix{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "foobar",
 					Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 				}, {
@@ -3080,7 +3080,7 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 						Values:   []string{"foo", "bar"},
 					}},
 					Matrix: &v1beta1.Matrix{
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							Name:  "foobar",
 							Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 						}, {
@@ -3109,7 +3109,7 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 						Values:   []string{"foo", "bar"},
 					}},
 					Matrix: &v1beta1.Matrix{
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							Name:  "foobar",
 							Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 						}, {
@@ -3196,7 +3196,7 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 						Values:   []string{"foo", "bar"},
 					}},
 					Matrix: &v1beta1.Matrix{
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							Name:  "foobar",
 							Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 						}, {
@@ -3223,7 +3223,7 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 						Values:   []string{"foo", "bar"},
 					}},
 					Matrix: &v1beta1.Matrix{
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							Name:  "foobar",
 							Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 						}, {

@@ -147,7 +147,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 				Name: "pipelinelinename",
 			},
 			Spec: v1beta1.PipelineRunSpec{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "pipeline-words",
 					Value: v1beta1.ParamValue{
 						Type:      v1beta1.ParamTypeObject,
@@ -221,7 +221,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 			Spec: v1beta1.PipelineRunSpec{
 				PipelineSpec: &v1beta1.PipelineSpec{
 					Tasks: []v1beta1.PipelineTask{{
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							Name: "pipeline-words",
 							Value: v1beta1.ParamValue{
 								Type:      v1beta1.ParamTypeObject,
@@ -264,7 +264,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 				Name: "pipelinename",
 			},
 			Spec: v1beta1.PipelineRunSpec{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "pipeline-words",
 					Value: v1beta1.ArrayOrString{
 						Type:     v1beta1.ParamTypeArray,
@@ -297,7 +297,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 				Name: "objectpipelinename",
 			},
 			Spec: v1beta1.PipelineRunSpec{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "pipeline-words",
 					Value: v1beta1.ParamValue{
 						Type:      v1beta1.ParamTypeObject,
@@ -318,7 +318,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 					}},
 					Tasks: []v1beta1.PipelineTask{{
 						Name: "echoit",
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							Name: "pipeline-words",
 							Value: v1beta1.ParamValue{
 								Type:      v1beta1.ParamTypeObject,
@@ -360,7 +360,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 				Name: "pipelinelinename",
 			},
 			Spec: v1beta1.PipelineRunSpec{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "some-param",
 					Value: v1beta1.ArrayOrString{
 						ArrayVal: []string{"hello", "pipeline"},
@@ -387,7 +387,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 				Name: "pipelinelinename",
 			},
 			Spec: v1beta1.PipelineRunSpec{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "some-param",
 					Value: v1beta1.ArrayOrString{
 						StringVal: "$(tasks.some-task.results.foo)",
@@ -410,7 +410,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 				Name: "pipelinelinename",
 			},
 			Spec: v1beta1.PipelineRunSpec{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "some-param",
 					Value: v1beta1.ArrayOrString{
 						ArrayVal: []string{"$(tasks.some-task.results.foo)"},
@@ -433,7 +433,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 				Name: "pipelinelinename",
 			},
 			Spec: v1beta1.PipelineRunSpec{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "pipeline-words",
 					Value: v1beta1.ArrayOrString{
 						Type:     v1beta1.ParamTypeArray,
@@ -447,7 +447,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 					}},
 					Tasks: []v1beta1.PipelineTask{{
 						Name: "echoit",
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							Name: "pipeline-words",
 							Value: v1beta1.ArrayOrString{
 								Type:     v1beta1.ParamTypeArray,
@@ -549,7 +549,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 				Name: "pipelinelinename",
 			},
 			Spec: v1beta1.PipelineRunSpec{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "pipeline-words",
 					Value: v1beta1.ArrayOrString{
 						Type:     v1beta1.ParamTypeArray,
@@ -563,7 +563,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 					}},
 					Tasks: []v1beta1.PipelineTask{{
 						Name: "echoit",
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							Name: "task-words",
 							Value: v1beta1.ParamValue{
 								Type:     v1beta1.ParamTypeArray,
@@ -609,7 +609,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 				Name: "pipelinelinename",
 			},
 			Spec: v1beta1.PipelineRunSpec{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "pipeline-words",
 					Value: v1beta1.ArrayOrString{
 						Type:     v1beta1.ParamTypeArray,
@@ -639,7 +639,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 				Name: "pipelinelinename",
 			},
 			Spec: v1beta1.PipelineRunSpec{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "pipeline-words",
 					Value: v1beta1.ParamValue{
 						Type:      v1beta1.ParamTypeObject,
@@ -669,7 +669,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 				Name: "pipelinelinename",
 			},
 			Spec: v1beta1.PipelineRunSpec{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "pipeline-words",
 					Value: v1beta1.ParamValue{
 						Type: v1beta1.ParamTypeObject,
@@ -709,7 +709,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 				Name: "pipelinelinename",
 			},
 			Spec: v1beta1.PipelineRunSpec{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "pipeline-words",
 					Value: v1beta1.ParamValue{
 						Type:      v1beta1.ParamTypeObject,

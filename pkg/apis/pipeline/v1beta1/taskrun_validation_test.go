@@ -114,7 +114,7 @@ func TestTaskRun_Invalidate(t *testing.T) {
 		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
 			Spec: v1beta1.TaskRunSpec{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "task-words",
 					Value: v1beta1.ParamValue{
 						Type:      v1beta1.ParamTypeObject,
@@ -169,7 +169,7 @@ func TestTaskRun_Validate(t *testing.T) {
 		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
 			Spec: v1beta1.TaskRunSpec{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "task-words",
 					Value: v1beta1.ParamValue{
 						Type:     v1beta1.ParamTypeArray,
@@ -191,7 +191,7 @@ func TestTaskRun_Validate(t *testing.T) {
 		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
 			Spec: v1beta1.TaskRunSpec{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "task-words",
 					Value: v1beta1.ParamValue{
 						Type:      v1beta1.ParamTypeObject,
@@ -214,7 +214,7 @@ func TestTaskRun_Validate(t *testing.T) {
 		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
 			Spec: v1beta1.TaskRunSpec{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "task-words",
 					Value: v1beta1.ParamValue{
 						Type: v1beta1.ParamTypeObject,
@@ -247,7 +247,7 @@ func TestTaskRun_Validate(t *testing.T) {
 		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
 			Spec: v1beta1.TaskRunSpec{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "task-words",
 					Value: v1beta1.ParamValue{
 						Type:     v1beta1.ParamTypeArray,
@@ -278,7 +278,7 @@ func TestTaskRun_Validate(t *testing.T) {
 		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
 			Spec: v1beta1.TaskRunSpec{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "task-words",
 					Value: v1beta1.ParamValue{
 						Type:      v1beta1.ParamTypeObject,
@@ -312,7 +312,7 @@ func TestTaskRun_Validate(t *testing.T) {
 		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
 			Spec: v1beta1.TaskRunSpec{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "task-words",
 					Value: v1beta1.ParamValue{
 						Type:     v1beta1.ParamTypeArray,
@@ -346,7 +346,7 @@ func TestTaskRun_Validate(t *testing.T) {
 		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
 			Spec: v1beta1.TaskRunSpec{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "task-words",
 					Value: v1beta1.ParamValue{
 						Type:      v1beta1.ParamTypeObject,
@@ -381,7 +381,7 @@ func TestTaskRun_Validate(t *testing.T) {
 		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
 			Spec: v1beta1.TaskRunSpec{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "task-words",
 					Value: v1beta1.ParamValue{
 						Type:     v1beta1.ParamTypeArray,
@@ -407,7 +407,7 @@ func TestTaskRun_Validate(t *testing.T) {
 		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
 			Spec: v1beta1.TaskRunSpec{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "task-words",
 					Value: v1beta1.ParamValue{
 						Type:      v1beta1.ParamTypeObject,
@@ -589,7 +589,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 	}, {
 		name: "invalid params - exactly same names",
 		spec: v1beta1.TaskRunSpec{
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "myname",
 				Value: *v1beta1.NewStructuredValues("value"),
 			}, {
@@ -602,7 +602,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 	}, {
 		name: "invalid params - same names but different case",
 		spec: v1beta1.TaskRunSpec{
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "FOO",
 				Value: *v1beta1.NewStructuredValues("value"),
 			}, {
@@ -615,7 +615,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 	}, {
 		name: "invalid params (object type) - same names but different case",
 		spec: v1beta1.TaskRunSpec{
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "MYOBJECTPARAM",
 				Value: *v1beta1.NewObject(map[string]string{"key1": "val1", "key2": "val2"}),
 			}, {
@@ -819,7 +819,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 		name: "parameters",
 		spec: v1beta1.TaskRunSpec{
 			Timeout: &metav1.Duration{Duration: 0},
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "name",
 				Value: *v1beta1.NewStructuredValues("value"),
 			}},

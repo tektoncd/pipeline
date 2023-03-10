@@ -107,7 +107,7 @@ func TestValidateResolvedTask_ValidParams(t *testing.T) {
 		}),
 	}}
 	m := &v1beta1.Matrix{
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Name:  "zoo",
 			Value: *v1beta1.NewStructuredValues("a", "b", "c"),
 		}},
@@ -127,7 +127,7 @@ func TestValidateResolvedTask_ExtraValidParams(t *testing.T) {
 	tcs := []struct {
 		name   string
 		task   v1beta1.Task
-		params []v1beta1.Param
+		params v1beta1.Params
 		matrix *v1beta1.Matrix
 	}{{
 		name: "extra-str-param",
@@ -199,7 +199,7 @@ func TestValidateResolvedTask_ExtraValidParams(t *testing.T) {
 		},
 		params: v1beta1.Params{{}},
 		matrix: &v1beta1.Matrix{
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "extraArr",
 				Value: *v1beta1.NewStructuredValues("extra", "arr"),
 			}},
@@ -228,7 +228,7 @@ func TestValidateResolvedTask_InvalidParams(t *testing.T) {
 	tcs := []struct {
 		name    string
 		task    v1beta1.Task
-		params  []v1beta1.Param
+		params  v1beta1.Params
 		matrix  *v1beta1.Matrix
 		wantErr string
 	}{{

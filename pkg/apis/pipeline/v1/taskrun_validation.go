@@ -238,7 +238,7 @@ func ValidateWorkspaceBindings(ctx context.Context, wb []WorkspaceBinding) (errs
 }
 
 // ValidateParameters makes sure the params for the Task are valid.
-func ValidateParameters(ctx context.Context, params []Param) (errs *apis.FieldError) {
+func ValidateParameters(ctx context.Context, params Params) (errs *apis.FieldError) {
 	var names []string
 	for _, p := range params {
 		if p.Value.Type == ParamTypeObject {

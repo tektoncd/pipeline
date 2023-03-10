@@ -356,7 +356,7 @@ func (m *Matrix) validatePipelineParametersVariablesInMatrixParameters(prefix st
 	return errs
 }
 
-func (m *Matrix) validateParameterInOneOfMatrixOrParams(params []Param) (errs *apis.FieldError) {
+func (m *Matrix) validateParameterInOneOfMatrixOrParams(params Params) (errs *apis.FieldError) {
 	matrixParamNames := m.GetAllParams().ExtractNames()
 	for _, param := range params {
 		if matrixParamNames.Has(param.Name) {

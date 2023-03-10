@@ -610,7 +610,7 @@ func TestMatrix_HasParams(t *testing.T) {
 		{
 			name: "matrixed with params",
 			matrix: &Matrix{
-				Params: []Param{{Name: "platform", Value: ParamValue{ArrayVal: []string{"linux", "windows"}}}},
+				Params: Params{{Name: "platform", Value: ParamValue{ArrayVal: []string{"linux", "windows"}}}},
 			},
 			want: true,
 		}, {
@@ -618,7 +618,7 @@ func TestMatrix_HasParams(t *testing.T) {
 			matrix: &Matrix{
 				Include: IncludeParamsList{{
 					Name: "build-1",
-					Params: []Param{{
+					Params: Params{{
 						Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
 					}, {
 						Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
@@ -834,21 +834,21 @@ func TestPipelineTask_CountCombinations(t *testing.T) {
 		matrix: &Matrix{
 			Include: IncludeParamsList{{
 				Name: "build-1",
-				Params: []Param{{
+				Params: Params{{
 					Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
 				}, {
 					Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"},
 				}},
 			}, {
 				Name: "build-2",
-				Params: []Param{{
+				Params: Params{{
 					Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-2"},
 				}, {
 					Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile2"},
 				}},
 			}, {
 				Name: "build-3",
-				Params: []Param{{
+				Params: Params{{
 					Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-3"},
 				}, {
 					Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile3"},
@@ -859,24 +859,24 @@ func TestPipelineTask_CountCombinations(t *testing.T) {
 	}, {
 		name: "params and include in matrix with overriding combinations params",
 		matrix: &Matrix{
-			Params: []Param{{
+			Params: Params{{
 				Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
 			}, {
 				Name: "version", Value: ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
 			},
 			Include: IncludeParamsList{{
 				Name: "common-package",
-				Params: []Param{{
+				Params: Params{{
 					Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
 			}, {
 				Name: "s390x-no-race",
-				Params: []Param{{
+				Params: Params{{
 					Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
 				}, {
 					Name: "flags", Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"}}},
 			}, {
 				Name: "go117-context",
-				Params: []Param{{
+				Params: Params{{
 					Name: "version", Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
 				}, {
 					Name: "context", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/go117/context"}}},
@@ -886,30 +886,30 @@ func TestPipelineTask_CountCombinations(t *testing.T) {
 	}, {
 		name: "params and include in matrix with overriding combinations params and one new combination",
 		matrix: &Matrix{
-			Params: []Param{{
+			Params: Params{{
 				Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
 			}, {
 				Name: "version", Value: ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
 			},
 			Include: IncludeParamsList{{
 				Name: "common-package",
-				Params: []Param{{
+				Params: Params{{
 					Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
 			}, {
 				Name: "s390x-no-race",
-				Params: []Param{{
+				Params: Params{{
 					Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
 				}, {
 					Name: "flags", Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"}}},
 			}, {
 				Name: "go117-context",
-				Params: []Param{{
+				Params: Params{{
 					Name: "version", Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
 				}, {
 					Name: "context", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/go117/context"}}},
 			}, {
 				Name: "non-existent-arch",
-				Params: []Param{{
+				Params: Params{{
 					Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "I-do-not-exist"}},
 				}},
 			}},

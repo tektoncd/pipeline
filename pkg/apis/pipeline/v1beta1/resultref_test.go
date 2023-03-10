@@ -626,7 +626,7 @@ func TestLooksLikeResultRefWhenExpressionFalse(t *testing.T) {
 // returns them all in the expected order.
 func TestPipelineTaskResultRefs(t *testing.T) {
 	pt := v1beta1.PipelineTask{
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.r1)"),
 		}, {
 			Value: *v1beta1.NewStructuredValues("$(tasks.pt2.results.r2)"),
@@ -641,11 +641,11 @@ func TestPipelineTaskResultRefs(t *testing.T) {
 		Matrix: &v1beta1.Matrix{
 			Include: []v1beta1.IncludeParams{{
 				Name: "build-1",
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "a-param", Value: *v1beta1.NewStructuredValues("$(tasks.pt9.results.r9)"),
 				}},
 			}},
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Value: *v1beta1.NewStructuredValues("$(tasks.pt5.results.r5)", "$(tasks.pt6.results.r6)"),
 			}, {
 				Value: *v1beta1.NewStructuredValues("$(tasks.pt7.results.r7)", "$(tasks.pt8.results.r8)"),

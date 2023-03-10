@@ -3346,7 +3346,7 @@ func TestValidateParamArrayIndex_valid(t *testing.T) {
 	for _, tt := range []struct {
 		name     string
 		original PipelineSpec
-		params   []Param
+		params   Params
 	}{{
 		name: "single parameter",
 		original: PipelineSpec{
@@ -3355,7 +3355,7 @@ func TestValidateParamArrayIndex_valid(t *testing.T) {
 				{Name: "second-param", Type: ParamTypeString},
 			},
 			Tasks: []PipelineTask{{
-				Params: []Param{
+				Params: Params{
 					{Name: "first-task-first-param", Value: *NewStructuredValues("$(params.first-param[1])")},
 					{Name: "first-task-second-param", Value: *NewStructuredValues("$(params.second-param[0])")},
 					{Name: "first-task-third-param", Value: *NewStructuredValues("static value")},
@@ -3387,7 +3387,7 @@ func TestValidateParamArrayIndex_valid(t *testing.T) {
 				{Name: "second-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
 			},
 			Tasks: []PipelineTask{{
-				Params: []Param{
+				Params: Params{
 					{Name: "first-task-first-param", Value: *NewStructuredValues("$(input.workspace.$(params.first-param[0]))")},
 					{Name: "first-task-second-param", Value: *NewStructuredValues("$(input.workspace.$(params.second-param[1]))")},
 				},
@@ -3402,13 +3402,13 @@ func TestValidateParamArrayIndex_valid(t *testing.T) {
 				{Name: "second-param", Type: ParamTypeArray},
 			},
 			Tasks: []PipelineTask{{
-				Params: []Param{
+				Params: Params{
 					{Name: "first-task-first-param", Value: *NewStructuredValues("firstelement", "$(params.first-param)")},
 					{Name: "first-task-second-param", Value: *NewStructuredValues("firstelement", "$(params.second-param[0])")},
 				},
 			}},
 		},
-		params: []Param{
+		params: Params{
 			{Name: "second-param", Value: *NewStructuredValues("second-value", "array")},
 		},
 	}, {
@@ -3419,7 +3419,7 @@ func TestValidateParamArrayIndex_valid(t *testing.T) {
 				{Name: "second-param", Type: ParamTypeArray},
 			},
 			Finally: []PipelineTask{{
-				Params: []Param{
+				Params: Params{
 					{Name: "final-task-first-param", Value: *NewStructuredValues("$(params.first-param[0])")},
 					{Name: "final-task-second-param", Value: *NewStructuredValues("$(params.second-param[1])")},
 				},
@@ -3439,13 +3439,13 @@ func TestValidateParamArrayIndex_valid(t *testing.T) {
 				{Name: "second-param", Type: ParamTypeArray},
 			},
 			Tasks: []PipelineTask{{
-				Params: []Param{
+				Params: Params{
 					{Name: "final-task-first-param", Value: *NewStructuredValues("$(params.first-param[0])")},
 					{Name: "final-task-second-param", Value: *NewStructuredValues("$(params.second-param[1])")},
 				},
 			}},
 			Finally: []PipelineTask{{
-				Params: []Param{
+				Params: Params{
 					{Name: "final-task-first-param", Value: *NewStructuredValues("$(params.first-param[0])")},
 					{Name: "final-task-second-param", Value: *NewStructuredValues("$(params.second-param[1])")},
 				},
@@ -3467,7 +3467,7 @@ func TestValidateParamArrayIndex_valid(t *testing.T) {
 				{Name: "fourth/param", Type: ParamTypeArray},
 			},
 			Tasks: []PipelineTask{{
-				Params: []Param{
+				Params: Params{
 					{Name: "first-task-first-param", Value: *NewStructuredValues(`$(params["first.param"][0])`)},
 					{Name: "first-task-second-param", Value: *NewStructuredValues(`$(params["second/param"][0])`)},
 					{Name: "first-task-third-param", Value: *NewStructuredValues(`$(params['third.param'][1])`)},
@@ -3476,7 +3476,7 @@ func TestValidateParamArrayIndex_valid(t *testing.T) {
 				},
 			}},
 		},
-		params: []Param{
+		params: Params{
 			{Name: "second/param", Value: *NewStructuredValues("second-value", "second-value-again")},
 			{Name: "fourth/param", Value: *NewStructuredValues("fourth-value", "fourth-value-again")},
 		},
@@ -3488,7 +3488,7 @@ func TestValidateParamArrayIndex_valid(t *testing.T) {
 				{Name: "second-param", Type: ParamTypeArray},
 			},
 			Tasks: []PipelineTask{{
-				Params: []Param{
+				Params: Params{
 					{Name: "first-task-first-param", Value: *NewStructuredValues("$(params.first-param[0])")},
 					{Name: "first-task-second-param", Value: *NewStructuredValues("static value")},
 				},
@@ -3523,7 +3523,7 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 	for _, tt := range []struct {
 		name     string
 		original PipelineSpec
-		params   []Param
+		params   Params
 		expected error
 	}{{
 		name: "single parameter reference out of bound",
@@ -3533,7 +3533,7 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 				{Name: "second-param", Type: ParamTypeString},
 			},
 			Tasks: []PipelineTask{{
-				Params: []Param{
+				Params: Params{
 					{Name: "first-task-first-param", Value: *NewStructuredValues("$(params.first-param[2])")},
 					{Name: "first-task-second-param", Value: *NewStructuredValues("$(params.second-param[2])")},
 					{Name: "first-task-third-param", Value: *NewStructuredValues("static value")},
@@ -3567,7 +3567,7 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 				{Name: "second-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
 			},
 			Tasks: []PipelineTask{{
-				Params: []Param{
+				Params: Params{
 					{Name: "first-task-first-param", Value: *NewStructuredValues("$(input.workspace.$(params.first-param[2]))")},
 					{Name: "first-task-second-param", Value: *NewStructuredValues("$(input.workspace.$(params.second-param[2]))")},
 				},
@@ -3583,13 +3583,13 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 				{Name: "second-param", Type: ParamTypeArray},
 			},
 			Tasks: []PipelineTask{{
-				Params: []Param{
+				Params: Params{
 					{Name: "first-task-first-param", Value: *NewStructuredValues("firstelement", "$(params.first-param[3])")},
 					{Name: "first-task-second-param", Value: *NewStructuredValues("firstelement", "$(params.second-param[4])")},
 				},
 			}},
 		},
-		params: []Param{
+		params: Params{
 			{Name: "second-param", Value: *NewStructuredValues("second-value", "array")},
 		},
 		expected: fmt.Errorf("non-existent param references:[$(params.first-param[3]) $(params.second-param[4])]"),
@@ -3601,7 +3601,7 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 				{Name: "second-param", Type: ParamTypeArray},
 			},
 			Tasks: []PipelineTask{{
-				Params: []Param{
+				Params: Params{
 					{Name: "first-task-first-param", Value: *NewObject(map[string]string{
 						"val1": "$(params.first-param[4])",
 						"val2": "$(params.second-param[4])",
@@ -3609,7 +3609,7 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 				},
 			}},
 		},
-		params: []Param{
+		params: Params{
 			{Name: "second-param", Value: *NewStructuredValues("second-value", "array")},
 		},
 		expected: fmt.Errorf("non-existent param references:[$(params.first-param[4]) $(params.second-param[4])]"),
@@ -3621,7 +3621,7 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 				{Name: "second-param", Type: ParamTypeArray},
 			},
 			Finally: []PipelineTask{{
-				Params: []Param{
+				Params: Params{
 					{Name: "final-task-first-param", Value: *NewStructuredValues("$(params.first-param[2])")},
 					{Name: "final-task-second-param", Value: *NewStructuredValues("$(params.second-param[2])")},
 				},
@@ -3642,13 +3642,13 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 				{Name: "second-param", Type: ParamTypeArray},
 			},
 			Tasks: []PipelineTask{{
-				Params: []Param{
+				Params: Params{
 					{Name: "final-task-first-param", Value: *NewStructuredValues("$(params.first-param[2])")},
 					{Name: "final-task-second-param", Value: *NewStructuredValues("$(params.second-param[2])")},
 				},
 			}},
 			Finally: []PipelineTask{{
-				Params: []Param{
+				Params: Params{
 					{Name: "final-task-first-param", Value: *NewStructuredValues("$(params.first-param[3])")},
 					{Name: "final-task-second-param", Value: *NewStructuredValues("$(params.second-param[3])")},
 				},
@@ -3658,7 +3658,7 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 					Values:   []string{"$(params.second-param[2])"},
 				}},
 				Matrix: &Matrix{
-					Params: []Param{
+					Params: Params{
 						{Name: "final-task-first-param", Value: *NewStructuredValues("$(params.first-param[4])")},
 						{Name: "final-task-second-param", Value: *NewStructuredValues("$(params.second-param[4])")},
 					}},
@@ -3675,7 +3675,7 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 			},
 			Tasks: []PipelineTask{{
 				Matrix: &Matrix{
-					Params: []Param{
+					Params: Params{
 						{Name: "first-task-first-param", Value: *NewStructuredValues("$(params.first-param[2])")},
 						{Name: "first-task-second-param", Value: *NewStructuredValues("static value")},
 					},
@@ -3694,7 +3694,7 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 				{Name: "fourth/param", Type: ParamTypeArray},
 			},
 			Tasks: []PipelineTask{{
-				Params: []Param{
+				Params: Params{
 					{Name: "first-task-first-param", Value: *NewStructuredValues(`$(params["first.param"][2])`)},
 					{Name: "first-task-second-param", Value: *NewStructuredValues(`$(params["second/param"][2])`)},
 					{Name: "first-task-third-param", Value: *NewStructuredValues(`$(params['third.param'][2])`)},
@@ -3703,7 +3703,7 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 				},
 			}},
 		},
-		params: []Param{
+		params: Params{
 			{Name: "second/param", Value: *NewStructuredValues("second-value", "second-value-again")},
 			{Name: "fourth/param", Value: *NewStructuredValues("fourth-value", "fourth-value-again")},
 		},
@@ -3716,7 +3716,7 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 				{Name: "second-param", Type: ParamTypeArray},
 			},
 			Tasks: []PipelineTask{{
-				Params: []Param{
+				Params: Params{
 					{Name: "first-task-first-param", Value: *NewStructuredValues("$(params.first-param[2])")},
 					{Name: "first-task-second-param", Value: *NewStructuredValues("static value")},
 				},

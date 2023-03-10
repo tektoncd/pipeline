@@ -217,7 +217,7 @@ func TestPipelineTask_ValidateRegularTask_Success(t *testing.T) {
 	}, {
 		name: "pipeline task - use of resolver params with the feature flag set",
 		tasks: PipelineTask{
-			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Params: []Param{{}}}},
+			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Params: Params{{}}}},
 		},
 		enableBetaAPIFields: true,
 	}}
@@ -286,7 +286,7 @@ func TestPipelineTask_ValidateRegularTask_Failure(t *testing.T) {
 	}, {
 		name: "pipeline task - use of resolver params without the feature flag set",
 		task: PipelineTask{
-			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Params: []Param{{}}}},
+			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Params: Params{{}}}},
 		},
 		expectedError: *apis.ErrDisallowedFields("taskref.params"),
 	}}
@@ -380,7 +380,7 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 			Name: "task-1",
 		}, {
 			Name: "task-2",
-			Params: []Param{{
+			Params: Params{{
 				Value: ParamValue{
 					Type:      "string",
 					StringVal: "$(tasks.task-1.results.result)",
@@ -397,7 +397,7 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 		}, {
 			Name: "task-2",
 			Matrix: &Matrix{
-				Params: []Param{{
+				Params: Params{{
 					Value: ParamValue{
 						Type: ParamTypeArray,
 						ArrayVal: []string{
@@ -437,7 +437,7 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 		}, {
 			Name:     "task-4",
 			RunAfter: []string{"task-1"},
-			Params: []Param{{
+			Params: Params{{
 				Value: ParamValue{
 					Type:      "string",
 					StringVal: "$(tasks.task-3.results.result)",
@@ -455,7 +455,7 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 			Name:     "task-6",
 			RunAfter: []string{"task-1"},
 			Matrix: &Matrix{
-				Params: []Param{{
+				Params: Params{{
 					Value: ParamValue{
 						Type: ParamTypeArray,
 						ArrayVal: []string{
@@ -485,7 +485,7 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 		}, {
 			Name:     "task-4",
 			RunAfter: []string{"task-1", "task-3"},
-			Params: []Param{{
+			Params: Params{{
 				Value: ParamValue{
 					Type:      "string",
 					StringVal: "$(tasks.task-2.results.result)",
@@ -498,7 +498,7 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 		}, {
 			Name:     "task-5",
 			RunAfter: []string{"task-1", "task-2", "task-3", "task-4"},
-			Params: []Param{{
+			Params: Params{{
 				Value: ParamValue{
 					Type:      "string",
 					StringVal: "$(tasks.task-4.results.result)",
@@ -516,7 +516,7 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 		}, {
 			Name:     "task-6",
 			RunAfter: []string{"task-1", "task-2", "task-3", "task-4", "task-5"},
-			Params: []Param{{
+			Params: Params{{
 				Value: ParamValue{
 					Type:      "string",
 					StringVal: "$(tasks.task-4.results.result)",
@@ -532,7 +532,7 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 				Values:   []string{"foo"},
 			}},
 			Matrix: &Matrix{
-				Params: []Param{{
+				Params: Params{{
 					Value: ParamValue{
 						Type: ParamTypeArray,
 						ArrayVal: []string{
@@ -554,7 +554,7 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 			}},
 		}, {
 			Name: "task-8",
-			Params: []Param{{
+			Params: Params{{
 				Value: ParamValue{
 					Type:      "string",
 					StringVal: "$(tasks.task-4.results.result1)",
@@ -918,7 +918,7 @@ func TestPipelineTask_IsMatrixed(t *testing.T) {
 			name: "matrixed with params",
 			arg: arg{
 				Matrix: &Matrix{
-					Params: []Param{{Name: "platform", Value: ParamValue{ArrayVal: []string{"linux", "windows"}}}},
+					Params: Params{{Name: "platform", Value: ParamValue{ArrayVal: []string{"linux", "windows"}}}},
 				},
 			},
 			expected: true,
@@ -928,7 +928,7 @@ func TestPipelineTask_IsMatrixed(t *testing.T) {
 				Matrix: &Matrix{
 					Include: IncludeParamsList{{
 						Name: "build-1",
-						Params: []Param{{
+						Params: Params{{
 							Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
 						}, {
 							Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
@@ -940,12 +940,12 @@ func TestPipelineTask_IsMatrixed(t *testing.T) {
 			name: "matrixed with params and include",
 			arg: arg{
 				Matrix: &Matrix{
-					Params: []Param{{
+					Params: Params{{
 						Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
 					}},
 					Include: IncludeParamsList{{
 						Name: "common-package",
-						Params: []Param{{
+						Params: Params{{
 							Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
 					}},
 				},

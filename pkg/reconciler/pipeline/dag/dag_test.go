@@ -172,7 +172,7 @@ func TestBuild_JoinMultipleRoots(t *testing.T) {
 	}
 	xDependsOnA := v1beta1.PipelineTask{
 		Name: "x",
-		Params: []v1beta1.Param{
+		Params: v1beta1.Params{
 			{
 				Value: *v1beta1.NewStructuredValues("$(tasks.a.results.result)"),
 			},
@@ -181,7 +181,7 @@ func TestBuild_JoinMultipleRoots(t *testing.T) {
 	yDependsOnARunsAfterB := v1beta1.PipelineTask{
 		Name:     "y",
 		RunAfter: []string{"b"},
-		Params: []v1beta1.Param{
+		Params: v1beta1.Params{
 			{
 				Value: *v1beta1.NewStructuredValues("$(tasks.a.results.result)"),
 			},
@@ -250,7 +250,7 @@ func TestBuild_FanInFanOut(t *testing.T) {
 				Name: "resultFromD",
 			}},
 		}},
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Value: *v1beta1.NewStructuredValues("$(tasks.a.results.result)"),
 		}},
 	}
@@ -261,13 +261,13 @@ func TestBuild_FanInFanOut(t *testing.T) {
 				Name: "resultFromE",
 			}},
 		}},
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Value: *v1beta1.NewStructuredValues("$(tasks.a.results.result)"),
 		}},
 	}
 	fDependsOnDAndE := v1beta1.PipelineTask{
 		Name: "f",
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Value: *v1beta1.NewStructuredValues("$(tasks.d.results.resultFromD)"),
 		}, {
 			Value: *v1beta1.NewStructuredValues("$(tasks.e.results.resultFromE)"),
@@ -333,7 +333,7 @@ func TestBuild_TaskParamsFromTaskResults(t *testing.T) {
 	f := v1beta1.PipelineTask{Name: "f"}
 	xDependsOnA := v1beta1.PipelineTask{
 		Name: "x",
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Name:  "paramX",
 			Value: *v1beta1.NewStructuredValues("$(tasks.a.results.resultA)"),
 		}},
@@ -341,21 +341,21 @@ func TestBuild_TaskParamsFromTaskResults(t *testing.T) {
 	yDependsOnBRunsAfterC := v1beta1.PipelineTask{
 		Name:     "y",
 		RunAfter: []string{"c"},
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Name:  "paramB",
 			Value: *v1beta1.NewStructuredValues("$(tasks.b.results.resultB)"),
 		}},
 	}
 	zDependsOnDAndE := v1beta1.PipelineTask{
 		Name: "z",
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Name:  "paramZ",
 			Value: *v1beta1.NewStructuredValues("$(tasks.d.results.resultD) $(tasks.e.results.resultE)"),
 		}},
 	}
 	wDependsOnF := v1beta1.PipelineTask{
 		Name: "w",
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Name:  "paramw",
 			Value: *v1beta1.NewStructuredValues("$(tasks.f.results.resultF[*])"),
 		}},
@@ -430,7 +430,7 @@ func TestBuild_InvalidDAG(t *testing.T) {
 				Name: "resultX",
 			}},
 		}},
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Value: *v1beta1.NewStructuredValues("$(tasks.a.results.result)"),
 		}},
 	}
@@ -441,13 +441,13 @@ func TestBuild_InvalidDAG(t *testing.T) {
 				Name: "resultZ",
 			}},
 		}},
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Value: *v1beta1.NewStructuredValues("$(tasks.x.results.resultX)"),
 		}},
 	}
 	aDependsOnZ := v1beta1.PipelineTask{
 		Name: "a",
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Value: *v1beta1.NewStructuredValues("$(tasks.z.results.resultZ)"),
 		}},
 	}
@@ -470,13 +470,13 @@ func TestBuild_InvalidDAG(t *testing.T) {
 				Name: "result",
 			}},
 		}},
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Value: *v1beta1.NewStructuredValues("$(tasks.a.results.result)"),
 		}},
 	}
 	invalidTaskResult := v1beta1.PipelineTask{
 		Name: "a",
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Value: *v1beta1.NewStructuredValues("$(tasks.invalid.results.none)"),
 		}},
 	}
@@ -499,7 +499,7 @@ func TestBuild_InvalidDAG(t *testing.T) {
 	}
 	bDependsOnA := v1beta1.PipelineTask{
 		Name: "b",
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Value: *v1beta1.NewStructuredValues("$(tasks.a.results.result)"),
 		}},
 		TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
@@ -510,7 +510,7 @@ func TestBuild_InvalidDAG(t *testing.T) {
 	}
 	cDependsOnA := v1beta1.PipelineTask{
 		Name: "c",
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Value: *v1beta1.NewStructuredValues("$(tasks.a.results.result)"),
 		}},
 		TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
@@ -521,7 +521,7 @@ func TestBuild_InvalidDAG(t *testing.T) {
 	}
 	dDependsOnBAndC := v1beta1.PipelineTask{
 		Name: "d",
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Value: *v1beta1.NewStructuredValues("$(tasks.b.results.resultb)"),
 		}, {
 			Value: *v1beta1.NewStructuredValues("$(tasks.c.results.resultc)"),
@@ -715,7 +715,7 @@ func testGraph(t *testing.T) *dag.Graph {
 		Name: "b",
 	}, {
 		Name: "w",
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Name:  "foo",
 			Value: *v1beta1.NewStructuredValues("$(tasks.y.results.bar)"),
 		}},

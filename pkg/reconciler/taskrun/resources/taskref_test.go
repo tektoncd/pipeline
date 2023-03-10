@@ -593,7 +593,7 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	taskRef := &v1beta1.TaskRef{
 		ResolverRef: v1beta1.ResolverRef{
 			Resolver: "git",
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "foo",
 				Value: *v1beta1.NewStructuredValues("$(params.resolver-param)"),
 			}, {
@@ -611,7 +611,7 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	resolved := test.NewResolvedResource([]byte(taskYAML), nil, sampleConfigSource.DeepCopy(), nil)
 	requester := &test.Requester{
 		ResolvedResource: resolved,
-		Params: []v1beta1.Param{{
+		Params: v1beta1.Params{{
 			Name:  "foo",
 			Value: *v1beta1.NewStructuredValues("bar"),
 		}, {
@@ -627,7 +627,7 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 		Spec: v1beta1.TaskRunSpec{
 			TaskRef:            taskRef,
 			ServiceAccountName: "default",
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "resolver-param",
 				Value: *v1beta1.NewStructuredValues("bar"),
 			}},
@@ -651,7 +651,7 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	taskRefNotMatching := &v1beta1.TaskRef{
 		ResolverRef: v1beta1.ResolverRef{
 			Resolver: "git",
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "foo",
 				Value: *v1beta1.NewStructuredValues("$(params.resolver-param)"),
 			}, {
@@ -669,7 +669,7 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 		Spec: v1beta1.TaskRunSpec{
 			TaskRef:            taskRefNotMatching,
 			ServiceAccountName: "default",
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "resolver-param",
 				Value: *v1beta1.NewStructuredValues("banana"),
 			}},

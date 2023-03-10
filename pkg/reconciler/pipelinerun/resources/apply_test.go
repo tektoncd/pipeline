@@ -33,7 +33,7 @@ func TestApplyParameters(t *testing.T) {
 	for _, tt := range []struct {
 		name     string
 		original v1beta1.PipelineSpec
-		params   []v1beta1.Param
+		params   v1beta1.Params
 		expected v1beta1.PipelineSpec
 		wc       func(context.Context) context.Context
 	}{{
@@ -44,21 +44,21 @@ func TestApplyParameters(t *testing.T) {
 				{Name: "second-param", Type: v1beta1.ParamTypeString},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("$(params.first-param)")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("$(params.second-param)")},
 					{Name: "first-task-third-param", Value: *v1beta1.NewStructuredValues("static value")},
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value")}},
+		params: v1beta1.Params{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value")}},
 		expected: v1beta1.PipelineSpec{
 			Params: []v1beta1.ParamSpec{
 				{Name: "first-param", Type: v1beta1.ParamTypeString, Default: v1beta1.NewStructuredValues("default-value")},
 				{Name: "second-param", Type: v1beta1.ParamTypeString},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("default-value")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("second-value")},
 					{Name: "first-task-third-param", Value: *v1beta1.NewStructuredValues("static value")},
@@ -80,7 +80,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("hello param!")}},
+		params: v1beta1.Params{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("hello param!")}},
 		expected: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
 				TaskSpec: &v1beta1.EmbeddedTask{
@@ -109,7 +109,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("hello param!")}},
+		params: v1beta1.Params{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("hello param!")}},
 		expected: v1beta1.PipelineSpec{
 			Finally: []v1beta1.PipelineTask{{
 				TaskSpec: &v1beta1.EmbeddedTask{
@@ -138,7 +138,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("hello", "param", "!!!")}},
+		params: v1beta1.Params{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("hello", "param", "!!!")}},
 		expected: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
 				TaskSpec: &v1beta1.EmbeddedTask{
@@ -167,7 +167,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("hello", "param", "!!!")}},
+		params: v1beta1.Params{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("hello", "param", "!!!")}},
 		expected: v1beta1.PipelineSpec{
 			Finally: []v1beta1.PipelineTask{{
 				TaskSpec: &v1beta1.EmbeddedTask{
@@ -196,7 +196,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "myObject", Value: *v1beta1.NewObject(map[string]string{"key1": "hello", "key2": "world!"})}},
+		params: v1beta1.Params{{Name: "myObject", Value: *v1beta1.NewObject(map[string]string{"key1": "hello", "key2": "world!"})}},
 		expected: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
 				TaskSpec: &v1beta1.EmbeddedTask{
@@ -226,7 +226,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "myObject", Value: *v1beta1.NewObject(map[string]string{"key1": "hello", "key2": "world!"})}},
+		params: v1beta1.Params{{Name: "myObject", Value: *v1beta1.NewObject(map[string]string{"key1": "hello", "key2": "world!"})}},
 		expected: v1beta1.PipelineSpec{
 			Finally: []v1beta1.PipelineTask{{
 				TaskSpec: &v1beta1.EmbeddedTask{
@@ -260,7 +260,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("pipeline param!")}},
+		params: v1beta1.Params{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("pipeline param!")}},
 		expected: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
 				TaskSpec: &v1beta1.EmbeddedTask{
@@ -297,7 +297,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("pipeline param!")}},
+		params: v1beta1.Params{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("pipeline param!")}},
 		expected: v1beta1.PipelineSpec{
 			Finally: []v1beta1.PipelineTask{{
 				TaskSpec: &v1beta1.EmbeddedTask{
@@ -334,7 +334,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("pipeline", "param!")}},
+		params: v1beta1.Params{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("pipeline", "param!")}},
 		expected: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
 				TaskSpec: &v1beta1.EmbeddedTask{
@@ -371,7 +371,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("pipeline", "param!")}},
+		params: v1beta1.Params{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("pipeline", "param!")}},
 		expected: v1beta1.PipelineSpec{
 			Finally: []v1beta1.PipelineTask{{
 				TaskSpec: &v1beta1.EmbeddedTask{
@@ -393,7 +393,7 @@ func TestApplyParameters(t *testing.T) {
 		name: "parameter propagation array with task default and task winner task",
 		original: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "HELLO", Value: *v1beta1.NewStructuredValues("task", "param!")},
 				},
 				TaskSpec: &v1beta1.EmbeddedTask{
@@ -411,10 +411,10 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("pipeline", "param!")}},
+		params: v1beta1.Params{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("pipeline", "param!")}},
 		expected: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "HELLO", Value: *v1beta1.NewStructuredValues("task", "param!")},
 				},
 				TaskSpec: &v1beta1.EmbeddedTask{
@@ -436,7 +436,7 @@ func TestApplyParameters(t *testing.T) {
 		name: "Finally task parameter propagation array with task default and task winner task",
 		original: v1beta1.PipelineSpec{
 			Finally: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "HELLO", Value: *v1beta1.NewStructuredValues("task", "param!")},
 				},
 				TaskSpec: &v1beta1.EmbeddedTask{
@@ -454,10 +454,10 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("pipeline", "param!")}},
+		params: v1beta1.Params{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("pipeline", "param!")}},
 		expected: v1beta1.PipelineSpec{
 			Finally: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "HELLO", Value: *v1beta1.NewStructuredValues("task", "param!")},
 				},
 				TaskSpec: &v1beta1.EmbeddedTask{
@@ -479,7 +479,7 @@ func TestApplyParameters(t *testing.T) {
 		name: "parameter propagation with task default and task winner task",
 		original: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "HELLO", Value: *v1beta1.NewStructuredValues("task param!")},
 				},
 				TaskSpec: &v1beta1.EmbeddedTask{
@@ -497,10 +497,10 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("pipeline param!")}},
+		params: v1beta1.Params{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("pipeline param!")}},
 		expected: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "HELLO", Value: *v1beta1.NewStructuredValues("task param!")},
 				},
 				TaskSpec: &v1beta1.EmbeddedTask{
@@ -522,7 +522,7 @@ func TestApplyParameters(t *testing.T) {
 		name: "Finally task parameter propagation with task default and task winner task",
 		original: v1beta1.PipelineSpec{
 			Finally: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "HELLO", Value: *v1beta1.NewStructuredValues("task param!")},
 				},
 				TaskSpec: &v1beta1.EmbeddedTask{
@@ -540,10 +540,10 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("pipeline param!")}},
+		params: v1beta1.Params{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("pipeline param!")}},
 		expected: v1beta1.PipelineSpec{
 			Finally: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "HELLO", Value: *v1beta1.NewStructuredValues("task param!")},
 				},
 				TaskSpec: &v1beta1.EmbeddedTask{
@@ -587,7 +587,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
+		params: v1beta1.Params{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
 			"key1": "pipeline",
 			"key2": "param!!",
 		})}},
@@ -642,7 +642,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
+		params: v1beta1.Params{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
 			"key1": "pipeline",
 			"key2": "param!!",
 		})}},
@@ -675,7 +675,7 @@ func TestApplyParameters(t *testing.T) {
 		name: "parameter propagation object with task default and task winner task",
 		original: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
 						"key1": "task",
 						"key2": "param!",
@@ -703,10 +703,10 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{"key1": "pipeline", "key2": "param!!!"})}},
+		params: v1beta1.Params{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{"key1": "pipeline", "key2": "param!!!"})}},
 		expected: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
 						"key1": "task",
 						"key2": "param!",
@@ -739,7 +739,7 @@ func TestApplyParameters(t *testing.T) {
 		name: "Finally task parameter propagation object with task default and task winner task",
 		original: v1beta1.PipelineSpec{
 			Finally: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
 						"key1": "task",
 						"key2": "param!",
@@ -767,10 +767,10 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{"key1": "pipeline", "key2": "param!!!"})}},
+		params: v1beta1.Params{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{"key1": "pipeline", "key2": "param!!!"})}},
 		expected: v1beta1.PipelineSpec{
 			Finally: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
 						"key1": "task",
 						"key2": "param!",
@@ -814,7 +814,7 @@ func TestApplyParameters(t *testing.T) {
 				}},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value")}},
+		params: v1beta1.Params{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value")}},
 		expected: v1beta1.PipelineSpec{
 			Params: []v1beta1.ParamSpec{
 				{Name: "first-param", Type: v1beta1.ParamTypeString, Default: v1beta1.NewStructuredValues("default-value")},
@@ -855,7 +855,7 @@ func TestApplyParameters(t *testing.T) {
 				}},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
+		params: v1beta1.Params{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
 			"key1": "val1",
 			"key2": "val2",
 			"key3": "val1",
@@ -893,7 +893,7 @@ func TestApplyParameters(t *testing.T) {
 				{Name: "second-param", Type: v1beta1.ParamTypeString, Default: v1beta1.NewStructuredValues("default-value")},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("$(input.workspace.$(params.first-param))")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("$(input.workspace.$(params.second-param))")},
 				},
@@ -906,7 +906,7 @@ func TestApplyParameters(t *testing.T) {
 				{Name: "second-param", Type: v1beta1.ParamTypeString, Default: v1beta1.NewStructuredValues("default-value")},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("$(input.workspace.default-value)")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("$(input.workspace.default-value)")},
 				},
@@ -920,13 +920,13 @@ func TestApplyParameters(t *testing.T) {
 				{Name: "second-param", Type: v1beta1.ParamTypeArray},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("firstelement", "$(params.first-param)")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("firstelement", "$(params.second-param)")},
 				},
 			}},
 		},
-		params: []v1beta1.Param{
+		params: v1beta1.Params{
 			{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value", "array")},
 		},
 		expected: v1beta1.PipelineSpec{
@@ -935,7 +935,7 @@ func TestApplyParameters(t *testing.T) {
 				{Name: "second-param", Type: v1beta1.ParamTypeArray},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("firstelement", "default", "array", "value")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("firstelement", "second-value", "array")},
 				},
@@ -959,7 +959,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("$(input.workspace.$(params.myobject.key1))")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("$(input.workspace.$(params.myobject.key2))")},
 				},
@@ -982,7 +982,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("$(input.workspace.val1)")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("$(input.workspace.val2)")},
 				},
@@ -996,7 +996,7 @@ func TestApplyParameters(t *testing.T) {
 				{Name: "second-param", Type: v1beta1.ParamTypeString},
 			},
 			Finally: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "final-task-first-param", Value: *v1beta1.NewStructuredValues("$(params.first-param)")},
 					{Name: "final-task-second-param", Value: *v1beta1.NewStructuredValues("$(params.second-param)")},
 				},
@@ -1007,14 +1007,14 @@ func TestApplyParameters(t *testing.T) {
 				}},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value")}},
+		params: v1beta1.Params{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value")}},
 		expected: v1beta1.PipelineSpec{
 			Params: []v1beta1.ParamSpec{
 				{Name: "first-param", Type: v1beta1.ParamTypeString, Default: v1beta1.NewStructuredValues("default-value")},
 				{Name: "second-param", Type: v1beta1.ParamTypeString},
 			},
 			Finally: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "final-task-first-param", Value: *v1beta1.NewStructuredValues("default-value")},
 					{Name: "final-task-second-param", Value: *v1beta1.NewStructuredValues("second-value")},
 				},
@@ -1033,13 +1033,13 @@ func TestApplyParameters(t *testing.T) {
 				{Name: "second-param", Type: v1beta1.ParamTypeString},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "final-task-first-param", Value: *v1beta1.NewStructuredValues("$(params.first-param)")},
 					{Name: "final-task-second-param", Value: *v1beta1.NewStructuredValues("$(params.second-param)")},
 				},
 			}},
 			Finally: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "final-task-first-param", Value: *v1beta1.NewStructuredValues("$(params.first-param)")},
 					{Name: "final-task-second-param", Value: *v1beta1.NewStructuredValues("$(params.second-param)")},
 				},
@@ -1050,20 +1050,20 @@ func TestApplyParameters(t *testing.T) {
 				}},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value")}},
+		params: v1beta1.Params{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value")}},
 		expected: v1beta1.PipelineSpec{
 			Params: []v1beta1.ParamSpec{
 				{Name: "first-param", Type: v1beta1.ParamTypeString, Default: v1beta1.NewStructuredValues("default-value")},
 				{Name: "second-param", Type: v1beta1.ParamTypeString},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "final-task-first-param", Value: *v1beta1.NewStructuredValues("default-value")},
 					{Name: "final-task-second-param", Value: *v1beta1.NewStructuredValues("second-value")},
 				},
 			}},
 			Finally: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "final-task-first-param", Value: *v1beta1.NewStructuredValues("default-value")},
 					{Name: "final-task-second-param", Value: *v1beta1.NewStructuredValues("second-value")},
 				},
@@ -1092,13 +1092,13 @@ func TestApplyParameters(t *testing.T) {
 				},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "final-task-first-param", Value: *v1beta1.NewStructuredValues("$(params.myobject.key1)")},
 					{Name: "final-task-second-param", Value: *v1beta1.NewStructuredValues("$(params.myobject.key2)")},
 				},
 			}},
 			Finally: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "final-task-first-param", Value: *v1beta1.NewStructuredValues("$(params.myobject.key1)")},
 					{Name: "final-task-second-param", Value: *v1beta1.NewStructuredValues("$(params.myobject.key2)")},
 				},
@@ -1109,7 +1109,7 @@ func TestApplyParameters(t *testing.T) {
 				}},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
+		params: v1beta1.Params{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
 			"key1": "foo",
 			"key2": "bar",
 		})}},
@@ -1129,13 +1129,13 @@ func TestApplyParameters(t *testing.T) {
 				},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "final-task-first-param", Value: *v1beta1.NewStructuredValues("foo")},
 					{Name: "final-task-second-param", Value: *v1beta1.NewStructuredValues("bar")},
 				},
 			}},
 			Finally: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "final-task-first-param", Value: *v1beta1.NewStructuredValues("foo")},
 					{Name: "final-task-second-param", Value: *v1beta1.NewStructuredValues("bar")},
 				},
@@ -1156,7 +1156,7 @@ func TestApplyParameters(t *testing.T) {
 				{Name: "fourth/param", Type: v1beta1.ParamTypeString},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues(`$(params["first.param"])`)},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues(`$(params["second/param"])`)},
 					{Name: "first-task-third-param", Value: *v1beta1.NewStructuredValues(`$(params['third.param'])`)},
@@ -1165,7 +1165,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{
+		params: v1beta1.Params{
 			{Name: "second/param", Value: *v1beta1.NewStructuredValues("second-value")},
 			{Name: "fourth/param", Value: *v1beta1.NewStructuredValues("fourth-value")},
 		},
@@ -1177,7 +1177,7 @@ func TestApplyParameters(t *testing.T) {
 				{Name: "fourth/param", Type: v1beta1.ParamTypeString},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("default-value")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("second-value")},
 					{Name: "first-task-third-param", Value: *v1beta1.NewStructuredValues("default-value")},
@@ -1194,7 +1194,7 @@ func TestApplyParameters(t *testing.T) {
 				{Name: "second-param", Type: v1beta1.ParamTypeString},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("$(params.first-param)")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("static value")},
 				},
@@ -1207,14 +1207,14 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value")}},
+		params: v1beta1.Params{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value")}},
 		expected: v1beta1.PipelineSpec{
 			Params: []v1beta1.ParamSpec{
 				{Name: "first-param", Type: v1beta1.ParamTypeString, Default: v1beta1.NewStructuredValues("default-value")},
 				{Name: "second-param", Type: v1beta1.ParamTypeString},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("default-value")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("static value")},
 				},
@@ -1245,7 +1245,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("$(params.myobject.key1)")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("static value")},
 				},
@@ -1258,7 +1258,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
+		params: v1beta1.Params{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
 			"key1": "foo",
 			"key2": "bar",
 		})}},
@@ -1278,7 +1278,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("foo")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("static value")},
 				},
@@ -1301,7 +1301,7 @@ func TestApplyParameters(t *testing.T) {
 			Tasks: []v1beta1.PipelineTask{{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							Name:  "first-resolver-param",
 							Value: *v1beta1.NewArrayOrString("$(params.first-param)"),
 						}, {
@@ -1312,7 +1312,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewArrayOrString("second-value")}},
+		params: v1beta1.Params{{Name: "second-param", Value: *v1beta1.NewArrayOrString("second-value")}},
 		expected: v1beta1.PipelineSpec{
 			Params: []v1beta1.ParamSpec{
 				{Name: "first-param", Type: v1beta1.ParamTypeString, Default: v1beta1.NewArrayOrString("default-value")},
@@ -1321,7 +1321,7 @@ func TestApplyParameters(t *testing.T) {
 			Tasks: []v1beta1.PipelineTask{{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							Name:  "first-resolver-param",
 							Value: *v1beta1.NewArrayOrString("default-value"),
 						}, {
@@ -1354,7 +1354,7 @@ func TestApplyParameters(t *testing.T) {
 			Tasks: []v1beta1.PipelineTask{{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							Name:  "first-resolver-param",
 							Value: *v1beta1.NewArrayOrString("$(params.myobject.key1)"),
 						}, {
@@ -1368,7 +1368,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
+		params: v1beta1.Params{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
 			"key1": "val1",
 			"key2": "val2",
 			"key3": "val1",
@@ -1393,7 +1393,7 @@ func TestApplyParameters(t *testing.T) {
 			Tasks: []v1beta1.PipelineTask{{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							Name:  "first-resolver-param",
 							Value: *v1beta1.NewArrayOrString("val1"),
 						}, {
@@ -1416,7 +1416,7 @@ func TestApplyParameters(t *testing.T) {
 				{Name: "second-param", Type: v1beta1.ParamTypeString},
 			},
 			Finally: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("$(params.first-param)")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("static value")},
 				},
@@ -1429,14 +1429,14 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value")}},
+		params: v1beta1.Params{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value")}},
 		expected: v1beta1.PipelineSpec{
 			Params: []v1beta1.ParamSpec{
 				{Name: "first-param", Type: v1beta1.ParamTypeString, Default: v1beta1.NewStructuredValues("default-value")},
 				{Name: "second-param", Type: v1beta1.ParamTypeString},
 			},
 			Finally: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("default-value")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("static value")},
 				},
@@ -1479,7 +1479,7 @@ func TestApplyParameters(t *testing.T) {
 								},
 							},
 						},
-						Params: []v1beta1.Param{
+						Params: v1beta1.Params{
 							{
 								Name: "param1",
 								Value: v1beta1.ParamValue{
@@ -1501,7 +1501,7 @@ func TestApplyParameters(t *testing.T) {
 								},
 							},
 						},
-						Params: []v1beta1.Param{
+						Params: v1beta1.Params{
 							{
 								Name: "param1",
 								Value: v1beta1.ParamValue{
@@ -1540,7 +1540,7 @@ func TestApplyParameters(t *testing.T) {
 								},
 							},
 						},
-						Params: []v1beta1.Param{
+						Params: v1beta1.Params{
 							{
 								Name: "param1",
 								Value: v1beta1.ParamValue{
@@ -1562,7 +1562,7 @@ func TestApplyParameters(t *testing.T) {
 								},
 							},
 						},
-						Params: []v1beta1.Param{
+						Params: v1beta1.Params{
 							{
 								Name: "param1",
 								Value: v1beta1.ParamValue{
@@ -1606,7 +1606,7 @@ func TestApplyParameters(t *testing.T) {
 								},
 							},
 						},
-						Params: []v1beta1.Param{
+						Params: v1beta1.Params{
 							{
 								Name: "param1",
 								Value: v1beta1.ParamValue{
@@ -1628,7 +1628,7 @@ func TestApplyParameters(t *testing.T) {
 								},
 							},
 						},
-						Params: []v1beta1.Param{
+						Params: v1beta1.Params{
 							{
 								Name: "param1",
 								Value: v1beta1.ParamValue{
@@ -1669,7 +1669,7 @@ func TestApplyParameters(t *testing.T) {
 								},
 							},
 						},
-						Params: []v1beta1.Param{
+						Params: v1beta1.Params{
 							{
 								Name: "param1",
 								Value: v1beta1.ParamValue{
@@ -1691,7 +1691,7 @@ func TestApplyParameters(t *testing.T) {
 								},
 							},
 						},
-						Params: []v1beta1.Param{
+						Params: v1beta1.Params{
 							{
 								Name: "param1",
 								Value: v1beta1.ParamValue{
@@ -1733,7 +1733,7 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 	for _, tt := range []struct {
 		name     string
 		original v1beta1.PipelineSpec
-		params   []v1beta1.Param
+		params   v1beta1.Params
 		expected v1beta1.PipelineSpec
 	}{{
 		name: "single parameter",
@@ -1743,21 +1743,21 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 				{Name: "second-param", Type: v1beta1.ParamTypeString},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("$(params.first-param[1])")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("$(params.second-param[0])")},
 					{Name: "first-task-third-param", Value: *v1beta1.NewStructuredValues("static value")},
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value", "second-value-again")}},
+		params: v1beta1.Params{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value", "second-value-again")}},
 		expected: v1beta1.PipelineSpec{
 			Params: []v1beta1.ParamSpec{
 				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewStructuredValues("default-value", "default-value-again")},
 				{Name: "second-param", Type: v1beta1.ParamTypeString},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("default-value-again")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("second-value")},
 					{Name: "first-task-third-param", Value: *v1beta1.NewStructuredValues("static value")},
@@ -1779,7 +1779,7 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 				}},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value", "second-value-again")}},
+		params: v1beta1.Params{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value", "second-value-again")}},
 		expected: v1beta1.PipelineSpec{
 			Params: []v1beta1.ParamSpec{
 				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewStructuredValues("default-value", "default-value-again")},
@@ -1801,7 +1801,7 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 				{Name: "second-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewStructuredValues("default-value", "default-value-again")},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("$(input.workspace.$(params.first-param[0]))")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("$(input.workspace.$(params.second-param[1]))")},
 				},
@@ -1814,7 +1814,7 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 				{Name: "second-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewStructuredValues("default-value", "default-value-again")},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("$(input.workspace.default-value)")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("$(input.workspace.default-value-again)")},
 				},
@@ -1828,13 +1828,13 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 				{Name: "second-param", Type: v1beta1.ParamTypeArray},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("firstelement", "$(params.first-param)")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("firstelement", "$(params.second-param[0])")},
 				},
 			}},
 		},
-		params: []v1beta1.Param{
+		params: v1beta1.Params{
 			{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value", "array")},
 		},
 		expected: v1beta1.PipelineSpec{
@@ -1843,7 +1843,7 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 				{Name: "second-param", Type: v1beta1.ParamTypeArray},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("firstelement", "default", "array", "value")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("firstelement", "second-value")},
 				},
@@ -1857,7 +1857,7 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 				{Name: "second-param", Type: v1beta1.ParamTypeArray},
 			},
 			Finally: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "final-task-first-param", Value: *v1beta1.NewStructuredValues("$(params.first-param[0])")},
 					{Name: "final-task-second-param", Value: *v1beta1.NewStructuredValues("$(params.second-param[1])")},
 				},
@@ -1868,14 +1868,14 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 				}},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value", "second-value-again")}},
+		params: v1beta1.Params{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value", "second-value-again")}},
 		expected: v1beta1.PipelineSpec{
 			Params: []v1beta1.ParamSpec{
 				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewStructuredValues("default-value", "default-value-again")},
 				{Name: "second-param", Type: v1beta1.ParamTypeArray},
 			},
 			Finally: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "final-task-first-param", Value: *v1beta1.NewStructuredValues("default-value")},
 					{Name: "final-task-second-param", Value: *v1beta1.NewStructuredValues("second-value-again")},
 				},
@@ -1894,13 +1894,13 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 				{Name: "second-param", Type: v1beta1.ParamTypeArray},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "final-task-first-param", Value: *v1beta1.NewStructuredValues("$(params.first-param[0])")},
 					{Name: "final-task-second-param", Value: *v1beta1.NewStructuredValues("$(params.second-param[1])")},
 				},
 			}},
 			Finally: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "final-task-first-param", Value: *v1beta1.NewStructuredValues("$(params.first-param[0])")},
 					{Name: "final-task-second-param", Value: *v1beta1.NewStructuredValues("$(params.second-param[1])")},
 				},
@@ -1911,20 +1911,20 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 				}},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value", "second-value-again")}},
+		params: v1beta1.Params{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value", "second-value-again")}},
 		expected: v1beta1.PipelineSpec{
 			Params: []v1beta1.ParamSpec{
 				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewStructuredValues("default-value", "default-value-again")},
 				{Name: "second-param", Type: v1beta1.ParamTypeArray},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "final-task-first-param", Value: *v1beta1.NewStructuredValues("default-value")},
 					{Name: "final-task-second-param", Value: *v1beta1.NewStructuredValues("second-value-again")},
 				},
 			}},
 			Finally: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "final-task-first-param", Value: *v1beta1.NewStructuredValues("default-value")},
 					{Name: "final-task-second-param", Value: *v1beta1.NewStructuredValues("second-value-again")},
 				},
@@ -1945,7 +1945,7 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 				{Name: "fourth/param", Type: v1beta1.ParamTypeArray},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues(`$(params["first.param"][0])`)},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues(`$(params["second/param"][0])`)},
 					{Name: "first-task-third-param", Value: *v1beta1.NewStructuredValues(`$(params['third.param'][1])`)},
@@ -1954,7 +1954,7 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{
+		params: v1beta1.Params{
 			{Name: "second/param", Value: *v1beta1.NewStructuredValues("second-value", "second-value-again")},
 			{Name: "fourth/param", Value: *v1beta1.NewStructuredValues("fourth-value", "fourth-value-again")},
 		},
@@ -1966,7 +1966,7 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 				{Name: "fourth/param", Type: v1beta1.ParamTypeArray},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("default-value")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("second-value")},
 					{Name: "first-task-third-param", Value: *v1beta1.NewStructuredValues("default-value-again")},
@@ -1983,7 +1983,7 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 				{Name: "second-param", Type: v1beta1.ParamTypeArray},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("$(params.first-param[0])")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("static value")},
 				},
@@ -1996,14 +1996,14 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value", "second-value-again")}},
+		params: v1beta1.Params{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value", "second-value-again")}},
 		expected: v1beta1.PipelineSpec{
 			Params: []v1beta1.ParamSpec{
 				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewStructuredValues("default-value", "default-value-again")},
 				{Name: "second-param", Type: v1beta1.ParamTypeArray},
 			},
 			Tasks: []v1beta1.PipelineTask{{
-				Params: []v1beta1.Param{
+				Params: v1beta1.Params{
 					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("default-value")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("static value")},
 				},
@@ -2042,7 +2042,7 @@ func TestApplyReplacementsMatrix(t *testing.T) {
 	for _, tt := range []struct {
 		name     string
 		original v1beta1.PipelineSpec
-		params   []v1beta1.Param
+		params   v1beta1.Params
 		expected v1beta1.PipelineSpec
 	}{{
 		name: "matrix params replacements",
@@ -2056,7 +2056,7 @@ func TestApplyReplacementsMatrix(t *testing.T) {
 			}},
 			Tasks: []v1beta1.PipelineTask{{
 				Matrix: &v1beta1.Matrix{
-					Params: []v1beta1.Param{{
+					Params: v1beta1.Params{{
 						// string replacements from string param, array param and object param
 						Name: "first-param", Value: *v1beta1.NewStructuredValues("$(params.foo)", "$(params.bar[0])", "$(params.rad.key1)"),
 					}, {
@@ -2066,7 +2066,7 @@ func TestApplyReplacementsMatrix(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{
+		params: v1beta1.Params{
 			{Name: "foo", Value: *v1beta1.NewStructuredValues("foo")},
 			{Name: "bar", Value: *v1beta1.NewStructuredValues("b", "a", "r")},
 			{Name: "rad", Value: *v1beta1.NewObject(map[string]string{
@@ -2085,7 +2085,7 @@ func TestApplyReplacementsMatrix(t *testing.T) {
 			}},
 			Tasks: []v1beta1.PipelineTask{{
 				Matrix: &v1beta1.Matrix{
-					Params: []v1beta1.Param{{
+					Params: v1beta1.Params{{
 						// string replacements from string param, array param and object param
 						Name: "first-param", Value: *v1beta1.NewStructuredValues("foo", "b", "r"),
 					}, {
@@ -2123,7 +2123,7 @@ func TestApplyReplacementsMatrix(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{
+		params: v1beta1.Params{
 			{Name: "foo", Value: *v1beta1.NewStructuredValues("foo")},
 			{Name: "bar", Value: *v1beta1.NewStructuredValues("b", "a", "r")},
 			{Name: "rad", Value: *v1beta1.NewObject(map[string]string{
@@ -2144,7 +2144,7 @@ func TestApplyReplacementsMatrix(t *testing.T) {
 				Matrix: &v1beta1.Matrix{
 					Include: []v1beta1.IncludeParams{{
 						Name: "build-1",
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							// string replacements from string param
 							Name: "first-param", Value: *v1beta1.NewStructuredValues("foo"),
 						}, {
@@ -2170,7 +2170,7 @@ func TestApplyReplacementsMatrix(t *testing.T) {
 			}},
 			Finally: []v1beta1.PipelineTask{{
 				Matrix: &v1beta1.Matrix{
-					Params: []v1beta1.Param{{
+					Params: v1beta1.Params{{
 						// string replacements from string param, array param and object param
 						Name: "first-param", Value: *v1beta1.NewStructuredValues("$(params.foo)", "$(params.bar[0])", "$(params.rad.key1)"),
 					}, {
@@ -2180,7 +2180,7 @@ func TestApplyReplacementsMatrix(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{
+		params: v1beta1.Params{
 			{Name: "foo", Value: *v1beta1.NewStructuredValues("foo")},
 			{Name: "bar", Value: *v1beta1.NewStructuredValues("b", "a", "r")},
 			{Name: "rad", Value: *v1beta1.NewObject(map[string]string{
@@ -2199,7 +2199,7 @@ func TestApplyReplacementsMatrix(t *testing.T) {
 			}},
 			Finally: []v1beta1.PipelineTask{{
 				Matrix: &v1beta1.Matrix{
-					Params: []v1beta1.Param{{
+					Params: v1beta1.Params{{
 						// string replacements from string param, array param and object param
 						Name: "first-param", Value: *v1beta1.NewStructuredValues("foo", "b", "r"),
 					}, {
@@ -2237,7 +2237,7 @@ func TestApplyReplacementsMatrix(t *testing.T) {
 				},
 			}},
 		},
-		params: []v1beta1.Param{
+		params: v1beta1.Params{
 			{Name: "foo", Value: *v1beta1.NewStructuredValues("foo")},
 			{Name: "bar", Value: *v1beta1.NewStructuredValues("b", "a", "r")},
 			{Name: "rad", Value: *v1beta1.NewObject(map[string]string{
@@ -2258,7 +2258,7 @@ func TestApplyReplacementsMatrix(t *testing.T) {
 				Matrix: &v1beta1.Matrix{
 					Include: []v1beta1.IncludeParams{{
 						Name: "build-1",
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							// string replacements from string param
 							Name: "first-param", Value: *v1beta1.NewStructuredValues("foo"),
 						}, {
@@ -2310,7 +2310,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "bParam",
 					Value: *v1beta1.NewStructuredValues(`$(tasks.aTask.results["a.Result"])`),
 				}},
@@ -2320,7 +2320,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "bParam",
 					Value: *v1beta1.NewStructuredValues("aResultValue"),
 				}},
@@ -2340,7 +2340,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "bParam",
 					Value: *v1beta1.NewStructuredValues(`$(tasks.aTask.results["a.Result"][1])`),
 				}},
@@ -2350,7 +2350,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "bParam",
 					Value: *v1beta1.NewStructuredValues("arrayResultValueTwo"),
 				}},
@@ -2370,7 +2370,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "bParam",
 					Value: *v1beta1.NewStructuredValues(`$(tasks.aTask.results["a.Result"][3])`),
 				}},
@@ -2380,7 +2380,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "bParam",
 					// index validation is done in ResolveResultRefs() before ApplyTaskResults()
 					Value: *v1beta1.NewStructuredValues(`$(tasks.aTask.results["a.Result"][3])`),
@@ -2401,7 +2401,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "bParam",
 					Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray,
 						ArrayVal: []string{`$(tasks.aTask.results["a.Result"][*])`},
@@ -2413,7 +2413,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "bParam",
 					Value: *v1beta1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),
 				}},
@@ -2436,7 +2436,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "bParam",
 					Value: *v1beta1.NewStructuredValues(`$(tasks.aTask.results.resultName[*])`),
 				}},
@@ -2446,7 +2446,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "bParam",
 					// index validation is done in ResolveResultRefs() before ApplyTaskResults()
 					Value: *v1beta1.NewObject(map[string]string{
@@ -2473,7 +2473,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "bParam",
 					Value: *v1beta1.NewStructuredValues(`$(tasks.aTask.results.resultName.key1)`),
 				}},
@@ -2483,7 +2483,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name: "bParam",
 					// index validation is done in ResolveResultRefs() before ApplyTaskResults()
 					Value: *v1beta1.NewStructuredValues("val1"),
@@ -2505,7 +2505,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
 				Matrix: &v1beta1.Matrix{
-					Params: []v1beta1.Param{{
+					Params: v1beta1.Params{{
 						Name:  "bParam",
 						Value: *v1beta1.NewStructuredValues(`$(tasks.aTask.results["a.Result"])`),
 					}}},
@@ -2516,7 +2516,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
 				Matrix: &v1beta1.Matrix{
-					Params: []v1beta1.Param{{
+					Params: v1beta1.Params{{
 						Name:  "bParam",
 						Value: *v1beta1.NewStructuredValues("aResultValue"),
 					}}},
@@ -2537,7 +2537,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
 				Matrix: &v1beta1.Matrix{
-					Params: []v1beta1.Param{{
+					Params: v1beta1.Params{{
 						Name:  "bParam",
 						Value: *v1beta1.NewStructuredValues(`$(tasks.aTask.results["a.Result"][1])`),
 					}}},
@@ -2548,7 +2548,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
 				Matrix: &v1beta1.Matrix{
-					Params: []v1beta1.Param{{
+					Params: v1beta1.Params{{
 						Name:  "bParam",
 						Value: *v1beta1.NewStructuredValues("arrayResultValueTwo"),
 					}}},
@@ -2569,7 +2569,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
 				Matrix: &v1beta1.Matrix{
-					Params: []v1beta1.Param{{
+					Params: v1beta1.Params{{
 						Name:  "bParam",
 						Value: *v1beta1.NewStructuredValues(`$(tasks.aTask.results["a.Result"][3])`),
 					}}},
@@ -2580,7 +2580,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
 				Matrix: &v1beta1.Matrix{
-					Params: []v1beta1.Param{{
+					Params: v1beta1.Params{{
 						Name:  "bParam",
 						Value: *v1beta1.NewStructuredValues(`$(tasks.aTask.results["a.Result"][3])`),
 					}}},
@@ -2697,7 +2697,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							Name: "bParam",
 							Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray,
 								ArrayVal: []string{`$(tasks.aTask.results["aResult"][*])`},
@@ -2711,7 +2711,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							Name: "bParam",
 							Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray,
 								ArrayVal: []string{"arrayResultValueOne", "arrayResultValueTwo"},
@@ -2735,7 +2735,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							Name:  "bParam",
 							Value: *v1beta1.NewArrayOrString("$(tasks.aTask.results.aResult)"),
 						}},
@@ -2747,7 +2747,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							Name:  "bParam",
 							Value: *v1beta1.NewArrayOrString("aResultValue"),
 						}},
@@ -2769,7 +2769,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							Name:  "bParam",
 							Value: *v1beta1.NewArrayOrString("$(tasks.aTask.results.aResult[0])"),
 						}, {
@@ -2784,7 +2784,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							Name:  "bParam",
 							Value: *v1beta1.NewArrayOrString("arrayResultValueOne"),
 						}, {
@@ -2825,7 +2825,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "bParam",
 					Value: *v1beta1.NewStructuredValues("Result value --> $(tasks.aTask.results.aResult)"),
 				}},
@@ -2835,7 +2835,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "bParam",
 					Value: *v1beta1.NewStructuredValues("Result value --> aResultValue"),
 				}},
@@ -2855,7 +2855,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "bParam",
 					Value: *v1beta1.NewStructuredValues("Result value --> $(tasks.aTask.results.aResult[0])"),
 				}},
@@ -2865,7 +2865,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "bParam",
 					Value: *v1beta1.NewStructuredValues("Result value --> arrayResultValueOne"),
 				}},
@@ -2886,7 +2886,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
 				Matrix: &v1beta1.Matrix{
-					Params: []v1beta1.Param{{
+					Params: v1beta1.Params{{
 						Name:  "bParam",
 						Value: *v1beta1.NewStructuredValues("Result value --> $(tasks.aTask.results.aResult)"),
 					}}},
@@ -2897,7 +2897,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
 				Matrix: &v1beta1.Matrix{
-					Params: []v1beta1.Param{{
+					Params: v1beta1.Params{{
 						Name:  "bParam",
 						Value: *v1beta1.NewStructuredValues("Result value --> aResultValue"),
 					}}},
@@ -2936,7 +2936,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
 				Matrix: &v1beta1.Matrix{
-					Params: []v1beta1.Param{{
+					Params: v1beta1.Params{{
 						// string replacements from string param, array param and object results
 						Name: "first-param", Value: *v1beta1.NewStructuredValues("$(tasks.aTask.results.foo)", "$(tasks.aTask.results.bar[0])", "$(tasks.aTask.results.rad.key1)"),
 					}},
@@ -3005,7 +3005,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 				Matrix: &v1beta1.Matrix{
 					Include: []v1beta1.IncludeParams{{
 						Name: "build-1",
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							// string replacements from string results, array results and object results
 							Name: "first-param", Value: *v1beta1.NewStructuredValues("foo", "b", "r"),
 						}},
@@ -3095,7 +3095,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							Name:  "bParam",
 							Value: *v1beta1.NewArrayOrString("Result value --> $(tasks.aTask.results.aResult)"),
 						}},
@@ -3107,7 +3107,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							Name:  "bParam",
 							Value: *v1beta1.NewArrayOrString("Result value --> aResultValue"),
 						}},
@@ -3129,7 +3129,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							Name:  "bParam",
 							Value: *v1beta1.NewArrayOrString("Result value --> $(tasks.aTask.results.aResult[0])"),
 						}, {
@@ -3144,7 +3144,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
-						Params: []v1beta1.Param{{
+						Params: v1beta1.Params{{
 							Name:  "bParam",
 							Value: *v1beta1.NewArrayOrString("Result value --> arrayResultValueOne"),
 						}, {
@@ -3226,9 +3226,9 @@ func TestContext(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline"},
 				Spec: v1beta1.PipelineSpec{
 					Tasks: []v1beta1.PipelineTask{{
-						Params: []v1beta1.Param{tc.original},
+						Params: v1beta1.Params{tc.original},
 						Matrix: &v1beta1.Matrix{
-							Params: []v1beta1.Param{tc.original},
+							Params: v1beta1.Params{tc.original},
 						}}},
 				},
 			}
@@ -3252,18 +3252,18 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 		description: "context retries replacement",
 		pt: v1beta1.PipelineTask{
 			Retries: 5,
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "retries",
 				Value: *v1beta1.NewStructuredValues("$(context.pipelineTask.retries)"),
 			}},
 			Matrix: &v1beta1.Matrix{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "retries",
 					Value: *v1beta1.NewStructuredValues("$(context.pipelineTask.retries)"),
 				}},
 				Include: []v1beta1.IncludeParams{{
 					Name: "build-1",
-					Params: []v1beta1.Param{{
+					Params: v1beta1.Params{{
 						Name:  "retries",
 						Value: *v1beta1.NewStructuredValues("$(context.pipelineTask.retries)"),
 					}},
@@ -3272,18 +3272,18 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 		},
 		want: v1beta1.PipelineTask{
 			Retries: 5,
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "retries",
 				Value: *v1beta1.NewStructuredValues("5"),
 			}},
 			Matrix: &v1beta1.Matrix{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "retries",
 					Value: *v1beta1.NewStructuredValues("5"),
 				}},
 				Include: []v1beta1.IncludeParams{{
 					Name: "build-1",
-					Params: []v1beta1.Param{{
+					Params: v1beta1.Params{{
 						Name:  "retries",
 						Value: *v1beta1.NewStructuredValues("5"),
 					}},
@@ -3293,18 +3293,18 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 	}, {
 		description: "context retries replacement with no defined retries",
 		pt: v1beta1.PipelineTask{
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "retries",
 				Value: *v1beta1.NewStructuredValues("$(context.pipelineTask.retries)"),
 			}},
 			Matrix: &v1beta1.Matrix{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "retries",
 					Value: *v1beta1.NewStructuredValues("$(context.pipelineTask.retries)"),
 				}},
 				Include: []v1beta1.IncludeParams{{
 					Name: "build-1",
-					Params: []v1beta1.Param{{
+					Params: v1beta1.Params{{
 						Name:  "retries",
 						Value: *v1beta1.NewStructuredValues("$(context.pipelineTask.retries)"),
 					}},
@@ -3312,18 +3312,18 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 			},
 		},
 		want: v1beta1.PipelineTask{
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "retries",
 				Value: *v1beta1.NewStructuredValues("0"),
 			}},
 			Matrix: &v1beta1.Matrix{
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "retries",
 					Value: *v1beta1.NewStructuredValues("0"),
 				}},
 				Include: []v1beta1.IncludeParams{{
 					Name: "build-1",
-					Params: []v1beta1.Param{{
+					Params: v1beta1.Params{{
 						Name:  "retries",
 						Value: *v1beta1.NewStructuredValues("0"),
 					}},
@@ -3370,7 +3370,7 @@ func TestApplyWorkspaces(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			p1 := v1beta1.PipelineSpec{
 				Tasks: []v1beta1.PipelineTask{{
-					Params: []v1beta1.Param{{Value: *v1beta1.NewStructuredValues(tc.variableUsage)}},
+					Params: v1beta1.Params{{Value: *v1beta1.NewStructuredValues(tc.variableUsage)}},
 				}},
 				Workspaces: tc.declarations,
 			}
@@ -4035,7 +4035,7 @@ func TestApplyTaskRunContext(t *testing.T) {
 		PipelineTask: &v1beta1.PipelineTask{
 			Name:    "task4",
 			TaskRef: &v1beta1.TaskRef{Name: "task"},
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "task1",
 				Value: *v1beta1.NewStructuredValues("$(tasks.task1.status)"),
 			}, {
@@ -4053,7 +4053,7 @@ func TestApplyTaskRunContext(t *testing.T) {
 		PipelineTask: &v1beta1.PipelineTask{
 			Name:    "task4",
 			TaskRef: &v1beta1.TaskRef{Name: "task"},
-			Params: []v1beta1.Param{{
+			Params: v1beta1.Params{{
 				Name:  "task1",
 				Value: *v1beta1.NewStructuredValues("succeeded"),
 			}, {

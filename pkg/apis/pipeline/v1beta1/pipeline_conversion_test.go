@@ -100,7 +100,7 @@ func TestPipelineConversion(t *testing.T) {
 					}},
 					Retries:  1,
 					RunAfter: []string{"task-1"},
-					Params: []v1beta1.Param{{
+					Params: v1beta1.Params{{
 						Name: "param-task-1",
 						Value: v1beta1.ParamValue{
 							ArrayVal: []string{"value-task-1"},

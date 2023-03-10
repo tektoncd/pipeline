@@ -162,7 +162,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 					}},
 					Tasks: []v1.PipelineTask{{
 						Name: "echoit",
-						Params: []v1.Param{{
+						Params: v1.Params{{
 							Name: "task-words",
 							Value: v1.ParamValue{
 								ArrayVal: []string{"$(params.pipeline-words)"},

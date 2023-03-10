@@ -170,7 +170,7 @@ func TestCustomRun_Invalid(t *testing.T) {
 					APIVersion: "blah",
 					Kind:       "blah",
 				},
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "foo",
 					Value: *v1beta1.NewStructuredValues("foo"),
 				}, {
@@ -262,7 +262,7 @@ func TestRun_Valid(t *testing.T) {
 					APIVersion: "blah",
 					Kind:       "blah",
 				},
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "foo",
 					Value: *v1beta1.NewStructuredValues("foo"),
 				}, {

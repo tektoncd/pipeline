@@ -171,7 +171,7 @@ func TestPipelineRunConversion(t *testing.T) {
 						Type: "string",
 					}},
 				},
-				Params: []v1beta1.Param{{
+				Params: v1beta1.Params{{
 					Name:  "foo",
 					Value: *v1beta1.NewStructuredValues("value"),
 				}, {
@@ -398,7 +398,7 @@ func TestPipelineRunConversionFromDeprecated(t *testing.T) {
 				PipelineRef: &v1beta1.PipelineRef{
 					ResolverRef: v1beta1.ResolverRef{
 						Resolver: "bundles",
-						Params: []v1beta1.Param{
+						Params: v1beta1.Params{
 							{Name: "bundle", Value: v1beta1.ParamValue{StringVal: "test-bundle", Type: "string"}},
 							{Name: "name", Value: v1beta1.ParamValue{StringVal: "test-bundle-name", Type: "string"}},
 							{Name: "kind", Value: v1beta1.ParamValue{StringVal: "Task", Type: "string"}},
