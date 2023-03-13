@@ -421,7 +421,10 @@ func areStepsComplete(pod *corev1.Pod) bool {
 }
 
 func getFailureMessage(logger *zap.SugaredLogger, pod *corev1.Pod) string {
-	// If the pod was evicted return the eviction message.
+	// If a pod was evicted, use the pods status message before trying to
+	// determine a failure message from the pod's container statuses. A
+	// container may have a generic exit code that contains less information,
+	// such as an exit code and message related to not being located.
 	if pod.Status.Reason == evicted {
 		return pod.Status.Message
 	}
