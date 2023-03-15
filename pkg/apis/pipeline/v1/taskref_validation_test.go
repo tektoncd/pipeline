@@ -100,7 +100,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 				Params: []v1.Param{},
 			},
 		},
-		wantErr: apis.ErrMissingField("resolver").Also(apis.ErrGeneric("params requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"")),
+		wantErr: apis.ErrMissingField("resolver").Also(apis.ErrGeneric("resolver params requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"")),
 	}, {
 		name: "taskref params disallowed without resolver",
 		taskRef: &v1.TaskRef{
