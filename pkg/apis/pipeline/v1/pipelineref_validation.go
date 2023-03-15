@@ -39,7 +39,7 @@ func (ref *PipelineRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 			}
 		}
 		if ref.Params != nil {
-			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "params", config.BetaAPIFields).ViaField("params"))
+			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "resolver params", config.BetaAPIFields).ViaField("params"))
 			if ref.Name != "" {
 				errs = errs.Also(apis.ErrMultipleOneOf("name", "params"))
 			}
