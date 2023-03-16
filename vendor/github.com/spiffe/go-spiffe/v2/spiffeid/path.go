@@ -23,7 +23,7 @@ func FormatPath(format string, args ...interface{}) (string, error) {
 func JoinPathSegments(segments ...string) (string, error) {
 	var builder strings.Builder
 	for _, segment := range segments {
-		if err := validatePathSegment(segment); err != nil {
+		if err := ValidatePathSegment(segment); err != nil {
 			return "", err
 		}
 		builder.WriteByte('/')
@@ -71,9 +71,15 @@ func ValidatePath(path string) error {
 	return nil
 }
 
-func validatePathSegment(segment string) error {
-	if segment == "" {
+// ValidatePathSegment validates that a string is a conformant segment for
+// inclusion in the path for a SPIFFE ID.
+// See https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE-ID.md#22-path
+func ValidatePathSegment(segment string) error {
+	switch segment {
+	case "":
 		return errEmptySegment
+	case ".", "..":
+		return errDotSegment
 	}
 	for i := 0; i < len(segment); i++ {
 		if !isValidPathSegmentChar(segment[i]) {
