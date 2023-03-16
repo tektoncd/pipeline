@@ -19,7 +19,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.0-rc2
 	github.com/pkg/errors v0.9.1
 	github.com/sigstore/sigstore v1.6.0
-	github.com/spiffe/go-spiffe/v2 v2.1.2
+	github.com/spiffe/go-spiffe/v2 v2.1.3
 	github.com/spiffe/spire-api-sdk v1.6.1
 	github.com/tektoncd/plumbing v0.0.0-20220817140952-3da8ce01aeeb
 	go.opencensus.io v0.24.0
@@ -68,7 +68,7 @@ require (
 
 require (
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
-	cloud.google.com/go/iam v0.8.0 // indirect
+	cloud.google.com/go/iam v0.11.0 // indirect
 	cloud.google.com/go/kms v1.8.0 // indirect
 	github.com/Azure/go-autorest/autorest/to v0.4.0 // indirect
 	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
@@ -203,7 +203,7 @@ require (
 	golang.org/x/tools v0.7.0 // indirect
 	google.golang.org/api v0.110.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20230209215440-0dfe4f8abfcc // indirect
+	google.golang.org/genproto v0.0.0-20230223222841-637eb2293923 // indirect
 	google.golang.org/grpc v1.53.0
 	google.golang.org/protobuf v1.29.0
 	gopkg.in/inf.v0 v0.9.1 // indirect
