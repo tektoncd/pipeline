@@ -3505,7 +3505,7 @@ func TestApplyFinallyResultsToPipelineResults(t *testing.T) {
 	}
 }
 
-func TestApplyTaskResultsToPipelineResults(t *testing.T) {
+func TestApplyTaskResultsToPipelineResults_Success(t *testing.T) {
 	for _, tc := range []struct {
 		description     string
 		results         []v1beta1.PipelineResult
@@ -3513,7 +3513,6 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		runResults      map[string][]v1beta1.CustomRunResult
 		skippedTasks    []v1beta1.SkippedTask
 		expectedResults []v1beta1.PipelineRunResult
-		expectedError   error
 	}{{
 		description: "non-reference-results",
 		results: []v1beta1.PipelineResult{{
@@ -3529,60 +3528,6 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			},
 		},
 		expectedResults: nil,
-	}, {
-		description: "array-index-out-of-bound",
-		results: []v1beta1.PipelineResult{{
-			Name:  "pipeline-result-1",
-			Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.foo[4])"),
-		}},
-		taskResults: map[string][]v1beta1.TaskRunResult{
-			"pt1": {
-				{
-					Name:  "foo",
-					Value: *v1beta1.NewStructuredValues("do", "rae", "mi"),
-				},
-			},
-		},
-		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [pipeline-result-1], the referred results don't exist"),
-	}, {
-		description: "object-reference-key-not-exist",
-		results: []v1beta1.PipelineResult{{
-			Name:  "pipeline-result-1",
-			Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.foo.key3)"),
-		}},
-		taskResults: map[string][]v1beta1.TaskRunResult{
-			"pt1": {
-				{
-					Name: "foo",
-					Value: *v1beta1.NewObject(map[string]string{
-						"key1": "val1",
-						"key2": "val2",
-					}),
-				},
-			},
-		},
-		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [pipeline-result-1], the referred results don't exist"),
-	}, {
-		description: "object-results-resultname-not-exist",
-		results: []v1beta1.PipelineResult{{
-			Name:  "pipeline-result-1",
-			Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.bar.key1)"),
-		}},
-		taskResults: map[string][]v1beta1.TaskRunResult{
-			"pt1": {
-				{
-					Name: "foo",
-					Value: *v1beta1.NewObject(map[string]string{
-						"key1": "val1",
-						"key2": "val2",
-					}),
-				},
-			},
-		},
-		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [pipeline-result-1], the referred results don't exist"),
 	}, {
 		description: "apply-array-results",
 		results: []v1beta1.PipelineResult{{
@@ -3765,86 +3710,6 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		},
 		expectedResults: nil,
 	}, {
-		description: "invalid-result-variable-no-returned-result",
-		results: []v1beta1.PipelineResult{{
-			Name:  "foo",
-			Value: *v1beta1.NewStructuredValues("$(tasks.pt1_results.foo)"),
-		}},
-		taskResults: map[string][]v1beta1.TaskRunResult{
-			"pt1": {{
-				Name:  "foo",
-				Value: *v1beta1.NewStructuredValues("bar"),
-			}},
-		},
-		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
-	}, {
-		description: "no-taskrun-results-no-returned-results",
-		results: []v1beta1.PipelineResult{{
-			Name:  "foo",
-			Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.foo)"),
-		}},
-		taskResults: map[string][]v1beta1.TaskRunResult{
-			"pt1": {},
-		},
-		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
-	}, {
-		description: "invalid-taskrun-name-no-returned-result",
-		results: []v1beta1.PipelineResult{{
-			Name:  "foo",
-			Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.foo)"),
-		}},
-		taskResults: map[string][]v1beta1.TaskRunResult{
-			"definitely-not-pt1": {{
-				Name:  "foo",
-				Value: *v1beta1.NewStructuredValues("bar"),
-			}},
-		},
-		expectedResults: nil,
-	}, {
-		description: "invalid-result-name-no-returned-result",
-		results: []v1beta1.PipelineResult{{
-			Name:  "foo",
-			Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.foo)"),
-		}},
-		taskResults: map[string][]v1beta1.TaskRunResult{
-			"pt1": {{
-				Name:  "definitely-not-foo",
-				Value: *v1beta1.NewStructuredValues("bar"),
-			}},
-		},
-		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
-	}, {
-		description: "unsuccessful-taskrun-no-returned-result",
-		results: []v1beta1.PipelineResult{{
-			Name:  "foo",
-			Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.foo)"),
-		}},
-		taskResults:     map[string][]v1beta1.TaskRunResult{},
-		expectedResults: nil,
-	}, {
-		description: "mixed-success-tasks-some-returned-results",
-		results: []v1beta1.PipelineResult{{
-			Name:  "foo",
-			Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.foo)"),
-		}, {
-			Name:  "bar",
-			Value: *v1beta1.NewStructuredValues("$(tasks.pt2.results.bar)"),
-		}},
-		taskResults: map[string][]v1beta1.TaskRunResult{
-			"pt2": {{
-				Name:  "bar",
-				Value: *v1beta1.NewStructuredValues("rae"),
-			}},
-		},
-		expectedResults: []v1beta1.PipelineRunResult{{
-			Name:  "bar",
-			Value: *v1beta1.NewStructuredValues("rae"),
-		}},
-		expectedError: fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
-	}, {
 		description: "multiple-results-multiple-successful-tasks ",
 		results: []v1beta1.PipelineResult{{
 			Name:  "pipeline-result-1",
@@ -3875,64 +3740,6 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			Name:  "pipeline-result-2",
 			Value: *v1beta1.NewStructuredValues("do, rae, mi, rae, do"),
 		}},
-	}, {
-		description: "no-run-results-no-returned-results",
-		results: []v1beta1.PipelineResult{{
-			Name:  "foo",
-			Value: *v1beta1.NewStructuredValues("$(tasks.customtask.results.foo)"),
-		}},
-		runResults:      map[string][]v1beta1.CustomRunResult{},
-		expectedResults: nil,
-	}, {
-		description: "wrong-customtask-name-no-returned-result",
-		results: []v1beta1.PipelineResult{{
-			Name:  "foo",
-			Value: *v1beta1.NewStructuredValues("$(tasks.customtask.results.foo)"),
-		}},
-		runResults: map[string][]v1beta1.CustomRunResult{
-			"differentcustomtask": {{
-				Name:  "foo",
-				Value: "bar",
-			}},
-		},
-		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
-	}, {
-		description: "right-customtask-name-wrong-result-name-no-returned-result",
-		results: []v1beta1.PipelineResult{{
-			Name:  "foo",
-			Value: *v1beta1.NewStructuredValues("$(tasks.customtask.results.foo)"),
-		}},
-		runResults: map[string][]v1beta1.CustomRunResult{
-			"customtask": {{
-				Name:  "notfoo",
-				Value: "bar",
-			}},
-		},
-		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
-	}, {
-		description: "unsuccessful-run-no-returned-result",
-		results: []v1beta1.PipelineResult{{
-			Name:  "foo",
-			Value: *v1beta1.NewStructuredValues("$(tasks.customtask.results.foo)"),
-		}},
-		runResults: map[string][]v1beta1.CustomRunResult{
-			"customtask": {},
-		},
-		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
-	}, {
-		description: "wrong-result-reference-expression",
-		results: []v1beta1.PipelineResult{{
-			Name:  "foo",
-			Value: *v1beta1.NewStructuredValues("$(tasks.task.results.foo.foo.foo)"),
-		}},
-		runResults: map[string][]v1beta1.CustomRunResult{
-			"customtask": {},
-		},
-		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
 	}, {
 		description: "multiple-results-custom-and-normal-tasks",
 		results: []v1beta1.PipelineResult{{
@@ -3988,11 +3795,230 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
 			received, err := ApplyTaskResultsToPipelineResults(context.Background(), tc.results, tc.taskResults, tc.runResults, tc.skippedTasks)
-			if tc.expectedError != nil {
-				if d := cmp.Diff(tc.expectedError.Error(), err.Error()); d != "" {
-					t.Errorf("ApplyTaskResultsToPipelineResults() errors diff %s", diff.PrintWantGot(d))
-				}
+			if err != nil {
+				t.Errorf("Got unecpected error:%v", err)
 			}
+			if d := cmp.Diff(tc.expectedResults, received); d != "" {
+				t.Errorf(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
+	for _, tc := range []struct {
+		description     string
+		results         []v1beta1.PipelineResult
+		taskResults     map[string][]v1beta1.TaskRunResult
+		runResults      map[string][]v1beta1.CustomRunResult
+		expectedResults []v1beta1.PipelineRunResult
+		expectedError   error
+	}{{
+		description: "array-index-out-of-bound",
+		results: []v1beta1.PipelineResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.foo[4])"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {
+				{
+					Name:  "foo",
+					Value: *v1beta1.NewStructuredValues("do", "rae", "mi"),
+				},
+			},
+		},
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [pipeline-result-1], the referred results don't exist"),
+	}, {
+		description: "object-reference-key-not-exist",
+		results: []v1beta1.PipelineResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.foo.key3)"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {
+				{
+					Name: "foo",
+					Value: *v1beta1.NewObject(map[string]string{
+						"key1": "val1",
+						"key2": "val2",
+					}),
+				},
+			},
+		},
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [pipeline-result-1], the referred results don't exist"),
+	}, {
+		description: "object-results-resultname-not-exist",
+		results: []v1beta1.PipelineResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.bar.key1)"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {
+				{
+					Name: "foo",
+					Value: *v1beta1.NewObject(map[string]string{
+						"key1": "val1",
+						"key2": "val2",
+					}),
+				},
+			},
+		},
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [pipeline-result-1], the referred results don't exist"),
+	}, {
+		description: "invalid-result-variable-no-returned-result",
+		results: []v1beta1.PipelineResult{{
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("$(tasks.pt1_results.foo)"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {{
+				Name:  "foo",
+				Value: *v1beta1.NewStructuredValues("bar"),
+			}},
+		},
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+	}, {
+		description: "no-taskrun-results-no-returned-results",
+		results: []v1beta1.PipelineResult{{
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.foo)"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {},
+		},
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+	}, {
+		description: "invalid-taskrun-name-no-returned-result",
+		results: []v1beta1.PipelineResult{{
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.foo)"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"definitely-not-pt1": {{
+				Name:  "foo",
+				Value: *v1beta1.NewStructuredValues("bar"),
+			}},
+		},
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+	}, {
+		description: "invalid-result-name-no-returned-result",
+		results: []v1beta1.PipelineResult{{
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.foo)"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {{
+				Name:  "definitely-not-foo",
+				Value: *v1beta1.NewStructuredValues("bar"),
+			}},
+		},
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+	}, {
+		description: "unsuccessful-taskrun-no-returned-result",
+		results: []v1beta1.PipelineResult{{
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.foo)"),
+		}},
+		taskResults:     map[string][]v1beta1.TaskRunResult{},
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+	}, {
+		description: "mixed-success-tasks-some-returned-results",
+		results: []v1beta1.PipelineResult{{
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.foo)"),
+		}, {
+			Name:  "bar",
+			Value: *v1beta1.NewStructuredValues("$(tasks.pt2.results.bar)"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt2": {{
+				Name:  "bar",
+				Value: *v1beta1.NewStructuredValues("rae"),
+			}},
+		},
+		expectedResults: []v1beta1.PipelineRunResult{{
+			Name:  "bar",
+			Value: *v1beta1.NewStructuredValues("rae"),
+		}},
+		expectedError: fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+	}, {
+		description: "no-run-results-no-returned-results",
+		results: []v1beta1.PipelineResult{{
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("$(tasks.customtask.results.foo)"),
+		}},
+		runResults:      map[string][]v1beta1.CustomRunResult{},
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+	}, {
+		description: "wrong-customtask-name-no-returned-result",
+		results: []v1beta1.PipelineResult{{
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("$(tasks.customtask.results.foo)"),
+		}},
+		runResults: map[string][]v1beta1.CustomRunResult{
+			"differentcustomtask": {{
+				Name:  "foo",
+				Value: "bar",
+			}},
+		},
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+	}, {
+		description: "right-customtask-name-wrong-result-name-no-returned-result",
+		results: []v1beta1.PipelineResult{{
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("$(tasks.customtask.results.foo)"),
+		}},
+		runResults: map[string][]v1beta1.CustomRunResult{
+			"customtask": {{
+				Name:  "notfoo",
+				Value: "bar",
+			}},
+		},
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+	}, {
+		description: "unsuccessful-run-no-returned-result",
+		results: []v1beta1.PipelineResult{{
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("$(tasks.customtask.results.foo)"),
+		}},
+		runResults: map[string][]v1beta1.CustomRunResult{
+			"customtask": {},
+		},
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+	}, {
+		description: "wrong-result-reference-expression",
+		results: []v1beta1.PipelineResult{{
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("$(tasks.task.results.foo.foo.foo)"),
+		}},
+		runResults: map[string][]v1beta1.CustomRunResult{
+			"customtask": {},
+		},
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+	}} {
+		t.Run(tc.description, func(t *testing.T) {
+			received, err := ApplyTaskResultsToPipelineResults(context.Background(), tc.results, tc.taskResults, tc.runResults, nil /*skipped tasks*/)
+			if err == nil {
+				t.Errorf("Expect error but got nil")
+			}
+
+			if d := cmp.Diff(tc.expectedError.Error(), err.Error()); d != "" {
+				t.Errorf("ApplyTaskResultsToPipelineResults() errors diff %s", diff.PrintWantGot(d))
+			}
+
 			if d := cmp.Diff(tc.expectedResults, received); d != "" {
 				t.Errorf(diff.PrintWantGot(d))
 			}
