@@ -19,6 +19,8 @@ the pipelines repo, a terminal window and a text editor.
     ```bash
     kustomize build tekton | kubectl --context dogfooding replace -f -
     ```
+1. Ensure the `pipeline` and `task` definitions are up-to-date in the
+   [pipelines](https://github.com/tektoncd/pipeline/tree/main/tekton) repo.
 
 1. Create environment variables for bash scripts in later steps.
 
