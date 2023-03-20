@@ -263,6 +263,12 @@ func TestResolve(t *testing.T) {
 				Status: duckv1.Status{},
 				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
 					Data: base64.StdEncoding.Strict().EncodeToString(taskAsYAML),
+					RefSource: &pipelinev1beta1.RefSource{
+						URI: "/apis/tekton.dev/v1beta1/namespaces/task-ns/task/example-task@a123",
+						Digest: map[string]string{
+							"sha256": sha256CheckSum(taskSpec),
+						},
+					},
 					Source: &pipelinev1beta1.ConfigSource{
 						URI: "/apis/tekton.dev/v1beta1/namespaces/task-ns/task/example-task@a123",
 						Digest: map[string]string{
@@ -280,6 +286,12 @@ func TestResolve(t *testing.T) {
 				Status: duckv1.Status{},
 				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
 					Data: base64.StdEncoding.Strict().EncodeToString(pipelineAsYAML),
+					RefSource: &pipelinev1beta1.RefSource{
+						URI: "/apis/tekton.dev/v1beta1/namespaces/pipeline-ns/pipeline/example-pipeline@b123",
+						Digest: map[string]string{
+							"sha256": sha256CheckSum(pipelineSpec),
+						},
+					},
 					Source: &pipelinev1beta1.ConfigSource{
 						URI: "/apis/tekton.dev/v1beta1/namespaces/pipeline-ns/pipeline/example-pipeline@b123",
 						Digest: map[string]string{
@@ -296,6 +308,12 @@ func TestResolve(t *testing.T) {
 				Status: duckv1.Status{},
 				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
 					Data: base64.StdEncoding.Strict().EncodeToString(pipelineAsYAML),
+					RefSource: &pipelinev1beta1.RefSource{
+						URI: "/apis/tekton.dev/v1beta1/namespaces/pipeline-ns/pipeline/example-pipeline@b123",
+						Digest: map[string]string{
+							"sha256": sha256CheckSum(pipelineSpec),
+						},
+					},
 					Source: &pipelinev1beta1.ConfigSource{
 						URI: "/apis/tekton.dev/v1beta1/namespaces/pipeline-ns/pipeline/example-pipeline@b123",
 						Digest: map[string]string{
@@ -312,6 +330,12 @@ func TestResolve(t *testing.T) {
 				Status: duckv1.Status{},
 				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
 					Data: base64.StdEncoding.Strict().EncodeToString(taskAsYAML),
+					RefSource: &pipelinev1beta1.RefSource{
+						URI: "/apis/tekton.dev/v1beta1/namespaces/task-ns/task/example-task@a123",
+						Digest: map[string]string{
+							"sha256": sha256CheckSum(taskSpec),
+						},
+					},
 					Source: &pipelinev1beta1.ConfigSource{
 						URI: "/apis/tekton.dev/v1beta1/namespaces/task-ns/task/example-task@a123",
 						Digest: map[string]string{

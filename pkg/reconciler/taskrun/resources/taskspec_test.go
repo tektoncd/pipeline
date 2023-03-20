@@ -50,8 +50,8 @@ func TestGetTaskSpec_Ref(t *testing.T) {
 		},
 	}
 
-	gt := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.ConfigSource, error) {
-		return task, sampleConfigSource.DeepCopy(), nil
+	gt := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.RefSource, error) {
+		return task, sampleRefSource.DeepCopy(), nil
 	}
 	resolvedObjectMeta, taskSpec, err := resources.GetTaskData(context.Background(), tr, gt)
 
@@ -66,8 +66,8 @@ func TestGetTaskSpec_Ref(t *testing.T) {
 	if len(taskSpec.Steps) != 1 || taskSpec.Steps[0].Name != "step1" {
 		t.Errorf("Task Spec not resolved as expected, expected referenced Task spec but got: %v", taskSpec)
 	}
-	if d := cmp.Diff(sampleConfigSource, resolvedObjectMeta.ConfigSource); d != "" {
-		t.Errorf("configsource did not match: %s", diff.PrintWantGot(d))
+	if d := cmp.Diff(sampleRefSource, resolvedObjectMeta.RefSource); d != "" {
+		t.Errorf("refSource did not match: %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -84,7 +84,7 @@ func TestGetTaskSpec_Embedded(t *testing.T) {
 			},
 		},
 	}
-	gt := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.ConfigSource, error) {
+	gt := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.RefSource, error) {
 		return nil, nil, errors.New("shouldn't be called")
 	}
 	resolvedObjectMeta, taskSpec, err := resources.GetTaskData(context.Background(), tr, gt)
@@ -101,9 +101,9 @@ func TestGetTaskSpec_Embedded(t *testing.T) {
 		t.Errorf("Task Spec not resolved as expected, expected embedded Task spec but got: %v", taskSpec)
 	}
 
-	// embedded tasks have empty source for now. This may be changed in future.
-	if resolvedObjectMeta.ConfigSource != nil {
-		t.Errorf("resolved configsource for embedded task is expected to be empty, but got %v", resolvedObjectMeta.ConfigSource)
+	// embedded tasks have empty RefSource for now. This may be changed in future.
+	if resolvedObjectMeta.RefSource != nil {
+		t.Errorf("resolved refSource for embedded task is expected to be empty, but got %v", resolvedObjectMeta.RefSource)
 	}
 }
 
@@ -113,7 +113,7 @@ func TestGetTaskSpec_Invalid(t *testing.T) {
 			Name: "mytaskrun",
 		},
 	}
-	gt := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.ConfigSource, error) {
+	gt := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.RefSource, error) {
 		return nil, nil, errors.New("shouldn't be called")
 	}
 	_, _, err := resources.GetTaskData(context.Background(), tr, gt)
@@ -133,7 +133,7 @@ func TestGetTaskSpec_Error(t *testing.T) {
 			},
 		},
 	}
-	gt := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.ConfigSource, error) {
+	gt := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.RefSource, error) {
 		return nil, nil, errors.New("something went wrong")
 	}
 	_, _, err := resources.GetTaskData(context.Background(), tr, gt)
@@ -173,11 +173,11 @@ func TestGetTaskData_ResolutionSuccess(t *testing.T) {
 		}},
 	}
 
-	getTask := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.ConfigSource, error) {
+	getTask := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.RefSource, error) {
 		return &v1beta1.Task{
 			ObjectMeta: *sourceMeta.DeepCopy(),
 			Spec:       *sourceSpec.DeepCopy(),
-		}, sampleConfigSource.DeepCopy(), nil
+		}, sampleRefSource.DeepCopy(), nil
 	}
 	ctx := context.Background()
 	resolvedMeta, resolvedSpec, err := resources.GetTaskData(ctx, tr, getTask)
@@ -188,8 +188,8 @@ func TestGetTaskData_ResolutionSuccess(t *testing.T) {
 		t.Errorf("Expected name %q but resolved to %q", sourceMeta.Name, resolvedMeta.Name)
 	}
 
-	if d := cmp.Diff(sampleConfigSource, resolvedMeta.ConfigSource); d != "" {
-		t.Errorf("configsource did not match: %s", diff.PrintWantGot(d))
+	if d := cmp.Diff(sampleRefSource, resolvedMeta.RefSource); d != "" {
+		t.Errorf("refSource did not match: %s", diff.PrintWantGot(d))
 	}
 
 	if d := cmp.Diff(sourceSpec, *resolvedSpec); d != "" {
@@ -210,7 +210,7 @@ func TestGetPipelineData_ResolutionError(t *testing.T) {
 			},
 		},
 	}
-	getTask := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.ConfigSource, error) {
+	getTask := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.RefSource, error) {
 		return nil, nil, errors.New("something went wrong")
 	}
 	ctx := context.Background()
@@ -233,7 +233,7 @@ func TestGetTaskData_ResolvedNilTask(t *testing.T) {
 			},
 		},
 	}
-	getTask := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.ConfigSource, error) {
+	getTask := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.RefSource, error) {
 		return nil, nil, nil
 	}
 	ctx := context.Background()

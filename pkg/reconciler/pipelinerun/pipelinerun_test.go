@@ -4801,7 +4801,7 @@ status:
 	}
 }
 
-func Test_storePipelineSpecAndConfigSource(t *testing.T) {
+func Test_storePipelineSpecAndRefSource(t *testing.T) {
 	pr := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-success
@@ -4810,7 +4810,7 @@ metadata:
   annotations:
     io.annotation: value
 `)
-	configSource := &v1beta1.ConfigSource{
+	refSource := &v1beta1.RefSource{
 		URI: "abc.com",
 		Digest: map[string]string{
 			"sha1": "a123",
@@ -4826,7 +4826,8 @@ metadata:
 		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
 			PipelineSpec: ps.DeepCopy(),
 			Provenance: &v1beta1.Provenance{
-				ConfigSource: configSource.DeepCopy(),
+				RefSource:    refSource.DeepCopy(),
+				ConfigSource: (*v1beta1.ConfigSource)(refSource.DeepCopy()),
 				FeatureFlags: &config.FeatureFlags{
 					RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 					EnableAPIFields:                  config.DefaultEnableAPIFields,
@@ -4858,8 +4859,8 @@ metadata:
 			reconcile1Args: &args{
 				pipelineSpec: &ps,
 				resolvedObjectMeta: &resolutionutil.ResolvedObjectMeta{
-					ObjectMeta:   &pr.ObjectMeta,
-					ConfigSource: configSource.DeepCopy(),
+					ObjectMeta: &pr.ObjectMeta,
+					RefSource:  refSource.DeepCopy(),
 				},
 			},
 			reconcile2Args: &args{
@@ -4879,7 +4880,7 @@ metadata:
 			reconcile2Args: &args{
 				pipelineSpec: &ps,
 				resolvedObjectMeta: &resolutionutil.ResolvedObjectMeta{
-					ConfigSource: configSource.DeepCopy(),
+					RefSource: refSource.DeepCopy(),
 				},
 			},
 			wantPipelineRun: want,

@@ -50,7 +50,7 @@ var _ Resolver = &FakeResolver{}
 type FakeResolvedResource struct {
 	Content       string
 	AnnotationMap map[string]string
-	ContentSource *pipelinev1beta1.ConfigSource
+	ContentSource *pipelinev1beta1.RefSource
 	ErrorWith     string
 	WaitFor       time.Duration
 }
@@ -65,9 +65,9 @@ func (f *FakeResolvedResource) Annotations() map[string]string {
 	return f.AnnotationMap
 }
 
-// Source is the source reference of the remote data that records where the remote
+// RefSource is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint.
-func (f *FakeResolvedResource) Source() *pipelinev1beta1.ConfigSource {
+func (f *FakeResolvedResource) RefSource() *pipelinev1beta1.RefSource {
 	return f.ContentSource
 }
 

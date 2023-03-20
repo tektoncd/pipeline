@@ -160,6 +160,6 @@ func (r readOnlyResolutionRequest) Data() ([]byte, error) {
 	return decodedBytes, nil
 }
 
-func (r readOnlyResolutionRequest) Source() *pipelinev1beta1.ConfigSource {
-	return r.req.Status.Source
+func (r readOnlyResolutionRequest) RefSource() *pipelinev1beta1.RefSource {
+	return r.req.Status.RefSource
 }

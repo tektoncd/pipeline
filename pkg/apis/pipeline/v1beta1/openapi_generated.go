@@ -77,6 +77,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineWorkspaceDeclaration":    schema_pkg_apis_pipeline_v1beta1_PipelineWorkspaceDeclaration(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PropertySpec":                    schema_pkg_apis_pipeline_v1beta1_PropertySpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Provenance":                      schema_pkg_apis_pipeline_v1beta1_Provenance(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.RefSource":                       schema_pkg_apis_pipeline_v1beta1_RefSource(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ResolverRef":                     schema_pkg_apis_pipeline_v1beta1_ResolverRef(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ResultRef":                       schema_pkg_apis_pipeline_v1beta1_ResultRef(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Sidecar":                         schema_pkg_apis_pipeline_v1beta1_Sidecar(ref),
@@ -633,19 +634,19 @@ func schema_pkg_apis_pipeline_v1beta1_ConfigSource(ref common.ReferenceCallback)
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "ConfigSource identifies the source where a resource came from. This can include Git repositories, Task Bundles, file checksums, or other information that allows users to identify where the resource came from and what version was used.",
+				Description: "ConfigSource contains the information that can uniquely identify where a remote built definition came from i.e. Git repositories, Tekton Bundles in OCI registry and hub.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"uri": {
 						SchemaProps: spec.SchemaProps{
-							Description: "URI indicates the identity of the source of the config. Definition: https://slsa.dev/provenance/v0.2#invocation.configSource.uri Example: \"https://github.com/tektoncd/catalog\"",
+							Description: "URI indicates the identity of the source of the build definition. Example: \"https://github.com/tektoncd/catalog\"",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"digest": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Digest is a collection of cryptographic digests for the contents of the artifact specified by URI. Definition: https://slsa.dev/provenance/v0.2#invocation.configSource.digest Example: {\"sha1\": \"f99d13e554ffcb696dee719fa85b695cb5b0f428\"}",
+							Description: "Digest is a collection of cryptographic digests for the contents of the artifact specified by URI. Example: {\"sha1\": \"f99d13e554ffcb696dee719fa85b695cb5b0f428\"}",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -661,7 +662,7 @@ func schema_pkg_apis_pipeline_v1beta1_ConfigSource(ref common.ReferenceCallback)
 					},
 					"entryPoint": {
 						SchemaProps: spec.SchemaProps{
-							Description: "EntryPoint identifies the entry point into the build. This is often a path to a configuration file and/or a target label within that file. Definition: https://slsa.dev/provenance/v0.2#invocation.configSource.entryPoint Example: \"task/git-clone/0.8/git-clone.yaml\"",
+							Description: "EntryPoint identifies the entry point into the build. This is often a path to a build definition file and/or a target label within that file. Example: \"task/git-clone/0.8/git-clone.yaml\"",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -3046,13 +3047,19 @@ func schema_pkg_apis_pipeline_v1beta1_Provenance(ref common.ReferenceCallback) c
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.). For now, it only contains the subfield `ConfigSource` that identifies the source where a build config file came from. In future, it can be expanded as needed to include more metadata about the build. This field aims to be used to carry minimum amount of the authenticated metadata in *Run status so that Tekton Chains can pick it up and record in the provenance it generates.",
+				Description: "Provenance contains metadata about resources used in the TaskRun/PipelineRun such as the source from where a remote build definition was fetched. This field aims to carry minimum amoumt of metadata in *Run status so that Tekton Chains can capture them in the provenance.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"configSource": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ConfigSource identifies the source where a resource came from.",
+							Description: "Deprecated: Use RefSource instead",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource"),
+						},
+					},
+					"refSource": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RefSource identifies the source where a remote task/pipeline came from.",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.RefSource"),
 						},
 					},
 					"featureFlags": {
@@ -3065,7 +3072,50 @@ func schema_pkg_apis_pipeline_v1beta1_Provenance(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/config.FeatureFlags", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource"},
+			"github.com/tektoncd/pipeline/pkg/apis/config.FeatureFlags", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.RefSource"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1beta1_RefSource(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "RefSource contains the information that can uniquely identify where a remote built definition came from i.e. Git repositories, Tekton Bundles in OCI registry and hub.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"uri": {
+						SchemaProps: spec.SchemaProps{
+							Description: "URI indicates the identity of the source of the build definition. Example: \"https://github.com/tektoncd/catalog\"",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"digest": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Digest is a collection of cryptographic digests for the contents of the artifact specified by URI. Example: {\"sha1\": \"f99d13e554ffcb696dee719fa85b695cb5b0f428\"}",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"entryPoint": {
+						SchemaProps: spec.SchemaProps{
+							Description: "EntryPoint identifies the entry point into the build. This is often a path to a build definition file and/or a target label within that file. Example: \"task/git-clone/0.8/git-clone.yaml\"",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -6078,16 +6128,22 @@ func schema_pkg_apis_resolution_v1beta1_ResolutionRequestStatus(ref common.Refer
 					},
 					"source": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Source is the source reference of the remote data that records the url, digest and the entrypoint.",
+							Description: "Deprecated: Use RefSource instead",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource"),
 						},
 					},
+					"refSource": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RefSource is the source reference of the remote data that records the url, digest and the entrypoint.",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.RefSource"),
+						},
+					},
 				},
-				Required: []string{"data", "source"},
+				Required: []string{"data", "source", "refSource"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource", "knative.dev/pkg/apis.Condition"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.RefSource", "knative.dev/pkg/apis.Condition"},
 	}
 }
 
@@ -6108,15 +6164,21 @@ func schema_pkg_apis_resolution_v1beta1_ResolutionRequestStatusFields(ref common
 					},
 					"source": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Source is the source reference of the remote data that records the url, digest and the entrypoint.",
+							Description: "Deprecated: Use RefSource instead",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource"),
 						},
 					},
+					"refSource": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RefSource is the source reference of the remote data that records the url, digest and the entrypoint.",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.RefSource"),
+						},
+					},
 				},
-				Required: []string{"data", "source"},
+				Required: []string{"data", "source", "refSource"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.RefSource"},
 	}
 }

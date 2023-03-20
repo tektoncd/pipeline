@@ -80,9 +80,12 @@ type ResolutionRequestStatusFields struct {
 	// of the requested resource in-lined into the ResolutionRequest
 	// object.
 	Data string `json:"data"`
-	// Source is the source reference of the remote data that records the url, digest
-	// and the entrypoint.
+	// Deprecated: Use RefSource instead
 	Source *pipelinev1beta1.ConfigSource `json:"source"`
+
+	// RefSource is the source reference of the remote data that records the url, digest
+	// and the entrypoint.
+	RefSource *pipelinev1beta1.RefSource `json:"refSource"`
 }
 
 // GetStatus implements KRShaped.

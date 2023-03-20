@@ -45,9 +45,9 @@ const (
 // Skip the verification when no policies are found and trusted-resources-verification-no-match-policy is set to ignore or warn
 // Return an error when no policies are found and trusted-resources-verification-no-match-policy is set to fail,
 // or the resource fails to pass matched enforce verification policy
-// source is from ConfigSource.URI, which will be used to match policy patterns. k8s is used to fetch secret from cluster
-func VerifyTask(ctx context.Context, taskObj *v1beta1.Task, k8s kubernetes.Interface, source string, verificationpolicies []*v1alpha1.VerificationPolicy) error {
-	matchedPolicies, err := getMatchedPolicies(taskObj.TaskMetadata().Name, source, verificationpolicies)
+// refSourceURI is from RefSource.URI, which will be used to match policy patterns. k8s is used to fetch secret from cluster
+func VerifyTask(ctx context.Context, taskObj *v1beta1.Task, k8s kubernetes.Interface, refSourceURI string, verificationpolicies []*v1alpha1.VerificationPolicy) error {
+	matchedPolicies, err := getMatchedPolicies(taskObj.TaskMetadata().Name, refSourceURI, verificationpolicies)
 	if err != nil {
 		if errors.Is(err, ErrNoMatchedPolicies) {
 			switch config.GetVerificationNoMatchPolicy(ctx) {
@@ -81,9 +81,9 @@ func VerifyTask(ctx context.Context, taskObj *v1beta1.Task, k8s kubernetes.Inter
 // Skip the verification when no policies are found and trusted-resources-verification-no-match-policy is set to ignore or warn
 // Return an error when no policies are found and trusted-resources-verification-no-match-policy is set to fail,
 // or the resource fails to pass matched enforce verification policy
-// source is from ConfigSource.URI, which will be used to match policy patterns. k8s is used to fetch secret from cluster
-func VerifyPipeline(ctx context.Context, pipelineObj *v1beta1.Pipeline, k8s kubernetes.Interface, source string, verificationpolicies []*v1alpha1.VerificationPolicy) error {
-	matchedPolicies, err := getMatchedPolicies(pipelineObj.PipelineMetadata().Name, source, verificationpolicies)
+// refSourceURI is from RefSource.URI, which will be used to match policy patterns. k8s is used to fetch secret from cluster
+func VerifyPipeline(ctx context.Context, pipelineObj *v1beta1.Pipeline, k8s kubernetes.Interface, refSourceURI string, verificationpolicies []*v1alpha1.VerificationPolicy) error {
+	matchedPolicies, err := getMatchedPolicies(pipelineObj.PipelineMetadata().Name, refSourceURI, verificationpolicies)
 	if err != nil {
 		if errors.Is(err, ErrNoMatchedPolicies) {
 			switch config.GetVerificationNoMatchPolicy(ctx) {

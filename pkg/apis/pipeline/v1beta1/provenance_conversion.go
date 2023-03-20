@@ -20,10 +20,10 @@ import (
 )
 
 func (p Provenance) convertTo(ctx context.Context, sink *v1.Provenance) {
-	if p.ConfigSource != nil {
-		new := v1.ConfigSource{}
-		p.ConfigSource.convertTo(ctx, &new)
-		sink.ConfigSource = &new
+	if p.RefSource != nil {
+		new := v1.RefSource{}
+		p.RefSource.convertTo(ctx, &new)
+		sink.RefSource = &new
 	}
 	if p.FeatureFlags != nil {
 		sink.FeatureFlags = p.FeatureFlags
@@ -31,23 +31,23 @@ func (p Provenance) convertTo(ctx context.Context, sink *v1.Provenance) {
 }
 
 func (p *Provenance) convertFrom(ctx context.Context, source v1.Provenance) {
-	if source.ConfigSource != nil {
-		new := ConfigSource{}
-		new.convertFrom(ctx, *source.ConfigSource)
-		p.ConfigSource = &new
+	if source.RefSource != nil {
+		new := RefSource{}
+		new.convertFrom(ctx, *source.RefSource)
+		p.RefSource = &new
 	}
 	if source.FeatureFlags != nil {
 		p.FeatureFlags = source.FeatureFlags
 	}
 }
 
-func (cs ConfigSource) convertTo(ctx context.Context, sink *v1.ConfigSource) {
+func (cs RefSource) convertTo(ctx context.Context, sink *v1.RefSource) {
 	sink.URI = cs.URI
 	sink.Digest = cs.Digest
 	sink.EntryPoint = cs.EntryPoint
 }
 
-func (cs *ConfigSource) convertFrom(ctx context.Context, source v1.ConfigSource) {
+func (cs *RefSource) convertFrom(ctx context.Context, source v1.RefSource) {
 	cs.URI = source.URI
 	cs.Digest = source.Digest
 	cs.EntryPoint = source.EntryPoint

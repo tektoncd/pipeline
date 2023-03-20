@@ -56,7 +56,7 @@ func NewResolver(requester remoteresource.Requester, owner kmeta.OwnerRefable, r
 }
 
 // Get implements remote.Resolver.
-func (resolver *Resolver) Get(ctx context.Context, _, _ string) (runtime.Object, *v1beta1.ConfigSource, error) {
+func (resolver *Resolver) Get(ctx context.Context, _, _ string) (runtime.Object, *v1beta1.RefSource, error) {
 	resolverName := remoteresource.ResolverName(resolver.resolverName)
 	req, err := buildRequest(resolver.resolverName, resolver.owner, resolver.targetName, resolver.targetNamespace, resolver.params)
 	if err != nil {
@@ -80,7 +80,7 @@ func (resolver *Resolver) Get(ctx context.Context, _, _ string) (runtime.Object,
 	if err != nil {
 		return nil, nil, &InvalidRuntimeObjectError{original: err}
 	}
-	return obj, resolved.Source(), nil
+	return obj, resolved.RefSource(), nil
 }
 
 // List implements remote.Resolver but is unused for remote resolution.

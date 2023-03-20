@@ -1256,7 +1256,7 @@ func storePipelineSpecAndMergeMeta(ctx context.Context, pr *v1beta1.PipelineRun,
 		pr.ObjectMeta.Annotations = kmap.Union(kmap.ExcludeKeys(meta.Annotations, tknreconciler.KubectlLastAppliedAnnotationKey), pr.ObjectMeta.Annotations)
 	}
 
-	// Propagate ConfigSource from remote resolution to PipelineRun Status
+	// Propagate refSource from remote resolution to PipelineRun Status
 	// This lives outside of the status.spec check to avoid the case where only the spec is available in the first reconcile and source comes in next reconcile.
 	cfg := config.FromContextOrDefaults(ctx)
 	if cfg.FeatureFlags.EnableProvenanceInStatus {
@@ -1266,8 +1266,11 @@ func storePipelineSpecAndMergeMeta(ctx context.Context, pr *v1beta1.PipelineRun,
 		// Store FeatureFlags in the Provenance.
 		pr.Status.Provenance.FeatureFlags = cfg.FeatureFlags
 
-		if meta != nil && meta.ConfigSource != nil && pr.Status.Provenance.ConfigSource == nil {
-			pr.Status.Provenance.ConfigSource = meta.ConfigSource
+		if meta != nil && meta.RefSource != nil && pr.Status.Provenance.RefSource == nil {
+			pr.Status.Provenance.RefSource = meta.RefSource
+		}
+		if meta != nil && meta.RefSource != nil && pr.Status.Provenance.ConfigSource == nil {
+			pr.Status.Provenance.ConfigSource = (*v1beta1.ConfigSource)(meta.RefSource)
 		}
 	}
 

@@ -441,13 +441,14 @@ func TestResolve(t *testing.T) {
 					expectedStatus.Annotations[ResolverAnnotationName] = tc.args.name
 					expectedStatus.Annotations[ResolverAnnotationAPIVersion] = "v1beta1"
 
-					expectedStatus.Source = &pipelinev1beta1.ConfigSource{
+					expectedStatus.RefSource = &pipelinev1beta1.RefSource{
 						URI: testImages[tc.imageName].uri,
 						Digest: map[string]string{
 							testImages[tc.imageName].algo: testImages[tc.imageName].hex,
 						},
 						EntryPoint: tc.args.name,
 					}
+					expectedStatus.Source = (*pipelinev1beta1.ConfigSource)(expectedStatus.RefSource)
 				} else {
 					expectedError = createError(tc.args.bundle, tc.expectedErrMessage)
 					expectedStatus.Status.Conditions[0].Message = expectedError.Error()

@@ -891,10 +891,13 @@ func storeTaskSpecAndMergeMeta(ctx context.Context, tr *v1beta1.TaskRun, ts *v1b
 		}
 		// Store FeatureFlags in the Provenance.
 		tr.Status.Provenance.FeatureFlags = cfg.FeatureFlags
-		// Propagate ConfigSource from remote resolution to TaskRun Status
-		// This lives outside of the status.spec check to avoid the case where only the spec is available in the first reconcile and source comes in next reconcile.
-		if meta != nil && meta.ConfigSource != nil && tr.Status.Provenance.ConfigSource == nil {
-			tr.Status.Provenance.ConfigSource = meta.ConfigSource
+		// Propagate RefSource from remote resolution to TaskRun Status
+		// This lives outside of the status.spec check to avoid the case where only the spec is available in the first reconcile and refSource comes in next reconcile.
+		if meta != nil && meta.RefSource != nil && tr.Status.Provenance.RefSource == nil {
+			tr.Status.Provenance.RefSource = meta.RefSource
+		}
+		if meta != nil && meta.RefSource != nil && tr.Status.Provenance.ConfigSource == nil {
+			tr.Status.Provenance.ConfigSource = (*v1beta1.ConfigSource)(meta.RefSource)
 		}
 	}
 

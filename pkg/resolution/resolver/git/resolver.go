@@ -335,10 +335,10 @@ func (r *resolvedGitResource) Annotations() map[string]string {
 	return m
 }
 
-// Source is the source reference of the remote data that records where the remote
+// RefSource is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint.
-func (r *resolvedGitResource) Source() *pipelinev1beta1.ConfigSource {
-	return &pipelinev1beta1.ConfigSource{
+func (r *resolvedGitResource) RefSource() *pipelinev1beta1.RefSource {
+	return &pipelinev1beta1.RefSource{
 		URI: spdxGit(r.URL),
 		Digest: map[string]string{
 			"sha1": r.Revision,

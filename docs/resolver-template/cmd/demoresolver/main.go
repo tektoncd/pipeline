@@ -93,8 +93,8 @@ func (*myResolvedResource) Annotations() map[string]string {
 	return nil
 }
 
-// Source is the source reference of the remote data that records where the remote
+// RefSource is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint. None atm.
-func (*myResolvedResource) Source() *pipelinev1beta1.ConfigSource {
+func (*myResolvedResource) RefSource() *pipelinev1beta1.RefSource {
 	return nil
 }

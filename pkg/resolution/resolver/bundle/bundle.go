@@ -48,7 +48,7 @@ type RequestOptions struct {
 type ResolvedResource struct {
 	data        []byte
 	annotations map[string]string
-	source      *pipelinev1beta1.ConfigSource
+	source      *pipelinev1beta1.RefSource
 }
 
 var _ framework.ResolvedResource = &ResolvedResource{}
@@ -64,9 +64,9 @@ func (br *ResolvedResource) Annotations() map[string]string {
 	return br.annotations
 }
 
-// Source is the source reference of the remote data that records where the remote
+// RefSource is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint.
-func (br *ResolvedResource) Source() *pipelinev1beta1.ConfigSource {
+func (br *ResolvedResource) RefSource() *pipelinev1beta1.RefSource {
 	return br.source
 }
 
@@ -123,7 +123,7 @@ func GetEntry(ctx context.Context, keychain authn.Keychain, opts RequestOptions)
 					ResolverAnnotationName:       lName,
 					ResolverAnnotationAPIVersion: l.Annotations[BundleAnnotationAPIVersion],
 				},
-				source: &v1beta1.ConfigSource{
+				source: &v1beta1.RefSource{
 					URI: uri,
 					Digest: map[string]string{
 						h.Algorithm: h.Hex,

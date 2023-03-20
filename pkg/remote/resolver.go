@@ -29,8 +29,8 @@ type ResolvedObject struct {
 
 // Resolver defines a generic API to retrieve Tekton resources from remote locations. It allows 2 principle operations:
 //   - List:     retrieve a flat set of Tekton objects in this remote location
-//   - Get:      retrieves a specific object with the given Kind and name, and the source identifying where the resource came from.
+//   - Get:      retrieves a specific object with the given Kind and name, and the refSource identifying where the resource came from.
 type Resolver interface {
 	List(ctx context.Context) ([]ResolvedObject, error)
-	Get(ctx context.Context, kind, name string) (runtime.Object, *v1beta1.ConfigSource, error)
+	Get(ctx context.Context, kind, name string) (runtime.Object, *v1beta1.RefSource, error)
 }

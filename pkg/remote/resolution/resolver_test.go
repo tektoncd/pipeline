@@ -122,12 +122,12 @@ func TestGet_Errors(t *testing.T) {
 			ResolvedResource: tc.resolvedResource,
 		}
 		resolver := NewResolver(requester, owner, "git", "", "", nil)
-		obj, source, err := resolver.Get(ctx, "foo", "bar")
+		obj, refSource, err := resolver.Get(ctx, "foo", "bar")
 		if obj != nil {
 			t.Errorf("received unexpected resolved resource")
 		}
-		if source != nil {
-			t.Errorf("expected source is nil, but received %v", source)
+		if refSource != nil {
+			t.Errorf("expected refSource is nil, but received %v", refSource)
 		}
 		if !errors.Is(err, tc.expectedGetErr) {
 			t.Fatalf("expected %v received %v", tc.expectedGetErr, err)
