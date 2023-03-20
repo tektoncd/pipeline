@@ -3512,6 +3512,7 @@ func TestApplyTaskResultsToPipelineResults_Success(t *testing.T) {
 		results         []v1beta1.PipelineResult
 		taskResults     map[string][]v1beta1.TaskRunResult
 		runResults      map[string][]v1beta1.CustomRunResult
+		taskstatus      map[string]string
 		skippedTasks    []v1beta1.SkippedTask
 		expectedResults []v1beta1.PipelineRunResult
 	}{{
@@ -3789,13 +3790,47 @@ func TestApplyTaskResultsToPipelineResults_Success(t *testing.T) {
 				Value: *v1beta1.NewStructuredValues("rae"),
 			}},
 		},
-		skippedTasks: []v1beta1.SkippedTask{{
-			Name: "skippedTask",
-		}},
+		taskstatus:      map[string]string{resources.PipelineTaskStatusPrefix + "skippedTask" + resources.PipelineTaskStatusSuffix: resources.PipelineTaskStateNone},
 		expectedResults: nil,
+	}, {
+		description: "unsuccessful-taskrun-no-results",
+		results: []v1beta1.PipelineResult{{
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.foo)"),
+		}},
+		taskResults:     map[string][]v1beta1.TaskRunResult{},
+		taskstatus:      map[string]string{resources.PipelineTaskStatusPrefix + "pt1" + resources.PipelineTaskStatusSuffix: v1beta1.TaskRunReasonFailed.String()},
+		expectedResults: nil,
+	}, {
+		description: "unsuccessful-taskrun-no-returned-result-object-ref",
+		results: []v1beta1.PipelineResult{{
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.foo.key1)"),
+		}},
+		taskResults:     map[string][]v1beta1.TaskRunResult{},
+		taskstatus:      map[string]string{resources.PipelineTaskStatusPrefix + "pt1" + resources.PipelineTaskStatusSuffix: v1beta1.TaskRunReasonFailed.String()},
+		expectedResults: nil,
+	}, {
+		description: "unsuccessful-taskrun-with-results",
+		results: []v1beta1.PipelineResult{{
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("$(tasks.pt1.results.foo[*])"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {
+				{
+					Name:  "foo",
+					Value: *v1beta1.NewStructuredValues("do", "rae", "mi"),
+				},
+			}},
+		taskstatus: map[string]string{resources.PipelineTaskStatusPrefix + "pt1" + resources.PipelineTaskStatusSuffix: v1beta1.TaskRunReasonFailed.String()},
+		expectedResults: []v1beta1.PipelineRunResult{{
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("do", "rae", "mi"),
+		}},
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			received, err := resources.ApplyTaskResultsToPipelineResults(context.Background(), tc.results, tc.taskResults, tc.runResults, tc.skippedTasks)
+			received, err := resources.ApplyTaskResultsToPipelineResults(context.Background(), tc.results, tc.taskResults, tc.runResults, tc.taskstatus)
 			if err != nil {
 				t.Errorf("Got unecpected error:%v", err)
 			}
@@ -4014,6 +4049,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			received, err := resources.ApplyTaskResultsToPipelineResults(context.Background(), tc.results, tc.taskResults, tc.runResults, nil /*skipped tasks*/)
 			if err == nil {
 				t.Errorf("Expect error but got nil")
+				return
 			}
 
 			if d := cmp.Diff(tc.expectedError.Error(), err.Error()); d != "" {

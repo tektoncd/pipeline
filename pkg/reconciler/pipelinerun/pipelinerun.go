@@ -687,7 +687,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	pr.Status.SkippedTasks = pipelineRunFacts.GetSkippedTasks()
 	if after.Status == corev1.ConditionTrue || after.Status == corev1.ConditionFalse {
 		pr.Status.PipelineResults, err = resources.ApplyTaskResultsToPipelineResults(ctx, pipelineSpec.Results,
-			pipelineRunFacts.State.GetTaskRunsResults(), pipelineRunFacts.State.GetRunsResults(), pr.Status.SkippedTasks)
+			pipelineRunFacts.State.GetTaskRunsResults(), pipelineRunFacts.State.GetRunsResults(), pipelineRunFacts.GetPipelineTaskStatus())
 		if err != nil {
 			pr.Status.MarkFailed(ReasonFailedValidation, err.Error())
 			return err
