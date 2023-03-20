@@ -136,6 +136,11 @@ func (in *ResolutionRequestStatusFields) DeepCopyInto(out *ResolutionRequestStat
 		*out = new(pipelinev1beta1.ConfigSource)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.RefSource != nil {
+		in, out := &in.RefSource, &out.RefSource
+		*out = new(pipelinev1beta1.RefSource)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

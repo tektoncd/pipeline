@@ -306,7 +306,7 @@ func TestPipelineRunConversion(t *testing.T) {
 					},
 					FinallyStartTime: &metav1.Time{Time: time.Now()},
 					Provenance: &v1beta1.Provenance{
-						ConfigSource: &v1beta1.ConfigSource{
+						RefSource: &v1beta1.RefSource{
 							URI:    "test-uri",
 							Digest: map[string]string{"sha256": "digest"},
 						},

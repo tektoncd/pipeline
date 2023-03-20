@@ -27,11 +27,11 @@ func NewRequester(resource resolution.ResolvedResource, err error) *Requester {
 // NewResolvedResource creates a mock resolved resource that is
 // populated with the given data and annotations or returns the given
 // error from its Data() method.
-func NewResolvedResource(data []byte, annotations map[string]string, source *pipelinev1beta1.ConfigSource, dataErr error) *ResolvedResource {
+func NewResolvedResource(data []byte, annotations map[string]string, source *pipelinev1beta1.RefSource, dataErr error) *ResolvedResource {
 	return &ResolvedResource{
 		ResolvedData:        data,
 		ResolvedAnnotations: annotations,
-		ResolvedSource:      source,
+		ResolvedRefSource:   source,
 		DataErr:             dataErr,
 	}
 }
@@ -85,8 +85,8 @@ type ResolvedResource struct {
 	DataErr error
 	// Annotations to return when resolution is complete.
 	ResolvedAnnotations map[string]string
-	// ResolvedSource to return the source reference of the remote data
-	ResolvedSource *pipelinev1beta1.ConfigSource
+	// ResolvedRefSource to return the source reference of the remote data
+	ResolvedRefSource *pipelinev1beta1.RefSource
 }
 
 // Data implements resolution.ResolvedResource and returns the mock
@@ -101,8 +101,8 @@ func (r *ResolvedResource) Annotations() map[string]string {
 	return r.ResolvedAnnotations
 }
 
-// Source is the source reference of the remote data that records where the remote
+// RefSource is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint.
-func (r *ResolvedResource) Source() *pipelinev1beta1.ConfigSource {
-	return r.ResolvedSource
+func (r *ResolvedResource) RefSource() *pipelinev1beta1.RefSource {
+	return r.ResolvedRefSource
 }

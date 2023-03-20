@@ -122,8 +122,8 @@ spec:
 // by cluster resolver, and the in-cluster pipeline uses a remote/in-cluster task that
 // will also be resolved by cluster resolver.
 // [Expectation]: PipelineRun status should contain the provenance about the remote pipeline
-// i.e. configsource info, and the child TaskRun status should contain the provnenace
-// about the remote task i.e. configsource info .
+// i.e. refSource info, and the child TaskRun status should contain the provnenace
+// about the remote task i.e. refSource info .
 func TestProvenanceFieldInPipelineRunTaskRunStatus(t *testing.T) {
 	ctx := context.Background()
 	c, namespace := setupProvenance(ctx, t, clusterFeatureFlags, provenanceFeatureFlags)
@@ -148,6 +148,10 @@ func TestProvenanceFieldInPipelineRunTaskRunStatus(t *testing.T) {
 			URI:    fmt.Sprintf("/apis/%s/namespaces/%s/%s/%s@%s", v1beta1.SchemeGroupVersion.String(), namespace, "task", exampleTask.Name, exampleTask.UID),
 			Digest: map[string]string{"sha256": sha256CheckSum(taskSpec)},
 		},
+		RefSource: &v1beta1.RefSource{
+			URI:    fmt.Sprintf("/apis/%s/namespaces/%s/%s/%s@%s", v1beta1.SchemeGroupVersion.String(), namespace, "task", exampleTask.Name, exampleTask.UID),
+			Digest: map[string]string{"sha256": sha256CheckSum(taskSpec)},
+		},
 		FeatureFlags: &config.FeatureFlags{
 			EnableProvenanceInStatus: true,
 		},
@@ -165,6 +169,10 @@ func TestProvenanceFieldInPipelineRunTaskRunStatus(t *testing.T) {
 	}
 	expectedPipelineRunProvenance := &v1beta1.Provenance{
 		ConfigSource: &v1beta1.ConfigSource{
+			URI:    fmt.Sprintf("/apis/%s/namespaces/%s/%s/%s@%s", v1beta1.SchemeGroupVersion.String(), namespace, "pipeline", examplePipeline.Name, examplePipeline.UID),
+			Digest: map[string]string{"sha256": sha256CheckSum(pipelineSpec)},
+		},
+		RefSource: &v1beta1.RefSource{
 			URI:    fmt.Sprintf("/apis/%s/namespaces/%s/%s/%s@%s", v1beta1.SchemeGroupVersion.String(), namespace, "pipeline", examplePipeline.Name, examplePipeline.UID),
 			Digest: map[string]string{"sha256": sha256CheckSum(pipelineSpec)},
 		},

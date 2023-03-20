@@ -27,14 +27,14 @@ import (
 )
 
 // GetPipeline is a function used to retrieve Pipelines.
-type GetPipeline func(context.Context, string) (*v1beta1.Pipeline, *v1beta1.ConfigSource, error)
+type GetPipeline func(context.Context, string) (*v1beta1.Pipeline, *v1beta1.RefSource, error)
 
 // GetPipelineData will retrieve the Pipeline metadata and Spec associated with the
 // provided PipelineRun. This can come from a reference Pipeline or from the PipelineRun's
 // metadata and embedded PipelineSpec.
 func GetPipelineData(ctx context.Context, pipelineRun *v1beta1.PipelineRun, getPipeline GetPipeline) (*resolutionutil.ResolvedObjectMeta, *v1beta1.PipelineSpec, error) {
 	pipelineMeta := metav1.ObjectMeta{}
-	var configSource *v1beta1.ConfigSource
+	var refSource *v1beta1.RefSource
 	pipelineSpec := v1beta1.PipelineSpec{}
 	switch {
 	case pipelineRun.Spec.PipelineRef != nil && pipelineRun.Spec.PipelineRef.Name != "":
@@ -45,11 +45,11 @@ func GetPipelineData(ctx context.Context, pipelineRun *v1beta1.PipelineRun, getP
 		}
 		pipelineMeta = p.PipelineMetadata()
 		pipelineSpec = p.PipelineSpec()
-		configSource = source
+		refSource = source
 	case pipelineRun.Spec.PipelineSpec != nil:
 		pipelineMeta = pipelineRun.ObjectMeta
 		pipelineSpec = *pipelineRun.Spec.PipelineSpec
-		// TODO: if we want to set source for embedded pipeline, set it here.
+		// TODO: if we want to set RefSource for embedded pipeline, set it here.
 		// https://github.com/tektoncd/pipeline/issues/5522
 	case pipelineRun.Spec.PipelineRef != nil && pipelineRun.Spec.PipelineRef.Resolver != "":
 		pipeline, source, err := getPipeline(ctx, "")
@@ -62,14 +62,14 @@ func GetPipelineData(ctx context.Context, pipelineRun *v1beta1.PipelineRun, getP
 			pipelineMeta = pipeline.PipelineMetadata()
 			pipelineSpec = pipeline.PipelineSpec()
 		}
-		configSource = source
+		refSource = source
 	default:
 		return nil, nil, fmt.Errorf("pipelineRun %s not providing PipelineRef or PipelineSpec", pipelineRun.Name)
 	}
 
 	pipelineSpec.SetDefaults(ctx)
 	return &resolutionutil.ResolvedObjectMeta{
-		ObjectMeta:   &pipelineMeta,
-		ConfigSource: configSource,
+		ObjectMeta: &pipelineMeta,
+		RefSource:  refSource,
 	}, &pipelineSpec, nil
 }

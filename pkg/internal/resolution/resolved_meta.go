@@ -24,6 +24,6 @@ import (
 // ResolvedObjectMeta contains both ObjectMeta and the metadata that identifies the source where the resource came from.
 type ResolvedObjectMeta struct {
 	*metav1.ObjectMeta `json:",omitempty"`
-	// ConfigSource identifies where the spec came from.
-	ConfigSource *v1beta1.ConfigSource `json:",omitempty"`
+	// RefSource identifies where the spec came from.
+	RefSource *v1beta1.RefSource `json:",omitempty"`
 }

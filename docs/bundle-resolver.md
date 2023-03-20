@@ -89,7 +89,7 @@ spec:
 ```
 
 ## `ResolutionRequest` Status
-`ResolutionRequest.Status.Source` field captures the source where the remote resource came from. It includes the 3 subfields: `url`, `digest` and `entrypoint`.
+`ResolutionRequest.Status.RefSource` field captures the source where the remote resource came from. It includes the 3 subfields: `url`, `digest` and `entrypoint`.
 - `uri`: The image repository URI
 - `digest`: The map of the algorithm portion -> the hex encoded portion of the image digest.
 - `entrypoint`: The resource name in the OCI bundle image.
@@ -148,7 +148,7 @@ status:
   ...
   data: xxx
   observedGeneration: 1
-  source:
+  refSource:
     digest:
       sha256: f51ca50f1c065acba8290ef14adec8461915ecc5f70a8eb26190c6e8e0ededaf
     entryPoint: git-clone

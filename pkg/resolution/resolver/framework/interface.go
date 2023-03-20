@@ -96,5 +96,5 @@ type TimedResolution interface {
 type ResolvedResource interface {
 	Data() []byte
 	Annotations() map[string]string
-	Source() *pipelinev1beta1.ConfigSource
+	RefSource() *pipelinev1beta1.RefSource
 }

@@ -524,14 +524,15 @@ func TestResolve(t *testing.T) {
 						expectedStatus.Annotations[AnnotationKeyURL] = scmFakeRepoURL
 					}
 
-					// status.source
-					expectedStatus.Source = &pipelinev1beta1.ConfigSource{
+					// status.refSource
+					expectedStatus.RefSource = &pipelinev1beta1.RefSource{
 						URI: "git+" + expectedStatus.Annotations[AnnotationKeyURL],
 						Digest: map[string]string{
 							"sha1": tc.expectedCommitSHA,
 						},
 						EntryPoint: tc.args.pathInRepo,
 					}
+					expectedStatus.Source = (*pipelinev1beta1.ConfigSource)(expectedStatus.RefSource)
 				} else {
 					expectedStatus.Status.Conditions[0].Message = tc.expectedErr.Error()
 				}

@@ -267,23 +267,23 @@ func (*myResolvedResource) Annotations() map[string]string {
   return nil
 }
 
-// Source is the source reference of the remote data that records where the remote 
+// RefSource is the source reference of the remote data that records where the remote 
 // file came from including the url, digest and the entrypoint. None atm.
-func (*myResolvedResource) Source() *pipelinev1beta1.ConfigSource {
+func (*myResolvedResource) RefSource() *pipelinev1beta1.RefSource {
 	return nil
 }
 ```
 
 Best practice: In order to enable Tekton Chains to record the source 
 information of the remote data in the SLSA provenance, the resolver should 
-implement the `Source()` method to return a correct ConfigSource value. See the 
+implement the `RefSource()` method to return a correct RefSource value. See the 
 following example.
 
 ```go
-// Source is the source reference of the remote data that records where the remote 
+// RefSource is the source reference of the remote data that records where the remote 
 // file came from including the url, digest and the entrypoint.
-func (*myResolvedResource) Source() *pipelinev1beta1.ConfigSource {
-	return &v1alpha1.ConfigSource{
+func (*myResolvedResource) RefSource() *pipelinev1beta1.RefSource {
+	return &v1alpha1.RefSource{
 		URI: "https://github.com/user/example",
 		Digest: map[string]string{
 			"sha1": "example",

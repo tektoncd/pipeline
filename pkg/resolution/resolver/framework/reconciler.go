@@ -197,6 +197,7 @@ type statusDataPatch struct {
 	Annotations map[string]string             `json:"annotations"`
 	Data        string                        `json:"data"`
 	Source      *pipelinev1beta1.ConfigSource `json:"source"`
+	RefSource   *pipelinev1beta1.RefSource    `json:"refSource"`
 }
 
 func (r *Reconciler) writeResolvedData(ctx context.Context, rr *v1beta1.ResolutionRequest, resource ResolvedResource) error {
@@ -205,7 +206,8 @@ func (r *Reconciler) writeResolvedData(ctx context.Context, rr *v1beta1.Resoluti
 		"status": {
 			Data:        encodedData,
 			Annotations: resource.Annotations(),
-			Source:      resource.Source(),
+			RefSource:   resource.RefSource(),
+			Source:      (*pipelinev1beta1.ConfigSource)(resource.RefSource()),
 		},
 	})
 	if err != nil {

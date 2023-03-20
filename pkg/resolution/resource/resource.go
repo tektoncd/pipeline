@@ -59,5 +59,5 @@ type OwnedRequest interface {
 type ResolvedResource interface {
 	Data() ([]byte, error)
 	Annotations() map[string]string
-	Source() *pipelinev1beta1.ConfigSource
+	RefSource() *pipelinev1beta1.RefSource
 }

@@ -90,7 +90,7 @@ func (o *Resolver) List(ctx context.Context) ([]remote.ResolvedObject, error) {
 }
 
 // Get retrieves a specific object with the given Kind and name
-func (o *Resolver) Get(ctx context.Context, kind, name string) (runtime.Object, *v1beta1.ConfigSource, error) {
+func (o *Resolver) Get(ctx context.Context, kind, name string) (runtime.Object, *v1beta1.RefSource, error) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, o.timeout)
 	defer cancel()
 	img, err := o.retrieveImage(timeoutCtx)

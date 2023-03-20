@@ -58,7 +58,7 @@ var (
 		},
 	}
 
-	sampleConfigSource = &v1beta1.ConfigSource{
+	sampleRefSource = &v1beta1.RefSource{
 		URI: "abc.com",
 		Digest: map[string]string{
 			"sha1": "a123",
@@ -107,7 +107,7 @@ func TestLocalPipelineRef(t *testing.T) {
 				Tektonclient: tektonclient,
 			}
 
-			resolvedPipeline, resolvedConfigSource, err := lc.GetPipeline(ctx, tc.ref.Name)
+			resolvedPipeline, resolvedRefSource, err := lc.GetPipeline(ctx, tc.ref.Name)
 			if tc.wantErr && err == nil {
 				t.Fatal("Expected error but found nil instead")
 			} else if !tc.wantErr && err != nil {
@@ -118,8 +118,8 @@ func TestLocalPipelineRef(t *testing.T) {
 				t.Error(diff.PrintWantGot(d))
 			}
 
-			if resolvedConfigSource != nil {
-				t.Errorf("expected configsource is nil, but got %v", resolvedConfigSource)
+			if resolvedRefSource != nil {
+				t.Errorf("expected refSource is nil, but got %v", resolvedRefSource)
 			}
 		})
 	}
@@ -212,7 +212,7 @@ func TestGetPipelineFunc(t *testing.T) {
 				t.Fatalf("failed to get pipeline fn: %s", err.Error())
 			}
 
-			pipeline, configSource, err := fn(ctx, tc.ref.Name)
+			pipeline, refSource, err := fn(ctx, tc.ref.Name)
 			if err != nil {
 				t.Fatalf("failed to call pipelinefn: %s", err.Error())
 			}
@@ -221,8 +221,8 @@ func TestGetPipelineFunc(t *testing.T) {
 				t.Error(diff)
 			}
 
-			if configSource != nil {
-				t.Errorf("expected configsource is nil, but got %v", configSource)
+			if refSource != nil {
+				t.Errorf("expected refSource is nil, but got %v", refSource)
 			}
 		})
 	}
@@ -260,7 +260,7 @@ func TestGetPipelineFuncSpecAlreadyFetched(t *testing.T) {
 		Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
 			PipelineSpec: &pipelineSpec,
 			Provenance: &v1beta1.Provenance{
-				ConfigSource: sampleConfigSource.DeepCopy(),
+				RefSource: sampleRefSource.DeepCopy(),
 			},
 		}},
 	}
@@ -273,7 +273,7 @@ func TestGetPipelineFuncSpecAlreadyFetched(t *testing.T) {
 	}
 
 	fn := resources.GetPipelineFunc(ctx, kubeclient, tektonclient, nil, pipelineRun)
-	actualPipeline, actualConfigSource, err := fn(ctx, name)
+	actualPipeline, actualRefSource, err := fn(ctx, name)
 	if err != nil {
 		t.Fatalf("failed to call pipelinefn: %s", err.Error())
 	}
@@ -282,8 +282,8 @@ func TestGetPipelineFuncSpecAlreadyFetched(t *testing.T) {
 		t.Error(diff)
 	}
 
-	if d := cmp.Diff(sampleConfigSource, actualConfigSource); d != "" {
-		t.Errorf("configSources did not match: %s", diff.PrintWantGot(d))
+	if d := cmp.Diff(sampleRefSource, actualRefSource); d != "" {
+		t.Errorf("refSources did not match: %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -314,7 +314,7 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			resolved := test.NewResolvedResource([]byte(tc.pipelineYAML), nil /* annotations */, sampleConfigSource.DeepCopy(), nil /* data error */)
+			resolved := test.NewResolvedResource([]byte(tc.pipelineYAML), nil /* annotations */, sampleRefSource.DeepCopy(), nil /* data error */)
 			requester := test.NewRequester(resolved, nil)
 			fn := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1beta1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
@@ -324,7 +324,7 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 				},
 			})
 
-			resolvedPipeline, resolvedConfigSource, err := fn(ctx, pipelineRef.Name)
+			resolvedPipeline, resolvedRefSource, err := fn(ctx, pipelineRef.Name)
 			if err != nil {
 				t.Fatalf("failed to call pipelinefn: %s", err.Error())
 			}
@@ -333,8 +333,8 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 				t.Error(diff)
 			}
 
-			if d := cmp.Diff(sampleConfigSource, resolvedConfigSource); d != "" {
-				t.Errorf("configsource did not match: %s", diff.PrintWantGot(d))
+			if d := cmp.Diff(sampleRefSource, resolvedRefSource); d != "" {
+				t.Errorf("refSources did not match: %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -363,7 +363,7 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 		pipelineYAMLString,
 	}, "\n")
 
-	resolved := test.NewResolvedResource([]byte(pipelineYAML), nil, sampleConfigSource.DeepCopy(), nil)
+	resolved := test.NewResolvedResource([]byte(pipelineYAML), nil, sampleRefSource.DeepCopy(), nil)
 	requester := &test.Requester{
 		ResolvedResource: resolved,
 		Params: v1beta1.Params{{
@@ -389,7 +389,7 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 		},
 	})
 
-	resolvedPipeline, resolvedConfigSource, err := fn(ctx, pipelineRef.Name)
+	resolvedPipeline, resolvedRefSource, err := fn(ctx, pipelineRef.Name)
 	if err != nil {
 		t.Fatalf("failed to call pipelinefn: %s", err.Error())
 	}
@@ -398,8 +398,8 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 		t.Error(diff)
 	}
 
-	if d := cmp.Diff(sampleConfigSource, resolvedConfigSource); d != "" {
-		t.Errorf("configsource did not match: %s", diff.PrintWantGot(d))
+	if d := cmp.Diff(sampleRefSource, resolvedRefSource); d != "" {
+		t.Errorf("refSources did not match: %s", diff.PrintWantGot(d))
 	}
 
 	pipelineRefNotMatching := &v1beta1.PipelineRef{
@@ -472,14 +472,14 @@ func TestGetVerifiedPipelineFunc_Success(t *testing.T) {
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
 	}
-	noMatchPolicySource := &v1beta1.ConfigSource{
+	noMatchPolicyRefSource := &v1beta1.RefSource{
 		URI: "abc.com",
 		Digest: map[string]string{
 			"sha1": "a123",
 		},
 		EntryPoint: "foo/bar",
 	}
-	resolvedUnmatched := test.NewResolvedResource(unsignedPipelineBytes, nil, noMatchPolicySource, nil)
+	resolvedUnmatched := test.NewResolvedResource(unsignedPipelineBytes, nil, noMatchPolicyRefSource, nil)
 	requesterUnmatched := test.NewRequester(resolvedUnmatched, nil)
 
 	signedPipeline, err := test.GetSignedPipeline(unsignedPipeline, signer, "signed")
@@ -490,14 +490,14 @@ func TestGetVerifiedPipelineFunc_Success(t *testing.T) {
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
 	}
-	matchPolicySource := &v1beta1.ConfigSource{
+	matchPolicyRefSource := &v1beta1.RefSource{
 		URI: "	https://github.com/tektoncd/catalog.git",
 		Digest: map[string]string{
 			"sha1": "a123",
 		},
 		EntryPoint: "foo/bar",
 	}
-	resolvedMatched := test.NewResolvedResource(signedPipelineBytes, nil, matchPolicySource, nil)
+	resolvedMatched := test.NewResolvedResource(signedPipelineBytes, nil, matchPolicyRefSource, nil)
 	requesterMatched := test.NewRequester(resolvedMatched, nil)
 
 	pipelineRef := &v1beta1.PipelineRef{
@@ -525,7 +525,7 @@ func TestGetVerifiedPipelineFunc_Success(t *testing.T) {
 			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
 				PipelineSpec: &signedPipeline.Spec,
 				Provenance: &v1beta1.Provenance{
-					ConfigSource: &v1beta1.ConfigSource{
+					RefSource: &v1beta1.RefSource{
 						URI:        "abc.com",
 						Digest:     map[string]string{"sha1": "a123"},
 						EntryPoint: "foo/bar",
@@ -542,7 +542,7 @@ func TestGetVerifiedPipelineFunc_Success(t *testing.T) {
 		pipelinerun               v1beta1.PipelineRun
 		policies                  []*v1alpha1.VerificationPolicy
 		expected                  runtime.Object
-		expectedSource            *v1beta1.ConfigSource
+		expectedRefSource         *v1beta1.RefSource
 	}{{
 		name:                      "signed pipeline with matching policy pass verification with enforce no match policy",
 		requester:                 requesterMatched,
@@ -550,7 +550,7 @@ func TestGetVerifiedPipelineFunc_Success(t *testing.T) {
 		pipelinerun:               pr,
 		policies:                  vps,
 		expected:                  signedPipeline,
-		expectedSource:            matchPolicySource,
+		expectedRefSource:         matchPolicyRefSource,
 	}, {
 		name:                      "signed pipeline with matching policy pass verification with warn no match policy",
 		requester:                 requesterMatched,
@@ -558,7 +558,7 @@ func TestGetVerifiedPipelineFunc_Success(t *testing.T) {
 		pipelinerun:               pr,
 		policies:                  vps,
 		expected:                  signedPipeline,
-		expectedSource:            matchPolicySource,
+		expectedRefSource:         matchPolicyRefSource,
 	}, {
 		name:                      "signed pipeline with matching policy pass verification with ignore no match policy",
 		requester:                 requesterMatched,
@@ -566,7 +566,7 @@ func TestGetVerifiedPipelineFunc_Success(t *testing.T) {
 		pipelinerun:               pr,
 		policies:                  vps,
 		expected:                  signedPipeline,
-		expectedSource:            matchPolicySource,
+		expectedRefSource:         matchPolicyRefSource,
 	}, {
 		name:                      "warn unsigned pipeline without matching policies",
 		requester:                 requesterUnmatched,
@@ -574,7 +574,7 @@ func TestGetVerifiedPipelineFunc_Success(t *testing.T) {
 		pipelinerun:               pr,
 		policies:                  vps,
 		expected:                  unsignedPipeline,
-		expectedSource:            noMatchPolicySource,
+		expectedRefSource:         noMatchPolicyRefSource,
 	}, {
 		name:                      "ignore unsigned pipeline without matching policies",
 		requester:                 requesterUnmatched,
@@ -582,7 +582,7 @@ func TestGetVerifiedPipelineFunc_Success(t *testing.T) {
 		pipelinerun:               pr,
 		policies:                  vps,
 		expected:                  unsignedPipeline,
-		expectedSource:            noMatchPolicySource,
+		expectedRefSource:         noMatchPolicyRefSource,
 	}, {
 		name:                      "warn no policies",
 		requester:                 requesterUnmatched,
@@ -590,7 +590,7 @@ func TestGetVerifiedPipelineFunc_Success(t *testing.T) {
 		pipelinerun:               pr,
 		policies:                  []*v1alpha1.VerificationPolicy{},
 		expected:                  unsignedPipeline,
-		expectedSource:            noMatchPolicySource,
+		expectedRefSource:         noMatchPolicyRefSource,
 	}, {
 		name:                      "ignore no policies",
 		requester:                 requesterUnmatched,
@@ -598,7 +598,7 @@ func TestGetVerifiedPipelineFunc_Success(t *testing.T) {
 		pipelinerun:               pr,
 		policies:                  []*v1alpha1.VerificationPolicy{},
 		expected:                  unsignedPipeline,
-		expectedSource:            noMatchPolicySource,
+		expectedRefSource:         noMatchPolicyRefSource,
 	}, {
 		name:                      "signed pipeline in status no need to verify",
 		requester:                 requesterMatched,
@@ -612,7 +612,7 @@ func TestGetVerifiedPipelineFunc_Success(t *testing.T) {
 			},
 			Spec: signedPipeline.Spec,
 		},
-		expectedSource: noMatchPolicySource,
+		expectedRefSource: noMatchPolicyRefSource,
 	},
 	}
 	for _, tc := range testcases {
@@ -627,7 +627,7 @@ func TestGetVerifiedPipelineFunc_Success(t *testing.T) {
 			if d := cmp.Diff(tc.expected, resolvedPipeline); d != "" {
 				t.Errorf("resolvedPipeline did not match: %s", diff.PrintWantGot(d))
 			}
-			if d := cmp.Diff(tc.expectedSource, source); d != "" {
+			if d := cmp.Diff(tc.expectedRefSource, source); d != "" {
 				t.Errorf("configSources did not match: %s", diff.PrintWantGot(d))
 			}
 		})
@@ -644,7 +644,7 @@ func TestGetVerifiedPipelineFunc_VerifyError(t *testing.T) {
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
 	}
-	matchPolicySource := &v1beta1.ConfigSource{
+	matchPolicyRefSource := &v1beta1.RefSource{
 		URI: "https://github.com/tektoncd/catalog.git",
 		Digest: map[string]string{
 			"sha1": "a123",
@@ -652,7 +652,7 @@ func TestGetVerifiedPipelineFunc_VerifyError(t *testing.T) {
 		EntryPoint: "foo/bar",
 	}
 
-	resolvedUnsigned := test.NewResolvedResource(unsignedPipelineBytes, nil, matchPolicySource, nil)
+	resolvedUnsigned := test.NewResolvedResource(unsignedPipelineBytes, nil, matchPolicyRefSource, nil)
 	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
 
 	signedPipeline, err := test.GetSignedPipeline(unsignedPipeline, signer, "signed")
@@ -664,14 +664,14 @@ func TestGetVerifiedPipelineFunc_VerifyError(t *testing.T) {
 		t.Fatal("fail to marshal pipeline", err)
 	}
 
-	noMatchPolicySource := &v1beta1.ConfigSource{
+	noMatchPolicyRefSource := &v1beta1.RefSource{
 		URI: "abc.com",
 		Digest: map[string]string{
 			"sha1": "a123",
 		},
 		EntryPoint: "foo/bar",
 	}
-	resolvedUnmatched := test.NewResolvedResource(signedPipelineBytes, nil, noMatchPolicySource, nil)
+	resolvedUnmatched := test.NewResolvedResource(signedPipelineBytes, nil, noMatchPolicyRefSource, nil)
 	requesterUnmatched := test.NewRequester(resolvedUnmatched, nil)
 
 	modifiedPipeline := signedPipeline.DeepCopy()
@@ -680,7 +680,7 @@ func TestGetVerifiedPipelineFunc_VerifyError(t *testing.T) {
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
 	}
-	resolvedModified := test.NewResolvedResource(modifiedPipelineBytes, nil, matchPolicySource, nil)
+	resolvedModified := test.NewResolvedResource(modifiedPipelineBytes, nil, matchPolicyRefSource, nil)
 	requesterModified := test.NewRequester(resolvedModified, nil)
 
 	pipelineRef := &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
@@ -748,15 +748,15 @@ func TestGetVerifiedPipelineFunc_VerifyError(t *testing.T) {
 			}
 			fn := resources.GetVerifiedPipelineFunc(ctx, k8sclient, tektonclient, tc.requester, pr, vps)
 
-			resolvedPipeline, source, err := fn(ctx, pipelineRef.Name)
+			resolvedPipeline, resolvedRefSource, err := fn(ctx, pipelineRef.Name)
 			if !errors.Is(err, tc.expectedErr) {
 				t.Errorf("GetVerifiedPipelineFunc got %v, want %v", err, tc.expectedErr)
 			}
 			if d := cmp.Diff(resolvedPipeline, tc.expected); d != "" {
 				t.Errorf("resolvedPipeline did not match: %s", diff.PrintWantGot(d))
 			}
-			if source != nil {
-				t.Errorf("got %v, but expected source is nil", source)
+			if resolvedRefSource != nil {
+				t.Errorf("got %v, but expected refSource is nil", resolvedRefSource)
 			}
 		})
 	}
@@ -773,7 +773,7 @@ func TestGetVerifiedPipelineFunc_GetFuncError(t *testing.T) {
 		t.Fatal("fail to marshal pipeline", err)
 	}
 
-	resolvedUnsigned := test.NewResolvedResource(unsignedPipelineBytes, nil, sampleConfigSource.DeepCopy(), nil)
+	resolvedUnsigned := test.NewResolvedResource(unsignedPipelineBytes, nil, sampleRefSource.DeepCopy(), nil)
 	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
 	resolvedUnsigned.DataErr = fmt.Errorf("resolution error")
 

@@ -3733,7 +3733,7 @@ status:
 	}
 }
 
-func Test_storeTaskSpecAndConfigSource(t *testing.T) {
+func Test_storeTaskSpecAndRefSource(t *testing.T) {
 	tr := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   annotations:
@@ -3746,7 +3746,7 @@ spec:
     name: foo-task
 `)
 
-	configSource := &v1beta1.ConfigSource{
+	refSource := &v1beta1.RefSource{
 		URI: "https://abc.com.git",
 		Digest: map[string]string{
 			"sha1": "xyz",
@@ -3766,7 +3766,8 @@ spec:
 		TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 			TaskSpec: ts.DeepCopy(),
 			Provenance: &v1beta1.Provenance{
-				ConfigSource: configSource.DeepCopy(),
+				RefSource:    refSource.DeepCopy(),
+				ConfigSource: (*v1beta1.ConfigSource)(refSource.DeepCopy()),
 				FeatureFlags: &config.FeatureFlags{
 					RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 					EnableAPIFields:                  config.DefaultEnableAPIFields,
@@ -3794,12 +3795,12 @@ spec:
 		wantTaskRun    *v1beta1.TaskRun
 	}{
 		{
-			name: "spec and source are available in the same reconcile",
+			name: "spec and refSource are available in the same reconcile",
 			reconcile1Args: &args{
 				taskSpec: &ts,
 				resolvedObjectMeta: &resolutionutil.ResolvedObjectMeta{
-					ObjectMeta:   &tr.ObjectMeta,
-					ConfigSource: configSource.DeepCopy(),
+					ObjectMeta: &tr.ObjectMeta,
+					RefSource:  refSource.DeepCopy(),
 				},
 			},
 			reconcile2Args: &args{
@@ -3809,7 +3810,7 @@ spec:
 			wantTaskRun: want,
 		},
 		{
-			name: "spec comes in the first reconcile and source comes in next reconcile",
+			name: "spec comes in the first reconcile and refSource comes in next reconcile",
 			reconcile1Args: &args{
 				taskSpec: &ts,
 				resolvedObjectMeta: &resolutionutil.ResolvedObjectMeta{
@@ -3819,7 +3820,7 @@ spec:
 			reconcile2Args: &args{
 				taskSpec: &ts,
 				resolvedObjectMeta: &resolutionutil.ResolvedObjectMeta{
-					ConfigSource: configSource.DeepCopy(),
+					RefSource: refSource.DeepCopy(),
 				},
 			},
 			wantTaskRun: want,

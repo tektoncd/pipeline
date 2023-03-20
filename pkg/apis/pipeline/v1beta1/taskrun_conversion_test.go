@@ -233,7 +233,7 @@ func TestTaskRunConversion(t *testing.T) {
 						}},
 					},
 					Provenance: &v1beta1.Provenance{
-						ConfigSource: &v1beta1.ConfigSource{
+						RefSource: &v1beta1.RefSource{
 							URI:    "test-uri",
 							Digest: map[string]string{"sha256": "digest"},
 						},

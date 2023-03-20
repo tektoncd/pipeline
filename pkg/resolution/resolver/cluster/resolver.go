@@ -207,14 +207,14 @@ func (r *ResolvedClusterResource) Annotations() map[string]string {
 	}
 }
 
-// Source is the source reference of the remote data that records where the remote
+// RefSource is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint.
-func (r ResolvedClusterResource) Source() *pipelinev1beta1.ConfigSource {
+func (r ResolvedClusterResource) RefSource() *pipelinev1beta1.RefSource {
 	h := sha256.New()
 	h.Write(r.Spec)
 	sha256CheckSum := hex.EncodeToString(h.Sum(nil))
 
-	return &pipelinev1beta1.ConfigSource{
+	return &pipelinev1beta1.RefSource{
 		URI: r.Identifier,
 		Digest: map[string]string{
 			"sha256": sha256CheckSum,
