@@ -1,5 +1,12 @@
 # Changes
 
+## [0.12.0](https://github.com/googleapis/google-cloud-go/compare/iam/v0.11.0...iam/v0.12.0) (2023-02-17)
+
+
+### Features
+
+* **iam:** Migrate to new stubs ([a61ddcd](https://github.com/googleapis/google-cloud-go/commit/a61ddcd3041c7af4a15109dc4431f9b327c497fb))
+
 ## [0.11.0](https://github.com/googleapis/google-cloud-go/compare/iam/v0.10.0...iam/v0.11.0) (2023-02-16)
 
 
