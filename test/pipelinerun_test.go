@@ -744,7 +744,7 @@ metadata:
 spec:
   params:
   - name: HELLO
-    value: "Hello World!" 
+    value: "Hello World!"
   pipelineRef:
     name: %s
 `, namespace, pipelineName))
@@ -950,5 +950,89 @@ func getLimitRange(name, namespace, resourceCPU, resourceMemory, resourceEphemer
 				},
 			},
 		},
+	}
+}
+
+func TestPipelineRunTaskFailed(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t)
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	taskName := helpers.ObjectNameForTest(t)
+	pipelineName := helpers.ObjectNameForTest(t)
+	prName := helpers.ObjectNameForTest(t)
+
+	t.Logf("Creating Task, Pipeline, and Pending PipelineRun %s in namespace %s", prName, namespace)
+
+	if _, err := c.V1beta1TaskClient.Create(ctx, parse.MustParseV1beta1Task(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  steps:
+  - image: ubuntu
+    command: ['/bin/bash']
+    args: ['-c', 'echo hello, world']
+`, taskName, namespace)), metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create Task `%s`: %s", taskName, err)
+	}
+
+	if _, err := c.V1beta1PipelineClient.Create(ctx, parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  tasks:
+  - name: task
+    taskRef:
+      name: %s
+`, pipelineName, namespace, taskName)), metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create Pipeline `%s`: %s", pipelineName, err)
+	}
+
+	pipelineRun, err := c.V1beta1PipelineRunClient.Create(ctx, parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineSpec:
+    results:
+      - name: abc
+        value: "$(tasks.xxx.results.abc)"
+    tasks:
+    - name: xxx
+      taskSpec:
+        results:
+          - name: abc
+        steps:
+        - name: update-sa
+          image: bash:latest
+          script: |
+            echo 'test' >  $(results.abc.path)
+            exit 1
+`, prName, namespace)), metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
+	}
+	// Wait for the PipelineRun to fail.
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunFailed(prName), "PipelineRunFailed", v1beta1Version); err != nil {
+		t.Fatalf("Waiting for PipelineRun to fail: %v", err)
+	}
+
+	pipelineRun, err = c.V1beta1PipelineRunClient.Get(ctx, prName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Error getting PipelineRun %s: %s", prName, err)
+	}
+
+	if pipelineRun.Status.GetCondition(apis.ConditionSucceeded).IsTrue() {
+		t.Errorf("Expected PipelineRun to fail but found condition: %s", pipelineRun.Status.GetCondition(apis.ConditionSucceeded))
+	}
+	expectedMessage := "Tasks Completed: 1 (Failed: 1, Cancelled 0), Skipped: 0"
+	if pipelineRun.Status.GetCondition(apis.ConditionSucceeded).Message != expectedMessage {
+		t.Errorf("Expected PipelineRun to fail with condition message: %s but got: %s", expectedMessage, pipelineRun.Status.GetCondition(apis.ConditionSucceeded).Message)
 	}
 }

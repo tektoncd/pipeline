@@ -1,0 +1,45 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pipelinerun-test
+spec:
+  pipelineSpec:
+    params:
+      - name: say-hello
+        default: 'false'
+    tasks:
+      - name: hello
+        taskSpec:
+          results:
+            - name: result-one
+          steps:
+          - image: alpine
+            script: |
+              #!/bin/sh
+              echo "Hello world!"
+              echo -n "RES1" > $(results.result-one.path)
+
+      - name: goodbye
+        runAfter:
+          - hello
+        taskSpec:
+          results:
+            - name: result-two
+          steps:
+          - image: alpine
+            script: |
+              #!/bin/sh
+              echo "Goodbye world!"
+              echo -n "RES2" > $(results.result-two.path)
+        when:
+          - input: $(params.say-hello)
+            operator: in
+            values: ["true"]
+
+    results:
+      - name: result-hello
+        description: Result one
+        value: '$(tasks.hello.results.result-one)'
+      - name: result-goodbye
+        description: Result two
+        value: '$(tasks.goodbye.results.result-two)'
