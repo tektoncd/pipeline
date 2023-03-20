@@ -29,10 +29,9 @@ import (
 	"github.com/sigstore/sigstore/pkg/signature/kms"
 
 	// TODO(#5976): consider move these registration to cmd/controller/main.go
-	_ "github.com/sigstore/sigstore/pkg/signature/kms/aws"        // imported to execute init function to register aws kms
-	_ "github.com/sigstore/sigstore/pkg/signature/kms/azure"      // imported to execute init function to register azure kms
-	_ "github.com/sigstore/sigstore/pkg/signature/kms/gcp"        // imported to execute init function to register gcp kms
-	_ "github.com/sigstore/sigstore/pkg/signature/kms/hashivault" // imported to execute init function to register hashivault kms
+	_ "github.com/sigstore/sigstore/pkg/signature/kms/aws"   // imported to execute init function to register aws kms
+	_ "github.com/sigstore/sigstore/pkg/signature/kms/azure" // imported to execute init function to register azure kms
+	_ "github.com/sigstore/sigstore/pkg/signature/kms/gcp"   // imported to execute init function to register gcp kms
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
