@@ -131,6 +131,10 @@ func TestVerifyTask_Success(t *testing.T) {
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
+
+	modifiedTask := signedTask.DeepCopy()
+	modifiedTask.Name = "modified"
+
 	signer384, _, pub, err := test.GenerateKeys(elliptic.P384(), crypto.SHA384)
 	if err != nil {
 		t.Fatalf("failed to generate keys %v", err)
@@ -160,7 +164,32 @@ func TestVerifyTask_Success(t *testing.T) {
 			},
 		},
 	}
-	vps = append(vps, sha384Vp)
+
+	warnPolicy := &v1alpha1.VerificationPolicy{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "VerificationPolicy",
+			APIVersion: "v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "warnPolicy",
+			Namespace: namespace,
+		},
+		Spec: v1alpha1.VerificationPolicySpec{
+			Resources: []v1alpha1.ResourcePattern{
+				{Pattern: "https://github.com/tektoncd/catalog.git"},
+			},
+			Authorities: []v1alpha1.Authority{
+				{
+					Name: "key",
+					Key: &v1alpha1.KeyRef{
+						Data:          string(pub),
+						HashAlgorithm: "sha384",
+					},
+				},
+			},
+			Mode: v1alpha1.ModeWarn,
+		},
+	}
 
 	signedTask384, err := test.GetSignedTask(unsignedTask, signer384, "signed384")
 	if err != nil {
@@ -174,21 +203,25 @@ func TestVerifyTask_Success(t *testing.T) {
 		source                    string
 		signer                    signature.SignerVerifier
 		verificationNoMatchPolicy string
+		verificationPolicies      []*v1alpha1.VerificationPolicy
 	}{{
 		name:                      "signed git source task passes verification",
 		task:                      signedTask,
 		source:                    "git+https://github.com/tektoncd/catalog.git",
 		verificationNoMatchPolicy: config.FailNoMatchPolicy,
+		verificationPolicies:      vps,
 	}, {
 		name:                      "signed bundle source task passes verification",
 		task:                      signedTask,
 		source:                    "gcr.io/tekton-releases/catalog/upstream/git-clone",
 		verificationNoMatchPolicy: config.FailNoMatchPolicy,
+		verificationPolicies:      vps,
 	}, {
 		name:                      "signed task with sha384 key",
 		task:                      signedTask384,
 		source:                    "gcr.io/tekton-releases/catalog/upstream/sha384",
 		verificationNoMatchPolicy: config.FailNoMatchPolicy,
+		verificationPolicies:      []*v1alpha1.VerificationPolicy{sha384Vp},
 	}, {
 		name:                      "ignore no match policy skips verification when no matching policies",
 		task:                      unsignedTask,
@@ -199,12 +232,24 @@ func TestVerifyTask_Success(t *testing.T) {
 		task:                      unsignedTask,
 		source:                    mismatchedSource,
 		verificationNoMatchPolicy: config.WarnNoMatchPolicy,
+	}, {
+		name:                      "unsigned task matches warn policy doesn't fail verification",
+		task:                      unsignedTask,
+		source:                    "git+https://github.com/tektoncd/catalog.git",
+		verificationNoMatchPolicy: config.FailNoMatchPolicy,
+		verificationPolicies:      []*v1alpha1.VerificationPolicy{warnPolicy},
+	}, {
+		name:                      "modified task matches warn policy doesn't fail verification",
+		task:                      modifiedTask,
+		source:                    "git+https://github.com/tektoncd/catalog.git",
+		verificationNoMatchPolicy: config.FailNoMatchPolicy,
+		verificationPolicies:      []*v1alpha1.VerificationPolicy{warnPolicy},
 	}}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := test.SetupTrustedResourceConfig(context.Background(), tc.verificationNoMatchPolicy)
-			err := VerifyTask(ctx, tc.task, k8sclient, tc.source, vps)
+			err := VerifyTask(ctx, tc.task, k8sclient, tc.source, tc.verificationPolicies)
 			if err != nil {
 				t.Fatalf("VerifyTask() get err %v", err)
 			}
@@ -236,6 +281,12 @@ func TestVerifyTask_Error(t *testing.T) {
 		verificationPolicy []*v1alpha1.VerificationPolicy
 		expectedError      error
 	}{{
+		name:               "unsigned Task fails verification",
+		task:               unsignedTask,
+		source:             "git+https://github.com/tektoncd/catalog.git",
+		verificationPolicy: vps,
+		expectedError:      ErrResourceVerificationFailed,
+	}, {
 		name:               "modified Task fails verification",
 		task:               tamperedTask,
 		source:             matchingSource,
@@ -414,7 +465,8 @@ func TestPrepareObjectMeta(t *testing.T) {
 	unsigned := test.GetUnsignedTask("test-task").ObjectMeta
 
 	signed := unsigned.DeepCopy()
-	signed.Annotations = map[string]string{SignatureAnnotation: "tY805zV53PtwDarK3VD6dQPx5MbIgctNcg/oSle+MG0="}
+	sig := "tY805zV53PtwDarK3VD6dQPx5MbIgctNcg/oSle+MG0="
+	signed.Annotations = map[string]string{SignatureAnnotation: sig}
 
 	signedWithLabels := signed.DeepCopy()
 	signedWithLabels.Labels = map[string]string{"label": "foo"}
@@ -424,10 +476,10 @@ func TestPrepareObjectMeta(t *testing.T) {
 	signedWithExtraAnnotations.Annotations["kubectl.kubernetes.io/last-applied-configuration"] = "config"
 
 	tcs := []struct {
-		name       string
-		objectmeta *metav1.ObjectMeta
-		expected   metav1.ObjectMeta
-		wantErr    bool
+		name              string
+		objectmeta        *metav1.ObjectMeta
+		expected          metav1.ObjectMeta
+		expectedSignature string
 	}{{
 		name:       "Prepare signed objectmeta without labels",
 		objectmeta: signed,
@@ -436,7 +488,7 @@ func TestPrepareObjectMeta(t *testing.T) {
 			Namespace:   namespace,
 			Annotations: map[string]string{},
 		},
-		wantErr: false,
+		expectedSignature: sig,
 	}, {
 		name:       "Prepare signed objectmeta with labels",
 		objectmeta: signedWithLabels,
@@ -446,7 +498,7 @@ func TestPrepareObjectMeta(t *testing.T) {
 			Labels:      map[string]string{"label": "foo"},
 			Annotations: map[string]string{},
 		},
-		wantErr: false,
+		expectedSignature: sig,
 	}, {
 		name:       "Prepare signed objectmeta with extra annotations",
 		objectmeta: signedWithExtraAnnotations,
@@ -455,33 +507,30 @@ func TestPrepareObjectMeta(t *testing.T) {
 			Namespace:   namespace,
 			Annotations: map[string]string{},
 		},
-		wantErr: false,
+		expectedSignature: sig,
 	}, {
-		name:       "Fail preparation without signature",
+		name:       "resource without signature shouldn't fail",
 		objectmeta: &unsigned,
 		expected: metav1.ObjectMeta{
 			Name:        "test-task",
 			Namespace:   namespace,
 			Annotations: map[string]string{"foo": "bar"},
 		},
-		wantErr: true,
+		expectedSignature: "",
 	}}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			task, signature, err := prepareObjectMeta(*tc.objectmeta)
-			if (err != nil) != tc.wantErr {
-				t.Fatalf("prepareObjectMeta() get err %v, wantErr %t", err, tc.wantErr)
+			if err != nil {
+				t.Fatalf("got unexpected err: %v", err)
 			}
 			if d := cmp.Diff(task, tc.expected); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
-
-			if tc.wantErr {
-				return
-			}
-			if signature == nil {
-				t.Fatal("signature is not extracted")
+			got := base64.StdEncoding.EncodeToString(signature)
+			if d := cmp.Diff(got, tc.expectedSignature); d != "" {
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
