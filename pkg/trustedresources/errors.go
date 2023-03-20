@@ -24,6 +24,4 @@ var (
 	ErrNoMatchedPolicies = errors.New("no policies are matched")
 	// ErrRegexMatch is returned when regex match returns error
 	ErrRegexMatch = errors.New("regex failed to match")
-	// ErrSignatureMissing is returned when signature is missing in resource
-	ErrSignatureMissing = errors.New("signature is missing")
 )
