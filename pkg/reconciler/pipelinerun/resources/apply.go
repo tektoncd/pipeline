@@ -323,13 +323,9 @@ func ApplyTaskResultsToPipelineResults(
 	results []v1beta1.PipelineResult,
 	taskRunResults map[string][]v1beta1.TaskRunResult,
 	customTaskResults map[string][]v1beta1.CustomRunResult,
-	skippedTasks []v1beta1.SkippedTask) ([]v1beta1.PipelineRunResult, error) {
+	taskstatus map[string]string) ([]v1beta1.PipelineRunResult, error) {
 	var runResults []v1beta1.PipelineRunResult
 	var invalidPipelineResults []string
-	skippedTaskNames := map[string]bool{}
-	for _, t := range skippedTasks {
-		skippedTaskNames[t.Name] = true
-	}
 
 	stringReplacements := map[string]string{}
 	arrayReplacements := map[string][]string{}
@@ -351,11 +347,7 @@ func ApplyTaskResultsToPipelineResults(
 				continue
 			}
 			variableParts := strings.Split(variable, ".")
-			// if the referenced task is skipped, we should also skip the results replacements
-			if _, ok := skippedTaskNames[variableParts[1]]; ok {
-				validPipelineResult = false
-				continue
-			}
+
 			if (variableParts[0] != v1beta1.ResultTaskPart && variableParts[0] != v1beta1.ResultFinallyPart) || variableParts[2] != v1beta1.ResultResultPart {
 				validPipelineResult = false
 				invalidPipelineResults = append(invalidPipelineResults, pipelineResult.Name)
@@ -391,6 +383,13 @@ func ApplyTaskResultsToPipelineResults(
 				} else if resultValue := runResultValue(taskName, resultName, customTaskResults); resultValue != nil {
 					stringReplacements[variable] = *resultValue
 				} else {
+					// if the task is not successful (e.g. skipped or failed) and the results is missing, don't return error
+					if status, ok := taskstatus[PipelineTaskStatusPrefix+taskName+PipelineTaskStatusSuffix]; ok {
+						if status != v1beta1.TaskRunReasonSuccessful.String() {
+							validPipelineResult = false
+							continue
+						}
+					}
 					// referred result name is not existent
 					invalidPipelineResults = append(invalidPipelineResults, pipelineResult.Name)
 					validPipelineResult = false
@@ -408,6 +407,13 @@ func ApplyTaskResultsToPipelineResults(
 						validPipelineResult = false
 					}
 				} else {
+					// if the task is not successful (e.g. skipped or failed) and the results is missing, don't return error
+					if status, ok := taskstatus[PipelineTaskStatusPrefix+taskName+PipelineTaskStatusSuffix]; ok {
+						if status != v1beta1.TaskRunReasonSuccessful.String() {
+							validPipelineResult = false
+							continue
+						}
+					}
 					// referred result name is not existent
 					invalidPipelineResults = append(invalidPipelineResults, pipelineResult.Name)
 					validPipelineResult = false
