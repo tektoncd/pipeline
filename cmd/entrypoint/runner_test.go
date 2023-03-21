@@ -119,13 +119,13 @@ func TestRealRunnerStdoutPathWithSignal(t *testing.T) {
 	}
 }
 
-// TestRealRunnerTimeout tests whether cmd is killed after a millisecond even though it's supposed to sleep for 10 milliseconds.
+// TestRealRunnerTimeout tests whether cmd is killed after 1 millisecond even though it's supposed to sleep for 200 milliseconds.
 func TestRealRunnerTimeout(t *testing.T) {
 	rr := realRunner{}
 	timeout := time.Millisecond
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	if err := rr.Run(ctx, "sleep", "0.01"); err != nil {
+	if err := rr.Run(ctx, "sleep", "0.2"); err != nil {
 		if err != context.DeadlineExceeded {
 			t.Fatalf("unexpected error received: %v", err)
 		}
