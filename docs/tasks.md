@@ -21,7 +21,6 @@ weight: 201
     - [Breakpoint on failure with `onError`](#breakpoint-on-failure-with-onerror)
     - [Redirecting step output streams with `stdoutConfig` and `stderrConfig`](#redirecting-step-output-streams-with-stdoutConfig-and-stderrConfig)
   - [Specifying `Parameters`](#specifying-parameters)
-  - [Specifying `Resources`](#specifying-resources)
   - [Specifying `Workspaces`](#specifying-workspaces)
   - [Emitting `Results`](#emitting-results)
     - [Larger `Results` using sidecar logs](#larger-results-using-sidecar-logs)
@@ -58,7 +57,6 @@ namespace, while a `ClusterTask` is available across the entire cluster.
 A `Task` declaration includes the following elements:
 
 - [Parameters](#specifying-parameters)
-- [Resources](#specifying-resources)
 - [Steps](#defining-steps)
 - [Workspaces](#specifying-workspaces)
 - [Results](#emitting-results)
@@ -79,10 +77,6 @@ A `Task` definition supports the following fields:
 - Optional:
   - [`description`](#adding-a-description) - An informative description of the `Task`.
   - [`params`](#specifying-parameters) - Specifies execution parameters for the `Task`.
-  - [`resources`](#specifying-resources) - **alpha only** Specifies
-    [`PipelineResources`](resources.md) needed or created by your`Task`.
-    - [`inputs`](#specifying-resources) - Specifies the resources ingested by the `Task`.
-    - [`outputs`](#specifying-resources) - Specifies the resources produced by the `Task`.
   - [`workspaces`](#specifying-workspaces) - Specifies paths to volumes required by the `Task`.
   - [`results`](#emitting-results) - Specifies the names under which `Tasks` write execution results.
   - [`volumes`](#specifying-volumes) - Specifies one or more volumes that will be available to the `Steps` in the `Task`.
@@ -95,7 +89,7 @@ A `Task` definition supports the following fields:
 The non-functional example below demonstrates the use of most of the above-mentioned fields:
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: Task
 metadata:
   name: example-task-name
@@ -105,13 +99,9 @@ spec:
       type: string
       description: The path to the dockerfile to build
       default: /workspace/workspace/Dockerfile
-  resources:
-    inputs:
-      - name: workspace
-        type: git
-    outputs:
-      - name: builtImage
-        type: image
+    - name: builtImageUrl
+      type: string
+      description: location to push the built image to
   steps:
     - name: ubuntu-example
       image: ubuntu
@@ -121,7 +111,7 @@ spec:
       args: ["$(params.pathToDockerFile)"]
     - name: dockerfile-pushexample
       image: gcr.io/example-builders/push-example
-      args: ["push", "$(resources.outputs.builtImage.url)"]
+      args: ["push", "$(params.builtImageUrl)"]
       volumeMounts:
         - name: docker-socket-example
           mountPath: /var/run/docker.sock
@@ -142,7 +132,33 @@ applies to both.
           If not specified, the `kind` sub-field defaults to `Task.`
 
 Below is an example of a Pipeline declaration that uses a `ClusterTask`:
+**Note**: 
+- There is no `v1` API specification for `ClusterTask` but a `v1beta1 clustertask` can still be referenced in a `v1 pipeline`.
+- The cluster resolver syntax below can be used to reference any task, not just a clustertask.
 
+{{< tabs >}}
+{{< tab "v1 & v1beta1" >}}
+```yaml
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: demo-pipeline
+spec:
+  tasks:
+    - name: build-skaffold-web
+      taskRef:
+        resolver: cluster
+        params:
+        - name: kind
+          value: task
+        - name: name
+          value: build-push
+        - name: namespace
+          value: default
+```
+{{< /tab >}}
+
+{{< tab "v1beta1" >}}
 ```yaml
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
@@ -157,6 +173,8 @@ spec:
         kind: ClusterTask
       params: ....
 ```
+{{< /tab >}}
+{{< /tabs >}}
 
 ### Defining `Steps`
 
@@ -178,6 +196,24 @@ The following requirements apply to each container image referenced in a `steps`
 
 Below is an example of setting the resource requests and limits for a step:
 
+
+{{< tabs >}}
+{{< tab "v1" >}}
+```yaml
+spec:
+  steps:
+    - name: step-with-limts
+      computeResources:
+        requests:
+          memory: 1Gi
+          cpu: 500m
+        limits:
+          memory: 2Gi
+          cpu: 800m
+```
+{{< /tab >}}
+
+{{< tab "v1beta1" >}}
 ```yaml
 spec:
   steps:
@@ -190,6 +226,8 @@ spec:
           memory: 2Gi
           cpu: 800m
 ```
+{{< /tab >}}
+{{< /tabs >}}
 
 #### Reserved directories
 
@@ -469,7 +507,7 @@ Variable substitution will be applied to the new fields, so one could specify `$
 Redirecting stdout of `boskosctl` to `jq` and publish the resulting `project-id` as a Task result:
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: Task
 metadata:
   name: boskos-acquire
@@ -580,7 +618,7 @@ The following example illustrates the use of `Parameters` in a `Task`. The `Task
 **Note:** Input parameter values can be used as variables throughout the `Task` by using [variable substitution](#using-variable-substitution).
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: Task
 metadata:
   name: task-with-parameters
@@ -628,7 +666,7 @@ spec:
 The following `TaskRun` supplies the value for the parameter `gitrepo`, `flags` and `someURL`:
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: TaskRun
 metadata:
   name: run-with-parameters
@@ -656,7 +694,7 @@ not specified, for example to specify defaults for both string params and array 
 ([full example](../examples/v1beta1/taskruns/array-default.yaml)) :
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: Task
 metadata:
   name: task-with-array-default
@@ -669,69 +707,6 @@ spec:
         - "arg1=foo"
         - "--randomflag"
         - "--someotherflag"
-```
-
-### Specifying `Resources`
-
-> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
->
-> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
-> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
-
-A `Task` definition can specify input and output resources supplied by
-a [`PipelineResources`](resources.md#using-resources) entity.
-
-Use the `input` field to supply your `Task` with the context and/or data it needs to execute.
-If the output of your `Task` is also the input of the next `Task` that executes, you must
-make that data available to that `Task` at `/workspace/output/resource_name/`. For example:
-
-```yaml
-resources:
-  outputs:
-    name: storage-gcs
-    type: gcs
-steps:
-  - image: objectuser/run-java-jar #https://hub.docker.com/r/objectuser/run-java-jar/
-    command: [jar]
-    args: ["-cvf", "-o", "/workspace/output/storage-gcs/", "projectname.war", "*"]
-    env:
-      - name: "FOO"
-        value: "world"
-```
-
-**Note**: If the `Task` relies on output resource functionality then the
-containers in the `Task's` `steps` field cannot mount anything in the path
-`/workspace/output`.
-
-In the following example, the `tar-artifact` resource is used as both input and
-output. Thus, the input resource is copied into the `customworkspace` directory,
-as specified in the `targetPath` field. The `untar` `Step` extracts the tarball
-into the `tar-scratch-space` directory. The `edit-tar` `Step` adds a new file,
-and the `tar-it-up` `Step` creates a new tarball and places it in the
-`/workspace/customworkspace/` directory. When the `Task` completes execution,
-it places the resulting tarball in the `/workspace/customworkspace` directory
-and uploads it to the bucket defined in the `tar-artifact` field.
-
-```yaml
-resources:
-  inputs:
-    name: tar-artifact
-    targetPath: customworkspace
-  outputs:
-    name: tar-artifact
-steps:
-  - name: untar
-    image: ubuntu
-    command: ["/bin/bash"]
-    args: ["-c", "mkdir -p /workspace/tar-scratch-space/ && tar -xvf /workspace/customworkspace/rules_docker-master.tar -C /workspace/tar-scratch-space/"]
-  - name: edit-tar
-    image: ubuntu
-    command: ["/bin/bash"]
-    args: ["-c", "echo crazy > /workspace/tar-scratch-space/rules_docker-master/crazy.txt"]
-  - name: tar-it-up
-    image: ubuntu
-    command: ["/bin/bash"]
-    args: ["-c", "cd /workspace/tar-scratch-space/ && tar -cvf /workspace/customworkspace/rules_docker-master.tar rules_docker-master"]
 ```
 
 ### Specifying `Workspaces`
@@ -779,7 +754,7 @@ In the example below, the `Task` specifies two files in the `results` field:
 `current-date-unix-timestamp` and `current-date-human-readable`.
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: Task
 metadata:
   name: print-date
@@ -810,6 +785,26 @@ is replaced with the path where Tekton will store the Task's results.
 
 When this Task is executed in a TaskRun, the results will appear in the TaskRun's status:
 
+
+{{< tabs >}}
+{{< tab "v1" >}}
+```yaml
+apiVersion: tekton.dev/v1
+kind: TaskRun
+# ...
+status:
+  # ...
+  results:
+    - name: current-date-human-readable
+      value: |
+        Wed Jan 22 19:47:26 UTC 2020
+    - name: current-date-unix-timestamp
+      value: |
+        1579722445
+```
+{{< /tab >}}
+
+{{< tab "v1beta1" >}}
 ```yaml
 apiVersion: tekton.dev/v1beta1
 kind: TaskRun
@@ -824,6 +819,8 @@ status:
       value: |
         1579722445
 ```
+{{< /tab >}}
+{{< /tabs >}}
 
 Tekton does not perform any processing on the contents of results; they are emitted
 verbatim from your Task including any leading or trailing whitespace characters. Make sure to write only the
@@ -854,7 +851,7 @@ An example of a task definition producing an array result with such greetings `[
 
 ```yaml
 kind: Task
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 metadata:
   name: write-array
   annotations:
@@ -1370,7 +1367,7 @@ spec:
 The example below illustrates how to use a `Secret` as an environment source:
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: Task
 metadata:
   name: goreleaser
@@ -1408,7 +1405,7 @@ spec:
 The example below illustrates how to use a `Sidecar` in your `Task`:
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: Task
 metadata:
   name: with-sidecar-task
@@ -1490,7 +1487,7 @@ steps can make use of a `securityContext` to specify how the container should ru
 An example of running Task steps as a non root user is shown below:
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: Task
 metadata:
   name: show-non-root-steps
@@ -1515,7 +1512,7 @@ spec:
       securityContext:
         runAsUser: 2000
 ---
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: TaskRun
 metadata:
   generateName: show-non-root-steps-run-

@@ -140,7 +140,7 @@ metadata:
 spec:
   pipelineRef:
     name: clone-test-build
-  taskRunSpecTemplate:
+  taskRunTemplate:
     serviceAccountName: build
     podTemplate:
       securityContext:

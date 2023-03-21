@@ -158,17 +158,37 @@ spec:
 
 #### Tekton Bundles
 
-**Note: This is only allowed if `enable-tekton-oci-bundles` is set to
-`"true"` in the `feature-flags` configmap, see [`install.md`](./install.md#customizing-the-pipelines-controller-behavior)**
+A `Tekton Bundle` is an OCI artifact that contains Tekton resources like `Tasks` which can be referenced within a `taskRef`.
 
-You may also use a `Tekton Bundle` to reference a pipeline defined remotely.
+You can reference a `Tekton bundle` in a `TaskRef` in both `v1` and `v1beta1` using [remote resolution](./bundle-resolver.md#pipeline-resolution). The example syntax shown below for `v1` uses remote resolution.
 
+In `v1beta1`, you can also reference a `Tekton bundle` using OCI bundle syntax, which has been deprecated in favor of remote resolution. The example shown below for `v1beta1` uses OCI bundle syntax, and requires enabling `enable-tekton-oci-bundles: "true"` feature flag.
+
+{{< tabs >}}
+{{< tab "v1 & v1beta1" >}}
+```yaml
+spec:
+  pipelineRef:
+    resolver: bundles
+    params:
+    - name: bundle
+      value: docker.io/myrepo/mycatalog:v1.0
+    - name: name
+      value: mypipeline
+    - name: kind
+      value: Pipeline
+```
+{{< /tab >}}
+
+{{< tab "v1beta1" >}}
  ```yaml
  spec:
    pipelineRef:
      name: mypipeline
      bundle: docker.io/myrepo/mycatalog:v1.0
  ```
+{{< /tab >}}
+{{< /tabs >}}
 
 The syntax and caveats are similar to using `Tekton Bundles` for  `Task` references
 in [Pipelines](pipelines.md#tekton-bundles) or [TaskRuns](taskruns.md#tekton-bundles).
@@ -207,7 +227,7 @@ Task-level compute resources can be configured in `PipelineRun.TaskRunSpecs.Comp
 e.g.
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: pipeline
@@ -215,7 +235,7 @@ spec:
   tasks:
     - name: task
 ---
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   name: pipelinerun 
@@ -264,7 +284,7 @@ allows authors to simplify specs by automatically propagating top-level
 parameters down to other inlined resources.
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   generateName: pr-echo-
@@ -299,7 +319,7 @@ The specifications are not mutated before storage and so it remains the same.
 The status is updated.
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   name: pr-echo-szzs9
@@ -351,7 +371,7 @@ status:
 When Parameters names conflict, the inner scope would take precedence as shown in this example:
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   generateName: pr-echo-
@@ -384,7 +404,7 @@ resolves to
 
 ```yaml
 # Successful execution of the above PipelineRun
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   name: pr-echo-szzs9
@@ -411,7 +431,7 @@ status:
 When `Parameter` specifications have default values, the `Parameter` value provided at runtime would take precedence to give users control, as shown in this example:
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   generateName: pr-echo-
@@ -442,7 +462,7 @@ resolves to
 
 ```yaml
 # Successful execution of the above PipelineRun
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   name: pr-echo-szzs9
@@ -470,7 +490,7 @@ When a PipelineRun definition has referenced specifications but does not explici
 
 ```yaml
 # Invalid PipelineRun attempting to propagate Parameters to referenced Tasks
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   generateName: pr-echo-
@@ -489,7 +509,7 @@ spec:
         taskRef:
           name: echo-bye
 ---
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: Task
 metadata:
   name: echo-hello
@@ -501,7 +521,7 @@ spec:
         #!/usr/bin/env bash
         echo "$(params.HELLO)"
 ---
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: Task
 metadata:
   name: echo-bye
@@ -518,7 +538,7 @@ Fails as follows:
 
 ```yaml
 # Failed execution of the above PipelineRun
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   name: pr-echo-24lmf
@@ -561,7 +581,7 @@ parameters down to other inlined resources.
 When propagating object parameters, scope and precedence also holds as shown below.
  
 ```yaml
-apiVersion: tekton.dev/v1beta1 
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1 
 kind: PipelineRun              
 metadata:
   generateName: pipelinerun-object-param-result 
@@ -594,7 +614,7 @@ spec:
 resolves to
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   name: pipelinerun-object-param-resultpxp59
@@ -690,6 +710,19 @@ map a specific `serviceAccountName` value to a specific `Task` in the `Pipeline`
 
 For example, if you specify these mappings:
 
+{{< tabs >}}
+{{< tab "v1" >}}
+```yaml
+spec:
+  taskRunTemplate:
+    serviceAccountName: sa-1
+  taskRunSpecs:
+    - pipelineTaskName: build-task
+      serviceAccountName: sa-for-build
+```
+{{< /tab >}}
+
+{{< tab "v1beta1" >}}
 ```yaml
 spec:
   serviceAccountName: sa-1
@@ -697,6 +730,8 @@ spec:
     - pipelineTaskName: build-task
       taskServiceAccountName: sa-for-build
 ```
+{{< /tab >}}
+{{< /tabs >}}
 
 for this `Pipeline`:
 
@@ -723,6 +758,53 @@ customize the `Pod` configuration specifically for each `TaskRun`.
 In the following example, the `Task` defines a `volumeMount` object named `my-cache`. The `PipelineRun`
 provisions this object for the `Task` using a `persistentVolumeClaim` and executes it as user 1001.
 
+{{< tabs >}}
+{{< tab "v1" >}}
+```yaml
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: mytask
+spec:
+  steps:
+    - name: writesomething
+      image: ubuntu
+      command: ["bash", "-c"]
+      args: ["echo 'foo' > /my-cache/bar"]
+      volumeMounts:
+        - name: my-cache
+          mountPath: /my-cache
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: mypipeline
+spec:
+  tasks:
+    - name: task1
+      taskRef:
+        name: mytask
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: mypipelinerun
+spec:
+  pipelineRef:
+    name: mypipeline
+  taskRunTemplate: 
+    podTemplate:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+      volumes:
+        - name: my-cache
+          persistentVolumeClaim:
+            claimName: my-volume-claim
+```
+{{< /tab >}}
+
+{{< tab "v1beta1" >}}
 ```yaml
 apiVersion: tekton.dev/v1beta1
 kind: Task
@@ -764,6 +846,8 @@ spec:
         persistentVolumeClaim:
           claimName: my-volume-claim
 ```
+{{< /tab >}}
+{{< /tabs >}}
 
 [`Custom tasks`](pipelines.md#using-custom-tasks) may or may not use a pod template.
 Consult the documentation of the custom task that you are using to determine whether it supports a pod template.
@@ -776,6 +860,25 @@ will run with the configured  `TaskServiceAccountName` and `TaskPodTemplate` ove
 wide `ServiceAccountName`  and [`podTemplate`](./podtemplates.md) configuration,
 for example:
 
+{{< tabs >}}
+{{< tab "v1" >}}
+```yaml
+spec:
+  podTemplate:
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 2000
+      fsGroup: 3000
+  taskRunSpecs:
+    - pipelineTaskName: build-task
+      serviceAccountName: sa-for-build
+      podTemplate:
+        nodeSelector:
+          disktype: ssd
+```
+{{< /tab >}}
+
+{{< tab "v1beta1" >}}
 ```yaml
 spec:
   podTemplate:
@@ -790,9 +893,11 @@ spec:
         nodeSelector:
           disktype: ssd
 ```
+{{< /tab >}}
+{{< /tabs >}}
 
 If used with this `Pipeline`,  `build-task` will use the task specific `PodTemplate` (where `nodeSelector` has `disktype` equal to `ssd`).
-`PipelineTaskRunSpec` may also contain `StepOverrides` and `SidecarOverrides`; see
+`PipelineTaskRunSpec` may also contain `StepSpecs` and `SidecarSpecs`; see
 [Overriding `Task` `Steps` and `Sidecars`](./taskruns.md#overriding-task-steps-and-sidecars) for more information.
 
 The optional annotations and labels can be added under a `Metadata` field as for a specific running context.
@@ -863,7 +968,7 @@ workspaces down to other inlined resources.
 
 ```yaml
 # Inline specifications of a PipelineRun
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   generateName: recipe-time-
@@ -911,7 +1016,7 @@ On executing the pipeline run, the workspaces will be interpolated during resolu
 
 ```yaml
 # Successful execution of the above PipelineRun
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   generateName: recipe-time-
@@ -956,7 +1061,7 @@ spec:
   accessModes:
     - ReadWriteOnce
 ---
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: fetch-and-print-recipe
@@ -971,7 +1076,7 @@ spec:
     runAfter:
       - fetch-the-recipe
 ---
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   generateName: recipe-time-
@@ -989,7 +1094,7 @@ Upon execution, this will cause failures:
 ```yaml
 # Failed execution of the above PipelineRun
 
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   generateName: recipe-time-
@@ -1022,7 +1127,7 @@ As mentioned in the [Workspace Referenced Resources](#workspace-referenced-resou
 
 ```yaml
 # PipelineRun attempting to propagate Workspaces to referenced Tasks
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: Task
 metadata:
   name: fetch-secure-data
@@ -1035,7 +1140,7 @@ spec:
     script: |
       echo $(workspaces.shared-data.path)      
 ---
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   generateName: recipe-time-
@@ -1071,7 +1176,7 @@ The above pipelinerun successfully resolves to:
 
 ```yaml
 # Successful execution of the above PipelineRun
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   generateName: recipe-time-
@@ -1320,7 +1425,7 @@ Pending `finally` tasks are not scheduled.
 For example:
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   name: go-example-git
@@ -1339,7 +1444,7 @@ as cancelled, all associated `Pods` are deleted, and their `Retries` are not exe
 For example:
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   name: go-example-git
@@ -1357,7 +1462,7 @@ including executing their `retries`, but no new non-`finally` task is scheduled.
 For example:
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   name: go-example-git
@@ -1375,7 +1480,7 @@ Note that a `PipelineRun` can only be marked "pending" before it has started, th
 To mark a `PipelineRun` as pending, set `.spec.status` to `PipelineRunPending` when creating it:
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   name: go-example-git
