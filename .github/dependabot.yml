@@ -21,6 +21,9 @@ updates:
     - "dependencies"
     - "release-note-none"
     - "kind/misc"
+    ignore:
+    - dependency-name: "k8s.io/*"
+      update-types: ["version-update:semver-major", "version-update:semver-minor"]
   - package-ecosystem: "gomod"
     directory: "/test/custom-task-ctrls/wait-task-alpha"
     schedule:
@@ -30,6 +33,9 @@ updates:
     - "dependencies"
     - "release-note-none"
     - "kind/misc"
+    ignore:
+    - dependency-name: "k8s.io/*"
+      update-types: ["version-update:semver-major", "version-update:semver-minor"]
   - package-ecosystem: "gomod"
     directory: "/test/custom-task-ctrls/wait-task-beta"
     schedule:
@@ -39,3 +45,6 @@ updates:
     - "dependencies"
     - "release-note-none"
     - "kind/misc"
+    ignore:
+    - dependency-name: "k8s.io/*"
+      update-types: ["version-update:semver-major", "version-update:semver-minor"]
