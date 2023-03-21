@@ -10,17 +10,14 @@ weight: 203
 - [Pipelines](#pipelines)
   - [Overview](#overview)
   - [Configuring a `Pipeline`](#configuring-a-pipeline)
-  - [Specifying `Resources`](#specifying-resources)
   - [Specifying `Workspaces`](#specifying-workspaces)
   - [Specifying `Parameters`](#specifying-parameters)
   - [Adding `Tasks` to the `Pipeline`](#adding-tasks-to-the-pipeline)
     - [Specifying Remote Tasks](#specifying-remote-tasks)
-    - [Specifying `Resources` in `PipelineTasks`](#specifying-resources-in-pipelinetasks)
     - [Specifying `Parameters` in `PipelineTasks`](#specifying-parameters-in-pipelinetasks)
     - [Specifying `Matrix` in `PipelineTasks`](#specifying-matrix-in-pipelinetasks)
     - [Specifying `Workspaces` in `PipelineTasks`](#specifying-workspaces-in-pipelinetasks)
     - [Tekton Bundles](#tekton-bundles)
-    - [Using the `from` field](#using-the-from-field)
     - [Using the `runAfter` field](#using-the-runafter-field)
     - [Using the `retries` field](#using-the-retries-field)
     - [Guard `Task` execution using `when` expressions](#guard-task-execution-using-when-expressions)
@@ -51,7 +48,6 @@ weight: 203
       - [`when` expressions using `Execution Status` of `PipelineTask` in `finally` `tasks`](#when-expressions-using-execution-status-of-pipelinetask-in-finally-tasks)
       - [`when` expressions using `Aggregate Execution Status` of `Tasks` in `finally` `tasks`](#when-expressions-using-aggregate-execution-status-of-tasks-in-finally-tasks)
     - [Known Limitations](#known-limitations)
-      - [Specifying `Resources` in `finally` tasks](#specifying-resources-in-finally-tasks)
       - [Cannot configure the `finally` task execution order](#cannot-configure-the-finally-task-execution-order)
   - [Using Custom Tasks](#using-custom-tasks)
     - [Specifying the target Custom Task](#specifying-the-target-custom-task)
@@ -62,7 +58,6 @@ weight: 203
     - [Using `Results`](#using-results-1)
     - [Specifying `Timeout`](#specifying-timeout)
     - [Specifying `Retries`](#specifying-retries)
-    - [Limitations](#limitations)
     - [Known Custom Tasks](#known-custom-tasks)
   - [Code examples](#code-examples)
 
@@ -88,8 +83,6 @@ A `Pipeline` definition supports the following fields:
       - [`tasks`](#adding-tasks-to-the-pipeline) - Specifies the `Tasks` that comprise the `Pipeline`
         and the details of their execution.
 - Optional:
-  - [`resources`](#specifying-resources) - **deprecated** Specifies
-    [`PipelineResources`](resources.md) needed or created by the `Tasks` comprising the `Pipeline`.
   - [`params`](#specifying-parameters) - Specifies the `Parameters` that the `Pipeline` requires.
   - [`workspaces`](#specifying-workspaces) - Specifies a set of Workspaces that the `Pipeline` requires.
   - [`tasks`](#adding-tasks-to-the-pipeline):
@@ -169,7 +162,7 @@ the `Workspace` from the `Pipeline`.
 For example:
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: pipeline
@@ -232,7 +225,7 @@ without specifying a value for `context`, that value will be used.
 by using [variable substitution](variables.md#variables-available-in-a-pipeline).
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: pipeline-with-parameters
@@ -261,7 +254,7 @@ spec:
 The following `PipelineRun` supplies a value for `context`:
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   name: pipelinerun-with-parameters
@@ -325,31 +318,6 @@ tasks:
     - name: pathInRepo
       value: task/golang-build/0.3/golang-build.yaml
 ```
-
-### Specifying `Resources` in `PipelineTasks`
-
-You can use [`PipelineResources`](#specifying-resources) as inputs and outputs for `Tasks`
-in the `Pipeline`. For example:
-
-```yaml
-spec:
-  tasks:
-    - name: build-the-image
-      taskRef:
-        name: build-push
-      resources:
-        inputs:
-          - name: workspace
-            resource: my-repo
-        outputs:
-          - name: image
-            resource: my-image
-```
-
-> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
->
-> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
-> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
 
 ### Specifying `Parameters` in `PipelineTasks`
 
@@ -419,24 +387,42 @@ spec:
 
 ### Tekton Bundles
 
-**Note: This is only allowed if `enable-tekton-oci-bundles` is set to
-`"true"` in the `feature-flags` configmap, see [`install.md`](./install.md#customizing-the-pipelines-controller-behavior)**
-
-You may also specify your `Task` reference using a `Tekton Bundle`. A `Tekton Bundle` is an OCI artifact that
-contains Tekton resources like `Tasks` which can be referenced within a `taskRef`.
+A `Tekton Bundle` is an OCI artifact that contains Tekton resources like `Tasks` which can be referenced within a `taskRef`.
 
 There is currently a hard limit of 20 objects in a bundle.
 
+You can reference a `Tekton bundle` in a `TaskRef` in both `v1` and `v1beta1` using [remote resolution](./bundle-resolver.md#pipeline-resolution). The example syntax shown below for `v1` uses remote resolution.
+
+In `v1beta1`, you can also reference a `Tekton bundle` using OCI bundle syntax, which has been deprecated in favor of remote resolution. The example shown below for `v1beta1` uses OCI bundle syntax, and requires enabling `enable-tekton-oci-bundles: "true"` feature flag.
 
 
- ```yaml
- spec:
-   tasks:
-     - name: hello-world
-       taskRef:
-         name: echo-task
-         bundle: docker.com/myrepo/mycatalog
- ```
+{{< tabs >}}
+{{< tab "v1 & v1beta1" >}}
+```yaml
+spec:
+  taskRef:
+    resolver: bundles
+    params:
+    - name: bundle
+      value: docker.io/myrepo/mycatalog
+    - name: name
+      value: echo-task
+    - name: kind
+      value: Task
+```
+{{< /tab >}}
+
+{{< tab "v1beta1" >}}
+```yaml
+spec:
+  tasks:
+    - name: hello-world
+      taskRef:
+        name: echo-task
+        bundle: docker.com/myrepo/mycatalog
+```
+{{< /tab >}}
+{{< /tabs >}}
 
 Here, the `bundle` field is the full reference url to the artifact. The name is the
 `metadata.name` field of the `Task`.
@@ -444,25 +430,63 @@ Here, the `bundle` field is the full reference url to the artifact. The name is 
 You may also specify a `tag` as you would with a Docker image which will give you a fixed,
 repeatable reference to a `Task`.
 
- ```yaml
- spec:
-   tasks:
-     - name: hello-world
-       taskRef:
-         name: echo-task
-         bundle: docker.com/myrepo/mycatalog:v1.0.1
- ```
+{{< tabs >}}
+{{< tab "v1 & v1beta1" >}}
+```yaml
+spec:
+  taskRef:
+    resolver: bundles
+    params:
+    - name: bundle
+      value: docker.io/myrepo/mycatalog:v1.0.1
+    - name: name
+      value: echo-task
+    - name: kind
+      value: Task
+```
+{{< /tab >}}
+
+{{< tab "v1beta1" >}}
+```yaml
+spec:
+  tasks:
+    - name: hello-world
+      taskRef:
+        name: echo-task
+        bundle: docker.com/myrepo/mycatalog:v1.0.1
+```
+{{< /tab >}}
+{{< /tabs >}}
 
 You may also specify a fixed digest instead of a tag.
 
- ```yaml
- spec:
-   tasks:
-     - name: hello-world
-       taskRef:
-         name: echo-task
-         bundle: docker.io/myrepo/mycatalog@sha256:abc123
- ```
+{{< tabs >}}
+{{< tab "v1 & v1beta1" >}}
+```yaml
+spec:
+  taskRef:
+    resolver: bundles
+    params:
+    - name: bundle
+      value: docker.io/myrepo/mycatalog@sha256:abc123
+    - name: name
+      value: echo-task
+    - name: kind
+      value: Task
+```
+{{< /tab >}}
+
+{{< tab "v1beta1" >}}
+```yaml
+spec:
+  tasks:
+    - name: hello-world
+      taskRef:
+        name: echo-task
+        bundle: docker.io/myrepo/mycatalog@sha256:abc123
+```
+{{< /tab >}}
+{{< /tabs >}}
 
 Any of the above options will fetch the image using the `ImagePullSecrets` attached to the
 `ServiceAccount` specified in the `PipelineRun`.
@@ -473,45 +497,6 @@ run that `Task` without registering it in the cluster allowing multiple versions
 
 `Tekton Bundles` may be constructed with any toolsets that produce valid OCI image artifacts
 so long as the artifact adheres to the [contract](tekton-bundle-contracts.md).
-
-### Using the `from` field
-
-If a `Task` in your `Pipeline` needs to use the output of a previous `Task`
-as its input, use the optional `from` field to specify a list of `Tasks`
-that must execute **before** the `Task` that requires their outputs as its
-input. When your target `Task` executes, only the version of the desired
-`PipelineResource` produced by the last `Task` in this list is used. The
-`name` of this output `PipelineResource` output must match the `name` of the
-input `PipelineResource` specified in the `Task` that ingests it.
-
-In the example below, the `deploy-app` `Task` ingests the output of the `build-app`
-`Task` named `my-image` as its input.  Therefore, the `build-app` `Task` will
-execute before the `deploy-app` `Task` regardless of the order in which those
-`Tasks` are declared in the `Pipeline`.
-
-```yaml
-- name: build-app
-  taskRef:
-    name: build-push
-  resources:
-    outputs:
-      - name: image
-        resource: my-image
-- name: deploy-app
-  taskRef:
-    name: deploy-kubectl
-  resources:
-    inputs:
-      - name: image
-        resource: my-image
-        from:
-          - build-app
-```
-
-> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
->
-> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
-> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
 
 ### Using the `runAfter` field
 
@@ -544,11 +529,6 @@ tasks:
   - name: source
     workspace: source
 ```
-
-> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
->
-> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
-> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
 
 ### Using the `retries` field
 
@@ -1080,7 +1060,6 @@ without getting stuck in an infinite loop.
 
 This is done using:
 - _resource dependencies_:
-  - [`from`](#using-the-from-field) clauses on the [`PipelineResources`](resources.md) used by each `Task`
   - [`results`](#emitting-results-from-a-pipeline) of one `Task` being passed into `params` or `when` expressions of
     another
 
@@ -1094,54 +1073,25 @@ tasks:
 - name: lint-repo
   taskRef:
     name: pylint
-  resources:
-    inputs:
-      - name: workspace
-        resource: my-repo
 - name: test-app
   taskRef:
     name: make-test
-  resources:
-    inputs:
-      - name: workspace
-        resource: my-repo
 - name: build-app
   taskRef:
     name: kaniko-build-app
   runAfter:
     - test-app
-  resources:
-    inputs:
-      - name: workspace
-        resource: my-repo
-    outputs:
-      - name: image
-        resource: my-app-image
 - name: build-frontend
   taskRef:
     name: kaniko-build-frontend
   runAfter:
     - test-app
-  resources:
-    inputs:
-      - name: workspace
-        resource: my-repo
-    outputs:
-      - name: image
-        resource: my-frontend-image
 - name: deploy-all
   taskRef:
     name: deploy-kubectl
-  resources:
-    inputs:
-      - name: my-app-image
-        resource: my-app-image
-        from:
-          - build-app
-      - name: my-frontend-image
-        resource: my-frontend-image
-        from:
-          - build-frontend
+  runAfter:
+    - build-app
+    - build-frontend
 ```
 
 executes according to the following graph:
@@ -1165,14 +1115,9 @@ In particular:
 2. Once `test-app` completes, both `build-app` and `build-frontend` start
    executing simultaneously since they both `runAfter` the `test-app` `Task`.
 3. The `deploy-all` `Task` executes once both `build-app` and `build-frontend`
-   complete, since it ingests `PipelineResources` from both.
+   complete, since it is supposed to `runAfter` them both.
 4. The entire `Pipeline` completes execution once both `lint-repo` and `deploy-all`
    complete execution.
-
-> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
->
-> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
-> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
 
 ## Specifying a display name
 
@@ -1455,7 +1400,7 @@ and [`send-to-channel-slack`](https://github.com/tektoncd/catalog/tree/main/task
 `Tasks`:
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   generateName: pipelinerun-
@@ -1493,7 +1438,7 @@ spec:
 and [`github-add-comment`](https://github.com/tektoncd/catalog/tree/main/task/github-add-comment/0.2) Catalog `Tasks`:
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   generateName: pipelinerun-
@@ -1530,7 +1475,7 @@ as demonstrated using [`golang-build`](https://github.com/tektoncd/catalog/tree/
 [`send-to-channel-slack`](https://github.com/tektoncd/catalog/tree/main/task/send-to-channel-slack/0.1) Catalog `Tasks`:
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   generateName: pipelinerun-
@@ -1573,42 +1518,6 @@ finally:
 For an end-to-end example, see [PipelineRun with `when` expressions](../examples/v1beta1/pipelineruns/pipelinerun-with-when-expressions.yaml).
 
 ### Known Limitations
-
-#### Specifying `Resources` in `finally` tasks
-
-Similar to `tasks`, you can use [PipelineResources](#specifying-resources) as inputs and outputs for
-`finally` tasks in the Pipeline. The only difference here is, final tasks with an input resource can not have a `from`
-clause like a `PipelineTask` from `tasks` section. For example:
-
-```yaml
-spec:
-  tasks:
-    - name: tests
-      taskRef:
-        Name: integration-test
-      resources:
-        inputs:
-          - name: source
-            resource: tektoncd-pipeline-repo
-        outputs:
-          - name: workspace
-            resource: my-repo
-  finally:
-    - name: clear-workspace
-      taskRef:
-        Name: clear-workspace
-      resources:
-        inputs:
-          - name: workspace
-            resource: my-repo
-            from: #invalid
-              - tests
-```
-
-> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
->
-> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
-> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
 
 #### Cannot configure the `finally` task execution order
 
@@ -1820,11 +1729,6 @@ spec:
 ```
 
 Consult the documentation of the custom task that you are using to determine whether it supports `Retries`.
-
-### Limitations
-
-Pipelines do not support the following items with custom tasks:
-* Pipeline Resources
 
 ### Known Custom Tasks
 
