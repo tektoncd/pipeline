@@ -240,7 +240,7 @@ spec:
   params:
     - name: searching
       value: the purpose of my existence
-  ref:
+  customRef:
     apiVersion: custom.tekton.dev/v1alpha1
     kind: Example
     name: exampleName
@@ -250,7 +250,7 @@ Supporting retries is optional but recommended.
 
 #### Developer guide for custom controllers supporting `retries`
 
-1. Teton controller only depends on `ConditionSucceeded` to determine the 
+1. Tekton controller only depends on `ConditionSucceeded` to determine the 
    termination status of a `CustomRun`, therefore Custom task implementors
    MUST NOT set `ConditionSucceeded` to `False` until all retries are exhausted.
 2. Those custom tasks who do not wish to support retry, can simply ignore it.
