@@ -27,6 +27,7 @@ import (
 	rrclient "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned"
 	rrlisters "github.com/tektoncd/pipeline/pkg/client/resolution/listers/resolution/v1beta1"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
@@ -54,7 +55,12 @@ var _ Requester = &CRDRequester{}
 func (r *CRDRequester) Submit(ctx context.Context, resolver ResolverName, req Request) (ResolvedResource, error) {
 	rr, _ := r.lister.ResolutionRequests(req.Namespace()).Get(req.Name())
 	if rr == nil {
-		if err := r.createResolutionRequest(ctx, resolver, req); err != nil {
+		if err := r.createResolutionRequest(ctx, resolver, req); err != nil &&
+			// When the request reconciles frequently, the creation may fail
+			// because the list informer cache is not updated.
+			// If the request already exists then we can assume that is in progress.
+			// The next reconcile will handle it based on the actual situation.
+			!apierrors.IsAlreadyExists(err) {
 			return nil, err
 		}
 		return nil, resolutioncommon.ErrRequestInProgress
