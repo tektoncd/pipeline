@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/pkg/substitution"
@@ -110,34 +109,28 @@ func Apply(ctx context.Context, ts v1beta1.TaskSpec, wb []v1beta1.WorkspaceBindi
 
 	isolatedWorkspaces := sets.NewString()
 
-	alphaOrBetaEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields != config.StableAPIFields
-
-	if alphaOrBetaEnabled {
-		for _, step := range ts.Steps {
-			for _, workspaceUsage := range step.Workspaces {
-				isolatedWorkspaces.Insert(workspaceUsage.Name)
-			}
+	for _, step := range ts.Steps {
+		for _, workspaceUsage := range step.Workspaces {
+			isolatedWorkspaces.Insert(workspaceUsage.Name)
 		}
-		for _, sidecar := range ts.Sidecars {
-			for _, workspaceUsage := range sidecar.Workspaces {
-				isolatedWorkspaces.Insert(workspaceUsage.Name)
-			}
+	}
+	for _, sidecar := range ts.Sidecars {
+		for _, workspaceUsage := range sidecar.Workspaces {
+			isolatedWorkspaces.Insert(workspaceUsage.Name)
 		}
 	}
 
 	for i := range wb {
-		if alphaOrBetaEnabled {
-			// Propagate missing Workspaces
-			addWorkspace := true
-			for _, ws := range ts.Workspaces {
-				if ws.Name == wb[i].Name {
-					addWorkspace = false
-					break
-				}
+		// Propagate missing Workspaces
+		addWorkspace := true
+		for _, ws := range ts.Workspaces {
+			if ws.Name == wb[i].Name {
+				addWorkspace = false
+				break
 			}
-			if addWorkspace {
-				ts.Workspaces = append(ts.Workspaces, v1beta1.WorkspaceDeclaration{Name: wb[i].Name})
-			}
+		}
+		if addWorkspace {
+			ts.Workspaces = append(ts.Workspaces, v1beta1.WorkspaceDeclaration{Name: wb[i].Name})
 		}
 		w, err := getDeclaredWorkspace(wb[i].Name, ts.Workspaces)
 		if err != nil {
@@ -153,15 +146,10 @@ func Apply(ctx context.Context, ts v1beta1.TaskSpec, wb []v1beta1.WorkspaceBindi
 			ReadOnly:  w.ReadOnly,
 		}
 
-		if alphaOrBetaEnabled {
-			if isolatedWorkspaces.Has(w.Name) {
-				mountAsIsolatedWorkspace(ts, w.Name, volumeMount)
-			} else {
-				mountAsSharedWorkspace(ts, volumeMount)
-			}
+		if isolatedWorkspaces.Has(w.Name) {
+			mountAsIsolatedWorkspace(ts, w.Name, volumeMount)
 		} else {
-			// Prior to the alpha feature gate only Steps may receive workspaces.
-			ts.StepTemplate.VolumeMounts = append(ts.StepTemplate.VolumeMounts, volumeMount)
+			mountAsSharedWorkspace(ts, volumeMount)
 		}
 
 		// Only add this volume if it hasn't already been added
