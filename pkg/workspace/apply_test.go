@@ -706,7 +706,7 @@ func TestApply_PropagatedWorkspacesFromWorkspaceBindingToDeclarations(t *testing
 		expectedTaskSpec v1beta1.TaskSpec
 		apiField         string
 	}{{
-		name: "propagate workspaces alpha enabled",
+		name: "propagate workspaces",
 		ts: v1beta1.TaskSpec{
 			Workspaces: []v1beta1.WorkspaceDeclaration{{
 				Name: "workspace1",
@@ -740,52 +740,10 @@ func TestApply_PropagatedWorkspacesFromWorkspaceBindingToDeclarations(t *testing
 				VolumeMounts: []v1.VolumeMount{{Name: "ws-9l9zj", MountPath: "/workspace/workspace2"}},
 			},
 		},
-		apiField: config.AlphaAPIFields,
-	}, {
-		name: "propagate workspaces beta enabled",
-		ts: v1beta1.TaskSpec{
-			Workspaces: []v1beta1.WorkspaceDeclaration{{
-				Name: "workspace1",
-			}},
-		},
-		workspaces: []v1beta1.WorkspaceBinding{{
-			Name: "workspace2",
-			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-				ClaimName: "mypvc",
-			},
-		}},
-		expectedTaskSpec: v1beta1.TaskSpec{
-			Volumes: []corev1.Volume{{
-				Name: "ws-mz4c7",
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: "mypvc",
-					},
-				},
-			}},
-			Workspaces: []v1beta1.WorkspaceDeclaration{{
-				Name:      "workspace1",
-				MountPath: "",
-				ReadOnly:  false,
-			}, {
-				Name:      "workspace2",
-				MountPath: "",
-				ReadOnly:  false,
-			}},
-			StepTemplate: &v1beta1.StepTemplate{
-				VolumeMounts: []v1.VolumeMount{{Name: "ws-mz4c7", MountPath: "/workspace/workspace2"}},
-			},
-		},
-		apiField: config.BetaAPIFields,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := config.ToContext(context.Background(), &config.Config{
-				FeatureFlags: &config.FeatureFlags{
-					EnableAPIFields: tc.apiField,
-				},
-			})
 			vols := workspace.CreateVolumes(tc.workspaces)
-			ts, err := workspace.Apply(ctx, tc.ts, tc.workspaces, vols)
+			ts, err := workspace.Apply(context.Background(), tc.ts, tc.workspaces, vols)
 			if err != nil {
 				t.Fatalf("Did not expect error but got %v", err)
 			}
@@ -1135,8 +1093,8 @@ func TestApplyWithMissingWorkspaceDeclaration(t *testing.T) {
 		},
 	}}
 	vols := workspace.CreateVolumes(bindings)
-	if _, err := workspace.Apply(context.Background(), ts, bindings, vols); err == nil {
-		t.Errorf("Expected error because workspace doesnt exist.")
+	if _, err := workspace.Apply(context.Background(), ts, bindings, vols); err != nil {
+		t.Errorf("Did not expect error because of workspace propagation but got %v", err)
 	}
 }
 

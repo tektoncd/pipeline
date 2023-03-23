@@ -1033,14 +1033,12 @@ func getTaskrunWorkspaces(ctx context.Context, pr *v1beta1.PipelineRun, rpt *res
 		pipelineRunWorkspaces[binding.Name] = binding
 	}
 
-	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields != config.StableAPIFields {
-		// Propagate required workspaces from pipelineRun to the pipelineTasks
-		if rpt.PipelineTask.TaskSpec != nil {
-			rpt, err = propagateWorkspaces(rpt)
-			if err != nil {
-				// This error cannot be recovered without modifying the TaskSpec
-				return nil, "", controller.NewPermanentError(err)
-			}
+	// Propagate required workspaces from pipelineRun to the pipelineTasks
+	if rpt.PipelineTask.TaskSpec != nil {
+		rpt, err = propagateWorkspaces(rpt)
+		if err != nil {
+			// This error cannot be recovered without modifying the TaskSpec
+			return nil, "", controller.NewPermanentError(err)
 		}
 	}
 

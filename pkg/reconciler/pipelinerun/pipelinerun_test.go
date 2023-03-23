@@ -7362,10 +7362,9 @@ spec:
 			},
 		},
 	}
-	ctx := config.EnableBetaAPIFields(context.Background())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, _, err := getTaskrunWorkspaces(ctx, tt.pr, tt.rprt)
+			_, _, err := getTaskrunWorkspaces(context.Background(), tt.pr, tt.rprt)
 
 			if err != nil {
 				t.Errorf("Pipeline.getTaskrunWorkspaces() returned error for valid pipeline: %v", err)

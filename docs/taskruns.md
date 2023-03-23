@@ -453,8 +453,6 @@ For more information, see the following topics:
 
 #### Propagated Workspaces
 
-**[beta](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#beta-features))**
-
 When using an embedded spec, workspaces from the parent `TaskRun` will be
 propagated to any inlined specs without needing to be explicitly defined. This
 allows authors to simplify specs by automatically propagating top-level

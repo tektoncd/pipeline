@@ -855,8 +855,6 @@ Consult the documentation of the custom task that you are using to determine whe
 
 #### Propagated Workspaces
 
-**[beta](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#beta-features))**
-
 When using an embedded spec, workspaces from the parent `PipelineRun` will be
 propagated to any inlined specs without needing to be explicitly defined. This
 allows authors to simplify specs by automatically propagating top-level

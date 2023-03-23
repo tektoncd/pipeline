@@ -385,10 +385,8 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	var workspaceDeclarations []v1beta1.WorkspaceDeclaration
 	// Propagating workspaces allows users to skip declarations
 	// In order to validate the workspace bindings we create declarations based on
-	// the workspaces provided in the task run spec. This logic is hidden behind the
-	// alpha/beta feature gate since propagating workspaces is behind the beta feature gate.
-	// In addition, we only allow this feature for embedded taskSpec.
-	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields != config.StableAPIFields && tr.Spec.TaskSpec != nil {
+	// the workspaces provided in the task run spec. We only allow this feature for embedded taskSpec.
+	if tr.Spec.TaskSpec != nil {
 		for _, ws := range tr.Spec.Workspaces {
 			wspaceDeclaration := v1beta1.WorkspaceDeclaration{Name: ws.Name}
 			workspaceDeclarations = append(workspaceDeclarations, wspaceDeclaration)
@@ -767,24 +765,22 @@ func applyParamsContextsResultsAndWorkspaces(ctx context.Context, tr *v1beta1.Ta
 	ts = resources.ApplyStepExitCodePath(ts)
 
 	// Apply workspace resource substitution
-	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields != config.StableAPIFields {
-		// propagate workspaces from taskrun to task.
-		twn := []string{}
-		for _, tw := range ts.Workspaces {
-			twn = append(twn, tw.Name)
-		}
+	// propagate workspaces from taskrun to task.
+	twn := []string{}
+	for _, tw := range ts.Workspaces {
+		twn = append(twn, tw.Name)
+	}
 
-		for _, trw := range tr.Spec.Workspaces {
-			skip := false
-			for _, tw := range twn {
-				if tw == trw.Name {
-					skip = true
-					break
-				}
+	for _, trw := range tr.Spec.Workspaces {
+		skip := false
+		for _, tw := range twn {
+			if tw == trw.Name {
+				skip = true
+				break
 			}
-			if !skip {
-				ts.Workspaces = append(ts.Workspaces, v1beta1.WorkspaceDeclaration{Name: trw.Name})
-			}
+		}
+		if !skip {
+			ts.Workspaces = append(ts.Workspaces, v1beta1.WorkspaceDeclaration{Name: trw.Name})
 		}
 	}
 	ts = resources.ApplyWorkspaces(ctx, ts, ts.Workspaces, tr.Spec.Workspaces, workspaceVolumes)

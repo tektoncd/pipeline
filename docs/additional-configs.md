@@ -307,7 +307,6 @@ Features currently in "beta" are:
 
 | Feature                                                            | Proposal                                                                                        | Alpha Release                                                        | Beta Release                                                         | Individual Flag |
 |:-------------------------------------------------------------------|:------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------|:---------------------------------------------------------------------|:----------------|
-| [Propagated `Workspaces`](./pipelineruns.md#propagated-workspaces) | [TEP-0111](https://github.com/tektoncd/community/blob/main/teps/0111-propagating-workspaces.md) | [v0.40.0](https://github.com/tektoncd/pipeline/releases/tag/v0.40.0) | [v0.45.0](https://github.com/tektoncd/pipeline/releases/tag/v0.45.0) |                 |
 | [Array Results](pipelineruns.md#specifying-parameters)             | [TEP-0076](https://github.com/tektoncd/community/blob/main/teps/0076-array-result-types.md)     | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) | [v0.45.0](https://github.com/tektoncd/pipeline/releases/tag/v0.45.0) |                 |
 
 ## Enabling larger results using sidecar logs
