@@ -194,6 +194,9 @@ The following requirements apply to each container image referenced in a `steps`
   though Tekton runs `Steps` sequentially.
   For more detail, see [Compute Resources in Tekton](./compute-resources.md).
 
+**Note:** If the image referenced in the `step` field is from a private registry, `TaskRuns` or `PipelineRuns` that consume the task
+          must provide the `imagePullSecrets` in a [podTemplate](./podtemplates.md).
+
 Below is an example of setting the resource requests and limits for a step:
 
 
