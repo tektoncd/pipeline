@@ -4078,65 +4078,85 @@ status:
 	}
 }
 
-func TestStopSidecars_NoClientGetPodForTaskSpecWithoutRunningSidecars(t *testing.T) {
-	for _, tc := range []struct {
-		desc string
-		tr   *v1beta1.TaskRun
-	}{{
-		desc: "no sidecars",
-		tr: parse.MustParseV1beta1TaskRun(t, `
+func TestStopSidecars_WithInjectedSidecarsNoTaskSpecSidecars(t *testing.T) {
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
-  name: test-taskrun
+  name: test-taskrun-injected-sidecars
   namespace: foo
+spec:
+  taskRef:
+    name: test-task
 status:
+  podName: test-taskrun-injected-sidecars-pod
   conditions:
-  - status: "True"
+  - message: Build succeeded
+    reason: Build succeeded
+    status: "True"
     type: Succeeded
-  podName: test-taskrun-pod
-  startTime: "2000-01-01T01:01:01Z"
-`),
-	}, {
-		desc: "sidecars are terminated",
-		tr: parse.MustParseV1beta1TaskRun(t, `
-metadata:
-  name: test-taskrun
-  namespace: foo
-status:
-  conditions:
-  - status: "True"
-    type: Succeeded
-  podName: test-taskrun-pod
-  sidecars:
-  - terminated:
-      exitCode: 0
-      finishedAt: "2000-01-01T01:01:01Z"
-      startedAt: "2000-01-01T01:01:01Z"
-  startTime: "2000-01-01T01:01:01Z"
-`),
-	}} {
-		t.Run(tc.desc, func(t *testing.T) {
-			d := test.Data{
-				TaskRuns: []*v1beta1.TaskRun{tc.tr},
-			}
+`)
 
-			testAssets, cancel := getTaskRunController(t, d)
-			defer cancel()
-			c := testAssets.Controller
-			clients := testAssets.Clients
-			reconcileErr := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.tr))
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun-injected-sidecars-pod",
+			Namespace: "foo",
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:  "step-do-something",
+					Image: "my-step-image",
+				},
+				{
+					Name:  "injected-sidecar",
+					Image: "some-image",
+				},
+			},
+		},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name:  "step-do-something",
+					State: v1.ContainerState{Terminated: &corev1.ContainerStateTerminated{}},
+				},
+				{
+					Name:  "injected-sidecar",
+					State: v1.ContainerState{Running: &corev1.ContainerStateRunning{}},
+				},
+			},
+		},
+	}
 
-			// We do not expect an error
-			if reconcileErr != nil {
-				t.Errorf("Expected no error to be returned by reconciler: %v", reconcileErr)
-			}
+	d := test.Data{
+		Pods:     []*corev1.Pod{pod},
+		TaskRuns: []*v1beta1.TaskRun{taskRun},
+		Tasks:    []*v1beta1.Task{simpleTask},
+	}
 
-			// Verify that the pod was not retrieved
-			for _, action := range clients.Kube.Actions() {
-				if action.Matches("get", "pods") {
-					t.Errorf("expected the pod not to be retrieved because the TaskRun has no sidecars")
-				}
-			}
-		})
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	reconcileErr := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun))
+
+	// We do not expect an error
+	if reconcileErr != nil {
+		t.Errorf("Expected no error to be returned by reconciler: %v", reconcileErr)
+	}
+
+	retrievedPod, err := clients.Kube.CoreV1().Pods(pod.Namespace).Get(testAssets.Ctx, pod.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("error retrieving pod: %s", err)
+	}
+
+	if len(retrievedPod.Spec.Containers) != 2 {
+		t.Fatalf("expected pod with two containers")
+	}
+
+	// check that injected sidecar is replaced with nop image
+	if d := cmp.Diff(retrievedPod.Spec.Containers[1].Image, images.NopImage); d != "" {
+		t.Errorf("expected injected sidecar image to be replaced with nop image %s", diff.PrintWantGot(d))
 	}
 }
 
