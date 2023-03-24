@@ -324,12 +324,12 @@ func parseGitHeaderNewName(f *File, line, defaultName string) error {
 }
 
 func parseGitHeaderOldMode(f *File, line, defaultName string) (err error) {
-	f.OldMode, err = parseMode(line)
+	f.OldMode, err = parseMode(strings.TrimSpace(line))
 	return
 }
 
 func parseGitHeaderNewMode(f *File, line, defaultName string) (err error) {
-	f.NewMode, err = parseMode(line)
+	f.NewMode, err = parseMode(strings.TrimSpace(line))
 	return
 }
 
