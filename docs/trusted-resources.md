@@ -65,6 +65,7 @@ data:
  **Notes:**
  * To skip the verification: make sure no policies exist and `trusted-resources-verification-no-match-policy` is set to `warn` or `ignore`.
  * To enable the verification: install [VerificationPolicy](#config-key-at-verificationpolicy) to match the resources.
+ * Setting the feature flag will have impact on the [condition].(#taskrun-and-pipelinerun-status-update)
 
 Or patch the new values:
 ```bash
@@ -147,6 +148,55 @@ To learn more about `ConfigSource` please refer to resolvers doc for more contex
 `mode` controls whether a failing policy will fail the taskrun/pipelinerun, or only log the a warning
  * enforce (default) - fail the taskrun/pipelinerun if verification fails
  * warn - don't fail the taskrun/pipelinerun if verification fails but log a warning
+
+#### TaskRun and PipelineRun status update
+
+Trusted resources will update the taskrun/pipelinerun’s [condition](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties) to indicate if it passes verification or not.
+
+The following tables illustrate how the conditions are impacted by feature flag and verification result. Note that if not `true` or `false` means this case doesn't update the corresponding condition.
+
+**No Matching Policies:**
+
+|                             | `Conditions.TrustedResourcesVerified` | `Conditions.Succeeded` |
+|-----------------------------|---------------------------------------|------------------------|
+| `no-match-policy`: "ignore" |                                       |                        |
+| `no-match-policy`: "warn"   | False                                 |                        |
+| `no-match-policy`: "fail"   | False                                 | False                  |
+
+**Matching Policies(no matter what `trusted-resources-verification-no-match-policy` value is):**
+
+|                          | `Conditions.TrustedResourcesVerified` | `Conditions.Succeeded` |
+|--------------------------|---------------------------------------|------------------------|
+| all policies pass        | True                                  |                        |
+| any enforce policy fails | False                                 | False                  |
+| only warn policies fail  | False                                 |                        |
+
+A successful sample `TrustedResourcesVerified` condition is:
+```yaml
+status:
+  conditions:
+  - lastTransitionTime: "2023-03-01T18:17:05Z"
+    message: Trusted resource verification passed
+    reason: ResourceVerificationSucceeded
+    status: "True"
+    type: TrustedResourcesVerified
+```
+
+Failed sample `TrustedResourcesVerified` and `Succeeded` conditions are:
+```yaml
+status:
+  conditions:
+  - lastTransitionTime: "2023-03-01T18:17:05Z"
+    message: Trusted resource verification failed # This will be filled with detailed error message.
+    reason: ResourceVerificationFailed
+    status: "False"
+    type: TrustedResourcesVerified
+  - lastTransitionTime: "2023-03-01T18:17:10Z"
+    message: resource verification failed
+    reason: ResourceVerificationFailed
+    status: "False"
+    type: Succeeded
+```
 
 #### Migrate Config key at configmap to VerificationPolicy
 **Note:** key configuration in configmap is deprecated,

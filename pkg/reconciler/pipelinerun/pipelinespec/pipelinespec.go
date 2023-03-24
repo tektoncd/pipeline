@@ -23,6 +23,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
+	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -40,12 +41,24 @@ func GetPipelineData(ctx context.Context, pipelineRun *v1beta1.PipelineRun, getP
 	case pipelineRun.Spec.PipelineRef != nil && pipelineRun.Spec.PipelineRef.Name != "":
 		// Get related pipeline for pipelinerun
 		p, source, err := getPipeline(ctx, pipelineRun.Spec.PipelineRef.Name)
+		var verificationErr *trustedresources.VerificationError
 		if err != nil {
-			return nil, nil, fmt.Errorf("error when listing pipelines for pipelineRun %s: %w", pipelineRun.Name, err)
+			if errors.As(err, &verificationErr) {
+				if trustedresources.IsVerificationResultError(err) {
+					return nil, nil, err
+				}
+			} else {
+				return nil, nil, fmt.Errorf("error when listing pipelines for pipelineRun %s: %w", pipelineRun.Name, err)
+			}
 		}
 		pipelineMeta = p.PipelineMetadata()
 		pipelineSpec = p.PipelineSpec()
 		refSource = source
+		pipelineSpec.SetDefaults(ctx)
+		return &resolutionutil.ResolvedObjectMeta{
+			ObjectMeta: &pipelineMeta,
+			RefSource:  refSource,
+		}, &pipelineSpec, err
 	case pipelineRun.Spec.PipelineSpec != nil:
 		pipelineMeta = pipelineRun.ObjectMeta
 		pipelineSpec = *pipelineRun.Spec.PipelineSpec

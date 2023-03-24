@@ -42,6 +42,7 @@ import (
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
@@ -10653,7 +10654,7 @@ func TestReconcile_verifyResolvedPipeline_Success(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	prs := parse.MustParseV1beta1PipelineRun(t, `
+	unsignedPipelineRun := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipelinerun
   namespace: foo
@@ -10662,7 +10663,7 @@ spec:
   pipelineRef:
     name: test-pipeline
 `)
-	ps := parse.MustParseV1beta1Pipeline(t, `
+	unsignedPipeline := parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -10672,7 +10673,7 @@ spec:
       taskRef:
         name: test-task
 `)
-	ts := parse.MustParseV1beta1Task(t, `
+	unsignedTask := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task
   namespace: foo
@@ -10686,18 +10687,18 @@ spec:
          value: bar
 `)
 
-	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, prs.Namespace)
-	signedTask, err := test.GetSignedTask(ts, signer, "test-task")
+	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, unsignedPipelineRun.Namespace)
+	signedTask, err := test.GetSignedTask(unsignedTask, signer, "test-task")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
-	signedPipeline, err := test.GetSignedPipeline(ps, signer, "test-pipeline")
+	signedPipeline, err := test.GetSignedPipeline(unsignedPipeline, signer, "test-pipeline")
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
 
 	d := test.Data{
-		PipelineRuns:         []*v1beta1.PipelineRun{prs},
+		PipelineRuns:         []*v1beta1.PipelineRun{unsignedPipelineRun},
 		Pipelines:            []*v1beta1.Pipeline{signedPipeline},
 		Tasks:                []*v1beta1.Task{signedTask},
 		VerificationPolicies: vps,
@@ -10707,7 +10708,16 @@ spec:
 
 	reconciledRun, _ := prt.reconcileRun("foo", "test-pipelinerun", []string{}, false)
 
-	checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
+	checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionTrue, v1beta1.PipelineRunReasonSuccessful.String())
+
+	gotCondition := reconciledRun.Status.GetCondition(trustedresources.ConditionTrustedResourcesVerified)
+	wantCondition := &apis.Condition{
+		Type:   trustedresources.ConditionTrustedResourcesVerified,
+		Status: corev1.ConditionTrue,
+	}
+	if d := cmp.Diff(wantCondition, gotCondition, ignoreLastTransitionTime); d != "" {
+		t.Error(diff.PrintWantGot(d))
+	}
 }
 
 func TestReconcile_verifyResolvedPipeline_Error(t *testing.T) {
@@ -10716,7 +10726,7 @@ func TestReconcile_verifyResolvedPipeline_Error(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	prs := parse.MustParseV1beta1PipelineRun(t, `
+	unsignedPipelineRun := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipelinerun
   namespace: foo
@@ -10725,7 +10735,7 @@ spec:
   pipelineRef:
     name: test-pipeline
 `)
-	ps := parse.MustParseV1beta1Pipeline(t, `
+	unsignedPipeline := parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -10735,7 +10745,7 @@ spec:
       taskRef:
         name: test-task
 `)
-	ts := parse.MustParseV1beta1Task(t, `
+	unsignedTask := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task
   namespace: foo
@@ -10749,12 +10759,12 @@ spec:
          value: bar
 `)
 
-	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, prs.Namespace)
-	signedTask, err := test.GetSignedTask(ts, signer, "test-task")
+	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, unsignedPipelineRun.Namespace)
+	signedTask, err := test.GetSignedTask(unsignedTask, signer, "test-task")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
-	signedPipeline, err := test.GetSignedPipeline(ps, signer, "test-pipeline")
+	signedPipeline, err := test.GetSignedPipeline(unsignedPipeline, signer, "test-pipeline")
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
@@ -10772,33 +10782,38 @@ spec:
 	tamperedPipeline.Annotations["random"] = "attack"
 
 	testCases := []struct {
-		name        string
-		pipelinerun []*v1beta1.PipelineRun
-		pipeline    []*v1beta1.Pipeline
-		task        []*v1beta1.Task
+		name          string
+		pipelinerun   []*v1beta1.PipelineRun
+		pipeline      []*v1beta1.Pipeline
+		task          []*v1beta1.Task
+		wantCondition *apis.Condition
 	}{
 		{
-			name:        "unsigned pipeline fails verification",
-			pipelinerun: []*v1beta1.PipelineRun{prs},
-			pipeline:    []*v1beta1.Pipeline{ps},
+			name:          "unsigned pipeline fails verification",
+			pipelinerun:   []*v1beta1.PipelineRun{unsignedPipelineRun},
+			pipeline:      []*v1beta1.Pipeline{unsignedPipeline},
+			wantCondition: trustedResourcesCondition(corev1.ConditionFalse, "", "resource test-pipeline in namespace foo fails verification: resource verification failed"),
 		},
 		{
-			name:        "signed pipeline with unsigned task fails verification",
-			pipelinerun: []*v1beta1.PipelineRun{prs},
-			pipeline:    []*v1beta1.Pipeline{signedPipeline},
-			task:        []*v1beta1.Task{ts},
+			name:          "signed pipeline with unsigned task fails verification",
+			pipelinerun:   []*v1beta1.PipelineRun{unsignedPipelineRun},
+			pipeline:      []*v1beta1.Pipeline{signedPipeline},
+			task:          []*v1beta1.Task{unsignedTask},
+			wantCondition: trustedResourcesCondition(corev1.ConditionFalse, "", "resource test-task in namespace foo fails verification: resource verification failed"),
 		},
 		{
-			name:        "signed pipeline with modified task fails verification",
-			pipelinerun: []*v1beta1.PipelineRun{prs},
-			pipeline:    []*v1beta1.Pipeline{signedPipeline},
-			task:        []*v1beta1.Task{tamperedTask},
+			name:          "signed pipeline with modified task fails verification",
+			pipelinerun:   []*v1beta1.PipelineRun{unsignedPipelineRun},
+			pipeline:      []*v1beta1.Pipeline{signedPipeline},
+			task:          []*v1beta1.Task{tamperedTask},
+			wantCondition: trustedResourcesCondition(corev1.ConditionFalse, "", "resource test-task in namespace foo fails verification: resource verification failed"),
 		},
 		{
-			name:        "modified pipeline with signed task fails verification",
-			pipelinerun: []*v1beta1.PipelineRun{prs},
-			pipeline:    []*v1beta1.Pipeline{tamperedPipeline},
-			task:        []*v1beta1.Task{signedTask},
+			name:          "modified pipeline with signed task fails verification",
+			pipelinerun:   []*v1beta1.PipelineRun{unsignedPipelineRun},
+			pipeline:      []*v1beta1.Pipeline{tamperedPipeline},
+			task:          []*v1beta1.Task{signedTask},
+			wantCondition: trustedResourcesCondition(corev1.ConditionFalse, "", "resource test-pipeline in namespace foo fails verification: resource verification failed"),
 		},
 	}
 
@@ -10816,7 +10831,21 @@ spec:
 			reconciledRun, _ := prt.reconcileRun("foo", "test-pipelinerun", []string{}, true)
 
 			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionFalse, ReasonResourceVerificationFailed)
+			gotCondition := reconciledRun.Status.GetCondition(trustedresources.ConditionTrustedResourcesVerified)
+			if d := cmp.Diff(tc.wantCondition, gotCondition, ignoreLastTransitionTime); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
 		})
+	}
+}
+
+// trustedResourcesCondition returns the ConditionTrustedResourcesVerified condition with given status, reason and message
+func trustedResourcesCondition(status corev1.ConditionStatus, reason string, message string) *apis.Condition {
+	return &apis.Condition{
+		Type:    trustedresources.ConditionTrustedResourcesVerified,
+		Status:  status,
+		Reason:  reason,
+		Message: message,
 	}
 }
 

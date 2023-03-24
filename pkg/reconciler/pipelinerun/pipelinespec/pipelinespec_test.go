@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -302,6 +303,26 @@ func TestGetPipelineData_ResolvedNilPipeline(t *testing.T) {
 	}
 	ctx := context.Background()
 	_, _, err := GetPipelineData(ctx, pr, getPipeline)
+	if err == nil {
+		t.Fatalf("Expected error when unable to find referenced Pipeline but got none")
+	}
+}
+
+func TestGetPipelineSpec_VerificationError(t *testing.T) {
+	tr := &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "mypipelinerun",
+		},
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{
+				Name: "orchestrate",
+			},
+		},
+	}
+	gt := func(ctx context.Context, n string) (*v1beta1.Pipeline, *v1beta1.RefSource, error) {
+		return nil, nil, &trustedresources.VerificationError{}
+	}
+	_, _, err := GetPipelineData(context.Background(), tr, gt)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Pipeline but got none")
 	}

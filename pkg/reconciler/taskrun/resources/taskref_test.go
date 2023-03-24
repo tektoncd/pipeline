@@ -838,8 +838,7 @@ func TestGetVerifiedTaskFunc_Success(t *testing.T) {
 			fn := resources.GetVerifiedTaskFunc(ctx, k8sclient, tektonclient, tc.requester, tr, tr.Spec.TaskRef, "", "default", "default", tc.policies)
 
 			resolvedTask, refSource, err := fn(ctx, taskRef.Name)
-
-			if err != nil {
+			if err != nil && trustedresources.IsVerificationResultError(err) {
 				t.Fatalf("Received unexpected error ( %#v )", err)
 			}
 
@@ -952,7 +951,7 @@ func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
 		requester:                 requesterUnmatched,
 		verificationNoMatchPolicy: config.FailNoMatchPolicy,
 		expected:                  nil,
-		expectedErr:               trustedresources.ErrResourceVerificationFailed,
+		expectedErr:               trustedresources.ErrNoMatchedPolicies,
 	},
 	}
 	for _, tc := range testcases {
@@ -968,8 +967,7 @@ func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
 			fn := resources.GetVerifiedTaskFunc(ctx, k8sclient, tektonclient, tc.requester, tr, tr.Spec.TaskRef, "", "default", "default", vps)
 
 			resolvedTask, resolvedRefSource, err := fn(ctx, taskRef.Name)
-
-			if !errors.Is(err, tc.expectedErr) {
+			if !errors.Is(errors.Unwrap(err), tc.expectedErr) {
 				t.Errorf("GetVerifiedTaskFunc got %v but want %v", err, tc.expectedErr)
 			}
 

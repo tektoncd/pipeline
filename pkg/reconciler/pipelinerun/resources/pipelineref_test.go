@@ -621,8 +621,8 @@ func TestGetVerifiedPipelineFunc_Success(t *testing.T) {
 			fn := resources.GetVerifiedPipelineFunc(ctx, k8sclient, tektonclient, tc.requester, &tc.pipelinerun, tc.policies)
 
 			resolvedPipeline, source, err := fn(ctx, pipelineRef.Name)
-			if err != nil {
-				t.Fatalf("Received unexpected error ( %#v )", err)
+			if err != nil && trustedresources.IsVerificationResultError(err) {
+				t.Fatalf("Received unexpected error ( %v )", err)
 			}
 			if d := cmp.Diff(tc.expected, resolvedPipeline); d != "" {
 				t.Errorf("resolvedPipeline did not match: %s", diff.PrintWantGot(d))
@@ -733,7 +733,7 @@ func TestGetVerifiedPipelineFunc_VerifyError(t *testing.T) {
 			requester:                 requesterUnmatched,
 			verificationNoMatchPolicy: config.FailNoMatchPolicy,
 			expected:                  (*v1beta1.Pipeline)(nil),
-			expectedErr:               trustedresources.ErrResourceVerificationFailed,
+			expectedErr:               trustedresources.ErrNoMatchedPolicies,
 		},
 	}
 	for _, tc := range testcases {
@@ -749,7 +749,7 @@ func TestGetVerifiedPipelineFunc_VerifyError(t *testing.T) {
 			fn := resources.GetVerifiedPipelineFunc(ctx, k8sclient, tektonclient, tc.requester, pr, vps)
 
 			resolvedPipeline, resolvedRefSource, err := fn(ctx, pipelineRef.Name)
-			if !errors.Is(err, tc.expectedErr) {
+			if !errors.Is(errors.Unwrap(err), tc.expectedErr) {
 				t.Errorf("GetVerifiedPipelineFunc got %v, want %v", err, tc.expectedErr)
 			}
 			if d := cmp.Diff(resolvedPipeline, tc.expected); d != "" {

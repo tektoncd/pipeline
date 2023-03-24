@@ -36,6 +36,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
@@ -4915,29 +4916,117 @@ status:
 		t.Fatal("fail to sign task", err)
 	}
 
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"trusted-resources-verification-no-match-policy": config.FailNoMatchPolicy,
-			},
+	noMatchVP := []*v1alpha1.VerificationPolicy{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "no-match",
+			Namespace: tr.Namespace,
 		},
+		Spec: v1alpha1.VerificationPolicySpec{
+			Resources: []v1alpha1.ResourcePattern{{Pattern: "no-match"}},
+		}}}
+	warnPolicy := []*v1alpha1.VerificationPolicy{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "warn-policy",
+			Namespace: tr.Namespace,
+		},
+		Spec: v1alpha1.VerificationPolicySpec{
+			Resources: []v1alpha1.ResourcePattern{{Pattern: ".*"}},
+			Mode:      v1alpha1.ModeWarn,
+		}}}
+	passCondition := &apis.Condition{
+		Type:   trustedresources.ConditionTrustedResourcesVerified,
+		Status: corev1.ConditionTrue,
 	}
-
-	d := test.Data{
-		TaskRuns:             []*v1beta1.TaskRun{tr},
-		Tasks:                []*v1beta1.Task{signedTask},
-		ConfigMaps:           cms,
-		VerificationPolicies: vps,
+	failNoMatchCondition := &apis.Condition{
+		Type:    trustedresources.ConditionTrustedResourcesVerified,
+		Status:  corev1.ConditionFalse,
+		Message: "no policies are matched: no matching policies are found for resource: test-task against source: ",
 	}
+	failNoKeysCondition := &apis.Condition{
+		Type:    trustedresources.ConditionTrustedResourcesVerified,
+		Status:  corev1.ConditionFalse,
+		Message: "failed to get verifiers from policy: no public keys are founded",
+	}
+	/*
+		This test covers 4 cases where the trusted resources return no error.
+		1. no matching policies and no-match-policy ignore
+		2. no matching policies and no-match-policy warn
+		3. all policies pass
+		4. only warn policies fail
+	*/
+	testCases := []struct {
+		name                              string
+		task                              []*v1beta1.Task
+		noMatchPolicy                     string
+		verificationPolicies              []*v1alpha1.VerificationPolicy
+		expectedTrustedResourcesCondition *apis.Condition
+	}{{
+		name:                              "ignore no match policy",
+		noMatchPolicy:                     config.IgnoreNoMatchPolicy,
+		verificationPolicies:              noMatchVP,
+		expectedTrustedResourcesCondition: nil,
+	}, {
+		name:                              "warn no match policy",
+		noMatchPolicy:                     config.WarnNoMatchPolicy,
+		verificationPolicies:              noMatchVP,
+		expectedTrustedResourcesCondition: failNoMatchCondition,
+	}, {
+		name:                              "pass enforce policy",
+		noMatchPolicy:                     config.FailNoMatchPolicy,
+		verificationPolicies:              vps,
+		expectedTrustedResourcesCondition: passCondition,
+	}, {
+		name:                              "only fail warn policy",
+		noMatchPolicy:                     config.FailNoMatchPolicy,
+		verificationPolicies:              warnPolicy,
+		expectedTrustedResourcesCondition: failNoKeysCondition,
+	},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cms := []*corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+					Data: map[string]string{
+						"trusted-resources-verification-no-match-policy": tc.noMatchPolicy,
+					},
+				},
+			}
+			d := test.Data{
+				TaskRuns:             []*v1beta1.TaskRun{tr},
+				Tasks:                []*v1beta1.Task{signedTask},
+				ConfigMaps:           cms,
+				VerificationPolicies: tc.verificationPolicies,
+			}
 
-	testAssets, cancel := getTaskRunController(t, d)
-	defer cancel()
-	createServiceAccount(t, testAssets, tr.Spec.ServiceAccountName, tr.Namespace)
-	err = testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			createServiceAccount(t, testAssets, tr.Spec.ServiceAccountName, tr.Namespace)
+			err = testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
 
-	if ok, _ := controller.IsRequeueKey(err); !ok {
-		t.Errorf("Error reconciling TaskRun. Got error %v", err)
+			if ok, _ := controller.IsRequeueKey(err); !ok {
+				t.Errorf("Error reconciling TaskRun. Got error %v", err)
+			}
+			reconciledRun, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("getting updated taskrun: %v", err)
+			}
+
+			succeededCondition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+			wantSucceededCondition := &apis.Condition{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionUnknown,
+				Reason: "Running",
+			}
+			if d := cmp.Diff(wantSucceededCondition, succeededCondition, cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime", "Message")); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+
+			gotCondition := reconciledRun.Status.GetCondition(trustedresources.ConditionTrustedResourcesVerified)
+			if d := cmp.Diff(tc.expectedTrustedResourcesCondition, gotCondition, ignoreLastTransitionTime); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 
@@ -4994,22 +5083,53 @@ status:
 			},
 		},
 	}
-
+	noMatchVP := []*v1alpha1.VerificationPolicy{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "no-match",
+			Namespace: tr.Namespace,
+		},
+		Spec: v1alpha1.VerificationPolicySpec{
+			Resources: []v1alpha1.ResourcePattern{{Pattern: "no-match"}},
+		}}}
+	noMatchCondition := &apis.Condition{
+		Type:    trustedresources.ConditionTrustedResourcesVerified,
+		Status:  corev1.ConditionFalse,
+		Message: "failed to get matched policies: no policies are matched: no matching policies are found for resource: test-task against source: ",
+	}
+	failCondition := &apis.Condition{
+		Type:    trustedresources.ConditionTrustedResourcesVerified,
+		Status:  corev1.ConditionFalse,
+		Message: "resource test-task in namespace foo fails verification: resource verification failed",
+	}
+	/*
+		This test covers tests 2 cases where the trusted resources return error.
+		1. (1) unsigned task fails enforce policy; (2) modified task fails enforce policy
+		2. no matching policies and no-match-policy set to enforce
+	*/
 	testCases := []struct {
-		name          string
-		taskrun       []*v1beta1.TaskRun
-		task          []*v1beta1.Task
-		expectedError error
+		name                              string
+		task                              []*v1beta1.Task
+		verificationPolicies              []*v1alpha1.VerificationPolicy
+		expectedTrustedResourcesCondition *apis.Condition
+		expectedError                     error
 	}{
 		{
-			name:          "unsigned task fails verification",
-			task:          []*v1beta1.Task{ts},
-			expectedError: trustedresources.ErrResourceVerificationFailed,
+			name:                              "unsigned task fails verification",
+			task:                              []*v1beta1.Task{ts},
+			verificationPolicies:              vps,
+			expectedTrustedResourcesCondition: failCondition,
 		},
 		{
-			name:          "modified task fails verification",
-			task:          []*v1beta1.Task{tamperedTask},
-			expectedError: trustedresources.ErrResourceVerificationFailed,
+			name:                              "modified task fails verification",
+			task:                              []*v1beta1.Task{tamperedTask},
+			verificationPolicies:              vps,
+			expectedTrustedResourcesCondition: failCondition,
+		},
+		{
+			name:                              "enforce no match policy",
+			task:                              []*v1beta1.Task{signedTask},
+			verificationPolicies:              noMatchVP,
+			expectedTrustedResourcesCondition: noMatchCondition,
 		},
 	}
 
@@ -5019,24 +5139,34 @@ status:
 				TaskRuns:             []*v1beta1.TaskRun{tr},
 				Tasks:                tc.task,
 				ConfigMaps:           cms,
-				VerificationPolicies: vps,
+				VerificationPolicies: tc.verificationPolicies,
 			}
 
 			testAssets, cancel := getTaskRunController(t, d)
 			defer cancel()
 			createServiceAccount(t, testAssets, tr.Spec.ServiceAccountName, tr.Namespace)
 			err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
-
-			if !errors.Is(err, tc.expectedError) {
-				t.Errorf("Reconcile got %v but want %v", err, tc.expectedError)
+			if err == nil {
+				t.Fatalf("want err but got nil")
 			}
-			tr, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+			reconciledRun, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("getting updated taskrun: %v", err)
 			}
-			condition := tr.Status.GetCondition(apis.ConditionSucceeded)
-			if condition.Type != apis.ConditionSucceeded || condition.Status != corev1.ConditionFalse || condition.Reason != podconvert.ReasonResourceVerificationFailed {
-				t.Errorf("Expected TaskRun to fail with reason \"%s\" but it did not. Final conditions were:\n%#v", podconvert.ReasonResourceVerificationFailed, tr.Status.Conditions)
+
+			succeededCondition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+			wantSucceededCondition := &apis.Condition{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+				Reason: podconvert.ReasonResourceVerificationFailed,
+			}
+			if d := cmp.Diff(wantSucceededCondition, succeededCondition, cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime", "Message")); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+
+			gotCondition := reconciledRun.Status.GetCondition(trustedresources.ConditionTrustedResourcesVerified)
+			if d := cmp.Diff(tc.expectedTrustedResourcesCondition, gotCondition, ignoreLastTransitionTime); d != "" {
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}

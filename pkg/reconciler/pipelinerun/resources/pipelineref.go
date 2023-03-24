@@ -117,7 +117,10 @@ func GetVerifiedPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekt
 			refSource = s.URI
 		}
 		if err := trustedresources.VerifyPipeline(ctx, p, k8s, refSource, verificationpolicies); err != nil {
-			return nil, nil, fmt.Errorf("GetVerifiedPipelineFunc failed: %w: %v", trustedresources.ErrResourceVerificationFailed, err)
+			if trustedresources.IsVerificationResultError(err) {
+				return nil, nil, err
+			}
+			return p, s, err
 		}
 		return p, s, nil
 	}

@@ -329,15 +329,33 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	getTaskfunc := resources.GetTaskFuncFromTaskRun(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, tr, vp)
 
 	taskMeta, taskSpec, err := resources.GetTaskData(ctx, tr, getTaskfunc)
+	var verificationErr *trustedresources.VerificationError
 	switch {
+	case errors.As(err, &verificationErr):
+		if !trustedresources.IsVerificationResultPass(err) {
+			tr.Status.SetCondition(&apis.Condition{
+				Type:    trustedresources.ConditionTrustedResourcesVerified,
+				Status:  corev1.ConditionFalse,
+				Message: err.Error(),
+			})
+			if trustedresources.IsVerificationResultError(err) {
+				logger.Errorf("TaskRun %s/%s referred task failed signature verification", tr.Namespace, tr.Name)
+				tr.Status.MarkResourceFailed(podconvert.ReasonResourceVerificationFailed, err)
+				return nil, nil, controller.NewPermanentError(err)
+			}
+		} else {
+			tr.Status.SetCondition(&apis.Condition{
+				Type:   trustedresources.ConditionTrustedResourcesVerified,
+				Status: corev1.ConditionTrue,
+			})
+		}
+		if err := storeTaskSpecAndMergeMeta(ctx, tr, taskSpec, taskMeta); err != nil {
+			logger.Errorf("Failed to store TaskSpec on TaskRun.Status for taskrun %s: %v", tr.Name, err)
+		}
 	case errors.Is(err, remote.ErrRequestInProgress):
 		message := fmt.Sprintf("TaskRun %s/%s awaiting remote resource", tr.Namespace, tr.Name)
 		tr.Status.MarkResourceOngoing(v1beta1.TaskRunReasonResolvingTaskRef, message)
 		return nil, nil, err
-	case errors.Is(err, trustedresources.ErrResourceVerificationFailed):
-		logger.Errorf("TaskRun %s/%s referred task failed signature verification", tr.Namespace, tr.Name)
-		tr.Status.MarkResourceFailed(podconvert.ReasonResourceVerificationFailed, err)
-		return nil, nil, controller.NewPermanentError(err)
 	case err != nil:
 		logger.Errorf("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
 		if resources.IsGetTaskErrTransient(err) {

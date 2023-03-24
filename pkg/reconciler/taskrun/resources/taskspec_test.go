@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
+	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -238,6 +239,26 @@ func TestGetTaskData_ResolvedNilTask(t *testing.T) {
 	}
 	ctx := context.Background()
 	_, _, err := resources.GetTaskData(ctx, tr, getTask)
+	if err == nil {
+		t.Fatalf("Expected error when unable to find referenced Task but got none")
+	}
+}
+
+func TestGetTaskSpec_VerificationError(t *testing.T) {
+	tr := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "mytaskrun",
+		},
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "orchestrate",
+			},
+		},
+	}
+	gt := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.RefSource, error) {
+		return nil, nil, &trustedresources.VerificationError{}
+	}
+	_, _, err := resources.GetTaskData(context.Background(), tr, gt)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Task but got none")
 	}

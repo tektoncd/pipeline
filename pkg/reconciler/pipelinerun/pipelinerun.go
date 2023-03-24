@@ -359,16 +359,27 @@ func (c *Reconciler) resolvePipelineState(
 			task,
 		)
 		if err != nil {
+			var verificationErr *trustedresources.VerificationError
+			if errors.As(err, &verificationErr) {
+				if !trustedresources.IsVerificationResultPass(err) {
+					pr.Status.SetCondition(&apis.Condition{
+						Type:    trustedresources.ConditionTrustedResourcesVerified,
+						Status:  corev1.ConditionFalse,
+						Message: err.Error(),
+					})
+					if trustedresources.IsVerificationResultError(err) {
+						message := fmt.Sprintf("PipelineRun %s/%s referred pipeline failed signature verification", pr.Namespace, pr.Name)
+						pr.Status.MarkFailed(ReasonResourceVerificationFailed, message)
+						return nil, controller.NewPermanentError(err)
+					}
+				}
+				return pst, nil
+			}
 			if tresources.IsGetTaskErrTransient(err) {
 				return nil, err
 			}
 			if errors.Is(err, remote.ErrRequestInProgress) {
 				return nil, err
-			}
-			if errors.Is(err, trustedresources.ErrResourceVerificationFailed) {
-				message := fmt.Sprintf("PipelineRun %s/%s referred task %s failed signature verification", pr.Namespace, pr.Name, task.Name)
-				pr.Status.MarkFailed(ReasonResourceVerificationFailed, message)
-				return nil, controller.NewPermanentError(err)
 			}
 			var nfErr *resources.TaskNotFoundError
 			if errors.As(err, &nfErr) {
@@ -401,15 +412,33 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	}
 
 	pipelineMeta, pipelineSpec, err := rprp.GetPipelineData(ctx, pr, getPipelineFunc)
+	var verificationErr *trustedresources.VerificationError
 	switch {
+	case errors.As(err, &verificationErr):
+		if !trustedresources.IsVerificationResultPass(err) {
+			pr.Status.SetCondition(&apis.Condition{
+				Type:    trustedresources.ConditionTrustedResourcesVerified,
+				Status:  corev1.ConditionFalse,
+				Message: err.Error(),
+			})
+			if trustedresources.IsVerificationResultError(err) {
+				message := fmt.Sprintf("PipelineRun %s/%s referred pipeline failed signature verification", pr.Namespace, pr.Name)
+				pr.Status.MarkFailed(ReasonResourceVerificationFailed, message)
+				return controller.NewPermanentError(err)
+			}
+		} else {
+			pr.Status.SetCondition(&apis.Condition{
+				Type:   trustedresources.ConditionTrustedResourcesVerified,
+				Status: corev1.ConditionTrue,
+			})
+		}
+		if err := storePipelineSpecAndMergeMeta(ctx, pr, pipelineSpec, pipelineMeta); err != nil {
+			logger.Errorf("Failed to store PipelineSpec on PipelineRun.Status for pipelinerun %s: %v", pr.Name, err)
+		}
 	case errors.Is(err, remote.ErrRequestInProgress):
 		message := fmt.Sprintf("PipelineRun %s/%s awaiting remote resource", pr.Namespace, pr.Name)
 		pr.Status.MarkRunning(ReasonResolvingPipelineRef, message)
 		return nil
-	case errors.Is(err, trustedresources.ErrResourceVerificationFailed):
-		message := fmt.Sprintf("PipelineRun %s/%s referred pipeline failed signature verification", pr.Namespace, pr.Name)
-		pr.Status.MarkFailed(ReasonResourceVerificationFailed, message)
-		return controller.NewPermanentError(err)
 	case err != nil:
 		logger.Errorf("Failed to determine Pipeline spec to use for pipelinerun %s: %v", pr.Name, err)
 		pr.Status.MarkFailed(ReasonCouldntGetPipeline,

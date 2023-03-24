@@ -33,12 +33,15 @@ import (
 	"github.com/tektoncd/pipeline/pkg/trustedresources/verifier"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 )
 
 const (
 	// SignatureAnnotation is the key of signature in annotation map
 	SignatureAnnotation = "tekton.dev/signature"
+	// ConditionTrustedResourcesVerified specifies that the resources pass trusted resources verification or not.
+	ConditionTrustedResourcesVerified apis.ConditionType = "TrustedResourcesVerified"
 )
 
 // VerifyTask verifies the signature and public key against task.
@@ -56,15 +59,15 @@ func VerifyTask(ctx context.Context, taskObj *v1beta1.Task, k8s kubernetes.Inter
 			case config.WarnNoMatchPolicy:
 				logger := logging.FromContext(ctx)
 				logger.Warnf("failed to get matched policies: %v", err)
-				return nil
+				return &VerificationError{err: err, resultType: verificationResultWarn}
 			}
 		}
-		return fmt.Errorf("failed to get matched policies: %w", err)
+		return &VerificationError{err: fmt.Errorf("failed to get matched policies: %w", err), resultType: verificationResultError}
 	}
 
 	tm, signature, err := prepareObjectMeta(taskObj.TaskMetadata())
 	if err != nil {
-		return err
+		return &VerificationError{err: err, resultType: verificationResultError}
 	}
 	task := v1beta1.Task{
 		TypeMeta: metav1.TypeMeta{
@@ -92,14 +95,14 @@ func VerifyPipeline(ctx context.Context, pipelineObj *v1beta1.Pipeline, k8s kube
 			case config.WarnNoMatchPolicy:
 				logger := logging.FromContext(ctx)
 				logger.Warnf("failed to get matched policies: %v", err)
-				return nil
+				return &VerificationError{err: err, resultType: verificationResultWarn}
 			}
 		}
-		return fmt.Errorf("failed to get matched policies: %w", err)
+		return &VerificationError{err: fmt.Errorf("failed to get matched policies: %w", err), resultType: verificationResultError}
 	}
 	pm, signature, err := prepareObjectMeta(pipelineObj.PipelineMetadata())
 	if err != nil {
-		return err
+		return &VerificationError{err: err, resultType: verificationResultError}
 	}
 	pipeline := v1beta1.Pipeline{
 		TypeMeta: metav1.TypeMeta{
@@ -143,7 +146,13 @@ func verifyResource(ctx context.Context, resource metav1.Object, k8s kubernetes.
 		passVerification := false
 		verifiers, err := verifier.FromPolicy(ctx, k8s, p)
 		if err != nil {
-			return fmt.Errorf("failed to get verifiers from policy: %w", err)
+			var resultType verificationResultType
+			resultType = verificationResultError
+			err = fmt.Errorf("failed to get verifiers from policy: %w", err)
+			if p.Spec.Mode == v1alpha1.ModeWarn {
+				resultType = verificationResultWarn
+			}
+			return &VerificationError{err: err, resultType: resultType}
 		}
 		for _, verifier := range verifiers {
 			// if one of the verifier passes verification, then this policy passes verification
@@ -154,16 +163,16 @@ func verifyResource(ctx context.Context, resource metav1.Object, k8s kubernetes.
 		}
 		// if this policy fails the verification and the mode is not "warn", should return error directly. No need to check other policies
 		if !passVerification {
+			var resultType verificationResultType
+			resultType = verificationResultError
+			err = fmt.Errorf("resource %s in namespace %s fails verification: %w", resource.GetName(), resource.GetNamespace(), ErrResourceVerificationFailed)
 			if p.Spec.Mode == v1alpha1.ModeWarn {
-				logger := logging.FromContext(ctx)
-				logger.Warnf("%w: resource %s in namespace %s fails verification", ErrResourceVerificationFailed, resource.GetName(), resource.GetNamespace())
-			} else {
-				// if the mode is "enforce" or not set, return error.
-				return fmt.Errorf("%w: resource %s in namespace %s fails verification", ErrResourceVerificationFailed, resource.GetName(), resource.GetNamespace())
+				resultType = verificationResultWarn
 			}
+			return &VerificationError{err: err, resultType: resultType}
 		}
 	}
-	return nil
+	return &VerificationError{resultType: verificationResultPass}
 }
 
 // verifyInterface get the checksum of json marshalled object and verify it.

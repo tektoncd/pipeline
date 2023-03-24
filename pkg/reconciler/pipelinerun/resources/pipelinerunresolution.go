@@ -632,12 +632,20 @@ func ResolvePipelineTask(
 		rpt.TaskRunNames = GetNamesOfTaskRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, pipelineTask.Matrix.CountCombinations())
 		for _, taskRunName := range rpt.TaskRunNames {
 			if err := rpt.resolvePipelineRunTaskWithTaskRun(ctx, taskRunName, getTask, getTaskRun, pipelineTask); err != nil {
+				var verificationErr *trustedresources.VerificationError
+				if errors.As(err, &verificationErr) {
+					return &rpt, verificationErr
+				}
 				return nil, err
 			}
 		}
 	default:
 		rpt.TaskRunName = GetTaskRunName(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name)
 		if err := rpt.resolvePipelineRunTaskWithTaskRun(ctx, rpt.TaskRunName, getTask, getTaskRun, pipelineTask); err != nil {
+			var verificationErr *trustedresources.VerificationError
+			if errors.As(err, &verificationErr) {
+				return &rpt, verificationErr
+			}
 			return nil, err
 		}
 	}
@@ -676,6 +684,16 @@ func (t *ResolvedPipelineTask) resolveTaskResources(
 ) error {
 	spec, taskName, kind, err := resolveTask(ctx, taskRun, getTask, pipelineTask)
 	if err != nil {
+		var verificationErr *trustedresources.VerificationError
+		if errors.As(err, &verificationErr) {
+			spec.SetDefaults(ctx)
+			rtr, resolveErr := resolvePipelineTaskResources(pipelineTask, &spec, taskName, kind)
+			if resolveErr != nil {
+				return fmt.Errorf("couldn't match referenced resources with declared resources: %w", resolveErr)
+			}
+			t.ResolvedTask = rtr
+			return err
+		}
 		return err
 	}
 
@@ -712,11 +730,15 @@ func resolveTask(
 			// Following minimum status principle (TEP-0100), no need to propagate the RefSource about PipelineTask up to PipelineRun status.
 			// Instead, the child TaskRun's status will be the place recording the RefSource of individual task.
 			t, _, err = getTask(ctx, pipelineTask.TaskRef.Name)
+			var verificationErr *trustedresources.VerificationError
 			switch {
 			case errors.Is(err, remote.ErrRequestInProgress):
 				return v1beta1.TaskSpec{}, "", "", err
-			case errors.Is(err, trustedresources.ErrResourceVerificationFailed):
-				return v1beta1.TaskSpec{}, "", "", err
+			case errors.As(err, &verificationErr):
+				if trustedresources.IsVerificationResultError(err) {
+					return v1beta1.TaskSpec{}, "", "", err
+				}
+				return t.TaskSpec(), t.TaskMetadata().Name, pipelineTask.TaskRef.Kind, err
 			case err != nil:
 				return v1beta1.TaskSpec{}, "", "", &TaskNotFoundError{
 					Name: pipelineTask.TaskRef.Name,

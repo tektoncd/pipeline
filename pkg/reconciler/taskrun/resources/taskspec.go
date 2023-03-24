@@ -23,6 +23,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
+	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -51,12 +52,24 @@ func GetTaskData(ctx context.Context, taskRun *v1beta1.TaskRun, getTask GetTask)
 	case taskRun.Spec.TaskRef != nil && taskRun.Spec.TaskRef.Name != "":
 		// Get related task for taskrun
 		t, source, err := getTask(ctx, taskRun.Spec.TaskRef.Name)
+		var verificationErr *trustedresources.VerificationError
 		if err != nil {
-			return nil, nil, fmt.Errorf("error when listing tasks for taskRun %s: %w", taskRun.Name, err)
+			if errors.As(err, &verificationErr) {
+				if trustedresources.IsVerificationResultError(err) {
+					return nil, nil, err
+				}
+			} else {
+				return nil, nil, fmt.Errorf("error when listing tasks for taskRun %s: %w", taskRun.Name, err)
+			}
 		}
 		taskMeta = t.TaskMetadata()
 		taskSpec = t.TaskSpec()
 		refSource = source
+		taskSpec.SetDefaults(ctx)
+		return &resolutionutil.ResolvedObjectMeta{
+			ObjectMeta: &taskMeta,
+			RefSource:  refSource,
+		}, &taskSpec, err
 	case taskRun.Spec.TaskSpec != nil:
 		taskMeta = taskRun.ObjectMeta
 		taskSpec = *taskRun.Spec.TaskSpec
