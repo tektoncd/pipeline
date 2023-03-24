@@ -14,7 +14,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/jenkins-x/go-scm v1.13.9
+	github.com/jenkins-x/go-scm v1.13.12
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/opencontainers/image-spec v1.1.0-rc2
 	github.com/pkg/errors v0.9.1
@@ -29,11 +29,11 @@ require (
 	gomodules.xyz/jsonpatch/v2 v2.2.0
 	gopkg.in/square/go-jose.v2 v2.6.0
 	k8s.io/api v0.25.8
-	k8s.io/apimachinery v0.25.8
+	k8s.io/apimachinery v0.27.0-beta.0
 	k8s.io/client-go v0.25.8
 	k8s.io/code-generator v0.25.8
 	k8s.io/klog v1.0.0
-	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280
+	k8s.io/kube-openapi v0.0.0-20230308215209-15aac26d736a
 	knative.dev/pkg v0.0.0-20230221145627-8efb3485adcf
 	sigs.k8s.io/yaml v1.3.0
 )
@@ -48,7 +48,7 @@ require (
 	go.opentelemetry.io/otel/exporters/jaeger v1.14.0
 	go.opentelemetry.io/otel/sdk v1.14.0
 	go.opentelemetry.io/otel/trace v1.14.0
-	k8s.io/utils v0.0.0-20221108210102-8e77b1f39fe2
+	k8s.io/utils v0.0.0-20230209194617-a36077c30491
 )
 
 require (
@@ -91,12 +91,10 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/vault/api v1.9.0 // indirect
 	github.com/jellydator/ttlcache/v2 v2.11.1 // indirect
-	github.com/kr/pretty v0.3.0 // indirect
 	github.com/letsencrypt/boulder v0.0.0-20221109233200-85aa52084eaf // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
-	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/skeema/knownhosts v1.1.0 // indirect
 	github.com/theupdateframework/go-tuf v0.5.2 // indirect
@@ -134,7 +132,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/blendle/zapdriver v1.3.1 // indirect
-	github.com/bluekeyes/go-gitdiff v0.7.0 // indirect
+	github.com/bluekeyes/go-gitdiff v0.7.1 // indirect
 	github.com/census-instrumentation/opencensus-proto v0.4.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20221002210726-e883f69e0206 // indirect
@@ -150,8 +148,8 @@ require (
 	github.com/go-kit/log v0.2.0 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
-	github.com/go-openapi/jsonpointer v0.19.5 // indirect
-	github.com/go-openapi/jsonreference v0.20.0 // indirect
+	github.com/go-openapi/jsonpointer v0.19.6 // indirect
+	github.com/go-openapi/jsonreference v0.20.1 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
 	github.com/gobuffalo/flect v0.2.4 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -211,8 +209,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiextensions-apiserver v0.25.4 // indirect
 	k8s.io/gengo v0.0.0-20221011193443-fad74ee6edd9 // indirect
-	k8s.io/klog/v2 v2.80.2-0.20221028030830-9ae4992afb54 // indirect
-	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
+	k8s.io/klog/v2 v2.90.1 // indirect
+	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
 
