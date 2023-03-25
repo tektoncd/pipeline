@@ -25,7 +25,6 @@ import (
 	"strings"
 
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
@@ -215,7 +214,7 @@ func (r ResolvedClusterResource) Source() *pipelinev1beta1.ConfigSource {
 	h.Write(r.Spec)
 	sha256CheckSum := hex.EncodeToString(h.Sum(nil))
 
-	return &v1beta1.ConfigSource{
+	return &pipelinev1beta1.ConfigSource{
 		URI: r.Identifier,
 		Digest: map[string]string{
 			"sha256": sha256CheckSum,
