@@ -1,5 +1,5 @@
 /*
-Copyright 2022 The Tekton Authors
+Copyright 2023 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,35 +14,50 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package resource
+package common
 
 import (
-	"github.com/tektoncd/pipeline/pkg/resolution/common"
-)
+	"context"
 
-// This is an alias for avoiding cycle import
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
 // ResolverName is the type used for a resolver's name and is mostly
 // used to ensure the function signatures that accept it are clear on the
 // purpose for the given string.
-type ResolverName = common.ResolverName
+type ResolverName string
 
 // Requester is the interface implemented by a type that knows how to
 // submit requests for remote resources.
-type Requester = common.Requester
+type Requester interface {
+	// Submit accepts the name of a resolver to submit a request to
+	// along with the request itself.
+	Submit(context.Context, ResolverName, Request) (ResolvedResource, error)
+}
 
 // Request is implemented by any type that represents a single request
 // for a remote resource. Implementing this interface gives the underlying
 // type an opportunity to control properties such as whether the name of
 // a request has particular properties, whether the request should be made
 // to a specific namespace, and precisely which parameters should be included.
-type Request = common.Request
+type Request interface {
+	Name() string
+	Namespace() string
+	Params() pipelinev1beta1.Params
+}
 
 // OwnedRequest is implemented by any type implementing Request that also needs
 // to express a Kubernetes OwnerRef relationship as part of the request being
 // made.
-type OwnedRequest = common.OwnedRequest
+type OwnedRequest interface {
+	OwnerRef() metav1.OwnerReference
+}
 
 // ResolvedResource is implemented by any type that offers a read-only
 // view of the data and metadata of a resolved remote resource.
-type ResolvedResource = common.ResolvedResource
+type ResolvedResource interface {
+	Data() ([]byte, error)
+	Annotations() map[string]string
+	RefSource() *pipelinev1beta1.RefSource
+}
