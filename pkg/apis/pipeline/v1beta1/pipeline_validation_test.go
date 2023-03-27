@@ -596,6 +596,47 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 			Message: `missing field(s)`,
 			Paths:   []string{"tasks[1].when[0]", "finally[0].when[0]"},
 		},
+	}, {
+		name: "uses resources",
+		ps: &PipelineSpec{
+			Resources: []PipelineDeclaredResource{{Name: "foo"}},
+			Tasks: []PipelineTask{{
+				Name:    "valid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `must not set the field(s)`,
+			Paths:   []string{"resources"},
+		},
+	}, {
+		name: "uses resources in tasks",
+		ps: &PipelineSpec{
+			Tasks: []PipelineTask{{
+				Name:     "pipeline-task",
+				TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{Resources: &TaskResources{}, Steps: []Step{{Image: "my-image"}}}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `must not set the field(s)`,
+			Paths:   []string{"tasks[0].taskSpec.resources"},
+		},
+	}, {
+		name: "uses resources in finally",
+		ps: &PipelineSpec{
+			Tasks: []PipelineTask{{
+				Name:     "valid-pipeline-task",
+				TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{Steps: []Step{{Image: "my-image"}}}},
+			}},
+			Finally: []PipelineTask{{
+				Name:     "finally",
+				TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{Resources: &TaskResources{}, Steps: []Step{{Image: "my-image"}}}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `must not set the field(s)`,
+			Paths:   []string{"finally[0].taskSpec.resources"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

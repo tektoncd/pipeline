@@ -56,6 +56,9 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 	// PipelineTask must have a valid unique label and at least one of taskRef or taskSpec should be specified
 	errs = errs.Also(ValidatePipelineTasks(ctx, ps.Tasks, ps.Finally))
+	if len(ps.Resources) > 0 {
+		errs = errs.Also(apis.ErrDisallowedFields("resources"))
+	}
 	// Validate the pipeline task graph
 	errs = errs.Also(validateGraph(ps.Tasks))
 	// The parameter variables should be valid

@@ -496,6 +496,18 @@ func TestPipelineRun_Invalid(t *testing.T) {
 			Message: "invalid value: PipelineRun cannot be Pending after it is started",
 			Paths:   []string{"spec.status"},
 		},
+	}, {
+		name: "uses resources",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinerunname",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{Name: "foo"},
+				Resources:   []v1beta1.PipelineResourceBinding{{Name: "bar"}},
+			},
+		},
+		want: &apis.FieldError{Message: "must not set the field(s)", Paths: []string{"spec.resources"}},
 	}}
 
 	for _, tc := range tests {

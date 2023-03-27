@@ -532,6 +532,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		StepTemplate *v1beta1.StepTemplate
 		Workspaces   []v1beta1.WorkspaceDeclaration
 		Results      []v1beta1.TaskResult
+		Resources    *v1beta1.TaskResources
 	}
 	tests := []struct {
 		name          string
@@ -1306,6 +1307,13 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Message: "invalid value: -10s",
 			Paths:   []string{"steps[0].negative timeout"},
 		},
+	}, {
+		name: "with resources",
+		fields: fields{
+			Steps:     []v1beta1.Step{{Image: "my-image"}},
+			Resources: &v1beta1.TaskResources{},
+		},
+		expectedError: apis.FieldError{Message: "must not set the field(s)", Paths: []string{"resources"}},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1316,6 +1324,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 				StepTemplate: tt.fields.StepTemplate,
 				Workspaces:   tt.fields.Workspaces,
 				Results:      tt.fields.Results,
+				Resources:    tt.fields.Resources,
 			}
 			ctx := config.EnableAlphaAPIFields(context.Background())
 			ts.SetDefaults(ctx)

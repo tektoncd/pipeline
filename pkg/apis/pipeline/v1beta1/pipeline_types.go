@@ -94,6 +94,9 @@ type PipelineSpec struct {
 	// used to populate a UI.
 	// +optional
 	Description string `json:"description,omitempty"`
+	// Deprecated: Unused, preserved only for backwards compatibility
+	// +listType=atomic
+	Resources []PipelineDeclaredResource `json:"resources,omitempty"`
 	// Tasks declares the graph of Tasks that execute when this Pipeline is run.
 	// +listType=atomic
 	Tasks []PipelineTask `json:"tasks,omitempty"`
@@ -200,6 +203,10 @@ type PipelineTask struct {
 	// +optional
 	// +listType=atomic
 	RunAfter []string `json:"runAfter,omitempty"`
+
+	// Deprecated: Unused, preserved only for backwards compatibility
+	// +optional
+	Resources *PipelineTaskResources `json:"resources,omitempty"`
 
 	// Parameters declares parameters passed to this task.
 	// +optional
@@ -450,6 +457,10 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(pt.validateRefOrSpec())
 
 	errs = errs.Also(pt.validateEmbeddedOrType())
+
+	if pt.Resources != nil {
+		errs = errs.Also(apis.ErrDisallowedFields("resources"))
+	}
 
 	cfg := config.FromContextOrDefaults(ctx)
 	// Pipeline task having taskRef/taskSpec with APIVersion is classified as custom task
