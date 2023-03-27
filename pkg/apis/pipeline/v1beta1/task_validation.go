@@ -99,6 +99,9 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateTaskContextVariables(ctx, ts.Steps))
 	errs = errs.Also(validateTaskResultsVariables(ctx, ts.Steps, ts.Results))
 	errs = errs.Also(validateResults(ctx, ts.Results).ViaField("results"))
+	if ts.Resources != nil {
+		errs = errs.Also(apis.ErrDisallowedFields("resources"))
+	}
 	return errs
 }
 

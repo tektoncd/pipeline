@@ -81,6 +81,14 @@ func (*Task) GetGroupVersionKind() schema.GroupVersionKind {
 
 // TaskSpec defines the desired state of Task.
 type TaskSpec struct {
+	// Resources is a list input and output resource to run the task
+	// Resources are represented in TaskRuns as bindings to instances of
+	// PipelineResources.
+	//
+	// Deprecated: Unused, preserved only for backwards compatibility
+	// +optional
+	Resources *TaskResources `json:"resources,omitempty"`
+
 	// Params is a list of input parameters required to run the task. Params
 	// must be supplied as inputs in TaskRuns unless they declare a default
 	// value.

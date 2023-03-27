@@ -41,6 +41,9 @@ type TaskRunSpec struct {
 	// +optional
 	// +listType=atomic
 	Params Params `json:"params,omitempty"`
+	// Deprecated: Unused, preserved only for backwards compatibility
+	// +optional
+	Resources *TaskRunResources `json:"resources,omitempty"`
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName"`
 	// no more than one of the TaskRef and TaskSpec may be specified.

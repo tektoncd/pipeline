@@ -773,6 +773,24 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrGeneric("computeResources requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
+	}, {
+		name: "uses resources",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "foo",
+			},
+			Resources: &v1beta1.TaskRunResources{},
+		},
+		wantErr: apis.ErrDisallowedFields("resources"),
+	}, {
+		name: "uses resources in task spec",
+		spec: v1beta1.TaskRunSpec{
+			TaskSpec: &v1beta1.TaskSpec{
+				Steps:     []v1beta1.Step{{Image: "my-image"}},
+				Resources: &v1beta1.TaskResources{},
+			},
+		},
+		wantErr: apis.ErrDisallowedFields("resources").ViaField("taskSpec"),
 	}}
 
 	for _, ts := range tests {

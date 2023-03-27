@@ -131,6 +131,9 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 	if ps.PodTemplate != nil {
 		errs = errs.Also(validatePodTemplateEnv(ctx, *ps.PodTemplate))
 	}
+	if ps.Resources != nil {
+		errs = errs.Also(apis.ErrDisallowedFields("resources"))
+	}
 
 	return errs
 }

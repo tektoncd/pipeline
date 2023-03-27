@@ -223,6 +223,13 @@ type PipelineRunSpec struct {
 	PipelineRef *PipelineRef `json:"pipelineRef,omitempty"`
 	// +optional
 	PipelineSpec *PipelineSpec `json:"pipelineSpec,omitempty"`
+	// Resources is a list of bindings specifying which actual instances of
+	// PipelineResources to use for the resources the Pipeline has declared
+	// it needs.
+	//
+	// Deprecated: Unused, preserved only for backwards compatibility
+	// +listType=atomic
+	Resources []PipelineResourceBinding `json:"resources,omitempty"`
 	// Params is a list of parameter names and values.
 	// +listType=atomic
 	Params Params `json:"params,omitempty"`
