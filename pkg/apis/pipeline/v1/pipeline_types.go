@@ -217,6 +217,13 @@ type PipelineTask struct {
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 }
 
+// IsCustomTask checks whether an embedded TaskSpec is a Custom Task
+func (et *EmbeddedTask) IsCustomTask() bool {
+	// Note that if `apiVersion` is set to `"tekton.dev/v1beta1"` and `kind` is set to `"Task"`,
+	// the reference will be considered a Custom Task - https://github.com/tektoncd/pipeline/issues/6457
+	return et != nil && et.APIVersion != "" && et.Kind != ""
+}
+
 // validateRefOrSpec validates at least one of taskRef or taskSpec is specified
 func (pt PipelineTask) validateRefOrSpec() (errs *apis.FieldError) {
 	// can't have both taskRef and taskSpec at the same time

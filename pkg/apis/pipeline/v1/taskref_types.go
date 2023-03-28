@@ -20,9 +20,12 @@ package v1
 type TaskRef struct {
 	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
 	Name string `json:"name,omitempty"`
-	// TaskKind indicates the kind of the task, namespaced or cluster scoped.
+	// TaskKind indicates the Kind of the Task:
+	// 1. Namespaced Task when Kind is set to "Task". If Kind is "", it defaults to "Task".
+	// 2. Custom Task when Kind is non-empty and APIVersion is non-empty
 	Kind TaskKind `json:"kind,omitempty"`
 	// API version of the referent
+	// Note: A Task with non-empty APIVersion and Kind is considered a Custom Task
 	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`
 
@@ -40,3 +43,10 @@ const (
 	// NamespacedTaskKind indicates that the task type has a namespaced scope.
 	NamespacedTaskKind TaskKind = "Task"
 )
+
+// IsCustomTask checks whether the reference is to a Custom Task
+func (tr *TaskRef) IsCustomTask() bool {
+	// Note that if `apiVersion` is set to `"tekton.dev/v1beta1"` and `kind` is set to `"Task"`,
+	// the reference will be considered a Custom Task - https://github.com/tektoncd/pipeline/issues/6457
+	return tr != nil && tr.APIVersion != "" && tr.Kind != ""
+}
