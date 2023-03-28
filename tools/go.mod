@@ -2,7 +2,7 @@ module github.com/tektoncd/pipeline/tools
 
 go 1.18
 
-require github.com/golangci/golangci-lint v1.52.1
+require github.com/golangci/golangci-lint v1.52.2
 
 require (
 	4d63.com/gocheckcompilerdirectives v1.2.1 // indirect
@@ -100,7 +100,7 @@ require (
 	github.com/mgechev/revive v1.3.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/moricho/tparallel v0.3.0 // indirect
+	github.com/moricho/tparallel v0.3.1 // indirect
 	github.com/nakabonne/nestif v0.3.1 // indirect
 	github.com/nbutton23/zxcvbn-go v0.0.0-20210217022336-fa2cb2858354 // indirect
 	github.com/nishanths/exhaustive v0.9.5 // indirect
