@@ -1788,7 +1788,7 @@ Used to distinguish between a single string and an array of strings.</p>
 <tbody>
 <tr>
 <td>
-<code>type</code><br/>
+<code>Type</code><br/>
 <em>
 <a href="#tekton.dev/v1.ParamType">
 ParamType
@@ -1800,7 +1800,7 @@ ParamType
 </tr>
 <tr>
 <td>
-<code>stringVal</code><br/>
+<code>StringVal</code><br/>
 <em>
 string
 </em>
@@ -1811,7 +1811,7 @@ string
 </tr>
 <tr>
 <td>
-<code>arrayVal</code><br/>
+<code>ArrayVal</code><br/>
 <em>
 []string
 </em>
@@ -1821,7 +1821,7 @@ string
 </tr>
 <tr>
 <td>
-<code>objectVal</code><br/>
+<code>ObjectVal</code><br/>
 <em>
 map[string]string
 </em>
@@ -9501,7 +9501,7 @@ Used to distinguish between a single string and an array of strings.</p>
 <tbody>
 <tr>
 <td>
-<code>type</code><br/>
+<code>Type</code><br/>
 <em>
 <a href="#tekton.dev/v1beta1.ParamType">
 ParamType
@@ -9513,7 +9513,7 @@ ParamType
 </tr>
 <tr>
 <td>
-<code>stringVal</code><br/>
+<code>StringVal</code><br/>
 <em>
 string
 </em>
@@ -9524,7 +9524,7 @@ string
 </tr>
 <tr>
 <td>
-<code>arrayVal</code><br/>
+<code>ArrayVal</code><br/>
 <em>
 []string
 </em>
@@ -9534,7 +9534,7 @@ string
 </tr>
 <tr>
 <td>
-<code>objectVal</code><br/>
+<code>ObjectVal</code><br/>
 <em>
 map[string]string
 </em>

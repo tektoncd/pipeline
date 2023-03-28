@@ -7,6 +7,14 @@ API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v
 API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,SidecarState,ContainerName
 API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,StepState,ContainerName
 API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,TaskRunStatusFields,TaskRunResults
+API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1,ParamValue,ArrayVal
+API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1,ParamValue,ObjectVal
+API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1,ParamValue,StringVal
+API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1,ParamValue,Type
+API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,ParamValue,ArrayVal
+API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,ParamValue,ObjectVal
+API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,ParamValue,StringVal
+API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,ParamValue,Type
 API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1,PipelineResourceSpec,SecretParams
 API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,Step,DeprecatedLifecycle
 API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,Step,DeprecatedLivenessProbe
