@@ -939,3 +939,48 @@ func TestPipelineTask_IsMatrixed(t *testing.T) {
 		})
 	}
 }
+
+func TestEmbeddedTask_IsCustomTask(t *testing.T) {
+	tests := []struct {
+		name string
+		et   *EmbeddedTask
+		want bool
+	}{{
+		name: "not a custom task - APIVersion and Kind are not set",
+		et:   &EmbeddedTask{},
+		want: false,
+	}, {
+		name: "not a custom task - APIVersion is not set",
+		et: &EmbeddedTask{
+			TypeMeta: runtime.TypeMeta{
+				Kind: "Example",
+			},
+		},
+		want: false,
+	}, {
+		name: "not a custom task - Kind is not set",
+		et: &EmbeddedTask{
+			TypeMeta: runtime.TypeMeta{
+				APIVersion: "example/v0",
+			},
+		},
+		want: false,
+	}, {
+		name: "custom task - APIVersion and Kind are set",
+		et: &EmbeddedTask{
+			TypeMeta: runtime.TypeMeta{
+				Kind:       "Example",
+				APIVersion: "example/v0",
+			},
+		},
+		want: true,
+	},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.et.IsCustomTask(); got != tt.want {
+				t.Errorf("IsCustomTask() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

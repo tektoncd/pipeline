@@ -2285,21 +2285,6 @@ func TestIsCustomTask(t *testing.T) {
 		},
 		want: true,
 	}, {
-		name: "custom both taskRef and taskSpec",
-		pt: v1beta1.PipelineTask{
-			TaskRef: &v1beta1.TaskRef{
-				APIVersion: "example.dev/v0",
-				Kind:       "Sample",
-			},
-			TaskSpec: &v1beta1.EmbeddedTask{
-				TypeMeta: runtime.TypeMeta{
-					APIVersion: "example.dev/v0",
-					Kind:       "Sample",
-				},
-			},
-		},
-		want: false,
-	}, {
 		name: "custom taskRef missing kind",
 		pt: v1beta1.PipelineTask{
 			TaskRef: &v1beta1.TaskRef{

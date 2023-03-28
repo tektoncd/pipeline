@@ -574,15 +574,6 @@ func ValidateTaskRunSpecs(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) erro
 	return nil
 }
 
-func isCustomTask(ctx context.Context, rpt ResolvedPipelineTask) bool {
-	invalidSpec := rpt.PipelineTask.TaskRef != nil && rpt.PipelineTask.TaskSpec != nil
-	isTaskRefCustomTask := rpt.PipelineTask.TaskRef != nil && rpt.PipelineTask.TaskRef.APIVersion != "" &&
-		rpt.PipelineTask.TaskRef.Kind != ""
-	isTaskSpecCustomTask := rpt.PipelineTask.TaskSpec != nil && rpt.PipelineTask.TaskSpec.APIVersion != "" &&
-		rpt.PipelineTask.TaskSpec.Kind != ""
-	return !invalidSpec && (isTaskRefCustomTask || isTaskSpecCustomTask)
-}
-
 // ResolvePipelineTask retrieves a single Task's instance using the getTask to fetch
 // the spec. If it is unable to retrieve an instance of a referenced Task, it  will return
 // an error, otherwise it returns a list of all the Tasks retrieved.  It will retrieve
@@ -598,7 +589,7 @@ func ResolvePipelineTask(
 	rpt := ResolvedPipelineTask{
 		PipelineTask: &pipelineTask,
 	}
-	rpt.CustomTask = isCustomTask(ctx, rpt)
+	rpt.CustomTask = rpt.PipelineTask.TaskRef.IsCustomTask() || rpt.PipelineTask.TaskSpec.IsCustomTask()
 	switch {
 	case rpt.IsCustomTask() && rpt.PipelineTask.IsMatrixed():
 		rpt.RunObjectNames = getNamesOfRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, pipelineTask.Matrix.CountCombinations())

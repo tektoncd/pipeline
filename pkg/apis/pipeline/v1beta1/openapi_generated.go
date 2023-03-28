@@ -3937,14 +3937,14 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRef(ref common.ReferenceCallback) comm
 					},
 					"kind": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TaskKind indicates the kind of the task, namespaced or cluster scoped.",
+							Description: "TaskKind indicates the Kind of the Task: 1. Namespaced Task when Kind is set to \"Task\". If Kind is \"\", it defaults to \"Task\". 2. Cluster-Scoped Task when Kind is set to \"ClusterTask\" 3. Custom Task when Kind is non-empty and APIVersion is non-empty",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"apiVersion": {
 						SchemaProps: spec.SchemaProps{
-							Description: "API version of the referent",
+							Description: "API version of the referent Note: A Task with non-empty APIVersion and Kind is considered a Custom Task",
 							Type:        []string{"string"},
 							Format:      "",
 						},
