@@ -846,14 +846,14 @@ func schema_pkg_apis_pipeline_v1_ParamValue(ref common.ReferenceCallback) common
 				Description: "ResultValue is a type alias of ParamValue",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"type": {
+					"Type": {
 						SchemaProps: spec.SchemaProps{
 							Default: "",
 							Type:    []string{"string"},
 							Format:  "",
 						},
 					},
-					"stringVal": {
+					"StringVal": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Represents the stored type of ParamValues.",
 							Default:     "",
@@ -861,7 +861,7 @@ func schema_pkg_apis_pipeline_v1_ParamValue(ref common.ReferenceCallback) common
 							Format:      "",
 						},
 					},
-					"arrayVal": {
+					"ArrayVal": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
 								"x-kubernetes-list-type": "atomic",
@@ -880,7 +880,7 @@ func schema_pkg_apis_pipeline_v1_ParamValue(ref common.ReferenceCallback) common
 							},
 						},
 					},
-					"objectVal": {
+					"ObjectVal": {
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
@@ -896,7 +896,7 @@ func schema_pkg_apis_pipeline_v1_ParamValue(ref common.ReferenceCallback) common
 						},
 					},
 				},
-				Required: []string{"type", "stringVal", "arrayVal", "objectVal"},
+				Required: []string{"Type", "StringVal", "ArrayVal", "ObjectVal"},
 			},
 		},
 	}

@@ -14,13 +14,13 @@
 - [Status Signalling](#status-signalling)
 - [Listing Resources](#listing-resources)
 - [Detailed Resource Types - v1beta1](#detailed-resource-types---v1beta1)
-  * [`ParamValue`](#paramvalue)
   * [`ContainerStateRunning`](#containerstaterunning)
   * [`ContainerStateWaiting`](#containerstatewaiting)
   * [`ContainerStateTerminated`](#containerstateterminated)
   * [`EnvVar`](#envvar)
   * [`Param`](#param)
   * [`ParamSpec`](#paramspec)
+  * [`ParamValue`](#paramvalue)
   * [`Step`](#step)
   * [`StepState`](#stepstate)
   * [`TaskResult`](#taskresult)
@@ -186,15 +186,6 @@ List responses have the following fields (based on [`meta.v1/ListMeta`](https://
 
 ## Detailed Resource Types - v1beta1
 
-### `ParamValue`
-
-| Field Name  | Field Type | Requirement |
-|-------------|------------|-------------|
-| `type`      | Enum:<br>- `"string"` (default)<br>- `"array"` <br>- `"object"` | REQUIRED |
-| `stringVal` | string     | REQUIRED    |
-| `arrayVal`  | []string   | REQUIRED    |
-| `objectVal` | map<string,string>   | REQUIRED    |
-
 ### `ContainerStateRunning`
 
 | Field Name   | Field Type | Requirement |
@@ -236,7 +227,7 @@ List responses have the following fields (based on [`meta.v1/ListMeta`](https://
 | Field Name | Field Type      | Requirement |
 |------------|-----------------|-------------|
 | `name`     | string          | REQUIRED    |
-| `value`    | `ParamValue` | REQUIRED    |
+| `value`    | `ParamValue`    | REQUIRED    |
 
 ### `ParamSpec`
 
@@ -247,6 +238,10 @@ List responses have the following fields (based on [`meta.v1/ListMeta`](https://
 | `type`      | Enum:<br>- `"string"` (default)<br>- `"array"` <br>- `"object"` | REQUIRED (The values `string` and `array` for this field are REQUIRED, and the value `object` is RECOMMENDED.) |
 | `properties`  | map<string,PropertySpec> |RECOMMENDED <br><br>note: `PropertySpec` is a type that defines the spec of an individual key. See how to define the `properties` section in the [example](../examples/v1beta1/taskruns/alpha/object-param-result.yaml).|
 | `default`     | `ParamValue` | REQUIRED |
+
+### `ParamValue`
+
+A `ParamValue` may be a string, a list of string, or a map of string to string.
 
 ### `Step`
 
