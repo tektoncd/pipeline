@@ -658,8 +658,8 @@ status:
 )
 
 // TestTaskCRDConversion first creates a v1beta1 Task CRD using v1beta1Clients and
-// requests it by v1Clients to compare with v1 if the conversion has been
-// correctly executed by the webhook. And then it creates the v1 Task CRD using v1Clients
+// requests it by v1Clients to compare with v1 if the conversion has been correctly
+// executed by the webhook for roundtrip. And then it creates the v1 Task CRD using v1Clients
 // and requests it by v1beta1Clients to compare with v1beta1.
 func TestTaskCRDConversion(t *testing.T) {
 	ctx := context.Background()
@@ -679,13 +679,21 @@ func TestTaskCRDConversion(t *testing.T) {
 	if _, err := c.V1beta1TaskClient.Create(ctx, v1beta1Task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create v1beta1 Task: %s", err)
 	}
+
 	v1TaskGot, err := c.V1TaskClient.Get(ctx, v1beta1TaskName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Couldn't get expected v1 Task for %s: %s", v1beta1TaskName, err)
 	}
-
 	if d := cmp.Diff(v1TaskExpected, v1TaskGot, filterMetadata...); d != "" {
-		t.Fatalf("-want, +got: %v", d)
+		t.Errorf("-want, +got: %v", d)
+	}
+
+	v1beta1TaskRoundTrip := &v1beta1.Task{}
+	if err := v1beta1TaskRoundTrip.ConvertFrom(context.Background(), v1TaskGot); err != nil {
+		t.Fatalf("Failed to convert roundtrip v1beta1TaskGot ConvertFrom v1 = %v", err)
+	}
+	if d := cmp.Diff(v1beta1Task, v1beta1TaskRoundTrip, filterMetadata...); d != "" {
+		t.Errorf("-want, +got: %v", d)
 	}
 
 	v1TaskName := helpers.ObjectNameForTest(t)
@@ -700,16 +708,23 @@ func TestTaskCRDConversion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't get expected v1beta1 Task for %s: %s", v1TaskName, err)
 	}
-
 	if d := cmp.Diff(v1beta1TaskExpected, v1beta1TaskGot, filterMetadata...); d != "" {
-		t.Fatalf("-want, +got: %v", d)
+		t.Errorf("-want, +got: %v", d)
+	}
+
+	v1TaskRoundTrip := &v1.Task{}
+	if err := v1beta1TaskGot.ConvertTo(context.Background(), v1TaskRoundTrip); err != nil {
+		t.Fatalf("Failed to convert roundtrip v1beta1TaskGot ConvertTo v1 = %v", err)
+	}
+	if d := cmp.Diff(v1Task, v1TaskRoundTrip, filterMetadata...); d != "" {
+		t.Errorf("-want, +got: %v", d)
 	}
 }
 
 // TestTaskRunCRDConversion first creates a v1beta1 TaskRun CRD using v1beta1Clients
 // and requests it by v1Clients to compare with v1 if the conversion has been correctly
-// executed by the webhook. And then it creates the v1 TaskRun CRD using v1Clients
-// and requests it by v1beta1Clients to compare with v1beta1.
+// executed by the webhook for roundtrip. And then it creates the v1 TaskRun CRD using
+// v1Clients and requests it by v1beta1Clients to compare with v1beta1.
 func TestTaskRunCRDConversion(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -724,11 +739,11 @@ func TestTaskRunCRDConversion(t *testing.T) {
 	v1beta1TaskRunName := helpers.ObjectNameForTest(t)
 	v1beta1TaskRun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(v1beta1TaskRunYaml, v1beta1TaskRunName, namespace))
 	v1TaskRunExpected := parse.MustParseV1TaskRun(t, fmt.Sprintf(v1TaskRunExpectedYaml, v1beta1TaskRunName, namespace, v1beta1TaskRunName))
+	v1beta1TaskRunRoundTripExpected := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(v1beta1TaskRunExpectedYaml, v1beta1TaskRunName, namespace, v1beta1TaskRunName))
 
 	if _, err := c.V1beta1TaskRunClient.Create(ctx, v1beta1TaskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create v1beta1 TaskRun: %s", err)
 	}
-
 	if err := WaitForTaskRunState(ctx, c, v1beta1TaskRunName, Succeed(v1beta1TaskRunName), v1beta1TaskRunName, "v1beta1"); err != nil {
 		t.Fatalf("Failed waiting for v1beta1 TaskRun done: %v", err)
 	}
@@ -737,19 +752,26 @@ func TestTaskRunCRDConversion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't get expected v1 TaskRun for %s: %s", v1beta1TaskRunName, err)
 	}
-
 	if d := cmp.Diff(v1TaskRunExpected, v1TaskRunGot, filterV1TaskRunFields...); d != "" {
-		t.Fatalf("-want, +got: %v", d)
+		t.Errorf("-want, +got: %v", d)
+	}
+
+	v1beta1TaskRunRoundTrip := &v1beta1.TaskRun{}
+	if err := v1beta1TaskRunRoundTrip.ConvertFrom(context.Background(), v1TaskRunGot); err != nil {
+		t.Fatalf("Failed to convert roundtrip v1beta1TaskRunGot ConvertFrom v1 = %v", err)
+	}
+	if d := cmp.Diff(v1beta1TaskRunRoundTripExpected, v1beta1TaskRunRoundTrip, filterV1beta1TaskRunFields...); d != "" {
+		t.Errorf("-want, +got: %v", d)
 	}
 
 	v1TaskRunName := helpers.ObjectNameForTest(t)
 	v1TaskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(v1TaskRunYaml, v1TaskRunName, namespace))
 	v1beta1TaskRunExpected := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(v1beta1TaskRunExpectedYaml, v1TaskRunName, namespace, v1TaskRunName))
+	v1TaskRunRoundTripExpected := parse.MustParseV1TaskRun(t, fmt.Sprintf(v1TaskRunExpectedYaml, v1TaskRunName, namespace, v1TaskRunName))
 
 	if _, err := c.V1TaskRunClient.Create(ctx, v1TaskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create v1 TaskRun: %s", err)
 	}
-
 	if err := WaitForTaskRunState(ctx, c, v1TaskRunName, Succeed(v1TaskRunName), v1TaskRunName, "v1"); err != nil {
 		t.Fatalf("Failed waiting for v1 TaskRun done: %v", err)
 	}
@@ -758,15 +780,22 @@ func TestTaskRunCRDConversion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't get expected v1beta1 TaskRun for %s: %s", v1TaskRunName, err)
 	}
-
 	if d := cmp.Diff(v1beta1TaskRunExpected, v1beta1TaskRunGot, filterV1beta1TaskRunFields...); d != "" {
-		t.Fatalf("-want, +got: %v", d)
+		t.Errorf("-want, +got: %v", d)
+	}
+
+	v1TaskRunRoundTrip := &v1.TaskRun{}
+	if err := v1beta1TaskRunGot.ConvertTo(context.Background(), v1TaskRunRoundTrip); err != nil {
+		t.Fatalf("Failed to convert roundtrip v1beta1TaskRunGot ConvertTo v1 = %v", err)
+	}
+	if d := cmp.Diff(v1TaskRunRoundTripExpected, v1TaskRunRoundTrip, filterV1TaskRunFields...); d != "" {
+		t.Errorf("-want, +got: %v", d)
 	}
 }
 
 // TestPipelineCRDConversion first creates a v1beta1 Pipeline CRD using v1beta1Clients and
-// requests it by v1Clients to compare with v1 if the conversion has been
-// correctly executed by the webhook. And then it creates the v1 Pipeline CRD using v1Clients
+// requests it by v1Clients to compare with v1 if the conversion has been correctly executed
+// by the webhook for roundtrip. And then it creates the v1 Pipeline CRD using v1Clients
 // and requests it by v1beta1Clients to compare with v1beta1.
 func TestPipelineCRDConversion(t *testing.T) {
 	ctx := context.Background()
@@ -791,9 +820,16 @@ func TestPipelineCRDConversion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't get expected v1 Pipeline for %s: %s", v1beta1PipelineName, err)
 	}
-
 	if d := cmp.Diff(v1PipelineGot, v1PipelineExpected, filterMetadata...); d != "" {
-		t.Fatalf("-want, +got: %v", d)
+		t.Errorf("-want, +got: %v", d)
+	}
+
+	v1beta1PipelineRoundTrip := &v1beta1.Pipeline{}
+	if err := v1beta1PipelineRoundTrip.ConvertFrom(context.Background(), v1PipelineGot); err != nil {
+		t.Fatalf("Filed to convert roundtrip v1beta1PipelineGot ConvertFrom v1 = %v", err)
+	}
+	if d := cmp.Diff(v1beta1Pipeline, v1beta1PipelineRoundTrip, filterMetadata...); d != "" {
+		t.Errorf("-want, +got: %v", d)
 	}
 
 	v1PipelineName := helpers.ObjectNameForTest(t)
@@ -808,15 +844,22 @@ func TestPipelineCRDConversion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't get expected v1beta1 Pipeline for %s: %s", v1PipelineName, err)
 	}
-
 	if d := cmp.Diff(v1beta1PipelineExpected, v1beta1PipelineGot, filterMetadata...); d != "" {
-		t.Fatalf("-want, +got: %v", d)
+		t.Errorf("-want, +got: %v", d)
+	}
+
+	v1PipelineRoundTrip := &v1.Pipeline{}
+	if err := v1beta1PipelineGot.ConvertTo(context.Background(), v1PipelineRoundTrip); err != nil {
+		t.Fatalf("Failed to convert roundtrip v1beta1PipelineGot ConvertTo v1 = %v", err)
+	}
+	if d := cmp.Diff(v1Pipeline, v1PipelineRoundTrip, filterMetadata...); d != "" {
+		t.Errorf("-want, +got: %v", d)
 	}
 }
 
 // TestPipelineRunCRDConversion first creates a v1beta1 PipelineRun CRD using v1beta1Clients and
-// requests it by v1Clients to compare with v1 if the conversion has been
-// correctly executed by the webhook. And then it creates the v1 PipelineRun CRD using v1Clients
+// requests it by v1Clients to compare with v1 if the conversion has been correctly executed by
+// the webhook for roundtrip. And then it creates the v1 PipelineRun CRD using v1Clients
 // and requests it by v1beta1Clients to compare with v1beta1.
 func TestPipelineRunCRDConversion(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -830,11 +873,11 @@ func TestPipelineRunCRDConversion(t *testing.T) {
 	v1beta1ToV1PipelineRunName := helpers.ObjectNameForTest(t)
 	v1beta1PipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(v1beta1PipelineRunYaml, v1beta1ToV1PipelineRunName, namespace))
 	v1PipelineRunExpected := parse.MustParseV1PipelineRun(t, fmt.Sprintf(v1PipelineRunExpectedYaml, v1beta1ToV1PipelineRunName, namespace, v1beta1ToV1PipelineRunName))
+	v1beta1PRRoundTripExpected := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(v1beta1PipelineRunExpectedYaml, v1beta1ToV1PipelineRunName, namespace, v1beta1ToV1PipelineRunName))
 
 	if _, err := c.V1beta1PipelineRunClient.Create(ctx, v1beta1PipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create v1beta1 PipelineRun: %s", err)
 	}
-
 	if err := WaitForPipelineRunState(ctx, c, v1beta1ToV1PipelineRunName, timeout, Succeed(v1beta1ToV1PipelineRunName), v1beta1ToV1PipelineRunName, "v1beta1"); err != nil {
 		t.Fatalf("Failed waiting for v1beta1 PipelineRun done: %v", err)
 	}
@@ -843,19 +886,26 @@ func TestPipelineRunCRDConversion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't get expected v1 PipelineRun for %s: %s", v1beta1ToV1PipelineRunName, err)
 	}
-
 	if d := cmp.Diff(v1PipelineRunExpected, v1PipelineRunGot, filterV1PipelineRunFields...); d != "" {
-		t.Fatalf("-want, +got: %v", d)
+		t.Errorf("-want, +got: %v", d)
+	}
+
+	v1beta1PRRoundTrip := &v1beta1.PipelineRun{}
+	if err := v1beta1PRRoundTrip.ConvertFrom(context.Background(), v1PipelineRunGot); err != nil {
+		t.Fatalf("Error roundtrip v1beta1PipelineRun ConvertFrom v1PipelineRunGot = %v", err)
+	}
+	if d := cmp.Diff(v1beta1PRRoundTripExpected, v1beta1PRRoundTrip, filterV1beta1PipelineRunFields...); d != "" {
+		t.Errorf("-want, +got: %v", d)
 	}
 
 	v1ToV1beta1PRName := helpers.ObjectNameForTest(t)
 	v1PipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(v1PipelineRunYaml, v1ToV1beta1PRName, namespace))
 	v1beta1PipelineRunExpected := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(v1beta1PipelineRunExpectedYaml, v1ToV1beta1PRName, namespace, v1ToV1beta1PRName))
+	v1PRRoundTripExpected := parse.MustParseV1PipelineRun(t, fmt.Sprintf(v1PipelineRunExpectedYaml, v1ToV1beta1PRName, namespace, v1ToV1beta1PRName))
 
 	if _, err := c.V1PipelineRunClient.Create(ctx, v1PipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create v1 PipelineRun: %s", err)
 	}
-
 	if err := WaitForPipelineRunState(ctx, c, v1ToV1beta1PRName, timeout, Succeed(v1ToV1beta1PRName), v1ToV1beta1PRName, "v1"); err != nil {
 		t.Fatalf("Failed waiting for v1 pipelineRun done: %v", err)
 	}
@@ -864,8 +914,15 @@ func TestPipelineRunCRDConversion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't get expected v1beta1 PipelineRun for %s: %s", v1ToV1beta1PRName, err)
 	}
-
 	if d := cmp.Diff(v1beta1PipelineRunExpected, v1beta1PipelineRunGot, filterV1beta1PipelineRunFields...); d != "" {
-		t.Fatalf("-want, +got: %v", d)
+		t.Errorf("-want, +got: %v", d)
+	}
+
+	v1PRRoundTrip := &v1.PipelineRun{}
+	if err := v1beta1PipelineRunGot.ConvertTo(context.Background(), v1PRRoundTrip); err != nil {
+		t.Fatalf("Error roundtrip v1beta1PipelineRunGot ConvertTo v1 = %v", err)
+	}
+	if d := cmp.Diff(v1PRRoundTripExpected, v1PRRoundTrip, filterV1PipelineRunFields...); d != "" {
+		t.Errorf("-want, +got: %v", d)
 	}
 }
