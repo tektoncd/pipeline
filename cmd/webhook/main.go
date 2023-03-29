@@ -160,6 +160,9 @@ func newConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 		resolutionv1alpha1GroupVersion = resolutionv1alpha1.SchemeGroupVersion.Version
 		resolutionv1beta1GroupVersion  = resolutionv1beta1.SchemeGroupVersion.Version
 	)
+	// Decorate contexts with the current state of the config.
+	store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
+	store.WatchConfigs(cmw)
 	return conversion.NewConversionController(ctx,
 		// The path on which to serve the webhook
 		"/resource-conversion",
@@ -211,7 +214,7 @@ func newConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 
 		// A function that infuses the context passed to ConvertTo/ConvertFrom/SetDefaults with custom metadata
 		func(ctx context.Context) context.Context {
-			return ctx
+			return store.ToContext(ctx)
 		},
 	)
 }
