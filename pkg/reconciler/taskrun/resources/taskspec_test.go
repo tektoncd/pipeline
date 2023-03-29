@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package resources
+package resources_test
 
 import (
 	"context"
@@ -23,18 +23,9 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-var (
-	sampleConfigSource = &v1beta1.ConfigSource{
-		URI: "abc.com",
-		Digest: map[string]string{
-			"sha1": "a123",
-		},
-		EntryPoint: "foo/bar",
-	}
 )
 
 func TestGetTaskSpec_Ref(t *testing.T) {
@@ -62,7 +53,7 @@ func TestGetTaskSpec_Ref(t *testing.T) {
 	gt := func(ctx context.Context, n string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error) {
 		return task, sampleConfigSource.DeepCopy(), nil
 	}
-	resolvedObjectMeta, taskSpec, err := GetTaskData(context.Background(), tr, gt)
+	resolvedObjectMeta, taskSpec, err := resources.GetTaskData(context.Background(), tr, gt)
 
 	if err != nil {
 		t.Fatalf("Did not expect error getting task spec but got: %s", err)
@@ -96,7 +87,7 @@ func TestGetTaskSpec_Embedded(t *testing.T) {
 	gt := func(ctx context.Context, n string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error) {
 		return nil, nil, errors.New("shouldn't be called")
 	}
-	resolvedObjectMeta, taskSpec, err := GetTaskData(context.Background(), tr, gt)
+	resolvedObjectMeta, taskSpec, err := resources.GetTaskData(context.Background(), tr, gt)
 
 	if err != nil {
 		t.Fatalf("Did not expect error getting task spec but got: %s", err)
@@ -125,7 +116,7 @@ func TestGetTaskSpec_Invalid(t *testing.T) {
 	gt := func(ctx context.Context, n string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error) {
 		return nil, nil, errors.New("shouldn't be called")
 	}
-	_, _, err := GetTaskData(context.Background(), tr, gt)
+	_, _, err := resources.GetTaskData(context.Background(), tr, gt)
 	if err == nil {
 		t.Fatalf("Expected error resolving spec with no embedded or referenced task spec but didn't get error")
 	}
@@ -145,7 +136,7 @@ func TestGetTaskSpec_Error(t *testing.T) {
 	gt := func(ctx context.Context, n string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error) {
 		return nil, nil, errors.New("something went wrong")
 	}
-	_, _, err := GetTaskData(context.Background(), tr, gt)
+	_, _, err := resources.GetTaskData(context.Background(), tr, gt)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Task but got none")
 	}
@@ -189,7 +180,7 @@ func TestGetTaskData_ResolutionSuccess(t *testing.T) {
 		}, sampleConfigSource.DeepCopy(), nil
 	}
 	ctx := context.Background()
-	resolvedMeta, resolvedSpec, err := GetTaskData(ctx, tr, getTask)
+	resolvedMeta, resolvedSpec, err := resources.GetTaskData(ctx, tr, getTask)
 	if err != nil {
 		t.Fatalf("Unexpected error getting mocked data: %v", err)
 	}
@@ -223,7 +214,7 @@ func TestGetPipelineData_ResolutionError(t *testing.T) {
 		return nil, nil, errors.New("something went wrong")
 	}
 	ctx := context.Background()
-	_, _, err := GetTaskData(ctx, tr, getTask)
+	_, _, err := resources.GetTaskData(ctx, tr, getTask)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Task but got none")
 	}
@@ -246,7 +237,7 @@ func TestGetTaskData_ResolvedNilTask(t *testing.T) {
 		return nil, nil, nil
 	}
 	ctx := context.Background()
-	_, _, err := GetTaskData(ctx, tr, getTask)
+	_, _, err := resources.GetTaskData(ctx, tr, getTask)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Task but got none")
 	}
