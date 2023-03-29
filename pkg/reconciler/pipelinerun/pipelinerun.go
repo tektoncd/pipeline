@@ -57,6 +57,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	k8slabels "k8s.io/apimachinery/pkg/labels"
@@ -751,6 +752,15 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 		}
 	}
 
+	if len(nextRpts) > 0 {
+		defer func() {
+			// If it is a permanent error, set pipelinerun to a failure state directly to avoid unnecessary retries.
+			if err != nil && controller.IsPermanentError(err) {
+				pr.Status.MarkFailed(ReasonCreateRunFailed, err.Error())
+			}
+		}()
+	}
+
 	for _, rpt := range nextRpts {
 		if rpt.IsFinalTask(pipelineRunFacts) {
 			c.setFinallyStartedTimeIfNeeded(pr, pipelineRunFacts)
@@ -768,13 +778,6 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 				return controller.NewPermanentError(err)
 			}
 		}
-
-		defer func() {
-			// If it is a permanent error, set pipelinerun to a failure state directly to avoid unnecessary retries.
-			if err != nil && controller.IsPermanentError(err) {
-				pr.Status.MarkFailed(ReasonCreateRunFailed, err.Error())
-			}
-		}()
 
 		if rpt.IsCustomTask() {
 			rpt.CustomRuns, err = c.createCustomRuns(ctx, rpt, pr)
@@ -883,7 +886,13 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 	}
 
 	logger.Infof("Creating a new TaskRun object %s for pipeline task %s", taskRunName, rpt.PipelineTask.Name)
-	return c.PipelineClientSet.TektonV1().TaskRuns(pr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
+
+	newTr, err := c.PipelineClientSet.TektonV1().TaskRuns(pr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
+	if isAdmissionWebhookValidateFailed(err) {
+		return nil, controller.NewPermanentError(err)
+	}
+
+	return newTr, err
 }
 
 func (c *Reconciler) createCustomRuns(ctx context.Context, rpt *resources.ResolvedPipelineTask, pr *v1.PipelineRun) ([]*v1beta1.CustomRun, error) {
@@ -991,7 +1000,13 @@ func (c *Reconciler) createCustomRun(ctx context.Context, runName string, params
 	}
 
 	logger.Infof("Creating a new CustomRun object %s", runName)
-	return c.PipelineClientSet.TektonV1beta1().CustomRuns(pr.Namespace).Create(ctx, r, metav1.CreateOptions{})
+
+	newRunObject, err := c.PipelineClientSet.TektonV1beta1().CustomRuns(pr.Namespace).Create(ctx, r, metav1.CreateOptions{})
+	if isAdmissionWebhookValidateFailed(err) {
+		return nil, controller.NewPermanentError(err)
+	}
+
+	return newRunObject, err
 }
 
 // propagateWorkspaces identifies the workspaces that the pipeline task usess
@@ -1461,4 +1476,9 @@ func conditionFromVerificationResult(verificationResult *trustedresources.Verifi
 		// do nothing
 	}
 	return condition, err
+}
+
+func isAdmissionWebhookValidateFailed(err error) bool {
+	return err != nil && k8serrors.IsBadRequest(err) && strings.Contains(err.Error(), "admission webhook") &&
+		strings.Contains(err.Error(), "validation failed")
 }

@@ -58,11 +58,13 @@ import (
 	"gomodules.xyz/jsonpatch/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
+	client_go_testing "k8s.io/client-go/testing"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 	clock "k8s.io/utils/clock/testing"
@@ -116,6 +118,8 @@ const (
 	ociBundlesFeatureFlag          = "enable-tekton-oci-bundles"
 	maxMatrixCombinationsCountFlag = "default-max-matrix-combinations-count"
 	disableAffinityAssistantFlag   = "disable-affinity-assistant"
+	actionCreate                   = "create"
+	pipelineValidationWebhook      = "validation.webhook.pipeline.tekton.dev"
 )
 
 type PipelineRunTest struct {
@@ -13070,7 +13074,8 @@ func TestReconcileForPipelineRunCreateRunFailed(t *testing.T) {
 	// It verifies that reconcile is successful, no TaskRun is created, the PipelineTask is marked as CreateRunFailed, and the
 	// pipeline status updated and events generated.
 	ps := []*v1.Pipeline{}
-	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+	prs := []*v1.PipelineRun{
+		parse.MustParseV1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-with-create-run-failed
   namespace: foo
@@ -13082,6 +13087,17 @@ spec:
         name: unit-test-task
       workspaces:
       - name: source
+`),
+		parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-create-run-failed-by-webhook-denied
+  namespace: foo
+spec:
+  pipelineSpec:
+    tasks:
+    - name: hello-world
+      taskRef:
+        name: hello-world
 `)}
 
 	ts := []*v1.Task{
@@ -13099,34 +13115,89 @@ spec:
       echo "hello world"
     workspaces:
     - name: source
-`)}
+`), simpleHelloWorldTask}
 
 	trs := []*v1.TaskRun{}
 
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-		TaskRuns:     trs,
-	}
-	prt := newPipelineRunTest(t, d)
-	defer prt.Cancel()
-
-	wantEvents := []string{
-		"Normal Started",
-		"Warning TaskRunsCreationFailed",
-		"error creating TaskRuns called \\[test-pipeline-run-with-create-run-failed-hello-world]\\ for PipelineTask hello-world from PipelineRun test-pipeline-run-with-create-run-failed: expected workspace \"source\" to be provided by pipelinerun for pipeline task \"hello-world\"",
-		"error creating TaskRuns called \\[test-pipeline-run-with-create-run-failed-hello-world]\\ for PipelineTask hello-world from PipelineRun test-pipeline-run-with-create-run-failed: expected workspace \"source\" to be provided by pipelinerun for pipeline task \"hello-world\"",
-	}
-	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-with-create-run-failed", wantEvents, true)
-
-	if reconciledRun.Status.CompletionTime == nil {
-		t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
+	deniedBy := fmt.Sprintf("admission webhook %q denied the request", pipelineValidationWebhook)
+	// A new ReactionFunc implementation.
+	// This function is called when a create action occurs and returns a validation failed error
+	fn := func(action client_go_testing.Action) (bool, runtime.Object, error) {
+		switch action := action.(type) {
+		case client_go_testing.CreateActionImpl:
+			return true, nil, apierrors.NewBadRequest(fmt.Sprintf("%s: validation failed: %s", deniedBy, "parameter appears more than once"))
+		default:
+			return false, nil, fmt.Errorf("no reaction implemented for %s", action)
+		}
 	}
 
-	// The PipelineRun should be create run failed.
-	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "CreateRunFailed" {
-		t.Errorf("Expected PipelineRun to be create run failed, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+	testCases := []struct {
+		name                string
+		pipelinerunName     string
+		pipelineruns        []*v1.PipelineRun
+		pipelines           []*v1.Pipeline
+		tasks               []*v1.Task
+		taskruns            []*v1.TaskRun
+		wantEvents          []string
+		wantTrWebhookFailed bool
+	}{
+		{
+			name:            "missing-workspace",
+			pipelinerunName: "test-pipeline-run-with-create-run-failed",
+			pipelineruns:    []*v1.PipelineRun{prs[0]},
+			pipelines:       ps,
+			tasks:           []*v1.Task{ts[0]},
+			taskruns:        trs,
+			wantEvents: []string{
+				"Normal Started",
+				"Warning TaskRunsCreationFailed",
+				"error creating TaskRuns called \\[test-pipeline-run-with-create-run-failed-hello-world]\\ for PipelineTask hello-world from PipelineRun test-pipeline-run-with-create-run-failed: expected workspace \"source\" to be provided by pipelinerun for pipeline task \"hello-world\"",
+				"error creating TaskRuns called \\[test-pipeline-run-with-create-run-failed-hello-world]\\ for PipelineTask hello-world from PipelineRun test-pipeline-run-with-create-run-failed: expected workspace \"source\" to be provided by pipelinerun for pipeline task \"hello-world\"",
+			},
+		},
+		{
+			name:            "webhook-validation-failed",
+			pipelinerunName: "test-create-run-failed-by-webhook-denied",
+			pipelineruns:    []*v1.PipelineRun{prs[1]},
+			pipelines:       ps,
+			tasks:           []*v1.Task{ts[1]},
+			taskruns:        trs,
+			wantEvents: []string{
+				"Normal Started",
+				"Warning TaskRunsCreationFailed",
+				"Warning Failed error creating TaskRuns called \\[test-create-run-failed-by-webhook-denied-hello-world]\\ for PipelineTask hello-world from PipelineRun test-create-run-failed-by-webhook-denied: admission webhook \"validation.webhook.pipeline.tekton.dev\" denied the request: validation failed: parameter appears more than once",
+				fmt.Sprintf("Warning InternalError 1 error occurred:\n\t* %s\n\n", "error creating TaskRuns called [test-create-run-failed-by-webhook-denied-hello-world] for PipelineTask hello-world from PipelineRun test-create-run-failed-by-webhook-denied: admission webhook \"validation.webhook.pipeline.tekton.dev\" denied the request: validation failed: parameter appears more than once"),
+			},
+			wantTrWebhookFailed: true,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			d := test.Data{
+				PipelineRuns: testCase.pipelineruns,
+				Pipelines:    testCase.pipelines,
+				Tasks:        testCase.tasks,
+				TaskRuns:     testCase.taskruns,
+			}
+			prt := newPipelineRunTest(t, d)
+			defer prt.Cancel()
+
+			if testCase.wantTrWebhookFailed {
+				prt.TestAssets.Clients.Pipeline.PrependReactor(actionCreate, "taskruns", fn)
+			}
+
+			reconciledRun, _ := prt.reconcileRun("foo", testCase.pipelinerunName, testCase.wantEvents, true)
+
+			if reconciledRun.Status.CompletionTime == nil {
+				t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
+			}
+
+			// The PipelineRun should be create run failed.
+			if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "CreateRunFailed" {
+				t.Errorf("Expected PipelineRun to be create run failed, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+			}
+		})
 	}
 }
 
