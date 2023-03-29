@@ -72,7 +72,7 @@ func (m *Matrix) FanOut() []Params {
 	for _, parameter := range m.Params {
 		combinations = combinations.fanOutMatrixParams(parameter)
 	}
-	combinations = combinations.overwriteCombinations(includeCombinations)
+	combinations.overwriteCombinations(includeCombinations)
 	combinations = combinations.addNewCombinations(includeCombinations)
 	return combinations.toParams()
 }
@@ -80,15 +80,18 @@ func (m *Matrix) FanOut() []Params {
 // overwriteCombinations replaces any missing include params in the initial
 // matrix params combinations by overwriting the initial combinations with the
 // include combinations
-func (cs Combinations) overwriteCombinations(ics Combinations) Combinations {
+func (cs Combinations) overwriteCombinations(ics Combinations) {
 	for _, paramCombination := range cs {
 		for _, includeCombination := range ics {
 			if paramCombination.contains(includeCombination) {
-				includeCombination.overwrite(paramCombination)
+				// overwrite the parameter name and value in existing combination
+				// with the include combination
+				for name, val := range includeCombination {
+					paramCombination[name] = val
+				}
 			}
 		}
 	}
-	return cs
 }
 
 // addNewCombinations creates a new combination for any include parameter
@@ -113,14 +116,6 @@ func (c Combination) contains(includeCombination Combination) bool {
 		}
 	}
 	return true
-}
-
-// overwrite the parameter name and value exists in combination with the include combination
-func (c Combination) overwrite(oldCombination Combination) Combination {
-	for name, val := range c {
-		oldCombination[name] = val
-	}
-	return oldCombination
 }
 
 // shouldAddNewCombination returns true if the include parameter name exists but the value is
