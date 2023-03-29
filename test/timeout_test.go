@@ -204,10 +204,13 @@ spec:
 	if err != nil {
 		t.Errorf("Error getting Taskrun: %v", err)
 	}
+	if tr == nil {
+		t.Fatalf("no TaskRun details available")
+	}
 	if tr.Status.Steps[0].Terminated == nil {
-		if tr.Status.Steps[0].Terminated.Reason != "Completed" {
-			t.Errorf("step-no-timeout should not have been terminated")
-		}
+		t.Errorf("step-no-timeout should have Completed.")
+	} else if tr.Status.Steps[0].Terminated.Reason != "Completed" {
+		t.Errorf("step-no-timeout should not have been terminated")
 	}
 	if tr.Status.Steps[2].Terminated == nil {
 		t.Errorf("step-canceled should have been canceled after step-timeout timed out")
