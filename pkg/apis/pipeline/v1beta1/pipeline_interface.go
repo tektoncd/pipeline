@@ -21,7 +21,7 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-// PipelineObject is implemented by Pipeline and ClusterPipeline
+// PipelineObject is implemented by Pipeline
 type PipelineObject interface {
 	apis.Defaultable
 	PipelineMetadata() metav1.ObjectMeta
