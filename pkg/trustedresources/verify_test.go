@@ -368,7 +368,7 @@ func TestVerifyPipeline_Success(t *testing.T) {
 	mismatchedSource := "wrong source"
 	tcs := []struct {
 		name                      string
-		pipeline                  v1beta1.PipelineObject
+		pipeline                  *v1beta1.Pipeline
 		source                    string
 		verificationNoMatchPolicy string
 	}{{
@@ -421,7 +421,7 @@ func TestVerifyPipeline_Error(t *testing.T) {
 	mismatchedSource := "wrong source"
 	tcs := []struct {
 		name               string
-		pipeline           v1beta1.PipelineObject
+		pipeline           *v1beta1.Pipeline
 		source             string
 		verificationPolicy []*v1alpha1.VerificationPolicy
 	}{{
