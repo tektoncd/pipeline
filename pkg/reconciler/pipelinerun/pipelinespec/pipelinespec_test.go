@@ -52,7 +52,7 @@ func TestGetPipelineSpec_Ref(t *testing.T) {
 			},
 		},
 	}
-	gt := func(ctx context.Context, n string) (v1beta1.PipelineObject, *v1beta1.ConfigSource, error) {
+	gt := func(ctx context.Context, n string) (*v1beta1.Pipeline, *v1beta1.ConfigSource, error) {
 		return pipeline, nil, nil
 	}
 	resolvedObjectMeta, pipelineSpec, err := GetPipelineData(context.Background(), pr, gt)
@@ -90,7 +90,7 @@ func TestGetPipelineSpec_Embedded(t *testing.T) {
 			},
 		},
 	}
-	gt := func(ctx context.Context, n string) (v1beta1.PipelineObject, *v1beta1.ConfigSource, error) {
+	gt := func(ctx context.Context, n string) (*v1beta1.Pipeline, *v1beta1.ConfigSource, error) {
 		return nil, nil, errors.New("shouldn't be called")
 	}
 	resolvedObjectMeta, pipelineSpec, err := GetPipelineData(context.Background(), pr, gt)
@@ -118,7 +118,7 @@ func TestGetPipelineSpec_Invalid(t *testing.T) {
 			Name: "mypipelinerun",
 		},
 	}
-	gt := func(ctx context.Context, n string) (v1beta1.PipelineObject, *v1beta1.ConfigSource, error) {
+	gt := func(ctx context.Context, n string) (*v1beta1.Pipeline, *v1beta1.ConfigSource, error) {
 		return nil, nil, errors.New("shouldn't be called")
 	}
 	_, _, err := GetPipelineData(context.Background(), tr, gt)
@@ -216,7 +216,7 @@ func TestGetPipelineData_ResolutionSuccess(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := cfgtesting.SetDefaults(context.Background(), t, tc.defaults)
-			getPipeline := func(ctx context.Context, n string) (v1beta1.PipelineObject, *v1beta1.ConfigSource, error) {
+			getPipeline := func(ctx context.Context, n string) (*v1beta1.Pipeline, *v1beta1.ConfigSource, error) {
 				return &v1beta1.Pipeline{
 					ObjectMeta: *tc.sourceMeta.DeepCopy(),
 					Spec:       *tc.sourceSpec.DeepCopy(),
@@ -252,7 +252,7 @@ func TestGetPipelineSpec_Error(t *testing.T) {
 			},
 		},
 	}
-	gt := func(ctx context.Context, n string) (v1beta1.PipelineObject, *v1beta1.ConfigSource, error) {
+	gt := func(ctx context.Context, n string) (*v1beta1.Pipeline, *v1beta1.ConfigSource, error) {
 		return nil, nil, errors.New("something went wrong")
 	}
 	_, _, err := GetPipelineData(context.Background(), tr, gt)
@@ -274,7 +274,7 @@ func TestGetPipelineData_ResolutionError(t *testing.T) {
 			},
 		},
 	}
-	getPipeline := func(ctx context.Context, n string) (v1beta1.PipelineObject, *v1beta1.ConfigSource, error) {
+	getPipeline := func(ctx context.Context, n string) (*v1beta1.Pipeline, *v1beta1.ConfigSource, error) {
 		return nil, nil, errors.New("something went wrong")
 	}
 	ctx := context.Background()
@@ -297,7 +297,7 @@ func TestGetPipelineData_ResolvedNilPipeline(t *testing.T) {
 			},
 		},
 	}
-	getPipeline := func(ctx context.Context, n string) (v1beta1.PipelineObject, *v1beta1.ConfigSource, error) {
+	getPipeline := func(ctx context.Context, n string) (*v1beta1.Pipeline, *v1beta1.ConfigSource, error) {
 		return nil, nil, nil
 	}
 	ctx := context.Background()
