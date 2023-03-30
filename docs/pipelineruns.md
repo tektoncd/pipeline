@@ -1141,10 +1141,6 @@ timeouts:
 All three sub-fields are optional, and will be automatically processed according to the following constraint:
 * `timeouts.pipeline >= timeouts.tasks + timeouts.finally`
 
-The global default timeout is set to 60 minutes when you first install Tekton. You can set
-a different global default timeout value using the `default-timeout-minutes` field in
-[`config/config-defaults.yaml`](./../config/config-defaults.yaml).
-
 Each `timeout` field is a `duration` conforming to Go's
 [`ParseDuration`](https://golang.org/pkg/time/#ParseDuration) format. For example, valid
 values are `1h30m`, `1h`, `1m`, and `60s`.
@@ -1152,6 +1148,10 @@ values are `1h30m`, `1h`, `1m`, and `60s`.
 If any of the sub-fields are set to "0", there is no timeout for that section of the PipelineRun,
 meaning that it will run until it completes successfully or encounters an error.
 To set `timeouts.tasks` or `timeouts.finally` to "0", you must also set `timeouts.pipeline` to "0".
+
+The global default timeout is set to 60 minutes when you first install Tekton. You can set
+a different global default timeout value using the `default-timeout-minutes` field in
+[`config/config-defaults.yaml`](./../config/config-defaults.yaml).
 
 Example timeouts usages are as follows:
 

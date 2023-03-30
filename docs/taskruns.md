@@ -668,12 +668,6 @@ You can use the `timeout` field to set the `TaskRun's` desired timeout value for
 not specify this value, the global default timeout value applies (the same, to `each retry attempt`). If you set the timeout to 0,
 the `TaskRun` will have no timeout and will run until it completes successfully or fails from an error.
 
-The global default timeout is set to 60 minutes when you first install Tekton. You can set
-a different global default timeout value using the `default-timeout-minutes` field in
-[`config/config-defaults.yaml`](./../config/config-defaults.yaml). If you set the global timeout to 0,
-all `TaskRuns` that do not have a timeout set will have no timeout and will run until it completes successfully
-or fails from an error.
-
 The `timeout` value is a `duration` conforming to Go's
 [`ParseDuration`](https://golang.org/pkg/time/#ParseDuration) format. For example, valid
 values are `1h30m`, `1h`, `1m`, `60s`, and `0`.
@@ -681,6 +675,12 @@ values are `1h30m`, `1h`, `1m`, `60s`, and `0`.
 If a `TaskRun` runs longer than its timeout value, the pod associated with the `TaskRun` will be deleted. This
 means that the logs of the `TaskRun` are not preserved. The deletion of the `TaskRun` pod is necessary in order to
 stop `TaskRun` step containers from running.
+
+The global default timeout is set to 60 minutes when you first install Tekton. You can set
+a different global default timeout value using the `default-timeout-minutes` field in
+[`config/config-defaults.yaml`](./../config/config-defaults.yaml). If you set the global timeout to 0,
+all `TaskRuns` that do not have a timeout set will have no timeout and will run until it completes successfully
+or fails from an error.
 
 ### Specifying `ServiceAccount` credentials
 
