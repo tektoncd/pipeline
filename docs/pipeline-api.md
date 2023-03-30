@@ -9034,7 +9034,7 @@ map[string]string
 <h3 id="tekton.dev/v1beta1.PipelineObject">PipelineObject
 </h3>
 <div>
-<p>PipelineObject is implemented by Pipeline and ClusterPipeline</p>
+<p>PipelineObject is implemented by Pipeline</p>
 </div>
 <h3 id="tekton.dev/v1beta1.PipelineRef">PipelineRef
 </h3>
