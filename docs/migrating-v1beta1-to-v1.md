@@ -7,6 +7,7 @@ weight: 4000
 
 # Migrating From Tekton `v1beta1` to Tekton `v1`
 
+- [Upgrading objects to new storedversion](#upgrading-objects-to-new-storedversion)
 - [Changes to fields](#changes-to-fields)
 - [Upgrading `PipelineRun.Timeout` to `PipelineRun.Timeouts`](#upgrading-pipelinerun.timeout-to-pipelinerun.timeouts)
 - [Deprecating Resources from Task, TaskRun, Pipeline and PipelineRun](#deprecating-resources-from-task,-taskrun,-pipeline-and-pipelinerun)
@@ -14,8 +15,13 @@ weight: 4000
 - [Adding `TaskRunTemplate` in `PipelineRun.Spec`](#adding-taskruntemplate-to-pipelinerun.spec)
 
 
-This document describes the differences between `v1beta1` Tekton entities and their
-`v1` counterparts. It also describes the changed fields and the deprecated fields into v1.
+This document serves as the guide for the migration from `v1beta1` to `v1` apiVersion.
+It identifies the differences between `v1beta1` Tekton objects and their `v1` counterparts.
+It also describes the changed fields and the deprecated fields moving to v1.
+
+## Upgrading objects to new storedversion
+Please refer to the [official version upgrade guide](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definition-versioning/#upgrade-existing-objects-to-a-new-stored-version) for deprecating the `v1beta1` apiVersion after swapping `v1` as the stable storage version.
+
 ## Changes to fields
 
 In Tekton `v1`, the following fields have been changed:
