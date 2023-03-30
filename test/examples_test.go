@@ -291,10 +291,10 @@ func imageNamesMapping() map[string]string {
 			"registry":                              getTestImage(registryImage),
 			"node":                                  "node:alpine3.11",
 			"gcr.io/cloud-builders/git":             "alpine/git:latest",
-			"docker:dind":                           "ibmcom/docker-s390x:20.10",
+			"docker:dind":                           "icr.io/tekton-upstream/docker-s390x:20.10",
 			"docker":                                "docker:18.06.3",
 			"mikefarah/yq:3":                        "danielxlee/yq:2.4.0",
-			"stedolan/jq":                           "ibmcom/jq-s390x:latest",
+			"stedolan/jq":                           "icr.io/tekton-upstream/jq-s390x:latest",
 			"amd64/ubuntu":                          "s390x/ubuntu",
 			"gcr.io/kaniko-project/executor:v1.3.0": getTestImage(kanikoImage),
 		}
@@ -303,10 +303,10 @@ func imageNamesMapping() map[string]string {
 			"registry":                              getTestImage(registryImage),
 			"node":                                  "node:alpine3.11",
 			"gcr.io/cloud-builders/git":             "alpine/git:latest",
-			"docker:dind":                           "ibmcom/docker-ppc64le:19.03-dind",
+			"docker:dind":                           "icr.io/tekton-upstream/docker-ppc64le:19.03-dind",
 			"docker":                                "docker:18.06.3",
 			"mikefarah/yq:3":                        "danielxlee/yq:2.4.0",
-			"stedolan/jq":                           "ibmcom/jq-ppc64le:latest",
+			"stedolan/jq":                           "icr.io/tekton-upstream/jq-ppc64le:latest",
 			"gcr.io/kaniko-project/executor:v1.3.0": getTestImage(kanikoImage),
 		}
 	}

@@ -56,22 +56,20 @@ func initImageNames() map[int]string {
 	case "s390x":
 		return map[int]string{
 			busyboxImage:   "busybox@sha256:4f47c01fa91355af2865ac10fef5bf6ec9c7f42ad2321377c21e844427972977",
-			registryImage:  "ibmcom/registry:2.6.2.5",
-			kanikoImage:    "gcr.io/kaniko-project/executor:s390x-9ed158c1f63a059cde4fd5f8b95af51d452d9aa7",
-			dockerizeImage: "ibmcom/dockerize-s390x",
+			registryImage:  "icr.io/tekton-upstream/registry:2.6.2.5",
+			dockerizeImage: "icr.io/tekton-upstream/dockerize-s390x",
 		}
 	case "ppc64le":
 		return map[int]string{
 			busyboxImage:   "busybox@sha256:4f47c01fa91355af2865ac10fef5bf6ec9c7f42ad2321377c21e844427972977",
 			registryImage:  "ppc64le/registry:2",
-			kanikoImage:    "ibmcom/kaniko-project-executor-ppc64le:v0.17.1",
-			dockerizeImage: "ibmcom/dockerize-ppc64le",
+			dockerizeImage: "icr.io/tekton-upstream/dockerize-ppc64le",
 		}
 	default:
 		return map[int]string{
 			busyboxImage:   "busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649",
 			registryImage:  "registry",
-			kanikoImage:    "gcr.io/kaniko-project/executor:v1.3.0",
+			kanikoImage:    "gcr.io/kaniko-project/executor:v1.9.2",
 			dockerizeImage: "jwilder/dockerize",
 		}
 	}
