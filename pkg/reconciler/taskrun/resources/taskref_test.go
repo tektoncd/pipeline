@@ -215,20 +215,27 @@ func TestLocalTaskRef(t *testing.T) {
 				Tektonclient: tektonclient,
 			}
 
-			task, configSource, err := lc.GetTask(ctx, tc.ref.Name)
+			task, clusterTask, configSource, err := lc.GetTask(ctx, tc.ref.Name)
 			if tc.wantErr && err == nil {
 				t.Fatal("Expected error but found nil instead")
 			} else if !tc.wantErr && err != nil {
 				t.Fatalf("Received unexpected error ( %#v )", err)
 			}
 
-			if d := cmp.Diff(task, tc.expected); tc.expected != nil && d != "" {
-				t.Error(diff.PrintWantGot(d))
-			}
-
 			// local cluster tasks have empty source for now. This may be changed in future.
 			if configSource != nil {
 				t.Errorf("expected configsource is nil, but got %v", configSource)
+			}
+
+			if clusterTask != nil {
+				if d := cmp.Diff(clusterTask, tc.expected); tc.expected != nil && d != "" {
+					t.Error(diff.PrintWantGot(d))
+				}
+				return
+			}
+
+			if d := cmp.Diff(task, tc.expected); tc.expected != nil && d != "" {
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -450,9 +457,16 @@ func TestGetTaskFunc(t *testing.T) {
 			}
 			fn := resources.GetTaskFunc(ctx, kubeclient, tektonclient, nil, trForFunc, tc.ref, "", "default", "default")
 
-			task, configSource, err := fn(ctx, tc.ref.Name)
+			task, clusterTask, configSource, err := fn(ctx, tc.ref.Name)
 			if err != nil {
 				t.Fatalf("failed to call taskfn: %s", err.Error())
+			}
+
+			if clusterTask != nil {
+				if diff := cmp.Diff(clusterTask, tc.expected); tc.expected != nil && diff != "" {
+					t.Error(diff)
+				}
+				return
 			}
 
 			if diff := cmp.Diff(task, tc.expected); tc.expected != nil && diff != "" {
@@ -517,7 +531,7 @@ echo hello
 
 	fn := resources.GetTaskFuncFromTaskRun(ctx, kubeclient, tektonclient, nil, TaskRun, []*v1alpha1.VerificationPolicy{})
 
-	actualTask, actualConfigSource, err := fn(ctx, name)
+	actualTask, _, actualConfigSource, err := fn(ctx, name)
 	if err != nil {
 		t.Fatalf("failed to call Taskfn: %s", err.Error())
 	}
@@ -569,7 +583,7 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 			}
 			fn := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default")
 
-			resolvedTask, resolvedConfigSource, err := fn(ctx, taskRef.Name)
+			resolvedTask, _, resolvedConfigSource, err := fn(ctx, taskRef.Name)
 			if err != nil {
 				t.Fatalf("failed to call pipelinefn: %s", err.Error())
 			}
@@ -635,7 +649,7 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	}
 	fn := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default")
 
-	resolvedTask, resolvedConfigSource, err := fn(ctx, taskRef.Name)
+	resolvedTask, _, resolvedConfigSource, err := fn(ctx, taskRef.Name)
 	if err != nil {
 		t.Fatalf("failed to call pipelinefn: %s", err.Error())
 	}
@@ -677,7 +691,7 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	}
 	fnNotMatching := resources.GetTaskFunc(ctx, nil, nil, requester, trNotMatching, trNotMatching.Spec.TaskRef, "", "default", "default")
 
-	_, _, err = fnNotMatching(ctx, taskRefNotMatching.Name)
+	_, _, _, err = fnNotMatching(ctx, taskRefNotMatching.Name)
 	if err == nil {
 		t.Fatal("expected error for non-matching params, did not get one")
 	}
@@ -702,7 +716,7 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 		},
 	}
 	fn := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default")
-	if _, _, err := fn(ctx, taskRef.Name); err == nil {
+	if _, _, _, err := fn(ctx, taskRef.Name); err == nil {
 		t.Fatalf("expected error due to invalid pipeline data but saw none")
 	}
 }
@@ -820,7 +834,7 @@ func TestGetVerifiedTaskFunc_Success(t *testing.T) {
 			}
 			fn := resources.GetVerifiedTaskFunc(ctx, k8sclient, tektonclient, tc.requester, tr, tr.Spec.TaskRef, "", "default", "default", tc.policies)
 
-			resolvedTask, source, err := fn(ctx, taskRef.Name)
+			resolvedTask, _, source, err := fn(ctx, taskRef.Name)
 
 			if err != nil {
 				t.Fatalf("Received unexpected error ( %#v )", err)
@@ -892,7 +906,7 @@ func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
 		name                      string
 		requester                 *test.Requester
 		verificationNoMatchPolicy string
-		expected                  runtime.Object
+		expected                  *v1beta1.Task
 		expectedErr               error
 	}{{
 		name:                      "unsigned task with fails verification with fail no match policy",
@@ -950,18 +964,25 @@ func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
 			}
 			fn := resources.GetVerifiedTaskFunc(ctx, k8sclient, tektonclient, tc.requester, tr, tr.Spec.TaskRef, "", "default", "default", vps)
 
-			resolvedTask, source, err := fn(ctx, taskRef.Name)
+			resolvedTask, clusterTask, source, err := fn(ctx, taskRef.Name)
 
 			if !errors.Is(err, tc.expectedErr) {
 				t.Errorf("GetVerifiedTaskFunc got %v but want %v", err, tc.expectedErr)
 			}
 
-			if d := cmp.Diff(tc.expected, resolvedTask); d != "" {
-				t.Errorf("resolvedTask did not match: %s", diff.PrintWantGot(d))
-			}
-
 			if source != nil {
 				t.Errorf("source is: %v but want is nil", source)
+			}
+
+			if clusterTask != nil {
+				if d := cmp.Diff(tc.expected, clusterTask); d != "" {
+					t.Errorf("resolved ClusterTask did not match: %s", diff.PrintWantGot(d))
+				}
+				return
+			}
+
+			if d := cmp.Diff(tc.expected, resolvedTask); d != "" {
+				t.Errorf("resolvedTask did not match: %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -1042,7 +1063,7 @@ func TestGetVerifiedTaskFunc_GetFuncError(t *testing.T) {
 
 			fn := resources.GetVerifiedTaskFunc(ctx, k8sclient, tektonclient, tc.requester, &tc.taskrun, tc.taskrun.Spec.TaskRef, "", "default", "default", vps)
 
-			_, _, err = fn(ctx, tc.taskrun.Spec.TaskRef.Name)
+			_, _, _, err = fn(ctx, tc.taskrun.Spec.TaskRef.Name)
 
 			if d := cmp.Diff(err.Error(), tc.expectedErr.Error()); d != "" {
 				t.Fatalf("Expected error %v but found %v instead", tc.expectedErr, err)

@@ -46,8 +46,9 @@ const (
 // Return an error when no policies are found and trusted-resources-verification-no-match-policy is set to fail,
 // or the resource fails to pass matched enforce verification policy
 // source is from ConfigSource.URI, which will be used to match policy patterns. k8s is used to fetch secret from cluster
-func VerifyTask(ctx context.Context, taskObj v1beta1.TaskObject, k8s kubernetes.Interface, source string, verificationpolicies []*v1alpha1.VerificationPolicy) error {
-	matchedPolicies, err := getMatchedPolicies(taskObj.TaskMetadata().Name, source, verificationpolicies)
+func VerifyTask(ctx context.Context, taskObj *v1beta1.Task, k8s kubernetes.Interface, source string, verificationpolicies []*v1alpha1.VerificationPolicy) error {
+	objectMeta := taskObj.TaskMetadata()
+	matchedPolicies, err := getMatchedPolicies(objectMeta.Name, source, verificationpolicies)
 	if err != nil {
 		if errors.Is(err, ErrNoMatchedPolicies) {
 			switch config.GetVerificationNoMatchPolicy(ctx) {
@@ -62,7 +63,7 @@ func VerifyTask(ctx context.Context, taskObj v1beta1.TaskObject, k8s kubernetes.
 		return fmt.Errorf("failed to get matched policies: %w", err)
 	}
 
-	tm, signature, err := prepareObjectMeta(taskObj.TaskMetadata())
+	tm, signature, err := prepareObjectMeta(objectMeta)
 	if err != nil {
 		return err
 	}

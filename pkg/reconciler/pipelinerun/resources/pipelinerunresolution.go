@@ -692,7 +692,8 @@ func resolveTask(
 	pipelineTask v1beta1.PipelineTask,
 ) (v1beta1.TaskSpec, string, v1beta1.TaskKind, error) {
 	var (
-		t        v1beta1.TaskObject
+		t        *v1beta1.Task
+		ct       *v1beta1.ClusterTask
 		err      error
 		spec     v1beta1.TaskSpec
 		taskName string
@@ -707,7 +708,7 @@ func resolveTask(
 		} else {
 			// Following minimum status principle (TEP-0100), no need to propagate the source about PipelineTask up to PipelineRun status.
 			// Instead, the child TaskRun's status will be the place recording the source of individual task.
-			t, _, err = getTask(ctx, pipelineTask.TaskRef.Name)
+			t, ct, _, err = getTask(ctx, pipelineTask.TaskRef.Name)
 			switch {
 			case errors.Is(err, remote.ErrRequestInProgress):
 				return v1beta1.TaskSpec{}, "", "", err
@@ -719,8 +720,14 @@ func resolveTask(
 					Msg:  err.Error(),
 				}
 			default:
-				spec = t.TaskSpec()
-				taskName = t.TaskMetadata().Name
+				if ct == nil && t != nil {
+					spec = t.TaskSpec()
+					taskName = t.TaskMetadata().Name
+				}
+				if ct != nil && t == nil {
+					spec = ct.TaskSpec()
+					taskName = ct.TaskMetadata().Name
+				}
 			}
 		}
 		kind = pipelineTask.TaskRef.Kind

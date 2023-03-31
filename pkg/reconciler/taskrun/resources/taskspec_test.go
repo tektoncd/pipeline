@@ -29,45 +29,67 @@ import (
 )
 
 func TestGetTaskSpec_Ref(t *testing.T) {
-	task := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "orchestrate",
-		},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
-				Name: "step1",
-			}},
-		},
-	}
-	tr := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "mytaskrun",
-		},
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
+	testcases := []struct {
+		name        string
+		task        *v1beta1.Task
+		clusterTask *v1beta1.ClusterTask
+	}{{
+		name: "get taskspec with task",
+		task: &v1beta1.Task{
+			ObjectMeta: metav1.ObjectMeta{
 				Name: "orchestrate",
 			},
+			Spec: v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Name: "step1",
+				}},
+			},
 		},
-	}
+	}, {
+		name: "get taskspec with clustertask",
+		clusterTask: &v1beta1.ClusterTask{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "orchestrate",
+			},
+			Spec: v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Name: "step1",
+				}},
+			},
+		},
+	}}
 
-	gt := func(ctx context.Context, n string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error) {
-		return task, sampleConfigSource.DeepCopy(), nil
-	}
-	resolvedObjectMeta, taskSpec, err := resources.GetTaskData(context.Background(), tr, gt)
+	for _, tc := range testcases {
+		tr := &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "mytaskrun",
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: "orchestrate",
+				},
+			},
+		}
 
-	if err != nil {
-		t.Fatalf("Did not expect error getting task spec but got: %s", err)
-	}
+		gt := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.ClusterTask, *v1beta1.ConfigSource, error) {
+			return tc.task, tc.clusterTask, sampleConfigSource.DeepCopy(), nil
+		}
+		resolvedObjectMeta, taskSpec, err := resources.GetTaskData(context.Background(), tr, gt)
 
-	if resolvedObjectMeta.Name != "orchestrate" {
-		t.Errorf("Expected task name to be `orchestrate` but was %q", resolvedObjectMeta.Name)
-	}
+		if err != nil {
+			t.Fatalf("Did not expect error getting task spec but got: %s", err)
+		}
 
-	if len(taskSpec.Steps) != 1 || taskSpec.Steps[0].Name != "step1" {
-		t.Errorf("Task Spec not resolved as expected, expected referenced Task spec but got: %v", taskSpec)
-	}
-	if d := cmp.Diff(sampleConfigSource, resolvedObjectMeta.ConfigSource); d != "" {
-		t.Errorf("configsource did not match: %s", diff.PrintWantGot(d))
+		if resolvedObjectMeta.Name != "orchestrate" {
+			t.Errorf("Expected task name to be `orchestrate` but was %q", resolvedObjectMeta.Name)
+		}
+
+		if len(taskSpec.Steps) != 1 || taskSpec.Steps[0].Name != "step1" {
+			t.Errorf("Task Spec not resolved as expected, expected referenced Task spec but got: %v", taskSpec)
+		}
+		if d := cmp.Diff(sampleConfigSource, resolvedObjectMeta.ConfigSource); d != "" {
+			t.Errorf("configsource did not match: %s", diff.PrintWantGot(d))
+		}
 	}
 }
 
@@ -84,8 +106,8 @@ func TestGetTaskSpec_Embedded(t *testing.T) {
 			},
 		},
 	}
-	gt := func(ctx context.Context, n string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error) {
-		return nil, nil, errors.New("shouldn't be called")
+	gt := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.ClusterTask, *v1beta1.ConfigSource, error) {
+		return nil, nil, nil, errors.New("shouldn't be called")
 	}
 	resolvedObjectMeta, taskSpec, err := resources.GetTaskData(context.Background(), tr, gt)
 
@@ -113,8 +135,8 @@ func TestGetTaskSpec_Invalid(t *testing.T) {
 			Name: "mytaskrun",
 		},
 	}
-	gt := func(ctx context.Context, n string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error) {
-		return nil, nil, errors.New("shouldn't be called")
+	gt := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.ClusterTask, *v1beta1.ConfigSource, error) {
+		return nil, nil, nil, errors.New("shouldn't be called")
 	}
 	_, _, err := resources.GetTaskData(context.Background(), tr, gt)
 	if err == nil {
@@ -133,8 +155,8 @@ func TestGetTaskSpec_Error(t *testing.T) {
 			},
 		},
 	}
-	gt := func(ctx context.Context, n string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error) {
-		return nil, nil, errors.New("something went wrong")
+	gt := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.ClusterTask, *v1beta1.ConfigSource, error) {
+		return nil, nil, nil, errors.New("something went wrong")
 	}
 	_, _, err := resources.GetTaskData(context.Background(), tr, gt)
 	if err == nil {
@@ -143,6 +165,35 @@ func TestGetTaskSpec_Error(t *testing.T) {
 }
 
 func TestGetTaskData_ResolutionSuccess(t *testing.T) {
+	sourceMeta := metav1.ObjectMeta{
+		Name: "task",
+	}
+	sourceSpec := v1beta1.TaskSpec{
+		Steps: []v1beta1.Step{{
+			Name:   "step1",
+			Image:  "ubuntu",
+			Script: `echo "hello world!"`,
+		}},
+	}
+	testcases := []struct {
+		getTask resources.GetTask
+	}{
+		{
+			getTask: func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.ClusterTask, *v1beta1.ConfigSource, error) {
+				return &v1beta1.Task{
+					ObjectMeta: *sourceMeta.DeepCopy(),
+					Spec:       *sourceSpec.DeepCopy(),
+				}, nil, sampleConfigSource.DeepCopy(), nil
+			},
+		}, {
+			getTask: func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.ClusterTask, *v1beta1.ConfigSource, error) {
+				return nil, &v1beta1.ClusterTask{
+					ObjectMeta: *sourceMeta.DeepCopy(),
+					Spec:       *sourceSpec.DeepCopy(),
+				}, sampleConfigSource.DeepCopy(), nil
+			}},
+	}
+
 	tr := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "mytaskrun",
@@ -162,38 +213,23 @@ func TestGetTaskData_ResolutionSuccess(t *testing.T) {
 			},
 		},
 	}
-	sourceMeta := metav1.ObjectMeta{
-		Name: "task",
-	}
-	sourceSpec := v1beta1.TaskSpec{
-		Steps: []v1beta1.Step{{
-			Name:   "step1",
-			Image:  "ubuntu",
-			Script: `echo "hello world!"`,
-		}},
-	}
 
-	getTask := func(ctx context.Context, n string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error) {
-		return &v1beta1.Task{
-			ObjectMeta: *sourceMeta.DeepCopy(),
-			Spec:       *sourceSpec.DeepCopy(),
-		}, sampleConfigSource.DeepCopy(), nil
-	}
-	ctx := context.Background()
-	resolvedMeta, resolvedSpec, err := resources.GetTaskData(ctx, tr, getTask)
-	if err != nil {
-		t.Fatalf("Unexpected error getting mocked data: %v", err)
-	}
-	if sourceMeta.Name != resolvedMeta.Name {
-		t.Errorf("Expected name %q but resolved to %q", sourceMeta.Name, resolvedMeta.Name)
-	}
+	for _, tc := range testcases {
+		resolvedMeta, resolvedSpec, err := resources.GetTaskData(context.Background(), tr, tc.getTask)
+		if err != nil {
+			t.Fatalf("Unexpected error getting mocked data: %v", err)
+		}
+		if sourceMeta.Name != resolvedMeta.Name {
+			t.Errorf("Expected name %q but resolved to %q", sourceMeta.Name, resolvedMeta.Name)
+		}
 
-	if d := cmp.Diff(sampleConfigSource, resolvedMeta.ConfigSource); d != "" {
-		t.Errorf("configsource did not match: %s", diff.PrintWantGot(d))
-	}
+		if d := cmp.Diff(sampleConfigSource, resolvedMeta.ConfigSource); d != "" {
+			t.Errorf("configsource did not match: %s", diff.PrintWantGot(d))
+		}
 
-	if d := cmp.Diff(sourceSpec, *resolvedSpec); d != "" {
-		t.Errorf(diff.PrintWantGot(d))
+		if d := cmp.Diff(sourceSpec, *resolvedSpec); d != "" {
+			t.Errorf(diff.PrintWantGot(d))
+		}
 	}
 }
 
@@ -210,8 +246,8 @@ func TestGetPipelineData_ResolutionError(t *testing.T) {
 			},
 		},
 	}
-	getTask := func(ctx context.Context, n string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error) {
-		return nil, nil, errors.New("something went wrong")
+	getTask := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.ClusterTask, *v1beta1.ConfigSource, error) {
+		return nil, nil, nil, errors.New("something went wrong")
 	}
 	ctx := context.Background()
 	_, _, err := resources.GetTaskData(ctx, tr, getTask)
@@ -233,8 +269,8 @@ func TestGetTaskData_ResolvedNilTask(t *testing.T) {
 			},
 		},
 	}
-	getTask := func(ctx context.Context, n string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error) {
-		return nil, nil, nil
+	getTask := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.ClusterTask, *v1beta1.ConfigSource, error) {
+		return nil, nil, nil, nil
 	}
 	ctx := context.Background()
 	_, _, err := resources.GetTaskData(ctx, tr, getTask)

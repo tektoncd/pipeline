@@ -199,7 +199,7 @@ func TestVerifyTask_Success(t *testing.T) {
 	mismatchedSource := "wrong source"
 	tcs := []struct {
 		name                      string
-		task                      v1beta1.TaskObject
+		task                      *v1beta1.Task
 		source                    string
 		signer                    signature.SignerVerifier
 		verificationNoMatchPolicy string
@@ -276,7 +276,7 @@ func TestVerifyTask_Error(t *testing.T) {
 	mismatchedSource := "wrong source"
 	tcs := []struct {
 		name               string
-		task               v1beta1.TaskObject
+		task               *v1beta1.Task
 		source             string
 		verificationPolicy []*v1alpha1.VerificationPolicy
 		expectedError      error

@@ -35,7 +35,7 @@ type ResolvedTask struct {
 }
 
 // GetTask is a function used to retrieve Tasks.
-type GetTask func(context.Context, string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error)
+type GetTask func(context.Context, string) (*v1beta1.Task, *v1beta1.ClusterTask, *v1beta1.ConfigSource, error)
 
 // GetTaskRun is a function used to retrieve TaskRuns
 type GetTaskRun func(string) (*v1beta1.TaskRun, error)
@@ -50,25 +50,34 @@ func GetTaskData(ctx context.Context, taskRun *v1beta1.TaskRun, getTask GetTask)
 	switch {
 	case taskRun.Spec.TaskRef != nil && taskRun.Spec.TaskRef.Name != "":
 		// Get related task for taskrun
-		t, source, err := getTask(ctx, taskRun.Spec.TaskRef.Name)
+		t, ct, source, err := getTask(ctx, taskRun.Spec.TaskRef.Name)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error when listing tasks for taskRun %s: %w", taskRun.Name, err)
 		}
-		taskMeta = t.TaskMetadata()
-		taskSpec = t.TaskSpec()
-		configSource = source
+		if ct == nil {
+			taskMeta = t.TaskMetadata()
+			taskSpec = t.TaskSpec()
+			configSource = source
+		} else {
+			taskMeta = ct.TaskMetadata()
+			taskSpec = ct.TaskSpec()
+			configSource = source
+		}
 	case taskRun.Spec.TaskSpec != nil:
 		taskMeta = taskRun.ObjectMeta
 		taskSpec = *taskRun.Spec.TaskSpec
 		// TODO: if we want to set source for embedded taskspec, set it here.
 		// https://github.com/tektoncd/pipeline/issues/5522
 	case taskRun.Spec.TaskRef != nil && taskRun.Spec.TaskRef.Resolver != "":
-		task, source, err := getTask(ctx, taskRun.Name)
+		task, ct, source, err := getTask(ctx, taskRun.Name)
 		switch {
 		case err != nil:
 			return nil, nil, err
-		case task == nil:
+		case task == nil && ct == nil:
 			return nil, nil, errors.New("resolution of remote resource completed successfully but no task was returned")
+		case task == nil && ct != nil:
+			taskMeta = ct.TaskMetadata()
+			taskSpec = ct.TaskSpec()
 		default:
 			taskMeta = task.TaskMetadata()
 			taskSpec = task.TaskSpec()
