@@ -183,7 +183,7 @@ func TestGetPipelineFunc(t *testing.T) {
 			Name:   "simple",
 			Bundle: u.Host + "/remote-pipeline-without-defaults",
 		},
-		expected: simplePipelineWithSpecParamAndKind(v1beta1.ParamTypeString, v1beta1.NamespacedTaskKind),
+		expected: simplePipelineWithSpecParamAndKind(),
 	}}
 
 	for _, tc := range testcases {
@@ -886,7 +886,7 @@ func simplePipelineWithSpecAndParam(pt v1beta1.ParamType) *v1beta1.Pipeline {
 	return p
 }
 
-func simplePipelineWithSpecParamAndKind(pt v1beta1.ParamType, tk v1beta1.TaskKind) *v1beta1.Pipeline {
+func simplePipelineWithSpecParamAndKind() *v1beta1.Pipeline {
 	p := simplePipelineWithBaseSpec()
 	p.Spec.Params = []v1beta1.ParamSpec{{
 		Name: "foo",

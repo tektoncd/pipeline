@@ -665,11 +665,7 @@ func (t *ResolvedPipelineTask) resolvePipelineRunTaskWithTaskRun(
 		}
 	}
 
-	if err := t.resolveTaskResources(ctx, getTask, pipelineTask, taskRun); err != nil {
-		return err
-	}
-
-	return nil
+	return t.resolveTaskResources(ctx, getTask, pipelineTask, taskRun)
 }
 
 func (t *ResolvedPipelineTask) resolveTaskResources(
@@ -812,7 +808,7 @@ func getRunNamesFromChildRefs(childRefs []v1beta1.ChildStatusReference, ptName s
 
 // resolvePipelineTaskResources matches PipelineResources referenced by pt inputs and outputs with the
 // providedResources and returns an instance of ResolvedTask.
-func resolvePipelineTaskResources(pt v1beta1.PipelineTask, ts *v1beta1.TaskSpec, taskName string, kind v1beta1.TaskKind) (*resources.ResolvedTask, error) {
+func resolvePipelineTaskResources(_ v1beta1.PipelineTask, ts *v1beta1.TaskSpec, taskName string, kind v1beta1.TaskKind) (*resources.ResolvedTask, error) {
 	rtr := resources.ResolvedTask{
 		TaskName: taskName,
 		TaskSpec: ts,
