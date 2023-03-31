@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package termination
+package termination_test
 
 import (
 	"errors"
@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/result"
+	termination "github.com/tektoncd/pipeline/pkg/termination"
 	"github.com/tektoncd/pipeline/test/diff"
 	"knative.dev/pkg/logging"
 )
@@ -45,7 +46,7 @@ func TestExistingFile(t *testing.T) {
 		Value: "hello",
 	}}
 
-	if err := WriteMessage(tmpFile.Name(), output); err != nil {
+	if err := termination.WriteMessage(tmpFile.Name(), output); err != nil {
 		logger.Fatalf("Errot while writing message: %s", err)
 	}
 
@@ -54,7 +55,7 @@ func TestExistingFile(t *testing.T) {
 		Value: "world",
 	}}
 
-	if err := WriteMessage(tmpFile.Name(), output); err != nil {
+	if err := termination.WriteMessage(tmpFile.Name(), output); err != nil {
 		logger.Fatalf("Errot while writing message: %s", err)
 	}
 
@@ -82,7 +83,9 @@ func TestMaxSizeFile(t *testing.T) {
 		Value: value,
 	}}
 
-	if err := WriteMessage(tmpFile.Name(), output); !errors.Is(err, errTooLong) {
+	err = termination.WriteMessage(tmpFile.Name(), output)
+	var expectedErr termination.MessageLengthError
+	if !errors.As(err, &expectedErr) {
 		t.Fatalf("Expected MessageLengthError, received: %v", err)
 	}
 }

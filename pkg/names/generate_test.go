@@ -14,12 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package names
+package names_test
 
 import (
 	"strings"
 	"testing"
 
+	pkgnames "github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/test/names"
 )
 
@@ -35,7 +36,7 @@ func TestRestrictLengthWithRandomSuffix(t *testing.T) {
 	}} {
 		t.Run(c.in, func(t *testing.T) {
 			names.TestingSeed()
-			got := SimpleNameGenerator.RestrictLengthWithRandomSuffix(c.in)
+			got := pkgnames.SimpleNameGenerator.RestrictLengthWithRandomSuffix(c.in)
 			if got != c.want {
 				t.Errorf("RestrictLengthWithRandomSuffix:\n got %q\nwant %q", got, c.want)
 			}
@@ -51,7 +52,7 @@ func TestRestrictLength(t *testing.T) {
 		want: "hello",
 	}, {
 		in:   strings.Repeat("a", 100),
-		want: strings.Repeat("a", maxNameLength),
+		want: strings.Repeat("a", 63),
 	}, {
 		// Values that don't end with an alphanumeric value are
 		// trimmed until they do.
@@ -59,7 +60,7 @@ func TestRestrictLength(t *testing.T) {
 		want: "abcdefg",
 	}} {
 		t.Run(c.in, func(t *testing.T) {
-			got := SimpleNameGenerator.RestrictLength(c.in)
+			got := pkgnames.SimpleNameGenerator.RestrictLength(c.in)
 			if got != c.want {
 				t.Errorf("RestrictLength:\n got %q\nwant %q", got, c.want)
 			}

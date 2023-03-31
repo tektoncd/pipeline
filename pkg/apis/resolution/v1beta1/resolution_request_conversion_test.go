@@ -15,17 +15,18 @@
 
 */
 
-package v1beta1
+package v1beta1_test
 
 import (
 	"context"
 	"testing"
 
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 )
 
 func TestResolutionRequestConversionBadType(t *testing.T) {
-	good, bad := &ResolutionRequest{}, &pipelinev1beta1.Task{}
+	good, bad := &v1beta1.ResolutionRequest{}, &pipelinev1beta1.Task{}
 
 	if err := good.ConvertTo(context.Background(), bad); err == nil {
 		t.Errorf("ConvertTo() = %#v, wanted error", bad)

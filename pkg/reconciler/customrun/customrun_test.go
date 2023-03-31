@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package customrun
+package customrun_test
 
 import (
 	"context"
@@ -25,6 +25,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	customrun "github.com/tektoncd/pipeline/pkg/reconciler/customrun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test"
@@ -51,7 +52,7 @@ func initializeCustomRunControllerAssets(t *testing.T, d test.Data) (test.Assets
 	test.EnsureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
-	ctl := NewController()(ctx, configMapWatcher)
+	ctl := customrun.NewController()(ctx, configMapWatcher)
 	if err := configMapWatcher.Start(ctx.Done()); err != nil {
 		t.Fatalf("error starting configmap watcher: %v", err)
 	}

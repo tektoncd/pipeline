@@ -15,7 +15,7 @@
 
 */
 
-package status
+package status_test
 
 import (
 	"errors"
@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
+	status "github.com/tektoncd/pipeline/pkg/status"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/parse"
@@ -100,7 +101,7 @@ status:
 			}
 			clients, _ := test.SeedTestData(t, ctx, d)
 
-			trStatus, err := GetTaskRunStatusForPipelineTask(ctx, clients.Pipeline, "", tc.childRef)
+			trStatus, err := status.GetTaskRunStatusForPipelineTask(ctx, clients.Pipeline, "", tc.childRef)
 
 			if tc.expectedErr != nil {
 				if err == nil {
@@ -183,7 +184,7 @@ status:
 			}
 			clients, _ := test.SeedTestData(t, ctx, d)
 
-			runStatus, err := GetCustomRunStatusForPipelineTask(ctx, clients.Pipeline, "", tc.childRef)
+			runStatus, err := status.GetCustomRunStatusForPipelineTask(ctx, clients.Pipeline, "", tc.childRef)
 
 			if tc.expectedErr != nil {
 				if err == nil {
@@ -353,7 +354,7 @@ pr-run-1:
 			d.CustomRuns = append(d.CustomRuns, tc.runs...)
 			clients, _ := test.SeedTestData(t, ctx, d)
 
-			trStatuses, runStatuses, err := GetPipelineTaskStatuses(ctx, clients.Pipeline, "", tc.originalPR)
+			trStatuses, runStatuses, err := status.GetPipelineTaskStatuses(ctx, clients.Pipeline, "", tc.originalPR)
 
 			if tc.expectedErr != nil {
 				if err == nil {
