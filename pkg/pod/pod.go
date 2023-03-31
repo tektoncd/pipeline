@@ -223,7 +223,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	// Superceded by podTemplate envs
 	if len(implicitEnvVars) > 0 {
 		for i, s := range stepContainers {
-			env := append(implicitEnvVars, s.Env...) //nolint
+			env := append(implicitEnvVars, s.Env...) // nolint:gocritic
 			stepContainers[i].Env = env
 		}
 	}
@@ -235,7 +235,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 	if len(podTemplate.Env) > 0 {
 		for i, s := range stepContainers {
-			env := append(s.Env, filteredEnvs...) //nolint
+			env := append(s.Env, filteredEnvs...) // nolint:gocritic
 			stepContainers[i].Env = env
 		}
 	}
@@ -243,7 +243,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	if taskRun.Annotations[ExecutionModeAnnotation] == ExecutionModeHermetic && alphaAPIEnabled {
 		for i, s := range stepContainers {
 			// Add it at the end so it overrides
-			env := append(s.Env, corev1.EnvVar{Name: TektonHermeticEnvVar, Value: "1"}) //nolint
+			env := append(s.Env, corev1.EnvVar{Name: TektonHermeticEnvVar, Value: "1"}) // nolint:gocritic
 			stepContainers[i].Env = env
 		}
 	}
@@ -280,7 +280,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 				toAdd = append(toAdd, imp)
 			}
 		}
-		vms := append(s.VolumeMounts, toAdd...) //nolint
+		vms := append(s.VolumeMounts, toAdd...) // nolint:gocritic
 		stepContainers[i].VolumeMounts = vms
 	}
 
@@ -301,7 +301,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 					toAdd = append(toAdd, imp)
 				}
 			}
-			vms := append(s.VolumeMounts, toAdd...) //nolint
+			vms := append(s.VolumeMounts, toAdd...) // nolint:gocritic
 			sidecarContainers[i].VolumeMounts = vms
 		}
 	}

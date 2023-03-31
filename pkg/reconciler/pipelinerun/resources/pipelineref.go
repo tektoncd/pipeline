@@ -117,7 +117,9 @@ func GetVerifiedPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekt
 			refSource = s.URI
 		}
 		if err := trustedresources.VerifyPipeline(ctx, p, k8s, refSource, verificationpolicies); err != nil {
-			return nil, nil, fmt.Errorf("GetVerifiedPipelineFunc failed: %w: %v", trustedresources.ErrResourceVerificationFailed, err)
+			// FixMe: the below %v should be %w (and the nolint pragma removed)
+			// but making that change causes e2e test failures.
+			return nil, nil, fmt.Errorf("GetVerifiedPipelineFunc failed: %w: %v", trustedresources.ErrResourceVerificationFailed, err) // nolint:errorlint
 		}
 		return p, s, nil
 	}

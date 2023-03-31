@@ -1155,7 +1155,7 @@ spec:
 			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
 
-			wantEvents := append(tc.wantEvents, "Warning InternalError 1 error occurred") //nolint
+			wantEvents := append(tc.wantEvents, "Warning InternalError 1 error occurred") //nolint:gocritic
 			reconciledRun, _ := prt.reconcileRun("foo", tc.pipelineRun.Name, wantEvents, tc.permanentError)
 
 			if reconciledRun.Status.CompletionTime == nil {
@@ -7157,11 +7157,14 @@ func checkPipelineRunConditionStatusAndReason(t *testing.T, reconciledRun *v1bet
 	t.Helper()
 
 	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-	if condition == nil || condition.Status != conditionStatus {
-		t.Errorf("Expected PipelineRun status to be %s, but was %v", conditionStatus, condition)
+	if condition == nil {
+		t.Fatalf("want condition, got nil")
 	}
-	if condition != nil && condition.Reason != conditionReason {
-		t.Errorf("Expected reason %s but was %s", conditionReason, condition.Reason)
+	if condition.Status != conditionStatus {
+		t.Errorf("want status %v, got %v", conditionStatus, condition.Status)
+	}
+	if condition.Reason != conditionReason {
+		t.Errorf("want reason %v, got %v", conditionReason, condition.Reason)
 	}
 }
 
