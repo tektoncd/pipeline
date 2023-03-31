@@ -71,29 +71,6 @@ func validateArrayResultsIndex(allResolvedResultRefs ResolvedResultRefs) (Resolv
 	return allResolvedResultRefs, "", nil
 }
 
-// extractResultRefs resolves any ResultReference that are found in param or pipeline result
-// Returns nil if none are found
-func extractResultRefsForParam(pipelineRunState PipelineRunState, param v1beta1.Param) (ResolvedResultRefs, error) {
-	expressions, ok := v1beta1.GetVarSubstitutionExpressionsForParam(param)
-	if ok {
-		return extractResultRefs(expressions, pipelineRunState)
-	}
-	return nil, nil
-}
-
-func extractResultRefs(expressions []string, pipelineRunState PipelineRunState) (ResolvedResultRefs, error) {
-	resultRefs := v1beta1.NewResultRefs(expressions)
-	var resolvedResultRefs ResolvedResultRefs
-	for _, resultRef := range resultRefs {
-		resolvedResultRef, _, err := resolveResultRef(pipelineRunState, resultRef)
-		if err != nil {
-			return nil, err
-		}
-		resolvedResultRefs = append(resolvedResultRefs, resolvedResultRef)
-	}
-	return removeDup(resolvedResultRefs), nil
-}
-
 func removeDup(refs ResolvedResultRefs) ResolvedResultRefs {
 	if refs == nil {
 		return nil

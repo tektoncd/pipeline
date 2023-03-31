@@ -330,7 +330,7 @@ func replaceParamValues(params v1beta1.Params, stringReplacements map[string]str
 // and omitted from the returned slice. A nil slice is returned if no results are passed in or all
 // results are invalid.
 func ApplyTaskResultsToPipelineResults(
-	ctx context.Context,
+	_ context.Context,
 	results []v1beta1.PipelineResult,
 	taskRunResults map[string][]v1beta1.TaskRunResult,
 	customTaskResults map[string][]v1beta1.CustomRunResult,
