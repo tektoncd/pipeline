@@ -14,7 +14,7 @@
  limitations under the License.
 */
 
-package bundle
+package bundle_test
 
 import (
 	"context"
@@ -32,6 +32,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	bundle "github.com/tektoncd/pipeline/pkg/resolution/resolver/bundle"
 	frtesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/internal"
 	"github.com/tektoncd/pipeline/test"
@@ -44,30 +45,34 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+const (
+	disabledError = "cannot handle resolution request, enable-bundles-resolver feature flag not true"
+)
+
 func TestGetSelector(t *testing.T) {
-	resolver := Resolver{}
+	resolver := bundle.Resolver{}
 	sel := resolver.GetSelector(context.Background())
 	if typ, has := sel[resolutioncommon.LabelKeyResolverType]; !has {
 		t.Fatalf("unexpected selector: %v", sel)
-	} else if typ != LabelValueBundleResolverType {
+	} else if typ != bundle.LabelValueBundleResolverType {
 		t.Fatalf("unexpected type: %q", typ)
 	}
 }
 
 func TestValidateParams(t *testing.T) {
-	resolver := Resolver{}
+	resolver := bundle.Resolver{}
 
 	paramsWithTask := []pipelinev1beta1.Param{{
-		Name:  ParamKind,
+		Name:  bundle.ParamKind,
 		Value: *pipelinev1beta1.NewStructuredValues("task"),
 	}, {
-		Name:  ParamName,
+		Name:  bundle.ParamName,
 		Value: *pipelinev1beta1.NewStructuredValues("foo"),
 	}, {
-		Name:  ParamBundle,
+		Name:  bundle.ParamBundle,
 		Value: *pipelinev1beta1.NewStructuredValues("bar"),
 	}, {
-		Name:  ParamServiceAccount,
+		Name:  bundle.ParamServiceAccount,
 		Value: *pipelinev1beta1.NewStructuredValues("baz"),
 	}}
 
@@ -76,16 +81,16 @@ func TestValidateParams(t *testing.T) {
 	}
 
 	paramsWithPipeline := []pipelinev1beta1.Param{{
-		Name:  ParamKind,
+		Name:  bundle.ParamKind,
 		Value: *pipelinev1beta1.NewStructuredValues("pipeline"),
 	}, {
-		Name:  ParamName,
+		Name:  bundle.ParamName,
 		Value: *pipelinev1beta1.NewStructuredValues("foo"),
 	}, {
-		Name:  ParamBundle,
+		Name:  bundle.ParamBundle,
 		Value: *pipelinev1beta1.NewStructuredValues("bar"),
 	}, {
-		Name:  ParamServiceAccount,
+		Name:  bundle.ParamServiceAccount,
 		Value: *pipelinev1beta1.NewStructuredValues("baz"),
 	}}
 	if err := resolver.ValidateParams(context.Background(), paramsWithPipeline); err != nil {
@@ -94,21 +99,21 @@ func TestValidateParams(t *testing.T) {
 }
 
 func TestValidateParamsDisabled(t *testing.T) {
-	resolver := Resolver{}
+	resolver := bundle.Resolver{}
 
 	var err error
 
 	params := []pipelinev1beta1.Param{{
-		Name:  ParamKind,
+		Name:  bundle.ParamKind,
 		Value: *pipelinev1beta1.NewStructuredValues("task"),
 	}, {
-		Name:  ParamName,
+		Name:  bundle.ParamName,
 		Value: *pipelinev1beta1.NewStructuredValues("foo"),
 	}, {
-		Name:  ParamBundle,
+		Name:  bundle.ParamBundle,
 		Value: *pipelinev1beta1.NewStructuredValues("bar"),
 	}, {
-		Name:  ParamServiceAccount,
+		Name:  bundle.ParamServiceAccount,
 		Value: *pipelinev1beta1.NewStructuredValues("baz"),
 	}}
 	err = resolver.ValidateParams(resolverDisabledContext(), params)
@@ -122,18 +127,18 @@ func TestValidateParamsDisabled(t *testing.T) {
 }
 
 func TestValidateParamsMissing(t *testing.T) {
-	resolver := Resolver{}
+	resolver := bundle.Resolver{}
 
 	var err error
 
 	paramsMissingBundle := []pipelinev1beta1.Param{{
-		Name:  ParamKind,
+		Name:  bundle.ParamKind,
 		Value: *pipelinev1beta1.NewStructuredValues("task"),
 	}, {
-		Name:  ParamName,
+		Name:  bundle.ParamName,
 		Value: *pipelinev1beta1.NewStructuredValues("foo"),
 	}, {
-		Name:  ParamServiceAccount,
+		Name:  bundle.ParamServiceAccount,
 		Value: *pipelinev1beta1.NewStructuredValues("baz"),
 	}}
 	err = resolver.ValidateParams(context.Background(), paramsMissingBundle)
@@ -142,13 +147,13 @@ func TestValidateParamsMissing(t *testing.T) {
 	}
 
 	paramsMissingName := []pipelinev1beta1.Param{{
-		Name:  ParamKind,
+		Name:  bundle.ParamKind,
 		Value: *pipelinev1beta1.NewStructuredValues("task"),
 	}, {
-		Name:  ParamBundle,
+		Name:  bundle.ParamBundle,
 		Value: *pipelinev1beta1.NewStructuredValues("bar"),
 	}, {
-		Name:  ParamServiceAccount,
+		Name:  bundle.ParamServiceAccount,
 		Value: *pipelinev1beta1.NewStructuredValues("baz"),
 	}}
 	err = resolver.ValidateParams(context.Background(), paramsMissingName)
@@ -158,21 +163,21 @@ func TestValidateParamsMissing(t *testing.T) {
 }
 
 func TestResolveDisabled(t *testing.T) {
-	resolver := Resolver{}
+	resolver := bundle.Resolver{}
 
 	var err error
 
 	params := []pipelinev1beta1.Param{{
-		Name:  ParamKind,
+		Name:  bundle.ParamKind,
 		Value: *pipelinev1beta1.NewStructuredValues("task"),
 	}, {
-		Name:  ParamName,
+		Name:  bundle.ParamName,
 		Value: *pipelinev1beta1.NewStructuredValues("foo"),
 	}, {
-		Name:  ParamBundle,
+		Name:  bundle.ParamBundle,
 		Value: *pipelinev1beta1.NewStructuredValues("bar"),
 	}, {
-		Name:  ParamServiceAccount,
+		Name:  bundle.ParamServiceAccount,
 		Value: *pipelinev1beta1.NewStructuredValues("baz"),
 	}}
 	_, err = resolver.Resolve(resolverDisabledContext(), params)
@@ -245,7 +250,7 @@ func TestResolve(t *testing.T) {
 
 	// too many objects in bundle resolver test
 	var tooManyObjs []runtime.Object
-	for i := 0; i <= MaximumBundleObjects; i++ {
+	for i := 0; i <= bundle.MaximumBundleObjects; i++ {
 		name := fmt.Sprintf("%d-task", i)
 		obj := pipelinev1beta1.Task{
 			ObjectMeta: metav1.ObjectMeta{
@@ -348,7 +353,7 @@ func TestResolve(t *testing.T) {
 				kind:   "task",
 			},
 			expectedStatus:     internal.CreateResolutionRequestFailureStatus(),
-			expectedErrMessage: fmt.Sprintf("contained more than the maximum %d allow objects", MaximumBundleObjects),
+			expectedErrMessage: fmt.Sprintf("contained more than the maximum %d allow objects", bundle.MaximumBundleObjects),
 		}, {
 			name: "single task no version",
 			args: &params{
@@ -357,7 +362,7 @@ func TestResolve(t *testing.T) {
 				kind:   "task",
 			},
 			expectedStatus:     internal.CreateResolutionRequestFailureStatus(),
-			expectedErrMessage: fmt.Sprintf("the layer 0 does not contain a %s annotation", BundleAnnotationAPIVersion),
+			expectedErrMessage: fmt.Sprintf("the layer 0 does not contain a %s annotation", bundle.BundleAnnotationAPIVersion),
 		}, {
 			name: "single task no kind",
 			args: &params{
@@ -366,7 +371,7 @@ func TestResolve(t *testing.T) {
 				kind:   "task",
 			},
 			expectedStatus:     internal.CreateResolutionRequestFailureStatus(),
-			expectedErrMessage: fmt.Sprintf("the layer 0 does not contain a %s annotation", BundleAnnotationKind),
+			expectedErrMessage: fmt.Sprintf("the layer 0 does not contain a %s annotation", bundle.BundleAnnotationKind),
 		}, {
 			name: "single task no name",
 			args: &params{
@@ -375,7 +380,7 @@ func TestResolve(t *testing.T) {
 				kind:   "task",
 			},
 			expectedStatus:     internal.CreateResolutionRequestFailureStatus(),
-			expectedErrMessage: fmt.Sprintf("the layer 0 does not contain a %s annotation", BundleAnnotationName),
+			expectedErrMessage: fmt.Sprintf("the layer 0 does not contain a %s annotation", bundle.BundleAnnotationName),
 		}, {
 			name: "single task kind incorrect form",
 			args: &params{
@@ -384,16 +389,16 @@ func TestResolve(t *testing.T) {
 				kind:   "task",
 			},
 			expectedStatus:     internal.CreateResolutionRequestFailureStatus(),
-			expectedErrMessage: fmt.Sprintf("the layer 0 the annotation %s must be lowercased and singular, found %s", BundleAnnotationKind, "Task"),
+			expectedErrMessage: fmt.Sprintf("the layer 0 the annotation %s must be lowercased and singular, found %s", bundle.BundleAnnotationKind, "Task"),
 		},
 	}
 
-	resolver := &Resolver{}
+	resolver := &bundle.Resolver{}
 	confMap := map[string]string{
-		ConfigKind: "task",
+		bundle.ConfigKind: "task",
 		// service account is not used in testing, but we have to set this since
 		// param validation will check if the service account is set either from param or from configmap.
-		ConfigServiceAccount: "placeholder",
+		bundle.ConfigServiceAccount: "placeholder",
 	}
 
 	for _, tc := range testcases {
@@ -406,7 +411,7 @@ func TestResolve(t *testing.T) {
 				ResolutionRequests: []*v1beta1.ResolutionRequest{request},
 				ConfigMaps: []*corev1.ConfigMap{{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      ConfigMapName,
+						Name:      bundle.ConfigMapName,
 						Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
 					},
 					Data: confMap,
@@ -431,15 +436,15 @@ func TestResolve(t *testing.T) {
 
 					switch {
 					case tc.kindInBundle != "":
-						expectedStatus.Annotations[ResolverAnnotationKind] = tc.kindInBundle
+						expectedStatus.Annotations[bundle.ResolverAnnotationKind] = tc.kindInBundle
 					case tc.args.kind != "":
-						expectedStatus.Annotations[ResolverAnnotationKind] = tc.args.kind
+						expectedStatus.Annotations[bundle.ResolverAnnotationKind] = tc.args.kind
 					default:
-						expectedStatus.Annotations[ResolverAnnotationKind] = "task"
+						expectedStatus.Annotations[bundle.ResolverAnnotationKind] = "task"
 					}
 
-					expectedStatus.Annotations[ResolverAnnotationName] = tc.args.name
-					expectedStatus.Annotations[ResolverAnnotationAPIVersion] = "v1beta1"
+					expectedStatus.Annotations[bundle.ResolverAnnotationName] = tc.args.name
+					expectedStatus.Annotations[bundle.ResolverAnnotationAPIVersion] = "v1beta1"
 
 					expectedStatus.RefSource = &pipelinev1beta1.RefSource{
 						URI: testImages[tc.imageName].uri,
@@ -471,21 +476,21 @@ func createRequest(p *params) *v1beta1.ResolutionRequest {
 			Namespace:         "foo",
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 			Labels: map[string]string{
-				resolutioncommon.LabelKeyResolverType: LabelValueBundleResolverType,
+				resolutioncommon.LabelKeyResolverType: bundle.LabelValueBundleResolverType,
 			},
 		},
 		Spec: v1beta1.ResolutionRequestSpec{
 			Params: []pipelinev1beta1.Param{{
-				Name:  ParamBundle,
+				Name:  bundle.ParamBundle,
 				Value: *pipelinev1beta1.NewStructuredValues(p.bundle),
 			}, {
-				Name:  ParamName,
+				Name:  bundle.ParamName,
 				Value: *pipelinev1beta1.NewStructuredValues(p.name),
 			}, {
-				Name:  ParamKind,
+				Name:  bundle.ParamKind,
 				Value: *pipelinev1beta1.NewStructuredValues(p.kind),
 			}, {
-				Name:  ParamServiceAccount,
+				Name:  bundle.ParamServiceAccount,
 				Value: *pipelinev1beta1.NewStructuredValues(p.serviceAccount),
 			}},
 		},
@@ -495,7 +500,7 @@ func createRequest(p *params) *v1beta1.ResolutionRequest {
 
 func createError(image, msg string) error {
 	return &resolutioncommon.GetResourceError{
-		ResolverName: BundleResolverName,
+		ResolverName: bundle.BundleResolverName,
 		Key:          "foo/rr",
 		Original:     fmt.Errorf("invalid tekton bundle %s, error: %s", image, msg),
 	}
@@ -504,14 +509,14 @@ func createError(image, msg string) error {
 func asIsMapper(obj runtime.Object) map[string]string {
 	annotations := map[string]string{}
 	if test.GetObjectName(obj) != "" {
-		annotations[BundleAnnotationName] = test.GetObjectName(obj)
+		annotations[bundle.BundleAnnotationName] = test.GetObjectName(obj)
 	}
 
 	if obj.GetObjectKind().GroupVersionKind().Kind != "" {
-		annotations[BundleAnnotationKind] = obj.GetObjectKind().GroupVersionKind().Kind
+		annotations[bundle.BundleAnnotationKind] = obj.GetObjectKind().GroupVersionKind().Kind
 	}
 	if obj.GetObjectKind().GroupVersionKind().Version != "" {
-		annotations[BundleAnnotationAPIVersion] = obj.GetObjectKind().GroupVersionKind().Version
+		annotations[bundle.BundleAnnotationAPIVersion] = obj.GetObjectKind().GroupVersionKind().Version
 	}
 	return annotations
 }

@@ -14,11 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package common
+package common_test
 
 import (
 	"errors"
 	"testing"
+
+	common "github.com/tektoncd/pipeline/pkg/resolution/common"
 )
 
 type TestError struct{}
@@ -31,7 +33,7 @@ func (*TestError) Error() string {
 
 func TestResolutionErrorUnwrap(t *testing.T) {
 	originalError := &TestError{}
-	resolutionError := NewError("", originalError)
+	resolutionError := common.NewError("", originalError)
 	if !errors.Is(resolutionError, &TestError{}) {
 		t.Errorf("resolution error expected to unwrap successfully")
 	}
@@ -39,7 +41,7 @@ func TestResolutionErrorUnwrap(t *testing.T) {
 
 func TestResolutionErrorMessage(t *testing.T) {
 	originalError := errors.New("this is just a test message")
-	resolutionError := NewError("", originalError)
+	resolutionError := common.NewError("", originalError)
 	if resolutionError.Error() != originalError.Error() {
 		t.Errorf("resolution error message expected to equal that of original error")
 	}

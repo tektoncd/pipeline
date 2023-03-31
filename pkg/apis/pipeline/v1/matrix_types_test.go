@@ -11,574 +11,575 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1
+package v1_test
 
 import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
 )
 
 func TestMatrix_FanOut(t *testing.T) {
 	tests := []struct {
 		name   string
-		matrix Matrix
-		want   []Params
+		matrix v1.Matrix
+		want   []v1.Params
 	}{{
 		name: "matrix with no params",
-		matrix: Matrix{
-			Params: Params{},
+		matrix: v1.Matrix{
+			Params: v1.Params{},
 		},
-		want: []Params{},
+		want: []v1.Params{},
 	}, {
 		name: "single array in matrix",
-		matrix: Matrix{
-			Params: Params{{
+		matrix: v1.Matrix{
+			Params: v1.Params{{
 				Name:  "platform",
-				Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
+				Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
 			}},
 		},
-		want: []Params{{
+		want: []v1.Params{{
 			{
 				Name:  "platform",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux"},
 			},
 		}, {
 			{
 				Name:  "platform",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "mac"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "mac"},
 			},
 		}, {
 			{
 				Name:  "platform",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "windows"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "windows"},
 			},
 		}},
 	}, {
 		name: "multiple arrays in matrix",
-		matrix: Matrix{
-			Params: Params{{
-				Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+		matrix: v1.Matrix{
+			Params: v1.Params{{
+				Name: "GOARCH", Value: v1.ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
 			}, {
-				Name: "version", Value: ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
+				Name: "version", Value: v1.ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
 			},
-			Include: IncludeParamsList{{}},
+			Include: v1.IncludeParamsList{{}},
 		},
-		want: []Params{{
+		want: []v1.Params{{
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/amd64"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.17"},
 			},
 		}, {
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/ppc64le"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.17"},
 			},
 		}, {
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/s390x"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.17"},
 			},
 		}, {
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/amd64"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.18.1"},
 			},
 		}, {
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/ppc64le"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.18.1"},
 			},
 		}, {
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/s390x"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.18.1"},
 			},
 		}},
 	}, {
 		name: "Fan out explicit combinations, no matrix params",
-		matrix: Matrix{
-			Include: IncludeParamsList{{
+		matrix: v1.Matrix{
+			Include: v1.IncludeParamsList{{
 				Name: "build-1",
-				Params: Params{{
-					Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
+				Params: v1.Params{{
+					Name: "IMAGE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "image-1"},
 				}, {
-					Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
+					Name: "DOCKERFILE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
 			}, {
 				Name: "build-2",
-				Params: Params{{
-					Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-2"},
+				Params: v1.Params{{
+					Name: "IMAGE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "image-2"},
 				}, {
-					Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile2"}}},
+					Name: "DOCKERFILE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/Dockerfile2"}}},
 			}, {
 				Name: "build-3",
-				Params: Params{{
-					Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-3"},
+				Params: v1.Params{{
+					Name: "IMAGE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "image-3"},
 				}, {
-					Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile3"}}},
+					Name: "DOCKERFILE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/Dockerfile3"}}},
 			}},
 		},
-		want: []Params{{
+		want: []v1.Params{{
 			{
 				Name:  "DOCKERFILE",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/Dockerfile1"},
 			}, {
 				Name:  "IMAGE",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "image-1"},
 			},
 		}, {
 			{
 				Name:  "DOCKERFILE",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile2"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/Dockerfile2"},
 			}, {
 				Name:  "IMAGE",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "image-2"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "image-2"},
 			},
 		}, {
 			{
 				Name:  "DOCKERFILE",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile3"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/Dockerfile3"},
 			}, {
 				Name:  "IMAGE",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "image-3"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "image-3"},
 			},
 		}},
 	}, {
 		name: "matrix include unknown param name, append to all combinations",
-		matrix: Matrix{
-			Params: Params{{
-				Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+		matrix: v1.Matrix{
+			Params: v1.Params{{
+				Name: "GOARCH", Value: v1.ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
 			}, {
-				Name: "version", Value: ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
+				Name: "version", Value: v1.ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
 			},
-			Include: IncludeParamsList{{
+			Include: v1.IncludeParamsList{{
 				Name: "common-package",
-				Params: Params{{
-					Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
+				Params: v1.Params{{
+					Name: "package", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/common/package/"}}},
 			}},
 		},
-		want: []Params{{
+		want: []v1.Params{{
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/amd64"},
 			}, {
 				Name:  "package",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/common/package/"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.17"},
 			},
 		}, {
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/ppc64le"},
 			}, {
 				Name:  "package",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/common/package/"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.17"},
 			},
 		}, {
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/s390x"},
 			}, {
 				Name:  "package",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/common/package/"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.17"},
 			},
 		}, {
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/amd64"},
 			}, {
 				Name:  "package",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/common/package/"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.18.1"},
 			},
 		}, {
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/ppc64le"},
 			}, {
 				Name:  "package",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/common/package/"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.18.1"},
 			},
 		}, {
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/s390x"},
 			}, {
 				Name:  "package",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/common/package/"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.18.1"},
 			},
 		}},
 	}, {
 		name: "matrix include param value does not exist, generate a new combination",
-		matrix: Matrix{
-			Params: Params{{
-				Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+		matrix: v1.Matrix{
+			Params: v1.Params{{
+				Name: "GOARCH", Value: v1.ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
 			}, {
-				Name: "version", Value: ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
+				Name: "version", Value: v1.ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
 			},
-			Include: IncludeParamsList{{
+			Include: v1.IncludeParamsList{{
 				Name: "non-existent-arch",
-				Params: Params{{
-					Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "I-do-not-exist"}}},
+				Params: v1.Params{{
+					Name: "GOARCH", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "I-do-not-exist"}}},
 			}},
 		},
-		want: []Params{{
+		want: []v1.Params{{
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/amd64"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.17"},
 			},
 		}, {
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/ppc64le"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.17"},
 			},
 		}, {
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/s390x"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.17"},
 			},
 		}, {
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/amd64"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.18.1"},
 			},
 		}, {
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/ppc64le"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.18.1"},
 			},
 		}, {
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/s390x"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.18.1"},
 			},
 		}, {
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "I-do-not-exist"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "I-do-not-exist"},
 			},
 		}},
 	}, {
 		name: "Matrix include filters single parameter and appends missing values",
-		matrix: Matrix{
-			Params: Params{{
-				Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+		matrix: v1.Matrix{
+			Params: v1.Params{{
+				Name: "GOARCH", Value: v1.ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
 			}, {
-				Name: "version", Value: ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
+				Name: "version", Value: v1.ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
 			},
-			Include: IncludeParamsList{{
+			Include: v1.IncludeParamsList{{
 				Name: "s390x-no-race",
-				Params: Params{{
-					Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+				Params: v1.Params{{
+					Name: "GOARCH", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/s390x"},
 				}, {
-					Name: "flags", Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"}}},
+					Name: "flags", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "-cover -v"}}},
 			}},
 		},
-		want: []Params{{
+		want: []v1.Params{{
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/amd64"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.17"},
 			},
 		}, {
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/ppc64le"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.17"},
 			},
 		}, {
 
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/s390x"},
 			}, {
 				Name:  "flags",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "-cover -v"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.17"},
 			},
 		}, {
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/amd64"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.18.1"},
 			},
 		}, {
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/ppc64le"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.18.1"},
 			},
 		}, {
 			{
 				Name:  "GOARCH",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/s390x"},
 			}, {
 				Name:  "flags",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "-cover -v"},
 			}, {
 				Name:  "version",
-				Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.18.1"},
 			},
 		}},
 	},
 		{
 			name: "Matrix include filters multiple parameters and append new parameters",
-			matrix: Matrix{
-				Params: Params{{
-					Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+			matrix: v1.Matrix{
+				Params: v1.Params{{
+					Name: "GOARCH", Value: v1.ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
 				}, {
-					Name: "version", Value: ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
+					Name: "version", Value: v1.ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
 				},
-				Include: IncludeParamsList{
+				Include: v1.IncludeParamsList{
 					{
 						Name: "390x-no-race",
-						Params: Params{{
-							Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"}}, {
-							Name: "flags", Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"}}, {
-							Name: "version", Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"}}},
+						Params: v1.Params{{
+							Name: "GOARCH", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/s390x"}}, {
+							Name: "flags", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "-cover -v"}}, {
+							Name: "version", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.18.1"}}},
 					},
 					{
 						Name: "amd64-no-race",
-						Params: Params{{
-							Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"}}, {
-							Name: "flags", Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"}}, {
-							Name: "version", Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"}}},
+						Params: v1.Params{{
+							Name: "GOARCH", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/amd64"}}, {
+							Name: "flags", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "-cover -v"}}, {
+							Name: "version", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.17"}}},
 					},
 				},
 			},
-			want: []Params{{
+			want: []v1.Params{{
 				{
 					Name:  "GOARCH",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/amd64"},
 				}, {
 					Name:  "flags",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "-cover -v"},
 				}, {
 					Name:  "version",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.17"},
 				},
 			}, {
 				{
 					Name:  "GOARCH",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/ppc64le"},
 				}, {
 					Name:  "version",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.17"},
 				},
 			}, {
 				{
 					Name:  "GOARCH",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/s390x"},
 				}, {
 					Name:  "version",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.17"},
 				},
 			}, {
 				{
 					Name:  "GOARCH",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/amd64"},
 				}, {
 					Name:  "version",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.18.1"},
 				},
 			}, {
 				{
 					Name:  "GOARCH",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/ppc64le"},
 				}, {
 					Name:  "version",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.18.1"},
 				},
 			}, {
 				{
 					Name:  "GOARCH",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/s390x"},
 				}, {
 					Name:  "flags",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "-cover -v"},
 				}, {
 					Name:  "version",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.18.1"},
 				},
 			}},
 		}, {
 			name: "Matrix params and include params handles filter, appending, and generating new combinations at once",
-			matrix: Matrix{
-				Params: Params{{
-					Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+			matrix: v1.Matrix{
+				Params: v1.Params{{
+					Name: "GOARCH", Value: v1.ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
 				}, {
-					Name: "version", Value: ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
+					Name: "version", Value: v1.ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
 				},
-				Include: IncludeParamsList{{
+				Include: v1.IncludeParamsList{{
 					Name: "common-package",
-					Params: Params{{
-						Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
+					Params: v1.Params{{
+						Name: "package", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/common/package/"}}},
 				}, {
 					Name: "s390x-no-race",
-					Params: Params{{
-						Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+					Params: v1.Params{{
+						Name: "GOARCH", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/s390x"},
 					}, {
-						Name: "flags", Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"}}},
+						Name: "flags", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "-cover -v"}}},
 				}, {
 					Name: "go117-context",
-					Params: Params{{
-						Name: "version", Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+					Params: v1.Params{{
+						Name: "version", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.17"},
 					}, {
-						Name: "context", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/go117/context"}}},
+						Name: "context", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/go117/context"}}},
 				}, {
 					Name: "non-existent-arch",
-					Params: Params{{
-						Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "I-do-not-exist"}},
+					Params: v1.Params{{
+						Name: "GOARCH", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "I-do-not-exist"}},
 					},
 				}},
 			},
-			want: []Params{{
+			want: []v1.Params{{
 				{
 					Name:  "GOARCH",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/amd64"},
 				}, {
 					Name:  "context",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/go117/context"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/go117/context"},
 				}, {
 					Name:  "package",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/common/package/"},
 				}, {
 					Name:  "version",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.17"},
 				},
 			}, {
 				{
 					Name:  "GOARCH",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/ppc64le"},
 				}, {
 					Name:  "context",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/go117/context"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/go117/context"},
 				}, {
 					Name:  "package",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/common/package/"},
 				}, {
 					Name:  "version",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.17"},
 				},
 			}, {
 				{
 					Name:  "GOARCH",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/s390x"},
 				}, {
 					Name:  "context",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/go117/context"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/go117/context"},
 				}, {
 					Name:  "flags",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "-cover -v"},
 				}, {
 					Name:  "package",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/common/package/"},
 				}, {
 					Name:  "version",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.17"},
 				},
 			}, {
 				{
 					Name:  "GOARCH",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/amd64"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/amd64"},
 				}, {
 					Name:  "package",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}, {
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/common/package/"}}, {
 					Name:  "version",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.18.1"},
 				},
 			}, {
 				{
 					Name:  "GOARCH",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/ppc64le"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/ppc64le"},
 				}, {
 					Name:  "package",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/common/package/"},
 				}, {
 					Name:  "version",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.18.1"},
 				},
 			}, {
 				{
 					Name:  "GOARCH",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/s390x"},
 				}, {
 					Name:  "flags",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "-cover -v"},
 				}, {
 					Name:  "package",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/common/package/"},
 				}, {
 					Name:  "version",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "go1.18.1"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.18.1"},
 				},
 			}, {
 				{
 					Name:  "GOARCH",
-					Value: ParamValue{Type: ParamTypeString, StringVal: "I-do-not-exist"},
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "I-do-not-exist"},
 				},
 			}},
 		}}
@@ -594,7 +595,7 @@ func TestMatrix_FanOut(t *testing.T) {
 func TestMatrix_HasParams(t *testing.T) {
 	testCases := []struct {
 		name   string
-		matrix *Matrix
+		matrix *v1.Matrix
 		want   bool
 	}{
 		{
@@ -604,37 +605,37 @@ func TestMatrix_HasParams(t *testing.T) {
 		},
 		{
 			name:   "empty matrix",
-			matrix: &Matrix{},
+			matrix: &v1.Matrix{},
 			want:   false,
 		},
 		{
 			name: "matrixed with params",
-			matrix: &Matrix{
-				Params: Params{{Name: "platform", Value: ParamValue{ArrayVal: []string{"linux", "windows"}}}},
+			matrix: &v1.Matrix{
+				Params: v1.Params{{Name: "platform", Value: v1.ParamValue{ArrayVal: []string{"linux", "windows"}}}},
 			},
 			want: true,
 		}, {
 			name: "matrixed with include",
-			matrix: &Matrix{
-				Include: IncludeParamsList{{
+			matrix: &v1.Matrix{
+				Include: v1.IncludeParamsList{{
 					Name: "build-1",
-					Params: Params{{
-						Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
+					Params: v1.Params{{
+						Name: "IMAGE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "image-1"},
 					}, {
-						Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
+						Name: "DOCKERFILE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
 				}},
 			},
 			want: false,
 		}, {
 			name: "matrixed with params and include",
-			matrix: &Matrix{
-				Params: Params{{
-					Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+			matrix: &v1.Matrix{
+				Params: v1.Params{{
+					Name: "GOARCH", Value: v1.ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
 				}},
-				Include: IncludeParamsList{{
+				Include: v1.IncludeParamsList{{
 					Name: "common-package",
-					Params: Params{{
-						Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
+					Params: v1.Params{{
+						Name: "package", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/common/package/"}}},
 				}},
 			},
 			want: true,
@@ -652,7 +653,7 @@ func TestMatrix_HasParams(t *testing.T) {
 func TestMatrix_HasInclude(t *testing.T) {
 	testCases := []struct {
 		name   string
-		matrix *Matrix
+		matrix *v1.Matrix
 		want   bool
 	}{
 		{
@@ -662,37 +663,37 @@ func TestMatrix_HasInclude(t *testing.T) {
 		},
 		{
 			name:   "empty matrix",
-			matrix: &Matrix{},
+			matrix: &v1.Matrix{},
 			want:   false,
 		},
 		{
 			name: "matrixed with params",
-			matrix: &Matrix{
-				Params: Params{{Name: "platform", Value: ParamValue{ArrayVal: []string{"linux", "windows"}}}},
+			matrix: &v1.Matrix{
+				Params: v1.Params{{Name: "platform", Value: v1.ParamValue{ArrayVal: []string{"linux", "windows"}}}},
 			},
 			want: false,
 		}, {
 			name: "matrixed with include",
-			matrix: &Matrix{
-				Include: IncludeParamsList{{
+			matrix: &v1.Matrix{
+				Include: v1.IncludeParamsList{{
 					Name: "build-1",
-					Params: Params{{
-						Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
+					Params: v1.Params{{
+						Name: "IMAGE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "image-1"},
 					}, {
-						Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
+						Name: "DOCKERFILE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
 				}},
 			},
 			want: true,
 		}, {
 			name: "matrixed with params and include",
-			matrix: &Matrix{
-				Params: Params{{
-					Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+			matrix: &v1.Matrix{
+				Params: v1.Params{{
+					Name: "GOARCH", Value: v1.ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
 				}},
-				Include: IncludeParamsList{{
+				Include: v1.IncludeParamsList{{
 					Name: "common-package",
-					Params: Params{{
-						Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
+					Params: v1.Params{{
+						Name: "package", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/common/package/"}}},
 				}},
 			},
 			want: true,
@@ -710,8 +711,8 @@ func TestMatrix_HasInclude(t *testing.T) {
 func TestMatrix_GetAllParams(t *testing.T) {
 	testCases := []struct {
 		name   string
-		matrix *Matrix
-		want   Params
+		matrix *v1.Matrix
+		want   v1.Params
 	}{
 		{
 			name:   "nil matrix",
@@ -720,47 +721,47 @@ func TestMatrix_GetAllParams(t *testing.T) {
 		},
 		{
 			name:   "empty matrix",
-			matrix: &Matrix{},
+			matrix: &v1.Matrix{},
 			want:   nil,
 		},
 		{
 			name: "matrixed with params",
-			matrix: &Matrix{
-				Params: Params{{Name: "platform", Value: ParamValue{ArrayVal: []string{"linux", "windows"}}}},
+			matrix: &v1.Matrix{
+				Params: v1.Params{{Name: "platform", Value: v1.ParamValue{ArrayVal: []string{"linux", "windows"}}}},
 			},
-			want: Params{{Name: "platform", Value: ParamValue{ArrayVal: []string{"linux", "windows"}}}},
+			want: v1.Params{{Name: "platform", Value: v1.ParamValue{ArrayVal: []string{"linux", "windows"}}}},
 		}, {
 			name: "matrixed with include",
-			matrix: &Matrix{
-				Include: IncludeParamsList{{
+			matrix: &v1.Matrix{
+				Include: v1.IncludeParamsList{{
 					Name: "build-1",
-					Params: Params{{
-						Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
+					Params: v1.Params{{
+						Name: "IMAGE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "image-1"},
 					}, {
-						Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
+						Name: "DOCKERFILE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
 				}},
 			},
-			want: Params{{
-				Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
+			want: v1.Params{{
+				Name: "IMAGE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "image-1"},
 			}, {
-				Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
+				Name: "DOCKERFILE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
 		},
 		{
 			name: "matrixed with params and include",
-			matrix: &Matrix{
-				Params: Params{{
-					Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+			matrix: &v1.Matrix{
+				Params: v1.Params{{
+					Name: "GOARCH", Value: v1.ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
 				}},
-				Include: IncludeParamsList{{
+				Include: v1.IncludeParamsList{{
 					Name: "common-package",
-					Params: Params{{
-						Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
+					Params: v1.Params{{
+						Name: "package", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/common/package/"}}},
 				}},
 			},
-			want: Params{{
-				Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+			want: v1.Params{{
+				Name: "GOARCH", Value: v1.ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
 			}, {
-				Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"},
+				Name: "package", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/common/package/"},
 			}},
 		},
 	}
@@ -776,141 +777,141 @@ func TestMatrix_GetAllParams(t *testing.T) {
 func TestPipelineTask_CountCombinations(t *testing.T) {
 	tests := []struct {
 		name   string
-		matrix *Matrix
+		matrix *v1.Matrix
 		want   int
 	}{{
 		name: "combinations count is zero",
-		matrix: &Matrix{
-			Params: Params{{}}},
+		matrix: &v1.Matrix{
+			Params: v1.Params{{}}},
 		want: 0,
 	}, {
 		name: "combinations count is one from one parameter",
-		matrix: &Matrix{
-			Params: Params{{
-				Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo"}},
+		matrix: &v1.Matrix{
+			Params: v1.Params{{
+				Name: "foo", Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"foo"}},
 			}}},
 
 		want: 1,
 	}, {
 		name: "combinations count is one from two parameters",
-		matrix: &Matrix{
-			Params: Params{{
-				Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo"}},
+		matrix: &v1.Matrix{
+			Params: v1.Params{{
+				Name: "foo", Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"foo"}},
 			}, {
-				Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar"}},
+				Name: "bar", Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"bar"}},
 			}}},
 		want: 1,
 	}, {
 		name: "combinations count is two from one parameter",
-		matrix: &Matrix{
-			Params: Params{{
-				Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+		matrix: &v1.Matrix{
+			Params: v1.Params{{
+				Name: "foo", Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 			}}},
 		want: 2,
 	}, {
 		name: "combinations count is nine",
-		matrix: &Matrix{
-			Params: Params{{
-				Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"f", "o", "o"}},
+		matrix: &v1.Matrix{
+			Params: v1.Params{{
+				Name: "foo", Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"f", "o", "o"}},
 			}, {
-				Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"b", "a", "r"}},
+				Name: "bar", Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"b", "a", "r"}},
 			}}},
 		want: 9,
 	}, {
 		name: "combinations count is large",
-		matrix: &Matrix{
-			Params: Params{{
-				Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"f", "o", "o"}},
+		matrix: &v1.Matrix{
+			Params: v1.Params{{
+				Name: "foo", Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"f", "o", "o"}},
 			}, {
-				Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"b", "a", "r"}},
+				Name: "bar", Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"b", "a", "r"}},
 			}, {
-				Name: "quz", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"q", "u", "x"}},
+				Name: "quz", Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"q", "u", "x"}},
 			}, {
-				Name: "xyzzy", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"x", "y", "z", "z", "y"}},
+				Name: "xyzzy", Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"x", "y", "z", "z", "y"}},
 			}}},
 		want: 135,
 	}, {
 		name: "explicit combinations in the matrix",
-		matrix: &Matrix{
-			Include: IncludeParamsList{{
+		matrix: &v1.Matrix{
+			Include: v1.IncludeParamsList{{
 				Name: "build-1",
-				Params: Params{{
-					Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
+				Params: v1.Params{{
+					Name: "IMAGE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "image-1"},
 				}, {
-					Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"},
+					Name: "DOCKERFILE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/Dockerfile1"},
 				}},
 			}, {
 				Name: "build-2",
-				Params: Params{{
-					Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-2"},
+				Params: v1.Params{{
+					Name: "IMAGE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "image-2"},
 				}, {
-					Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile2"},
+					Name: "DOCKERFILE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/Dockerfile2"},
 				}},
 			}, {
 				Name: "build-3",
-				Params: Params{{
-					Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-3"},
+				Params: v1.Params{{
+					Name: "IMAGE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "image-3"},
 				}, {
-					Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile3"},
+					Name: "DOCKERFILE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/Dockerfile3"},
 				}},
 			}},
 		},
 		want: 3,
 	}, {
 		name: "params and include in matrix with overriding combinations params",
-		matrix: &Matrix{
-			Params: Params{{
-				Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+		matrix: &v1.Matrix{
+			Params: v1.Params{{
+				Name: "GOARCH", Value: v1.ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
 			}, {
-				Name: "version", Value: ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
+				Name: "version", Value: v1.ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
 			},
-			Include: IncludeParamsList{{
+			Include: v1.IncludeParamsList{{
 				Name: "common-package",
-				Params: Params{{
-					Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
+				Params: v1.Params{{
+					Name: "package", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/common/package/"}}},
 			}, {
 				Name: "s390x-no-race",
-				Params: Params{{
-					Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+				Params: v1.Params{{
+					Name: "GOARCH", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/s390x"},
 				}, {
-					Name: "flags", Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"}}},
+					Name: "flags", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "-cover -v"}}},
 			}, {
 				Name: "go117-context",
-				Params: Params{{
-					Name: "version", Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+				Params: v1.Params{{
+					Name: "version", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.17"},
 				}, {
-					Name: "context", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/go117/context"}}},
+					Name: "context", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/go117/context"}}},
 			}},
 		},
 		want: 6,
 	}, {
 		name: "params and include in matrix with overriding combinations params and one new combination",
-		matrix: &Matrix{
-			Params: Params{{
-				Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+		matrix: &v1.Matrix{
+			Params: v1.Params{{
+				Name: "GOARCH", Value: v1.ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
 			}, {
-				Name: "version", Value: ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
+				Name: "version", Value: v1.ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
 			},
-			Include: IncludeParamsList{{
+			Include: v1.IncludeParamsList{{
 				Name: "common-package",
-				Params: Params{{
-					Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
+				Params: v1.Params{{
+					Name: "package", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/common/package/"}}},
 			}, {
 				Name: "s390x-no-race",
-				Params: Params{{
-					Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+				Params: v1.Params{{
+					Name: "GOARCH", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/s390x"},
 				}, {
-					Name: "flags", Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"}}},
+					Name: "flags", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "-cover -v"}}},
 			}, {
 				Name: "go117-context",
-				Params: Params{{
-					Name: "version", Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+				Params: v1.Params{{
+					Name: "version", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "go1.17"},
 				}, {
-					Name: "context", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/go117/context"}}},
+					Name: "context", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/go117/context"}}},
 			}, {
 				Name: "non-existent-arch",
-				Params: Params{{
-					Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "I-do-not-exist"}},
+				Params: v1.Params{{
+					Name: "GOARCH", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "I-do-not-exist"}},
 				}},
 			}},
 		want: 7,

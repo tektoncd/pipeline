@@ -15,7 +15,7 @@
 
 */
 
-package cluster
+package cluster_test
 
 import (
 	"context"
@@ -32,6 +32,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	cluster "github.com/tektoncd/pipeline/pkg/resolution/resolver/cluster"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	frtesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/internal"
@@ -45,33 +46,37 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+const (
+	disabledError = "cannot handle resolution request, enable-cluster-resolver feature flag not true"
+)
+
 func TestGetSelector(t *testing.T) {
-	resolver := Resolver{}
+	resolver := cluster.Resolver{}
 	sel := resolver.GetSelector(context.Background())
 	if typ, has := sel[resolutioncommon.LabelKeyResolverType]; !has {
 		t.Fatalf("unexpected selector: %v", sel)
-	} else if typ != LabelValueClusterResolverType {
+	} else if typ != cluster.LabelValueClusterResolverType {
 		t.Fatalf("unexpected type: %q", typ)
 	}
 }
 
 func TestValidateParams(t *testing.T) {
-	resolver := Resolver{}
+	resolver := cluster.Resolver{}
 
 	params := []pipelinev1beta1.Param{{
-		Name:  KindParam,
+		Name:  cluster.KindParam,
 		Value: *pipelinev1beta1.NewStructuredValues("task"),
 	}, {
-		Name:  NamespaceParam,
+		Name:  cluster.NamespaceParam,
 		Value: *pipelinev1beta1.NewStructuredValues("foo"),
 	}, {
-		Name:  NameParam,
+		Name:  cluster.NameParam,
 		Value: *pipelinev1beta1.NewStructuredValues("baz"),
 	}}
 
 	ctx := framework.InjectResolverConfigToContext(context.Background(), map[string]string{
-		AllowedNamespacesKey: "foo,bar",
-		BlockedNamespacesKey: "abc,def",
+		cluster.AllowedNamespacesKey: "foo,bar",
+		cluster.BlockedNamespacesKey: "abc,def",
 	})
 
 	if err := resolver.ValidateParams(ctx, params); err != nil {
@@ -80,18 +85,18 @@ func TestValidateParams(t *testing.T) {
 }
 
 func TestValidateParamsNotEnabled(t *testing.T) {
-	resolver := Resolver{}
+	resolver := cluster.Resolver{}
 
 	var err error
 
 	params := []pipelinev1beta1.Param{{
-		Name:  KindParam,
+		Name:  cluster.KindParam,
 		Value: *pipelinev1beta1.NewStructuredValues("task"),
 	}, {
-		Name:  NamespaceParam,
+		Name:  cluster.NamespaceParam,
 		Value: *pipelinev1beta1.NewStructuredValues("foo"),
 	}, {
-		Name:  NameParam,
+		Name:  cluster.NameParam,
 		Value: *pipelinev1beta1.NewStructuredValues("baz"),
 	}}
 	err = resolver.ValidateParams(resolverDisabledContext(), params)
@@ -113,44 +118,44 @@ func TestValidateParamsFailure(t *testing.T) {
 		{
 			name: "missing kind",
 			params: map[string]string{
-				NameParam:      "foo",
-				NamespaceParam: "bar",
+				cluster.NameParam:      "foo",
+				cluster.NamespaceParam: "bar",
 			},
 			expectedErr: "missing required cluster resolver params: kind",
 		}, {
 			name: "invalid kind",
 			params: map[string]string{
-				KindParam:      "banana",
-				NamespaceParam: "foo",
-				NameParam:      "bar",
+				cluster.KindParam:      "banana",
+				cluster.NamespaceParam: "foo",
+				cluster.NameParam:      "bar",
 			},
 			expectedErr: "unknown or unsupported resource kind 'banana'",
 		}, {
 			name: "missing multiple",
 			params: map[string]string{
-				KindParam: "task",
+				cluster.KindParam: "task",
 			},
 			expectedErr: "missing required cluster resolver params: name, namespace",
 		}, {
 			name: "not in allowed namespaces",
 			params: map[string]string{
-				KindParam:      "task",
-				NamespaceParam: "foo",
-				NameParam:      "baz",
+				cluster.KindParam:      "task",
+				cluster.NamespaceParam: "foo",
+				cluster.NameParam:      "baz",
 			},
 			conf: map[string]string{
-				AllowedNamespacesKey: "abc,def",
+				cluster.AllowedNamespacesKey: "abc,def",
 			},
 			expectedErr: "access to specified namespace foo is not allowed",
 		}, {
 			name: "in blocked namespaces",
 			params: map[string]string{
-				KindParam:      "task",
-				NamespaceParam: "foo",
-				NameParam:      "baz",
+				cluster.KindParam:      "task",
+				cluster.NamespaceParam: "foo",
+				cluster.NameParam:      "baz",
 			},
 			conf: map[string]string{
-				BlockedNamespacesKey: "foo,bar",
+				cluster.BlockedNamespacesKey: "foo,bar",
 			},
 			expectedErr: "access to specified namespace foo is blocked",
 		},
@@ -158,7 +163,7 @@ func TestValidateParamsFailure(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			resolver := &Resolver{}
+			resolver := &cluster.Resolver{}
 
 			ctx := context.Background()
 			if len(tc.conf) > 0 {
@@ -351,7 +356,7 @@ func TestResolve(t *testing.T) {
 			namespace:      "other-ns",
 			expectedStatus: internal.CreateResolutionRequestFailureStatus(),
 			expectedErr: &resolutioncommon.GetResourceError{
-				ResolverName: ClusterResolverName,
+				ResolverName: cluster.ClusterResolverName,
 				Key:          "foo/rr",
 				Original:     errors.New(`tasks.tekton.dev "example-task" not found`),
 			},
@@ -387,20 +392,20 @@ func TestResolve(t *testing.T) {
 			request := createRequest(tc.kind, tc.resourceName, tc.namespace)
 
 			confMap := map[string]string{
-				DefaultKindKey:      "task",
-				DefaultNamespaceKey: defaultNS,
+				cluster.DefaultKindKey:      "task",
+				cluster.DefaultNamespaceKey: defaultNS,
 			}
 			if tc.allowedNamespaces != "" {
-				confMap[AllowedNamespacesKey] = tc.allowedNamespaces
+				confMap[cluster.AllowedNamespacesKey] = tc.allowedNamespaces
 			}
 			if tc.blockedNamespaces != "" {
-				confMap[BlockedNamespacesKey] = tc.blockedNamespaces
+				confMap[cluster.BlockedNamespacesKey] = tc.blockedNamespaces
 			}
 
 			d := test.Data{
 				ConfigMaps: []*corev1.ConfigMap{{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      configMapName,
+						Name:      "cluster-resolver-config",
 						Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
 					},
 					Data: confMap,
@@ -418,7 +423,7 @@ func TestResolve(t *testing.T) {
 				Tasks:              []*pipelinev1beta1.Task{exampleTask},
 			}
 
-			resolver := &Resolver{}
+			resolver := &cluster.Resolver{}
 
 			var expectedStatus *v1beta1.ResolutionRequestStatus
 			if tc.expectedStatus != nil {
@@ -432,11 +437,11 @@ func TestResolve(t *testing.T) {
 					if expectedStatus.Annotations == nil {
 						expectedStatus.Annotations = make(map[string]string)
 					}
-					expectedStatus.Annotations[ResourceNameAnnotation] = reqParams[NameParam].StringVal
-					if reqParams[NamespaceParam].StringVal != "" {
-						expectedStatus.Annotations[ResourceNamespaceAnnotation] = reqParams[NamespaceParam].StringVal
+					expectedStatus.Annotations[cluster.ResourceNameAnnotation] = reqParams[cluster.NameParam].StringVal
+					if reqParams[cluster.NamespaceParam].StringVal != "" {
+						expectedStatus.Annotations[cluster.ResourceNamespaceAnnotation] = reqParams[cluster.NamespaceParam].StringVal
 					} else {
-						expectedStatus.Annotations[ResourceNamespaceAnnotation] = defaultNS
+						expectedStatus.Annotations[cluster.ResourceNamespaceAnnotation] = defaultNS
 					}
 				} else {
 					expectedStatus.Status.Conditions[0].Message = tc.expectedErr.Error()
@@ -459,25 +464,25 @@ func createRequest(kind, name, namespace string) *v1beta1.ResolutionRequest {
 			Namespace:         "foo",
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 			Labels: map[string]string{
-				resolutioncommon.LabelKeyResolverType: LabelValueClusterResolverType,
+				resolutioncommon.LabelKeyResolverType: cluster.LabelValueClusterResolverType,
 			},
 		},
 		Spec: v1beta1.ResolutionRequestSpec{
 			Params: []pipelinev1beta1.Param{{
-				Name:  NameParam,
+				Name:  cluster.NameParam,
 				Value: *pipelinev1beta1.NewStructuredValues(name),
 			}},
 		},
 	}
 	if kind != "" {
 		rr.Spec.Params = append(rr.Spec.Params, pipelinev1beta1.Param{
-			Name:  KindParam,
+			Name:  cluster.KindParam,
 			Value: *pipelinev1beta1.NewStructuredValues(kind),
 		})
 	}
 	if namespace != "" {
 		rr.Spec.Params = append(rr.Spec.Params, pipelinev1beta1.Param{
-			Name:  NamespaceParam,
+			Name:  cluster.NamespaceParam,
 			Value: *pipelinev1beta1.NewStructuredValues(namespace),
 		})
 	}

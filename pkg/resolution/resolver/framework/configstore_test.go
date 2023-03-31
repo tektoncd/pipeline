@@ -14,13 +14,13 @@
  limitations under the License.
 */
 
-package framework
+package framework_test
 
 import (
 	"testing"
 
+	framework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	corev1 "k8s.io/api/core/v1"
-	"knative.dev/pkg/configmap"
 	logtesting "knative.dev/pkg/logging/testing"
 )
 
@@ -53,7 +53,7 @@ func TestDataFromConfigMap(t *testing.T) {
 			"foo": "bar",
 		},
 	}} {
-		out, err := DataFromConfigMap(tc.configMap)
+		out, err := framework.DataFromConfigMap(tc.configMap)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -64,15 +64,9 @@ func TestDataFromConfigMap(t *testing.T) {
 }
 
 func TestGetResolverConfig(t *testing.T) {
-	_ = &ConfigStore{
-		resolverConfigName: "test",
-		untyped: configmap.NewUntypedStore(
-			"test-config",
-			logtesting.TestLogger(t),
-			configmap.Constructors{
-				"test": DataFromConfigMap,
-			},
-		),
+	config := framework.NewConfigStore("test", logtesting.TestLogger(t))
+	if len(config.GetResolverConfig()) != 0 {
+		t.Fatalf("expected empty config")
 	}
 }
 

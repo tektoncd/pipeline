@@ -14,15 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package reconciler
+package reconciler_test
 
 import (
 	"testing"
 	"time"
 
+	reconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/kmeta"
+)
+
+const (
+	// minimumResourceAge is the age at which resources stop being IsYoungResource.
+	minimumResourceAge = 5 * time.Second
 )
 
 func TestIsYoungResource(t *testing.T) {
@@ -56,7 +62,7 @@ func TestIsYoungResource(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			got := IsYoungResource(test.resource)
+			got := reconciler.IsYoungResource(test.resource)
 			if got != test.want {
 				t.Errorf("IsYoungResource() = %v, wanted %v", got, test.want)
 			}
