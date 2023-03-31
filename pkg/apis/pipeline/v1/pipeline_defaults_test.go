@@ -38,38 +38,13 @@ func TestPipeline_SetDefaults(t *testing.T) {
 
 func TestPipelineSpec_SetDefaults(t *testing.T) {
 	cases := []struct {
-		desc     string
-		ps       *v1.PipelineSpec
-		want     *v1.PipelineSpec
-		defaults map[string]string
+		desc string
+		ps   *v1.PipelineSpec
+		want *v1.PipelineSpec
 	}{{
 		desc: "empty pipelineSpec must not change after setting defaults",
 		ps:   &v1.PipelineSpec{},
 		want: &v1.PipelineSpec{},
-	}, {
-		desc: "pipeline task - default task kind must be " + string(v1.NamespacedTaskKind),
-		ps: &v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				Name: "foo", TaskRef: &v1.TaskRef{Name: "foo-task"},
-			}},
-		},
-		want: &v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				Name: "foo", TaskRef: &v1.TaskRef{Name: "foo-task", Kind: v1.NamespacedTaskKind},
-			}},
-		},
-	}, {
-		desc: "final pipeline task - default task kind must be " + string(v1.NamespacedTaskKind),
-		ps: &v1.PipelineSpec{
-			Finally: []v1.PipelineTask{{
-				Name: "final-task", TaskRef: &v1.TaskRef{Name: "foo-task"},
-			}},
-		},
-		want: &v1.PipelineSpec{
-			Finally: []v1.PipelineTask{{
-				Name: "final-task", TaskRef: &v1.TaskRef{Name: "foo-task", Kind: v1.NamespacedTaskKind},
-			}},
-		},
 	}, {
 		desc: "param type - default param type must be " + string(v1.ParamTypeString),
 		ps: &v1.PipelineSpec{
@@ -98,102 +73,170 @@ func TestPipelineSpec_SetDefaults(t *testing.T) {
 			}},
 		},
 	}, {
-		desc: "pipeline task with taskSpec - default param type must be " + string(v1.ParamTypeString),
+		desc: "multiple tasks and final tasks",
 		ps: &v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				Name: "foo", TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name: "string-param",
-						}},
+			Tasks: []v1.PipelineTask{
+				{
+					Name:    "task-with-taskRef",
+					TaskRef: &v1.TaskRef{Name: "bar-task-1"},
+				},
+				{
+					Name: "task-with-taskSpec",
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name: "string-param",
+							}},
+						},
 					},
 				},
-			}},
+			},
+			Finally: []v1.PipelineTask{
+				{
+					Name:    "final-task-with-taskRef",
+					TaskRef: &v1.TaskRef{Name: "foo-task-1"},
+				},
+				{
+					Name: "final-task-with-taskSpec",
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name: "string-param",
+							}},
+						},
+					},
+				},
+			},
 		},
 		want: &v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				Name: "foo", TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name: "string-param",
-							Type: v1.ParamTypeString,
-						}},
+			Tasks: []v1.PipelineTask{
+				{
+					Name:    "task-with-taskRef",
+					TaskRef: &v1.TaskRef{Name: "bar-task-1", Kind: v1.NamespacedTaskKind},
+				},
+				{
+					Name: "task-with-taskSpec",
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name: "string-param",
+								Type: v1.ParamTypeString,
+							}},
+						},
 					},
 				},
-			}},
+			},
+			Finally: []v1.PipelineTask{
+				{
+					Name:    "final-task-with-taskRef",
+					TaskRef: &v1.TaskRef{Name: "foo-task-1", Kind: v1.NamespacedTaskKind},
+				},
+				{
+					Name: "final-task-with-taskSpec",
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name: "string-param",
+								Type: v1.ParamTypeString,
+							}},
+						},
+					},
+				},
+			},
+		},
+	}}
+	for _, tc := range cases {
+		t.Run(tc.desc, func(t *testing.T) {
+			ctx := context.Background()
+			tc.ps.SetDefaults(ctx)
+			if d := cmp.Diff(tc.want, tc.ps); d != "" {
+				t.Errorf("Mismatch of pipelineSpec after setting defaults: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestPipelineTask_SetDefaults(t *testing.T) {
+	cases := []struct {
+		desc     string
+		pt       *v1.PipelineTask
+		want     *v1.PipelineTask
+		defaults map[string]string
+	}{{
+		desc: "pipeline task - default task kind must be " + string(v1.NamespacedTaskKind),
+		pt: &v1.PipelineTask{
+			Name:    "foo",
+			TaskRef: &v1.TaskRef{Name: "foo-task"},
+		},
+		want: &v1.PipelineTask{
+			Name: "foo",
+			TaskRef: &v1.TaskRef{
+				Name: "foo-task",
+				Kind: v1.NamespacedTaskKind,
+			},
+		},
+	}, {
+		desc: "pipeline task with taskSpec - default param type must be " + string(v1.ParamTypeString),
+		pt: &v1.PipelineTask{
+			Name: "foo",
+			TaskSpec: &v1.EmbeddedTask{
+				TaskSpec: v1.TaskSpec{
+					Params: []v1.ParamSpec{{
+						Name: "string-param",
+					}},
+				},
+			},
+		},
+		want: &v1.PipelineTask{
+			Name: "foo",
+			TaskSpec: &v1.EmbeddedTask{
+				TaskSpec: v1.TaskSpec{
+					Params: []v1.ParamSpec{{
+						Name: "string-param",
+						Type: v1.ParamTypeString,
+					}},
+				},
+			},
 		},
 	}, {
 		desc: "pipeline task with taskRef - with default resolver",
-		ps: &v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				Name:    "foo",
-				TaskRef: &v1.TaskRef{},
-			}},
+		pt: &v1.PipelineTask{
+			Name:    "foo",
+			TaskRef: &v1.TaskRef{},
 		},
-		want: &v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				Name: "foo",
-				TaskRef: &v1.TaskRef{
-					Kind: v1.NamespacedTaskKind,
-					ResolverRef: v1.ResolverRef{
-						Resolver: "git",
-					},
+		want: &v1.PipelineTask{
+			Name: "foo",
+			TaskRef: &v1.TaskRef{
+				Kind: v1.NamespacedTaskKind,
+				ResolverRef: v1.ResolverRef{
+					Resolver: "git",
 				},
-			}},
+			},
 		},
 		defaults: map[string]string{
 			"default-resolver-type": "git",
 		},
 	}, {
 		desc: "pipeline task with taskRef - user-provided resolver overwrites default resolver",
-		ps: &v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				Name: "foo",
-				TaskRef: &v1.TaskRef{
-					ResolverRef: v1.ResolverRef{
-						Resolver: "custom resolver",
-					},
+		pt: &v1.PipelineTask{
+			Name: "foo",
+			TaskRef: &v1.TaskRef{
+				ResolverRef: v1.ResolverRef{
+					Resolver: "custom resolver",
 				},
-			}},
+			},
 		},
-		want: &v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				Name: "foo",
-				TaskRef: &v1.TaskRef{
-					Kind: v1.NamespacedTaskKind,
-					ResolverRef: v1.ResolverRef{
-						Resolver: "custom resolver",
-					},
+		want: &v1.PipelineTask{
+			Name: "foo",
+			TaskRef: &v1.TaskRef{
+				Kind: v1.NamespacedTaskKind,
+				ResolverRef: v1.ResolverRef{
+					Resolver: "custom resolver",
 				},
-			}},
+			},
 		},
 		defaults: map[string]string{
 			"default-resolver-type": "git",
-		},
-	}, {
-		desc: "final pipeline task with taskSpec - default param type must be " + string(v1.ParamTypeString),
-		ps: &v1.PipelineSpec{
-			Finally: []v1.PipelineTask{{
-				Name: "foo", TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name: "string-param",
-						}},
-					},
-				},
-			}},
-		},
-		want: &v1.PipelineSpec{
-			Finally: []v1.PipelineTask{{
-				Name: "foo", TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name: "string-param",
-							Type: v1.ParamTypeString,
-						}},
-					},
-				},
-			}},
 		},
 	}}
 	for _, tc := range cases {
@@ -202,8 +245,8 @@ func TestPipelineSpec_SetDefaults(t *testing.T) {
 			if len(tc.defaults) > 0 {
 				ctx = dfttesting.SetDefaults(context.Background(), t, tc.defaults)
 			}
-			tc.ps.SetDefaults(ctx)
-			if d := cmp.Diff(tc.want, tc.ps); d != "" {
+			tc.pt.SetDefaults(ctx)
+			if d := cmp.Diff(tc.want, tc.pt); d != "" {
 				t.Errorf("Mismatch of pipelineSpec after setting defaults: %s", diff.PrintWantGot(d))
 			}
 		})
