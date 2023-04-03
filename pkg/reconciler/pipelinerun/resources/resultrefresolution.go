@@ -198,6 +198,8 @@ func (rs ResolvedResultRefs) getStringReplacements() map[string]string {
 				}
 			}
 
+		case v1beta1.ParamTypeString:
+			fallthrough
 		default:
 			for _, target := range r.getReplaceTarget() {
 				replacements[target] = r.Value.StringVal

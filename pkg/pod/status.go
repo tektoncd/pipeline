@@ -379,6 +379,8 @@ func updateIncompleteTaskRunStatus(trs *v1beta1.TaskRunStatus, pod *corev1.Pod) 
 		default:
 			markStatusRunning(trs, ReasonPending, getWaitingMessage(pod))
 		}
+	case corev1.PodSucceeded, corev1.PodFailed, corev1.PodUnknown:
+		// Do nothing; pod has completed or is in an unknown state.
 	}
 }
 

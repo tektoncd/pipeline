@@ -74,6 +74,8 @@ func ApplyParameters(ctx context.Context, spec *v1beta1.TaskSpec, tr *v1beta1.Ta
 				for k, v := range p.Default.ObjectVal {
 					stringReplacements[fmt.Sprintf(objectIndividualVariablePattern, p.Name, k)] = v
 				}
+			case v1beta1.ParamTypeString:
+				fallthrough
 			default:
 				for _, pattern := range paramPatterns {
 					stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.StringVal
@@ -115,6 +117,8 @@ func paramsFromTaskRun(ctx context.Context, tr *v1beta1.TaskRun) (map[string]str
 			for k, v := range p.Value.ObjectVal {
 				stringReplacements[fmt.Sprintf(objectIndividualVariablePattern, p.Name, k)] = v
 			}
+		case v1beta1.ParamTypeString:
+			fallthrough
 		default:
 			for _, pattern := range paramPatterns {
 				stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.StringVal

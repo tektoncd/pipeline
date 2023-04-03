@@ -66,6 +66,9 @@ func (*gitConfigBuilder) MatchingAnnotations(secret *corev1.Secret) []string {
 	case corev1.SecretTypeSSHAuth:
 		flagName = sshFlag
 
+	case corev1.SecretTypeOpaque, corev1.SecretTypeServiceAccountToken, corev1.SecretTypeDockercfg, corev1.SecretTypeDockerConfigJson, corev1.SecretTypeTLS, corev1.SecretTypeBootstrapToken:
+		return flags
+
 	default:
 		return flags
 	}

@@ -384,6 +384,8 @@ func ValidateParameterVariables(ctx context.Context, steps []Step, params []Para
 			arrayParameterNames.Insert(p.Name)
 		case ParamTypeObject:
 			objectParamSpecs = append(objectParamSpecs, p)
+		case ParamTypeString:
+			fallthrough
 		default:
 			stringParameterNames.Insert(p.Name)
 		}

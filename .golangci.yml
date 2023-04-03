@@ -28,6 +28,7 @@ linters:
   - errchkjson
   - errname
   - errorlint
+  - exhaustive
   - goconst
   - gocritic
   - gofmt
