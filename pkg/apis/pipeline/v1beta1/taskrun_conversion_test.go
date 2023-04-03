@@ -391,7 +391,7 @@ func TestTaskRunConversionFromDeprecated(t *testing.T) {
 			},
 			Status: v1beta1.TaskRunStatus{
 				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-					ResourcesResult: []v1beta1.PipelineResourceResult{{
+					ResourcesResult: []v1beta1.RunResult{{
 						Key:          "digest",
 						Value:        "sha256:1234",
 						ResourceName: "source-image",
@@ -415,7 +415,7 @@ func TestTaskRunConversionFromDeprecated(t *testing.T) {
 			},
 			Status: v1beta1.TaskRunStatus{
 				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-					ResourcesResult: []v1beta1.PipelineResourceResult{{
+					ResourcesResult: []v1beta1.RunResult{{
 						Key:          "digest",
 						Value:        "sha256:1234",
 						ResourceName: "source-image",

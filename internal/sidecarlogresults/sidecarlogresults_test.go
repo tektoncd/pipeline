@@ -147,11 +147,11 @@ func TestExtractResultsFromLogs(t *testing.T) {
 	}
 	logs := strings.NewReader(podLogs)
 
-	results, err := extractResultsFromLogs(logs, []v1beta1.PipelineResourceResult{}, 4096)
+	results, err := extractResultsFromLogs(logs, []v1beta1.RunResult{}, 4096)
 	if err != nil {
 		t.Error(err)
 	}
-	want := []v1beta1.PipelineResourceResult{
+	want := []v1beta1.RunResult{
 		{
 			Key:        "result1",
 			Value:      "foo",
@@ -181,7 +181,7 @@ func TestExtractResultsFromLogs_Failure(t *testing.T) {
 	}
 	logs := strings.NewReader(podLogs)
 
-	_, err := extractResultsFromLogs(logs, []v1beta1.PipelineResourceResult{}, 4096)
+	_, err := extractResultsFromLogs(logs, []v1beta1.RunResult{}, 4096)
 	if !errors.Is(err, ErrSizeExceeded) {
 		t.Fatalf("Expected error %v but got %v", ErrSizeExceeded, err)
 	}
@@ -205,7 +205,7 @@ func TestParseResults(t *testing.T) {
 		res, _ := json.Marshal(&r)
 		podLogs = append(podLogs, string(res))
 	}
-	want := []v1beta1.PipelineResourceResult{{
+	want := []v1beta1.RunResult{{
 		Key:        "result1",
 		Value:      "foo",
 		ResultType: v1beta1.TaskRunResultType,
@@ -218,7 +218,7 @@ func TestParseResults(t *testing.T) {
 		Value:      `["hello","world"]`,
 		ResultType: v1beta1.TaskRunResultType,
 	}}
-	stepResults := []v1beta1.PipelineResourceResult{}
+	stepResults := []v1beta1.RunResult{}
 	for _, plog := range podLogs {
 		res, err := parseResults([]byte(plog), 4096)
 		if err != nil {

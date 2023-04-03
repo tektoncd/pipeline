@@ -97,7 +97,7 @@ var (
 					ImageID:       "image-id",
 					ContainerName: "sidecar-error",
 				}},
-				ResourcesResult: []v1beta1.PipelineResourceResult{{
+				ResourcesResult: []v1beta1.RunResult{{
 					Key:          "digest",
 					Value:        "sha256:1234",
 					ResourceName: "source-image",

@@ -381,7 +381,7 @@ func serializeTaskRunResourcesResult(meta *metav1.ObjectMeta, status *TaskRunSta
 }
 
 func deserializeTaskRunResourcesResult(meta *metav1.ObjectMeta, status *TaskRunStatus) error {
-	resourcesResult := []PipelineResourceResult{}
+	resourcesResult := []RunResult{}
 	err := version.DeserializeFromMetadata(meta, &resourcesResult, resourcesResultAnnotationKey)
 	if err != nil {
 		return err

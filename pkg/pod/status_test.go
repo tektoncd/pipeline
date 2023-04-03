@@ -671,7 +671,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerName: "step-foo",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.PipelineResourceResult{{
+				ResourcesResult: []v1beta1.RunResult{{
 					Key:          "digest",
 					Value:        "sha256:12345",
 					ResourceName: "source-image",
@@ -705,7 +705,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerName: "step-bar",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.PipelineResourceResult{{
+				ResourcesResult: []v1beta1.RunResult{{
 					Key:          "digest",
 					Value:        "sha256:1234",
 					ResourceName: "source-image",
@@ -744,7 +744,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerName: "step-banana",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.PipelineResourceResult{{
+				ResourcesResult: []v1beta1.RunResult{{
 					Key:          "digest",
 					Value:        "sha256:1234",
 					ResourceName: "source-image",
@@ -836,7 +836,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			},
 		},
 	}, {
-		desc: "termination message not adhering to pipelineresourceresult format is filtered from taskrun termination message",
+		desc: "termination message not adhering to RunResult format is filtered from taskrun termination message",
 		podStatus: corev1.PodStatus{
 			Phase: corev1.PodSucceeded,
 			ContainerStatuses: []corev1.ContainerStatus{{
@@ -1297,7 +1297,7 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					ContainerName: "step-bar",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.PipelineResourceResult{{
+				ResourcesResult: []v1beta1.RunResult{{
 					Key:          "digest",
 					Value:        "sha256:1234",
 					ResourceName: "source-image",
@@ -1344,7 +1344,7 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					ContainerName: "step-bar",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.PipelineResourceResult{{
+				ResourcesResult: []v1beta1.RunResult{{
 					Key:          "digest",
 					Value:        "sha256:1234",
 					ResourceName: "source-image",
@@ -1391,7 +1391,7 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					ContainerName: "step-bar",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.PipelineResourceResult{{
+				ResourcesResult: []v1beta1.RunResult{{
 					Key:          "digest",
 					Value:        "sha256:1234",
 					ResourceName: "source-image",
@@ -1438,7 +1438,7 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					ContainerName: "step-bar",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.PipelineResourceResult{{
+				ResourcesResult: []v1beta1.RunResult{{
 					Key:          "digest",
 					Value:        "sha256:1234",
 					ResourceName: "source-image",

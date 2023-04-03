@@ -137,8 +137,8 @@ func LookForResults(w io.Writer, runDir string, resultsDir string, resultNames [
 }
 
 // GetResultsFromSidecarLogs extracts results from the logs of the results sidecar
-func GetResultsFromSidecarLogs(ctx context.Context, clientset kubernetes.Interface, namespace string, name string, container string, podPhase corev1.PodPhase) ([]v1beta1.PipelineResourceResult, error) {
-	sidecarLogResults := []v1beta1.PipelineResourceResult{}
+func GetResultsFromSidecarLogs(ctx context.Context, clientset kubernetes.Interface, namespace string, name string, container string, podPhase corev1.PodPhase) ([]v1beta1.RunResult, error) {
+	sidecarLogResults := []v1beta1.RunResult{}
 	if podPhase == corev1.PodPending {
 		return sidecarLogResults, nil
 	}
@@ -153,7 +153,7 @@ func GetResultsFromSidecarLogs(ctx context.Context, clientset kubernetes.Interfa
 	return extractResultsFromLogs(sidecarLogs, sidecarLogResults, maxResultLimit)
 }
 
-func extractResultsFromLogs(logs io.Reader, sidecarLogResults []v1beta1.PipelineResourceResult, maxResultLimit int) ([]v1beta1.PipelineResourceResult, error) {
+func extractResultsFromLogs(logs io.Reader, sidecarLogResults []v1beta1.RunResult, maxResultLimit int) ([]v1beta1.RunResult, error) {
 	scanner := bufio.NewScanner(logs)
 	buf := make([]byte, maxResultLimit)
 	scanner.Buffer(buf, maxResultLimit)
@@ -174,8 +174,8 @@ func extractResultsFromLogs(logs io.Reader, sidecarLogResults []v1beta1.Pipeline
 	return sidecarLogResults, nil
 }
 
-func parseResults(resultBytes []byte, maxResultLimit int) (v1beta1.PipelineResourceResult, error) {
-	result := v1beta1.PipelineResourceResult{}
+func parseResults(resultBytes []byte, maxResultLimit int) (v1beta1.RunResult, error) {
+	result := v1beta1.RunResult{}
 	if len(resultBytes) > maxResultLimit {
 		return result, ErrSizeExceeded
 	}
@@ -184,7 +184,7 @@ func parseResults(resultBytes []byte, maxResultLimit int) (v1beta1.PipelineResou
 	if err := json.Unmarshal(resultBytes, &res); err != nil {
 		return result, fmt.Errorf("Invalid result %w", err)
 	}
-	result = v1beta1.PipelineResourceResult{
+	result = v1beta1.RunResult{
 		Key:        res.Name,
 		Value:      res.Value,
 		ResultType: v1beta1.TaskRunResultType,

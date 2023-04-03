@@ -254,7 +254,7 @@ type TaskRunStatusFields struct {
 	// the digest of build container images
 	// +optional
 	// +listType=atomic
-	ResourcesResult []PipelineResourceResult `json:"resourcesResult,omitempty"`
+	ResourcesResult []RunResult `json:"resourcesResult,omitempty"`
 
 	// TaskRunResults are the list of results written out by the task's containers
 	// +optional

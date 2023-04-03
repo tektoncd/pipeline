@@ -181,10 +181,10 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 		}
 
 		// populate task run CRD with results from sidecar logs
-		taskResults, pipelineResourceResults, _ := filterResultsAndResources(sidecarLogResults, specResults)
+		taskResults, RunResults, _ := filterResultsAndResources(sidecarLogResults, specResults)
 		if tr.IsSuccessful() {
 			trs.TaskRunResults = append(trs.TaskRunResults, taskResults...)
-			trs.ResourcesResult = append(trs.ResourcesResult, pipelineResourceResults...)
+			trs.ResourcesResult = append(trs.ResourcesResult, RunResults...)
 		}
 	}
 	// Continue with extraction of termination messages
@@ -208,10 +208,10 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 					merr = multierror.Append(merr, err)
 				}
 
-				taskResults, pipelineResourceResults, filteredResults := filterResultsAndResources(results, specResults)
+				taskResults, RunResults, filteredResults := filterResultsAndResources(results, specResults)
 				if tr.IsSuccessful() {
 					trs.TaskRunResults = append(trs.TaskRunResults, taskResults...)
-					trs.ResourcesResult = append(trs.ResourcesResult, pipelineResourceResults...)
+					trs.ResourcesResult = append(trs.ResourcesResult, RunResults...)
 				}
 				msg, err = createMessageFromResults(filteredResults)
 				if err != nil {
@@ -250,7 +250,7 @@ func setTaskRunStatusBasedOnSidecarStatus(sidecarStatuses []corev1.ContainerStat
 	}
 }
 
-func createMessageFromResults(results []v1beta1.PipelineResourceResult) (string, error) {
+func createMessageFromResults(results []v1beta1.RunResult) (string, error) {
 	if len(results) == 0 {
 		return "", nil
 	}
@@ -261,10 +261,10 @@ func createMessageFromResults(results []v1beta1.PipelineResourceResult) (string,
 	return string(bytes), nil
 }
 
-func filterResultsAndResources(results []v1beta1.PipelineResourceResult, specResults []v1beta1.TaskResult) ([]v1beta1.TaskRunResult, []v1beta1.PipelineResourceResult, []v1beta1.PipelineResourceResult) {
+func filterResultsAndResources(results []v1beta1.RunResult, specResults []v1beta1.TaskResult) ([]v1beta1.TaskRunResult, []v1beta1.RunResult, []v1beta1.RunResult) {
 	var taskResults []v1beta1.TaskRunResult
-	var pipelineResourceResults []v1beta1.PipelineResourceResult
-	var filteredResults []v1beta1.PipelineResourceResult
+	var RunResults []v1beta1.RunResult
+	var filteredResults []v1beta1.RunResult
 	neededTypes := make(map[string]v1beta1.ResultsType)
 	for _, r := range specResults {
 		neededTypes[r.Name] = r.Type
@@ -297,12 +297,12 @@ func filterResultsAndResources(results []v1beta1.PipelineResourceResult, specRes
 			// Internal messages are ignored because they're not used as external result
 			continue
 		default:
-			pipelineResourceResults = append(pipelineResourceResults, r)
+			RunResults = append(RunResults, r)
 			filteredResults = append(filteredResults, r)
 		}
 	}
 
-	return taskResults, pipelineResourceResults, filteredResults
+	return taskResults, RunResults, filteredResults
 }
 
 func removeDuplicateResults(taskRunResult []v1beta1.TaskRunResult) []v1beta1.TaskRunResult {
@@ -324,7 +324,7 @@ func removeDuplicateResults(taskRunResult []v1beta1.TaskRunResult) []v1beta1.Tas
 	return uniq
 }
 
-func extractStartedAtTimeFromResults(results []v1beta1.PipelineResourceResult) (*metav1.Time, error) {
+func extractStartedAtTimeFromResults(results []v1beta1.RunResult) (*metav1.Time, error) {
 	for _, result := range results {
 		if result.Key == "StartedAt" {
 			t, err := time.Parse(timeFormat, result.Value)
@@ -338,7 +338,7 @@ func extractStartedAtTimeFromResults(results []v1beta1.PipelineResourceResult) (
 	return nil, nil
 }
 
-func extractExitCodeFromResults(results []v1beta1.PipelineResourceResult) (*int32, error) {
+func extractExitCodeFromResults(results []v1beta1.RunResult) (*int32, error) {
 	for _, result := range results {
 		if result.Key == "ExitCode" {
 			// We could just pass the string through but this provides extra validation
