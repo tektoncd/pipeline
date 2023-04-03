@@ -210,13 +210,35 @@ func TestMatchingAnnotations(t *testing.T) {
 			"-basic-docker=ssh=keys2",
 			"-basic-docker=ssh=keys3",
 		},
+	}, {
+		secret: &corev1.Secret{
+			Type:       corev1.SecretTypeDockercfg,
+			ObjectMeta: metav1.ObjectMeta{Name: "my-dockercfg"},
+		},
+		wantFlag: []string{"-docker-cfg=my-dockercfg"},
+	}, {
+		secret: &corev1.Secret{
+			Type:       corev1.SecretTypeDockerConfigJson,
+			ObjectMeta: metav1.ObjectMeta{Name: "my-dockerconfigjson"},
+		},
+		wantFlag: []string{"-docker-config=my-dockerconfigjson"},
+	}, {
+		secret: &corev1.Secret{Type: corev1.SecretTypeOpaque},
+	}, {
+		secret: &corev1.Secret{Type: corev1.SecretTypeServiceAccountToken},
+	}, {
+		secret: &corev1.Secret{Type: corev1.SecretTypeTLS},
+	}, {
+		secret: &corev1.Secret{Type: corev1.SecretTypeBootstrapToken},
+	}, {
+		secret: &corev1.Secret{}, // An empty secret should result in no flags.
 	}}
 
 	nb := NewBuilder()
 	for _, ts := range tests {
 		gotFlag := nb.MatchingAnnotations(ts.secret)
 		if !cmp.Equal(ts.wantFlag, gotFlag) {
-			t.Errorf("MatchingAnnotations() Mismatch of flags; wanted: %v got: %v ", ts.wantFlag, gotFlag)
+			t.Errorf("Mismatch of flags for %v; want: %v got: %v ", ts.secret.Type, ts.wantFlag, gotFlag)
 		}
 	}
 }

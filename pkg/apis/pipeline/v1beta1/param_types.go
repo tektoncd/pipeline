@@ -452,6 +452,8 @@ func (paramValues *ParamValue) ApplyReplacements(stringReplacements map[string]s
 			newObjectVal[k] = substitution.ApplyReplacements(v, stringReplacements)
 		}
 		paramValues.ObjectVal = newObjectVal
+	case ParamTypeString:
+		fallthrough
 	default:
 		paramValues.applyOrCorrect(stringReplacements, arrayReplacements, objectReplacements)
 	}
@@ -539,6 +541,8 @@ func validatePipelineParametersVariablesInTaskParameters(params Params, prefix s
 			for key, val := range param.Value.ObjectVal {
 				errs = errs.Also(validateStringVariable(val, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaFieldKey("properties", key).ViaFieldKey("params", param.Name))
 			}
+		case ParamTypeString:
+			fallthrough
 		default:
 			errs = errs.Also(validateParamStringValue(param, prefix, paramNames, arrayParamNames, objectParamNameKeys))
 		}

@@ -157,6 +157,10 @@ func (*basicDockerBuilder) MatchingAnnotations(secret *corev1.Secret) []string {
 		flags = append(flags, fmt.Sprintf("-docker-config=%s", secret.Name))
 	case corev1.SecretTypeDockercfg:
 		flags = append(flags, fmt.Sprintf("-docker-cfg=%s", secret.Name))
+
+	case corev1.SecretTypeOpaque, corev1.SecretTypeServiceAccountToken, corev1.SecretTypeSSHAuth, corev1.SecretTypeTLS, corev1.SecretTypeBootstrapToken:
+		return flags
+
 	default:
 		return flags
 	}

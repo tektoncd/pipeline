@@ -438,6 +438,20 @@ func TestMatchingAnnotations(t *testing.T) {
 			},
 		},
 		wantFlag: []string{fmt.Sprintf("-%s=ssh=keys1", sshFlag), fmt.Sprintf("-%s=ssh=keys2", sshFlag), fmt.Sprintf("-%s=ssh=keys3", sshFlag)},
+	}, {
+		secret: &corev1.Secret{Type: corev1.SecretTypeOpaque},
+	}, {
+		secret: &corev1.Secret{Type: corev1.SecretTypeServiceAccountToken},
+	}, {
+		secret: &corev1.Secret{Type: corev1.SecretTypeDockercfg},
+	}, {
+		secret: &corev1.Secret{Type: corev1.SecretTypeDockerConfigJson},
+	}, {
+		secret: &corev1.Secret{Type: corev1.SecretTypeTLS},
+	}, {
+		secret: &corev1.Secret{Type: corev1.SecretTypeBootstrapToken},
+	}, {
+		secret: &corev1.Secret{}, // An empty secret should result in no flags.
 	}}
 
 	nb := NewBuilder()

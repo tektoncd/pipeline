@@ -78,6 +78,8 @@ func ApplyParameters(ctx context.Context, p *v1beta1.PipelineSpec, pr *v1beta1.P
 				for k, v := range p.Default.ObjectVal {
 					stringReplacements[fmt.Sprintf(objectIndividualVariablePattern, p.Name, k)] = v
 				}
+			case v1beta1.ParamTypeString:
+				fallthrough
 			default:
 				for _, pattern := range paramPatterns {
 					stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.StringVal
@@ -127,6 +129,8 @@ func paramsFromPipelineRun(ctx context.Context, pr *v1beta1.PipelineRun) (map[st
 			for k, v := range p.Value.ObjectVal {
 				stringReplacements[fmt.Sprintf(objectIndividualVariablePattern, p.Name, k)] = v
 			}
+		case v1beta1.ParamTypeString:
+			fallthrough
 		default:
 			for _, pattern := range paramPatterns {
 				stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.StringVal
