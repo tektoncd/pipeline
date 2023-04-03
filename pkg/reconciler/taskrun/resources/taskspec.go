@@ -35,7 +35,7 @@ type ResolvedTask struct {
 }
 
 // GetTask is a function used to retrieve Tasks.
-type GetTask func(context.Context, string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error)
+type GetTask func(context.Context, string) (*v1beta1.Task, *v1beta1.ConfigSource, error)
 
 // GetTaskRun is a function used to retrieve TaskRuns
 type GetTaskRun func(string) (*v1beta1.TaskRun, error)

@@ -184,7 +184,11 @@ func TestLocalTaskRef(t *testing.T) {
 				Name: "cluster-task",
 				Kind: "ClusterTask",
 			},
-			expected: &v1beta1.ClusterTask{
+			expected: &v1beta1.Task{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "tekton.dev/v1beta1",
+					Kind:       "Task",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "cluster-task",
 				},
@@ -397,11 +401,11 @@ func TestGetTaskFunc(t *testing.T) {
 				Kind:       v1beta1.ClusterTaskKind,
 				Bundle:     u.Host + "/remote-cluster-task",
 			},
-			expected: &v1beta1.ClusterTask{
+			expected: &v1beta1.Task{
 				ObjectMeta: metav1.ObjectMeta{Name: "simple"},
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "tekton.dev/v1beta1",
-					Kind:       "ClusterTask",
+					Kind:       "Task",
 				},
 			},
 			expectedKind: v1beta1.ClusterTaskKind,
@@ -422,8 +426,21 @@ func TestGetTaskFunc(t *testing.T) {
 				Name: "simple",
 				Kind: v1beta1.ClusterTaskKind,
 			},
-			expected:     simpleClusterTask,
-			expectedKind: v1beta1.ClusterTaskKind,
+			expected: &v1beta1.Task{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "simple",
+				},
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "tekton.dev/v1beta1",
+					Kind:       "Task",
+				},
+				Spec: v1beta1.TaskSpec{
+					Steps: []v1beta1.Step{{
+						Image: "something",
+					}},
+				},
+			},
+			expectedKind: v1beta1.NamespacedTaskKind,
 		},
 	}
 
@@ -892,7 +909,7 @@ func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
 		name                      string
 		requester                 *test.Requester
 		verificationNoMatchPolicy string
-		expected                  runtime.Object
+		expected                  *v1beta1.Task
 		expectedErr               error
 	}{{
 		name:                      "unsigned task with fails verification with fail no match policy",

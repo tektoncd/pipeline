@@ -692,7 +692,7 @@ func resolveTask(
 	pipelineTask v1beta1.PipelineTask,
 ) (v1beta1.TaskSpec, string, v1beta1.TaskKind, error) {
 	var (
-		t        v1beta1.TaskObject
+		t        *v1beta1.Task
 		err      error
 		spec     v1beta1.TaskSpec
 		taskName string
