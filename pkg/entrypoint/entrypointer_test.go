@@ -231,7 +231,7 @@ func TestEntrypointer(t *testing.T) {
 			}
 			fileContents, err := os.ReadFile(terminationPath)
 			if err == nil {
-				var entries []v1beta1.PipelineResourceResult
+				var entries []v1beta1.RunResult
 				if err := json.Unmarshal(fileContents, &entries); err == nil {
 					var found = false
 					for _, result := range entries {
@@ -259,26 +259,26 @@ func TestReadResultsFromDisk(t *testing.T) {
 		desc          string
 		results       []string
 		resultContent []v1beta1.ResultValue
-		want          []v1beta1.PipelineResourceResult
+		want          []v1beta1.RunResult
 	}{{
 		desc:          "read string result file",
 		results:       []string{"results"},
 		resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello world")},
-		want: []v1beta1.PipelineResourceResult{
+		want: []v1beta1.RunResult{
 			{Value: `"hello world"`,
 				ResultType: 1}},
 	}, {
 		desc:          "read array result file",
 		results:       []string{"results"},
 		resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello", "world")},
-		want: []v1beta1.PipelineResourceResult{
+		want: []v1beta1.RunResult{
 			{Value: `["hello","world"]`,
 				ResultType: 1}},
 	}, {
 		desc:          "read string and array result files",
 		results:       []string{"resultsArray", "resultsString"},
 		resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello", "world"), *v1beta1.NewStructuredValues("hello world")},
-		want: []v1beta1.PipelineResourceResult{
+		want: []v1beta1.RunResult{
 			{Value: `["hello","world"]`,
 				ResultType: 1},
 			{Value: `"hello world"`,
@@ -567,7 +567,7 @@ func TestEntrypointerResults(t *testing.T) {
 			fileContents, err := os.ReadFile(terminationPath)
 			if err == nil {
 				resultCheck := map[string]bool{}
-				var entries []v1beta1.PipelineResourceResult
+				var entries []v1beta1.RunResult
 				if err := json.Unmarshal(fileContents, &entries); err != nil {
 					t.Fatalf("failed to unmarshal results: %v", err)
 				}

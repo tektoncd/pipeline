@@ -3306,7 +3306,7 @@ string
 <p>ResultsType indicates the type of a result;
 Used to distinguish between a single string and an array of strings.
 Note that there is ResultType used to find out whether a
-PipelineResourceResult is from a task result or not, which is different from
+RunResult is from a task result or not, which is different from
 this ResultsType.</p>
 </div>
 <table>
@@ -9800,72 +9800,6 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="tekton.dev/v1beta1.PipelineResourceResult">PipelineResourceResult
-</h3>
-<p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskRunStatusFields">TaskRunStatusFields</a>)
-</p>
-<div>
-<p>PipelineResourceResult is used to write key/value pairs to TaskRun pod termination messages.
-The key/value pairs may come from the entrypoint binary, or represent a TaskRunResult.
-If they represent a TaskRunResult, the key is the name of the result and the value is the
-JSON-serialized value of the result.
-TODO(#6197): Rename this struct</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>key</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>value</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>resourceName</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>ResourceName may be used in tests, but it is not populated in termination messages.
-It is preserved here for backwards compatibility and will not be ported to v1.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>type</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.ResultType">
-ResultType
-</a>
-</em>
-</td>
-<td>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="tekton.dev/v1beta1.PipelineResult">PipelineResult
 </h3>
 <p>
@@ -11497,10 +11431,10 @@ string
 <h3 id="tekton.dev/v1beta1.ResultType">ResultType
 (<code>int</code> alias)</h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineResourceResult">PipelineResourceResult</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.RunResult">RunResult</a>)
 </p>
 <div>
-<p>ResultType used to find out whether a PipelineResourceResult is from a task result or not
+<p>ResultType used to find out whether a RunResult is from a task result or not
 Note that ResultsType is another type which is used to define the data type
 (e.g. string, array, etc) we used for Results</p>
 </div>
@@ -11513,7 +11447,7 @@ Note that ResultsType is another type which is used to define the data type
 <p>ResultsType indicates the type of a result;
 Used to distinguish between a single string and an array of strings.
 Note that there is ResultType used to find out whether a
-PipelineResourceResult is from a task result or not, which is different from
+RunResult is from a task result or not, which is different from
 this ResultsType.</p>
 </div>
 <h3 id="tekton.dev/v1beta1.RunObject">RunObject
@@ -11521,6 +11455,71 @@ this ResultsType.</p>
 <div>
 <p>RunObject is implemented by CustomRun and Run</p>
 </div>
+<h3 id="tekton.dev/v1beta1.RunResult">RunResult
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskRunStatusFields">TaskRunStatusFields</a>)
+</p>
+<div>
+<p>RunResult is used to write key/value pairs to TaskRun pod termination messages.
+The key/value pairs may come from the entrypoint binary, or represent a TaskRunResult.
+If they represent a TaskRunResult, the key is the name of the result and the value is the
+JSON-serialized value of the result.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>key</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>value</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>resourceName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ResourceName may be used in tests, but it is not populated in termination messages.
+It is preserved here for backwards compatibility and will not be ported to v1.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>type</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.ResultType">
+ResultType
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1beta1.Sidecar">Sidecar
 </h3>
 <p>
@@ -13967,8 +13966,8 @@ All TaskRunStatus stored in RetriesStatus will have no date within the RetriesSt
 <td>
 <code>resourcesResult</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.PipelineResourceResult">
-[]PipelineResourceResult
+<a href="#tekton.dev/v1beta1.RunResult">
+[]RunResult
 </a>
 </em>
 </td>

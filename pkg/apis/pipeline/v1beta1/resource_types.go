@@ -25,12 +25,11 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-// PipelineResourceResult is used to write key/value pairs to TaskRun pod termination messages.
+// RunResult is used to write key/value pairs to TaskRun pod termination messages.
 // The key/value pairs may come from the entrypoint binary, or represent a TaskRunResult.
 // If they represent a TaskRunResult, the key is the name of the result and the value is the
 // JSON-serialized value of the result.
-// TODO(#6197): Rename this struct
-type PipelineResourceResult struct {
+type RunResult struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 	// ResourceName may be used in tests, but it is not populated in termination messages.
@@ -39,7 +38,11 @@ type PipelineResourceResult struct {
 	ResultType   ResultType `json:"type,omitempty"`
 }
 
-// ResultType used to find out whether a PipelineResourceResult is from a task result or not
+// PipelineResourceResult has been deprecated with the migration of PipelineResources
+// Deprecated: Use RunResult instead
+type PipelineResourceResult = RunResult
+
+// ResultType used to find out whether a RunResult is from a task result or not
 // Note that ResultsType is another type which is used to define the data type
 // (e.g. string, array, etc) we used for Results
 type ResultType int

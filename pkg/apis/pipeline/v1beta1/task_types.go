@@ -28,7 +28,7 @@ const (
 	// TaskRunResultType default task run result value
 	TaskRunResultType ResultType = 1
 	// reserved: 2
-	// was PipelineResourceResultType
+	// was RunResultType
 
 	// InternalTektonResultType default internal tekton result value
 	InternalTektonResultType = 3

@@ -2,7 +2,7 @@
 # They are in the specific order they are printed out by k8s.io/kube-openapi/cmd/openapi-gen.
 # No additional violations should be added to this ignored list.
 API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,CloudEventDeliveryState,Error
-API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,PipelineResourceResult,ResultType
+API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,RunResult,ResultType
 API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,PipelineTask,WhenExpressions
 API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,SidecarState,ContainerName
 API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,StepState,ContainerName

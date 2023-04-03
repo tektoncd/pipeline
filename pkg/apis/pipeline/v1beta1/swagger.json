@@ -804,32 +804,6 @@
         }
       }
     },
-    "v1beta1.PipelineResourceResult": {
-      "description": "PipelineResourceResult is used to write key/value pairs to TaskRun pod termination messages. The key/value pairs may come from the entrypoint binary, or represent a TaskRunResult. If they represent a TaskRunResult, the key is the name of the result and the value is the JSON-serialized value of the result.",
-      "type": "object",
-      "required": [
-        "key",
-        "value"
-      ],
-      "properties": {
-        "key": {
-          "type": "string",
-          "default": ""
-        },
-        "resourceName": {
-          "description": "ResourceName may be used in tests, but it is not populated in termination messages. It is preserved here for backwards compatibility and will not be ported to v1.",
-          "type": "string"
-        },
-        "type": {
-          "type": "integer",
-          "format": "int32"
-        },
-        "value": {
-          "type": "string",
-          "default": ""
-        }
-      }
-    },
     "v1beta1.PipelineResult": {
       "description": "PipelineResult used to describe the results of a pipeline",
       "type": "object",
@@ -1778,6 +1752,32 @@
           "type": "integer",
           "format": "int32",
           "default": 0
+        }
+      }
+    },
+    "v1beta1.RunResult": {
+      "description": "RunResult is used to write key/value pairs to TaskRun pod termination messages. The key/value pairs may come from the entrypoint binary, or represent a TaskRunResult. If they represent a TaskRunResult, the key is the name of the result and the value is the JSON-serialized value of the result.",
+      "type": "object",
+      "required": [
+        "key",
+        "value"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "default": ""
+        },
+        "resourceName": {
+          "description": "ResourceName may be used in tests, but it is not populated in termination messages. It is preserved here for backwards compatibility and will not be ported to v1.",
+          "type": "string"
+        },
+        "type": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "value": {
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -2853,7 +2853,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1beta1.PipelineResourceResult"
+            "$ref": "#/definitions/v1beta1.RunResult"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -2945,7 +2945,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1beta1.PipelineResourceResult"
+            "$ref": "#/definitions/v1beta1.RunResult"
           },
           "x-kubernetes-list-type": "atomic"
         },

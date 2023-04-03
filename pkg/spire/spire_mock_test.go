@@ -285,7 +285,7 @@ func TestMock_TaskRunResultsSign(t *testing.T) {
 				}
 			}
 
-			for _, results := range testPipelineResourceResults() {
+			for _, results := range testRunResults() {
 				success := func() bool {
 					spireMockClient.SignIdentities = []string{spireMockClient.GetIdentity(tr)}
 					if tt.wrongPodIdentity {
@@ -322,8 +322,8 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		ec EntrypointerAPIClient = spireMockClient
 	)
 
-	genPr := func() []v1beta1.PipelineResourceResult {
-		return []v1beta1.PipelineResourceResult{
+	genPr := func() []v1beta1.RunResult {
+		return []v1beta1.RunResult{
 			{
 				Key:          "foo",
 				Value:        "foo-value",
@@ -343,7 +343,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		// description of test
 		desc string
 		// function to tamper
-		tamperFn func([]v1beta1.PipelineResourceResult) []v1beta1.PipelineResourceResult
+		tamperFn func([]v1beta1.RunResult) []v1beta1.RunResult
 		// whether sign/verify procedure should succeed
 		success bool
 	}{
@@ -353,8 +353,8 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "non-intrusive tamper",
-			tamperFn: func(prs []v1beta1.PipelineResourceResult) []v1beta1.PipelineResourceResult {
-				prs = append(prs, v1beta1.PipelineResourceResult{
+			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+				prs = append(prs, v1beta1.RunResult{
 					Key:   "not-taskrun-result-type-add",
 					Value: "abc:12345",
 				})
@@ -364,7 +364,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "tamper SVID",
-			tamperFn: func(prs []v1beta1.PipelineResourceResult) []v1beta1.PipelineResourceResult {
+			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
 				for i, pr := range prs {
 					if pr.Key == KeySVID {
 						prs[i].Value = "tamper-value"
@@ -376,7 +376,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "tamper result manifest",
-			tamperFn: func(prs []v1beta1.PipelineResourceResult) []v1beta1.PipelineResourceResult {
+			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
 				for i, pr := range prs {
 					if pr.Key == KeyResultManifest {
 						prs[i].Value = "tamper-value"
@@ -388,7 +388,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "tamper result manifest signature",
-			tamperFn: func(prs []v1beta1.PipelineResourceResult) []v1beta1.PipelineResourceResult {
+			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
 				for i, pr := range prs {
 					if pr.Key == KeyResultManifest+KeySignatureSuffix {
 						prs[i].Value = "tamper-value"
@@ -400,7 +400,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "tamper result field",
-			tamperFn: func(prs []v1beta1.PipelineResourceResult) []v1beta1.PipelineResourceResult {
+			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
 				for i, pr := range prs {
 					if pr.Key == "foo" {
 						prs[i].Value = "tamper-value"
@@ -412,7 +412,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "tamper result field signature",
-			tamperFn: func(prs []v1beta1.PipelineResourceResult) []v1beta1.PipelineResourceResult {
+			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
 				for i, pr := range prs {
 					if pr.Key == "foo"+KeySignatureSuffix {
 						prs[i].Value = "tamper-value"
@@ -424,7 +424,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "delete SVID",
-			tamperFn: func(prs []v1beta1.PipelineResourceResult) []v1beta1.PipelineResourceResult {
+			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
 				for i, pr := range prs {
 					if pr.Key == KeySVID {
 						return append(prs[:i], prs[i+1:]...)
@@ -436,7 +436,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "delete result manifest",
-			tamperFn: func(prs []v1beta1.PipelineResourceResult) []v1beta1.PipelineResourceResult {
+			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
 				for i, pr := range prs {
 					if pr.Key == KeyResultManifest {
 						return append(prs[:i], prs[i+1:]...)
@@ -448,7 +448,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "delete result manifest signature",
-			tamperFn: func(prs []v1beta1.PipelineResourceResult) []v1beta1.PipelineResourceResult {
+			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
 				for i, pr := range prs {
 					if pr.Key == KeyResultManifest+KeySignatureSuffix {
 						return append(prs[:i], prs[i+1:]...)
@@ -460,7 +460,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "delete result field",
-			tamperFn: func(prs []v1beta1.PipelineResourceResult) []v1beta1.PipelineResourceResult {
+			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
 				for i, pr := range prs {
 					if pr.Key == "foo" {
 						return append(prs[:i], prs[i+1:]...)
@@ -472,7 +472,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "delete result field signature",
-			tamperFn: func(prs []v1beta1.PipelineResourceResult) []v1beta1.PipelineResourceResult {
+			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
 				for i, pr := range prs {
 					if pr.Key == "foo"+KeySignatureSuffix {
 						return append(prs[:i], prs[i+1:]...)
@@ -484,7 +484,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "add to result manifest",
-			tamperFn: func(prs []v1beta1.PipelineResourceResult) []v1beta1.PipelineResourceResult {
+			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
 				for i, pr := range prs {
 					if pr.Key == KeyResultManifest {
 						prs[i].Value += ",xyz"
@@ -631,8 +631,8 @@ func testTaskRuns() []*v1beta1.TaskRun {
 	}
 }
 
-func testPipelineResourceResults() [][]v1beta1.PipelineResourceResult {
-	return [][]v1beta1.PipelineResourceResult{
+func testRunResults() [][]v1beta1.RunResult {
+	return [][]v1beta1.RunResult{
 		// Single result
 		{
 			{

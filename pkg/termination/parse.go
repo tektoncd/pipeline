@@ -29,18 +29,18 @@ import (
 //
 // If more than one item has the same key, only the latest is returned. Items
 // are sorted by their key.
-func ParseMessage(logger *zap.SugaredLogger, msg string) ([]v1beta1.PipelineResourceResult, error) {
+func ParseMessage(logger *zap.SugaredLogger, msg string) ([]v1beta1.RunResult, error) {
 	if msg == "" {
 		return nil, nil
 	}
 
-	var r []v1beta1.PipelineResourceResult
+	var r []v1beta1.RunResult
 	if err := json.Unmarshal([]byte(msg), &r); err != nil {
 		return nil, fmt.Errorf("parsing message json: %w, msg: %s", err, msg)
 	}
 
 	for i, rr := range r {
-		if rr == (v1beta1.PipelineResourceResult{}) {
+		if rr == (v1beta1.RunResult{}) {
 			// Erase incorrect result
 			r[i] = r[len(r)-1]
 			r = r[:len(r)-1]
@@ -49,11 +49,11 @@ func ParseMessage(logger *zap.SugaredLogger, msg string) ([]v1beta1.PipelineReso
 	}
 
 	// Remove duplicates (last one wins) and sort by key.
-	m := map[string]v1beta1.PipelineResourceResult{}
+	m := map[string]v1beta1.RunResult{}
 	for _, rr := range r {
 		m[rr.Key] = rr
 	}
-	r2 := make([]v1beta1.PipelineResourceResult, 0, len(m))
+	r2 := make([]v1beta1.RunResult, 0, len(m))
 	for _, v := range m {
 		r2 = append(r2, v)
 	}

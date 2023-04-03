@@ -28,11 +28,11 @@ import (
 func TestParseMessage(t *testing.T) {
 	for _, c := range []struct {
 		desc, msg string
-		want      []v1beta1.PipelineResourceResult
+		want      []v1beta1.RunResult
 	}{{
 		desc: "valid message",
 		msg:  `[{"key": "digest","value":"hereisthedigest"},{"key":"foo","value":"bar"}]`,
-		want: []v1beta1.PipelineResourceResult{{
+		want: []v1beta1.RunResult{{
 			Key:   "digest",
 			Value: "hereisthedigest",
 		}, {
@@ -42,7 +42,7 @@ func TestParseMessage(t *testing.T) {
 	}, {
 		desc: "invalid key in message",
 		msg:  `[{"invalid": "digest","value":"hereisthedigest"},{"key":"foo","value":"bar"}]`,
-		want: []v1beta1.PipelineResourceResult{{
+		want: []v1beta1.RunResult{{
 			Value: "hereisthedigest",
 		}, {
 			Key:   "foo",
@@ -58,7 +58,7 @@ func TestParseMessage(t *testing.T) {
 		{"key":"foo","value":"first"},
 		{"key":"foo","value":"middle"},
 		{"key":"foo","value":"last"}]`,
-		want: []v1beta1.PipelineResourceResult{{
+		want: []v1beta1.RunResult{{
 			Key:   "foo",
 			Value: "last",
 		}},
@@ -68,7 +68,7 @@ func TestParseMessage(t *testing.T) {
 		{"key":"zzz","value":"last"},
 		{"key":"ddd","value":"middle"},
 		{"key":"aaa","value":"first"}]`,
-		want: []v1beta1.PipelineResourceResult{{
+		want: []v1beta1.RunResult{{
 			Key:   "aaa",
 			Value: "first",
 		}, {

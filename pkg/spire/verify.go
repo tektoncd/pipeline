@@ -38,13 +38,13 @@ import (
 )
 
 // VerifyTaskRunResults ensures that the TaskRun results are valid and have not been tampered with
-func (sc *spireControllerAPIClient) VerifyTaskRunResults(ctx context.Context, prs []v1beta1.PipelineResourceResult, tr *v1beta1.TaskRun) error {
+func (sc *spireControllerAPIClient) VerifyTaskRunResults(ctx context.Context, prs []v1beta1.RunResult, tr *v1beta1.TaskRun) error {
 	err := sc.setupClient(ctx)
 	if err != nil {
 		return err
 	}
 
-	resultMap := map[string]v1beta1.PipelineResourceResult{}
+	resultMap := map[string]v1beta1.RunResult{}
 	for _, r := range prs {
 		if r.ResultType == v1beta1.TaskRunResultType {
 			resultMap[r.Key] = r
@@ -177,7 +177,7 @@ func CheckStatusInternalAnnotation(tr *v1beta1.TaskRun) error {
 	return nil
 }
 
-func getSVID(resultMap map[string]v1beta1.PipelineResourceResult) (*x509.Certificate, error) {
+func getSVID(resultMap map[string]v1beta1.RunResult) (*x509.Certificate, error) {
 	svid, ok := resultMap[KeySVID]
 	if !ok {
 		return nil, errors.New("no SVID found")
@@ -252,7 +252,7 @@ func verifyCertificateTrust(cert *x509.Certificate, rootCertPool *x509.CertPool)
 	return nil
 }
 
-func verifyManifest(results map[string]v1beta1.PipelineResourceResult) error {
+func verifyManifest(results map[string]v1beta1.RunResult) error {
 	manifest, ok := results[KeyResultManifest]
 	if !ok {
 		return errors.New("no manifest found in results")
@@ -283,7 +283,7 @@ func verifyAnnotation(pub interface{}, annotations map[string]string) error {
 	return verifySignature(pub, signature, hash)
 }
 
-func verifyResult(pub crypto.PublicKey, key string, results map[string]v1beta1.PipelineResourceResult) error {
+func verifyResult(pub crypto.PublicKey, key string, results map[string]v1beta1.RunResult) error {
 	signature, ok := results[key+KeySignatureSuffix]
 	if !ok {
 		return fmt.Errorf("no signature found for %s", key)
@@ -324,7 +324,7 @@ func verifySignature(pub crypto.PublicKey, signature string, value string) error
 	}
 }
 
-func getResultValue(result v1beta1.PipelineResourceResult) (string, error) {
+func getResultValue(result v1beta1.RunResult) (string, error) {
 	aos := v1beta1.ArrayOrString{}
 	err := aos.UnmarshalJSON([]byte(result.Value))
 	valList := []string{}

@@ -54,7 +54,7 @@ type ResultValue = ParamValue
 // ResultsType indicates the type of a result;
 // Used to distinguish between a single string and an array of strings.
 // Note that there is ResultType used to find out whether a
-// PipelineResourceResult is from a task result or not, which is different from
+// RunResult is from a task result or not, which is different from
 // this ResultsType.
 type ResultsType string
 

@@ -30,8 +30,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
-// Signs the TaskRun results with the TaskRun spire SVID and appends the results to PipelineResourceResult
-func (w *spireEntrypointerAPIClient) Sign(ctx context.Context, results []v1beta1.PipelineResourceResult) ([]v1beta1.PipelineResourceResult, error) {
+// Signs the TaskRun results with the TaskRun spire SVID and appends the results to RunResult
+func (w *spireEntrypointerAPIClient) Sign(ctx context.Context, results []v1beta1.RunResult) ([]v1beta1.RunResult, error) {
 	err := w.setupClient(ctx)
 	if err != nil {
 		return nil, err
@@ -46,12 +46,12 @@ func (w *spireEntrypointerAPIClient) Sign(ctx context.Context, results []v1beta1
 		return nil, errors.New("returned workload svid does not have certificates")
 	}
 
-	output := []v1beta1.PipelineResourceResult{}
+	output := []v1beta1.RunResult{}
 	p := pem.EncodeToMemory(&pem.Block{
 		Bytes: xsvid.Certificates[0].Raw,
 		Type:  "CERTIFICATE",
 	})
-	output = append(output, v1beta1.PipelineResourceResult{
+	output = append(output, v1beta1.RunResult{
 		Key:        KeySVID,
 		Value:      string(p),
 		ResultType: v1beta1.TaskRunResultType,
@@ -67,7 +67,7 @@ func (w *spireEntrypointerAPIClient) Sign(ctx context.Context, results []v1beta1
 			if err != nil {
 				return nil, err
 			}
-			output = append(output, v1beta1.PipelineResourceResult{
+			output = append(output, v1beta1.RunResult{
 				Key:        r.Key + KeySignatureSuffix,
 				Value:      base64.StdEncoding.EncodeToString(s),
 				ResultType: v1beta1.TaskRunResultType,
@@ -76,7 +76,7 @@ func (w *spireEntrypointerAPIClient) Sign(ctx context.Context, results []v1beta1
 	}
 	// get complete manifest of keys such that it can be verified
 	manifest := getManifest(results)
-	output = append(output, v1beta1.PipelineResourceResult{
+	output = append(output, v1beta1.RunResult{
 		Key:        KeyResultManifest,
 		Value:      manifest,
 		ResultType: v1beta1.TaskRunResultType,
@@ -85,7 +85,7 @@ func (w *spireEntrypointerAPIClient) Sign(ctx context.Context, results []v1beta1
 	if err != nil {
 		return nil, err
 	}
-	output = append(output, v1beta1.PipelineResourceResult{
+	output = append(output, v1beta1.RunResult{
 		Key:        KeyResultManifest + KeySignatureSuffix,
 		Value:      base64.StdEncoding.EncodeToString(manifestSig),
 		ResultType: v1beta1.TaskRunResultType,
@@ -103,7 +103,7 @@ func signWithKey(xsvid *x509svid.SVID, value string) ([]byte, error) {
 	return s, nil
 }
 
-func getManifest(results []v1beta1.PipelineResourceResult) string {
+func getManifest(results []v1beta1.RunResult) string {
 	keys := []string{}
 	for _, r := range results {
 		if strings.HasSuffix(r.Key, KeySignatureSuffix) || r.Key == KeySVID || r.ResultType != v1beta1.TaskRunResultType {
