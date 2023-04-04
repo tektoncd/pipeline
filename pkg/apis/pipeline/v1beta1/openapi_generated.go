@@ -4328,6 +4328,13 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRef(ref common.ReferenceCallback) comm
 							Format:      "",
 						},
 					},
+					"customTask": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CustomTask specifies what custom task is used.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},

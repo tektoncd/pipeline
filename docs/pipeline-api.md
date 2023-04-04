@@ -4592,6 +4592,17 @@ like a git repo. This field is only supported when the alpha
 feature gate is enabled.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>customTask</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>CustomTask specifies what custom task is used.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.TaskResult">TaskResult
@@ -13030,6 +13041,17 @@ ResolverRef
 <p>ResolverRef allows referencing a Task in a remote location
 like a git repo. This field is only supported when the alpha
 feature gate is enabled.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>customTask</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>CustomTask specifies what custom task is used.</p>
 </td>
 </tr>
 </tbody>
