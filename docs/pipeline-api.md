@@ -4607,6 +4607,37 @@ More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/sec
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.TaskBreakpoints">TaskBreakpoints
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRunDebug">TaskRunDebug</a>)
+</p>
+<div>
+<p>TaskBreakpoints defines the breakpoint config for a particular Task</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>onFailure</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>if enabled, pause TaskRun on failure of a step
+failed step will not exit</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1.TaskKind">TaskKind
 (<code>string</code> alias)</h3>
 <p>
@@ -4792,9 +4823,11 @@ string
 <tbody>
 <tr>
 <td>
-<code>breakpoint</code><br/>
+<code>breakpoints</code><br/>
 <em>
-[]string
+<a href="#tekton.dev/v1.TaskBreakpoints">
+TaskBreakpoints
+</a>
 </em>
 </td>
 <td>
@@ -13069,6 +13102,37 @@ Default is false.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.TaskBreakpoints">TaskBreakpoints
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskRunDebug">TaskRunDebug</a>)
+</p>
+<div>
+<p>TaskBreakpoints defines the breakpoint config for a particular Task</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>onFailure</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>if enabled, pause TaskRun on failure of a step
+failed step will not exit</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1beta1.TaskKind">TaskKind
 (<code>string</code> alias)</h3>
 <p>
@@ -13404,9 +13468,11 @@ conditions such as one used in spire results verification</p>
 <tbody>
 <tr>
 <td>
-<code>breakpoint</code><br/>
+<code>breakpoints</code><br/>
 <em>
-[]string
+<a href="#tekton.dev/v1beta1.TaskBreakpoints">
+TaskBreakpoints
+</a>
 </em>
 </td>
 <td>

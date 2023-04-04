@@ -213,16 +213,14 @@ func combineParamSpec(p ParamSpec, paramSpecForValidation map[string]ParamSpec) 
 	return paramSpecForValidation, nil
 }
 
-// validateDebug
+// validateDebug validates the debug section of the TaskRun.
+// if set, onFailure breakpoint must be "enabled"
 func validateDebug(db *TaskRunDebug) (errs *apis.FieldError) {
-	breakpointOnFailure := "onFailure"
-	validBreakpoints := sets.NewString()
-	validBreakpoints.Insert(breakpointOnFailure)
-
-	for _, b := range db.Breakpoint {
-		if !validBreakpoints.Has(b) {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s is not a valid breakpoint. Available valid breakpoints include %s", b, validBreakpoints.List()), "breakpoint"))
-		}
+	if db == nil || db.Breakpoints == nil {
+		return errs
+	}
+	if db.Breakpoints.OnFailure != "" && db.Breakpoints.OnFailure != EnabledOnFailureBreakpoint {
+		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s is not a valid onFailure breakpoint value, onFailure breakpoint is only allowed to be set as enabled", db.Breakpoints.OnFailure), "breakpoints.onFailure"))
 	}
 	return errs
 }

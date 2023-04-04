@@ -143,7 +143,9 @@ func TestPodBuild(t *testing.T) {
 		desc: "simple with breakpoint onFailure enabled, alpha api fields disabled",
 		trs: v1.TaskRunSpec{
 			Debug: &v1.TaskRunDebug{
-				Breakpoint: []string{breakpointOnFailure},
+				Breakpoints: &v1.TaskBreakpoints{
+					OnFailure: "enabled",
+				},
 			},
 		},
 		ts: v1.TaskSpec{
@@ -2247,7 +2249,9 @@ debug-fail-continue-heredoc-randomly-generated-mz4c7
 		desc: "simple with debug breakpoint onFailure",
 		trs: v1.TaskRunSpec{
 			Debug: &v1.TaskRunDebug{
-				Breakpoint: []string{breakpointOnFailure},
+				Breakpoints: &v1.TaskBreakpoints{
+					OnFailure: "enabled",
+				},
 			},
 		},
 		ts: v1.TaskSpec{
