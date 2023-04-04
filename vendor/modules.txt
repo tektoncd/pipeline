@@ -1174,8 +1174,8 @@ k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions/apiextensio
 k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions/internalinterfaces
 k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1
 k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1beta1
-# k8s.io/apimachinery v0.27.0-beta.0
-## explicit; go 1.20
+# k8s.io/apimachinery v0.26.3
+## explicit; go 1.19
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors
 k8s.io/apimachinery/pkg/api/meta
@@ -1209,7 +1209,6 @@ k8s.io/apimachinery/pkg/util/httpstream/spdy
 k8s.io/apimachinery/pkg/util/intstr
 k8s.io/apimachinery/pkg/util/json
 k8s.io/apimachinery/pkg/util/managedfields
-k8s.io/apimachinery/pkg/util/managedfields/internal
 k8s.io/apimachinery/pkg/util/mergepatch
 k8s.io/apimachinery/pkg/util/naming
 k8s.io/apimachinery/pkg/util/net
@@ -1676,7 +1675,6 @@ sigs.k8s.io/json/internal/golang/encoding/json
 # sigs.k8s.io/structured-merge-diff/v4 v4.2.3
 ## explicit; go 1.13
 sigs.k8s.io/structured-merge-diff/v4/fieldpath
-sigs.k8s.io/structured-merge-diff/v4/merge
 sigs.k8s.io/structured-merge-diff/v4/schema
 sigs.k8s.io/structured-merge-diff/v4/typed
 sigs.k8s.io/structured-merge-diff/v4/value
