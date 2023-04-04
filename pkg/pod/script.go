@@ -106,18 +106,15 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1.Ste
 		placeScriptsInit.SecurityContext = securityContext
 	}
 
-	breakpoints := []string{}
-
 	// Add mounts for debug
-	if debugConfig != nil && len(debugConfig.Breakpoint) > 0 {
-		breakpoints = debugConfig.Breakpoint
+	if debugConfig != nil && debugConfig.NeedsDebug() {
 		placeScriptsInit.VolumeMounts = append(placeScriptsInit.VolumeMounts, debugScriptsVolumeMount)
 	}
 
-	convertedStepContainers := convertListOfSteps(steps, &placeScriptsInit, breakpoints, "script")
+	convertedStepContainers := convertListOfSteps(steps, &placeScriptsInit, debugConfig, "script")
 	sidecarContainers := convertListOfSidecars(sidecars, &placeScriptsInit, "sidecar-script")
 
-	if hasScripts(steps, sidecars, breakpoints) {
+	if hasScripts(steps, sidecars, debugConfig) {
 		return &placeScriptsInit, convertedStepContainers, sidecarContainers
 	}
 	return nil, convertedStepContainers, sidecarContainers
@@ -139,7 +136,7 @@ func convertListOfSidecars(sidecars []v1.Sidecar, initContainer *corev1.Containe
 
 // convertListOfSteps iterates through the list of steps, generates the script file name and heredoc termination string,
 // adds an entry to the init container args, sets up the step container to run the script, and sets the volume mounts.
-func convertListOfSteps(steps []v1.Step, initContainer *corev1.Container, breakpoints []string, namePrefix string) []corev1.Container {
+func convertListOfSteps(steps []v1.Step, initContainer *corev1.Container, debugConfig *v1.TaskRunDebug, namePrefix string) []corev1.Container {
 	containers := []corev1.Container{}
 	for i, s := range steps {
 		c := steps[i].ToK8sContainer()
@@ -148,7 +145,7 @@ func convertListOfSteps(steps []v1.Step, initContainer *corev1.Container, breakp
 		}
 		containers = append(containers, *c)
 	}
-	if len(breakpoints) > 0 {
+	if debugConfig != nil && debugConfig.NeedsDebugOnFailure() {
 		placeDebugScriptInContainers(containers, initContainer)
 	}
 	return containers
@@ -248,7 +245,7 @@ func placeDebugScriptInContainers(containers []corev1.Container, initContainer *
 }
 
 // hasScripts determines if we need to generate scripts in InitContainer given steps, sidecars and breakpoints.
-func hasScripts(steps []v1.Step, sidecars []v1.Sidecar, breakpoints []string) bool {
+func hasScripts(steps []v1.Step, sidecars []v1.Sidecar, debugConfig *v1.TaskRunDebug) bool {
 	for _, s := range steps {
 		if s.Script != "" {
 			return true
@@ -259,7 +256,7 @@ func hasScripts(steps []v1.Step, sidecars []v1.Sidecar, breakpoints []string) bo
 			return true
 		}
 	}
-	return len(breakpoints) > 0
+	return debugConfig != nil && debugConfig.NeedsDebug()
 }
 
 func checkWindowsRequirement(steps []v1.Step, sidecars []v1.Sidecar) bool {

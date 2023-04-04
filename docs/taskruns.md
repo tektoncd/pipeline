@@ -932,7 +932,8 @@ TaskRuns can be halted on failure for troubleshooting by providing the following
 ```yaml
 spec:
   debug:
-    breakpoint: ["onFailure"]
+    breakpoints:
+      onFailure: "enabled"
 ```
 
 Upon failure of a step, the TaskRun Pod execution is halted. If this TaskRun Pod continues to run without any lifecycle
@@ -941,7 +942,7 @@ change done by the user (running the debug-continue or debug-fail-continue scrip
 During this time, the user/client can get remote shell access to the step container with a command such as the following.
 
 ```bash
-kubectl exec -it print-date-d7tj5-pod -c step-print-date-human-readable
+kubectl exec -it print-date-d7tj5-pod -c step-print-date-human-readable sh
 ```
 
 ### Debug Environment

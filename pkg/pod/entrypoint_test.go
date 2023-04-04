@@ -241,7 +241,9 @@ func TestOrderContainersWithDebugOnFailure(t *testing.T) {
 		TerminationMessagePath: "/tekton/termination",
 	}}
 	taskRunDebugConfig := &v1.TaskRunDebug{
-		Breakpoint: []string{"onFailure"},
+		Breakpoints: &v1.TaskBreakpoints{
+			OnFailure: "enabled",
+		},
 	}
 	got, err := orderContainers([]string{}, steps, nil, taskRunDebugConfig, true)
 	if err != nil {

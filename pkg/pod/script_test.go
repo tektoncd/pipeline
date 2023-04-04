@@ -384,7 +384,9 @@ script-3`,
 		VolumeMounts: preExistingVolumeMounts,
 		Args:         []string{"my", "args"},
 	}}, []v1.Sidecar{}, &v1.TaskRunDebug{
-		Breakpoint: []string{breakpointOnFailure},
+		Breakpoints: &v1.TaskBreakpoints{
+			OnFailure: "enabled",
+		},
 	}, true)
 
 	wantInit := &corev1.Container{

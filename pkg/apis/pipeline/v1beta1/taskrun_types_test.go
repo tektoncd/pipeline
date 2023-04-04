@@ -467,6 +467,83 @@ func TestInitializeTaskRunConditions(t *testing.T) {
 	}
 }
 
+func TestIsStepNeedDebug(t *testing.T) {
+	type args struct {
+		stepName string
+		trd      *v1beta1.TaskRunDebug
+	}
+	testCases := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "empty breakpoints",
+			args: args{
+				stepName: "step1",
+				trd:      &v1beta1.TaskRunDebug{},
+			},
+			want: false,
+		}, {
+			name: "breakpoint on failure",
+			args: args{
+				stepName: "step1",
+				trd: &v1beta1.TaskRunDebug{
+					Breakpoints: &v1beta1.TaskBreakpoints{
+						OnFailure: "enabled",
+					},
+				},
+			},
+			want: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := tc.args.trd.StepNeedsDebug(tc.args.stepName)
+			if d := cmp.Diff(result, tc.want); d != "" {
+				t.Fatalf(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestIsNeedDebug(t *testing.T) {
+	type args struct {
+		trd *v1beta1.TaskRunDebug
+	}
+	testCases := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "empty breakpoints",
+			args: args{
+				trd: &v1beta1.TaskRunDebug{},
+			},
+			want: false,
+		}, {
+			name: "breakpoint on failure",
+			args: args{
+				trd: &v1beta1.TaskRunDebug{
+					Breakpoints: &v1beta1.TaskBreakpoints{
+						OnFailure: "enabled",
+					},
+				},
+			},
+			want: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := tc.args.trd.NeedsDebug()
+			if d := cmp.Diff(result, tc.want); d != "" {
+				t.Fatalf(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestTaskRunIsRetriable(t *testing.T) {
 	retryStatus := v1beta1.TaskRunStatus{}
 	retryStatus.SetCondition(&apis.Condition{

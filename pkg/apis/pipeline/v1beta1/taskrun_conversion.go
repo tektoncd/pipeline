@@ -185,11 +185,26 @@ func (trs *TaskRunSpec) ConvertFrom(ctx context.Context, source *v1.TaskRunSpec,
 }
 
 func (trd TaskRunDebug) convertTo(ctx context.Context, sink *v1.TaskRunDebug) {
-	sink.Breakpoint = trd.Breakpoint
+	if trd.Breakpoints != nil {
+		sink.Breakpoints = &v1.TaskBreakpoints{}
+		trd.Breakpoints.convertTo(ctx, sink.Breakpoints)
+	}
 }
 
 func (trd *TaskRunDebug) convertFrom(ctx context.Context, source v1.TaskRunDebug) {
-	trd.Breakpoint = source.Breakpoint
+	if source.Breakpoints != nil {
+		newBreakpoints := TaskBreakpoints{}
+		newBreakpoints.convertFrom(ctx, *source.Breakpoints)
+		trd.Breakpoints = &newBreakpoints
+	}
+}
+
+func (tbp TaskBreakpoints) convertTo(ctx context.Context, sink *v1.TaskBreakpoints) {
+	sink.OnFailure = tbp.OnFailure
+}
+
+func (tbp *TaskBreakpoints) convertFrom(ctx context.Context, source v1.TaskBreakpoints) {
+	tbp.OnFailure = source.OnFailure
 }
 
 func (trso TaskRunStepOverride) convertTo(ctx context.Context, sink *v1.TaskRunStepSpec) {

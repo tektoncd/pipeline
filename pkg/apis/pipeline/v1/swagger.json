@@ -1645,6 +1645,16 @@
         }
       }
     },
+    "v1.TaskBreakpoints": {
+      "description": "TaskBreakpoints defines the breakpoint config for a particular Task",
+      "type": "object",
+      "properties": {
+        "onFailure": {
+          "description": "if enabled, pause TaskRun on failure of a step failed step will not exit",
+          "type": "string"
+        }
+      }
+    },
     "v1.TaskList": {
       "description": "TaskList contains a list of Task",
       "type": "object",
@@ -1751,13 +1761,8 @@
       "description": "TaskRunDebug defines the breakpoint config for a particular TaskRun",
       "type": "object",
       "properties": {
-        "breakpoint": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "default": ""
-          },
-          "x-kubernetes-list-type": "atomic"
+        "breakpoints": {
+          "$ref": "#/definitions/v1.TaskBreakpoints"
         }
       }
     },

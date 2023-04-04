@@ -34,10 +34,6 @@ import (
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
-const (
-	breakpointOnFailure = "onFailure"
-)
-
 func TestTaskRunConversionBadType(t *testing.T) {
 	good, bad := &v1beta1.TaskRun{}, &v1beta1.Task{}
 
@@ -115,7 +111,9 @@ func TestTaskRunConversion(t *testing.T) {
 			},
 			Spec: v1beta1.TaskRunSpec{
 				Debug: &v1beta1.TaskRunDebug{
-					Breakpoint: []string{breakpointOnFailure},
+					Breakpoints: &v1beta1.TaskBreakpoints{
+						OnFailure: "enabled",
+					},
 				},
 				Params: v1beta1.Params{{
 					Name: "param-task-1",
