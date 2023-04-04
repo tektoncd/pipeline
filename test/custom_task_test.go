@@ -94,7 +94,7 @@ spec:
     - name: custom-task-ref
       taskRef:
         apiVersion: %s
-        kind: %s
+        customTask: %s
     - name: custom-task-spec
       taskSpec:
         apiVersion: %s

@@ -1673,6 +1673,10 @@
           "description": "API version of the referent Note: A Task with non-empty APIVersion and Kind is considered a Custom Task",
           "type": "string"
         },
+        "customTask": {
+          "description": "CustomTask specifies what custom task is used.",
+          "type": "string"
+        },
         "kind": {
           "description": "TaskKind indicates the Kind of the Task: 1. Namespaced Task when Kind is set to \"Task\". If Kind is \"\", it defaults to \"Task\". 2. Custom Task when Kind is non-empty and APIVersion is non-empty",
           "type": "string"

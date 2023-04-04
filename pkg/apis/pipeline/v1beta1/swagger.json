@@ -2381,6 +2381,10 @@
           "description": "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead.",
           "type": "string"
         },
+        "customTask": {
+          "description": "CustomTask specifies what custom task is used.",
+          "type": "string"
+        },
         "kind": {
           "description": "TaskKind indicates the Kind of the Task: 1. Namespaced Task when Kind is set to \"Task\". If Kind is \"\", it defaults to \"Task\". 2. Cluster-Scoped Task when Kind is set to \"ClusterTask\" 3. Custom Task when Kind is non-empty and APIVersion is non-empty",
           "type": "string"

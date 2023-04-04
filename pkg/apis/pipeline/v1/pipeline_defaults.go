@@ -25,6 +25,8 @@ import (
 
 var _ apis.Defaultable = (*Pipeline)(nil)
 
+const testapi = "testapi"
+
 // SetDefaults sets default values on the Pipeline's Spec
 func (p *Pipeline) SetDefaults(ctx context.Context) {
 	p.Spec.SetDefaults(ctx)
@@ -39,7 +41,11 @@ func (ps *PipelineSpec) SetDefaults(ctx context.Context) {
 
 	for _, pt := range ps.Tasks {
 		if pt.TaskRef != nil {
-			if pt.TaskRef.Kind == "" {
+			if pt.TaskRef.CustomTask != "" {
+				pt.TaskRef.Kind = TaskKind(pt.TaskRef.CustomTask)
+				pt.TaskRef.APIVersion = testapi
+			}
+			if pt.TaskRef.Kind == "" && pt.TaskRef.CustomTask == "" {
 				pt.TaskRef.Kind = NamespacedTaskKind
 			}
 			if pt.TaskRef.Name == "" && pt.TaskRef.Resolver == "" {

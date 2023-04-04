@@ -252,8 +252,10 @@ func (pt PipelineTask) validateRefOrSpec() (errs *apis.FieldError) {
 
 // validateCustomTask validates custom task specifications - checking kind and fail if not yet supported features specified
 func (pt PipelineTask) validateCustomTask() (errs *apis.FieldError) {
-	if pt.TaskRef != nil && pt.TaskRef.Kind == "" {
-		errs = errs.Also(apis.ErrInvalidValue("custom task ref must specify kind", "taskRef.kind"))
+	if pt.TaskRef != nil {
+		if pt.TaskRef.Kind == "" && pt.TaskRef.CustomTask == "" {
+			errs = errs.Also(apis.ErrInvalidValue("custom task ref must specify customTask", "taskRef.customTask"))
+		}
 	}
 	if pt.TaskSpec != nil && pt.TaskSpec.Kind == "" {
 		errs = errs.Also(apis.ErrInvalidValue("custom task spec must specify kind", "taskSpec.kind"))

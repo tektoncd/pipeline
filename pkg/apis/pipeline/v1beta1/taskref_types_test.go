@@ -43,6 +43,13 @@ func TestTaskRef_IsCustomTask(t *testing.T) {
 			APIVersion: "example/v0",
 		},
 		want: true,
+	}, {
+		name: "custom task with CustomTask",
+		tr: &TaskRef{
+			CustomTask: "Example",
+			APIVersion: "example/v0",
+		},
+		want: true,
 	},
 	}
 	for _, tt := range tests {

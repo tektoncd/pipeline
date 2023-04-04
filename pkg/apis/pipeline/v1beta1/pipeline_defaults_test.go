@@ -47,6 +47,18 @@ func TestPipelineSpec_SetDefaults(t *testing.T) {
 		ps:   &v1beta1.PipelineSpec{},
 		want: &v1beta1.PipelineSpec{},
 	}, {
+		desc: "pipeline task - set kind from customTask",
+		ps: &v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				Name: "foo", TaskRef: &v1beta1.TaskRef{Name: "foo-task", CustomTask: "custom"},
+			}},
+		},
+		want: &v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				Name: "foo", TaskRef: &v1beta1.TaskRef{Name: "foo-task", Kind: "custom", CustomTask: "custom", APIVersion: "testapi"},
+			}},
+		},
+	}, {
 		desc: "pipeline task - default task kind must be " + string(v1beta1.NamespacedTaskKind),
 		ps: &v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{

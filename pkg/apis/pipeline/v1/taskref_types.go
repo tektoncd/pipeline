@@ -34,6 +34,8 @@ type TaskRef struct {
 	// feature gate is enabled.
 	// +optional
 	ResolverRef `json:",omitempty"`
+	// CustomTask specifies what custom task is used.
+	CustomTask string `json:"customTask,omitempty"`
 }
 
 // TaskKind defines the type of Task used by the pipeline.
@@ -48,5 +50,5 @@ const (
 func (tr *TaskRef) IsCustomTask() bool {
 	// Note that if `apiVersion` is set to `"tekton.dev/v1beta1"` and `kind` is set to `"Task"`,
 	// the reference will be considered a Custom Task - https://github.com/tektoncd/pipeline/issues/6457
-	return tr != nil && tr.APIVersion != "" && tr.Kind != ""
+	return tr != nil && tr.APIVersion != "" && (tr.Kind != "" || tr.CustomTask != "")
 }
