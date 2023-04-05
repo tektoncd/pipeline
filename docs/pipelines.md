@@ -1618,9 +1618,9 @@ no `runAfter` can be specified in `finally` tasks.
 
 ## Using Custom Tasks
 
-Custom Tasks have been promoted from `v1alpha1` to `v1beta1`. Starting from `v0.43.0`, Pipeline Controller is able to create either `v1alpha1` or `v1beta1` Custom Task gated by a feature flag `custom-task-version`, defaulting to `v1beta1`. You can set `custom-task-version` to `v1alpha1` or `v1beta1` to control which version to create.
+Custom Tasks have been promoted from `v1alpha1` to `v1beta1`. Starting from `v0.43.0` to `v0.46.0`, Pipeline Controller is able to create either `v1alpha1` or `v1beta1` Custom Task gated by a feature flag `custom-task-version`, defaulting to `v1beta1`. You can set `custom-task-version` to `v1alpha1` or `v1beta1` to control which version to create.
 
-We'll remove the flag `custom-task-version` and the entire alpha Custom Task in release v0.47.0 (tracked in the issue #5837). See the [migration doc](migrating-v1alpha1.Run-to-v1beta1.CustomRun.md) for details.
+Starting from `v0.47.0`, feature flag `custom-task-version` is removed and only `v1beta1` Custom Task will be supported. See the [migration doc](migrating-v1alpha1.Run-to-v1beta1.CustomRun.md) for details.
 
 [Custom Tasks](https://github.com/tektoncd/community/blob/main/teps/0002-custom-tasks.md)
 can implement behavior that doesn't correspond directly to running a workload in a `Pod` on the cluster.

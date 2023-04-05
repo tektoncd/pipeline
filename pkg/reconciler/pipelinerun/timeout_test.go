@@ -17,7 +17,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	_ "github.com/tektoncd/pipeline/pkg/pipelinerunmetrics/fake" // Make sure the pipelinerunmetrics are setup
@@ -238,13 +237,6 @@ func TestTimeoutPipelineRun(t *testing.T) {
 				Runs:         tc.runs,
 			}
 			ctx, _ := ttesting.SetupFakeContext(t)
-			cfg := config.NewStore(logtesting.TestLogger(t))
-			cm := newFeatureFlagsConfigMap()
-			if tc.useV1Beta1CustomTasks {
-				cm = withCustomTaskVersion(cm, config.CustomTaskVersionBeta)
-			}
-			cfg.OnConfigChanged(cm)
-			ctx = cfg.ToContext(ctx)
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			c, _ := test.SeedTestData(t, ctx, d)

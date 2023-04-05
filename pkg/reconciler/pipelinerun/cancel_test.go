@@ -438,14 +438,6 @@ func TestGetChildObjectsFromPRStatusForTaskNames(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, _ := ttesting.SetupFakeContext(t)
-			cfg := config.NewStore(logtesting.TestLogger(t))
-			cm := newFeatureFlagsConfigMap()
-			if tc.useV1Beta1CustomTask {
-				cm = withCustomTaskVersion(cm, config.CustomTaskVersionBeta)
-			}
-			cfg.OnConfigChanged(cm)
-			ctx = cfg.ToContext(ctx)
-
 			trNames, customRunNames, runNames, err := getChildObjectsFromPRStatusForTaskNames(ctx, tc.prStatus, tc.taskNames)
 
 			if tc.hasError {
