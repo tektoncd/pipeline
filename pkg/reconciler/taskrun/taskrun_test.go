@@ -1656,6 +1656,26 @@ status:
     startTime: "2021-12-31T23:59:59Z"
     completionTime: "2022-01-01T00:00:00Z"
     podName: "test-taskrun-results-type-mismatched-pod"
+    provenance:
+      featureFlags:
+        RunningInEnvWithInjectedSidecars: true
+        EnableTektonOCIBundles: true
+        EnableAPIFields: "alpha"
+        AwaitSidecarReadiness: true
+        VerificationNoMatchPolicy: "ignore"
+        EnableProvenanceInStatus: true
+        ResultExtractionMethod: "termination-message"
+        MaxResultSize: 4096
+  provenance:
+    featureFlags:
+      RunningInEnvWithInjectedSidecars: true
+      EnableTektonOCIBundles: true
+      EnableAPIFields: "alpha"
+      AwaitSidecarReadiness: true
+      VerificationNoMatchPolicy: "ignore"
+      EnableProvenanceInStatus: true
+      ResultExtractionMethod: "termination-message"
+      MaxResultSize: 4096
 `)
 		reconciliatonError = fmt.Errorf("1 error occurred:\n\t* Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\"")
 		toBeRetriedTaskRun = parse.MustParseV1beta1TaskRun(t, `
@@ -1698,6 +1718,15 @@ status:
     - reason: TimedOut
       status: "False"
       type: Succeeded
+  provenance:
+    featureFlags:
+      RunningInEnvWithInjectedSidecars: true
+      EnableAPIFields: "stable"
+      AwaitSidecarReadiness: true
+      VerificationNoMatchPolicy: "ignore"
+      EnableProvenanceInStatus: true
+      ResultExtractionMethod: "termination-message"
+      MaxResultSize: 4096
 `)
 	)
 
@@ -3771,15 +3800,7 @@ spec:
 			Provenance: &v1beta1.Provenance{
 				RefSource:    refSource.DeepCopy(),
 				ConfigSource: (*v1beta1.ConfigSource)(refSource.DeepCopy()),
-				FeatureFlags: &config.FeatureFlags{
-					RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
-					EnableAPIFields:                  config.DefaultEnableAPIFields,
-					AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
-					VerificationNoMatchPolicy:        config.DefaultNoMatchPolicyConfig,
-					EnableProvenanceInStatus:         true,
-					ResultExtractionMethod:           config.DefaultResultExtractionMethod,
-					MaxResultSize:                    config.DefaultMaxResultSize,
-				},
+				FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
 			},
 		},
 	}
@@ -3831,9 +3852,8 @@ spec:
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := ttesting.EnableFeatureFlagField(context.Background(), t, "enable-provenance-in-status")
 			// mock first reconcile
-			if err := storeTaskSpecAndMergeMeta(ctx, tr, tc.reconcile1Args.taskSpec, tc.reconcile1Args.resolvedObjectMeta); err != nil {
+			if err := storeTaskSpecAndMergeMeta(context.Background(), tr, tc.reconcile1Args.taskSpec, tc.reconcile1Args.resolvedObjectMeta); err != nil {
 				t.Errorf("storePipelineSpec() error = %v", err)
 			}
 			if d := cmp.Diff(tr, tc.wantTaskRun); d != "" {
@@ -3841,7 +3861,7 @@ spec:
 			}
 
 			// mock second reconcile
-			if err := storeTaskSpecAndMergeMeta(ctx, tr, tc.reconcile2Args.taskSpec, tc.reconcile2Args.resolvedObjectMeta); err != nil {
+			if err := storeTaskSpecAndMergeMeta(context.Background(), tr, tc.reconcile2Args.taskSpec, tc.reconcile2Args.resolvedObjectMeta); err != nil {
 				t.Errorf("storePipelineSpec() error = %v", err)
 			}
 			if d := cmp.Diff(tr, tc.wantTaskRun); d != "" {

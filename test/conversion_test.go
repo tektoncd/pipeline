@@ -81,7 +81,7 @@ spec:
       - name: messages
         mountPath: /messages
     imagePullPolicy: IfNotPresent
-    securityContext: 
+    securityContext:
       runAsNonRoot: true
     timeout: 60s
     secret:
@@ -109,7 +109,7 @@ spec:
     - name: messages
       mountPath: /messages
     imagePullPolicy: IfNotPresent
-    securityContext: 
+    securityContext:
         runAsNonRoot: true
   sidecars:
   - name: server
@@ -179,7 +179,7 @@ spec:
       - name: messages
         mountPath: /messages
     imagePullPolicy: IfNotPresent
-    securityContext: 
+    securityContext:
       runAsNonRoot: true
     timeout: 60s
     secret:
@@ -200,7 +200,7 @@ spec:
     - name: messages
       mountPath: /messages
     imagePullPolicy: IfNotPresent
-    securityContext: 
+    securityContext:
         runAsNonRoot: true
   sidecars:
   - name: server
@@ -405,7 +405,7 @@ spec:
     - name: output
   workspaces:
   - emptyDir: {}
-    name: output   
+    name: output
 status:
   conditions:
   - reason: Succeeded
@@ -447,7 +447,7 @@ spec:
       allowPrivilegeEscalation: false
   workspaces:
   - emptyDir: {}
-    name: output     
+    name: output
   taskSpec:
     steps:
     - computeResources: {}
@@ -477,7 +477,7 @@ spec:
       allowPrivilegeEscalation: false
   workspaces:
     - emptyDir: {}
-      name: output 
+      name: output
   taskSpec:
     steps:
     - computeResources: {}
@@ -741,6 +741,12 @@ func TestTaskRunCRDConversion(t *testing.T) {
 	v1TaskRunExpected := parse.MustParseV1TaskRun(t, fmt.Sprintf(v1TaskRunExpectedYaml, v1beta1TaskRunName, namespace, v1beta1TaskRunName))
 	v1beta1TaskRunRoundTripExpected := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(v1beta1TaskRunExpectedYaml, v1beta1TaskRunName, namespace, v1beta1TaskRunName))
 
+	v1TaskRunExpected.Status.Provenance = &v1.Provenance{
+		FeatureFlags: getFeatureFlagsBaseOnAPIFlag(t),
+	}
+	v1beta1TaskRunRoundTripExpected.Status.Provenance = &v1beta1.Provenance{
+		FeatureFlags: getFeatureFlagsBaseOnAPIFlag(t),
+	}
 	if _, err := c.V1beta1TaskRunClient.Create(ctx, v1beta1TaskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create v1beta1 TaskRun: %s", err)
 	}
@@ -768,6 +774,13 @@ func TestTaskRunCRDConversion(t *testing.T) {
 	v1TaskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(v1TaskRunYaml, v1TaskRunName, namespace))
 	v1beta1TaskRunExpected := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(v1beta1TaskRunExpectedYaml, v1TaskRunName, namespace, v1TaskRunName))
 	v1TaskRunRoundTripExpected := parse.MustParseV1TaskRun(t, fmt.Sprintf(v1TaskRunExpectedYaml, v1TaskRunName, namespace, v1TaskRunName))
+
+	v1beta1TaskRunExpected.Status.Provenance = &v1beta1.Provenance{
+		FeatureFlags: getFeatureFlagsBaseOnAPIFlag(t),
+	}
+	v1TaskRunRoundTripExpected.Status.Provenance = &v1.Provenance{
+		FeatureFlags: getFeatureFlagsBaseOnAPIFlag(t),
+	}
 
 	if _, err := c.V1TaskRunClient.Create(ctx, v1TaskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create v1 TaskRun: %s", err)
@@ -875,6 +888,13 @@ func TestPipelineRunCRDConversion(t *testing.T) {
 	v1PipelineRunExpected := parse.MustParseV1PipelineRun(t, fmt.Sprintf(v1PipelineRunExpectedYaml, v1beta1ToV1PipelineRunName, namespace, v1beta1ToV1PipelineRunName))
 	v1beta1PRRoundTripExpected := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(v1beta1PipelineRunExpectedYaml, v1beta1ToV1PipelineRunName, namespace, v1beta1ToV1PipelineRunName))
 
+	v1PipelineRunExpected.Status.Provenance = &v1.Provenance{
+		FeatureFlags: getFeatureFlagsBaseOnAPIFlag(t),
+	}
+	v1beta1PRRoundTripExpected.Status.Provenance = &v1beta1.Provenance{
+		FeatureFlags: getFeatureFlagsBaseOnAPIFlag(t),
+	}
+
 	if _, err := c.V1beta1PipelineRunClient.Create(ctx, v1beta1PipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create v1beta1 PipelineRun: %s", err)
 	}
@@ -902,6 +922,13 @@ func TestPipelineRunCRDConversion(t *testing.T) {
 	v1PipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(v1PipelineRunYaml, v1ToV1beta1PRName, namespace))
 	v1beta1PipelineRunExpected := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(v1beta1PipelineRunExpectedYaml, v1ToV1beta1PRName, namespace, v1ToV1beta1PRName))
 	v1PRRoundTripExpected := parse.MustParseV1PipelineRun(t, fmt.Sprintf(v1PipelineRunExpectedYaml, v1ToV1beta1PRName, namespace, v1ToV1beta1PRName))
+
+	v1beta1PipelineRunExpected.Status.Provenance = &v1beta1.Provenance{
+		FeatureFlags: getFeatureFlagsBaseOnAPIFlag(t),
+	}
+	v1PRRoundTripExpected.Status.Provenance = &v1.Provenance{
+		FeatureFlags: getFeatureFlagsBaseOnAPIFlag(t),
+	}
 
 	if _, err := c.V1PipelineRunClient.Create(ctx, v1PipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create v1 PipelineRun: %s", err)

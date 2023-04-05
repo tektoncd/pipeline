@@ -45,7 +45,9 @@ var (
 )
 
 func TestLargerResultsSidecarLogs(t *testing.T) {
-	t.Parallel()
+	expectedFeatureFlags := getFeatureFlagsBaseOnAPIFlag(t)
+	previousResultExtractionMethod := expectedFeatureFlags.ResultExtractionMethod
+
 	type tests struct {
 		name            string
 		pipelineName    string
@@ -61,18 +63,27 @@ func TestLargerResultsSidecarLogs(t *testing.T) {
 	for _, td := range tds {
 		td := td
 		t.Run(td.name, func(t *testing.T) {
-			t.Parallel()
 			ctx := context.Background()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 
 			c, namespace := setUpSidecarLogs(ctx, t, requireAllGates(requireSidecarLogResultsGate))
+			expectedFeatureFlags.ResultExtractionMethod = config.ResultExtractionMethodSidecarLogs
+
+			// reset configmap
+			knativetest.CleanupOnInterrupt(func() { resetSidecarLogs(ctx, t, c, previousResultExtractionMethod) }, t.Logf)
+			defer resetSidecarLogs(ctx, t, c, previousResultExtractionMethod)
 
 			knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 			defer tearDown(ctx, t, c, namespace)
 
 			t.Logf("Setting up test resources for %q test in namespace %s", td.name, namespace)
 			pipelineRun, expectedResolvedPipelineRun, expectedTaskRuns := td.pipelineRunFunc(t, namespace)
+
+			expectedResolvedPipelineRun.Status.Provenance = &v1beta1.Provenance{
+				FeatureFlags: expectedFeatureFlags,
+			}
+
 			prName := pipelineRun.Name
 			_, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
 			if err != nil {
@@ -98,6 +109,9 @@ func TestLargerResultsSidecarLogs(t *testing.T) {
 				t.Fatalf(`The resolved spec does not match the expected spec. Here is the diff: %v`, d)
 			}
 			for _, tr := range expectedTaskRuns {
+				tr.Status.Provenance = &v1beta1.Provenance{
+					FeatureFlags: expectedFeatureFlags,
+				}
 				t.Logf("Checking Taskrun %s", tr.Name)
 				taskrun, _ := c.V1beta1TaskRunClient.Get(ctx, tr.Name, metav1.GetOptions{})
 				d = cmp.Diff(tr, taskrun,
@@ -114,6 +128,7 @@ func TestLargerResultsSidecarLogs(t *testing.T) {
 					t.Fatalf(`The expected taskrun does not match created taskrun. Here is the diff: %v`, d)
 				}
 			}
+
 			t.Logf("Successfully finished test %q", td.name)
 		})
 	}
@@ -162,7 +177,7 @@ spec:
                 echo -n "$(params.param1)">> $(results.large-result.path);
                 echo -n "$(params.param2)">> $(results.large-result.path);
     results:
-      - name: large-result 
+      - name: large-result
         value: $(tasks.task2.results.large-result)
 `, namespace, strings.Repeat("a", 2000), strings.Repeat("b", 2000)))
 	expectedPipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
@@ -211,7 +226,7 @@ spec:
                 echo -n "$(params.param1)">> $(results.large-result.path);
                 echo -n "$(params.param2)">> $(results.large-result.path);
     results:
-      - name: large-result 
+      - name: large-result
         value: $(tasks.task2.results.large-result)
 status:
   pipelineSpec:
@@ -253,7 +268,7 @@ status:
                 echo -n "$(params.param1)">> $(results.large-result.path);
                 echo -n "$(params.param2)">> $(results.large-result.path);
     results:
-      - name: large-result 
+      - name: large-result
         value: $(tasks.task2.results.large-result)
   pipelineResults:
     - name: large-result
@@ -305,7 +320,7 @@ status:
       value: %s
   sidecars:
     - name: tekton-log-results
-      container: sidecar-tekton-log-results    
+      container: sidecar-tekton-log-results
 `, namespace, strings.Repeat("a", 2000), strings.Repeat("b", 2000), strings.Repeat("a", 2000), strings.Repeat("b", 2000), strings.Repeat("a", 2000), strings.Repeat("b", 2000)))
 	taskRun2 := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
@@ -317,9 +332,9 @@ spec:
   params:
     - name: param1
       type: string
-      value: %s 
+      value: %s
     - name: param2
-      type: string 
+      type: string
       value: %s
   taskSpec:
     params:
@@ -367,7 +382,7 @@ status:
       value: %s%s
   sidecars:
     - name: tekton-log-results
-      container: sidecar-tekton-log-results    
+      container: sidecar-tekton-log-results
 `, namespace, strings.Repeat("a", 2000), strings.Repeat("b", 2000), strings.Repeat("a", 2000), strings.Repeat("b", 2000), strings.Repeat("a", 2000), strings.Repeat("b", 2000)))
 	return pipelineRun, expectedPipelineRun, []*v1beta1.TaskRun{taskRun1, taskRun2}
 }
@@ -383,4 +398,11 @@ func setUpSidecarLogs(ctx context.Context, t *testing.T, fn ...func(context.Cont
 		t.Fatal(err)
 	}
 	return c, ns
+}
+
+func resetSidecarLogs(ctx context.Context, t *testing.T, c *clients, previousResultExtractionMethod string) {
+	t.Helper()
+	if err := updateConfigMap(ctx, c.KubeClient, system.Namespace(), config.GetFeatureFlagsConfigName(), map[string]string{"results-from": previousResultExtractionMethod}); err != nil {
+		t.Fatal(err)
+	}
 }

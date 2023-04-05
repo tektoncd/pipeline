@@ -71,7 +71,7 @@ const (
 	// DefaultNoMatchPolicyConfig is the default value for "trusted-resources-verification-no-match-policy".
 	DefaultNoMatchPolicyConfig = IgnoreNoMatchPolicy
 	// DefaultEnableProvenanceInStatus is the default value for "enable-provenance-status".
-	DefaultEnableProvenanceInStatus = false
+	DefaultEnableProvenanceInStatus = true
 	// DefaultResultExtractionMethod is the default value for ResultExtractionMethod
 	DefaultResultExtractionMethod = ResultExtractionMethodTerminationMessage
 	// DefaultMaxResultSize is the default value in bytes for the size of a result

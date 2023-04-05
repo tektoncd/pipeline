@@ -28,4 +28,4 @@ data:
   send-cloudevents-for-runs: "true"
   enforce-nonfalsifiability: "spire"
   trusted-resources-verification-no-match-policy: "fail"
-  enable-provenance-in-status: "true"
+  enable-provenance-in-status: "false"

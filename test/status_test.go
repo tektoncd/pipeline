@@ -33,16 +33,12 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/parse"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/system"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
 	"sigs.k8s.io/yaml"
 )
 
 var (
-	provenanceFeatureFlags = requireAllGates(map[string]string{
-		"enable-provenance-in-status": "true",
-	})
 	ignoreFeatureFlags = cmpopts.IgnoreFields(v1beta1.Provenance{}, "FeatureFlags")
 )
 
@@ -126,9 +122,9 @@ spec:
 // about the remote task i.e. refSource info .
 func TestProvenanceFieldInPipelineRunTaskRunStatus(t *testing.T) {
 	ctx := context.Background()
-	c, namespace := setupProvenance(ctx, t, clusterFeatureFlags, provenanceFeatureFlags)
-	knativetest.CleanupOnInterrupt(func() { unsetProvenanceFlags(ctx, t, c) }, t.Logf)
-	defer unsetProvenanceFlags(ctx, t, c)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t)
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
@@ -151,9 +147,6 @@ func TestProvenanceFieldInPipelineRunTaskRunStatus(t *testing.T) {
 		RefSource: &v1beta1.RefSource{
 			URI:    fmt.Sprintf("/apis/%s/namespaces/%s/%s/%s@%s", v1beta1.SchemeGroupVersion.String(), namespace, "task", exampleTask.Name, exampleTask.UID),
 			Digest: map[string]string{"sha256": sha256CheckSum(taskSpec)},
-		},
-		FeatureFlags: &config.FeatureFlags{
-			EnableProvenanceInStatus: true,
 		},
 	}
 
@@ -303,28 +296,4 @@ func sha256CheckSum(input []byte) string {
 	h := sha256.New()
 	h.Write(input)
 	return hex.EncodeToString(h.Sum(nil))
-}
-
-func setupProvenance(ctx context.Context, t *testing.T, fn ...func(context.Context, *testing.T, *clients, string)) (*clients, string) {
-	t.Helper()
-	c, ns := setup(ctx, t)
-	configMapData := map[string]string{
-		"enable-provenance-in-status": "true",
-	}
-
-	if err := updateConfigMap(ctx, c.KubeClient, system.Namespace(), config.GetFeatureFlagsConfigName(), configMapData); err != nil {
-		t.Fatal(err)
-	}
-	return c, ns
-}
-
-func unsetProvenanceFlags(ctx context.Context, t *testing.T, c *clients) {
-	t.Helper()
-	configMapData := map[string]string{
-		"enable-provenance-in-status": "false",
-	}
-
-	if err := updateConfigMap(ctx, c.KubeClient, system.Namespace(), config.GetFeatureFlagsConfigName(), configMapData); err != nil {
-		t.Fatal(err)
-	}
 }

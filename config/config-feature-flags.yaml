@@ -85,7 +85,7 @@ data:
   # and PipelineRun status. This field contains metadata about resources used
   # in the TaskRun/PipelineRun such as the source from where a remote Task/Pipeline
   # definition was fetched.
-  enable-provenance-in-status: "false"
+  enable-provenance-in-status: "true"
   # Setting this flag will determine how Tekton pipelines will handle non-falsifiable provenance.
   # If set to "spire", then SPIRE will be used to ensure non-falsifiable provenance.
   # If set to "none", then Tekton will not have non-falsifiable provenance.

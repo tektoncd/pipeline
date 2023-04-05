@@ -245,10 +245,11 @@ Defaults to "ignore".
 
 - `results-from`: set this flag to "termination-message" to use the container's termination message to fetch results from. This is the default method of extracting results. Set it to "sidecar-logs" to enable use of a results sidecar logs to extract results instead of termination message.
 
-- `enable-provenance-in-status`: set this flag to "true" to enable recording
+- `enable-provenance-in-status`: Set this flag to `"true"` to enable populating
   the `provenance` field in `TaskRun` and `PipelineRun` status. The `provenance`
   field contains metadata about resources used in the TaskRun/PipelineRun such as the
-  source from where a remote Task/Pipeline definition was fetched.
+  source from where a remote Task/Pipeline definition was fetched. By default, this is set to `true`.
+  To disable populating this field, set this flag to `"false"`.
 
 For example:
 
@@ -284,7 +285,6 @@ Features currently in "alpha" are:
 | [Task-level Resource Requirements](compute-resources.md#task-level-compute-resources-configuration) | [TEP-0104](https://github.com/tektoncd/community/blob/main/teps/0104-tasklevel-resource-requirements.md)                   | [v0.39.0](https://github.com/tektoncd/pipeline/releases/tag/v0.39.0) |                               |
 | [Object Params and Results](pipelineruns.md#specifying-parameters)                                  | [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md)                     | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                               |                             |
 | [Trusted Resources](./trusted-resources.md)                                                         | [TEP-0091](https://github.com/tektoncd/community/blob/main/teps/0091-trusted-resources.md)                                 | N/A                                                                  | `trusted-resources-verification-no-match-policy`  |
-| [`Provenance` field in Status](pipeline-api.md#provenance)                                          | [issue#5550](https://github.com/tektoncd/pipeline/issues/5550)                                                             | N/A                                                                  | `enable-provenance-in-status` |
 | [Larger Results via Sidecar Logs](#enabling-larger-results-using-sidecar-logs)                      | [TEP-0127](https://github.com/tektoncd/community/blob/main/teps/0127-larger-results-via-sidecar-logs.md)                   | [v0.43.0](https://github.com/tektoncd/pipeline/releases/tag/v0.43.0) | `results-from`                |
 | [Configure Default Resolver](./resolution.md#configuring-built-in-resolvers)                        | [TEP-0133](https://github.com/tektoncd/community/blob/main/teps/0133-configure-default-resolver.md)                        | N/A                                 |                                |
 
@@ -304,7 +304,7 @@ Features currently in "beta" are:
 | [Array Results and Array Indexing](pipelineruns.md#specifying-parameters)             | [TEP-0076](https://github.com/tektoncd/community/blob/main/teps/0076-array-result-types.md)     | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) | [v0.45.0](https://github.com/tektoncd/pipeline/releases/tag/v0.45.0) |                 |
 | [Object Parameters and Results](pipelineruns.md#specifying-parameters) | [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md) | [v0.46.0](https://github.com/tektoncd/pipeline/releases/tag/v0.46.0) |
 | [Remote Tasks](./taskruns.md#remote-tasks) and [Remote Pipelines](./pipelineruns.md#remote-pipelines) | [TEP-0060](https://github.com/tektoncd/community/blob/main/teps/0060-remote-resolution.md) | [v0.41.0](https://github.com/tektoncd/pipeline/releases/tag/v0.41.0) |
-
+| [`Provenance` field in Status](pipeline-api.md#provenance)| [issue#5550](https://github.com/tektoncd/pipeline/issues/5550)| [v0.41.0](https://github.com/tektoncd/pipeline/releases/tag/v0.41.0)| [v0.48.0](https://github.com/tektoncd/pipeline/releases/tag/v0.48.0) | `enable-provenance-in-status`|
 
 ## Enabling larger results using sidecar logs
 
