@@ -4594,6 +4594,15 @@ status:
     kind: CustomRun
     name: test-pipeline-run-finally-results-task-run-b
     pipelineTaskName: b-task
+  provenance:
+    featureFlags:
+      RunningInEnvWithInjectedSidecars: true
+      EnableAPIFields: "stable"
+      AwaitSidecarReadiness: true
+      VerificationNoMatchPolicy: "ignore"
+      EnableProvenanceInStatus: true
+      ResultExtractionMethod: "termination-message"
+      MaxResultSize: 4096
 `)
 
 	expectedPr := expectedPrStatus
@@ -4742,6 +4751,15 @@ status:
     kind: TaskRun
     name: test-pipeline-run-results-task-run-a
     pipelineTaskName: a-task
+  provenance:
+    featureFlags:
+      RunningInEnvWithInjectedSidecars: true
+      EnableAPIFields: "stable"
+      AwaitSidecarReadiness: true
+      VerificationNoMatchPolicy: "ignore"
+      EnableProvenanceInStatus: true
+      ResultExtractionMethod: "termination-message"
+      MaxResultSize: 4096
 `)
 
 	expectedPr := expectedPrStatus
@@ -4904,15 +4922,7 @@ metadata:
 			Provenance: &v1beta1.Provenance{
 				RefSource:    refSource.DeepCopy(),
 				ConfigSource: (*v1beta1.ConfigSource)(refSource.DeepCopy()),
-				FeatureFlags: &config.FeatureFlags{
-					RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
-					EnableAPIFields:                  config.DefaultEnableAPIFields,
-					AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
-					VerificationNoMatchPolicy:        config.DefaultNoMatchPolicyConfig,
-					EnableProvenanceInStatus:         true,
-					ResultExtractionMethod:           config.DefaultResultExtractionMethod,
-					MaxResultSize:                    config.DefaultMaxResultSize,
-				},
+				FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
 			},
 		},
 	}
@@ -4963,9 +4973,8 @@ metadata:
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := ttesting.EnableFeatureFlagField(context.Background(), t, "enable-provenance-in-status")
 			// mock first reconcile
-			if err := storePipelineSpecAndMergeMeta(ctx, pr, tc.reconcile1Args.pipelineSpec, tc.reconcile1Args.resolvedObjectMeta); err != nil {
+			if err := storePipelineSpecAndMergeMeta(context.Background(), pr, tc.reconcile1Args.pipelineSpec, tc.reconcile1Args.resolvedObjectMeta); err != nil {
 				t.Errorf("storePipelineSpec() error = %v", err)
 			}
 			if d := cmp.Diff(pr, tc.wantPipelineRun); d != "" {
@@ -4973,7 +4982,7 @@ metadata:
 			}
 
 			// mock second reconcile
-			if err := storePipelineSpecAndMergeMeta(ctx, pr, tc.reconcile2Args.pipelineSpec, tc.reconcile2Args.resolvedObjectMeta); err != nil {
+			if err := storePipelineSpecAndMergeMeta(context.Background(), pr, tc.reconcile2Args.pipelineSpec, tc.reconcile2Args.resolvedObjectMeta); err != nil {
 				t.Errorf("storePipelineSpec() error = %v", err)
 			}
 			if d := cmp.Diff(pr, tc.wantPipelineRun); d != "" {
@@ -7912,6 +7921,16 @@ status:
     kind: TaskRun
     name: pr-platforms-and-browsers-8
     pipelineTaskName: platforms-and-browsers
+  provenance:
+    featureFlags:
+      RunningInEnvWithInjectedSidecars: true
+      EnableTektonOCIBundles: true
+      EnableAPIFields: "alpha"
+      AwaitSidecarReadiness: true
+      VerificationNoMatchPolicy: "ignore"
+      EnableProvenanceInStatus: true
+      ResultExtractionMethod: "termination-message"
+      MaxResultSize: 4096
 `),
 	}, {
 		name:     "p-finally",
@@ -8066,6 +8085,16 @@ status:
     kind: TaskRun
     name: pr-platforms-and-browsers-8
     pipelineTaskName: platforms-and-browsers
+  provenance:
+    featureFlags:
+      RunningInEnvWithInjectedSidecars: true
+      EnableTektonOCIBundles: true
+      EnableAPIFields: "alpha"
+      AwaitSidecarReadiness: true
+      VerificationNoMatchPolicy: "ignore"
+      EnableProvenanceInStatus: true
+      ResultExtractionMethod: "termination-message"
+      MaxResultSize: 4096
 `),
 	}}
 	for _, tt := range tests {
@@ -8262,6 +8291,16 @@ status:
     kind: TaskRun
     name: pr-platforms-and-browsers-8
     pipelineTaskName: platforms-and-browsers
+  provenance:
+    featureFlags:
+      RunningInEnvWithInjectedSidecars: true
+      EnableTektonOCIBundles: true
+      EnableAPIFields: "alpha"
+      AwaitSidecarReadiness: true
+      VerificationNoMatchPolicy: "ignore"
+      EnableProvenanceInStatus: true
+      ResultExtractionMethod: "termination-message"
+      MaxResultSize: 4096
 `),
 	}}
 	for _, tt := range tests {
@@ -8364,6 +8403,7 @@ labels:
 					t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRuns[i].Name, diff.PrintWantGot(d))
 				}
 			}
+
 			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, ignoreFinallyStartTime, cmpopts.EquateEmpty()); d != "" {
 				t.Errorf("found PipelineRun does not match expected PipelineRun. Diff %s", diff.PrintWantGot(d))
 			}
@@ -8659,6 +8699,16 @@ status:
     kind: TaskRun
     name: pr-matrix-include-6
     pipelineTaskName: matrix-include
+  provenance:
+    featureFlags:
+      RunningInEnvWithInjectedSidecars: true
+      EnableTektonOCIBundles: true
+      EnableAPIFields: "alpha"
+      AwaitSidecarReadiness: true
+      VerificationNoMatchPolicy: "ignore"
+      EnableProvenanceInStatus: true
+      ResultExtractionMethod: "termination-message"
+      MaxResultSize: 4096
 `),
 	}, {
 		name:     "p-finally",
@@ -8851,6 +8901,16 @@ status:
     kind: TaskRun
     name: pr-matrix-include-6
     pipelineTaskName: matrix-include
+  provenance:
+    featureFlags:
+      RunningInEnvWithInjectedSidecars: true
+      EnableTektonOCIBundles: true
+      EnableAPIFields: "alpha"
+      AwaitSidecarReadiness: true
+      VerificationNoMatchPolicy: "ignore"
+      EnableProvenanceInStatus: true
+      ResultExtractionMethod: "termination-message"
+      MaxResultSize: 4096
 `),
 	}}
 	for _, tt := range tests {
@@ -8902,6 +8962,7 @@ spec:
 			if err != nil {
 				t.Fatalf("Got an error getting reconciled run out of fake client: %s", err)
 			}
+
 			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, ignoreFinallyStartTime, cmpopts.EquateEmpty()); d != "" {
 				t.Errorf("expected PipelineRun was not created. Diff %s", diff.PrintWantGot(d))
 			}
@@ -9072,6 +9133,16 @@ status:
     kind: TaskRun
     name: pr-matrix-include-2
     pipelineTaskName: matrix-include
+  provenance:
+    featureFlags:
+      RunningInEnvWithInjectedSidecars: true
+      EnableTektonOCIBundles: true
+      EnableAPIFields: "alpha"
+      AwaitSidecarReadiness: true
+      VerificationNoMatchPolicy: "ignore"
+      EnableProvenanceInStatus: true
+      ResultExtractionMethod: "termination-message"
+      MaxResultSize: 4096
 `),
 	},
 	}
@@ -9124,6 +9195,7 @@ spec:
 			if err != nil {
 				t.Fatalf("Got an error getting reconciled run out of fake client: %s", err)
 			}
+
 			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, ignoreFinallyStartTime, cmpopts.EquateEmpty()); d != "" {
 				t.Errorf("expected PipelineRun was not created. Diff %s", diff.PrintWantGot(d))
 			}
@@ -9501,6 +9573,16 @@ status:
     kind: TaskRun
     name: pr-platforms-and-browsers-8
     pipelineTaskName: platforms-and-browsers
+  provenance:
+    featureFlags:
+      RunningInEnvWithInjectedSidecars: true
+      EnableTektonOCIBundles: true
+      EnableAPIFields: "alpha"
+      AwaitSidecarReadiness: true
+      VerificationNoMatchPolicy: "ignore"
+      EnableProvenanceInStatus: true
+      ResultExtractionMethod: "termination-message"
+      MaxResultSize: 4096
 `),
 	}, {
 		name:     "p-finally",
@@ -9666,6 +9748,16 @@ status:
     kind: TaskRun
     name: pr-platforms-and-browsers-8
     pipelineTaskName: platforms-and-browsers
+  provenance:
+    featureFlags:
+      RunningInEnvWithInjectedSidecars: true
+      EnableTektonOCIBundles: true
+      EnableAPIFields: "alpha"
+      AwaitSidecarReadiness: true
+      VerificationNoMatchPolicy: "ignore"
+      EnableProvenanceInStatus: true
+      ResultExtractionMethod: "termination-message"
+      MaxResultSize: 4096
 `),
 	}}
 	for _, tt := range tests {
@@ -9717,6 +9809,7 @@ spec:
 			if err != nil {
 				t.Fatalf("Got an error getting reconciled run out of fake client: %s", err)
 			}
+
 			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, ignoreFinallyStartTime, cmpopts.EquateEmpty()); d != "" {
 				t.Errorf("expected PipelineRun was not created. Diff %s", diff.PrintWantGot(d))
 			}
@@ -9877,6 +9970,16 @@ status:
     kind: TaskRun
     name: pr-echo-platforms
     pipelineTaskName: echo-platforms
+  provenance:
+    featureFlags:
+      RunningInEnvWithInjectedSidecars: true
+      EnableTektonOCIBundles: true
+      EnableAPIFields: "alpha"
+      AwaitSidecarReadiness: true
+      VerificationNoMatchPolicy: "ignore"
+      EnableProvenanceInStatus: true
+      ResultExtractionMethod: "termination-message"
+      MaxResultSize: 4096
 `),
 	}, {
 		name:  "indexing results in matrix.params",
@@ -10029,6 +10132,16 @@ status:
     kind: TaskRun
     name: pr-echo-platforms-2
     pipelineTaskName: echo-platforms
+  provenance:
+    featureFlags:
+      RunningInEnvWithInjectedSidecars: true
+      EnableTektonOCIBundles: true
+      EnableAPIFields: "alpha"
+      AwaitSidecarReadiness: true
+      VerificationNoMatchPolicy: "ignore"
+      EnableProvenanceInStatus: true
+      ResultExtractionMethod: "termination-message"
+      MaxResultSize: 4096
 `),
 	}}
 	for _, tt := range tests {
@@ -10235,6 +10348,16 @@ status:
     kind: TaskRun
     name: pr-platforms-and-browsers-1
     pipelineTaskName: platforms-and-browsers
+  provenance:
+    featureFlags:
+      RunningInEnvWithInjectedSidecars: true
+      EnableTektonOCIBundles: true
+      EnableAPIFields: "alpha"
+      AwaitSidecarReadiness: true
+      VerificationNoMatchPolicy: "ignore"
+      EnableProvenanceInStatus: true
+      ResultExtractionMethod: "termination-message"
+      MaxResultSize: 4096
 `),
 		expectedTaskRuns: []*v1beta1.TaskRun{
 			mustParseTaskRunWithObjectMeta(t,
@@ -10421,6 +10544,16 @@ status:
     kind: TaskRun
     name: pr-platforms-and-browsers-1
     pipelineTaskName: platforms-and-browsers
+  provenance:
+    featureFlags:
+      RunningInEnvWithInjectedSidecars: true
+      EnableTektonOCIBundles: true
+      EnableAPIFields: "alpha"
+      AwaitSidecarReadiness: true
+      VerificationNoMatchPolicy: "ignore"
+      EnableProvenanceInStatus: true
+      ResultExtractionMethod: "termination-message"
+      MaxResultSize: 4096
 `),
 		expectedTaskRuns: []*v1beta1.TaskRun{
 			mustParseTaskRunWithObjectMeta(t,
@@ -10509,6 +10642,7 @@ status:
 			if err != nil {
 				t.Fatalf("Got an error getting reconciled run out of fake client: %s", err)
 			}
+
 			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, cmpopts.SortSlices(lessChildReferences), cmpopts.EquateEmpty()); d != "" {
 				t.Errorf("expected PipelineRun was not created. Diff %s", diff.PrintWantGot(d))
 			}
@@ -10823,6 +10957,16 @@ status:
     kind: CustomRun
     name: pr-platforms-and-browsers-8
     pipelineTaskName: platforms-and-browsers
+  provenance:
+    featureFlags:
+      RunningInEnvWithInjectedSidecars: true
+      EnableTektonOCIBundles: true
+      EnableAPIFields: "alpha"
+      AwaitSidecarReadiness: true
+      VerificationNoMatchPolicy: "ignore"
+      EnableProvenanceInStatus: true
+      ResultExtractionMethod: "termination-message"
+      MaxResultSize: 4096
 `),
 	}, {
 		name:     "p-finally",
@@ -10978,6 +11122,16 @@ status:
     kind: CustomRun
     name: pr-platforms-and-browsers-8
     pipelineTaskName: platforms-and-browsers
+  provenance:
+    featureFlags:
+      RunningInEnvWithInjectedSidecars: true
+      EnableTektonOCIBundles: true
+      EnableAPIFields: "alpha"
+      AwaitSidecarReadiness: true
+      VerificationNoMatchPolicy: "ignore"
+      EnableProvenanceInStatus: true
+      ResultExtractionMethod: "termination-message"
+      MaxResultSize: 4096
 `),
 	}}
 	for _, tt := range tests {
@@ -11029,6 +11183,7 @@ spec:
 			if err != nil {
 				t.Fatalf("Got an error getting reconciled run out of fake client: %s", err)
 			}
+
 			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, ignoreFinallyStartTime, cmpopts.EquateEmpty()); d != "" {
 				t.Errorf("expected PipelineRun was not created. Diff %s", diff.PrintWantGot(d))
 			}

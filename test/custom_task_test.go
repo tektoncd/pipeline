@@ -20,8 +20,10 @@ limitations under the License.
 package test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -30,6 +32,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -409,6 +412,8 @@ func TestWaitCustomTask_V1Beta1_PipelineRun(t *testing.T) {
 	// Cleanup the controller after finishing the test
 	defer cleanUpV1Beta1Controller(t)
 
+	featureFlags := getFeatureFlagsBaseOnAPIFlag(t)
+
 	for _, tc := range []struct {
 		name                  string
 		customRunDuration     string
@@ -635,6 +640,9 @@ func TestWaitCustomTask_V1Beta1_PipelineRun(t *testing.T) {
 								},
 							},
 						},
+						Provenance: &v1beta1.Provenance{
+							FeatureFlags: featureFlags,
+						},
 					},
 				},
 			}
@@ -709,4 +717,51 @@ func resetConfigMap(ctx context.Context, t *testing.T, c *clients, namespace, co
 	if err := updateConfigMap(ctx, c.KubeClient, namespace, configName, values); err != nil {
 		t.Log(err)
 	}
+}
+
+func getFeatureFlagsBaseOnAPIFlag(t *testing.T) *config.FeatureFlags {
+	t.Helper()
+	alphaFeatureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
+		"enable-api-fields":         "alpha",
+		"results-from":              "sidecar-logs",
+		"enable-tekton-oci-bundles": "true",
+	})
+	betaFeatureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
+		"enable-api-fields": "beta",
+	})
+	stableFeatureFlags := config.DefaultFeatureFlags.DeepCopy()
+
+	enabledFeatureGate, err := getAPIFeatureGate()
+	if err != nil {
+		t.Fatalf("error reading enabled feature gate: %v", err)
+	}
+	switch enabledFeatureGate {
+	case "alpha":
+		return alphaFeatureFlags
+	case "beta":
+		return betaFeatureFlags
+	default:
+		return stableFeatureFlags
+	}
+}
+
+// getAPIFeatureGate queries the tekton pipelines namespace for the
+// current value of the "enable-api-fields" feature gate.
+func getAPIFeatureGate() (string, error) {
+	ns := os.Getenv("SYSTEM_NAMESPACE")
+	if ns == "" {
+		ns = "tekton-pipelines"
+	}
+
+	cmd := exec.Command("kubectl", "get", "configmap", "feature-flags", "-n", ns, "-o", `jsonpath="{.data['enable-api-fields']}"`)
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("error getting feature-flags configmap: %w", err)
+	}
+	output = bytes.TrimSpace(output)
+	output = bytes.Trim(output, "\"")
+	if len(output) == 0 {
+		output = []byte("stable")
+	}
+	return string(output), nil
 }

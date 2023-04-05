@@ -52,6 +52,8 @@ var (
 
 func TestPropagatedParams(t *testing.T) {
 	t.Parallel()
+
+	expectedFeatureFlags := getFeatureFlagsBaseOnAPIFlag(t)
 	type tests struct {
 		name            string
 		pipelineName    string
@@ -91,6 +93,11 @@ func TestPropagatedParams(t *testing.T) {
 
 			t.Logf("Setting up test resources for %q test in namespace %s", td.name, namespace)
 			pipelineRun, expectedResolvedPipelineRun, expectedTaskRuns := td.pipelineRunFunc(t, namespace)
+
+			expectedResolvedPipelineRun.Status.Provenance = &v1beta1.Provenance{
+				FeatureFlags: expectedFeatureFlags,
+			}
+
 			prName := pipelineRun.Name
 			_, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
 			if err != nil {
@@ -118,6 +125,9 @@ func TestPropagatedParams(t *testing.T) {
 			}
 			for _, tr := range expectedTaskRuns {
 				t.Logf("Checking Taskrun %s", tr.Name)
+				tr.Status.Provenance = &v1beta1.Provenance{
+					FeatureFlags: expectedFeatureFlags,
+				}
 				taskrun, _ := c.V1beta1TaskRunClient.Get(ctx, tr.Name, metav1.GetOptions{})
 				d = cmp.Diff(tr, taskrun,
 					ignoreTypeMeta,
