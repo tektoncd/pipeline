@@ -50,8 +50,8 @@ import (
 // If the ciphertext was encrypted under a different KMS key, the Decrypt operation
 // fails. This practice ensures that you use the KMS key that you intend. Whenever
 // possible, use key policies to give users permission to call the Decrypt
-// operation on a particular KMS key, instead of using IAM policies. Otherwise, you
-// might create an IAM user policy that gives the user Decrypt permission on all
+// operation on a particular KMS key, instead of using &IAM; policies. Otherwise,
+// you might create an &IAM; policy that gives the user Decrypt permission on all
 // KMS keys. This user could decrypt ciphertext that was encrypted by KMS keys in
 // other accounts if the key policy for the cross-account KMS key permits it. If
 // you must use an IAM policy for Decrypt permissions, limit the user to particular
@@ -67,9 +67,9 @@ import (
 // in the Key Management Service Developer Guide. The KMS key that you use for this
 // operation must be in a compatible key state. For details, see Key states of KMS
 // keys (https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html) in
-// the Key Management Service Developer Guide. Cross-account use: Yes. To perform
-// this operation with a KMS key in a different Amazon Web Services account,
-// specify the key ARN or alias ARN in the value of the KeyId parameter. Required
+// the Key Management Service Developer Guide. Cross-account use: Yes. If you use
+// the KeyId parameter to identify a KMS key in a different Amazon Web Services
+// account, specify the key ARN or the alias ARN of the KMS key. Required
 // permissions: kms:Decrypt
 // (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
 // (key policy) Related operations:

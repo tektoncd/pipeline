@@ -166,9 +166,7 @@ type CustomKeyStoresListEntry struct {
 	// each in a different Availability Zone.
 	//
 	// * The Allow principals list must include
-	// the KMS service principal for the Region, cks.kms..amazonaws.com,
-	//
-	// such as
+	// the KMS service principal for the Region, cks.kms..amazonaws.com, such as
 	// cks.kms.us-east-1.amazonaws.com.
 	//
 	// * It must not require acceptance
