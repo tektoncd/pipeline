@@ -29,4 +29,3 @@ data:
   enforce-nonfalsifiability: "spire"
   trusted-resources-verification-no-match-policy: "fail"
   enable-provenance-in-status: "true"
-  custom-task-version: "v1beta1"

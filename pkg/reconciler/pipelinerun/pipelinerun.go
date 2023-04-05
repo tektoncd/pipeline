@@ -334,21 +334,6 @@ func (c *Reconciler) resolvePipelineState(
 			return r, nil
 		}
 
-		cfg := config.FromContextOrDefaults(ctx)
-		if cfg.FeatureFlags.CustomTaskVersion == config.CustomTaskVersionAlpha {
-			getRunObjectFunc = func(name string) (v1beta1.RunObject, error) {
-				r, err := c.runLister.Runs(pr.Namespace).Get(name)
-				if err != nil {
-					return nil, err
-				}
-				// If we just return c.runLister.Runs(...).Get(...) and there is no run, we end up returning
-				// a v1beta1.RunObject that won't == nil, so do an explicit check.
-				if r == nil {
-					return nil, nil
-				}
-				return r, nil
-			}
-		}
 		resolvedTask, err := resources.ResolvePipelineTask(ctx,
 			*pr,
 			fn,
@@ -904,7 +889,6 @@ func (c *Reconciler) createRunObject(ctx context.Context, runName string, params
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createRunObject")
 	defer span.End()
 	logger := logging.FromContext(ctx)
-	cfg := config.FromContextOrDefaults(ctx)
 	taskRunSpec := pr.GetTaskRunSpec(rpt.PipelineTask.Name)
 	params = append(params, rpt.PipelineTask.Params...)
 
@@ -923,44 +907,6 @@ func (c *Reconciler) createRunObject(ctx context.Context, runName string, params
 		OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(pr)},
 		Labels:          getTaskrunLabels(pr, rpt.PipelineTask.Name, true),
 		Annotations:     getTaskrunAnnotations(pr),
-	}
-
-	if cfg.FeatureFlags.CustomTaskVersion == config.CustomTaskVersionAlpha {
-		r := &v1alpha1.Run{
-			ObjectMeta: objectMeta,
-			Spec: v1alpha1.RunSpec{
-				Retries:            rpt.PipelineTask.Retries,
-				Ref:                rpt.PipelineTask.TaskRef,
-				Params:             params,
-				ServiceAccountName: taskRunSpec.TaskServiceAccountName,
-				Timeout:            taskTimeout,
-				Workspaces:         workspaces,
-			},
-		}
-		if rpt.PipelineTask.TaskSpec != nil {
-			j, err := json.Marshal(rpt.PipelineTask.TaskSpec.Spec)
-			if err != nil {
-				return nil, err
-			}
-			r.Spec.Spec = &v1alpha1.EmbeddedRunSpec{
-				TypeMeta: runtime.TypeMeta{
-					APIVersion: rpt.PipelineTask.TaskSpec.APIVersion,
-					Kind:       rpt.PipelineTask.TaskSpec.Kind,
-				},
-				Metadata: rpt.PipelineTask.TaskSpec.Metadata,
-				Spec: runtime.RawExtension{
-					Raw: j,
-				},
-			}
-		}
-		// Set the affinity assistant annotation in case the custom task creates TaskRuns or Pods
-		// that can take advantage of it.
-		if !c.isAffinityAssistantDisabled(ctx) && pipelinePVCWorkspaceName != "" {
-			r.Annotations[workspace.AnnotationAffinityAssistantName] = getAffinityAssistantName(pipelinePVCWorkspaceName, pr.Name)
-		}
-
-		logger.Infof("Creating a new Run object %s", runName)
-		return c.PipelineClientSet.TektonV1alpha1().Runs(pr.Namespace).Create(ctx, r, metav1.CreateOptions{})
 	}
 
 	r := &v1beta1.CustomRun{
@@ -1279,7 +1225,6 @@ func (c *Reconciler) updatePipelineRunStatusFromInformer(ctx context.Context, pr
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "updatePipelineRunStatusFromInformer")
 	defer span.End()
 	logger := logging.FromContext(ctx)
-	cfg := config.FromContextOrDefaults(ctx)
 
 	// Get the pipelineRun label that is set on each TaskRun.  Do not include the propagated labels from the
 	// Pipeline and PipelineRun.  The user could change them during the lifetime of the PipelineRun so the
@@ -1292,24 +1237,13 @@ func (c *Reconciler) updatePipelineRunStatusFromInformer(ctx context.Context, pr
 	}
 	var runObjects []v1beta1.RunObject
 
-	if cfg.FeatureFlags.CustomTaskVersion == config.CustomTaskVersionAlpha {
-		legacyRuns, err := c.runLister.Runs(pr.Namespace).List(k8slabels.SelectorFromSet(pipelineRunLabels))
-		if err != nil {
-			logger.Errorf("could not list Runs %#v", err)
-			return err
-		}
-		for _, lr := range legacyRuns {
-			runObjects = append(runObjects, lr)
-		}
-	} else {
-		customRuns, err := c.customRunLister.CustomRuns(pr.Namespace).List(k8slabels.SelectorFromSet(pipelineRunLabels))
-		if err != nil {
-			logger.Errorf("could not list CustomRuns %#v", err)
-			return err
-		}
-		for _, cr := range customRuns {
-			runObjects = append(runObjects, cr)
-		}
+	customRuns, err := c.customRunLister.CustomRuns(pr.Namespace).List(k8slabels.SelectorFromSet(pipelineRunLabels))
+	if err != nil {
+		logger.Errorf("could not list CustomRuns %#v", err)
+		return err
+	}
+	for _, cr := range customRuns {
+		runObjects = append(runObjects, cr)
 	}
 
 	return updatePipelineRunStatusFromChildObjects(ctx, logger, pr, taskRuns, runObjects)

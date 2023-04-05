@@ -3776,7 +3776,6 @@ spec:
 					EnableProvenanceInStatus:         true,
 					ResultExtractionMethod:           config.DefaultResultExtractionMethod,
 					MaxResultSize:                    config.DefaultMaxResultSize,
-					CustomTaskVersion:                config.DefaultCustomTaskVersion,
 				},
 			},
 		},
