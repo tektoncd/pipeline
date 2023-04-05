@@ -36,6 +36,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
@@ -1603,17 +1604,17 @@ status:
   - reason: ToBeRetried
     status: Unknown
     type: Succeeded
-    message: "error when listing tasks for taskRun test-taskrun-run-retry-prepare-failure: failed to get task: tasks.tekton.dev \"test-task\" not found"
+    message: "error when listing tasks for taskRun test-taskrun-run-retry-prepare-failure: tasks.tekton.dev \"test-task\" not found"
   retriesStatus:
   - conditions:
     - reason: TaskRunResolutionFailed
       status: "False"
       type: "Succeeded"
-      message: "error when listing tasks for taskRun test-taskrun-run-retry-prepare-failure: failed to get task: tasks.tekton.dev \"test-task\" not found"
+      message: "error when listing tasks for taskRun test-taskrun-run-retry-prepare-failure: tasks.tekton.dev \"test-task\" not found"
     startTime: "2021-12-31T23:59:59Z"
     completionTime: "2022-01-01T00:00:00Z"
 `)
-		prepareError                    = fmt.Errorf("1 error occurred:\n\t* error when listing tasks for taskRun test-taskrun-run-retry-prepare-failure: failed to get task: tasks.tekton.dev \"test-task\" not found")
+		prepareError                    = fmt.Errorf("1 error occurred:\n\t* error when listing tasks for taskRun test-taskrun-run-retry-prepare-failure: tasks.tekton.dev \"test-task\" not found")
 		toFailOnReconcileFailureTaskRun = parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-results-type-mismatched
@@ -4876,11 +4877,7 @@ status:
 }
 
 func TestReconcile_verifyResolvedTask_Success(t *testing.T) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	ts := parse.MustParseV1beta1Task(t, `
+	unsignedTask := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task
   namespace: foo
@@ -4888,9 +4885,8 @@ spec:
   params:
   - default: mydefault
     name: myarg
-    type: string
   steps:
-  - script: echo $(inputs.params.myarg)
+  - script: echo "foo"
     image: myimage
     name: mycontainer
 `)
@@ -4909,34 +4905,98 @@ status:
 `)
 
 	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, tr.Namespace)
-	signedTask, err := test.GetSignedTask(ts, signer, "test-task")
+	signedTask, err := test.GetSignedTask(unsignedTask, signer, "test-task")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
 
-	cms := []*corev1.ConfigMap{
+	/*
+		This tests:
+		1. signed Task and fail no-match-policy
+		2. signed Task and warn no-match-policy
+		3. signed Task and ignore no-match-policy
+		4. unsigned task without matching policy and warn no-match-policy
+		5. unsigned task without matching policy and ignore no-match-policy
+		6. unsigned task with warn mode policy and fail no-match-policy
+	*/
+	testCases := []struct {
+		name                 string
+		task                 *v1beta1.Task
+		noMatchPolicy        string
+		verificationPolicies []*v1alpha1.VerificationPolicy
+	}{
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"trusted-resources-verification-no-match-policy": config.FailNoMatchPolicy,
-			},
+			name:                 "signed Task and fail no-match-policy",
+			task:                 signedTask,
+			noMatchPolicy:        config.FailNoMatchPolicy,
+			verificationPolicies: vps,
+		}, {
+			name:                 "signed Task and warn no-match-policy",
+			task:                 signedTask,
+			noMatchPolicy:        config.WarnNoMatchPolicy,
+			verificationPolicies: vps,
+		}, {
+			name:                 "signed Task and ignore no-match-policy",
+			task:                 signedTask,
+			noMatchPolicy:        config.IgnoreNoMatchPolicy,
+			verificationPolicies: vps,
+		}, {
+			name:                 "unsigned Task and warn no-match-policy",
+			task:                 unsignedTask,
+			noMatchPolicy:        config.WarnNoMatchPolicy,
+			verificationPolicies: []*v1alpha1.VerificationPolicy{},
+		}, {
+			name:                 "unsigned Task and ignore no-match-policy",
+			task:                 unsignedTask,
+			noMatchPolicy:        config.IgnoreNoMatchPolicy,
+			verificationPolicies: []*v1alpha1.VerificationPolicy{},
+		}, {
+			name:          "unsigned Task and with warn mode policy and fail no-match-policy",
+			task:          unsignedTask,
+			noMatchPolicy: config.IgnoreNoMatchPolicy,
+			verificationPolicies: []*v1alpha1.VerificationPolicy{{
+				Spec: v1alpha1.VerificationPolicySpec{
+					Resources: []v1alpha1.ResourcePattern{{Pattern: ".*"}},
+					Mode:      v1alpha1.ModeWarn,
+				},
+			}},
 		},
 	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cms := []*corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+					Data: map[string]string{
+						"trusted-resources-verification-no-match-policy": tc.noMatchPolicy,
+					},
+				},
+			}
+			d := test.Data{
+				TaskRuns:             []*v1beta1.TaskRun{tr},
+				Tasks:                []*v1beta1.Task{tc.task},
+				ConfigMaps:           cms,
+				VerificationPolicies: tc.verificationPolicies,
+			}
 
-	d := test.Data{
-		TaskRuns:             []*v1beta1.TaskRun{tr},
-		Tasks:                []*v1beta1.Task{signedTask},
-		ConfigMaps:           cms,
-		VerificationPolicies: vps,
-	}
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			createServiceAccount(t, testAssets, tr.Spec.ServiceAccountName, tr.Namespace)
+			err = testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
 
-	testAssets, cancel := getTaskRunController(t, d)
-	defer cancel()
-	createServiceAccount(t, testAssets, tr.Spec.ServiceAccountName, tr.Namespace)
-	err = testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
+			if ok, _ := controller.IsRequeueKey(err); !ok {
+				t.Errorf("Error reconciling TaskRun. Got error %v", err)
+			}
 
-	if ok, _ := controller.IsRequeueKey(err); !ok {
-		t.Errorf("Error reconciling TaskRun. Got error %v", err)
+			tr, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("getting updated taskrun: %v", err)
+			}
+			unsignedTask.Spec.SetDefaults(testAssets.Ctx)
+			if d := cmp.Diff(tr.Status.TaskSpec, &unsignedTask.Spec); d != "" {
+				t.Errorf("TaskSpec metadata doesn't match %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 
@@ -4945,7 +5005,7 @@ func TestReconcile_verifyResolvedTask_Error(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	ts := parse.MustParseV1beta1Task(t, `
+	unsignedTask := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task
   namespace: foo
@@ -4974,51 +5034,119 @@ status:
 `)
 
 	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, tr.Namespace)
-	signedTask, err := test.GetSignedTask(ts, signer, "test-task")
+	signedTask, err := test.GetSignedTask(unsignedTask, signer, "test-task")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
 
-	tamperedTask := signedTask.DeepCopy()
-	if tamperedTask.Annotations == nil {
-		tamperedTask.Annotations = make(map[string]string)
+	modifiedTask := signedTask.DeepCopy()
+	if modifiedTask.Annotations == nil {
+		modifiedTask.Annotations = make(map[string]string)
 	}
-	tamperedTask.Annotations["random"] = "attack"
+	modifiedTask.Annotations["random"] = "attack"
 
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"trusted-resources-verification-no-match-policy": config.FailNoMatchPolicy,
-			},
-		},
-	}
-
+	/*
+		This tests:
+		1. unsigned Task and fail no-match-policy
+		2. unsigned Task and warn no-match-policy
+		3. unsigned Task and ignore no-match-policy
+		4. modified task and fail no-match-policy
+		5. modified task and warn no-match-policy
+		6. modified task and ignore no-match-policy
+		7. signed task without matching policies and fail no-match-policy
+		8. get policies error (pattern is not valid regex)
+	*/
 	testCases := []struct {
-		name          string
-		taskrun       []*v1beta1.TaskRun
-		task          []*v1beta1.Task
-		expectedError error
-	}{
+		name                 string
+		taskrun              []*v1beta1.TaskRun
+		task                 *v1beta1.Task
+		noMatchPolicy        string
+		verificationPolicies []*v1alpha1.VerificationPolicy
+		expectedError        error
+	}{{
+		name:                 "signed task and fail no-match-policy",
+		task:                 signedTask,
+		noMatchPolicy:        config.FailNoMatchPolicy,
+		verificationPolicies: []*v1alpha1.VerificationPolicy{},
+		expectedError:        trustedresources.ErrNoMatchedPolicies,
+	},
 		{
-			name:          "unsigned task fails verification",
-			task:          []*v1beta1.Task{ts},
-			expectedError: trustedresources.ErrResourceVerificationFailed,
-		},
-		{
-			name:          "modified task fails verification",
-			task:          []*v1beta1.Task{tamperedTask},
-			expectedError: trustedresources.ErrResourceVerificationFailed,
+			name:                 "unsigned task and fail no-match-policy",
+			task:                 unsignedTask,
+			noMatchPolicy:        config.FailNoMatchPolicy,
+			verificationPolicies: vps,
+			expectedError:        trustedresources.ErrResourceVerificationFailed,
+		}, {
+			name:                 "unsigned task and warn no-match-policy",
+			task:                 unsignedTask,
+			noMatchPolicy:        config.WarnNoMatchPolicy,
+			verificationPolicies: vps,
+			expectedError:        trustedresources.ErrResourceVerificationFailed,
+		}, {
+			name:                 "unsigned task and ignore no-match-policy",
+			task:                 unsignedTask,
+			noMatchPolicy:        config.IgnoreNoMatchPolicy,
+			verificationPolicies: vps,
+			expectedError:        trustedresources.ErrResourceVerificationFailed,
+		}, {
+			name:                 "modified task and fail no-match-policy",
+			task:                 modifiedTask,
+			noMatchPolicy:        config.FailNoMatchPolicy,
+			verificationPolicies: vps,
+			expectedError:        trustedresources.ErrResourceVerificationFailed,
+		}, {
+			name:                 "modified task and warn no-match-policy",
+			task:                 modifiedTask,
+			noMatchPolicy:        config.WarnNoMatchPolicy,
+			verificationPolicies: vps,
+			expectedError:        trustedresources.ErrResourceVerificationFailed,
+		}, {
+			name:                 "modified task and ignore no-match-policy",
+			task:                 modifiedTask,
+			noMatchPolicy:        config.IgnoreNoMatchPolicy,
+			verificationPolicies: vps,
+			expectedError:        trustedresources.ErrResourceVerificationFailed,
+		}, {
+			name:                 "signed task and fail no-match-policy",
+			task:                 signedTask,
+			noMatchPolicy:        config.FailNoMatchPolicy,
+			verificationPolicies: []*v1alpha1.VerificationPolicy{},
+			expectedError:        trustedresources.ErrNoMatchedPolicies,
+		}, {
+			name:          "get policies error",
+			task:          signedTask,
+			noMatchPolicy: config.FailNoMatchPolicy,
+			verificationPolicies: []*v1alpha1.VerificationPolicy{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "vp",
+					},
+					Spec: v1alpha1.VerificationPolicySpec{
+						Resources: []v1alpha1.ResourcePattern{{
+							Pattern: "^[",
+						}},
+					},
+				},
+			},
+			expectedError: trustedresources.ErrNoMatchedPolicies,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			cms := []*corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+					Data: map[string]string{
+						"trusted-resources-verification-no-match-policy": tc.noMatchPolicy,
+					},
+				},
+			}
 			d := test.Data{
 				TaskRuns:             []*v1beta1.TaskRun{tr},
-				Tasks:                tc.task,
+				Tasks:                []*v1beta1.Task{tc.task},
 				ConfigMaps:           cms,
-				VerificationPolicies: vps,
+				VerificationPolicies: tc.verificationPolicies,
 			}
 
 			testAssets, cancel := getTaskRunController(t, d)

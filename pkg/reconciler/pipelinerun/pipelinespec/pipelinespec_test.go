@@ -228,7 +228,7 @@ func TestGetPipelineData_ResolutionSuccess(t *testing.T) {
 			if err != nil {
 				t.Fatalf("did not expect error getting pipeline spec but got: %s", err)
 			}
-
+			resolvedPipelineSpec.SetDefaults(ctx)
 			if sourceMeta.Name != resolvedObjectMeta.Name {
 				t.Errorf("expected name %q but resolved to %q", sourceMeta.Name, resolvedObjectMeta.Name)
 			}

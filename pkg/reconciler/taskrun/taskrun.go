@@ -307,7 +307,7 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 	return merr
 }
 
-// `prepare` fetches resources the taskrun depends on, runs validation and conversion
+// `prepare` fetches resources the taskrun depends on, runs validation, trusted resources verification and conversion
 // It may report errors back to Reconcile, it updates the taskrun status in case of
 // error but it does not sync updates back to etcd. It does not emit events.
 // All errors returned by `prepare` are always handled by `Reconcile`, so they don't cause
@@ -321,12 +321,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	logger := logging.FromContext(ctx)
 	tr.SetDefaults(ctx)
 
-	// list VerificationPolicies for trusted resources
-	vp, err := c.verificationPolicyLister.VerificationPolicies(tr.Namespace).List(labels.Everything())
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %w", tr.Namespace, err)
-	}
-	getTaskfunc := resources.GetTaskFuncFromTaskRun(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, tr, vp)
+	getTaskfunc := resources.GetTaskFuncFromTaskRun(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, tr)
 
 	taskMeta, taskSpec, err := resources.GetTaskData(ctx, tr, getTaskfunc)
 	switch {
@@ -334,10 +329,6 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		message := fmt.Sprintf("TaskRun %s/%s awaiting remote resource", tr.Namespace, tr.Name)
 		tr.Status.MarkResourceOngoing(v1beta1.TaskRunReasonResolvingTaskRef, message)
 		return nil, nil, err
-	case errors.Is(err, trustedresources.ErrResourceVerificationFailed):
-		logger.Errorf("TaskRun %s/%s referred task failed signature verification", tr.Namespace, tr.Name)
-		tr.Status.MarkResourceFailed(podconvert.ReasonResourceVerificationFailed, err)
-		return nil, nil, controller.NewPermanentError(err)
 	case err != nil:
 		logger.Errorf("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
 		if resources.IsGetTaskErrTransient(err) {
@@ -345,11 +336,31 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		}
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
 		return nil, nil, controller.NewPermanentError(err)
-	default:
-		// Store the fetched TaskSpec on the TaskRun for auditing
-		if err := storeTaskSpecAndMergeMeta(ctx, tr, taskSpec, taskMeta); err != nil {
-			logger.Errorf("Failed to store TaskSpec on TaskRun.Statusfor taskrun %s: %v", tr.Name, err)
+	}
+	// Skip the verification if 1) it is not inline task; 2) has been verified before; 3) the taskrun created by pipelinerun
+	if tr.Spec.TaskSpec == nil && tr.Status.TaskSpec == nil && len(tr.OwnerReferences) == 0 {
+		var taskToBeVerified *v1beta1.Task
+		if taskMeta != nil && taskMeta.ObjectMeta != nil && taskSpec != nil {
+			taskToBeVerified = &v1beta1.Task{
+				ObjectMeta: *taskMeta.ObjectMeta,
+				Spec:       *taskSpec,
+			}
 		}
+		vp, err := c.verificationPolicyLister.VerificationPolicies(tr.Namespace).List(labels.Everything())
+		if err != nil {
+			return nil, nil, fmt.Errorf("Failed to list VerificationPolicies from namespace %s with error %w", tr.Namespace, err)
+		}
+		if err := trustedresources.VerifyTask(ctx, taskToBeVerified, c.KubeClientSet, taskMeta.RefSource, vp); err != nil {
+			tr.Status.MarkResourceFailed(podconvert.ReasonResourceVerificationFailed, err)
+			return nil, nil, controller.NewPermanentError(err)
+		}
+	}
+	// SetDefaults after the verification so the verification won't fail due to the SetDefaults's modification
+	taskSpec.SetDefaults(ctx)
+	// Store the fetched TaskSpec on the TaskRun for auditing, this needs to be done after the trusted resources verification
+	// since the verification will be skipped if TaskSpec is stored in TaskRun
+	if err := storeTaskSpecAndMergeMeta(ctx, tr, taskSpec, taskMeta); err != nil {
+		logger.Errorf("Failed to store TaskSpec on TaskRun.Statusfor taskrun %s: %v", tr.Name, err)
 	}
 
 	rtr := &resources.ResolvedTask{

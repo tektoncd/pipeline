@@ -35,6 +35,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
@@ -10627,7 +10628,7 @@ spec:
   pipelineRef:
     name: test-pipeline
 `)
-	ps := parse.MustParseV1beta1Pipeline(t, `
+	unsignedPipeline := parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -10656,23 +10657,78 @@ spec:
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
-	signedPipeline, err := test.GetSignedPipeline(ps, signer, "test-pipeline")
+	signedPipeline, err := test.GetSignedPipeline(unsignedPipeline, signer, "test-pipeline")
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
-
-	d := test.Data{
-		PipelineRuns:         []*v1beta1.PipelineRun{prs},
-		Pipelines:            []*v1beta1.Pipeline{signedPipeline},
-		Tasks:                []*v1beta1.Task{signedTask},
-		VerificationPolicies: vps,
+	testCases := []struct {
+		name                 string
+		pipeline             *v1beta1.Pipeline
+		noMatchPolicy        string
+		verificationPolicies []*v1alpha1.VerificationPolicy
+	}{
+		{
+			name:                 "signed Pipeline and fail no-match-policy",
+			pipeline:             signedPipeline,
+			noMatchPolicy:        config.FailNoMatchPolicy,
+			verificationPolicies: vps,
+		}, {
+			name:                 "signed Pipeline and warn no-match-policy",
+			pipeline:             signedPipeline,
+			noMatchPolicy:        config.WarnNoMatchPolicy,
+			verificationPolicies: vps,
+		}, {
+			name:                 "signed Pipeline and ignore no-match-policy",
+			pipeline:             signedPipeline,
+			noMatchPolicy:        config.IgnoreNoMatchPolicy,
+			verificationPolicies: vps,
+		}, {
+			name:                 "unsigned Pipeline without matching policies and warn no-match-policy",
+			pipeline:             unsignedPipeline,
+			noMatchPolicy:        config.WarnNoMatchPolicy,
+			verificationPolicies: []*v1alpha1.VerificationPolicy{},
+		}, {
+			name:                 "unsigned Pipeline without matching policies and ignore no-match-policy",
+			pipeline:             unsignedPipeline,
+			noMatchPolicy:        config.IgnoreNoMatchPolicy,
+			verificationPolicies: []*v1alpha1.VerificationPolicy{},
+		}, {
+			name:          "unsigned pipeline and with warn mode policy and fail no-match-policy",
+			pipeline:      unsignedPipeline,
+			noMatchPolicy: config.IgnoreNoMatchPolicy,
+			verificationPolicies: []*v1alpha1.VerificationPolicy{{
+				Spec: v1alpha1.VerificationPolicySpec{
+					Resources: []v1alpha1.ResourcePattern{{Pattern: ".*"}},
+					Mode:      v1alpha1.ModeWarn,
+				},
+			}},
+		},
 	}
-	prt := newPipelineRunTest(t, d)
-	defer prt.Cancel()
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cms := []*corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+					Data: map[string]string{
+						"trusted-resources-verification-no-match-policy": tc.noMatchPolicy,
+					},
+				},
+			}
+			d := test.Data{
+				PipelineRuns:         []*v1beta1.PipelineRun{prs},
+				Pipelines:            []*v1beta1.Pipeline{tc.pipeline},
+				Tasks:                []*v1beta1.Task{signedTask},
+				ConfigMaps:           cms,
+				VerificationPolicies: tc.verificationPolicies,
+			}
+			prt := newPipelineRunTest(t, d)
+			defer prt.Cancel()
 
-	reconciledRun, _ := prt.reconcileRun("foo", "test-pipelinerun", []string{}, false)
+			reconciledRun, _ := prt.reconcileRun("foo", "test-pipelinerun", []string{}, false)
 
-	checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
+			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
+		})
+	}
 }
 
 func TestReconcile_verifyResolvedPipeline_Error(t *testing.T) {
@@ -10735,35 +10791,72 @@ spec:
 		tamperedPipeline.Annotations = make(map[string]string)
 	}
 	tamperedPipeline.Annotations["random"] = "attack"
-
+	cms := []*corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+			Data: map[string]string{
+				"trusted-resources-verification-no-match-policy": config.FailNoMatchPolicy,
+			},
+		},
+	}
 	testCases := []struct {
-		name        string
-		pipelinerun []*v1beta1.PipelineRun
-		pipeline    []*v1beta1.Pipeline
-		task        []*v1beta1.Task
+		name                 string
+		pipelinerun          []*v1beta1.PipelineRun
+		pipeline             []*v1beta1.Pipeline
+		task                 []*v1beta1.Task
+		verificationPolicies []*v1alpha1.VerificationPolicy
 	}{
 		{
-			name:        "unsigned pipeline fails verification",
-			pipelinerun: []*v1beta1.PipelineRun{prs},
-			pipeline:    []*v1beta1.Pipeline{ps},
+			name:                 "unsigned pipeline fails verification",
+			pipelinerun:          []*v1beta1.PipelineRun{prs},
+			pipeline:             []*v1beta1.Pipeline{ps},
+			verificationPolicies: vps,
 		},
 		{
-			name:        "signed pipeline with unsigned task fails verification",
+			name:                 "signed pipeline with unsigned task fails verification",
+			pipelinerun:          []*v1beta1.PipelineRun{prs},
+			pipeline:             []*v1beta1.Pipeline{signedPipeline},
+			task:                 []*v1beta1.Task{ts},
+			verificationPolicies: vps,
+		},
+		{
+			name:                 "signed pipeline with modified task fails verification",
+			pipelinerun:          []*v1beta1.PipelineRun{prs},
+			pipeline:             []*v1beta1.Pipeline{signedPipeline},
+			task:                 []*v1beta1.Task{tamperedTask},
+			verificationPolicies: vps,
+		},
+		{
+			name:                 "modified pipeline with signed task fails verification",
+			pipelinerun:          []*v1beta1.PipelineRun{prs},
+			pipeline:             []*v1beta1.Pipeline{tamperedPipeline},
+			task:                 []*v1beta1.Task{signedTask},
+			verificationPolicies: vps,
+		},
+		{
+			name:                 "signed pipeline without matchind policies fails verification",
+			pipelinerun:          []*v1beta1.PipelineRun{prs},
+			pipeline:             []*v1beta1.Pipeline{signedPipeline},
+			task:                 []*v1beta1.Task{ts},
+			verificationPolicies: []*v1alpha1.VerificationPolicy{},
+		},
+		{
+			name:        "get policies error",
 			pipelinerun: []*v1beta1.PipelineRun{prs},
 			pipeline:    []*v1beta1.Pipeline{signedPipeline},
 			task:        []*v1beta1.Task{ts},
-		},
-		{
-			name:        "signed pipeline with modified task fails verification",
-			pipelinerun: []*v1beta1.PipelineRun{prs},
-			pipeline:    []*v1beta1.Pipeline{signedPipeline},
-			task:        []*v1beta1.Task{tamperedTask},
-		},
-		{
-			name:        "modified pipeline with signed task fails verification",
-			pipelinerun: []*v1beta1.PipelineRun{prs},
-			pipeline:    []*v1beta1.Pipeline{tamperedPipeline},
-			task:        []*v1beta1.Task{signedTask},
+			verificationPolicies: []*v1alpha1.VerificationPolicy{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "vp",
+					},
+					Spec: v1alpha1.VerificationPolicySpec{
+						Resources: []v1alpha1.ResourcePattern{{
+							Pattern: "^[",
+						}},
+					},
+				},
+			},
 		},
 	}
 
@@ -10773,7 +10866,8 @@ spec:
 				PipelineRuns:         tc.pipelinerun,
 				Pipelines:            tc.pipeline,
 				Tasks:                tc.task,
-				VerificationPolicies: vps,
+				ConfigMaps:           cms,
+				VerificationPolicies: tc.verificationPolicies,
 			}
 			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()

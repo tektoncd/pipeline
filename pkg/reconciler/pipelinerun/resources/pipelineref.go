@@ -24,7 +24,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	rprp "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/pipelinespec"
@@ -32,7 +31,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/remote/oci"
 	"github.com/tektoncd/pipeline/pkg/remote/resolution"
 	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
-	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -96,32 +94,6 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 			Tektonclient: tekton,
 		}
 		return local.GetPipeline
-	}
-}
-
-// GetVerifiedPipelineFunc is a wrapper of GetPipelineFunc and return the function to
-// verify the pipeline if there are matching verification policies
-func GetVerifiedPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester, pipelineRun *v1beta1.PipelineRun, verificationpolicies []*v1alpha1.VerificationPolicy) rprp.GetPipeline {
-	get := GetPipelineFunc(ctx, k8s, tekton, requester, pipelineRun)
-	return func(context.Context, string) (*v1beta1.Pipeline, *v1beta1.RefSource, error) {
-		p, s, err := get(ctx, pipelineRun.Spec.PipelineRef.Name)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to get pipeline: %w", err)
-		}
-		// if the pipeline is in status, then it has been verified and no need to verify again
-		if pipelineRun.Status.PipelineSpec != nil {
-			return p, s, nil
-		}
-		var refSource string
-		if s != nil {
-			refSource = s.URI
-		}
-		if err := trustedresources.VerifyPipeline(ctx, p, k8s, refSource, verificationpolicies); err != nil {
-			// FixMe: the below %v should be %w (and the nolint pragma removed)
-			// but making that change causes e2e test failures.
-			return nil, nil, fmt.Errorf("GetVerifiedPipelineFunc failed: %w: %v", trustedresources.ErrResourceVerificationFailed, err) //nolint:errorlint
-		}
-		return p, s, nil
 	}
 }
 

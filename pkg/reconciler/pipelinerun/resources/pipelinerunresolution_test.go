@@ -30,7 +30,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
-	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
@@ -1870,8 +1869,9 @@ func TestResolvePipelineRun_PipelineTaskHasNoResources(t *testing.T) {
 		t.Fatalf("Expected only 2 resolved PipelineTasks but got %d", len(pipelineState))
 	}
 	expectedTask := &resources.ResolvedTask{
-		TaskName: task.Name,
-		TaskSpec: &task.Spec,
+		TaskName:       task.Name,
+		TaskSpec:       &task.Spec,
+		TaskObjectMeta: &task.ObjectMeta,
 	}
 	if d := cmp.Diff(pipelineState[0].ResolvedTask, expectedTask, cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{})); d != "" {
 		t.Fatalf("Expected resources where only Tasks were resolved but actual differed %s", diff.PrintWantGot(d))
@@ -1920,43 +1920,6 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 			// expected error
 		default:
 			t.Fatalf("Pipeline %s: Want %T, got %s of type %T", p.Name, tnf, err, err)
-		}
-	}
-}
-
-func TestResolvePipelineRun_VerificationFailed(t *testing.T) {
-	pts := []v1beta1.PipelineTask{{
-		Name:    "mytask1",
-		TaskRef: &v1beta1.TaskRef{Name: "task"},
-	}, {
-		Name:    "mytask2",
-		TaskRef: &v1beta1.TaskRef{Name: "task"},
-		Matrix: &v1beta1.Matrix{
-			Params: v1beta1.Params{{
-				Name:  "foo",
-				Value: *v1beta1.NewStructuredValues("f", "o", "o"),
-			}, {
-				Name:  "bar",
-				Value: *v1beta1.NewStructuredValues("b", "a", "r"),
-			}},
-		}}}
-
-	getTask := func(ctx context.Context, name string) (*v1beta1.Task, *v1beta1.RefSource, error) {
-		return nil, nil, trustedresources.ErrResourceVerificationFailed
-	}
-	getTaskRun := func(name string) (*v1beta1.TaskRun, error) { return nil, nil } //nolint:nilnil
-	pr := v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "pipelinerun",
-		},
-	}
-	for _, pt := range pts {
-		_, err := ResolvePipelineTask(context.Background(), pr, getTask, getTaskRun, nopGetRun, pt)
-		if err == nil {
-			t.Errorf("expected to get err but got nil")
-		}
-		if !errors.Is(err, trustedresources.ErrResourceVerificationFailed) {
-			t.Errorf("expected to get %v but got %v", trustedresources.ErrResourceVerificationFailed, err)
 		}
 	}
 }
@@ -3110,6 +3073,7 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 		TaskSpec: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
 			Name: "step1",
 		}}},
+		TaskObjectMeta: &task.ObjectMeta,
 	}
 
 	getTask := func(ctx context.Context, name string) (*v1beta1.Task, *v1beta1.RefSource, error) {

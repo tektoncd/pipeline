@@ -26,8 +26,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/remote"
-	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/kmeta"
 )
@@ -646,18 +646,11 @@ func (t *ResolvedPipelineTask) resolveTaskResources(
 	pipelineTask v1beta1.PipelineTask,
 	taskRun *v1beta1.TaskRun,
 ) error {
-	spec, taskName, kind, err := resolveTask(ctx, taskRun, getTask, pipelineTask)
+	rtr, err := resolveTask(ctx, taskRun, getTask, pipelineTask)
 	if err != nil {
 		return err
 	}
-
-	spec.SetDefaults(ctx)
-	rtr, err := resolvePipelineTaskResources(pipelineTask, &spec, taskName, kind)
-	if err != nil {
-		return fmt.Errorf("couldn't match referenced resources with declared resources: %w", err)
-	}
 	t.ResolvedTask = rtr
-
 	return nil
 }
 
@@ -666,15 +659,16 @@ func resolveTask(
 	taskRun *v1beta1.TaskRun,
 	getTask resources.GetTask,
 	pipelineTask v1beta1.PipelineTask,
-) (v1beta1.TaskSpec, string, v1beta1.TaskKind, error) {
+) (*resources.ResolvedTask, error) {
 	var (
-		t        *v1beta1.Task
-		err      error
-		spec     v1beta1.TaskSpec
-		taskName string
-		kind     v1beta1.TaskKind
+		t          *v1beta1.Task
+		err        error
+		spec       v1beta1.TaskSpec
+		taskName   string
+		kind       v1beta1.TaskKind
+		objectMeta *metav1.ObjectMeta
+		refSource  *v1beta1.RefSource
 	)
-
 	if pipelineTask.TaskRef != nil {
 		// If the TaskRun has already a stored TaskSpec in its status, use it as source of truth
 		if taskRun != nil && taskRun.Status.TaskSpec != nil {
@@ -683,27 +677,32 @@ func resolveTask(
 		} else {
 			// Following minimum status principle (TEP-0100), no need to propagate the RefSource about PipelineTask up to PipelineRun status.
 			// Instead, the child TaskRun's status will be the place recording the RefSource of individual task.
-			t, _, err = getTask(ctx, pipelineTask.TaskRef.Name)
+			t, refSource, err = getTask(ctx, pipelineTask.TaskRef.Name)
 			switch {
 			case errors.Is(err, remote.ErrRequestInProgress):
-				return v1beta1.TaskSpec{}, "", "", err
-			case errors.Is(err, trustedresources.ErrResourceVerificationFailed):
-				return v1beta1.TaskSpec{}, "", "", err
+				return nil, err
 			case err != nil:
-				return v1beta1.TaskSpec{}, "", "", &TaskNotFoundError{
+				return nil, &TaskNotFoundError{
 					Name: pipelineTask.TaskRef.Name,
 					Msg:  err.Error(),
 				}
 			default:
 				spec = t.TaskSpec()
 				taskName = t.TaskMetadata().Name
+				objectMeta = &t.ObjectMeta
 			}
 		}
 		kind = pipelineTask.TaskRef.Kind
 	} else {
 		spec = pipelineTask.TaskSpec.TaskSpec
 	}
-	return spec, taskName, kind, err
+	return &resources.ResolvedTask{
+		TaskName:       taskName,
+		TaskSpec:       &spec,
+		Kind:           kind,
+		TaskObjectMeta: objectMeta,
+		RefSource:      refSource,
+	}, nil
 }
 
 // GetTaskRunName should return a unique name for a `TaskRun` if one has not already been defined, and the existing one otherwise.
@@ -776,17 +775,6 @@ func getRunNamesFromChildRefs(childRefs []v1beta1.ChildStatusReference, ptName s
 		}
 	}
 	return runNames
-}
-
-// resolvePipelineTaskResources matches PipelineResources referenced by pt inputs and outputs with the
-// providedResources and returns an instance of ResolvedTask.
-func resolvePipelineTaskResources(_ v1beta1.PipelineTask, ts *v1beta1.TaskSpec, taskName string, kind v1beta1.TaskKind) (*resources.ResolvedTask, error) {
-	rtr := resources.ResolvedTask{
-		TaskName: taskName,
-		TaskSpec: ts,
-		Kind:     kind,
-	}
-	return &rtr, nil
 }
 
 func (t *ResolvedPipelineTask) hasResultReferences() bool {

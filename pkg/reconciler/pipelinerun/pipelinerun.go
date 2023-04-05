@@ -213,12 +213,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		before = pr.Status.GetCondition(apis.ConditionSucceeded)
 	}
 
-	// list VerificationPolicies for trusted resources
-	vp, err := c.verificationPolicyLister.VerificationPolicies(pr.Namespace).List(labels.Everything())
-	if err != nil {
-		return fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %w", pr.Namespace, err)
-	}
-	getPipelineFunc := resources.GetVerifiedPipelineFunc(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, pr, vp)
+	getPipelineFunc := resources.GetPipelineFunc(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, pr)
 
 	if pr.IsDone() {
 		pr.SetDefaults(ctx)
@@ -241,7 +236,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 	}
 
 	// Make sure that the PipelineRun status is in sync with the actual TaskRuns
-	err = c.updatePipelineRunStatusFromInformer(ctx, pr)
+	err := c.updatePipelineRunStatusFromInformer(ctx, pr)
 	if err != nil {
 		// This should not fail. Return the error so we can re-try later.
 		logger.Errorf("Error while syncing the pipelinerun status: %v", err.Error())
@@ -324,12 +319,7 @@ func (c *Reconciler) resolvePipelineState(
 		// in the TaskRun reconciler.
 		trName := resources.GetTaskRunName(pr.Status.ChildReferences, task.Name, pr.Name)
 
-		// list VerificationPolicies for trusted resources
-		vp, err := c.verificationPolicyLister.VerificationPolicies(pr.Namespace).List(labels.Everything())
-		if err != nil {
-			return nil, fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %w", pr.Namespace, err)
-		}
-		fn := tresources.GetVerifiedTaskFunc(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, pr, task.TaskRef, trName, pr.Namespace, pr.Spec.ServiceAccountName, vp)
+		fn := tresources.GetTaskFunc(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, pr, task.TaskRef, trName, pr.Namespace, pr.Spec.ServiceAccountName)
 
 		getRunObjectFunc := func(name string) (v1beta1.RunObject, error) {
 			r, err := c.customRunLister.CustomRuns(pr.Namespace).Get(name)
@@ -360,11 +350,6 @@ func (c *Reconciler) resolvePipelineState(
 			if errors.Is(err, remote.ErrRequestInProgress) {
 				return nil, err
 			}
-			if errors.Is(err, trustedresources.ErrResourceVerificationFailed) {
-				message := fmt.Sprintf("PipelineRun %s/%s referred task %s failed signature verification", pr.Namespace, pr.Name, task.Name)
-				pr.Status.MarkFailed(ReasonResourceVerificationFailed, message)
-				return nil, controller.NewPermanentError(err)
-			}
 			var nfErr *resources.TaskNotFoundError
 			if errors.As(err, &nfErr) {
 				pr.Status.MarkFailed(ReasonCouldntGetTask,
@@ -377,6 +362,28 @@ func (c *Reconciler) resolvePipelineState(
 			}
 			return nil, controller.NewPermanentError(err)
 		}
+		if resolvedTask.ResolvedTask != nil {
+			var taskToBeVerified *v1beta1.Task
+			if resolvedTask.ResolvedTask.TaskSpec != nil && resolvedTask.ResolvedTask.TaskObjectMeta != nil {
+				taskToBeVerified = &v1beta1.Task{
+					ObjectMeta: *resolvedTask.ResolvedTask.TaskObjectMeta,
+					Spec:       *resolvedTask.ResolvedTask.TaskSpec,
+				}
+			}
+			vp, err := c.verificationPolicyLister.VerificationPolicies(pr.Namespace).List(labels.Everything())
+			if err != nil {
+				return nil, fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %w", pr.Namespace, err)
+			}
+			if taskToBeVerified != nil {
+				if err := trustedresources.VerifyTask(ctx, taskToBeVerified, c.KubeClientSet, resolvedTask.ResolvedTask.RefSource, vp); err != nil {
+					pr.Status.MarkFailed(ReasonResourceVerificationFailed, err.Error())
+					return nil, controller.NewPermanentError(err)
+				}
+			}
+			// SetDefaults after verification
+			resolvedTask.ResolvedTask.TaskSpec.SetDefaults(ctx)
+		}
+
 		pst = append(pst, resolvedTask)
 	}
 	return pst, nil
@@ -401,21 +408,38 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 		message := fmt.Sprintf("PipelineRun %s/%s awaiting remote resource", pr.Namespace, pr.Name)
 		pr.Status.MarkRunning(ReasonResolvingPipelineRef, message)
 		return nil
-	case errors.Is(err, trustedresources.ErrResourceVerificationFailed):
-		message := fmt.Sprintf("PipelineRun %s/%s referred pipeline failed signature verification", pr.Namespace, pr.Name)
-		pr.Status.MarkFailed(ReasonResourceVerificationFailed, message)
-		return controller.NewPermanentError(err)
 	case err != nil:
 		logger.Errorf("Failed to determine Pipeline spec to use for pipelinerun %s: %v", pr.Name, err)
 		pr.Status.MarkFailed(ReasonCouldntGetPipeline,
 			"Error retrieving pipeline for pipelinerun %s/%s: %s",
 			pr.Namespace, pr.Name, err)
 		return controller.NewPermanentError(err)
-	default:
-		// Store the fetched PipelineSpec on the PipelineRun for auditing
-		if err := storePipelineSpecAndMergeMeta(ctx, pr, pipelineSpec, pipelineMeta); err != nil {
-			logger.Errorf("Failed to store PipelineSpec on PipelineRun.Status for pipelinerun %s: %v", pr.Name, err)
+	}
+
+	// Skip the verification if it is not inline pipeline;
+	if pr.Spec.PipelineSpec == nil && pr.Status.PipelineSpec == nil {
+		var pipelineToBeVerified *v1beta1.Pipeline
+		if pipelineMeta != nil && pipelineMeta.ObjectMeta != nil && pipelineSpec != nil {
+			pipelineToBeVerified = &v1beta1.Pipeline{
+				ObjectMeta: *pipelineMeta.ObjectMeta,
+				Spec:       *pipelineSpec,
+			}
 		}
+		vp, err := c.verificationPolicyLister.VerificationPolicies(pr.Namespace).List(labels.Everything())
+		if err != nil {
+			return fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %w", pr.Namespace, err)
+		}
+		if err := trustedresources.VerifyPipeline(ctx, pipelineToBeVerified, c.KubeClientSet, pipelineMeta.RefSource, vp); err != nil {
+			pr.Status.MarkFailed(ReasonResourceVerificationFailed, err.Error())
+			return controller.NewPermanentError(err)
+		}
+	}
+	// SetDefaults after the verification so the verification won't fail due to the SetDefaults's modification
+	pipelineSpec.SetDefaults(ctx)
+	// Store the fetched PipelineSpec on the PipelineRun for auditing, this needs to be done after the trusted resources verification
+	// since the verification will be skipped if PipelineSpec is stored in PipelineRun Status
+	if err := storePipelineSpecAndMergeMeta(ctx, pr, pipelineSpec, pipelineMeta); err != nil {
+		logger.Errorf("Failed to store PipelineSpec on PipelineRun.Status for pipelinerun %s: %v", pr.Name, err)
 	}
 
 	d, err := dag.Build(v1beta1.PipelineTaskList(pipelineSpec.Tasks), v1beta1.PipelineTaskList(pipelineSpec.Tasks).Deps())

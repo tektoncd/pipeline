@@ -18,9 +18,6 @@ package resources_test
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"net/http/httptest"
 	"net/url"
 	"strings"
@@ -29,11 +26,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
-	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/parse"
@@ -42,7 +37,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
-	"knative.dev/pkg/logging"
 	logtesting "knative.dev/pkg/logging/testing"
 )
 
@@ -532,7 +526,7 @@ echo hello
 		Spec: TaskSpec,
 	}
 
-	fn := resources.GetTaskFuncFromTaskRun(ctx, kubeclient, tektonclient, nil, TaskRun, []*v1alpha1.VerificationPolicy{})
+	fn := resources.GetTaskFuncFromTaskRun(ctx, kubeclient, tektonclient, nil, TaskRun)
 
 	actualTask, actualRefSource, err := fn(ctx, name)
 	if err != nil {
@@ -721,350 +715,6 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 	fn := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default")
 	if _, _, err := fn(ctx, taskRef.Name); err == nil {
 		t.Fatalf("expected error due to invalid pipeline data but saw none")
-	}
-}
-
-func TestGetVerifiedTaskFunc_Success(t *testing.T) {
-	// This test case tests the success cases of trusted-resources-verification-no-match-policy when it is set to
-	// fail: passed matching policy verification
-	// warn and ignore: no matching policies.
-	ctx := context.Background()
-	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
-	tektonclient := fake.NewSimpleClientset()
-
-	unsignedTask := test.GetUnsignedTask("test-task")
-	unsignedTaskBytes, err := json.Marshal(unsignedTask)
-	if err != nil {
-		t.Fatal("fail to marshal task", err)
-	}
-	noMatchPolicyRefSource := &v1beta1.RefSource{
-		URI: "abc.com",
-		Digest: map[string]string{
-			"sha1": "a123",
-		},
-		EntryPoint: "foo/bar",
-	}
-	resolvedUnmatched := test.NewResolvedResource(unsignedTaskBytes, nil, noMatchPolicyRefSource, nil)
-	requesterUnmatched := test.NewRequester(resolvedUnmatched, nil)
-
-	signedTask, err := test.GetSignedTask(unsignedTask, signer, "signed")
-	if err != nil {
-		t.Fatal("fail to sign task", err)
-	}
-	signedTaskBytes, err := json.Marshal(signedTask)
-	if err != nil {
-		t.Fatal("fail to marshal task", err)
-	}
-	matchPolicyRefSource := &v1beta1.RefSource{
-		URI: "	https://github.com/tektoncd/catalog.git",
-		Digest: map[string]string{
-			"sha1": "a123",
-		},
-		EntryPoint: "foo/bar",
-	}
-	resolvedMatched := test.NewResolvedResource(signedTaskBytes, nil, matchPolicyRefSource, nil)
-	requesterMatched := test.NewRequester(resolvedMatched, nil)
-
-	taskRef := &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
-
-	testcases := []struct {
-		name                      string
-		requester                 *test.Requester
-		verificationNoMatchPolicy string
-		policies                  []*v1alpha1.VerificationPolicy
-		expected                  runtime.Object
-		expectedRefSource         *v1beta1.RefSource
-	}{{
-		name:                      "signed task with matching policy pass verification with enforce no match policy",
-		requester:                 requesterMatched,
-		verificationNoMatchPolicy: config.FailNoMatchPolicy,
-		policies:                  vps,
-		expected:                  signedTask,
-		expectedRefSource:         matchPolicyRefSource,
-	}, {
-		name:                      "signed task with matching policy pass verification with warn no match policy",
-		requester:                 requesterMatched,
-		verificationNoMatchPolicy: config.WarnNoMatchPolicy,
-		policies:                  vps,
-		expected:                  signedTask,
-		expectedRefSource:         matchPolicyRefSource,
-	}, {
-		name:                      "signed task with matching policy pass verification with ignore no match policy",
-		requester:                 requesterMatched,
-		verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
-		policies:                  vps,
-		expected:                  signedTask,
-		expectedRefSource:         matchPolicyRefSource,
-	}, {
-		name:                      "warn unsigned task without matching policies",
-		requester:                 requesterUnmatched,
-		verificationNoMatchPolicy: config.WarnNoMatchPolicy,
-		policies:                  vps,
-		expected:                  unsignedTask,
-		expectedRefSource:         noMatchPolicyRefSource,
-	}, {
-		name:                      "allow unsigned task without matching policies",
-		requester:                 requesterUnmatched,
-		verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
-		policies:                  vps,
-		expected:                  unsignedTask,
-		expectedRefSource:         noMatchPolicyRefSource,
-	}, {
-		name:                      "warn no policies",
-		requester:                 requesterUnmatched,
-		verificationNoMatchPolicy: config.WarnNoMatchPolicy,
-		policies:                  []*v1alpha1.VerificationPolicy{},
-		expected:                  unsignedTask,
-		expectedRefSource:         noMatchPolicyRefSource,
-	}, {
-		name:                      "allow no policies",
-		requester:                 requesterUnmatched,
-		verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
-		policies:                  []*v1alpha1.VerificationPolicy{},
-		expected:                  unsignedTask,
-		expectedRefSource:         noMatchPolicyRefSource,
-	},
-	}
-	for _, tc := range testcases {
-		t.Run(tc.name, func(t *testing.T) {
-			ctx = test.SetupTrustedResourceConfig(ctx, tc.verificationNoMatchPolicy)
-			tr := &v1beta1.TaskRun{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
-				Spec: v1beta1.TaskRunSpec{
-					TaskRef:            taskRef,
-					ServiceAccountName: "default",
-				},
-			}
-			fn := resources.GetVerifiedTaskFunc(ctx, k8sclient, tektonclient, tc.requester, tr, tr.Spec.TaskRef, "", "default", "default", tc.policies)
-
-			resolvedTask, refSource, err := fn(ctx, taskRef.Name)
-
-			if err != nil {
-				t.Fatalf("Received unexpected error ( %#v )", err)
-			}
-
-			if d := cmp.Diff(tc.expected, resolvedTask); d != "" {
-				t.Errorf("resolvedTask did not match: %s", diff.PrintWantGot(d))
-			}
-
-			if d := cmp.Diff(tc.expectedRefSource, refSource); d != "" {
-				t.Errorf("configSources did not match: %s", diff.PrintWantGot(d))
-			}
-		})
-	}
-}
-
-func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
-	ctx := context.Background()
-	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
-	tektonclient := fake.NewSimpleClientset()
-
-	unsignedTask := test.GetUnsignedTask("test-task")
-	unsignedTaskBytes, err := json.Marshal(unsignedTask)
-	if err != nil {
-		t.Fatal("fail to marshal task", err)
-	}
-	matchPolicyRefSource := &v1beta1.RefSource{
-		URI: "https://github.com/tektoncd/catalog.git",
-		Digest: map[string]string{
-			"sha1": "a123",
-		},
-		EntryPoint: "foo/bar",
-	}
-
-	resolvedUnsigned := test.NewResolvedResource(unsignedTaskBytes, nil, matchPolicyRefSource, nil)
-	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
-
-	signedTask, err := test.GetSignedTask(unsignedTask, signer, "signed")
-	if err != nil {
-		t.Fatal("fail to sign task", err)
-	}
-	signedTaskBytes, err := json.Marshal(signedTask)
-	if err != nil {
-		t.Fatal("fail to marshal task", err)
-	}
-
-	noMatchPolicyRefSource := &v1beta1.RefSource{
-		URI: "abc.com",
-		Digest: map[string]string{
-			"sha1": "a123",
-		},
-		EntryPoint: "foo/bar",
-	}
-	resolvedUnmatched := test.NewResolvedResource(signedTaskBytes, nil, noMatchPolicyRefSource, nil)
-	requesterUnmatched := test.NewRequester(resolvedUnmatched, nil)
-
-	modifiedTask := signedTask.DeepCopy()
-	modifiedTask.Annotations["random"] = "attack"
-	modifiedTaskBytes, err := json.Marshal(modifiedTask)
-	if err != nil {
-		t.Fatal("fail to marshal task", err)
-	}
-	resolvedModified := test.NewResolvedResource(modifiedTaskBytes, nil, matchPolicyRefSource, nil)
-	requesterModified := test.NewRequester(resolvedModified, nil)
-
-	taskRef := &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
-
-	testcases := []struct {
-		name                      string
-		requester                 *test.Requester
-		verificationNoMatchPolicy string
-		expected                  *v1beta1.Task
-		expectedErr               error
-	}{{
-		name:                      "unsigned task with fails verification with fail no match policy",
-		requester:                 requesterUnsigned,
-		verificationNoMatchPolicy: config.FailNoMatchPolicy,
-		expected:                  nil,
-		expectedErr:               trustedresources.ErrResourceVerificationFailed,
-	}, {
-		name:                      "unsigned task with fails verification with warn no match policy",
-		requester:                 requesterUnsigned,
-		verificationNoMatchPolicy: config.WarnNoMatchPolicy,
-		expected:                  nil,
-		expectedErr:               trustedresources.ErrResourceVerificationFailed,
-	}, {
-		name:                      "unsigned task with fails verification with ignore no match policy",
-		requester:                 requesterUnsigned,
-		verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
-		expected:                  nil,
-		expectedErr:               trustedresources.ErrResourceVerificationFailed,
-	}, {
-		name:                      "modified task fails verification with fail no match policy",
-		requester:                 requesterModified,
-		verificationNoMatchPolicy: config.FailNoMatchPolicy,
-		expected:                  nil,
-		expectedErr:               trustedresources.ErrResourceVerificationFailed,
-	}, {
-		name:                      "modified task fails verification with warn no match policy",
-		requester:                 requesterModified,
-		verificationNoMatchPolicy: config.WarnNoMatchPolicy,
-		expected:                  nil,
-		expectedErr:               trustedresources.ErrResourceVerificationFailed,
-	}, {
-		name:                      "modified task fails verification with ignore no match policy",
-		requester:                 requesterModified,
-		verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
-		expected:                  nil,
-		expectedErr:               trustedresources.ErrResourceVerificationFailed,
-	}, {
-		name:                      "unmatched task fails with fail no match policy",
-		requester:                 requesterUnmatched,
-		verificationNoMatchPolicy: config.FailNoMatchPolicy,
-		expected:                  nil,
-		expectedErr:               trustedresources.ErrResourceVerificationFailed,
-	},
-	}
-	for _, tc := range testcases {
-		t.Run(tc.name, func(t *testing.T) {
-			ctx = test.SetupTrustedResourceConfig(ctx, tc.verificationNoMatchPolicy)
-			tr := &v1beta1.TaskRun{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
-				Spec: v1beta1.TaskRunSpec{
-					TaskRef:            taskRef,
-					ServiceAccountName: "default",
-				},
-			}
-			fn := resources.GetVerifiedTaskFunc(ctx, k8sclient, tektonclient, tc.requester, tr, tr.Spec.TaskRef, "", "default", "default", vps)
-
-			resolvedTask, resolvedRefSource, err := fn(ctx, taskRef.Name)
-
-			if !errors.Is(err, tc.expectedErr) {
-				t.Errorf("GetVerifiedTaskFunc got %v but want %v", err, tc.expectedErr)
-			}
-
-			if d := cmp.Diff(tc.expected, resolvedTask); d != "" {
-				t.Errorf("resolvedTask did not match: %s", diff.PrintWantGot(d))
-			}
-
-			if resolvedRefSource != nil {
-				t.Errorf("refSource is: %v but want is nil", resolvedRefSource)
-			}
-		})
-	}
-}
-
-func TestGetVerifiedTaskFunc_GetFuncError(t *testing.T) {
-	ctx := context.Background()
-	_, k8sclient, vps := test.SetupMatchAllVerificationPolicies(t, "trusted-resources")
-	tektonclient := fake.NewSimpleClientset()
-
-	unsignedTask := test.GetUnsignedTask("test-task")
-	unsignedTaskBytes, err := json.Marshal(unsignedTask)
-	if err != nil {
-		t.Fatal("fail to marshal task", err)
-	}
-
-	resolvedUnsigned := test.NewResolvedResource(unsignedTaskBytes, nil, sampleRefSource.DeepCopy(), nil)
-	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
-	resolvedUnsigned.DataErr = fmt.Errorf("resolution error")
-
-	trBundleError := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name:   "taskName",
-				Bundle: "bundle",
-			},
-			ServiceAccountName: "default",
-		},
-	}
-
-	trResolutionError := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "taskName",
-				ResolverRef: v1beta1.ResolverRef{
-					Resolver: "git",
-				},
-			},
-			ServiceAccountName: "default",
-		},
-	}
-
-	testcases := []struct {
-		name        string
-		requester   *test.Requester
-		taskrun     v1beta1.TaskRun
-		expectedErr error
-	}{
-		{
-			name:        "get error when oci bundle return error",
-			requester:   requesterUnsigned,
-			taskrun:     *trBundleError,
-			expectedErr: fmt.Errorf(`failed to get task: failed to get keychain: serviceaccounts "default" not found`),
-		},
-		{
-			name:        "get error when remote resolution return error",
-			requester:   requesterUnsigned,
-			taskrun:     *trResolutionError,
-			expectedErr: fmt.Errorf("failed to get task: error accessing data from remote resource: %w", resolvedUnsigned.DataErr),
-		},
-	}
-	for _, tc := range testcases {
-		t.Run(tc.name, func(t *testing.T) {
-			store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
-			featureflags := &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "tekton-pipelines",
-					Name:      "feature-flags",
-				},
-				Data: map[string]string{
-					"enable-tekton-oci-bundles": "true",
-				},
-			}
-			store.OnConfigChanged(featureflags)
-			ctx = store.ToContext(ctx)
-
-			fn := resources.GetVerifiedTaskFunc(ctx, k8sclient, tektonclient, tc.requester, &tc.taskrun, tc.taskrun.Spec.TaskRef, "", "default", "default", vps)
-
-			_, _, err = fn(ctx, tc.taskrun.Spec.TaskRef.Name)
-
-			if d := cmp.Diff(err.Error(), tc.expectedErr.Error()); d != "" {
-				t.Fatalf("Expected error %v but found %v instead", tc.expectedErr, err)
-			}
-		})
 	}
 }
 

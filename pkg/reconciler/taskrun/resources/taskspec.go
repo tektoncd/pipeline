@@ -32,6 +32,10 @@ type ResolvedTask struct {
 	TaskName string
 	Kind     v1beta1.TaskKind
 	TaskSpec *v1beta1.TaskSpec
+	// TaskObjectMeta is used to store the Pipeline resolved task ObjectMeta to construct the task for trusted resources verification
+	TaskObjectMeta *metav1.ObjectMeta
+	// RefSource is used to store the RefSource of Pipeline task, the RefSource.URI is used to filter VerificationPolicies for trusted resources verification
+	RefSource *v1beta1.RefSource
 }
 
 // GetTask is a function used to retrieve Tasks.
@@ -78,7 +82,6 @@ func GetTaskData(ctx context.Context, taskRun *v1beta1.TaskRun, getTask GetTask)
 		return nil, nil, fmt.Errorf("taskRun %s not providing TaskRef or TaskSpec", taskRun.Name)
 	}
 
-	taskSpec.SetDefaults(ctx)
 	return &resolutionutil.ResolvedObjectMeta{
 		ObjectMeta: &taskMeta,
 		RefSource:  refSource,
