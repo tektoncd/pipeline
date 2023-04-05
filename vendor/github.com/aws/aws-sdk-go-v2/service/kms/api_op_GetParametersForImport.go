@@ -74,10 +74,16 @@ type GetParametersForImportInput struct {
 	// This member is required.
 	KeyId *string
 
-	// The algorithm you will use to encrypt the key material before importing it with
-	// ImportKeyMaterial. For more information, see Encrypt the Key Material
+	// The algorithm you will use to encrypt the key material before using the
+	// ImportKeyMaterial operation to import it. For more information, see Encrypt the
+	// key material
 	// (https://docs.aws.amazon.com/kms/latest/developerguide/importing-keys-encrypt-key-material.html)
-	// in the Key Management Service Developer Guide.
+	// in the Key Management Service Developer Guide. The RSAES_PKCS1_V1_5 wrapping
+	// algorithm is deprecated. We recommend that you begin using a different wrapping
+	// algorithm immediately. KMS will end support for RSAES_PKCS1_V1_5 by October 1,
+	// 2023 pursuant to cryptographic key management guidance
+	// (https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-131Ar2.pdf)
+	// from the National Institute of Standards and Technology (NIST).
 	//
 	// This member is required.
 	WrappingAlgorithm types.AlgorithmSpec

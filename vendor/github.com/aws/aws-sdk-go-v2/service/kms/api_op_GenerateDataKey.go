@@ -21,18 +21,18 @@ import (
 // asymmetric KMS key to encrypt data keys. To get the type of your KMS key, use
 // the DescribeKey operation. You must also specify the length of the data key. Use
 // either the KeySpec or NumberOfBytes parameters (but not both). For 128-bit and
-// 256-bit data keys, use the KeySpec parameter. To generate an SM4 data key (China
-// Regions only), specify a KeySpec value of AES_128 or NumberOfBytes value of 128.
-// The symmetric encryption key used in China Regions to encrypt your data key is
-// an SM4 encryption key. To get only an encrypted copy of the data key, use
-// GenerateDataKeyWithoutPlaintext. To generate an asymmetric data key pair, use
-// the GenerateDataKeyPair or GenerateDataKeyPairWithoutPlaintext operation. To get
-// a cryptographically secure random byte string, use GenerateRandom. You can use
-// an optional encryption context to add additional security to the encryption
-// operation. If you specify an EncryptionContext, you must specify the same
-// encryption context (a case-sensitive exact match) when decrypting the encrypted
-// data key. Otherwise, the request to decrypt fails with an
-// InvalidCiphertextException. For more information, see Encryption Context
+// 256-bit data keys, use the KeySpec parameter. To generate a 128-bit SM4 data key
+// (China Regions only), specify a KeySpec value of AES_128 or a NumberOfBytes
+// value of 16. The symmetric encryption key used in China Regions to encrypt your
+// data key is an SM4 encryption key. To get only an encrypted copy of the data
+// key, use GenerateDataKeyWithoutPlaintext. To generate an asymmetric data key
+// pair, use the GenerateDataKeyPair or GenerateDataKeyPairWithoutPlaintext
+// operation. To get a cryptographically secure random byte string, use
+// GenerateRandom. You can use an optional encryption context to add additional
+// security to the encryption operation. If you specify an EncryptionContext, you
+// must specify the same encryption context (a case-sensitive exact match) when
+// decrypting the encrypted data key. Otherwise, the request to decrypt fails with
+// an InvalidCiphertextException. For more information, see Encryption Context
 // (https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#encrypt_context)
 // in the Key Management Service Developer Guide. Applications in Amazon Web
 // Services Nitro Enclaves can call this operation by using the Amazon Web Services

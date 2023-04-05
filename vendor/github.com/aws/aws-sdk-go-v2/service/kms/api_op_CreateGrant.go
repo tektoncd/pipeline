@@ -77,14 +77,12 @@ func (c *Client) CreateGrant(ctx context.Context, params *CreateGrantInput, optF
 type CreateGrantInput struct {
 
 	// The identity that gets the permissions specified in the grant. To specify the
-	// principal, use the Amazon Resource Name (ARN)
-	// (https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html) of
-	// an Amazon Web Services principal. Valid Amazon Web Services principals include
-	// Amazon Web Services accounts (root), IAM users, IAM roles, federated users, and
-	// assumed role users. For examples of the ARN syntax to use for specifying a
-	// principal, see Amazon Web Services Identity and Access Management (IAM)
-	// (https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arn-syntax-iam)
-	// in the Example ARNs section of the Amazon Web Services General Reference.
+	// grantee principal, use the Amazon Resource Name (ARN) of an Amazon Web Services
+	// principal. Valid principals include Amazon Web Services accounts, IAM users, IAM
+	// roles, federated users, and assumed role users. For help with the ARN syntax for
+	// a principal, see IAM ARNs
+	// (https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html#identifiers-arns)
+	// in the Identity and Access Management User Guide .
 	//
 	// This member is required.
 	GranteePrincipal *string
@@ -167,15 +165,14 @@ type CreateGrantInput struct {
 	// The principal that has permission to use the RetireGrant operation to retire the
 	// grant. To specify the principal, use the Amazon Resource Name (ARN)
 	// (https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html) of
-	// an Amazon Web Services principal. Valid Amazon Web Services principals include
-	// Amazon Web Services accounts (root), IAM users, federated users, and assumed
-	// role users. For examples of the ARN syntax to use for specifying a principal,
-	// see Amazon Web Services Identity and Access Management (IAM)
-	// (https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arn-syntax-iam)
-	// in the Example ARNs section of the Amazon Web Services General Reference. The
-	// grant determines the retiring principal. Other principals might have permission
-	// to retire the grant or revoke the grant. For details, see RevokeGrant and
-	// Retiring and revoking grants
+	// an Amazon Web Services principal. Valid principals include Amazon Web Services
+	// accounts, IAM users, IAM roles, federated users, and assumed role users. For
+	// help with the ARN syntax for a principal, see IAM ARNs
+	// (https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html#identifiers-arns)
+	// in the Identity and Access Management User Guide . The grant determines the
+	// retiring principal. Other principals might have permission to retire the grant
+	// or revoke the grant. For details, see RevokeGrant and Retiring and revoking
+	// grants
 	// (https://docs.aws.amazon.com/kms/latest/developerguide/grant-manage.html#grant-delete)
 	// in the Key Management Service Developer Guide.
 	RetiringPrincipal *string

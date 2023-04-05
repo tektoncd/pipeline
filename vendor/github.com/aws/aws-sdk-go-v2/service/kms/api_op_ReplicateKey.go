@@ -150,14 +150,14 @@ type ReplicateKeyInput struct {
 	// This member is required.
 	ReplicaRegion *string
 
-	// A flag to indicate whether to bypass the key policy lockout safety check.
-	// Setting this value to true increases the risk that the KMS key becomes
+	// Skips ("bypasses") the key policy lockout safety check. The default value is
+	// false. Setting this value to true increases the risk that the KMS key becomes
 	// unmanageable. Do not set this value to true indiscriminately. For more
-	// information, refer to the scenario in the Default Key Policy
-	// (https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html#key-policy-default-allow-root-enable-iam)
-	// section in the Key Management Service Developer Guide. Use this parameter only
-	// when you intend to prevent the principal that is making the request from making
-	// a subsequent PutKeyPolicy request on the KMS key. The default value is false.
+	// information, see Default key policy
+	// (https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-default.html#prevent-unmanageable-key)
+	// in the Key Management Service Developer Guide. Use this parameter only when you
+	// intend to prevent the principal that is making the request from making a
+	// subsequent PutKeyPolicy request on the KMS key.
 	BypassPolicyLockoutSafetyCheck bool
 
 	// A description of the KMS key. The default value is an empty string (no
@@ -174,39 +174,38 @@ type ReplicateKeyInput struct {
 	// set of related multi-Region keys. KMS does not synchronize this property. If you
 	// provide a key policy, it must meet the following criteria:
 	//
-	// * If you don't set
-	// BypassPolicyLockoutSafetyCheck to true, the key policy must give the caller
-	// kms:PutKeyPolicy permission on the replica key. This reduces the risk that the
-	// KMS key becomes unmanageable. For more information, refer to the scenario in the
-	// Default Key Policy
-	// (https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html#key-policy-default-allow-root-enable-iam)
-	// section of the Key Management Service Developer Guide .
+	// * The key policy
+	// must allow the calling principal to make a subsequent PutKeyPolicy request on
+	// the KMS key. This reduces the risk that the KMS key becomes unmanageable. For
+	// more information, see Default key policy
+	// (https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-default.html#prevent-unmanageable-key)
+	// in the Key Management Service Developer Guide. (To omit this condition, set
+	// BypassPolicyLockoutSafetyCheck to true.)
 	//
-	// * Each statement in the
-	// key policy must contain one or more principals. The principals in the key policy
-	// must exist and be visible to KMS. When you create a new Amazon Web Services
-	// principal (for example, an IAM user or role), you might need to enforce a delay
-	// before including the new principal in a key policy because the new principal
-	// might not be immediately visible to KMS. For more information, see Changes that
-	// I make are not always immediately visible
+	// * Each statement in the key policy
+	// must contain one or more principals. The principals in the key policy must exist
+	// and be visible to KMS. When you create a new Amazon Web Services principal, you
+	// might need to enforce a delay before including the new principal in a key policy
+	// because the new principal might not be immediately visible to KMS. For more
+	// information, see Changes that I make are not always immediately visible
 	// (https://docs.aws.amazon.com/IAM/latest/UserGuide/troubleshoot_general.html#troubleshoot_general_eventual-consistency)
-	// in the Identity and Access Management User Guide .
+	// in the Amazon Web Services Identity and Access Management User Guide.
 	//
-	// A key policy document can
-	// include only the following characters:
+	// A key
+	// policy document can include only the following characters:
 	//
-	// * Printable ASCII characters from the
-	// space character (\u0020) through the end of the ASCII character range.
+	// * Printable ASCII
+	// characters from the space character (\u0020) through the end of the ASCII
+	// character range.
 	//
-	// *
-	// Printable characters in the Basic Latin and Latin-1 Supplement character set
-	// (through \u00FF).
+	// * Printable characters in the Basic Latin and Latin-1
+	// Supplement character set (through \u00FF).
 	//
-	// * The tab (\u0009), line feed (\u000A), and carriage return
-	// (\u000D) special characters
+	// * The tab (\u0009), line feed
+	// (\u000A), and carriage return (\u000D) special characters
 	//
-	// For information about key policies, see Key
-	// policies in KMS
+	// For information about
+	// key policies, see Key policies in KMS
 	// (https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html) in the
 	// Key Management Service Developer Guide. For help writing and formatting a JSON
 	// policy document, see the IAM JSON Policy Reference

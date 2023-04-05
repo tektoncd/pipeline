@@ -169,15 +169,14 @@ func (c *Client) CreateKey(ctx context.Context, params *CreateKeyInput, optFns .
 
 type CreateKeyInput struct {
 
-	// A flag to indicate whether to bypass the key policy lockout safety check.
-	// Setting this value to true increases the risk that the KMS key becomes
+	// Skips ("bypasses") the key policy lockout safety check. The default value is
+	// false. Setting this value to true increases the risk that the KMS key becomes
 	// unmanageable. Do not set this value to true indiscriminately. For more
-	// information, refer to the scenario in the Default Key Policy
-	// (https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html#key-policy-default-allow-root-enable-iam)
-	// section in the Key Management Service Developer Guide . Use this parameter only
-	// when you include a policy in the request and you intend to prevent the principal
-	// that is making the request from making a subsequent PutKeyPolicy request on the
-	// KMS key. The default value is false.
+	// information, see Default key policy
+	// (https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-default.html#prevent-unmanageable-key)
+	// in the Key Management Service Developer Guide. Use this parameter only when you
+	// intend to prevent the principal that is making the request from making a
+	// subsequent PutKeyPolicy request on the KMS key.
 	BypassPolicyLockoutSafetyCheck bool
 
 	// Creates the KMS key in the specified custom key store
@@ -343,27 +342,26 @@ type CreateKeyInput struct {
 	// The key policy to attach to the KMS key. If you provide a key policy, it must
 	// meet the following criteria:
 	//
-	// * If you don't set BypassPolicyLockoutSafetyCheck
-	// to true, the key policy must allow the principal that is making the CreateKey
-	// request to make a subsequent PutKeyPolicy request on the KMS key. This reduces
-	// the risk that the KMS key becomes unmanageable. For more information, refer to
-	// the scenario in the Default Key Policy
-	// (https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html#key-policy-default-allow-root-enable-iam)
-	// section of the Key Management Service Developer Guide .
+	// * The key policy must allow the calling principal
+	// to make a subsequent PutKeyPolicy request on the KMS key. This reduces the risk
+	// that the KMS key becomes unmanageable. For more information, see Default key
+	// policy
+	// (https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-default.html#prevent-unmanageable-key)
+	// in the Key Management Service Developer Guide. (To omit this condition, set
+	// BypassPolicyLockoutSafetyCheck to true.)
 	//
-	// * Each statement in the
-	// key policy must contain one or more principals. The principals in the key policy
-	// must exist and be visible to KMS. When you create a new Amazon Web Services
-	// principal (for example, an IAM user or role), you might need to enforce a delay
-	// before including the new principal in a key policy because the new principal
-	// might not be immediately visible to KMS. For more information, see Changes that
-	// I make are not always immediately visible
+	// * Each statement in the key policy
+	// must contain one or more principals. The principals in the key policy must exist
+	// and be visible to KMS. When you create a new Amazon Web Services principal, you
+	// might need to enforce a delay before including the new principal in a key policy
+	// because the new principal might not be immediately visible to KMS. For more
+	// information, see Changes that I make are not always immediately visible
 	// (https://docs.aws.amazon.com/IAM/latest/UserGuide/troubleshoot_general.html#troubleshoot_general_eventual-consistency)
 	// in the Amazon Web Services Identity and Access Management User Guide.
 	//
 	// If you do
 	// not provide a key policy, KMS attaches a default key policy to the KMS key. For
-	// more information, see Default Key Policy
+	// more information, see Default key policy
 	// (https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html#key-policy-default)
 	// in the Key Management Service Developer Guide. The key policy size quota is 32
 	// kilobytes (32768 bytes). For help writing and formatting a JSON policy document,

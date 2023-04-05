@@ -16,7 +16,7 @@ package kms
 
 import (
 	"cloud.google.com/go/iam"
-	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
+	"cloud.google.com/go/kms/apiv1/kmspb"
 )
 
 // KeyRingIAM returns a handle to inspect and change permissions of a KeyRing.
