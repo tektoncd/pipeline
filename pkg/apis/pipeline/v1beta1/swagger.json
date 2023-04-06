@@ -2849,7 +2849,7 @@
           "$ref": "#/definitions/v1beta1.Provenance"
         },
         "resourcesResult": {
-          "description": "Results from Resources built during the TaskRun. currently includes the digest of build container images",
+          "description": "Results from Resources built during the TaskRun. This is tomb-stoned along with the removal of pipelineResources Deprecated: this field is not populated and is preserved only for backwards compatibility",
           "type": "array",
           "items": {
             "default": {},
@@ -2941,7 +2941,7 @@
           "$ref": "#/definitions/v1beta1.Provenance"
         },
         "resourcesResult": {
-          "description": "Results from Resources built during the TaskRun. currently includes the digest of build container images",
+          "description": "Results from Resources built during the TaskRun. This is tomb-stoned along with the removal of pipelineResources Deprecated: this field is not populated and is preserved only for backwards compatibility",
           "type": "array",
           "items": {
             "default": {},

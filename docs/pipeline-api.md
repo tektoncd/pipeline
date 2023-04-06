@@ -13973,8 +13973,9 @@ All TaskRunStatus stored in RetriesStatus will have no date within the RetriesSt
 </td>
 <td>
 <em>(Optional)</em>
-<p>Results from Resources built during the TaskRun. currently includes
-the digest of build container images</p>
+<p>Results from Resources built during the TaskRun.
+This is tomb-stoned along with the removal of pipelineResources
+Deprecated: this field is not populated and is preserved only for backwards compatibility</p>
 </td>
 </tr>
 <tr>
