@@ -61,7 +61,8 @@ func (p Param) convertTo(ctx context.Context, sink *v1.Param) {
 	sink.Value = newValue
 }
 
-func (p *Param) convertFrom(ctx context.Context, source v1.Param) {
+// ConvertFrom v1 Param is exported for reconciling the deprecated v1beta1 CustomRun
+func (p *Param) ConvertFrom(ctx context.Context, source v1.Param) {
 	p.Name = source.Name
 	newValue := ParamValue{}
 	newValue.convertFrom(ctx, source.Value)
