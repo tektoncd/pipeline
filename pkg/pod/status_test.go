@@ -647,7 +647,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			},
 		},
 	}, {
-		desc: "image resource updated",
+		desc: "image resource that should not populate resourcesResult",
 		podStatus: corev1.PodStatus{
 			Phase: corev1.PodSucceeded,
 			ContainerStatuses: []corev1.ContainerStatus{{
@@ -671,11 +671,6 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerName: "step-foo",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.RunResult{{
-					Key:          "digest",
-					Value:        "sha256:12345",
-					ResourceName: "source-image",
-				}},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -705,11 +700,6 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerName: "step-bar",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.RunResult{{
-					Key:          "digest",
-					Value:        "sha256:1234",
-					ResourceName: "source-image",
-				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1beta1.ResultsTypeString,
@@ -744,11 +734,6 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerName: "step-banana",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.RunResult{{
-					Key:          "digest",
-					Value:        "sha256:1234",
-					ResourceName: "source-image",
-				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1beta1.ResultsTypeString,
@@ -1297,11 +1282,6 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					ContainerName: "step-bar",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.RunResult{{
-					Key:          "digest",
-					Value:        "sha256:1234",
-					ResourceName: "source-image",
-				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1beta1.ResultsTypeString,
@@ -1344,11 +1324,6 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					ContainerName: "step-bar",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.RunResult{{
-					Key:          "digest",
-					Value:        "sha256:1234",
-					ResourceName: "source-image",
-				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1beta1.ResultsTypeString,
@@ -1391,11 +1366,6 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					ContainerName: "step-bar",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.RunResult{{
-					Key:          "digest",
-					Value:        "sha256:1234",
-					ResourceName: "source-image",
-				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1beta1.ResultsTypeArray,
@@ -1438,11 +1408,6 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					ContainerName: "step-bar",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.RunResult{{
-					Key:          "digest",
-					Value:        "sha256:1234",
-					ResourceName: "source-image",
-				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1beta1.ResultsTypeObject,

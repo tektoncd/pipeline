@@ -54,3 +54,5 @@ See [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-depreca
 - The artifacts bucket/pvc setup by the `pkg/artifacts` package related with Storage PipelineResources
 
 - The generic pipelineResources functions including inputs and outputs resources and the `from` type
+
+- [TaskRun.Status.ResourcesResult is deprecated and tombstoned #6301](https://github.com/tektoncd/pipeline/issues/6325)

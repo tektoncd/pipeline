@@ -181,10 +181,9 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 		}
 
 		// populate task run CRD with results from sidecar logs
-		taskResults, RunResults, _ := filterResultsAndResources(sidecarLogResults, specResults)
+		taskResults, _ := filterResults(sidecarLogResults, specResults)
 		if tr.IsSuccessful() {
 			trs.TaskRunResults = append(trs.TaskRunResults, taskResults...)
-			trs.ResourcesResult = append(trs.ResourcesResult, RunResults...)
 		}
 	}
 	// Continue with extraction of termination messages
@@ -208,10 +207,9 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 					merr = multierror.Append(merr, err)
 				}
 
-				taskResults, RunResults, filteredResults := filterResultsAndResources(results, specResults)
+				taskResults, filteredResults := filterResults(results, specResults)
 				if tr.IsSuccessful() {
 					trs.TaskRunResults = append(trs.TaskRunResults, taskResults...)
-					trs.ResourcesResult = append(trs.ResourcesResult, RunResults...)
 				}
 				msg, err = createMessageFromResults(filteredResults)
 				if err != nil {
@@ -261,9 +259,11 @@ func createMessageFromResults(results []v1beta1.RunResult) (string, error) {
 	return string(bytes), nil
 }
 
-func filterResultsAndResources(results []v1beta1.RunResult, specResults []v1beta1.TaskResult) ([]v1beta1.TaskRunResult, []v1beta1.RunResult, []v1beta1.RunResult) {
+// filterResults filters the RunResults and TaskResults based on the results declared in the task spec.
+// It returns a slice of any of the input results that are defined in the task spec, converted to TaskRunResults,
+// and a slice of any of the RunResults that don't represent internal values (i.e. those that should not be displayed in the TaskRun status.
+func filterResults(results []v1beta1.RunResult, specResults []v1beta1.TaskResult) ([]v1beta1.TaskRunResult, []v1beta1.RunResult) {
 	var taskResults []v1beta1.TaskRunResult
-	var RunResults []v1beta1.RunResult
 	var filteredResults []v1beta1.RunResult
 	neededTypes := make(map[string]v1beta1.ResultsType)
 	for _, r := range specResults {
@@ -297,12 +297,11 @@ func filterResultsAndResources(results []v1beta1.RunResult, specResults []v1beta
 			// Internal messages are ignored because they're not used as external result
 			continue
 		default:
-			RunResults = append(RunResults, r)
 			filteredResults = append(filteredResults, r)
 		}
 	}
 
-	return taskResults, RunResults, filteredResults
+	return taskResults, filteredResults
 }
 
 func removeDuplicateResults(taskRunResult []v1beta1.TaskRunResult) []v1beta1.TaskRunResult {
