@@ -134,11 +134,21 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if pt.Resources != nil {
 		errs = errs.Also(apis.ErrDisallowedFields("resources"))
 	}
-
+	// taskKinds contains the kinds when the apiVersion is not set, they are not custom tasks,
+	// if apiVersion is set they are custom tasks.
+	taskKinds := map[TaskKind]bool{
+		"":                 true,
+		NamespacedTaskKind: true,
+		ClusterTaskKind:    true,
+	}
 	cfg := config.FromContextOrDefaults(ctx)
 	// Pipeline task having taskRef/taskSpec with APIVersion is classified as custom task
 	switch {
+	case pt.TaskRef != nil && !taskKinds[pt.TaskRef.Kind]:
+		errs = errs.Also(pt.validateCustomTask())
 	case pt.TaskRef != nil && pt.TaskRef.APIVersion != "":
+		errs = errs.Also(pt.validateCustomTask())
+	case pt.TaskSpec != nil && !taskKinds[TaskKind(pt.TaskSpec.Kind)]:
 		errs = errs.Also(pt.validateCustomTask())
 	case pt.TaskSpec != nil && pt.TaskSpec.APIVersion != "":
 		errs = errs.Also(pt.validateCustomTask())
@@ -148,7 +158,7 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	default:
 		errs = errs.Also(pt.validateTask(ctx))
 	}
-	return
+	return //nolint:nakedret
 }
 
 func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldError) {

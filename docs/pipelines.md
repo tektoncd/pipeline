@@ -1555,6 +1555,8 @@ spec:
 
 This creates a `Run/CustomRun` of a custom task of type `Example` in the `example.dev` API group with the version `v1alpha1`.
 
+Validation error will be returned if `apiVersion` or `kind` is missing.
+
 You can also specify the `name` of a custom task resource object previously defined in the cluster.
 
 ```yaml
