@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 )
 
@@ -65,6 +66,65 @@ func MergeStepsWithStepTemplate(template *StepTemplate, steps []Step) ([]Step, e
 		steps[i] = newStep
 	}
 	return steps, nil
+}
+
+// MergeStepsWithSpecs takes a possibly nil list of overrides and a
+// list of steps, merging each of the steps with the overrides' resource requirements, if
+// it's not nil, and returning the resulting list.
+func MergeStepsWithSpecs(steps []Step, overrides []TaskRunStepSpec) ([]Step, error) {
+	stepNameToOverride := make(map[string]TaskRunStepSpec, len(overrides))
+	for _, o := range overrides {
+		stepNameToOverride[o.Name] = o
+	}
+	for i, s := range steps {
+		o, found := stepNameToOverride[s.Name]
+		if !found {
+			continue
+		}
+		merged := v1.ResourceRequirements{}
+		err := mergeObjWithTemplate(&s.ComputeResources, &o.ComputeResources, &merged)
+		if err != nil {
+			return nil, err
+		}
+		steps[i].ComputeResources = merged
+	}
+	return steps, nil
+}
+
+// MergeSidecarsWithSpecs takes a possibly nil list of overrides and a
+// list of sidecars, merging each of the sidecars with the overrides' resource requirements, if
+// it's not nil, and returning the resulting list.
+func MergeSidecarsWithSpecs(sidecars []Sidecar, overrides []TaskRunSidecarSpec) ([]Sidecar, error) {
+	if len(overrides) == 0 {
+		return sidecars, nil
+	}
+	sidecarNameToOverride := make(map[string]TaskRunSidecarSpec, len(overrides))
+	for _, o := range overrides {
+		sidecarNameToOverride[o.Name] = o
+	}
+	for i, s := range sidecars {
+		o, found := sidecarNameToOverride[s.Name]
+		if !found {
+			continue
+		}
+		merged := v1.ResourceRequirements{}
+		err := mergeObjWithTemplate(&s.ComputeResources, &o.ComputeResources, &merged)
+		if err != nil {
+			return nil, err
+		}
+		sidecars[i].ComputeResources = merged
+	}
+	return sidecars, nil
+}
+
+// mergeObjWithTemplate merges obj with template and updates out to reflect the merged result.
+// template, obj, and out should point to the same type. out points to the zero value of that type.
+func mergeObjWithTemplate(template, obj, out interface{}) error {
+	md, err := getMergeData(template, out)
+	if err != nil {
+		return err
+	}
+	return mergeObjWithTemplateBytes(md, obj, out)
 }
 
 // getMergeData serializes the template and empty object to get the intermediate results necessary for
