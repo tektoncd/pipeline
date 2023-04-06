@@ -339,7 +339,7 @@ func TestPipelineTask_Validate_Failure(t *testing.T) {
 		expectedError apis.FieldError
 		wc            func(context.Context) context.Context
 	}{{
-		name: "invalid custom task without Kind",
+		name: "custom task reference in taskref missing apiversion Kind",
 		p: PipelineTask{
 			Name:    "invalid-custom-task",
 			TaskRef: &TaskRef{APIVersion: "example.com"},
@@ -348,6 +348,24 @@ func TestPipelineTask_Validate_Failure(t *testing.T) {
 			Message: `invalid value: custom task ref must specify kind`,
 			Paths:   []string{"taskRef.kind"},
 		},
+	}, {
+		name: "custom task reference in taskspec missing kind",
+		p: PipelineTask{Name: "foo", TaskSpec: &EmbeddedTask{
+			TypeMeta: runtime.TypeMeta{
+				APIVersion: "example.com",
+			}}},
+		expectedError: *apis.ErrInvalidValue("custom task spec must specify kind", "taskSpec.kind"),
+	}, {
+		name:          "custom task reference in taskref missing apiversion",
+		p:             PipelineTask{Name: "foo", TaskRef: &TaskRef{Kind: "Example", Name: ""}},
+		expectedError: *apis.ErrInvalidValue("custom task ref must specify apiVersion", "taskRef.apiVersion"),
+	}, {
+		name: "custom task reference in taskspec missing apiversion",
+		p: PipelineTask{Name: "foo", TaskSpec: &EmbeddedTask{
+			TypeMeta: runtime.TypeMeta{
+				Kind: "Example",
+			}}},
+		expectedError: *apis.ErrInvalidValue("custom task spec must specify apiVersion", "taskSpec.apiVersion"),
 	}, {
 		name: "invalid bundle without bundle name",
 		p: PipelineTask{
