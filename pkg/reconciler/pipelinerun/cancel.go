@@ -24,7 +24,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"go.uber.org/zap"
@@ -37,7 +36,7 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-var cancelTaskRunPatchBytes, cancelCustomRunPatchBytes, cancelRunPatchBytes []byte
+var cancelTaskRunPatchBytes, cancelCustomRunPatchBytes []byte
 
 func init() {
 	var err error
@@ -69,34 +68,10 @@ func init() {
 	if err != nil {
 		log.Fatalf("failed to marshal CustomRun cancel patch bytes: %v", err)
 	}
-	cancelRunPatchBytes, err = json.Marshal([]jsonpatch.JsonPatchOperation{
-		{
-			Operation: "add",
-			Path:      "/spec/status",
-			Value:     v1alpha1.RunSpecStatusCancelled,
-		},
-		{
-			Operation: "add",
-			Path:      "/spec/statusMessage",
-			Value:     v1alpha1.RunCancelledByPipelineMsg,
-		}})
-	if err != nil {
-		log.Fatalf("failed to marshal Run cancel patch bytes: %v", err)
-	}
 }
 
 func cancelCustomRun(ctx context.Context, runName string, namespace string, clientSet clientset.Interface) error {
 	_, err := clientSet.TektonV1beta1().CustomRuns(namespace).Patch(ctx, runName, types.JSONPatchType, cancelCustomRunPatchBytes, metav1.PatchOptions{}, "")
-	if errors.IsNotFound(err) {
-		// The resource may have been deleted in the meanwhile, but we should
-		// still be able to cancel the PipelineRun
-		return nil
-	}
-	return err
-}
-
-func cancelRun(ctx context.Context, runName string, namespace string, clientSet clientset.Interface) error {
-	_, err := clientSet.TektonV1alpha1().Runs(namespace).Patch(ctx, runName, types.JSONPatchType, cancelRunPatchBytes, metav1.PatchOptions{}, "")
 	if errors.IsNotFound(err) {
 		// The resource may have been deleted in the meanwhile, but we should
 		// still be able to cancel the PipelineRun
@@ -154,7 +129,7 @@ func cancelPipelineTaskRuns(ctx context.Context, logger *zap.SugaredLogger, pr *
 func cancelPipelineTaskRunsForTaskNames(ctx context.Context, logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, clientSet clientset.Interface, taskNames sets.String) []string {
 	errs := []string{}
 
-	trNames, customRunNames, runNames, err := getChildObjectsFromPRStatusForTaskNames(ctx, pr.Status, taskNames)
+	trNames, customRunNames, err := getChildObjectsFromPRStatusForTaskNames(ctx, pr.Status, taskNames)
 	if err != nil {
 		errs = append(errs, err.Error())
 	}
@@ -176,25 +151,14 @@ func cancelPipelineTaskRunsForTaskNames(ctx context.Context, logger *zap.Sugared
 			continue
 		}
 	}
-
-	for _, runName := range runNames {
-		logger.Infof("cancelling Run %s", runName)
-
-		if err := cancelRun(ctx, runName, pr.Namespace, clientSet); err != nil {
-			errs = append(errs, fmt.Errorf("Failed to patch Run `%s` with cancellation: %w", runName, err).Error())
-			continue
-		}
-	}
-
 	return errs
 }
 
-// getChildObjectsFromPRStatusForTaskNames returns taskruns, customruns, and runs in the PipelineRunStatus's ChildReferences,
+// getChildObjectsFromPRStatusForTaskNames returns taskruns and customruns in the PipelineRunStatus's ChildReferences,
 // based on the given set of PipelineTask names. If that set is empty, all are returned.
-func getChildObjectsFromPRStatusForTaskNames(ctx context.Context, prs v1beta1.PipelineRunStatus, taskNames sets.String) ([]string, []string, []string, error) {
+func getChildObjectsFromPRStatusForTaskNames(ctx context.Context, prs v1beta1.PipelineRunStatus, taskNames sets.String) ([]string, []string, error) {
 	var trNames []string
 	var customRunNames []string
-	var runNames []string
 	unknownChildKinds := make(map[string]string)
 
 	for _, cr := range prs.ChildReferences {
@@ -202,8 +166,6 @@ func getChildObjectsFromPRStatusForTaskNames(ctx context.Context, prs v1beta1.Pi
 			switch cr.Kind {
 			case taskRun:
 				trNames = append(trNames, cr.Name)
-			case run:
-				runNames = append(runNames, cr.Name)
 			case customRun:
 				customRunNames = append(customRunNames, cr.Name)
 			default:
@@ -217,7 +179,7 @@ func getChildObjectsFromPRStatusForTaskNames(ctx context.Context, prs v1beta1.Pi
 		err = fmt.Errorf("found child objects of unknown kinds: %v", unknownChildKinds)
 	}
 
-	return trNames, customRunNames, runNames, err
+	return trNames, customRunNames, err
 }
 
 // gracefullyCancelPipelineRun marks any non-final resolved TaskRun(s) as cancelled and runs finally.

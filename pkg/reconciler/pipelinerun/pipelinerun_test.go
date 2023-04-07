@@ -33,7 +33,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
@@ -1046,9 +1045,9 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	// in the PipelineRun status, that the completion status is not altered, that not error is returned and
 	// a successful event is triggered
 	taskRunName := "test-pipeline-run-completed-hello-world-task-run"
-	runName := "test-pipeline-run-completed-hello-world-run"
+	customRunName := "test-pipeline-run-completed-hello-world-custom-run"
 	pipelineRunName := "test-pipeline-run-completed"
-	rs := []*v1alpha1.Run{parse.MustParseRun(t, fmt.Sprintf(`
+	crs := []*v1beta1.CustomRun{parse.MustParseCustomRun(t, fmt.Sprintf(`
 metadata:
   name: %s
 spec: {}
@@ -1056,7 +1055,7 @@ status:
   conditions:
   - status: "False"
   type: Succeeded
-`, runName))}
+`, customRunName))}
 	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -1077,9 +1076,9 @@ status:
       pipelineTaskName: hello-world-1
       kind: TaskRun
       apiVersion: tekton.dev/v1beta1
-    - name: test-pipeline-run-completed-hello-world-run
+    - name: test-pipeline-run-completed-hello-world-custom-run
       pipelineTaskName: hello-world-1
-      kind: Run
+      kind: CustomRun
       apiVersion: tekton.dev/v1beta1
 `, pipelineRunName))}
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
@@ -1100,9 +1099,9 @@ status:
 	}, {
 		TypeMeta: runtime.TypeMeta{
 			APIVersion: v1beta1.SchemeGroupVersion.String(),
-			Kind:       run,
+			Kind:       customRun,
 		},
-		Name:             runName,
+		Name:             customRunName,
 		PipelineTaskName: "hello-world-1",
 	}}
 
@@ -1121,7 +1120,7 @@ status:
 		Pipelines:    ps,
 		Tasks:        ts,
 		TaskRuns:     trs,
-		Runs:         rs,
+		CustomRuns:   crs,
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -10425,19 +10424,14 @@ spec:
 
 	pr, clients := prt.reconcileRun("foo", pipelineRunName, []string{}, false)
 
-	var runsCount, taskrunsCount, customrunsCount int
+	var taskrunsCount, customrunsCount int
 	for _, childRef := range pr.Status.ChildReferences {
 		switch childRef.Kind {
 		case taskRun:
 			taskrunsCount++
-		case run:
-			runsCount++
 		case customRun:
 			customrunsCount++
 		}
-	}
-	if runsCount > 0 {
-		t.Errorf("Expected no Run in status, but found %d", runsCount)
 	}
 	if taskrunsCount > 0 {
 		t.Errorf("Expected no TaskRuns in status, but found %d", taskrunsCount)

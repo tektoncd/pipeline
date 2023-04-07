@@ -23,7 +23,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
-	runinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/run"
 	verificationpolicyinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/verificationpolicy"
 	customruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/customrun"
 	pipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipelinerun"
@@ -54,7 +53,6 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock, tracerProvi
 		customRunInformer := customruninformer.Get(ctx)
 		pipelineRunInformer := pipelineruninformer.Get(ctx)
 		resolutionInformer := resolutioninformer.Get(ctx)
-		runInformer := runinformer.Get(ctx)
 		verificationpolicyInformer := verificationpolicyinformer.Get(ctx)
 		configStore := config.NewStore(logger.Named("config-store"), pipelinerunmetrics.MetricsOnStore(logger))
 		configStore.WatchConfigs(cmw)
@@ -67,7 +65,6 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock, tracerProvi
 			pipelineRunLister:        pipelineRunInformer.Lister(),
 			taskRunLister:            taskRunInformer.Lister(),
 			customRunLister:          customRunInformer.Lister(),
-			runLister:                runInformer.Lister(),
 			verificationPolicyLister: verificationpolicyInformer.Lister(),
 			cloudEventClient:         cloudeventclient.Get(ctx),
 			metrics:                  pipelinerunmetrics.Get(ctx),
@@ -93,10 +90,6 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock, tracerProvi
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 		resolutionInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.FilterController(&v1beta1.PipelineRun{}),
-			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
-		})
-		runInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1beta1.PipelineRun{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})

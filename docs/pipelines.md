@@ -1626,10 +1626,9 @@ Starting from `v0.47.0`, feature flag `custom-task-version` is removed and only 
 can implement behavior that doesn't correspond directly to running a workload in a `Pod` on the cluster.
 For example, a custom task might execute some operation outside of the cluster and wait for its execution to complete.
 
-A `PipelineRun` starts a custom task by creating a [`Run`](https://github.com/tektoncd/pipeline/blob/main/docs/runs.md)/[`CustomRun`](https://github.com/tektoncd/pipeline/blob/main/docs/customruns.md) instead of a `TaskRun`.
+A `PipelineRun` starts a custom task by creating a [`CustomRun`](https://github.com/tektoncd/pipeline/blob/main/docs/customruns.md) instead of a `TaskRun`.
 In order for a custom task to execute, there must be a custom task controller running on the cluster
-that is responsible for watching and updating `Run/CustomRun`s which reference their type.
-If no such controller is running, those `Run/CustomRun`s will never complete and Pipelines using them will time out.
+that is responsible for watching and updating `CustomRun`s which reference their type.
 
 ### Specifying the target Custom Task
 

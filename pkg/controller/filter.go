@@ -20,92 +20,10 @@ package controller
 
 import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	listersalpha "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	listersbeta "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-// FilterRunRef returns a filter that can be passed to a Run Informer, which
-// filters out Runs for apiVersion and kinds that a controller doesn't care
-// about.
-//
-// For example, a controller impl that wants to be notified of updates to Runs
-// which reference a Task with apiVersion "example.dev/v0" and kind "Example":
-//
-//	runinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-//	  FilterFunc: FilterRunRef("example.dev/v0", "Example"),
-//	  Handler:    controller.HandleAll(impl.Enqueue),
-//	})
-func FilterRunRef(apiVersion, kind string) func(interface{}) bool {
-	return func(obj interface{}) bool {
-		r, ok := obj.(*v1alpha1.Run)
-		if !ok {
-			// Somehow got informed of a non-Run object.
-			// Ignore.
-			return false
-		}
-		if r == nil || (r.Spec.Ref == nil && r.Spec.Spec == nil) {
-			// These are invalid, but just in case they get
-			// created somehow, don't panic.
-			return false
-		}
-		result := false
-		if r.Spec.Ref != nil {
-			result = r.Spec.Ref.APIVersion == apiVersion && r.Spec.Ref.Kind == v1beta1.TaskKind(kind)
-		} else if r.Spec.Spec != nil {
-			result = r.Spec.Spec.APIVersion == apiVersion && r.Spec.Spec.Kind == kind
-		}
-		return result
-	}
-}
-
-// FilterOwnerRunRef returns a filter that can be passed to an Informer for any runtime object, which
-// filters out objects that aren't controlled by a Run that references a particular apiVersion and kind.
-//
-// For example, a controller impl that wants to be notified of updates to TaskRuns that are controlled by
-// a Run which references a custom task with apiVersion "example.dev/v0" and kind "Example":
-//
-//	taskruninformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-//	  FilterFunc: FilterOwnerRunRef("example.dev/v0", "Example"),
-//	  Handler:    controller.HandleAll(impl.Enqueue),
-//	})
-func FilterOwnerRunRef(runLister listersalpha.RunLister, apiVersion, kind string) func(interface{}) bool {
-	return func(obj interface{}) bool {
-		object, ok := obj.(metav1.Object)
-		if !ok {
-			return false
-		}
-		owner := metav1.GetControllerOf(object)
-		if owner == nil {
-			return false
-		}
-		if owner.APIVersion != v1alpha1.SchemeGroupVersion.String() || owner.Kind != pipeline.RunControllerName {
-			// Not owned by a Run
-			return false
-		}
-		run, err := runLister.Runs(object.GetNamespace()).Get(owner.Name)
-		if err != nil {
-			return false
-		}
-		if run.Spec.Ref == nil && run.Spec.Spec == nil {
-			// These are invalid, but just in case they get created somehow, don't panic.
-			return false
-		}
-		if run.Spec.Ref != nil && run.Spec.Spec != nil {
-			// These are invalid.
-			return false
-		}
-		result := false
-		if run.Spec.Ref != nil {
-			result = run.Spec.Ref.APIVersion == apiVersion && run.Spec.Ref.Kind == v1beta1.TaskKind(kind)
-		} else if run.Spec.Spec != nil {
-			result = run.Spec.Spec.APIVersion == apiVersion && run.Spec.Spec.Kind == kind
-		}
-		return result
-	}
-}
 
 // FilterCustomRunRef returns a filter that can be passed to a CustomRun Informer, which
 // filters out CustomRuns for apiVersion and kinds that a controller doesn't care

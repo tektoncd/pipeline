@@ -23,7 +23,6 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/remote"
@@ -159,7 +158,7 @@ func (t ResolvedPipelineTask) isFailure() bool {
 		atLeastOneFailed := false
 		for _, run := range t.RunObjects {
 			isDone = isDone && run.IsDone()
-			runFailed := run.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsFalse() && !t.isRunRetriable()
+			runFailed := run.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsFalse()
 			atLeastOneFailed = atLeastOneFailed || runFailed
 		}
 		return atLeastOneFailed && isDone
@@ -169,7 +168,7 @@ func (t ResolvedPipelineTask) isFailure() bool {
 		}
 		c = t.RunObject.GetStatusCondition().GetCondition(apis.ConditionSucceeded)
 		isDone = t.RunObject.IsDone()
-		return isDone && c.IsFalse() && !t.isRunRetriable()
+		return isDone && c.IsFalse()
 	case t.PipelineTask.IsMatrixed():
 		if len(t.TaskRuns) == 0 {
 			return false
@@ -192,33 +191,6 @@ func (t ResolvedPipelineTask) isFailure() bool {
 	}
 }
 
-// isRunRetriable returns true only when the number of retries already attempted
-// is less than the number of retries allowed for v1alpha1.Run.
-//
-// This should be removed once v1alpha1.Run is fully deprecated.
-func (t ResolvedPipelineTask) isRunRetriable() bool {
-	switch {
-	case t.PipelineTask.IsMatrixed():
-		if len(t.RunObjects) == 0 {
-			return true
-		}
-		// has remaining retries when any Run has a remaining retry
-		for _, run := range t.RunObjects {
-			if _, ok := run.(*v1alpha1.Run); ok {
-				if run.GetRetryCount() < t.PipelineTask.Retries {
-					return true
-				}
-			}
-		}
-		return false
-	default:
-		if _, ok := t.RunObject.(*v1alpha1.Run); ok {
-			return t.RunObject.GetRetryCount() < t.PipelineTask.Retries
-		}
-	}
-	return false
-}
-
 // isCancelledForTimeOut returns true only if the run is cancelled due to PipelineRun-controlled timeout
 // If the PipelineTask has a Matrix, isCancelled returns true if any run is cancelled due to PipelineRun-controlled timeout and all other runs are done.
 func (t ResolvedPipelineTask) isCancelledForTimeOut() bool {
@@ -234,7 +206,7 @@ func (t ResolvedPipelineTask) isCancelledForTimeOut() bool {
 			c := run.GetStatusCondition().GetCondition(apis.ConditionSucceeded)
 			runCancelled := c.IsFalse() &&
 				c.Reason == v1beta1.CustomRunReasonCancelled.String() &&
-				isRunOrCustomRunCancelledByPipelineRunTimeout(run)
+				isCustomRunCancelledByPipelineRunTimeout(run)
 			atLeastOneCancelled = atLeastOneCancelled || runCancelled
 		}
 		return atLeastOneCancelled && isDone
@@ -245,7 +217,7 @@ func (t ResolvedPipelineTask) isCancelledForTimeOut() bool {
 		c := t.RunObject.GetStatusCondition().GetCondition(apis.ConditionSucceeded)
 		return c != nil && c.IsFalse() &&
 			c.Reason == v1beta1.CustomRunReasonCancelled.String() &&
-			isRunOrCustomRunCancelledByPipelineRunTimeout(t.RunObject)
+			isCustomRunCancelledByPipelineRunTimeout(t.RunObject)
 	case t.PipelineTask.IsMatrixed():
 		if len(t.TaskRuns) == 0 {
 			return false
@@ -839,12 +811,7 @@ func (t *ResolvedPipelineTask) hasResultReferences() bool {
 	return false
 }
 
-func isRunOrCustomRunCancelledByPipelineRunTimeout(ro v1beta1.RunObject) bool {
-	switch r := ro.(type) {
-	case *v1beta1.CustomRun:
-		return r.Spec.StatusMessage == v1beta1.CustomRunCancelledByPipelineTimeoutMsg
-	case *v1alpha1.Run:
-		return r.Spec.StatusMessage == v1alpha1.RunCancelledByPipelineTimeoutMsg
-	}
-	return false
+func isCustomRunCancelledByPipelineRunTimeout(ro v1beta1.RunObject) bool {
+	cr := ro.(*v1beta1.CustomRun)
+	return cr.Spec.StatusMessage == v1beta1.CustomRunCancelledByPipelineTimeoutMsg
 }

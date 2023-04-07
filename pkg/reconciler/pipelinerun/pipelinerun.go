@@ -28,9 +28,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	runv1beta1 "github.com/tektoncd/pipeline/pkg/apis/run/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelinerunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/pipelinerun"
 	alpha1listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
@@ -138,7 +136,6 @@ const (
 const (
 	taskRun   = pipeline.TaskRunControllerName
 	customRun = pipeline.CustomRunControllerName
-	run       = pipeline.RunControllerName
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -152,7 +149,6 @@ type Reconciler struct {
 	pipelineRunLister        listers.PipelineRunLister
 	taskRunLister            listers.TaskRunLister
 	customRunLister          listers.CustomRunLister
-	runLister                alpha1listers.RunLister
 	verificationPolicyLister alpha1listers.VerificationPolicyLister
 	cloudEventClient         cloudevent.CEClient
 	metrics                  *pipelinerunmetrics.Recorder
@@ -1260,7 +1256,7 @@ func validateChildObjectsInPipelineRunStatus(ctx context.Context, prs v1beta1.Pi
 
 	for _, cr := range prs.ChildReferences {
 		switch cr.Kind {
-		case taskRun, run, customRun:
+		case taskRun, customRun:
 			continue
 		default:
 			err = multierror.Append(err, fmt.Errorf("child with name %s has unknown kind %s", cr.Name, cr.Kind))
@@ -1306,17 +1302,10 @@ func filterRunsForPipelineRunStatus(logger *zap.SugaredLogger, pr *v1beta1.Pipel
 		names = append(names, runObj.GetObjectMeta().GetName())
 		taskLabels = append(taskLabels, runObj.GetObjectMeta().GetLabels()[pipeline.PipelineTaskLabelKey])
 
-		switch r := runObj.(type) {
-		case *v1beta1.CustomRun:
-			statuses = append(statuses, &r.Status)
-			// We can't just get the gvk from the run's TypeMeta because that isn't populated for resources created through the fake client.
-			gvks = append(gvks, v1beta1.SchemeGroupVersion.WithKind(customRun))
-		case *v1alpha1.Run:
-			crStatus := runv1beta1.FromRunStatus(r.Status)
-			statuses = append(statuses, &crStatus)
-			// We can't just get the gvk from the run's TypeMeta because that isn't populated for resources created through the fake client.
-			gvks = append(gvks, v1alpha1.SchemeGroupVersion.WithKind(run))
-		}
+		r := runObj.(*v1beta1.CustomRun)
+		statuses = append(statuses, &r.Status)
+		// We can't just get the gvk from the run's TypeMeta because that isn't populated for resources created through the fake client.
+		gvks = append(gvks, v1beta1.SchemeGroupVersion.WithKind(customRun))
 	}
 
 	return names, taskLabels, gvks, statuses

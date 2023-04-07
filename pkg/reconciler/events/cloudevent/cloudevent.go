@@ -25,7 +25,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"knative.dev/pkg/apis"
 )
@@ -60,16 +59,6 @@ const (
 	PipelineRunSuccessfulEventV1 TektonEventType = "dev.tekton.event.pipelinerun.successful.v1"
 	// PipelineRunFailedEventV1 is sent for PipelineRuns with "ConditionSucceeded" "False"
 	PipelineRunFailedEventV1 TektonEventType = "dev.tekton.event.pipelinerun.failed.v1"
-	// RunStartedEventV1 is sent for Runs with "ConditionSucceeded" "Unknown"
-	// the first time they are picked up by the reconciler
-	RunStartedEventV1 TektonEventType = "dev.tekton.event.run.started.v1"
-	// RunRunningEventV1 is sent for Runs with "ConditionSucceeded" "Unknown"
-	// once the Run is validated and Pod created
-	RunRunningEventV1 TektonEventType = "dev.tekton.event.run.running.v1"
-	// RunSuccessfulEventV1 is sent for Runs with "ConditionSucceeded" "True"
-	RunSuccessfulEventV1 TektonEventType = "dev.tekton.event.run.successful.v1"
-	// RunFailedEventV1 is sent for Runs with "ConditionSucceeded" "False"
-	RunFailedEventV1 TektonEventType = "dev.tekton.event.run.failed.v1"
 	// CustomRunStartedEventV1 is sent for CustomRuns with "ConditionSucceeded" "Unknown"
 	// the first time they are picked up by the reconciler
 	CustomRunStartedEventV1 TektonEventType = "dev.tekton.event.customrun.started.v1"
@@ -101,7 +90,6 @@ type CEClient interface {
 type TektonCloudEventData struct {
 	TaskRun     *v1beta1.TaskRun     `json:"taskRun,omitempty"`
 	PipelineRun *v1beta1.PipelineRun `json:"pipelineRun,omitempty"`
-	Run         *v1alpha1.Run        `json:"run,omitempty"`
 	CustomRun   *v1beta1.CustomRun   `json:"customRun,omitempty"`
 }
 
@@ -113,8 +101,6 @@ func newTektonCloudEventData(runObject objectWithCondition) TektonCloudEventData
 		tektonCloudEventData.TaskRun = v
 	case *v1beta1.PipelineRun:
 		tektonCloudEventData.PipelineRun = v
-	case *v1alpha1.Run:
-		tektonCloudEventData.Run = v
 	case *v1beta1.CustomRun:
 		tektonCloudEventData.CustomRun = v
 	}
@@ -162,9 +148,6 @@ func getEventType(runObject objectWithCondition) (*TektonEventType, error) {
 		// picked up by the `Run` reconciler. In that case we consider the run
 		// as started. In all other cases, conditions have to be initialised
 		switch runObject.(type) {
-		case *v1alpha1.Run:
-			eventType = RunStartedEventV1
-			return &eventType, nil
 		case *v1beta1.CustomRun:
 			eventType = CustomRunStartedEventV1
 			return &eventType, nil
@@ -193,11 +176,7 @@ func getEventType(runObject objectWithCondition) (*TektonEventType, error) {
 			default:
 				eventType = PipelineRunUnknownEventV1
 			}
-		case *v1alpha1.Run:
-			// Run controller have the freedom of setting reasons as they wish
-			// so we cannot make many assumptions here. If a condition is set
-			// to unknown (not finished), we sent the running event
-			eventType = RunRunningEventV1
+
 		case *v1beta1.CustomRun:
 			// CustomRun controller have the freedom of setting reasons as they wish
 			// so we cannot make many assumptions here. If a condition is set
@@ -210,8 +189,6 @@ func getEventType(runObject objectWithCondition) (*TektonEventType, error) {
 			eventType = TaskRunFailedEventV1
 		case *v1beta1.PipelineRun:
 			eventType = PipelineRunFailedEventV1
-		case *v1alpha1.Run:
-			eventType = RunFailedEventV1
 		case *v1beta1.CustomRun:
 			eventType = CustomRunFailedEventV1
 		}
@@ -221,8 +198,6 @@ func getEventType(runObject objectWithCondition) (*TektonEventType, error) {
 			eventType = TaskRunSuccessfulEventV1
 		case *v1beta1.PipelineRun:
 			eventType = PipelineRunSuccessfulEventV1
-		case *v1alpha1.Run:
-			eventType = RunSuccessfulEventV1
 		case *v1beta1.CustomRun:
 			eventType = CustomRunSuccessfulEventV1
 		}

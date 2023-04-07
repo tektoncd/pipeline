@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
@@ -154,18 +153,10 @@ func resolveResultRef(pipelineState PipelineRunState, resultRef *v1beta1.ResultR
 }
 
 func findRunResultForParam(runObj v1beta1.RunObject, reference *v1beta1.ResultRef) (string, error) {
-	switch run := runObj.(type) {
-	case *v1beta1.CustomRun:
-		for _, result := range run.Status.Results {
-			if result.Name == reference.Result {
-				return result.Value, nil
-			}
-		}
-	case *v1alpha1.Run:
-		for _, result := range run.Status.Results {
-			if result.Name == reference.Result {
-				return result.Value, nil
-			}
+	run := runObj.(*v1beta1.CustomRun)
+	for _, result := range run.Status.Results {
+		if result.Name == reference.Result {
+			return result.Value, nil
 		}
 	}
 	return "", fmt.Errorf("Could not find result with name %s for task %s", reference.Result, reference.PipelineTask)

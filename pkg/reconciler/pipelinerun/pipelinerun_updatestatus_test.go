@@ -22,7 +22,6 @@ import (
 	"regexp"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -513,20 +512,6 @@ metadata:
   - uid: 11111111-1111-1111-1111-111111111111
 `)}
 
-	singleRunWithStatus := []v1beta1.RunObject{parse.MustParseRun(t, `
-metadata:
-  labels:
-    tekton.dev/pipelineTask: task-6
-  name: pr-run-6-xxyyy
-  ownerReferences:
-  - uid: 11111111-1111-1111-1111-111111111111
-status:
-  conditions:
-  - status: Unknown
-    type: Succeeded
-  startTime: "2021-12-31T23:58:59Z"
-`)}
-
 	tcs := []struct {
 		prName             string
 		prStatus           func() v1beta1.PipelineRunStatus
@@ -558,32 +543,6 @@ metadata:
 				"pr-run-6-xxyyy": {
 					PipelineTaskName: "task-6",
 					Status:           &v1beta1.CustomRunStatus{},
-				},
-			},
-		}, {
-			prName:   "status-nil-runs-with-alpha-run",
-			prStatus: prStatusWithEmptyEverything,
-			runs:     singleRunWithStatus,
-			expectedStatusCRs: []v1beta1.ChildStatusReference{mustParseChildStatusReference(t, `
-apiVersion: tekton.dev/v1alpha1
-kind: Run
-name: pr-run-6-xxyyy
-pipelineTaskName: task-6
-`)},
-			expectedStatusRuns: map[string]*v1beta1.PipelineRunRunStatus{
-				"pr-run-6-xxyyy": {
-					PipelineTaskName: "task-6",
-					Status: &v1beta1.CustomRunStatus{
-						Status: duckv1.Status{
-							Conditions: []apis.Condition{{
-								Type:   apis.ConditionSucceeded,
-								Status: corev1.ConditionUnknown,
-							}},
-						},
-						CustomRunStatusFields: v1beta1.CustomRunStatusFields{
-							StartTime: &metav1.Time{Time: time.Date(2021, 12, 31, 23, 58, 59, 0, time.UTC)},
-						},
-					},
 				},
 			},
 		}, {
@@ -663,7 +622,7 @@ func TestValidateChildObjectsInPipelineRunStatus(t *testing.T) {
 							Name:             "t1",
 							PipelineTaskName: "task-1",
 						}, {
-							TypeMeta:         runtime.TypeMeta{Kind: run},
+							TypeMeta:         runtime.TypeMeta{Kind: customRun},
 							Name:             "r1",
 							PipelineTaskName: "run-1",
 						}, {
@@ -687,7 +646,7 @@ func TestValidateChildObjectsInPipelineRunStatus(t *testing.T) {
 							Name:             "t1",
 							PipelineTaskName: "task-1",
 						}, {
-							TypeMeta:         runtime.TypeMeta{Kind: run},
+							TypeMeta:         runtime.TypeMeta{Kind: customRun},
 							Name:             "r1",
 							PipelineTaskName: "run-1",
 						},

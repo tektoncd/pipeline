@@ -26,7 +26,6 @@ import (
 	cetypes "github.com/cloudevents/sdk-go/v2/types"
 	"github.com/google/go-cmp/cmp"
 	lru "github.com/hashicorp/golang-lru"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,9 +35,6 @@ func strptr(s string) *string { return &s }
 
 func getEventData(run interface{}) map[string]interface{} {
 	cloudEventData := map[string]interface{}{}
-	if v, ok := run.(*v1alpha1.Run); ok {
-		cloudEventData["run"] = v
-	}
 	if v, ok := run.(*v1beta1.CustomRun); ok {
 		cloudEventData["customRun"] = v
 	}
@@ -59,21 +55,6 @@ func getEventToTest(eventtype string, run interface{}) *event.Event {
 		panic(err)
 	}
 	return &e
-}
-
-func getRunByMeta(name string, namespace string) *v1alpha1.Run {
-	return &v1alpha1.Run{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Run",
-			APIVersion: "v1alpha1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
-		Spec:   v1alpha1.RunSpec{},
-		Status: v1alpha1.RunStatus{},
-	}
 }
 
 func getCustomRunByMeta(name string, namespace string) *v1beta1.CustomRun {
@@ -100,12 +81,6 @@ func TestEventsKey(t *testing.T) {
 		wantKey   string
 		wantErr   bool
 	}{{
-		name:      "run event",
-		eventtype: "my.test.run.event",
-		run:       getRunByMeta("myrun", "mynamespace"),
-		wantKey:   "my.test.run.event/run/mynamespace/myrun",
-		wantErr:   false,
-	}, {
 		name:      "customrun event",
 		eventtype: "my.test.run.event",
 		run:       getCustomRunByMeta("myrun", "mynamespace"),
@@ -136,10 +111,9 @@ func TestEventsKey(t *testing.T) {
 }
 
 func TestAddCheckEvent(t *testing.T) {
-	run := getRunByMeta("arun", "anamespace")
-	runb := getRunByMeta("arun", "bnamespace")
-	customRun := getCustomRunByMeta("arun", "anamespace")
-	baseEvent := getEventToTest("some.event.type", run)
+	customRun1 := getCustomRunByMeta("arun", "anamespace")
+	customRun2 := getCustomRunByMeta("arun", "bnamespace")
+	baseEvent := getEventToTest("some.event.type", customRun1)
 
 	testcases := []struct {
 		name        string
@@ -154,22 +128,17 @@ func TestAddCheckEvent(t *testing.T) {
 	}, {
 		name:        "new timestamp event",
 		firstEvent:  baseEvent,
-		secondEvent: getEventToTest("some.event.type", run),
+		secondEvent: getEventToTest("some.event.type", customRun1),
 		wantFound:   true,
 	}, {
 		name:        "different namespace",
 		firstEvent:  baseEvent,
-		secondEvent: getEventToTest("some.event.type", runb),
-		wantFound:   false,
-	}, {
-		name:        "customrun instead of run",
-		firstEvent:  baseEvent,
-		secondEvent: getEventToTest("some.event.type", customRun),
+		secondEvent: getEventToTest("some.event.type", customRun2),
 		wantFound:   false,
 	}, {
 		name:        "different event type",
 		firstEvent:  baseEvent,
-		secondEvent: getEventToTest("some.other.event.type", run),
+		secondEvent: getEventToTest("some.other.event.type", customRun1),
 		wantFound:   false,
 	}}
 

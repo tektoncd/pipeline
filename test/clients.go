@@ -104,7 +104,6 @@ func newClients(t *testing.T, configPath, clusterName, namespace string) *client
 	c.V1beta1TaskRunClient = cs.TektonV1beta1().TaskRuns(namespace)
 	c.V1beta1PipelineRunClient = cs.TektonV1beta1().PipelineRuns(namespace)
 	c.V1beta1CustomRunClient = cs.TektonV1beta1().CustomRuns(namespace)
-	c.V1alpha1RunClient = cs.TektonV1alpha1().Runs(namespace)
 	c.V1alpha1ResolutionRequestclient = rrcs.ResolutionV1alpha1().ResolutionRequests(namespace)
 	c.V1alpha1VerificationPolicyClient = cs.TektonV1alpha1().VerificationPolicies(namespace)
 	c.V1PipelineClient = cs.TektonV1().Pipelines(namespace)
