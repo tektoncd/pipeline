@@ -166,7 +166,9 @@ func newConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 		"/resource-conversion",
 
 		// Specify the types of custom resource definitions that should be converted
-		// "HubVersion" is the stored version, and "Zygotes" are the supported versions
+		// "HubVersion" specifies which version of the CustomResource supports
+		// conversions to and from all types.
+		// "Zygotes" are the supported versions.
 		map[schema.GroupKind]conversion.GroupKindConversion{
 			v1.Kind("Task"): {
 				DefinitionName: pipeline.TaskResource.String(),
@@ -202,7 +204,7 @@ func newConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 			},
 			resolutionv1beta1.Kind("ResolutionRequest"): {
 				DefinitionName: resolution.ResolutionRequestResource.String(),
-				HubVersion:     resolutionv1beta1GroupVersion,
+				HubVersion:     resolutionv1alpha1GroupVersion,
 				Zygotes: map[string]conversion.ConvertibleObject{
 					resolutionv1alpha1GroupVersion: &resolutionv1alpha1.ResolutionRequest{},
 					resolutionv1beta1GroupVersion:  &resolutionv1beta1.ResolutionRequest{},
