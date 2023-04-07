@@ -29,7 +29,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/customrun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/resolutionrequest"
-	"github.com/tektoncd/pipeline/pkg/reconciler/run"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/jaeger"
@@ -131,7 +130,6 @@ func main() {
 	sharedmain.MainWithConfig(ctx, ControllerLogKey, cfg,
 		taskrun.NewController(opts, clock.RealClock{}, tpTaskrun),
 		pipelinerun.NewController(opts, clock.RealClock{}, tpPipelineRun),
-		run.NewController(),
 		resolutionrequest.NewController(clock.RealClock{}),
 		customrun.NewController(),
 	)

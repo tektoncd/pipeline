@@ -26,7 +26,8 @@ weight: 206
 
 # Overview
 
-*We are promoting Custom Task from [`v1alpha1.Run`](runs.md) to `v1beta1.CustomRun`, please refer to the [migration doc](migrating-v1alpha1.Run-to-v1beta1.CustomRun.md) for details.*
+*`v1beta1.CustomRun` has replaced `v1alpha1.Run` for executing `Custom Tasks`. Please refer to the [migration doc](migrating-v1alpha1.Run-to-v1beta1.CustomRun.md) for details
+on updating `v1alpha1.Run` to `v1beta1.CustomRun` before upgrading to a release that does not support `v1alpha1.Run`.*
 
 A `CustomRun` allows you to instantiate and execute a [Custom
 Task](https://github.com/tektoncd/community/blob/main/teps/0002-custom-tasks.md),

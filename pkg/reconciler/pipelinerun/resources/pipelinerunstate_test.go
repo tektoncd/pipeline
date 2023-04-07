@@ -28,7 +28,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/test/diff"
-	"github.com/tektoncd/pipeline/test/parse"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -108,25 +107,25 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		},
 	}}
 
-	var runRunningState = PipelineRunState{{
+	var customRunRunningState = PipelineRunState{{
 		PipelineTask:  &pts[12],
 		CustomTask:    true,
 		RunObjectName: "pipelinerun-mytask13",
-		RunObject:     makeRunStarted(runs[0]),
+		RunObject:     makeCustomRunStarted(customRuns[0]),
 	}}
 
-	var runSucceededState = PipelineRunState{{
+	var customRunSucceededState = PipelineRunState{{
 		PipelineTask:  &pts[12],
 		CustomTask:    true,
 		RunObjectName: "pipelinerun-mytask13",
-		RunObject:     makeRunSucceeded(runs[0]),
+		RunObject:     makeCustomRunSucceeded(customRuns[0]),
 	}}
 
-	var runFailedState = PipelineRunState{{
+	var customRunFailedState = PipelineRunState{{
 		PipelineTask:  &pts[12],
 		CustomTask:    true,
 		RunObjectName: "pipelinerun-mytask13",
-		RunObject:     makeRunFailed(runs[0]),
+		RunObject:     makeCustomRunFailed(customRuns[0]),
 	}}
 
 	var taskCancelledFailedWithRetries = PipelineRunState{{
@@ -179,22 +178,22 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		expected:   false,
 		ptExpected: []bool{false},
 	}, {
-		name:       "run-running-no-candidates",
-		state:      runRunningState,
+		name:       "customrun-running-no-candidates",
+		state:      customRunRunningState,
 		expected:   false,
 		ptExpected: []bool{false},
 	}, {
-		name:       "run-succeeded-no-candidates",
-		state:      runSucceededState,
+		name:       "customrun-succeeded-no-candidates",
+		state:      customRunSucceededState,
 		expected:   true,
 		ptExpected: []bool{true},
 	}, {
-		name:       "run-failed-no-candidates",
-		state:      runFailedState,
+		name:       "customrun-failed-no-candidates",
+		state:      customRunFailedState,
 		expected:   true,
 		ptExpected: []bool{true},
 	}, {
-		name:       "run-cancelled-failed-with-retries",
+		name:       "taskrun-cancelled-failed-with-retries",
 		state:      taskCancelledFailedWithRetries,
 		expected:   true,
 		ptExpected: []bool{true},
@@ -236,7 +235,7 @@ func TestIsBeforeFirstTaskRun_WithNotStartedTask(t *testing.T) {
 }
 
 func TestIsBeforeFirstTaskRun_WithNotStartedRun(t *testing.T) {
-	if !noRunStartedState.IsBeforeFirstTaskRun() {
+	if !noCustomRunStartedState.IsBeforeFirstTaskRun() {
 		t.Fatalf("Expected state to be before first taskrun (Run test)")
 	}
 }
@@ -248,7 +247,7 @@ func TestIsBeforeFirstTaskRun_WithStartedTask(t *testing.T) {
 }
 
 func TestIsBeforeFirstTaskRun_WithStartedRun(t *testing.T) {
-	if oneRunStartedState.IsBeforeFirstTaskRun() {
+	if oneCustomRunStartedState.IsBeforeFirstTaskRun() {
 		t.Fatalf("Expected state to be after first taskrun (Run test)")
 	}
 }
@@ -390,20 +389,20 @@ func TestGetNextTasks(t *testing.T) {
 		candidates:   sets.NewString("mytask5"),
 		expectedNext: []*ResolvedPipelineTask{},
 	}, {
-		name:         "no-runs-started-both-candidates",
-		state:        noRunStartedState,
+		name:         "no-customruns-started-both-candidates",
+		state:        noCustomRunStartedState,
 		candidates:   sets.NewString("mytask13", "mytask14"),
-		expectedNext: []*ResolvedPipelineTask{noRunStartedState[0], noRunStartedState[1]},
+		expectedNext: []*ResolvedPipelineTask{noCustomRunStartedState[0], noCustomRunStartedState[1]},
 	}, {
-		name:         "one-run-started-both-candidates",
-		state:        oneRunStartedState,
+		name:         "one-customrun-started-both-candidates",
+		state:        oneCustomRunStartedState,
 		candidates:   sets.NewString("mytask13", "mytask14"),
-		expectedNext: []*ResolvedPipelineTask{oneRunStartedState[1]},
+		expectedNext: []*ResolvedPipelineTask{oneCustomRunStartedState[1]},
 	}, {
-		name:         "one-run-failed-both-candidates",
-		state:        oneRunFailedState,
+		name:         "one-customrun-failed-both-candidates",
+		state:        oneCustomRunFailedState,
 		candidates:   sets.NewString("mytask13", "mytask14"),
-		expectedNext: []*ResolvedPipelineTask{oneRunFailedState[1]},
+		expectedNext: []*ResolvedPipelineTask{oneCustomRunFailedState[1]},
 	}, {
 		name:         "no-tasks-started-no-candidates-matrix",
 		state:        noneStartedStateMatrix,
@@ -531,19 +530,19 @@ func TestGetNextTasks(t *testing.T) {
 		expectedNext: []*ResolvedPipelineTask{},
 	}, {
 		name:         "no-runs-started-both-candidates-matrix",
-		state:        noRunStartedStateMatrix,
+		state:        noCustomRunStartedStateMatrix,
 		candidates:   sets.NewString("mytask19", "mytask20"),
-		expectedNext: []*ResolvedPipelineTask{noRunStartedStateMatrix[0], noRunStartedStateMatrix[1]},
+		expectedNext: []*ResolvedPipelineTask{noCustomRunStartedStateMatrix[0], noCustomRunStartedStateMatrix[1]},
 	}, {
 		name:         "one-run-started-both-candidates-matrix",
-		state:        oneRunStartedStateMatrix,
+		state:        oneCustomRunStartedStateMatrix,
 		candidates:   sets.NewString("mytask19", "mytask20"),
-		expectedNext: []*ResolvedPipelineTask{oneRunStartedStateMatrix[1]},
+		expectedNext: []*ResolvedPipelineTask{oneCustomRunStartedStateMatrix[1]},
 	}, {
 		name:         "one-run-failed-both-candidates-matrix",
-		state:        oneRunFailedStateMatrix,
+		state:        oneCustomRunFailedStateMatrix,
 		candidates:   sets.NewString("mytask19", "mytask20"),
-		expectedNext: []*ResolvedPipelineTask{oneRunFailedStateMatrix[1]},
+		expectedNext: []*ResolvedPipelineTask{oneCustomRunFailedStateMatrix[1]},
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -556,24 +555,6 @@ func TestGetNextTasks(t *testing.T) {
 }
 
 func TestGetNextTaskWithRetries(t *testing.T) {
-	var failedV1alpha1Run = parse.MustParseRun(t, `
-metadata:
-  name: custom-task
-  namespace: namespace
-spec:
-  retries: 1
-  params:
-  - name: param1
-    value: value1
-  ref:
-    apiVersion: example.dev/v0
-    kind: Example
-status:
-  conditions:
-  - type: Succeeded
-    status: "False"
-    reason: Timedout
-`)
 	var taskCancelledByStatusState = PipelineRunState{{
 		PipelineTask: &pts[4], // 2 retries needed
 		TaskRunName:  "pipelinerun-mytask1",
@@ -619,60 +600,40 @@ status:
 		},
 	}}
 
-	var runCancelledByStatusState = PipelineRunState{{
+	var customRunCancelledByStatusState = PipelineRunState{{
 		PipelineTask:  &pts[4], // 2 retries needed
 		RunObjectName: "pipelinerun-mytask1",
-		RunObject:     withRunCancelled(withRunRetries(newRun(runs[0]))),
+		RunObject:     withCustomRunCancelled(withCustomRunRetries(newCustomRun(customRuns[0]))),
 		CustomTask:    true,
 		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
 
-	var runCancelledBySpecState = PipelineRunState{{
+	var customRunCancelledBySpecState = PipelineRunState{{
 		PipelineTask:  &pts[4],
 		RunObjectName: "pipelinerun-mytask1",
-		RunObject:     withRunCancelledBySpec(withRunRetries(newRun(runs[0]))),
+		RunObject:     withCustomRunCancelledBySpec(withCustomRunRetries(newCustomRun(customRuns[0]))),
 		CustomTask:    true,
 		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
 
-	var runRunningState = PipelineRunState{{
+	var customRunRunningState = PipelineRunState{{
 		PipelineTask:  &pts[4],
 		RunObjectName: "pipelinerun-mytask1",
-		RunObject:     makeRunStarted(runs[0]),
+		RunObject:     makeCustomRunStarted(customRuns[0]),
 		CustomTask:    true,
 		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
 
-	var runSucceededState = PipelineRunState{{
+	var customRunSucceededState = PipelineRunState{{
 		PipelineTask:  &pts[4],
 		RunObjectName: "pipelinerun-mytask1",
-		RunObject:     makeRunSucceeded(runs[0]),
-		CustomTask:    true,
-		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
-		},
-	}}
-
-	var runRetriedState = PipelineRunState{{
-		PipelineTask:  &pts[3], // 1 retry needed
-		RunObjectName: "pipelinerun-mytask1",
-		RunObject:     withRunCancelled(withRunRetries(newRun(runs[0]))),
-		CustomTask:    true,
-		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
-		},
-	}}
-
-	var runExpectedState = PipelineRunState{{
-		PipelineTask:  &pts[4], // 2 retries needed
-		RunObjectName: "pipelinerun-mytask1",
-		RunObject:     failedV1alpha1Run,
+		RunObject:     makeCustomRunSucceeded(customRuns[0]),
 		CustomTask:    true,
 		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
@@ -727,7 +688,7 @@ status:
 	var runCancelledByStatusStateMatrix = PipelineRunState{{
 		PipelineTask:   &pts[20], // 2 retries needed
 		RunObjectNames: []string{"pipelinerun-mytask1"},
-		RunObjects:     []v1beta1.RunObject{withRunCancelled(withRunRetries(newRun(runs[0])))},
+		RunObjects:     []v1beta1.RunObject{withCustomRunCancelled(withCustomRunRetries(newCustomRun(customRuns[0])))},
 		CustomTask:     true,
 		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
@@ -737,7 +698,7 @@ status:
 	var runCancelledBySpecStateMatrix = PipelineRunState{{
 		PipelineTask:   &pts[20], // 2 retries needed
 		RunObjectNames: []string{"pipelinerun-mytask1"},
-		RunObjects:     []v1beta1.RunObject{withRunCancelledBySpec(withRunRetries(newRun(runs[0])))},
+		RunObjects:     []v1beta1.RunObject{withCustomRunCancelledBySpec(withCustomRunRetries(newCustomRun(customRuns[0])))},
 		CustomTask:     true,
 		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
@@ -747,37 +708,27 @@ status:
 	var runRunningStateMatrix = PipelineRunState{{
 		PipelineTask:   &pts[20], // 2 retries needed
 		RunObjectNames: []string{"pipelinerun-mytask1"},
-		RunObjects:     []v1beta1.RunObject{makeRunStarted(runs[0])},
+		RunObjects:     []v1beta1.RunObject{makeCustomRunStarted(customRuns[0])},
 		CustomTask:     true,
 		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
 
-	var runSucceededStateMatrix = PipelineRunState{{
+	var customRunSucceededStateMatrix = PipelineRunState{{
 		PipelineTask:   &pts[20], // 2 retries needed
 		RunObjectNames: []string{"pipelinerun-mytask1"},
-		RunObjects:     []v1beta1.RunObject{makeRunSucceeded(runs[0])},
+		RunObjects:     []v1beta1.RunObject{makeCustomRunSucceeded(customRuns[0])},
 		CustomTask:     true,
 		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
 
-	var runRetriedStateMatrix = PipelineRunState{{
+	var customRunRetriedStateMatrix = PipelineRunState{{
 		PipelineTask:   &pts[17], // 1 retry needed
 		RunObjectNames: []string{"pipelinerun-mytask1"},
-		RunObjects:     []v1beta1.RunObject{withRunCancelled(withRunRetries(newRun(runs[0])))},
-		CustomTask:     true,
-		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
-		},
-	}}
-
-	var runExpectedStateMatrix = PipelineRunState{{
-		PipelineTask:   &pts[20], // 2 retries needed
-		RunObjectNames: []string{"pipelinerun-mytask1"},
-		RunObjects:     []v1beta1.RunObject{failedV1alpha1Run},
+		RunObjects:     []v1beta1.RunObject{withCustomRunCancelled(withCustomRunRetries(newCustomRun(customRuns[0])))},
 		CustomTask:     true,
 		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
@@ -815,35 +766,25 @@ status:
 		candidates:   sets.NewString("mytask5"),
 		expectedNext: []*ResolvedPipelineTask{},
 	}, {
-		name:         "runs-cancelled-no-candidates",
-		state:        runCancelledByStatusState,
+		name:         "customruns-cancelled-no-candidates",
+		state:        customRunCancelledByStatusState,
 		candidates:   sets.NewString("mytask5"),
 		expectedNext: []*ResolvedPipelineTask{},
 	}, {
-		name:         "runs-cancelled-bySpec-no-candidates",
-		state:        runCancelledBySpecState,
+		name:         "customruns-cancelled-bySpec-no-candidates",
+		state:        customRunCancelledBySpecState,
 		candidates:   sets.NewString("mytask5"),
 		expectedNext: []*ResolvedPipelineTask{},
 	}, {
-		name:         "runs-running-no-candidates",
-		state:        runRunningState,
+		name:         "customruns-running-no-candidates",
+		state:        customRunRunningState,
 		candidates:   sets.NewString("mytask5"),
 		expectedNext: []*ResolvedPipelineTask{},
 	}, {
-		name:         "run-succeeded-bySpec-no-candidates",
-		state:        runSucceededState,
+		name:         "customrun-succeeded-bySpec-no-candidates",
+		state:        customRunSucceededState,
 		candidates:   sets.NewString("mytask5"),
 		expectedNext: []*ResolvedPipelineTask{},
-	}, {
-		name:         "run-retried-no-candidates",
-		state:        runRetriedState,
-		candidates:   sets.NewString("mytask5"),
-		expectedNext: []*ResolvedPipelineTask{},
-	}, {
-		name:         "run-retried-one-candidates",
-		state:        runExpectedState,
-		candidates:   sets.NewString("mytask5"),
-		expectedNext: []*ResolvedPipelineTask{runExpectedState[0]},
 	}, {
 		name:         "tasks-cancelled-no-candidates-matrix",
 		state:        taskCancelledByStatusStateMatrix,
@@ -880,25 +821,20 @@ status:
 		candidates:   sets.NewString("mytask21"),
 		expectedNext: []*ResolvedPipelineTask{},
 	}, {
-		name:         "runs-running-no-candidates-matrix",
+		name:         "customruns-running-no-candidates-matrix",
 		state:        runRunningStateMatrix,
 		candidates:   sets.NewString("mytask21"),
 		expectedNext: []*ResolvedPipelineTask{},
 	}, {
-		name:         "run-succeeded-bySpec-no-candidates-matrix",
-		state:        runSucceededStateMatrix,
+		name:         "customrun-succeeded-bySpec-no-candidates-matrix",
+		state:        customRunSucceededStateMatrix,
 		candidates:   sets.NewString("mytask21"),
 		expectedNext: []*ResolvedPipelineTask{},
 	}, {
-		name:         "run-retried-no-candidates-matrix",
-		state:        runRetriedStateMatrix,
+		name:         "customrun-retried-no-candidates-matrix",
+		state:        customRunRetriedStateMatrix,
 		candidates:   sets.NewString("mytask21"),
 		expectedNext: []*ResolvedPipelineTask{},
-	}, {
-		name:         "run-retried-one-candidates-matrix",
-		state:        runExpectedStateMatrix,
-		candidates:   sets.NewString("mytask21"),
-		expectedNext: []*ResolvedPipelineTask{runExpectedStateMatrix[0]},
 	}}
 
 	// iterate over *state* to get from candidate and check if TaskRun or Run is there.
@@ -952,7 +888,7 @@ func TestDAGExecutionQueue(t *testing.T) {
 			TaskRef: &v1beta1.TaskRef{Name: "task"},
 		},
 		RunObjectName: "runningrun",
-		RunObject:     newRun(runs[0]),
+		RunObject:     newCustomRun(customRuns[0]),
 		CustomTask:    true,
 	}
 	successfulTask := ResolvedPipelineTask{
@@ -972,7 +908,7 @@ func TestDAGExecutionQueue(t *testing.T) {
 			TaskRef: &v1beta1.TaskRef{Name: "task"},
 		},
 		RunObjectName: "successfulrun",
-		RunObject:     makeRunSucceeded(runs[0]),
+		RunObject:     makeCustomRunSucceeded(customRuns[0]),
 		CustomTask:    true,
 	}
 	failedTask := ResolvedPipelineTask{
@@ -986,41 +922,13 @@ func TestDAGExecutionQueue(t *testing.T) {
 			TaskSpec: &task.Spec,
 		},
 	}
-	failedRun := parse.MustParseRun(t, `
-metadata:
-  name: task
-  namespace: namespace
-spec:
-  retries: 1
-  params:
-  - name: param1
-    value: value1
-  ref:
-    apiVersion: example.dev/v0
-    kind: Example
-status:
-  conditions:
-  - type: Succeeded
-    status: "False"
-    reason: Timedout
-`)
 	failedCustomRun := ResolvedPipelineTask{
 		PipelineTask: &v1beta1.PipelineTask{
 			Name:    "failedrun",
 			TaskRef: &v1beta1.TaskRef{Name: "task"},
 		},
 		RunObjectName: "failedrun",
-		RunObject:     makeRunFailed(runs[0]),
-		CustomTask:    true,
-	}
-	failedRunWithRetries := ResolvedPipelineTask{
-		PipelineTask: &v1beta1.PipelineTask{
-			Name:    "failedrunwithretries",
-			TaskRef: &v1beta1.TaskRef{Name: "task"},
-			Retries: 1,
-		},
-		RunObjectName: "failedrunwithretries",
-		RunObject:     failedRun,
+		RunObject:     makeCustomRunFailed(customRuns[0]),
 		CustomTask:    true,
 	}
 	tcs := []struct {
@@ -1034,7 +942,6 @@ status:
 		state: PipelineRunState{
 			&createdTask, &createdRun,
 			&runningTask, &runningRun, &successfulTask, &successfulRun,
-			&failedRunWithRetries,
 		},
 	}, {
 		name:       "gracefully cancelled",
@@ -1042,7 +949,6 @@ status:
 		state: PipelineRunState{
 			&createdTask, &createdRun,
 			&runningTask, &runningRun, &successfulTask, &successfulRun,
-			&failedRunWithRetries,
 		},
 	}, {
 		name:       "gracefully stopped",
@@ -1051,34 +957,18 @@ status:
 			&createdTask, &createdRun, &runningTask, &runningRun, &successfulTask, &successfulRun,
 		},
 	}, {
-		name:       "gracefully stopped with retryable tasks",
-		specStatus: v1beta1.PipelineRunSpecStatusStoppedRunFinally,
-		state: PipelineRunState{
-			&createdTask, &createdRun, &runningTask, &runningRun, &successfulTask, &successfulRun,
-			&failedTask, &failedCustomRun, &failedRunWithRetries,
-		},
-		want: PipelineRunState{&failedRunWithRetries},
-	}, {
 		name: "running",
 		state: PipelineRunState{
 			&createdTask, &createdRun, &runningTask, &runningRun,
 			&successfulTask, &successfulRun,
-			&failedRunWithRetries,
 		},
-		want: PipelineRunState{&createdTask, &createdRun, &failedRunWithRetries},
+		want: PipelineRunState{&createdTask, &createdRun},
 	}, {
 		name: "stopped",
 		state: PipelineRunState{
 			&createdTask, &createdRun, &runningTask, &runningRun,
 			&successfulTask, &successfulRun, &failedTask, &failedCustomRun,
 		},
-	}, {
-		name: "stopped with retryable tasks",
-		state: PipelineRunState{
-			&createdTask, &createdRun, &runningTask, &runningRun,
-			&successfulTask, &successfulRun, &failedCustomRun, &failedRunWithRetries,
-		},
-		want: PipelineRunState{&failedRunWithRetries},
 	}, {
 		name:  "all tasks finished",
 		state: PipelineRunState{&successfulTask, &successfulRun, &failedTask, &failedCustomRun},
@@ -1238,26 +1128,26 @@ func TestDAGExecutionQueueSequentialRuns(t *testing.T) {
 		wantFirst: true,
 	}, {
 		name:     "first run running",
-		firstRun: newRun(runs[0]),
+		firstRun: newCustomRun(customRuns[0]),
 	}, {
 		name:       "first run succeeded",
-		firstRun:   makeRunSucceeded(runs[0]),
+		firstRun:   makeCustomRunSucceeded(customRuns[0]),
 		wantSecond: true,
 	}, {
 		name:     "first run failed",
-		firstRun: makeRunFailed(runs[0]),
+		firstRun: makeCustomRunFailed(customRuns[0]),
 	}, {
 		name:      "first run succeeded, second run running",
-		firstRun:  makeRunSucceeded(runs[0]),
-		secondRun: newRun(runs[1]),
+		firstRun:  makeCustomRunSucceeded(customRuns[0]),
+		secondRun: newCustomRun(customRuns[1]),
 	}, {
 		name:      "first run succeeded, second run succeeded",
-		firstRun:  makeRunSucceeded(runs[0]),
-		secondRun: makeRunSucceeded(runs[1]),
+		firstRun:  makeCustomRunSucceeded(customRuns[0]),
+		secondRun: makeCustomRunSucceeded(customRuns[1]),
 	}, {
 		name:      "first run succeeded, second run failed",
-		firstRun:  makeRunSucceeded(runs[0]),
-		secondRun: makeRunFailed(runs[1]),
+		firstRun:  makeCustomRunSucceeded(customRuns[0]),
+		secondRun: makeCustomRunFailed(customRuns[1]),
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1357,15 +1247,15 @@ func TestPipelineRunState_CompletedOrSkippedDAGTasks(t *testing.T) {
 		expectedNames: []string{},
 	}, {
 		name:          "one-run-started",
-		state:         oneRunStartedState,
+		state:         oneCustomRunStartedState,
 		expectedNames: []string{},
 	}, {
 		name:          "one-run-finished",
-		state:         oneRunFinishedState,
+		state:         oneCustomRunFinishedState,
 		expectedNames: []string{pts[12].Name},
 	}, {
 		name:          "one-run-failed",
-		state:         oneRunFailedState,
+		state:         oneCustomRunFailedState,
 		expectedNames: []string{pts[12].Name, pts[13].Name},
 	}}
 	for _, tc := range tcs {
@@ -2512,15 +2402,15 @@ func TestPipelineRunFacts_IsRunning(t *testing.T) {
 		expected: false,
 	}, {
 		name:     "no-run-started",
-		state:    noRunStartedState,
+		state:    noCustomRunStartedState,
 		expected: false,
 	}, {
 		name:     "one-run-started",
-		state:    oneRunStartedState,
+		state:    oneCustomRunStartedState,
 		expected: true,
 	}, {
 		name:     "one-run-failed",
-		state:    oneRunFailedState,
+		state:    oneCustomRunFailedState,
 		expected: false,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -3305,80 +3195,5 @@ func customRunWithName(name string) *v1beta1.CustomRun {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-	}
-}
-
-func TestGetRetriableTasks(t *testing.T) {
-	failedRun := parse.MustParseRun(t, `
-metadata:
-  name: custom-task
-  namespace: namespace
-spec:
-  retries: 1
-  params:
-  - name: param1
-    value: value1
-  ref:
-    apiVersion: example.dev/v0
-    kind: Example
-status:
-  conditions:
-  - type: Succeeded
-    status: "False"
-    reason: Timedout
-`)
-	failedCustomRunPT := ResolvedPipelineTask{
-		PipelineTask: &v1beta1.PipelineTask{
-			Name:    "failedrun",
-			TaskRef: &v1beta1.TaskRef{Name: "task"},
-		},
-		RunObjectName: "failedrun",
-		RunObject:     makeRunFailed(runs[0]),
-		CustomTask:    true,
-	}
-	failedTaskRunPTWithRetries := ResolvedPipelineTask{
-		PipelineTask: &v1beta1.PipelineTask{
-			Name:    "failedtask",
-			TaskRef: &v1beta1.TaskRef{Name: "task"},
-			Retries: 1,
-		},
-		TaskRunName: "failedtask",
-		TaskRun:     makeFailed(trs[0]),
-		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
-		},
-	}
-	failedRunPTWithRetries := ResolvedPipelineTask{
-		PipelineTask: &v1beta1.PipelineTask{
-			Name:    "failedrunwithretries",
-			TaskRef: &v1beta1.TaskRef{Name: "task"},
-			Retries: 1,
-		},
-		RunObjectName: "failedrunwithretries",
-		RunObject:     failedRun,
-		CustomTask:    true,
-	}
-	for _, tc := range []struct {
-		name       string
-		state      PipelineRunState
-		candidates sets.String
-		want       []*ResolvedPipelineTask
-	}{{
-		name:       "Failed Custom Task with Retries",
-		state:      PipelineRunState{&failedRunPTWithRetries},
-		candidates: sets.String{}.Insert(failedCustomRunPT.RunObjectName).Insert(failedRunPTWithRetries.RunObjectName),
-		want:       []*ResolvedPipelineTask{&failedRunPTWithRetries},
-	}, {
-		name:       "Failed Custom Task and TaskRuns with Retries",
-		state:      PipelineRunState{&failedRunPTWithRetries},
-		candidates: sets.String{}.Insert(failedRunPTWithRetries.RunObjectName).Insert(failedTaskRunPTWithRetries.TaskRunName),
-		want:       []*ResolvedPipelineTask{&failedRunPTWithRetries},
-	}} {
-		t.Run(tc.name, func(t *testing.T) {
-			queue := tc.state.getRetriableRuns(tc.candidates)
-			if d := cmp.Diff(tc.want, queue); d != "" {
-				t.Errorf("Didn't get expected execution queue: %s", diff.PrintWantGot(d))
-			}
-		})
 	}
 }

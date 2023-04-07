@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	runv1beta1 "github.com/tektoncd/pipeline/pkg/apis/run/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,9 +44,9 @@ func GetTaskRunStatusForPipelineTask(ctx context.Context, client versioned.Inter
 	return &tr.Status, nil
 }
 
-// GetRunStatusForPipelineTask takes a child reference and returns the actual CustomRunStatus for the
+// GetCustomRunStatusForPipelineTask takes a child reference and returns the actual CustomRunStatus for the
 // PipelineTask. It returns an error if the child reference's kind isn't CustomRun.
-func GetRunStatusForPipelineTask(ctx context.Context, client versioned.Interface, ns string, childRef v1beta1.ChildStatusReference) (*v1beta1.CustomRunStatus, error) {
+func GetCustomRunStatusForPipelineTask(ctx context.Context, client versioned.Interface, ns string, childRef v1beta1.ChildStatusReference) (*v1beta1.CustomRunStatus, error) {
 	var runStatus *v1beta1.CustomRunStatus
 
 	switch childRef.Kind {
@@ -60,18 +59,8 @@ func GetRunStatusForPipelineTask(ctx context.Context, client versioned.Interface
 			return nil, nil
 		}
 		runStatus = &r.Status
-	case "Run":
-		r, err := client.TektonV1alpha1().Runs(ns).Get(ctx, childRef.Name, metav1.GetOptions{})
-		if err != nil && !errors.IsNotFound(err) {
-			return nil, err
-		}
-		if r == nil {
-			return nil, nil
-		}
-		asCustomRunStatus := runv1beta1.FromRunStatus(r.Status)
-		runStatus = &asCustomRunStatus
 	default:
-		return nil, fmt.Errorf("could not fetch status for PipelineTask %s: should have kind Run or CustomRun, but is %s", childRef.PipelineTaskName, childRef.Kind)
+		return nil, fmt.Errorf("could not fetch status for PipelineTask %s: should have kind CustomRun, but is %s", childRef.PipelineTaskName, childRef.Kind)
 	}
 
 	return runStatus, nil
@@ -123,21 +112,6 @@ func GetPipelineTaskStatuses(ctx context.Context, client versioned.Interface, ns
 
 			if r != nil {
 				runStatuses[cr.Name].Status = &r.Status
-			}
-		case "Run":
-			r, err := client.TektonV1alpha1().Runs(ns).Get(ctx, cr.Name, metav1.GetOptions{})
-			if err != nil && !errors.IsNotFound(err) {
-				return nil, nil, err
-			}
-
-			runStatuses[cr.Name] = &v1beta1.PipelineRunRunStatus{
-				PipelineTaskName: cr.PipelineTaskName,
-				WhenExpressions:  cr.WhenExpressions,
-			}
-
-			if r != nil {
-				asCustomRunStatus := runv1beta1.FromRunStatus(r.Status)
-				runStatuses[cr.Name].Status = &asCustomRunStatus
 			}
 		default:
 			// Don't do anything for unknown types.

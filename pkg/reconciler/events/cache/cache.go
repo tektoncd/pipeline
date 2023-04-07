@@ -23,13 +23,11 @@ import (
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	lru "github.com/hashicorp/golang-lru"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
 // Struct to unmarshal the event data
 type eventData struct {
-	Run       *v1alpha1.Run      `json:"run,omitempty"`
 	CustomRun *v1beta1.CustomRun `json:"customRun,omitempty"`
 }
 
@@ -59,18 +57,12 @@ func EventKey(event *cloudevents.Event) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if data.Run == nil && data.CustomRun == nil {
-		return "", fmt.Errorf("Invalid Run data in %v", event)
+	if data.CustomRun == nil {
+		return "", fmt.Errorf("Invalid CustomRun data in %v", event)
 	}
-	if data.Run != nil {
-		resourceName = data.Run.Name
-		resourceNamespace = data.Run.Namespace
-		resourceKind = "run"
-	} else {
-		resourceName = data.CustomRun.Name
-		resourceNamespace = data.CustomRun.Namespace
-		resourceKind = "customrun"
-	}
+	resourceName = data.CustomRun.Name
+	resourceNamespace = data.CustomRun.Namespace
+	resourceKind = "customrun"
 	eventType := event.Type()
 	return fmt.Sprintf("%s/%s/%s/%s", eventType, resourceKind, resourceNamespace, resourceName), nil
 }

@@ -31,7 +31,6 @@ import (
 	informersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	informersv1beta1 "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1beta1"
 	fakepipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client/fake"
-	fakeruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/run/fake"
 	fakeverificationpolicyinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/verificationpolicy/fake"
 	fakeclustertaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/clustertask/fake"
 	fakecustomruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/customrun/fake"
@@ -72,7 +71,6 @@ type Data struct {
 	TaskRuns                []*v1beta1.TaskRun
 	Tasks                   []*v1beta1.Task
 	ClusterTasks            []*v1beta1.ClusterTask
-	Runs                    []*v1alpha1.Run
 	CustomRuns              []*v1beta1.CustomRun
 	Pods                    []*corev1.Pod
 	Namespaces              []*corev1.Namespace
@@ -182,7 +180,6 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		PipelineRun:        fakepipelineruninformer.Get(ctx),
 		Pipeline:           fakepipelineinformer.Get(ctx),
 		TaskRun:            faketaskruninformer.Get(ctx),
-		Run:                fakeruninformer.Get(ctx),
 		CustomRun:          fakecustomruninformer.Get(ctx),
 		Task:               faketaskinformer.Get(ctx),
 		ClusterTask:        fakeclustertaskinformer.Get(ctx),
@@ -229,13 +226,6 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 	for _, ct := range d.ClusterTasks {
 		ct := ct.DeepCopy() // Avoid assumptions that the informer's copy is modified.
 		if _, err := c.Pipeline.TektonV1beta1().ClusterTasks().Create(ctx, ct, metav1.CreateOptions{}); err != nil {
-			t.Fatal(err)
-		}
-	}
-	c.Pipeline.PrependReactor("*", "runs", AddToInformer(t, i.Run.Informer().GetIndexer()))
-	for _, run := range d.Runs {
-		run := run.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if _, err := c.Pipeline.TektonV1alpha1().Runs(run.Namespace).Create(ctx, run, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}

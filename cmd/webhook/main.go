@@ -51,7 +51,6 @@ import (
 
 var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	// v1alpha1
-	v1alpha1.SchemeGroupVersion.WithKind("Run"):                &v1alpha1.Run{},
 	v1alpha1.SchemeGroupVersion.WithKind("VerificationPolicy"): &v1alpha1.VerificationPolicy{},
 	// v1beta1
 	v1beta1.SchemeGroupVersion.WithKind("Pipeline"):    &v1beta1.Pipeline{},

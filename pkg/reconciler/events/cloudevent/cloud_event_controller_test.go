@@ -22,7 +22,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
@@ -87,14 +86,6 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 		},
 		wantCEvents: []string{},
 		wantEvents:  []string{"Warning Cloud Event Failure"},
-	}, {
-		name: "test-send-cloud-event-run",
-		clientBehaviour: cloudevent.FakeClientBehaviour{
-			SendSuccessfully: true,
-		},
-		object:      &v1alpha1.Run{},
-		wantCEvents: []string{"Context Attributes,"},
-		wantEvents:  []string{},
 	}, {
 		name: "test-send-cloud-event-customrun",
 		clientBehaviour: cloudevent.FakeClientBehaviour{
@@ -168,11 +159,11 @@ func TestSendCloudEventWithRetriesNoClient(t *testing.T) {
 }
 
 func TestEmitCloudEvents(t *testing.T) {
-	object := &v1alpha1.Run{
+	object := &v1beta1.CustomRun{
 		ObjectMeta: metav1.ObjectMeta{
-			SelfLink: "/run/test1",
+			SelfLink: "/customrun/test1",
 		},
-		Status: v1alpha1.RunStatus{},
+		Status: v1beta1.CustomRunStatus{},
 	}
 	testcases := []struct {
 		name            string
@@ -193,7 +184,7 @@ func TestEmitCloudEvents(t *testing.T) {
 		name:            "with sink",
 		data:            map[string]string{"default-cloud-events-sink": "http://mysink"},
 		wantEvents:      []string{},
-		wantCloudEvents: []string{`(?s)dev.tekton.event.run.started.v1.*test1`},
+		wantCloudEvents: []string{`(?s)dev.tekton.event.customrun.started.v1.*test1`},
 	}}
 
 	for _, tc := range testcases {
