@@ -19,7 +19,6 @@ package v1alpha1
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -42,182 +41,154 @@ func TestResolutionRequestConversionBadType(t *testing.T) {
 	}
 }
 
-func TestResolutionRequestConvertTo(t *testing.T) {
-	versions := []apis.Convertible{&v1beta1.ResolutionRequest{}}
-
+func TestResolutionRequestConvertRoundTrip(t *testing.T) {
 	testCases := []struct {
 		name string
 		in   *ResolutionRequest
 		out  apis.Convertible
-	}{
-		{
-			name: "no params",
-			in: &ResolutionRequest{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo",
-					Namespace: "bar",
-				},
-				Spec: ResolutionRequestSpec{
-					Parameters: nil,
-				},
+	}{{
+		name: "no params",
+		in: &ResolutionRequest{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
 			},
-			out: &v1beta1.ResolutionRequest{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo",
-					Namespace: "bar",
-				},
-				Spec: v1beta1.ResolutionRequestSpec{
-					Params: nil,
-				},
+			Spec: ResolutionRequestSpec{
+				Parameters: nil,
 			},
-		}, {
-			name: "with params",
-			in: &ResolutionRequest{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo",
-					Namespace: "bar",
-				},
-				Spec: ResolutionRequestSpec{
-					Parameters: map[string]string{
-						"some-param": "some-value",
-					},
-				},
+		},
+	}, {
+		name: "with params",
+		in: &ResolutionRequest{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
 			},
-			out: &v1beta1.ResolutionRequest{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo",
-					Namespace: "bar",
-				},
-				Spec: v1beta1.ResolutionRequestSpec{
-					Params: []pipelinev1beta1.Param{{
-						Name:  "some-param",
-						Value: *pipelinev1beta1.NewStructuredValues("some-value"),
-					}},
+			Spec: ResolutionRequestSpec{
+				Parameters: map[string]string{
+					"some-param": "some-value",
 				},
 			},
 		},
-	}
+	}, {
+		name: "with status refsource",
+		in: &ResolutionRequest{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: ResolutionRequestSpec{
+				Parameters: map[string]string{
+					"some-param": "some-value",
+				},
+			},
+			Status: ResolutionRequestStatus{
+				ResolutionRequestStatusFields: ResolutionRequestStatusFields{
+					Data: "foobar",
+					RefSource: &pipelinev1beta1.RefSource{
+						URI:        "abcd",
+						Digest:     map[string]string{"123": "456"},
+						EntryPoint: "baz",
+					},
+				},
+			},
+		},
+	}, {
+		name: "with status, no refsource",
+		in: &ResolutionRequest{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: ResolutionRequestSpec{
+				Parameters: map[string]string{
+					"some-param": "some-value",
+				},
+			},
+			Status: ResolutionRequestStatus{
+				ResolutionRequestStatusFields: ResolutionRequestStatusFields{
+					Data: "foobar",
+				},
+			},
+		},
+	}}
 
 	for _, tc := range testCases {
-		for _, version := range versions {
-			t.Run(tc.name, func(t *testing.T) {
-				got := version
-				if err := tc.in.ConvertTo(context.Background(), got); err != nil {
-					t.Fatalf("ConvertTo() = %v", err)
-				}
-				t.Logf("ConvertTo() = %#v", got)
-				if d := cmp.Diff(tc.out, got); d != "" {
-					t.Errorf("converted ResolutionRequest did not match expected: %s", diff.PrintWantGot(d))
-				}
-			})
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			got := &v1beta1.ResolutionRequest{}
+			if err := tc.in.ConvertTo(context.Background(), got); err != nil {
+				t.Fatalf("ConvertTo() = %v", err)
+			}
+
+			t.Logf("ConvertTo() = %#v", got)
+
+			roundTrip := &ResolutionRequest{}
+			if err := roundTrip.ConvertFrom(context.Background(), got); err != nil {
+				t.Errorf("ConvertFrom() = %v", err)
+			}
+
+			if d := cmp.Diff(tc.in, roundTrip); d != "" {
+				t.Errorf("converted ResolutionRequest did not match expected: %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 
-func TestResolutionRequestConvertFrom(t *testing.T) {
-	versions := []apis.Convertible{&ResolutionRequest{}}
-
+func TestResolutionRequestConvertFromDeprecated(t *testing.T) {
 	testCases := []struct {
-		name        string
-		in          apis.Convertible
-		out         *ResolutionRequest
-		expectedErr error
-	}{
-		{
-			name: "no params",
-			in: &v1beta1.ResolutionRequest{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo",
-					Namespace: "bar",
-				},
-				Spec: v1beta1.ResolutionRequestSpec{
-					Params: nil,
-				},
+		name string
+		in   *v1beta1.ResolutionRequest
+		want apis.Convertible
+	}{{
+		name: "with status.source",
+		in: &v1beta1.ResolutionRequest{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
 			},
-			out: &ResolutionRequest{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo",
-					Namespace: "bar",
-				},
-				Spec: ResolutionRequestSpec{
-					Parameters: nil,
-				},
+			Spec: v1beta1.ResolutionRequestSpec{
+				Params: nil,
 			},
-		}, {
-			name: "with only string params",
-			in: &v1beta1.ResolutionRequest{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo",
-					Namespace: "bar",
-				},
-				Spec: v1beta1.ResolutionRequestSpec{
-					Params: []pipelinev1beta1.Param{{
-						Name:  "some-param",
-						Value: *pipelinev1beta1.NewStructuredValues("some-value"),
-					}},
-				},
-			},
-			out: &ResolutionRequest{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo",
-					Namespace: "bar",
-				},
-				Spec: ResolutionRequestSpec{
-					Parameters: map[string]string{
-						"some-param": "some-value",
+			Status: v1beta1.ResolutionRequestStatus{
+				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
+					Source: &pipelinev1beta1.ConfigSource{
+						URI:        "abcd",
+						Digest:     map[string]string{"123": "456"},
+						EntryPoint: "baz",
 					},
 				},
 			},
-		}, {
-			name: "with non-string params",
-			in: &v1beta1.ResolutionRequest{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo",
-					Namespace: "bar",
-				},
-				Spec: v1beta1.ResolutionRequestSpec{
-					Params: []pipelinev1beta1.Param{
-						{
-							Name:  "array-val",
-							Value: *pipelinev1beta1.NewStructuredValues("one", "two"),
-						}, {
-							Name:  "string-val",
-							Value: *pipelinev1beta1.NewStructuredValues("a-string"),
-						}, {
-							Name: "object-val",
-							Value: *pipelinev1beta1.NewObject(map[string]string{
-								"key-one": "value-one",
-								"key-two": "value-two",
-							}),
-						},
-					},
-				},
-			},
-			out:         nil,
-			expectedErr: errors.New("cannot convert v1beta1 to v1alpha, non-string type parameter(s) found: array-val, object-val"),
 		},
-	}
+		want: &ResolutionRequest{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: ResolutionRequestSpec{
+				Parameters: nil,
+			},
+			Status: ResolutionRequestStatus{
+				ResolutionRequestStatusFields: ResolutionRequestStatusFields{
+					RefSource: &pipelinev1beta1.RefSource{
+						URI:        "abcd",
+						Digest:     map[string]string{"123": "456"},
+						EntryPoint: "baz",
+					},
+				},
+			},
+		},
+	}}
 
 	for _, tc := range testCases {
-		for _, version := range versions {
-			t.Run(tc.name, func(t *testing.T) {
-				got := version
-				err := got.ConvertFrom(context.Background(), tc.in)
-				if tc.expectedErr != nil {
-					if err == nil {
-						t.Fatalf("expected error '%s', but did not get an error", tc.expectedErr.Error())
-					} else if d := cmp.Diff(tc.expectedErr.Error(), err.Error()); d != "" {
-						t.Fatalf("error did not meet expected: %s", diff.PrintWantGot(d))
-					}
-					return
-				} else if err != nil {
-					t.Fatalf("ConvertFrom() = %v", err)
-				}
-				t.Logf("ConvertFrom() = %#v", got)
-				if d := cmp.Diff(tc.out, got); d != "" {
-					t.Errorf("converted ResolutionRequest did not match expected: %s", diff.PrintWantGot(d))
-				}
-			})
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			got := &ResolutionRequest{}
+			if err := got.ConvertFrom(context.Background(), tc.in); err != nil {
+				t.Errorf("ConvertFrom() = %v", err)
+			}
+
+			if d := cmp.Diff(tc.want, got); d != "" {
+				t.Errorf("converted ResolutionRequest did not match expected: %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
