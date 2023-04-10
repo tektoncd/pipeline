@@ -352,6 +352,14 @@ to better fit specific usecases.
 
 Out-of-the-box, Tekton Pipelines Controller is configured for relatively small-scale deployments but there have several options for configuring Pipelines' performance are available. See the [Performance Configuration](tekton-controller-performance-configuration.md) document which describes how to change the default ThreadsPerController, QPS and Burst settings to meet your requirements.
 
+## Running TaskRuns and PipelineRuns with restricted pod security standards
+
+To allow TaskRuns and PipelineRuns to run in namespaces with [restricted pod security standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/),
+set the "set-security-context" feature flag to "true" in the [feature-flags configMap](#customizing-the-pipelines-controller-behavior). This configuration option applies a [SecurityContext](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/)
+to any containers injected into TaskRuns by the Pipelines controller. This SecurityContext may not be supported in all Kubernetes implementations (for example, OpenShift).
+
+**Note**: running TaskRuns and PipelineRuns in the "tekton-pipelines" namespace is discouraged.
+
 ## Platform Support
 
 The Tekton project provides support for running on x86 Linux Kubernetes nodes.

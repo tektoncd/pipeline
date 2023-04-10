@@ -76,6 +76,8 @@ const (
 	DefaultResultExtractionMethod = ResultExtractionMethodTerminationMessage
 	// DefaultMaxResultSize is the default value in bytes for the size of a result
 	DefaultMaxResultSize = 4096
+	// DefaultSetSecurityContext is the default value for "set-security-context"
+	DefaultSetSecurityContext = false
 
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
@@ -90,6 +92,7 @@ const (
 	enableProvenanceInStatus            = "enable-provenance-in-status"
 	resultExtractionMethod              = "results-from"
 	maxResultSize                       = "max-result-size"
+	setSecurityContextKey               = "set-security-context"
 )
 
 // DefaultFeatureFlags holds all the default configurations for the feature flags configmap.
@@ -119,6 +122,7 @@ type FeatureFlags struct {
 	EnableProvenanceInStatus  bool
 	ResultExtractionMethod    string
 	MaxResultSize             int
+	SetSecurityContext        bool
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -180,6 +184,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setEnforceNonFalsifiability(cfgMap, tc.EnableAPIFields, &tc.EnforceNonfalsifiability); err != nil {
+		return nil, err
+	}
+	if err := setFeature(setSecurityContextKey, DefaultSetSecurityContext, &tc.SetSecurityContext); err != nil {
 		return nil, err
 	}
 

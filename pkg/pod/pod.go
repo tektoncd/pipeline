@@ -57,6 +57,9 @@ const (
 
 	// SpiffeCsiDriver is the CSI storage plugin needed for injection of SPIFFE workload api.
 	SpiffeCsiDriver = "csi.spiffe.io"
+
+	// osSelectorLabel is the label Kubernetes uses for OS-specific workloads (https://kubernetes.io/docs/reference/labels-annotations-taints/#kubernetes-io-os)
+	osSelectorLabel = "kubernetes.io/os"
 )
 
 // These are effectively const, but Go doesn't have such an annotation.
@@ -99,6 +102,27 @@ var (
 
 	// MaxActiveDeadlineSeconds is a maximum permitted value to be used for a task with no timeout
 	MaxActiveDeadlineSeconds = int64(math.MaxInt32)
+
+	// Used in security context of pod init containers
+	allowPrivilegeEscalation = false
+	runAsNonRoot             = true
+
+	// The following security contexts allow init containers to run in namespaces
+	// with "restricted" pod security admission
+	// See https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted
+	linuxSecurityContext = &corev1.SecurityContext{
+		AllowPrivilegeEscalation: &allowPrivilegeEscalation,
+		Capabilities: &corev1.Capabilities{
+			Drop: []corev1.Capability{"ALL"},
+		},
+		RunAsNonRoot: &runAsNonRoot,
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
+	}
+	windowsSecurityContext = &corev1.SecurityContext{
+		RunAsNonRoot: &runAsNonRoot,
+	}
 )
 
 // Builder exposes options to configure Pod construction from TaskSpecs/Runs.
@@ -127,6 +151,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	defaultForbiddenEnv := config.FromContextOrDefaults(ctx).Defaults.DefaultForbiddenEnv
 	alphaAPIEnabled := featureFlags.EnableAPIFields == config.AlphaAPIFields
 	sidecarLogsResultsEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.ResultExtractionMethod == config.ResultExtractionMethodSidecarLogs
+	setSecurityContext := config.FromContextOrDefaults(ctx).FeatureFlags.SetSecurityContext
 
 	// Add our implicit volumes first, so they can be overridden by the user if they prefer.
 	volumes = append(volumes, implicitVolumes...)
@@ -161,9 +186,10 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	if alphaAPIEnabled && taskRun.Spec.ComputeResources != nil {
 		tasklevel.ApplyTaskLevelComputeResources(steps, taskRun.Spec.ComputeResources)
 	}
+	windows := usesWindows(taskRun)
 	if sidecarLogsResultsEnabled && taskSpec.Results != nil {
 		// create a results sidecar
-		resultsSidecar := createResultsSidecar(taskSpec, b.Images.SidecarLogResultsImage)
+		resultsSidecar := createResultsSidecar(taskSpec, b.Images.SidecarLogResultsImage, setSecurityContext, windows)
 		taskSpec.Sidecars = append(taskSpec.Sidecars, resultsSidecar)
 		commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-result_from", config.ResultExtractionMethodSidecarLogs)
 	}
@@ -173,15 +199,15 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 
 	initContainers = []corev1.Container{
-		entrypointInitContainer(b.Images.EntrypointImage, steps),
+		entrypointInitContainer(b.Images.EntrypointImage, steps, setSecurityContext, windows),
 	}
 
 	// Convert any steps with Script to command+args.
 	// If any are found, append an init container to initialize scripts.
 	if alphaAPIEnabled {
-		scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, b.Images.ShellImageWin, steps, sidecars, taskRun.Spec.Debug)
+		scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, b.Images.ShellImageWin, steps, sidecars, taskRun.Spec.Debug, setSecurityContext)
 	} else {
-		scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, "", steps, sidecars, nil)
+		scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, "", steps, sidecars, nil, setSecurityContext)
 	}
 
 	if scriptsInit != nil {
@@ -192,7 +218,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 		volumes = append(volumes, debugScriptsVolume, debugInfoVolume)
 	}
 	// Initialize any workingDirs under /workspace.
-	if workingDirInit := workingDirInit(b.Images.WorkingDirInitImage, stepContainers); workingDirInit != nil {
+	if workingDirInit := workingDirInit(b.Images.WorkingDirInitImage, stepContainers, setSecurityContext, windows); workingDirInit != nil {
 		initContainers = append(initContainers, *workingDirInit)
 	}
 
@@ -497,9 +523,11 @@ func runVolume(i int) corev1.Volume {
 	}
 }
 
-// entrypointInitContainer generates a few init containers based of a set of command (in images) and volumes to run
+// entrypointInitContainer generates a few init containers based of a set of command (in images), volumes to run, and whether the pod will run on a windows node
 // This should effectively merge multiple command and volumes together.
-func entrypointInitContainer(image string, steps []v1beta1.Step) corev1.Container {
+// If setSecurityContext is true, the init container will include a security context
+// allowing it to run in namespaces with restriced pod security admission.
+func entrypointInitContainer(image string, steps []v1beta1.Step, setSecurityContext, windows bool) corev1.Container {
 	// Invoke the entrypoint binary in "cp mode" to copy itself
 	// into the correct location for later steps and initialize steps folder
 	command := []string{"/ko-app/entrypoint", "init", "/ko-app/entrypoint", entrypointBinary}
@@ -507,6 +535,10 @@ func entrypointInitContainer(image string, steps []v1beta1.Step) corev1.Containe
 		command = append(command, StepName(s.Name, i))
 	}
 	volumeMounts := []corev1.VolumeMount{binMount, internalStepsMount}
+	securityContext := linuxSecurityContext
+	if windows {
+		securityContext = windowsSecurityContext
+	}
 
 	// Rewrite steps with entrypoint binary. Append the entrypoint init
 	// container to place the entrypoint binary. Also add timeout flags
@@ -521,20 +553,45 @@ func entrypointInitContainer(image string, steps []v1beta1.Step) corev1.Containe
 		Command:      command,
 		VolumeMounts: volumeMounts,
 	}
+	if setSecurityContext {
+		prepareInitContainer.SecurityContext = securityContext
+	}
 	return prepareInitContainer
 }
 
-// createResultsSidecar creates a sidecar that will run the sidecarlogresults binary.
-func createResultsSidecar(taskSpec v1beta1.TaskSpec, image string) v1beta1.Sidecar {
+// createResultsSidecar creates a sidecar that will run the sidecarlogresults binary,
+// based on the spec of the Task, the image that should run in the results sidecar,
+// whether it will run on a windows node, and whether the sidecar should include a security context
+// that will allow it to run in namespaces with "restricted" pod security admission.
+func createResultsSidecar(taskSpec v1beta1.TaskSpec, image string, setSecurityContext, windows bool) v1beta1.Sidecar {
 	names := make([]string, 0, len(taskSpec.Results))
 	for _, r := range taskSpec.Results {
 		names = append(names, r.Name)
 	}
+	securityContext := linuxSecurityContext
+	if windows {
+		securityContext = windowsSecurityContext
+	}
 	resultsStr := strings.Join(names, ",")
 	command := []string{"/ko-app/sidecarlogresults", "-results-dir", pipeline.DefaultResultPath, "-result-names", resultsStr}
-	return v1beta1.Sidecar{
+	sidecar := v1beta1.Sidecar{
 		Name:    pipeline.ReservedResultsSidecarName,
 		Image:   image,
 		Command: command,
 	}
+	if setSecurityContext {
+		sidecar.SecurityContext = securityContext
+	}
+	return sidecar
+}
+
+// usesWindows returns true if the TaskRun will run on a windows node,
+// based on its node selector.
+// See https://kubernetes.io/docs/concepts/windows/user-guide/ for more info.
+func usesWindows(tr *v1beta1.TaskRun) bool {
+	if tr.Spec.PodTemplate == nil || tr.Spec.PodTemplate.NodeSelector == nil {
+		return false
+	}
+	osSelector := tr.Spec.PodTemplate.NodeSelector[osSelectorLabel]
+	return osSelector == "windows"
 }
