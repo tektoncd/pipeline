@@ -68,8 +68,16 @@ var (
 	}
 )
 
-// convertScripts converts any steps and sidecars that specify a Script field into a normal Container.
-func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta1.Step, sidecars []v1beta1.Sidecar, debugConfig *v1beta1.TaskRunDebug) (*corev1.Container, []corev1.Container, []corev1.Container) {
+// convertScripts creates an init container that mounts any Scripts specified by
+// the input Steps and Sidecars. It returns the init container, plus two slices of Containers
+// representing the Steps and Sidecars, respectively, that use the scripts from the init container.
+// Other inputs:
+//   - shellImageLinux and shellImageWindows: the images that should be used by the init container,
+//     depending on the OS the Task will run on
+//   - debugConfig: the TaskRun's debug configuration
+//   - setSecurityContext: whether the init container should include a security context that will
+//     allow it to run in a namespace with "restricted" pod security admission
+func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta1.Step, sidecars []v1beta1.Sidecar, debugConfig *v1beta1.TaskRunDebug, setSecurityContext bool) (*corev1.Container, []corev1.Container, []corev1.Container) {
 	// Place scripts is an init container used for creating scripts in the
 	// /tekton/scripts directory which would be later used by the step containers
 	// as a Command
@@ -78,11 +86,13 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta
 	shellImage := shellImageLinux
 	shellCommand := "sh"
 	shellArg := "-c"
+	securityContext := linuxSecurityContext
 	// Set windows variants for Image, Command and Args
 	if requiresWindows {
 		shellImage = shellImageWin
 		shellCommand = "pwsh"
 		shellArg = "-Command"
+		securityContext = windowsSecurityContext
 	}
 
 	placeScriptsInit := corev1.Container{
@@ -91,6 +101,9 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta
 		Command:      []string{shellCommand},
 		Args:         []string{shellArg, ""},
 		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
+	}
+	if setSecurityContext {
+		placeScriptsInit.SecurityContext = securityContext
 	}
 
 	breakpoints := []string{}
