@@ -150,7 +150,6 @@ func newConfigValidationController(name string) func(context.Context, configmap.
 }
 
 func newConversionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-	// nolint: revive
 	var (
 		v1beta1GroupVersion            = v1beta1.SchemeGroupVersion.Version
 		v1GroupVersion                 = v1.SchemeGroupVersion.Version

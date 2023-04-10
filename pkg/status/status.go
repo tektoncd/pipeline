@@ -38,7 +38,7 @@ func GetTaskRunStatusForPipelineTask(ctx context.Context, client versioned.Inter
 		return nil, err
 	}
 	if tr == nil {
-		return nil, nil
+		return nil, nil //nolint:nilnil // would be more ergonomic to return a sentinel error
 	}
 
 	return &tr.Status, nil
@@ -56,7 +56,7 @@ func GetCustomRunStatusForPipelineTask(ctx context.Context, client versioned.Int
 			return nil, err
 		}
 		if r == nil {
-			return nil, nil
+			return nil, nil //nolint:nilnil // would be more ergonomic to return a sentinel error
 		}
 		runStatus = &r.Status
 	default:

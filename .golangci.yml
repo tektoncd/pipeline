@@ -37,7 +37,16 @@ linters:
   - gosec
   - gosimple
   - govet
+  - maintidx
+  - makezero
   - misspell
+  - musttag
+  - nakedret
+  - nilerr
+  - nilnil
+  - noctx
+  - nolintlint
+  - nosprintfhostport
   - thelper
   - typecheck
   - unconvert
@@ -45,12 +54,45 @@ linters:
   - usestdlibvars
   - whitespace
   disable:
+  - cyclop
+  - dupl
+  - exhaustruct
+  - forcetypeassert
+  - funlen
+  - gci
+  - gochecknoglobals
+  - gochecknoinits
+  - gocognit
+  - gocyclo
+  - godot
+  - godox
+  - goerr113
+  - gofumpt
+  - gomnd
+  - gomoddirectives
+  - ireturn
+  - lll
+  - nestif
+  - nlreturn
+  - nonamedreturns
+  - paralleltest
+  - prealloc
+  - predeclared
   - revive
   - staticcheck
-# Enabling presets means that new linters that we automatically adopt new
-# linters that augment a preset. This also opts us in for replacement linters
-# when a linter is deprecated.
-presets:
+  - stylecheck
+  - tagliatelle
+  - testpackage
+  - tparallel
+  - unparam
+  - varnamelen
+  - wastedassign
+  - wrapcheck
+  - wsl
+  # Enabling presets means that new linters that we automatically adopt new
+  # linters that augment a preset. This also opts us in for replacement linters
+  # when a linter is deprecated.
+  presets:
   - bugs
   - comment
   - complexity
@@ -67,41 +109,71 @@ presets:
 output:
   uniq-by-line: false
 issues:
+  # Note: path identifiers are regular expressions, hence the \.go suffixes.
   exclude-rules:
+  - path: main\.go
+    linters:
+    - forbidigo
+  - path: test/build_logs\.go
+    linters:
+    - typecheck
   - path: _test\.go
     linters:
-    - goconst
     - dogsled
     - errcheck
+    - goconst
     - gosec
     - ineffassign
+    - maintidx
+    - typecheck
   - path: test/pipelinerun_test\.go
     linters:
     - unused
-  - path: pkg/apis/config/feature_flags_test.go
+  - path: pkg/apis/config/feature_flags_test\.go
     linters:
     - containedctx
-  - path: pkg/pipelinerunmetrics/injection.go
+  - path: pkg/pipelinerunmetrics/injection\.go
     linters:
     - containedctx
-  - path: pkg/pod/creds_init_test.go
+  - path: pkg/pod/pod\.go
+    linters:
+    - maintidx
+  - path: pkg/pod/creds_init_test\.go
     linters:
     - containedctx
-  - path: pkg/taskrunmetrics/injection.go
+  - path: pkg/reconciler/pipelinerun/pipelinerun\.go
+    linters:
+    - maintidx
+  - path: pkg/taskrunmetrics/injection\.go
     linters:
     - containedctx
-  - path: test/controller.go
+  - path: test/controller\.go
     linters:
     - containedctx
+  - path: internal/sidecarlogresults/sidecarlogresults\.go
+    linters:
+    - musttag
   - path: internal/sidecarlogresults/sidecarlogresults_test\.go
     linters:
     - errchkjson
+  - path: pkg/apis/pipeline/v1.*/param_types\.go
+    linters:
+    - musttag
+  - path: pkg/resolution/resolver/framework/testing/fakecontroller\.go
+    linters:
+    - contextcheck
+  - path: pkg/pipelinerunmetrics/metrics\.go
+    linters:
+    - contextcheck
+  - path: pkg/reconciler/pipelinerun/pipelinerun\.go
+    linters:
+    - contextcheck
   max-issues-per-linter: 0
   max-same-issues: 0
   include:
   # Enable off-by-default rules for revive requiring that all exported elements have a properly formatted comment.
-  - EXC0012
-  - EXC0014
+  - EXC0012 # https://golangci-lint.run/usage/false-positives/#exc0012
+  - EXC0014 # https://golangci-lint.run/usage/false-positives/#exc0014
 run:
   issues-exit-code: 1
   build-tags:
@@ -113,5 +185,5 @@ run:
   - vendor
   - pkg/client
   - pkg/spire/test
-  timeout: 10m
+  timeout: 20m
   modules-download-mode: vendor
