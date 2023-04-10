@@ -113,6 +113,8 @@ const (
 	// ReasonCouldntTimeOut indicates that a PipelineRun was timed out but attempting to update
 	// all of the running TaskRuns as timed out failed.
 	ReasonCouldntTimeOut = "PipelineRunCouldntTimeOut"
+	// ReasonInvalidMatrixParameterTypes indicates a matrix contains invalid parameter types
+	ReasonInvalidMatrixParameterTypes = "ReasonInvalidMatrixParameterTypes"
 	// ReasonInvalidTaskResultReference indicates a task result was declared
 	// but was not initialized by that task
 	ReasonInvalidTaskResultReference = "InvalidTaskResultReference"
@@ -752,6 +754,15 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 		}
 		if rpt == nil || rpt.Skip(pipelineRunFacts).IsSkipped || rpt.IsFinallySkipped(pipelineRunFacts).IsSkipped {
 			continue
+		}
+
+		// Validate parameter types in matrix after apply substitutions from Task Results
+		if rpt.PipelineTask.IsMatrixed() {
+			if err := resources.ValidateParameterTypesInMatrix(pipelineRunFacts.State); err != nil {
+				logger.Errorf("Failed to validate matrix %q with error %v", pr.Name, err)
+				pr.Status.MarkFailed(ReasonInvalidMatrixParameterTypes, err.Error())
+				return controller.NewPermanentError(err)
+			}
 		}
 
 		defer func() {

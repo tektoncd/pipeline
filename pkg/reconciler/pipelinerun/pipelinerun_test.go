@@ -6573,9 +6573,35 @@ spec:
       optional: true
   serviceAccountName: test-sa
 `),
+		parse.MustParseV1beta1PipelineRun(t, `
+metadata:
+  name: pipelinerun-matrix-param-invalid-type
+  namespace: foo
+spec:
+  pipelineSpec:
+   tasks:
+    - name: mytask
+      params:
+       - name: platform
+      taskSpec:
+        steps:
+         - name: echo
+           image: alpine
+           script: |
+             echo "$(params.platform)"
+    - name: b-task
+      taskRef:
+        name: mytask
+      matrix:
+        params:
+          - name: platform
+            value: linux
+`),
 	}
 
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
 	d := test.Data{
+		ConfigMaps:   cms,
 		PipelineRuns: prs,
 		ServiceAccounts: []*corev1.ServiceAccount{{
 			ObjectMeta: metav1.ObjectMeta{Name: prs[0].Spec.ServiceAccountName, Namespace: "foo"},
@@ -6585,30 +6611,38 @@ spec:
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
-	run1, _ := prt.reconcileRun("foo", "pipelinerun-param-invalid-result-variable", nil, true)
-	run2, _ := prt.reconcileRun("foo", "pipelinerun-pipeline-result-invalid-result-variable", nil, true)
-	run3, _ := prt.reconcileRun("foo", "pipelinerun-with-optional-workspace-validation", nil, true)
-
-	cond1 := run1.Status.GetCondition(apis.ConditionSucceeded)
-	cond2 := run2.Status.GetCondition(apis.ConditionSucceeded)
-	cond3 := run3.Status.GetCondition(apis.ConditionSucceeded)
-
-	for _, c := range []*apis.Condition{cond1, cond2, cond3} {
-		if c.Status != corev1.ConditionFalse {
-			t.Errorf("expected Succeeded/False condition but saw: %v", c)
-		}
+	testCases := []struct {
+		name   string
+		reason string
+	}{
+		{
+			name:   "pipelinerun-param-invalid-result-variable",
+			reason: ReasonInvalidTaskResultReference,
+		}, {
+			name:   "pipelinerun-pipeline-result-invalid-result-variable",
+			reason: ReasonInvalidTaskResultReference,
+		}, {
+			name:   "pipelinerun-with-optional-workspace-validation",
+			reason: ReasonRequiredWorkspaceMarkedOptional,
+		}, {
+			name:   "pipelinerun-matrix-param-invalid-type",
+			reason: ReasonInvalidMatrixParameterTypes,
+		},
 	}
-
-	if cond1.Reason != ReasonInvalidTaskResultReference {
-		t.Errorf("expected invalid task reference condition but saw: %v", cond1)
-	}
-
-	if cond2.Reason != ReasonInvalidTaskResultReference {
-		t.Errorf("expected invalid task reference condition but saw: %v", cond2)
-	}
-
-	if cond3.Reason != ReasonRequiredWorkspaceMarkedOptional {
-		t.Errorf("expected optional workspace not supported condition but saw: %v", cond3)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			run, _ := prt.reconcileRun("foo", tc.name, nil, true)
+			if run == nil {
+				t.Fatalf("Could not reconcile run %s", tc.name)
+			}
+			c := run.Status.GetCondition(apis.ConditionSucceeded)
+			if c.Status != corev1.ConditionFalse {
+				t.Errorf("expected Succeeded/False condition but saw: %v", c)
+			}
+			if c.Reason != tc.reason {
+				t.Errorf("want reason %s but got %s", tc.reason, c.Reason)
+			}
+		})
 	}
 }
 
@@ -7962,6 +7996,253 @@ spec:
 			}
 			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, ignoreFinallyStartTime, cmpopts.EquateEmpty()); d != "" {
 				t.Errorf("expected PipelineRun was not created. Diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+func TestReconciler_PipelineTaskMatrixWithArrayReferences(t *testing.T) {
+	names.TestingSeed()
+
+	task := parse.MustParseV1beta1Task(t, `
+metadata:
+  name: mytask
+  namespace: foo
+spec:
+  params:
+    - name: platform
+    - name: browser
+  steps:
+    - name: echo
+      image: alpine
+      script: |
+        echo "$(params.platform) and $(params.browser)"
+`)
+
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
+
+	tests := []struct {
+		name                string
+		memberOf            string
+		p                   *v1beta1.Pipeline
+		tr                  *v1beta1.TaskRun
+		expectedPipelineRun *v1beta1.PipelineRun
+	}{{
+		name: "p-dag",
+		p: parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: foo
+spec:
+  params:
+    - name: platforms
+      type: array
+    - name: browsers
+      type: array
+  tasks:
+    - name: platforms-and-browsers
+      taskRef:
+        name: mytask
+      matrix:
+        params:
+          - name: platform
+            value: $(params.platforms[*])
+          - name: browser
+            value: $(params.browsers[*])
+
+`, "p-dag")),
+		expectedPipelineRun: parse.MustParseV1beta1PipelineRun(t, `
+metadata:
+  name: pr
+  namespace: foo
+  annotations: {}
+  labels:
+    tekton.dev/pipeline: p-dag
+spec:
+  params:
+   - name: platforms
+     value:
+      - linux
+      - mac
+      - windows
+   - name: browsers
+     value:
+      - chrome
+      - safari
+      - firefox
+  serviceAccountName: test-sa
+  pipelineRef:
+    name: p-dag
+status:
+  pipelineSpec:
+    params:
+     - name: platforms
+       type: array
+     - name: browsers
+       type: array
+    tasks:
+      - name: platforms-and-browsers
+        matrix:
+          params:
+            - name: platform
+              value:
+               - linux
+               -  mac
+               -  windows
+            - name: browser
+              value:
+               - chrome
+               - safari
+               - firefox
+        taskRef:
+          name: mytask
+          kind: Task
+  conditions:
+  - type: Succeeded
+    status: "Unknown"
+    reason: "Running"
+    message: "Tasks Completed: 0 (Failed: 0, Cancelled 0), Incomplete: 1, Skipped: 0"
+  childReferences:
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-0
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-1
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-2
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-3
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-4
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-5
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-6
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-7
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-8
+    pipelineTaskName: platforms-and-browsers
+`),
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pr := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: pr
+  namespace: foo
+spec:
+  serviceAccountName: test-sa
+  params:
+  - name: platforms
+    value:
+     - linux
+     - mac
+     - windows
+  - name: browsers
+    value:
+     - chrome
+     - safari
+     - firefox
+  pipelineRef:
+    name: %s
+`, tt.name))
+			d := test.Data{
+				PipelineRuns: []*v1beta1.PipelineRun{pr},
+				Pipelines:    []*v1beta1.Pipeline{tt.p},
+				Tasks:        []*v1beta1.Task{task},
+				ConfigMaps:   cms,
+			}
+			if tt.tr != nil {
+				d.TaskRuns = []*v1beta1.TaskRun{tt.tr}
+			}
+
+			expectedTaskRunsData := []struct {
+				browser  string
+				platform string
+			}{{
+				browser:  "chrome",
+				platform: "linux",
+			}, {
+				browser:  "chrome",
+				platform: "mac",
+			}, {
+				browser:  "chrome",
+				platform: "windows",
+			}, {
+				browser:  "safari",
+				platform: "linux",
+			}, {
+				browser:  "safari",
+				platform: "mac",
+			}, {
+				browser:  "safari",
+				platform: "windows",
+			}, {
+				browser:  "firefox",
+				platform: "linux",
+			}, {
+				browser:  "firefox",
+				platform: "mac",
+			}, {
+				browser:  "firefox",
+				platform: "windows",
+			}}
+
+			expectedTaskRuns := []*v1beta1.TaskRun{}
+			for i, trd := range expectedTaskRunsData {
+				trName := "pr-platforms-and-browsers-" + strconv.Itoa(i)
+				expectedTaskRuns = append(expectedTaskRuns, mustParseTaskRunWithObjectMeta(t,
+					taskRunObjectMeta(trName, "foo", "pr", "p-dag", "platforms-and-browsers", false),
+					fmt.Sprintf(`
+spec:
+  params:
+  - name: browser
+    value: %s
+  - name: platform
+    value: %s
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+    kind: Task
+labels:
+  tekton.dev/memberOf: tasks
+  tekton.dev/pipeline: p-dag
+`, trd.browser, trd.platform)))
+			}
+
+			prt := newPipelineRunTest(t, d)
+			defer prt.Cancel()
+
+			pipelineRun, clients := prt.reconcileRun(pr.Namespace, pr.Name /*wantEvents*/, []string{} /*permanentError*/, false)
+			taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, pr.Namespace, pr.Name)
+			validateTaskRunsCount(t, taskRuns, len(expectedTaskRuns))
+
+			for i, expectedTaskRun := range expectedTaskRuns {
+				trName := expectedTaskRun.Name
+				actual := getTaskRunByName(t, taskRuns, trName)
+				if d := cmp.Diff(expectedTaskRun, actual, ignoreResourceVersion, ignoreTypeMeta); d != "" {
+					t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRuns[i].Name, diff.PrintWantGot(d))
+				}
+			}
+			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, ignoreFinallyStartTime, cmpopts.EquateEmpty()); d != "" {
+				t.Errorf("found PipelineRun does not match expected PipelineRun. Diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}

@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"golang.org/x/exp/maps"
@@ -300,29 +301,17 @@ func (m *Matrix) validateCombinationsCount(ctx context.Context) (errs *apis.Fiel
 	return errs
 }
 
-// validateParams validates the type of Parameter for Matrix.Params and Matrix.Include.Params
-// Matrix.Params must be of type array. Matrix.Include.Params must be of type string.
-// validateParams also validates Matrix.Params for a unique list of params
+// validateUniqueParams validates Matrix.Params for a unique list of params
 // and a unique list of params in each Matrix.Include.Params specification
-func (m *Matrix) validateParams() (errs *apis.FieldError) {
+func (m *Matrix) validateUniqueParams() (errs *apis.FieldError) {
 	if m != nil {
 		if m.HasInclude() {
 			for i, include := range m.Include {
 				errs = errs.Also(include.Params.validateDuplicateParameters().ViaField(fmt.Sprintf("matrix.include[%d].params", i)))
-				for _, param := range include.Params {
-					if param.Value.Type != ParamTypeString {
-						errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("parameters of type string only are allowed, but got param type %s", string(param.Value.Type)), "").ViaFieldKey("matrix.include.params", param.Name))
-					}
-				}
 			}
 		}
 		if m.HasParams() {
 			errs = errs.Also(m.Params.validateDuplicateParameters().ViaField("matrix.params"))
-			for _, param := range m.Params {
-				if param.Value.Type != ParamTypeArray {
-					errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("parameters of type array only are allowed, but got param type %s", string(param.Value.Type)), "").ViaFieldKey("matrix.params", param.Name))
-				}
-			}
 		}
 	}
 	return errs
@@ -356,6 +345,24 @@ func (m *Matrix) validateParameterInOneOfMatrixOrParams(params Params) (errs *ap
 	for _, param := range params {
 		if matrixParamNames.Has(param.Name) {
 			errs = errs.Also(apis.ErrMultipleOneOf("matrix["+param.Name+"]", "params["+param.Name+"]"))
+		}
+	}
+	return errs
+}
+
+// validateNoWholeArrayResults() is used to ensure a matrix parameter does not contain result references
+// to entire arrays. This is temporary until whole array replacements for matrix paraemeters are supported.
+// See issue #6056 for more details
+func (m *Matrix) validateNoWholeArrayResults() (errs *apis.FieldError) {
+	if m.HasParams() {
+		for i, param := range m.Params {
+			val := param.Value.StringVal
+			expressions, ok := GetVarSubstitutionExpressionsForParam(param)
+			if ok {
+				if LooksLikeContainsResultRefs(expressions) && strings.Contains(val, "[*]") {
+					errs = errs.Also(apis.ErrGeneric("matrix parameters cannot contain whole array result references", "").ViaFieldIndex("matrix.params", i))
+				}
+			}
 		}
 	}
 	return errs
