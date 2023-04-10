@@ -69,6 +69,19 @@ func TestPipeline_Validate_Success(t *testing.T) {
 				}},
 			},
 		},
+	}, {
+		name: "valid taskSpec metadata",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{Name: "foo",
+					TaskSpec: &EmbeddedTask{
+						Metadata: getValidMetadata(),
+						TaskSpec: getTaskSpec(),
+					},
+				}},
+			},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -684,6 +697,21 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: "taskSpec.kind cannot be specified when using taskSpec.steps",
 			Paths:   []string{"tasks[0].taskSpec.kind"},
+		},
+	}, {
+		name: "invalid taskSpec metadata",
+		tasks: []PipelineTask{{
+			Name: "foo",
+			TaskSpec: &EmbeddedTask{
+				Metadata: getInValidMetadata(),
+				TaskSpec: getTaskSpec(),
+			},
+		}},
+		finalTasks: nil,
+		expectedError: apis.FieldError{
+			Message: `invalid value: name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an ` +
+				`alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`,
+			Paths: []string{"tasks[0].taskSpec.metadata.labels._test"},
 		},
 	}}
 	for _, tt := range tests {
@@ -3335,6 +3363,25 @@ func getTaskSpec() TaskSpec {
 		Steps: []Step{{
 			Name: "foo", Image: "bar",
 		}},
+	}
+}
+
+func getValidMetadata() PipelineTaskMetadata {
+	return PipelineTaskMetadata{
+		Labels: map[string]string{
+			"example.io/test": "aValue",
+		},
+		Annotations: map[string]string{
+			"example.io/test": "aValue",
+		},
+	}
+}
+
+func getInValidMetadata() PipelineTaskMetadata {
+	return PipelineTaskMetadata{
+		Labels: map[string]string{
+			"_test": "test",
+		},
 	}
 }
 

@@ -19,12 +19,14 @@ package v1
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/version"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
+	api_validation "k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -260,6 +262,10 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 	// Validate TaskSpec if it's present
 	if pt.TaskSpec != nil {
 		errs = errs.Also(pt.TaskSpec.Validate(ctx).ViaField("taskSpec"))
+
+		if !reflect.DeepEqual(pt.TaskSpec.Metadata, PipelineTaskMetadata{}) {
+			errs = errs.Also(pt.validateTaskSpecMetaData().ViaField("taskSpec"))
+		}
 	}
 	if pt.TaskRef != nil {
 		if pt.TaskRef.Name != "" {
@@ -280,6 +286,33 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 			}
 		}
 	}
+	return errs
+}
+
+// validateTaskSpecMetaData validates a pipeline task or a final task for taskSpec.metadata
+// For details, refer to https://github.com/kubernetes/apimachinery/pkg/api/validation/objectmeta.go#L44 and
+// https://github.com/kubernetes/apimachinery/blob/master/pkg/apis/meta/v1/validation/validation.go#L105
+func (pt *PipelineTask) validateTaskSpecMetaData() (errs *apis.FieldError) {
+	for k, v := range pt.TaskSpec.Metadata.Labels {
+		if errSlice := validation.IsQualifiedName(k); len(errSlice) != 0 {
+			errs = errs.Also(apis.ErrInvalidValue(strings.Join(errSlice, ","), fmt.Sprintf("metadata.labels.%s", k)))
+		}
+
+		if errSlice := validation.IsValidLabelValue(v); len(errSlice) != 0 {
+			errs = errs.Also(apis.ErrInvalidValue(strings.Join(errSlice, ","), fmt.Sprintf("metadata.labels.%s.value.%s", k, v)))
+		}
+	}
+
+	for k := range pt.TaskSpec.Metadata.Annotations {
+		if errSlice := validation.IsQualifiedName(strings.ToLower(k)); len(errSlice) != 0 {
+			errs = errs.Also(apis.ErrInvalidValue(strings.Join(errSlice, ","), fmt.Sprintf("metadata.annotations.%s", k)))
+		}
+	}
+
+	if err := api_validation.ValidateAnnotationsSize(pt.TaskSpec.Metadata.Annotations); err != nil {
+		errs = errs.Also(apis.ErrInvalidValue(err.Error(), "metadata.annotations"))
+	}
+
 	return errs
 }
 
