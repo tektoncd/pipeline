@@ -1,0 +1,69 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: platform-browsers
+  annotations:
+    description: |
+      A task that does something cool with platforms and browsers
+spec:
+  params:
+    - name: platform
+      default: ""
+    - name: browser
+      default: ""
+  steps:
+    - name: echo
+      image: alpine
+      script: |
+        echo "$(params.platform) and $(params.browser)"
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: matrixed-pipeline
+spec:
+  params:
+    - name: platforms
+      type: array
+    - name: browsers
+      type: array
+  tasks:
+    - name: platforms-and-browsers
+      matrix:
+        params:
+          - name: platform
+            value: $(params.platforms[*])
+          - name: browser
+            value: $(params.browsers[*])
+      taskRef:
+        name: platform-browsers
+  finally:
+    - name: platforms-and-browsers-in-finally
+      matrix:
+        params:
+          - name: platform
+            value: $(params.platforms[*])
+          - name: browser
+            value: $(params.browsers[*])
+      taskRef:
+        name: platform-browsers
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: matrixed-pr-
+spec:
+  serviceAccountName: "default"
+  params:
+    - name: platforms
+      value:
+        - linux
+        - mac
+        - windows
+    - name: browsers
+      value:
+        - chrome
+        - safari
+        - firefox
+  pipelineRef:
+    name: matrixed-pipeline
