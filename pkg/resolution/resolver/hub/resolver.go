@@ -132,7 +132,7 @@ func (r *Resolver) Resolve(ctx context.Context, params []pipelinev1beta1.Param) 
 	case ArtifactHubType:
 		url := fmt.Sprintf(r.ArtifactHubURL, paramsMap[ParamKind], paramsMap[ParamCatalog], paramsMap[ParamName], paramsMap[ParamVersion])
 		resp := artifactHubResponse{}
-		if err := fetchHubResource(url, &resp); err != nil {
+		if err := fetchHubResource(ctx, url, &resp); err != nil {
 			return nil, fmt.Errorf("fail to fetch Artifact Hub resource: %w", err)
 		}
 		return &ResolvedHubResource{
@@ -142,7 +142,7 @@ func (r *Resolver) Resolve(ctx context.Context, params []pipelinev1beta1.Param) 
 	case TektonHubType:
 		url := fmt.Sprintf(r.TektonHubURL, paramsMap[ParamCatalog], paramsMap[ParamKind], paramsMap[ParamName], paramsMap[ParamVersion])
 		resp := tektonHubResponse{}
-		if err := fetchHubResource(url, &resp); err != nil {
+		if err := fetchHubResource(ctx, url, &resp); err != nil {
 			return nil, fmt.Errorf("fail to fetch Tekton Hub resource: %w", err)
 		}
 		return &ResolvedHubResource{
@@ -192,11 +192,16 @@ func (r *Resolver) isDisabled(ctx context.Context) bool {
 	return !cfg.FeatureFlags.EnableHubResolver
 }
 
-func fetchHubResource(apiEndpoint string, v interface{}) error {
+func fetchHubResource(ctx context.Context, apiEndpoint string, v interface{}) error {
 	// #nosec G107 -- URL cannot be constant in this case.
-	resp, err := http.Get(apiEndpoint)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiEndpoint, nil)
 	if err != nil {
-		return fmt.Errorf("error requesting resource from Hub: %w", err)
+		return fmt.Errorf("constructing request: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("requesting resource from Hub: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("requested resource '%s' not found on hub", apiEndpoint)

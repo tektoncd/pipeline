@@ -415,7 +415,7 @@ func (tr *TaskRun) GetTimeout(ctx context.Context) time.Duration {
 	// Use the platform default is no timeout is set
 	if tr.Spec.Timeout == nil {
 		defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
-		return defaultTimeout * time.Minute
+		return defaultTimeout * time.Minute //nolint:durationcheck
 	}
 	return tr.Spec.Timeout.Duration
 }

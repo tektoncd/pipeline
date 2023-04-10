@@ -24,6 +24,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -488,7 +489,7 @@ func TestGitResolver_API(t *testing.T) {
 
 	t.Logf("Creating ConfigMap %s", git.ConfigMapName)
 	configMapData := map[string]string{
-		git.ServerURLKey:          fmt.Sprintf("http://%s:3000/", giteaClusterHostname),
+		git.ServerURLKey:          fmt.Sprint("http://", net.JoinHostPort(giteaClusterHostname, "3000")),
 		git.SCMTypeKey:            "gitea",
 		git.APISecretNameKey:      tokenSecretName,
 		git.APISecretKeyKey:       scmTokenSecretKey,

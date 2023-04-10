@@ -96,16 +96,17 @@ func TestStepOutput(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error getting Taskrun %q: %v", taskRun.Name, err)
 	}
-	var gotResult *v1beta1.TaskRunResult
+	var found bool
 	for _, result := range tr.Status.TaskRunResults {
 		if result.Name == wantResultName {
-			gotResult = &result
+			found = true
+			if got, want := result.Value.StringVal, wantResultValue; got != want {
+				t.Errorf("Result %s: got %q, wanted %q", wantResultName, got, want)
+			}
 		}
 	}
-	if gotResult == nil {
+	if !found {
 		t.Errorf("Result %s not found", wantResultName)
-	} else if gotResult.Value.StringVal != wantResultValue {
-		t.Errorf("Result %s: got %q, wanted %q", wantResultName, gotResult.Value, wantResultValue)
 	}
 }
 
@@ -170,15 +171,16 @@ func TestStepOutputWithWorkspace(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error getting Taskrun %q: %v", taskRun.Name, err)
 	}
-	var gotResult *v1beta1.TaskRunResult
+	var found bool
 	for _, result := range tr.Status.TaskRunResults {
 		if result.Name == wantResultName {
-			gotResult = &result
+			found = true
+			if got, want := result.Value.StringVal, wantResultValue; got != want {
+				t.Errorf("Result %s: got %q, wanted %q", wantResultName, got, want)
+			}
 		}
 	}
-	if gotResult == nil {
+	if !found {
 		t.Errorf("Result %s not found", wantResultName)
-	} else if gotResult.Value.StringVal != wantResultValue {
-		t.Errorf("Result %s: got %q, wanted %q", wantResultName, gotResult.Value, wantResultValue)
 	}
 }

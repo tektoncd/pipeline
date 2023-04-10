@@ -120,7 +120,7 @@ func getMatchedPolicies(resourceName string, source string, policies []*v1alpha1
 			matching, err := regexp.MatchString(r.Pattern, source)
 			if err != nil {
 				// FixMe: changing %v to %w breaks integration tests.
-				return matchedPolicies, fmt.Errorf("%v: %w", err, ErrRegexMatch) // nolint:errorlint
+				return matchedPolicies, fmt.Errorf("%v: %w", err, ErrRegexMatch) //nolint:errorlint
 			}
 			if matching {
 				matchedPolicies = append(matchedPolicies, p)
@@ -179,7 +179,7 @@ func verifyInterface(obj interface{}, verifier signature.Verifier, signature []b
 
 	if err := verifier.VerifySignature(bytes.NewReader(signature), bytes.NewReader(h.Sum(nil))); err != nil {
 		// FixMe: changing %v to %w breaks integration tests.
-		return fmt.Errorf("%w:%v", ErrResourceVerificationFailed, err.Error()) // nolint:errorlint
+		return fmt.Errorf("%w:%v", ErrResourceVerificationFailed, err.Error())
 	}
 
 	return nil

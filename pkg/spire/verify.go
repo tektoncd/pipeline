@@ -339,7 +339,7 @@ func getResultValue(result result.RunResult) (string, error) {
 		valList = append(valList, aos.ArrayVal...)
 		return strings.Join(valList, ","), nil
 	case v1beta1.ParamTypeObject:
-		keys := make([]string, len(aos.ObjectVal))
+		keys := make([]string, 0, len(aos.ObjectVal))
 		for k := range aos.ObjectVal {
 			keys = append(keys, k)
 		}

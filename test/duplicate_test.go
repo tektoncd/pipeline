@@ -66,7 +66,7 @@ spec:
 		if _, err := c.V1beta1TaskRunClient.Create(ctx, taskrun, metav1.CreateOptions{}); err != nil {
 			t.Fatalf("Error creating taskrun: %v", err)
 		}
-		go func(t *testing.T) { //nolint: thelper
+		go func(t *testing.T) { //nolint:thelper
 			defer wg.Done()
 
 			if err := WaitForTaskRunState(ctx, c, taskrunName, TaskRunSucceed(taskrunName), "TaskRunDuplicatePodTaskRunFailed", v1beta1Version); err != nil {

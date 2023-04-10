@@ -62,5 +62,5 @@ func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 			}
 		}
 	}
-	return
+	return //nolint:nakedret
 }
