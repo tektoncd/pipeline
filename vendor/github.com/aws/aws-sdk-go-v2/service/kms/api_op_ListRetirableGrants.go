@@ -17,28 +17,20 @@ import (
 // in your Amazon Web Services account. The grants that are returned include grants
 // for KMS keys in your Amazon Web Services account and other Amazon Web Services
 // accounts. You might use this operation to determine which grants you may retire.
-// To retire a grant, use the RetireGrant operation. For detailed information about
-// grants, including grant terminology, see Grants in KMS
-// (https://docs.aws.amazon.com/kms/latest/developerguide/grants.html) in the Key
-// Management Service Developer Guide . For examples of working with grants in
-// several programming languages, see Programming grants
-// (https://docs.aws.amazon.com/kms/latest/developerguide/programming-grants.html).
-// Cross-account use: You must specify a principal in your Amazon Web Services
+// To retire a grant, use the RetireGrant operation. For detailed information
+// about grants, including grant terminology, see Grants in KMS (https://docs.aws.amazon.com/kms/latest/developerguide/grants.html)
+// in the Key Management Service Developer Guide . For examples of working with
+// grants in several programming languages, see Programming grants (https://docs.aws.amazon.com/kms/latest/developerguide/programming-grants.html)
+// . Cross-account use: You must specify a principal in your Amazon Web Services
 // account. However, this operation can return grants in any Amazon Web Services
 // account. You do not need kms:ListRetirableGrants permission (or any other
 // additional permission) in any Amazon Web Services account other than your own.
-// Required permissions: kms:ListRetirableGrants
-// (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
+// Required permissions: kms:ListRetirableGrants (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
 // (IAM policy) in your Amazon Web Services account. Related operations:
-//
-// *
-// CreateGrant
-//
-// * ListGrants
-//
-// * RetireGrant
-//
-// * RevokeGrant
+//   - CreateGrant
+//   - ListGrants
+//   - RetireGrant
+//   - RevokeGrant
 func (c *Client) ListRetirableGrants(ctx context.Context, params *ListRetirableGrantsInput, optFns ...func(*Options)) (*ListRetirableGrantsOutput, error) {
 	if params == nil {
 		params = &ListRetirableGrantsInput{}
@@ -58,12 +50,10 @@ type ListRetirableGrantsInput struct {
 
 	// The retiring principal for which to list grants. Enter a principal in your
 	// Amazon Web Services account. To specify the retiring principal, use the Amazon
-	// Resource Name (ARN)
-	// (https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html) of
-	// an Amazon Web Services principal. Valid principals include Amazon Web Services
-	// accounts, IAM users, IAM roles, federated users, and assumed role users. For
-	// help with the ARN syntax for a principal, see IAM ARNs
-	// (https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html#identifiers-arns)
+	// Resource Name (ARN) (https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html)
+	// of an Amazon Web Services principal. Valid principals include Amazon Web
+	// Services accounts, IAM users, IAM roles, federated users, and assumed role
+	// users. For help with the ARN syntax for a principal, see IAM ARNs (https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html#identifiers-arns)
 	// in the Identity and Access Management User Guide .
 	//
 	// This member is required.
@@ -77,8 +67,8 @@ type ListRetirableGrantsInput struct {
 	Limit *int32
 
 	// Use this parameter in a subsequent request after you receive a response with
-	// truncated results. Set it to the value of NextMarker from the truncated response
-	// you just received.
+	// truncated results. Set it to the value of NextMarker from the truncated
+	// response you just received.
 	Marker *string
 
 	noSmithyDocumentSerde
@@ -168,8 +158,8 @@ func (c *Client) addOperationListRetirableGrantsMiddlewares(stack *middleware.St
 	return nil
 }
 
-// ListRetirableGrantsAPIClient is a client that implements the ListRetirableGrants
-// operation.
+// ListRetirableGrantsAPIClient is a client that implements the
+// ListRetirableGrants operation.
 type ListRetirableGrantsAPIClient interface {
 	ListRetirableGrants(context.Context, *ListRetirableGrantsInput, ...func(*Options)) (*ListRetirableGrantsOutput, error)
 }

@@ -13,32 +13,25 @@ import (
 )
 
 // Gets a list of aliases in the caller's Amazon Web Services account and region.
-// For more information about aliases, see CreateAlias. By default, the ListAliases
-// operation returns all aliases in the account and region. To get only the aliases
-// associated with a particular KMS key, use the KeyId parameter. The ListAliases
-// response can include aliases that you created and associated with your customer
-// managed keys, and aliases that Amazon Web Services created and associated with
-// Amazon Web Services managed keys in your account. You can recognize Amazon Web
-// Services aliases because their names have the format aws/, such as aws/dynamodb.
-// The response might also include aliases that have no TargetKeyId field. These
-// are predefined aliases that Amazon Web Services has created but has not yet
-// associated with a KMS key. Aliases that Amazon Web Services creates in your
-// account, including predefined aliases, do not count against your KMS aliases
-// quota
-// (https://docs.aws.amazon.com/kms/latest/developerguide/limits.html#aliases-limit).
-// Cross-account use: No. ListAliases does not return aliases in other Amazon Web
-// Services accounts. Required permissions: kms:ListAliases
-// (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
-// (IAM policy) For details, see Controlling access to aliases
-// (https://docs.aws.amazon.com/kms/latest/developerguide/kms-alias.html#alias-access)
+// For more information about aliases, see CreateAlias . By default, the
+// ListAliases operation returns all aliases in the account and region. To get only
+// the aliases associated with a particular KMS key, use the KeyId parameter. The
+// ListAliases response can include aliases that you created and associated with
+// your customer managed keys, and aliases that Amazon Web Services created and
+// associated with Amazon Web Services managed keys in your account. You can
+// recognize Amazon Web Services aliases because their names have the format aws/ ,
+// such as aws/dynamodb . The response might also include aliases that have no
+// TargetKeyId field. These are predefined aliases that Amazon Web Services has
+// created but has not yet associated with a KMS key. Aliases that Amazon Web
+// Services creates in your account, including predefined aliases, do not count
+// against your KMS aliases quota (https://docs.aws.amazon.com/kms/latest/developerguide/limits.html#aliases-limit)
+// . Cross-account use: No. ListAliases does not return aliases in other Amazon
+// Web Services accounts. Required permissions: kms:ListAliases (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
+// (IAM policy) For details, see Controlling access to aliases (https://docs.aws.amazon.com/kms/latest/developerguide/kms-alias.html#alias-access)
 // in the Key Management Service Developer Guide. Related operations:
-//
-// *
-// CreateAlias
-//
-// * DeleteAlias
-//
-// * UpdateAlias
+//   - CreateAlias
+//   - DeleteAlias
+//   - UpdateAlias
 func (c *Client) ListAliases(ctx context.Context, params *ListAliasesInput, optFns ...func(*Options)) (*ListAliasesOutput, error) {
 	if params == nil {
 		params = &ListAliasesInput{}
@@ -60,15 +53,10 @@ type ListAliasesInput struct {
 	// key in your Amazon Web Services account. This parameter is optional. If you omit
 	// it, ListAliases returns all aliases in the account and Region. Specify the key
 	// ID or key ARN of the KMS key. For example:
-	//
-	// * Key ID:
-	// 1234abcd-12ab-34cd-56ef-1234567890ab
-	//
-	// * Key ARN:
-	// arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab
-	//
-	// To
-	// get the key ID and key ARN for a KMS key, use ListKeys or DescribeKey.
+	//   - Key ID: 1234abcd-12ab-34cd-56ef-1234567890ab
+	//   - Key ARN:
+	//   arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab
+	// To get the key ID and key ARN for a KMS key, use ListKeys or DescribeKey .
 	KeyId *string
 
 	// Use this parameter to specify the maximum number of items to return. When this
@@ -79,8 +67,8 @@ type ListAliasesInput struct {
 	Limit *int32
 
 	// Use this parameter in a subsequent request after you receive a response with
-	// truncated results. Set it to the value of NextMarker from the truncated response
-	// you just received.
+	// truncated results. Set it to the value of NextMarker from the truncated
+	// response you just received.
 	Marker *string
 
 	noSmithyDocumentSerde

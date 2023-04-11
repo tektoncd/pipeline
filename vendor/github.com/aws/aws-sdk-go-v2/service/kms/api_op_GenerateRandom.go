@@ -16,17 +16,15 @@ import (
 // generated in KMS. To generate the byte string in the CloudHSM cluster associated
 // with an CloudHSM key store, use the CustomKeyStoreId parameter. Applications in
 // Amazon Web Services Nitro Enclaves can call this operation by using the Amazon
-// Web Services Nitro Enclaves Development Kit
-// (https://github.com/aws/aws-nitro-enclaves-sdk-c). For information about the
-// supporting parameters, see How Amazon Web Services Nitro Enclaves use KMS
-// (https://docs.aws.amazon.com/kms/latest/developerguide/services-nitro-enclaves.html)
+// Web Services Nitro Enclaves Development Kit (https://github.com/aws/aws-nitro-enclaves-sdk-c)
+// . For information about the supporting parameters, see How Amazon Web Services
+// Nitro Enclaves use KMS (https://docs.aws.amazon.com/kms/latest/developerguide/services-nitro-enclaves.html)
 // in the Key Management Service Developer Guide. For more information about
 // entropy and random number generation, see Key Management Service Cryptographic
-// Details (https://docs.aws.amazon.com/kms/latest/cryptographic-details/).
+// Details (https://docs.aws.amazon.com/kms/latest/cryptographic-details/) .
 // Cross-account use: Not applicable. GenerateRandom does not use any
 // account-specific resources, such as KMS keys. Required permissions:
-// kms:GenerateRandom
-// (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
+// kms:GenerateRandom (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
 // (IAM policy)
 func (c *Client) GenerateRandom(ctx context.Context, params *GenerateRandomInput, optFns ...func(*Options)) (*GenerateRandomOutput, error) {
 	if params == nil {
@@ -45,11 +43,11 @@ func (c *Client) GenerateRandom(ctx context.Context, params *GenerateRandomInput
 
 type GenerateRandomInput struct {
 
-	// Generates the random byte string in the CloudHSM cluster that is associated with
-	// the specified CloudHSM key store. To find the ID of a custom key store, use the
-	// DescribeCustomKeyStores operation. External key store IDs are not valid for this
-	// parameter. If you specify the ID of an external key store, GenerateRandom throws
-	// an UnsupportedOperationException.
+	// Generates the random byte string in the CloudHSM cluster that is associated
+	// with the specified CloudHSM key store. To find the ID of a custom key store, use
+	// the DescribeCustomKeyStores operation. External key store IDs are not valid for
+	// this parameter. If you specify the ID of an external key store, GenerateRandom
+	// throws an UnsupportedOperationException .
 	CustomKeyStoreId *string
 
 	// The length of the random byte string. This parameter is required.

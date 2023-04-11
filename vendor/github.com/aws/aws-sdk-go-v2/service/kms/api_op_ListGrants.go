@@ -15,31 +15,22 @@ import (
 // Gets a list of all grants for the specified KMS key. You must specify the KMS
 // key in all requests. You can filter the grant list by grant ID or grantee
 // principal. For detailed information about grants, including grant terminology,
-// see Grants in KMS
-// (https://docs.aws.amazon.com/kms/latest/developerguide/grants.html) in the Key
-// Management Service Developer Guide . For examples of working with grants in
-// several programming languages, see Programming grants
-// (https://docs.aws.amazon.com/kms/latest/developerguide/programming-grants.html).
-// The GranteePrincipal field in the ListGrants response usually contains the user
-// or role designated as the grantee principal in the grant. However, when the
+// see Grants in KMS (https://docs.aws.amazon.com/kms/latest/developerguide/grants.html)
+// in the Key Management Service Developer Guide . For examples of working with
+// grants in several programming languages, see Programming grants (https://docs.aws.amazon.com/kms/latest/developerguide/programming-grants.html)
+// . The GranteePrincipal field in the ListGrants response usually contains the
+// user or role designated as the grantee principal in the grant. However, when the
 // grantee principal in the grant is an Amazon Web Services service, the
-// GranteePrincipal field contains the service principal
-// (https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_principal.html#principal-services),
-// which might represent several different grantee principals. Cross-account use:
+// GranteePrincipal field contains the service principal (https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_principal.html#principal-services)
+// , which might represent several different grantee principals. Cross-account use:
 // Yes. To perform this operation on a KMS key in a different Amazon Web Services
 // account, specify the key ARN in the value of the KeyId parameter. Required
-// permissions: kms:ListGrants
-// (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
+// permissions: kms:ListGrants (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
 // (key policy) Related operations:
-//
-// * CreateGrant
-//
-// * ListRetirableGrants
-//
-// *
-// RetireGrant
-//
-// * RevokeGrant
+//   - CreateGrant
+//   - ListRetirableGrants
+//   - RetireGrant
+//   - RevokeGrant
 func (c *Client) ListGrants(ctx context.Context, params *ListGrantsInput, optFns ...func(*Options)) (*ListGrantsOutput, error) {
 	if params == nil {
 		params = &ListGrantsInput{}
@@ -60,15 +51,10 @@ type ListGrantsInput struct {
 	// Returns only grants for the specified KMS key. This parameter is required.
 	// Specify the key ID or key ARN of the KMS key. To specify a KMS key in a
 	// different Amazon Web Services account, you must use the key ARN. For example:
-	//
-	// *
-	// Key ID: 1234abcd-12ab-34cd-56ef-1234567890ab
-	//
-	// * Key ARN:
-	// arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab
-	//
-	// To
-	// get the key ID and key ARN for a KMS key, use ListKeys or DescribeKey.
+	//   - Key ID: 1234abcd-12ab-34cd-56ef-1234567890ab
+	//   - Key ARN:
+	//   arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab
+	// To get the key ID and key ARN for a KMS key, use ListKeys or DescribeKey .
 	//
 	// This member is required.
 	KeyId *string
@@ -89,8 +75,8 @@ type ListGrantsInput struct {
 	Limit *int32
 
 	// Use this parameter in a subsequent request after you receive a response with
-	// truncated results. Set it to the value of NextMarker from the truncated response
-	// you just received.
+	// truncated results. Set it to the value of NextMarker from the truncated
+	// response you just received.
 	Marker *string
 
 	noSmithyDocumentSerde
