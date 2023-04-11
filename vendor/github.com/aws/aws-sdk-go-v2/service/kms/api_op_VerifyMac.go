@@ -12,24 +12,23 @@ import (
 )
 
 // Verifies the hash-based message authentication code (HMAC) for a specified
-// message, HMAC KMS key, and MAC algorithm. To verify the HMAC, VerifyMac computes
-// an HMAC using the message, HMAC KMS key, and MAC algorithm that you specify, and
-// compares the computed HMAC to the HMAC that you specify. If the HMACs are
-// identical, the verification succeeds; otherwise, it fails. Verification
-// indicates that the message hasn't changed since the HMAC was calculated, and the
-// specified key was used to generate and verify the HMAC. HMAC KMS keys and the
-// HMAC algorithms that KMS uses conform to industry standards defined in RFC 2104
-// (https://datatracker.ietf.org/doc/html/rfc2104). This operation is part of KMS
-// support for HMAC KMS keys. For details, see HMAC keys in KMS
-// (https://docs.aws.amazon.com/kms/latest/developerguide/hmac.html) in the Key
-// Management Service Developer Guide. The KMS key that you use for this operation
-// must be in a compatible key state. For details, see Key states of KMS keys
-// (https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html) in the
-// Key Management Service Developer Guide. Cross-account use: Yes. To perform this
-// operation with a KMS key in a different Amazon Web Services account, specify the
-// key ARN or alias ARN in the value of the KeyId parameter. Required permissions:
-// kms:VerifyMac
-// (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
+// message, HMAC KMS key, and MAC algorithm. To verify the HMAC, VerifyMac
+// computes an HMAC using the message, HMAC KMS key, and MAC algorithm that you
+// specify, and compares the computed HMAC to the HMAC that you specify. If the
+// HMACs are identical, the verification succeeds; otherwise, it fails.
+// Verification indicates that the message hasn't changed since the HMAC was
+// calculated, and the specified key was used to generate and verify the HMAC. HMAC
+// KMS keys and the HMAC algorithms that KMS uses conform to industry standards
+// defined in RFC 2104 (https://datatracker.ietf.org/doc/html/rfc2104) . This
+// operation is part of KMS support for HMAC KMS keys. For details, see HMAC keys
+// in KMS (https://docs.aws.amazon.com/kms/latest/developerguide/hmac.html) in the
+// Key Management Service Developer Guide. The KMS key that you use for this
+// operation must be in a compatible key state. For details, see Key states of KMS
+// keys (https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html) in
+// the Key Management Service Developer Guide. Cross-account use: Yes. To perform
+// this operation with a KMS key in a different Amazon Web Services account,
+// specify the key ARN or alias ARN in the value of the KeyId parameter. Required
+// permissions: kms:VerifyMac (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
 // (key policy) Related operations: GenerateMac
 func (c *Client) VerifyMac(ctx context.Context, params *VerifyMacInput, optFns ...func(*Options)) (*VerifyMacOutput, error) {
 	if params == nil {
@@ -48,8 +47,8 @@ func (c *Client) VerifyMac(ctx context.Context, params *VerifyMacInput, optFns .
 
 type VerifyMacInput struct {
 
-	// The KMS key that will be used in the verification. Enter a key ID of the KMS key
-	// that was used to generate the HMAC. If you identify a different KMS key, the
+	// The KMS key that will be used in the verification. Enter a key ID of the KMS
+	// key that was used to generate the HMAC. If you identify a different KMS key, the
 	// VerifyMac operation fails.
 	//
 	// This member is required.
@@ -79,10 +78,8 @@ type VerifyMacInput struct {
 
 	// A list of grant tokens. Use a grant token when your permission to call this
 	// operation comes from a new grant that has not yet achieved eventual consistency.
-	// For more information, see Grant token
-	// (https://docs.aws.amazon.com/kms/latest/developerguide/grants.html#grant_token)
-	// and Using a grant token
-	// (https://docs.aws.amazon.com/kms/latest/developerguide/grant-manage.html#using-grant-token)
+	// For more information, see Grant token (https://docs.aws.amazon.com/kms/latest/developerguide/grants.html#grant_token)
+	// and Using a grant token (https://docs.aws.amazon.com/kms/latest/developerguide/grant-manage.html#using-grant-token)
 	// in the Key Management Service Developer Guide.
 	GrantTokens []string
 
@@ -98,8 +95,8 @@ type VerifyMacOutput struct {
 	MacAlgorithm types.MacAlgorithmSpec
 
 	// A Boolean value that indicates whether the HMAC was verified. A value of True
-	// indicates that the HMAC (Mac) was generated with the specified Message, HMAC KMS
-	// key (KeyID) and MacAlgorithm.. If the HMAC is not verified, the VerifyMac
+	// indicates that the HMAC ( Mac ) was generated with the specified Message , HMAC
+	// KMS key ( KeyID ) and MacAlgorithm. . If the HMAC is not verified, the VerifyMac
 	// operation fails with a KMSInvalidMacException exception. This exception
 	// indicates that one or more of the inputs changed since the HMAC was computed.
 	MacValid bool

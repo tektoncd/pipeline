@@ -10,29 +10,24 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Deletes a custom key store
-// (https://docs.aws.amazon.com/kms/latest/developerguide/custom-key-store-overview.html).
-// This operation does not affect any backing elements of the custom key store. It
-// does not delete the CloudHSM cluster that is associated with an CloudHSM key
+// Deletes a custom key store (https://docs.aws.amazon.com/kms/latest/developerguide/custom-key-store-overview.html)
+// . This operation does not affect any backing elements of the custom key store.
+// It does not delete the CloudHSM cluster that is associated with an CloudHSM key
 // store, or affect any users or keys in the cluster. For an external key store, it
 // does not affect the external key store proxy, external key manager, or any
-// external keys. This operation is part of the custom key stores
-// (https://docs.aws.amazon.com/kms/latest/developerguide/custom-key-store-overview.html)
+// external keys. This operation is part of the custom key stores (https://docs.aws.amazon.com/kms/latest/developerguide/custom-key-store-overview.html)
 // feature in KMS, which combines the convenience and extensive integration of KMS
 // with the isolation and control of a key store that you own and manage. The
-// custom key store that you delete cannot contain any KMS keys
-// (https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#kms_keys).
-// Before deleting the key store, verify that you will never need to use any of the
-// KMS keys in the key store for any cryptographic operations
-// (https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#cryptographic-operations).
-// Then, use ScheduleKeyDeletion to delete the KMS keys from the key store. After
-// the required waiting period expires and all KMS keys are deleted from the custom
-// key store, use DisconnectCustomKeyStore to disconnect the key store from KMS.
-// Then, you can delete the custom key store. For keys in an CloudHSM key store,
-// the ScheduleKeyDeletion operation makes a best effort to delete the key material
-// from the associated cluster. However, you might need to manually delete the
-// orphaned key material
-// (https://docs.aws.amazon.com/kms/latest/developerguide/fix-keystore.html#fix-keystore-orphaned-key)
+// custom key store that you delete cannot contain any KMS keys (https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#kms_keys)
+// . Before deleting the key store, verify that you will never need to use any of
+// the KMS keys in the key store for any cryptographic operations (https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#cryptographic-operations)
+// . Then, use ScheduleKeyDeletion to delete the KMS keys from the key store.
+// After the required waiting period expires and all KMS keys are deleted from the
+// custom key store, use DisconnectCustomKeyStore to disconnect the key store from
+// KMS. Then, you can delete the custom key store. For keys in an CloudHSM key
+// store, the ScheduleKeyDeletion operation makes a best effort to delete the key
+// material from the associated cluster. However, you might need to manually
+// delete the orphaned key material (https://docs.aws.amazon.com/kms/latest/developerguide/fix-keystore.html#fix-keystore-orphaned-key)
 // from the cluster and its backups. KMS never creates, manages, or deletes
 // cryptographic keys in the external key manager associated with an external key
 // store. You must manage them using your external key manager tools. Instead of
@@ -43,21 +38,13 @@ import (
 // disconnected custom key store at any time. If the operation succeeds, it returns
 // a JSON object with no properties. Cross-account use: No. You cannot perform this
 // operation on a custom key store in a different Amazon Web Services account.
-// Required permissions: kms:DeleteCustomKeyStore
-// (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
+// Required permissions: kms:DeleteCustomKeyStore (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
 // (IAM policy) Related operations:
-//
-// * ConnectCustomKeyStore
-//
-// *
-// CreateCustomKeyStore
-//
-// * DescribeCustomKeyStores
-//
-// * DisconnectCustomKeyStore
-//
-// *
-// UpdateCustomKeyStore
+//   - ConnectCustomKeyStore
+//   - CreateCustomKeyStore
+//   - DescribeCustomKeyStores
+//   - DisconnectCustomKeyStore
+//   - UpdateCustomKeyStore
 func (c *Client) DeleteCustomKeyStore(ctx context.Context, params *DeleteCustomKeyStoreInput, optFns ...func(*Options)) (*DeleteCustomKeyStoreOutput, error) {
 	if params == nil {
 		params = &DeleteCustomKeyStoreInput{}

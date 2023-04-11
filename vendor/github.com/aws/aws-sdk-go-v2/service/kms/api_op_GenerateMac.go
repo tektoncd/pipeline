@@ -11,30 +11,27 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Generates a hash-based message authentication code (HMAC) for a message using an
-// HMAC KMS key and a MAC algorithm that the key supports. HMAC KMS keys and the
-// HMAC algorithms that KMS uses conform to industry standards defined in RFC 2104
-// (https://datatracker.ietf.org/doc/html/rfc2104). You can use value that
-// GenerateMac returns in the VerifyMac operation to demonstrate that the original
-// message has not changed. Also, because a secret key is used to create the hash,
-// you can verify that the party that generated the hash has the required secret
-// key. You can also use the raw result to implement HMAC-based algorithms such as
-// key derivation functions. This operation is part of KMS support for HMAC KMS
-// keys. For details, see HMAC keys in KMS
-// (https://docs.aws.amazon.com/kms/latest/developerguide/hmac.html) in the Key
-// Management Service Developer Guide . Best practices recommend that you limit the
-// time during which any signing mechanism, including an HMAC, is effective. This
-// deters an attack where the actor uses a signed message to establish validity
-// repeatedly or long after the message is superseded. HMAC tags do not include a
-// timestamp, but you can include a timestamp in the token or message to help you
-// detect when its time to refresh the HMAC. The KMS key that you use for this
-// operation must be in a compatible key state. For details, see Key states of KMS
-// keys (https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html) in
-// the Key Management Service Developer Guide. Cross-account use: Yes. To perform
-// this operation with a KMS key in a different Amazon Web Services account,
-// specify the key ARN or alias ARN in the value of the KeyId parameter. Required
-// permissions: kms:GenerateMac
-// (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
+// Generates a hash-based message authentication code (HMAC) for a message using
+// an HMAC KMS key and a MAC algorithm that the key supports. HMAC KMS keys and the
+// HMAC algorithms that KMS uses conform to industry standards defined in RFC 2104 (https://datatracker.ietf.org/doc/html/rfc2104)
+// . You can use value that GenerateMac returns in the VerifyMac operation to
+// demonstrate that the original message has not changed. Also, because a secret
+// key is used to create the hash, you can verify that the party that generated the
+// hash has the required secret key. You can also use the raw result to implement
+// HMAC-based algorithms such as key derivation functions. This operation is part
+// of KMS support for HMAC KMS keys. For details, see HMAC keys in KMS (https://docs.aws.amazon.com/kms/latest/developerguide/hmac.html)
+// in the Key Management Service Developer Guide . Best practices recommend that
+// you limit the time during which any signing mechanism, including an HMAC, is
+// effective. This deters an attack where the actor uses a signed message to
+// establish validity repeatedly or long after the message is superseded. HMAC tags
+// do not include a timestamp, but you can include a timestamp in the token or
+// message to help you detect when its time to refresh the HMAC. The KMS key that
+// you use for this operation must be in a compatible key state. For details, see
+// Key states of KMS keys (https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html)
+// in the Key Management Service Developer Guide. Cross-account use: Yes. To
+// perform this operation with a KMS key in a different Amazon Web Services
+// account, specify the key ARN or alias ARN in the value of the KeyId parameter.
+// Required permissions: kms:GenerateMac (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
 // (key policy) Related operations: VerifyMac
 func (c *Client) GenerateMac(ctx context.Context, params *GenerateMacInput, optFns ...func(*Options)) (*GenerateMacOutput, error) {
 	if params == nil {
@@ -54,9 +51,9 @@ func (c *Client) GenerateMac(ctx context.Context, params *GenerateMacInput, optF
 type GenerateMacInput struct {
 
 	// The HMAC KMS key to use in the operation. The MAC algorithm computes the HMAC
-	// for the message and the key as described in RFC 2104
-	// (https://datatracker.ietf.org/doc/html/rfc2104). To identify an HMAC KMS key,
-	// use the DescribeKey operation and see the KeySpec field in the response.
+	// for the message and the key as described in RFC 2104 (https://datatracker.ietf.org/doc/html/rfc2104)
+	// . To identify an HMAC KMS key, use the DescribeKey operation and see the KeySpec
+	// field in the response.
 	//
 	// This member is required.
 	KeyId *string
@@ -79,10 +76,8 @@ type GenerateMacInput struct {
 
 	// A list of grant tokens. Use a grant token when your permission to call this
 	// operation comes from a new grant that has not yet achieved eventual consistency.
-	// For more information, see Grant token
-	// (https://docs.aws.amazon.com/kms/latest/developerguide/grants.html#grant_token)
-	// and Using a grant token
-	// (https://docs.aws.amazon.com/kms/latest/developerguide/grant-manage.html#using-grant-token)
+	// For more information, see Grant token (https://docs.aws.amazon.com/kms/latest/developerguide/grants.html#grant_token)
+	// and Using a grant token (https://docs.aws.amazon.com/kms/latest/developerguide/grant-manage.html#using-grant-token)
 	// in the Key Management Service Developer Guide.
 	GrantTokens []string
 
@@ -96,7 +91,7 @@ type GenerateMacOutput struct {
 
 	// The hash-based message authentication code (HMAC) that was generated for the
 	// specified message, HMAC KMS key, and MAC algorithm. This is the standard, raw
-	// HMAC defined in RFC 2104 (https://datatracker.ietf.org/doc/html/rfc2104).
+	// HMAC defined in RFC 2104 (https://datatracker.ietf.org/doc/html/rfc2104) .
 	Mac []byte
 
 	// The MAC algorithm that was used to generate the HMAC.

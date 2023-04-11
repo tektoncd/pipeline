@@ -11,36 +11,26 @@ import (
 )
 
 // Deletes a grant. Typically, you retire a grant when you no longer need its
-// permissions. To identify the grant to retire, use a grant token
-// (https://docs.aws.amazon.com/kms/latest/developerguide/grants.html#grant_token),
-// or both the grant ID and a key identifier (key ID or key ARN) of the KMS key.
+// permissions. To identify the grant to retire, use a grant token (https://docs.aws.amazon.com/kms/latest/developerguide/grants.html#grant_token)
+// , or both the grant ID and a key identifier (key ID or key ARN) of the KMS key.
 // The CreateGrant operation returns both values. This operation can be called by
 // the retiring principal for a grant, by the grantee principal if the grant allows
 // the RetireGrant operation, and by the Amazon Web Services account in which the
 // grant is created. It can also be called by principals to whom permission for
-// retiring a grant is delegated. For details, see Retiring and revoking grants
-// (https://docs.aws.amazon.com/kms/latest/developerguide/grant-manage.html#grant-delete)
+// retiring a grant is delegated. For details, see Retiring and revoking grants (https://docs.aws.amazon.com/kms/latest/developerguide/grant-manage.html#grant-delete)
 // in the Key Management Service Developer Guide. For detailed information about
-// grants, including grant terminology, see Grants in KMS
-// (https://docs.aws.amazon.com/kms/latest/developerguide/grants.html) in the Key
-// Management Service Developer Guide . For examples of working with grants in
-// several programming languages, see Programming grants
-// (https://docs.aws.amazon.com/kms/latest/developerguide/programming-grants.html).
-// Cross-account use: Yes. You can retire a grant on a KMS key in a different
+// grants, including grant terminology, see Grants in KMS (https://docs.aws.amazon.com/kms/latest/developerguide/grants.html)
+// in the Key Management Service Developer Guide . For examples of working with
+// grants in several programming languages, see Programming grants (https://docs.aws.amazon.com/kms/latest/developerguide/programming-grants.html)
+// . Cross-account use: Yes. You can retire a grant on a KMS key in a different
 // Amazon Web Services account. Required permissions::Permission to retire a grant
 // is determined primarily by the grant. For details, see Retiring and revoking
-// grants
-// (https://docs.aws.amazon.com/kms/latest/developerguide/grant-manage.html#grant-delete)
+// grants (https://docs.aws.amazon.com/kms/latest/developerguide/grant-manage.html#grant-delete)
 // in the Key Management Service Developer Guide. Related operations:
-//
-// *
-// CreateGrant
-//
-// * ListGrants
-//
-// * ListRetirableGrants
-//
-// * RevokeGrant
+//   - CreateGrant
+//   - ListGrants
+//   - ListRetirableGrants
+//   - RevokeGrant
 func (c *Client) RetireGrant(ctx context.Context, params *RetireGrantInput, optFns ...func(*Options)) (*RetireGrantOutput, error) {
 	if params == nil {
 		params = &RetireGrantInput{}
@@ -58,19 +48,16 @@ func (c *Client) RetireGrant(ctx context.Context, params *RetireGrantInput, optF
 
 type RetireGrantInput struct {
 
-	// Identifies the grant to retire. To get the grant ID, use CreateGrant,
-	// ListGrants, or ListRetirableGrants.
-	//
-	// * Grant ID Example -
-	// 0123456789012345678901234567890123456789012345678901234567890123
+	// Identifies the grant to retire. To get the grant ID, use CreateGrant ,
+	// ListGrants , or ListRetirableGrants .
+	//   - Grant ID Example -
+	//   0123456789012345678901234567890123456789012345678901234567890123
 	GrantId *string
 
 	// Identifies the grant to be retired. You can use a grant token to identify a new
 	// grant even before it has achieved eventual consistency. Only the CreateGrant
-	// operation returns a grant token. For details, see Grant token
-	// (https://docs.aws.amazon.com/kms/latest/developerguide/grants.html#grant_token)
-	// and Eventual consistency
-	// (https://docs.aws.amazon.com/kms/latest/developerguide/grants.html#terms-eventual-consistency)
+	// operation returns a grant token. For details, see Grant token (https://docs.aws.amazon.com/kms/latest/developerguide/grants.html#grant_token)
+	// and Eventual consistency (https://docs.aws.amazon.com/kms/latest/developerguide/grants.html#terms-eventual-consistency)
 	// in the Key Management Service Developer Guide.
 	GrantToken *string
 

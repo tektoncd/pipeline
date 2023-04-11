@@ -14,18 +14,12 @@ import (
 
 // Gets a list of all KMS keys in the caller's Amazon Web Services account and
 // Region. Cross-account use: No. You cannot perform this operation on a KMS key in
-// a different Amazon Web Services account. Required permissions: kms:ListKeys
-// (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
+// a different Amazon Web Services account. Required permissions: kms:ListKeys (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
 // (IAM policy) Related operations:
-//
-// * CreateKey
-//
-// * DescribeKey
-//
-// * ListAliases
-//
-// *
-// ListResourceTags
+//   - CreateKey
+//   - DescribeKey
+//   - ListAliases
+//   - ListResourceTags
 func (c *Client) ListKeys(ctx context.Context, params *ListKeysInput, optFns ...func(*Options)) (*ListKeysOutput, error) {
 	if params == nil {
 		params = &ListKeysInput{}
@@ -51,8 +45,8 @@ type ListKeysInput struct {
 	Limit *int32
 
 	// Use this parameter in a subsequent request after you receive a response with
-	// truncated results. Set it to the value of NextMarker from the truncated response
-	// you just received.
+	// truncated results. Set it to the value of NextMarker from the truncated
+	// response you just received.
 	Marker *string
 
 	noSmithyDocumentSerde
