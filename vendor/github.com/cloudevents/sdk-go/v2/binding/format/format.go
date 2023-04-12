@@ -7,6 +7,7 @@ package format
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -41,12 +42,33 @@ func (jsonFmt) Unmarshal(b []byte, e *event.Event) error {
 	return json.Unmarshal(b, e)
 }
 
+// JSONBatch is the built-in "application/cloudevents-batch+json" format.
+var JSONBatch = jsonBatchFmt{}
+
+type jsonBatchFmt struct{}
+
+func (jb jsonBatchFmt) MediaType() string {
+	return event.ApplicationCloudEventsBatchJSON
+}
+
+// Marshal will return an error for jsonBatchFmt since the Format interface doesn't support batch Marshalling, and we
+// know it's structured batch json, we'll go direct to the json.UnMarshall() (see `ToEvents()`) since that is the best
+// way to support batch operations for now.
+func (jb jsonBatchFmt) Marshal(e *event.Event) ([]byte, error) {
+	return nil, errors.New("not supported for batch events")
+}
+
+func (jb jsonBatchFmt) Unmarshal(b []byte, e *event.Event) error {
+	return errors.New("not supported for batch events")
+}
+
 // built-in formats
 var formats map[string]Format
 
 func init() {
 	formats = map[string]Format{}
 	Add(JSON)
+	Add(JSONBatch)
 }
 
 // Lookup returns the format for contentType, or nil if not found.

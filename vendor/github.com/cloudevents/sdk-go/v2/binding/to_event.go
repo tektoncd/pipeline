@@ -8,6 +8,7 @@ package binding
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -20,6 +21,9 @@ import (
 
 // ErrCannotConvertToEvent is a generic error when a conversion of a Message to an Event fails
 var ErrCannotConvertToEvent = errors.New("cannot convert message to event")
+
+// ErrCannotConvertToEvents is a generic error when a conversion of a Message to a Batched Event fails
+var ErrCannotConvertToEvents = errors.New("cannot convert message to batched events")
 
 // ToEvent translates a Message with a valid Structured or Binary representation to an Event.
 // This function returns the Event generated from the Message and the original encoding of the message or
@@ -59,6 +63,21 @@ func ToEvent(ctx context.Context, message MessageReader, transformers ...Transfo
 		return nil, err
 	}
 	return &e, Transformers(transformers).Transform((*EventMessage)(&e), encoder)
+}
+
+// ToEvents translates a Batch Message and corresponding Reader data to a slice of Events.
+// This function returns the Events generated from the body data, or an error that points
+// to the conversion issue.
+func ToEvents(ctx context.Context, message MessageReader, body io.Reader) ([]event.Event, error) {
+	messageEncoding := message.ReadEncoding()
+	if messageEncoding != EncodingBatch {
+		return nil, ErrCannotConvertToEvents
+	}
+
+	// Since Format doesn't support batch Marshalling, and we know it's structured batch json, we'll go direct to the
+	// json.UnMarshall(), since that is the best way to support batch operations for now.
+	var events []event.Event
+	return events, json.NewDecoder(body).Decode(&events)
 }
 
 type messageToEventBuilder event.Event
