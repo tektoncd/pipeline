@@ -92,6 +92,9 @@ func (m *Message) ReadEncoding() binding.Encoding {
 		return binding.EncodingBinary
 	}
 	if m.format != nil {
+		if m.format == format.JSONBatch {
+			return binding.EncodingBatch
+		}
 		return binding.EncodingStructured
 	}
 	return binding.EncodingUnknown
