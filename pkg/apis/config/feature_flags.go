@@ -316,6 +316,11 @@ func CheckAlphaOrBetaAPIFields(ctx context.Context) bool {
 	return cfg.FeatureFlags.EnableAPIFields == AlphaAPIFields || cfg.FeatureFlags.EnableAPIFields == BetaAPIFields
 }
 
+// IsSpireEnabled checks if non-falsifiable provenance is enforced through SPIRE
+func IsSpireEnabled(ctx context.Context) bool {
+	return FromContextOrDefaults(ctx).FeatureFlags.EnforceNonfalsifiability == EnforceNonfalsifiabilityWithSpire
+}
+
 func setEnableAPIFields(ctx context.Context, want string) context.Context {
 	featureFlags, _ := NewFeatureFlagsFromMap(map[string]string{
 		"enable-api-fields": want,
