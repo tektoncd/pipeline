@@ -209,27 +209,37 @@ func TestGetFeatureFlagsConfigName(t *testing.T) {
 func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 	for _, tc := range []struct {
 		fileName string
+		want     string
 	}{{
 		fileName: "feature-flags-invalid-boolean",
+		want:     `failed parsing feature flags config "im-really-not-a-valid-boolean": strconv.ParseBool: parsing "im-really-not-a-valid-boolean": invalid syntax`,
 	}, {
 		fileName: "feature-flags-invalid-enable-api-fields",
+		want:     `invalid value for feature flag "enable-api-fields": "im-not-a-valid-feature-gate"`,
 	}, {
 		fileName: "feature-flags-invalid-trusted-resources-verification-no-match-policy",
+		want:     `invalid value for feature flag "trusted-resources-verification-no-match-policy": "wrong value"`,
 	}, {
 		fileName: "feature-flags-invalid-results-from",
+		want:     `invalid value for feature flag "results-from": "im-not-a-valid-results-from"`,
 	}, {
 		fileName: "feature-flags-invalid-max-result-size-too-large",
+		want:     `invalid value for feature flag "results-from": "10000000000000". This is exceeding the CRD limit`,
 	}, {
 		fileName: "feature-flags-invalid-max-result-size-bad-value",
+		want:     `strconv.Atoi: parsing "foo": invalid syntax`,
 	}, {
 		fileName: "feature-flags-enforce-nonfalsifiability-bad-flag",
+		want:     `invalid value for feature flag "enforce-nonfalsifiability": "bad-value"`,
 	}, {
 		fileName: "feature-flags-spire-with-stable",
+		want:     `"enforce-nonfalsifiability" can be set to non-default values ("spire") only in alpha`,
 	}} {
 		t.Run(tc.fileName, func(t *testing.T) {
 			cm := test.ConfigMapFromTestFile(t, tc.fileName)
-			if _, err := config.NewFeatureFlagsFromConfigMap(cm); err == nil {
-				t.Error("expected error but received nil")
+			_, err := config.NewFeatureFlagsFromConfigMap(cm)
+			if d := cmp.Diff(tc.want, err.Error()); d != "" {
+				t.Errorf("failed to get expected error; diff:\n%s", diff.PrintWantGot(d))
 			}
 		})
 	}
