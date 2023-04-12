@@ -305,6 +305,60 @@ func TestCheckAlphaOrBetaAPIFields(t *testing.T) {
 	}
 }
 
+func TestIsSpireEnabled(t *testing.T) {
+	testCases := []struct {
+		name                   string
+		configmap              map[string]string
+		expectedIsSpireEnabled bool
+	}{{
+		name: "when enable-api-fields is set to beta and non-falsifiablity is not set.",
+		configmap: map[string]string{
+			"enable-api-fields":         "beta",
+			"enforce-nonfalsifiability": config.EnforceNonfalsifiabilityNone,
+		},
+		expectedIsSpireEnabled: false,
+	}, {
+		name: "when enable-api-fields is set to beta and non-falsifiability is set to 'spire'",
+		configmap: map[string]string{
+			"enable-api-fields":         "beta",
+			"enforce-nonfalsifiability": config.EnforceNonfalsifiabilityWithSpire,
+		},
+		expectedIsSpireEnabled: false,
+	}, {
+		name: "when enable-api-fields is set to alpha and non-falsifiability is not set",
+		configmap: map[string]string{
+			"enable-api-fields":         "alpha",
+			"enforce-nonfalsifiability": config.EnforceNonfalsifiabilityNone,
+		},
+		expectedIsSpireEnabled: false,
+	}, {
+		name: "when enable-api-fields is set to alpha and non-falsifiability is set to 'spire'",
+		configmap: map[string]string{
+			"enable-api-fields":         "alpha",
+			"enforce-nonfalsifiability": config.EnforceNonfalsifiabilityWithSpire,
+		},
+		expectedIsSpireEnabled: true,
+	}}
+	ctx := context.Background()
+	store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
+	for _, tc := range testCases {
+		featureflags := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "feature-flags",
+			},
+			Data: tc.configmap,
+		}
+		store.OnConfigChanged(featureflags)
+		ctx = store.ToContext(ctx)
+		want := tc.expectedIsSpireEnabled
+		got := config.IsSpireEnabled(ctx)
+
+		if want != got {
+			t.Errorf("IsSpireEnabled() = %t, want %t", got, want)
+		}
+	}
+}
+
 func verifyConfigFileWithExpectedFeatureFlagsConfig(t *testing.T, fileName string, expectedConfig *config.FeatureFlags) {
 	t.Helper()
 	cm := test.ConfigMapFromTestFile(t, fileName)
