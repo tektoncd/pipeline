@@ -66,3 +66,20 @@ roleRef:
   kind: ClusterRole
   name: tekton-pipelines-webhook-cluster-access
   apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-events-controller-cluster-access
+  labels:
+    app.kubernetes.io/component: events
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+subjects:
+  - kind: ServiceAccount
+    name: tekton-events-controller
+    namespace: tekton-pipelines
+roleRef:
+  kind: ClusterRole
+  name: tekton-events-controller-cluster-access
+  apiGroup: rbac.authorization.k8s.io
