@@ -125,22 +125,6 @@ func GetFeatureFlagsConfigName() string {
 	return "feature-flags"
 }
 
-func getEnforceNonfalsifiabilityFeature(cfgMap map[string]string) (string, error) {
-	var mapValue struct{}
-	var acceptedValues = map[string]struct{}{
-		EnforceNonfalsifiabilityNone:      mapValue,
-		EnforceNonfalsifiabilityWithSpire: mapValue,
-	}
-	var value = DefaultEnforceNonfalsifiability
-	if cfg, ok := cfgMap[enforceNonfalsifiability]; ok {
-		value = strings.ToLower(cfg)
-	}
-	if _, ok := acceptedValues[value]; !ok {
-		return DefaultEnforceNonfalsifiability, fmt.Errorf("invalid value for feature flag %q: %q", enforceNonfalsifiability, value)
-	}
-	return value, nil
-}
-
 // NewFeatureFlagsFromMap returns a Config given a map corresponding to a ConfigMap
 func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	setFeature := func(key string, defaultValue bool, feature *bool) error {
@@ -190,6 +174,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if err := setMaxResultSize(cfgMap, DefaultMaxResultSize, &tc.MaxResultSize); err != nil {
 		return nil, err
 	}
+	if err := setEnforceNonFalsifiability(cfgMap, tc.EnableAPIFields, &tc.EnforceNonfalsifiability); err != nil {
+		return nil, err
+	}
 
 	// Given that they are alpha features, Tekton Bundles and Custom Tasks should be switched on if
 	// enable-api-fields is "alpha". If enable-api-fields is not "alpha" then fall back to the value of
@@ -199,20 +186,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	// defeat the purpose of having a single shared gate for all alpha features.
 	if tc.EnableAPIFields == AlphaAPIFields {
 		tc.EnableTektonOCIBundles = true
-		// Only consider SPIRE if alpha is on.
-		enforceNonfalsifiabilityValue, err := getEnforceNonfalsifiabilityFeature(cfgMap)
-		if err != nil {
-			return nil, err
-		}
-		tc.EnforceNonfalsifiability = enforceNonfalsifiabilityValue
 	} else {
 		if err := setFeature(enableTektonOCIBundles, DefaultEnableTektonOciBundles, &tc.EnableTektonOCIBundles); err != nil {
 			return nil, err
-		}
-		// Do not enable any form of non-falsifiability enforcement in non-alpha mode.
-		tc.EnforceNonfalsifiability = EnforceNonfalsifiabilityNone
-		if enforceNonfalsifiabilityValue, err := getEnforceNonfalsifiabilityFeature(cfgMap); err != nil || enforceNonfalsifiabilityValue != DefaultEnforceNonfalsifiability {
-			return nil, fmt.Errorf("%q can be set to non-default values (%q) only in alpha", enforceNonfalsifiability, enforceNonfalsifiabilityValue)
 		}
 	}
 	return &tc, nil
@@ -230,6 +206,35 @@ func setEnabledAPIFields(cfgMap map[string]string, defaultValue string, feature 
 		*feature = value
 	default:
 		return fmt.Errorf("invalid value for feature flag %q: %q", enableAPIFields, value)
+	}
+	return nil
+}
+
+// setEnforceNonFalsifiability sets the "enforce-nonfalsifiability" flag based on the content of a given map.
+// If the feature gate is invalid, then an error is returned.
+func setEnforceNonFalsifiability(cfgMap map[string]string, enableAPIFields string, feature *string) error {
+	var value = DefaultEnforceNonfalsifiability
+	if cfg, ok := cfgMap[enforceNonfalsifiability]; ok {
+		value = strings.ToLower(cfg)
+	}
+
+	// validate that "enforce-nonfalsifiability" is set to a valid value
+	switch value {
+	case EnforceNonfalsifiabilityNone, EnforceNonfalsifiabilityWithSpire:
+		break
+	default:
+		return fmt.Errorf("invalid value for feature flag %q: %q", enforceNonfalsifiability, value)
+	}
+
+	// validate that "enforce-nonfalsifiability" is set to allowed values for stability level
+	switch enableAPIFields {
+	case AlphaAPIFields:
+		*feature = value
+	default:
+		// Do not consider any form of non-falsifiability enforcement in non-alpha mode
+		if value != DefaultEnforceNonfalsifiability {
+			return fmt.Errorf("%q can be set to non-default values (%q) only in alpha", enforceNonfalsifiability, value)
+		}
 	}
 	return nil
 }
@@ -263,7 +268,7 @@ func setMaxResultSize(cfgMap map[string]string, defaultValue int, feature *int) 
 	}
 	// if max limit is > 1.5 MB (CRD limit).
 	if value >= 1572864 {
-		return fmt.Errorf("invalid value for feature flag %q: %q. This is exceeding the CRD limit", resultExtractionMethod, value)
+		return fmt.Errorf("invalid value for feature flag %q: %q. This is exceeding the CRD limit", resultExtractionMethod, fmt.Sprint(value))
 	}
 	*feature = value
 	return nil
