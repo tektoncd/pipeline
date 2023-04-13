@@ -149,49 +149,51 @@ func initializePipelineRunControllerAssets(t *testing.T, d test.Data, opts pipel
 	}, cancel
 }
 
-// getTaskRunCreations will look through a set of actions to find all task run creation actions and return the set of
-// them. It will fatal the test if none are found, or if less actions were found than expected.
-func getTaskRunCreations(t *testing.T, actions []ktesting.Action, minActionCount int) []*v1beta1.TaskRun {
+// validateTaskRunsCount ensure that there are `expectedCount` TaskRuns
+// It will fatal the test if the number of TaskRuns is not `expectedCount`
+func validateTaskRunsCount(t *testing.T, taskRuns map[string]*v1beta1.TaskRun, expectedCount int) {
 	t.Helper()
-	if len(actions) < minActionCount {
-		t.Fatalf("Expected client to have at least %d action implementation but it has %d", minActionCount, len(actions))
-	}
 
-	var outputs []*v1beta1.TaskRun
-	for _, a := range actions {
-		if action, ok := a.(ktesting.CreateAction); ok {
-			if output, ok := action.GetObject().(*v1beta1.TaskRun); ok {
-				outputs = append(outputs, output)
-			}
-		}
+	actualCount := len(taskRuns)
+	if actualCount != expectedCount {
+		t.Fatalf("Expected %d taskruns but it has %d", expectedCount, actualCount)
 	}
-
-	if len(outputs) > 0 {
-		return outputs
-	}
-	t.Log("actions", actions)
-	t.Fatal("failed to find an action that created a taskrun")
-	return nil
 }
 
-// getPipelineRunUpdates will look through a set of actions to find all PipelineRun creation actions and return the
-// set of them. It will fatal the test if none are found.
-func getPipelineRunUpdates(t *testing.T, actions []ktesting.Action) []*v1beta1.PipelineRun {
+// getTaskRunByName retrieves the TaskRun with the specified name from the given TaskRuns
+// It will fatal the test if the name does not exist
+func getTaskRunByName(t *testing.T, taskRuns map[string]*v1beta1.TaskRun, expectedName string) *v1beta1.TaskRun {
 	t.Helper()
-	var outputs []*v1beta1.PipelineRun
-	for _, a := range actions {
-		if action, ok := a.(ktesting.UpdateAction); ok {
-			if output, ok := action.GetObject().(*v1beta1.PipelineRun); ok {
-				outputs = append(outputs, output)
-			}
-		}
+
+	tr, exist := taskRuns[expectedName]
+	if !exist {
+		t.Fatalf("Expected taskrun %s does not exist", expectedName)
 	}
 
-	if len(outputs) > 0 {
-		return outputs
+	return tr
+}
+
+// getTaskRunsForPipelineRun returns the set of TaskRuns associated with the input PipelineRun.
+// It will fatal the test if an error occurred.
+func getTaskRunsForPipelineRun(ctx context.Context, t *testing.T, clients test.Clients, namespace string, prName string) map[string]*v1beta1.TaskRun {
+	t.Helper()
+
+	opt := metav1.ListOptions{
+		LabelSelector: pipeline.PipelineRunLabelKey + "=" + prName,
 	}
-	t.Fatal("failed to find an action that updated a pipelinerun")
-	return nil
+
+	taskRuns, err := clients.Pipeline.TektonV1beta1().TaskRuns(namespace).List(ctx, opt)
+	if err != nil {
+		t.Fatalf("failed to list taskruns, %s", err)
+	}
+
+	outputs := make(map[string]*v1beta1.TaskRun)
+	for _, item := range taskRuns.Items {
+		tr := item
+		outputs[tr.Name] = &tr
+	}
+
+	return outputs
 }
 
 // runTestReconcile runs "Reconcile" on a PipelineRun with one
@@ -199,6 +201,11 @@ func getPipelineRunUpdates(t *testing.T, actions []ktesting.Action) []*v1beta1.P
 // it checks the resulting API actions, status and events.
 func TestReconcile(t *testing.T) {
 	names.TestingSeed()
+
+	namespace := "foo"
+	prName := "test-pipeline-run-success"
+	trName := "test-pipeline-run-success-unit-test-1"
+
 	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-success
@@ -319,12 +326,16 @@ spec:
 		"Normal Started",
 		"Normal Running Tasks Completed: 0",
 	}
-	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-success", wantEvents, false)
+	reconciledRun, clients := prt.reconcileRun(namespace, prName, wantEvents, false)
+
+	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
+	// Ensure that there are 2 TaskRuns associated with this PipelineRun
+	validateTaskRunsCount(t, taskRuns, 2)
 
 	// Check that the expected TaskRun was created
-	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
+	actual := getTaskRunByName(t, taskRuns, trName)
 	expectedTaskRun := mustParseTaskRunWithObjectMeta(t,
-		taskRunObjectMeta("test-pipeline-run-success-unit-test-1", "foo", "test-pipeline-run-success",
+		taskRunObjectMeta(trName, namespace, prName,
 			"test-pipeline", "unit-test-1", false),
 		`
 spec:
@@ -346,7 +357,7 @@ spec:
     kind: Task
 `)
 	// ignore IgnoreUnexported ignore both after and before steps fields
-	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta); d != "" {
+	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, ignoreResourceVersion); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 	// test taskrun is able to recreate correct pipeline-pvc-name
@@ -546,6 +557,10 @@ func TestReconcile_PipelineSpecTaskSpec(t *testing.T) {
 	// It verifies that a TaskRun is created, it checks the resulting API actions, status and events.
 	names.TestingSeed()
 
+	namespace := "foo"
+	prName := "test-pipeline-run-success"
+	trName := "test-pipeline-run-success-unit-test-task-spec"
+
 	prs := []*v1beta1.PipelineRun{
 		parse.MustParseV1beta1PipelineRun(t, `
 metadata:
@@ -583,10 +598,13 @@ spec:
 		"Normal Started",
 		"Normal Running Tasks Completed: 0",
 	}
-	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-success", wantEvents, false)
+	reconciledRun, clients := prt.reconcileRun(namespace, prName, wantEvents, false)
 
 	// Check that the expected TaskRun was created
-	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
+	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
+	validateTaskRunsCount(t, taskRuns, 1)
+
+	actual := getTaskRunByName(t, taskRuns, trName)
 	expectedTaskRun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 spec:
   taskSpec:
@@ -596,10 +614,10 @@ spec:
   serviceAccountName: %s
 `, config.DefaultServiceAccountValue))
 
-	expectedTaskRun.ObjectMeta = taskRunObjectMeta("test-pipeline-run-success-unit-test-task-spec", "foo", "test-pipeline-run-success", "test-pipeline", "unit-test-task-spec", false)
+	expectedTaskRun.ObjectMeta = taskRunObjectMeta(trName, "foo", "test-pipeline-run-success", "test-pipeline", "unit-test-task-spec", false)
 
 	// ignore IgnoreUnexported ignore both after and before steps fields
-	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, cmpopts.SortSlices(func(x, y v1beta1.TaskSpec) bool { return len(x.Steps) == len(y.Steps) })); d != "" {
+	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, ignoreResourceVersion, cmpopts.SortSlices(func(x, y v1beta1.TaskSpec) bool { return len(x.Steps) == len(y.Steps) })); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 
@@ -609,7 +627,7 @@ spec:
 	}
 
 	verifyTaskRunStatusesCount(t, reconciledRun.Status, 1)
-	verifyTaskRunStatusesNames(t, reconciledRun.Status, "test-pipeline-run-success-unit-test-task-spec")
+	verifyTaskRunStatusesNames(t, reconciledRun.Status, trName)
 }
 
 // TestReconcile_InvalidPipelineRuns runs "Reconcile" on several PipelineRuns that are invalid in different ways.
@@ -1044,6 +1062,7 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	// and that does not have the latest status from TaskRuns yet. It checks that the TaskRun status is updated
 	// in the PipelineRun status, that the completion status is not altered, that not error is returned and
 	// a successful event is triggered
+	namespace := "foo"
 	taskRunName := "test-pipeline-run-completed-hello-world-task-run"
 	customRunName := "test-pipeline-run-completed-hello-world-custom-run"
 	pipelineRunName := "test-pipeline-run-completed"
@@ -1128,31 +1147,10 @@ status:
 	wantEvents := []string{
 		"Normal Succeeded All Tasks have completed executing",
 	}
-	reconciledRun, clients := prt.reconcileRun("foo", pipelineRunName, wantEvents, false)
+	reconciledRun, clients := prt.reconcileRun(namespace, pipelineRunName, wantEvents, false)
 
-	actions := clients.Pipeline.Actions()
-	if len(actions) < 2 {
-		t.Errorf("# Actions: %d, Actions: %#v", len(actions), actions)
-		t.Fatalf("Expected client to have at least two action implementation")
-	}
-
-	_ = getPipelineRunUpdates(t, actions)
-	pipelineUpdates := 0
-	for _, action := range actions {
-		if action != nil {
-			switch {
-			case action.Matches("create", "taskruns"):
-				t.Errorf("Expected client to not have created a TaskRun, but it did")
-			case action.Matches("update", "pipelineruns"):
-				pipelineUpdates++
-			}
-		}
-	}
-
-	if pipelineUpdates != 1 {
-		// If only the pipelinerun status changed, we expect one update
-		t.Fatalf("Expected client to have updated the pipelinerun twice, but it did %d times", pipelineUpdates)
-	}
+	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, pipelineRunName)
+	validateTaskRunsCount(t, taskRuns, 1)
 
 	// This PipelineRun should still be complete and the status should reflect that
 	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
@@ -2676,6 +2674,10 @@ spec:
 func TestReconcilePropagateLabelsAndAnnotations(t *testing.T) {
 	names.TestingSeed()
 
+	namespace := "foo"
+	prName := "test-pipeline-run-with-labels"
+	trName := "test-pipeline-run-with-labels-hello-world-1"
+
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
 	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
@@ -2693,7 +2695,7 @@ spec:
 `)}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 
-	expectedObjectMeta := taskRunObjectMeta("test-pipeline-run-with-labels-hello-world-1", "foo", "test-pipeline-run-with-labels",
+	expectedObjectMeta := taskRunObjectMeta(trName, "foo", "test-pipeline-run-with-labels",
 		"test-pipeline", "hello-world-1", false)
 	expectedObjectMeta.Labels["PipelineRunLabel"] = "PipelineRunValue"
 	expectedObjectMeta.Annotations["PipelineRunAnnotation"] = "PipelineRunValue"
@@ -2713,12 +2715,15 @@ spec:
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
-	_, clients := prt.reconcileRun("foo", "test-pipeline-run-with-labels", []string{}, false)
+	_, clients := prt.reconcileRun(namespace, prName, []string{}, false)
 
 	// Check that the expected TaskRun was created
-	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
+	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
+	validateTaskRunsCount(t, taskRuns, 1)
+
+	actual := getTaskRunByName(t, taskRuns, trName)
 	// We're ignoring TypeMeta here because parse.MustParseV1beta1TaskRun populates that, but ktesting does not, so actual does not have it.
-	if d := cmp.Diff(expected, actual, cmpopts.IgnoreTypes(metav1.TypeMeta{})); d != "" {
+	if d := cmp.Diff(expected, actual, ignoreTypeMeta, ignoreResourceVersion); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expected, diff.PrintWantGot(d))
 	}
 }
@@ -2925,7 +2930,11 @@ spec:
 // in PipelineRun is propagated to created TaskRuns
 func TestReconcileAndPropagateCustomPipelineTaskRunSpec(t *testing.T) {
 	names.TestingSeed()
+
+	namespace := "foo"
 	prName := "test-pipeline-run"
+	trName := "test-pipeline-run-hello-world-1"
+
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
 	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
@@ -2961,8 +2970,11 @@ spec:
 	_, clients := prt.reconcileRun("foo", prName, []string{}, false)
 
 	// Check that the expected TaskRun was created
-	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
-	expectedTaskRunObjectMeta := taskRunObjectMeta("test-pipeline-run-hello-world-1", "foo", "test-pipeline-run", "test-pipeline", "hello-world-1", false)
+	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
+	validateTaskRunsCount(t, taskRuns, 1)
+
+	actual := getTaskRunByName(t, taskRuns, trName)
+	expectedTaskRunObjectMeta := taskRunObjectMeta(trName, namespace, prName, "test-pipeline", "hello-world-1", false)
 	expectedTaskRunObjectMeta.Annotations["PipelineRunAnnotation"] = "PipelineRunValue"
 	expectedTaskRun := mustParseTaskRunWithObjectMeta(t, expectedTaskRunObjectMeta, `
 spec:
@@ -2979,7 +2991,7 @@ spec:
     kind: Task
 `)
 
-	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta); d != "" {
+	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, ignoreResourceVersion); d != "" {
 		t.Errorf("expected to see propagated custom ServiceAccountName and PodTemplate in TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 }
@@ -4749,6 +4761,7 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 	// For more details, see https://github.com/tektoncd/pipeline/issues/2558
 	ctx := context.Background()
 
+	namespace := "foo"
 	prOutOfSyncName := "test-pipeline-run-out-of-sync"
 	helloWorldTask := simpleHelloWorldTask
 
@@ -4854,39 +4867,9 @@ status:
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
-	reconciledRun, clients := prt.reconcileRun("foo", prOutOfSync.Name, []string{}, false)
-
-	actions := clients.Pipeline.Actions()
-	if len(actions) < 3 {
-		t.Fatalf("Expected client to have at least three action implementation but it has %d", len(actions))
-	}
-
-	_ = getPipelineRunUpdates(t, actions)
-	pipelineUpdates := 0
-	for _, action := range actions {
-		if action != nil {
-			switch {
-			case action.Matches("create", "taskruns"):
-				t.Errorf("Expected client to not have created a TaskRun, but it did")
-			case action.Matches("create", "customruns"):
-				t.Errorf("Expected client to not have created a CustomRun, but it did")
-			case action.Matches("update", "pipelineruns"):
-				pipelineUpdates++
-			case action.Matches("patch", "pipelineruns"):
-				pipelineUpdates++
-			default:
-				continue
-			}
-		}
-	}
-
-	// We actually expect three update calls because the first status update fails due to
-	// optimistic concurrency (due to the label update) and is retried after reloading via
-	// the client.
-	if got, want := pipelineUpdates, 3; got != want {
-		// If only the pipelinerun status changed, we expect one update
-		t.Fatalf("Expected client to have updated the pipelinerun %d times, but it did %d times", want, got)
-	}
+	reconciledRun, clients := prt.reconcileRun(namespace, prOutOfSyncName, []string{}, false)
+	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prOutOfSyncName)
+	validateTaskRunsCount(t, taskRuns, 2)
 
 	// This PipelineRun should still be running and the status should reflect that
 	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
@@ -6177,6 +6160,10 @@ func (prt PipelineRunTest) reconcileRun(namespace, pipelineRunName string, wantE
 func TestReconcile_RemotePipelineRef(t *testing.T) {
 	names.TestingSeed()
 
+	namespace := "foo"
+	prName := "test-pipeline-run-success"
+	trName := "test-pipeline-run-success-unit-test-1"
+
 	ctx := context.Background()
 	cfg := config.NewStore(logtesting.TestLogger(t))
 	cfg.OnConfigChanged(withOCIBundles(newFeatureFlagsConfigMap()))
@@ -6232,7 +6219,7 @@ metadata:
 	d := test.Data{
 		PipelineRuns: prs,
 		ServiceAccounts: []*corev1.ServiceAccount{{
-			ObjectMeta: metav1.ObjectMeta{Name: prs[0].Spec.ServiceAccountName, Namespace: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: prs[0].Spec.ServiceAccountName, Namespace: namespace},
 		}},
 		ConfigMaps: cms,
 	}
@@ -6244,12 +6231,15 @@ metadata:
 		"Normal Started",
 		"Normal Running Tasks Completed: 0",
 	}
-	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-success", wantEvents, false)
+	reconciledRun, clients := prt.reconcileRun(namespace, prName, wantEvents, false)
 
 	// Check that the expected TaskRun was created
-	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
+	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
+	validateTaskRunsCount(t, taskRuns, 1)
+
+	actual := getTaskRunByName(t, taskRuns, trName)
 	expectedTaskRun := mustParseTaskRunWithObjectMeta(t,
-		taskRunObjectMeta("test-pipeline-run-success-unit-test-1", "foo", "test-pipeline-run-success",
+		taskRunObjectMeta(trName, namespace, prName,
 			"test-pipeline", "unit-test-1", false),
 		fmt.Sprintf(`
 spec:
@@ -6260,7 +6250,7 @@ spec:
     name: unit-test-task
 `, ref))
 
-	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta); d != "" {
+	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, ignoreResourceVersion); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 
@@ -6276,6 +6266,10 @@ spec:
 // successfully without an error.
 func TestReconcile_OptionalWorkspacesOmitted(t *testing.T) {
 	names.TestingSeed()
+
+	namespace := "foo"
+	prName := "test-pipeline-run-success"
+	trName := "test-pipeline-run-success-unit-test-1"
 
 	ctx := context.Background()
 	cfg := config.NewStore(logtesting.TestLogger(t))
@@ -6308,7 +6302,7 @@ spec:
 	d := test.Data{
 		PipelineRuns: prs,
 		ServiceAccounts: []*corev1.ServiceAccount{{
-			ObjectMeta: metav1.ObjectMeta{Name: prs[0].Spec.ServiceAccountName, Namespace: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: prs[0].Spec.ServiceAccountName, Namespace: namespace},
 		}},
 		ConfigMaps: []*corev1.ConfigMap{newFeatureFlagsConfigMap()},
 	}
@@ -6316,12 +6310,15 @@ spec:
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
-	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-success", nil, false)
+	reconciledRun, clients := prt.reconcileRun(namespace, prName, nil, false)
 
 	// Check that the expected TaskRun was created
-	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
+	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
+	validateTaskRunsCount(t, taskRuns, 1)
+
+	actual := getTaskRunByName(t, taskRuns, trName)
 	expectedTaskRun := mustParseTaskRunWithObjectMeta(t,
-		taskRunObjectMeta("test-pipeline-run-success-unit-test-1", "foo", "test-pipeline-run-success",
+		taskRunObjectMeta(trName, namespace, prName,
 			"test-pipeline-run-success", "unit-test-1", false),
 		`
 spec:
@@ -6334,7 +6331,7 @@ spec:
       optional: true
 `)
 
-	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta); d != "" {
+	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, ignoreResourceVersion); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 
@@ -7180,7 +7177,11 @@ spec:
 
 func TestReconcile_PropagatePipelineTaskRunSpecMetadata(t *testing.T) {
 	names.TestingSeed()
+
+	namespace := "foo"
 	prName := "test-pipeline-run"
+	trName := "test-pipeline-run-hello-world-1"
+
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
 	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
@@ -7208,10 +7209,13 @@ spec:
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
-	_, clients := prt.reconcileRun("foo", prName, []string{}, false)
+	_, clients := prt.reconcileRun(namespace, prName, []string{}, false)
 
-	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
-	expectedTaskRunObjectMeta := taskRunObjectMeta("test-pipeline-run-hello-world-1", "foo", "test-pipeline-run", "test-pipeline", "hello-world-1", false)
+	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
+	validateTaskRunsCount(t, taskRuns, 1)
+
+	actual := getTaskRunByName(t, taskRuns, trName)
+	expectedTaskRunObjectMeta := taskRunObjectMeta(trName, namespace, prName, "test-pipeline", "hello-world-1", false)
 	expectedTaskRunObjectMeta.Labels["PipelineTaskRunSpecLabel"] = "PipelineTaskRunSpecValue"
 	expectedTaskRunObjectMeta.Annotations["PipelineTaskRunSpecAnnotation"] = "PipelineTaskRunSpecValue"
 	expectedTaskRun := mustParseTaskRunWithObjectMeta(t, expectedTaskRunObjectMeta, `
@@ -7222,14 +7226,18 @@ spec:
     kind: Task
 `)
 
-	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta); d != "" {
+	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, ignoreResourceVersion); d != "" {
 		t.Errorf("expected to see propagated metadata from PipelineTaskRunSpec in TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 }
 
 func TestReconcile_AddMetadataByPrecedence(t *testing.T) {
 	names.TestingSeed()
+
+	namespace := "foo"
 	prName := "test-pipeline-run"
+	trName := "test-pipeline-run-hello-world-1"
+
 	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
@@ -7278,10 +7286,13 @@ spec:
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
-	_, clients := prt.reconcileRun("foo", prName, []string{}, false)
+	_, clients := prt.reconcileRun(namespace, prName, []string{}, false)
 
-	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
-	expectedTaskRunObjectMeta := taskRunObjectMeta("test-pipeline-run-hello-world-1", "foo", "test-pipeline-run", "test-pipeline", "hello-world-1", false)
+	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
+	validateTaskRunsCount(t, taskRuns, 1)
+
+	actual := getTaskRunByName(t, taskRuns, trName)
+	expectedTaskRunObjectMeta := taskRunObjectMeta(trName, namespace, prName, "test-pipeline", "hello-world-1", false)
 	expectedTaskRunObjectMeta.Labels["TestPrecedenceLabel"] = "PipelineTaskRunSpecValue"
 	expectedTaskRunObjectMeta.Annotations["TestPrecedenceAnnotation"] = "PipelineTaskRunSpecValue"
 	expectedTaskRun := mustParseTaskRunWithObjectMeta(t, expectedTaskRunObjectMeta, `
@@ -7293,7 +7304,7 @@ spec:
         image: foo-image
 `)
 
-	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta); d != "" {
+	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, ignoreResourceVersion); d != "" {
 		t.Errorf("expected to see propagated metadata by the precedence from PipelineTaskRunSpec in TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 }
@@ -10115,6 +10126,11 @@ spec:
 
 func TestReconcile_SetDefaults(t *testing.T) {
 	names.TestingSeed()
+
+	namespace := "foo"
+	prName := "test-pipeline-run-success"
+	trName := "test-pipeline-run-success-unit-test-1"
+
 	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-success
@@ -10193,12 +10209,16 @@ spec:
 		"Normal Started",
 		"Normal Running Tasks Completed: 0",
 	}
-	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-success", wantEvents, false)
+	reconciledRun, clients := prt.reconcileRun(namespace, prName, wantEvents, false)
 
 	// Check that the expected TaskRun was created
-	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
+	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
+	// Ensure that there are 2 TaskRuns associated with this PipelineRun
+	validateTaskRunsCount(t, taskRuns, 2)
+
+	actual := getTaskRunByName(t, taskRuns, trName)
 	expectedTaskRun := mustParseTaskRunWithObjectMeta(t,
-		taskRunObjectMeta("test-pipeline-run-success-unit-test-1", "foo", "test-pipeline-run-success",
+		taskRunObjectMeta(trName, namespace, prName,
 			"test-pipeline", "unit-test-1", false),
 		`
 spec:
@@ -10213,7 +10233,7 @@ spec:
     kind: Task
 `)
 	// ignore IgnoreUnexported ignore both after and before steps fields
-	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta); d != "" {
+	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, ignoreResourceVersion); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 
