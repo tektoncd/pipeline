@@ -34,19 +34,20 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/result"
 	"go.uber.org/zap"
 )
 
 // VerifyTaskRunResults ensures that the TaskRun results are valid and have not been tampered with
-func (sc *spireControllerAPIClient) VerifyTaskRunResults(ctx context.Context, prs []v1beta1.RunResult, tr *v1beta1.TaskRun) error {
+func (sc *spireControllerAPIClient) VerifyTaskRunResults(ctx context.Context, prs []result.RunResult, tr *v1beta1.TaskRun) error {
 	err := sc.setupClient(ctx)
 	if err != nil {
 		return err
 	}
 
-	resultMap := map[string]v1beta1.RunResult{}
+	resultMap := map[string]result.RunResult{}
 	for _, r := range prs {
-		if r.ResultType == v1beta1.TaskRunResultType {
+		if r.ResultType == result.TaskRunResultType {
 			resultMap[r.Key] = r
 		}
 	}
@@ -177,7 +178,7 @@ func CheckStatusInternalAnnotation(tr *v1beta1.TaskRun) error {
 	return nil
 }
 
-func getSVID(resultMap map[string]v1beta1.RunResult) (*x509.Certificate, error) {
+func getSVID(resultMap map[string]result.RunResult) (*x509.Certificate, error) {
 	svid, ok := resultMap[KeySVID]
 	if !ok {
 		return nil, errors.New("no SVID found")
@@ -252,7 +253,7 @@ func verifyCertificateTrust(cert *x509.Certificate, rootCertPool *x509.CertPool)
 	return nil
 }
 
-func verifyManifest(results map[string]v1beta1.RunResult) error {
+func verifyManifest(results map[string]result.RunResult) error {
 	manifest, ok := results[KeyResultManifest]
 	if !ok {
 		return errors.New("no manifest found in results")
@@ -283,7 +284,7 @@ func verifyAnnotation(pub interface{}, annotations map[string]string) error {
 	return verifySignature(pub, signature, hash)
 }
 
-func verifyResult(pub crypto.PublicKey, key string, results map[string]v1beta1.RunResult) error {
+func verifyResult(pub crypto.PublicKey, key string, results map[string]result.RunResult) error {
 	signature, ok := results[key+KeySignatureSuffix]
 	if !ok {
 		return fmt.Errorf("no signature found for %s", key)
@@ -324,7 +325,7 @@ func verifySignature(pub crypto.PublicKey, signature string, value string) error
 	}
 }
 
-func getResultValue(result v1beta1.RunResult) (string, error) {
+func getResultValue(result result.RunResult) (string, error) {
 	aos := v1beta1.ArrayOrString{}
 	err := aos.UnmarshalJSON([]byte(result.Value))
 	valList := []string{}

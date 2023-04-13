@@ -28,10 +28,11 @@ import (
 
 	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/result"
 )
 
 // Signs the TaskRun results with the TaskRun spire SVID and appends the results to RunResult
-func (w *spireEntrypointerAPIClient) Sign(ctx context.Context, results []v1beta1.RunResult) ([]v1beta1.RunResult, error) {
+func (w *spireEntrypointerAPIClient) Sign(ctx context.Context, results []result.RunResult) ([]result.RunResult, error) {
 	err := w.setupClient(ctx)
 	if err != nil {
 		return nil, err
@@ -46,19 +47,19 @@ func (w *spireEntrypointerAPIClient) Sign(ctx context.Context, results []v1beta1
 		return nil, errors.New("returned workload svid does not have certificates")
 	}
 
-	output := []v1beta1.RunResult{}
+	output := []result.RunResult{}
 	p := pem.EncodeToMemory(&pem.Block{
 		Bytes: xsvid.Certificates[0].Raw,
 		Type:  "CERTIFICATE",
 	})
-	output = append(output, v1beta1.RunResult{
+	output = append(output, result.RunResult{
 		Key:        KeySVID,
 		Value:      string(p),
-		ResultType: v1beta1.TaskRunResultType,
+		ResultType: result.TaskRunResultType,
 	})
 
 	for _, r := range results {
-		if r.ResultType == v1beta1.TaskRunResultType {
+		if r.ResultType == result.TaskRunResultType {
 			resultValue, err := getResultValue(r)
 			if err != nil {
 				return nil, err
@@ -67,28 +68,28 @@ func (w *spireEntrypointerAPIClient) Sign(ctx context.Context, results []v1beta1
 			if err != nil {
 				return nil, err
 			}
-			output = append(output, v1beta1.RunResult{
+			output = append(output, result.RunResult{
 				Key:        r.Key + KeySignatureSuffix,
 				Value:      base64.StdEncoding.EncodeToString(s),
-				ResultType: v1beta1.TaskRunResultType,
+				ResultType: result.TaskRunResultType,
 			})
 		}
 	}
 	// get complete manifest of keys such that it can be verified
 	manifest := getManifest(results)
-	output = append(output, v1beta1.RunResult{
+	output = append(output, result.RunResult{
 		Key:        KeyResultManifest,
 		Value:      manifest,
-		ResultType: v1beta1.TaskRunResultType,
+		ResultType: result.TaskRunResultType,
 	})
 	manifestSig, err := signWithKey(xsvid, manifest)
 	if err != nil {
 		return nil, err
 	}
-	output = append(output, v1beta1.RunResult{
+	output = append(output, result.RunResult{
 		Key:        KeyResultManifest + KeySignatureSuffix,
 		Value:      base64.StdEncoding.EncodeToString(manifestSig),
-		ResultType: v1beta1.TaskRunResultType,
+		ResultType: result.TaskRunResultType,
 	})
 
 	return output, nil
@@ -103,10 +104,10 @@ func signWithKey(xsvid *x509svid.SVID, value string) ([]byte, error) {
 	return s, nil
 }
 
-func getManifest(results []v1beta1.RunResult) string {
+func getManifest(results []result.RunResult) string {
 	keys := []string{}
 	for _, r := range results {
-		if strings.HasSuffix(r.Key, KeySignatureSuffix) || r.Key == KeySVID || r.ResultType != v1beta1.TaskRunResultType {
+		if strings.HasSuffix(r.Key, KeySignatureSuffix) || r.Key == KeySVID || r.ResultType != result.TaskRunResultType {
 			continue
 		}
 		keys = append(keys, r.Key)

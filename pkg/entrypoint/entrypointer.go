@@ -30,7 +30,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/result"
 	"github.com/tektoncd/pipeline/pkg/spire"
 	"github.com/tektoncd/pipeline/pkg/termination"
 	"go.uber.org/zap"
@@ -112,7 +112,7 @@ func (e Entrypointer) Go() error {
 	prod, _ := zap.NewProduction()
 	logger := prod.Sugar()
 
-	output := []v1beta1.RunResult{}
+	output := []result.RunResult{}
 	defer func() {
 		if wErr := termination.WriteMessage(e.TerminationPath, output); wErr != nil {
 			logger.Fatalf("Error while writing message: %s", wErr)
@@ -128,19 +128,19 @@ func (e Entrypointer) Go() error {
 			if !e.BreakpointOnFailure {
 				e.WritePostFile(e.PostFile, err)
 			}
-			output = append(output, v1beta1.RunResult{
+			output = append(output, result.RunResult{
 				Key:        "StartedAt",
 				Value:      time.Now().Format(timeFormat),
-				ResultType: v1beta1.InternalTektonResultType,
+				ResultType: result.InternalTektonResultType,
 			})
 			return err
 		}
 	}
 
-	output = append(output, v1beta1.RunResult{
+	output = append(output, result.RunResult{
 		Key:        "StartedAt",
 		Value:      time.Now().Format(timeFormat),
-		ResultType: v1beta1.InternalTektonResultType,
+		ResultType: result.InternalTektonResultType,
 	})
 
 	ctx := context.Background()
@@ -158,10 +158,10 @@ func (e Entrypointer) Go() error {
 		}
 		err = e.Runner.Run(ctx, e.Command...)
 		if errors.Is(err, context.DeadlineExceeded) {
-			output = append(output, v1beta1.RunResult{
+			output = append(output, result.RunResult{
 				Key:        "Reason",
 				Value:      "TimeoutExceeded",
-				ResultType: v1beta1.InternalTektonResultType,
+				ResultType: result.InternalTektonResultType,
 			})
 		}
 	}
@@ -173,10 +173,10 @@ func (e Entrypointer) Go() error {
 	case e.OnError == ContinueOnError && errors.As(err, &ee):
 		// with continue on error and an ExitError, write non-zero exit code and a post file
 		exitCode := strconv.Itoa(ee.ExitCode())
-		output = append(output, v1beta1.RunResult{
+		output = append(output, result.RunResult{
 			Key:        "ExitCode",
 			Value:      exitCode,
-			ResultType: v1beta1.InternalTektonResultType,
+			ResultType: result.InternalTektonResultType,
 		})
 		e.WritePostFile(e.PostFile, nil)
 		e.WriteExitCodeFile(e.StepMetadataDir, exitCode)
@@ -205,7 +205,7 @@ func (e Entrypointer) Go() error {
 }
 
 func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string) error {
-	output := []v1beta1.RunResult{}
+	output := []result.RunResult{}
 	for _, resultFile := range e.Results {
 		if resultFile == "" {
 			continue
@@ -217,10 +217,10 @@ func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string)
 			return err
 		}
 		// if the file doesn't exist, ignore it
-		output = append(output, v1beta1.RunResult{
+		output = append(output, result.RunResult{
 			Key:        resultFile,
 			Value:      string(fileContents),
-			ResultType: v1beta1.TaskRunResultType,
+			ResultType: result.TaskRunResultType,
 		})
 	}
 	if e.SpireWorkloadAPI != nil {

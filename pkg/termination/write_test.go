@@ -23,7 +23,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/result"
 	"github.com/tektoncd/pipeline/test/diff"
 	"knative.dev/pkg/logging"
 )
@@ -40,7 +40,7 @@ func TestExistingFile(t *testing.T) {
 	defer func() {
 		_ = logger.Sync()
 	}()
-	output := []v1beta1.RunResult{{
+	output := []result.RunResult{{
 		Key:   "key1",
 		Value: "hello",
 	}}
@@ -49,7 +49,7 @@ func TestExistingFile(t *testing.T) {
 		logger.Fatalf("Errot while writing message: %s", err)
 	}
 
-	output = []v1beta1.RunResult{{
+	output = []result.RunResult{{
 		Key:   "key2",
 		Value: "world",
 	}}
@@ -77,7 +77,7 @@ func TestMaxSizeFile(t *testing.T) {
 	// Remember to clean up the file afterwards
 	defer os.Remove(tmpFile.Name())
 
-	output := []v1beta1.RunResult{{
+	output := []result.RunResult{{
 		Key:   "key1",
 		Value: value,
 	}}

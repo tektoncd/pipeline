@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/result"
 	"github.com/tektoncd/pipeline/pkg/termination"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -248,7 +249,7 @@ func setTaskRunStatusBasedOnSidecarStatus(sidecarStatuses []corev1.ContainerStat
 	}
 }
 
-func createMessageFromResults(results []v1beta1.RunResult) (string, error) {
+func createMessageFromResults(results []result.RunResult) (string, error) {
 	if len(results) == 0 {
 		return "", nil
 	}
@@ -262,16 +263,16 @@ func createMessageFromResults(results []v1beta1.RunResult) (string, error) {
 // filterResults filters the RunResults and TaskResults based on the results declared in the task spec.
 // It returns a slice of any of the input results that are defined in the task spec, converted to TaskRunResults,
 // and a slice of any of the RunResults that don't represent internal values (i.e. those that should not be displayed in the TaskRun status.
-func filterResults(results []v1beta1.RunResult, specResults []v1beta1.TaskResult) ([]v1beta1.TaskRunResult, []v1beta1.RunResult) {
+func filterResults(results []result.RunResult, specResults []v1beta1.TaskResult) ([]v1beta1.TaskRunResult, []result.RunResult) {
 	var taskResults []v1beta1.TaskRunResult
-	var filteredResults []v1beta1.RunResult
+	var filteredResults []result.RunResult
 	neededTypes := make(map[string]v1beta1.ResultsType)
 	for _, r := range specResults {
 		neededTypes[r.Name] = r.Type
 	}
 	for _, r := range results {
 		switch r.ResultType {
-		case v1beta1.TaskRunResultType:
+		case result.TaskRunResultType:
 			var taskRunResult v1beta1.TaskRunResult
 			if neededTypes[r.Key] == v1beta1.ResultsTypeString {
 				taskRunResult = v1beta1.TaskRunResult{
@@ -293,7 +294,7 @@ func filterResults(results []v1beta1.RunResult, specResults []v1beta1.TaskResult
 			}
 			taskResults = append(taskResults, taskRunResult)
 			filteredResults = append(filteredResults, r)
-		case v1beta1.InternalTektonResultType:
+		case result.InternalTektonResultType:
 			// Internal messages are ignored because they're not used as external result
 			continue
 		default:
@@ -323,7 +324,7 @@ func removeDuplicateResults(taskRunResult []v1beta1.TaskRunResult) []v1beta1.Tas
 	return uniq
 }
 
-func extractStartedAtTimeFromResults(results []v1beta1.RunResult) (*metav1.Time, error) {
+func extractStartedAtTimeFromResults(results []result.RunResult) (*metav1.Time, error) {
 	for _, result := range results {
 		if result.Key == "StartedAt" {
 			t, err := time.Parse(timeFormat, result.Value)
@@ -337,7 +338,7 @@ func extractStartedAtTimeFromResults(results []v1beta1.RunResult) (*metav1.Time,
 	return nil, nil
 }
 
-func extractExitCodeFromResults(results []v1beta1.RunResult) (*int32, error) {
+func extractExitCodeFromResults(results []result.RunResult) (*int32, error) {
 	for _, result := range results {
 		if result.Key == "ExitCode" {
 			// We could just pass the string through but this provides extra validation
@@ -469,8 +470,8 @@ func extractContainerFailureMessage(logger *zap.SugaredLogger, status corev1.Con
 	if term != nil {
 		msg := status.State.Terminated.Message
 		r, _ := termination.ParseMessage(logger, msg)
-		for _, result := range r {
-			if result.ResultType == v1beta1.InternalTektonResultType && result.Key == "Reason" && result.Value == "TimeoutExceeded" {
+		for _, runResult := range r {
+			if runResult.ResultType == result.InternalTektonResultType && runResult.Key == "Reason" && runResult.Value == "TimeoutExceeded" {
 				// Newline required at end to prevent yaml parser from breaking the log help text at 80 chars
 				return fmt.Sprintf("%q exited because the step exceeded the specified timeout limit; for logs run: kubectl -n %s logs %s -c %s\n",
 					status.Name,

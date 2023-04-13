@@ -24,6 +24,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/result"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -322,19 +323,19 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		ec EntrypointerAPIClient = spireMockClient
 	)
 
-	genPr := func() []v1beta1.RunResult {
-		return []v1beta1.RunResult{
+	genPr := func() []result.RunResult {
+		return []result.RunResult{
 			{
 				Key:          "foo",
 				Value:        "foo-value",
 				ResourceName: "source-image",
-				ResultType:   v1beta1.TaskRunResultType,
+				ResultType:   result.TaskRunResultType,
 			},
 			{
 				Key:          "bar",
 				Value:        "bar-value",
 				ResourceName: "source-image2",
-				ResultType:   v1beta1.TaskRunResultType,
+				ResultType:   result.TaskRunResultType,
 			},
 		}
 	}
@@ -343,7 +344,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		// description of test
 		desc string
 		// function to tamper
-		tamperFn func([]v1beta1.RunResult) []v1beta1.RunResult
+		tamperFn func([]result.RunResult) []result.RunResult
 		// whether sign/verify procedure should succeed
 		success bool
 	}{
@@ -353,8 +354,8 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "non-intrusive tamper",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
-				prs = append(prs, v1beta1.RunResult{
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
+				prs = append(prs, result.RunResult{
 					Key:   "not-taskrun-result-type-add",
 					Value: "abc:12345",
 				})
@@ -364,7 +365,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "tamper SVID",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
 				for i, pr := range prs {
 					if pr.Key == KeySVID {
 						prs[i].Value = "tamper-value"
@@ -376,7 +377,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "tamper result manifest",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
 				for i, pr := range prs {
 					if pr.Key == KeyResultManifest {
 						prs[i].Value = "tamper-value"
@@ -388,7 +389,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "tamper result manifest signature",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
 				for i, pr := range prs {
 					if pr.Key == KeyResultManifest+KeySignatureSuffix {
 						prs[i].Value = "tamper-value"
@@ -400,7 +401,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "tamper result field",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
 				for i, pr := range prs {
 					if pr.Key == "foo" {
 						prs[i].Value = "tamper-value"
@@ -412,7 +413,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "tamper result field signature",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
 				for i, pr := range prs {
 					if pr.Key == "foo"+KeySignatureSuffix {
 						prs[i].Value = "tamper-value"
@@ -424,7 +425,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "delete SVID",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
 				for i, pr := range prs {
 					if pr.Key == KeySVID {
 						return append(prs[:i], prs[i+1:]...)
@@ -436,7 +437,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "delete result manifest",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
 				for i, pr := range prs {
 					if pr.Key == KeyResultManifest {
 						return append(prs[:i], prs[i+1:]...)
@@ -448,7 +449,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "delete result manifest signature",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
 				for i, pr := range prs {
 					if pr.Key == KeyResultManifest+KeySignatureSuffix {
 						return append(prs[:i], prs[i+1:]...)
@@ -460,7 +461,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "delete result field",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
 				for i, pr := range prs {
 					if pr.Key == "foo" {
 						return append(prs[:i], prs[i+1:]...)
@@ -472,7 +473,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "delete result field signature",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
 				for i, pr := range prs {
 					if pr.Key == "foo"+KeySignatureSuffix {
 						return append(prs[:i], prs[i+1:]...)
@@ -484,7 +485,7 @@ func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "add to result manifest",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
 				for i, pr := range prs {
 					if pr.Key == KeyResultManifest {
 						prs[i].Value += ",xyz"
@@ -631,15 +632,15 @@ func testTaskRuns() []*v1beta1.TaskRun {
 	}
 }
 
-func testRunResults() [][]v1beta1.RunResult {
-	return [][]v1beta1.RunResult{
+func testRunResults() [][]result.RunResult {
+	return [][]result.RunResult{
 		// Single result
 		{
 			{
 				Key:          "digest",
 				Value:        "sha256:12345",
 				ResourceName: "source-image",
-				ResultType:   v1beta1.TaskRunResultType,
+				ResultType:   result.TaskRunResultType,
 			},
 		},
 		// array result
@@ -648,7 +649,7 @@ func testRunResults() [][]v1beta1.RunResult {
 				Key:          "resultName",
 				Value:        "[\"hello\",\"world\"]",
 				ResourceName: "source-image",
-				ResultType:   v1beta1.TaskRunResultType,
+				ResultType:   result.TaskRunResultType,
 			},
 		},
 		// array result
@@ -657,7 +658,7 @@ func testRunResults() [][]v1beta1.RunResult {
 				Key:          "resultArray",
 				Value:        "{\"key1\":\"var1\",\"key2\":\"var2\"}",
 				ResourceName: "source-image",
-				ResultType:   v1beta1.TaskRunResultType,
+				ResultType:   result.TaskRunResultType,
 			},
 		},
 		// multi result
@@ -666,13 +667,13 @@ func testRunResults() [][]v1beta1.RunResult {
 				Key:          "foo",
 				Value:        "abc",
 				ResourceName: "source-image",
-				ResultType:   v1beta1.TaskRunResultType,
+				ResultType:   result.TaskRunResultType,
 			},
 			{
 				Key:          "bar",
 				Value:        "xyz",
 				ResourceName: "source-image2",
-				ResultType:   v1beta1.TaskRunResultType,
+				ResultType:   result.TaskRunResultType,
 			},
 		},
 		// mix result type
@@ -681,25 +682,25 @@ func testRunResults() [][]v1beta1.RunResult {
 				Key:          "foo",
 				Value:        "abc",
 				ResourceName: "source-image",
-				ResultType:   v1beta1.TaskRunResultType,
+				ResultType:   result.TaskRunResultType,
 			},
 			{
 				Key:          "bar",
 				Value:        "xyz",
 				ResourceName: "source-image2",
-				ResultType:   v1beta1.TaskRunResultType,
+				ResultType:   result.TaskRunResultType,
 			},
 			{
 				Key:          "resultName",
 				Value:        "[\"hello\",\"world\"]",
 				ResourceName: "source-image3",
-				ResultType:   v1beta1.TaskRunResultType,
+				ResultType:   result.TaskRunResultType,
 			},
 			{
 				Key:          "resultName2",
 				Value:        "{\"key1\":\"var1\",\"key2\":\"var2\"}",
 				ResourceName: "source-image4",
-				ResultType:   v1beta1.TaskRunResultType,
+				ResultType:   result.TaskRunResultType,
 			},
 		},
 		// not TaskRunResultType

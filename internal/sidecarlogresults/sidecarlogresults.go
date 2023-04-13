@@ -27,7 +27,7 @@ import (
 	"path/filepath"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/result"
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -137,8 +137,8 @@ func LookForResults(w io.Writer, runDir string, resultsDir string, resultNames [
 }
 
 // GetResultsFromSidecarLogs extracts results from the logs of the results sidecar
-func GetResultsFromSidecarLogs(ctx context.Context, clientset kubernetes.Interface, namespace string, name string, container string, podPhase corev1.PodPhase) ([]v1beta1.RunResult, error) {
-	sidecarLogResults := []v1beta1.RunResult{}
+func GetResultsFromSidecarLogs(ctx context.Context, clientset kubernetes.Interface, namespace string, name string, container string, podPhase corev1.PodPhase) ([]result.RunResult, error) {
+	sidecarLogResults := []result.RunResult{}
 	if podPhase == corev1.PodPending {
 		return sidecarLogResults, nil
 	}
@@ -153,7 +153,7 @@ func GetResultsFromSidecarLogs(ctx context.Context, clientset kubernetes.Interfa
 	return extractResultsFromLogs(sidecarLogs, sidecarLogResults, maxResultLimit)
 }
 
-func extractResultsFromLogs(logs io.Reader, sidecarLogResults []v1beta1.RunResult, maxResultLimit int) ([]v1beta1.RunResult, error) {
+func extractResultsFromLogs(logs io.Reader, sidecarLogResults []result.RunResult, maxResultLimit int) ([]result.RunResult, error) {
 	scanner := bufio.NewScanner(logs)
 	buf := make([]byte, maxResultLimit)
 	scanner.Buffer(buf, maxResultLimit)
@@ -174,20 +174,20 @@ func extractResultsFromLogs(logs io.Reader, sidecarLogResults []v1beta1.RunResul
 	return sidecarLogResults, nil
 }
 
-func parseResults(resultBytes []byte, maxResultLimit int) (v1beta1.RunResult, error) {
-	result := v1beta1.RunResult{}
+func parseResults(resultBytes []byte, maxResultLimit int) (result.RunResult, error) {
+	runResult := result.RunResult{}
 	if len(resultBytes) > maxResultLimit {
-		return result, ErrSizeExceeded
+		return runResult, ErrSizeExceeded
 	}
 
 	var res SidecarLogResult
 	if err := json.Unmarshal(resultBytes, &res); err != nil {
-		return result, fmt.Errorf("Invalid result %w", err)
+		return runResult, fmt.Errorf("Invalid result %w", err)
 	}
-	result = v1beta1.RunResult{
+	runResult = result.RunResult{
 		Key:        res.Name,
 		Value:      res.Value,
-		ResultType: v1beta1.TaskRunResultType,
+		ResultType: result.TaskRunResultType,
 	}
-	return result, nil
+	return runResult, nil
 }
