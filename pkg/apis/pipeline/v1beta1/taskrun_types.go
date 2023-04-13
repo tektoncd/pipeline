@@ -255,7 +255,7 @@ type TaskRunStatusFields struct {
 	// Deprecated: this field is not populated and is preserved only for backwards compatibility
 	// +optional
 	// +listType=atomic
-	ResourcesResult []RunResult `json:"resourcesResult,omitempty"`
+	ResourcesResult []PipelineResourceResult `json:"resourcesResult,omitempty"`
 
 	// TaskRunResults are the list of results written out by the task's containers
 	// +optional

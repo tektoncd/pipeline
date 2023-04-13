@@ -25,6 +25,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/result"
 	spireconfig "github.com/tektoncd/pipeline/pkg/spire/config"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -64,7 +65,7 @@ type MockClient struct {
 	VerifyStatusInternalAnnotationOverride func(ctx context.Context, tr *v1beta1.TaskRun, logger *zap.SugaredLogger) error
 
 	// VerifyTaskRunResultsOverride contains the function to overwrite a call to VerifyTaskRunResults
-	VerifyTaskRunResultsOverride func(ctx context.Context, prs []v1beta1.RunResult, tr *v1beta1.TaskRun) error
+	VerifyTaskRunResultsOverride func(ctx context.Context, prs []result.RunResult, tr *v1beta1.TaskRun) error
 
 	// AppendStatusInternalAnnotationOverride  contains the function to overwrite a call to AppendStatusInternalAnnotation
 	AppendStatusInternalAnnotationOverride func(ctx context.Context, tr *v1beta1.TaskRun) error
@@ -73,7 +74,7 @@ type MockClient struct {
 	CheckSpireVerifiedFlagOverride func(tr *v1beta1.TaskRun) bool
 
 	// SignOverride contains the function to overwrite a call to Sign
-	SignOverride func(ctx context.Context, results []v1beta1.RunResult) ([]v1beta1.RunResult, error)
+	SignOverride func(ctx context.Context, results []result.RunResult) ([]result.RunResult, error)
 }
 
 const controllerSvid = "CONTROLLER_SVID_DATA"
@@ -178,7 +179,7 @@ func (sc *MockClient) VerifyStatusInternalAnnotation(ctx context.Context, tr *v1
 }
 
 // VerifyTaskRunResults checks that all the TaskRun results are valid by the mocked spire client
-func (sc *MockClient) VerifyTaskRunResults(ctx context.Context, prs []v1beta1.RunResult, tr *v1beta1.TaskRun) error {
+func (sc *MockClient) VerifyTaskRunResults(ctx context.Context, prs []result.RunResult, tr *v1beta1.TaskRun) error {
 	if sc.VerifyTaskRunResultsOverride != nil {
 		return sc.VerifyTaskRunResultsOverride(ctx, prs, tr)
 	}
@@ -190,9 +191,9 @@ func (sc *MockClient) VerifyTaskRunResults(ctx context.Context, prs []v1beta1.Ru
 		return errors.New("failed to verify from mock VerifyAlwaysReturns")
 	}
 
-	resultMap := map[string]v1beta1.RunResult{}
+	resultMap := map[string]result.RunResult{}
 	for _, r := range prs {
-		if r.ResultType == v1beta1.TaskRunResultType {
+		if r.ResultType == result.TaskRunResultType {
 			resultMap[r.Key] = r
 		}
 	}
@@ -241,7 +242,7 @@ func (sc *MockClient) VerifyTaskRunResults(ctx context.Context, prs []v1beta1.Ru
 }
 
 // Sign signs and appends signatures to the RunResult based on the mocked spire client
-func (sc *MockClient) Sign(ctx context.Context, results []v1beta1.RunResult) ([]v1beta1.RunResult, error) {
+func (sc *MockClient) Sign(ctx context.Context, results []result.RunResult) ([]result.RunResult, error) {
 	if sc.SignOverride != nil {
 		return sc.SignOverride(ctx, results)
 	}
@@ -257,39 +258,39 @@ func (sc *MockClient) Sign(ctx context.Context, results []v1beta1.RunResult) ([]
 		return nil, errors.Errorf("entry doesn't exist for identity: %v", identity)
 	}
 
-	output := []v1beta1.RunResult{}
-	output = append(output, v1beta1.RunResult{
+	output := []result.RunResult{}
+	output = append(output, result.RunResult{
 		Key:        KeySVID,
 		Value:      identity,
-		ResultType: v1beta1.TaskRunResultType,
+		ResultType: result.TaskRunResultType,
 	})
 
 	for _, r := range results {
-		if r.ResultType == v1beta1.TaskRunResultType {
+		if r.ResultType == result.TaskRunResultType {
 			resultValue, err := getResultValue(r)
 			if err != nil {
 				return nil, err
 			}
 			s := sc.mockSign(resultValue, identity)
-			output = append(output, v1beta1.RunResult{
+			output = append(output, result.RunResult{
 				Key:        r.Key + KeySignatureSuffix,
 				Value:      s,
-				ResultType: v1beta1.TaskRunResultType,
+				ResultType: result.TaskRunResultType,
 			})
 		}
 	}
 	// get complete manifest of keys such that it can be verified
 	manifest := getManifest(results)
-	output = append(output, v1beta1.RunResult{
+	output = append(output, result.RunResult{
 		Key:        KeyResultManifest,
 		Value:      manifest,
-		ResultType: v1beta1.TaskRunResultType,
+		ResultType: result.TaskRunResultType,
 	})
 	manifestSig := sc.mockSign(manifest, identity)
-	output = append(output, v1beta1.RunResult{
+	output = append(output, result.RunResult{
 		Key:        KeyResultManifest + KeySignatureSuffix,
 		Value:      manifestSig,
-		ResultType: v1beta1.TaskRunResultType,
+		ResultType: result.TaskRunResultType,
 	})
 
 	return output, nil

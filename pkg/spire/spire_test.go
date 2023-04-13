@@ -27,6 +27,7 @@ import (
 	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
+	"github.com/tektoncd/pipeline/pkg/result"
 	"github.com/tektoncd/pipeline/pkg/spire/config"
 	"github.com/tektoncd/pipeline/pkg/spire/test"
 	"github.com/tektoncd/pipeline/pkg/spire/test/fakeworkloadapi"
@@ -474,18 +475,18 @@ func TestTaskRunResultsSignTamper(t *testing.T) {
 	testCases := []struct {
 		desc string
 		// function to tamper
-		tamperFn func([]v1beta1.RunResult) []v1beta1.RunResult
+		tamperFn func([]result.RunResult) []result.RunResult
 		wantErr  bool
 	}{
 		{
 			desc:     "no tamper",
 			wantErr:  false,
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult { return prs },
+			tamperFn: func(prs []result.RunResult) []result.RunResult { return prs },
 		},
 		{
 			desc: "non-intrusive tamper",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
-				prs = append(prs, v1beta1.RunResult{
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
+				prs = append(prs, result.RunResult{
 					Key:   "not-taskrun-result-type-add",
 					Value: "abc:12345",
 				})
@@ -495,7 +496,7 @@ func TestTaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "tamper SVID",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
 				for i, pr := range prs {
 					if pr.Key == KeySVID {
 						prs[i].Value = "tamper-value"
@@ -507,7 +508,7 @@ func TestTaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "tamper result manifest",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
 				for i, pr := range prs {
 					if pr.Key == KeyResultManifest {
 						prs[i].Value = "tamper-value"
@@ -519,7 +520,7 @@ func TestTaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "tamper result manifest signature",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
 				for i, pr := range prs {
 					if pr.Key == KeyResultManifest+KeySignatureSuffix {
 						prs[i].Value = "tamper-value"
@@ -531,7 +532,7 @@ func TestTaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "tamper result field",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
 				for i, pr := range prs {
 					if pr.Key == "foo" {
 						prs[i].Value = "tamper-value"
@@ -543,7 +544,7 @@ func TestTaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "tamper result field signature",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
 				for i, pr := range prs {
 					if pr.Key == "foo"+KeySignatureSuffix {
 						prs[i].Value = "tamper-value"
@@ -555,7 +556,7 @@ func TestTaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "delete SVID",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
 				for i, pr := range prs {
 					if pr.Key == KeySVID {
 						return append(prs[:i], prs[i+1:]...)
@@ -567,7 +568,7 @@ func TestTaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "delete result manifest",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
 				for i, pr := range prs {
 					if pr.Key == KeyResultManifest {
 						return append(prs[:i], prs[i+1:]...)
@@ -579,7 +580,7 @@ func TestTaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "delete result manifest signature",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
 				for i, pr := range prs {
 					if pr.Key == KeyResultManifest+KeySignatureSuffix {
 						return append(prs[:i], prs[i+1:]...)
@@ -591,7 +592,7 @@ func TestTaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "delete result field",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
 				for i, pr := range prs {
 					if pr.Key == "foo" {
 						return append(prs[:i], prs[i+1:]...)
@@ -603,7 +604,7 @@ func TestTaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "delete result field signature",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
 				for i, pr := range prs {
 					if pr.Key == "foo"+KeySignatureSuffix {
 						return append(prs[:i], prs[i+1:]...)
@@ -615,7 +616,7 @@ func TestTaskRunResultsSignTamper(t *testing.T) {
 		},
 		{
 			desc: "add to result manifest",
-			tamperFn: func(prs []v1beta1.RunResult) []v1beta1.RunResult {
+			tamperFn: func(prs []result.RunResult) []result.RunResult {
 				for i, pr := range prs {
 					if pr.Key == KeyResultManifest {
 						prs[i].Value += ",xyz"
@@ -631,16 +632,16 @@ func TestTaskRunResultsSignTamper(t *testing.T) {
 		ctx := context.Background()
 		for _, tr := range testTaskRuns() {
 			t.Run(tt.desc+" "+tr.ObjectMeta.Name, func(t *testing.T) {
-				results := []v1beta1.RunResult{{
+				results := []result.RunResult{{
 					Key:          "foo",
 					Value:        "foo-value",
 					ResourceName: "source-image",
-					ResultType:   v1beta1.TaskRunResultType,
+					ResultType:   result.TaskRunResultType,
 				}, {
 					Key:          "bar",
 					Value:        "bar-value",
 					ResourceName: "source-image2",
-					ResultType:   v1beta1.TaskRunResultType,
+					ResultType:   result.TaskRunResultType,
 				}}
 
 				wl.SetX509SVIDResponse(&fakeworkloadapi.X509SVIDResponse{

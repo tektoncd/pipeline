@@ -29,7 +29,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/result"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -163,19 +163,19 @@ func TestExtractResultsFromLogs(t *testing.T) {
 	}
 	logs := strings.NewReader(podLogs)
 
-	results, err := extractResultsFromLogs(logs, []v1beta1.RunResult{}, 4096)
+	results, err := extractResultsFromLogs(logs, []result.RunResult{}, 4096)
 	if err != nil {
 		t.Error(err)
 	}
-	want := []v1beta1.RunResult{
+	want := []result.RunResult{
 		{
 			Key:        "result1",
 			Value:      "foo",
-			ResultType: v1beta1.TaskRunResultType,
+			ResultType: result.TaskRunResultType,
 		}, {
 			Key:        "result2",
 			Value:      "bar",
-			ResultType: v1beta1.TaskRunResultType,
+			ResultType: result.TaskRunResultType,
 		},
 	}
 	if d := cmp.Diff(want, results); d != "" {
@@ -197,7 +197,7 @@ func TestExtractResultsFromLogs_Failure(t *testing.T) {
 	}
 	logs := strings.NewReader(podLogs)
 
-	_, err := extractResultsFromLogs(logs, []v1beta1.RunResult{}, 4096)
+	_, err := extractResultsFromLogs(logs, []result.RunResult{}, 4096)
 	if !errors.Is(err, ErrSizeExceeded) {
 		t.Fatalf("Expected error %v but got %v", ErrSizeExceeded, err)
 	}
@@ -221,20 +221,20 @@ func TestParseResults(t *testing.T) {
 		res, _ := json.Marshal(&r)
 		podLogs = append(podLogs, string(res))
 	}
-	want := []v1beta1.RunResult{{
+	want := []result.RunResult{{
 		Key:        "result1",
 		Value:      "foo",
-		ResultType: v1beta1.TaskRunResultType,
+		ResultType: result.TaskRunResultType,
 	}, {
 		Key:        "result2",
 		Value:      `{"IMAGE_URL":"ar.com", "IMAGE_DIGEST":"sha234"}`,
-		ResultType: v1beta1.TaskRunResultType,
+		ResultType: result.TaskRunResultType,
 	}, {
 		Key:        "result3",
 		Value:      `["hello","world"]`,
-		ResultType: v1beta1.TaskRunResultType,
+		ResultType: result.TaskRunResultType,
 	}}
-	stepResults := []v1beta1.RunResult{}
+	stepResults := []result.RunResult{}
 	for _, plog := range podLogs {
 		res, err := parseResults([]byte(plog), 4096)
 		if err != nil {

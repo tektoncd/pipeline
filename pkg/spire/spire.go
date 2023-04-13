@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/result"
 	spireconfig "github.com/tektoncd/pipeline/pkg/spire/config"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -64,7 +65,7 @@ type ControllerAPIClient interface {
 	CreateEntries(ctx context.Context, tr *v1beta1.TaskRun, pod *corev1.Pod, ttl time.Duration) error
 	DeleteEntry(ctx context.Context, tr *v1beta1.TaskRun, pod *corev1.Pod) error
 	VerifyStatusInternalAnnotation(ctx context.Context, tr *v1beta1.TaskRun, logger *zap.SugaredLogger) error
-	VerifyTaskRunResults(ctx context.Context, prs []v1beta1.RunResult, tr *v1beta1.TaskRun) error
+	VerifyTaskRunResults(ctx context.Context, prs []result.RunResult, tr *v1beta1.TaskRun) error
 	SetConfig(c spireconfig.SpireConfig)
 }
 
@@ -72,5 +73,5 @@ type ControllerAPIClient interface {
 type EntrypointerAPIClient interface {
 	Close() error
 	// Sign returns the signature material to be put in the RunResult to append to the output results
-	Sign(ctx context.Context, results []v1beta1.RunResult) ([]v1beta1.RunResult, error)
+	Sign(ctx context.Context, results []result.RunResult) ([]result.RunResult, error)
 }

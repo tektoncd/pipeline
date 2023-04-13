@@ -14,12 +14,7 @@ limitations under the License.
 package v1beta1_test
 
 import (
-	"encoding/json"
-	"testing"
-
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -56,37 +51,4 @@ func (tm *TestTaskModifier) GetStepsToAppend() []v1beta1.Step {
 
 func (tm *TestTaskModifier) GetVolumes() []corev1.Volume {
 	return []corev1.Volume{volume}
-}
-
-func TestRunResult_UnmarshalJSON(t *testing.T) {
-	testcases := []struct {
-		name string
-		data string
-		pr   v1beta1.RunResult
-	}{{
-		name: "type defined as string - TaskRunResult",
-		data: "{\"key\":\"resultName\",\"value\":\"resultValue\", \"type\": \"TaskRunResult\"}",
-		pr:   v1beta1.RunResult{Key: "resultName", Value: "resultValue", ResultType: v1beta1.TaskRunResultType},
-	},
-		{
-			name: "type defined as string - InternalTektonResult",
-			data: "{\"key\":\"resultName\",\"value\":\"\", \"type\": \"InternalTektonResult\"}",
-			pr:   v1beta1.RunResult{Key: "resultName", Value: "", ResultType: v1beta1.InternalTektonResultType},
-		}, {
-			name: "type defined as int",
-			data: "{\"key\":\"resultName\",\"value\":\"\", \"type\": 1}",
-			pr:   v1beta1.RunResult{Key: "resultName", Value: "", ResultType: v1beta1.TaskRunResultType},
-		}}
-
-	for _, tc := range testcases {
-		t.Run(tc.name, func(t *testing.T) {
-			pipRes := v1beta1.RunResult{}
-			if err := json.Unmarshal([]byte(tc.data), &pipRes); err != nil {
-				t.Errorf("Unexpected error when unmarshalling the json into RunResult")
-			}
-			if d := cmp.Diff(tc.pr, pipRes); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
-			}
-		})
-	}
 }

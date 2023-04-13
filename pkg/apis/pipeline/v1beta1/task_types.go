@@ -24,18 +24,6 @@ import (
 	"knative.dev/pkg/kmeta"
 )
 
-const (
-	// TaskRunResultType default task run result value
-	TaskRunResultType ResultType = 1
-	// reserved: 2
-	// was RunResultType
-
-	// InternalTektonResultType default internal tekton result value
-	InternalTektonResultType = 3
-	// UnknownResultType default unknown result type value
-	UnknownResultType = 10
-)
-
 // +genclient
 // +genclient:noStatus
 // +genreconciler:krshapedlogic=false

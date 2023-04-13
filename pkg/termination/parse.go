@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"sort"
 
-	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/result"
 	"go.uber.org/zap"
 )
 
@@ -29,18 +29,18 @@ import (
 //
 // If more than one item has the same key, only the latest is returned. Items
 // are sorted by their key.
-func ParseMessage(logger *zap.SugaredLogger, msg string) ([]v1beta1.RunResult, error) {
+func ParseMessage(logger *zap.SugaredLogger, msg string) ([]result.RunResult, error) {
 	if msg == "" {
 		return nil, nil
 	}
 
-	var r []v1beta1.RunResult
+	var r []result.RunResult
 	if err := json.Unmarshal([]byte(msg), &r); err != nil {
 		return nil, fmt.Errorf("parsing message json: %w, msg: %s", err, msg)
 	}
 
 	for i, rr := range r {
-		if rr == (v1beta1.RunResult{}) {
+		if rr == (result.RunResult{}) {
 			// Erase incorrect result
 			r[i] = r[len(r)-1]
 			r = r[:len(r)-1]
@@ -49,11 +49,11 @@ func ParseMessage(logger *zap.SugaredLogger, msg string) ([]v1beta1.RunResult, e
 	}
 
 	// Remove duplicates (last one wins) and sort by key.
-	m := map[string]v1beta1.RunResult{}
+	m := map[string]result.RunResult{}
 	for _, rr := range r {
 		m[rr.Key] = rr
 	}
-	r2 := make([]v1beta1.RunResult, 0, len(m))
+	r2 := make([]result.RunResult, 0, len(m))
 	for _, v := range m {
 		r2 = append(r2, v)
 	}
