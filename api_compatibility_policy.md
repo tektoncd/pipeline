@@ -31,14 +31,19 @@ The `apiVersion` field in a Tekton CRD determines whether the overall API (and i
 
 Within a stable CRD, certain opt-in features or API fields gated may be considered `alpha` or `beta`. Similarly, within a beta CRD, certain opt-in features may be considered `alpha`. See the section on Feature Gates for details.
 
-The following CRDs are considered beta, though features may be introduced that are
-alpha:
+The following CRDs are considered stable, though features may be introduced that are
+alpha or beta:
 
-- `Task`
-- `TaskRun`
-- `ClusterTask`
-- `Pipeline`
-- `PipelineRun`
+- `v1.Task`
+- `v1.TaskRun`
+- `v1.Pipeline`
+- `v1.PipelineRun`
+
+`v1beta1.CustomRun` is considered a beta CRD. Adding new fields to `CustomRun`
+that all `CustomRun` controllers are required to support is considered a [backwards incompatible change](#backwards-incompatible-changes),
+and follows the [beta policy](#beta-crds) for backwards incompatible changes.
+
+`v1beta1.ClusterTask` is a deprecated beta CRD. New features will not be added to `ClusterTask`.
 
 ### Alpha CRDs
 
