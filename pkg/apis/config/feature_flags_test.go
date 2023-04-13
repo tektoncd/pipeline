@@ -307,37 +307,37 @@ func TestCheckAlphaOrBetaAPIFields(t *testing.T) {
 
 func TestIsSpireEnabled(t *testing.T) {
 	testCases := []struct {
-		name                   string
-		configmap              map[string]string
-		expectedIsSpireEnabled bool
+		name      string
+		configmap map[string]string
+		want      bool
 	}{{
 		name: "when enable-api-fields is set to beta and non-falsifiablity is not set.",
 		configmap: map[string]string{
 			"enable-api-fields":         "beta",
 			"enforce-nonfalsifiability": config.EnforceNonfalsifiabilityNone,
 		},
-		expectedIsSpireEnabled: false,
+		want: false,
 	}, {
 		name: "when enable-api-fields is set to beta and non-falsifiability is set to 'spire'",
 		configmap: map[string]string{
 			"enable-api-fields":         "beta",
 			"enforce-nonfalsifiability": config.EnforceNonfalsifiabilityWithSpire,
 		},
-		expectedIsSpireEnabled: false,
+		want: false,
 	}, {
 		name: "when enable-api-fields is set to alpha and non-falsifiability is not set",
 		configmap: map[string]string{
 			"enable-api-fields":         "alpha",
 			"enforce-nonfalsifiability": config.EnforceNonfalsifiabilityNone,
 		},
-		expectedIsSpireEnabled: false,
+		want: false,
 	}, {
 		name: "when enable-api-fields is set to alpha and non-falsifiability is set to 'spire'",
 		configmap: map[string]string{
 			"enable-api-fields":         "alpha",
 			"enforce-nonfalsifiability": config.EnforceNonfalsifiabilityWithSpire,
 		},
-		expectedIsSpireEnabled: true,
+		want: true,
 	}}
 	ctx := context.Background()
 	store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
@@ -350,11 +350,10 @@ func TestIsSpireEnabled(t *testing.T) {
 		}
 		store.OnConfigChanged(featureflags)
 		ctx = store.ToContext(ctx)
-		want := tc.expectedIsSpireEnabled
 		got := config.IsSpireEnabled(ctx)
 
-		if want != got {
-			t.Errorf("IsSpireEnabled() = %t, want %t", got, want)
+		if tc.want != got {
+			t.Errorf("IsSpireEnabled() = %t, want %t", got, tc.want)
 		}
 	}
 }
