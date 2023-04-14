@@ -72,7 +72,7 @@ spec:
     name: add-pipeline-taskspec
   taskRunSpecs:
   - pipelineTaskName: first-add-taskspec
-    taskServiceAccountName: 'default'
+    serviceAccountName: 'default'
   - pipelineTaskName: second-add-taskspec
     taskPodTemplate:
       nodeSelector:
