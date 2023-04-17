@@ -37,7 +37,11 @@ func (pr *PipelineRun) SetDefaults(ctx context.Context) {
 func (prs *PipelineRunSpec) SetDefaults(ctx context.Context) {
 	cfg := config.FromContextOrDefaults(ctx)
 
-	if prs.Timeouts != nil && prs.Timeouts.Pipeline == nil {
+	if prs.Timeouts == nil {
+		prs.Timeouts = &TimeoutFields{}
+	}
+
+	if prs.Timeouts.Pipeline == nil {
 		prs.Timeouts.Pipeline = &metav1.Duration{Duration: time.Duration(cfg.Defaults.DefaultTimeoutMinutes) * time.Minute}
 	}
 
