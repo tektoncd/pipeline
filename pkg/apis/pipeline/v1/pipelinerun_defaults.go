@@ -40,10 +40,12 @@ func (prs *PipelineRunSpec) SetDefaults(ctx context.Context) {
 		prs.PipelineRef.Resolver = ResolverName(cfg.Defaults.DefaultResolverType)
 	}
 
-	if prs.Timeouts == nil || prs.Timeouts.Pipeline == nil {
-		prs.Timeouts = &TimeoutFields{
-			Pipeline: &metav1.Duration{Duration: time.Duration(cfg.Defaults.DefaultTimeoutMinutes) * time.Minute},
-		}
+	if prs.Timeouts == nil {
+		prs.Timeouts = &TimeoutFields{}
+	}
+
+	if prs.Timeouts.Pipeline == nil {
+		prs.Timeouts.Pipeline = &metav1.Duration{Duration: time.Duration(cfg.Defaults.DefaultTimeoutMinutes) * time.Minute}
 	}
 
 	defaultSA := cfg.Defaults.DefaultServiceAccount

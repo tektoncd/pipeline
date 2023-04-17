@@ -82,6 +82,25 @@ func TestPipelineRunSpec_SetDefaults(t *testing.T) {
 			},
 		},
 		{
+			desc: "timeouts.pipeline is nil with timeouts.tasks and timeouts.finally",
+			prs: &v1.PipelineRunSpec{
+				Timeouts: &v1.TimeoutFields{
+					Tasks:   &metav1.Duration{Duration: (config.DefaultTimeoutMinutes + 1) * time.Minute},
+					Finally: &metav1.Duration{Duration: (config.DefaultTimeoutMinutes + 1) * time.Minute},
+				},
+			},
+			want: &v1.PipelineRunSpec{
+				TaskRunTemplate: v1.PipelineTaskRunTemplate{
+					ServiceAccountName: config.DefaultServiceAccountValue,
+				},
+				Timeouts: &v1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: (config.DefaultTimeoutMinutes) * time.Minute},
+					Tasks:    &metav1.Duration{Duration: (config.DefaultTimeoutMinutes + 1) * time.Minute},
+					Finally:  &metav1.Duration{Duration: (config.DefaultTimeoutMinutes + 1) * time.Minute},
+				},
+			},
+		},
+		{
 			desc: "pod template is nil",
 			prs:  &v1.PipelineRunSpec{},
 			want: &v1.PipelineRunSpec{
