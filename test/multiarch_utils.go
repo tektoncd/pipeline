@@ -51,6 +51,7 @@ func getTestArch() string {
 }
 
 // initImageNames returns the map with arch dependent image names for e2e tests
+// maintainers for multi-arch test images are basavarg@in.ibm.com, rishika.kedia@in.ibm.com
 func initImageNames() map[int]string {
 	switch getTestArch() {
 	case "s390x":
