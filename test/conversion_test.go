@@ -82,7 +82,7 @@ spec:
         mountPath: /messages
     imagePullPolicy: IfNotPresent
     securityContext: 
-      runAsUser: 2000
+      runAsNonRoot: true
     timeout: 60s
     secret:
       secretName: test-ssh-credentials
@@ -110,7 +110,7 @@ spec:
       mountPath: /messages
     imagePullPolicy: IfNotPresent
     securityContext: 
-        runAsUser: 2000
+        runAsNonRoot: true
   sidecars:
   - name: server
     image: alpine/git:v2.26.2
@@ -133,7 +133,7 @@ spec:
     readinessProbe:
       periodSeconds: 1
     securityContext:
-      runAsUser: 0
+      runAsNonRoot: true
     volumeMounts:
     - name: messages
       mountPath: /messages
@@ -180,7 +180,7 @@ spec:
         mountPath: /messages
     imagePullPolicy: IfNotPresent
     securityContext: 
-      runAsUser: 2000
+      runAsNonRoot: true
     timeout: 60s
     secret:
       secretName: test-ssh-credentials
@@ -201,7 +201,7 @@ spec:
       mountPath: /messages
     imagePullPolicy: IfNotPresent
     securityContext: 
-        runAsUser: 2000
+        runAsNonRoot: true
   sidecars:
   - name: server
     image: alpine/git:v2.26.2
@@ -224,7 +224,7 @@ spec:
     - name: messages
       mountPath: /messages
     securityContext:
-      runAsUser: 0
+      runAsNonRoot: true
     script: echo test
   volumes:
     - name: messages
@@ -274,7 +274,7 @@ spec:
   timeout: 60s
   podTemplate:
     securityContext:
-      fsGroup: 65532
+      runAsNonRoot: true
   workspaces:
   - name: password-vault
   finally:
@@ -328,7 +328,7 @@ spec:
   timeout: 60s
   podTemplate:
     securityContext:
-      fsGroup: 65532
+      runAsNonRoot: true
   workspaces:
   - name: password-vault
   finally:
@@ -375,7 +375,7 @@ spec:
       emptyDir: {}
   podTemplate:
     securityContext:
-      fsGroup: 65532
+      allowPrivilegeEscalation: false
 `
 
 	v1beta1TaskRunExpectedYaml = `
@@ -392,7 +392,7 @@ spec:
   timeout: 60s
   podTemplate:
     securityContext:
-      fsGroup: 65532
+      allowPrivilegeEscalation: false
   taskSpec:
     steps:
     - computeResources: {}
@@ -444,7 +444,7 @@ spec:
   timeout: 60s
   podTemplate:
     securityContext:
-      fsGroup: 65532
+      allowPrivilegeEscalation: false
   workspaces:
   - emptyDir: {}
     name: output     
@@ -474,7 +474,7 @@ spec:
   timeout: 60s
   podTemplate:
     securityContext:
-      fsGroup: 65532
+      allowPrivilegeEscalation: false
   workspaces:
     - emptyDir: {}
       name: output 
