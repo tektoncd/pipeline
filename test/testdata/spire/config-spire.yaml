@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-spire
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+data:
+  # spire-trust-domain specifies the SPIRE trust domain to use.
+  spire-trust-domain: "example.org"
+  # spire-socket-path specifies the SPIRE agent socket for SPIFFE workload API.
+  spire-socket-path: "unix:///spiffe-workload-api/spire-agent.sock"
+  # spire-server-addr specifies the SPIRE server address for workload/node registration.
+  spire-server-addr: "spire-server.spire.svc.cluster.local:8081"
+  # spire-node-alias-prefix specifies the SPIRE node alias prefix to use.
+  spire-node-alias-prefix: "/tekton-node/"
