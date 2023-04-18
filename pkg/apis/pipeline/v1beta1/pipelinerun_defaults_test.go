@@ -55,6 +55,55 @@ func TestPipelineRunSpec_SetDefaults(t *testing.T) {
 				ServiceAccountName: config.DefaultServiceAccountValue,
 				Timeout:            &metav1.Duration{Duration: 500 * time.Millisecond},
 			},
+		}, {
+			desc: "timeouts is nil",
+			prs:  &v1beta1.PipelineRunSpec{},
+			want: &v1beta1.PipelineRunSpec{
+				ServiceAccountName: config.DefaultServiceAccountValue,
+				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+			},
+		},
+		{
+			desc: "timeouts is not nil",
+			prs: &v1beta1.PipelineRunSpec{
+				Timeouts: &v1beta1.TimeoutFields{},
+			},
+			want: &v1beta1.PipelineRunSpec{
+				ServiceAccountName: config.DefaultServiceAccountValue,
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+				},
+			},
+		},
+		{
+			desc: "timeouts.pipeline is not nil",
+			prs: &v1beta1.PipelineRunSpec{
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: (config.DefaultTimeoutMinutes + 1) * time.Minute},
+				},
+			},
+			want: &v1beta1.PipelineRunSpec{
+				ServiceAccountName: config.DefaultServiceAccountValue,
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: (config.DefaultTimeoutMinutes + 1) * time.Minute},
+				},
+			},
+		}, {
+			desc: "timeouts.pipeline is nil with timeouts.tasks and timeouts.finally",
+			prs: &v1beta1.PipelineRunSpec{
+				Timeouts: &v1beta1.TimeoutFields{
+					Tasks:   &metav1.Duration{Duration: (config.DefaultTimeoutMinutes + 1) * time.Minute},
+					Finally: &metav1.Duration{Duration: (config.DefaultTimeoutMinutes + 1) * time.Minute},
+				},
+			},
+			want: &v1beta1.PipelineRunSpec{
+				ServiceAccountName: config.DefaultServiceAccountValue,
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: (config.DefaultTimeoutMinutes) * time.Minute},
+					Tasks:    &metav1.Duration{Duration: (config.DefaultTimeoutMinutes + 1) * time.Minute},
+					Finally:  &metav1.Duration{Duration: (config.DefaultTimeoutMinutes + 1) * time.Minute},
+				},
+			},
 		},
 		{
 			desc: "pod template is nil",
