@@ -1,0 +1,205 @@
+# ServiceAccount used by the SPIRE server.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: spire-server
+  namespace: spire
+
+---
+
+# Required cluster role to allow spire-server to query k8s API server
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: spire-server-cluster-role
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get"]
+  # allow TokenReview requests (to verify service account tokens for PSAT
+  # attestation)
+- apiGroups: ["authentication.k8s.io"]
+  resources: ["tokenreviews"]
+  verbs: ["get", "create"]
+
+---
+
+# Binds above cluster role to spire-server service account
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: spire-server-cluster-role-binding
+  namespace: spire
+subjects:
+- kind: ServiceAccount
+  name: spire-server
+  namespace: spire
+roleRef:
+  kind: ClusterRole
+  name: spire-server-cluster-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
+# Role for the SPIRE server
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: spire
+  name: spire-server-role
+rules:
+# allow "get" access to pods (to resolve selectors for PSAT attestation)
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get"]
+  # allow access to "get" and "patch" the spire-bundle ConfigMap (for SPIRE
+  # agent bootstrapping, see the spire-bundle ConfigMap below)
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: ["spire-bundle"]
+  verbs: ["get", "patch"]
+
+---
+
+# RoleBinding granting the spire-server-role to the SPIRE server
+# service account.
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: spire-server-role-binding
+  namespace: spire
+subjects:
+- kind: ServiceAccount
+  name: spire-server
+  namespace: spire
+roleRef:
+  kind: Role
+  name: spire-server-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
+# ConfigMap containing the latest trust bundle for the trust domain. It is
+# updated by SPIRE using the k8sbundle notifier plugin. SPIRE agents mount
+# this config map and use the certificate to bootstrap trust with the SPIRE
+# server during attestation.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spire-bundle
+  namespace: spire
+
+---
+
+# ConfigMap containing the SPIRE server configuration.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spire-server
+  namespace: spire
+data:
+  server.conf: |
+    server {
+      bind_address = "0.0.0.0"
+      bind_port = "8081"
+      trust_domain = "example.org"
+      data_dir = "/run/spire/data"
+      log_level = "DEBUG"
+      default_svid_ttl = "1h"
+      ca_ttl = "12h"
+      ca_subject {
+        country = ["US"]
+        organization = ["SPIFFE"]
+        common_name = ""
+      }
+    }
+    plugins {
+      DataStore "sql" {
+        plugin_data {
+          database_type = "sqlite3"
+          connection_string = "/run/spire/data/datastore.sqlite3"
+        }
+      }
+      NodeAttestor "k8s_psat" {
+        plugin_data {
+          clusters = {
+            "example-cluster" = {
+              service_account_allow_list = ["spire:spire-agent"]
+            }
+          }
+        }
+      }
+      KeyManager "disk" {
+        plugin_data {
+          keys_path = "/run/spire/data/keys.json"
+        }
+      }
+      Notifier "k8sbundle" {
+        plugin_data {
+          # This plugin updates the bundle.crt value in the spire:spire-bundle
+          # ConfigMap by default, so no additional configuration is necessary.
+        }
+      }
+    }
+    health_checks {
+      listener_enabled = true
+      bind_address = "0.0.0.0"
+      bind_port = "8080"
+      live_path = "/live"
+      ready_path = "/ready"
+    }
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spire-server
+  namespace: spire
+  labels:
+    app: spire-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spire-server
+  template:
+    metadata:
+      namespace: spire
+      labels:
+        app: spire-server
+    spec:
+      serviceAccountName: spire-server
+      shareProcessNamespace: true
+      containers:
+        - name: spire-server
+          image: ghcr.io/spiffe/spire-server:1.1.1
+          imagePullPolicy: IfNotPresent
+          args: ["-config", "/run/spire/config/server.conf"]
+          ports:
+            - containerPort: 8081
+          volumeMounts:
+            - name: spire-config
+              mountPath: /run/spire/config
+              readOnly: true
+      volumes:
+        - name: spire-config
+          configMap:
+            name: spire-server
+
+---
+
+# Service definition for SPIRE server defining the gRPC port.
+apiVersion: v1
+kind: Service
+metadata:
+  name: spire-server
+  namespace: spire
+spec:
+  type: NodePort
+  ports:
+    - name: grpc
+      port: 8081
+      targetPort: 8081
+      protocol: TCP
+  selector:
+    app: spire-server
