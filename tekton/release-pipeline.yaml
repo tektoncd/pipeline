@@ -54,6 +54,14 @@ spec:
     - name: git-clone
       taskRef:
         name: git-clone
+        resolver: bundles
+        params:
+          - name: bundle
+            value: gcr.io/tekton-releases/catalog/upstream/git-clone:0.9
+          - name: name
+            value: git-clone
+          - name: kind
+            value: task
       workspaces:
         - name: output
           workspace: workarea
@@ -67,6 +75,16 @@ spec:
       runAfter: [git-clone]
       taskRef:
         name: prerelease-checks
+        resolver: git
+        params:
+          - name: repo
+            value: plumbing
+          - name: org
+            value: tektoncd
+          - name: revision
+            value: aeed19e5a36f335ebfdc4b96fa78d1ce5bb4f7b8
+          - name: pathInRepo
+            value: tekton/resources/release/base/prerelease_checks.yaml
       params:
         - name: package
           value: $(params.package)
@@ -82,6 +100,14 @@ spec:
       runAfter: [precheck]
       taskRef:
         name: golang-test
+        resolver: bundles
+        params:
+          - name: bundle
+            value: gcr.io/tekton-releases/catalog/upstream/golang-test:0.2
+          - name: name
+            value: golang-test
+          - name: kind
+            value: task
       params:
         - name: package
           value: $(params.package)
@@ -95,6 +121,14 @@ spec:
       runAfter: [precheck]
       taskRef:
         name: golang-build
+        resolver: bundles
+        params:
+          - name: bundle
+            value: gcr.io/tekton-releases/catalog/upstream/golang-build:0.3
+          - name: name
+            value: golang-build
+          - name: kind
+            value: task
       params:
         - name: package
           value: $(params.package)
@@ -109,14 +143,14 @@ spec:
       taskRef:
         resolver: git
         params:
-        - name: repo
-          value: pipeline
-        - name: org
-          value: tektoncd
-        - name: revision
-          value: $(params.gitRevision)
-        - name: pathInRepo
-          value: tekton/publish.yaml
+          - name: repo
+            value: pipeline
+          - name: org
+            value: tektoncd
+          - name: revision
+            value: $(params.gitRevision)
+          - name: pathInRepo
+            value: tekton/publish.yaml
       params:
         - name: package
           value: $(params.package)
@@ -145,6 +179,14 @@ spec:
       runAfter: [publish-images]
       taskRef:
         name: gcs-upload
+        resolver: bundles
+        params:
+          - name: bundle
+            value: gcr.io/tekton-releases/catalog/upstream/gcs-upload:0.3
+          - name: name
+            value: gcs-upload
+          - name: kind
+            value: task
       workspaces:
         - name: credentials
           workspace: release-secret
@@ -166,6 +208,14 @@ spec:
           values: ["true"]
       taskRef:
         name: gcs-upload
+        resolver: bundles
+        params:
+          - name: bundle
+            value: gcr.io/tekton-releases/catalog/upstream/gcs-upload:0.3
+          - name: name
+            value: gcs-upload
+          - name: kind
+            value: task
       workspaces:
         - name: credentials
           workspace: release-secret
@@ -199,10 +249,10 @@ spec:
           - name: create-results
             image: alpine
             env:
-            - name: RELEASE_BUCKET
-              value: $(params.releaseBucket)
-            - name: VERSION_TAG
-              value: $(params.versionTag)
+              - name: RELEASE_BUCKET
+                value: $(params.releaseBucket)
+              - name: VERSION_TAG
+                value: $(params.versionTag)
             script: |
               BASE_URL=$(echo "${RELEASE_BUCKET}/previous/${VERSION_TAG}")
               # If the bucket is in the gs:// return the corresponding public https URL
