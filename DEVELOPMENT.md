@@ -465,10 +465,10 @@ If you need to add a new CRD type, you will need to add:
     - [clusterrole-aggregate-view.yaml](./config/clusterrole-aggregate-view.yaml)
 1. Add go structs for the types in
     [pkg/apis/pipeline/v1alpha1](./pkg/apis/pipeline/v1alpha1) e.g
-    [condition_types.go](./pkg/apis/pipeline/v1alpha1/condition_types.go) This
+    [verificationpolicy_types.go](./pkg/apis/pipeline/v1alpha1/verificationpolicy_types.go) This
     should implement the
-    [Defaultable](./pkg/apis/pipeline/v1alpha1/condition_defaults.go) and
-    [Validatable](./pkg/apis/pipeline/v1alpha1/condition_validation.go)
+    [Defaultable](./pkg/apis/pipeline/v1alpha1/verificationpolicy_defaults.go) and
+    [Validatable](./pkg/apis/pipeline/v1alpha1/verificationpolicy_validation.go)
     interfaces as they are needed for the webhook in the next step.
 1. Register it with the [webhook](./cmd/webhook/main.go)
 1. Add the new type to the
