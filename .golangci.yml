@@ -38,7 +38,6 @@ linters:
   - gosimple
   - govet
   - misspell
-  - revive
   - thelper
   - typecheck
   - unconvert
@@ -46,6 +45,7 @@ linters:
   - usestdlibvars
   - whitespace
   disable:
+  - revive
   - staticcheck
 # Enabling presets means that new linters that we automatically adopt new
 # linters that augment a preset. This also opts us in for replacement linters
