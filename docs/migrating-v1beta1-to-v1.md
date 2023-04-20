@@ -9,7 +9,7 @@ weight: 4000
 
 - [Changes to fields](#changes-to-fields)
 - [Upgrading `PipelineRun.Timeout` to `PipelineRun.Timeouts`](#upgrading-pipelinerun.timeout-to-pipelinerun.timeouts)
-- [Deprecating Resources from Task, TaskRun, Pipeline and PipelineRun](#deprecating-resources-from-task,-taskrun,-pipeline-and-pipelinerun)
+- [Replacing Resources from Task, TaskRun, Pipeline and PipelineRun](#replacing-resources-from-task,-taskrun,-pipeline-and-pipelinerun)
 - [Replacing `taskRef.bundle` and `pipelineRef.bundle` with Bundle Resolver](#replacing-taskRef.bundle-and-pipelineRef.bundle-with-bundle-resolver)
 - [Adding `TaskRunTemplate` in `PipelineRun.Spec`](#adding-taskruntemplate-to-pipelinerun.spec)
 
@@ -45,8 +45,8 @@ In Tekton `v1`, the following fields have been changed:
 | `taskRun.spec.sidecarSpecs[].resources` | `taskRun.spec.sidecarSpecs[].computeResources` |
 | `taskRun.spec.stepSpecs[].resources` | `taskRun.spec.stepSpecs[].computeResources` |
 
-## Deprecating `resources` from Task, TaskRun, Pipeline and PipelineRun
-`PipelineResources` are deprecated, and the `resources` fields of Task, TaskRun, Pipeline and PipelineRun has been removed. Please use `Tasks` instead. For more information, see [Replacing PipelineResources](https://github.com/tektoncd/pipeline/blob/main/docs/pipelineresources.md)
+## Replacing `resources` from Task, TaskRun, Pipeline and PipelineRun
+`PipelineResources` and the `resources` fields of Task, TaskRun, Pipeline and PipelineRun have been removed. Please use `Tasks` instead. For more information, see [Replacing PipelineResources](https://github.com/tektoncd/pipeline/blob/main/docs/pipelineresources.md)
 
 ## Replacing `taskRef.bundle` and `pipelineRef.bundle` with Bundle Resolver
 Bundle resolver in remote resolution should be used instead of `taskRun.spec.taskRef.bundle` and `pipelineRun.spec.pipelineRef.bundle`.

@@ -7,7 +7,7 @@ weight: 307
 
 # Tekton Pipeline Remote Resolution
 
-Remote Resolution is a Tekton feature that allows users to fetch tasks and pipelines from remote sources outside the cluster. Tekton provides a few built-in resolvers that can fetch from git repositories, OCI registries etc as well as a framework for writing custom resolvers.
+Remote Resolution is a Tekton beta feature that allows users to fetch tasks and pipelines from remote sources outside the cluster. Tekton provides a few built-in resolvers that can fetch from git repositories, OCI registries etc as well as a framework for writing custom resolvers.
 
 Remote Resolution was initially created as a separate project in [TEP-060](https://github.com/tektoncd/community/blob/main/teps/0060-remote-resource-resolution.md) and migrated into the core pipelines project in [#4710](https://github.com/tektoncd/pipeline/issues/4710).
 

@@ -91,10 +91,6 @@ A `Pipeline` definition supports the following fields:
       - [`description`](#adding-tasks-to-the-pipeline) - a description of this `Task` within the context of this `Pipeline`.
       - [`taskRef`](#adding-tasks-to-the-pipeline) - a reference to a `Task` definition.
       - [`taskSpec`](#adding-tasks-to-the-pipeline) - a specification of a `Task`.
-      - [`resources`](#specifying-resources-in-pipelinetasks) - Specifies the [`PipelineResource`](resources.md) that
-        a `Task` requires.
-        - [`from`](#using-the-from-field) - Indicates the data for a [`PipelineResource`](resources.md)
-          originates from the output of a previous `Task`.
       - [`runAfter`](#using-the-runafter-field) - Indicates that a `Task` should execute after one or more other
         `Tasks` without output linking.
       - [`retries`](#using-the-retries-field) - Specifies the number of times to retry the execution of a `Task` after
@@ -391,7 +387,7 @@ A `Tekton Bundle` is an OCI artifact that contains Tekton resources like `Tasks`
 
 There is currently a hard limit of 20 objects in a bundle.
 
-You can reference a `Tekton bundle` in a `TaskRef` in both `v1` and `v1beta1` using [remote resolution](./bundle-resolver.md#pipeline-resolution). The example syntax shown below for `v1` uses remote resolution.
+You can reference a `Tekton bundle` in a `TaskRef` in both `v1` and `v1beta1` using [remote resolution](./bundle-resolver.md#pipeline-resolution). The example syntax shown below for `v1` uses remote resolution and requires enabling [beta features](./additional-configs.md#beta-features).
 
 In `v1beta1`, you can also reference a `Tekton bundle` using OCI bundle syntax, which has been deprecated in favor of remote resolution. The example shown below for `v1beta1` uses OCI bundle syntax, and requires enabling `enable-tekton-oci-bundles: "true"` feature flag.
 
@@ -500,8 +496,7 @@ so long as the artifact adheres to the [contract](tekton-bundle-contracts.md).
 
 ### Using the `runAfter` field
 
-If you need your `Tasks` to execute in a specific order within the `Pipeline`
-but they don't have resource dependencies that require the `from` field,
+If you need your `Tasks` to execute in a specific order within the `Pipeline`,
 use the `runAfter` field to indicate that a `Task` must execute after
 one or more other `Tasks`.
 
@@ -1110,7 +1105,7 @@ build-app  build-frontend
 
 In particular:
 
-1. The `lint-repo` and `test-app` `Tasks` have no `from` or `runAfter` clauses
+1. The `lint-repo` and `test-app` `Tasks` have no `runAfter` clauses
    and start executing simultaneously.
 2. Once `test-app` completes, both `build-app` and `build-frontend` start
    executing simultaneously since they both `runAfter` the `test-app` `Task`.
