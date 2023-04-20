@@ -45,28 +45,28 @@ Further documentation available:
 
 - **Latest Release**: [v0.46.0][v0-46-0] (2023-03-17) ([docs][v0-46-0-docs], [examples][v0-46-0-examples])
 - **Initial Release**: [v0.46.0][v0-46-0] (2023-03-17)
-- **End of Life**: 2023-04-17
+- **Estimated End of Life**: 2023-04-17
 - **Patch Releases**: [v0.46.0][v0-46-0]
 
 ### v0.44 (LTS)
 
 - **Latest Release**: [v0.44.0][v0-44-0] (2023-01-24) ([docs][v0-44-0-docs], [examples][v0-44-0-examples])
 - **Initial Release**: [v0.44.0][v0-44-0] (2023-01-24)
-- **End of Life**: 2024-01-24
+- **Estimated End of Life**: 2024-01-24
 - **Patch Releases**: [v0.44.0][v0-44-0]
 
 ### v0.43
 
 - **Latest Release**: [v0.43.2][v0-43-2] (2023-01-10) ([docs][v0-43-2-docs], [examples][v0-43-2-examples])
 - **Initial Release**: [v0.43.0][v0-43-0] (2022-12-22)
-- **End of Life**: 2023-04-22
+- **Estimated End of Life**: 2023-04-22
 - **Patch Releases**: [v0.43.0][v0-43-0], [v0.43.1][v0-43-1], [v0.43.2][v0-43-2]
  
 ### v0.41 (LTS)
 
 - **Latest Release**: [0.41.2][v0-41-2] (2023-04-06) ([docs][v0-41-2-docs], [examples][v0-41-2-examples])
 - **Initial Release**: [v0.41.0][v0-41-0] (2022-10-31)
-- **End of Life**: 2023-10-30
+- **Estimated End of Life**: 2023-10-30
 - **Patch Releases**: [v0.41.0][v0-41-0], [v0.41.1][v0-41-1], [v0.41.2][v0-41-2]
 
 ## End of Life Releases
