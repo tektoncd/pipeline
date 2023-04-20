@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package resources
+package resources_test
 
 import (
 	"context"
@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resources "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/selection"
@@ -1717,7 +1718,7 @@ func TestApplyParameters(t *testing.T) {
 					Params: tt.params,
 				},
 			}
-			got := ApplyParameters(ctx, &tt.original, run)
+			got := resources.ApplyParameters(ctx, &tt.original, run)
 			if d := cmp.Diff(&tt.expected, got); d != "" {
 				t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 			}
@@ -2026,7 +2027,7 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 					Params: tt.params,
 				},
 			}
-			got := ApplyParameters(ctx, &tt.original, run)
+			got := resources.ApplyParameters(ctx, &tt.original, run)
 			if d := cmp.Diff(&tt.expected, got); d != "" {
 				t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 			}
@@ -2282,7 +2283,7 @@ func TestApplyReplacementsMatrix(t *testing.T) {
 					Params: tt.params,
 				},
 			}
-			got := ApplyParameters(ctx, &tt.original, run)
+			got := resources.ApplyParameters(ctx, &tt.original, run)
 			if d := cmp.Diff(&tt.expected, got); d != "" {
 				t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 			}
@@ -2293,12 +2294,12 @@ func TestApplyReplacementsMatrix(t *testing.T) {
 func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 	for _, tt := range []struct {
 		name               string
-		targets            PipelineRunState
-		resolvedResultRefs ResolvedResultRefs
-		want               PipelineRunState
+		targets            resources.PipelineRunState
+		resolvedResultRefs resources.ResolvedResultRefs
+		want               resources.PipelineRunState
 	}{{
 		name: "Test result substitution on minimal variable substitution expression - params",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewStructuredValues("aResultValue"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
@@ -2306,7 +2307,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2316,7 +2317,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 				}},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2328,7 +2329,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 		}},
 	}, {
 		name: "Test array indexing result substitution on minimal variable substitution expression - params",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
@@ -2336,7 +2337,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2346,7 +2347,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 				}},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2358,7 +2359,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 		}},
 	}, {
 		name: "Test array indexing result substitution out of bound - params",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
@@ -2366,7 +2367,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2376,7 +2377,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 				}},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2389,7 +2390,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 		}},
 	}, {
 		name: "Test array result substitution on minimal variable substitution expression - params",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
@@ -2397,7 +2398,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2409,7 +2410,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 				}},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2421,7 +2422,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 		}},
 	}, {
 		name: "Test object result as a whole substitution - params",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewObject(map[string]string{
 				"key1": "val1",
 				"key2": "val2",
@@ -2432,7 +2433,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2442,7 +2443,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 				}},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2458,7 +2459,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 		}},
 	}, {
 		name: "Test object result element substitution - params",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewObject(map[string]string{
 				"key1": "val1",
 				"key2": "val2",
@@ -2469,7 +2470,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2479,7 +2480,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 				}},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2492,7 +2493,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 		}},
 	}, {
 		name: "Test result substitution on minimal variable substitution expression - matrix",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewStructuredValues("aResultValue"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
@@ -2500,7 +2501,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2511,7 +2512,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 					}}},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2524,7 +2525,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 		}},
 	}, {
 		name: "Test array indexing result substitution on minimal variable substitution expression - matrix",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
@@ -2532,7 +2533,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2543,7 +2544,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 					}}},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2556,7 +2557,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 		}},
 	}, {
 		name: "Test array indexing result substitution out of bound - matrix",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
@@ -2564,7 +2565,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2575,7 +2576,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 					}}},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2588,7 +2589,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 		}},
 	}, {
 		name: "Test array result substitution on minimal variable substitution expression - when expressions",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
@@ -2596,7 +2597,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2608,7 +2609,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 				}},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2621,7 +2622,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 		}},
 	}, {
 		name: "Test result substitution on minimal variable substitution expression - when expressions",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewStructuredValues("aResultValue"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
@@ -2629,7 +2630,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2640,7 +2641,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 				}},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2653,7 +2654,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 		}},
 	}, {
 		name: "Test array indexing result substitution on minimal variable substitution expression - when expressions",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
@@ -2661,7 +2662,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2672,7 +2673,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 				}},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2685,7 +2686,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 		}},
 	}, {
 		name: "Test array result substitution on minimal variable substitution expression - resolver params",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewArrayOrString("arrayResultValueOne", "arrayResultValueTwo"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
@@ -2693,7 +2694,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
@@ -2707,7 +2708,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 				},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
@@ -2723,7 +2724,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 		}},
 	}, {
 		name: "Test result substitution on minimal variable substitution expression - resolver params",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewArrayOrString("aResultValue"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
@@ -2731,7 +2732,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
@@ -2743,7 +2744,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 				},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
@@ -2757,7 +2758,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 		}},
 	}, {
 		name: "Test array indexing result substitution on minimal variable substitution expression - resolver params",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewArrayOrString("arrayResultValueOne", "arrayResultValueTwo"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
@@ -2765,7 +2766,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
@@ -2780,7 +2781,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 				},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
@@ -2797,7 +2798,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 		}},
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
-			ApplyTaskResults(tt.targets, tt.resolvedResultRefs)
+			resources.ApplyTaskResults(tt.targets, tt.resolvedResultRefs)
 			if d := cmp.Diff(tt.want, tt.targets); d != "" {
 				t.Fatalf("ApplyTaskResults() %s", diff.PrintWantGot(d))
 			}
@@ -2808,12 +2809,12 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 	for _, tt := range []struct {
 		name               string
-		targets            PipelineRunState
-		resolvedResultRefs ResolvedResultRefs
-		want               PipelineRunState
+		targets            resources.PipelineRunState
+		resolvedResultRefs resources.ResolvedResultRefs
+		want               resources.PipelineRunState
 	}{{
 		name: "Test result substitution on embedded variable substitution expression - params",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewStructuredValues("aResultValue"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
@@ -2821,7 +2822,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2831,7 +2832,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 				}},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2843,7 +2844,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 		}},
 	}, {
 		name: "Test array indexing result substitution on embedded variable substitution expression - params",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
@@ -2851,7 +2852,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2861,7 +2862,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 				}},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2873,7 +2874,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 		}},
 	}, {
 		name: "Test result substitution on embedded variable substitution expression - matrix",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewStructuredValues("aResultValue"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
@@ -2881,7 +2882,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2892,7 +2893,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 					}}},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2905,7 +2906,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 		}},
 	}, {
 		name: "test result substitution for strings and arrays in matrix params",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewStructuredValues("foo"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
@@ -2931,7 +2932,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2943,7 +2944,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 				},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2957,7 +2958,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 		}},
 	}, {
 		name: "test result substitution for strings from string, arr, obj results in matrix include params",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewStructuredValues("foo"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
@@ -2983,7 +2984,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -2998,7 +2999,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 				},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -3015,7 +3016,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 		}},
 	}, {
 		name: "Test result substitution on embedded variable substitution expression - when expressions",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewStructuredValues("aResultValue"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
@@ -3023,7 +3024,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -3036,7 +3037,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 				},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -3049,7 +3050,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 		}},
 	}, {
 		name: "Test array indexing result substitution on embedded variable substitution expression - when expressions",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
@@ -3057,7 +3058,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -3070,7 +3071,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 				},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -3083,7 +3084,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 		}},
 	}, {
 		name: "Test result substitution on embedded variable substitution expression - resolver params",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewArrayOrString("aResultValue"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
@@ -3091,7 +3092,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
@@ -3103,7 +3104,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 				},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
@@ -3117,7 +3118,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 		}},
 	}, {
 		name: "Test array indexing result substitution on embedded variable substitution expression - resolver params",
-		resolvedResultRefs: ResolvedResultRefs{{
+		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1beta1.NewArrayOrString("arrayResultValueOne", "arrayResultValueTwo"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
@@ -3125,7 +3126,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		targets: PipelineRunState{{
+		targets: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
@@ -3140,7 +3141,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 				},
 			},
 		}},
-		want: PipelineRunState{{
+		want: resources.PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				TaskRef: &v1beta1.TaskRef{
 					ResolverRef: v1beta1.ResolverRef{
@@ -3157,7 +3158,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 		}},
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
-			ApplyTaskResults(tt.targets, tt.resolvedResultRefs)
+			resources.ApplyTaskResults(tt.targets, tt.resolvedResultRefs)
 			if d := cmp.Diff(tt.want, tt.targets); d != "" {
 				t.Fatalf("ApplyTaskResults() %s", diff.PrintWantGot(d))
 			}
@@ -3232,7 +3233,7 @@ func TestContext(t *testing.T) {
 						}}},
 				},
 			}
-			got := ApplyContexts(&orig.Spec, orig.Name, tc.pr)
+			got := resources.ApplyContexts(&orig.Spec, orig.Name, tc.pr)
 			if d := cmp.Diff(tc.expected, got.Tasks[0].Params[0]); d != "" {
 				t.Errorf(diff.PrintWantGot(d))
 			}
@@ -3332,7 +3333,7 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			got := ApplyPipelineTaskContexts(&tc.pt)
+			got := resources.ApplyPipelineTaskContexts(&tc.pt)
 			if d := cmp.Diff(&tc.want, got); d != "" {
 				t.Errorf(diff.PrintWantGot(d))
 			}
@@ -3382,7 +3383,7 @@ func TestApplyWorkspaces(t *testing.T) {
 					Workspaces: tc.bindings,
 				},
 			}
-			p2 := ApplyWorkspaces(&p1, pr)
+			p2 := resources.ApplyWorkspaces(&p1, pr)
 			str := p2.Tasks[0].Params[0].Value.StringVal
 			if str != tc.expectedReplacement {
 				t.Errorf("expected %q, received %q", tc.expectedReplacement, str)
@@ -3497,7 +3498,7 @@ func TestApplyFinallyResultsToPipelineResults(t *testing.T) {
 		},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
-			received, _ := ApplyTaskResultsToPipelineResults(context.Background(), tc.results, tc.taskResults, tc.runResults, nil /* skippedTasks */)
+			received, _ := resources.ApplyTaskResultsToPipelineResults(context.Background(), tc.results, tc.taskResults, tc.runResults, nil /* skippedTasks */)
 			if d := cmp.Diff(tc.expected, received); d != "" {
 				t.Errorf(diff.PrintWantGot(d))
 			}
@@ -3794,7 +3795,7 @@ func TestApplyTaskResultsToPipelineResults_Success(t *testing.T) {
 		expectedResults: nil,
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			received, err := ApplyTaskResultsToPipelineResults(context.Background(), tc.results, tc.taskResults, tc.runResults, tc.skippedTasks)
+			received, err := resources.ApplyTaskResultsToPipelineResults(context.Background(), tc.results, tc.taskResults, tc.runResults, tc.skippedTasks)
 			if err != nil {
 				t.Errorf("Got unecpected error:%v", err)
 			}
@@ -4010,7 +4011,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			received, err := ApplyTaskResultsToPipelineResults(context.Background(), tc.results, tc.taskResults, tc.runResults, nil /*skipped tasks*/)
+			received, err := resources.ApplyTaskResultsToPipelineResults(context.Background(), tc.results, tc.taskResults, tc.runResults, nil /*skipped tasks*/)
 			if err == nil {
 				t.Errorf("Expect error but got nil")
 			}
@@ -4031,7 +4032,7 @@ func TestApplyTaskRunContext(t *testing.T) {
 		"tasks.task1.status": "succeeded",
 		"tasks.task3.status": "none",
 	}
-	state := PipelineRunState{{
+	state := resources.PipelineRunState{{
 		PipelineTask: &v1beta1.PipelineTask{
 			Name:    "task4",
 			TaskRef: &v1beta1.TaskRef{Name: "task"},
@@ -4049,7 +4050,7 @@ func TestApplyTaskRunContext(t *testing.T) {
 			}},
 		},
 	}}
-	expectedState := PipelineRunState{{
+	expectedState := resources.PipelineRunState{{
 		PipelineTask: &v1beta1.PipelineTask{
 			Name:    "task4",
 			TaskRef: &v1beta1.TaskRef{Name: "task"},
@@ -4067,7 +4068,7 @@ func TestApplyTaskRunContext(t *testing.T) {
 			}},
 		},
 	}}
-	ApplyPipelineTaskStateContext(state, r)
+	resources.ApplyPipelineTaskStateContext(state, r)
 	if d := cmp.Diff(expectedState, state); d != "" {
 		t.Fatalf("ApplyTaskRunContext() %s", diff.PrintWantGot(d))
 	}

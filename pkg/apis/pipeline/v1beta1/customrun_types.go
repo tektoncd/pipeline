@@ -194,7 +194,7 @@ func (r *CustomRun) GetStatusCondition() apis.ConditionAccessor {
 
 // GetGroupVersionKind implements kmeta.OwnerRefable.
 func (*CustomRun) GetGroupVersionKind() schema.GroupVersionKind {
-	return SchemeGroupVersion.WithKind(pipeline.RunControllerName)
+	return SchemeGroupVersion.WithKind(pipeline.CustomRunControllerName)
 }
 
 // HasPipelineRunOwnerReference returns true of CustomRun has

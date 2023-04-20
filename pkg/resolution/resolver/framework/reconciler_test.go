@@ -14,7 +14,7 @@
  limitations under the License.
 */
 
-package framework
+package framework_test
 
 import (
 	"context"
@@ -30,6 +30,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	framework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
@@ -57,7 +58,7 @@ func TestReconcile(t *testing.T) {
 	testCases := []struct {
 		name              string
 		inputRequest      *v1beta1.ResolutionRequest
-		paramMap          map[string]*FakeResolvedResource
+		paramMap          map[string]*framework.FakeResolvedResource
 		reconcilerTimeout time.Duration
 		expectedStatus    *v1beta1.ResolutionRequestStatus
 		expectedErr       error
@@ -74,12 +75,12 @@ func TestReconcile(t *testing.T) {
 					Namespace:         "foo",
 					CreationTimestamp: metav1.Time{Time: time.Now()},
 					Labels: map[string]string{
-						resolutioncommon.LabelKeyResolverType: LabelValueFakeResolverType,
+						resolutioncommon.LabelKeyResolverType: framework.LabelValueFakeResolverType,
 					},
 				},
 				Spec: v1beta1.ResolutionRequestSpec{
 					Params: []pipelinev1beta1.Param{{
-						Name:  FakeParamName,
+						Name:  framework.FakeParamName,
 						Value: *pipelinev1beta1.NewStructuredValues("bar"),
 					}},
 				},
@@ -98,18 +99,18 @@ func TestReconcile(t *testing.T) {
 					Namespace:         "foo",
 					CreationTimestamp: metav1.Time{Time: time.Now()},
 					Labels: map[string]string{
-						resolutioncommon.LabelKeyResolverType: LabelValueFakeResolverType,
+						resolutioncommon.LabelKeyResolverType: framework.LabelValueFakeResolverType,
 					},
 				},
 				Spec: v1beta1.ResolutionRequestSpec{
 					Params: []pipelinev1beta1.Param{{
-						Name:  FakeParamName,
+						Name:  framework.FakeParamName,
 						Value: *pipelinev1beta1.NewStructuredValues("bar"),
 					}},
 				},
 				Status: v1beta1.ResolutionRequestStatus{},
 			},
-			paramMap: map[string]*FakeResolvedResource{
+			paramMap: map[string]*framework.FakeResolvedResource{
 				"bar": {
 					Content:       "some content",
 					AnnotationMap: map[string]string{"foo": "bar"},
@@ -158,18 +159,18 @@ func TestReconcile(t *testing.T) {
 					Namespace:         "foo",
 					CreationTimestamp: metav1.Time{Time: time.Now()},
 					Labels: map[string]string{
-						resolutioncommon.LabelKeyResolverType: LabelValueFakeResolverType,
+						resolutioncommon.LabelKeyResolverType: framework.LabelValueFakeResolverType,
 					},
 				},
 				Spec: v1beta1.ResolutionRequestSpec{
 					Params: []pipelinev1beta1.Param{{
-						Name:  FakeParamName,
+						Name:  framework.FakeParamName,
 						Value: *pipelinev1beta1.NewStructuredValues("bar"),
 					}},
 				},
 				Status: v1beta1.ResolutionRequestStatus{},
 			},
-			paramMap: map[string]*FakeResolvedResource{
+			paramMap: map[string]*framework.FakeResolvedResource{
 				"bar": {
 					ErrorWith: "fake failure",
 				},
@@ -187,18 +188,18 @@ func TestReconcile(t *testing.T) {
 					Namespace:         "foo",
 					CreationTimestamp: metav1.Time{Time: time.Now().Add(-59 * time.Second)}, // 1 second before default timeout
 					Labels: map[string]string{
-						resolutioncommon.LabelKeyResolverType: LabelValueFakeResolverType,
+						resolutioncommon.LabelKeyResolverType: framework.LabelValueFakeResolverType,
 					},
 				},
 				Spec: v1beta1.ResolutionRequestSpec{
 					Params: []pipelinev1beta1.Param{{
-						Name:  FakeParamName,
+						Name:  framework.FakeParamName,
 						Value: *pipelinev1beta1.NewStructuredValues("bar"),
 					}},
 				},
 				Status: v1beta1.ResolutionRequestStatus{},
 			},
-			paramMap: map[string]*FakeResolvedResource{
+			paramMap: map[string]*framework.FakeResolvedResource{
 				"bar": {
 					WaitFor: 1100 * time.Millisecond,
 				},
@@ -214,7 +215,7 @@ func TestReconcile(t *testing.T) {
 				ResolutionRequests: []*v1beta1.ResolutionRequest{tc.inputRequest},
 			}
 
-			fakeResolver := &FakeResolver{ForParam: tc.paramMap}
+			fakeResolver := &framework.FakeResolver{ForParam: tc.paramMap}
 			if tc.reconcilerTimeout > 0 {
 				fakeResolver.Timeout = tc.reconcilerTimeout
 			}
@@ -251,14 +252,14 @@ func TestReconcile(t *testing.T) {
 	}
 }
 
-func getResolverFrameworkController(ctx context.Context, t *testing.T, d test.Data, resolver Resolver, modifiers ...ReconcilerModifier) (test.Assets, func()) {
+func getResolverFrameworkController(ctx context.Context, t *testing.T, d test.Data, resolver framework.Resolver, modifiers ...framework.ReconcilerModifier) (test.Assets, func()) {
 	t.Helper()
 	names.TestingSeed()
 
 	ctx, cancel := context.WithCancel(ctx)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
-	ctl := NewController(ctx, resolver, modifiers...)(ctx, configMapWatcher)
+	ctl := framework.NewController(ctx, resolver, modifiers...)(ctx, configMapWatcher)
 	if err := configMapWatcher.Start(ctx.Done()); err != nil {
 		t.Fatalf("error starting configmap watcher: %v", err)
 	}
@@ -281,7 +282,7 @@ func getRequestName(rr *v1beta1.ResolutionRequest) string {
 	return strings.Join([]string{rr.Namespace, rr.Name}, "/")
 }
 
-func setClockOnReconciler(r *Reconciler) {
+func setClockOnReconciler(r *framework.Reconciler) {
 	if r.Clock == nil {
 		r.Clock = testClock
 	}

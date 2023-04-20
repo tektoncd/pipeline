@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package k8sevent
+package k8sevent_test
 
 import (
 	"errors"
@@ -23,6 +23,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	k8sevents "github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
@@ -176,8 +177,8 @@ func TestEmitK8sEventsOnConditions(t *testing.T) {
 		tr := &corev1.Pod{}
 		ctx, _ := rtesting.SetupFakeContext(t)
 		recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
-		EmitK8sEvents(ctx, ts.before, ts.after, tr)
-		err := CheckEventsOrdered(t, recorder.Events, ts.name, ts.wantEvents)
+		k8sevents.EmitK8sEvents(ctx, ts.before, ts.after, tr)
+		err := k8sevents.CheckEventsOrdered(t, recorder.Events, ts.name, ts.wantEvents)
 		if err != nil {
 			t.Errorf(err.Error())
 		}
@@ -235,8 +236,8 @@ func TestEmitK8sEvents(t *testing.T) {
 		ctx = config.ToContext(ctx, cfg)
 
 		recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
-		EmitK8sEvents(ctx, nil, after, object)
-		if err := CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
+		k8sevents.EmitK8sEvents(ctx, nil, after, object)
+		if err := k8sevents.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
 			t.Fatalf(err.Error())
 		}
 	}
@@ -260,8 +261,8 @@ func TestEmitError(t *testing.T) {
 	for _, ts := range testcases {
 		fr := record.NewFakeRecorder(1)
 		tr := &corev1.Pod{}
-		EmitError(fr, ts.err, tr)
-		err := CheckEventsOrdered(t, fr.Events, ts.name, ts.wantEvents)
+		k8sevents.EmitError(fr, ts.err, tr)
+		err := k8sevents.CheckEventsOrdered(t, fr.Events, ts.name, ts.wantEvents)
 		if err != nil {
 			t.Errorf(err.Error())
 		}

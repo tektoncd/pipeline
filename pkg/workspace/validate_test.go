@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package workspace
+package workspace_test
 
 import (
 	"context"
@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	workspace "github.com/tektoncd/pipeline/pkg/workspace"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -77,7 +78,7 @@ func TestValidateBindingsValid(t *testing.T) {
 		bindings: []v1beta1.WorkspaceBinding{},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ValidateBindings(context.Background(), tc.declarations, tc.bindings); err != nil {
+			if err := workspace.ValidateBindings(context.Background(), tc.declarations, tc.bindings); err != nil {
 				t.Errorf("didnt expect error for valid bindings but got: %v", err)
 			}
 		})
@@ -153,7 +154,7 @@ func TestValidateBindingsInvalid(t *testing.T) {
 		}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ValidateBindings(context.Background(), tc.declarations, tc.bindings); err == nil {
+			if err := workspace.ValidateBindings(context.Background(), tc.declarations, tc.bindings); err == nil {
 				t.Errorf("expected error for invalid bindings but didn't get any!")
 			}
 		})
@@ -200,7 +201,7 @@ func TestValidateOnlyOnePVCIsUsed_Valid(t *testing.T) {
 		}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ValidateOnlyOnePVCIsUsed(tc.bindings); err != nil {
+			if err := workspace.ValidateOnlyOnePVCIsUsed(tc.bindings); err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
 		})
@@ -238,7 +239,7 @@ func TestValidateOnlyOnePVCIsUsed_Invalid(t *testing.T) {
 		wantErr: validationError,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			err := ValidateOnlyOnePVCIsUsed(tc.bindings)
+			err := workspace.ValidateOnlyOnePVCIsUsed(tc.bindings)
 			if err == nil || (tc.wantErr.Error() != err.Error()) {
 				t.Errorf("expected %v received %v", tc.wantErr, err)
 			}

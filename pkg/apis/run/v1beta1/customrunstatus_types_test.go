@@ -15,7 +15,7 @@
 
 */
 
-package v1beta1
+package v1beta1_test
 
 import (
 	"testing"
@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1"
+	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/run/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -74,31 +75,31 @@ func TestFromRunStatus(t *testing.T) {
 		},
 	}
 
-	expectedCustomRunResult := CustomRunStatus{
+	expectedCustomRunResult := v1beta1.CustomRunStatus{
 		Status: duckv1.Status{
 			Conditions: []apis.Condition{{
 				Type:   apis.ConditionSucceeded,
 				Status: corev1.ConditionTrue,
 			}},
 		},
-		CustomRunStatusFields: CustomRunStatusFields{
+		CustomRunStatusFields: v1beta1.CustomRunStatusFields{
 			StartTime:      &metav1.Time{Time: startTime},
 			CompletionTime: &metav1.Time{Time: endTime},
-			Results: []CustomRunResult{{
+			Results: []v1beta1.CustomRunResult{{
 				Name:  "foo",
 				Value: "bar",
 			}},
-			RetriesStatus: []CustomRunStatus{{
+			RetriesStatus: []v1beta1.CustomRunStatus{{
 				Status: duckv1.Status{
 					Conditions: []apis.Condition{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionFalse,
 					}},
 				},
-				CustomRunStatusFields: CustomRunStatusFields{
+				CustomRunStatusFields: v1beta1.CustomRunStatusFields{
 					StartTime:      &metav1.Time{Time: startTime.Add(-30 * time.Minute)},
 					CompletionTime: &metav1.Time{Time: startTime.Add(-15 * time.Minute)},
-					Results: []CustomRunResult{{
+					Results: []v1beta1.CustomRunResult{{
 						Name:  "foo",
 						Value: "bad",
 					}},
@@ -113,7 +114,7 @@ func TestFromRunStatus(t *testing.T) {
 		},
 	}
 
-	if d := cmp.Diff(expectedCustomRunResult, FromRunStatus(runStatus)); d != "" {
+	if d := cmp.Diff(expectedCustomRunResult, v1beta1.FromRunStatus(runStatus)); d != "" {
 		t.Errorf("expected converted RunStatus to equal expected CustomRunStatus. Diff %s", diff.PrintWantGot(d))
 	}
 }

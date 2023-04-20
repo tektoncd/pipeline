@@ -14,12 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package resources
+package resources_test
 
 import (
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resources "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -54,7 +55,7 @@ func TestValidateParamTypesMatching_Valid(t *testing.T) {
 				Spec:       v1beta1.PipelineRunSpec{Params: tc.prp},
 			}
 
-			if err := ValidateParamTypesMatching(ps, pr); err != nil {
+			if err := resources.ValidateParamTypesMatching(ps, pr); err != nil {
 				t.Errorf("Pipeline.Validate() returned error: %v", err)
 			}
 		})
@@ -102,7 +103,7 @@ func TestValidateParamTypesMatching_Invalid(t *testing.T) {
 				Spec:       v1beta1.PipelineRunSpec{Params: tc.prp},
 			}
 
-			if err := ValidateParamTypesMatching(ps, pr); err == nil {
+			if err := resources.ValidateParamTypesMatching(ps, pr); err == nil {
 				t.Errorf("Expected to see error when validating PipelineRun/Pipeline param types but saw none")
 			}
 		})
@@ -144,7 +145,7 @@ func TestValidateRequiredParametersProvided_Valid(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ValidateRequiredParametersProvided(&tc.pp, &tc.prp); err != nil {
+			if err := resources.ValidateRequiredParametersProvided(&tc.pp, &tc.prp); err != nil {
 				t.Errorf("Didn't expect to see error when validating valid PipelineRun parameters but got: %v", err)
 			}
 		})
@@ -178,7 +179,7 @@ func TestValidateRequiredParametersProvided_Invalid(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ValidateRequiredParametersProvided(&tc.pp, &tc.prp); err == nil {
+			if err := resources.ValidateRequiredParametersProvided(&tc.pp, &tc.prp); err == nil {
 				t.Errorf("Expected to see error when validating invalid PipelineRun parameters but saw none")
 			}
 		})
@@ -230,7 +231,7 @@ func TestValidateObjectParamRequiredKeys_Invalid(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ValidateObjectParamRequiredKeys(tc.pp, tc.prp); err == nil {
+			if err := resources.ValidateObjectParamRequiredKeys(tc.pp, tc.prp); err == nil {
 				t.Errorf("Expected to see error when validating invalid object parameter keys but saw none")
 			}
 		})
@@ -310,7 +311,7 @@ func TestValidateObjectParamRequiredKeys_Valid(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ValidateObjectParamRequiredKeys(tc.pp, tc.prp); err != nil {
+			if err := resources.ValidateObjectParamRequiredKeys(tc.pp, tc.prp); err != nil {
 				t.Errorf("Didn't expect to see error when validating invalid object parameter keys but got: %v", err)
 			}
 		})

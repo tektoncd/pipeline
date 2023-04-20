@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-	http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,11 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package common
+package common_test
 
 import (
 	"context"
 	"testing"
+
+	common "github.com/tektoncd/pipeline/pkg/resolution/common"
 )
 
 func TestRequestNamespace(t *testing.T) {
@@ -26,18 +28,18 @@ func TestRequestNamespace(t *testing.T) {
 	namespaceB := "bar"
 
 	ctx := context.Background()
-	ctx = InjectRequestNamespace(ctx, namespaceA)
-	if RequestNamespace(ctx) != namespaceA {
+	ctx = common.InjectRequestNamespace(ctx, namespaceA)
+	if common.RequestNamespace(ctx) != namespaceA {
 		t.Fatalf("expected namespace to be stored as part of context")
 	}
 
-	ctx = InjectRequestNamespace(ctx, namespaceB)
-	if RequestNamespace(ctx) != namespaceA {
+	ctx = common.InjectRequestNamespace(ctx, namespaceB)
+	if common.RequestNamespace(ctx) != namespaceA {
 		t.Fatalf("expected stored namespace to be immutable once set")
 	}
 
 	ctx = context.Background()
-	if RequestNamespace(ctx) != "" {
+	if common.RequestNamespace(ctx) != "" {
 		t.Fatalf("expected empty namespace returned if no value was previously injected")
 	}
 }
@@ -47,18 +49,18 @@ func TestRequestName(t *testing.T) {
 	nameB := "bar"
 
 	ctx := context.Background()
-	ctx = InjectRequestName(ctx, nameA)
-	if RequestName(ctx) != nameA {
+	ctx = common.InjectRequestName(ctx, nameA)
+	if common.RequestName(ctx) != nameA {
 		t.Fatalf("expected namespace to be stored as part of context")
 	}
 
-	ctx = InjectRequestNamespace(ctx, nameB)
-	if RequestName(ctx) != nameA {
+	ctx = common.InjectRequestNamespace(ctx, nameB)
+	if common.RequestName(ctx) != nameA {
 		t.Fatalf("expected stored namespace to be immutable once set")
 	}
 
 	ctx = context.Background()
-	if RequestName(ctx) != "" {
+	if common.RequestName(ctx) != "" {
 		t.Fatalf("expected empty namespace returned if no value was previously injected")
 	}
 }

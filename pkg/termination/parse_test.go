@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package termination
+package termination_test
 
 import (
 	"strings"
@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/result"
+	termination "github.com/tektoncd/pipeline/pkg/termination"
 	"github.com/tektoncd/pipeline/test/diff"
 	"knative.dev/pkg/logging"
 )
@@ -81,7 +82,7 @@ func TestParseMessage(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			logger, _ := logging.NewLogger("", "status")
-			got, err := ParseMessage(logger, c.msg)
+			got, err := termination.ParseMessage(logger, c.msg)
 			if err != nil {
 				t.Fatalf("ParseMessage: %v", err)
 			}
@@ -102,7 +103,7 @@ func TestParseMessageInvalidMessage(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			logger, _ := logging.NewLogger("", "status")
-			_, err := ParseMessage(logger, c.msg)
+			_, err := termination.ParseMessage(logger, c.msg)
 			if err == nil {
 				t.Errorf("Expected error parsing incorrect termination message, got nil")
 			}

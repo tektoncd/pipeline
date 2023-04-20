@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cache
+package cache_test
 
 import (
 	"net/url"
@@ -27,6 +27,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	cache "github.com/tektoncd/pipeline/pkg/reconciler/events/cache"
 	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -97,7 +98,7 @@ func TestEventsKey(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			gotEvent := getEventToTest(tc.eventtype, tc.run)
-			gotKey, err := EventKey(gotEvent)
+			gotKey, err := cache.EventKey(gotEvent)
 			if err != nil {
 				if !tc.wantErr {
 					t.Fatalf("Expecting an error, got none")
@@ -145,8 +146,8 @@ func TestAddCheckEvent(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			testCache, _ := lru.New(10)
-			_, _ = ContainsOrAddCloudEvent(testCache, tc.firstEvent)
-			found, _ := ContainsOrAddCloudEvent(testCache, tc.secondEvent)
+			_, _ = cache.ContainsOrAddCloudEvent(testCache, tc.firstEvent)
+			found, _ := cache.ContainsOrAddCloudEvent(testCache, tc.secondEvent)
 			if d := cmp.Diff(tc.wantFound, found); d != "" {
 				t.Errorf("Cache check failure %s", diff.PrintWantGot(d))
 			}

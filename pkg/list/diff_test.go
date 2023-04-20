@@ -14,17 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package list
+package list_test
 
 import (
 	"reflect"
 	"testing"
+
+	list "github.com/tektoncd/pipeline/pkg/list"
 )
 
 func TestIsSame_same(t *testing.T) {
 	required := []string{"elsa", "anna", "olaf", "kristoff"}
 	provided := []string{"elsa", "anna", "olaf", "kristoff"}
-	err := IsSame(required, provided)
+	err := list.IsSame(required, provided)
 	if err != nil {
 		t.Errorf("Didn't expect error when everything required has been provided")
 	}
@@ -33,7 +35,7 @@ func TestIsSame_same(t *testing.T) {
 func TestIsSame_missing(t *testing.T) {
 	required := []string{"elsa", "anna", "olaf", "kristoff"}
 	provided := []string{"elsa", "anna", "olaf"}
-	err := IsSame(required, provided)
+	err := list.IsSame(required, provided)
 	if err == nil {
 		t.Errorf("Expected error since `kristoff` should be missing")
 	}
@@ -42,7 +44,7 @@ func TestIsSame_missing(t *testing.T) {
 func TestIsSame_extra(t *testing.T) {
 	required := []string{"elsa", "anna", "olaf"}
 	provided := []string{"elsa", "anna", "olaf", "kristoff"}
-	err := IsSame(required, provided)
+	err := list.IsSame(required, provided)
 	if err == nil {
 		t.Errorf("Expected error since `kristoff` should be extra")
 	}
@@ -51,7 +53,7 @@ func TestIsSame_extra(t *testing.T) {
 func TestDiffLeft_same(t *testing.T) {
 	left := []string{"elsa", "anna", "olaf", "kristoff"}
 	right := []string{"elsa", "anna", "olaf", "kristoff"}
-	extraLeft := DiffLeft(left, right)
+	extraLeft := list.DiffLeft(left, right)
 
 	if !reflect.DeepEqual(extraLeft, []string{}) {
 		t.Errorf("Didn't expect extra strings in left list but got %v", extraLeft)
@@ -61,7 +63,7 @@ func TestDiffLeft_same(t *testing.T) {
 func TestDiffLeft_extraLeft(t *testing.T) {
 	left := []string{"elsa", "anna", "olaf", "kristoff", "hans"}
 	right := []string{"elsa", "anna", "olaf", "kristoff"}
-	extraLeft := DiffLeft(left, right)
+	extraLeft := list.DiffLeft(left, right)
 
 	if !reflect.DeepEqual(extraLeft, []string{"hans"}) {
 		t.Errorf("Should have identified extra string in left list but got %v", extraLeft)
@@ -71,7 +73,7 @@ func TestDiffLeft_extraLeft(t *testing.T) {
 func TestDiffLeft_extraRight(t *testing.T) {
 	left := []string{"elsa", "anna", "olaf", "kristoff"}
 	right := []string{"elsa", "anna", "olaf", "kristoff", "hans"}
-	extraLeft := DiffLeft(left, right)
+	extraLeft := list.DiffLeft(left, right)
 
 	if !reflect.DeepEqual(extraLeft, []string{}) {
 		t.Errorf("Shouldn't have noticed extra item in right list but got %v", extraLeft)

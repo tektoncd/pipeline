@@ -14,15 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package v1beta1_test
 
 import (
 	"context"
 	"testing"
+
+	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
 func TestClusterTaskConversionBadType(t *testing.T) {
-	good, bad := &ClusterTask{}, &Pipeline{}
+	good, bad := &v1beta1.ClusterTask{}, &v1beta1.Pipeline{}
 
 	if err := good.ConvertTo(context.Background(), bad); err == nil {
 		t.Errorf("ConvertTo() = %#v, wanted error", bad)

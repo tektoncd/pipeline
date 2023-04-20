@@ -748,7 +748,7 @@ func getNewTaskRunNames(ptName, prName string, combinationCount int) []string {
 func getRunName(childRefs []v1beta1.ChildStatusReference, ptName, prName string) string {
 	for _, cr := range childRefs {
 		if cr.PipelineTaskName == ptName {
-			if cr.Kind == pipeline.CustomRunControllerName || cr.Kind == pipeline.RunControllerName {
+			if cr.Kind == pipeline.CustomRunControllerName {
 				return cr.Name
 			}
 		}
@@ -770,7 +770,7 @@ func getRunNamesFromChildRefs(childRefs []v1beta1.ChildStatusReference, ptName s
 	var runNames []string
 	for _, cr := range childRefs {
 		if cr.PipelineTaskName == ptName {
-			if cr.Kind == pipeline.CustomRunControllerName || cr.Kind == pipeline.RunControllerName {
+			if cr.Kind == pipeline.CustomRunControllerName {
 				runNames = append(runNames, cr.Name)
 			}
 		}
