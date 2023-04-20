@@ -302,6 +302,9 @@ Features currently in "beta" are:
 | Feature                                                            | Proposal                                                                                        | Alpha Release                                                        | Beta Release                                                         | Individual Flag |
 |:-------------------------------------------------------------------|:------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------|:---------------------------------------------------------------------|:----------------|
 | [Array Results and Array Indexing](pipelineruns.md#specifying-parameters)             | [TEP-0076](https://github.com/tektoncd/community/blob/main/teps/0076-array-result-types.md)     | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) | [v0.45.0](https://github.com/tektoncd/pipeline/releases/tag/v0.45.0) |                 |
+| [Object Parameters and Results](pipelineruns.md#specifying-parameters) | [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md) | [v0.46.0](https://github.com/tektoncd/pipeline/releases/tag/v0.46.0) |
+| [Remote Tasks](./taskruns.md#remote-tasks) and [Remote Pipelines](./pipelineruns.md#remote-pipelines) | [TEP-0060](https://github.com/tektoncd/community/blob/main/teps/0060-remote-resolution.md) | [v0.41.0](https://github.com/tektoncd/pipeline/releases/tag/v0.41.0) |
+
 
 ## Enabling larger results using sidecar logs
 
@@ -362,8 +365,6 @@ The controller and webhook components are currently built for:
 
 The entrypoint component is also built for Windows, which enables TaskRun workloads to execute on Windows nodes.
 See [Windows documentation](windows.md) for more information.
-
-Additional components to support PipelineResources may be available for other architectures as well.
 
 ## Creating a custom release of Tekton Pipelines
 

@@ -19,5 +19,4 @@ channel for training and tutorials on Tekton!
   - [Multi-Tenant Support](./multi-tenant-support.md): Running Tekton in multi-tenant configurations.
 - [API Versioning](./api-versioning.md): How Tekton supports multiple API versions and feature gates.
 - How specific features are implemented:
-  - [PipelineResources (deprecated)](./pipelineresources.md)
   - [Results](./results-lifecycle.md)

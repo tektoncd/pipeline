@@ -25,6 +25,7 @@ This Resolver responds to type `cluster`.
 - The [built-in remote resolvers installed](./install.md#installing-and-configuring-remote-task-and-pipeline-resolution).
 - The `enable-cluster-resolver` feature flag in the `resolvers-feature-flags` ConfigMap
   in the `tekton-pipelines-resolvers` namespace set to `true`.
+- [Beta features](./additional-configs.md#beta-features) enabled.
 
 ## Configuration
 

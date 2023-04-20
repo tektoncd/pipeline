@@ -14,10 +14,8 @@ The API is considered to consist of:
   - The naming of the `step` containers within the `status`
   - The labels propagated from `PipelineRuns` to `TaskRuns` and `TaskRuns` to `Pods`.
 - The structure of the [directories created in executing containers by Tekton](docs/tasks.md#reserved-directories)
-- The order that `PipelineResources` declared within a `Task` are applied in
 - The interfaces of the images that are built as part of Tekton Pipelines,
-  i.e. images in [cmd](https://github.com/tektoncd/pipeline/tree/main/cmd) which are used as part of
-  [PipelineResources](docs/resources.md)
+  i.e. images in [cmd](https://github.com/tektoncd/pipeline/tree/main/cmd)
 
 This policy is about changes to any of the above facets of the API.
 
