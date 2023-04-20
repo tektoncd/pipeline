@@ -1,7 +1,16 @@
-# Deprecations
+# API Changes
 
 ✋ Before reading this, please read the
 [API Compatibility Policy](../../api_compatibility_policy.md)
+
+## CustomRuns
+
+Before adding an optional field to the spec or status of `CustomRun`,
+consider whether it could be part of the custom spec or custom status instead.
+New fields should be added to the spec or status of the `CustomRun` API only if they
+make sense for all custom run controllers to support.
+
+## Deprecations
 
 The following are things developers should keep in mind for deprecations. These
 tips may not apply in every case, so use your best judgement! If you're not sure

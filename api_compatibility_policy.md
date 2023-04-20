@@ -155,4 +155,4 @@ but a change that renames the Go struct type for that field is allowed.
 ## Notes for Developers
 
 Are you a Tekton contributor looking to make a backwards incompatible change?
-Read more on additional considerations at [deprecations.md](./docs/developers/deprecations.md).
+Read more on additional considerations at [api-changes.md](./docs/developers/api-changes.md#deprecations).
