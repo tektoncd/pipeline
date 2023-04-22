@@ -400,7 +400,8 @@ func DidTaskRunFail(pod *corev1.Pod) bool {
 			}
 		}
 	}
-	return false
+	// when the node shutdown the pod will be in Terminating and be deleted
+	return pod.DeletionTimestamp != nil
 }
 
 // IsPodArchived indicates if a pod is archived in the retriesStatus.
