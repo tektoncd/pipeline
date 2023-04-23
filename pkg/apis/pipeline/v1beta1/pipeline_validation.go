@@ -107,6 +107,8 @@ func (l PipelineTaskList) Validate(ctx context.Context, taskNames sets.String, p
 		taskNames.Insert(t.Name)
 		// validate custom task, bundle, dag, or final task
 		errs = errs.Also(t.Validate(ctx).ViaFieldIndex(path, i))
+		// validate taskref to prevent creating invalid data
+		errs = errs.Also(t.TaskRef.Validate(ctx))
 	}
 	return errs
 }
