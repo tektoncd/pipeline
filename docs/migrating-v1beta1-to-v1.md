@@ -40,6 +40,15 @@ In Tekton `v1`, the following fields have been changed:
 | `task.spec.steps[].resources` | `task.spec.steps[].computeResources` |
 | `task.spec.stepTemplate.resources` | `task.spec.stepTemplate.computeResources` |
 | `task.spec.sidecars[].resources` | `task.spec.sidecars[].computeResources` |
+| `task.spec.steps[].livenessProbe` | removed from `Container`|
+| `task.spec.steps[].readinessProbe` | removed from `Container`|
+| `task.spec.steps[].startupProbe` | removed from `Container`|
+| `task.spec.steps[].readinessports` | removed from `Container`|
+| `task.spec.steps[].terminationMessagePath` | removed from `Container`|
+| `task.spec.steps[].terminationMessagePolicy` | removed from `Container`|
+| `task.spec.steps[].stdin` | removed from `Container`|
+| `task.spec.steps[].stdinOnce` | removed from `Container`|
+| `task.spec.steps[].tty` | removed from `Container`|
 | `taskRun.spec.sidecarOverrides`| `taskRun.spec.sidecarSpecs` |
 | `taskRun.spec.stepOverrides` | `taskRun.spec.stepSpecs` |
 | `taskRun.spec.sidecarSpecs[].resources` | `taskRun.spec.sidecarSpecs[].computeResources` |
