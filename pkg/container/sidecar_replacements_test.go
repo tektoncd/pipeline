@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/container"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -34,13 +34,20 @@ func TestApplySidecarReplacements(t *testing.T) {
 		"array.replace.me": {"val1", "val2"},
 	}
 
-	s := v1beta1.Sidecar{
+	s := v1.Sidecar{
 		Script:     "$(replace.me)",
 		Name:       "$(replace.me)",
 		Image:      "$(replace.me)",
 		Command:    []string{"$(array.replace.me)"},
 		Args:       []string{"$(array.replace.me)"},
 		WorkingDir: "$(replace.me)",
+		ReadinessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				Exec: &corev1.ExecAction{
+					Command: []string{"test"},
+				},
+			},
+		},
 		EnvFrom: []corev1.EnvFromSource{{
 			ConfigMapRef: &corev1.ConfigMapEnvSource{
 				LocalObjectReference: corev1.LocalObjectReference{
@@ -78,13 +85,20 @@ func TestApplySidecarReplacements(t *testing.T) {
 		}},
 	}
 
-	expected := v1beta1.Sidecar{
+	expected := v1.Sidecar{
 		Script:     "replaced!",
 		Name:       "replaced!",
 		Image:      "replaced!",
 		Command:    []string{"val1", "val2"},
 		Args:       []string{"val1", "val2"},
 		WorkingDir: "replaced!",
+		ReadinessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				Exec: &corev1.ExecAction{
+					Command: []string{"test"},
+				},
+			},
+		},
 		EnvFrom: []corev1.EnvFromSource{{
 			ConfigMapRef: &corev1.ConfigMapEnvSource{
 				LocalObjectReference: corev1.LocalObjectReference{

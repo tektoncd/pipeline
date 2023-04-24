@@ -85,7 +85,7 @@ spec:
 	}
 
 	fqImageName := getTestImage(busyboxImage)
-	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
+	task := parse.MustParseV1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -100,11 +100,11 @@ spec:
 	if err != nil {
 		t.Errorf("error getting signed task: %v", err)
 	}
-	if _, err := c.V1beta1TaskClient.Create(ctx, signedTask, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1TaskClient.Create(ctx, signedTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
 
-	pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+	pipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -121,11 +121,11 @@ spec:
 		t.Errorf("error getting signed pipeline: %v", err)
 	}
 
-	if _, err := c.V1beta1PipelineClient.Create(ctx, signedPipeline, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1PipelineClient.Create(ctx, signedPipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
 
-	pr := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -135,16 +135,16 @@ spec:
 `, helpers.ObjectNameForTest(t), namespace, signedPipeline.Name))
 
 	t.Logf("Creating PipelineRun %s", pr.Name)
-	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", pr.Name, err)
 	}
 
 	t.Logf("Waiting for PipelineRun in namespace %s to succeed", namespace)
-	if err := WaitForPipelineRunState(ctx, c, pr.Name, timeout, PipelineRunSucceed(pr.Name), "PipelineRunSucceed", v1beta1Version); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pr.Name, timeout, PipelineRunSucceed(pr.Name), "PipelineRunSucceed", v1Version); err != nil {
 		t.Errorf("Error waiting for PipelineRun to finish: %s", err)
 	}
 
-	pr, err = c.V1beta1PipelineRunClient.Get(ctx, pr.Name, metav1.GetOptions{})
+	pr, err = c.V1PipelineRunClient.Get(ctx, pr.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Couldn't get expected PipelineRun %s: %s", pr.Name, err)
 	}
@@ -184,7 +184,7 @@ spec:
 	}
 
 	fqImageName := getTestImage(busyboxImage)
-	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
+	task := parse.MustParseV1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -201,11 +201,11 @@ spec:
 	}
 	// modify the task to fail the verification
 	signedTask.Annotations["foo"] = "bar"
-	if _, err := c.V1beta1TaskClient.Create(ctx, signedTask, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1TaskClient.Create(ctx, signedTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
 
-	pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+	pipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -222,11 +222,11 @@ spec:
 		t.Errorf("error getting signed pipeline: %v", err)
 	}
 
-	if _, err := c.V1beta1PipelineClient.Create(ctx, signedPipeline, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1PipelineClient.Create(ctx, signedPipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
 
-	pr := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -236,16 +236,16 @@ spec:
 `, helpers.ObjectNameForTest(t), namespace, signedPipeline.Name))
 
 	t.Logf("Creating PipelineRun %s", pr.Name)
-	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", pr.Name, err)
 	}
 
 	t.Logf("Waiting for PipelineRun in namespace %s to fail", namespace)
-	if err := WaitForPipelineRunState(ctx, c, pr.Name, timeout, PipelineRunFailed(pr.Name), "PipelineRunFailed", v1beta1Version); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pr.Name, timeout, PipelineRunFailed(pr.Name), "PipelineRunFailed", v1Version); err != nil {
 		t.Errorf("Error waiting for PipelineRun to finish: %s", err)
 	}
 
-	pr, err = c.V1beta1PipelineRunClient.Get(ctx, pr.Name, metav1.GetOptions{})
+	pr, err = c.V1PipelineRunClient.Get(ctx, pr.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Couldn't get expected PipelineRun %s: %s", pr.Name, err)
 	}

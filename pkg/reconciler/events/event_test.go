@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	events "github.com/tektoncd/pipeline/pkg/reconciler/events"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
@@ -38,14 +38,14 @@ func TestEmit(t *testing.T) {
 		Conditions: []apis.Condition{{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
-			Reason: v1beta1.PipelineRunReasonStarted.String(),
+			Reason: v1.PipelineRunReasonStarted.String(),
 		}},
 	}
-	object := &v1beta1.PipelineRun{
+	object := &v1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			SelfLink: "/pipelineruns/test1",
 		},
-		Status: v1beta1.PipelineRunStatus{Status: objectStatus},
+		Status: v1.PipelineRunStatus{Status: objectStatus},
 	}
 	after := &apis.Condition{
 		Type:    apis.ConditionSucceeded,

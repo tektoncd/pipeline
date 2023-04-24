@@ -23,7 +23,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -80,7 +80,7 @@ func TestGetSchedulable(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Didn't expect error when getting next tasks for %v but got %v", tc.finished, err)
 			}
-			if d := cmp.Diff(tasks, tc.expectedTasks, cmpopts.IgnoreFields(v1beta1.PipelineTask{}, "RunAfter")); d != "" {
+			if d := cmp.Diff(tasks, tc.expectedTasks, cmpopts.IgnoreFields(v1.PipelineTask{}, "RunAfter")); d != "" {
 				t.Errorf("expected that with %v done, %v would be ready to schedule but was different: %s", tc.finished, tc.expectedTasks, diff.PrintWantGot(d))
 			}
 		})
@@ -125,17 +125,17 @@ func TestGetSchedulable_Invalid(t *testing.T) {
 }
 
 func TestBuild_Parallel(t *testing.T) {
-	a := v1beta1.PipelineTask{Name: "a"}
-	b := v1beta1.PipelineTask{Name: "b"}
-	c := v1beta1.PipelineTask{Name: "c"}
+	a := v1.PipelineTask{Name: "a"}
+	b := v1.PipelineTask{Name: "b"}
+	c := v1.PipelineTask{Name: "c"}
 
 	// This test make sure we can create a Pipeline with no links between any Tasks
 	// (all tasks run in parallel)
 	//    a   b   c
-	p := &v1beta1.Pipeline{
+	p := &v1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{a, b, c},
+		Spec: v1.PipelineSpec{
+			Tasks: []v1.PipelineTask{a, b, c},
 		},
 	}
 	expectedDAG := &dag.Graph{
@@ -145,7 +145,7 @@ func TestBuild_Parallel(t *testing.T) {
 			"c": {Key: "c"},
 		},
 	}
-	g, err := dag.Build(v1beta1.PipelineTaskList(p.Spec.Tasks), v1beta1.PipelineTaskList(p.Spec.Tasks).Deps())
+	g, err := dag.Build(v1.PipelineTaskList(p.Spec.Tasks), v1.PipelineTaskList(p.Spec.Tasks).Deps())
 	if err != nil {
 		t.Fatalf("didn't expect error creating valid Pipeline %v but got %v", p, err)
 	}
@@ -153,41 +153,41 @@ func TestBuild_Parallel(t *testing.T) {
 }
 
 func TestBuild_JoinMultipleRoots(t *testing.T) {
-	a := v1beta1.PipelineTask{
+	a := v1.PipelineTask{
 		Name: "a",
-		TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-			Results: []v1beta1.TaskResult{{
+		TaskSpec: &v1.EmbeddedTask{TaskSpec: v1.TaskSpec{
+			Results: []v1.TaskResult{{
 				Name: "result",
 			}},
 		}},
 	}
-	b := v1beta1.PipelineTask{Name: "b"}
-	c := v1beta1.PipelineTask{
+	b := v1.PipelineTask{Name: "b"}
+	c := v1.PipelineTask{
 		Name: "c",
-		TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-			Results: []v1beta1.TaskResult{{
+		TaskSpec: &v1.EmbeddedTask{TaskSpec: v1.TaskSpec{
+			Results: []v1.TaskResult{{
 				Name: "result",
 			}},
 		}},
 	}
-	xDependsOnA := v1beta1.PipelineTask{
+	xDependsOnA := v1.PipelineTask{
 		Name: "x",
-		Params: v1beta1.Params{
+		Params: []v1.Param{
 			{
-				Value: *v1beta1.NewStructuredValues("$(tasks.a.results.result)"),
+				Value: *v1.NewStructuredValues("$(tasks.a.results.result)"),
 			},
 		},
 	}
-	yDependsOnARunsAfterB := v1beta1.PipelineTask{
+	yDependsOnARunsAfterB := v1.PipelineTask{
 		Name:     "y",
 		RunAfter: []string{"b"},
-		Params: v1beta1.Params{
+		Params: []v1.Param{
 			{
-				Value: *v1beta1.NewStructuredValues("$(tasks.a.results.result)"),
+				Value: *v1.NewStructuredValues("$(tasks.a.results.result)"),
 			},
 		},
 	}
-	zRunsAfterx := v1beta1.PipelineTask{
+	zRunsAfterx := v1.PipelineTask{
 		Name:     "z",
 		RunAfter: []string{"x"},
 	}
@@ -221,13 +221,13 @@ func TestBuild_JoinMultipleRoots(t *testing.T) {
 			"y": nodeY,
 			"z": nodeZ},
 	}
-	p := &v1beta1.Pipeline{
+	p := &v1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{a, xDependsOnA, yDependsOnARunsAfterB, zRunsAfterx, b, c},
+		Spec: v1.PipelineSpec{
+			Tasks: []v1.PipelineTask{a, xDependsOnA, yDependsOnARunsAfterB, zRunsAfterx, b, c},
 		},
 	}
-	g, err := dag.Build(v1beta1.PipelineTaskList(p.Spec.Tasks), v1beta1.PipelineTaskList(p.Spec.Tasks).Deps())
+	g, err := dag.Build(v1.PipelineTaskList(p.Spec.Tasks), v1.PipelineTaskList(p.Spec.Tasks).Deps())
 	if err != nil {
 		t.Fatalf("didn't expect error creating valid Pipeline %v but got %v", p, err)
 	}
@@ -235,45 +235,45 @@ func TestBuild_JoinMultipleRoots(t *testing.T) {
 }
 
 func TestBuild_FanInFanOut(t *testing.T) {
-	a := v1beta1.PipelineTask{
+	a := v1.PipelineTask{
 		Name: "a",
-		TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-			Results: []v1beta1.TaskResult{{
+		TaskSpec: &v1.EmbeddedTask{TaskSpec: v1.TaskSpec{
+			Results: []v1.TaskResult{{
 				Name: "result",
 			}},
 		}},
 	}
-	dDependsOnA := v1beta1.PipelineTask{
+	dDependsOnA := v1.PipelineTask{
 		Name: "d",
-		TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-			Results: []v1beta1.TaskResult{{
+		TaskSpec: &v1.EmbeddedTask{TaskSpec: v1.TaskSpec{
+			Results: []v1.TaskResult{{
 				Name: "resultFromD",
 			}},
 		}},
-		Params: v1beta1.Params{{
-			Value: *v1beta1.NewStructuredValues("$(tasks.a.results.result)"),
+		Params: []v1.Param{{
+			Value: *v1.NewStructuredValues("$(tasks.a.results.result)"),
 		}},
 	}
-	eDependsOnA := v1beta1.PipelineTask{
+	eDependsOnA := v1.PipelineTask{
 		Name: "e",
-		TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-			Results: []v1beta1.TaskResult{{
+		TaskSpec: &v1.EmbeddedTask{TaskSpec: v1.TaskSpec{
+			Results: []v1.TaskResult{{
 				Name: "resultFromE",
 			}},
 		}},
-		Params: v1beta1.Params{{
-			Value: *v1beta1.NewStructuredValues("$(tasks.a.results.result)"),
+		Params: []v1.Param{{
+			Value: *v1.NewStructuredValues("$(tasks.a.results.result)"),
 		}},
 	}
-	fDependsOnDAndE := v1beta1.PipelineTask{
+	fDependsOnDAndE := v1.PipelineTask{
 		Name: "f",
-		Params: v1beta1.Params{{
-			Value: *v1beta1.NewStructuredValues("$(tasks.d.results.resultFromD)"),
+		Params: []v1.Param{{
+			Value: *v1.NewStructuredValues("$(tasks.d.results.resultFromD)"),
 		}, {
-			Value: *v1beta1.NewStructuredValues("$(tasks.e.results.resultFromE)"),
+			Value: *v1.NewStructuredValues("$(tasks.e.results.resultFromE)"),
 		}},
 	}
-	gRunsAfterF := v1beta1.PipelineTask{
+	gRunsAfterF := v1.PipelineTask{
 		Name:     "g",
 		RunAfter: []string{"f"},
 	}
@@ -311,13 +311,13 @@ func TestBuild_FanInFanOut(t *testing.T) {
 			"g": nodeG,
 		},
 	}
-	p := &v1beta1.Pipeline{
+	p := &v1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{a, dDependsOnA, eDependsOnA, fDependsOnDAndE, gRunsAfterF},
+		Spec: v1.PipelineSpec{
+			Tasks: []v1.PipelineTask{a, dDependsOnA, eDependsOnA, fDependsOnDAndE, gRunsAfterF},
 		},
 	}
-	g, err := dag.Build(v1beta1.PipelineTaskList(p.Spec.Tasks), v1beta1.PipelineTaskList(p.Spec.Tasks).Deps())
+	g, err := dag.Build(v1.PipelineTaskList(p.Spec.Tasks), v1.PipelineTaskList(p.Spec.Tasks).Deps())
 	if err != nil {
 		t.Fatalf("didn't expect error creating valid Pipeline %v but got %v", p, err)
 	}
@@ -325,39 +325,39 @@ func TestBuild_FanInFanOut(t *testing.T) {
 }
 
 func TestBuild_TaskParamsFromTaskResults(t *testing.T) {
-	a := v1beta1.PipelineTask{Name: "a"}
-	b := v1beta1.PipelineTask{Name: "b"}
-	c := v1beta1.PipelineTask{Name: "c"}
-	d := v1beta1.PipelineTask{Name: "d"}
-	e := v1beta1.PipelineTask{Name: "e"}
-	f := v1beta1.PipelineTask{Name: "f"}
-	xDependsOnA := v1beta1.PipelineTask{
+	a := v1.PipelineTask{Name: "a"}
+	b := v1.PipelineTask{Name: "b"}
+	c := v1.PipelineTask{Name: "c"}
+	d := v1.PipelineTask{Name: "d"}
+	e := v1.PipelineTask{Name: "e"}
+	f := v1.PipelineTask{Name: "f"}
+	xDependsOnA := v1.PipelineTask{
 		Name: "x",
-		Params: v1beta1.Params{{
+		Params: []v1.Param{{
 			Name:  "paramX",
-			Value: *v1beta1.NewStructuredValues("$(tasks.a.results.resultA)"),
+			Value: *v1.NewStructuredValues("$(tasks.a.results.resultA)"),
 		}},
 	}
-	yDependsOnBRunsAfterC := v1beta1.PipelineTask{
+	yDependsOnBRunsAfterC := v1.PipelineTask{
 		Name:     "y",
 		RunAfter: []string{"c"},
-		Params: v1beta1.Params{{
+		Params: []v1.Param{{
 			Name:  "paramB",
-			Value: *v1beta1.NewStructuredValues("$(tasks.b.results.resultB)"),
+			Value: *v1.NewStructuredValues("$(tasks.b.results.resultB)"),
 		}},
 	}
-	zDependsOnDAndE := v1beta1.PipelineTask{
+	zDependsOnDAndE := v1.PipelineTask{
 		Name: "z",
-		Params: v1beta1.Params{{
+		Params: []v1.Param{{
 			Name:  "paramZ",
-			Value: *v1beta1.NewStructuredValues("$(tasks.d.results.resultD) $(tasks.e.results.resultE)"),
+			Value: *v1.NewStructuredValues("$(tasks.d.results.resultD) $(tasks.e.results.resultE)"),
 		}},
 	}
-	wDependsOnF := v1beta1.PipelineTask{
+	wDependsOnF := v1.PipelineTask{
 		Name: "w",
-		Params: v1beta1.Params{{
+		Params: []v1.Param{{
 			Name:  "paramw",
-			Value: *v1beta1.NewStructuredValues("$(tasks.f.results.resultF[*])"),
+			Value: *v1.NewStructuredValues("$(tasks.f.results.resultF[*])"),
 		}},
 	}
 
@@ -400,13 +400,13 @@ func TestBuild_TaskParamsFromTaskResults(t *testing.T) {
 			"w": nodeW,
 		},
 	}
-	p := &v1beta1.Pipeline{
+	p := &v1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{a, b, c, d, e, f, xDependsOnA, yDependsOnBRunsAfterC, zDependsOnDAndE, wDependsOnF},
+		Spec: v1.PipelineSpec{
+			Tasks: []v1.PipelineTask{a, b, c, d, e, f, xDependsOnA, yDependsOnBRunsAfterC, zDependsOnDAndE, wDependsOnF},
 		},
 	}
-	tasks := v1beta1.PipelineTaskList(p.Spec.Tasks)
+	tasks := v1.PipelineTaskList(p.Spec.Tasks)
 	g, err := dag.Build(tasks, tasks.Deps())
 	if err != nil {
 		t.Fatalf("didn't expect error creating valid Pipeline %v but got %v", p, err)
@@ -415,148 +415,148 @@ func TestBuild_TaskParamsFromTaskResults(t *testing.T) {
 }
 
 func TestBuild_InvalidDAG(t *testing.T) {
-	a := v1beta1.PipelineTask{
+	a := v1.PipelineTask{
 		Name: "a",
-		TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-			Results: []v1beta1.TaskResult{{
+		TaskSpec: &v1.EmbeddedTask{TaskSpec: v1.TaskSpec{
+			Results: []v1.TaskResult{{
 				Name: "result",
 			}},
 		}},
 	}
-	xDependsOnA := v1beta1.PipelineTask{
+	xDependsOnA := v1.PipelineTask{
 		Name: "x",
-		TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-			Results: []v1beta1.TaskResult{{
+		TaskSpec: &v1.EmbeddedTask{TaskSpec: v1.TaskSpec{
+			Results: []v1.TaskResult{{
 				Name: "resultX",
 			}},
 		}},
-		Params: v1beta1.Params{{
-			Value: *v1beta1.NewStructuredValues("$(tasks.a.results.result)"),
+		Params: []v1.Param{{
+			Value: *v1.NewStructuredValues("$(tasks.a.results.result)"),
 		}},
 	}
-	zRunsAfterx := v1beta1.PipelineTask{
+	zDependsOnX := v1.PipelineTask{
 		Name: "z",
-		TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-			Results: []v1beta1.TaskResult{{
+		TaskSpec: &v1.EmbeddedTask{TaskSpec: v1.TaskSpec{
+			Results: []v1.TaskResult{{
 				Name: "resultZ",
 			}},
 		}},
-		Params: v1beta1.Params{{
-			Value: *v1beta1.NewStructuredValues("$(tasks.x.results.resultX)"),
+		Params: []v1.Param{{
+			Value: *v1.NewStructuredValues("$(tasks.x.results.resultX)"),
 		}},
 	}
-	aDependsOnZ := v1beta1.PipelineTask{
+	aDependsOnZ := v1.PipelineTask{
 		Name: "a",
-		Params: v1beta1.Params{{
-			Value: *v1beta1.NewStructuredValues("$(tasks.z.results.resultZ)"),
+		Params: []v1.Param{{
+			Value: *v1.NewStructuredValues("$(tasks.z.results.resultZ)"),
 		}},
 	}
-	xAfterA := v1beta1.PipelineTask{
+	xAfterA := v1.PipelineTask{
 		Name:     "x",
 		RunAfter: []string{"a"},
 	}
-	zAfterX := v1beta1.PipelineTask{
+	zAfterX := v1.PipelineTask{
 		Name:     "z",
 		RunAfter: []string{"x"},
 	}
-	aAfterZ := v1beta1.PipelineTask{
+	aAfterZ := v1.PipelineTask{
 		Name:     "a",
 		RunAfter: []string{"z"},
 	}
-	selfLinkResult := v1beta1.PipelineTask{
+	selfLinkResult := v1.PipelineTask{
 		Name: "a",
-		TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-			Results: []v1beta1.TaskResult{{
+		TaskSpec: &v1.EmbeddedTask{TaskSpec: v1.TaskSpec{
+			Results: []v1.TaskResult{{
 				Name: "result",
 			}},
 		}},
-		Params: v1beta1.Params{{
-			Value: *v1beta1.NewStructuredValues("$(tasks.a.results.result)"),
+		Params: []v1.Param{{
+			Value: *v1.NewStructuredValues("$(tasks.a.results.result)"),
 		}},
 	}
-	invalidTaskResult := v1beta1.PipelineTask{
+	invalidTaskResult := v1.PipelineTask{
 		Name: "a",
-		Params: v1beta1.Params{{
-			Value: *v1beta1.NewStructuredValues("$(tasks.invalid.results.none)"),
+		Params: []v1.Param{{
+			Value: *v1.NewStructuredValues("$(tasks.invalid.results.none)"),
 		}},
 	}
-	selfLinkAfter := v1beta1.PipelineTask{
+	selfLinkAfter := v1.PipelineTask{
 		Name:     "a",
 		RunAfter: []string{"a"},
 	}
-	invalidTaskAfter := v1beta1.PipelineTask{
+	invalidTaskAfter := v1.PipelineTask{
 		Name:     "a",
 		RunAfter: []string{"none"},
 	}
 
-	aRunsAfterE := v1beta1.PipelineTask{
+	aRunsAfterE := v1.PipelineTask{
 		Name: "a", RunAfter: []string{"e"},
-		TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-			Results: []v1beta1.TaskResult{{
+		TaskSpec: &v1.EmbeddedTask{TaskSpec: v1.TaskSpec{
+			Results: []v1.TaskResult{{
 				Name: "result",
 			}},
 		}},
 	}
-	bDependsOnA := v1beta1.PipelineTask{
+	bDependsOnA := v1.PipelineTask{
 		Name: "b",
-		Params: v1beta1.Params{{
-			Value: *v1beta1.NewStructuredValues("$(tasks.a.results.result)"),
+		Params: []v1.Param{{
+			Value: *v1.NewStructuredValues("$(tasks.a.results.result)"),
 		}},
-		TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-			Results: []v1beta1.TaskResult{{
+		TaskSpec: &v1.EmbeddedTask{TaskSpec: v1.TaskSpec{
+			Results: []v1.TaskResult{{
 				Name: "resultb",
 			}},
 		}},
 	}
-	cDependsOnA := v1beta1.PipelineTask{
+	cRunsAfterA := v1.PipelineTask{
 		Name: "c",
-		Params: v1beta1.Params{{
-			Value: *v1beta1.NewStructuredValues("$(tasks.a.results.result)"),
+		Params: []v1.Param{{
+			Value: *v1.NewStructuredValues("$(tasks.a.results.result)"),
 		}},
-		TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-			Results: []v1beta1.TaskResult{{
+		TaskSpec: &v1.EmbeddedTask{TaskSpec: v1.TaskSpec{
+			Results: []v1.TaskResult{{
 				Name: "resultc",
 			}},
 		}},
 	}
-	dDependsOnBAndC := v1beta1.PipelineTask{
+	dDependsOnBAndC := v1.PipelineTask{
 		Name: "d",
-		Params: v1beta1.Params{{
-			Value: *v1beta1.NewStructuredValues("$(tasks.b.results.resultb)"),
+		Params: []v1.Param{{
+			Value: *v1.NewStructuredValues("$(tasks.b.results.resultb)"),
 		}, {
-			Value: *v1beta1.NewStructuredValues("$(tasks.c.results.resultc)"),
+			Value: *v1.NewStructuredValues("$(tasks.c.results.resultc)"),
 		}},
 	}
-	eRunsAfterD := v1beta1.PipelineTask{
+	eRunsAfterD := v1.PipelineTask{
 		Name:     "e",
 		RunAfter: []string{"d"},
 	}
-	fRunsAfterD := v1beta1.PipelineTask{
+	fRunsAfterD := v1.PipelineTask{
 		Name:     "f",
 		RunAfter: []string{"d"},
 	}
-	gRunAfterF := v1beta1.PipelineTask{
+	gDependsOnF := v1.PipelineTask{
 		Name:     "g",
 		RunAfter: []string{"f"},
 	}
 
 	tcs := []struct {
 		name string
-		spec v1beta1.PipelineSpec
+		spec v1.PipelineSpec
 		err  string
 	}{{
 		// a
 		// |
 		// a ("a" uses result of "a" as params)
 		name: "self-link-result",
-		spec: v1beta1.PipelineSpec{Tasks: []v1beta1.PipelineTask{selfLinkResult}},
+		spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{selfLinkResult}},
 		err:  "cycle detected",
 	}, {
 		// a
 		// |
 		// a ("a" runAfter "a")
 		name: "self-link-after",
-		spec: v1beta1.PipelineSpec{Tasks: []v1beta1.PipelineTask{selfLinkAfter}},
+		spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{selfLinkAfter}},
 		err:  "cycle detected",
 	}, {
 		// a (also "a" depends on resource from "z")
@@ -565,7 +565,7 @@ func TestBuild_InvalidDAG(t *testing.T) {
 		// |
 		// z ("z" depends on resource from "x")
 		name: "cycle-from",
-		spec: v1beta1.PipelineSpec{Tasks: []v1beta1.PipelineTask{xDependsOnA, zRunsAfterx, aDependsOnZ}},
+		spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{xDependsOnA, zDependsOnX, aDependsOnZ}},
 		err:  "cycle detected",
 	}, {
 		// a (also "a" runAfter "z")
@@ -574,7 +574,7 @@ func TestBuild_InvalidDAG(t *testing.T) {
 		// |
 		// z ("z" runAfter "x")
 		name: "cycle-runAfter",
-		spec: v1beta1.PipelineSpec{Tasks: []v1beta1.PipelineTask{xAfterA, zAfterX, aAfterZ}},
+		spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{xAfterA, zAfterX, aAfterZ}},
 		err:  "cycle detected",
 	}, {
 		// a (also "a" depends on resource from "z")
@@ -583,7 +583,7 @@ func TestBuild_InvalidDAG(t *testing.T) {
 		// |
 		// z ("z" runAfter "x")
 		name: "cycle-both",
-		spec: v1beta1.PipelineSpec{Tasks: []v1beta1.PipelineTask{xDependsOnA, zAfterX, aDependsOnZ}},
+		spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{xDependsOnA, zAfterX, aDependsOnZ}},
 		err:  "cycle detected",
 	}, {
 		// This test make sure we detect a cyclic branch in a DAG with multiple branches.
@@ -598,29 +598,29 @@ func TestBuild_InvalidDAG(t *testing.T) {
 		//     |
 		//     g
 		name: "multiple-branches-with-one-cyclic-branch",
-		spec: v1beta1.PipelineSpec{Tasks: []v1beta1.PipelineTask{aRunsAfterE, bDependsOnA, cDependsOnA, dDependsOnBAndC, eRunsAfterD, fRunsAfterD, gRunAfterF}},
+		spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{aRunsAfterE, bDependsOnA, cRunsAfterA, dDependsOnBAndC, eRunsAfterD, fRunsAfterD, gDependsOnF}},
 		err:  "cycle detected",
 	}, {
 		name: "duplicate-tasks",
-		spec: v1beta1.PipelineSpec{Tasks: []v1beta1.PipelineTask{a, a}},
+		spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{a, a}},
 		err:  "duplicate pipeline task",
 	}, {
 		name: "invalid-task-result",
-		spec: v1beta1.PipelineSpec{Tasks: []v1beta1.PipelineTask{invalidTaskResult}},
+		spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{invalidTaskResult}},
 		err:  "wasn't present in Pipeline",
 	}, {
 		name: "invalid-task-name-after",
-		spec: v1beta1.PipelineSpec{Tasks: []v1beta1.PipelineTask{invalidTaskAfter}},
+		spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{invalidTaskAfter}},
 		err:  "wasn't present in Pipeline",
 	},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			p := &v1beta1.Pipeline{
+			p := &v1.Pipeline{
 				ObjectMeta: metav1.ObjectMeta{Name: tc.name},
 				Spec:       tc.spec,
 			}
-			_, err := dag.Build(v1beta1.PipelineTaskList(p.Spec.Tasks), v1beta1.PipelineTaskList(p.Spec.Tasks).Deps())
+			_, err := dag.Build(v1.PipelineTaskList(p.Spec.Tasks), v1.PipelineTaskList(p.Spec.Tasks).Deps())
 			if err == nil || !strings.Contains(err.Error(), tc.err) {
 				t.Errorf("expected to see an error for invalid DAG in pipeline %v but had none", tc.spec)
 			}
@@ -629,7 +629,7 @@ func TestBuild_InvalidDAG(t *testing.T) {
 }
 
 func TestBuildGraphWithHundredsOfTasks_Success(t *testing.T) {
-	var tasks []v1beta1.PipelineTask
+	var tasks []v1.PipelineTask
 	// separate branches with sequential tasks and redundant links (each task explicitly depends on all predecessors)
 	// b00 - 000 - 001 - ... - 100
 	// b01 - 000 - 001 - ... - 100
@@ -639,18 +639,18 @@ func TestBuildGraphWithHundredsOfTasks_Success(t *testing.T) {
 	for branchIdx := 0; branchIdx < nBranches; branchIdx++ {
 		var taskDeps []string
 		firstTaskName := fmt.Sprintf("b%02d", branchIdx)
-		firstTask := v1beta1.PipelineTask{
+		firstTask := v1.PipelineTask{
 			Name:     firstTaskName,
-			TaskRef:  &v1beta1.TaskRef{Name: firstTaskName + "-task"},
+			TaskRef:  &v1.TaskRef{Name: firstTaskName + "-task"},
 			RunAfter: taskDeps,
 		}
 		tasks = append(tasks, firstTask)
 		taskDeps = append(taskDeps, firstTaskName)
 		for taskIdx := 0; taskIdx < nTasks; taskIdx++ {
 			taskName := fmt.Sprintf("%s-%03d", firstTaskName, taskIdx)
-			task := v1beta1.PipelineTask{
+			task := v1.PipelineTask{
 				Name:     taskName,
-				TaskRef:  &v1beta1.TaskRef{Name: taskName + "-task"},
+				TaskRef:  &v1.TaskRef{Name: taskName + "-task"},
 				RunAfter: taskDeps,
 			}
 			tasks = append(tasks, task)
@@ -658,14 +658,14 @@ func TestBuildGraphWithHundredsOfTasks_Success(t *testing.T) {
 		}
 	}
 
-	_, err := dag.Build(v1beta1.PipelineTaskList(tasks), v1beta1.PipelineTaskList(tasks).Deps())
+	_, err := dag.Build(v1.PipelineTaskList(tasks), v1.PipelineTaskList(tasks).Deps())
 	if err != nil {
 		t.Error(err)
 	}
 }
 
 func TestBuildGraphWithHundredsOfTasks_InvalidDAG(t *testing.T) {
-	var tasks []v1beta1.PipelineTask
+	var tasks []v1.PipelineTask
 	// branches with circular interdependencies
 	nBranches, nTasks := 5, 100
 	for branchIdx := 0; branchIdx < nBranches; branchIdx++ {
@@ -675,18 +675,18 @@ func TestBuildGraphWithHundredsOfTasks_InvalidDAG(t *testing.T) {
 		}
 		taskDeps := []string{fmt.Sprintf("b%02d", depBranchIdx)}
 		firstTaskName := fmt.Sprintf("b%02d", branchIdx)
-		firstTask := v1beta1.PipelineTask{
+		firstTask := v1.PipelineTask{
 			Name:     firstTaskName,
-			TaskRef:  &v1beta1.TaskRef{Name: firstTaskName + "-task"},
+			TaskRef:  &v1.TaskRef{Name: firstTaskName + "-task"},
 			RunAfter: taskDeps,
 		}
 		tasks = append(tasks, firstTask)
 		taskDeps = append(taskDeps, firstTaskName)
 		for taskIdx := 0; taskIdx < nTasks; taskIdx++ {
 			taskName := fmt.Sprintf("%s-%03d", firstTaskName, taskIdx)
-			task := v1beta1.PipelineTask{
+			task := v1.PipelineTask{
 				Name:     taskName,
-				TaskRef:  &v1beta1.TaskRef{Name: taskName + "-task"},
+				TaskRef:  &v1.TaskRef{Name: taskName + "-task"},
 				RunAfter: taskDeps,
 			}
 			tasks = append(tasks, task)
@@ -694,7 +694,7 @@ func TestBuildGraphWithHundredsOfTasks_InvalidDAG(t *testing.T) {
 		}
 	}
 
-	_, err := dag.Build(v1beta1.PipelineTaskList(tasks), v1beta1.PipelineTaskList(tasks).Deps())
+	_, err := dag.Build(v1.PipelineTaskList(tasks), v1.PipelineTaskList(tasks).Deps())
 	if err == nil {
 		t.Errorf("Pipeline.Validate() did not return error for invalid pipeline with cycles")
 	}
@@ -709,15 +709,15 @@ func testGraph(t *testing.T) *dag.Graph {
 	//   \ /    z
 	//    w
 	t.Helper()
-	tasks := []v1beta1.PipelineTask{{
+	tasks := []v1.PipelineTask{{
 		Name: "a",
 	}, {
 		Name: "b",
 	}, {
 		Name: "w",
-		Params: v1beta1.Params{{
+		Params: []v1.Param{{
 			Name:  "foo",
-			Value: *v1beta1.NewStructuredValues("$(tasks.y.results.bar)"),
+			Value: *v1.NewStructuredValues("$(tasks.y.results.bar)"),
 		}},
 		RunAfter: []string{"b"},
 	}, {
@@ -730,7 +730,7 @@ func testGraph(t *testing.T) *dag.Graph {
 		Name:     "z",
 		RunAfter: []string{"x"},
 	}}
-	g, err := dag.Build(v1beta1.PipelineTaskList(tasks), v1beta1.PipelineTaskList(tasks).Deps())
+	g, err := dag.Build(v1.PipelineTaskList(tasks), v1.PipelineTaskList(tasks).Deps())
 	if err != nil {
 		t.Fatal(err)
 	}

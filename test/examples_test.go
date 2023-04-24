@@ -36,7 +36,6 @@ import (
 
 var (
 	defaultKoDockerRepoRE = regexp.MustCompile("gcr.io/christiewilson-catfactory")
-	v1Version             = "v1"
 	imagesMappingRE       = getImagesMappingRE()
 )
 

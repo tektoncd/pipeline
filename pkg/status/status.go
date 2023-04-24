@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -28,12 +29,12 @@ import (
 
 // GetTaskRunStatusForPipelineTask takes a child reference and returns the actual TaskRunStatus
 // for the PipelineTask. It returns an error if the child reference's kind isn't TaskRun.
-func GetTaskRunStatusForPipelineTask(ctx context.Context, client versioned.Interface, ns string, childRef v1beta1.ChildStatusReference) (*v1beta1.TaskRunStatus, error) {
+func GetTaskRunStatusForPipelineTask(ctx context.Context, client versioned.Interface, ns string, childRef v1.ChildStatusReference) (*v1.TaskRunStatus, error) {
 	if childRef.Kind != "TaskRun" {
 		return nil, fmt.Errorf("could not fetch status for PipelineTask %s: should have kind TaskRun, but is %s", childRef.PipelineTaskName, childRef.Kind)
 	}
 
-	tr, err := client.TektonV1beta1().TaskRuns(ns).Get(ctx, childRef.Name, metav1.GetOptions{})
+	tr, err := client.TektonV1().TaskRuns(ns).Get(ctx, childRef.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return nil, err
 	}
@@ -46,7 +47,7 @@ func GetTaskRunStatusForPipelineTask(ctx context.Context, client versioned.Inter
 
 // GetCustomRunStatusForPipelineTask takes a child reference and returns the actual CustomRunStatus for the
 // PipelineTask. It returns an error if the child reference's kind isn't CustomRun.
-func GetCustomRunStatusForPipelineTask(ctx context.Context, client versioned.Interface, ns string, childRef v1beta1.ChildStatusReference) (*v1beta1.CustomRunStatus, error) {
+func GetCustomRunStatusForPipelineTask(ctx context.Context, client versioned.Interface, ns string, childRef v1.ChildStatusReference) (*v1beta1.CustomRunStatus, error) {
 	var runStatus *v1beta1.CustomRunStatus
 
 	switch childRef.Kind {
@@ -68,8 +69,8 @@ func GetCustomRunStatusForPipelineTask(ctx context.Context, client versioned.Int
 
 // GetPipelineTaskStatuses returns populated TaskRun and Run status maps for a PipelineRun from its ChildReferences.
 // If the PipelineRun has no ChildReferences, nothing will be populated.
-func GetPipelineTaskStatuses(ctx context.Context, client versioned.Interface, ns string, pr *v1beta1.PipelineRun) (map[string]*v1beta1.PipelineRunTaskRunStatus,
-	map[string]*v1beta1.PipelineRunRunStatus, error) {
+func GetPipelineTaskStatuses(ctx context.Context, client versioned.Interface, ns string, pr *v1.PipelineRun) (map[string]*v1.PipelineRunTaskRunStatus,
+	map[string]*v1.PipelineRunRunStatus, error) {
 	// If the PipelineRun is nil, just return
 	if pr == nil {
 		return nil, nil, nil
@@ -80,18 +81,18 @@ func GetPipelineTaskStatuses(ctx context.Context, client versioned.Interface, ns
 		return nil, nil, nil
 	}
 
-	trStatuses := make(map[string]*v1beta1.PipelineRunTaskRunStatus)
-	runStatuses := make(map[string]*v1beta1.PipelineRunRunStatus)
+	trStatuses := make(map[string]*v1.PipelineRunTaskRunStatus)
+	runStatuses := make(map[string]*v1.PipelineRunRunStatus)
 
 	for _, cr := range pr.Status.ChildReferences {
 		switch cr.Kind {
 		case "TaskRun":
-			tr, err := client.TektonV1beta1().TaskRuns(ns).Get(ctx, cr.Name, metav1.GetOptions{})
+			tr, err := client.TektonV1().TaskRuns(ns).Get(ctx, cr.Name, metav1.GetOptions{})
 			if err != nil && !errors.IsNotFound(err) {
 				return nil, nil, err
 			}
 
-			trStatuses[cr.Name] = &v1beta1.PipelineRunTaskRunStatus{
+			trStatuses[cr.Name] = &v1.PipelineRunTaskRunStatus{
 				PipelineTaskName: cr.PipelineTaskName,
 				WhenExpressions:  cr.WhenExpressions,
 			}
@@ -105,7 +106,7 @@ func GetPipelineTaskStatuses(ctx context.Context, client versioned.Interface, ns
 				return nil, nil, err
 			}
 
-			runStatuses[cr.Name] = &v1beta1.PipelineRunRunStatus{
+			runStatuses[cr.Name] = &v1.PipelineRunRunStatus{
 				PipelineTaskName: cr.PipelineTaskName,
 				WhenExpressions:  cr.WhenExpressions,
 			}

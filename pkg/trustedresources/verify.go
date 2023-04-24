@@ -28,8 +28,8 @@ import (
 
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/trustedresources/verifier"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -46,8 +46,8 @@ const (
 // Return an error when no policies are found and trusted-resources-verification-no-match-policy is set to fail,
 // or the resource fails to pass matched enforce verification policy
 // refSourceURI is from RefSource.URI, which will be used to match policy patterns. k8s is used to fetch secret from cluster
-func VerifyTask(ctx context.Context, taskObj *v1beta1.Task, k8s kubernetes.Interface, refSourceURI string, verificationpolicies []*v1alpha1.VerificationPolicy) error {
-	matchedPolicies, err := getMatchedPolicies(taskObj.TaskMetadata().Name, refSourceURI, verificationpolicies)
+func VerifyTask(ctx context.Context, taskObj *v1.Task, k8s kubernetes.Interface, refSourceURI string, verificationpolicies []*v1alpha1.VerificationPolicy) error {
+	matchedPolicies, err := getMatchedPolicies(taskObj.ObjectMeta.Name, refSourceURI, verificationpolicies)
 	if err != nil {
 		if errors.Is(err, ErrNoMatchedPolicies) {
 			switch config.GetVerificationNoMatchPolicy(ctx) {
@@ -62,16 +62,16 @@ func VerifyTask(ctx context.Context, taskObj *v1beta1.Task, k8s kubernetes.Inter
 		return fmt.Errorf("failed to get matched policies: %w", err)
 	}
 
-	tm, signature, err := prepareObjectMeta(taskObj.TaskMetadata())
+	tm, signature, err := prepareObjectMeta(taskObj.ObjectMeta)
 	if err != nil {
 		return err
 	}
-	task := v1beta1.Task{
+	task := v1.Task{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1beta1",
+			APIVersion: "tekton.dev/v1",
 			Kind:       "Task"},
 		ObjectMeta: tm,
-		Spec:       taskObj.TaskSpec(),
+		Spec:       taskObj.Spec,
 	}
 
 	return verifyResource(ctx, &task, k8s, signature, matchedPolicies)
@@ -82,7 +82,7 @@ func VerifyTask(ctx context.Context, taskObj *v1beta1.Task, k8s kubernetes.Inter
 // Return an error when no policies are found and trusted-resources-verification-no-match-policy is set to fail,
 // or the resource fails to pass matched enforce verification policy
 // refSourceURI is from RefSource.URI, which will be used to match policy patterns. k8s is used to fetch secret from cluster
-func VerifyPipeline(ctx context.Context, pipelineObj *v1beta1.Pipeline, k8s kubernetes.Interface, refSourceURI string, verificationpolicies []*v1alpha1.VerificationPolicy) error {
+func VerifyPipeline(ctx context.Context, pipelineObj *v1.Pipeline, k8s kubernetes.Interface, refSourceURI string, verificationpolicies []*v1alpha1.VerificationPolicy) error {
 	matchedPolicies, err := getMatchedPolicies(pipelineObj.PipelineMetadata().Name, refSourceURI, verificationpolicies)
 	if err != nil {
 		if errors.Is(err, ErrNoMatchedPolicies) {
@@ -101,12 +101,12 @@ func VerifyPipeline(ctx context.Context, pipelineObj *v1beta1.Pipeline, k8s kube
 	if err != nil {
 		return err
 	}
-	pipeline := v1beta1.Pipeline{
+	pipeline := v1.Pipeline{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1beta1",
+			APIVersion: "tekton.dev/v1",
 			Kind:       "Pipeline"},
 		ObjectMeta: pm,
-		Spec:       pipelineObj.PipelineSpec(),
+		Spec:       pipelineObj.Spec,
 	}
 
 	return verifyResource(ctx, &pipeline, k8s, signature, matchedPolicies)

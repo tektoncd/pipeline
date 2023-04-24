@@ -28,7 +28,7 @@ import (
 	"testing"
 	"time"
 
-	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1beta1"
+	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/parse"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
@@ -58,7 +58,7 @@ func TestDAGPipelineRun(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	echoTask := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
+	echoTask := parse.MustParseV1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -79,13 +79,13 @@ spec:
       sleep %d
       echo $(params.text) | tee $(results.result.path)
 `, helpers.ObjectNameForTest(t), namespace, int(sleepDuration.Seconds())))
-	if _, err := c.V1beta1TaskClient.Create(ctx, echoTask, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1TaskClient.Create(ctx, echoTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create echo Task: %s", err)
 	}
 
 	// Intentionally declaring Tasks in a mixed up order to ensure the order
 	// of execution isn't at all dependent on the order they are declared in
-	pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+	pipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -132,10 +132,10 @@ spec:
     taskRef:
       name: %s
 `, helpers.ObjectNameForTest(t), namespace, echoTask.Name, echoTask.Name, echoTask.Name, echoTask.Name, echoTask.Name))
-	if _, err := c.V1beta1PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag-pipeline: %s", err)
 	}
-	pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -143,15 +143,15 @@ spec:
   pipelineRef:
     name: %s
 `, helpers.ObjectNameForTest(t), namespace, pipeline.Name))
-	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag-pipeline-run PipelineRun: %s", err)
 	}
 	t.Logf("Waiting for DAG pipeline to complete")
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunSucceed(pipelineRun.Name), "PipelineRunSuccess", v1beta1Version); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunSucceed(pipelineRun.Name), "PipelineRunSuccess", v1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun to finish: %s", err)
 	}
 
-	verifyExpectedOrder(ctx, t, c.V1beta1TaskRunClient, pipelineRun.Name)
+	verifyExpectedOrder(ctx, t, c.V1TaskRunClient, pipelineRun.Name)
 }
 
 func verifyExpectedOrder(ctx context.Context, t *testing.T, c clientset.TaskRunInterface, prName string) {

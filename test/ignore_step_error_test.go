@@ -39,7 +39,7 @@ func TestMissingResultWhenStepErrorIsIgnored(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
 spec:
@@ -71,16 +71,16 @@ spec:
           image: busybox
           script: 'exit 0'`, helpers.ObjectNameForTest(t)))
 
-	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", pipelineRun.Name, err)
 	}
 
 	t.Logf("Waiting for PipelineRun in namespace %s to fail", namespace)
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason(pipelinerun.ReasonInvalidTaskResultReference, pipelineRun.Name), "InvalidTaskResultReference", v1beta1Version); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason(pipelinerun.ReasonInvalidTaskResultReference, pipelineRun.Name), "InvalidTaskResultReference", v1Version); err != nil {
 		t.Errorf("Error waiting for PipelineRun to fail: %s", err)
 	}
 
-	taskrunList, err := c.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
+	taskrunList, err := c.V1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
 	if err != nil {
 		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 	}
@@ -94,11 +94,11 @@ spec:
 		t.Fatalf("TaskRun was not found for the task \"task1\"")
 	}
 
-	if len(taskrunItem.Status.TaskRunResults) != 1 {
+	if len(taskrunItem.Status.Results) != 1 {
 		t.Fatalf("task1 should have produced a result before failing the step")
 	}
 
-	for _, r := range taskrunItem.Status.TaskRunResults {
+	for _, r := range taskrunItem.Status.Results {
 		if r.Name == "result1" && r.Value.StringVal != "123" {
 			t.Fatalf("task1 should have initialized a result \"result1\" to \"123\"")
 		}

@@ -1,5 +1,5 @@
 /*
-Copyright 2022 The Tekton Authors
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/substitution"
@@ -28,12 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
-
-// exactVariableSubstitutionFormat matches strings that only contain a single reference to result or param variables, but nothing else
-// i.e. `$(result.resultname)` is a match, but `foo $(result.resultname)` is not.
-const exactVariableSubstitutionFormat = `^\$\([_a-zA-Z0-9.-]+(\.[_a-zA-Z0-9.-]+)*(\[([0-9]+|\*)\])?\)$`
-
-var exactVariableSubstitutionRegex = regexp.MustCompile(exactVariableSubstitutionFormat)
 
 // ParamsPrefix is the prefix used in $(...) expressions referring to parameters
 const ParamsPrefix = "params"
@@ -116,6 +109,9 @@ type Param struct {
 	Value ParamValue `json:"value"`
 }
 
+// Params is a list of Param
+type Params []Param
+
 // ExtractNames returns a set of unique names
 func (ps Params) ExtractNames() sets.String {
 	names := sets.String{}
@@ -146,9 +142,6 @@ func (ps Params) extractParamMapArrVals() map[string][]string {
 	}
 	return paramsMap
 }
-
-// Params is a list of Param
-type Params []Param
 
 // extractParamArrayLengths extract and return the lengths of all array params
 // Example of returned value: {"a-array-params": 2,"b-array-params": 2 }
@@ -373,7 +366,7 @@ var AllParamTypes = []ParamType{ParamTypeString, ParamTypeArray, ParamTypeObject
 
 // ParamValues is modeled after IntOrString in kubernetes/apimachinery:
 
-// ParamValue is a type that can hold a single string, string array, or string map.
+// ParamValue is a type that can hold a single string or string array.
 // Used in JSON unmarshalling so that a single JSON field can accept
 // either an individual string or an array of strings.
 type ParamValue struct {
@@ -383,6 +376,11 @@ type ParamValue struct {
 	ArrayVal  []string
 	ObjectVal map[string]string
 }
+
+// ArrayOrString is deprecated, this is to keep backward compatibility
+//
+// Deprecated: Use ParamValue instead.
+type ArrayOrString = ParamValue
 
 // UnmarshalJSON implements the json.Unmarshaller interface.
 func (paramValues *ParamValue) UnmarshalJSON(value []byte) error {
@@ -443,7 +441,7 @@ func (paramValues ParamValue) MarshalJSON() ([]byte, error) {
 func (paramValues *ParamValue) ApplyReplacements(stringReplacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) {
 	switch paramValues.Type {
 	case ParamTypeArray:
-		var newArrayVal []string
+		newArrayVal := []string{}
 		for _, v := range paramValues.ArrayVal {
 			newArrayVal = append(newArrayVal, substitution.ApplyArrayReplacements(v, stringReplacements, arrayReplacements)...)
 		}
@@ -475,7 +473,7 @@ func (paramValues *ParamValue) applyOrCorrect(stringReplacements map[string]stri
 
 	// trim the head "$(" and the tail ")" or "[*])"
 	// i.e. get "params.name" from "$(params.name)" or "$(params.name[*])"
-	trimedStringVal := StripStarVarSubExpression(stringVal)
+	trimedStringVal := substitution.StripStarVarSubExpression(stringVal)
 
 	// if the stringVal is a reference to a string param
 	if _, ok := stringReplacements[trimedStringVal]; ok {
@@ -497,11 +495,6 @@ func (paramValues *ParamValue) applyOrCorrect(stringReplacements map[string]stri
 	}
 }
 
-// StripStarVarSubExpression strips "$(target[*])"" to get "target"
-func StripStarVarSubExpression(s string) string {
-	return strings.TrimSuffix(strings.TrimSuffix(strings.TrimPrefix(s, "$("), ")"), "[*]")
-}
-
 // NewStructuredValues creates an ParamValues of type ParamTypeString or ParamTypeArray, based on
 // how many inputs are given (>1 input will create an array, not string).
 func NewStructuredValues(value string, values ...string) *ParamValue {
@@ -516,6 +509,9 @@ func NewStructuredValues(value string, values ...string) *ParamValue {
 		StringVal: value,
 	}
 }
+
+// NewArrayOrString is the deprecated, this is to keep backward compatibility
+var NewArrayOrString = NewStructuredValues
 
 // NewObject creates an ParamValues of type ParamTypeObject using the provided key-value pairs
 func NewObject(pairs map[string]string) *ParamValue {

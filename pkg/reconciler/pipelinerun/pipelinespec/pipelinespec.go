@@ -21,21 +21,21 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // GetPipeline is a function used to retrieve Pipelines.
-type GetPipeline func(context.Context, string) (*v1beta1.Pipeline, *v1beta1.RefSource, error)
+type GetPipeline func(context.Context, string) (*v1.Pipeline, *v1.RefSource, error)
 
 // GetPipelineData will retrieve the Pipeline metadata and Spec associated with the
 // provided PipelineRun. This can come from a reference Pipeline or from the PipelineRun's
 // metadata and embedded PipelineSpec.
-func GetPipelineData(ctx context.Context, pipelineRun *v1beta1.PipelineRun, getPipeline GetPipeline) (*resolutionutil.ResolvedObjectMeta, *v1beta1.PipelineSpec, error) {
+func GetPipelineData(ctx context.Context, pipelineRun *v1.PipelineRun, getPipeline GetPipeline) (*resolutionutil.ResolvedObjectMeta, *v1.PipelineSpec, error) {
 	pipelineMeta := metav1.ObjectMeta{}
-	var refSource *v1beta1.RefSource
-	pipelineSpec := v1beta1.PipelineSpec{}
+	var refSource *v1.RefSource
+	pipelineSpec := v1.PipelineSpec{}
 	switch {
 	case pipelineRun.Spec.PipelineRef != nil && pipelineRun.Spec.PipelineRef.Name != "":
 		// Get related pipeline for pipelinerun

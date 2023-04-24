@@ -22,7 +22,7 @@ import (
 func (p Provenance) convertTo(ctx context.Context, sink *v1.Provenance) {
 	if p.RefSource != nil {
 		new := v1.RefSource{}
-		p.RefSource.convertTo(ctx, &new)
+		p.RefSource.ConvertTo(ctx, &new)
 		sink.RefSource = &new
 	}
 	if p.FeatureFlags != nil {
@@ -41,7 +41,7 @@ func (p *Provenance) convertFrom(ctx context.Context, source v1.Provenance) {
 	}
 }
 
-func (cs RefSource) convertTo(ctx context.Context, sink *v1.RefSource) {
+func (cs RefSource) ConvertTo(ctx context.Context, sink *v1.RefSource) {
 	sink.URI = cs.URI
 	sink.Digest = cs.Digest
 	sink.EntryPoint = cs.EntryPoint

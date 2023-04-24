@@ -17,13 +17,13 @@ limitations under the License.
 package tasklevel
 
 import (
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // ApplyTaskLevelComputeResources applies the task-level compute resource requirements to each Step.
-func ApplyTaskLevelComputeResources(steps []v1beta1.Step, computeResources *corev1.ResourceRequirements) {
+func ApplyTaskLevelComputeResources(steps []v1.Step, computeResources *corev1.ResourceRequirements) {
 	if computeResources == nil {
 		return
 	}
@@ -35,12 +35,12 @@ func ApplyTaskLevelComputeResources(steps []v1beta1.Step, computeResources *core
 	for i := range steps {
 		// if no requests are specified in step or task level, the limits are used to avoid
 		// unnecessary higher requests by Kubernetes default behavior.
-		if steps[i].Resources.Requests == nil && computeResources.Requests == nil {
-			steps[i].Resources.Requests = averageLimits
+		if steps[i].ComputeResources.Requests == nil && computeResources.Requests == nil {
+			steps[i].ComputeResources.Requests = averageLimits
 		} else {
-			steps[i].Resources.Requests = averageRequests
+			steps[i].ComputeResources.Requests = averageRequests
 		}
-		steps[i].Resources.Limits = computeResources.Limits
+		steps[i].ComputeResources.Limits = computeResources.Limits
 	}
 }
 

@@ -23,37 +23,37 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	pipelinespec "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/pipelinespec"
 	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestGetPipelineSpec_Ref(t *testing.T) {
-	pipeline := &v1beta1.Pipeline{
+	pipeline := &v1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "orchestrate",
 		},
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
+		Spec: v1.PipelineSpec{
+			Tasks: []v1.PipelineTask{{
 				Name: "mytask",
-				TaskRef: &v1beta1.TaskRef{
+				TaskRef: &v1.TaskRef{
 					Name: "mytask",
 				},
 			}},
 		},
 	}
-	pr := &v1beta1.PipelineRun{
+	pr := &v1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "mypipelinerun",
 		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{
+		Spec: v1.PipelineRunSpec{
+			PipelineRef: &v1.PipelineRef{
 				Name: "orchestrate",
 			},
 		},
 	}
-	gt := func(ctx context.Context, n string) (*v1beta1.Pipeline, *v1beta1.RefSource, error) {
+	gt := func(ctx context.Context, n string) (*v1.Pipeline, *v1.RefSource, error) {
 		return pipeline, nil, nil
 	}
 	resolvedObjectMeta, pipelineSpec, err := pipelinespec.GetPipelineData(context.Background(), pr, gt)
@@ -76,22 +76,22 @@ func TestGetPipelineSpec_Ref(t *testing.T) {
 }
 
 func TestGetPipelineSpec_Embedded(t *testing.T) {
-	pr := &v1beta1.PipelineRun{
+	pr := &v1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "mypipelinerun",
 		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineSpec: &v1beta1.PipelineSpec{
-				Tasks: []v1beta1.PipelineTask{{
+		Spec: v1.PipelineRunSpec{
+			PipelineSpec: &v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
 					Name: "mytask",
-					TaskRef: &v1beta1.TaskRef{
+					TaskRef: &v1.TaskRef{
 						Name: "mytask",
 					},
 				}},
 			},
 		},
 	}
-	gt := func(ctx context.Context, n string) (*v1beta1.Pipeline, *v1beta1.RefSource, error) {
+	gt := func(ctx context.Context, n string) (*v1.Pipeline, *v1.RefSource, error) {
 		return nil, nil, errors.New("shouldn't be called")
 	}
 	resolvedObjectMeta, pipelineSpec, err := pipelinespec.GetPipelineData(context.Background(), pr, gt)
@@ -114,12 +114,12 @@ func TestGetPipelineSpec_Embedded(t *testing.T) {
 }
 
 func TestGetPipelineSpec_Invalid(t *testing.T) {
-	tr := &v1beta1.PipelineRun{
+	tr := &v1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "mypipelinerun",
 		},
 	}
-	gt := func(ctx context.Context, n string) (*v1beta1.Pipeline, *v1beta1.RefSource, error) {
+	gt := func(ctx context.Context, n string) (*v1.Pipeline, *v1.RefSource, error) {
 		return nil, nil, errors.New("shouldn't be called")
 	}
 	_, _, err := pipelinespec.GetPipelineData(context.Background(), tr, gt)
@@ -132,7 +132,7 @@ func TestGetPipelineData_ResolutionSuccess(t *testing.T) {
 	sourceMeta := &metav1.ObjectMeta{
 		Name: "pipeline",
 	}
-	refSource := &v1beta1.RefSource{
+	refSource := &v1.RefSource{
 		URI:        "abc.com",
 		Digest:     map[string]string{"sha1": "a123"},
 		EntryPoint: "foo/bar",
@@ -140,39 +140,39 @@ func TestGetPipelineData_ResolutionSuccess(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		pr           *v1beta1.PipelineRun
+		pr           *v1.PipelineRun
 		sourceMeta   *metav1.ObjectMeta
-		sourceSpec   *v1beta1.PipelineSpec
-		refSource    *v1beta1.RefSource
-		expectedSpec *v1beta1.PipelineSpec
+		sourceSpec   *v1.PipelineSpec
+		refSource    *v1.RefSource
+		expectedSpec *v1.PipelineSpec
 		defaults     map[string]string
 	}{
 		{
 			name:       "resolve remote task with taskRef Name",
 			sourceMeta: sourceMeta,
 			refSource:  refSource,
-			pr: &v1beta1.PipelineRun{
-				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef: &v1beta1.PipelineRef{
-						ResolverRef: v1beta1.ResolverRef{
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					PipelineRef: &v1.PipelineRef{
+						ResolverRef: v1.ResolverRef{
 							Resolver: "foo",
 						},
 					},
 				},
 			},
-			sourceSpec: &v1beta1.PipelineSpec{
-				Tasks: []v1beta1.PipelineTask{{
+			sourceSpec: &v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
 					Name: "pt1",
-					TaskRef: &v1beta1.TaskRef{
+					TaskRef: &v1.TaskRef{
 						Kind: "Task",
 						Name: "tref",
 					},
 				}},
 			},
-			expectedSpec: &v1beta1.PipelineSpec{
-				Tasks: []v1beta1.PipelineTask{{
+			expectedSpec: &v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
 					Name: "pt1",
-					TaskRef: &v1beta1.TaskRef{
+					TaskRef: &v1.TaskRef{
 						Kind: "Task",
 						Name: "tref",
 					},
@@ -183,27 +183,27 @@ func TestGetPipelineData_ResolutionSuccess(t *testing.T) {
 			name:       "resolve remote task with taskRef resolver - default resolver configured",
 			sourceMeta: sourceMeta,
 			refSource:  refSource,
-			pr: &v1beta1.PipelineRun{
-				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef: &v1beta1.PipelineRef{
-						ResolverRef: v1beta1.ResolverRef{
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					PipelineRef: &v1.PipelineRef{
+						ResolverRef: v1.ResolverRef{
 							Resolver: "foo",
 						},
 					},
 				},
 			},
-			sourceSpec: &v1beta1.PipelineSpec{
-				Tasks: []v1beta1.PipelineTask{{
+			sourceSpec: &v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
 					Name:    "pt1",
-					TaskRef: &v1beta1.TaskRef{},
+					TaskRef: &v1.TaskRef{},
 				}},
 			},
-			expectedSpec: &v1beta1.PipelineSpec{
-				Tasks: []v1beta1.PipelineTask{{
+			expectedSpec: &v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
 					Name: "pt1",
-					TaskRef: &v1beta1.TaskRef{
+					TaskRef: &v1.TaskRef{
 						Kind: "Task",
-						ResolverRef: v1beta1.ResolverRef{
+						ResolverRef: v1.ResolverRef{
 							Resolver: "foo",
 						},
 					},
@@ -217,8 +217,8 @@ func TestGetPipelineData_ResolutionSuccess(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := cfgtesting.SetDefaults(context.Background(), t, tc.defaults)
-			getPipeline := func(ctx context.Context, n string) (*v1beta1.Pipeline, *v1beta1.RefSource, error) {
-				return &v1beta1.Pipeline{
+			getPipeline := func(ctx context.Context, n string) (*v1.Pipeline, *v1.RefSource, error) {
+				return &v1.Pipeline{
 					ObjectMeta: *tc.sourceMeta.DeepCopy(),
 					Spec:       *tc.sourceSpec.DeepCopy(),
 				}, tc.refSource.DeepCopy(), nil
@@ -243,17 +243,17 @@ func TestGetPipelineData_ResolutionSuccess(t *testing.T) {
 }
 
 func TestGetPipelineSpec_Error(t *testing.T) {
-	tr := &v1beta1.PipelineRun{
+	tr := &v1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "mypipelinerun",
 		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{
+		Spec: v1.PipelineRunSpec{
+			PipelineRef: &v1.PipelineRef{
 				Name: "orchestrate",
 			},
 		},
 	}
-	gt := func(ctx context.Context, n string) (*v1beta1.Pipeline, *v1beta1.RefSource, error) {
+	gt := func(ctx context.Context, n string) (*v1.Pipeline, *v1.RefSource, error) {
 		return nil, nil, errors.New("something went wrong")
 	}
 	_, _, err := pipelinespec.GetPipelineData(context.Background(), tr, gt)
@@ -263,19 +263,19 @@ func TestGetPipelineSpec_Error(t *testing.T) {
 }
 
 func TestGetPipelineData_ResolutionError(t *testing.T) {
-	pr := &v1beta1.PipelineRun{
+	pr := &v1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "mypipelinerun",
 		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{
-				ResolverRef: v1beta1.ResolverRef{
+		Spec: v1.PipelineRunSpec{
+			PipelineRef: &v1.PipelineRef{
+				ResolverRef: v1.ResolverRef{
 					Resolver: "git",
 				},
 			},
 		},
 	}
-	getPipeline := func(ctx context.Context, n string) (*v1beta1.Pipeline, *v1beta1.RefSource, error) {
+	getPipeline := func(ctx context.Context, n string) (*v1.Pipeline, *v1.RefSource, error) {
 		return nil, nil, errors.New("something went wrong")
 	}
 	ctx := context.Background()
@@ -286,19 +286,19 @@ func TestGetPipelineData_ResolutionError(t *testing.T) {
 }
 
 func TestGetPipelineData_ResolvedNilPipeline(t *testing.T) {
-	pr := &v1beta1.PipelineRun{
+	pr := &v1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "mypipelinerun",
 		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{
-				ResolverRef: v1beta1.ResolverRef{
+		Spec: v1.PipelineRunSpec{
+			PipelineRef: &v1.PipelineRef{
+				ResolverRef: v1.ResolverRef{
 					Resolver: "git",
 				},
 			},
 		},
 	}
-	getPipeline := func(ctx context.Context, n string) (*v1beta1.Pipeline, *v1beta1.RefSource, error) {
+	getPipeline := func(ctx context.Context, n string) (*v1.Pipeline, *v1.RefSource, error) {
 		return nil, nil, nil
 	}
 	ctx := context.Background()

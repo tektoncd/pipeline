@@ -28,7 +28,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/parse"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/system"
@@ -36,8 +36,8 @@ import (
 )
 
 var (
-	ignoreTaskRunStatusFields = cmpopts.IgnoreFields(v1beta1.TaskRunStatusFields{}, "Steps", "TaskRunResults")
-	ignoreSidecarState        = cmpopts.IgnoreFields(v1beta1.SidecarState{}, "ImageID")
+	ignoreTaskRunStatusFields = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "Steps", "Results")
+	ignoreSidecarState        = cmpopts.IgnoreFields(v1.SidecarState{}, "ImageID")
 
 	requireSidecarLogResultsGate = map[string]string{
 		"results-from": "sidecar-logs",
@@ -49,7 +49,7 @@ func TestLargerResultsSidecarLogs(t *testing.T) {
 	type tests struct {
 		name            string
 		pipelineName    string
-		pipelineRunFunc func(*testing.T, string) (*v1beta1.PipelineRun, *v1beta1.PipelineRun, []*v1beta1.TaskRun)
+		pipelineRunFunc func(*testing.T, string) (*v1.PipelineRun, *v1.PipelineRun, []*v1.TaskRun)
 	}
 
 	tds := []tests{{
@@ -74,16 +74,16 @@ func TestLargerResultsSidecarLogs(t *testing.T) {
 			t.Logf("Setting up test resources for %q test in namespace %s", td.name, namespace)
 			pipelineRun, expectedResolvedPipelineRun, expectedTaskRuns := td.pipelineRunFunc(t, namespace)
 			prName := pipelineRun.Name
-			_, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
+			_, err := c.V1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
 			if err != nil {
 				t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
 			}
 
 			t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
-			if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1beta1Version); err != nil {
+			if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1Version); err != nil {
 				t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 			}
-			cl, _ := c.V1beta1PipelineRunClient.Get(ctx, prName, metav1.GetOptions{})
+			cl, _ := c.V1PipelineRunClient.Get(ctx, prName, metav1.GetOptions{})
 			d := cmp.Diff(expectedResolvedPipelineRun, cl,
 				ignoreTypeMeta,
 				ignoreObjectMeta,
@@ -99,7 +99,7 @@ func TestLargerResultsSidecarLogs(t *testing.T) {
 			}
 			for _, tr := range expectedTaskRuns {
 				t.Logf("Checking Taskrun %s", tr.Name)
-				taskrun, _ := c.V1beta1TaskRunClient.Get(ctx, tr.Name, metav1.GetOptions{})
+				taskrun, _ := c.V1TaskRunClient.Get(ctx, tr.Name, metav1.GetOptions{})
 				d = cmp.Diff(tr, taskrun,
 					ignoreTypeMeta,
 					ignoreObjectMeta,
@@ -119,13 +119,15 @@ func TestLargerResultsSidecarLogs(t *testing.T) {
 	}
 }
 
-func getLargerResultsPipelineRun(t *testing.T, namespace string) (*v1beta1.PipelineRun, *v1beta1.PipelineRun, []*v1beta1.TaskRun) {
+func getLargerResultsPipelineRun(t *testing.T, namespace string) (*v1.PipelineRun, *v1.PipelineRun, []*v1.TaskRun) {
 	t.Helper()
-	pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: larger-results-sidecar-logs
   namespace: %s
 spec:
+  taskRunTemplate:
+    serviceAccountName: default
   pipelineSpec:
     tasks:
       - name: task1
@@ -165,13 +167,15 @@ spec:
       - name: large-result 
         value: $(tasks.task2.results.large-result)
 `, namespace, strings.Repeat("a", 2000), strings.Repeat("b", 2000)))
-	expectedPipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+	expectedPipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: larger-results-sidecar-logs
   namespace: %s
 spec:
-  serviceAccountName: default
-  timeout: 1h
+  taskRunTemplate:
+    serviceAccountName: default
+  timeouts:
+    pipeline: 1h
   pipelineSpec:
     tasks:
       - name: task1
@@ -259,7 +263,7 @@ status:
     - name: large-result
       value: %s%s
 `, namespace, strings.Repeat("a", 2000), strings.Repeat("b", 2000), strings.Repeat("a", 2000), strings.Repeat("b", 2000), strings.Repeat("a", 2000), strings.Repeat("b", 2000)))
-	taskRun1 := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+	taskRun1 := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: larger-results-sidecar-logs-task1
   namespace: %s
@@ -307,7 +311,7 @@ status:
     - name: tekton-log-results
       container: sidecar-tekton-log-results    
 `, namespace, strings.Repeat("a", 2000), strings.Repeat("b", 2000), strings.Repeat("a", 2000), strings.Repeat("b", 2000), strings.Repeat("a", 2000), strings.Repeat("b", 2000)))
-	taskRun2 := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+	taskRun2 := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: larger-results-sidecar-logs-task2
   namespace: %s
@@ -369,7 +373,7 @@ status:
     - name: tekton-log-results
       container: sidecar-tekton-log-results    
 `, namespace, strings.Repeat("a", 2000), strings.Repeat("b", 2000), strings.Repeat("a", 2000), strings.Repeat("b", 2000), strings.Repeat("a", 2000), strings.Repeat("b", 2000)))
-	return pipelineRun, expectedPipelineRun, []*v1beta1.TaskRun{taskRun1, taskRun2}
+	return pipelineRun, expectedPipelineRun, []*v1.TaskRun{taskRun1, taskRun2}
 }
 
 func setUpSidecarLogs(ctx context.Context, t *testing.T, fn ...func(context.Context, *testing.T, *clients, string)) (*clients, string) {

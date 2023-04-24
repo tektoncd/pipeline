@@ -34,7 +34,8 @@ func (tr TaskRef) convertTo(ctx context.Context, sink *v1.TaskRef) {
 	tr.convertBundleToResolver(sink)
 }
 
-func (tr *TaskRef) convertFrom(ctx context.Context, source v1.TaskRef) {
+// ConvertFrom v1 TaksRef is exported for reconciling the deprecated v1beta1 CustomTask
+func (tr *TaskRef) ConvertFrom(ctx context.Context, source v1.TaskRef) {
 	tr.Name = source.Name
 	tr.Kind = TaskKind(source.Kind)
 	tr.APIVersion = source.APIVersion

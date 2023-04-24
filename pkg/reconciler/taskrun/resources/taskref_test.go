@@ -29,6 +29,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
@@ -38,7 +39,6 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
@@ -47,36 +47,29 @@ import (
 )
 
 var (
-	simpleNamespacedTask = &v1beta1.Task{
+	simpleNamespacedTask = &v1.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "simple",
 			Namespace: "default",
 		},
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1beta1",
+			APIVersion: "tekton.dev/v1",
 			Kind:       "Task",
 		},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		Spec: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Image: "something",
 			}},
 		},
 	}
-	simpleClusterTask = &v1beta1.ClusterTask{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "simple",
+	v1beta1SampleRefSource = &v1beta1.RefSource{
+		URI: "abc.com",
+		Digest: map[string]string{
+			"sha1": "a123",
 		},
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1beta1",
-			Kind:       "ClusterTask",
-		},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
-				Image: "something",
-			}},
-		},
+		EntryPoint: "foo/bar",
 	}
-	sampleRefSource = &v1beta1.RefSource{
+	sampleRefSource = &v1.RefSource{
 		URI: "abc.com",
 		Digest: map[string]string{
 			"sha1": "a123",
@@ -88,36 +81,36 @@ var (
 func TestGetTaskKind(t *testing.T) {
 	testCases := []struct {
 		name     string
-		tr       *v1beta1.TaskRun
-		expected v1beta1.TaskKind
+		tr       *v1.TaskRun
+		expected v1.TaskKind
 	}{
 		{
 			name: "no task ref",
-			tr: &v1beta1.TaskRun{
-				Spec: v1beta1.TaskRunSpec{
-					TaskSpec: &v1beta1.TaskSpec{},
+			tr: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					TaskSpec: &v1.TaskSpec{},
 				},
 			},
-			expected: v1beta1.NamespacedTaskKind,
+			expected: v1.NamespacedTaskKind,
 		}, {
 			name: "no kind on task ref",
-			tr: &v1beta1.TaskRun{
-				Spec: v1beta1.TaskRunSpec{
-					TaskRef: &v1beta1.TaskRef{Name: "whatever"},
+			tr: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					TaskRef: &v1.TaskRef{Name: "whatever"},
 				},
 			},
-			expected: v1beta1.NamespacedTaskKind,
+			expected: v1.NamespacedTaskKind,
 		}, {
 			name: "kind on task ref",
-			tr: &v1beta1.TaskRun{
-				Spec: v1beta1.TaskRunSpec{
-					TaskRef: &v1beta1.TaskRef{
+			tr: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					TaskRef: &v1.TaskRef{
 						Name: "whatever",
 						Kind: "something-else",
 					},
 				},
 			},
-			expected: v1beta1.TaskKind("something-else"),
+			expected: v1.TaskKind("something-else"),
 		},
 	}
 
@@ -135,30 +128,30 @@ func TestLocalTaskRef(t *testing.T) {
 	testcases := []struct {
 		name     string
 		tasks    []runtime.Object
-		ref      *v1beta1.TaskRef
+		ref      *v1.TaskRef
 		expected runtime.Object
 		wantErr  bool
 	}{
 		{
 			name: "local-task",
 			tasks: []runtime.Object{
-				&v1beta1.Task{
+				&v1.Task{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "simple",
 						Namespace: "default",
 					},
 				},
-				&v1beta1.Task{
+				&v1.Task{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "dummy",
 						Namespace: "default",
 					},
 				},
 			},
-			ref: &v1beta1.TaskRef{
+			ref: &v1.TaskRef{
 				Name: "simple",
 			},
-			expected: &v1beta1.Task{
+			expected: &v1.Task{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "simple",
 					Namespace: "default",
@@ -180,13 +173,13 @@ func TestLocalTaskRef(t *testing.T) {
 					},
 				},
 			},
-			ref: &v1beta1.TaskRef{
+			ref: &v1.TaskRef{
 				Name: "cluster-task",
 				Kind: "ClusterTask",
 			},
-			expected: &v1beta1.Task{
+			expected: &v1.Task{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "tekton.dev/v1beta1",
+					APIVersion: "tekton.dev/v1",
 					Kind:       "Task",
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -198,7 +191,7 @@ func TestLocalTaskRef(t *testing.T) {
 		{
 			name:  "task-not-found",
 			tasks: []runtime.Object{},
-			ref: &v1beta1.TaskRef{
+			ref: &v1.TaskRef{
 				Name: "simple",
 			},
 			expected: nil,
@@ -230,9 +223,9 @@ func TestLocalTaskRef(t *testing.T) {
 				t.Error(diff.PrintWantGot(d))
 			}
 
-			// local cluster tasks have empty RefSource for now. This may be changed in future.
+			// local cluster tasks have empty source for now. This may be changed in future.
 			if refSource != nil {
-				t.Errorf("expected refSource is nil, but got %v", refSource)
+				t.Errorf("expected configsource is nil, but got %v", refSource)
 			}
 		})
 	}
@@ -261,193 +254,140 @@ func TestGetTaskFunc(t *testing.T) {
 		name         string
 		localTasks   []runtime.Object
 		remoteTasks  []runtime.Object
-		ref          *v1beta1.TaskRef
+		ref          *v1.TaskRef
 		expected     runtime.Object
-		expectedKind v1beta1.TaskKind
+		expectedKind v1.TaskKind
 	}{
 		{
 			name:       "remote-task",
 			localTasks: []runtime.Object{simpleNamespacedTask},
 			remoteTasks: []runtime.Object{
-				&v1beta1.Task{
+				&v1.Task{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "simple",
 					},
 					TypeMeta: metav1.TypeMeta{
-						APIVersion: "tekton.dev/v1beta1",
+						APIVersion: "tekton.dev/v1",
 						Kind:       "Task",
 					},
 				},
-				&v1beta1.Task{
+				&v1.Task{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "dummy",
 					},
 					TypeMeta: metav1.TypeMeta{
-						APIVersion: "tekton.dev/v1beta1",
+						APIVersion: "tekton.dev/v1",
 						Kind:       "Task",
 					},
 				},
 			},
-			ref: &v1beta1.TaskRef{
-				Name:   "simple",
-				Bundle: u.Host + "/remote-task",
+			ref: &v1.TaskRef{
+				ResolverRef: v1.ResolverRef{
+					Resolver: "bundles",
+					Params: v1.Params{
+						{Name: "bundle", Value: v1.ParamValue{StringVal: u.Host + "/remote-task", Type: v1.ParamTypeString}},
+						{Name: "name", Value: v1.ParamValue{StringVal: "simple", Type: v1.ParamTypeString}},
+						{Name: "kind", Value: v1.ParamValue{StringVal: "Task", Type: v1.ParamTypeString}},
+					},
+				},
 			},
-			expected: &v1beta1.Task{
+			expected: &v1.Task{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "simple",
 				},
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "tekton.dev/v1beta1",
+					APIVersion: "tekton.dev/v1",
 					Kind:       "Task",
 				},
 			},
-			expectedKind: v1beta1.NamespacedTaskKind,
+			expectedKind: v1.NamespacedTaskKind,
 		}, {
 			name:       "remote-task-without-defaults",
 			localTasks: []runtime.Object{},
 			remoteTasks: []runtime.Object{
-				&v1beta1.Task{
+				&v1.Task{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "simple",
 						Namespace: "default",
 					},
 					TypeMeta: metav1.TypeMeta{
-						APIVersion: "tekton.dev/v1beta1",
+						APIVersion: "tekton.dev/v1",
 						Kind:       "Task",
 					},
-					Spec: v1beta1.TaskSpec{
-						Steps: []v1beta1.Step{{
+					Spec: v1.TaskSpec{
+						Steps: []v1.Step{{
 							Image: "something",
 						}},
-						Params: []v1beta1.ParamSpec{{
+						Params: []v1.ParamSpec{{
 							Name: "foo",
 						},
 						},
 					},
 				}},
-			ref: &v1beta1.TaskRef{
-				Name:   "simple",
-				Bundle: u.Host + "/remote-task-without-defaults",
+			ref: &v1.TaskRef{
+				ResolverRef: v1.ResolverRef{
+					Resolver: "bundles",
+					Params: v1.Params{
+						{Name: "bundle", Value: v1.ParamValue{StringVal: u.Host + "/remote-task-without-defaults", Type: v1.ParamTypeString}},
+						{Name: "name", Value: v1.ParamValue{StringVal: "simple", Type: v1.ParamTypeString}},
+						{Name: "kind", Value: v1.ParamValue{StringVal: "Task", Type: v1.ParamTypeString}},
+					},
+				},
 			},
-			expected: &v1beta1.Task{
+			expected: &v1.Task{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "simple",
 					Namespace: "default",
 				},
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "tekton.dev/v1beta1",
+					APIVersion: "tekton.dev/v1",
 					Kind:       "Task",
 				},
-				Spec: v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{
+				Spec: v1.TaskSpec{
+					Steps: []v1.Step{{
 						Image: "something",
 					}},
-					Params: []v1beta1.ParamSpec{{
+					Params: []v1.ParamSpec{{
 						Name: "foo",
 					}},
 				},
 			},
-			expectedKind: v1beta1.NamespacedTaskKind,
+			expectedKind: v1.NamespacedTaskKind,
 		}, {
 			name:       "local-task",
 			localTasks: []runtime.Object{simpleNamespacedTask},
 			remoteTasks: []runtime.Object{
-				&v1beta1.Task{
+				&v1.Task{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "simple",
 					},
 					TypeMeta: metav1.TypeMeta{
-						APIVersion: "tekton.dev/v1beta1",
+						APIVersion: "tekton.dev/v1",
 						Kind:       "Task",
 					},
 				},
-				&v1beta1.Task{
+				&v1.Task{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "dummy",
 					},
 					TypeMeta: metav1.TypeMeta{
-						APIVersion: "tekton.dev/v1beta1",
+						APIVersion: "tekton.dev/v1",
 						Kind:       "Task",
 					},
 				},
 			},
-			ref: &v1beta1.TaskRef{
+			ref: &v1.TaskRef{
 				Name: "simple",
 			},
 			expected:     simpleNamespacedTask,
-			expectedKind: v1beta1.NamespacedTaskKind,
-		}, {
-			name: "remote-cluster-task",
-			localTasks: []runtime.Object{
-				&v1beta1.ClusterTask{
-					TypeMeta:   metav1.TypeMeta{APIVersion: "v1beta1", Kind: "ClusterTask"},
-					ObjectMeta: metav1.ObjectMeta{Name: "simple"},
-					Spec:       v1beta1.TaskSpec{Params: []v1beta1.ParamSpec{{Name: "foo"}}},
-				},
-			},
-			remoteTasks: []runtime.Object{
-				&v1beta1.ClusterTask{
-					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1", Kind: "ClusterTask"},
-					ObjectMeta: metav1.ObjectMeta{Name: "simple"},
-				},
-				&v1beta1.ClusterTask{
-					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1", Kind: "ClusterTask"},
-					ObjectMeta: metav1.ObjectMeta{Name: "dummy"},
-				},
-			},
-			ref: &v1beta1.TaskRef{
-				Name:       "simple",
-				APIVersion: "tekton.dev/v1beta1",
-				Kind:       v1beta1.ClusterTaskKind,
-				Bundle:     u.Host + "/remote-cluster-task",
-			},
-			expected: &v1beta1.Task{
-				ObjectMeta: metav1.ObjectMeta{Name: "simple"},
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "tekton.dev/v1beta1",
-					Kind:       "Task",
-				},
-			},
-			expectedKind: v1beta1.ClusterTaskKind,
-		}, {
-			name:       "local-cluster-task",
-			localTasks: []runtime.Object{simpleClusterTask},
-			remoteTasks: []runtime.Object{
-				&v1beta1.ClusterTask{
-					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1alpha1", Kind: "ClusterTask"},
-					ObjectMeta: metav1.ObjectMeta{Name: "simple"},
-				},
-				&v1beta1.ClusterTask{
-					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1alpha1", Kind: "ClusterTask"},
-					ObjectMeta: metav1.ObjectMeta{Name: "dummy"},
-				},
-			},
-			ref: &v1beta1.TaskRef{
-				Name: "simple",
-				Kind: v1beta1.ClusterTaskKind,
-			},
-			expected: &v1beta1.Task{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "simple",
-				},
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "tekton.dev/v1beta1",
-					Kind:       "Task",
-				},
-				Spec: v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{
-						Image: "something",
-					}},
-				},
-			},
-			expectedKind: v1beta1.NamespacedTaskKind,
+			expectedKind: v1.NamespacedTaskKind,
 		},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			tektonclient := fake.NewSimpleClientset(tc.localTasks...)
-			kubeclient := fakek8s.NewSimpleClientset(&v1.ServiceAccount{
+			kubeclient := fakek8s.NewSimpleClientset(&corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "default",
 					Name:      "default",
@@ -459,9 +399,9 @@ func TestGetTaskFunc(t *testing.T) {
 				t.Fatalf("failed to upload test image: %s", err.Error())
 			}
 
-			trForFunc := &v1beta1.TaskRun{
+			trForFunc := &v1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Name: "some-tr"},
-				Spec: v1beta1.TaskRunSpec{
+				Spec: v1.TaskRunSpec{
 					TaskRef: tc.ref,
 				},
 			}
@@ -489,7 +429,7 @@ func TestGetTaskFuncFromTaskRunSpecAlreadyFetched(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	tektonclient := fake.NewSimpleClientset(simpleNamespacedTask)
-	kubeclient := fakek8s.NewSimpleClientset(&v1.ServiceAccount{
+	kubeclient := fakek8s.NewSimpleClientset(&corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "default",
 			Name:      "default",
@@ -497,8 +437,8 @@ func TestGetTaskFuncFromTaskRunSpecAlreadyFetched(t *testing.T) {
 	})
 
 	name := "anyname-really"
-	TaskSpec := v1beta1.TaskSpec{
-		Steps: []v1beta1.Step{{
+	TaskSpec := v1.TaskSpec{
+		Steps: []v1.Step{{
 			Image: "myimage",
 			Script: `
 #!/usr/bin/env bash
@@ -507,24 +447,24 @@ echo hello
 		}},
 	}
 
-	TaskRun := &v1beta1.TaskRun{
+	TaskRun := &v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
+		Spec: v1.TaskRunSpec{
+			TaskRef: &v1.TaskRef{
 				// Using simple here to show that, it won't fetch the simple Taskspec,
 				// which is different from the TaskSpec above
 				Name: "simple",
 			},
 			ServiceAccountName: "default",
 		},
-		Status: v1beta1.TaskRunStatus{TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+		Status: v1.TaskRunStatus{TaskRunStatusFields: v1.TaskRunStatusFields{
 			TaskSpec: &TaskSpec,
-			Provenance: &v1beta1.Provenance{
+			Provenance: &v1.Provenance{
 				RefSource: sampleRefSource.DeepCopy(),
 			},
 		}},
 	}
-	expectedTask := &v1beta1.Task{
+	expectedTask := &v1.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: "default",
@@ -534,7 +474,7 @@ echo hello
 
 	fn := resources.GetTaskFuncFromTaskRun(ctx, kubeclient, tektonclient, nil, TaskRun, []*v1alpha1.VerificationPolicy{})
 
-	actualTask, actualRefSource, err := fn(ctx, name)
+	actualTask, actualConfigSource, err := fn(ctx, name)
 	if err != nil {
 		t.Fatalf("failed to call Taskfn: %s", err.Error())
 	}
@@ -543,8 +483,8 @@ echo hello
 		t.Error(diff)
 	}
 
-	if d := cmp.Diff(sampleRefSource, actualRefSource); d != "" {
-		t.Errorf("refSources did not match: %s", diff.PrintWantGot(d))
+	if d := cmp.Diff(sampleRefSource, actualConfigSource); d != "" {
+		t.Errorf("configSources did not match: %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -552,8 +492,8 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 	ctx := context.Background()
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
-	task := parse.MustParseV1beta1Task(t, taskYAMLString)
-	taskRef := &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
+	task := parse.MustParseV1Task(t, taskYAMLString)
+	taskRef := &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "git"}}
 
 	testcases := []struct {
 		name     string
@@ -575,24 +515,24 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			resolved := test.NewResolvedResource([]byte(tc.taskYAML), nil /* annotations */, sampleRefSource.DeepCopy(), nil /* data error */)
+			resolved := test.NewResolvedResource([]byte(tc.taskYAML), nil /* annotations */, v1beta1SampleRefSource.DeepCopy(), nil /* data error */)
 			requester := test.NewRequester(resolved, nil)
-			tr := &v1beta1.TaskRun{
+			tr := &v1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
-				Spec: v1beta1.TaskRunSpec{
+				Spec: v1.TaskRunSpec{
 					TaskRef:            taskRef,
 					ServiceAccountName: "default",
 				},
 			}
 			fn := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default")
 
-			resolvedTask, resolvedRefSource, err := fn(ctx, taskRef.Name)
+			resolvedTask, resolvedConfigSource, err := fn(ctx, taskRef.Name)
 			if err != nil {
 				t.Fatalf("failed to call pipelinefn: %s", err.Error())
 			}
 
-			if d := cmp.Diff(sampleRefSource, resolvedRefSource); d != "" {
-				t.Errorf("refSources did not match: %s", diff.PrintWantGot(d))
+			if d := cmp.Diff(sampleRefSource, resolvedConfigSource); d != "" {
+				t.Errorf("configSources did not match: %s", diff.PrintWantGot(d))
 			}
 
 			if d := cmp.Diff(task, resolvedTask); d != "" {
@@ -606,29 +546,29 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	ctx := context.Background()
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
-	task := parse.MustParseV1beta1Task(t, taskYAMLString)
-	taskRef := &v1beta1.TaskRef{
-		ResolverRef: v1beta1.ResolverRef{
+	task := parse.MustParseV1Task(t, taskYAMLString)
+	taskRef := &v1.TaskRef{
+		ResolverRef: v1.ResolverRef{
 			Resolver: "git",
-			Params: v1beta1.Params{{
+			Params: []v1.Param{{
 				Name:  "foo",
-				Value: *v1beta1.NewStructuredValues("$(params.resolver-param)"),
+				Value: *v1.NewStructuredValues("$(params.resolver-param)"),
 			}, {
 				Name:  "bar",
-				Value: *v1beta1.NewStructuredValues("$(context.taskRun.name)"),
+				Value: *v1.NewStructuredValues("$(context.taskRun.name)"),
 			}},
 		},
 	}
 	taskYAML := strings.Join([]string{
 		"kind: Task",
-		"apiVersion: tekton.dev/v1beta1",
+		"apiVersion: tekton.dev/v1",
 		taskYAMLString,
 	}, "\n")
 
-	resolved := test.NewResolvedResource([]byte(taskYAML), nil, sampleRefSource.DeepCopy(), nil)
+	resolved := test.NewResolvedResource([]byte(taskYAML), nil, v1beta1SampleRefSource.DeepCopy(), nil)
 	requester := &test.Requester{
 		ResolvedResource: resolved,
-		Params: v1beta1.Params{{
+		Params: []v1beta1.Param{{
 			Name:  "foo",
 			Value: *v1beta1.NewStructuredValues("bar"),
 		}, {
@@ -636,23 +576,23 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 			Value: *v1beta1.NewStructuredValues("test-task"),
 		}},
 	}
-	tr := &v1beta1.TaskRun{
+	tr := &v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-task",
 			Namespace: "default",
 		},
-		Spec: v1beta1.TaskRunSpec{
+		Spec: v1.TaskRunSpec{
 			TaskRef:            taskRef,
 			ServiceAccountName: "default",
-			Params: v1beta1.Params{{
+			Params: []v1.Param{{
 				Name:  "resolver-param",
-				Value: *v1beta1.NewStructuredValues("bar"),
+				Value: *v1.NewStructuredValues("bar"),
 			}},
 		},
 	}
 	fn := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default")
 
-	resolvedTask, resolvedRefSource, err := fn(ctx, taskRef.Name)
+	resolvedTask, resolvedConfigSource, err := fn(ctx, taskRef.Name)
 	if err != nil {
 		t.Fatalf("failed to call pipelinefn: %s", err.Error())
 	}
@@ -661,34 +601,34 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 		t.Errorf("resolvedTask did not match: %s", diff.PrintWantGot(d))
 	}
 
-	if d := cmp.Diff(sampleRefSource, resolvedRefSource); d != "" {
-		t.Errorf("refSources did not match: %s", diff.PrintWantGot(d))
+	if d := cmp.Diff(sampleRefSource, resolvedConfigSource); d != "" {
+		t.Errorf("configSources did not match: %s", diff.PrintWantGot(d))
 	}
 
-	taskRefNotMatching := &v1beta1.TaskRef{
-		ResolverRef: v1beta1.ResolverRef{
+	taskRefNotMatching := &v1.TaskRef{
+		ResolverRef: v1.ResolverRef{
 			Resolver: "git",
-			Params: v1beta1.Params{{
+			Params: []v1.Param{{
 				Name:  "foo",
-				Value: *v1beta1.NewStructuredValues("$(params.resolver-param)"),
+				Value: *v1.NewStructuredValues("$(params.resolver-param)"),
 			}, {
 				Name:  "bar",
-				Value: *v1beta1.NewStructuredValues("$(context.taskRun.name)"),
+				Value: *v1.NewStructuredValues("$(context.taskRun.name)"),
 			}},
 		},
 	}
 
-	trNotMatching := &v1beta1.TaskRun{
+	trNotMatching := &v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "other-task",
 			Namespace: "default",
 		},
-		Spec: v1beta1.TaskRunSpec{
+		Spec: v1.TaskRunSpec{
 			TaskRef:            taskRefNotMatching,
 			ServiceAccountName: "default",
-			Params: v1beta1.Params{{
+			Params: []v1.Param{{
 				Name:  "resolver-param",
-				Value: *v1beta1.NewStructuredValues("banana"),
+				Value: *v1.NewStructuredValues("banana"),
 			}},
 		},
 	}
@@ -707,13 +647,13 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 	ctx := context.Background()
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
-	taskRef := &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
+	taskRef := &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "git"}}
 	resolvesTo := []byte("INVALID YAML")
 	resource := test.NewResolvedResource(resolvesTo, nil, nil, nil)
 	requester := test.NewRequester(resource, nil)
-	tr := &v1beta1.TaskRun{
+	tr := &v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
-		Spec: v1beta1.TaskRunSpec{
+		Spec: v1.TaskRunSpec{
 			TaskRef:            taskRef,
 			ServiceAccountName: "default",
 		},
@@ -737,14 +677,21 @@ func TestGetVerifiedTaskFunc_Success(t *testing.T) {
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
-	noMatchPolicyRefSource := &v1beta1.RefSource{
+	noMatchPolicySource := &v1.RefSource{
 		URI: "abc.com",
 		Digest: map[string]string{
 			"sha1": "a123",
 		},
 		EntryPoint: "foo/bar",
 	}
-	resolvedUnmatched := test.NewResolvedResource(unsignedTaskBytes, nil, noMatchPolicyRefSource, nil)
+	v1beta1NoMatchPolicySource := &v1beta1.RefSource{
+		URI: "abc.com",
+		Digest: map[string]string{
+			"sha1": "a123",
+		},
+		EntryPoint: "foo/bar",
+	}
+	resolvedUnmatched := test.NewResolvedResource(unsignedTaskBytes, nil, v1beta1NoMatchPolicySource, nil)
 	requesterUnmatched := test.NewRequester(resolvedUnmatched, nil)
 
 	signedTask, err := test.GetSignedTask(unsignedTask, signer, "signed")
@@ -755,17 +702,24 @@ func TestGetVerifiedTaskFunc_Success(t *testing.T) {
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
-	matchPolicyRefSource := &v1beta1.RefSource{
+	matchPolicySource := &v1.RefSource{
 		URI: "	https://github.com/tektoncd/catalog.git",
 		Digest: map[string]string{
 			"sha1": "a123",
 		},
 		EntryPoint: "foo/bar",
 	}
-	resolvedMatched := test.NewResolvedResource(signedTaskBytes, nil, matchPolicyRefSource, nil)
+	v1beta1MatchPolicySource := &v1beta1.RefSource{
+		URI: "	https://github.com/tektoncd/catalog.git",
+		Digest: map[string]string{
+			"sha1": "a123",
+		},
+		EntryPoint: "foo/bar",
+	}
+	resolvedMatched := test.NewResolvedResource(signedTaskBytes, nil, v1beta1MatchPolicySource, nil)
 	requesterMatched := test.NewRequester(resolvedMatched, nil)
 
-	taskRef := &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
+	taskRef := &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "git"}}
 
 	testcases := []struct {
 		name                      string
@@ -773,71 +727,71 @@ func TestGetVerifiedTaskFunc_Success(t *testing.T) {
 		verificationNoMatchPolicy string
 		policies                  []*v1alpha1.VerificationPolicy
 		expected                  runtime.Object
-		expectedRefSource         *v1beta1.RefSource
+		expectedSource            *v1.RefSource
 	}{{
 		name:                      "signed task with matching policy pass verification with enforce no match policy",
 		requester:                 requesterMatched,
 		verificationNoMatchPolicy: config.FailNoMatchPolicy,
 		policies:                  vps,
 		expected:                  signedTask,
-		expectedRefSource:         matchPolicyRefSource,
+		expectedSource:            matchPolicySource,
 	}, {
 		name:                      "signed task with matching policy pass verification with warn no match policy",
 		requester:                 requesterMatched,
 		verificationNoMatchPolicy: config.WarnNoMatchPolicy,
 		policies:                  vps,
 		expected:                  signedTask,
-		expectedRefSource:         matchPolicyRefSource,
+		expectedSource:            matchPolicySource,
 	}, {
 		name:                      "signed task with matching policy pass verification with ignore no match policy",
 		requester:                 requesterMatched,
 		verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
 		policies:                  vps,
 		expected:                  signedTask,
-		expectedRefSource:         matchPolicyRefSource,
+		expectedSource:            matchPolicySource,
 	}, {
 		name:                      "warn unsigned task without matching policies",
 		requester:                 requesterUnmatched,
 		verificationNoMatchPolicy: config.WarnNoMatchPolicy,
 		policies:                  vps,
 		expected:                  unsignedTask,
-		expectedRefSource:         noMatchPolicyRefSource,
+		expectedSource:            noMatchPolicySource,
 	}, {
 		name:                      "allow unsigned task without matching policies",
 		requester:                 requesterUnmatched,
 		verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
 		policies:                  vps,
 		expected:                  unsignedTask,
-		expectedRefSource:         noMatchPolicyRefSource,
+		expectedSource:            noMatchPolicySource,
 	}, {
 		name:                      "warn no policies",
 		requester:                 requesterUnmatched,
 		verificationNoMatchPolicy: config.WarnNoMatchPolicy,
 		policies:                  []*v1alpha1.VerificationPolicy{},
 		expected:                  unsignedTask,
-		expectedRefSource:         noMatchPolicyRefSource,
+		expectedSource:            noMatchPolicySource,
 	}, {
 		name:                      "allow no policies",
 		requester:                 requesterUnmatched,
 		verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
 		policies:                  []*v1alpha1.VerificationPolicy{},
 		expected:                  unsignedTask,
-		expectedRefSource:         noMatchPolicyRefSource,
+		expectedSource:            noMatchPolicySource,
 	},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx = test.SetupTrustedResourceConfig(ctx, tc.verificationNoMatchPolicy)
-			tr := &v1beta1.TaskRun{
+			tr := &v1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
-				Spec: v1beta1.TaskRunSpec{
+				Spec: v1.TaskRunSpec{
 					TaskRef:            taskRef,
 					ServiceAccountName: "default",
 				},
 			}
 			fn := resources.GetVerifiedTaskFunc(ctx, k8sclient, tektonclient, tc.requester, tr, tr.Spec.TaskRef, "", "default", "default", tc.policies)
 
-			resolvedTask, refSource, err := fn(ctx, taskRef.Name)
+			resolvedTask, source, err := fn(ctx, taskRef.Name)
 
 			if err != nil {
 				t.Fatalf("Received unexpected error ( %#v )", err)
@@ -847,7 +801,7 @@ func TestGetVerifiedTaskFunc_Success(t *testing.T) {
 				t.Errorf("resolvedTask did not match: %s", diff.PrintWantGot(d))
 			}
 
-			if d := cmp.Diff(tc.expectedRefSource, refSource); d != "" {
+			if d := cmp.Diff(tc.expectedSource, source); d != "" {
 				t.Errorf("configSources did not match: %s", diff.PrintWantGot(d))
 			}
 		})
@@ -864,7 +818,14 @@ func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
-	matchPolicyRefSource := &v1beta1.RefSource{
+	matchPolicySource := &v1beta1.RefSource{
+		URI: "https://github.com/tektoncd/catalog.git",
+		Digest: map[string]string{
+			"sha1": "a123",
+		},
+		EntryPoint: "foo/bar",
+	}
+	v1beta1MatchPolicySource := &v1beta1.RefSource{
 		URI: "https://github.com/tektoncd/catalog.git",
 		Digest: map[string]string{
 			"sha1": "a123",
@@ -872,7 +833,7 @@ func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
 		EntryPoint: "foo/bar",
 	}
 
-	resolvedUnsigned := test.NewResolvedResource(unsignedTaskBytes, nil, matchPolicyRefSource, nil)
+	resolvedUnsigned := test.NewResolvedResource(unsignedTaskBytes, nil, v1beta1MatchPolicySource, nil)
 	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
 
 	signedTask, err := test.GetSignedTask(unsignedTask, signer, "signed")
@@ -884,14 +845,14 @@ func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
 		t.Fatal("fail to marshal task", err)
 	}
 
-	noMatchPolicyRefSource := &v1beta1.RefSource{
+	noMatchPolicySource := &v1beta1.RefSource{
 		URI: "abc.com",
 		Digest: map[string]string{
 			"sha1": "a123",
 		},
 		EntryPoint: "foo/bar",
 	}
-	resolvedUnmatched := test.NewResolvedResource(signedTaskBytes, nil, noMatchPolicyRefSource, nil)
+	resolvedUnmatched := test.NewResolvedResource(signedTaskBytes, nil, noMatchPolicySource, nil)
 	requesterUnmatched := test.NewRequester(resolvedUnmatched, nil)
 
 	modifiedTask := signedTask.DeepCopy()
@@ -900,16 +861,16 @@ func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
-	resolvedModified := test.NewResolvedResource(modifiedTaskBytes, nil, matchPolicyRefSource, nil)
+	resolvedModified := test.NewResolvedResource(modifiedTaskBytes, nil, matchPolicySource, nil)
 	requesterModified := test.NewRequester(resolvedModified, nil)
 
-	taskRef := &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
+	taskRef := &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "git"}}
 
 	testcases := []struct {
 		name                      string
 		requester                 *test.Requester
 		verificationNoMatchPolicy string
-		expected                  *v1beta1.Task
+		expected                  *v1.Task
 		expectedErr               error
 	}{{
 		name:                      "unsigned task with fails verification with fail no match policy",
@@ -958,16 +919,16 @@ func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx = test.SetupTrustedResourceConfig(ctx, tc.verificationNoMatchPolicy)
-			tr := &v1beta1.TaskRun{
+			tr := &v1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
-				Spec: v1beta1.TaskRunSpec{
+				Spec: v1.TaskRunSpec{
 					TaskRef:            taskRef,
 					ServiceAccountName: "default",
 				},
 			}
 			fn := resources.GetVerifiedTaskFunc(ctx, k8sclient, tektonclient, tc.requester, tr, tr.Spec.TaskRef, "", "default", "default", vps)
 
-			resolvedTask, resolvedRefSource, err := fn(ctx, taskRef.Name)
+			resolvedTask, source, err := fn(ctx, taskRef.Name)
 
 			if !errors.Is(err, tc.expectedErr) {
 				t.Errorf("GetVerifiedTaskFunc got %v but want %v", err, tc.expectedErr)
@@ -977,8 +938,8 @@ func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
 				t.Errorf("resolvedTask did not match: %s", diff.PrintWantGot(d))
 			}
 
-			if resolvedRefSource != nil {
-				t.Errorf("refSource is: %v but want is nil", resolvedRefSource)
+			if source != nil {
+				t.Errorf("source is: %v but want is nil", source)
 			}
 		})
 	}
@@ -995,27 +956,33 @@ func TestGetVerifiedTaskFunc_GetFuncError(t *testing.T) {
 		t.Fatal("fail to marshal task", err)
 	}
 
-	resolvedUnsigned := test.NewResolvedResource(unsignedTaskBytes, nil, sampleRefSource.DeepCopy(), nil)
+	resolvedUnsigned := test.NewResolvedResource(unsignedTaskBytes, nil, v1beta1SampleRefSource.DeepCopy(), nil)
 	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
 	resolvedUnsigned.DataErr = fmt.Errorf("resolution error")
 
-	trBundleError := &v1beta1.TaskRun{
+	trBundleError := &v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name:   "taskName",
-				Bundle: "bundle",
+		Spec: v1.TaskRunSpec{
+			TaskRef: &v1.TaskRef{
+				ResolverRef: v1.ResolverRef{
+					Resolver: "bundles",
+					Params: v1.Params{
+						{Name: "bundle", Value: v1.ParamValue{StringVal: "bunlde", Type: v1.ParamTypeString}},
+						{Name: "name", Value: v1.ParamValue{StringVal: "taskName", Type: v1.ParamTypeString}},
+						{Name: "kind", Value: v1.ParamValue{StringVal: "Task", Type: v1.ParamTypeString}},
+					},
+				},
 			},
 			ServiceAccountName: "default",
 		},
 	}
 
-	trResolutionError := &v1beta1.TaskRun{
+	trResolutionError := &v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
+		Spec: v1.TaskRunSpec{
+			TaskRef: &v1.TaskRef{
 				Name: "taskName",
-				ResolverRef: v1beta1.ResolverRef{
+				ResolverRef: v1.ResolverRef{
 					Resolver: "git",
 				},
 			},
@@ -1026,7 +993,7 @@ func TestGetVerifiedTaskFunc_GetFuncError(t *testing.T) {
 	testcases := []struct {
 		name        string
 		requester   *test.Requester
-		taskrun     v1beta1.TaskRun
+		taskrun     v1.TaskRun
 		expectedErr error
 	}{
 		{

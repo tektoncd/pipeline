@@ -28,6 +28,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
@@ -402,6 +403,16 @@ func TestResolve(t *testing.T) {
 				confMap[cluster.BlockedNamespacesKey] = tc.blockedNamespaces
 			}
 
+			v1ExamplePipeline := &pipelinev1.Pipeline{}
+			if err := examplePipeline.ConvertTo(ctx, v1ExamplePipeline); err != nil {
+				t.Errorf("Error converting examplePipeline %s", err)
+			}
+
+			v1ExampleTask := &pipelinev1.Task{}
+			if err := exampleTask.ConvertTo(ctx, v1ExampleTask); err != nil {
+				t.Errorf("Error converting exampleTask %s", err)
+			}
+
 			d := test.Data{
 				ConfigMaps: []*corev1.ConfigMap{{
 					ObjectMeta: metav1.ObjectMeta{
@@ -418,9 +429,9 @@ func TestResolve(t *testing.T) {
 						"enable-cluster-resolver": "true",
 					},
 				}},
-				Pipelines:          []*pipelinev1beta1.Pipeline{examplePipeline},
+				// Pipelines:          []*pipelinev1.Pipeline{v1ExamplePipeline},
 				ResolutionRequests: []*v1beta1.ResolutionRequest{request},
-				Tasks:              []*pipelinev1beta1.Task{exampleTask},
+				// Tasks:              []*pipelinev1.Task{v1ExampleTask},
 			}
 
 			resolver := &cluster.Resolver{}

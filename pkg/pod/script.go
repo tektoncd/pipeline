@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,7 +70,7 @@ var (
 )
 
 // convertScripts converts any steps and sidecars that specify a Script field into a normal Container.
-func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta1.Step, sidecars []v1beta1.Sidecar, debugConfig *v1beta1.TaskRunDebug) (*corev1.Container, []corev1.Container, []corev1.Container) {
+func convertScripts(shellImageLinux string, shellImageWin string, steps []v1.Step, sidecars []v1.Sidecar, debugConfig *v1.TaskRunDebug) (*corev1.Container, []corev1.Container, []corev1.Container) {
 	placeScripts := false
 	// Place scripts is an init container used for creating scripts in the
 	// /tekton/scripts directory which would be later used by the step containers
@@ -96,10 +96,10 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta
 	}
 
 	breakpoints := []string{}
-	sideCarSteps := []v1beta1.Step{}
+	sideCarSteps := []v1.Step{}
 	for _, sidecar := range sidecars {
 		c := sidecar.ToK8sContainer()
-		sidecarStep := v1beta1.Step{
+		sidecarStep := v1.Step{
 			Script:  sidecar.Script,
 			Timeout: &metav1.Duration{},
 		}
@@ -127,7 +127,7 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta
 //
 // It iterates through the list of steps (or sidecars), generates the script file name and heredoc termination string,
 // adds an entry to the init container args, sets up the step container to run the script, and sets the volume mounts.
-func convertListOfSteps(steps []v1beta1.Step, initContainer *corev1.Container, placeScripts *bool, breakpoints []string, namePrefix string) []corev1.Container {
+func convertListOfSteps(steps []v1.Step, initContainer *corev1.Container, placeScripts *bool, breakpoints []string, namePrefix string) []corev1.Container {
 	containers := []corev1.Container{}
 	for i, s := range steps {
 		// Add debug mounts if breakpoints are present
@@ -236,7 +236,7 @@ func encodeScript(script string) string {
 	return base64.StdEncoding.EncodeToString([]byte(script))
 }
 
-func checkWindowsRequirement(steps []v1beta1.Step, sidecars []v1beta1.Sidecar) bool {
+func checkWindowsRequirement(steps []v1.Step, sidecars []v1.Sidecar) bool {
 	// Detect windows shebangs
 	for _, step := range steps {
 		cleaned := strings.TrimSpace(step.Script)

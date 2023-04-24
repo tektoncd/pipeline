@@ -25,6 +25,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"knative.dev/pkg/apis"
 )
@@ -88,18 +89,18 @@ type CEClient interface {
 // TektonCloudEventData type is used to marshal and unmarshal the payload of
 // a Tekton cloud event. It can include a TaskRun or a PipelineRun
 type TektonCloudEventData struct {
-	TaskRun     *v1beta1.TaskRun     `json:"taskRun,omitempty"`
-	PipelineRun *v1beta1.PipelineRun `json:"pipelineRun,omitempty"`
-	CustomRun   *v1beta1.CustomRun   `json:"customRun,omitempty"`
+	TaskRun     *v1.TaskRun        `json:"taskRun,omitempty"`
+	PipelineRun *v1.PipelineRun    `json:"pipelineRun,omitempty"`
+	CustomRun   *v1beta1.CustomRun `json:"customRun,omitempty"`
 }
 
 // newTektonCloudEventData returns a new instance of TektonCloudEventData
 func newTektonCloudEventData(runObject objectWithCondition) TektonCloudEventData {
 	tektonCloudEventData := TektonCloudEventData{}
 	switch v := runObject.(type) {
-	case *v1beta1.TaskRun:
+	case *v1.TaskRun:
 		tektonCloudEventData.TaskRun = v
-	case *v1beta1.PipelineRun:
+	case *v1.PipelineRun:
 		tektonCloudEventData.PipelineRun = v
 	case *v1beta1.CustomRun:
 		tektonCloudEventData.CustomRun = v
@@ -158,20 +159,20 @@ func getEventType(runObject objectWithCondition) (*TektonEventType, error) {
 	switch {
 	case c.IsUnknown():
 		switch runObject.(type) {
-		case *v1beta1.TaskRun:
+		case *v1.TaskRun:
 			switch c.Reason {
-			case v1beta1.TaskRunReasonStarted.String():
+			case v1.TaskRunReasonStarted.String():
 				eventType = TaskRunStartedEventV1
-			case v1beta1.TaskRunReasonRunning.String():
+			case v1.TaskRunReasonRunning.String():
 				eventType = TaskRunRunningEventV1
 			default:
 				eventType = TaskRunUnknownEventV1
 			}
-		case *v1beta1.PipelineRun:
+		case *v1.PipelineRun:
 			switch c.Reason {
-			case v1beta1.PipelineRunReasonStarted.String():
+			case v1.PipelineRunReasonStarted.String():
 				eventType = PipelineRunStartedEventV1
-			case v1beta1.PipelineRunReasonRunning.String():
+			case v1.PipelineRunReasonRunning.String():
 				eventType = PipelineRunRunningEventV1
 			default:
 				eventType = PipelineRunUnknownEventV1
@@ -185,18 +186,18 @@ func getEventType(runObject objectWithCondition) (*TektonEventType, error) {
 		}
 	case c.IsFalse():
 		switch runObject.(type) {
-		case *v1beta1.TaskRun:
+		case *v1.TaskRun:
 			eventType = TaskRunFailedEventV1
-		case *v1beta1.PipelineRun:
+		case *v1.PipelineRun:
 			eventType = PipelineRunFailedEventV1
 		case *v1beta1.CustomRun:
 			eventType = CustomRunFailedEventV1
 		}
 	case c.IsTrue():
 		switch runObject.(type) {
-		case *v1beta1.TaskRun:
+		case *v1.TaskRun:
 			eventType = TaskRunSuccessfulEventV1
-		case *v1beta1.PipelineRun:
+		case *v1.PipelineRun:
 			eventType = PipelineRunSuccessfulEventV1
 		case *v1beta1.CustomRun:
 			eventType = CustomRunSuccessfulEventV1

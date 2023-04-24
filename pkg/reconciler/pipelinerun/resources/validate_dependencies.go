@@ -19,7 +19,7 @@ package resources
 import (
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -30,7 +30,7 @@ import (
 func ValidatePipelineTaskResults(state PipelineRunState) error {
 	ptMap := state.ToMap()
 	for _, rpt := range state {
-		for _, ref := range v1beta1.PipelineTaskResultRefs(rpt.PipelineTask) {
+		for _, ref := range v1.PipelineTaskResultRefs(rpt.PipelineTask) {
 			if err := validateResultRef(ref, ptMap); err != nil {
 				return fmt.Errorf("invalid result reference in pipeline task %q: %w", rpt.PipelineTask.Name, err)
 			}
@@ -43,11 +43,11 @@ func ValidatePipelineTaskResults(state PipelineRunState) error {
 // resolve to valid results. This prevents a situation where a PipelineResult references
 // a result in a PipelineTask that doesn't exist or where the user has either misspelled
 // a result name or the referenced task just doesn't return a result with that name.
-func ValidatePipelineResults(ps *v1beta1.PipelineSpec, state PipelineRunState) error {
+func ValidatePipelineResults(ps *v1.PipelineSpec, state PipelineRunState) error {
 	ptMap := state.ToMap()
 	for _, result := range ps.Results {
-		expressions, _ := v1beta1.GetVarSubstitutionExpressionsForPipelineResult(result)
-		refs := v1beta1.NewResultRefs(expressions)
+		expressions, _ := v1.GetVarSubstitutionExpressionsForPipelineResult(result)
+		refs := v1.NewResultRefs(expressions)
 		for _, ref := range refs {
 			if err := validateResultRef(ref, ptMap); err != nil {
 				return fmt.Errorf("invalid pipeline result %q: %w", result.Name, err)
@@ -60,7 +60,7 @@ func ValidatePipelineResults(ps *v1beta1.PipelineSpec, state PipelineRunState) e
 // validateResultRef takes a ResultRef and searches for the result using the given
 // map of PipelineTask name to ResolvedPipelineTask. If the ResultRef does not point
 // to a pipeline task or named result then an error is returned.
-func validateResultRef(ref *v1beta1.ResultRef, ptMap map[string]*ResolvedPipelineTask) error {
+func validateResultRef(ref *v1.ResultRef, ptMap map[string]*ResolvedPipelineTask) error {
 	if _, ok := ptMap[ref.PipelineTask]; !ok {
 		return fmt.Errorf("referenced pipeline task %q does not exist", ref.PipelineTask)
 	}
@@ -90,7 +90,7 @@ func validateResultRef(ref *v1beta1.ResultRef, ptMap map[string]*ResolvedPipelin
 // marked as optional are also marked optional in the Tasks that receive them. This
 // prevents a situation where a Task requires a workspace but a Pipeline does not offer
 // the same guarantee the workspace will be provided at runtime.
-func ValidateOptionalWorkspaces(pipelineWorkspaces []v1beta1.PipelineWorkspaceDeclaration, state PipelineRunState) error {
+func ValidateOptionalWorkspaces(pipelineWorkspaces []v1.PipelineWorkspaceDeclaration, state PipelineRunState) error {
 	optionalWorkspaces := sets.NewString()
 	for _, ws := range pipelineWorkspaces {
 		if ws.Optional {

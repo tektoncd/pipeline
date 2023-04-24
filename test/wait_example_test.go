@@ -54,7 +54,7 @@ func ExampleWaitForTaskRunState() {
 			}
 		}
 		return false, nil
-	}, "TaskRunHasCondition", v1beta1Version); err != nil {
+	}, "TaskRunHasCondition", v1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun taskRunName to finish: %s", err)
 	}
 }
@@ -73,7 +73,7 @@ func ExampleWaitForPipelineRunState() {
 			}
 		}
 		return false, nil
-	}, "PipelineRunHasCondition", v1beta1Version); err != nil {
+	}, "PipelineRunHasCondition", v1Version); err != nil {
 		t.Errorf("Error waiting for PipelineRun pipelineRunName to finish: %s", err)
 	}
 }

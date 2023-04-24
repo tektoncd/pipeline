@@ -25,8 +25,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
+	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
@@ -281,7 +282,7 @@ func nilInsertTag(task, taskrun string) []tag.Mutator {
 // DurationAndCount logs the duration of TaskRun execution and
 // count for number of TaskRuns succeed or failed
 // returns an error if its failed to log the metrics
-func (r *Recorder) DurationAndCount(ctx context.Context, tr *v1beta1.TaskRun, beforeCondition *apis.Condition) error {
+func (r *Recorder) DurationAndCount(ctx context.Context, tr *v1.TaskRun, beforeCondition *apis.Condition) error {
 	if !r.initialized {
 		return fmt.Errorf("ignoring the metrics recording for %s , failed to initialize the metrics recorder", tr.Name)
 	}
@@ -397,7 +398,7 @@ func (r *Recorder) ReportRunningTaskRuns(ctx context.Context, lister listers.Tas
 
 // RecordPodLatency logs the duration required to schedule the pod for TaskRun
 // returns an error if its failed to log the metrics
-func (r *Recorder) RecordPodLatency(ctx context.Context, pod *corev1.Pod, tr *v1beta1.TaskRun) error {
+func (r *Recorder) RecordPodLatency(ctx context.Context, pod *corev1.Pod, tr *v1.TaskRun) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -432,7 +433,7 @@ func (r *Recorder) RecordPodLatency(ctx context.Context, pod *corev1.Pod, tr *v1
 
 // CloudEvents logs the number of cloud events sent for TaskRun
 // returns an error if it fails to log the metrics
-func (r *Recorder) CloudEvents(ctx context.Context, tr *v1beta1.TaskRun) error {
+func (r *Recorder) CloudEvents(ctx context.Context, tr *v1.TaskRun) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -460,7 +461,12 @@ func (r *Recorder) CloudEvents(ctx context.Context, tr *v1beta1.TaskRun) error {
 		if err != nil {
 			return err
 		}
-		metrics.Record(ctx, cloudEvents.M(sentCloudEvents(tr)))
+
+		cloudEventsCounts, err := sentCloudEvents(ctx, tr)
+		if err != nil {
+			return err
+		}
+		metrics.Record(ctx, cloudEvents.M(cloudEventsCounts))
 		return nil
 	}
 
@@ -473,14 +479,19 @@ func (r *Recorder) CloudEvents(ctx context.Context, tr *v1beta1.TaskRun) error {
 		return err
 	}
 
-	metrics.Record(ctx, cloudEvents.M(sentCloudEvents(tr)))
+	cloudEventsCounts, err := sentCloudEvents(ctx, tr)
+	if err != nil {
+		return err
+	}
+
+	metrics.Record(ctx, cloudEvents.M(cloudEventsCounts))
 
 	return nil
 }
 
 // IsPartOfPipeline return true if TaskRun is a part of a Pipeline.
 // It also return the name of Pipeline and PipelineRun
-func IsPartOfPipeline(tr *v1beta1.TaskRun) (bool, string, string) {
+func IsPartOfPipeline(tr *v1.TaskRun) (bool, string, string) {
 	pipelineLabel, hasPipelineLabel := tr.Labels[pipeline.PipelineLabelKey]
 	pipelineRunLabel, hasPipelineRunLabel := tr.Labels[pipeline.PipelineRunLabelKey]
 
@@ -491,14 +502,21 @@ func IsPartOfPipeline(tr *v1beta1.TaskRun) (bool, string, string) {
 	return false, "", ""
 }
 
-func sentCloudEvents(tr *v1beta1.TaskRun) int64 {
+func sentCloudEvents(ctx context.Context, tr *v1.TaskRun) (int64, error) {
 	var sent int64
-	for _, event := range tr.Status.CloudEvents {
+
+	// cloudEvents are converted from v1 for the metrics count
+	v1beta1tr := &v1beta1.TaskRun{}
+	if err := v1beta1tr.ConvertFrom(ctx, tr); err != nil {
+		return int64(0), err
+	}
+
+	for _, event := range v1beta1tr.Status.CloudEvents {
 		if event.Status.Condition != v1beta1.CloudEventConditionUnknown {
 			sent += 1 + int64(event.Status.RetryCount)
 		}
 	}
-	return sent
+	return sent, nil
 }
 
 func getScheduledTime(pod *corev1.Pod) metav1.Time {

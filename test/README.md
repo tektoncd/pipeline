@@ -318,7 +318,7 @@ The `Clients` struct contains initialized clients for accessing:
 For example, to create a `Pipeline`:
 
 ```bash
-_, err = clients.V1beta1PipelineClient.Pipelines.Create(test.Route(namespaceName, pipelineName))
+_, err = clients.v1PipelineClient.Pipelines.Create(test.Route(namespaceName, pipelineName))
 ```
 
 And you can use the client to clean up resources created by your test (e.g. in
@@ -368,7 +368,7 @@ err = WaitForTaskRunState(c, hwTaskRunName, func(tr *v1alpha1.TaskRun) (bool, er
         return true, nil
     }
     return false, nil
-}, "TaskRunHasCondition", v1beta1Version)
+}, "TaskRunHasCondition", v1Version)
 ```
 
 _[Metrics will be emitted](https://github.com/knative/pkg/tree/master/test#emit-metrics)

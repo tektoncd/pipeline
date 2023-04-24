@@ -52,7 +52,7 @@ func TestDuplicatePodTaskRun(t *testing.T) {
 		taskrunName := helpers.ObjectNameForTest(t)
 		t.Logf("Creating taskrun %q.", taskrunName)
 
-		taskrun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+		taskrun := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -63,13 +63,13 @@ spec:
       command: ['/bin/echo']
       args: ['simple']
 `, taskrunName, namespace))
-		if _, err := c.V1beta1TaskRunClient.Create(ctx, taskrun, metav1.CreateOptions{}); err != nil {
+		if _, err := c.V1TaskRunClient.Create(ctx, taskrun, metav1.CreateOptions{}); err != nil {
 			t.Fatalf("Error creating taskrun: %v", err)
 		}
 		go func(t *testing.T) { //nolint:thelper
 			defer wg.Done()
 
-			if err := WaitForTaskRunState(ctx, c, taskrunName, TaskRunSucceed(taskrunName), "TaskRunDuplicatePodTaskRunFailed", v1beta1Version); err != nil {
+			if err := WaitForTaskRunState(ctx, c, taskrunName, TaskRunSucceed(taskrunName), "TaskRunDuplicatePodTaskRunFailed", v1Version); err != nil {
 				t.Errorf("Error waiting for TaskRun to finish: %s", err)
 				return
 			}

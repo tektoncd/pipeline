@@ -704,7 +704,7 @@ Consult the documentation of the custom task that you are using to determine whe
 
 ### Mapping `ServiceAccount` credentials to `Tasks`
 
-If you require more granularity in specifying execution credentials, use the `taskRunSpecs[].taskServiceAccountName` field to
+If you require more granularity in specifying execution credentials, use the `taskRunSpecs[].serviceAccountName` field to
 map a specific `serviceAccountName` value to a specific `Task` in the `Pipeline`. This overrides the global
 `serviceAccountName` you may have set for the `Pipeline` as described in the previous section.
 
@@ -728,7 +728,7 @@ spec:
   serviceAccountName: sa-1
   taskRunSpecs:
     - pipelineTaskName: build-task
-      taskServiceAccountName: sa-for-build
+      serviceAccountName: sa-for-build
 ```
 {{< /tab >}}
 {{< /tabs >}}
@@ -888,7 +888,7 @@ spec:
       fsGroup: 3000
   taskRunSpecs:
     - pipelineTaskName: build-task
-      taskServiceAccountName: sa-for-build
+      serviceAccountName: sa-for-build
       taskPodTemplate:
         nodeSelector:
           disktype: ssd

@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/internal/computeresources/tasklevel"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -31,12 +31,12 @@ import (
 func TestApplyTaskLevelResourceRequirements(t *testing.T) {
 	testcases := []struct {
 		desc                     string
-		Steps                    []v1beta1.Step
+		Steps                    []v1.Step
 		ComputeResources         corev1.ResourceRequirements
 		expectedComputeResources []corev1.ResourceRequirements
 	}{{
 		desc: "only with requests",
-		Steps: []v1beta1.Step{{
+		Steps: []v1.Step{{
 			Name:    "1st-step",
 			Image:   "image",
 			Command: []string{"cmd"},
@@ -55,7 +55,7 @@ func TestApplyTaskLevelResourceRequirements(t *testing.T) {
 		}},
 	}, {
 		desc: "only with limits",
-		Steps: []v1beta1.Step{{
+		Steps: []v1.Step{{
 			Name:    "1st-step",
 			Image:   "image",
 			Command: []string{"cmd"},
@@ -76,7 +76,7 @@ func TestApplyTaskLevelResourceRequirements(t *testing.T) {
 		}},
 	}, {
 		desc: "both with requests and limits",
-		Steps: []v1beta1.Step{{
+		Steps: []v1.Step{{
 			Name:    "1st-step",
 			Image:   "image",
 			Command: []string{"cmd"},
@@ -98,11 +98,11 @@ func TestApplyTaskLevelResourceRequirements(t *testing.T) {
 		}},
 	}, {
 		desc: "steps with compute resources are overridden by task-level compute resources",
-		Steps: []v1beta1.Step{{
+		Steps: []v1.Step{{
 			Name:    "1st-step",
 			Image:   "image",
 			Command: []string{"cmd"},
-			Resources: corev1.ResourceRequirements{
+			ComputeResources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")},
 				Limits:   corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")},
 			},
@@ -110,7 +110,7 @@ func TestApplyTaskLevelResourceRequirements(t *testing.T) {
 			Name:    "2nd-step",
 			Image:   "image",
 			Command: []string{"cmd"},
-			Resources: corev1.ResourceRequirements{
+			ComputeResources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m")},
 				Limits:   corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")},
 			},
@@ -128,11 +128,11 @@ func TestApplyTaskLevelResourceRequirements(t *testing.T) {
 		}},
 	}, {
 		desc: "steps with partial compute resources are overridden by task-level compute resources",
-		Steps: []v1beta1.Step{{
+		Steps: []v1.Step{{
 			Name:    "1st-step",
 			Image:   "image",
 			Command: []string{"cmd"},
-			Resources: corev1.ResourceRequirements{
+			ComputeResources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")},
 				Limits:   corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")},
 			},
@@ -154,11 +154,11 @@ func TestApplyTaskLevelResourceRequirements(t *testing.T) {
 		}},
 	}, {
 		desc: "steps with compute resources are preserved, if there are no task-level compute resources",
-		Steps: []v1beta1.Step{{
+		Steps: []v1.Step{{
 			Name:    "1st-step",
 			Image:   "image",
 			Command: []string{"cmd"},
-			Resources: corev1.ResourceRequirements{
+			ComputeResources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")},
 				Limits:   corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")},
 			},
@@ -166,7 +166,7 @@ func TestApplyTaskLevelResourceRequirements(t *testing.T) {
 			Name:    "2nd-step",
 			Image:   "image",
 			Command: []string{"cmd"},
-			Resources: corev1.ResourceRequirements{
+			ComputeResources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m")},
 				Limits:   corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")},
 			},
@@ -193,12 +193,12 @@ func TestApplyTaskLevelResourceRequirements(t *testing.T) {
 }
 
 // verifyTaskLevelComputeResources verifies that the given TaskRun's containers have the expected compute resources.
-func verifyTaskLevelComputeResources(steps []v1beta1.Step, expectedComputeResources []corev1.ResourceRequirements) error {
+func verifyTaskLevelComputeResources(steps []v1.Step, expectedComputeResources []corev1.ResourceRequirements) error {
 	if len(expectedComputeResources) != len(steps) {
 		return fmt.Errorf("expected %d compute resource requirements, got %d", len(expectedComputeResources), len(steps))
 	}
 	for id, step := range steps {
-		if d := cmp.Diff(expectedComputeResources[id], step.Resources); d != "" {
+		if d := cmp.Diff(expectedComputeResources[id], step.ComputeResources); d != "" {
 			return fmt.Errorf("container \"#%d\" resource requirements don't match %s", id, diff.PrintWantGot(d))
 		}
 	}

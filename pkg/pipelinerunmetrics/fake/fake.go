@@ -19,7 +19,7 @@ package fake
 import (
 	"context"
 
-	_ "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipelinerun/fake" // Make sure the fake pipelinerun informer is setup
+	_ "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1/pipelinerun/fake" // Make sure the fake pipelinerun informer is setup
 	"github.com/tektoncd/pipeline/pkg/pipelinerunmetrics"
 	"k8s.io/client-go/rest"
 	"knative.dev/pkg/injection"

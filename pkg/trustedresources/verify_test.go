@@ -27,8 +27,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/trustedresources/verifier"
 	test "github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -87,7 +87,7 @@ func TestVerifyInterface_Task_Error(t *testing.T) {
 
 	tcs := []struct {
 		name          string
-		task          *v1beta1.Task
+		task          *v1.Task
 		expectedError error
 	}{{
 		name:          "Unsigned Task Fail Verification",
@@ -199,7 +199,7 @@ func TestVerifyTask_Success(t *testing.T) {
 	mismatchedSource := "wrong source"
 	tcs := []struct {
 		name                      string
-		task                      *v1beta1.Task
+		task                      *v1.Task
 		source                    string
 		signer                    signature.SignerVerifier
 		verificationNoMatchPolicy string
@@ -276,7 +276,7 @@ func TestVerifyTask_Error(t *testing.T) {
 	mismatchedSource := "wrong source"
 	tcs := []struct {
 		name               string
-		task               *v1beta1.Task
+		task               *v1.Task
 		source             string
 		verificationPolicy []*v1alpha1.VerificationPolicy
 		expectedError      error
@@ -368,7 +368,7 @@ func TestVerifyPipeline_Success(t *testing.T) {
 	mismatchedSource := "wrong source"
 	tcs := []struct {
 		name                      string
-		pipeline                  *v1beta1.Pipeline
+		pipeline                  *v1.Pipeline
 		source                    string
 		verificationNoMatchPolicy string
 	}{{
@@ -421,7 +421,7 @@ func TestVerifyPipeline_Error(t *testing.T) {
 	mismatchedSource := "wrong source"
 	tcs := []struct {
 		name               string
-		pipeline           *v1beta1.Pipeline
+		pipeline           *v1.Pipeline
 		source             string
 		verificationPolicy []*v1alpha1.VerificationPolicy
 	}{{

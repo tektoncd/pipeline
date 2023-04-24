@@ -21,7 +21,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -38,7 +38,7 @@ const (
 
 // PvcHandler is used to create PVCs for workspaces
 type PvcHandler interface {
-	CreatePersistentVolumeClaimsForWorkspaces(ctx context.Context, wb []v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error
+	CreatePersistentVolumeClaimsForWorkspaces(ctx context.Context, wb []v1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error
 }
 
 type defaultPVCHandler struct {
@@ -55,7 +55,7 @@ func NewPVCHandler(clientset clientset.Interface, logger *zap.SugaredLogger) Pvc
 // where claim-name is provided by the user in the volumeClaimTemplate, and owner-name is the name of the
 // resource with the volumeClaimTemplate declared, a PipelineRun or TaskRun. If the PVC did not exist, a new PVC
 // with that name is created with the provided OwnerReference.
-func (c *defaultPVCHandler) CreatePersistentVolumeClaimsForWorkspaces(ctx context.Context, wb []v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error {
+func (c *defaultPVCHandler) CreatePersistentVolumeClaimsForWorkspaces(ctx context.Context, wb []v1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error {
 	var errs []error
 	for _, claim := range getPersistentVolumeClaims(wb, ownerReference, namespace) {
 		_, err := c.clientset.CoreV1().PersistentVolumeClaims(claim.Namespace).Get(ctx, claim.Name, metav1.GetOptions{})
@@ -81,7 +81,7 @@ func (c *defaultPVCHandler) CreatePersistentVolumeClaimsForWorkspaces(ctx contex
 	return errorutils.NewAggregate(errs)
 }
 
-func getPersistentVolumeClaims(workspaceBindings []v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) map[string]*corev1.PersistentVolumeClaim {
+func getPersistentVolumeClaims(workspaceBindings []v1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) map[string]*corev1.PersistentVolumeClaim {
 	claims := make(map[string]*corev1.PersistentVolumeClaim)
 	for _, workspaceBinding := range workspaceBindings {
 		if workspaceBinding.VolumeClaimTemplate == nil {
@@ -102,7 +102,7 @@ func getPersistentVolumeClaims(workspaceBindings []v1beta1.WorkspaceBinding, own
 // workspaceBinding name and ownerReference UID - because it is first used for creating a PVC and later,
 // possibly several TaskRuns to lookup the PVC to mount.
 // We use ownerReference UID over ownerReference name to distinguish runs with the same name.
-func GetPersistentVolumeClaimName(claim *corev1.PersistentVolumeClaim, wb v1beta1.WorkspaceBinding, owner metav1.OwnerReference) string {
+func GetPersistentVolumeClaimName(claim *corev1.PersistentVolumeClaim, wb v1.WorkspaceBinding, owner metav1.OwnerReference) string {
 	if claim.Name == "" {
 		return fmt.Sprintf("%s-%s", "pvc", getPersistentVolumeClaimIdentity(wb.Name, string(owner.UID)))
 	}

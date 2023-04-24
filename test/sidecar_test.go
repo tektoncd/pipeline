@@ -73,7 +73,7 @@ func TestSidecarTaskSupport(t *testing.T) {
 
 			sidecarTaskName := helpers.ObjectNameForTest(t)
 			sidecarTaskRunName := helpers.ObjectNameForTest(t)
-			task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
+			task := parse.MustParseV1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -88,7 +88,7 @@ spec:
     command: [%s]
 `, sidecarTaskName, namespace, primaryContainerName, stringSliceToYAMLArray(test.stepCommand), sidecarContainerName, stringSliceToYAMLArray(test.sidecarCommand)))
 
-			taskRun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+			taskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -99,20 +99,20 @@ spec:
 `, sidecarTaskRunName, namespace, sidecarTaskName))
 
 			t.Logf("Creating Task %q", sidecarTaskName)
-			if _, err := clients.V1beta1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
+			if _, err := clients.V1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create Task %q: %v", sidecarTaskName, err)
 			}
 
 			t.Logf("Creating TaskRun %q", sidecarTaskRunName)
-			if _, err := clients.V1beta1TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
+			if _, err := clients.V1TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create TaskRun %q: %v", sidecarTaskRunName, err)
 			}
 
-			if err := WaitForTaskRunState(ctx, clients, sidecarTaskRunName, Succeed(sidecarTaskRunName), "TaskRunSucceed", v1beta1Version); err != nil {
+			if err := WaitForTaskRunState(ctx, clients, sidecarTaskRunName, Succeed(sidecarTaskRunName), "TaskRunSucceed", v1Version); err != nil {
 				t.Fatalf("Error waiting for TaskRun %q to finish: %v", sidecarTaskRunName, err)
 			}
 
-			tr, err := clients.V1beta1TaskRunClient.Get(ctx, sidecarTaskRunName, metav1.GetOptions{})
+			tr, err := clients.V1TaskRunClient.Get(ctx, sidecarTaskRunName, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("Error getting Taskrun: %v", err)
 			}
@@ -159,7 +159,7 @@ spec:
 				t.Errorf("Either the primary or sidecar containers did not terminate")
 			}
 
-			trCheckSidecarStatus, err := clients.V1beta1TaskRunClient.Get(ctx, sidecarTaskRunName, metav1.GetOptions{})
+			trCheckSidecarStatus, err := clients.V1TaskRunClient.Get(ctx, sidecarTaskRunName, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("Error getting TaskRun: %v", err)
 			}
@@ -167,7 +167,7 @@ spec:
 			sidecarFromStatus := trCheckSidecarStatus.Status.Sidecars[0]
 
 			// Check if Sidecar ContainerName is present for SidecarStatus
-			if sidecarFromStatus.ContainerName != fmt.Sprintf("sidecar-%s", sidecarContainerName) {
+			if sidecarFromStatus.Container != fmt.Sprintf("sidecar-%s", sidecarContainerName) {
 				t.Errorf("Sidecar ContainerName should be: %s", sidecarContainerName)
 			}
 

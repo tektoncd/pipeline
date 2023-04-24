@@ -37,7 +37,7 @@ func (rr *ResolverRef) convertFrom(ctx context.Context, source v1.ResolverRef) {
 	rr.Params = nil
 	for _, r := range source.Params {
 		new := Param{}
-		new.convertFrom(ctx, r)
+		new.ConvertFrom(ctx, r)
 		rr.Params = append(rr.Params, new)
 	}
 }

@@ -24,7 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	appsv1 "k8s.io/api/apps/v1"
@@ -48,7 +48,7 @@ const (
 // createAffinityAssistants creates an Affinity Assistant StatefulSet for every workspace in the PipelineRun that
 // use a PersistentVolumeClaim volume. This is done to achieve Node Affinity for all TaskRuns that
 // share the workspace volume and make it possible for the tasks to execute parallel while sharing volume.
-func (c *Reconciler) createAffinityAssistants(ctx context.Context, wb []v1beta1.WorkspaceBinding, pr *v1beta1.PipelineRun, namespace string) error {
+func (c *Reconciler) createAffinityAssistants(ctx context.Context, wb []v1.WorkspaceBinding, pr *v1.PipelineRun, namespace string) error {
 	logger := logging.FromContext(ctx)
 	cfg := config.FromContextOrDefaults(ctx)
 
@@ -76,7 +76,7 @@ func (c *Reconciler) createAffinityAssistants(ctx context.Context, wb []v1beta1.
 	return errorutils.NewAggregate(errs)
 }
 
-func getClaimName(w v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReference) string {
+func getClaimName(w v1.WorkspaceBinding, ownerReference metav1.OwnerReference) string {
 	if w.PersistentVolumeClaim != nil {
 		return w.PersistentVolumeClaim.ClaimName
 	} else if w.VolumeClaimTemplate != nil {
@@ -86,7 +86,7 @@ func getClaimName(w v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReferen
 	return ""
 }
 
-func (c *Reconciler) cleanupAffinityAssistants(ctx context.Context, pr *v1beta1.PipelineRun) error {
+func (c *Reconciler) cleanupAffinityAssistants(ctx context.Context, pr *v1.PipelineRun) error {
 	// omit cleanup if the feature is disabled
 	if c.isAffinityAssistantDisabled(ctx) {
 		return nil
@@ -110,7 +110,7 @@ func getAffinityAssistantName(pipelineWorkspaceName string, pipelineRunName stri
 	return fmt.Sprintf("%s-%s", "affinity-assistant", hashString[:10])
 }
 
-func getStatefulSetLabels(pr *v1beta1.PipelineRun, affinityAssistantName string) map[string]string {
+func getStatefulSetLabels(pr *v1.PipelineRun, affinityAssistantName string) map[string]string {
 	// Propagate labels from PipelineRun to StatefulSet.
 	labels := make(map[string]string, len(pr.ObjectMeta.Labels)+1)
 	for key, val := range pr.ObjectMeta.Labels {
@@ -125,14 +125,14 @@ func getStatefulSetLabels(pr *v1beta1.PipelineRun, affinityAssistantName string)
 	return labels
 }
 
-func affinityAssistantStatefulSet(name string, pr *v1beta1.PipelineRun, claimName string, affinityAssistantImage string, defaultAATpl *pod.AffinityAssistantTemplate) *appsv1.StatefulSet {
+func affinityAssistantStatefulSet(name string, pr *v1.PipelineRun, claimName string, affinityAssistantImage string, defaultAATpl *pod.AffinityAssistantTemplate) *appsv1.StatefulSet {
 	// We want a singleton pod
 	replicas := int32(1)
 
 	tpl := &pod.AffinityAssistantTemplate{}
 	// merge pod template from spec and default if any of them are defined
-	if pr.Spec.PodTemplate != nil || defaultAATpl != nil {
-		tpl = pod.MergeAAPodTemplateWithDefault(pr.Spec.PodTemplate.ToAffinityAssistantTemplate(), defaultAATpl)
+	if pr.Spec.TaskRunTemplate.PodTemplate != nil || defaultAATpl != nil {
+		tpl = pod.MergeAAPodTemplateWithDefault(pr.Spec.TaskRunTemplate.PodTemplate.ToAffinityAssistantTemplate(), defaultAATpl)
 	}
 
 	containers := []corev1.Container{{
@@ -213,7 +213,7 @@ func (c *Reconciler) isAffinityAssistantDisabled(ctx context.Context) bool {
 }
 
 // getAssistantAffinityMergedWithPodTemplateAffinity return the affinity that merged with PipelineRun PodTemplate affinity.
-func getAssistantAffinityMergedWithPodTemplateAffinity(pr *v1beta1.PipelineRun) *corev1.Affinity {
+func getAssistantAffinityMergedWithPodTemplateAffinity(pr *v1.PipelineRun) *corev1.Affinity {
 	// use podAntiAffinity to repel other affinity assistants
 	repelOtherAffinityAssistantsPodAffinityTerm := corev1.WeightedPodAffinityTerm{
 		Weight: 100,
@@ -228,8 +228,8 @@ func getAssistantAffinityMergedWithPodTemplateAffinity(pr *v1beta1.PipelineRun) 
 	}
 
 	affinityAssistantsAffinity := &corev1.Affinity{}
-	if pr.Spec.PodTemplate != nil && pr.Spec.PodTemplate.Affinity != nil {
-		affinityAssistantsAffinity = pr.Spec.PodTemplate.Affinity
+	if pr.Spec.TaskRunTemplate.PodTemplate != nil && pr.Spec.TaskRunTemplate.PodTemplate.Affinity != nil {
+		affinityAssistantsAffinity = pr.Spec.TaskRunTemplate.PodTemplate.Affinity
 	}
 	if affinityAssistantsAffinity.PodAntiAffinity == nil {
 		affinityAssistantsAffinity.PodAntiAffinity = &corev1.PodAntiAffinity{}

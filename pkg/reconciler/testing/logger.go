@@ -20,7 +20,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
@@ -75,7 +75,7 @@ func TestLogger(t *testing.T) *zap.SugaredLogger {
 func setupFakeContextWithLabelKey(t zaptest.TestingT) (context.Context, context.CancelFunc, []controller.Informer) {
 	ctx, c := context.WithCancel(logtesting.TestContextWithLogger(t))
 	ctx = controller.WithEventRecorder(ctx, record.NewFakeRecorder(1000))
-	ctx = filteredinformerfactory.WithSelectors(ctx, v1beta1.ManagedByLabelKey)
+	ctx = filteredinformerfactory.WithSelectors(ctx, v1.ManagedByLabelKey)
 	ctx, is := injection.Fake.SetupInformers(ctx, &rest.Config{})
 	return ctx, c, is
 }
@@ -84,7 +84,7 @@ func setupFakeContextWithLabelKey(t zaptest.TestingT) (context.Context, context.
 // The provided context includes the FilteredInformerFactory LabelKey.
 func setupDefaultContextWithLabelKey(t zaptest.TestingT) (context.Context, context.CancelFunc, []controller.Informer) {
 	ctx, c := context.WithCancel(logtesting.TestContextWithLogger(t))
-	ctx = filteredinformerfactory.WithSelectors(ctx, v1beta1.ManagedByLabelKey)
+	ctx = filteredinformerfactory.WithSelectors(ctx, v1.ManagedByLabelKey)
 	ctx, is := injection.Default.SetupInformers(ctx, &rest.Config{})
 	return ctx, c, is
 }
