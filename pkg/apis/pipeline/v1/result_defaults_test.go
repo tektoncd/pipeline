@@ -61,6 +61,17 @@ func TestTaskResult_SetDefaults(t *testing.T) {
 			Type: v1.ResultsTypeArray,
 		},
 	}, {
+		name: "default type with empty properties",
+		before: &v1.TaskResult{
+			Name:       "resultname",
+			Properties: make(map[string]v1.PropertySpec),
+		},
+		after: &v1.TaskResult{
+			Name:       "resultname",
+			Type:       v1.ResultsTypeString,
+			Properties: make(map[string]v1.PropertySpec),
+		},
+	}, {
 		name: "inferred object type from properties - PropertySpec type is provided",
 		before: &v1.TaskResult{
 			Name:       "resultname",

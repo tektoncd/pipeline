@@ -21,7 +21,7 @@ func (tr *TaskResult) SetDefaults(context.Context) {
 		return
 	}
 	if tr.Type == "" {
-		if tr.Properties != nil {
+		if len(tr.Properties) != 0 {
 			// Set type to object if `properties` is given
 			tr.Type = ResultsTypeObject
 		} else {
