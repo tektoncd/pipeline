@@ -291,15 +291,6 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		printOrAdd(i)
 	}
 
-	v1alpha1Runs, err := cs.V1alpha1RunClient.List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("could not get v1alpha1 runs: %w", err)
-	}
-	for _, i := range v1alpha1Runs.Items {
-		i.SetManagedFields(nil)
-		printOrAdd(i)
-	}
-
 	v1beta1CustomRuns, err := cs.V1beta1CustomRunClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get v1beta1 customruns: %w", err)
