@@ -83,7 +83,7 @@ func (pp *ParamSpec) SetDefaults(context.Context) {
 	case pp.Type != "":
 		// If param type is provided by the author, do nothing but just set default type for PropertySpec in case `properties` section is provided.
 		pp.setDefaultsForProperties()
-	case pp.Properties != nil:
+	case len(pp.Properties) != 0:
 		pp.Type = ParamTypeObject
 		// Also set default type for PropertySpec
 		pp.setDefaultsForProperties()

@@ -111,6 +111,17 @@ func TestParamSpec_SetDefaults(t *testing.T) {
 			Properties: map[string]v1.PropertySpec{"key2": {Type: "string"}},
 		},
 	}, {
+		name: "default type from properties - Properties is an empty map",
+		before: &v1.ParamSpec{
+			Name:       "parametername",
+			Properties: map[string]v1.PropertySpec{},
+		},
+		defaultsApplied: &v1.ParamSpec{
+			Name:       "parametername",
+			Type:       v1.ParamTypeString,
+			Properties: map[string]v1.PropertySpec{},
+		},
+	}, {
 		name: "fully defined ParamSpec - array",
 		before: &v1.ParamSpec{
 			Name:        "parametername",
