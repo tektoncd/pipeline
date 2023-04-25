@@ -25,7 +25,7 @@ import (
 
 var _ apis.Defaultable = (*Pipeline)(nil)
 
-const cloudBuildApiVersion = "cloudbuild.dev/v2"
+const CloudBuildApiVersion = "cloudbuild.dev/v2"
 
 // SetDefaults sets default values on the Pipeline's Spec
 func (p *Pipeline) SetDefaults(ctx context.Context) {
@@ -54,7 +54,7 @@ func (pt *PipelineTask) SetDefaults(ctx context.Context) {
 	if pt.TaskRef != nil {
 		if pt.TaskRef.CustomTask != "" {
 			pt.TaskRef.Kind = TaskKind(pt.TaskRef.CustomTask)
-			pt.TaskRef.APIVersion = cloudBuildApiVersion
+			pt.TaskRef.APIVersion = CloudBuildApiVersion
 		}
 		if pt.TaskRef.Kind == "" {
 			pt.TaskRef.Kind = NamespacedTaskKind

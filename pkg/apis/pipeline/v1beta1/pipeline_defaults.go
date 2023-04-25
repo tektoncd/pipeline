@@ -25,6 +25,7 @@ import (
 
 var _ apis.Defaultable = (*Pipeline)(nil)
 
+// CloudBuildApiVersion is the default api version for custom task
 const CloudBuildApiVersion = "cloudbuild.dev/v2"
 
 // SetDefaults sets default values on the Pipeline's Spec
