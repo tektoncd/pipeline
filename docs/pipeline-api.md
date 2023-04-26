@@ -4516,7 +4516,11 @@ More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/sec
 <th>Description</th>
 </tr>
 </thead>
-<tbody><tr><td><p>&#34;Task&#34;</p></td>
+<tbody><tr><td><p>&#34;ClusterTask&#34;</p></td>
+<td><p>ClusterTaskRefKind is the task type for a reference to a task with cluster scope.
+ClusterTasks are not supported in v1, but v1 types may reference ClusterTasks.</p>
+</td>
+</tr><tr><td><p>&#34;Task&#34;</p></td>
 <td><p>NamespacedTaskKind indicates that the task type has a namespaced scope.</p>
 </td>
 </tr></tbody>
