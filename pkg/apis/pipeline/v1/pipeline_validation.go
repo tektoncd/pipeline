@@ -131,6 +131,7 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	taskKinds := map[TaskKind]bool{
 		"":                 true,
 		NamespacedTaskKind: true,
+		ClusterTaskRefKind: true,
 	}
 	// Pipeline task having taskRef/taskSpec with APIVersion is classified as custom task
 	switch {
