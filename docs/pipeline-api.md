@@ -1209,7 +1209,6 @@ Kubernetes meta/v1.Duration
 <td>
 <em>(Optional)</em>
 <p>Time after which one retry attempt times out. Defaults to 1 hour.
-Specified build timeout should be less than 24h.
 Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
 </tr>
@@ -2741,7 +2740,6 @@ Kubernetes meta/v1.Duration
 <td>
 <em>(Optional)</em>
 <p>Time after which the TaskRun times out. Defaults to 1 hour.
-Specified TaskRun timeout should be less than 24h.
 Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
 </tr>
@@ -4995,7 +4993,6 @@ Kubernetes meta/v1.Duration
 <td>
 <em>(Optional)</em>
 <p>Time after which one retry attempt times out. Defaults to 1 hour.
-Specified build timeout should be less than 24h.
 Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
 </tr>
@@ -8545,7 +8542,6 @@ Kubernetes meta/v1.Duration
 <td>
 <em>(Optional)</em>
 <p>Time after which one retry attempt times out. Defaults to 1 hour.
-Specified build timeout should be less than 24h.
 Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
 </tr>
@@ -10755,7 +10751,6 @@ Kubernetes meta/v1.Duration
 <td>
 <em>(Optional)</em>
 <p>Time after which the TaskRun times out. Defaults to 1 hour.
-Specified TaskRun timeout should be less than 24h.
 Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
 </tr>
@@ -13642,7 +13637,6 @@ Kubernetes meta/v1.Duration
 <td>
 <em>(Optional)</em>
 <p>Time after which one retry attempt times out. Defaults to 1 hour.
-Specified build timeout should be less than 24h.
 Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
 </tr>
