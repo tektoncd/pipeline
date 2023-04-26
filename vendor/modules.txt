@@ -1603,6 +1603,7 @@ knative.dev/pkg/client/injection/kube/informers/core/v1/configmap
 knative.dev/pkg/client/injection/kube/informers/core/v1/configmap/fake
 knative.dev/pkg/client/injection/kube/informers/core/v1/limitrange
 knative.dev/pkg/client/injection/kube/informers/core/v1/limitrange/fake
+knative.dev/pkg/client/injection/kube/informers/core/v1/node
 knative.dev/pkg/client/injection/kube/informers/core/v1/pod/filtered
 knative.dev/pkg/client/injection/kube/informers/core/v1/pod/filtered/fake
 knative.dev/pkg/client/injection/kube/informers/core/v1/serviceaccount
@@ -1611,6 +1612,7 @@ knative.dev/pkg/client/injection/kube/informers/factory
 knative.dev/pkg/client/injection/kube/informers/factory/fake
 knative.dev/pkg/client/injection/kube/informers/factory/filtered
 knative.dev/pkg/client/injection/kube/informers/factory/filtered/fake
+knative.dev/pkg/client/injection/kube/reconciler/core/v1/node
 knative.dev/pkg/codegen/cmd/injection-gen
 knative.dev/pkg/codegen/cmd/injection-gen/args
 knative.dev/pkg/codegen/cmd/injection-gen/generators
