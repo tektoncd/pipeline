@@ -165,19 +165,15 @@ func viewRegister(cfg *config.Metrics) error {
 		return errors.New("invalid config for TaskrunLevel: " + cfg.TaskrunLevel)
 	}
 
-	distribution := view.Distribution(10, 30, 60, 300, 900, 1800, 3600, 5400, 10800, 21600, 43200, 86400)
+	var distribution *view.Aggregation
 
-	if cfg.TaskrunLevel == config.TaskrunLevelAtTaskrun ||
-		cfg.PipelinerunLevel == config.PipelinerunLevelAtPipelinerun {
+	switch cfg.DurationTaskrunType {
+	case config.DurationTaskrunTypeHistogram:
+		distribution = view.Distribution(10, 30, 60, 300, 900, 1800, 3600, 5400, 10800, 21600, 43200, 86400)
+	case config.DurationTaskrunTypeLastValue:
 		distribution = view.LastValue()
-	} else {
-		switch cfg.DurationTaskrunType {
-		case config.DurationTaskrunTypeHistogram:
-		case config.DurationTaskrunTypeLastValue:
-			distribution = view.LastValue()
-		default:
-			return errors.New("invalid config for DurationTaskrunType: " + cfg.DurationTaskrunType)
-		}
+	default:
+		return errors.New("invalid config for DurationTaskrunType: " + cfg.DurationTaskrunType)
 	}
 
 	trDurationView = &view.View{
