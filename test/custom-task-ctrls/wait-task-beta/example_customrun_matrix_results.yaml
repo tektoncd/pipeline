@@ -1,0 +1,57 @@
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: echo-duration
+  annotations:
+    description: |
+      A task that echos duration
+spec:
+  params:
+    - name: duration
+  steps:
+    - name: echo
+      image: alpine
+      script: |
+        echo "$(params.duration)"
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: produce-duration
+spec:
+  results:
+    - name: durations
+      type: array
+  steps:
+    - name: produce-a-list-of-durations
+      image: bash:latest
+      script: |
+        #!/usr/bin/env bash
+        echo -n "[\"10s\",\"2s\",\"5s\"]" | tee $(results.durations.path)
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: matrixed-pr-
+spec:
+  pipelineSpec:
+    tasks:
+      - name: pt-with-result
+        taskRef:
+          name: produce-duration
+      - name: pt-matrix-echo-duration
+        matrix:
+          params:
+            - name: duration
+              value: $(tasks.pt-with-result.results.durations[*])
+        taskRef:
+          name: echo-duration
+      - name: pt-matrix-custom-task
+        matrix:
+          params:
+            - name: duration
+              value: $(tasks.pt-with-result.results.durations[*])
+        taskRef:
+          apiVersion: wait.testing.tekton.dev/v1beta1
+          kind: Wait

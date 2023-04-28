@@ -91,6 +91,7 @@ var (
 	ignoreStartTime          = cmpopts.IgnoreFields(v1.PipelineRunStatusFields{}, "StartTime")
 	ignoreCompletionTime     = cmpopts.IgnoreFields(v1.PipelineRunStatusFields{}, "CompletionTime")
 	ignoreFinallyStartTime   = cmpopts.IgnoreFields(v1.PipelineRunStatusFields{}, "FinallyStartTime")
+	ignoreProvenance         = cmpopts.IgnoreFields(v1.PipelineRunStatusFields{}, "Provenance")
 	trueb                    = true
 	simpleHelloWorldTask     = &v1.Task{ObjectMeta: baseObjectMeta("hello-world", "foo")}
 	simpleSomeTask           = &v1.Task{ObjectMeta: baseObjectMeta("some-task", "foo")}
@@ -10072,7 +10073,7 @@ spec:
 	}
 }
 
-func TestReconciler_PipelineTaskMatrixResultsWithArrayIndexing(t *testing.T) {
+func TestReconciler_PipelineTaskMatrixResultsWithArrays(t *testing.T) {
 	names.TestingSeed()
 	task := parse.MustParseV1Task(t, `
 metadata:
@@ -10400,6 +10401,153 @@ status:
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
 `),
+	}, {
+		name:  "whole array result replacements in matrix.params",
+		pName: "p-dag-3",
+		p: parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: foo
+spec:
+  tasks:
+    - name: pt-with-result
+      params:
+       - name: platforms
+         type: array
+      taskRef:
+        name: taskwithresults
+    - name: echo-platforms
+      matrix:
+        params:
+          - name: platform
+            value: $(tasks.pt-with-result.results.platforms[*])
+      taskRef:
+        name: mytask
+`, "p-dag-3")),
+		tr: mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-pt-with-result", "foo",
+				"pr", "p-dag-3", "pt-with-result", false),
+			`
+spec:
+  serviceAccountName: test-sa
+  taskRef:
+    name: taskwithresults
+status:
+ conditions:
+  - type: Succeeded
+    status: "True"
+    reason: Succeeded
+    message: All Tasks have completed executing
+ results:
+  - name: platforms
+    value:
+     - linux
+     - mac
+     - windows
+`),
+		expectedTaskRuns: []*v1.TaskRun{
+			mustParseTaskRunWithObjectMeta(t,
+				taskRunObjectMeta("pr-echo-platforms-0", "foo",
+					"pr", "p-dag-3", "echo-platforms", false),
+				`
+spec:
+  params:
+  - name: platform
+    value: linux
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+    kind: Task
+labels:
+    tekton.dev/memberOf: tasks
+    tekton.dev/pipeline: p-dag-3
+`),
+			mustParseTaskRunWithObjectMeta(t,
+				taskRunObjectMeta("pr-echo-platforms-1", "foo",
+					"pr", "p-dag-3", "echo-platforms", false),
+				`
+spec:
+  params:
+  - name: platform
+    value: mac
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+    kind: Task
+labels:
+    tekton.dev/memberOf: tasks
+    tekton.dev/pipeline: p-dag-3
+`),
+			mustParseTaskRunWithObjectMeta(t,
+				taskRunObjectMeta("pr-echo-platforms-2", "foo",
+					"pr", "p-dag-3", "echo-platforms", false),
+				`
+spec:
+  params:
+  - name: platform
+    value: windows
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+    kind: Task
+labels:
+    tekton.dev/memberOf: tasks
+    tekton.dev/pipeline: p-dag-3
+`),
+		},
+		expectedPipelineRun: parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pr
+  namespace: foo
+  annotations: {}
+  labels:
+    tekton.dev/pipeline: p-dag-3
+spec:
+  taskRunTemplate:
+    serviceAccountName: test-sa
+  pipelineRef:
+    name: p-dag-3
+status:
+  pipelineSpec:
+    tasks:
+    - name: pt-with-result
+      params:
+        - name: platforms
+          type: array
+      taskRef:
+        name: taskwithresults
+        kind: Task
+    - name: echo-platforms
+      taskRef:
+        name: mytask
+        kind: Task
+      matrix:
+        params:
+          - name: platform
+            value: $(tasks.pt-with-result.results.platforms[*])
+  conditions:
+  - type: Succeeded
+    status: "Unknown"
+    reason: "Running"
+    message: "Tasks Completed: 1 (Failed: 0, Cancelled 0), Incomplete: 1, Skipped: 0"
+  childReferences:
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: pr-pt-with-result
+    pipelineTaskName: pt-with-result
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: pr-echo-platforms-0
+    pipelineTaskName: echo-platforms
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: pr-echo-platforms-1
+    pipelineTaskName: echo-platforms
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: pr-echo-platforms-2
+    pipelineTaskName: echo-platforms
+`),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.pName, func(t *testing.T) {
@@ -10433,6 +10581,249 @@ spec:
 				actual := getTaskRunByName(t, taskRuns, trName)
 				if d := cmp.Diff(expectedTaskRun, actual, ignoreResourceVersion, ignoreTypeMeta); d != "" {
 					t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun.Name, diff.PrintWantGot(d))
+				}
+			}
+
+			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, ignoreFinallyStartTime, ignoreProvenance, cmpopts.EquateEmpty()); d != "" {
+				t.Errorf("expected PipelineRun was not created. Diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestReconciler_CustomPipelineTaskMatrixResultsWholeArray(t *testing.T) {
+	names.TestingSeed()
+	taskwithresults := parse.MustParseV1Task(t, `
+metadata:
+  name: taskwithresults
+  namespace: foo
+spec:
+  results:
+    - name: platforms
+      type: array
+  steps:
+    - name: produce-a-list-of-platforms
+      image: bash:latest
+      script: |
+        #!/usr/bin/env bash
+        echo -n "[\"linux\",\"mac\",\"windows\"]" | tee $(results.platforms.path)
+`)
+	expectedCustomRuns := []*v1beta1.CustomRun{
+		mustParseCustomRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-pt-matrix-custom-task-0", "foo",
+				"pr", "p-dag", "pt-matrix-custom-task", false),
+			`
+spec:
+  customRef:
+    apiVersion: example.dev/v0
+    kind: Example
+  params:
+  - name: platform
+    value: linux
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+    kind: Task
+  labels:
+    tekton.dev/memberOf: tasks
+    tekton.dev/pipeline: p-dag
+`),
+		mustParseCustomRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-pt-matrix-custom-task-1", "foo",
+				"pr", "p-dag", "pt-matrix-custom-task", false),
+			`
+spec:
+  customRef:
+    apiVersion: example.dev/v0
+    kind: Example
+  params:
+  - name: platform
+    value: mac
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+    kind: Task
+  labels:
+    tekton.dev/memberOf: tasks
+    tekton.dev/pipeline: p-dag
+`),
+		mustParseCustomRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-pt-matrix-custom-task-2", "foo",
+				"pr", "p-dag", "pt-matrix-custom-task", false),
+			`
+spec:
+  customRef:
+    apiVersion: example.dev/v0
+    kind: Example
+  params:
+  - name: platform
+    value: windows
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+    kind: Task
+  labels:
+    tekton.dev/memberOf: tasks
+    tekton.dev/pipeline: p-dag
+`),
+	}
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
+	tests := []struct {
+		name                string
+		pName               string
+		p                   *v1.Pipeline
+		tr                  *v1.TaskRun
+		expectedPipelineRun *v1.PipelineRun
+	}{{
+		name:  "whole array results replacements in a matrix",
+		pName: "p-dag",
+		p: parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: foo
+spec:
+  tasks:
+    - name: pt-with-result
+      params:
+       - name: platforms
+         type: array
+      taskRef:
+        name: taskwithresults
+    - name: pt-matrix-custom-task
+      matrix:
+        params:
+          - name: platform
+            value: $(tasks.pt-with-result.results.platforms[*])
+      taskRef:
+        apiVersion: example.dev/v0
+        kind: Example
+`, "p-dag")),
+		tr: mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-pt-with-result", "foo",
+				"pr", "p-dag", "pt-with-result", false),
+			`
+spec:
+  serviceAccountName: test-sa
+  taskRef:
+    name: taskwithresults
+status:
+ conditions:
+  - type: Succeeded
+    status: "True"
+    reason: Succeeded
+    message: All Tasks have completed executing
+ results:
+  - name: platforms
+    value:
+     - linux
+     - mac
+     - windows
+`),
+		expectedPipelineRun: parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pr
+  namespace: foo
+  annotations: {}
+  labels:
+    tekton.dev/pipeline: p-dag
+spec:
+  serviceAccountName: test-sa
+  pipelineRef:
+    name: p-dag
+  taskRunTemplate:
+    serviceAccountName: test-sa
+status:
+  pipelineSpec:
+    tasks:
+    - name: pt-with-result
+      params:
+        - name: platforms
+          type: array
+      taskRef:
+        name: taskwithresults
+        kind: Task
+    - name: pt-matrix-custom-task
+      taskRef:
+        apiVersion: example.dev/v0
+        kind: Example
+      matrix:
+        params:
+          - name: platform
+            value: $(tasks.pt-with-result.results.platforms[*])
+  conditions:
+  - type: Succeeded
+    status: "Unknown"
+    reason: "Running"
+    message: "Tasks Completed: 1 (Failed: 0, Cancelled 0), Incomplete: 1, Skipped: 0"
+  childReferences:
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: pr-pt-with-result
+    pipelineTaskName: pt-with-result
+  - apiVersion: tekton.dev/v1beta1
+    kind: CustomRun
+    name:  pr-pt-matrix-custom-task-0
+    pipelineTaskName: pt-matrix-custom-task
+  - apiVersion: tekton.dev/v1beta1
+    kind: CustomRun
+    name:  pr-pt-matrix-custom-task-1
+    pipelineTaskName: pt-matrix-custom-task
+  - apiVersion: tekton.dev/v1beta1
+    kind: CustomRun
+    name:  pr-pt-matrix-custom-task-2
+    pipelineTaskName: pt-matrix-custom-task
+  provenance:
+    featureFlags:
+      RunningInEnvWithInjectedSidecars: true
+      EnableTektonOCIBundles: true
+      EnableAPIFields: "alpha"
+      AwaitSidecarReadiness: true
+      VerificationNoMatchPolicy: "ignore"
+      EnableProvenanceInStatus: true
+      ResultExtractionMethod: "termination-message"
+      MaxResultSize: 4096
+`),
+	}}
+	for _, tt := range tests {
+		t.Run(tt.pName, func(t *testing.T) {
+			pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: pr
+  namespace: foo
+spec:
+  taskRunTemplate:
+    serviceAccountName: test-sa
+  pipelineRef:
+    name: %s
+`, tt.pName))
+			d := test.Data{
+				PipelineRuns: []*v1.PipelineRun{pr},
+				Pipelines:    []*v1.Pipeline{tt.p},
+				Tasks:        []*v1.Task{taskwithresults},
+				ConfigMaps:   cms,
+			}
+			if tt.tr != nil {
+				d.TaskRuns = []*v1.TaskRun{tt.tr}
+			}
+
+			prt := newPipelineRunTest(t, d)
+			defer prt.Cancel()
+
+			pipelineRun, clients := prt.reconcileRun("foo", "pr", []string{}, false)
+			customRuns, err := clients.Pipeline.TektonV1beta1().CustomRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{})
+			if err != nil {
+				t.Fatalf("Failure to list customRuns's %s", err)
+			}
+
+			if len(customRuns.Items) != 3 {
+				t.Fatalf("Expected 3 customRuns got %d", len(customRuns.Items))
+			}
+
+			for i := range customRuns.Items {
+				expectedCustomRun := expectedCustomRuns[i]
+				if d := cmp.Diff(expectedCustomRun, &customRuns.Items[i], ignoreResourceVersion, ignoreTypeMeta, cmpopts.EquateEmpty()); d != "" {
+					t.Errorf("expected to see CustomRun %v created. Diff %s", expectedCustomRun.Name, diff.PrintWantGot(d))
 				}
 			}
 

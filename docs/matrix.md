@@ -303,7 +303,7 @@ See the end-to-end example in [`PipelineRun` with `Matrix` and `Results`][pr-wit
 
 #### Results in Matrix.Params
 
-`Matrix.Params` supports string replacements from `Results` of type String, Array or Object.
+`Matrix.Params` supports whole array replacements and string replacements from `Results` of type String, Array or Object
 
 ```yaml
 tasks:
@@ -314,15 +314,8 @@ tasks:
   matrix:
     params:
     - name: values
-      value:
-      - $(tasks.task-1.results.foo) # string replacement from string result
-      - $(tasks.task-2.results.bar[0]) # string replacement from array result
-      - $(tasks.task-3.results.rad.key) # string replacement from object result
+      value: $(tasks.task-4.results.whole-array[*])
 ```
-
-For further information, see the example in [`PipelineRun` with `Matrix` and `Results`][pr-with-matrix-and-results].
-
-We plan to add support passing whole Array `Results` into the `Matrix` (#5925):
 
 ```yaml
 tasks:
@@ -333,8 +326,15 @@ tasks:
   matrix:
     params:
     - name: values
-      value: $(tasks.task-4.results.foo) # array
+      value:
+        - $(tasks.task-1.results.a-string-result)
+        - $(tasks.task-2.results.an-array-result[0])
+        - $(tasks.task-3.results.an-object-result.key)
 ```
+
+
+For further information, see the example in [`PipelineRun` with `Matrix` and `Results`][pr-with-matrix-and-results].
+
 
 #### Results in Matrix.Include.Params
 

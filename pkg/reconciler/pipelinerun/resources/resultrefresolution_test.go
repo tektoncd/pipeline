@@ -221,10 +221,10 @@ var pipelineRunState = PipelineRunState{{
 		Matrix: &v1.Matrix{
 			Params: v1.Params{{
 				Name:  "dResults",
-				Value: *v1.NewStructuredValues("$(tasks.dTask.results.dResult[0])"),
+				Value: *v1.NewStructuredValues("$(tasks.dTask.results.dResult[*])"),
 			}, {
 				Name:  "cResults",
-				Value: *v1.NewStructuredValues("$(tasks.cTask.results.cResult[1])"),
+				Value: *v1.NewStructuredValues("$(tasks.cTask.results.cResult[*])"),
 			}},
 		},
 	},
@@ -247,7 +247,7 @@ var pipelineRunState = PipelineRunState{{
 		Matrix: &v1.Matrix{
 			Params: v1.Params{{
 				Name:  "iDoNotExist",
-				Value: *v1.NewStructuredValues("$(tasks.dTask.results.iDoNotExist[0])"),
+				Value: *v1.NewStructuredValues("$(tasks.dTask.results.iDoNotExist[*])"),
 			}},
 		},
 	},
@@ -289,7 +289,7 @@ func TestResolveResultRefs(t *testing.T) {
 		}},
 		wantErr: false,
 	}, {
-		name:             "Test successful array result references resolution - params",
+		name:             "Test successful array result references - array indexing",
 		pipelineRunState: pipelineRunState,
 		targets: PipelineRunState{
 			pipelineRunState[7],
@@ -302,6 +302,30 @@ func TestResolveResultRefs(t *testing.T) {
 				ResultsIndex: 1,
 			},
 			FromTaskRun: "cTaskRun",
+		}},
+		wantErr: false,
+	}, {
+		name:             "Test successful matrix array result references resolution - whole array references",
+		pipelineRunState: pipelineRunState,
+		targets: PipelineRunState{
+			pipelineRunState[11],
+		},
+		want: ResolvedResultRefs{{
+			Value: *v1.NewStructuredValues("arrayResultOne", "arrayResultTwo"),
+			ResultReference: v1.ResultRef{
+				PipelineTask: "cTask",
+				Result:       "cResult",
+				ResultsIndex: 0,
+			},
+			FromTaskRun: "cTaskRun",
+		}, {
+			Value: *v1.NewStructuredValues("arrayResultOne", "arrayResultTwo"),
+			ResultReference: v1.ResultRef{
+				PipelineTask: "dTask",
+				Result:       "dResult",
+				ResultsIndex: 0,
+			},
+			FromTaskRun: "dTaskRun",
 		}},
 		wantErr: false,
 	}, {
@@ -577,7 +601,7 @@ func TestCheckMissingResultReferences(t *testing.T) {
 			pipelineRunState[10],
 		},
 	}, {
-		name:             "Valid: Test successful result references resolution - matrix - array indexing",
+		name:             "Valid: Test successful result references resolution - matrix - whole array replacements",
 		pipelineRunState: pipelineRunState,
 		targets: PipelineRunState{
 			pipelineRunState[11],
@@ -589,7 +613,7 @@ func TestCheckMissingResultReferences(t *testing.T) {
 			pipelineRunState[12],
 		},
 	}, {
-		name:             "Invalid: Test result references resolution - matrix - missing references to array replacements",
+		name:             "Invalid: Test result references resolution - matrix - missing references to whole array replacements",
 		pipelineRunState: pipelineRunState,
 		targets: PipelineRunState{
 			pipelineRunState[13],
