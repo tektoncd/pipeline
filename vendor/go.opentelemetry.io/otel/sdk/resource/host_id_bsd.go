@@ -12,9 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package otel // import "go.opentelemetry.io/otel"
+//go:build dragonfly || freebsd || netbsd || openbsd || solaris
+// +build dragonfly freebsd netbsd openbsd solaris
 
-// Version is the current release version of OpenTelemetry in use.
-func Version() string {
-	return "1.15.0"
+package resource // import "go.opentelemetry.io/otel/sdk/resource"
+
+import (
+	"errors"
+	"strings"
+)
+
+var platformHostIDReader hostIDReader = &hostIDReaderBSD{
+	execCommand: execCommand,
+	readFile:    readFile,
 }
