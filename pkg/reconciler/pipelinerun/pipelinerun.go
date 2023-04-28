@@ -812,7 +812,6 @@ func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.Resolved
 	if rpt.PipelineTask.IsMatrixed() {
 		matrixCombinations = rpt.PipelineTask.Matrix.FanOut()
 	}
-
 	for i, taskRunName := range rpt.TaskRunNames {
 		var params v1.Params
 		if len(matrixCombinations) > i {
@@ -894,7 +893,6 @@ func (c *Reconciler) createCustomRuns(ctx context.Context, rpt *resources.Resolv
 	if rpt.PipelineTask.IsMatrixed() {
 		matrixCombinations = rpt.PipelineTask.Matrix.FanOut()
 	}
-
 	for i, customRunName := range rpt.CustomRunNames {
 		var params v1.Params
 		if len(matrixCombinations) > i {

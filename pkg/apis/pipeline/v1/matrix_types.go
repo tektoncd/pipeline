@@ -348,24 +348,3 @@ func (m *Matrix) validateParameterInOneOfMatrixOrParams(params []Param) (errs *a
 	}
 	return errs
 }
-
-// validateNoWholeArrayResults() is used to ensure a matrix parameter does not contain result references
-// to entire arrays. This is temporary until whole array replacements for matrix parameters are supported.
-// See issue #6056 for more details
-func (m *Matrix) validateNoWholeArrayResults() (errs *apis.FieldError) {
-	if m.HasParams() {
-		for i, param := range m.Params {
-			val := param.Value.StringVal
-			expressions, ok := GetVarSubstitutionExpressionsForParam(param)
-			if ok {
-				if LooksLikeContainsResultRefs(expressions) {
-					_, stringIdx := ParseResultName(val)
-					if stringIdx == "*" {
-						errs = errs.Also(apis.ErrGeneric("matrix parameters cannot contain whole array result references", "").ViaFieldIndex("matrix.params", i))
-					}
-				}
-			}
-		}
-	}
-	return errs
-}

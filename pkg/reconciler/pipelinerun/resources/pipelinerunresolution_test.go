@@ -3790,7 +3790,18 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 				Name:  "browsers",
 				Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"chrome", "safari", "firefox"}},
 			}},
-		}}}
+		},
+	}, {
+		Name: "pipelinetask-with-whole-array-results",
+		TaskRef: &v1.TaskRef{
+			Name: "pipelinetask-with-whole-array-results",
+		},
+		Matrix: &v1.Matrix{
+			Params: v1.Params{{
+				Name: "platforms", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "$(tasks.get-platforms.results.platforms[*])"},
+			}},
+		},
+	}}
 
 	rtr := &resources.ResolvedTask{
 		TaskName: "task",
@@ -3798,6 +3809,34 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 			Name: "step1",
 		}}},
 	}
+
+	var pipelineRunState = PipelineRunState{{
+		TaskRunNames: []string{"get-platforms"},
+		TaskRuns: []*v1.TaskRun{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "get-platforms",
+			},
+			Status: v1.TaskRunStatus{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{successCondition},
+				},
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Results: []v1.TaskRunResult{{
+						Name:  "platforms",
+						Value: *v1.NewStructuredValues("linux", "mac", "windows"),
+					}},
+				},
+			},
+		}},
+		PipelineTask: &v1.PipelineTask{
+			Name:    "pipelinetask-with-whole-array-results",
+			TaskRef: &v1.TaskRef{Name: "pipelinetask-with-whole-array-results"},
+			Params: v1.Params{{
+				Name:  "platforms",
+				Value: *v1.NewStructuredValues("$(tasks.get-platforms.results.platforms[*])"),
+			}},
+		},
+	}}
 
 	getTask := func(ctx context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return task, nil, nil, nil
@@ -3809,6 +3848,7 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 		name string
 		pt   v1.PipelineTask
 		want *ResolvedPipelineTask
+		pst  PipelineRunState
 	}{{
 		name: "task with matrix - single parameter",
 		pt:   pts[0],
@@ -3827,6 +3867,16 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 			PipelineTask: &pts[1],
 			ResolvedTask: rtr,
 		},
+	}, {
+		name: "task with matrix - whole array results",
+		pt:   pts[2],
+		want: &ResolvedPipelineTask{
+			TaskRunNames: nil,
+			TaskRuns:     nil,
+			PipelineTask: &pts[2],
+			ResolvedTask: nil,
+		},
+		pst: pipelineRunState,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
@@ -3838,7 +3888,7 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 				},
 			})
 			ctx = cfg.ToContext(ctx)
-			rpt, err := ResolvePipelineTask(ctx, pr, getTask, getTaskRun, getRun, tc.pt, nil)
+			rpt, err := ResolvePipelineTask(ctx, pr, getTask, getTaskRun, getRun, tc.pt, tc.pst)
 			if err != nil {
 				t.Fatalf("Did not expect error when resolving PipelineRun: %v", err)
 			}
@@ -3901,6 +3951,41 @@ func TestResolvePipelineRunTask_WithMatrixedCustomTask(t *testing.T) {
 				Name:  "browsers",
 				Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"chrome", "safari", "firefox"}},
 			}}},
+	}, {
+		Name:    "customTask-with-whole-array-results",
+		TaskRef: &v1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: "aTask"},
+		Params: v1.Params{{
+			Name:  "platforms",
+			Value: *v1.NewStructuredValues("$(tasks.get-platforms.results.platforms[*])"),
+		}},
+	}}
+
+	var pipelineRunState = PipelineRunState{{
+		TaskRunNames: []string{"get-platforms"},
+		TaskRuns: []*v1.TaskRun{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "get-platforms",
+			},
+			Status: v1.TaskRunStatus{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{successCondition},
+				},
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Results: []v1.TaskRunResult{{
+						Name:  "platforms",
+						Value: *v1.NewStructuredValues("linux", "mac", "windows"),
+					}},
+				},
+			},
+		}},
+		PipelineTask: &v1.PipelineTask{
+			Name:    "customTask-with-whole-array-results",
+			TaskRef: &v1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: "aTask"},
+			Params: v1.Params{{
+				Name:  "platforms",
+				Value: *v1.NewStructuredValues("$(tasks.get-platforms.results.platforms[*])"),
+			}},
+		},
 	}}
 
 	getTask := func(ctx context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
@@ -3914,6 +3999,7 @@ func TestResolvePipelineRunTask_WithMatrixedCustomTask(t *testing.T) {
 		pt     v1.PipelineTask
 		getRun GetRun
 		want   *ResolvedPipelineTask
+		pst    PipelineRunState
 	}{{
 		name: "custom task with matrix - single parameter",
 		pt:   pts[0],
@@ -3944,6 +4030,16 @@ func TestResolvePipelineRunTask_WithMatrixedCustomTask(t *testing.T) {
 			CustomRuns:     nil,
 			PipelineTask:   &pts[1],
 		},
+	}, {
+		name: "custom task with matrix - whole array results",
+		pt:   pts[2],
+		want: &ResolvedPipelineTask{
+			CustomTask:     true,
+			CustomRunNames: []string{"pipelinerun-customTask-with-whole-array-results"},
+			CustomRuns:     nil,
+			PipelineTask:   &pts[2],
+		},
+		pst: pipelineRunState,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
@@ -3958,7 +4054,7 @@ func TestResolvePipelineRunTask_WithMatrixedCustomTask(t *testing.T) {
 			if tc.getRun == nil {
 				tc.getRun = getRun
 			}
-			rpt, err := ResolvePipelineTask(ctx, pr, getTask, getTaskRun, tc.getRun, tc.pt, nil)
+			rpt, err := ResolvePipelineTask(ctx, pr, getTask, getTaskRun, tc.getRun, tc.pt, tc.pst)
 			if err != nil {
 				t.Fatalf("Did not expect error when resolving PipelineRun: %v", err)
 			}

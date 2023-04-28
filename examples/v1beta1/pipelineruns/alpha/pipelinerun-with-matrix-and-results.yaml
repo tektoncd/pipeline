@@ -21,7 +21,7 @@ kind: PipelineRun
 metadata:
   generateName: matrixed-pr-
 spec:
-  serviceAccountName: 'default'
+  serviceAccountName: "default"
   pipelineSpec:
     tasks:
       - name: get-platforms
@@ -56,10 +56,7 @@ spec:
         matrix:
           params:
             - name: platform
-              value:
-                - $(tasks.get-platforms.results.platforms[0])
-                - $(tasks.get-platforms.results.platforms[1])
-                - $(tasks.get-platforms.results.platforms[2])
+              value: $(tasks.get-platforms.results.platforms[*])
             - name: browser
               value:
                 - $(tasks.get-browsers-and-url.results.browsers[0])

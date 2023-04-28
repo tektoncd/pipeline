@@ -3193,6 +3193,16 @@ func Test_validateMatrix(t *testing.T) {
 					Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.bar-task.results.b-result)"}},
 				}}},
 		}},
+	}, {
+		name: "parameters in matrix contain whole array results references",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Params: Params{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.foo-task.results.a-task-results[*])"}},
+				}}},
+		}},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

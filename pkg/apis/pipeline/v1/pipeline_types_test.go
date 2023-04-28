@@ -697,19 +697,6 @@ func TestPipelineTask_ValidateMatrix(t *testing.T) {
 				}}},
 		},
 	}, {
-		name: "parameters in matrix contain whole array results references",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Params: Params{{
-					Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.foo-task.results.arr-results[*])"},
-				}}},
-		},
-		wantErrs: &apis.FieldError{
-			Message: "matrix parameters cannot contain whole array result references",
-			Paths:   []string{"matrix.params[0]"},
-		},
-	}, {
 		name: "count of combinations of parameters in the matrix exceeds the maximum",
 		pt: &PipelineTask{
 			Name: "task",
