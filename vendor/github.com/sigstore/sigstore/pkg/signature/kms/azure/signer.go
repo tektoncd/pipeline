@@ -182,11 +182,11 @@ func (a *SignerVerifier) VerifySignature(sig, message io.Reader, opts ...signatu
 // PublicKey returns the public key that can be used to verify signatures created by
 // this signer. All options provided in arguments to this method are ignored.
 func (a *SignerVerifier) PublicKey(_ ...signature.PublicKeyOption) (crypto.PublicKey, error) {
-	return a.client.public()
+	return a.client.public(context.Background())
 }
 
 // CreateKey attempts to create a new key in Vault with the specified algorithm.
-func (a *SignerVerifier) CreateKey(ctx context.Context, algorithm string) (crypto.PublicKey, error) {
+func (a *SignerVerifier) CreateKey(ctx context.Context, _ string) (crypto.PublicKey, error) {
 	return a.client.createKey(ctx)
 }
 
