@@ -66,6 +66,11 @@ func TestTaskConversion(t *testing.T) {
 					Type:        v1beta1.ParamTypeString,
 					Description: "My first param",
 				}},
+				Results: []v1beta1.TaskResult{{
+					Name:        "result-1",
+					Type:        v1beta1.ResultsTypeString,
+					Description: "a result",
+				}},
 			},
 		},
 	}, {
