@@ -129,6 +129,8 @@ spec:
     workspaces:
     - name: source
       workspace: git-source
+    - name: dockerconfig
+      workspace: docker-config
 ---
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
@@ -150,3 +152,6 @@ spec:
         resources:
           requests:
             storage: 1Gi
+  - name: docker-config
+    configmap:
+      name: reg-cred
