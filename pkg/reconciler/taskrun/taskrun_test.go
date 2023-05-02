@@ -2920,7 +2920,7 @@ status:
 	}
 
 	expected := v1.SidecarState{
-		Name:      "sidecars23",
+		Name:      "sidecar",
 		ImageID:   "image-id",
 		Container: "sidecar-sidecar",
 		ContainerState: corev1.ContainerState{

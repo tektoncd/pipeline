@@ -429,9 +429,9 @@ func TestResolve(t *testing.T) {
 						"enable-cluster-resolver": "true",
 					},
 				}},
-				// Pipelines:          []*pipelinev1.Pipeline{v1ExamplePipeline},
+				Pipelines:          []*pipelinev1.Pipeline{v1ExamplePipeline},
 				ResolutionRequests: []*v1beta1.ResolutionRequest{request},
-				// Tasks:              []*pipelinev1.Task{v1ExampleTask},
+				Tasks:              []*pipelinev1.Task{v1ExampleTask},
 			}
 
 			resolver := &cluster.Resolver{}

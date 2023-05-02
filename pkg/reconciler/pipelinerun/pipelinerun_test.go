@@ -2213,7 +2213,7 @@ spec:
 				t.Fatalf("Expected error: %s Got: %s", tc.wantError, reconcileError)
 			}
 			prt.Test.Logf("Getting reconciled run")
-			reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(prt.TestAssets.Ctx, "test-pipeline-run-with-timeout", metav1.GetOptions{})
+			reconciledRun, err := clients.Pipeline.TektonV1().PipelineRuns("foo").Get(prt.TestAssets.Ctx, "test-pipeline-run-with-timeout", metav1.GetOptions{})
 			if err != nil {
 				prt.Test.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
 			}
@@ -8166,7 +8166,8 @@ spec:
       - chrome
       - safari
       - firefox
-  serviceAccountName: test-sa
+  taskRunTemplate:
+    serviceAccountName: test-sa
   pipelineRef:
     name: p-dag
 status:
@@ -8199,39 +8200,39 @@ status:
     reason: "Running"
     message: "Tasks Completed: 0 (Failed: 0, Cancelled 0), Incomplete: 1, Skipped: 0"
   childReferences:
-  - apiVersion: tekton.dev/v1beta1
+  - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-platforms-and-browsers-0
     pipelineTaskName: platforms-and-browsers
-  - apiVersion: tekton.dev/v1beta1
+  - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-platforms-and-browsers-1
     pipelineTaskName: platforms-and-browsers
-  - apiVersion: tekton.dev/v1beta1
+  - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-platforms-and-browsers-2
     pipelineTaskName: platforms-and-browsers
-  - apiVersion: tekton.dev/v1beta1
+  - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-platforms-and-browsers-3
     pipelineTaskName: platforms-and-browsers
-  - apiVersion: tekton.dev/v1beta1
+  - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-platforms-and-browsers-4
     pipelineTaskName: platforms-and-browsers
-  - apiVersion: tekton.dev/v1beta1
+  - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-platforms-and-browsers-5
     pipelineTaskName: platforms-and-browsers
-  - apiVersion: tekton.dev/v1beta1
+  - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-platforms-and-browsers-6
     pipelineTaskName: platforms-and-browsers
-  - apiVersion: tekton.dev/v1beta1
+  - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-platforms-and-browsers-7
     pipelineTaskName: platforms-and-browsers
-  - apiVersion: tekton.dev/v1beta1
+  - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-platforms-and-browsers-8
     pipelineTaskName: platforms-and-browsers
@@ -8244,7 +8245,8 @@ metadata:
   name: pr
   namespace: foo
 spec:
-  serviceAccountName: test-sa
+  taskRunTemplate:
+    serviceAccountName: test-sa
   params:
   - name: platforms
     value:
@@ -9785,7 +9787,7 @@ status:
     status: "True"
     reason: Succeeded
     message: All Tasks have completed executing
- taskResults:
+ results:
   - name: platforms
     value:
      - linux
@@ -9821,7 +9823,8 @@ metadata:
   labels:
     tekton.dev/pipeline: p-dag
 spec:
-  serviceAccountName: test-sa
+  taskRunTemplate:
+    serviceAccountName: test-sa
   pipelineRef:
     name: p-dag
 status:
@@ -9850,11 +9853,11 @@ status:
     reason: "Running"
     message: "Tasks Completed: 1 (Failed: 0, Cancelled 0), Incomplete: 1, Skipped: 0"
   childReferences:
-  - apiVersion: tekton.dev/v1beta1
+  - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-pt-with-result
     pipelineTaskName: pt-with-result
-  - apiVersion: tekton.dev/v1beta1
+  - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-echo-platforms
     pipelineTaskName: echo-platforms
@@ -9899,7 +9902,7 @@ status:
     status: "True"
     reason: Succeeded
     message: All Tasks have completed executing
- taskResults:
+ results:
   - name: platforms
     value:
      - linux
@@ -9964,7 +9967,8 @@ metadata:
   labels:
     tekton.dev/pipeline: p-dag-2
 spec:
-  serviceAccountName: test-sa
+  taskRunTemplate:
+    serviceAccountName: test-sa
   pipelineRef:
     name: p-dag-2
 status:
@@ -9994,19 +9998,19 @@ status:
     reason: "Running"
     message: "Tasks Completed: 1 (Failed: 0, Cancelled 0), Incomplete: 1, Skipped: 0"
   childReferences:
-  - apiVersion: tekton.dev/v1beta1
+  - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-pt-with-result
     pipelineTaskName: pt-with-result
-  - apiVersion: tekton.dev/v1beta1
+  - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-echo-platforms-0
     pipelineTaskName: echo-platforms
-  - apiVersion: tekton.dev/v1beta1
+  - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-echo-platforms-1
     pipelineTaskName: echo-platforms
-  - apiVersion: tekton.dev/v1beta1
+  - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-echo-platforms-2
     pipelineTaskName: echo-platforms
@@ -10019,7 +10023,8 @@ metadata:
   name: pr
   namespace: foo
 spec:
-  serviceAccountName: test-sa
+  taskRunTemplate:
+    serviceAccountName: test-sa
   pipelineRef:
     name: %s
 `, tt.pName))
