@@ -1929,8 +1929,7 @@ func TestValidateParamArrayIndex(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := config.ToContext(context.Background(), &config.Config{FeatureFlags: &config.FeatureFlags{EnableAPIFields: "alpha"}})
-			err := tc.taskspec.ValidateParamArrayIndex(ctx, tc.params)
+			err := tc.taskspec.ValidateParamArrayIndex(context.Background(), tc.params)
 			if d := cmp.Diff(tc.expectedError.Error(), err.Error()); d != "" {
 				t.Errorf("validateParamArrayIndex() errors diff %s", diff.PrintWantGot(d))
 			}

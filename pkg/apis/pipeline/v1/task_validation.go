@@ -609,8 +609,7 @@ func isParamRefs(s string) bool {
 // - `trParams` are params from taskrun.
 // - `taskSpec` contains params declarations.
 func (ts *TaskSpec) ValidateParamArrayIndex(ctx context.Context, params Params) error {
-	cfg := config.FromContextOrDefaults(ctx)
-	if cfg.FeatureFlags.EnableAPIFields != config.AlphaAPIFields {
+	if !config.CheckAlphaOrBetaAPIFields(ctx) {
 		return nil
 	}
 
