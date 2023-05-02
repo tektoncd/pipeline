@@ -244,7 +244,7 @@ type LocalTaskRefResolver struct {
 // GetTask will resolve either a Task or ClusterTask from the local cluster using a versioned Tekton client. It will
 // return an error if it can't find an appropriate Task for any reason.
 func (l *LocalTaskRefResolver) GetTask(ctx context.Context, name string) (*v1.Task, *v1.RefSource, error) {
-	if l.Kind == v1.ClusterTaskKind {
+	if l.Kind == v1.ClusterTaskRefKind {
 		task, err := l.Tektonclient.TektonV1beta1().ClusterTasks().Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return nil, nil, err

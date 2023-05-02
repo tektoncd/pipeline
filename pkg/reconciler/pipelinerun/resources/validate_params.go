@@ -94,7 +94,7 @@ func ValidateParameterTypesInMatrix(state PipelineRunState) error {
 		if m.HasInclude() {
 			for _, include := range m.Include {
 				for _, param := range include.Params {
-					if param.Value.Type != v1beta1.ParamTypeString {
+					if param.Value.Type != v1.ParamTypeString {
 						return fmt.Errorf("parameters of type string only are allowed, but param %s has type %s", param.Name, string(param.Value.Type))
 					}
 				}
@@ -102,7 +102,7 @@ func ValidateParameterTypesInMatrix(state PipelineRunState) error {
 		}
 		if m.HasParams() {
 			for _, param := range m.Params {
-				if param.Value.Type != v1beta1.ParamTypeArray {
+				if param.Value.Type != v1.ParamTypeArray {
 					return fmt.Errorf("parameters of type array only are allowed, but param %s has type %s", param.Name, string(param.Value.Type))
 				}
 			}

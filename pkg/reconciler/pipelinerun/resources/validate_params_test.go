@@ -328,26 +328,26 @@ func TestValidatePipelineParameterTypes(t *testing.T) {
 	}{{
 		desc: "parameters in matrix are arrays",
 		state: resources.PipelineRunState{{
-			PipelineTask: &v1beta1.PipelineTask{
+			PipelineTask: &v1.PipelineTask{
 				Name: "task",
-				Matrix: &v1beta1.Matrix{
-					Params: v1beta1.Params{{
-						Name: "foobar", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				Matrix: &v1.Matrix{
+					Params: v1.Params{{
+						Name: "foobar", Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 					}, {
-						Name: "barfoo", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"bar", "foo"}}}},
+						Name: "barfoo", Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"bar", "foo"}}}},
 				},
 			},
 		}},
 	}, {
 		desc: "parameters in matrix are strings",
 		state: resources.PipelineRunState{{
-			PipelineTask: &v1beta1.PipelineTask{
+			PipelineTask: &v1.PipelineTask{
 				Name: "task",
-				Matrix: &v1beta1.Matrix{
-					Params: v1beta1.Params{{
-						Name: "foo", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "foo"},
+				Matrix: &v1.Matrix{
+					Params: v1.Params{{
+						Name: "foo", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "foo"},
 					}, {
-						Name: "bar", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "bar"},
+						Name: "bar", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "bar"},
 					}}},
 			},
 		}},
@@ -355,30 +355,30 @@ func TestValidatePipelineParameterTypes(t *testing.T) {
 	}, {
 		desc: "parameters in include matrix are strings",
 		state: resources.PipelineRunState{{
-			PipelineTask: &v1beta1.PipelineTask{
+			PipelineTask: &v1.PipelineTask{
 				Name: "task",
-				Matrix: &v1beta1.Matrix{
-					Include: v1beta1.IncludeParamsList{{
+				Matrix: &v1.Matrix{
+					Include: v1.IncludeParamsList{{
 						Name: "build-1",
-						Params: v1beta1.Params{{
-							Name: "foo", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "foo"},
+						Params: v1.Params{{
+							Name: "foo", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "foo"},
 						}, {
-							Name: "bar", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "bar"}}},
+							Name: "bar", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "bar"}}},
 					}}},
 			},
 		}},
 	}, {
 		desc: "parameters in include matrix are arrays",
 		state: resources.PipelineRunState{{
-			PipelineTask: &v1beta1.PipelineTask{
+			PipelineTask: &v1.PipelineTask{
 				Name: "task",
-				Matrix: &v1beta1.Matrix{
-					Include: v1beta1.IncludeParamsList{{
+				Matrix: &v1.Matrix{
+					Include: v1.IncludeParamsList{{
 						Name: "build-1",
-						Params: v1beta1.Params{{
-							Name: "foobar", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+						Params: v1.Params{{
+							Name: "foobar", Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 						}, {
-							Name: "barfoo", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"bar", "foo"}}}},
+							Name: "barfoo", Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"bar", "foo"}}}},
 					}}},
 			},
 		}},
@@ -386,18 +386,18 @@ func TestValidatePipelineParameterTypes(t *testing.T) {
 	}, {
 		desc: "parameters in include matrix are objects",
 		state: resources.PipelineRunState{{
-			PipelineTask: &v1beta1.PipelineTask{
+			PipelineTask: &v1.PipelineTask{
 				Name: "task",
-				Matrix: &v1beta1.Matrix{
-					Include: v1beta1.IncludeParamsList{{
+				Matrix: &v1.Matrix{
+					Include: v1.IncludeParamsList{{
 						Name: "build-1",
-						Params: v1beta1.Params{{
-							Name: "barfoo", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeObject, ObjectVal: map[string]string{
+						Params: v1.Params{{
+							Name: "barfoo", Value: v1.ParamValue{Type: v1.ParamTypeObject, ObjectVal: map[string]string{
 								"url":    "$(params.myObject.non-exist-key)",
 								"commit": "$(params.myString)",
 							}},
 						}, {
-							Name: "foobar", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeObject, ObjectVal: map[string]string{
+							Name: "foobar", Value: v1.ParamValue{Type: v1.ParamTypeObject, ObjectVal: map[string]string{
 								"url":    "$(params.myObject.non-exist-key)",
 								"commit": "$(params.myString)",
 							}},

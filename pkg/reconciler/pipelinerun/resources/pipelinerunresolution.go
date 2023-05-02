@@ -478,7 +478,7 @@ func (t *ResolvedPipelineTask) skipBecausePipelineRunFinallyTimeoutReached(facts
 func (t *ResolvedPipelineTask) skipBecauseEmptyArrayInMatrixParams() bool {
 	if t.PipelineTask.IsMatrixed() {
 		for _, ps := range t.PipelineTask.Matrix.Params {
-			if ps.Value.Type == v1beta1.ParamTypeArray && len(ps.Value.ArrayVal) == 0 {
+			if ps.Value.Type == v1.ParamTypeArray && len(ps.Value.ArrayVal) == 0 {
 				return true
 			}
 		}

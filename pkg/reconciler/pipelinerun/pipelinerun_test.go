@@ -186,7 +186,7 @@ func getTaskRunsForPipelineRun(ctx context.Context, t *testing.T, clients test.C
 
 // getTaskRunsForPipelineTask returns the set of TaskRuns associated with the input PipelineRun and PipelineTask
 // It will fatal the test if an error occurred.
-func getTaskRunsForPipelineTask(ctx context.Context, t *testing.T, clients test.Clients, namespace string, prName string, ptLabel string) map[string]*v1beta1.TaskRun {
+func getTaskRunsForPipelineTask(ctx context.Context, t *testing.T, clients test.Clients, namespace string, prName string, ptLabel string) map[string]*v1.TaskRun {
 	t.Helper()
 	labelSelector := pipeline.PipelineRunLabelKey + "=" + prName + "," + pipeline.PipelineTaskLabelKey + "=" + ptLabel
 	return getTaskRuns(ctx, t, clients, namespace, labelSelector)
@@ -194,7 +194,7 @@ func getTaskRunsForPipelineTask(ctx context.Context, t *testing.T, clients test.
 
 // getTaskRuns returns the set of TaskRuns matching the label selector.
 // It will fatal the test if an error occurred.
-func getTaskRuns(ctx context.Context, t *testing.T, clients test.Clients, namespace string, labelSelector string) map[string]*v1beta1.TaskRun {
+func getTaskRuns(ctx context.Context, t *testing.T, clients test.Clients, namespace string, labelSelector string) map[string]*v1.TaskRun {
 	t.Helper()
 
 	opt := metav1.ListOptions{
@@ -2154,7 +2154,7 @@ func TestReconcileWithTimeoutGreaterThan24h(t *testing.T) {
 	for _, tc := range testCases {
 		startTime := time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC).Add(-3 * tc.timeout)
 		t.Run(tc.name, func(t *testing.T) {
-			ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
+			ps := []*v1.Pipeline{parse.MustParseV1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -2167,7 +2167,7 @@ spec:
     taskRef:
       name: hello-world
 `)}
-			prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
+			prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-with-timeout
   namespace: foo
@@ -2180,9 +2180,9 @@ spec:
 status:
   startTime: "2021-12-30T00:00:00Z"
 `)}
-			ts := []*v1beta1.Task{simpleHelloWorldTask}
+			ts := []*v1.Task{simpleHelloWorldTask}
 
-			trs := []*v1beta1.TaskRun{mustParseTaskRunWithObjectMeta(t, taskRunObjectMeta("test-pipeline-run-with-timeout-hello-world-1", "foo", "test-pipeline-run-with-timeout",
+			trs := []*v1.TaskRun{mustParseTaskRunWithObjectMeta(t, taskRunObjectMeta("test-pipeline-run-with-timeout-hello-world-1", "foo", "test-pipeline-run-with-timeout",
 				"test-pipeline", "hello-world-1", false), `
 spec:
   resources: {}
@@ -6662,7 +6662,7 @@ spec:
       optional: true
   serviceAccountName: test-sa
 `),
-		parse.MustParseV1beta1PipelineRun(t, `
+		parse.MustParseV1PipelineRun(t, `
 metadata:
   name: pipelinerun-matrix-param-invalid-type
   namespace: foo
@@ -8099,7 +8099,7 @@ spec:
 func TestReconciler_PipelineTaskMatrixWithArrayReferences(t *testing.T) {
 	names.TestingSeed()
 
-	task := parse.MustParseV1beta1Task(t, `
+	task := parse.MustParseV1Task(t, `
 metadata:
   name: mytask
   namespace: foo
@@ -8120,12 +8120,12 @@ spec:
 	tests := []struct {
 		name                string
 		memberOf            string
-		p                   *v1beta1.Pipeline
-		tr                  *v1beta1.TaskRun
-		expectedPipelineRun *v1beta1.PipelineRun
+		p                   *v1.Pipeline
+		tr                  *v1.TaskRun
+		expectedPipelineRun *v1.PipelineRun
 	}{{
 		name: "p-dag",
-		p: parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+		p: parse.MustParseV1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: foo
@@ -8147,7 +8147,7 @@ spec:
             value: $(params.browsers[*])
 
 `, "p-dag")),
-		expectedPipelineRun: parse.MustParseV1beta1PipelineRun(t, `
+		expectedPipelineRun: parse.MustParseV1PipelineRun(t, `
 metadata:
   name: pr
   namespace: foo
@@ -8239,7 +8239,7 @@ status:
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pr := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+			pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: pr
   namespace: foo
@@ -8260,13 +8260,13 @@ spec:
     name: %s
 `, tt.name))
 			d := test.Data{
-				PipelineRuns: []*v1beta1.PipelineRun{pr},
-				Pipelines:    []*v1beta1.Pipeline{tt.p},
-				Tasks:        []*v1beta1.Task{task},
+				PipelineRuns: []*v1.PipelineRun{pr},
+				Pipelines:    []*v1.Pipeline{tt.p},
+				Tasks:        []*v1.Task{task},
 				ConfigMaps:   cms,
 			}
 			if tt.tr != nil {
-				d.TaskRuns = []*v1beta1.TaskRun{tt.tr}
+				d.TaskRuns = []*v1.TaskRun{tt.tr}
 			}
 
 			expectedTaskRunsData := []struct {
@@ -8301,7 +8301,7 @@ spec:
 				platform: "windows",
 			}}
 
-			expectedTaskRuns := []*v1beta1.TaskRun{}
+			expectedTaskRuns := []*v1.TaskRun{}
 			for i, trd := range expectedTaskRunsData {
 				trName := "pr-platforms-and-browsers-" + strconv.Itoa(i)
 				expectedTaskRuns = append(expectedTaskRuns, mustParseTaskRunWithObjectMeta(t,
@@ -9707,7 +9707,7 @@ spec:
 
 func TestReconciler_PipelineTaskMatrixResultsWithArrayIndexing(t *testing.T) {
 	names.TestingSeed()
-	task := parse.MustParseV1beta1Task(t, `
+	task := parse.MustParseV1Task(t, `
 metadata:
   name: mytask
   namespace: foo
@@ -9721,7 +9721,7 @@ spec:
       script: |
         echo "$(params.platform)"
 `)
-	taskwithresults := parse.MustParseV1beta1Task(t, `
+	taskwithresults := parse.MustParseV1Task(t, `
 metadata:
   name: taskwithresults
   namespace: foo
@@ -9742,14 +9742,14 @@ spec:
 	tests := []struct {
 		name                string
 		pName               string
-		p                   *v1beta1.Pipeline
-		tr                  *v1beta1.TaskRun
-		expectedTaskRuns    []*v1beta1.TaskRun
-		expectedPipelineRun *v1beta1.PipelineRun
+		p                   *v1.Pipeline
+		tr                  *v1.TaskRun
+		expectedTaskRuns    []*v1.TaskRun
+		expectedPipelineRun *v1.PipelineRun
 	}{{
 		name:  "indexing results in params",
 		pName: "p-dag",
-		p: parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+		p: parse.MustParseV1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: foo
@@ -9792,7 +9792,7 @@ status:
      - mac
      - windows
 `),
-		expectedTaskRuns: []*v1beta1.TaskRun{
+		expectedTaskRuns: []*v1.TaskRun{
 			mustParseTaskRunWithObjectMeta(t,
 				taskRunObjectMeta("pr-echo-platforms", "foo",
 					"pr", "p-dag", "echo-platforms", false),
@@ -9813,7 +9813,7 @@ labels:
     tekton.dev/pipeline: p-dag
 `),
 		},
-		expectedPipelineRun: parse.MustParseV1beta1PipelineRun(t, `
+		expectedPipelineRun: parse.MustParseV1PipelineRun(t, `
 metadata:
   name: pr
   namespace: foo
@@ -9862,7 +9862,7 @@ status:
 	}, {
 		name:  "indexing results in matrix.params",
 		pName: "p-dag-2",
-		p: parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+		p: parse.MustParseV1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: foo
@@ -9906,7 +9906,7 @@ status:
      - mac
      - windows
 `),
-		expectedTaskRuns: []*v1beta1.TaskRun{
+		expectedTaskRuns: []*v1.TaskRun{
 			mustParseTaskRunWithObjectMeta(t,
 				taskRunObjectMeta("pr-echo-platforms-0", "foo",
 					"pr", "p-dag-2", "echo-platforms", false),
@@ -9956,7 +9956,7 @@ labels:
     tekton.dev/pipeline: p-dag-2
 `),
 		},
-		expectedPipelineRun: parse.MustParseV1beta1PipelineRun(t, `
+		expectedPipelineRun: parse.MustParseV1PipelineRun(t, `
 metadata:
   name: pr
   namespace: foo
@@ -10014,7 +10014,7 @@ status:
 	}}
 	for _, tt := range tests {
 		t.Run(tt.pName, func(t *testing.T) {
-			pr := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+			pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: pr
   namespace: foo
@@ -10024,13 +10024,13 @@ spec:
     name: %s
 `, tt.pName))
 			d := test.Data{
-				PipelineRuns: []*v1beta1.PipelineRun{pr},
-				Pipelines:    []*v1beta1.Pipeline{tt.p},
-				Tasks:        []*v1beta1.Task{task, taskwithresults},
+				PipelineRuns: []*v1.PipelineRun{pr},
+				Pipelines:    []*v1.Pipeline{tt.p},
+				Tasks:        []*v1.Task{task, taskwithresults},
 				ConfigMaps:   cms,
 			}
 			if tt.tr != nil {
-				d.TaskRuns = []*v1beta1.TaskRun{tt.tr}
+				d.TaskRuns = []*v1.TaskRun{tt.tr}
 			}
 			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()

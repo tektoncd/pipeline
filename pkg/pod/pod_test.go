@@ -29,9 +29,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/spire"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/spire"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
@@ -2457,7 +2456,7 @@ func TestPodBuild_TaskLevelResourceRequirements(t *testing.T) {
 }
 
 func TestPodBuildwithSpireEnabled(t *testing.T) {
-	initContainers := []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})}
+	initContainers := []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1.Step{{Name: "name"}})}
 	readonly := true
 	for i := range initContainers {
 		c := &initContainers[i]
@@ -2470,15 +2469,15 @@ func TestPodBuildwithSpireEnabled(t *testing.T) {
 
 	for _, c := range []struct {
 		desc            string
-		trs             v1beta1.TaskRunSpec
+		trs             v1.TaskRunSpec
 		trAnnotation    map[string]string
-		ts              v1beta1.TaskSpec
+		ts              v1.TaskSpec
 		want            *corev1.PodSpec
 		wantAnnotations map[string]string
 	}{{
 		desc: "simple",
-		ts: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		ts: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Name:    "name",
 				Image:   "image",
 				Command: []string{"cmd"}, // avoid entrypoint lookup.
@@ -2577,7 +2576,7 @@ func TestPodBuildwithSpireEnabled(t *testing.T) {
 				trAnnotations = c.trAnnotation
 				trAnnotations[ReleaseAnnotation] = fakeVersion
 			}
-			tr := &v1beta1.TaskRun{
+			tr := &v1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        "taskrun-name",
 					Namespace:   "default",
