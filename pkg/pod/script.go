@@ -25,7 +25,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -71,7 +70,6 @@ var (
 
 // convertScripts converts any steps and sidecars that specify a Script field into a normal Container.
 func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta1.Step, sidecars []v1beta1.Sidecar, debugConfig *v1beta1.TaskRunDebug) (*corev1.Container, []corev1.Container, []corev1.Container) {
-	placeScripts := false
 	// Place scripts is an init container used for creating scripts in the
 	// /tekton/scripts directory which would be later used by the step containers
 	// as a Command
@@ -96,16 +94,6 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta
 	}
 
 	breakpoints := []string{}
-	sideCarSteps := []v1beta1.Step{}
-	for _, sidecar := range sidecars {
-		c := sidecar.ToK8sContainer()
-		sidecarStep := v1beta1.Step{
-			Script:  sidecar.Script,
-			Timeout: &metav1.Duration{},
-		}
-		sidecarStep.SetContainerFields(*c)
-		sideCarSteps = append(sideCarSteps, sidecarStep)
-	}
 
 	// Add mounts for debug
 	if debugConfig != nil && len(debugConfig.Breakpoint) > 0 {
@@ -113,73 +101,84 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta
 		placeScriptsInit.VolumeMounts = append(placeScriptsInit.VolumeMounts, debugScriptsVolumeMount)
 	}
 
-	convertedStepContainers := convertListOfSteps(steps, &placeScriptsInit, &placeScripts, breakpoints, "script")
+	convertedStepContainers := convertListOfSteps(steps, &placeScriptsInit, breakpoints, "script")
+	sidecarContainers := convertListOfSidecars(sidecars, &placeScriptsInit, "sidecar-script")
 
-	// Pass empty breakpoint list in "sidecar step to container" converter to not rewrite the scripts and add breakpoints to sidecar
-	sidecarContainers := convertListOfSteps(sideCarSteps, &placeScriptsInit, &placeScripts, []string{}, "sidecar-script")
-	if placeScripts {
+	if hasScripts(steps, sidecars, breakpoints) {
 		return &placeScriptsInit, convertedStepContainers, sidecarContainers
 	}
 	return nil, convertedStepContainers, sidecarContainers
 }
 
-// convertListOfSteps does the heavy lifting for convertScripts.
-//
-// It iterates through the list of steps (or sidecars), generates the script file name and heredoc termination string,
+// convertListOfSidecars iterates through the list of sidecars, generates the script file name and heredoc termination string,
 // adds an entry to the init container args, sets up the step container to run the script, and sets the volume mounts.
-func convertListOfSteps(steps []v1beta1.Step, initContainer *corev1.Container, placeScripts *bool, breakpoints []string, namePrefix string) []corev1.Container {
+func convertListOfSidecars(sidecars []v1beta1.Sidecar, initContainer *corev1.Container, namePrefix string) []corev1.Container {
+	containers := []corev1.Container{}
+	for i, s := range sidecars {
+		c := s.ToK8sContainer()
+		if s.Script != "" {
+			placeScriptInContainer(s.Script, getScriptFile(scriptsDir, fmt.Sprintf("%s-%d", namePrefix, i)), c, initContainer)
+		}
+		containers = append(containers, *c)
+	}
+	return containers
+}
+
+// convertListOfSteps iterates through the list of steps, generates the script file name and heredoc termination string,
+// adds an entry to the init container args, sets up the step container to run the script, and sets the volume mounts.
+func convertListOfSteps(steps []v1beta1.Step, initContainer *corev1.Container, breakpoints []string, namePrefix string) []corev1.Container {
 	containers := []corev1.Container{}
 	for i, s := range steps {
-		// Add debug mounts if breakpoints are present
-		if len(breakpoints) > 0 {
-			debugInfoVolumeMount := corev1.VolumeMount{
-				Name:      debugInfoVolumeName,
-				MountPath: filepath.Join(debugInfoDir, fmt.Sprintf("%d", i)),
-			}
-			steps[i].VolumeMounts = append(steps[i].VolumeMounts, debugScriptsVolumeMount, debugInfoVolumeMount)
+		c := steps[i].ToK8sContainer()
+		if s.Script != "" {
+			placeScriptInContainer(s.Script, getScriptFile(scriptsDir, fmt.Sprintf("%s-%d", namePrefix, i)), c, initContainer)
 		}
+		containers = append(containers, *c)
+	}
+	if len(breakpoints) > 0 {
+		placeDebugScriptInContainers(containers, initContainer)
+	}
+	return containers
+}
 
-		if s.Script == "" {
-			// Nothing to convert.
-			containers = append(containers, *steps[i].ToK8sContainer())
-			continue
-		}
+func getScriptFile(scriptsDir, scriptName string) string {
+	return filepath.Join(scriptsDir, names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(scriptName))
+}
 
-		// Check for a shebang, and add a default if it's not set.
-		// The shebang must be the first non-empty line.
-		cleaned := strings.TrimSpace(s.Script)
-		hasShebang := strings.HasPrefix(cleaned, "#!")
-		requiresWindows := strings.HasPrefix(cleaned, "#!win")
+// placeScriptInContainer given a piece of script to be executed, placeScriptInContainer firstly modifies initContainer
+// so that it capsules the target script into scriptFile, then it modifies the container so that it can execute the scriptFile
+// in runtime.
+func placeScriptInContainer(script, scriptFile string, c *corev1.Container, initContainer *corev1.Container) {
+	if script == "" {
+		return
+	}
+	cleaned := strings.TrimSpace(script)
+	hasShebang := strings.HasPrefix(cleaned, "#!")
+	requiresWindows := strings.HasPrefix(cleaned, "#!win")
 
-		script := s.Script
-		if !hasShebang {
-			script = defaultScriptPreamble + s.Script
-		}
+	if !hasShebang {
+		script = defaultScriptPreamble + script
+	}
 
-		// At least one step uses a script, so we should return a
-		// non-nil init container.
-		*placeScripts = true
-
-		// Append to the place-scripts script to place the
-		// script file in a known location in the scripts volume.
-		scriptFile := filepath.Join(scriptsDir, names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%d", namePrefix, i)))
-		if requiresWindows {
-			command, args, script, scriptFile := extractWindowsScriptComponents(script, scriptFile)
-			initContainer.Args[1] += fmt.Sprintf(`@"
+	// Append to the place-scripts script to place the
+	// script file in a known location in the scripts volume.
+	if requiresWindows {
+		command, args, script, scriptFile := extractWindowsScriptComponents(script, scriptFile)
+		initContainer.Args[1] += fmt.Sprintf(`@"
 %s
 "@ | Out-File -FilePath %s
 `, script, scriptFile)
 
-			steps[i].Command = command
-			// Append existing args field to end of derived args
-			args = append(args, steps[i].Args...)
-			steps[i].Args = args
-		} else {
-			// Only encode the script for linux scripts
-			// The decode-script subcommand of the entrypoint does not work under windows
-			script = encodeScript(script)
-			heredoc := "_EOF_" // underscores because base64 doesnt include them in its alphabet
-			initContainer.Args[1] += fmt.Sprintf(`scriptfile="%s"
+		c.Command = command
+		// Append existing args field to end of derived args
+		args = append(args, c.Args...)
+		c.Args = args
+	} else {
+		// Only encode the script for linux scripts
+		// The decode-script subcommand of the entrypoint does not work under windows
+		script = encodeScript(script)
+		heredoc := "_EOF_" // underscores because base64 doesn't include them in its alphabet
+		initContainer.Args[1] += fmt.Sprintf(`scriptfile="%s"
 touch ${scriptfile} && chmod +x ${scriptfile}
 cat > ${scriptfile} << '%s'
 %s
@@ -187,53 +186,67 @@ cat > ${scriptfile} << '%s'
 /tekton/bin/entrypoint decode-script "${scriptfile}"
 `, scriptFile, heredoc, script, heredoc)
 
-			// Set the command to execute the correct script in the mounted
-			// volume.
-			// A previous merge with stepTemplate may have populated
-			// Command and Args, even though this is not normally valid, so
-			// we'll clear out the Args and overwrite Command.
-			steps[i].Command = []string{scriptFile}
-		}
-		steps[i].VolumeMounts = append(steps[i].VolumeMounts, scriptsVolumeMount)
-
-		containers = append(containers, *steps[i].ToK8sContainer())
+		// Set the command to execute the correct script in the mounted volume.
+		// A previous merge with stepTemplate may have populated
+		// Command and Args, even though this is not normally valid, so
+		// we'll clear out the Args and overwrite Command.
+		c.Command = []string{scriptFile}
 	}
-
-	// Place debug scripts if breakpoints are enabled
-	if len(breakpoints) > 0 {
-		// If breakpoint is not nil then should add the init container
-		// to write debug script files
-		*placeScripts = true
-
-		type script struct {
-			name    string
-			content string
-		}
-		debugScripts := []script{{
-			name:    "continue",
-			content: defaultScriptPreamble + fmt.Sprintf(debugContinueScriptTemplate, len(steps), debugInfoDir, RunDir),
-		}, {
-			name:    "fail-continue",
-			content: defaultScriptPreamble + fmt.Sprintf(debugFailScriptTemplate, len(steps), debugInfoDir, RunDir),
-		}}
-
-		// Add debug or breakpoint related scripts to /tekton/debug/scripts
-		// Iterate through the debugScripts and add routine for each of them in the initContainer for their creation
-		for _, debugScript := range debugScripts {
-			tmpFile := filepath.Join(debugScriptsDir, fmt.Sprintf("%s-%s", "debug", debugScript.name))
-			heredoc := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%s-heredoc-randomly-generated", "debug", debugScript.name))
-
-			initContainer.Args[1] += fmt.Sprintf(initScriptDirective, tmpFile, heredoc, debugScript.content, heredoc)
-		}
-	}
-
-	return containers
+	c.VolumeMounts = append(c.VolumeMounts, scriptsVolumeMount)
 }
 
 // encodeScript encodes a script field into a format that avoids kubernetes' built-in processing of container args,
 // which can mangle dollar signs and unexpectedly replace variable references in the user's script.
 func encodeScript(script string) string {
 	return base64.StdEncoding.EncodeToString([]byte(script))
+}
+
+// placeDebugScriptInContainers inserts debug scripts into containers. It capsules those scripts to files in initContainer,
+// then executes those scripts in target containers.
+func placeDebugScriptInContainers(containers []corev1.Container, initContainer *corev1.Container) {
+	for i := 0; i < len(containers); i++ {
+		debugInfoVolumeMount := corev1.VolumeMount{
+			Name:      debugInfoVolumeName,
+			MountPath: filepath.Join(debugInfoDir, fmt.Sprintf("%d", i)),
+		}
+		(&containers[i]).VolumeMounts = append((&containers[i]).VolumeMounts, debugScriptsVolumeMount, debugInfoVolumeMount)
+	}
+
+	type script struct {
+		name    string
+		content string
+	}
+	debugScripts := []script{{
+		name:    "continue",
+		content: defaultScriptPreamble + fmt.Sprintf(debugContinueScriptTemplate, len(containers), debugInfoDir, RunDir),
+	}, {
+		name:    "fail-continue",
+		content: defaultScriptPreamble + fmt.Sprintf(debugFailScriptTemplate, len(containers), debugInfoDir, RunDir),
+	}}
+
+	// Add debug or breakpoint related scripts to /tekton/debug/scripts
+	// Iterate through the debugScripts and add routine for each of them in the initContainer for their creation
+	for _, debugScript := range debugScripts {
+		tmpFile := filepath.Join(debugScriptsDir, fmt.Sprintf("%s-%s", "debug", debugScript.name))
+		heredoc := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%s-heredoc-randomly-generated", "debug", debugScript.name))
+
+		initContainer.Args[1] += fmt.Sprintf(initScriptDirective, tmpFile, heredoc, debugScript.content, heredoc)
+	}
+}
+
+// hasScripts determines if we need to generate scripts in InitContainer given steps, sidecars and breakpoints.
+func hasScripts(steps []v1beta1.Step, sidecars []v1beta1.Sidecar, breakpoints []string) bool {
+	for _, s := range steps {
+		if s.Script != "" {
+			return true
+		}
+	}
+	for _, s := range sidecars {
+		if s.Script != "" {
+			return true
+		}
+	}
+	return len(breakpoints) > 0
 }
 
 func checkWindowsRequirement(steps []v1beta1.Step, sidecars []v1beta1.Sidecar) bool {
