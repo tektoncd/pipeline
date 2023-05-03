@@ -105,7 +105,7 @@ func TestConvertScripts_NothingToConvert_WithSidecar(t *testing.T) {
 	}
 }
 
-func TestConvertScripts(t *testing.T) {
+func TestConvertScripts_Steps(t *testing.T) {
 	names.TestingSeed()
 
 	preExistingVolumeMounts := []corev1.VolumeMount{{
@@ -191,6 +191,165 @@ _EOF_
 
 	if len(gotSidecars) != 0 {
 		t.Errorf("Expected zero sidecars, got %v", len(gotSidecars))
+	}
+}
+
+func TestConvertScripts_Sidecars(t *testing.T) {
+	names.TestingSeed()
+
+	preExistingVolumeMounts := []corev1.VolumeMount{{
+		Name:      "pre-existing-volume-mount",
+		MountPath: "/mount/path",
+	}, {
+		Name:      "another-one",
+		MountPath: "/another/one",
+	}}
+
+	for _, tc := range []struct {
+		name            string
+		sidecars        []v1beta1.Sidecar
+		wantInitScripts string
+		wantContainers  []corev1.Container
+	}{{
+		name: "simple sidecar",
+		sidecars: []v1beta1.Sidecar{{
+			Script: `#!/bin/sh
+script-1`,
+			Image: "sidecar-1",
+		}},
+		wantInitScripts: `scriptfile="/tekton/scripts/sidecar-script-0-9l9zj"
+touch ${scriptfile} && chmod +x ${scriptfile}
+cat > ${scriptfile} << '_EOF_'
+IyEvYmluL3NoCnNjcmlwdC0x
+_EOF_
+/tekton/bin/entrypoint decode-script "${scriptfile}"
+`,
+		wantContainers: []corev1.Container{{
+			Image:        "sidecar-1",
+			Command:      []string{"/tekton/scripts/sidecar-script-0-9l9zj"},
+			VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+		}},
+	}, {
+		name: "no script",
+		sidecars: []v1beta1.Sidecar{{
+			Image: "sidecar-2",
+		}},
+		wantInitScripts: "",
+		wantContainers: []corev1.Container{{
+			Image: "sidecar-2",
+		}},
+	}, {
+		name: "pre-existing volumeMounts and args",
+		sidecars: []v1beta1.Sidecar{{
+			Script:       `no-shebang`,
+			Image:        "sidecar-3",
+			VolumeMounts: preExistingVolumeMounts,
+			Args:         []string{"my", "args"},
+		}},
+		wantInitScripts: `scriptfile="/tekton/scripts/sidecar-script-0-mz4c7"
+touch ${scriptfile} && chmod +x ${scriptfile}
+cat > ${scriptfile} << '_EOF_'
+IyEvYmluL3NoCnNldCAtZQpuby1zaGViYW5n
+_EOF_
+/tekton/bin/entrypoint decode-script "${scriptfile}"
+`,
+		wantContainers: []corev1.Container{{
+			Image:   "sidecar-3",
+			Command: []string{"/tekton/scripts/sidecar-script-0-mz4c7"},
+			Args:    []string{"my", "args"},
+			VolumeMounts: []corev1.VolumeMount{
+				{Name: "pre-existing-volume-mount", MountPath: "/mount/path"},
+				{Name: "another-one", MountPath: "/another/one"},
+				scriptsVolumeMount,
+			},
+		}},
+	}, {
+		name: "multiple sidecars",
+		sidecars: []v1beta1.Sidecar{{
+			Script: `#!/bin/sh
+script-4`,
+			Image: "sidecar-4",
+		}, {
+			Script: `#!/bin/sh
+script-5`,
+			Image: "sidecar-5",
+		}, {
+			Image: "sidecar-6",
+		}},
+		wantInitScripts: `scriptfile="/tekton/scripts/sidecar-script-0-mssqb"
+touch ${scriptfile} && chmod +x ${scriptfile}
+cat > ${scriptfile} << '_EOF_'
+IyEvYmluL3NoCnNjcmlwdC00
+_EOF_
+/tekton/bin/entrypoint decode-script "${scriptfile}"
+scriptfile="/tekton/scripts/sidecar-script-1-78c5n"
+touch ${scriptfile} && chmod +x ${scriptfile}
+cat > ${scriptfile} << '_EOF_'
+IyEvYmluL3NoCnNjcmlwdC01
+_EOF_
+/tekton/bin/entrypoint decode-script "${scriptfile}"
+`,
+		wantContainers: []corev1.Container{{
+			Image:        "sidecar-4",
+			Command:      []string{"/tekton/scripts/sidecar-script-0-mssqb"},
+			VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+		}, {
+			Image:        "sidecar-5",
+			Command:      []string{"/tekton/scripts/sidecar-script-1-78c5n"},
+			VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+		}, {
+			Image: "sidecar-6",
+		}},
+	}, {
+		name: "sidecar with deprecated fields in step",
+		sidecars: []v1beta1.Sidecar{{
+			Image:          "sidecar-7",
+			LivenessProbe:  &corev1.Probe{InitialDelaySeconds: 1},
+			ReadinessProbe: &corev1.Probe{InitialDelaySeconds: 2},
+			Ports:          []corev1.ContainerPort{{Name: "port"}},
+			StartupProbe:   &corev1.Probe{InitialDelaySeconds: 3},
+			Lifecycle: &corev1.Lifecycle{PostStart: &corev1.LifecycleHandler{Exec: &corev1.ExecAction{
+				Command: []string{"lifecycle command"},
+			}}},
+			TerminationMessagePath:   "path",
+			TerminationMessagePolicy: corev1.TerminationMessagePolicy("policy"),
+			Stdin:                    true,
+			StdinOnce:                true,
+			TTY:                      true,
+		}},
+		wantInitScripts: "",
+		wantContainers: []corev1.Container{{
+			Image:          "sidecar-7",
+			LivenessProbe:  &corev1.Probe{InitialDelaySeconds: 1},
+			ReadinessProbe: &corev1.Probe{InitialDelaySeconds: 2},
+			Ports:          []corev1.ContainerPort{{Name: "port"}},
+			StartupProbe:   &corev1.Probe{InitialDelaySeconds: 3},
+			Lifecycle: &corev1.Lifecycle{PostStart: &corev1.LifecycleHandler{Exec: &corev1.ExecAction{
+				Command: []string{"lifecycle command"},
+			}}},
+			TerminationMessagePath:   "path",
+			TerminationMessagePolicy: corev1.TerminationMessagePolicy("policy"),
+			Stdin:                    true,
+			StdinOnce:                true,
+			TTY:                      true,
+		}},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			gotInit, gotSteps, gotSidecars := convertScripts(images.ShellImage, images.ShellImageWin, []v1beta1.Step{}, tc.sidecars, nil)
+			gotInitScripts := ""
+			if gotInit != nil {
+				gotInitScripts = gotInit.Args[1]
+			}
+			if d := cmp.Diff(tc.wantInitScripts, gotInitScripts); d != "" {
+				t.Errorf("Init Container Diff %s", diff.PrintWantGot(d))
+			}
+			if d := cmp.Diff(tc.wantContainers, gotSidecars); d != "" {
+				t.Errorf("Containers Diff %s", diff.PrintWantGot(d))
+			}
+			if len(gotSteps) != 0 {
+				t.Errorf("Expected zero steps, got %v", len(gotSteps))
+			}
+		})
 	}
 }
 
@@ -301,8 +460,8 @@ debug-fail-continue-heredoc-randomly-generated-6nl7g
 	want := []corev1.Container{{
 		Image:   "step-1",
 		Command: []string{"/tekton/scripts/script-0-9l9zj"},
-		VolumeMounts: []corev1.VolumeMount{debugScriptsVolumeMount,
-			{Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/0"}, scriptsVolumeMount},
+		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount, debugScriptsVolumeMount,
+			{Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/0"}},
 	}, {
 		Image: "step-2",
 		VolumeMounts: []corev1.VolumeMount{
@@ -312,9 +471,8 @@ debug-fail-continue-heredoc-randomly-generated-6nl7g
 		Image:   "step-3",
 		Command: []string{"/tekton/scripts/script-2-mz4c7"},
 		Args:    []string{"my", "args"},
-		VolumeMounts: append(preExistingVolumeMounts, debugScriptsVolumeMount,
-			corev1.VolumeMount{Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/2"},
-			scriptsVolumeMount),
+		VolumeMounts: append(preExistingVolumeMounts, scriptsVolumeMount, debugScriptsVolumeMount,
+			corev1.VolumeMount{Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/2"}),
 	}, {
 		Image:   "step-3",
 		Command: []string{"/tekton/scripts/script-3-mssqb"},
@@ -322,9 +480,9 @@ debug-fail-continue-heredoc-randomly-generated-6nl7g
 		VolumeMounts: []corev1.VolumeMount{
 			{Name: "pre-existing-volume-mount", MountPath: "/mount/path"},
 			{Name: "another-one", MountPath: "/another/one"},
+			scriptsVolumeMount,
 			debugScriptsVolumeMount,
 			{Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/3"},
-			scriptsVolumeMount,
 		},
 	}}
 
