@@ -188,9 +188,9 @@ func (ps Params) extractParamMapArrVals() map[string][]string {
 	return paramsMap
 }
 
-// extractParamArrayLengths extract and return the lengths of all array params
+// ExtractParamArrayLengths extract and return the lengths of all array params
 // Example of returned value: {"a-array-params": 2,"b-array-params": 2 }
-func (ps Params) extractParamArrayLengths() map[string]int {
+func (ps Params) ExtractParamArrayLengths() map[string]int {
 	// Collect all array params
 	arrayParamsLengths := make(map[string]int)
 
@@ -225,9 +225,9 @@ func (ps Params) ReplaceVariables(stringReplacements map[string]string, arrayRep
 	return params
 }
 
-// extractParamArrayLengths extract and return the lengths of all array params
+// ExtractDefaultParamArrayLengths extract and return the lengths of all array param defaults
 // Example of returned value: {"a-array-params": 2,"b-array-params": 2 }
-func (ps ParamSpecs) extractParamArrayLengths() map[string]int {
+func (ps ParamSpecs) ExtractDefaultParamArrayLengths() map[string]int {
 	// Collect all array params
 	arrayParamsLengths := make(map[string]int)
 
@@ -240,30 +240,6 @@ func (ps ParamSpecs) extractParamArrayLengths() map[string]int {
 		}
 	}
 	return arrayParamsLengths
-}
-
-// validateOutofBoundArrayParams validates if the array indexing params are out of bound
-// example of arrayIndexingParams: ["$(params.a-array-param[1])", "$(params.b-array-param[2])"]
-// example of arrayParamsLengths: {"a-array-params": 2,"b-array-params": 2 }
-func validateOutofBoundArrayParams(arrayIndexingParams []string, arrayParamsLengths map[string]int) error {
-	outofBoundParams := sets.String{}
-	for _, val := range arrayIndexingParams {
-		indexString := substitution.ExtractIndexString(val)
-		idx, _ := substitution.ExtractIndex(indexString)
-		// this will extract the param name from reference
-		// e.g. $(params.a-array-param[1]) -> a-array-param
-		paramName, _, _ := substitution.ExtractVariablesFromString(substitution.TrimArrayIndex(val), "params")
-
-		if paramLength, ok := arrayParamsLengths[paramName[0]]; ok {
-			if idx >= paramLength {
-				outofBoundParams.Insert(val)
-			}
-		}
-	}
-	if outofBoundParams.Len() > 0 {
-		return fmt.Errorf("non-existent param references:%v", outofBoundParams.List())
-	}
-	return nil
 }
 
 // extractArrayIndexingParamRefs takes a string of the form `foo-$(params.array-param[1])-bar` and extracts the portions of the string that reference an element in an array param.

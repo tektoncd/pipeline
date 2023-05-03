@@ -576,23 +576,6 @@ func isParamRefs(s string) bool {
 	return strings.HasPrefix(s, "$("+ParamsPrefix)
 }
 
-// ValidateParamArrayIndex validates if the param reference to an array param is out of bound.
-// error is returned when the array indexing reference is out of bound of the array param
-// e.g. if a param reference of $(params.array-param[2]) and the array param is of length 2.
-// - `trParams` are params from taskrun.
-// - `taskSpec` contains params declarations.
-// TODO(#6616): Move this functionality to the reconciler, as it is only used there
-func (ts *TaskSpec) ValidateParamArrayIndex(ctx context.Context, params Params) error {
-	// Collect all array params lengths
-	arrayParamsLengths := ts.Params.extractParamArrayLengths()
-	for k, v := range params.extractParamArrayLengths() {
-		arrayParamsLengths[k] = v
-	}
-	// extract all array indexing references, for example []{"$(params.array-params[1])"}
-	arrayIndexParamRefs := ts.GetIndexingReferencesToArrayParams().List()
-	return validateOutofBoundArrayParams(arrayIndexParamRefs, arrayParamsLengths)
-}
-
 // GetIndexingReferencesToArrayParams returns all strings referencing indices of TaskRun array parameters
 // from parameters, workspaces, and when expressions defined in the Task.
 // For example, if a Task has a parameter with a value "$(params.array-param-name[1])",
