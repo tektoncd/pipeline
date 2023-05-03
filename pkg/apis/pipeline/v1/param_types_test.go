@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -560,6 +561,94 @@ func TestParams_ReplaceVariables(t *testing.T) {
 			got := tt.ps.ReplaceVariables(tt.stringReplacements, tt.arrayReplacements, tt.objectReplacements)
 			if d := cmp.Diff(tt.want, got); d != "" {
 				t.Errorf(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestExtractParamArrayLengths(t *testing.T) {
+	tcs := []struct {
+		name   string
+		params v1.Params
+		want   map[string]int
+	}{{
+		name:   "string params",
+		params: v1.Params{{Name: "foo", Value: v1.ParamValue{StringVal: "bar", Type: v1.ParamTypeString}}},
+		want:   nil,
+	}, {
+		name:   "one array param",
+		params: v1.Params{{Name: "foo", Value: v1.ParamValue{ArrayVal: []string{"bar", "baz"}, Type: v1.ParamTypeArray}}},
+		want:   map[string]int{"foo": 2},
+	}, {
+		name:   "object params",
+		params: v1.Params{{Name: "foo", Value: v1.ParamValue{ObjectVal: map[string]string{"bar": "baz"}, Type: v1.ParamTypeObject}}},
+		want:   nil,
+	}, {
+		name: "multiple array params",
+		params: v1.Params{
+			{Name: "foo", Value: v1.ParamValue{ArrayVal: []string{"bar", "baz"}, Type: v1.ParamTypeArray}},
+			{Name: "abc", Value: v1.ParamValue{ArrayVal: []string{"123", "456", "789"}, Type: v1.ParamTypeArray}},
+			{Name: "empty", Value: v1.ParamValue{ArrayVal: []string{}, Type: v1.ParamTypeArray}},
+		},
+		want: map[string]int{"foo": 2, "abc": 3, "empty": 0},
+	}, {
+		name: "mixed param types",
+		params: v1.Params{
+			{Name: "foo", Value: v1.ParamValue{StringVal: "abc", Type: v1.ParamTypeString}},
+			{Name: "bar", Value: v1.ParamValue{ArrayVal: []string{"def", "ghi"}, Type: v1.ParamTypeArray}},
+			{Name: "baz", Value: v1.ParamValue{ObjectVal: map[string]string{"jkl": "mno"}, Type: v1.ParamTypeObject}},
+		},
+		want: map[string]int{"bar": 2},
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.params.ExtractParamArrayLengths()
+			if d := cmp.Diff(tc.want, got, cmpopts.EquateEmpty()); d != "" {
+				t.Errorf("wrong param array lengths: %s", d)
+			}
+		})
+	}
+}
+
+func TestExtractDefaultParamArrayLengths(t *testing.T) {
+	tcs := []struct {
+		name   string
+		params v1.ParamSpecs
+		want   map[string]int
+	}{{
+		name:   "string params",
+		params: v1.ParamSpecs{{Name: "foo", Default: &v1.ParamValue{StringVal: "bar", Type: v1.ParamTypeString}}},
+		want:   nil,
+	}, {
+		name:   "one array param",
+		params: v1.ParamSpecs{{Name: "foo", Default: &v1.ParamValue{ArrayVal: []string{"bar", "baz"}, Type: v1.ParamTypeArray}}},
+		want:   map[string]int{"foo": 2},
+	}, {
+		name:   "object params",
+		params: v1.ParamSpecs{{Name: "foo", Default: &v1.ParamValue{ObjectVal: map[string]string{"bar": "baz"}, Type: v1.ParamTypeObject}}},
+		want:   nil,
+	}, {
+		name: "multiple array params",
+		params: v1.ParamSpecs{
+			{Name: "foo", Default: &v1.ParamValue{ArrayVal: []string{"bar", "baz"}, Type: v1.ParamTypeArray}},
+			{Name: "abc", Default: &v1.ParamValue{ArrayVal: []string{"123", "456", "789"}, Type: v1.ParamTypeArray}},
+			{Name: "empty", Default: &v1.ParamValue{ArrayVal: []string{}, Type: v1.ParamTypeArray}},
+		},
+		want: map[string]int{"foo": 2, "abc": 3, "empty": 0},
+	}, {
+		name: "mixed param types",
+		params: v1.ParamSpecs{
+			{Name: "foo", Default: &v1.ParamValue{StringVal: "abc", Type: v1.ParamTypeString}},
+			{Name: "bar", Default: &v1.ParamValue{ArrayVal: []string{"def", "ghi"}, Type: v1.ParamTypeArray}},
+			{Name: "baz", Default: &v1.ParamValue{ObjectVal: map[string]string{"jkl": "mno"}, Type: v1.ParamTypeObject}},
+		},
+		want: map[string]int{"bar": 2},
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.params.ExtractDefaultParamArrayLengths()
+			if d := cmp.Diff(tc.want, got, cmpopts.EquateEmpty()); d != "" {
+				t.Errorf("wrong default param array lengths: %s", d)
 			}
 		})
 	}

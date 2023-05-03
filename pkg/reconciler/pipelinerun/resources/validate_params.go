@@ -22,6 +22,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
+	trresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 )
 
 // ValidateParamTypesMatching validate that parameters in PipelineRun override corresponding parameters in Pipeline of the same type.
@@ -109,4 +110,11 @@ func ValidateParameterTypesInMatrix(state PipelineRunState) error {
 		}
 	}
 	return nil
+}
+
+// ValidateParamArrayIndex validates if the param reference to an array param is out of bound.
+// error is returned when the array indexing reference is out of bound of the array param
+// e.g. if a param reference of $(params.array-param[2]) and the array param is of length 2.
+func ValidateParamArrayIndex(ps *v1beta1.PipelineSpec, params v1beta1.Params) error {
+	return trresources.ValidateOutOfBoundArrayParams(ps.Params, params, ps.GetIndexingReferencesToArrayParams())
 }
