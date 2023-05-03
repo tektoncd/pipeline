@@ -26,6 +26,7 @@ import (
 
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -105,11 +106,11 @@ func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1beta1.Par
 	var data []byte
 	var spec []byte
 	var uid string
-	groupVersion := pipelinev1beta1.SchemeGroupVersion.String()
+	groupVersion := pipelinev1.SchemeGroupVersion.String()
 
 	switch params[KindParam] {
 	case "task":
-		task, err := r.pipelineClientSet.TektonV1beta1().Tasks(params[NamespaceParam]).Get(ctx, params[NameParam], metav1.GetOptions{})
+		task, err := r.pipelineClientSet.TektonV1().Tasks(params[NamespaceParam]).Get(ctx, params[NameParam], metav1.GetOptions{})
 		if err != nil {
 			logger.Infof("failed to load task %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
 			return nil, err
@@ -129,7 +130,7 @@ func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1beta1.Par
 			return nil, err
 		}
 	case "pipeline":
-		pipeline, err := r.pipelineClientSet.TektonV1beta1().Pipelines(params[NamespaceParam]).Get(ctx, params[NameParam], metav1.GetOptions{})
+		pipeline, err := r.pipelineClientSet.TektonV1().Pipelines(params[NamespaceParam]).Get(ctx, params[NameParam], metav1.GetOptions{})
 		if err != nil {
 			logger.Infof("failed to load pipeline %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
 			return nil, err
