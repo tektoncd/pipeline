@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/google/go-cmp/cmp"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -43,7 +45,7 @@ func TestPipelineConversionBadType(t *testing.T) {
 }
 
 func TestPipelineConversion(t *testing.T) {
-	tests := []struct {
+	for _, test := range []struct {
 		name string
 		in   *v1beta1.Pipeline
 	}{{
@@ -64,6 +66,64 @@ func TestPipelineConversion(t *testing.T) {
 					Name:        "param-1",
 					Type:        v1beta1.ParamTypeString,
 					Description: "My first param",
+				}},
+			},
+		},
+	}, {
+		name: "pipeline with deprecated fields in step and stepTemplate",
+		in: &v1beta1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.PipelineSpec{
+				Tasks: []v1beta1.PipelineTask{{
+					Name: "task-1",
+					TaskSpec: &v1beta1.EmbeddedTask{
+						TaskSpec: v1beta1.TaskSpec{
+							Steps: []v1beta1.Step{{
+								DeprecatedLivenessProbe:  &corev1.Probe{InitialDelaySeconds: 1},
+								DeprecatedReadinessProbe: &corev1.Probe{InitialDelaySeconds: 2},
+								DeprecatedPorts:          []corev1.ContainerPort{{Name: "port"}},
+								DeprecatedStartupProbe:   &corev1.Probe{InitialDelaySeconds: 3},
+								DeprecatedLifecycle: &corev1.Lifecycle{PostStart: &corev1.LifecycleHandler{Exec: &corev1.ExecAction{
+									Command: []string{"lifecycle command"},
+								}}},
+								DeprecatedTerminationMessagePath:   "path",
+								DeprecatedTerminationMessagePolicy: corev1.TerminationMessagePolicy("policy"),
+								DeprecatedStdin:                    true,
+								DeprecatedStdinOnce:                true,
+								DeprecatedTTY:                      true,
+							}},
+							StepTemplate: &v1beta1.StepTemplate{
+								DeprecatedName:           "deprecated-step-template",
+								DeprecatedLivenessProbe:  &corev1.Probe{InitialDelaySeconds: 1},
+								DeprecatedReadinessProbe: &corev1.Probe{InitialDelaySeconds: 2},
+								DeprecatedPorts:          []corev1.ContainerPort{{Name: "port"}},
+								DeprecatedStartupProbe:   &corev1.Probe{InitialDelaySeconds: 3},
+								DeprecatedLifecycle: &corev1.Lifecycle{PostStart: &corev1.LifecycleHandler{Exec: &corev1.ExecAction{
+									Command: []string{"lifecycle command"},
+								}}},
+								DeprecatedTerminationMessagePath:   "path",
+								DeprecatedTerminationMessagePolicy: corev1.TerminationMessagePolicy("policy"),
+								DeprecatedStdin:                    true,
+								DeprecatedStdinOnce:                true,
+								DeprecatedTTY:                      true,
+							},
+						},
+					},
+				}, {
+					Name: "task-2",
+					TaskSpec: &v1beta1.EmbeddedTask{
+						TaskSpec: v1beta1.TaskSpec{
+							Steps: []v1beta1.Step{{
+								DeprecatedLivenessProbe: &corev1.Probe{InitialDelaySeconds: 1},
+							}},
+							StepTemplate: &v1beta1.StepTemplate{
+								DeprecatedLivenessProbe: &corev1.Probe{InitialDelaySeconds: 1},
+							},
+						},
+					},
 				}},
 			},
 		},
@@ -160,27 +220,27 @@ func TestPipelineConversion(t *testing.T) {
 				}},
 			},
 		},
-	}}
-
-	for _, test := range tests {
-		versions := []apis.Convertible{&v1.Pipeline{}}
-		for _, version := range versions {
-			t.Run(test.name, func(t *testing.T) {
-				ver := version
-				if err := test.in.ConvertTo(context.Background(), ver); err != nil {
-					t.Errorf("ConvertTo() = %v", err)
-					return
-				}
-				t.Logf("ConvertTo() = %#v", ver)
-				got := &v1beta1.Pipeline{}
-				if err := got.ConvertFrom(context.Background(), ver); err != nil {
-					t.Errorf("ConvertFrom() = %v", err)
-				}
-				t.Logf("ConvertFrom() = %#v", got)
-				if d := cmp.Diff(test.in, got); d != "" {
-					t.Errorf("roundtrip %s", diff.PrintWantGot(d))
-				}
-			})
-		}
+	}} {
+		t.Run(test.name, func(t *testing.T) {
+			versions := []apis.Convertible{&v1.Pipeline{}}
+			for _, version := range versions {
+				t.Run(test.name, func(t *testing.T) {
+					ver := version
+					if err := test.in.ConvertTo(context.Background(), ver); err != nil {
+						t.Errorf("ConvertTo() = %v", err)
+						return
+					}
+					t.Logf("ConvertTo() = %#v", ver)
+					got := &v1beta1.Pipeline{}
+					if err := got.ConvertFrom(context.Background(), ver); err != nil {
+						t.Errorf("ConvertFrom() = %v", err)
+					}
+					t.Logf("ConvertFrom() = %#v", got)
+					if d := cmp.Diff(test.in, got); d != "" {
+						t.Errorf("roundtrip %s", diff.PrintWantGot(d))
+					}
+				})
+			}
+		})
 	}
 }

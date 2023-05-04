@@ -151,7 +151,67 @@ func TestPipelineRunConversion(t *testing.T) {
 			Spec: v1beta1.PipelineRunSpec{
 				PipelineRef: &v1beta1.PipelineRef{Name: "pipeline-1"},
 			},
-		}}, {
+		},
+	}, {
+		name: "pipelinerun with deprecated fields in step and stepTemplate",
+		in: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Tasks: []v1beta1.PipelineTask{{
+						Name: "task-1",
+						TaskSpec: &v1beta1.EmbeddedTask{
+							TaskSpec: v1beta1.TaskSpec{
+								Steps: []v1beta1.Step{{
+									DeprecatedLivenessProbe:  &corev1.Probe{InitialDelaySeconds: 1},
+									DeprecatedReadinessProbe: &corev1.Probe{InitialDelaySeconds: 2},
+									DeprecatedPorts:          []corev1.ContainerPort{{Name: "port"}},
+									DeprecatedStartupProbe:   &corev1.Probe{InitialDelaySeconds: 3},
+									DeprecatedLifecycle: &corev1.Lifecycle{PostStart: &corev1.LifecycleHandler{Exec: &corev1.ExecAction{
+										Command: []string{"lifecycle command"},
+									}}},
+									DeprecatedTerminationMessagePath:   "path",
+									DeprecatedTerminationMessagePolicy: corev1.TerminationMessagePolicy("policy"),
+									DeprecatedStdin:                    true,
+									DeprecatedStdinOnce:                true,
+									DeprecatedTTY:                      true,
+								}},
+								StepTemplate: &v1beta1.StepTemplate{
+									DeprecatedLivenessProbe:  &corev1.Probe{InitialDelaySeconds: 1},
+									DeprecatedReadinessProbe: &corev1.Probe{InitialDelaySeconds: 2},
+									DeprecatedPorts:          []corev1.ContainerPort{{Name: "port"}},
+									DeprecatedStartupProbe:   &corev1.Probe{InitialDelaySeconds: 3},
+									DeprecatedLifecycle: &corev1.Lifecycle{PostStart: &corev1.LifecycleHandler{Exec: &corev1.ExecAction{
+										Command: []string{"lifecycle command"},
+									}}},
+									DeprecatedTerminationMessagePath:   "path",
+									DeprecatedTerminationMessagePolicy: corev1.TerminationMessagePolicy("policy"),
+									DeprecatedStdin:                    true,
+									DeprecatedStdinOnce:                true,
+									DeprecatedTTY:                      true,
+								},
+							},
+						},
+					}, {
+						Name: "task-2",
+						TaskSpec: &v1beta1.EmbeddedTask{
+							TaskSpec: v1beta1.TaskSpec{
+								Steps: []v1beta1.Step{{
+									DeprecatedLivenessProbe: &corev1.Probe{InitialDelaySeconds: 1},
+								}},
+								StepTemplate: &v1beta1.StepTemplate{
+									DeprecatedLivenessProbe: &corev1.Probe{InitialDelaySeconds: 1},
+								},
+							},
+						},
+					}},
+				},
+			},
+		},
+	}, {
 		name: "pipelinerun conversion all non deprecated fields",
 		in: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{

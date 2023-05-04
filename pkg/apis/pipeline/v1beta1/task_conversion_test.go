@@ -19,15 +19,14 @@ package v1beta1_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
-	corev1 "k8s.io/api/core/v1"
+	"github.com/tektoncd/pipeline/test/parse"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/apis"
 )
 
 func TestTaskConversionBadType(t *testing.T) {
@@ -43,151 +42,260 @@ func TestTaskConversionBadType(t *testing.T) {
 }
 
 func TestTaskConversion(t *testing.T) {
-	tests := []struct {
-		name string
-		in   *v1beta1.Task
-	}{{
-		name: "simple task",
-		in: &v1beta1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:       "foo",
-				Namespace:  "bar",
-				Generation: 1,
-			},
-			Spec: v1beta1.TaskSpec{
-				DisplayName: "task-display-name",
-				Description: "test",
-				Steps: []v1beta1.Step{{
-					Image: "foo",
-				}},
-				Volumes: []corev1.Volume{{}},
-				Params: []v1beta1.ParamSpec{{
-					Name:        "param-1",
-					Type:        v1beta1.ParamTypeString,
-					Description: "My first param",
-				}},
-				Results: []v1beta1.TaskResult{{
-					Name:        "result-1",
-					Type:        v1beta1.ResultsTypeString,
-					Description: "a result",
-				}},
-			},
-		},
-	}, {
-		name: "task conversion all non deprecated fields",
-		in: &v1beta1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:       "foo",
-				Namespace:  "bar",
-				Generation: 1,
-			},
-			Spec: v1beta1.TaskSpec{
-				DisplayName: "task-display-name",
-				Description: "test",
-				Steps: []v1beta1.Step{{
-					Name:            "step",
-					Image:           "foo",
-					Command:         []string{"hello"},
-					Args:            []string{"world"},
-					WorkingDir:      "/dir",
-					EnvFrom:         []corev1.EnvFromSource{{Prefix: "prefix"}},
-					Env:             []corev1.EnvVar{{Name: "var"}},
-					Resources:       corev1.ResourceRequirements{},
-					VolumeMounts:    []corev1.VolumeMount{},
-					VolumeDevices:   []corev1.VolumeDevice{},
-					ImagePullPolicy: corev1.PullIfNotPresent,
-					SecurityContext: &corev1.SecurityContext{},
-					Script:          "echo hello",
-					Timeout:         &metav1.Duration{Duration: time.Hour},
-					Workspaces:      []v1beta1.WorkspaceUsage{{Name: "workspace"}},
-					OnError:         v1beta1.Continue,
-					StdoutConfig:    &v1beta1.StepOutputConfig{Path: "/path"},
-					StderrConfig:    &v1beta1.StepOutputConfig{Path: "/another-path"},
-				}},
-				StepTemplate: &v1beta1.StepTemplate{
-					Image:           "foo",
-					Command:         []string{"hello"},
-					Args:            []string{"world"},
-					WorkingDir:      "/dir",
-					EnvFrom:         []corev1.EnvFromSource{{Prefix: "prefix"}},
-					Env:             []corev1.EnvVar{{Name: "var"}},
-					Resources:       corev1.ResourceRequirements{},
-					VolumeMounts:    []corev1.VolumeMount{},
-					VolumeDevices:   []corev1.VolumeDevice{},
-					ImagePullPolicy: corev1.PullIfNotPresent,
-					SecurityContext: &corev1.SecurityContext{},
-				},
-				Sidecars: []v1beta1.Sidecar{{
-					Name:                     "step",
-					Image:                    "foo",
-					Command:                  []string{"hello"},
-					Args:                     []string{"world"},
-					WorkingDir:               "/dir",
-					Ports:                    []corev1.ContainerPort{},
-					EnvFrom:                  []corev1.EnvFromSource{{Prefix: "prefix"}},
-					Env:                      []corev1.EnvVar{{Name: "var"}},
-					Resources:                corev1.ResourceRequirements{},
-					VolumeMounts:             []corev1.VolumeMount{},
-					VolumeDevices:            []corev1.VolumeDevice{},
-					LivenessProbe:            &corev1.Probe{},
-					ReadinessProbe:           &corev1.Probe{},
-					StartupProbe:             &corev1.Probe{},
-					Lifecycle:                &corev1.Lifecycle{},
-					TerminationMessagePath:   "/path",
-					TerminationMessagePolicy: corev1.TerminationMessageReadFile,
-					ImagePullPolicy:          corev1.PullIfNotPresent,
-					SecurityContext:          &corev1.SecurityContext{},
-					Stdin:                    true,
-					StdinOnce:                true,
-					TTY:                      true,
-					Script:                   "echo hello",
-					Workspaces:               []v1beta1.WorkspaceUsage{{Name: "workspace"}},
-				}},
-				Volumes: []corev1.Volume{{Name: "volume"}},
-				Params: []v1beta1.ParamSpec{{
-					Name:        "param-1",
-					Type:        v1beta1.ParamTypeString,
-					Description: "My first param",
-					Properties:  map[string]v1beta1.PropertySpec{"foo": {Type: v1beta1.ParamTypeString}},
-					Default:     v1beta1.NewStructuredValues("bar"),
-				}},
-				Workspaces: []v1beta1.WorkspaceDeclaration{{
-					Name:        "workspace",
-					Description: "description",
-					MountPath:   "/foo",
-					ReadOnly:    true,
-					Optional:    true,
-				}},
+	simpleTaskYAML := `
+metadata:
+  name: foo
+  namespace: bar
+  generation: 1
+spec:
+  displayName: "task-display-name"
+  description: test
+  steps:
+  - image: foo
+  params:
+  - name: param-1
+    type: string
+    description: my first param
+  results:
+  - name: result-1
+    type: string
+    description: a result
+`
+	multiStepTaskYAML := `
+metadata:
+  name: foo
+  namespace: bar
+  generation: 1
+spec:
+  displayName: "task-display-name"
+  description: test
+  steps:
+  - image: foo
+  - image: bar
+`
+	taskWithAllNoDeprecatedFieldsYAML := `
+metadata:
+  name: foo
+  namespace: bar
+  generation: 1
+spec:
+  displayName: "task-display-name"
+  description: test
+  steps:
+  - name: step
+    image: foo
+    command: ["hello"]
+    args: ["world"]
+    workingDir: "/dir"
+    envFrom:
+    - prefix: prefix
+    env:
+    - name: var
+    resources:
+      limits:
+    volumeMounts:
+    volumeDevices:
+    imagePullPolicy: IfNotPresent
+    securityContext: 
+      privileged: true
+    script: "echo 'hello world'"
+    timeout: 1h
+    workspaces:
+    - name: workspace
+    onError: continue
+    stdoutConfig:
+      path: /path
+    stderrConfig:
+      path: /another-path
+  stepTemplate:
+    image: foo
+    command: ["hello"]
+    args: ["world"]
+    workingDir: "/dir"
+    envFrom:
+    - prefix: prefix
+    env:
+    - name: var
+    resources:
+      limits:
+    volumeMounts:
+    volumeDevices:
+    imagePullPolicy: IfNotPresent
+    securityContext: 
+      privileged: true
+  sidecars:
+  - name: sidecar
+    image: foo
+    command: ["hello"]
+    args: ["world"]
+    workingDir: "/dir"
+    envFrom:
+    - prefix: prefix
+    env:
+    - name: var
+    resources:
+      limits:
+    volumeMounts:
+    volumeDevices:
+    imagePullPolicy: IfNotPresent
+    securityContext: 
+      privileged: true
+    script: "echo 'hello world'"
+    timeout: 1h
+    workspaces:
+    - name: workspace
+    onError: continue
+    stdoutConfig:
+      path: /path
+    stderrConfig:
+      path: /another-path
+  volumes:
+  - name: volume
+  params:
+  - name: param-1
+    type: string
+    description: my first param
+    properties:
+      foo: {type: string}
+    default:
+      type: string
+      stringVal: bar
+  workspaces:
+  - name: workspace
+    description: a workspace
+    mountPath: /foo
+    readOnly: true
+    optional: true
+  results:
+  - name: result
+    type: object
+    properties:
+      property: {type: string}
+    description: description
+`
 
-				Results: []v1beta1.TaskResult{{
-					Name:        "result",
-					Type:        v1beta1.ResultsTypeObject,
-					Properties:  map[string]v1beta1.PropertySpec{"property": {Type: v1beta1.ParamTypeString}},
-					Description: "description",
-				}},
-			},
-		},
-	}}
+	taskWithDeprecatedFieldsV1beta1YAML := `
+metadata:
+  name: foo
+  namespace: bar
+  generation: 1
+spec:
+  displayName: "task-display-name"
+  description: test
+  steps:
+  - name: step-1
+    ports:
+    - name: port
+    livenessProbe:
+      initialDelaySeconds: 1
+    readinessProbe:
+      initialDelaySeconds: 2
+    startupProbe:
+      initialDelaySeconds: 3
+    lifecycle:
+      postStart:
+        exec:
+          command:
+          - "lifecycle command"
+    terminationMessagePath: path
+    terminationMessagePolicy: policy
+    stdin: true
+    stdinOnce: true
+    tty: true
+  stepTemplate:
+    image: foo
+    ports:
+    - name: port
+    livenessProbe:
+      initialDelaySeconds: 1
+    readinessProbe:
+      initialDelaySeconds: 2
+    startupProbe:
+      initialDelaySeconds: 3
+    lifecycle:
+      postStart:
+        exec:
+          command:
+          - "lifecycle command"
+    terminationMessagePath: path
+    terminationMessagePolicy: policy
+    stdin: true
+    stdinOnce: true
+    tty: true
+`
+	taskWithDeprecatedFieldsV1YAML := `
+metadata:
+  name: foo
+  namespace: bar
+  generation: 1
+spec:
+  displayName: "task-display-name"
+  description: test
+  steps:
+  - name: step-1
+  stepTemplate:
+    image: foo
+`
+	simpleTaskV1beta1 := parse.MustParseV1beta1Task(t, simpleTaskYAML)
+	simpleTaskV1 := parse.MustParseV1Task(t, simpleTaskYAML)
+
+	multiStepTaskV1beta1 := parse.MustParseV1beta1Task(t, multiStepTaskYAML)
+	multiStepTaskV1 := parse.MustParseV1Task(t, multiStepTaskYAML)
+
+	taskWithAllNoDeprecatedFieldsV1beta1 := parse.MustParseV1beta1Task(t, taskWithAllNoDeprecatedFieldsYAML)
+	taskWithAllNoDeprecatedFieldsV1 := parse.MustParseV1Task(t, taskWithAllNoDeprecatedFieldsYAML)
+
+	taskWithDeprecatedFieldsV1beta1 := parse.MustParseV1beta1Task(t, taskWithDeprecatedFieldsV1beta1YAML)
+	taskWithDeprecatedFieldsV1 := parse.MustParseV1Task(t, taskWithDeprecatedFieldsV1YAML)
+	taskWithDeprecatedFieldsV1.ObjectMeta.Annotations = map[string]string{
+		v1beta1.TaskDeprecationsAnnotationKey: `{"foo":{"deprecatedSteps":` +
+			`[{"name":"","ports":[{"name":"port","containerPort":0}],"resources":{},"livenessProbe":{"initialDelaySeconds":1},"readinessProbe":{"initialDelaySeconds":2},"startupProbe":{"initialDelaySeconds":3},"lifecycle":{"postStart":{"exec":{"command":["lifecycle command"]}}},"terminationMessagePath":"path","terminationMessagePolicy":"policy","stdin":true,"stdinOnce":true,"tty":true}],` +
+			`"deprecatedStepTemplate":{"name":"","ports":[{"name":"port","containerPort":0}],"resources":{},"livenessProbe":{"initialDelaySeconds":1},"readinessProbe":{"initialDelaySeconds":2},"startupProbe":{"initialDelaySeconds":3},"lifecycle":{"postStart":{"exec":{"command":["lifecycle command"]}}},"terminationMessagePath":"path","terminationMessagePolicy":"policy","stdin":true,"stdinOnce":true,"tty":true}}}`,
+	}
+
+	tests := []struct {
+		name        string
+		v1beta1Task *v1beta1.Task
+		v1Task      *v1.Task
+	}{{
+		name:        "simple task",
+		v1beta1Task: simpleTaskV1beta1,
+		v1Task:      simpleTaskV1,
+	}, {
+		name:        "multi-steps task",
+		v1beta1Task: multiStepTaskV1beta1,
+		v1Task:      multiStepTaskV1,
+	}, {
+		name:        "task conversion all non deprecated fields",
+		v1beta1Task: taskWithAllNoDeprecatedFieldsV1beta1,
+		v1Task:      taskWithAllNoDeprecatedFieldsV1,
+	}, {
+		name:        "task conversion deprecated fields",
+		v1beta1Task: taskWithDeprecatedFieldsV1beta1,
+		v1Task:      taskWithDeprecatedFieldsV1,
+	},
+	}
+	var ignoreTypeMeta = cmpopts.IgnoreFields(metav1.TypeMeta{}, "Kind", "APIVersion")
 
 	for _, test := range tests {
-		versions := []apis.Convertible{&v1.Task{}}
-		for _, version := range versions {
-			t.Run(test.name, func(t *testing.T) {
-				ver := version
-				if err := test.in.ConvertTo(context.Background(), ver); err != nil {
-					t.Errorf("ConvertTo() = %v", err)
-					return
-				}
-				t.Logf("ConvertTo() = %#v", ver)
-				got := &v1beta1.Task{}
-				if err := got.ConvertFrom(context.Background(), ver); err != nil {
-					t.Errorf("ConvertFrom() = %v", err)
-				}
-				t.Logf("ConvertFrom() = %#v", got)
-				if d := cmp.Diff(test.in, got); d != "" {
-					t.Errorf("roundtrip %s", diff.PrintWantGot(d))
-				}
-			})
-		}
+		t.Run(test.name, func(t *testing.T) {
+			v1Task := &v1.Task{}
+			if err := test.v1beta1Task.ConvertTo(context.Background(), v1Task); err != nil {
+				t.Errorf("ConvertTo() = %v", err)
+				return
+			}
+			t.Logf("ConvertTo() = %#v", v1Task)
+			if d := cmp.Diff(test.v1Task, v1Task, ignoreTypeMeta); d != "" {
+				t.Errorf("expected v1Task is different from what's converted: %s", d)
+			}
+			gotV1beta1 := &v1beta1.Task{}
+			if err := gotV1beta1.ConvertFrom(context.Background(), v1Task); err != nil {
+				t.Errorf("ConvertFrom() = %v", err)
+			}
+			t.Logf("ConvertFrom() = %#v", gotV1beta1)
+			if d := cmp.Diff(test.v1beta1Task, gotV1beta1, ignoreTypeMeta); d != "" {
+				t.Errorf("roundtrip %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }

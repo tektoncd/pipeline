@@ -47,10 +47,6 @@ func (s Step) convertTo(ctx context.Context, sink *v1.Step) {
 	sink.OnError = (v1.OnErrorType)(s.OnError)
 	sink.StdoutConfig = (*v1.StepOutputConfig)(s.StdoutConfig)
 	sink.StderrConfig = (*v1.StepOutputConfig)(s.StderrConfig)
-
-	// TODO(#4546): Handle deprecated fields
-	// Ports, LivenessProbe, ReadinessProbe, StartupProbe, Lifecycle, TerminationMessagePath
-	// TerminationMessagePolicy, Stdin, StdinOnce, TTY
 }
 
 func (s *Step) convertFrom(ctx context.Context, source v1.Step) {

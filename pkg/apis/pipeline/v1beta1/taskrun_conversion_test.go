@@ -66,6 +66,47 @@ func TestTaskRunConversion(t *testing.T) {
 			},
 		},
 	}, {
+		name: "taskrun conversion deprecated step fields",
+		in: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskSpec: &v1beta1.TaskSpec{
+					Steps: []v1beta1.Step{{
+						DeprecatedLivenessProbe:  &corev1.Probe{InitialDelaySeconds: 1},
+						DeprecatedReadinessProbe: &corev1.Probe{InitialDelaySeconds: 2},
+						DeprecatedPorts:          []corev1.ContainerPort{{Name: "port"}},
+						DeprecatedStartupProbe:   &corev1.Probe{InitialDelaySeconds: 3},
+						DeprecatedLifecycle: &corev1.Lifecycle{PostStart: &corev1.LifecycleHandler{Exec: &corev1.ExecAction{
+							Command: []string{"lifecycle command"},
+						}}},
+						DeprecatedTerminationMessagePath:   "path",
+						DeprecatedTerminationMessagePolicy: corev1.TerminationMessagePolicy("policy"),
+						DeprecatedStdin:                    true,
+						DeprecatedStdinOnce:                true,
+						DeprecatedTTY:                      true,
+					}},
+					StepTemplate: &v1beta1.StepTemplate{
+						DeprecatedName:           "name",
+						DeprecatedLivenessProbe:  &corev1.Probe{InitialDelaySeconds: 1},
+						DeprecatedReadinessProbe: &corev1.Probe{InitialDelaySeconds: 2},
+						DeprecatedPorts:          []corev1.ContainerPort{{Name: "port"}},
+						DeprecatedStartupProbe:   &corev1.Probe{InitialDelaySeconds: 3},
+						DeprecatedLifecycle: &corev1.Lifecycle{PostStart: &corev1.LifecycleHandler{Exec: &corev1.ExecAction{
+							Command: []string{"lifecycle command"},
+						}}},
+						DeprecatedTerminationMessagePath:   "path",
+						DeprecatedTerminationMessagePolicy: corev1.TerminationMessagePolicy("policy"),
+						DeprecatedStdin:                    true,
+						DeprecatedStdinOnce:                true,
+						DeprecatedTTY:                      true,
+					},
+				},
+			},
+		},
+	}, {
 		name: "taskrun conversion all non deprecated fields",
 		in: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
