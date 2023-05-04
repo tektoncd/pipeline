@@ -112,9 +112,16 @@ spec:
   tasks:
   - name: task
     taskRef:
-      name: %s
+      resolver: cluster
       kind: Task
-`, helpers.ObjectNameForTest(t), namespace, signedTask.Name))
+      params:
+      - name: kind
+        value: task
+      - name: name
+        value: %s
+      - name: namespace
+        value: %s
+`, helpers.ObjectNameForTest(t), namespace, signedTask.Name, namespace))
 
 	signedPipeline, err := GetSignedPipeline(pipeline, signer, "signedpipeline")
 	if err != nil {
@@ -131,8 +138,16 @@ metadata:
   namespace: %s
 spec:
   pipelineRef:
-    name: %s
-`, helpers.ObjectNameForTest(t), namespace, signedPipeline.Name))
+    resolver: cluster
+    kind: Pipeline
+    params:
+    - name: kind
+      value: pipeline
+    - name: name
+      value: %s
+    - name: namespace
+      value: %s
+`, helpers.ObjectNameForTest(t), namespace, signedPipeline.Name, namespace))
 
 	t.Logf("Creating PipelineRun %s", pr.Name)
 	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
@@ -213,9 +228,16 @@ spec:
   tasks:
   - name: task
     taskRef:
-      name: %s
+      resolver: cluster
       kind: Task
-`, helpers.ObjectNameForTest(t), namespace, signedTask.Name))
+      params:
+      - name: kind
+        value: task
+      - name: name
+        value: %s
+      - name: namespace
+        value: %s
+`, helpers.ObjectNameForTest(t), namespace, signedTask.Name, namespace))
 
 	signedPipeline, err := GetSignedPipeline(pipeline, signer, "signedpipeline")
 	if err != nil {
@@ -232,8 +254,16 @@ metadata:
   namespace: %s
 spec:
   pipelineRef:
-    name: %s
-`, helpers.ObjectNameForTest(t), namespace, signedPipeline.Name))
+    resolver: cluster
+    kind: Pipeline
+    params:
+    - name: kind
+      value: pipeline
+    - name: name
+      value: %s
+    - name: namespace
+      value: %s
+`, helpers.ObjectNameForTest(t), namespace, signedPipeline.Name, namespace))
 
 	t.Logf("Creating PipelineRun %s", pr.Name)
 	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {

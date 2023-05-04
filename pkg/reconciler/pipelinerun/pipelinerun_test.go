@@ -36,6 +36,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
@@ -43,6 +44,7 @@ import (
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
@@ -11347,30 +11349,8 @@ spec:
 }
 
 func TestReconcile_verifyResolvedPipeline_Success(t *testing.T) {
-	names.TestingSeed()
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	resolverName := "foobar"
 
-	prs := parse.MustParseV1beta1PipelineRun(t, `
-metadata:
-  name: test-pipelinerun
-  namespace: foo
-  selfLink: /pipeline/1234
-spec:
-  pipelineRef:
-    name: test-pipeline
-`)
-	ps := parse.MustParseV1beta1Pipeline(t, `
-metadata:
-  name: test-pipeline
-  namespace: foo
-spec:
-  tasks:
-    - name: test-1
-      taskRef:
-        name: test-task
-`)
 	ts := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task
@@ -11385,21 +11365,63 @@ spec:
          value: bar
 `)
 
-	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, prs.Namespace)
+	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, ts.Namespace)
 	signedTask, err := test.GetSignedTask(ts, signer, "test-task")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
+	signedTaskBytes, err := yaml.Marshal(signedTask)
+	if err != nil {
+		t.Fatal("fail to marshal task", err)
+	}
+
+	ps := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+    - name: test-1
+      taskRef:
+        resolver: %s
+`, resolverName))
+
 	signedPipeline, err := test.GetSignedPipeline(ps, signer, "test-pipeline")
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
+	signedPipelineBytes, err := yaml.Marshal(signedPipeline)
+	if err != nil {
+		t.Fatal("fail to marshal task", err)
+	}
+
+	prs := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: test-pipelinerun
+  namespace: foo
+  selfLink: /pipeline/1234
+spec:
+  pipelineRef:
+    resolver: %s
+`, resolverName))
+
+	cms := []*corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+			Data: map[string]string{
+				"trusted-resources-verification-no-match-policy": config.FailNoMatchPolicy,
+			},
+		},
+	}
+
+	pipelineReq := getResolvedResolutionRequest(t, resolverName, signedPipelineBytes, prs.Namespace, prs.Name)
+	taskReq := getResolvedResolutionRequest(t, resolverName, signedTaskBytes, prs.Namespace, prs.Name+"-"+ps.Spec.Tasks[0].Name)
 
 	d := test.Data{
 		PipelineRuns:         []*v1beta1.PipelineRun{prs},
-		Pipelines:            []*v1beta1.Pipeline{signedPipeline},
-		Tasks:                []*v1beta1.Task{signedTask},
 		VerificationPolicies: vps,
+		ConfigMaps:           cms,
+		ResolutionRequests:   []*resolutionv1beta1.ResolutionRequest{&pipelineReq, &taskReq},
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -11410,31 +11432,10 @@ spec:
 }
 
 func TestReconcile_verifyResolvedPipeline_Error(t *testing.T) {
-	names.TestingSeed()
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	resolverName := "foobar"
 
-	prs := parse.MustParseV1beta1PipelineRun(t, `
-metadata:
-  name: test-pipelinerun
-  namespace: foo
-  selfLink: /pipeline/1234
-spec:
-  pipelineRef:
-    name: test-pipeline
-`)
-	ps := parse.MustParseV1beta1Pipeline(t, `
-metadata:
-  name: test-pipeline
-  namespace: foo
-spec:
-  tasks:
-    - name: test-1
-      taskRef:
-        name: test-task
-`)
-	ts := parse.MustParseV1beta1Task(t, `
+	// Case1: unsigned Pipeline refers to unsigned Task
+	unsignedTask := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task
   namespace: foo
@@ -11447,76 +11448,186 @@ spec:
        - name: foo
          value: bar
 `)
+	unsignedTaskBytes, err := yaml.Marshal(unsignedTask)
+	if err != nil {
+		t.Fatal("fail to marshal task", err)
+	}
 
-	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, prs.Namespace)
-	signedTask, err := test.GetSignedTask(ts, signer, "test-task")
+	unsignedPipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+    - name: test-1
+      taskRef:
+        resolver: %s
+`, resolverName))
+	unsignedPipelineBytes, err := yaml.Marshal(unsignedPipeline)
+	if err != nil {
+		t.Fatal("fail to marshal task", err)
+	}
+
+	// Case2: signed Pipeline refers to unsigned Task
+	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, unsignedTask.Namespace)
+	signedPipelineWithUnsignedTask, err := test.GetSignedPipeline(unsignedPipeline, signer, "test-pipeline")
+	if err != nil {
+		t.Fatal("fail to sign pipeline", err)
+	}
+	signedPipelineWithUnsignedTaskBytes, err := yaml.Marshal(signedPipelineWithUnsignedTask)
+	if err != nil {
+		t.Fatal("fail to marshal task", err)
+	}
+
+	// Case3: signed Pipeline refers to modified Task
+	signedTask, err := test.GetSignedTask(unsignedTask, signer, "test-task")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
+	signedTaskBytes, err := yaml.Marshal(signedTask)
+	if err != nil {
+		t.Fatal("fail to marshal task", err)
+	}
+	modifiedTask := signedTask.DeepCopy()
+	if modifiedTask.Annotations == nil {
+		modifiedTask.Annotations = make(map[string]string)
+	}
+	modifiedTask.Annotations["random"] = "attack"
+	modifiedTaskBytes, err := yaml.Marshal(modifiedTask)
+	if err != nil {
+		t.Fatal("fail to marshal task", err)
+	}
+
+	ps := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+    - name: test-1
+      taskRef:
+        resolver: %s
+`, resolverName))
+	signedPipelineWithModifiedTask, err := test.GetSignedPipeline(ps, signer, "test-pipeline")
+	if err != nil {
+		t.Fatal("fail to sign pipeline", err)
+	}
+	signedPipelineWithModifiedTaskBytes, err := yaml.Marshal(signedPipelineWithModifiedTask)
+	if err != nil {
+		t.Fatal("fail to marshal task", err)
+	}
+
+	// Case4: modified Pipeline refers to signed Task
+	ps = parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+    - name: test-1
+      taskRef:
+        resolver: %s
+`, resolverName))
 	signedPipeline, err := test.GetSignedPipeline(ps, signer, "test-pipeline")
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
-
-	tamperedTask := signedTask.DeepCopy()
-	if tamperedTask.Annotations == nil {
-		tamperedTask.Annotations = make(map[string]string)
+	modifiedPipeline := signedPipeline.DeepCopy()
+	if modifiedPipeline.Annotations == nil {
+		modifiedPipeline.Annotations = make(map[string]string)
 	}
-	tamperedTask.Annotations["random"] = "attack"
-
-	tamperedPipeline := signedPipeline.DeepCopy()
-	if tamperedPipeline.Annotations == nil {
-		tamperedPipeline.Annotations = make(map[string]string)
+	modifiedPipeline.Annotations["random"] = "attack"
+	modifiedPipelineBytes, err := yaml.Marshal(modifiedPipeline)
+	if err != nil {
+		t.Fatal("fail to marshal task", err)
 	}
-	tamperedPipeline.Annotations["random"] = "attack"
+
+	cms := []*corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+			Data: map[string]string{
+				"trusted-resources-verification-no-match-policy": config.FailNoMatchPolicy,
+				"enable-tekton-oci-bundles":                      "true",
+			},
+		},
+	}
 
 	testCases := []struct {
-		name        string
-		pipelinerun []*v1beta1.PipelineRun
-		pipeline    []*v1beta1.Pipeline
-		task        []*v1beta1.Task
+		name          string
+		pipelinerun   []*v1beta1.PipelineRun
+		pipelineBytes []byte
+		taskBytes     []byte
 	}{
 		{
-			name:        "unsigned pipeline fails verification",
-			pipelinerun: []*v1beta1.PipelineRun{prs},
-			pipeline:    []*v1beta1.Pipeline{ps},
+			name:          "unsigned pipeline fails verification",
+			pipelineBytes: unsignedPipelineBytes,
+			taskBytes:     unsignedTaskBytes,
 		},
 		{
-			name:        "signed pipeline with unsigned task fails verification",
-			pipelinerun: []*v1beta1.PipelineRun{prs},
-			pipeline:    []*v1beta1.Pipeline{signedPipeline},
-			task:        []*v1beta1.Task{ts},
+			name:          "signed pipeline with unsigned task fails verification",
+			pipelineBytes: signedPipelineWithUnsignedTaskBytes,
+			taskBytes:     unsignedTaskBytes,
 		},
 		{
-			name:        "signed pipeline with modified task fails verification",
-			pipelinerun: []*v1beta1.PipelineRun{prs},
-			pipeline:    []*v1beta1.Pipeline{signedPipeline},
-			task:        []*v1beta1.Task{tamperedTask},
+			name:          "signed pipeline with modified task fails verification",
+			pipelineBytes: signedPipelineWithModifiedTaskBytes,
+			taskBytes:     modifiedTaskBytes,
 		},
 		{
-			name:        "modified pipeline with signed task fails verification",
-			pipelinerun: []*v1beta1.PipelineRun{prs},
-			pipeline:    []*v1beta1.Pipeline{tamperedPipeline},
-			task:        []*v1beta1.Task{signedTask},
+			name:          "modified pipeline with signed task fails verification",
+			pipelineBytes: modifiedPipelineBytes,
+			taskBytes:     signedTaskBytes,
 		},
 	}
-
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			prs := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: test-pipelinerun
+  namespace: foo
+  selfLink: /pipeline/1234
+spec:
+  pipelineRef:
+    resolver: %s
+  serviceAccountName: default
+`, resolverName))
+
+			pipelineReq := getResolvedResolutionRequest(t, resolverName, tc.pipelineBytes, prs.Namespace, prs.Name)
+			taskReq := getResolvedResolutionRequest(t, resolverName, tc.taskBytes, prs.Namespace, prs.Name+"-"+ps.Spec.Tasks[0].Name)
+
 			d := test.Data{
-				PipelineRuns:         tc.pipelinerun,
-				Pipelines:            tc.pipeline,
-				Tasks:                tc.task,
+				PipelineRuns:         []*v1beta1.PipelineRun{prs},
+				ConfigMaps:           cms,
 				VerificationPolicies: vps,
+				ResolutionRequests:   []*resolutionv1beta1.ResolutionRequest{&pipelineReq, &taskReq},
 			}
 			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
 
 			reconciledRun, _ := prt.reconcileRun("foo", "test-pipelinerun", []string{}, true)
-
 			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionFalse, ReasonResourceVerificationFailed)
 		})
 	}
+}
+
+// getResolvedResolutionRequest is a helper function to return the ResolutionRequest and the data is filled with resourceBytes,
+// the ResolutionRequest's name is generated by resolverName, namespace and runName.
+func getResolvedResolutionRequest(t *testing.T, resolverName string, resourceBytes []byte, namespace string, runName string) resolutionv1beta1.ResolutionRequest {
+	t.Helper()
+	name, err := remoteresource.GenerateDeterministicName(resolverName, namespace+"/"+runName, nil)
+	if err != nil {
+		t.Errorf("error generating name for %s/%s/%s: %v", resolverName, namespace, runName, err)
+	}
+	rr := resolutionv1beta1.ResolutionRequest{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              name,
+			Namespace:         namespace,
+			CreationTimestamp: metav1.Time{Time: time.Now()},
+		},
+	}
+	rr.Status.ResolutionRequestStatusFields.Data = base64.StdEncoding.Strict().EncodeToString(resourceBytes)
+	rr.Status.MarkSucceeded()
+	return rr
 }
 
 func TestReconcileForPipelineRunCreateRunFailed(t *testing.T) {

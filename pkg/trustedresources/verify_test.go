@@ -200,48 +200,48 @@ func TestVerifyTask_Success(t *testing.T) {
 	tcs := []struct {
 		name                      string
 		task                      *v1beta1.Task
-		source                    string
+		source                    *v1beta1.RefSource
 		signer                    signature.SignerVerifier
 		verificationNoMatchPolicy string
 		verificationPolicies      []*v1alpha1.VerificationPolicy
 	}{{
 		name:                      "signed git source task passes verification",
 		task:                      signedTask,
-		source:                    "git+https://github.com/tektoncd/catalog.git",
+		source:                    &v1beta1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"},
 		verificationNoMatchPolicy: config.FailNoMatchPolicy,
 		verificationPolicies:      vps,
 	}, {
 		name:                      "signed bundle source task passes verification",
 		task:                      signedTask,
-		source:                    "gcr.io/tekton-releases/catalog/upstream/git-clone",
+		source:                    &v1beta1.RefSource{URI: "gcr.io/tekton-releases/catalog/upstream/git-clone"},
 		verificationNoMatchPolicy: config.FailNoMatchPolicy,
 		verificationPolicies:      vps,
 	}, {
 		name:                      "signed task with sha384 key",
 		task:                      signedTask384,
-		source:                    "gcr.io/tekton-releases/catalog/upstream/sha384",
+		source:                    &v1beta1.RefSource{URI: "gcr.io/tekton-releases/catalog/upstream/sha384"},
 		verificationNoMatchPolicy: config.FailNoMatchPolicy,
 		verificationPolicies:      []*v1alpha1.VerificationPolicy{sha384Vp},
 	}, {
 		name:                      "ignore no match policy skips verification when no matching policies",
 		task:                      unsignedTask,
-		source:                    mismatchedSource,
+		source:                    &v1beta1.RefSource{URI: mismatchedSource},
 		verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
 	}, {
 		name:                      "warn no match policy skips verification when no matching policies",
 		task:                      unsignedTask,
-		source:                    mismatchedSource,
+		source:                    &v1beta1.RefSource{URI: mismatchedSource},
 		verificationNoMatchPolicy: config.WarnNoMatchPolicy,
 	}, {
 		name:                      "unsigned task matches warn policy doesn't fail verification",
 		task:                      unsignedTask,
-		source:                    "git+https://github.com/tektoncd/catalog.git",
+		source:                    &v1beta1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"},
 		verificationNoMatchPolicy: config.FailNoMatchPolicy,
 		verificationPolicies:      []*v1alpha1.VerificationPolicy{warnPolicy},
 	}, {
 		name:                      "modified task matches warn policy doesn't fail verification",
 		task:                      modifiedTask,
-		source:                    "git+https://github.com/tektoncd/catalog.git",
+		source:                    &v1beta1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"},
 		verificationNoMatchPolicy: config.FailNoMatchPolicy,
 		verificationPolicies:      []*v1alpha1.VerificationPolicy{warnPolicy},
 	}}
@@ -277,37 +277,37 @@ func TestVerifyTask_Error(t *testing.T) {
 	tcs := []struct {
 		name               string
 		task               *v1beta1.Task
-		source             string
+		source             *v1beta1.RefSource
 		verificationPolicy []*v1alpha1.VerificationPolicy
 		expectedError      error
 	}{{
 		name:               "unsigned Task fails verification",
 		task:               unsignedTask,
-		source:             "git+https://github.com/tektoncd/catalog.git",
+		source:             &v1beta1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"},
 		verificationPolicy: vps,
 		expectedError:      ErrResourceVerificationFailed,
 	}, {
 		name:               "modified Task fails verification",
 		task:               tamperedTask,
-		source:             matchingSource,
+		source:             &v1beta1.RefSource{URI: matchingSource},
 		verificationPolicy: vps,
 		expectedError:      ErrResourceVerificationFailed,
 	}, {
 		name:               "task not matching pattern fails verification",
 		task:               signedTask,
-		source:             mismatchedSource,
+		source:             &v1beta1.RefSource{URI: mismatchedSource},
 		verificationPolicy: vps,
 		expectedError:      ErrNoMatchedPolicies,
 	}, {
 		name:               "verification fails with empty policy",
 		task:               tamperedTask,
-		source:             matchingSource,
+		source:             &v1beta1.RefSource{URI: matchingSource},
 		verificationPolicy: []*v1alpha1.VerificationPolicy{},
 		expectedError:      ErrNoMatchedPolicies,
 	}, {
 		name:   "Verification fails with regex error",
 		task:   signedTask,
-		source: "git+https://github.com/tektoncd/catalog.git",
+		source: &v1beta1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"},
 		verificationPolicy: []*v1alpha1.VerificationPolicy{
 			{
 				ObjectMeta: metav1.ObjectMeta{
@@ -324,7 +324,7 @@ func TestVerifyTask_Error(t *testing.T) {
 	}, {
 		name:   "Verification fails with error from policy",
 		task:   signedTask,
-		source: "git+https://github.com/tektoncd/catalog.git",
+		source: &v1beta1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"},
 		verificationPolicy: []*v1alpha1.VerificationPolicy{
 			{
 				ObjectMeta: metav1.ObjectMeta{
@@ -369,27 +369,27 @@ func TestVerifyPipeline_Success(t *testing.T) {
 	tcs := []struct {
 		name                      string
 		pipeline                  *v1beta1.Pipeline
-		source                    string
+		source                    *v1beta1.RefSource
 		verificationNoMatchPolicy string
 	}{{
 		name:                      "signed git source pipeline passes verification",
 		pipeline:                  signedPipeline,
-		source:                    "git+https://github.com/tektoncd/catalog.git",
+		source:                    &v1beta1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"},
 		verificationNoMatchPolicy: config.FailNoMatchPolicy,
 	}, {
 		name:                      "signed bundle source pipeline passes verification",
 		pipeline:                  signedPipeline,
-		source:                    "gcr.io/tekton-releases/catalog/upstream/git-clone",
+		source:                    &v1beta1.RefSource{URI: "gcr.io/tekton-releases/catalog/upstream/git-clone"},
 		verificationNoMatchPolicy: config.FailNoMatchPolicy,
 	}, {
 		name:                      "ignore no match policy skips verification when no matching policies",
 		pipeline:                  unsignedPipeline,
-		source:                    mismatchedSource,
+		source:                    &v1beta1.RefSource{URI: mismatchedSource},
 		verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
 	}, {
 		name:                      "warn no match policy skips verification when no matching policies",
 		pipeline:                  unsignedPipeline,
-		source:                    mismatchedSource,
+		source:                    &v1beta1.RefSource{URI: mismatchedSource},
 		verificationNoMatchPolicy: config.WarnNoMatchPolicy,
 	}}
 	for _, tc := range tcs {
@@ -422,22 +422,22 @@ func TestVerifyPipeline_Error(t *testing.T) {
 	tcs := []struct {
 		name               string
 		pipeline           *v1beta1.Pipeline
-		source             string
+		source             *v1beta1.RefSource
 		verificationPolicy []*v1alpha1.VerificationPolicy
 	}{{
 		name:               "Tampered Task Fails Verification with tampered content",
 		pipeline:           tamperedPipeline,
-		source:             matchingSource,
+		source:             &v1beta1.RefSource{URI: matchingSource},
 		verificationPolicy: vps,
 	}, {
 		name:               "Task Not Matching Pattern Fails Verification",
 		pipeline:           signedPipeline,
-		source:             mismatchedSource,
+		source:             &v1beta1.RefSource{URI: mismatchedSource},
 		verificationPolicy: vps,
 	}, {
 		name:     "Verification fails with regex error",
 		pipeline: signedPipeline,
-		source:   "git+https://github.com/tektoncd/catalog.git",
+		source:   &v1beta1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"},
 		verificationPolicy: []*v1alpha1.VerificationPolicy{
 			{
 				ObjectMeta: metav1.ObjectMeta{

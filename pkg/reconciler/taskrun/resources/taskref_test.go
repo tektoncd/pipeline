@@ -465,7 +465,7 @@ func TestGetTaskFunc(t *testing.T) {
 					TaskRef: tc.ref,
 				},
 			}
-			fn := resources.GetTaskFunc(ctx, kubeclient, tektonclient, nil, trForFunc, tc.ref, "", "default", "default")
+			fn := resources.GetTaskFunc(ctx, kubeclient, tektonclient, nil, trForFunc, tc.ref, "", "default", "default", nil /*VerificationPolicies*/)
 
 			task, refSource, err := fn(ctx, tc.ref.Name)
 			if err != nil {
@@ -584,7 +584,7 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 					ServiceAccountName: "default",
 				},
 			}
-			fn := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default")
+			fn := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default", nil /*VerificationPolicies*/)
 
 			resolvedTask, resolvedRefSource, err := fn(ctx, taskRef.Name)
 			if err != nil {
@@ -650,7 +650,7 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 			}},
 		},
 	}
-	fn := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default")
+	fn := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default", nil /*VerificationPolicies*/)
 
 	resolvedTask, resolvedRefSource, err := fn(ctx, taskRef.Name)
 	if err != nil {
@@ -692,7 +692,7 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 			}},
 		},
 	}
-	fnNotMatching := resources.GetTaskFunc(ctx, nil, nil, requester, trNotMatching, trNotMatching.Spec.TaskRef, "", "default", "default")
+	fnNotMatching := resources.GetTaskFunc(ctx, nil, nil, requester, trNotMatching, trNotMatching.Spec.TaskRef, "", "default", "default", nil /*VerificationPolicies*/)
 
 	_, _, err = fnNotMatching(ctx, taskRefNotMatching.Name)
 	if err == nil {
@@ -718,13 +718,13 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 			ServiceAccountName: "default",
 		},
 	}
-	fn := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default")
+	fn := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default", nil /*VerificationPolicies*/)
 	if _, _, err := fn(ctx, taskRef.Name); err == nil {
 		t.Fatalf("expected error due to invalid pipeline data but saw none")
 	}
 }
 
-func TestGetVerifiedTaskFunc_Success(t *testing.T) {
+func TestGetTaskFunc_VerifySuccess(t *testing.T) {
 	// This test case tests the success cases of trusted-resources-verification-no-match-policy when it is set to
 	// fail: passed matching policy verification
 	// warn and ignore: no matching policies.
@@ -835,7 +835,7 @@ func TestGetVerifiedTaskFunc_Success(t *testing.T) {
 					ServiceAccountName: "default",
 				},
 			}
-			fn := resources.GetVerifiedTaskFunc(ctx, k8sclient, tektonclient, tc.requester, tr, tr.Spec.TaskRef, "", "default", "default", tc.policies)
+			fn := resources.GetTaskFunc(ctx, k8sclient, tektonclient, tc.requester, tr, tr.Spec.TaskRef, "", "default", "default", tc.policies)
 
 			resolvedTask, refSource, err := fn(ctx, taskRef.Name)
 
@@ -854,7 +854,7 @@ func TestGetVerifiedTaskFunc_Success(t *testing.T) {
 	}
 }
 
-func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
+func TestGetTaskFunc_VerifyError(t *testing.T) {
 	ctx := context.Background()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 	tektonclient := fake.NewSimpleClientset()
@@ -952,7 +952,7 @@ func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
 		requester:                 requesterUnmatched,
 		verificationNoMatchPolicy: config.FailNoMatchPolicy,
 		expected:                  nil,
-		expectedErr:               trustedresources.ErrResourceVerificationFailed,
+		expectedErr:               trustedresources.ErrNoMatchedPolicies,
 	},
 	}
 	for _, tc := range testcases {
@@ -965,12 +965,12 @@ func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
 					ServiceAccountName: "default",
 				},
 			}
-			fn := resources.GetVerifiedTaskFunc(ctx, k8sclient, tektonclient, tc.requester, tr, tr.Spec.TaskRef, "", "default", "default", vps)
+			fn := resources.GetTaskFunc(ctx, k8sclient, tektonclient, tc.requester, tr, tr.Spec.TaskRef, "", "default", "default", vps)
 
 			resolvedTask, resolvedRefSource, err := fn(ctx, taskRef.Name)
 
 			if !errors.Is(err, tc.expectedErr) {
-				t.Errorf("GetVerifiedTaskFunc got %v but want %v", err, tc.expectedErr)
+				t.Errorf("GetTaskFunc got %v but want %v", err, tc.expectedErr)
 			}
 
 			if d := cmp.Diff(tc.expected, resolvedTask); d != "" {
@@ -984,7 +984,7 @@ func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
 	}
 }
 
-func TestGetVerifiedTaskFunc_GetFuncError(t *testing.T) {
+func TestGetTaskFunc_GetFuncError(t *testing.T) {
 	ctx := context.Background()
 	_, k8sclient, vps := test.SetupMatchAllVerificationPolicies(t, "trusted-resources")
 	tektonclient := fake.NewSimpleClientset()
@@ -1033,13 +1033,13 @@ func TestGetVerifiedTaskFunc_GetFuncError(t *testing.T) {
 			name:        "get error when oci bundle return error",
 			requester:   requesterUnsigned,
 			taskrun:     *trBundleError,
-			expectedErr: fmt.Errorf(`failed to get task: failed to get keychain: serviceaccounts "default" not found`),
+			expectedErr: fmt.Errorf(`failed to get keychain: serviceaccounts "default" not found`),
 		},
 		{
 			name:        "get error when remote resolution return error",
 			requester:   requesterUnsigned,
 			taskrun:     *trResolutionError,
-			expectedErr: fmt.Errorf("failed to get task: error accessing data from remote resource: %w", resolvedUnsigned.DataErr),
+			expectedErr: fmt.Errorf("error accessing data from remote resource: %w", resolvedUnsigned.DataErr),
 		},
 	}
 	for _, tc := range testcases {
@@ -1057,7 +1057,7 @@ func TestGetVerifiedTaskFunc_GetFuncError(t *testing.T) {
 			store.OnConfigChanged(featureflags)
 			ctx = store.ToContext(ctx)
 
-			fn := resources.GetVerifiedTaskFunc(ctx, k8sclient, tektonclient, tc.requester, &tc.taskrun, tc.taskrun.Spec.TaskRef, "", "default", "default", vps)
+			fn := resources.GetTaskFunc(ctx, k8sclient, tektonclient, tc.requester, &tc.taskrun, tc.taskrun.Spec.TaskRef, "", "default", "default", vps)
 
 			_, _, err = fn(ctx, tc.taskrun.Spec.TaskRef.Name)
 

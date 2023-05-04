@@ -207,7 +207,7 @@ func TestGetPipelineFunc(t *testing.T) {
 					PipelineRef:        tc.ref,
 					ServiceAccountName: "default",
 				},
-			})
+			}, nil /*VerificationPolicies*/)
 			if err != nil {
 				t.Fatalf("failed to get pipeline fn: %s", err.Error())
 			}
@@ -272,7 +272,7 @@ func TestGetPipelineFuncSpecAlreadyFetched(t *testing.T) {
 		Spec: pipelineSpec,
 	}
 
-	fn := resources.GetPipelineFunc(ctx, kubeclient, tektonclient, nil, pipelineRun)
+	fn := resources.GetPipelineFunc(ctx, kubeclient, tektonclient, nil, pipelineRun, nil /*VerificationPolicies*/)
 	actualPipeline, actualRefSource, err := fn(ctx, name)
 	if err != nil {
 		t.Fatalf("failed to call pipelinefn: %s", err.Error())
@@ -322,7 +322,7 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 					PipelineRef:        pipelineRef,
 					ServiceAccountName: "default",
 				},
-			})
+			}, nil /*VerificationPolicies*/)
 
 			resolvedPipeline, resolvedRefSource, err := fn(ctx, pipelineRef.Name)
 			if err != nil {
@@ -387,7 +387,7 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 				Value: *v1beta1.NewStructuredValues("bar"),
 			}},
 		},
-	})
+	}, nil /*VerificationPolicies*/)
 
 	resolvedPipeline, resolvedRefSource, err := fn(ctx, pipelineRef.Name)
 	if err != nil {
@@ -428,7 +428,7 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 				Value: *v1beta1.NewStructuredValues("banana"),
 			}},
 		},
-	})
+	}, nil /*VerificationPolicies*/)
 
 	_, _, err = fnNotMatching(ctx, pipelineRefNotMatching.Name)
 	if err == nil {
@@ -453,13 +453,13 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 			PipelineRef:        pipelineRef,
 			ServiceAccountName: "default",
 		},
-	})
+	}, nil /*VerificationPolicies*/)
 	if _, _, err := fn(ctx, pipelineRef.Name); err == nil {
 		t.Fatalf("expected error due to invalid pipeline data but saw none")
 	}
 }
 
-func TestGetVerifiedPipelineFunc_Success(t *testing.T) {
+func TestGetPipelineFunc_VerifySuccess(t *testing.T) {
 	// This test case tests the success cases of trusted-resources-verification-no-match-policy when it is set to
 	// fail: passed matching policy verification
 	// warn and ignore: no matching policies.
@@ -618,7 +618,7 @@ func TestGetVerifiedPipelineFunc_Success(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx = test.SetupTrustedResourceConfig(ctx, tc.verificationNoMatchPolicy)
-			fn := resources.GetVerifiedPipelineFunc(ctx, k8sclient, tektonclient, tc.requester, &tc.pipelinerun, tc.policies)
+			fn := resources.GetPipelineFunc(ctx, k8sclient, tektonclient, tc.requester, &tc.pipelinerun, tc.policies)
 
 			resolvedPipeline, source, err := fn(ctx, pipelineRef.Name)
 			if err != nil {
@@ -634,7 +634,7 @@ func TestGetVerifiedPipelineFunc_Success(t *testing.T) {
 	}
 }
 
-func TestGetVerifiedPipelineFunc_VerifyError(t *testing.T) {
+func TestGetPipelineFunc_VerifyError(t *testing.T) {
 	ctx := context.Background()
 	tektonclient := fake.NewSimpleClientset()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
@@ -689,51 +689,43 @@ func TestGetVerifiedPipelineFunc_VerifyError(t *testing.T) {
 		name                      string
 		requester                 *test.Requester
 		verificationNoMatchPolicy string
-		expected                  runtime.Object
 		expectedErr               error
 	}{
 		{
 			name:                      "unsigned pipeline fails verification with fail no match policy",
 			requester:                 requesterUnsigned,
 			verificationNoMatchPolicy: config.FailNoMatchPolicy,
-			expected:                  (*v1beta1.Pipeline)(nil),
 			expectedErr:               trustedresources.ErrResourceVerificationFailed,
 		}, {
 			name:                      "unsigned pipeline fails verification with warn no match policy",
 			requester:                 requesterUnsigned,
 			verificationNoMatchPolicy: config.WarnNoMatchPolicy,
-			expected:                  (*v1beta1.Pipeline)(nil),
 			expectedErr:               trustedresources.ErrResourceVerificationFailed,
 		}, {
 			name:                      "unsigned pipeline fails verification with ignore no match policy",
 			requester:                 requesterUnsigned,
 			verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
-			expected:                  (*v1beta1.Pipeline)(nil),
 			expectedErr:               trustedresources.ErrResourceVerificationFailed,
 		}, {
 			name:                      "modified pipeline fails verification with fail no match policy",
 			requester:                 requesterModified,
 			verificationNoMatchPolicy: config.FailNoMatchPolicy,
-			expected:                  (*v1beta1.Pipeline)(nil),
 			expectedErr:               trustedresources.ErrResourceVerificationFailed,
 		}, {
 			name:                      "modified pipeline fails verification with warn no match policy",
 			requester:                 requesterModified,
 			verificationNoMatchPolicy: config.WarnNoMatchPolicy,
-			expected:                  (*v1beta1.Pipeline)(nil),
 			expectedErr:               trustedresources.ErrResourceVerificationFailed,
 		}, {
 			name:                      "modified pipeline fails verification with ignore no match policy",
 			requester:                 requesterModified,
 			verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
-			expected:                  (*v1beta1.Pipeline)(nil),
 			expectedErr:               trustedresources.ErrResourceVerificationFailed,
 		}, {
 			name:                      "unmatched pipeline fails with fail no match policy",
 			requester:                 requesterUnmatched,
 			verificationNoMatchPolicy: config.FailNoMatchPolicy,
-			expected:                  (*v1beta1.Pipeline)(nil),
-			expectedErr:               trustedresources.ErrResourceVerificationFailed,
+			expectedErr:               trustedresources.ErrNoMatchedPolicies,
 		},
 	}
 	for _, tc := range testcases {
@@ -746,13 +738,13 @@ func TestGetVerifiedPipelineFunc_VerifyError(t *testing.T) {
 					ServiceAccountName: "default",
 				},
 			}
-			fn := resources.GetVerifiedPipelineFunc(ctx, k8sclient, tektonclient, tc.requester, pr, vps)
+			fn := resources.GetPipelineFunc(ctx, k8sclient, tektonclient, tc.requester, pr, vps)
 
 			resolvedPipeline, resolvedRefSource, err := fn(ctx, pipelineRef.Name)
 			if !errors.Is(err, tc.expectedErr) {
-				t.Errorf("GetVerifiedPipelineFunc got %v, want %v", err, tc.expectedErr)
+				t.Errorf("GetPipelineFunc got %v, want %v", err, tc.expectedErr)
 			}
-			if d := cmp.Diff(resolvedPipeline, tc.expected); d != "" {
+			if d := cmp.Diff(resolvedPipeline, (*v1beta1.Pipeline)(nil)); d != "" {
 				t.Errorf("resolvedPipeline did not match: %s", diff.PrintWantGot(d))
 			}
 			if resolvedRefSource != nil {
@@ -762,7 +754,7 @@ func TestGetVerifiedPipelineFunc_VerifyError(t *testing.T) {
 	}
 }
 
-func TestGetVerifiedPipelineFunc_GetFuncError(t *testing.T) {
+func TestGetPipelineFunc_GetFuncError(t *testing.T) {
 	ctx := context.Background()
 	tektonclient := fake.NewSimpleClientset()
 	_, k8sclient, vps := test.SetupMatchAllVerificationPolicies(t, "trusted-resources")
@@ -811,13 +803,13 @@ func TestGetVerifiedPipelineFunc_GetFuncError(t *testing.T) {
 			name:        "get error when oci bundle return error",
 			requester:   requesterUnsigned,
 			pipelinerun: *prBundleError,
-			expectedErr: fmt.Errorf(`failed to get pipeline: failed to get keychain: serviceaccounts "default" not found`),
+			expectedErr: fmt.Errorf(`failed to get keychain: serviceaccounts "default" not found`),
 		},
 		{
 			name:        "get error when remote resolution return error",
 			requester:   requesterUnsigned,
 			pipelinerun: *prResolutionError,
-			expectedErr: fmt.Errorf("failed to get pipeline: error accessing data from remote resource: %w", resolvedUnsigned.DataErr),
+			expectedErr: fmt.Errorf("error accessing data from remote resource: %w", resolvedUnsigned.DataErr),
 		},
 	}
 	for _, tc := range testcases {
@@ -835,11 +827,11 @@ func TestGetVerifiedPipelineFunc_GetFuncError(t *testing.T) {
 			store.OnConfigChanged(featureflags)
 			ctx = store.ToContext(ctx)
 
-			fn := resources.GetVerifiedPipelineFunc(ctx, k8sclient, tektonclient, tc.requester, &tc.pipelinerun, vps)
+			fn := resources.GetPipelineFunc(ctx, k8sclient, tektonclient, tc.requester, &tc.pipelinerun, vps)
 
 			_, _, err = fn(ctx, tc.pipelinerun.Spec.PipelineRef.Name)
 			if d := cmp.Diff(err.Error(), tc.expectedErr.Error()); d != "" {
-				t.Errorf("GetVerifiedPipelineFunc got %v, want %v", err, tc.expectedErr)
+				t.Errorf("GetPipelineFunc got %v, want %v", err, tc.expectedErr)
 			}
 		})
 	}
