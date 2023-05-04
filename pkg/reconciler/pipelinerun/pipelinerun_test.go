@@ -10849,3 +10849,70 @@ spec:
 		t.Errorf("Expected PipelineRun to be create run failed, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
 	}
 }
+
+func TestReconcileWithTimeoutsOfCompletedPipelineRun(t *testing.T) {
+	// TestReconcileWithTimeoutsOfCompletedPipelineRun runs "Reconcile" on a PipelineRun that has completed and
+	// which has a passed timeout.
+	// It verifies that reconcile is successful, and the PipelineRun is not marked as timed out.
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+  - name: hello-world-1
+    taskRef:
+      name: hello-world
+`)}
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-with-timeout
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+  timeouts:
+    pipeline: 2m
+status:
+  conditions:
+  - lastTransitionTime: "2021-12-31T11:01:00Z"
+    message: 'Tasks Completed: 1 (Failed: 0, Cancelled 0), Skipped: 0'
+    reason: Succeeded
+    status: "True"
+    type: Succeeded
+  completionTime: "2021-12-31T11:01:00Z"
+  startTime: "2021-12-31T11:00:00Z"
+  childReferences:
+  - name: test-pipeline-run-with-timeout-hello-world-1
+    pipelineTaskName: hello-world-1
+    kind: TaskRun
+`)}
+	ts := []*v1beta1.Task{simpleHelloWorldTask}
+
+	trs := []*v1beta1.TaskRun{mustParseTaskRunWithObjectMeta(t, taskRunObjectMeta("test-pipeline-run-with-timeout-hello-world-1", "foo", "test-pipeline-run-with-timeout",
+		"test-pipeline", "hello-world-1", false), `
+spec:
+  serviceAccountName: test-sa
+  taskRef:
+    name: hello-world
+    kind: Task
+`)}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	wantEvents := []string{}
+	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-with-timeout", wantEvents, false)
+
+	// The PipelineRun should not be timed out.
+	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "Succeeded" {
+		t.Errorf("Expected PipelineRun to still be Succeeded, but reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+	}
+}
