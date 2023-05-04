@@ -17,6 +17,11 @@ limitations under the License.
 package version_test
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/base64"
+	"encoding/json"
+	"io"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -60,6 +65,54 @@ func TestSliceSerializationRoundTrip(t *testing.T) {
 	err := version.SerializeToMetadata(&meta, source, key)
 	if err != nil {
 		t.Fatalf("Serialization error: %s", err)
+	}
+
+	sink := []testStruct{}
+	err = version.DeserializeFromMetadata(&meta, &sink, key)
+	if err != nil {
+		t.Fatalf("Deserialization error: %s", err)
+	}
+
+	_, ok := meta.Annotations[key]
+	if ok {
+		t.Errorf("Expected key %s not to be present in annotations but it was", key)
+	}
+
+	if d := cmp.Diff(source, sink); d != "" {
+		t.Errorf("Unexpected diff after serialization/deserialization round trip: %s", d)
+	}
+}
+
+func TestCompressionAndEncodingSerializationRoundTrip(t *testing.T) {
+	meta := metav1.ObjectMeta{}
+	source := []testStruct{{Field: "foo"}, {Field: "bar"}}
+	key := "my-key"
+	err := version.SerializeToMetadata(&meta, source, key)
+	if err != nil {
+		t.Fatalf("Serialization error: %s", err)
+	}
+
+	to := []testStruct{}
+	decoded, err := base64.StdEncoding.DecodeString(meta.Annotations[key])
+	if err != nil {
+		t.Fatal(err)
+	}
+	gz, err := gzip.NewReader(bytes.NewReader(decoded))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := io.ReadAll(gz)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &to); err != nil {
+		t.Fatal(err)
+	}
+	if d := cmp.Diff(source, to); d != "" {
+		t.Errorf("Unexpected diff after serialization: %s", d)
 	}
 
 	sink := []testStruct{}

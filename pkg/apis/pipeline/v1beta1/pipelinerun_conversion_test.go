@@ -603,8 +603,8 @@ func TestPipelineRunConversionEmbeddedStatusConvertTo(t *testing.T) {
 				Name:      "foo",
 				Namespace: "bar",
 				Annotations: map[string]string{
-					"tekton.dev/v1beta1Runs":     `{"r-0":{"pipelineTaskName":"ptn-0","status":{"results":[{"name":"foo","value":"bar"}],"extraFields":null},"whenExpressions":[{"input":"default-value-0","operator":"in","values":["val-0","val-1"]}]}}`,
-					"tekton.dev/v1beta1TaskRuns": `{"tr-0":{"pipelineTaskName":"ptn","status":{"podName":"pod-name","steps":[{"running":{"startedAt":null},"name":"running-step","container":"step-running-step"}],"cloudEvents":[{"target":"http//sink1","status":{"condition":"Unknown","message":"","retryCount":0}},{"target":"http//sink2","status":{"condition":"Unknown","message":"","retryCount":0}}],"retriesStatus":[{"conditions":[{"type":"Succeeded","status":"False","lastTransitionTime":null}],"podName":""}],"resourcesResult":[{"key":"digest","value":"sha256:1234","resourceName":"source-image"}],"sidecars":[{"terminated":{"exitCode":1,"reason":"Error","message":"Error","startedAt":null,"finishedAt":null},"name":"error","container":"sidecar-error","imageID":"image-id"}]},"whenExpressions":[{"input":"default-value","operator":"in","values":["val"]}]}}`,
+					"tekton.dev/v1beta1Runs":     "H4sIAAAAAAAA/zSNQQvCMAxG/8t37mBee9ejJ2+yQ2QZFmtamlQHo/9duuEpCby8t6EMI/yGHDLHIHwjfV3pzfDIJsMIBzWyqh0qrDWawt83yAEtKcHhQ7H260EFbXLg1QpdAsdZ4aXG2By+T5bzmgurhiSHJEiuBo+ZF6rRht2zR1PmQpYKPIL8C/2pbzvR5wlTm1r7BQAA//8hZzWqxgAAAA==",
+					"tekton.dev/v1beta1TaskRuns": "H4sIAAAAAAAA/6RSPW8bMQz9L2/WIbH7MWgrUhfo0qFxp+AG4cTYhM/UQaSSGMb990J359YusnWjRL7Hx0eeYbm5hz9j4IF6FtoGPfwIR4LHYAIHtWBFp5IUL5kUG6lhTdOg8E9n5CLCsquVaiEbxS8GL6XvRweZgUtNU1Fw6JJYYKEMPxE1N/mxdej6VOLmhcTmJhbyjgwee7Ph7k5ZDqsbkV2SyMZJ4PFLDpJe6xBHUg27qgAOmSyfHlIRg78fR/cu6/o/Wdv5h0kfF5anK5plmNNQwY+l64gixauW+BZ6rf72QW2bg+iE23K1cfK0dVcLwdxPU8kd6U/S0tvU4kAneETekRocXkJfar3uw/rTZ79af/iIv8CFbH40fKyzVWLlSF3Ii2jKR5ZgFKsx9Mb2kCLBrypP0MmiTc4p3xh0+fnnMhyeWVj3790KLZCbI5mVNJfcpPH7V/g5ajhibEeH1z3J5m3IpPrHbZah1B1Heg6lt2b2wiENlIOlSs9y8ahCaoR2bMfxdwAAAP//JmZFBycDAAA=",
 				},
 			},
 			Spec: v1.PipelineRunSpec{
