@@ -37,6 +37,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
@@ -45,6 +46,7 @@ import (
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"github.com/tektoncd/pipeline/test"
@@ -72,6 +74,7 @@ import (
 	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -1603,17 +1606,17 @@ status:
   - reason: ToBeRetried
     status: Unknown
     type: Succeeded
-    message: "error when listing tasks for taskRun test-taskrun-run-retry-prepare-failure: failed to get task: tasks.tekton.dev \"test-task\" not found"
+    message: "error when listing tasks for taskRun test-taskrun-run-retry-prepare-failure: tasks.tekton.dev \"test-task\" not found"
   retriesStatus:
   - conditions:
     - reason: TaskRunResolutionFailed
       status: "False"
       type: "Succeeded"
-      message: "error when listing tasks for taskRun test-taskrun-run-retry-prepare-failure: failed to get task: tasks.tekton.dev \"test-task\" not found"
+      message: "error when listing tasks for taskRun test-taskrun-run-retry-prepare-failure: tasks.tekton.dev \"test-task\" not found"
     startTime: "2021-12-31T23:59:59Z"
     completionTime: "2022-01-01T00:00:00Z"
 `)
-		prepareError                    = fmt.Errorf("1 error occurred:\n\t* error when listing tasks for taskRun test-taskrun-run-retry-prepare-failure: failed to get task: tasks.tekton.dev \"test-task\" not found")
+		prepareError                    = fmt.Errorf("1 error occurred:\n\t* error when listing tasks for taskRun test-taskrun-run-retry-prepare-failure: tasks.tekton.dev \"test-task\" not found")
 		toFailOnReconcileFailureTaskRun = parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-results-type-mismatched
@@ -4876,10 +4879,7 @@ status:
 }
 
 func TestReconcile_verifyResolvedTask_Success(t *testing.T) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
+	resolverName := "foobar"
 	ts := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task
@@ -4894,7 +4894,18 @@ spec:
     image: myimage
     name: mycontainer
 `)
-	tr := parse.MustParseV1beta1TaskRun(t, `
+
+	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, ts.Namespace)
+	signedTask, err := test.GetSignedTask(ts, signer, "test-task")
+	if err != nil {
+		t.Fatal("fail to sign task", err)
+	}
+	signedTaskBytes, err := yaml.Marshal(signedTask)
+	if err != nil {
+		t.Fatal("fail to marshal task", err)
+	}
+
+	tr := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: test-taskrun
   namespace: foo
@@ -4903,16 +4914,11 @@ spec:
   - name: myarg
     value: foo
   taskRef:
-    name: test-task
+    resolver: %s
+  serviceAccountName: default
 status:
   podName: the-pod
-`)
-
-	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, tr.Namespace)
-	signedTask, err := test.GetSignedTask(ts, signer, "test-task")
-	if err != nil {
-		t.Fatal("fail to sign task", err)
-	}
+`, resolverName))
 
 	cms := []*corev1.ConfigMap{
 		{
@@ -4922,12 +4928,12 @@ status:
 			},
 		},
 	}
-
+	rr := getResolvedResolutionRequest(t, resolverName, signedTaskBytes, tr.Namespace, tr.Name)
 	d := test.Data{
 		TaskRuns:             []*v1beta1.TaskRun{tr},
-		Tasks:                []*v1beta1.Task{signedTask},
 		ConfigMaps:           cms,
 		VerificationPolicies: vps,
+		ResolutionRequests:   []*resolutionv1beta1.ResolutionRequest{&rr},
 	}
 
 	testAssets, cancel := getTaskRunController(t, d)
@@ -4938,14 +4944,22 @@ status:
 	if ok, _ := controller.IsRequeueKey(err); !ok {
 		t.Errorf("Error reconciling TaskRun. Got error %v", err)
 	}
+	tr, err = testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("getting updated taskrun: %v", err)
+	}
+	condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+	if condition == nil || condition.Status != corev1.ConditionUnknown {
+		t.Errorf("Expected fresh TaskRun to have in progress status, but had %v", condition)
+	}
+	if condition != nil && condition.Reason != v1beta1.TaskRunReasonRunning.String() {
+		t.Errorf("Expected reason %q but was %s", v1beta1.TaskRunReasonRunning.String(), condition.Reason)
+	}
 }
 
 func TestReconcile_verifyResolvedTask_Error(t *testing.T) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	ts := parse.MustParseV1beta1Task(t, `
+	resolverName := "foobar"
+	unsignedTask := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task
   namespace: foo
@@ -4959,7 +4973,54 @@ spec:
     image: myimage
     name: mycontainer
 `)
-	tr := parse.MustParseV1beta1TaskRun(t, `
+	unsignedTaskBytes, err := yaml.Marshal(unsignedTask)
+	if err != nil {
+		t.Fatal("fail to marshal task", err)
+	}
+
+	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, unsignedTask.Namespace)
+	signedTask, err := test.GetSignedTask(unsignedTask, signer, "test-task")
+	if err != nil {
+		t.Fatal("fail to sign task", err)
+	}
+
+	modifiedTask := signedTask.DeepCopy()
+	if modifiedTask.Annotations == nil {
+		modifiedTask.Annotations = make(map[string]string)
+	}
+	modifiedTask.Annotations["random"] = "attack"
+	modifiedTaskBytes, err := yaml.Marshal(modifiedTask)
+	if err != nil {
+		t.Fatal("fail to marshal task", err)
+	}
+
+	cms := []*corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+			Data: map[string]string{
+				"trusted-resources-verification-no-match-policy": config.FailNoMatchPolicy,
+				"enable-tekton-oci-bundles":                      "true",
+			},
+		},
+	}
+
+	testCases := []struct {
+		name      string
+		taskBytes []byte
+	}{
+		{
+			name:      "unsigned task fails verification",
+			taskBytes: unsignedTaskBytes,
+		},
+		{
+			name:      "modified task fails verification",
+			taskBytes: modifiedTaskBytes,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tr := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: test-taskrun
   namespace: foo
@@ -4968,57 +5029,17 @@ spec:
   - name: myarg
     value: foo
   taskRef:
+    resolver: %s
     name: test-task
 status:
   podName: the-pod
-`)
-
-	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, tr.Namespace)
-	signedTask, err := test.GetSignedTask(ts, signer, "test-task")
-	if err != nil {
-		t.Fatal("fail to sign task", err)
-	}
-
-	tamperedTask := signedTask.DeepCopy()
-	if tamperedTask.Annotations == nil {
-		tamperedTask.Annotations = make(map[string]string)
-	}
-	tamperedTask.Annotations["random"] = "attack"
-
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"trusted-resources-verification-no-match-policy": config.FailNoMatchPolicy,
-			},
-		},
-	}
-
-	testCases := []struct {
-		name          string
-		taskrun       []*v1beta1.TaskRun
-		task          []*v1beta1.Task
-		expectedError error
-	}{
-		{
-			name:          "unsigned task fails verification",
-			task:          []*v1beta1.Task{ts},
-			expectedError: trustedresources.ErrResourceVerificationFailed,
-		},
-		{
-			name:          "modified task fails verification",
-			task:          []*v1beta1.Task{tamperedTask},
-			expectedError: trustedresources.ErrResourceVerificationFailed,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
+`, resolverName))
+			rr := getResolvedResolutionRequest(t, resolverName, tc.taskBytes, tr.Namespace, tr.Name)
 			d := test.Data{
 				TaskRuns:             []*v1beta1.TaskRun{tr},
-				Tasks:                tc.task,
 				ConfigMaps:           cms,
 				VerificationPolicies: vps,
+				ResolutionRequests:   []*resolutionv1beta1.ResolutionRequest{&rr},
 			}
 
 			testAssets, cancel := getTaskRunController(t, d)
@@ -5026,10 +5047,10 @@ status:
 			createServiceAccount(t, testAssets, tr.Spec.ServiceAccountName, tr.Namespace)
 			err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
 
-			if !errors.Is(err, tc.expectedError) {
-				t.Errorf("Reconcile got %v but want %v", err, tc.expectedError)
+			if !errors.Is(err, trustedresources.ErrResourceVerificationFailed) {
+				t.Errorf("Reconcile got %v but want %v", err, trustedresources.ErrResourceVerificationFailed)
 			}
-			tr, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+			tr, err = testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("getting updated taskrun: %v", err)
 			}
@@ -5039,4 +5060,24 @@ status:
 			}
 		})
 	}
+}
+
+// getResolvedResolutionRequest is a helper function to return the ResolutionRequest and the data is filled with resourceBytes,
+// the ResolutionRequest's name is generated by resolverName, namespace and runName.
+func getResolvedResolutionRequest(t *testing.T, resolverName string, resourceBytes []byte, namespace string, runName string) resolutionv1beta1.ResolutionRequest {
+	t.Helper()
+	name, err := remoteresource.GenerateDeterministicName(resolverName, namespace+"/"+runName, nil)
+	if err != nil {
+		t.Errorf("error generating name for %s/%s/%s: %v", resolverName, namespace, runName, err)
+	}
+	rr := resolutionv1beta1.ResolutionRequest{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              name,
+			Namespace:         namespace,
+			CreationTimestamp: metav1.Time{Time: time.Now()},
+		},
+	}
+	rr.Status.ResolutionRequestStatusFields.Data = base64.StdEncoding.Strict().EncodeToString(resourceBytes)
+	rr.Status.MarkSucceeded()
+	return rr
 }
