@@ -185,7 +185,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 	// reconcile. We are assuming here that if the PipelineRun has timed out for a long time, it had time to run
 	// before and it kept failing. One reason that can happen is exceeding etcd request size limit. Finishing it early
 	// makes sure the request size is manageable
-	if pr.HasTimedOutForALongTime(ctx, c.Clock) && !pr.IsTimeoutConditionSet() {
+	if !pr.IsDone() && pr.HasTimedOutForALongTime(ctx, c.Clock) && !pr.IsTimeoutConditionSet() {
 		if err := timeoutPipelineRun(ctx, logger, pr, c.PipelineClientSet); err != nil {
 			return err
 		}
