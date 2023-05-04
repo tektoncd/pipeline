@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"knative.dev/pkg/apis"
 )
@@ -34,24 +36,24 @@ func (pr *PipelineRun) ConvertTo(ctx context.Context, to apis.Convertible) error
 	switch sink := to.(type) {
 	case *v1.PipelineRun:
 		sink.ObjectMeta = pr.ObjectMeta
-		if err := pr.Status.convertTo(ctx, &sink.Status); err != nil {
+		if err := pr.Status.convertTo(ctx, &sink.Status, &sink.ObjectMeta); err != nil {
 			return err
 		}
-		return pr.Spec.ConvertTo(ctx, &sink.Spec)
+		return pr.Spec.ConvertTo(ctx, &sink.Spec, &sink.ObjectMeta)
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
 	}
 }
 
 // ConvertTo implements apis.Convertible
-func (prs PipelineRunSpec) ConvertTo(ctx context.Context, sink *v1.PipelineRunSpec) error {
+func (prs PipelineRunSpec) ConvertTo(ctx context.Context, sink *v1.PipelineRunSpec, meta *metav1.ObjectMeta) error {
 	if prs.PipelineRef != nil {
 		sink.PipelineRef = &v1.PipelineRef{}
 		prs.PipelineRef.convertTo(ctx, sink.PipelineRef)
 	}
 	if prs.PipelineSpec != nil {
 		sink.PipelineSpec = &v1.PipelineSpec{}
-		err := prs.PipelineSpec.ConvertTo(ctx, sink.PipelineSpec)
+		err := prs.PipelineSpec.ConvertTo(ctx, sink.PipelineSpec, meta)
 		if err != nil {
 			return err
 		}
@@ -94,17 +96,17 @@ func (pr *PipelineRun) ConvertFrom(ctx context.Context, from apis.Convertible) e
 	switch source := from.(type) {
 	case *v1.PipelineRun:
 		pr.ObjectMeta = source.ObjectMeta
-		if err := pr.Status.convertFrom(ctx, &source.Status); err != nil {
+		if err := pr.Status.convertFrom(ctx, &source.Status, &pr.ObjectMeta); err != nil {
 			return err
 		}
-		return pr.Spec.ConvertFrom(ctx, &source.Spec)
+		return pr.Spec.ConvertFrom(ctx, &source.Spec, &pr.ObjectMeta)
 	default:
 		return fmt.Errorf("unknown version, got: %T", pr)
 	}
 }
 
 // ConvertFrom implements apis.Convertible
-func (prs *PipelineRunSpec) ConvertFrom(ctx context.Context, source *v1.PipelineRunSpec) error {
+func (prs *PipelineRunSpec) ConvertFrom(ctx context.Context, source *v1.PipelineRunSpec, meta *metav1.ObjectMeta) error {
 	if source.PipelineRef != nil {
 		newPipelineRef := PipelineRef{}
 		newPipelineRef.convertFrom(ctx, *source.PipelineRef)
@@ -112,7 +114,7 @@ func (prs *PipelineRunSpec) ConvertFrom(ctx context.Context, source *v1.Pipeline
 	}
 	if source.PipelineSpec != nil {
 		newPipelineSpec := PipelineSpec{}
-		err := newPipelineSpec.ConvertFrom(ctx, source.PipelineSpec)
+		err := newPipelineSpec.ConvertFrom(ctx, source.PipelineSpec, meta)
 		if err != nil {
 			return err
 		}
@@ -206,7 +208,7 @@ func (ptrs *PipelineTaskRunSpec) convertFrom(ctx context.Context, source v1.Pipe
 	ptrs.ComputeResources = source.ComputeResources
 }
 
-func (prs *PipelineRunStatus) convertTo(ctx context.Context, sink *v1.PipelineRunStatus) error {
+func (prs *PipelineRunStatus) convertTo(ctx context.Context, sink *v1.PipelineRunStatus, meta *metav1.ObjectMeta) error {
 	sink.Status = prs.Status
 	sink.StartTime = prs.StartTime
 	sink.CompletionTime = prs.CompletionTime
@@ -218,7 +220,7 @@ func (prs *PipelineRunStatus) convertTo(ctx context.Context, sink *v1.PipelineRu
 	}
 	if prs.PipelineSpec != nil {
 		sink.PipelineSpec = &v1.PipelineSpec{}
-		err := prs.PipelineSpec.ConvertTo(ctx, sink.PipelineSpec)
+		err := prs.PipelineSpec.ConvertTo(ctx, sink.PipelineSpec, meta)
 		if err != nil {
 			return err
 		}
@@ -244,7 +246,7 @@ func (prs *PipelineRunStatus) convertTo(ctx context.Context, sink *v1.PipelineRu
 	return nil
 }
 
-func (prs *PipelineRunStatus) convertFrom(ctx context.Context, source *v1.PipelineRunStatus) error {
+func (prs *PipelineRunStatus) convertFrom(ctx context.Context, source *v1.PipelineRunStatus, meta *metav1.ObjectMeta) error {
 	prs.Status = source.Status
 	prs.StartTime = source.StartTime
 	prs.CompletionTime = source.CompletionTime
@@ -256,7 +258,7 @@ func (prs *PipelineRunStatus) convertFrom(ctx context.Context, source *v1.Pipeli
 	}
 	if source.PipelineSpec != nil {
 		newPipelineSpec := PipelineSpec{}
-		err := newPipelineSpec.ConvertFrom(ctx, source.PipelineSpec)
+		err := newPipelineSpec.ConvertFrom(ctx, source.PipelineSpec, meta)
 		if err != nil {
 			return err
 		}

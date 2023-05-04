@@ -44,17 +44,17 @@ func (tr *TaskRun) ConvertTo(ctx context.Context, to apis.Convertible) error {
 		if err := serializeTaskRunCloudEvents(&sink.ObjectMeta, &tr.Status); err != nil {
 			return err
 		}
-		if err := tr.Status.ConvertTo(ctx, &sink.Status); err != nil {
+		if err := tr.Status.ConvertTo(ctx, &sink.Status, &sink.ObjectMeta); err != nil {
 			return err
 		}
-		return tr.Spec.ConvertTo(ctx, &sink.Spec)
+		return tr.Spec.ConvertTo(ctx, &sink.Spec, &sink.ObjectMeta)
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
 	}
 }
 
 // ConvertTo implements apis.Convertible
-func (trs *TaskRunSpec) ConvertTo(ctx context.Context, sink *v1.TaskRunSpec) error {
+func (trs *TaskRunSpec) ConvertTo(ctx context.Context, sink *v1.TaskRunSpec, meta *metav1.ObjectMeta) error {
 	if trs.Debug != nil {
 		sink.Debug = &v1.TaskRunDebug{}
 		trs.Debug.convertTo(ctx, sink.Debug)
@@ -72,7 +72,7 @@ func (trs *TaskRunSpec) ConvertTo(ctx context.Context, sink *v1.TaskRunSpec) err
 	}
 	if trs.TaskSpec != nil {
 		sink.TaskSpec = &v1.TaskSpec{}
-		err := trs.TaskSpec.ConvertTo(ctx, sink.TaskSpec)
+		err := trs.TaskSpec.ConvertTo(ctx, sink.TaskSpec, meta, meta.Name)
 		if err != nil {
 			return err
 		}
@@ -115,17 +115,17 @@ func (tr *TaskRun) ConvertFrom(ctx context.Context, from apis.Convertible) error
 		if err := deserializeTaskRunCloudEvents(&tr.ObjectMeta, &tr.Status); err != nil {
 			return err
 		}
-		if err := tr.Status.ConvertFrom(ctx, source.Status); err != nil {
+		if err := tr.Status.ConvertFrom(ctx, source.Status, &tr.ObjectMeta); err != nil {
 			return err
 		}
-		return tr.Spec.ConvertFrom(ctx, &source.Spec)
+		return tr.Spec.ConvertFrom(ctx, &source.Spec, &tr.ObjectMeta)
 	default:
 		return fmt.Errorf("unknown version, got: %T", tr)
 	}
 }
 
 // ConvertFrom implements apis.Convertible
-func (trs *TaskRunSpec) ConvertFrom(ctx context.Context, source *v1.TaskRunSpec) error {
+func (trs *TaskRunSpec) ConvertFrom(ctx context.Context, source *v1.TaskRunSpec, meta *metav1.ObjectMeta) error {
 	if source.Debug != nil {
 		newDebug := TaskRunDebug{}
 		newDebug.convertFrom(ctx, *source.Debug)
@@ -145,7 +145,7 @@ func (trs *TaskRunSpec) ConvertFrom(ctx context.Context, source *v1.TaskRunSpec)
 	}
 	if source.TaskSpec != nil {
 		newTaskSpec := TaskSpec{}
-		err := newTaskSpec.ConvertFrom(ctx, source.TaskSpec)
+		err := newTaskSpec.ConvertFrom(ctx, source.TaskSpec, meta, meta.Name)
 		if err != nil {
 			return err
 		}
@@ -207,7 +207,7 @@ func (trso *TaskRunSidecarOverride) convertFrom(ctx context.Context, source v1.T
 }
 
 // ConvertTo implements apis.Convertible
-func (trs *TaskRunStatus) ConvertTo(ctx context.Context, sink *v1.TaskRunStatus) error {
+func (trs *TaskRunStatus) ConvertTo(ctx context.Context, sink *v1.TaskRunStatus, meta *metav1.ObjectMeta) error {
 	sink.Status = trs.Status
 	sink.PodName = trs.PodName
 	sink.StartTime = trs.StartTime
@@ -221,7 +221,7 @@ func (trs *TaskRunStatus) ConvertTo(ctx context.Context, sink *v1.TaskRunStatus)
 	sink.RetriesStatus = nil
 	for _, rr := range trs.RetriesStatus {
 		new := v1.TaskRunStatus{}
-		err := rr.ConvertTo(ctx, &new)
+		err := rr.ConvertTo(ctx, &new, meta)
 		if err != nil {
 			return err
 		}
@@ -242,7 +242,7 @@ func (trs *TaskRunStatus) ConvertTo(ctx context.Context, sink *v1.TaskRunStatus)
 
 	if trs.TaskSpec != nil {
 		sink.TaskSpec = &v1.TaskSpec{}
-		err := trs.TaskSpec.ConvertTo(ctx, sink.TaskSpec)
+		err := trs.TaskSpec.ConvertTo(ctx, sink.TaskSpec, meta, meta.Name)
 		if err != nil {
 			return err
 		}
@@ -256,7 +256,7 @@ func (trs *TaskRunStatus) ConvertTo(ctx context.Context, sink *v1.TaskRunStatus)
 }
 
 // ConvertFrom implements apis.Convertible
-func (trs *TaskRunStatus) ConvertFrom(ctx context.Context, source v1.TaskRunStatus) error {
+func (trs *TaskRunStatus) ConvertFrom(ctx context.Context, source v1.TaskRunStatus, meta *metav1.ObjectMeta) error {
 	trs.Status = source.Status
 	trs.PodName = source.PodName
 	trs.StartTime = source.StartTime
@@ -270,7 +270,7 @@ func (trs *TaskRunStatus) ConvertFrom(ctx context.Context, source v1.TaskRunStat
 	trs.RetriesStatus = nil
 	for _, rr := range source.RetriesStatus {
 		new := TaskRunStatus{}
-		err := new.ConvertFrom(ctx, rr)
+		err := new.ConvertFrom(ctx, rr, meta)
 		if err != nil {
 			return err
 		}
@@ -291,7 +291,7 @@ func (trs *TaskRunStatus) ConvertFrom(ctx context.Context, source v1.TaskRunStat
 
 	if source.TaskSpec != nil {
 		trs.TaskSpec = &TaskSpec{}
-		err := trs.TaskSpec.ConvertFrom(ctx, source.TaskSpec)
+		err := trs.TaskSpec.ConvertFrom(ctx, source.TaskSpec, meta, meta.Name)
 		if err != nil {
 			return err
 		}

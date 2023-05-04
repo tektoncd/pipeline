@@ -41,7 +41,7 @@ func SerializeToMetadata(meta *metav1.ObjectMeta, field interface{}, key string)
 // deserializes it into "to", and removes the key from the metadata's annotations.
 // Returns nil if the key is not present in the annotations.
 func DeserializeFromMetadata(meta *metav1.ObjectMeta, to interface{}, key string) error {
-	if meta.Annotations == nil {
+	if meta == nil || meta.Annotations == nil {
 		return nil
 	}
 	if str, ok := meta.Annotations[key]; ok {

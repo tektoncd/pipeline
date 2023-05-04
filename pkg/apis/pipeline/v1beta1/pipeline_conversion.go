@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"knative.dev/pkg/apis"
 )
@@ -34,20 +36,20 @@ func (p *Pipeline) ConvertTo(ctx context.Context, to apis.Convertible) error {
 	switch sink := to.(type) {
 	case *v1.Pipeline:
 		sink.ObjectMeta = p.ObjectMeta
-		return p.Spec.ConvertTo(ctx, &sink.Spec)
+		return p.Spec.ConvertTo(ctx, &sink.Spec, &sink.ObjectMeta)
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
 	}
 }
 
 // ConvertTo implements apis.Convertible
-func (ps *PipelineSpec) ConvertTo(ctx context.Context, sink *v1.PipelineSpec) error {
+func (ps *PipelineSpec) ConvertTo(ctx context.Context, sink *v1.PipelineSpec, meta *metav1.ObjectMeta) error {
 	sink.DisplayName = ps.DisplayName
 	sink.Description = ps.Description
 	sink.Tasks = nil
 	for _, t := range ps.Tasks {
 		new := v1.PipelineTask{}
-		err := t.convertTo(ctx, &new)
+		err := t.convertTo(ctx, &new, meta)
 		if err != nil {
 			return err
 		}
@@ -74,7 +76,7 @@ func (ps *PipelineSpec) ConvertTo(ctx context.Context, sink *v1.PipelineSpec) er
 	sink.Finally = nil
 	for _, f := range ps.Finally {
 		new := v1.PipelineTask{}
-		err := f.convertTo(ctx, &new)
+		err := f.convertTo(ctx, &new, meta)
 		if err != nil {
 			return err
 		}
@@ -88,20 +90,20 @@ func (p *Pipeline) ConvertFrom(ctx context.Context, from apis.Convertible) error
 	switch source := from.(type) {
 	case *v1.Pipeline:
 		p.ObjectMeta = source.ObjectMeta
-		return p.Spec.ConvertFrom(ctx, &source.Spec)
+		return p.Spec.ConvertFrom(ctx, &source.Spec, &p.ObjectMeta)
 	default:
 		return fmt.Errorf("unknown version, got: %T", p)
 	}
 }
 
 // ConvertFrom implements apis.Convertible
-func (ps *PipelineSpec) ConvertFrom(ctx context.Context, source *v1.PipelineSpec) error {
+func (ps *PipelineSpec) ConvertFrom(ctx context.Context, source *v1.PipelineSpec, meta *metav1.ObjectMeta) error {
 	ps.DisplayName = source.DisplayName
 	ps.Description = source.Description
 	ps.Tasks = nil
 	for _, t := range source.Tasks {
 		new := PipelineTask{}
-		err := new.convertFrom(ctx, t)
+		err := new.convertFrom(ctx, t, meta)
 		if err != nil {
 			return err
 		}
@@ -128,7 +130,7 @@ func (ps *PipelineSpec) ConvertFrom(ctx context.Context, source *v1.PipelineSpec
 	ps.Finally = nil
 	for _, f := range source.Finally {
 		new := PipelineTask{}
-		err := new.convertFrom(ctx, f)
+		err := new.convertFrom(ctx, f, meta)
 		if err != nil {
 			return err
 		}
@@ -137,7 +139,7 @@ func (ps *PipelineSpec) ConvertFrom(ctx context.Context, source *v1.PipelineSpec
 	return nil
 }
 
-func (pt PipelineTask) convertTo(ctx context.Context, sink *v1.PipelineTask) error {
+func (pt PipelineTask) convertTo(ctx context.Context, sink *v1.PipelineTask, meta *metav1.ObjectMeta) error {
 	sink.Name = pt.Name
 	sink.DisplayName = pt.DisplayName
 	sink.Description = pt.Description
@@ -147,7 +149,7 @@ func (pt PipelineTask) convertTo(ctx context.Context, sink *v1.PipelineTask) err
 	}
 	if pt.TaskSpec != nil {
 		sink.TaskSpec = &v1.EmbeddedTask{}
-		err := pt.TaskSpec.convertTo(ctx, sink.TaskSpec)
+		err := pt.TaskSpec.convertTo(ctx, sink.TaskSpec, meta, pt.Name)
 		if err != nil {
 			return err
 		}
@@ -183,7 +185,7 @@ func (pt PipelineTask) convertTo(ctx context.Context, sink *v1.PipelineTask) err
 	return nil
 }
 
-func (pt *PipelineTask) convertFrom(ctx context.Context, source v1.PipelineTask) error {
+func (pt *PipelineTask) convertFrom(ctx context.Context, source v1.PipelineTask, meta *metav1.ObjectMeta) error {
 	pt.Name = source.Name
 	pt.DisplayName = source.DisplayName
 	pt.Description = source.Description
@@ -194,7 +196,7 @@ func (pt *PipelineTask) convertFrom(ctx context.Context, source v1.PipelineTask)
 	}
 	if source.TaskSpec != nil {
 		newTaskSpec := EmbeddedTask{}
-		err := newTaskSpec.convertFrom(ctx, *source.TaskSpec)
+		err := newTaskSpec.convertFrom(ctx, *source.TaskSpec, meta, pt.Name)
 		pt.TaskSpec = &newTaskSpec
 		if err != nil {
 			return err
@@ -231,20 +233,20 @@ func (pt *PipelineTask) convertFrom(ctx context.Context, source v1.PipelineTask)
 	return nil
 }
 
-func (et EmbeddedTask) convertTo(ctx context.Context, sink *v1.EmbeddedTask) error {
+func (et EmbeddedTask) convertTo(ctx context.Context, sink *v1.EmbeddedTask, meta *metav1.ObjectMeta, taskName string) error {
 	sink.TypeMeta = et.TypeMeta
 	sink.Spec = et.Spec
 	sink.Metadata = v1.PipelineTaskMetadata(et.Metadata)
 	sink.TaskSpec = v1.TaskSpec{}
-	return et.TaskSpec.ConvertTo(ctx, &sink.TaskSpec)
+	return et.TaskSpec.ConvertTo(ctx, &sink.TaskSpec, meta, taskName)
 }
 
-func (et *EmbeddedTask) convertFrom(ctx context.Context, source v1.EmbeddedTask) error {
+func (et *EmbeddedTask) convertFrom(ctx context.Context, source v1.EmbeddedTask, meta *metav1.ObjectMeta, taskName string) error {
 	et.TypeMeta = source.TypeMeta
 	et.Spec = source.Spec
 	et.Metadata = PipelineTaskMetadata(source.Metadata)
 	et.TaskSpec = TaskSpec{}
-	return et.TaskSpec.ConvertFrom(ctx, &source.TaskSpec)
+	return et.TaskSpec.ConvertFrom(ctx, &source.TaskSpec, meta, taskName)
 }
 
 func (we WhenExpression) convertTo(ctx context.Context, sink *v1.WhenExpression) {

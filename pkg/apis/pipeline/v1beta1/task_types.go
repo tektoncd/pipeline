@@ -130,3 +130,41 @@ type TaskList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Task `json:"items"`
 }
+
+// HasDeprecatedFields returns true if the TaskSpec has deprecated field specified.
+func (ts *TaskSpec) HasDeprecatedFields() bool {
+	if ts == nil {
+		return false
+	}
+	if len(ts.Steps) > 0 {
+		for _, s := range ts.Steps {
+			if len(s.DeprecatedPorts) > 0 ||
+				s.DeprecatedLivenessProbe != nil ||
+				s.DeprecatedReadinessProbe != nil ||
+				s.DeprecatedStartupProbe != nil ||
+				s.DeprecatedLifecycle != nil ||
+				s.DeprecatedTerminationMessagePath != "" ||
+				s.DeprecatedTerminationMessagePolicy != "" ||
+				s.DeprecatedStdin ||
+				s.DeprecatedStdinOnce ||
+				s.DeprecatedTTY {
+				return true
+			}
+		}
+	}
+	if ts.StepTemplate != nil {
+		if len(ts.StepTemplate.DeprecatedPorts) > 0 ||
+			ts.StepTemplate.DeprecatedName != "" ||
+			ts.StepTemplate.DeprecatedReadinessProbe != nil ||
+			ts.StepTemplate.DeprecatedStartupProbe != nil ||
+			ts.StepTemplate.DeprecatedLifecycle != nil ||
+			ts.StepTemplate.DeprecatedTerminationMessagePath != "" ||
+			ts.StepTemplate.DeprecatedTerminationMessagePolicy != "" ||
+			ts.StepTemplate.DeprecatedStdin ||
+			ts.StepTemplate.DeprecatedStdinOnce ||
+			ts.StepTemplate.DeprecatedTTY {
+			return true
+		}
+	}
+	return false
+}

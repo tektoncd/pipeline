@@ -33,14 +33,8 @@ import (
 )
 
 var (
-	ReleaseAnnotation = "pipeline.tekton.dev/release"
-
-	// release Annotation is ignored when populated by TaskRuns
-	ignoreReleaseAnnotation = func(k string, v string) bool {
-		return k == ReleaseAnnotation
-	}
-
 	filterLabels                   = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "Labels")
+	filterAnnotations              = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "Annotations")
 	filterV1TaskRunStatus          = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "StartTime", "CompletionTime")
 	filterV1PipelineRunStatus      = cmpopts.IgnoreFields(v1.PipelineRunStatusFields{}, "StartTime", "CompletionTime")
 	filterV1beta1TaskRunStatus     = cmpopts.IgnoreFields(v1beta1.TaskRunStatusFields{}, "StartTime", "CompletionTime")
@@ -48,13 +42,12 @@ var (
 	filterContainerStateTerminated = cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID", "Message")
 	filterV1StepState              = cmpopts.IgnoreFields(v1.StepState{}, "Name", "ImageID", "Container")
 	filterV1beta1StepState         = cmpopts.IgnoreFields(v1beta1.StepState{}, "Name", "ImageID", "ContainerName")
-	filterReleaseAnnotation        = cmpopts.IgnoreMapEntries(ignoreReleaseAnnotation)
 
-	filterMetadata                 = []cmp.Option{filterTypeMeta, filterObjectMeta}
-	filterV1TaskRunFields          = []cmp.Option{filterTypeMeta, filterObjectMeta, filterLabels, filterCondition, filterReleaseAnnotation, filterV1TaskRunStatus, filterContainerStateTerminated, filterV1StepState}
-	filterV1beta1TaskRunFields     = []cmp.Option{filterTypeMeta, filterObjectMeta, filterLabels, filterV1beta1TaskRunStatus, filterCondition, filterReleaseAnnotation, filterContainerStateTerminated, filterV1beta1StepState}
-	filterV1PipelineRunFields      = []cmp.Option{filterTypeMeta, filterObjectMeta, filterLabels, filterCondition, filterV1PipelineRunStatus}
-	filterV1beta1PipelineRunFields = []cmp.Option{filterTypeMeta, filterObjectMeta, filterLabels, filterCondition, filterV1beta1PipelineRunStatus, filterV1beta1TaskRunStatus, filterV1beta1StepState, filterContainerStateTerminated}
+	filterMetadata                 = []cmp.Option{filterTypeMeta, filterObjectMeta, filterAnnotations}
+	filterV1TaskRunFields          = []cmp.Option{filterTypeMeta, filterObjectMeta, filterLabels, filterAnnotations, filterCondition, filterV1TaskRunStatus, filterContainerStateTerminated, filterV1StepState}
+	filterV1beta1TaskRunFields     = []cmp.Option{filterTypeMeta, filterObjectMeta, filterLabels, filterAnnotations, filterV1beta1TaskRunStatus, filterCondition, filterContainerStateTerminated, filterV1beta1StepState}
+	filterV1PipelineRunFields      = []cmp.Option{filterTypeMeta, filterObjectMeta, filterLabels, filterAnnotations, filterCondition, filterV1PipelineRunStatus}
+	filterV1beta1PipelineRunFields = []cmp.Option{filterTypeMeta, filterObjectMeta, filterLabels, filterAnnotations, filterCondition, filterV1beta1PipelineRunStatus, filterV1beta1TaskRunStatus, filterV1beta1StepState, filterContainerStateTerminated}
 
 	v1beta1TaskYaml = `
 metadata:
