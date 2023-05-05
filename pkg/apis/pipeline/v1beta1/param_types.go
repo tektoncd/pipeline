@@ -370,11 +370,11 @@ var AllParamTypes = []ParamType{ParamTypeString, ParamTypeArray, ParamTypeObject
 // Used in JSON unmarshalling so that a single JSON field can accept
 // either an individual string or an array of strings.
 type ParamValue struct {
-	Type      ParamType // Represents the stored type of ParamValues.
-	StringVal string
+	Type      ParamType `json:"type,omitempty"` // Represents the stored type of ParamValues.
+	StringVal string    `json:"stringVal,omitempty"`
 	// +listType=atomic
-	ArrayVal  []string
-	ObjectVal map[string]string
+	ArrayVal  []string          `json:"arrayVal,omitempty"`
+	ObjectVal map[string]string `json:"objectVal,omitempty"`
 }
 
 // ArrayOrString is deprecated, this is to keep backward compatibility
