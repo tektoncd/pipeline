@@ -23,14 +23,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
 	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
+	pconf "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/result"
 	"github.com/tektoncd/pipeline/pkg/spire/config"
 	"github.com/tektoncd/pipeline/pkg/spire/test"
 	"github.com/tektoncd/pipeline/pkg/spire/test/fakeworkloadapi"
+	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/logging"
 )
@@ -663,6 +666,30 @@ func TestTaskRunResultsSignTamper(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestOnStore(t *testing.T) {
+	ctx, _ := ttesting.SetupDefaultContext(t)
+	logger := logging.FromContext(ctx)
+	ctx = context.WithValue(ctx, controllerKey{}, &spireControllerAPIClient{
+		config: &config.SpireConfig{
+			TrustDomain:     "before_test_domain",
+			SocketPath:      "before_test_socket_path",
+			ServerAddr:      "before_test_server_path",
+			NodeAliasPrefix: "before_test_node_alias_prefix",
+		},
+	})
+	want := config.SpireConfig{
+		TrustDomain:     "after_test_domain",
+		SocketPath:      "after_test_socket_path",
+		ServerAddr:      "after_test_server_path",
+		NodeAliasPrefix: "after_test_node_alias_prefix",
+	}
+	OnStore(ctx, logger)(pconf.GetSpireConfigName(), &want)
+	got := *GetControllerAPIClient(ctx).(*spireControllerAPIClient).config
+	if d := cmp.Diff(want, got); d != "" {
+		t.Fatalf("Diff in TestOnStore, diff: %s", diff.PrintWantGot(d))
 	}
 }
 
