@@ -35,7 +35,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
-	"github.com/jellydator/ttlcache/v2"
+	"github.com/jellydator/ttlcache/v3"
 	"github.com/sigstore/sigstore/pkg/signature"
 	sigkms "github.com/sigstore/sigstore/pkg/signature/kms"
 )
@@ -57,7 +57,7 @@ type awsClient struct {
 	endpoint string
 	keyID    string
 	alias    string
-	keyCache *ttlcache.Cache
+	keyCache *ttlcache.Cache[string, cmk]
 }
 
 var (
@@ -125,9 +125,10 @@ func newAWSClient(ctx context.Context, keyResourceID string, opts ...func(*confi
 		return nil, err
 	}
 
-	a.keyCache = ttlcache.NewCache()
-	a.keyCache.SetLoaderFunction(a.keyCacheLoaderFunction)
-	a.keyCache.SkipTTLExtensionOnHit(true)
+	a.keyCache = ttlcache.New[string, cmk](
+		ttlcache.WithDisableTouchOnHit[string, cmk](),
+	)
+
 	return a, nil
 }
 
@@ -201,18 +202,6 @@ func (c *cmk) Verifier() (signature.Verifier, error) {
 	}
 }
 
-func (a *awsClient) keyCacheLoaderFunction(key string) (cmk interface{}, ttl time.Duration, err error) {
-	return a.keyCacheLoaderFunctionWithContext(context.Background())(key)
-}
-
-func (a *awsClient) keyCacheLoaderFunctionWithContext(ctx context.Context) ttlcache.LoaderFunction {
-	return func(key string) (cmk interface{}, ttl time.Duration, err error) {
-		cmk, err = a.fetchCMK(ctx)
-		ttl = time.Second * 300
-		return
-	}
-}
-
 func (a *awsClient) fetchCMK(ctx context.Context) (*cmk, error) {
 	var err error
 	cmk := &cmk{}
@@ -236,15 +225,24 @@ func (a *awsClient) getHashFunc(ctx context.Context) (crypto.Hash, error) {
 }
 
 func (a *awsClient) getCMK(ctx context.Context) (*cmk, error) {
-	c, err := a.keyCache.GetByLoader(cacheKey, a.keyCacheLoaderFunctionWithContext(ctx))
-	if err != nil {
-		return nil, err
+	var lerr error
+	loader := ttlcache.LoaderFunc[string, cmk](
+		func(c *ttlcache.Cache[string, cmk], key string) *ttlcache.Item[string, cmk] {
+			var k *cmk
+			k, lerr = a.fetchCMK(ctx)
+			if lerr == nil {
+				return c.Set(cacheKey, *k, time.Second*300)
+			}
+			return nil
+		},
+	)
+
+	item := a.keyCache.Get(cacheKey, ttlcache.WithLoader[string, cmk](loader))
+	if lerr == nil {
+		cmk := item.Value()
+		return &cmk, nil
 	}
-	cmk, ok := c.(*cmk)
-	if !ok {
-		return nil, fmt.Errorf("could not parse cache value as cmk")
-	}
-	return cmk, nil
+	return nil, lerr
 }
 
 func (a *awsClient) createKey(ctx context.Context, algorithm string) (crypto.PublicKey, error) {
@@ -253,8 +251,9 @@ func (a *awsClient) createKey(ctx context.Context, algorithm string) (crypto.Pub
 	}
 
 	// look for existing key first
-	out, err := a.public(ctx)
+	cmk, err := a.getCMK(ctx)
 	if err == nil {
+		out := cmk.PublicKey
 		return out, nil
 	}
 
@@ -283,7 +282,12 @@ func (a *awsClient) createKey(ctx context.Context, algorithm string) (crypto.Pub
 		return nil, fmt.Errorf("creating alias %q: %w", a.alias, err)
 	}
 
-	return a.public(ctx)
+	cmk, err = a.getCMK(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("retrieving PublicKey from cache: %w", err)
+	}
+
+	return cmk.PublicKey, err
 }
 
 func (a *awsClient) verify(ctx context.Context, sig, message io.Reader, opts ...signature.VerifyOption) error {
@@ -315,18 +319,6 @@ func (a *awsClient) verifyRemotely(ctx context.Context, sig, digest []byte) erro
 		return fmt.Errorf("unable to verify signature: %w", err)
 	}
 	return nil
-}
-
-func (a *awsClient) public(ctx context.Context) (crypto.PublicKey, error) {
-	key, err := a.keyCache.GetByLoader(cacheKey, a.keyCacheLoaderFunctionWithContext(ctx))
-	if err != nil {
-		return nil, err
-	}
-	cmk, ok := key.(*cmk)
-	if !ok {
-		return nil, fmt.Errorf("could not parse key as cmk")
-	}
-	return cmk.PublicKey, nil
 }
 
 func (a *awsClient) sign(ctx context.Context, digest []byte, _ crypto.Hash) ([]byte, error) {

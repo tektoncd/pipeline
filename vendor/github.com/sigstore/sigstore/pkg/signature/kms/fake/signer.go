@@ -94,7 +94,7 @@ func (g *SignerVerifier) VerifySignature(signature, message io.Reader, opts ...s
 }
 
 // CreateKey returns the signer's public key.
-func (g *SignerVerifier) CreateKey(etx context.Context, algorithm string) (crypto.PublicKey, error) {
+func (g *SignerVerifier) CreateKey(_ context.Context, _ string) (crypto.PublicKey, error) {
 	pub, err := g.signer.PublicKey()
 	if err != nil {
 		return nil, err

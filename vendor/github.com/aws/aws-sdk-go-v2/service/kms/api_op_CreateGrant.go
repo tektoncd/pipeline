@@ -96,18 +96,14 @@ type CreateGrantInput struct {
 	// This member is required.
 	Operations []types.GrantOperation
 
-	// Specifies a grant constraint. KMS supports the EncryptionContextEquals and
-	// EncryptionContextSubset grant constraints. Each constraint value can include up
-	// to 8 encryption context pairs. The encryption context value in each constraint
-	// cannot exceed 384 characters. For information about grant constraints, see
-	// Using grant constraints (https://docs.aws.amazon.com/kms/latest/developerguide/create-grant-overview.html#grant-constraints)
-	// in the Key Management Service Developer Guide. For more information about
-	// encryption context, see Encryption context (https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#encrypt_context)
-	// in the Key Management Service Developer Guide . The encryption context grant
-	// constraints allow the permissions in the grant only when the encryption context
-	// in the request matches ( EncryptionContextEquals ) or includes (
-	// EncryptionContextSubset ) the encryption context specified in this structure.
-	// The encryption context grant constraints are supported only on grant operations (https://docs.aws.amazon.com/kms/latest/developerguide/grants.html#terms-grant-operations)
+	// Specifies a grant constraint. Do not include confidential or sensitive
+	// information in this field. This field may be displayed in plaintext in
+	// CloudTrail logs and other output. KMS supports the EncryptionContextEquals and
+	// EncryptionContextSubset grant constraints, which allow the permissions in the
+	// grant only when the encryption context in the request matches (
+	// EncryptionContextEquals ) or includes ( EncryptionContextSubset ) the encryption
+	// context specified in the constraint. The encryption context grant constraints
+	// are supported only on grant operations (https://docs.aws.amazon.com/kms/latest/developerguide/grants.html#terms-grant-operations)
 	// that include an EncryptionContext parameter, such as cryptographic operations
 	// on symmetric encryption KMS keys. Grants with grant constraints can include the
 	// DescribeKey and RetireGrant operations, but the constraint doesn't apply to
@@ -115,8 +111,14 @@ type CreateGrantInput struct {
 	// operation, the constraint requires that any grants created with the CreateGrant
 	// permission have an equally strict or stricter encryption context constraint. You
 	// cannot use an encryption context grant constraint for cryptographic operations
-	// with asymmetric KMS keys or HMAC KMS keys. These keys don't support an
-	// encryption context.
+	// with asymmetric KMS keys or HMAC KMS keys. Operations with these keys don't
+	// support an encryption context. Each constraint value can include up to 8
+	// encryption context pairs. The encryption context value in each constraint cannot
+	// exceed 384 characters. For information about grant constraints, see Using grant
+	// constraints (https://docs.aws.amazon.com/kms/latest/developerguide/create-grant-overview.html#grant-constraints)
+	// in the Key Management Service Developer Guide. For more information about
+	// encryption context, see Encryption context (https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#encrypt_context)
+	// in the Key Management Service Developer Guide .
 	Constraints *types.GrantConstraints
 
 	// A list of grant tokens. Use a grant token when your permission to call this
@@ -127,15 +129,17 @@ type CreateGrantInput struct {
 	GrantTokens []string
 
 	// A friendly name for the grant. Use this value to prevent the unintended
-	// creation of duplicate grants when retrying this request. When this value is
-	// absent, all CreateGrant requests result in a new grant with a unique GrantId
-	// even if all the supplied parameters are identical. This can result in unintended
-	// duplicates when you retry the CreateGrant request. When this value is present,
-	// you can retry a CreateGrant request with identical parameters; if the grant
-	// already exists, the original GrantId is returned without creating a new grant.
-	// Note that the returned grant token is unique with every CreateGrant request,
-	// even when a duplicate GrantId is returned. All grant tokens for the same grant
-	// ID can be used interchangeably.
+	// creation of duplicate grants when retrying this request. Do not include
+	// confidential or sensitive information in this field. This field may be displayed
+	// in plaintext in CloudTrail logs and other output. When this value is absent, all
+	// CreateGrant requests result in a new grant with a unique GrantId even if all
+	// the supplied parameters are identical. This can result in unintended duplicates
+	// when you retry the CreateGrant request. When this value is present, you can
+	// retry a CreateGrant request with identical parameters; if the grant already
+	// exists, the original GrantId is returned without creating a new grant. Note
+	// that the returned grant token is unique with every CreateGrant request, even
+	// when a duplicate GrantId is returned. All grant tokens for the same grant ID
+	// can be used interchangeably.
 	Name *string
 
 	// The principal that has permission to use the RetireGrant operation to retire
@@ -221,6 +225,9 @@ func (c *Client) addOperationCreateGrantMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCreateGrant(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

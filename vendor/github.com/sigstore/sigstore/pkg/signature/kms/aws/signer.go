@@ -117,7 +117,11 @@ func (a *SignerVerifier) PublicKey(opts ...signature.PublicKeyOption) (crypto.Pu
 		opt.ApplyContext(&ctx)
 	}
 
-	return a.client.public(ctx)
+	cmk, err := a.client.getCMK(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return cmk.PublicKey, nil
 }
 
 // VerifySignature verifies the signature for the given message. Unless provided

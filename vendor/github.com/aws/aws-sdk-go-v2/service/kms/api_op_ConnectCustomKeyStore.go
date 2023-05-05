@@ -150,6 +150,9 @@ func (c *Client) addOperationConnectCustomKeyStoreMiddlewares(stack *middleware.
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opConnectCustomKeyStore(options.Region), middleware.Before); err != nil {
 		return err
 	}
+	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+		return err
+	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
 		return err
 	}

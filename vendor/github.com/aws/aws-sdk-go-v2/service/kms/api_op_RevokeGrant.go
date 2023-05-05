@@ -124,6 +124,9 @@ func (c *Client) addOperationRevokeGrantMiddlewares(stack *middleware.Stack, opt
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opRevokeGrant(options.Region), middleware.Before); err != nil {
 		return err
 	}
+	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+		return err
+	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
 		return err
 	}
