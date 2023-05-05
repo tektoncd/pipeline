@@ -77,6 +77,9 @@ type MockClient struct {
 	SignOverride func(ctx context.Context, results []result.RunResult) ([]result.RunResult, error)
 }
 
+var _ ControllerAPIClient = (*MockClient)(nil)
+var _ EntrypointerAPIClient = (*MockClient)(nil)
+
 const controllerSvid = "CONTROLLER_SVID_DATA"
 
 func (*MockClient) mockSign(content, signedBy string) string {
