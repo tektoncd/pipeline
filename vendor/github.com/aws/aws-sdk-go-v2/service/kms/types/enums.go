@@ -288,6 +288,22 @@ func (GrantOperation) Values() []GrantOperation {
 	}
 }
 
+type KeyEncryptionMechanism string
+
+// Enum values for KeyEncryptionMechanism
+const (
+	KeyEncryptionMechanismRsaesOaepSha256 KeyEncryptionMechanism = "RSAES_OAEP_SHA_256"
+)
+
+// Values returns all known values for KeyEncryptionMechanism. Note that this can
+// be expanded in the future, and so it is only as up to date as the client. The
+// ordering of this slice is not guaranteed to be stable across updates.
+func (KeyEncryptionMechanism) Values() []KeyEncryptionMechanism {
+	return []KeyEncryptionMechanism{
+		"RSAES_OAEP_SHA_256",
+	}
+}
+
 type KeyManagerType string
 
 // Enum values for KeyManagerType

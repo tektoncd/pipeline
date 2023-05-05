@@ -30,7 +30,7 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v3"
-	"github.com/jellydator/ttlcache/v2"
+	"github.com/jellydator/ttlcache/v3"
 
 	kvauth "github.com/Azure/azure-sdk-for-go/services/keyvault/auth"
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.1/keyvault"
@@ -55,7 +55,7 @@ type kvClient interface {
 
 type azureVaultClient struct {
 	client    kvClient
-	keyCache  *ttlcache.Cache
+	keyCache  *ttlcache.Cache[string, crypto.PublicKey]
 	vaultURL  string
 	vaultName string
 	keyName   string
@@ -112,11 +112,10 @@ func newAzureKMS(_ context.Context, keyResourceID string) (*azureVaultClient, er
 		vaultURL:  vaultURL,
 		vaultName: vaultName,
 		keyName:   keyName,
-		keyCache:  ttlcache.NewCache(),
+		keyCache: ttlcache.New[string, crypto.PublicKey](
+			ttlcache.WithDisableTouchOnHit[string, crypto.PublicKey](),
+		),
 	}
-
-	azClient.keyCache.SetLoaderFunction(azClient.keyCacheLoaderFunction)
-	azClient.keyCache.SkipTTLExtensionOnHit(true)
 
 	return azClient, nil
 }
@@ -202,20 +201,6 @@ func getKeysClient() (keyvault.BaseClient, error) {
 	return keyClient, nil
 }
 
-func (a *azureVaultClient) keyCacheLoaderFunction(key string) (data interface{}, ttl time.Duration, err error) {
-	ttl = time.Second * 300
-	var pubKey crypto.PublicKey
-
-	pubKey, err = a.fetchPublicKey(context.Background())
-	if err != nil {
-		data = nil
-		return
-	}
-
-	data = pubKey
-	return data, ttl, err
-}
-
 func (a *azureVaultClient) fetchPublicKey(ctx context.Context) (crypto.PublicKey, error) {
 	keyBundle, err := a.getKey(ctx)
 	if err != nil {
@@ -268,14 +253,30 @@ func (a *azureVaultClient) getKey(ctx context.Context) (keyvault.KeyBundle, erro
 	return key, err
 }
 
-func (a *azureVaultClient) public() (crypto.PublicKey, error) {
-	return a.keyCache.Get(cacheKey)
+func (a *azureVaultClient) public(ctx context.Context) (crypto.PublicKey, error) {
+	var lerr error
+	loader := ttlcache.LoaderFunc[string, crypto.PublicKey](
+		func(c *ttlcache.Cache[string, crypto.PublicKey], key string) *ttlcache.Item[string, crypto.PublicKey] {
+			ttl := 300 * time.Second
+			var pubKey crypto.PublicKey
+			pubKey, lerr = a.fetchPublicKey(ctx)
+			if lerr == nil {
+				return c.Set(cacheKey, pubKey, ttl)
+			}
+			return nil
+		},
+	)
+	item := a.keyCache.Get(cacheKey, ttlcache.WithLoader[string, crypto.PublicKey](loader))
+	if lerr != nil {
+		return nil, lerr
+	}
+	return item.Value(), nil
 }
 
 func (a *azureVaultClient) createKey(ctx context.Context) (crypto.PublicKey, error) {
 	_, err := a.getKey(ctx)
 	if err == nil {
-		return a.public()
+		return a.public(ctx)
 	}
 
 	_, err = a.client.CreateKey(
@@ -300,7 +301,7 @@ func (a *azureVaultClient) createKey(ctx context.Context) (crypto.PublicKey, err
 		return nil, err
 	}
 
-	return a.public()
+	return a.public(ctx)
 }
 
 func getKeyVaultSignatureAlgo(algo crypto.Hash) (keyvault.JSONWebKeySignatureAlgorithm, error) {

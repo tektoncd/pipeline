@@ -96,14 +96,15 @@ type GenerateDataKeyPairWithoutPlaintextInput struct {
 	KeyPairSpec types.DataKeyPairSpec
 
 	// Specifies the encryption context that will be used when encrypting the private
-	// key in the data key pair. An encryption context is a collection of non-secret
-	// key-value pairs that represent additional authenticated data. When you use an
-	// encryption context to encrypt data, you must specify the same (an exact
-	// case-sensitive match) encryption context to decrypt the data. An encryption
-	// context is supported only on operations with symmetric encryption KMS keys. On
-	// operations with symmetric encryption KMS keys, an encryption context is
-	// optional, but it is strongly recommended. For more information, see Encryption
-	// context (https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#encrypt_context)
+	// key in the data key pair. Do not include confidential or sensitive information
+	// in this field. This field may be displayed in plaintext in CloudTrail logs and
+	// other output. An encryption context is a collection of non-secret key-value
+	// pairs that represent additional authenticated data. When you use an encryption
+	// context to encrypt data, you must specify the same (an exact case-sensitive
+	// match) encryption context to decrypt the data. An encryption context is
+	// supported only on operations with symmetric encryption KMS keys. On operations
+	// with symmetric encryption KMS keys, an encryption context is optional, but it is
+	// strongly recommended. For more information, see Encryption context (https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#encrypt_context)
 	// in the Key Management Service Developer Guide.
 	EncryptionContext map[string]string
 
@@ -190,6 +191,9 @@ func (c *Client) addOperationGenerateDataKeyPairWithoutPlaintextMiddlewares(stac
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opGenerateDataKeyPairWithoutPlaintext(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

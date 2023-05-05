@@ -34,8 +34,8 @@ import (
 // operation. You must also specify the length of the data key. Use either the
 // KeySpec or NumberOfBytes parameters (but not both). For 128-bit and 256-bit
 // data keys, use the KeySpec parameter. To generate an SM4 data key (China
-// Regions only), specify a KeySpec value of AES_128 or NumberOfBytes value of 128
-// . The symmetric encryption key used in China Regions to encrypt your data key is
+// Regions only), specify a KeySpec value of AES_128 or NumberOfBytes value of 16 .
+// The symmetric encryption key used in China Regions to encrypt your data key is
 // an SM4 encryption key. If the operation succeeds, you will find the encrypted
 // copy of the data key in the CiphertextBlob field. You can use an optional
 // encryption context to add additional security to the encryption operation. If
@@ -91,11 +91,13 @@ type GenerateDataKeyWithoutPlaintextInput struct {
 	KeyId *string
 
 	// Specifies the encryption context that will be used when encrypting the data
-	// key. An encryption context is a collection of non-secret key-value pairs that
-	// represent additional authenticated data. When you use an encryption context to
-	// encrypt data, you must specify the same (an exact case-sensitive match)
-	// encryption context to decrypt the data. An encryption context is supported only
-	// on operations with symmetric encryption KMS keys. On operations with symmetric
+	// key. Do not include confidential or sensitive information in this field. This
+	// field may be displayed in plaintext in CloudTrail logs and other output. An
+	// encryption context is a collection of non-secret key-value pairs that represent
+	// additional authenticated data. When you use an encryption context to encrypt
+	// data, you must specify the same (an exact case-sensitive match) encryption
+	// context to decrypt the data. An encryption context is supported only on
+	// operations with symmetric encryption KMS keys. On operations with symmetric
 	// encryption KMS keys, an encryption context is optional, but it is strongly
 	// recommended. For more information, see Encryption context (https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#encrypt_context)
 	// in the Key Management Service Developer Guide.
@@ -186,6 +188,9 @@ func (c *Client) addOperationGenerateDataKeyWithoutPlaintextMiddlewares(stack *m
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opGenerateDataKeyWithoutPlaintext(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

@@ -89,6 +89,7 @@ var partitionRegexp = struct {
 	AwsCn    *regexp.Regexp
 	AwsIso   *regexp.Regexp
 	AwsIsoB  *regexp.Regexp
+	AwsIsoE  *regexp.Regexp
 	AwsUsGov *regexp.Regexp
 }{
 
@@ -96,6 +97,7 @@ var partitionRegexp = struct {
 	AwsCn:    regexp.MustCompile("^cn\\-\\w+\\-\\d+$"),
 	AwsIso:   regexp.MustCompile("^us\\-iso\\-\\w+\\-\\d+$"),
 	AwsIsoB:  regexp.MustCompile("^us\\-isob\\-\\w+\\-\\d+$"),
+	AwsIsoE:  regexp.MustCompile("^eu\\-isoe\\-\\w+\\-\\d+$"),
 	AwsUsGov: regexp.MustCompile("^us\\-gov\\-\\w+\\-\\d+$"),
 }
 
@@ -505,6 +507,14 @@ var defaultPartitions = endpoints.Partitions{
 				Deprecated: aws.TrueTernary,
 			},
 			endpoints.EndpointKey{
+				Region: "il-central-1-fips",
+			}: endpoints.Endpoint{
+				Hostname: "kms-fips.il-central-1.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "il-central-1",
+				},
+			},
+			endpoints.EndpointKey{
 				Region: "me-central-1",
 			}: endpoints.Endpoint{},
 			endpoints.EndpointKey{
@@ -792,6 +802,27 @@ var defaultPartitions = endpoints.Partitions{
 				Deprecated: aws.TrueTernary,
 			},
 		},
+	},
+	{
+		ID: "aws-iso-e",
+		Defaults: map[endpoints.DefaultKey]endpoints.Endpoint{
+			{
+				Variant: endpoints.FIPSVariant,
+			}: {
+				Hostname:          "kms-fips.{region}.cloud.adc-e.uk",
+				Protocols:         []string{"https"},
+				SignatureVersions: []string{"v4"},
+			},
+			{
+				Variant: 0,
+			}: {
+				Hostname:          "kms.{region}.cloud.adc-e.uk",
+				Protocols:         []string{"https"},
+				SignatureVersions: []string{"v4"},
+			},
+		},
+		RegionRegex:    partitionRegexp.AwsIsoE,
+		IsRegionalized: true,
 	},
 	{
 		ID: "aws-us-gov",
