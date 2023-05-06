@@ -147,6 +147,10 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 			return err
 		}
 
+		if err := c.pvcHandler.PurgeProtectionFromPersistentVolumeClaimsForWorkspaces(ctx, tr.Spec.Workspaces, *kmeta.NewControllerRef(tr), tr.Namespace); err != nil {
+			return fmt.Errorf("failed to update PersistentVolumeClaim for TaskRun %s: %v", tr.Name, err)
+		}
+
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, nil)
 	}
 

@@ -224,6 +224,10 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 
 	if pr.IsDone() {
 		pr.SetDefaults(ctx)
+
+		if err := c.pvcHandler.PurgeProtectionFromPersistentVolumeClaimsForWorkspaces(ctx, pr.Spec.Workspaces, *kmeta.NewControllerRef(pr), pr.Namespace); err != nil {
+			logger.Errorf("Failed to update PersistentVolumeClaim for PipelineRun %s: %v", pr.Name, err)
+		}
 		err := c.cleanupAffinityAssistants(ctx, pr)
 		if err != nil {
 			logger.Errorf("Failed to delete StatefulSet for PipelineRun %s: %v", pr.Name, err)
