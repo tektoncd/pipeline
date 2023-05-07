@@ -18,6 +18,7 @@ package pipelinerun
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -28,14 +29,35 @@ import (
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/parse"
+	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/kubernetes/typed/core/v1/fake"
+	testing2 "k8s.io/client-go/testing"
 	logtesting "knative.dev/pkg/logging/testing"
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 )
+
+var workspaceName = "test-workspace"
+
+var testPipelineRun = &v1beta1.PipelineRun{
+	TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
+	ObjectMeta: metav1.ObjectMeta{
+		Name: "test-pipelinerun",
+	},
+	Spec: v1beta1.PipelineRunSpec{
+		Workspaces: []v1beta1.WorkspaceBinding{{
+			Name: workspaceName,
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: "myclaim",
+			},
+		}},
+	},
+}
 
 // TestCreateAndDeleteOfAffinityAssistant tests to create and delete an Affinity Assistant
 // for a given PipelineRun with a PVC workspace
@@ -49,26 +71,9 @@ func TestCreateAndDeleteOfAffinityAssistant(t *testing.T) {
 		Images:        pipeline.Images{},
 	}
 
-	workspaceName := "testws"
-	pipelineRunName := "pipelinerun-1"
-	testPipelineRun := &v1beta1.PipelineRun{
-		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: pipelineRunName,
-		},
-		Spec: v1beta1.PipelineRunSpec{
-			Workspaces: []v1beta1.WorkspaceBinding{{
-				Name: workspaceName,
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: "myclaim",
-				},
-			}},
-		},
-	}
-
-	err := c.createAffinityAssistants(ctx, testPipelineRun.Spec.Workspaces, testPipelineRun, testPipelineRun.Namespace)
+	err := c.createOrUpdateAffinityAssistants(ctx, testPipelineRun.Spec.Workspaces, testPipelineRun, testPipelineRun.Namespace)
 	if err != nil {
-		t.Errorf("unexpected error from createAffinityAssistants: %v", err)
+		t.Errorf("unexpected error from createOrUpdateAffinityAssistants: %v", err)
 	}
 
 	expectedAffinityAssistantName := getAffinityAssistantName(workspaceName, testPipelineRun.Name)
@@ -85,6 +90,128 @@ func TestCreateAndDeleteOfAffinityAssistant(t *testing.T) {
 	_, err = c.KubeClientSet.AppsV1().StatefulSets(testPipelineRun.Namespace).Get(ctx, expectedAffinityAssistantName, metav1.GetOptions{})
 	if !apierrors.IsNotFound(err) {
 		t.Errorf("expected a NotFound response, got: %v", err)
+	}
+}
+
+// TestCreateAffinityAssistantWhenNodeIsCordoned tests an existing Affinity Assistant can identify the node failure and
+// can migrate the affinity assistant pod to a healthy node so that the existing pipelineRun runs to competition
+func TestCreateOrUpdateAffinityAssistantWhenNodeIsCordoned(t *testing.T) {
+	expectedAffinityAssistantName := getAffinityAssistantName(workspaceName, testPipelineRun.Name)
+
+	aa := []*v1.StatefulSet{{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "StatefulSet",
+			APIVersion: "apps/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   expectedAffinityAssistantName,
+			Labels: getStatefulSetLabels(testPipelineRun, expectedAffinityAssistantName),
+		},
+		Status: v1.StatefulSetStatus{
+			ReadyReplicas: 1,
+		},
+	}}
+
+	nodes := []*corev1.Node{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "soon-to-be-cordoned-node",
+		},
+		Spec: corev1.NodeSpec{
+			Unschedulable: true,
+		},
+	}}
+
+	p := []*corev1.Pod{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: expectedAffinityAssistantName + "-0",
+		},
+		Spec: corev1.PodSpec{
+			NodeName: "soon-to-be-cordoned-node",
+		},
+	}}
+
+	tests := []struct {
+		name, verb, resource               string
+		data                               Data
+		validatePodDeletion, expectedError bool
+	}{{
+		name: "createOrUpdateAffinityAssistants must ignore missing affinity assistant pod, this could be interim and must not fail the entire pipelineRun",
+		data: Data{
+			StatefulSets: aa,
+			Nodes:        nodes,
+		},
+	}, {
+		name: "createOrUpdateAffinityAssistants must delete an affinity assistant pod since the node on which its scheduled is marked as unschedulable",
+		data: Data{
+			StatefulSets: aa,
+			Nodes:        nodes,
+			Pods:         p,
+		},
+		validatePodDeletion: true,
+	}, {
+		name: "createOrUpdateAffinityAssistants must catch an error while listing nodes",
+		data: Data{
+			StatefulSets: aa,
+			Nodes:        nodes,
+		},
+		verb:          "list",
+		resource:      "nodes",
+		expectedError: true,
+	}, {
+		name: "createOrUpdateAffinityAssistants must catch an error while getting pods",
+		data: Data{
+			StatefulSets: aa,
+			Nodes:        nodes,
+		},
+		verb:          "get",
+		resource:      "pods",
+		expectedError: true,
+	}, {
+		name: "createOrUpdateAffinityAssistants must catch an error while deleting pods",
+		data: Data{
+			StatefulSets: aa,
+			Nodes:        nodes,
+			Pods:         p,
+		},
+		verb:          "delete",
+		resource:      "pods",
+		expectedError: true,
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, c, cancel := seedTestData(tt.data)
+			defer cancel()
+
+			if tt.resource == "nodes" {
+				// introduce a reactor to mock node error
+				c.KubeClientSet.CoreV1().(*fake.FakeCoreV1).PrependReactor(tt.verb, tt.resource,
+					func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
+						return true, &corev1.NodeList{}, errors.New("error listing nodes")
+					})
+			}
+			if tt.resource == "pods" {
+				// introduce a reactor to mock pod error
+				c.KubeClientSet.CoreV1().(*fake.FakeCoreV1).PrependReactor(tt.verb, tt.resource,
+					func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
+						return true, &corev1.Pod{}, errors.New("error listing/deleting pod")
+					})
+			}
+
+			err := c.createOrUpdateAffinityAssistants(ctx, testPipelineRun.Spec.Workspaces, testPipelineRun, testPipelineRun.Namespace)
+			if !tt.expectedError && err != nil {
+				t.Errorf("expected no error from createOrUpdateAffinityAssistants for the test \"%s\", but got: %v", tt.name, err)
+			}
+			// the affinity assistant pod must have been deleted when it was running on a cordoned node
+			if tt.validatePodDeletion {
+				_, err = c.KubeClientSet.CoreV1().Pods(testPipelineRun.Namespace).Get(ctx, expectedAffinityAssistantName+"-0", metav1.GetOptions{})
+				if !apierrors.IsNotFound(err) {
+					t.Errorf("expected a NotFound response, got: %v", err)
+				}
+			}
+			if tt.expectedError && err == nil {
+				t.Errorf("expected error from createOrUpdateAffinityAssistants, but got no error")
+			}
+		})
 	}
 }
 
@@ -284,21 +411,6 @@ func TestThatAffinityAssistantNameIsNoLongerThan53(t *testing.T) {
 // cleanup of Affinity Assistants is omitted when the
 // Affinity Assistant is disabled
 func TestThatCleanupIsAvoidedIfAssistantIsDisabled(t *testing.T) {
-	testPipelineRun := &v1beta1.PipelineRun{
-		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-pipelinerun",
-		},
-		Spec: v1beta1.PipelineRunSpec{
-			Workspaces: []v1beta1.WorkspaceBinding{{
-				Name: "test-workspace",
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: "myclaim",
-				},
-			}},
-		},
-	}
-
 	configMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 		Data: map[string]string{
@@ -513,4 +625,29 @@ spec:
 			}
 		})
 	}
+}
+
+type Data struct {
+	StatefulSets []*v1.StatefulSet
+	Nodes        []*corev1.Node
+	Pods         []*corev1.Pod
+}
+
+func seedTestData(d Data) (context.Context, Reconciler, func()) {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+
+	c := Reconciler{
+		KubeClientSet: fakek8s.NewSimpleClientset(),
+	}
+	for _, s := range d.StatefulSets {
+		c.KubeClientSet.AppsV1().StatefulSets(s.Namespace).Create(ctx, s, metav1.CreateOptions{})
+	}
+	for _, n := range d.Nodes {
+		c.KubeClientSet.CoreV1().Nodes().Create(ctx, n, metav1.CreateOptions{})
+	}
+	for _, p := range d.Pods {
+		c.KubeClientSet.CoreV1().Pods(p.Namespace).Create(ctx, p, metav1.CreateOptions{})
+	}
+	return ctx, c, cancel
 }

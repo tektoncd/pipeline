@@ -20,3 +20,4 @@ channel for training and tutorials on Tekton!
 - [API Versioning](./api-versioning.md): How Tekton supports multiple API versions and feature gates.
 - How specific features are implemented:
   - [Results](./results-lifecycle.md)
+  - [Affinity Assistant](./affinity-assistant.md)
