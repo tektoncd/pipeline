@@ -30,6 +30,7 @@ installation.
     - [Verify signatures using `cosign`](#verify-signatures-using-cosign)
     - [Verify the transparency logs using `rekor-cli`](#verify-the-transparency-logs-using-rekor-cli)
   - [Verify Tekton Resources](#verify-tekton-resources)
+  - [Pipelinerun with Affinity Assistant](#pipelineruns-with-affinity-assistant)
   - [Next steps](#next-steps)
 
 
@@ -553,6 +554,11 @@ gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/webhook
 Trusted Resources is a feature to verify Tekton Tasks and Pipelines. The current
 version of feature supports `v1beta1` `Task` and `Pipeline`. For more details
 please take a look at [Trusted Resources](./trusted-resources.md).
+
+## Pipelineruns with Affinity Assistant
+
+The cluster operators can review the [guidelines](developers/affinity-assistant.md) to `cordon` a node in the cluster
+with the tekton controller and the affinity assistant is enabled.
 
 ## Next steps
 

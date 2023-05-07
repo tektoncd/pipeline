@@ -21,3 +21,4 @@ channel for training and tutorials on Tekton!
 - How specific features are implemented:
   - [PipelineResources (deprecated)](./pipelineresources.md)
   - [Results](./results-lifecycle.md)
+  - [Affinity Assistant](./affinity-assistant.md)

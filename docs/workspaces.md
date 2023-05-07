@@ -381,6 +381,12 @@ significantly. We do not recommend using them in clusters larger than several hu
 node in the cluster must have an appropriate label matching `topologyKey`. If some or all nodes
 are missing the specified `topologyKey` label, it can lead to unintended behavior.
 
+**Note:** Any time during the execution of a `pipelineRun`, if the node with a placeholder Affinity Assistant pod and
+the `taskRun` pods sharing a `workspace` is `cordoned` or disabled for scheduling anything new (`tainted`), the
+`pipelineRun` controller deletes the placeholder pod. The `taskRun` pods on a `cordoned` node continues running
+until completion. The deletion of a placeholder pod triggers creating a new placeholder pod on any available node
+such that the rest of the `pipelineRun` can continue without any disruption until it finishes.
+
 #### Specifying `Workspaces` in `PipelineRuns`
 
 For a `PipelineRun` to execute a `Pipeline` that includes one or more `Workspaces`, it needs to
