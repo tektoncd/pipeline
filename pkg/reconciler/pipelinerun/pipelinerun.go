@@ -607,16 +607,18 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 				return controller.NewPermanentError(err)
 			}
 		}
+	}
 
-		if !c.isAffinityAssistantDisabled(ctx) {
-			// create Affinity Assistant (StatefulSet) so that taskRun pods that share workspace PVC achieve Node Affinity
-			if err = c.createAffinityAssistants(ctx, pr.Spec.Workspaces, pr, pr.Namespace); err != nil {
-				logger.Errorf("Failed to create affinity assistant StatefulSet for PipelineRun %s: %v", pr.Name, err)
-				pr.Status.MarkFailed(ReasonCouldntCreateAffinityAssistantStatefulSet,
-					"Failed to create StatefulSet for PipelineRun %s/%s correctly: %s",
-					pr.Namespace, pr.Name, err)
-				return controller.NewPermanentError(err)
-			}
+	// Make an attempt to create Affinity Assistant if it does not exist
+	// if the Affinity Assistant already exists, handle the possibility of assigned node becoming unschedulable by deleting the pod
+	if !c.isAffinityAssistantDisabled(ctx) {
+		// create Affinity Assistant (StatefulSet) so that taskRun pods that share workspace PVC achieve Node Affinity
+		if err = c.createOrUpdateAffinityAssistants(ctx, pr.Spec.Workspaces, pr, pr.Namespace); err != nil {
+			logger.Errorf("Failed to create affinity assistant StatefulSet for PipelineRun %s: %v", pr.Name, err)
+			pr.Status.MarkFailed(ReasonCouldntCreateOrUpdateAffinityAssistantStatefulSet,
+				"Failed to create StatefulSet or update affinity assistant replicas for PipelineRun %s/%s correctly: %s",
+				pr.Namespace, pr.Name, err)
+			return controller.NewPermanentError(err)
 		}
 	}
 

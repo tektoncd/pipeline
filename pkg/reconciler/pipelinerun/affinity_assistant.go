@@ -33,32 +33,35 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 )
 
 const (
-	// ReasonCouldntCreateAffinityAssistantStatefulSet indicates that a PipelineRun uses workspaces with PersistentVolumeClaim
+	// ReasonCouldntCreateOrUpdateAffinityAssistantStatefulSet indicates that a PipelineRun uses workspaces with PersistentVolumeClaim
 	// as a volume source and expect an Assistant StatefulSet, but couldn't create a StatefulSet.
-	ReasonCouldntCreateAffinityAssistantStatefulSet = "CouldntCreateAffinityAssistantStatefulSet"
+	ReasonCouldntCreateOrUpdateAffinityAssistantStatefulSet = "CouldntCreateOrUpdateAffinityAssistantstatefulSet"
 
 	featureFlagDisableAffinityAssistantKey = "disable-affinity-assistant"
 )
 
-// createAffinityAssistants creates an Affinity Assistant StatefulSet for every workspace in the PipelineRun that
+// createOrUpdateAffinityAssistants creates an Affinity Assistant StatefulSet for every workspace in the PipelineRun that
 // use a PersistentVolumeClaim volume. This is done to achieve Node Affinity for all TaskRuns that
 // share the workspace volume and make it possible for the tasks to execute parallel while sharing volume.
-func (c *Reconciler) createAffinityAssistants(ctx context.Context, wb []v1beta1.WorkspaceBinding, pr *v1beta1.PipelineRun, namespace string) error {
+func (c *Reconciler) createOrUpdateAffinityAssistants(ctx context.Context, wb []v1beta1.WorkspaceBinding, pr *v1beta1.PipelineRun, namespace string) error {
 	logger := logging.FromContext(ctx)
 	cfg := config.FromContextOrDefaults(ctx)
 
 	var errs []error
+	var unschedulableNodes sets.Set[string] = nil
 	for _, w := range wb {
 		if w.PersistentVolumeClaim != nil || w.VolumeClaimTemplate != nil {
 			affinityAssistantName := getAffinityAssistantName(w.Name, pr.Name)
-			_, err := c.KubeClientSet.AppsV1().StatefulSets(namespace).Get(ctx, affinityAssistantName, metav1.GetOptions{})
+			a, err := c.KubeClientSet.AppsV1().StatefulSets(namespace).Get(ctx, affinityAssistantName, metav1.GetOptions{})
 			claimName := getClaimName(w, *kmeta.NewControllerRef(pr))
 			switch {
+			// check whether the affinity assistant (StatefulSet) exists or not, create one if it does not exist
 			case apierrors.IsNotFound(err):
 				affinityAssistantStatefulSet := affinityAssistantStatefulSet(affinityAssistantName, pr, claimName, c.Images.NopImage, cfg.Defaults.DefaultAAPodTemplate)
 				_, err := c.KubeClientSet.AppsV1().StatefulSets(namespace).Create(ctx, affinityAssistantStatefulSet, metav1.CreateOptions{})
@@ -67,6 +70,40 @@ func (c *Reconciler) createAffinityAssistants(ctx context.Context, wb []v1beta1.
 				}
 				if err == nil {
 					logger.Infof("Created StatefulSet %s in namespace %s", affinityAssistantName, namespace)
+				}
+			// check whether the affinity assistant (StatefulSet) exists and the affinity assistant pod is created
+			// this check requires the StatefulSet to have the readyReplicas set to 1 to allow for any delay between the StatefulSet creation
+			// and the necessary pod creation, the delay can be caused by any dependency on PVCs and PVs creation
+			// this case addresses issues specified in https://github.com/tektoncd/pipeline/issues/6586
+			case err == nil && a != nil && a.Status.ReadyReplicas == 1:
+				if unschedulableNodes == nil {
+					ns, err := c.KubeClientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{
+						FieldSelector: "spec.unschedulable=true",
+					})
+					if err != nil {
+						errs = append(errs, fmt.Errorf("could not get the list of nodes, err: %w", err))
+					}
+					unschedulableNodes = sets.Set[string]{}
+					// maintain the list of nodes which are unschedulable
+					for _, n := range ns.Items {
+						unschedulableNodes.Insert(n.Name)
+					}
+				}
+				if unschedulableNodes.Len() > 0 {
+					// get the pod created for a given StatefulSet, pod is assigned ordinal of 0 with the replicas set to 1
+					p, err := c.KubeClientSet.CoreV1().Pods(pr.Namespace).Get(ctx, a.Name+"-0", metav1.GetOptions{})
+					// ignore instead of failing if the affinity assistant pod was not found
+					if err != nil && !apierrors.IsNotFound(err) {
+						errs = append(errs, fmt.Errorf("could not get the affinity assistant pod for StatefulSet %s: %w", a.Name, err))
+					}
+					// check the node which hosts the affinity assistant pod if it is unschedulable or cordoned
+					if p != nil && unschedulableNodes.Has(p.Spec.NodeName) {
+						// if the node is unschedulable, delete the affinity assistant pod such that a StatefulSet can recreate the same pod on a different node
+						err = c.KubeClientSet.CoreV1().Pods(p.Namespace).Delete(ctx, p.Name, metav1.DeleteOptions{})
+						if err != nil {
+							errs = append(errs, fmt.Errorf("error deleting affinity assistant pod %s in ns %s: %w", p.Name, p.Namespace, err))
+						}
+					}
 				}
 			case err != nil:
 				errs = append(errs, fmt.Errorf("failed to retrieve StatefulSet %s: %w", affinityAssistantName, err))
@@ -107,7 +144,7 @@ func (c *Reconciler) cleanupAffinityAssistants(ctx context.Context, pr *v1beta1.
 func getAffinityAssistantName(pipelineWorkspaceName string, pipelineRunName string) string {
 	hashBytes := sha256.Sum256([]byte(pipelineWorkspaceName + pipelineRunName))
 	hashString := fmt.Sprintf("%x", hashBytes)
-	return fmt.Sprintf("%s-%s", "affinity-assistant", hashString[:10])
+	return fmt.Sprintf("%s-%s", workspace.ComponentNameAffinityAssistant, hashString[:10])
 }
 
 func getStatefulSetLabels(pr *v1beta1.PipelineRun, affinityAssistantName string) map[string]string {
