@@ -250,7 +250,7 @@ func (r *Recorder) DurationAndCount(pr *v1beta1.PipelineRun, beforeCondition *ap
 		return err
 	}
 
-	metrics.Record(ctx, prDuration.M(float64(duration/time.Second)))
+	metrics.Record(ctx, prDuration.M(duration.Seconds()))
 	metrics.Record(ctx, prCount.M(1))
 
 	return nil
