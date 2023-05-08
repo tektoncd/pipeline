@@ -513,7 +513,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	// Update pipelinespec of pipelinerun's status field
 	pr.Status.PipelineSpec = pipelineSpec
 
-	// pipelineState holds a list of pipeline tasks after resolving pipeline resources
+	// pipelineState holds a list of pipeline tasks after fetching their resolved Task specs.
 	// pipelineState also holds a taskRun for each pipeline task after the taskRun is created
 	// pipelineState is instantiated and updated on every reconcile cycle
 	// Resolve the set of tasks (and possibly task runs).
