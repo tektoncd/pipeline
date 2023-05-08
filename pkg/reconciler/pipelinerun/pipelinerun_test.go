@@ -11864,9 +11864,9 @@ spec:
 
 	wantEvents := []string{
 		"Normal Started",
-		"Warning TaskRunCreationFailed",
-		"error creating TaskRun called test-pipeline-run-with-create-run-failed-hello-world for PipelineTask hello-world from PipelineRun test-pipeline-run-with-create-run-failed: expected workspace \"source\" to be provided by pipelinerun for pipeline task \"hello-world\"",
-		"error creating TaskRun called test-pipeline-run-with-create-run-failed-hello-world for PipelineTask hello-world from PipelineRun test-pipeline-run-with-create-run-failed: expected workspace \"source\" to be provided by pipelinerun for pipeline task \"hello-world\"",
+		"Warning TaskRunsCreationFailed",
+		"error creating TaskRuns called \\[test-pipeline-run-with-create-run-failed-hello-world]\\ for PipelineTask hello-world from PipelineRun test-pipeline-run-with-create-run-failed: expected workspace \"source\" to be provided by pipelinerun for pipeline task \"hello-world\"",
+		"error creating TaskRuns called \\[test-pipeline-run-with-create-run-failed-hello-world]\\ for PipelineTask hello-world from PipelineRun test-pipeline-run-with-create-run-failed: expected workspace \"source\" to be provided by pipelinerun for pipeline task \"hello-world\"",
 	}
 	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-with-create-run-failed", wantEvents, true)
 
