@@ -563,10 +563,15 @@ func ValidateTaskRunSpecs(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) erro
 	return nil
 }
 
-// ResolvePipelineTask retrieves a single Task's instance using the getTask to fetch
-// the spec. If it is unable to retrieve an instance of a referenced Task, it  will return
-// an error, otherwise it returns a list of all the Tasks retrieved.  It will retrieve
-// the Resources needed for the TaskRuns or RunObjects using the mapping of providedResources.
+// ResolvePipelineTask returns a new ResolvedPipelineTask representing any TaskRuns or CustomRuns
+// associated with this Pipeline Task, if they exist.
+//
+// If the Pipeline Task is a Task, it retrieves any TaskRuns, plus the Task spec, and updates the ResolvedPipelineTask
+// with this information. It also sets the ResolvedPipelineTask's TaskRunName(s) with the names of TaskRuns
+// that should be or already have been created.
+//
+// If the Pipeline Task is a Custom Task, it retrieves any CustomRuns and updates the ResolvedPipelineTask with this information.
+// It also sets the ResolvedPipelineTask's RunName(s) with the names of CustomRuns that should be or already have been created.
 func ResolvePipelineTask(
 	ctx context.Context,
 	pipelineRun v1beta1.PipelineRun,
@@ -603,20 +608,23 @@ func ResolvePipelineTask(
 	case rpt.PipelineTask.IsMatrixed():
 		rpt.TaskRunNames = GetNamesOfTaskRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, pipelineTask.Matrix.CountCombinations())
 		for _, taskRunName := range rpt.TaskRunNames {
-			if err := rpt.resolvePipelineRunTaskWithTaskRun(ctx, taskRunName, getTask, getTaskRun, pipelineTask); err != nil {
+			if err := rpt.setTaskRunsAndResolvedTask(ctx, taskRunName, getTask, getTaskRun, pipelineTask); err != nil {
 				return nil, err
 			}
 		}
 	default:
 		rpt.TaskRunName = GetTaskRunName(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name)
-		if err := rpt.resolvePipelineRunTaskWithTaskRun(ctx, rpt.TaskRunName, getTask, getTaskRun, pipelineTask); err != nil {
+		if err := rpt.setTaskRunsAndResolvedTask(ctx, rpt.TaskRunName, getTask, getTaskRun, pipelineTask); err != nil {
 			return nil, err
 		}
 	}
 	return &rpt, nil
 }
 
-func (t *ResolvedPipelineTask) resolvePipelineRunTaskWithTaskRun(
+// setTaskRunsAndResolvedTask fetches the named TaskRun using the input function getTaskRun,
+// and the resolved Task spec of the Pipeline Task using the input function getTask.
+// It updates the ResolvedPipelineTask with the ResolvedTask and a pointer to the fetched TaskRun.
+func (t *ResolvedPipelineTask) setTaskRunsAndResolvedTask(
 	ctx context.Context,
 	taskRunName string,
 	getTask resources.GetTask,
@@ -637,73 +645,56 @@ func (t *ResolvedPipelineTask) resolvePipelineRunTaskWithTaskRun(
 		}
 	}
 
-	return t.resolveTaskResources(ctx, getTask, pipelineTask, taskRun)
-}
-
-func (t *ResolvedPipelineTask) resolveTaskResources(
-	ctx context.Context,
-	getTask resources.GetTask,
-	pipelineTask v1beta1.PipelineTask,
-	taskRun *v1beta1.TaskRun,
-) error {
-	spec, taskName, kind, err := resolveTask(ctx, taskRun, getTask, pipelineTask)
+	rt, err := resolveTask(ctx, taskRun, getTask, pipelineTask)
 	if err != nil {
 		return err
 	}
-
-	spec.SetDefaults(ctx)
-	rtr, err := resolvePipelineTaskResources(pipelineTask, &spec, taskName, kind)
-	if err != nil {
-		return fmt.Errorf("couldn't match referenced resources with declared resources: %w", err)
-	}
-	t.ResolvedTask = rtr
-
+	t.ResolvedTask = rt
 	return nil
 }
 
+// resolveTask fetches the Task spec for the PipelineTask and sets its default values.
+// It returns a ResolvedTask with the defaulted spec, name, and kind (namespaced Task or Cluster Task) of the Task.
+// Returns an error if the Task could not be found because resolution was in progress,
+// verification failed, or any other reason.
 func resolveTask(
 	ctx context.Context,
 	taskRun *v1beta1.TaskRun,
 	getTask resources.GetTask,
 	pipelineTask v1beta1.PipelineTask,
-) (v1beta1.TaskSpec, string, v1beta1.TaskKind, error) {
-	var (
-		t        *v1beta1.Task
-		err      error
-		spec     v1beta1.TaskSpec
-		taskName string
-		kind     v1beta1.TaskKind
-	)
-
+) (*resources.ResolvedTask, error) {
+	rt := &resources.ResolvedTask{}
 	if pipelineTask.TaskRef != nil {
 		// If the TaskRun has already a stored TaskSpec in its status, use it as source of truth
 		if taskRun != nil && taskRun.Status.TaskSpec != nil {
-			spec = *taskRun.Status.TaskSpec
-			taskName = pipelineTask.TaskRef.Name
+			rt.TaskSpec = taskRun.Status.TaskSpec
+			rt.TaskName = pipelineTask.TaskRef.Name
 		} else {
 			// Following minimum status principle (TEP-0100), no need to propagate the RefSource about PipelineTask up to PipelineRun status.
 			// Instead, the child TaskRun's status will be the place recording the RefSource of individual task.
-			t, _, err = getTask(ctx, pipelineTask.TaskRef.Name)
+			t, _, err := getTask(ctx, pipelineTask.TaskRef.Name)
 			switch {
 			case errors.Is(err, remote.ErrRequestInProgress):
-				return v1beta1.TaskSpec{}, "", "", err
+				return rt, err
 			case errors.Is(err, trustedresources.ErrResourceVerificationFailed):
-				return v1beta1.TaskSpec{}, "", "", err
+				return rt, err
 			case err != nil:
-				return v1beta1.TaskSpec{}, "", "", &TaskNotFoundError{
+				return rt, &TaskNotFoundError{
 					Name: pipelineTask.TaskRef.Name,
 					Msg:  err.Error(),
 				}
 			default:
-				spec = t.TaskSpec()
-				taskName = t.TaskMetadata().Name
+				spec := t.TaskSpec()
+				rt.TaskSpec = &spec
+				rt.TaskName = t.TaskMetadata().Name
 			}
 		}
-		kind = pipelineTask.TaskRef.Kind
+		rt.Kind = pipelineTask.TaskRef.Kind
 	} else {
-		spec = pipelineTask.TaskSpec.TaskSpec
+		rt.TaskSpec = &pipelineTask.TaskSpec.TaskSpec
 	}
-	return spec, taskName, kind, err
+	rt.TaskSpec.SetDefaults(ctx)
+	return rt, nil
 }
 
 // GetTaskRunName should return a unique name for a `TaskRun` if one has not already been defined, and the existing one otherwise.
@@ -724,6 +715,7 @@ func GetNamesOfTaskRuns(childRefs []v1beta1.ChildStatusReference, ptName, prName
 	return getNewTaskRunNames(ptName, prName, combinationCount)
 }
 
+// getTaskRunNamesFromChildRefs returns the names of TaskRuns defined in childRefs that are associated with the named Pipeline Task.
 func getTaskRunNamesFromChildRefs(childRefs []v1beta1.ChildStatusReference, ptName string) []string {
 	var taskRunNames []string
 	for _, cr := range childRefs {
@@ -766,6 +758,7 @@ func getNamesOfRuns(childRefs []v1beta1.ChildStatusReference, ptName, prName str
 	return getNewTaskRunNames(ptName, prName, combinationCount)
 }
 
+// getRunNamesFromChildRefs returns the names of CustomRuns defined in childRefs that are associated with the named Pipeline Task.
 func getRunNamesFromChildRefs(childRefs []v1beta1.ChildStatusReference, ptName string) []string {
 	var runNames []string
 	for _, cr := range childRefs {
@@ -776,17 +769,6 @@ func getRunNamesFromChildRefs(childRefs []v1beta1.ChildStatusReference, ptName s
 		}
 	}
 	return runNames
-}
-
-// resolvePipelineTaskResources matches PipelineResources referenced by pt inputs and outputs with the
-// providedResources and returns an instance of ResolvedTask.
-func resolvePipelineTaskResources(_ v1beta1.PipelineTask, ts *v1beta1.TaskSpec, taskName string, kind v1beta1.TaskKind) (*resources.ResolvedTask, error) {
-	rtr := resources.ResolvedTask{
-		TaskName: taskName,
-		TaskSpec: ts,
-		Kind:     kind,
-	}
-	return &rtr, nil
 }
 
 func (t *ResolvedPipelineTask) hasResultReferences() bool {
