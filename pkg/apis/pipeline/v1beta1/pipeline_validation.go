@@ -719,7 +719,16 @@ func (ps *PipelineSpec) ValidateParamArrayIndex(ctx context.Context, params Para
 	for k, v := range params.extractParamArrayLengths() {
 		arrayParamsLengths[k] = v
 	}
+	// extract all array indexing references, for example []{"$(params.array-params[1])"}
+	arrayIndexParamRefs := ps.GetIndexingReferencesToArrayParams().List()
+	return validateOutofBoundArrayParams(arrayIndexParamRefs, arrayParamsLengths)
+}
 
+// GetIndexingReferencesToArrayParams returns all strings referencing indices of PipelineRun array parameters
+// from parameters, workspaces, and when expressions defined in the Pipeline's Tasks and Finally Tasks.
+// For example, if a Task in the Pipeline has a parameter with a value "$(params.array-param-name[1])",
+// this would be one of the strings returned.
+func (ps *PipelineSpec) GetIndexingReferencesToArrayParams() sets.String {
 	paramsRefs := []string{}
 	for i := range ps.Tasks {
 		paramsRefs = append(paramsRefs, ps.Tasks[i].Params.extractValues()...)
@@ -734,7 +743,6 @@ func (ps *PipelineSpec) ValidateParamArrayIndex(ctx context.Context, params Para
 			paramsRefs = append(paramsRefs, wes.Values...)
 		}
 	}
-
 	for i := range ps.Finally {
 		paramsRefs = append(paramsRefs, ps.Finally[i].Params.extractValues()...)
 		if ps.Finally[i].IsMatrixed() {
@@ -745,12 +753,10 @@ func (ps *PipelineSpec) ValidateParamArrayIndex(ctx context.Context, params Para
 			paramsRefs = append(paramsRefs, wes.Values...)
 		}
 	}
-
 	// extract all array indexing references, for example []{"$(params.array-params[1])"}
 	arrayIndexParamRefs := []string{}
 	for _, p := range paramsRefs {
 		arrayIndexParamRefs = append(arrayIndexParamRefs, extractArrayIndexingParamRefs(p)...)
 	}
-
-	return validateOutofBoundArrayParams(arrayIndexParamRefs, arrayParamsLengths)
+	return sets.NewString(arrayIndexParamRefs...)
 }

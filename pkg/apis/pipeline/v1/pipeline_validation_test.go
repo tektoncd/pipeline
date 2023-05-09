@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
 
@@ -3686,6 +3687,159 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 			err := tt.original.ValidateParamArrayIndex(ctx, tt.params)
 			if d := cmp.Diff(tt.expected.Error(), err.Error()); d != "" {
 				t.Errorf("ValidateParamArrayIndex() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestGetIndexingReferencesToArrayParams(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		spec PipelineSpec
+		want sets.String
+	}{{
+		name: "references in task params",
+		spec: PipelineSpec{
+			Params: []ParamSpec{
+				{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+				{Name: "second-param", Type: ParamTypeString},
+			},
+			Tasks: []PipelineTask{{
+				Params: Params{
+					{Name: "first-task-first-param", Value: *NewStructuredValues("$(params.first-param[1])")},
+					{Name: "first-task-second-param", Value: *NewStructuredValues("$(params.second-param[0])")},
+					{Name: "first-task-third-param", Value: *NewStructuredValues("static value")},
+				},
+			}},
+		},
+		want: sets.NewString("$(params.first-param[1])", "$(params.second-param[0])"),
+	}, {
+		name: "references in when expression",
+		spec: PipelineSpec{
+			Params: []ParamSpec{
+				{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+				{Name: "second-param", Type: ParamTypeString},
+			},
+			Tasks: []PipelineTask{{
+				When: []WhenExpression{{
+					Input:    "$(params.first-param[1])",
+					Operator: selection.In,
+					Values:   []string{"$(params.second-param[0])"},
+				}},
+			}},
+		},
+		want: sets.NewString("$(params.first-param[1])", "$(params.second-param[0])"),
+	}, {
+		name: "nested references in task params",
+		spec: PipelineSpec{
+			Params: []ParamSpec{
+				{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+				{Name: "second-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+			},
+			Tasks: []PipelineTask{{
+				Params: Params{
+					{Name: "first-task-first-param", Value: *NewStructuredValues("$(input.workspace.$(params.first-param[0]))")},
+					{Name: "first-task-second-param", Value: *NewStructuredValues("$(input.workspace.$(params.second-param[1]))")},
+				},
+			}},
+		},
+		want: sets.NewString("$(params.first-param[0])", "$(params.second-param[1])"),
+	}, {
+		name: "array parameter",
+		spec: PipelineSpec{
+			Params: []ParamSpec{
+				{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default", "array", "value")},
+				{Name: "second-param", Type: ParamTypeArray},
+			},
+			Tasks: []PipelineTask{{
+				Params: Params{
+					{Name: "first-task-first-param", Value: *NewStructuredValues("firstelement", "$(params.first-param)")},
+					{Name: "first-task-second-param", Value: *NewStructuredValues("firstelement", "$(params.second-param[0])")},
+				},
+			}},
+		},
+		want: sets.NewString("$(params.second-param[0])"),
+	}, {
+		name: "references in finally params",
+		spec: PipelineSpec{
+			Params: []ParamSpec{
+				{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+				{Name: "second-param", Type: ParamTypeArray},
+			},
+			Finally: []PipelineTask{{
+				Params: Params{
+					{Name: "final-task-first-param", Value: *NewStructuredValues("$(params.first-param[0])")},
+					{Name: "final-task-second-param", Value: *NewStructuredValues("$(params.second-param[1])")},
+				},
+			}},
+		},
+		want: sets.NewString("$(params.first-param[0])", "$(params.second-param[1])"),
+	}, {
+		name: "references in finally when expressions",
+		spec: PipelineSpec{
+			Params: []ParamSpec{
+				{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+				{Name: "second-param", Type: ParamTypeArray},
+			},
+			Finally: []PipelineTask{{
+				When: WhenExpressions{{
+					Input:    "$(params.first-param[0])",
+					Operator: selection.In,
+					Values:   []string{"$(params.second-param[1])"},
+				}},
+			}},
+		},
+		want: sets.NewString("$(params.first-param[0])", "$(params.second-param[1])"),
+	}, {
+		name: "parameter references with bracket notation and special characters",
+		spec: PipelineSpec{
+			Params: []ParamSpec{
+				{Name: "first.param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+				{Name: "second/param", Type: ParamTypeArray},
+				{Name: "third.param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+				{Name: "fourth/param", Type: ParamTypeArray},
+			},
+			Tasks: []PipelineTask{{
+				Params: Params{
+					{Name: "first-task-first-param", Value: *NewStructuredValues(`$(params["first.param"][0])`)},
+					{Name: "first-task-second-param", Value: *NewStructuredValues(`$(params["second.param"][0])`)},
+					{Name: "first-task-third-param", Value: *NewStructuredValues(`$(params['third.param'][1])`)},
+					{Name: "first-task-fourth-param", Value: *NewStructuredValues(`$(params['fourth/param'][1])`)},
+					{Name: "first-task-fifth-param", Value: *NewStructuredValues("static value")},
+				},
+			}},
+		},
+		want: sets.NewString(`$(params["first.param"][0])`, `$(params["second.param"][0])`, `$(params['third.param'][1])`, `$(params['fourth/param'][1])`),
+	}, {
+		name: "single parameter in workspace subpath",
+		spec: PipelineSpec{
+			Params: []ParamSpec{
+				{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+				{Name: "second-param", Type: ParamTypeArray},
+			},
+			Tasks: []PipelineTask{{
+				Params: Params{
+					{Name: "first-task-first-param", Value: *NewStructuredValues("$(params.first-param[0])")},
+					{Name: "first-task-second-param", Value: *NewStructuredValues("static value")},
+				},
+				Workspaces: []WorkspacePipelineTaskBinding{
+					{
+						Name:      "first-workspace",
+						Workspace: "first-workspace",
+						SubPath:   "$(params.second-param[1])",
+					},
+				},
+			}},
+		},
+		want: sets.NewString("$(params.first-param[0])", "$(params.second-param[1])"),
+	},
+	} {
+		tt := tt // capture range variable
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := tt.spec.GetIndexingReferencesToArrayParams()
+			if d := cmp.Diff(tt.want, got); d != "" {
+				t.Errorf("wrong array index references: %s", d)
 			}
 		})
 	}
