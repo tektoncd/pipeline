@@ -3573,14 +3573,14 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 					{Name: "final-task-second-param", Value: *NewStructuredValues("$(params.second-param[2])")},
 				},
 				When: WhenExpressions{{
-					Input:    "$(params.first-param[0])",
+					Input:    "$(params.first-param[5])",
 					Operator: selection.In,
 					Values:   []string{"$(params.second-param[1])"},
 				}},
 			}},
 		},
 		params:   Params{{Name: "second-param", Value: *NewStructuredValues("second-value", "second-value-again")}},
-		expected: fmt.Errorf("non-existent param references:[$(params.first-param[2]) $(params.second-param[2])]"),
+		expected: fmt.Errorf("non-existent param references:[$(params.first-param[2]) $(params.first-param[5]) $(params.second-param[2])]"),
 	}, {
 		name: "parameter evaluation with both tasks and final tasks reference out of bound",
 		original: PipelineSpec{
