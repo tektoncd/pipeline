@@ -47,4 +47,4 @@ When re-generating Thrift code in the future, please adapt import paths as neces
 
 - [Jaeger](https://www.jaegertracing.io/)
 - [OpenTelemetry to Jaeger Transformation](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/sdk_exporters/jaeger.md)
-- [OpenTelemetry Environment Variable Specification](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md)
+- [OpenTelemetry Environment Variable Specification](https://opentelemetry.io/docs/reference/specification/sdk-environment-variables/#general-sdk-configuration)
