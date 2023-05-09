@@ -82,6 +82,9 @@ const (
 	DurationPipelinerunTypeLastValue = "lastvalue"
 )
 
+// DefaultMetrics holds all the default configurations for the metrics.
+var DefaultMetrics, _ = newMetricsFromMap(map[string]string{})
+
 // Metrics holds the configurations for the metrics
 // +k8s:deepcopy-gen=true
 type Metrics struct {

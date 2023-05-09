@@ -49,16 +49,12 @@ func FromContextOrDefaults(ctx context.Context) *Config {
 	if cfg := FromContext(ctx); cfg != nil {
 		return cfg
 	}
-	defaults, _ := NewDefaultsFromMap(map[string]string{})
-	featureFlags, _ := NewFeatureFlagsFromMap(map[string]string{})
-	metrics, _ := newMetricsFromMap(map[string]string{})
-	spireconfig, _ := NewSpireConfigFromMap(map[string]string{})
 
 	return &Config{
-		Defaults:     defaults,
-		FeatureFlags: featureFlags,
-		Metrics:      metrics,
-		SpireConfig:  spireconfig,
+		Defaults:     DefaultConfig.DeepCopy(),
+		FeatureFlags: DefaultFeatureFlags.DeepCopy(),
+		Metrics:      DefaultMetrics.DeepCopy(),
+		SpireConfig:  DefaultSpire.DeepCopy(),
 	}
 }
 
@@ -102,20 +98,20 @@ func (s *Store) ToContext(ctx context.Context) context.Context {
 func (s *Store) Load() *Config {
 	defaults := s.UntypedLoad(GetDefaultsConfigName())
 	if defaults == nil {
-		defaults, _ = NewDefaultsFromMap(map[string]string{})
+		defaults = DefaultConfig.DeepCopy()
 	}
 	featureFlags := s.UntypedLoad(GetFeatureFlagsConfigName())
 	if featureFlags == nil {
-		featureFlags, _ = NewFeatureFlagsFromMap(map[string]string{})
+		featureFlags = DefaultFeatureFlags.DeepCopy()
 	}
 	metrics := s.UntypedLoad(GetMetricsConfigName())
 	if metrics == nil {
-		metrics, _ = newMetricsFromMap(map[string]string{})
+		metrics = DefaultMetrics.DeepCopy()
 	}
 
 	spireconfig := s.UntypedLoad(GetSpireConfigName())
 	if spireconfig == nil {
-		spireconfig, _ = NewSpireConfigFromMap(map[string]string{})
+		spireconfig = DefaultSpire.DeepCopy()
 	}
 
 	return &Config{

@@ -47,6 +47,9 @@ const (
 	SpireNodeAliasPrefixDefault = "/tekton-node/"
 )
 
+// DefaultSpire hols all the default configurations for the spire.
+var DefaultSpire, _ = NewSpireConfigFromMap(map[string]string{})
+
 // NewSpireConfigFromMap creates a Config from the supplied map
 func NewSpireConfigFromMap(data map[string]string) (*sc.SpireConfig, error) {
 	cfg := &sc.SpireConfig{}

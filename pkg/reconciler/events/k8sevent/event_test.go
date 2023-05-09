@@ -228,10 +228,9 @@ func TestEmitK8sEvents(t *testing.T) {
 
 		// Setup the config and add it to the context
 		defaults, _ := config.NewDefaultsFromMap(tc.data)
-		featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{})
 		cfg := &config.Config{
 			Defaults:     defaults,
-			FeatureFlags: featureFlags,
+			FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
 		}
 		ctx = config.ToContext(ctx, cfg)
 

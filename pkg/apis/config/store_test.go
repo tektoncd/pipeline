@@ -24,7 +24,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	test "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test/diff"
-	corev1 "k8s.io/api/core/v1"
 	logtesting "knative.dev/pkg/logging/testing"
 )
 
@@ -60,16 +59,11 @@ func TestStoreLoadWithContext(t *testing.T) {
 }
 
 func TestStoreLoadWithContext_Empty(t *testing.T) {
-	defaults, _ := config.NewDefaultsFromMap(map[string]string{})
-	featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{})
-	metrics, _ := config.NewMetricsFromConfigMap(&corev1.ConfigMap{Data: map[string]string{}})
-	spireConfig, _ := config.NewSpireConfigFromMap(map[string]string{})
-
 	want := &config.Config{
-		Defaults:     defaults,
-		FeatureFlags: featureFlags,
-		Metrics:      metrics,
-		SpireConfig:  spireConfig,
+		Defaults:     config.DefaultConfig.DeepCopy(),
+		FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
+		Metrics:      config.DefaultMetrics.DeepCopy(),
+		SpireConfig:  config.DefaultSpire.DeepCopy(),
 	}
 
 	store := config.NewStore(logtesting.TestLogger(t))

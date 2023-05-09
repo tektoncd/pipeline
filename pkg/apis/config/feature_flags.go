@@ -92,6 +92,9 @@ const (
 	maxResultSize                       = "max-result-size"
 )
 
+// DefaultFeatureFlags holds all the default configurations for the feature flags configmap.
+var DefaultFeatureFlags, _ = NewFeatureFlagsFromMap(map[string]string{})
+
 // FeatureFlags holds the features configurations
 // +k8s:deepcopy-gen=true
 //
