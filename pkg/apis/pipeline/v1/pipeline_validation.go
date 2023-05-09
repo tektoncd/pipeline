@@ -721,6 +721,7 @@ func (ps *PipelineSpec) ValidateParamArrayIndex(ctx context.Context, params Para
 			paramsRefs = append(paramsRefs, ps.Finally[i].Matrix.Params.extractValues()...)
 		}
 		for _, wes := range ps.Finally[i].When {
+			paramsRefs = append(paramsRefs, wes.Input)
 			paramsRefs = append(paramsRefs, wes.Values...)
 		}
 	}
