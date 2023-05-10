@@ -1335,8 +1335,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := config.EnableAlphaAPIFields(context.Background())
-			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
+			ctx := config.SkipValidationDueToPropagatedParametersAndWorkspaces(context.Background(), false)
 			err := ValidatePipelineParameterVariables(ctx, tt.tasks, tt.params)
 			if err != nil {
 				t.Errorf("Pipeline.ValidatePipelineParameterVariables() returned error for valid pipeline parameters: %v", err)

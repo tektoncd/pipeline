@@ -325,11 +325,6 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 // ValidateParameterTypes validates all the types within a slice of ParamSpecs
 func ValidateParameterTypes(ctx context.Context, params []ParamSpec) (errs *apis.FieldError) {
 	for _, p := range params {
-		if p.Type == ParamTypeObject {
-			// Object type parameter is a beta feature and will fail validation if it's used in a task spec
-			// when the enable-api-fields feature gate is not "alpha" or "beta".
-			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "object type parameter", config.BetaAPIFields))
-		}
 		errs = errs.Also(p.ValidateType(ctx))
 	}
 	return errs

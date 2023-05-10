@@ -173,7 +173,6 @@ func TestPipelineRun_Invalid(t *testing.T) {
 			Message: `non-existent variable in "$(params.pipeline-words.not-hello)"`,
 			Paths:   []string{"spec.steps[0].args[0]"},
 		},
-		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "propagating object params with pipelinespec and taskspec params not provided",
 		pr: v1beta1.PipelineRun{
@@ -211,7 +210,6 @@ func TestPipelineRun_Invalid(t *testing.T) {
 			Message: `non-existent variable in "$(params.pipeline-words.not-hello)"`,
 			Paths:   []string{"spec.steps[0].args[0]"},
 		},
-		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "propagating object params with pipelinespec and taskspec params provided in taskrun",
 		pr: v1beta1.PipelineRun{
@@ -256,7 +254,6 @@ func TestPipelineRun_Invalid(t *testing.T) {
 			Message: `non-existent variable in "$(params.pipeline-words.not-hello)"`,
 			Paths:   []string{"spec.steps[0].args[0]"},
 		},
-		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "propagating params with pipelinespec and taskspec",
 		pr: v1beta1.PipelineRun{
@@ -352,7 +349,6 @@ func TestPipelineRun_Invalid(t *testing.T) {
 			Message: `non-existent variable in "$(params.pipeline-words.not-hello)"`,
 			Paths:   []string{"spec.steps[0].args[0]"},
 		},
-		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "duplicate param names",
 		pr: v1beta1.PipelineRun{
@@ -613,7 +609,6 @@ func TestPipelineRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "propagating params with pipelinespec and taskspec",
 		pr: v1beta1.PipelineRun{
@@ -643,7 +638,6 @@ func TestPipelineRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "propagating object params with pipelinespec and taskspec",
 		pr: v1beta1.PipelineRun{
@@ -673,7 +667,6 @@ func TestPipelineRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "propagating object params no value in params but value in default",
 		pr: v1beta1.PipelineRun{
@@ -713,7 +706,6 @@ func TestPipelineRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "propagating object params with some params defined in taskspec only",
 		pr: v1beta1.PipelineRun{
@@ -754,7 +746,6 @@ func TestPipelineRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "propagating workspaces",
 		pr: v1beta1.PipelineRun{

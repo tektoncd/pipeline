@@ -17,8 +17,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/version"
 	"knative.dev/pkg/apis"
 )
 
@@ -29,14 +27,10 @@ func (tr TaskResult) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 
 	switch {
-	// Object results is a beta feature - make sure the feature flag is set to "beta"
 	case tr.Type == ResultsTypeObject:
 		errs := validateObjectResult(tr)
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "results type", config.BetaAPIFields))
 		return errs
-	// Array results is a beta feature - make sure the feature flag is set to "beta"
 	case tr.Type == ResultsTypeArray:
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "results type", config.BetaAPIFields))
 		return errs
 	// Resources created before the result. Type was introduced may not have Type set
 	// and should be considered valid
