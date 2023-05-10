@@ -108,7 +108,6 @@ func TestTaskRun_Invalidate(t *testing.T) {
 			Message: `non-existent variable in "$(params.task-words.hello)"`,
 			Paths:   []string{"spec.steps[0].args[0]"},
 		},
-		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "propagating object properties not provided",
 		taskRun: &v1beta1.TaskRun{
@@ -143,7 +142,6 @@ func TestTaskRun_Invalidate(t *testing.T) {
 			Message: `missing field(s)`,
 			Paths:   []string{"spec.task-words.properties"},
 		},
-		wc: config.EnableAlphaAPIFields,
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
@@ -208,7 +206,6 @@ func TestTaskRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "propagating object params with taskrun no value provided",
 		taskRun: &v1beta1.TaskRun{
@@ -241,7 +238,6 @@ func TestTaskRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "propagating partial params with different provided and default names",
 		taskRun: &v1beta1.TaskRun{
@@ -306,7 +302,6 @@ func TestTaskRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "propagating partial params in taskrun",
 		taskRun: &v1beta1.TaskRun{
@@ -375,7 +370,6 @@ func TestTaskRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "propagating params with taskrun same names",
 		taskRun: &v1beta1.TaskRun{
@@ -435,7 +429,6 @@ func TestTaskRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "alpha feature: valid step and sidecar overrides",
 		taskRun: &v1beta1.TaskRun{
@@ -625,7 +618,6 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			TaskRef: &v1beta1.TaskRef{Name: "mytask"},
 		},
 		wantErr: apis.ErrMultipleOneOf("params[myobjectparam].name"),
-		wc:      config.EnableAlphaAPIFields,
 	}, {
 		name: "using debug when apifields stable",
 		spec: v1beta1.TaskRunSpec{

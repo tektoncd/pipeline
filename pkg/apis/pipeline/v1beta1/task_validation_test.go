@@ -516,7 +516,7 @@ func TestTaskSpecValidate(t *testing.T) {
 				Workspaces:   tt.fields.Workspaces,
 				Results:      tt.fields.Results,
 			}
-			ctx := config.EnableAlphaAPIFields(context.Background())
+			ctx := context.Background()
 			ts.SetDefaults(ctx)
 			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
@@ -1372,7 +1372,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 				Results:      tt.fields.Results,
 				Resources:    tt.fields.Resources,
 			}
-			ctx := config.EnableAlphaAPIFields(context.Background())
+			ctx := context.Background()
 			ts.SetDefaults(ctx)
 			err := ts.Validate(ctx)
 			if err == nil {
