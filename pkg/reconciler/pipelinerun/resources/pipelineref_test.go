@@ -38,7 +38,6 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
@@ -55,6 +54,12 @@ var (
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pipeline",
 			APIVersion: "tekton.dev/v1beta1",
+		},
+		Spec: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				Name:    "task-1",
+				TaskRef: &v1beta1.TaskRef{Name: "foo"},
+			}},
 		},
 	}
 
@@ -92,6 +97,24 @@ func TestLocalPipelineRef(t *testing.T) {
 			},
 			expected: nil,
 			wantErr:  true,
+		},
+		{
+			name:      "invalid-pipeline",
+			pipelines: []runtime.Object{invalidPipeline("invalid")},
+			ref: &v1beta1.PipelineRef{
+				Name: "invalid",
+			},
+			expected: invalidPipeline("invalid"),
+			wantErr:  false,
+		},
+		{
+			name:      "pipeline-with-defaulting",
+			pipelines: []runtime.Object{simplePipelineWithBaseSpec()},
+			ref: &v1beta1.PipelineRef{
+				Name: "simple",
+			},
+			expected: simplePipelineWithBaseSpecAndDefaults(context.Background()),
+			wantErr:  false,
 		},
 	}
 
@@ -153,15 +176,15 @@ func TestGetPipelineFunc(t *testing.T) {
 	}{{
 		name: "remote-pipeline",
 		localPipelines: []runtime.Object{
-			simplePipelineWithBaseSpec(),
+			simplePipeline(),
 			dummyPipeline,
 		},
-		remotePipelines: []runtime.Object{simplePipeline(), dummyPipeline},
+		remotePipelines: []runtime.Object{simplePipelineWithBaseSpec(), dummyPipeline},
 		ref: &v1beta1.PipelineRef{
 			Name:   "simple",
 			Bundle: u.Host + "/remote-pipeline",
 		},
-		expected: simplePipeline(),
+		expected: simplePipelineWithBaseSpecAndDefaults(ctx),
 	}, {
 		name: "local-pipeline",
 		localPipelines: []runtime.Object{
@@ -172,24 +195,24 @@ func TestGetPipelineFunc(t *testing.T) {
 		ref: &v1beta1.PipelineRef{
 			Name: "simple",
 		},
-		expected: simplePipelineWithBaseSpec(),
+		expected: simplePipelineWithBaseSpecAndDefaults(ctx),
 	}, {
 		name:           "remote-pipeline-without-defaults",
 		localPipelines: []runtime.Object{simplePipeline()},
 		remotePipelines: []runtime.Object{
-			simplePipelineWithSpecAndParam(""),
+			simplePipelineWithSpecAndParam(),
 			dummyPipeline},
 		ref: &v1beta1.PipelineRef{
 			Name:   "simple",
 			Bundle: u.Host + "/remote-pipeline-without-defaults",
 		},
-		expected: simplePipelineWithSpecParamAndKind(),
+		expected: simplePipelineWithSpecAndParamDefaults(ctx),
 	}}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			tektonclient := fake.NewSimpleClientset(tc.localPipelines...)
-			kubeclient := fakek8s.NewSimpleClientset(&v1.ServiceAccount{
+			kubeclient := fakek8s.NewSimpleClientset(&corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "default",
 					Name:      "default",
@@ -233,7 +256,7 @@ func TestGetPipelineFuncSpecAlreadyFetched(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	tektonclient := fake.NewSimpleClientset(simplePipeline(), dummyPipeline)
-	kubeclient := fakek8s.NewSimpleClientset(&v1.ServiceAccount{
+	kubeclient := fakek8s.NewSimpleClientset(&corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "default",
 			Name:      "default",
@@ -291,12 +314,13 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 	ctx := context.Background()
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
-	pipeline := parse.MustParseV1beta1Pipeline(t, pipelineYAMLString)
 	pipelineRef := &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
 
 	testcases := []struct {
 		name         string
 		pipelineYAML string
+		wantPipeline *v1beta1.Pipeline
+		wantErr      bool
 	}{{
 		name: "v1beta1 pipeline",
 		pipelineYAML: strings.Join([]string{
@@ -304,6 +328,25 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 			"apiVersion: tekton.dev/v1beta1",
 			pipelineYAMLString,
 		}, "\n"),
+		wantPipeline: parse.MustParseV1beta1Pipeline(t, pipelineYAMLString),
+		wantErr:      false,
+	}, {
+		name: "invalid v1beta1 pipeline",
+		pipelineYAML: strings.Join([]string{
+			"kind: Pipeline",
+			"apiVersion: tekton.dev/v1beta1",
+			invalidPipelineYAMLString,
+		}, "\n"),
+		wantErr: true,
+	}, {
+		name: "v1beta1 pipeline with defaulting",
+		pipelineYAML: strings.Join([]string{
+			"kind: Pipeline",
+			"apiVersion: tekton.dev/v1beta1",
+			pipelineYAMLStringMissingDefaults,
+		}, "\n"),
+		wantPipeline: parse.MustParseV1beta1Pipeline(t, pipelineYAMLStringWithDefaults),
+		wantErr:      false,
 	}, {
 		name: "v1 pipeline",
 		pipelineYAML: strings.Join([]string{
@@ -311,6 +354,25 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 			"apiVersion: tekton.dev/v1",
 			pipelineYAMLString,
 		}, "\n"),
+		wantPipeline: parse.MustParseV1beta1Pipeline(t, pipelineYAMLString),
+		wantErr:      false,
+	}, {
+		name: "invalid v1 pipeline",
+		pipelineYAML: strings.Join([]string{
+			"kind: Pipeline",
+			"apiVersion: tekton.dev/v1",
+			invalidPipelineYAMLString,
+		}, "\n"),
+		wantErr: true,
+	}, {
+		name: "v1 pipeline with defaulting",
+		pipelineYAML: strings.Join([]string{
+			"kind: Pipeline",
+			"apiVersion: tekton.dev/v1",
+			pipelineYAMLStringMissingDefaults,
+		}, "\n"),
+		wantPipeline: parse.MustParseV1beta1Pipeline(t, pipelineYAMLStringWithDefaults),
+		wantErr:      false,
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -325,16 +387,22 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 			}, nil /*VerificationPolicies*/)
 
 			resolvedPipeline, resolvedRefSource, err := fn(ctx, pipelineRef.Name)
-			if err != nil {
-				t.Fatalf("failed to call pipelinefn: %s", err.Error())
-			}
+			if tc.wantErr {
+				if err == nil {
+					t.Errorf("expected error when fetching pipeline, but there was none")
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("failed to call pipelinefn: %s", err.Error())
+				}
 
-			if diff := cmp.Diff(pipeline, resolvedPipeline); diff != "" {
-				t.Error(diff)
-			}
+				if diff := cmp.Diff(tc.wantPipeline, resolvedPipeline); diff != "" {
+					t.Error(diff)
+				}
 
-			if d := cmp.Diff(sampleRefSource, resolvedRefSource); d != "" {
-				t.Errorf("refSources did not match: %s", diff.PrintWantGot(d))
+				if d := cmp.Diff(sampleRefSource, resolvedRefSource); d != "" {
+					t.Errorf("refSources did not match: %s", diff.PrintWantGot(d))
+				}
 			}
 		})
 	}
@@ -854,6 +922,22 @@ func simplePipeline() *v1beta1.Pipeline {
 	return basePipeline("simple")
 }
 
+func invalidPipeline(name string) *v1beta1.Pipeline {
+	return &v1beta1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: "default",
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Pipeline",
+			APIVersion: "tekton.dev/v1beta1",
+		},
+		Spec: v1beta1.PipelineSpec{
+			Params: v1beta1.ParamSpecs{v1beta1.ParamSpec{Name: "foo", Type: "array"}},
+		},
+	}
+}
+
 func simplePipelineWithBaseSpec() *v1beta1.Pipeline {
 	p := simplePipeline()
 	p.Spec = v1beta1.PipelineSpec{
@@ -868,22 +952,23 @@ func simplePipelineWithBaseSpec() *v1beta1.Pipeline {
 	return p
 }
 
-func simplePipelineWithSpecAndParam(pt v1beta1.ParamType) *v1beta1.Pipeline {
+func simplePipelineWithBaseSpecAndDefaults(ctx context.Context) *v1beta1.Pipeline {
 	p := simplePipelineWithBaseSpec()
-	p.Spec.Params = []v1beta1.ParamSpec{{
-		Name: "foo",
-		Type: pt,
-	}}
-
+	p.SetDefaults(ctx)
 	return p
 }
 
-func simplePipelineWithSpecParamAndKind() *v1beta1.Pipeline {
+func simplePipelineWithSpecAndParam() *v1beta1.Pipeline {
 	p := simplePipelineWithBaseSpec()
 	p.Spec.Params = []v1beta1.ParamSpec{{
 		Name: "foo",
 	}}
+	return p
+}
 
+func simplePipelineWithSpecAndParamDefaults(ctx context.Context) *v1beta1.Pipeline {
+	p := simplePipelineWithSpecAndParam()
+	p.SetDefaults(ctx)
 	return p
 }
 
@@ -901,4 +986,40 @@ spec:
         image: ubuntu
         script: |
           echo "hello world!"
+`
+var invalidPipelineYAMLString = `
+metadata:
+  name: foo
+spec:
+  tasks:
+  - name: task1
+    taskSpec:
+      # No steps -> invalid task
+      params:
+      - name: foo
+`
+var pipelineYAMLStringMissingDefaults = `
+metadata:
+  name: foo
+spec:
+  params:
+  - name: foo
+  tasks:
+  - name: task1
+    taskRef:
+      name: bar
+`
+
+var pipelineYAMLStringWithDefaults = `
+metadata:
+  name: foo
+spec:
+  params:
+  - name: foo
+    type: string
+  tasks:
+  - name: task1
+    taskRef:
+      name: bar
+      kind: Task
 `

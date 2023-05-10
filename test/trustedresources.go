@@ -89,6 +89,10 @@ func GetUnsignedPipeline(name string) *v1beta1.Pipeline {
 			Tasks: []v1beta1.PipelineTask{
 				{
 					Name: "task",
+					TaskRef: &v1beta1.TaskRef{
+						Name: "task",
+						Kind: "Task",
+					},
 				},
 			},
 		},

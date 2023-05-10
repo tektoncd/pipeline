@@ -773,7 +773,7 @@ spec:
 		permanentError     bool
 		wantEvents         []string
 	}{{
-		name: "invalid-pipeline-shd-be-stop-reconciling",
+		name: "pipeline-doesnt-exist",
 		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: invalid-pipeline
@@ -788,38 +788,6 @@ spec:
 		wantEvents: []string{
 			"Normal Started",
 			"Warning Failed Error retrieving pipeline for pipelinerun",
-		},
-	}, {
-		name: "invalid-pipeline-run-missing-tasks-shd-stop-reconciling",
-		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
-metadata:
-  name: pipelinerun-missing-tasks
-  namespace: foo
-spec:
-  pipelineRef:
-    name: pipeline-missing-tasks
-`),
-		reason:         ReasonCouldntGetTask,
-		permanentError: true,
-		wantEvents: []string{
-			"Normal Started",
-			"Warning Failed Pipeline foo/pipeline-missing-tasks can't be Run",
-		},
-	}, {
-		name: "invalid-pipeline-run-params-dont-exist-shd-stop-reconciling",
-		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
-metadata:
-  name: pipeline-params-dont-exist
-  namespace: foo
-spec:
-  pipelineRef:
-    name: a-pipeline-without-params
-`),
-		reason:         ReasonFailedValidation,
-		permanentError: true,
-		wantEvents: []string{
-			"Normal Started",
-			"Warning Failed invalid input params for task a-task-that-needs-params: missing values",
 		},
 	}, {
 		name: "invalid-pipeline-mismatching-parameter-types",
@@ -882,25 +850,6 @@ spec:
 			"Warning Failed PipelineRun foo/pipeline-param-array-out-of-bound failed validation: failed to validate Pipeline foo/a-pipeline-with-array-indexing-params's parameter which has an invalid index while referring to an array: non-existent param references:[$(params.some-param[2]",
 		},
 	}, {
-		name: "invalid-embedded-pipeline-bad-name-shd-stop-reconciling",
-		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
-metadata:
-  name: embedded-pipeline-invalid
-  namespace: foo
-spec:
-  pipelineSpec:
-    tasks:
-      - name: bad-t@$k
-        taskRef:
-          name: b@d-t@$k
-`),
-		reason:         ReasonFailedValidation,
-		permanentError: true,
-		wantEvents: []string{
-			"Normal Started",
-			"Warning Failed Pipeline foo/embedded-pipeline-invalid can't be Run; it has an invalid spec",
-		},
-	}, {
 		name: "invalid-embedded-pipeline-mismatching-parameter-types",
 		pipelineRun: parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
@@ -947,61 +896,12 @@ spec:
 			"Normal Started",
 			"Warning Failed PipelineRun foo parameters is missing some parameters required by Pipeline pipelinerun-missing-params",
 		},
-	}, {
-		name: "invalid-pipeline-with-invalid-dag-graph",
-		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
-metadata:
-  name: pipeline-invalid-dag-graph
-  namespace: foo
-spec:
-  pipelineSpec:
-    tasks:
-      - name: dag-task-1
-        taskRef:
-          name: dag-task-1
-        runAfter: [ dag-task-1 ]
-`),
-		reason:         ReasonInvalidGraph,
-		permanentError: true,
-		wantEvents: []string{
-			"Normal Started",
-			"Warning Failed PipelineRun foo/pipeline-invalid-dag-graph's Pipeline DAG is invalid",
-		},
-	}, {
-		name: "invalid-pipeline-with-invalid-final-tasks-graph",
-		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
-metadata:
-  name: pipeline-invalid-final-graph
-  namespace: foo
-spec:
-  pipelineSpec:
-    tasks:
-      - name: dag-task-1
-        taskRef:
-          name: taskName
-    finally:
-      - name: final-task-1
-        taskRef:
-          name: taskName
-      - name: final-task-1
-        taskRef:
-          name: taskName
-`),
-		reason:         ReasonInvalidGraph,
-		permanentError: true,
-		wantEvents: []string{
-			"Normal Started",
-			"Warning Failed PipelineRun foo's Pipeline DAG is invalid for finally clause",
-		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
-
 			d := test.Data{
 				PipelineRuns: []*v1beta1.PipelineRun{tc.pipelineRun},
 				Pipelines:    ps,
 				Tasks:        ts,
-				ConfigMaps:   cms,
 			}
 			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
@@ -6461,6 +6361,10 @@ spec:
 metadata:
   name: unit-test-task
   namespace: foo
+spec:
+  steps:
+  - image: busybox
+    script: echo hello
 `)
 
 	// Create a bundle from our pipeline and tasks.

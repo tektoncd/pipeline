@@ -120,6 +120,20 @@ func (l *LocalPipelineRefResolver) GetPipeline(ctx context.Context, name string)
 	if err != nil {
 		return nil, nil, err
 	}
+	// Reapply defaults to the fetched Pipeline, since defaulting logic may have changed since it was created.
+	// For example, the Pipeline may have been created with an older server,
+	// and we may have added a new feature with a default value since then.
+	pipeline.SetDefaults(ctx)
+	// Skip validation of local Pipelines. Pipelines were validated when they were created.
+	// Local Pipelines have since been converted into the stored version, and we have no way of knowing
+	// what API version was used to create and validate them.
+	//
+	// For example, if enable-api-fields is "stable" and someone creates a v1beta1 Pipeline using beta features,
+	// this is perfectly valid. If the stored version of Pipeline is v1, the Pipeline is converted into v1,
+	// which doesn't allow beta features with enable-api-fields set to "stable". We should try to run the Pipeline anyway.
+	//
+	// We plan to move to per-feature flags (https://github.com/tektoncd/pipeline/issues/5632),
+	// but this issue is relevant for as long as validation differs between v1 and v1beta1.
 	return pipeline, nil, nil
 }
 
@@ -146,18 +160,29 @@ func resolvePipeline(ctx context.Context, resolver remote.Resolver, name string,
 // An error is returned if the given object is not a
 // PipelineObject, trusted resources verification fails or if there is an error validating or upgrading an
 // older PipelineObject into its v1beta1 equivalent.
+// This method sets defaults and applies validation based on the API version of the referenced Pipeline.
 // TODO(#5541): convert v1beta1 obj to v1 once we use v1 as the stored version
 func readRuntimeObjectAsPipeline(ctx context.Context, obj runtime.Object, k8s kubernetes.Interface, refSource *v1beta1.RefSource, verificationPolicies []*v1alpha1.VerificationPolicy) (*v1beta1.Pipeline, error) {
+	// Inject a sentinel value into the context to skip validation of parameters and workspaces that may not yet be present
+	ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, true)
 	switch obj := obj.(type) {
 	case *v1beta1.Pipeline:
 		// Verify the Pipeline once we fetch from the remote resolution, mutating, validation and conversion of the pipeline should happen after the verification, since signatures are based on the remote pipeline contents
-		err := trustedresources.VerifyPipeline(ctx, obj, k8s, refSource, verificationPolicies)
-		if err != nil {
+		if err := trustedresources.VerifyPipeline(ctx, obj, k8s, refSource, verificationPolicies); err != nil {
 			return nil, fmt.Errorf("remote Pipeline verification failed for object %s: %w", obj.GetName(), err)
+		}
+		obj.SetDefaults(ctx)
+		// Validation must happen before conversion to the stored version of the API, since validation may differ between API versions
+		if err := obj.Validate(ctx); err != nil {
+			return nil, fmt.Errorf("remote Pipeline validation failed for object %s: %w", obj.GetName(), err)
 		}
 		return obj, nil
 	case *v1.Pipeline:
-		// TODO(#6356): Support V1 Task verification
+		obj.SetDefaults(ctx)
+		// Validation must happen before conversion to the stored version of the API, since validation may differ between API versions
+		if err := obj.Validate(ctx); err != nil {
+			return nil, fmt.Errorf("remote Pipeline validation failed for object %s: %w", obj.GetName(), err)
+		}
 		t := &v1beta1.Pipeline{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "Pipeline",
@@ -165,7 +190,7 @@ func readRuntimeObjectAsPipeline(ctx context.Context, obj runtime.Object, k8s ku
 			},
 		}
 		if err := t.ConvertFrom(ctx, obj); err != nil {
-			return nil, fmt.Errorf("failed to convert obj %s into Pipeline", obj.GetObjectKind().GroupVersionKind().String())
+			return nil, fmt.Errorf("failed to convert obj %s into Pipeline: %w", obj.GetObjectKind().GroupVersionKind().String(), err)
 		}
 		return t, nil
 	}

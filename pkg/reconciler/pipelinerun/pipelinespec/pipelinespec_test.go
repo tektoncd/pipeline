@@ -218,10 +218,12 @@ func TestGetPipelineData_ResolutionSuccess(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := cfgtesting.SetDefaults(context.Background(), t, tc.defaults)
 			getPipeline := func(ctx context.Context, n string) (*v1beta1.Pipeline, *v1beta1.RefSource, error) {
-				return &v1beta1.Pipeline{
+				p := v1beta1.Pipeline{
 					ObjectMeta: *tc.sourceMeta.DeepCopy(),
 					Spec:       *tc.sourceSpec.DeepCopy(),
-				}, tc.refSource.DeepCopy(), nil
+				}
+				p.SetDefaults(ctx)
+				return &p, tc.refSource.DeepCopy(), nil
 			}
 
 			resolvedObjectMeta, resolvedPipelineSpec, err := pipelinespec.GetPipelineData(ctx, tc.pr, getPipeline)

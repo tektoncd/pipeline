@@ -223,6 +223,8 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 	getPipelineFunc := resources.GetPipelineFunc(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, pr, vp)
 
 	if pr.IsDone() {
+		// We may be reading a version of the PipelineRun that was stored at an older version
+		// and may not have had all of the assumed defaults specified.
 		pr.SetDefaults(ctx)
 		err := c.cleanupAffinityAssistants(ctx, pr)
 		if err != nil {
@@ -389,8 +391,13 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	defer span.End()
 	defer c.durationAndCountMetrics(ctx, pr, beforeCondition)
 	logger := logging.FromContext(ctx)
-	pr.SetDefaults(ctx)
 
+	// Set defaults for the PipelineRun.
+	// The PipelineRun already had defaults applied when it was created, and
+	// we already set defaults for the referenced Pipeline, so this line only matters
+	// if defaulting behavior has changed since the PipelineRun was created; i.e. the PipelineRun
+	// is executing during a server upgrade.
+	pr.SetDefaults(ctx)
 	// When pipeline run is pending, return to avoid creating the task
 	if pr.IsPending() {
 		pr.Status.MarkRunning(ReasonPending, fmt.Sprintf("PipelineRun %q is pending", pr.Name))
@@ -439,17 +446,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 		pr.Status.MarkFailed(ReasonInvalidGraph,
 			"PipelineRun %s's Pipeline DAG is invalid for finally clause: %s",
 			pr.Namespace, pr.Name, err)
-		return controller.NewPermanentError(err)
-	}
-
-	// Because of parameter propagation, we skip validating it inside the pipelineSpec since it may
-	// not have the full list of defined parameters
-	ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, true)
-	if err := pipelineSpec.Validate(ctx); err != nil {
-		// This Run has failed, so we need to mark it as failed and stop reconciling it
-		pr.Status.MarkFailed(ReasonFailedValidation,
-			"Pipeline %s/%s can't be Run; it has an invalid spec: %s",
-			pipelineMeta.Namespace, pipelineMeta.Name, err)
 		return controller.NewPermanentError(err)
 	}
 

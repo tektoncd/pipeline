@@ -67,7 +67,6 @@ func GetPipelineData(ctx context.Context, pipelineRun *v1beta1.PipelineRun, getP
 		return nil, nil, fmt.Errorf("pipelineRun %s not providing PipelineRef or PipelineSpec", pipelineRun.Name)
 	}
 
-	pipelineSpec.SetDefaults(ctx)
 	return &resolutionutil.ResolvedObjectMeta{
 		ObjectMeta: &pipelineMeta,
 		RefSource:  refSource,
