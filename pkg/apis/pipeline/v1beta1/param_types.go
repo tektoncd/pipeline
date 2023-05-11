@@ -94,6 +94,51 @@ func (pp *ParamSpec) SetDefaults(context.Context) {
 	}
 }
 
+// getNames returns all the names of the declared parameters
+func (ps ParamSpecs) getNames() []string {
+	var names []string
+	for _, p := range ps {
+		names = append(names, p.Name)
+	}
+	return names
+}
+
+// sortByType splits the input params into string params, array params, and object params, in that order
+func (ps ParamSpecs) sortByType() (ParamSpecs, ParamSpecs, ParamSpecs) {
+	var stringParams, arrayParams, objectParams ParamSpecs
+	for _, p := range ps {
+		switch p.Type {
+		case ParamTypeArray:
+			arrayParams = append(arrayParams, p)
+		case ParamTypeObject:
+			objectParams = append(objectParams, p)
+		case ParamTypeString:
+			fallthrough
+		default:
+			stringParams = append(stringParams, p)
+		}
+	}
+	return stringParams, arrayParams, objectParams
+}
+
+// validateNoDuplicateNames returns an error if any of the params have the same name
+func (ps ParamSpecs) validateNoDuplicateNames() *apis.FieldError {
+	names := ps.getNames()
+	seen := sets.String{}
+	dups := sets.String{}
+	var errs *apis.FieldError
+	for _, n := range names {
+		if seen.Has(n) {
+			dups.Insert(n)
+		}
+		seen.Insert(n)
+	}
+	for n := range dups {
+		errs = errs.Also(apis.ErrGeneric("parameter appears more than once", "").ViaFieldKey("params", n))
+	}
+	return errs
+}
+
 // setDefaultsForProperties sets default type for PropertySpec (string) if it's not specified
 func (pp *ParamSpec) setDefaultsForProperties() {
 	for key, propertySpec := range pp.Properties {
@@ -569,23 +614,23 @@ func validateParamStringValue(param Param, prefix string, paramNames sets.String
 
 // validateStringVariable validates the normal string fields that can only accept references to string param or individual keys of object param
 func validateStringVariable(value, prefix string, stringVars sets.String, arrayVars sets.String, objectParamNameKeys map[string][]string) *apis.FieldError {
-	errs := substitution.ValidateVariableP(value, prefix, stringVars)
+	errs := substitution.ValidateNoReferencesToUnknownVariables(value, prefix, stringVars)
 	errs = errs.Also(validateObjectVariable(value, prefix, objectParamNameKeys))
-	return errs.Also(substitution.ValidateVariableProhibitedP(value, prefix, arrayVars))
+	return errs.Also(substitution.ValidateNoReferencesToProhibitedVariables(value, prefix, arrayVars))
 }
 
 func validateArrayVariable(value, prefix string, stringVars sets.String, arrayVars sets.String, objectParamNameKeys map[string][]string) *apis.FieldError {
-	errs := substitution.ValidateVariableP(value, prefix, stringVars)
+	errs := substitution.ValidateNoReferencesToUnknownVariables(value, prefix, stringVars)
 	errs = errs.Also(validateObjectVariable(value, prefix, objectParamNameKeys))
-	return errs.Also(substitution.ValidateVariableIsolatedP(value, prefix, arrayVars))
+	return errs.Also(substitution.ValidateVariableReferenceIsIsolated(value, prefix, arrayVars))
 }
 
 func validateObjectVariable(value, prefix string, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
 	objectNames := sets.NewString()
 	for objectParamName, keys := range objectParamNameKeys {
 		objectNames.Insert(objectParamName)
-		errs = errs.Also(substitution.ValidateVariableP(value, fmt.Sprintf("%s\\.%s", prefix, objectParamName), sets.NewString(keys...)))
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(value, fmt.Sprintf("%s\\.%s", prefix, objectParamName), sets.NewString(keys...)))
 	}
 
-	return errs.Also(substitution.ValidateEntireVariableProhibitedP(value, prefix, objectNames))
+	return errs.Also(substitution.ValidateNoReferencesToEntireProhibitedVariables(value, prefix, objectNames))
 }

@@ -28,96 +28,7 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-func TestValidateVariables(t *testing.T) {
-	type args struct {
-		input        string
-		prefix       string
-		locationName string
-		path         string
-		vars         sets.String
-	}
-	for _, tc := range []struct {
-		name          string
-		args          args
-		expectedError *apis.FieldError
-	}{{
-		name: "valid variable",
-		args: args{
-			input:        "--flag=$(inputs.params.baz)",
-			prefix:       "inputs.params",
-			locationName: "step",
-			path:         "taskspec.steps",
-			vars:         sets.NewString("baz"),
-		},
-		expectedError: nil,
-	}, {
-		name: "valid variable uid",
-		args: args{
-			input:        "--flag=$(context.taskRun.uid)",
-			prefix:       "context.taskRun",
-			locationName: "step",
-			path:         "taskspec.steps",
-			vars:         sets.NewString("uid"),
-		},
-		expectedError: nil,
-	}, {
-		name: "multiple variables",
-		args: args{
-			input:        "--flag=$(inputs.params.baz) $(inputs.params.foo)",
-			prefix:       "inputs.params",
-			locationName: "step",
-			path:         "taskspec.steps",
-			vars:         sets.NewString("baz", "foo"),
-		},
-		expectedError: nil,
-	}, {
-		name: "different context and prefix",
-		args: args{
-			input:        "--flag=$(something.baz)",
-			prefix:       "something",
-			locationName: "step",
-			path:         "taskspec.steps",
-			vars:         sets.NewString("baz"),
-		},
-		expectedError: nil,
-	}, {
-		name: "undefined variable",
-		args: args{
-			input:        "--flag=$(inputs.params.baz)",
-			prefix:       "inputs.params",
-			locationName: "step",
-			path:         "taskspec.steps",
-			vars:         sets.NewString("foo"),
-		},
-		expectedError: &apis.FieldError{
-			Message: `non-existent variable in "--flag=$(inputs.params.baz)" for step somefield`,
-			Paths:   []string{"taskspec.steps.somefield"},
-		},
-	}, {
-		name: "undefined variable and defined variable",
-		args: args{
-			input:        "--flag=$(inputs.params.baz) $(inputs.params.foo)",
-			prefix:       "inputs.params",
-			locationName: "step",
-			path:         "taskspec.steps",
-			vars:         sets.NewString("foo"),
-		},
-		expectedError: &apis.FieldError{
-			Message: `non-existent variable in "--flag=$(inputs.params.baz) $(inputs.params.foo)" for step somefield`,
-			Paths:   []string{"taskspec.steps.somefield"},
-		},
-	}} {
-		t.Run(tc.name, func(t *testing.T) {
-			got := substitution.ValidateVariable("somefield", tc.args.input, tc.args.prefix, tc.args.locationName, tc.args.path, tc.args.vars)
-
-			if d := cmp.Diff(got, tc.expectedError, cmp.AllowUnexported(apis.FieldError{})); d != "" {
-				t.Errorf("ValidateVariable() error did not match expected error %s", diff.PrintWantGot(d))
-			}
-		})
-	}
-}
-
-func TestValidateVariablePs(t *testing.T) {
+func TestValidateNoReferencesToUnknownVariables(t *testing.T) {
 	type args struct {
 		input  string
 		prefix string
@@ -269,7 +180,7 @@ func TestValidateVariablePs(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := substitution.ValidateVariableP(tc.args.input, tc.args.prefix, tc.args.vars)
+			got := substitution.ValidateNoReferencesToUnknownVariables(tc.args.input, tc.args.prefix, tc.args.vars)
 
 			if d := cmp.Diff(got, tc.expectedError, cmp.AllowUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("ValidateVariableP() error did not match expected error %s", diff.PrintWantGot(d))
@@ -278,7 +189,75 @@ func TestValidateVariablePs(t *testing.T) {
 	}
 }
 
-func TestValidateEntireVariableProhibitedP(t *testing.T) {
+func TestValidateNoReferencesToProhibitedVariables(t *testing.T) {
+	type args struct {
+		input  string
+		prefix string
+		vars   sets.String
+	}
+	for _, tc := range []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{{
+		name: "empty vars",
+		args: args{
+			input:  "--flag=$(params.foo)",
+			prefix: "params",
+			vars:   sets.NewString(),
+		},
+		wantErr: false,
+	}, {
+		name: "doesn't contain reference to a param",
+		args: args{
+			input:  "--flag=$(params.foo)",
+			prefix: "params",
+			vars:   sets.NewString("bar"),
+		},
+		wantErr: false,
+	}, {
+		name: "contains reference to a param",
+		args: args{
+			input:  "--flag=$(params.foo)",
+			prefix: "params",
+			vars:   sets.NewString("foo"),
+		},
+		wantErr: true,
+	}, {
+		name: "contains reference to an entire param",
+		args: args{
+			input:  "--flag=$(params.foo[*])",
+			prefix: "params",
+			vars:   sets.NewString("foo"),
+		},
+		wantErr: true,
+	}, {
+		name: "contains reference to an array param index",
+		args: args{
+			input:  "--flag=$(params.arrayParam[1])",
+			prefix: "params",
+			vars:   sets.NewString("arrayParam"),
+		},
+		wantErr: false,
+	}, {
+		name: "contains reference to an object param key",
+		args: args{
+			input:  "--flag=$(params.objectParam.key1)",
+			prefix: "params",
+			vars:   sets.NewString("objectParam"),
+		},
+		wantErr: true,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			gotErr := substitution.ValidateNoReferencesToProhibitedVariables(tc.args.input, tc.args.prefix, tc.args.vars)
+			if (gotErr != nil) != tc.wantErr {
+				t.Errorf("wantErr was %t but got err %v", tc.wantErr, gotErr)
+			}
+		})
+	}
+}
+
+func TestValidateValidateNoReferencesToEntireProhibitedVariables(t *testing.T) {
 	type args struct {
 		input  string
 		prefix string
@@ -304,7 +283,7 @@ func TestValidateEntireVariableProhibitedP(t *testing.T) {
 			vars:   sets.NewString("objectParam"),
 		},
 		expectedError: &apis.FieldError{
-			Message: "extractEntireVariablesFromString failed : Fail to parse regex pattern: error parsing regexp: invalid nested repetition operator: `???`",
+			Message: "extractEntireVariablesFromString failed : failed to parse regex pattern: error parsing regexp: invalid nested repetition operator: `???`",
 			Paths:   []string{""},
 		},
 	}, {
@@ -319,7 +298,7 @@ func TestValidateEntireVariableProhibitedP(t *testing.T) {
 			Paths:   []string{""},
 		},
 	}, {
-		name: "invalid usage of an entire object param when providing values for strings",
+		name: "invalid usage of an entire object param using [*] when providing values for strings",
 		args: args{
 			input:  "--flag=$(params.objectParam[*])",
 			prefix: "params",
@@ -331,10 +310,94 @@ func TestValidateEntireVariableProhibitedP(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := substitution.ValidateEntireVariableProhibitedP(tc.args.input, tc.args.prefix, tc.args.vars)
+			got := substitution.ValidateNoReferencesToEntireProhibitedVariables(tc.args.input, tc.args.prefix, tc.args.vars)
 
 			if d := cmp.Diff(got, tc.expectedError, cmp.AllowUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("ValidateEntireVariableProhibitedP() error did not match expected error %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestValidateVariableReferenceIsIsolated(t *testing.T) {
+	type args struct {
+		input  string
+		prefix string
+		vars   sets.String
+	}
+	for _, tc := range []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{{
+		name: "empty vars",
+		args: args{
+			input:  "--flag=$(params.foo)",
+			prefix: "params",
+			vars:   sets.NewString(),
+		},
+		wantErr: false,
+	}, {
+		name: "isolated variable",
+		args: args{
+			input:  "$(params.foo)",
+			prefix: "params",
+			vars:   sets.NewString("foo"),
+		},
+		wantErr: false,
+	}, {
+		name: "extra characters before",
+		args: args{
+			input:  "--flag=$(params.foo)",
+			prefix: "params",
+			vars:   sets.NewString("foo"),
+		},
+		wantErr: true,
+	}, {
+		name: "extra characters after",
+		args: args{
+			input:  "$(params.foo)-12345",
+			prefix: "params",
+			vars:   sets.NewString("foo"),
+		},
+		wantErr: true,
+	}, {
+		name: "isolated variable with array index",
+		args: args{
+			input:  "$(params.foo[1])",
+			prefix: "params",
+			vars:   sets.NewString("foo"),
+		},
+		wantErr: false,
+	}, {
+		name: "isolated variable with entire array",
+		args: args{
+			input:  "$(params.foo[*])",
+			prefix: "params",
+			vars:   sets.NewString("foo"),
+		},
+		wantErr: false,
+	}, {
+		name: "unknown variable isolated",
+		args: args{
+			input:  "$(params.foo)",
+			prefix: "params",
+			vars:   sets.NewString("bar"),
+		},
+		wantErr: false,
+	}, {
+		name: "unknown variable not isolated",
+		args: args{
+			input:  "1234-$(params.foo)",
+			prefix: "params",
+			vars:   sets.NewString("bar"),
+		},
+		wantErr: false,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := substitution.ValidateVariableReferenceIsIsolated(tc.args.input, tc.args.prefix, tc.args.vars)
+			if (got != nil) != tc.wantErr {
+				t.Errorf("wantErr was %t but got err %s", tc.wantErr, got)
 			}
 		})
 	}
