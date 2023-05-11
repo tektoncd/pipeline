@@ -862,11 +862,7 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 		spec.Sidecars[0].Image = "bar"
 		spec.Sidecars[0].Env[0].Value = "world"
 	})
-	ctx := context.Background()
-	cfg := config.FromContextOrDefaults(ctx)
-	cfg.FeatureFlags.EnableAPIFields = config.BetaAPIFields
-	ctx = config.ToContext(ctx, cfg)
-	got := resources.ApplyParameters(ctx, simpleTaskSpecArrayIndexing, tr, dp...)
+	got := resources.ApplyParameters(context.Background(), simpleTaskSpecArrayIndexing, tr, dp...)
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 	}
