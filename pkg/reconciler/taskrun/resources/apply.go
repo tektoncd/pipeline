@@ -62,11 +62,8 @@ func ApplyParameters(ctx context.Context, spec *v1beta1.TaskSpec, tr *v1beta1.Ta
 			switch p.Default.Type {
 			case v1beta1.ParamTypeArray:
 				for _, pattern := range paramPatterns {
-					// array indexing for param is beta feature
-					if config.CheckAlphaOrBetaAPIFields(ctx) {
-						for i := 0; i < len(p.Default.ArrayVal); i++ {
-							stringReplacements[fmt.Sprintf(pattern+"[%d]", p.Name, i)] = p.Default.ArrayVal[i]
-						}
+					for i := 0; i < len(p.Default.ArrayVal); i++ {
+						stringReplacements[fmt.Sprintf(pattern+"[%d]", p.Name, i)] = p.Default.ArrayVal[i]
 					}
 					arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.ArrayVal
 				}
@@ -105,11 +102,8 @@ func paramsFromTaskRun(ctx context.Context, tr *v1beta1.TaskRun) (map[string]str
 		switch p.Value.Type {
 		case v1beta1.ParamTypeArray:
 			for _, pattern := range paramPatterns {
-				// array indexing for param is beta feature
-				if config.CheckAlphaOrBetaAPIFields(ctx) {
-					for i := 0; i < len(p.Value.ArrayVal); i++ {
-						stringReplacements[fmt.Sprintf(pattern+"[%d]", p.Name, i)] = p.Value.ArrayVal[i]
-					}
+				for i := 0; i < len(p.Value.ArrayVal); i++ {
+					stringReplacements[fmt.Sprintf(pattern+"[%d]", p.Name, i)] = p.Value.ArrayVal[i]
 				}
 				arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.ArrayVal
 			}
