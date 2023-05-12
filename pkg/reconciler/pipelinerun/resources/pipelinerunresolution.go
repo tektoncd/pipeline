@@ -579,10 +579,11 @@ func ResolvePipelineTask(
 	getTaskRun resources.GetTaskRun,
 	getRun GetRun,
 	pipelineTask v1beta1.PipelineTask,
-) (*ResolvedPipelineTask, error) {
+) (*ResolvedPipelineTask, *trustedresources.VerificationResult, error) {
 	rpt := ResolvedPipelineTask{
 		PipelineTask: &pipelineTask,
 	}
+	var verificationResult *trustedresources.VerificationResult
 	rpt.CustomTask = rpt.PipelineTask.TaskRef.IsCustomTask() || rpt.PipelineTask.TaskSpec.IsCustomTask()
 	switch {
 	case rpt.IsCustomTask() && rpt.PipelineTask.IsMatrixed():
@@ -590,7 +591,7 @@ func ResolvePipelineTask(
 		for _, runName := range rpt.RunObjectNames {
 			run, err := getRun(runName)
 			if err != nil && !kerrors.IsNotFound(err) {
-				return nil, fmt.Errorf("error retrieving RunObject %s: %w", runName, err)
+				return nil, nil, fmt.Errorf("error retrieving RunObject %s: %w", runName, err)
 			}
 			if run != nil {
 				rpt.RunObjects = append(rpt.RunObjects, run)
@@ -600,7 +601,7 @@ func ResolvePipelineTask(
 		rpt.RunObjectName = getRunName(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name)
 		run, err := getRun(rpt.RunObjectName)
 		if err != nil && !kerrors.IsNotFound(err) {
-			return nil, fmt.Errorf("error retrieving RunObject %s: %w", rpt.RunObjectName, err)
+			return nil, nil, fmt.Errorf("error retrieving RunObject %s: %w", rpt.RunObjectName, err)
 		}
 		if run != nil {
 			rpt.RunObject = run
@@ -608,17 +609,21 @@ func ResolvePipelineTask(
 	case rpt.PipelineTask.IsMatrixed():
 		rpt.TaskRunNames = GetNamesOfTaskRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, pipelineTask.Matrix.CountCombinations())
 		for _, taskRunName := range rpt.TaskRunNames {
-			if err := rpt.setTaskRunsAndResolvedTask(ctx, taskRunName, getTask, getTaskRun, pipelineTask); err != nil {
-				return nil, err
+			vr, err := rpt.setTaskRunsAndResolvedTask(ctx, taskRunName, getTask, getTaskRun, pipelineTask)
+			if err != nil {
+				return nil, nil, err
 			}
+			verificationResult = vr
 		}
 	default:
 		rpt.TaskRunName = GetTaskRunName(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name)
-		if err := rpt.setTaskRunsAndResolvedTask(ctx, rpt.TaskRunName, getTask, getTaskRun, pipelineTask); err != nil {
-			return nil, err
+		vr, err := rpt.setTaskRunsAndResolvedTask(ctx, rpt.TaskRunName, getTask, getTaskRun, pipelineTask)
+		if err != nil {
+			return nil, nil, err
 		}
+		verificationResult = vr
 	}
-	return &rpt, nil
+	return &rpt, verificationResult, nil
 }
 
 // setTaskRunsAndResolvedTask fetches the named TaskRun using the input function getTaskRun,
@@ -630,11 +635,11 @@ func (t *ResolvedPipelineTask) setTaskRunsAndResolvedTask(
 	getTask resources.GetTask,
 	getTaskRun resources.GetTaskRun,
 	pipelineTask v1beta1.PipelineTask,
-) error {
+) (*trustedresources.VerificationResult, error) {
 	taskRun, err := getTaskRun(taskRunName)
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
-			return fmt.Errorf("error retrieving TaskRun %s: %w", taskRunName, err)
+			return nil, fmt.Errorf("error retrieving TaskRun %s: %w", taskRunName, err)
 		}
 	}
 	if taskRun != nil {
@@ -645,12 +650,12 @@ func (t *ResolvedPipelineTask) setTaskRunsAndResolvedTask(
 		}
 	}
 
-	rt, err := resolveTask(ctx, taskRun, getTask, pipelineTask)
+	rt, verificationResult, err := resolveTask(ctx, taskRun, getTask, pipelineTask)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	t.ResolvedTask = rt
-	return nil
+	return verificationResult, nil
 }
 
 // resolveTask fetches the Task spec for the PipelineTask and sets its default values.
@@ -662,8 +667,9 @@ func resolveTask(
 	taskRun *v1beta1.TaskRun,
 	getTask resources.GetTask,
 	pipelineTask v1beta1.PipelineTask,
-) (*resources.ResolvedTask, error) {
+) (*resources.ResolvedTask, *trustedresources.VerificationResult, error) {
 	rt := &resources.ResolvedTask{}
+	verificationResult := &trustedresources.VerificationResult{}
 	if pipelineTask.TaskRef != nil {
 		// If the TaskRun has already a stored TaskSpec in its status, use it as source of truth
 		if taskRun != nil && taskRun.Status.TaskSpec != nil {
@@ -672,14 +678,14 @@ func resolveTask(
 		} else {
 			// Following minimum status principle (TEP-0100), no need to propagate the RefSource about PipelineTask up to PipelineRun status.
 			// Instead, the child TaskRun's status will be the place recording the RefSource of individual task.
-			t, _, err := getTask(ctx, pipelineTask.TaskRef.Name)
+			t, _, vr, err := getTask(ctx, pipelineTask.TaskRef.Name)
 			switch {
 			case errors.Is(err, remote.ErrRequestInProgress):
-				return rt, err
+				return rt, nil, err
 			case errors.Is(err, trustedresources.ErrResourceVerificationFailed):
-				return rt, err
+				return rt, nil, err
 			case err != nil:
-				return rt, &TaskNotFoundError{
+				return rt, nil, &TaskNotFoundError{
 					Name: pipelineTask.TaskRef.Name,
 					Msg:  err.Error(),
 				}
@@ -687,6 +693,7 @@ func resolveTask(
 				spec := t.TaskSpec()
 				rt.TaskSpec = &spec
 				rt.TaskName = t.TaskMetadata().Name
+				verificationResult = vr
 			}
 		}
 		rt.Kind = pipelineTask.TaskRef.Kind
@@ -694,7 +701,7 @@ func resolveTask(
 		rt.TaskSpec = &pipelineTask.TaskSpec.TaskSpec
 	}
 	rt.TaskSpec.SetDefaults(ctx)
-	return rt, nil
+	return rt, verificationResult, nil
 }
 
 // GetTaskRunName should return a unique name for a `TaskRun` if one has not already been defined, and the existing one otherwise.

@@ -35,6 +35,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
@@ -45,6 +46,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
+	"github.com/tektoncd/pipeline/pkg/trustedresources"
+	"github.com/tektoncd/pipeline/pkg/trustedresources/verifier"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
@@ -11394,8 +11397,75 @@ spec:
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
-
-	prs := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+	noMatchPolicy := []*v1alpha1.VerificationPolicy{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "no-match",
+			Namespace: ts.Namespace,
+		},
+		Spec: v1alpha1.VerificationPolicySpec{
+			Resources: []v1alpha1.ResourcePattern{{Pattern: "no-match"}},
+		}}}
+	warnPolicy := []*v1alpha1.VerificationPolicy{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "warn-policy",
+			Namespace: ts.Namespace,
+		},
+		Spec: v1alpha1.VerificationPolicySpec{
+			Resources: []v1alpha1.ResourcePattern{{Pattern: ".*"}},
+			Mode:      v1alpha1.ModeWarn,
+		}}}
+	failNoMatchCondition := &apis.Condition{
+		Type:    trustedresources.ConditionTrustedResourcesVerified,
+		Status:  corev1.ConditionFalse,
+		Message: trustedresources.ErrNoMatchedPolicies.Error(),
+	}
+	passCondition := &apis.Condition{
+		Type:   trustedresources.ConditionTrustedResourcesVerified,
+		Status: corev1.ConditionTrue,
+	}
+	failNoKeysCondition := &apis.Condition{
+		Type:    trustedresources.ConditionTrustedResourcesVerified,
+		Status:  corev1.ConditionFalse,
+		Message: verifier.ErrEmptyPublicKeys.Error(),
+	}
+	/*
+		This test covers 4 cases where the trusted resources return no error.
+		1. no matching policies and no-match-policy ignore
+		2. no matching policies and no-match-policy warn
+		3. all policies pass
+		4. only warn policies fail
+	*/
+	testCases := []struct {
+		name                              string
+		task                              []*v1beta1.Task
+		noMatchPolicy                     string
+		verificationPolicies              []*v1alpha1.VerificationPolicy
+		expectedTrustedResourcesCondition *apis.Condition
+	}{{
+		name:                              "ignore no match policy",
+		noMatchPolicy:                     config.IgnoreNoMatchPolicy,
+		verificationPolicies:              noMatchPolicy,
+		expectedTrustedResourcesCondition: nil,
+	}, {
+		name:                              "warn no match policy",
+		noMatchPolicy:                     config.WarnNoMatchPolicy,
+		verificationPolicies:              noMatchPolicy,
+		expectedTrustedResourcesCondition: failNoMatchCondition,
+	}, {
+		name:                              "pass enforce policy",
+		noMatchPolicy:                     config.FailNoMatchPolicy,
+		verificationPolicies:              vps,
+		expectedTrustedResourcesCondition: passCondition,
+	}, {
+		name:                              "only fail warn policy",
+		noMatchPolicy:                     config.FailNoMatchPolicy,
+		verificationPolicies:              warnPolicy,
+		expectedTrustedResourcesCondition: failNoKeysCondition,
+	},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			pr := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: test-pipelinerun
   namespace: foo
@@ -11405,30 +11475,36 @@ spec:
     resolver: %s
 `, resolverName))
 
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"trusted-resources-verification-no-match-policy": config.FailNoMatchPolicy,
-			},
-		},
+			cms := []*corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+					Data: map[string]string{
+						"trusted-resources-verification-no-match-policy": tc.noMatchPolicy,
+					},
+				},
+			}
+
+			pipelineReq := getResolvedResolutionRequest(t, resolverName, signedPipelineBytes, pr.Namespace, pr.Name)
+			taskReq := getResolvedResolutionRequest(t, resolverName, signedTaskBytes, pr.Namespace, pr.Name+"-"+ps.Spec.Tasks[0].Name)
+
+			d := test.Data{
+				PipelineRuns:         []*v1beta1.PipelineRun{pr},
+				VerificationPolicies: tc.verificationPolicies,
+				ConfigMaps:           cms,
+				ResolutionRequests:   []*resolutionv1beta1.ResolutionRequest{&pipelineReq, &taskReq},
+			}
+			prt := newPipelineRunTest(t, d)
+			defer prt.Cancel()
+
+			reconciledRun, _ := prt.reconcileRun("foo", "test-pipelinerun", []string{}, false)
+
+			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
+			verificationCondition := reconciledRun.Status.GetCondition(trustedresources.ConditionTrustedResourcesVerified)
+			if d := cmp.Diff(tc.expectedTrustedResourcesCondition, verificationCondition, ignoreLastTransitionTime); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
 	}
-
-	pipelineReq := getResolvedResolutionRequest(t, resolverName, signedPipelineBytes, prs.Namespace, prs.Name)
-	taskReq := getResolvedResolutionRequest(t, resolverName, signedTaskBytes, prs.Namespace, prs.Name+"-"+ps.Spec.Tasks[0].Name)
-
-	d := test.Data{
-		PipelineRuns:         []*v1beta1.PipelineRun{prs},
-		VerificationPolicies: vps,
-		ConfigMaps:           cms,
-		ResolutionRequests:   []*resolutionv1beta1.ResolutionRequest{&pipelineReq, &taskReq},
-	}
-	prt := newPipelineRunTest(t, d)
-	defer prt.Cancel()
-
-	reconciledRun, _ := prt.reconcileRun("foo", "test-pipelinerun", []string{}, false)
-
-	checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
 }
 
 func TestReconcile_verifyResolvedPipeline_Error(t *testing.T) {
@@ -11606,6 +11682,10 @@ spec:
 
 			reconciledRun, _ := prt.reconcileRun("foo", "test-pipelinerun", []string{}, true)
 			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionFalse, ReasonResourceVerificationFailed)
+			verificationCondition := reconciledRun.Status.GetCondition(trustedresources.ConditionTrustedResourcesVerified)
+			if verificationCondition == nil || verificationCondition.Status != corev1.ConditionFalse {
+				t.Errorf("Expected to have false condition, but had %v", verificationCondition)
+			}
 		})
 	}
 }

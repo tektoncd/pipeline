@@ -36,6 +36,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
@@ -48,6 +49,7 @@ import (
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
+	"github.com/tektoncd/pipeline/pkg/trustedresources/verifier"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -4905,7 +4907,76 @@ spec:
 		t.Fatal("fail to marshal task", err)
 	}
 
-	tr := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+	noMatchPolicy := []*v1alpha1.VerificationPolicy{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "no-match",
+			Namespace: ts.Namespace,
+		},
+		Spec: v1alpha1.VerificationPolicySpec{
+			Resources: []v1alpha1.ResourcePattern{{Pattern: "no-match"}},
+		}}}
+	warnPolicy := []*v1alpha1.VerificationPolicy{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "warn-policy",
+			Namespace: ts.Namespace,
+		},
+		Spec: v1alpha1.VerificationPolicySpec{
+			Resources: []v1alpha1.ResourcePattern{{Pattern: ".*"}},
+			Mode:      v1alpha1.ModeWarn,
+		}}}
+	failNoMatchCondition := &apis.Condition{
+		Type:    trustedresources.ConditionTrustedResourcesVerified,
+		Status:  corev1.ConditionFalse,
+		Message: trustedresources.ErrNoMatchedPolicies.Error(),
+	}
+	passCondition := &apis.Condition{
+		Type:   trustedresources.ConditionTrustedResourcesVerified,
+		Status: corev1.ConditionTrue,
+	}
+	failNoKeysCondition := &apis.Condition{
+		Type:    trustedresources.ConditionTrustedResourcesVerified,
+		Status:  corev1.ConditionFalse,
+		Message: verifier.ErrEmptyPublicKeys.Error(),
+	}
+
+	/*
+		This test covers 4 cases where the trusted resources return no error.
+		1. no matching policies and no-match-policy ignore
+		2. no matching policies and no-match-policy warn
+		3. all policies pass
+		4. only warn policies fail
+	*/
+	testCases := []struct {
+		name                              string
+		task                              []*v1beta1.Task
+		noMatchPolicy                     string
+		verificationPolicies              []*v1alpha1.VerificationPolicy
+		expectedTrustedResourcesCondition *apis.Condition
+	}{{
+		name:                              "ignore no match policy",
+		noMatchPolicy:                     config.IgnoreNoMatchPolicy,
+		verificationPolicies:              noMatchPolicy,
+		expectedTrustedResourcesCondition: nil,
+	}, {
+		name:                              "warn no match policy",
+		noMatchPolicy:                     config.WarnNoMatchPolicy,
+		verificationPolicies:              noMatchPolicy,
+		expectedTrustedResourcesCondition: failNoMatchCondition,
+	}, {
+		name:                              "pass enforce policy",
+		noMatchPolicy:                     config.FailNoMatchPolicy,
+		verificationPolicies:              vps,
+		expectedTrustedResourcesCondition: passCondition,
+	}, {
+		name:                              "only fail warn policy",
+		noMatchPolicy:                     config.FailNoMatchPolicy,
+		verificationPolicies:              warnPolicy,
+		expectedTrustedResourcesCondition: failNoKeysCondition,
+	},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tr := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: test-taskrun
   namespace: foo
@@ -4919,41 +4990,46 @@ spec:
 status:
   podName: the-pod
 `, resolverName))
+			cms := []*corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+					Data: map[string]string{
+						"trusted-resources-verification-no-match-policy": tc.noMatchPolicy,
+					},
+				},
+			}
+			rr := getResolvedResolutionRequest(t, resolverName, signedTaskBytes, tr.Namespace, tr.Name)
+			d := test.Data{
+				TaskRuns:             []*v1beta1.TaskRun{tr},
+				ConfigMaps:           cms,
+				VerificationPolicies: tc.verificationPolicies,
+				ResolutionRequests:   []*resolutionv1beta1.ResolutionRequest{&rr},
+			}
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			createServiceAccount(t, testAssets, tr.Spec.ServiceAccountName, tr.Namespace)
+			err = testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
 
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"trusted-resources-verification-no-match-policy": config.FailNoMatchPolicy,
-			},
-		},
-	}
-	rr := getResolvedResolutionRequest(t, resolverName, signedTaskBytes, tr.Namespace, tr.Name)
-	d := test.Data{
-		TaskRuns:             []*v1beta1.TaskRun{tr},
-		ConfigMaps:           cms,
-		VerificationPolicies: vps,
-		ResolutionRequests:   []*resolutionv1beta1.ResolutionRequest{&rr},
-	}
+			if ok, _ := controller.IsRequeueKey(err); !ok {
+				t.Errorf("Error reconciling TaskRun. Got error %v", err)
+			}
+			tr, err = testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("getting updated taskrun: %v", err)
+			}
+			condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+			if condition == nil || condition.Status != corev1.ConditionUnknown {
+				t.Errorf("Expected fresh TaskRun to have in progress status, but had %v", condition)
+			}
+			if condition != nil && condition.Reason != v1beta1.TaskRunReasonRunning.String() {
+				t.Errorf("Expected reason %q but was %s", v1beta1.TaskRunReasonRunning.String(), condition.Reason)
+			}
 
-	testAssets, cancel := getTaskRunController(t, d)
-	defer cancel()
-	createServiceAccount(t, testAssets, tr.Spec.ServiceAccountName, tr.Namespace)
-	err = testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
-
-	if ok, _ := controller.IsRequeueKey(err); !ok {
-		t.Errorf("Error reconciling TaskRun. Got error %v", err)
-	}
-	tr, err = testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("getting updated taskrun: %v", err)
-	}
-	condition := tr.Status.GetCondition(apis.ConditionSucceeded)
-	if condition == nil || condition.Status != corev1.ConditionUnknown {
-		t.Errorf("Expected fresh TaskRun to have in progress status, but had %v", condition)
-	}
-	if condition != nil && condition.Reason != v1beta1.TaskRunReasonRunning.String() {
-		t.Errorf("Expected reason %q but was %s", v1beta1.TaskRunReasonRunning.String(), condition.Reason)
+			verificationCondition := tr.Status.GetCondition(trustedresources.ConditionTrustedResourcesVerified)
+			if d := cmp.Diff(tc.expectedTrustedResourcesCondition, verificationCondition, ignoreLastTransitionTime); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 
@@ -5057,6 +5133,10 @@ status:
 			condition := tr.Status.GetCondition(apis.ConditionSucceeded)
 			if condition.Type != apis.ConditionSucceeded || condition.Status != corev1.ConditionFalse || condition.Reason != podconvert.ReasonResourceVerificationFailed {
 				t.Errorf("Expected TaskRun to fail with reason \"%s\" but it did not. Final conditions were:\n%#v", podconvert.ReasonResourceVerificationFailed, tr.Status.Conditions)
+			}
+			verificationCondition := tr.Status.GetCondition(trustedresources.ConditionTrustedResourcesVerified)
+			if verificationCondition == nil || verificationCondition.Status != corev1.ConditionFalse {
+				t.Errorf("Expected to have false condition, but had %v", verificationCondition)
 			}
 		})
 	}

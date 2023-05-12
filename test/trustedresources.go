@@ -151,7 +151,7 @@ func SetupVerificationPolicies(t *testing.T) (signature.SignerVerifier, *ecdsa.P
 					HashAlgorithm: "sha256",
 				},
 			},
-		})
+		}, v1alpha1.ModeEnforce)
 
 	keyInSecretVp := getVerificationPolicy(
 		"keyInSecretVp",
@@ -170,7 +170,7 @@ func SetupVerificationPolicies(t *testing.T) (signature.SignerVerifier, *ecdsa.P
 					HashAlgorithm: "sha256",
 				},
 			},
-		})
+		}, v1alpha1.ModeEnforce)
 
 	wrongKeyandPatternVp := getVerificationPolicy(
 		"wrongKeyInDataVp",
@@ -186,11 +186,30 @@ func SetupVerificationPolicies(t *testing.T) (signature.SignerVerifier, *ecdsa.P
 					HashAlgorithm: "sha256",
 				},
 			},
-		})
+		}, v1alpha1.ModeEnforce)
+
+	warnModeVP := getVerificationPolicy(
+		"warnModeVP",
+		namespace,
+		[]v1alpha1.ResourcePattern{{
+			Pattern: "warnVP"},
+		},
+		[]v1alpha1.Authority{
+			{
+				Name: "pubkey",
+				Key: &v1alpha1.KeyRef{
+					SecretRef: &v1.SecretReference{
+						Name:      secret.Name,
+						Namespace: secret.Namespace,
+					},
+					HashAlgorithm: "sha256",
+				},
+			},
+		}, v1alpha1.ModeWarn)
 
 	k8sclient := fakek8s.NewSimpleClientset(secret)
 
-	return sv, keys, k8sclient, []*v1alpha1.VerificationPolicy{&keyInDataVp, &keyInSecretVp, &wrongKeyandPatternVp}
+	return sv, keys, k8sclient, []*v1alpha1.VerificationPolicy{&keyInDataVp, &keyInSecretVp, &wrongKeyandPatternVp, &warnModeVP}
 }
 
 // SetupMatchAllVerificationPolicies set verification policies with a Pattern to match all resources
@@ -224,7 +243,7 @@ func SetupMatchAllVerificationPolicies(t *testing.T, namespace string) (signatur
 					HashAlgorithm: "sha256",
 				},
 			},
-		})
+		}, v1alpha1.ModeEnforce)
 
 	k8sclient := fakek8s.NewSimpleClientset(secret)
 
@@ -350,7 +369,7 @@ func readPasswordFn(confirm bool) func() ([]byte, error) {
 	}
 }
 
-func getVerificationPolicy(name, namespace string, patterns []v1alpha1.ResourcePattern, authorities []v1alpha1.Authority) v1alpha1.VerificationPolicy {
+func getVerificationPolicy(name, namespace string, patterns []v1alpha1.ResourcePattern, authorities []v1alpha1.Authority, mode v1alpha1.ModeType) v1alpha1.VerificationPolicy {
 	return v1alpha1.VerificationPolicy{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "VerificationPolicy",
@@ -363,7 +382,7 @@ func getVerificationPolicy(name, namespace string, patterns []v1alpha1.ResourceP
 		Spec: v1alpha1.VerificationPolicySpec{
 			Resources:   patterns,
 			Authorities: authorities,
-			Mode:        v1alpha1.ModeEnforce,
+			Mode:        mode,
 		},
 	}
 }

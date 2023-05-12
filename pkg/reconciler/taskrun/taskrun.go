@@ -328,16 +328,12 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	}
 	getTaskfunc := resources.GetTaskFuncFromTaskRun(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, tr, vp)
 
-	taskMeta, taskSpec, err := resources.GetTaskData(ctx, tr, getTaskfunc)
+	taskMeta, taskSpec, verificationResult, err := resources.GetTaskData(ctx, tr, getTaskfunc)
 	switch {
 	case errors.Is(err, remote.ErrRequestInProgress):
 		message := fmt.Sprintf("TaskRun %s/%s awaiting remote resource", tr.Namespace, tr.Name)
 		tr.Status.MarkResourceOngoing(v1beta1.TaskRunReasonResolvingTaskRef, message)
 		return nil, nil, err
-	case errors.Is(err, trustedresources.ErrResourceVerificationFailed):
-		logger.Errorf("TaskRun %s/%s referred task failed signature verification", tr.Namespace, tr.Name)
-		tr.Status.MarkResourceFailed(podconvert.ReasonResourceVerificationFailed, err)
-		return nil, nil, controller.NewPermanentError(err)
 	case err != nil:
 		logger.Errorf("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
 		if resources.IsGetTaskErrTransient(err) {
@@ -349,6 +345,32 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		// Store the fetched TaskSpec on the TaskRun for auditing
 		if err := storeTaskSpecAndMergeMeta(ctx, tr, taskSpec, taskMeta); err != nil {
 			logger.Errorf("Failed to store TaskSpec on TaskRun.Statusfor taskrun %s: %v", tr.Name, err)
+		}
+	}
+	if verificationResult != nil {
+		switch verificationResult.VerificationResultType {
+		case trustedresources.VerificationError:
+			logger.Errorf("TaskRun %s/%s referred task failed signature verification", tr.Namespace, tr.Name)
+			tr.Status.MarkResourceFailed(podconvert.ReasonResourceVerificationFailed, verificationResult.Err)
+			tr.Status.SetCondition(&apis.Condition{
+				Type:    trustedresources.ConditionTrustedResourcesVerified,
+				Status:  corev1.ConditionFalse,
+				Message: verificationResult.Err.Error(),
+			})
+			return nil, nil, controller.NewPermanentError(verificationResult.Err)
+		case trustedresources.VerificationSkip:
+			// do nothing
+		case trustedresources.VerificationWarn:
+			tr.Status.SetCondition(&apis.Condition{
+				Type:    trustedresources.ConditionTrustedResourcesVerified,
+				Status:  corev1.ConditionFalse,
+				Message: verificationResult.Err.Error(),
+			})
+		case trustedresources.VerificationPass:
+			tr.Status.SetCondition(&apis.Condition{
+				Type:   trustedresources.ConditionTrustedResourcesVerified,
+				Status: corev1.ConditionTrue,
+			})
 		}
 	}
 
