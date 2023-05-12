@@ -86,7 +86,7 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 			for k, v := range GetContextReplacements("", pipelineRun) {
 				stringReplacements[k] = v
 			}
-			replacedParams := replaceParamValues(pr.Params, stringReplacements, arrayReplacements, objectReplacements)
+			replacedParams := pr.Params.ReplaceVariables(stringReplacements, arrayReplacements, objectReplacements)
 			resolver := resolution.NewResolver(requester, pipelineRun, string(pr.Resolver), "", "", replacedParams)
 			return resolvePipeline(ctx, resolver, name, k8s, verificationPolicies)
 		}

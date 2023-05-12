@@ -531,3 +531,67 @@ func TestExtractNames(t *testing.T) {
 		}
 	}
 }
+
+func TestParams_ReplaceVariables(t *testing.T) {
+	tests := []struct {
+		name               string
+		ps                 v1beta1.Params
+		stringReplacements map[string]string
+		arrayReplacements  map[string][]string
+		objectReplacements map[string]map[string]string
+		want               v1beta1.Params
+	}{
+		{
+			name: "string replacement",
+			ps: v1beta1.Params{{
+				Name:  "foo",
+				Value: v1beta1.ParamValue{StringVal: "$(params.foo)"},
+			}},
+			stringReplacements: map[string]string{
+				"params.foo": "bar",
+			},
+			want: v1beta1.Params{{
+				Name:  "foo",
+				Value: v1beta1.ParamValue{StringVal: "bar"},
+			}},
+		},
+		{
+			name: "array replacement",
+			ps: v1beta1.Params{{
+				Name:  "foo",
+				Value: v1beta1.ParamValue{StringVal: "$(params.foo)"},
+			}},
+			arrayReplacements: map[string][]string{
+				"params.foo": {"bar", "zoo"},
+			},
+			want: v1beta1.Params{{
+				Name:  "foo",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"bar", "zoo"}},
+			}},
+		},
+		{
+			name: "object replacement",
+			ps: v1beta1.Params{{
+				Name:  "foo",
+				Value: v1beta1.ParamValue{StringVal: "$(params.foo)"},
+			}},
+			objectReplacements: map[string]map[string]string{
+				"params.foo": {
+					"abc": "123",
+				},
+			},
+			want: v1beta1.Params{{
+				Name:  "foo",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeObject, ObjectVal: map[string]string{"abc": "123"}},
+			}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.ps.ReplaceVariables(tt.stringReplacements, tt.arrayReplacements, tt.objectReplacements)
+			if d := cmp.Diff(tt.want, got); d != "" {
+				t.Errorf(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
