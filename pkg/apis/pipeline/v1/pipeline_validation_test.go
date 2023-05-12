@@ -3463,11 +3463,40 @@ func TestValidateParamArrayIndex_valid(t *testing.T) {
 	}
 }
 
+func TestPipelineWithBetaFields(t *testing.T) {
+	tts := []struct {
+		name string
+		spec PipelineSpec
+	}{{
+		name: "array indexing",
+		spec: PipelineSpec{
+			Params: []ParamSpec{
+				{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+			},
+			Tasks: []PipelineTask{{
+				Name: "foo",
+				Params: Params{
+					{Name: "first-task-first-param", Value: *NewStructuredValues("$(params.first-param[0])")},
+				},
+				TaskRef: &TaskRef{Name: "foo"},
+			}},
+		},
+	}}
+	for _, tt := range tts {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.spec.Validate(context.Background()); err == nil {
+				t.Errorf("no error when using beta field when `enable-api-fields` is stable")
+			}
+
+			ctx := config.EnableBetaAPIFields(context.Background())
+			if err := tt.spec.Validate(ctx); err != nil {
+				t.Errorf("unexpected error when using beta field: %s", err)
+			}
+		})
+	}
+}
+
 func TestValidateParamArrayIndex_invalid(t *testing.T) {
-	ctx := context.Background()
-	cfg := config.FromContextOrDefaults(ctx)
-	cfg.FeatureFlags.EnableAPIFields = config.BetaAPIFields
-	ctx = config.ToContext(ctx, cfg)
 	for _, tt := range []struct {
 		name     string
 		original PipelineSpec
@@ -3684,7 +3713,7 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			err := tt.original.ValidateParamArrayIndex(ctx, tt.params)
+			err := tt.original.ValidateParamArrayIndex(context.Background(), tt.params)
 			if d := cmp.Diff(tt.expected.Error(), err.Error()); d != "" {
 				t.Errorf("ValidateParamArrayIndex() errors diff %s", diff.PrintWantGot(d))
 			}

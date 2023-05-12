@@ -1918,10 +1918,40 @@ func TestValidateParamArrayIndex(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := config.ToContext(context.Background(), &config.Config{FeatureFlags: &config.FeatureFlags{EnableAPIFields: "beta"}})
-			err := tc.taskspec.ValidateParamArrayIndex(ctx, tc.params)
+			err := tc.taskspec.ValidateParamArrayIndex(context.Background(), tc.params)
 			if d := cmp.Diff(tc.expectedError.Error(), err.Error()); d != "" {
 				t.Errorf("validateParamArrayIndex() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestTaskSpecBetaFields(t *testing.T) {
+	tests := []struct {
+		name string
+		spec v1.TaskSpec
+	}{{
+		name: "array param indexing",
+		spec: v1.TaskSpec{
+			Params: []v1.ParamSpec{{Name: "foo", Type: v1.ParamTypeArray}},
+			Steps: []v1.Step{{
+				Name:  "my-step",
+				Image: "my-image",
+				Script: `
+					#!/usr/bin/env  bash
+					echo $(params.foo[1])`,
+			}},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.spec.Validate(context.Background()); err == nil {
+				t.Errorf("no error when using beta field when `enable-api-fields` is stable")
+			}
+
+			ctx := config.EnableBetaAPIFields(context.Background())
+			if err := tt.spec.Validate(ctx); err != nil {
+				t.Errorf("unexpected error when using beta field: %s", err)
 			}
 		})
 	}

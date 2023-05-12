@@ -66,6 +66,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validatePipelineContextVariables(ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validatePipelineContextVariables(ps.Finally).ViaField("finally"))
 	errs = errs.Also(validateExecutionStatusVariables(ps.Tasks, ps.Finally))
+	errs = errs.Also(ps.ValidateBetaFeaturesEnabledForParamArrayIndexing(ctx))
 	// Validate the pipeline's workspaces.
 	errs = errs.Also(validatePipelineWorkspacesDeclarations(ps.Workspaces))
 	errs = errs.Also(validatePipelineWorkspacesUsage(ctx, ps.Workspaces, ps.Tasks).ViaField("tasks"))
@@ -689,11 +690,8 @@ func validateResultsFromMatrixedPipelineTasksNotConsumed(tasks []PipelineTask, f
 // ValidateParamArrayIndex validates if the param reference to an array param is out of bound.
 // error is returned when the array indexing reference is out of bound of the array param
 // e.g. if a param reference of $(params.array-param[2]) and the array param is of length 2.
+// TODO(#6616): Move this functionality to the reconciler, as it is only used there
 func (ps *PipelineSpec) ValidateParamArrayIndex(ctx context.Context, params Params) error {
-	if !config.CheckAlphaOrBetaAPIFields(ctx) {
-		return nil
-	}
-
 	// Collect all array params lengths
 	arrayParamsLengths := ps.Params.extractParamArrayLengths()
 	for k, v := range params.extractParamArrayLengths() {
@@ -702,6 +700,20 @@ func (ps *PipelineSpec) ValidateParamArrayIndex(ctx context.Context, params Para
 	// extract all array indexing references, for example []{"$(params.array-params[1])"}
 	arrayIndexParamRefs := ps.GetIndexingReferencesToArrayParams().List()
 	return validateOutofBoundArrayParams(arrayIndexParamRefs, arrayParamsLengths)
+}
+
+// ValidateBetaFeaturesEnabledForParamArrayIndexing validates that "enable-api-fields" is set to "alpha" or "beta" if the pipeline spec
+// contains indexing references to array params.
+// This can be removed when array param indexing is moved to "stable".
+func (ps *PipelineSpec) ValidateBetaFeaturesEnabledForParamArrayIndexing(ctx context.Context) (errs *apis.FieldError) {
+	if config.CheckAlphaOrBetaAPIFields(ctx) {
+		return nil
+	}
+	arrayParamIndexingRefs := ps.GetIndexingReferencesToArrayParams()
+	if len(arrayParamIndexingRefs) == 0 {
+		return nil
+	}
+	return apis.ErrGeneric(fmt.Sprintf("cannot index into array parameters when 'enable-api-fields' is 'stable', but found indexing references: %s", arrayParamIndexingRefs))
 }
 
 // GetIndexingReferencesToArrayParams returns all strings referencing indices of PipelineRun array parameters
