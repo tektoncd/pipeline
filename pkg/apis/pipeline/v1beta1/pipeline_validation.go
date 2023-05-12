@@ -713,6 +713,7 @@ func validateResultsFromMatrixedPipelineTasksNotConsumed(tasks []PipelineTask, f
 // ValidateParamArrayIndex validates if the param reference to an array param is out of bound.
 // error is returned when the array indexing reference is out of bound of the array param
 // e.g. if a param reference of $(params.array-param[2]) and the array param is of length 2.
+// TODO(#6616): Move this functionality to the reconciler, as it is only used there
 func (ps *PipelineSpec) ValidateParamArrayIndex(ctx context.Context, params Params) error {
 	// Collect all array params lengths
 	arrayParamsLengths := ps.Params.extractParamArrayLengths()

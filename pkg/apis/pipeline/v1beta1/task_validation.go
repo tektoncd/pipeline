@@ -584,6 +584,7 @@ func isParamRefs(s string) bool {
 // e.g. if a param reference of $(params.array-param[2]) and the array param is of length 2.
 // - `trParams` are params from taskrun.
 // - `taskSpec` contains params declarations.
+// TODO(#6616): Move this functionality to the reconciler, as it is only used there
 func (ts *TaskSpec) ValidateParamArrayIndex(ctx context.Context, params Params) error {
 	// Collect all array params lengths
 	arrayParamsLengths := ts.Params.extractParamArrayLengths()
