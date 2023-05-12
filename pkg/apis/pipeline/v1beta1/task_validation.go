@@ -79,6 +79,12 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 
 		return errs
 	}
+	// When propagating parameters, parameters used in the Task spec may not be declared by the Task.
+	// Only perform this validation after all declared parameters have been propagated.
+	// TODO(#6647): Remove this flag and call this function in the reconciler instead
+	if config.ValidateParameterVariablesAndWorkspaces(ctx) {
+		errs = errs.Also(validateUsageOfDeclaredParameters(ctx, ts.Steps, ts.Params))
+	}
 
 	errs = errs.Also(ValidateVolumes(ts.Volumes).ViaField("volumes"))
 	errs = errs.Also(validateDeclaredWorkspaces(ts.Workspaces, ts.Steps, ts.StepTemplate).ViaField("workspaces"))
@@ -101,6 +107,28 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateResults(ctx, ts.Results).ViaField("results"))
 	if ts.Resources != nil {
 		errs = errs.Also(apis.ErrDisallowedFields("resources"))
+	}
+	return errs
+}
+
+// validateUsageOfDeclaredParameters validates that all parameters referenced in the Task are declared by the Task.
+func validateUsageOfDeclaredParameters(ctx context.Context, steps []Step, params ParamSpecs) *apis.FieldError {
+	var errs *apis.FieldError
+	_, _, objectParams := params.sortByType()
+	allParameterNames := sets.NewString(params.getNames()...)
+	errs = errs.Also(validateVariables(ctx, steps, "params", allParameterNames))
+	errs = errs.Also(validateObjectUsage(ctx, steps, objectParams))
+	errs = errs.Also(validateObjectParamsHaveProperties(ctx, params))
+	return errs
+}
+
+// validateObjectParamsHaveProperties returns an error if any declared object params are missing properties
+func validateObjectParamsHaveProperties(ctx context.Context, params ParamSpecs) *apis.FieldError {
+	var errs *apis.FieldError
+	for _, p := range params {
+		if p.Type == ParamTypeObject && p.Properties == nil {
+			errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("%s.properties", p.Name)))
+		}
 	}
 	return errs
 }
@@ -340,14 +368,6 @@ func (p ParamSpec) ValidateType(ctx context.Context) *apis.FieldError {
 // definition of `properties` section and the type of a PropertySpec is allowed.
 // (Currently, only string is allowed)
 func (p ParamSpec) ValidateObjectType(ctx context.Context) *apis.FieldError {
-	if p.Type == ParamTypeObject && p.Properties == nil {
-		// If this we are not skipping validation checks due to propagated params
-		// then properties field is required.
-		if config.ValidateParameterVariablesAndWorkspaces(ctx) {
-			return apis.ErrMissingField(fmt.Sprintf("%s.properties", p.Name))
-		}
-	}
-
 	invalidKeys := []string{}
 	for key, propertySpec := range p.Properties {
 		if propertySpec.Type != ParamTypeString {
@@ -372,13 +392,7 @@ func ValidateParameterVariables(ctx context.Context, steps []Step, params ParamS
 	stringParams, arrayParams, objectParams := params.sortByType()
 	stringParameterNames := sets.NewString(stringParams.getNames()...)
 	arrayParameterNames := sets.NewString(arrayParams.getNames()...)
-	allParameterNames := sets.NewString(params.getNames()...)
-
 	errs = errs.Also(validateNameFormat(stringParameterNames.Insert(arrayParameterNames.List()...), objectParams))
-	if config.ValidateParameterVariablesAndWorkspaces(ctx) {
-		errs = errs.Also(validateVariables(ctx, steps, "params", allParameterNames))
-		errs = errs.Also(validateObjectUsage(ctx, steps, objectParams))
-	}
 	return errs.Also(validateArrayUsage(steps, "params", arrayParameterNames))
 }
 

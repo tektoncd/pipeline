@@ -179,12 +179,12 @@ func (ps *PipelineRunSpec) validateInlineParameters(ctx context.Context) (errs *
 		for _, pt := range ps.PipelineSpec.Tasks {
 			if pt.TaskSpec != nil && pt.TaskSpec.Steps != nil {
 				errs = errs.Also(ValidateParameterTypes(ctx, paramSpec))
-				errs = errs.Also(ValidateParameterVariables(
-					config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false), pt.TaskSpec.Steps, paramSpec))
+				errs = errs.Also(ValidateParameterVariables(ctx, pt.TaskSpec.Steps, paramSpec))
+				errs = errs.Also(validateUsageOfDeclaredParameters(ctx, pt.TaskSpec.Steps, paramSpec))
 			}
 		}
-		errs = errs.Also(ValidatePipelineParameterVariables(
-			config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false), ps.PipelineSpec.Tasks, paramSpec))
+		errs = errs.Also(ValidatePipelineParameterVariables(ctx, ps.PipelineSpec.Tasks, paramSpec))
+		errs = errs.Also(validatePipelineTaskParameterUsage(ps.PipelineSpec.Tasks, paramSpec))
 	}
 	return errs
 }

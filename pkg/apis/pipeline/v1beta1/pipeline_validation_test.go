@@ -1351,7 +1351,6 @@ func TestValidatePipelineDeclaredParameterUsage_Failure(t *testing.T) {
 		params        []ParamSpec
 		tasks         []PipelineTask
 		expectedError apis.FieldError
-		api           string
 	}{{
 		name: "invalid pipeline task with a parameter which is missing from the param declarations",
 		tasks: []PipelineTask{{
@@ -1558,7 +1557,6 @@ func TestValidatePipelineDeclaredParameterUsage_Failure(t *testing.T) {
 			Message: `non-existent variable in "$(params.myObject.non-exist-key)"`,
 			Paths:   []string{"[0].when[0].input"},
 		},
-		api: "alpha",
 	}, {
 		name: "invalid object key in the Values of the when expression",
 		params: []ParamSpec{{
@@ -1582,7 +1580,6 @@ func TestValidatePipelineDeclaredParameterUsage_Failure(t *testing.T) {
 			Message: `non-existent variable in "$(params.myObject.non-exist-key)"`,
 			Paths:   []string{"[0].when[0].values"},
 		},
-		api: "alpha",
 	}, {
 		name: "invalid object key is used to provide values for array params",
 		params: []ParamSpec{{
@@ -1604,7 +1601,6 @@ func TestValidatePipelineDeclaredParameterUsage_Failure(t *testing.T) {
 			Message: `non-existent variable in "$(params.myObject.non-exist-key)"`,
 			Paths:   []string{"[0].params[a-param].value[0]"},
 		},
-		api: "alpha",
 	}, {
 		name: "invalid object key is used to provide values for string params",
 		params: []ParamSpec{{
@@ -1626,7 +1622,6 @@ func TestValidatePipelineDeclaredParameterUsage_Failure(t *testing.T) {
 			Message: `non-existent variable in "$(params.myObject.non-exist-key)"`,
 			Paths:   []string{"[0].params[a-param]"},
 		},
-		api: "alpha",
 	}, {
 		name: "invalid object key is used to provide values for object params",
 		params: []ParamSpec{{
@@ -1654,7 +1649,6 @@ func TestValidatePipelineDeclaredParameterUsage_Failure(t *testing.T) {
 			Message: `non-existent variable in "$(params.myObject.non-exist-key)"`,
 			Paths:   []string{"[0].params[an-object-param].properties[url]"},
 		},
-		api: "alpha",
 	}, {
 		name: "invalid object key is used to provide values for matrix params",
 		params: []ParamSpec{{
@@ -1679,16 +1673,10 @@ func TestValidatePipelineDeclaredParameterUsage_Failure(t *testing.T) {
 			Message: `non-existent variable in "$(params.myObject.non-exist-key)"`,
 			Paths:   []string{"[0].matrix.params[b-param].value[0]"},
 		},
-		api: "alpha",
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			if tt.api == "alpha" {
-				ctx = config.EnableAlphaAPIFields(context.Background())
-			}
-			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
-			err := ValidatePipelineParameterVariables(ctx, tt.tasks, tt.params)
+			err := validatePipelineTaskParameterUsage(tt.tasks, tt.params)
 			if err == nil {
 				t.Errorf("Pipeline.ValidatePipelineParameterVariables() did not return error for invalid pipeline parameters")
 			}
@@ -1874,7 +1862,6 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
 			err := ValidatePipelineParameterVariables(ctx, tt.tasks, tt.params)
 			if err == nil {
 				t.Errorf("Pipeline.ValidatePipelineParameterVariables() did not return error for invalid pipeline parameters")
@@ -1943,8 +1930,7 @@ func TestValidatePipelineWorkspacesUsage_Success(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := config.SkipValidationDueToPropagatedParametersAndWorkspaces(context.Background(), tt.skipValidation)
-			errs := validatePipelineWorkspacesUsage(ctx, tt.workspaces, tt.tasks).ViaField("tasks")
+			errs := validatePipelineTasksWorkspacesUsage(tt.workspaces, tt.tasks).ViaField("tasks")
 			if errs != nil {
 				t.Errorf("Pipeline.validatePipelineWorkspacesUsage() returned error for valid pipeline workspaces: %v", errs)
 			}
@@ -2062,8 +2048,7 @@ func TestValidatePipelineWorkspacesUsage_Failure(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := config.SkipValidationDueToPropagatedParametersAndWorkspaces(context.Background(), false)
-			errs := validatePipelineWorkspacesUsage(ctx, tt.workspaces, tt.tasks).ViaField("tasks")
+			errs := validatePipelineTasksWorkspacesUsage(tt.workspaces, tt.tasks).ViaField("tasks")
 			if errs == nil {
 				t.Errorf("Pipeline.validatePipelineWorkspacesUsage() did not return error for invalid pipeline workspaces")
 			}

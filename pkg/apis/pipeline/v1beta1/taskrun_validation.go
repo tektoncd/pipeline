@@ -143,7 +143,8 @@ func (ts *TaskRunSpec) validateInlineParameters(ctx context.Context) (errs *apis
 	}
 	if ts.TaskSpec != nil && ts.TaskSpec.Steps != nil {
 		errs = errs.Also(ValidateParameterTypes(ctx, paramSpec))
-		errs = errs.Also(ValidateParameterVariables(config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false), ts.TaskSpec.Steps, paramSpec))
+		errs = errs.Also(ValidateParameterVariables(ctx, ts.TaskSpec.Steps, paramSpec))
+		errs = errs.Also(validateUsageOfDeclaredParameters(ctx, ts.TaskSpec.Steps, paramSpec))
 	}
 	return errs
 }
