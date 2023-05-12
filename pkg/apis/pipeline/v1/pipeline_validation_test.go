@@ -1301,7 +1301,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 	}
 }
 
-func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
+func TestValidatePipelineDeclaredParameterUsage_Failure(t *testing.T) {
 	tests := []struct {
 		name          string
 		params        []ParamSpec
@@ -1420,154 +1420,6 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: `non-existent variable in "$(params.does-not-exist)"`,
 			Paths:   []string{"[0].params[b-param]"},
-		},
-	}, {
-		name: "invalid parameter type",
-		params: []ParamSpec{{
-			Name: "foo", Type: "invalidtype",
-		}},
-		tasks: []PipelineTask{{
-			Name:    "foo",
-			TaskRef: &TaskRef{Name: "foo-task"},
-		}},
-		expectedError: apis.FieldError{
-			Message: `invalid value: invalidtype`,
-			Paths:   []string{"params.foo.type"},
-		},
-	}, {
-		name: "array parameter mismatching default type",
-		params: []ParamSpec{{
-			Name: "foo", Type: ParamTypeArray, Default: &ParamValue{Type: ParamTypeString, StringVal: "astring"},
-		}},
-		tasks: []PipelineTask{{
-			Name:    "foo",
-			TaskRef: &TaskRef{Name: "foo-task"},
-		}},
-		expectedError: apis.FieldError{
-			Message: `"array" type does not match default value's type: "string"`,
-			Paths:   []string{"params.foo.default.type", "params.foo.type"},
-		},
-	}, {
-		name: "string parameter mismatching default type",
-		params: []ParamSpec{{
-			Name: "foo", Type: ParamTypeString, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
-		}},
-		tasks: []PipelineTask{{
-			Name:    "foo",
-			TaskRef: &TaskRef{Name: "foo-task"},
-		}},
-		expectedError: apis.FieldError{
-			Message: `"string" type does not match default value's type: "array"`,
-			Paths:   []string{"params.foo.default.type", "params.foo.type"},
-		},
-	}, {
-		name: "array parameter used as string",
-		params: []ParamSpec{{
-			Name: "baz", Type: ParamTypeString, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
-		}},
-		tasks: []PipelineTask{{
-			Name:    "bar",
-			TaskRef: &TaskRef{Name: "bar-task"},
-			Params: Params{{
-				Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.baz)"},
-			}},
-		}},
-		expectedError: apis.FieldError{
-			Message: `"string" type does not match default value's type: "array"`,
-			Paths:   []string{"params.baz.default.type", "params.baz.type"},
-		},
-	}, {
-		name: "star array parameter used as string",
-		params: []ParamSpec{{
-			Name: "baz", Type: ParamTypeString, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
-		}},
-		tasks: []PipelineTask{{
-			Name:    "bar",
-			TaskRef: &TaskRef{Name: "bar-task"},
-			Params: Params{{
-				Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.baz[*])"},
-			}},
-		}},
-		expectedError: apis.FieldError{
-			Message: `"string" type does not match default value's type: "array"`,
-			Paths:   []string{"params.baz.default.type", "params.baz.type"},
-		},
-	}, {
-		name: "array parameter string template not isolated",
-		params: []ParamSpec{{
-			Name: "baz", Type: ParamTypeString, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
-		}},
-		tasks: []PipelineTask{{
-			Name:    "bar",
-			TaskRef: &TaskRef{Name: "bar-task"},
-			Params: Params{{
-				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"value: $(params.baz)", "last"}},
-			}},
-		}},
-		expectedError: apis.FieldError{
-			Message: `"string" type does not match default value's type: "array"`,
-			Paths:   []string{"params.baz.default.type", "params.baz.type"},
-		},
-	}, {
-		name: "star array parameter string template not isolated",
-		params: []ParamSpec{{
-			Name: "baz", Type: ParamTypeString, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
-		}},
-		tasks: []PipelineTask{{
-			Name:    "bar",
-			TaskRef: &TaskRef{Name: "bar-task"},
-			Params: Params{{
-				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"value: $(params.baz[*])", "last"}},
-			}},
-		}},
-		expectedError: apis.FieldError{
-			Message: `"string" type does not match default value's type: "array"`,
-			Paths:   []string{"params.baz.default.type", "params.baz.type"},
-		},
-	}, {
-		name: "multiple string parameters with the same name",
-		params: []ParamSpec{{
-			Name: "baz", Type: ParamTypeString,
-		}, {
-			Name: "baz", Type: ParamTypeString,
-		}},
-		tasks: []PipelineTask{{
-			Name:    "foo",
-			TaskRef: &TaskRef{Name: "foo-task"},
-		}},
-		expectedError: apis.FieldError{
-			Message: `parameter appears more than once`,
-			Paths:   []string{"params[baz]"},
-		},
-	}, {
-		name: "multiple array parameters with the same name",
-		params: []ParamSpec{{
-			Name: "baz", Type: ParamTypeArray,
-		}, {
-			Name: "baz", Type: ParamTypeArray,
-		}},
-		tasks: []PipelineTask{{
-			Name:    "foo",
-			TaskRef: &TaskRef{Name: "foo-task"},
-		}},
-		expectedError: apis.FieldError{
-			Message: `parameter appears more than once`,
-			Paths:   []string{"params[baz]"},
-		},
-	}, {
-		name: "multiple different type parameters with the same name",
-		params: []ParamSpec{{
-			Name: "baz", Type: ParamTypeArray,
-		}, {
-			Name: "baz", Type: ParamTypeString,
-		}},
-		tasks: []PipelineTask{{
-			Name:    "foo",
-			TaskRef: &TaskRef{Name: "foo-task"},
-		}},
-		expectedError: apis.FieldError{
-			Message: `parameter appears more than once`,
-			Paths:   []string{"params[baz]"},
 		},
 	}, {
 		name: "invalid pipeline task with a matrix parameter which is missing from the param declarations",
@@ -1784,6 +1636,179 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			Paths:   []string{"[0].matrix.params[b-param].value[0]"},
 		},
 		api: "alpha",
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			if tt.api == "alpha" {
+				ctx = config.EnableAlphaAPIFields(context.Background())
+			}
+			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
+			err := ValidatePipelineParameterVariables(ctx, tt.tasks, tt.params)
+			if err == nil {
+				t.Errorf("Pipeline.ValidatePipelineParameterVariables() did not return error for invalid pipeline parameters")
+			}
+			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("PipelineSpec.Validate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
+	tests := []struct {
+		name          string
+		params        []ParamSpec
+		tasks         []PipelineTask
+		expectedError apis.FieldError
+	}{{
+		name: "invalid parameter type",
+		params: []ParamSpec{{
+			Name: "foo", Type: "invalidtype",
+		}},
+		tasks: []PipelineTask{{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+		}},
+		expectedError: apis.FieldError{
+			Message: `invalid value: invalidtype`,
+			Paths:   []string{"params.foo.type"},
+		},
+	}, {
+		name: "array parameter mismatching default type",
+		params: []ParamSpec{{
+			Name: "foo", Type: ParamTypeArray, Default: &ParamValue{Type: ParamTypeString, StringVal: "astring"},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+		}},
+		expectedError: apis.FieldError{
+			Message: `"array" type does not match default value's type: "string"`,
+			Paths:   []string{"params.foo.default.type", "params.foo.type"},
+		},
+	}, {
+		name: "string parameter mismatching default type",
+		params: []ParamSpec{{
+			Name: "foo", Type: ParamTypeString, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+		}},
+		expectedError: apis.FieldError{
+			Message: `"string" type does not match default value's type: "array"`,
+			Paths:   []string{"params.foo.default.type", "params.foo.type"},
+		},
+	}, {
+		name: "array parameter used as string",
+		params: []ParamSpec{{
+			Name: "baz", Type: ParamTypeString, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: Params{{
+				Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.baz)"},
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `"string" type does not match default value's type: "array"`,
+			Paths:   []string{"params.baz.default.type", "params.baz.type"},
+		},
+	}, {
+		name: "star array parameter used as string",
+		params: []ParamSpec{{
+			Name: "baz", Type: ParamTypeString, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: Params{{
+				Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.baz[*])"},
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `"string" type does not match default value's type: "array"`,
+			Paths:   []string{"params.baz.default.type", "params.baz.type"},
+		},
+	}, {
+		name: "array parameter string template not isolated",
+		params: []ParamSpec{{
+			Name: "baz", Type: ParamTypeString, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: Params{{
+				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"value: $(params.baz)", "last"}},
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `"string" type does not match default value's type: "array"`,
+			Paths:   []string{"params.baz.default.type", "params.baz.type"},
+		},
+	}, {
+		name: "star array parameter string template not isolated",
+		params: []ParamSpec{{
+			Name: "baz", Type: ParamTypeString, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: Params{{
+				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"value: $(params.baz[*])", "last"}},
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `"string" type does not match default value's type: "array"`,
+			Paths:   []string{"params.baz.default.type", "params.baz.type"},
+		},
+	}, {
+		name: "multiple string parameters with the same name",
+		params: []ParamSpec{{
+			Name: "baz", Type: ParamTypeString,
+		}, {
+			Name: "baz", Type: ParamTypeString,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+		}},
+		expectedError: apis.FieldError{
+			Message: `parameter appears more than once`,
+			Paths:   []string{"params[baz]"},
+		},
+	}, {
+		name: "multiple array parameters with the same name",
+		params: []ParamSpec{{
+			Name: "baz", Type: ParamTypeArray,
+		}, {
+			Name: "baz", Type: ParamTypeArray,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+		}},
+		expectedError: apis.FieldError{
+			Message: `parameter appears more than once`,
+			Paths:   []string{"params[baz]"},
+		},
+	}, {
+		name: "multiple different type parameters with the same name",
+		params: []ParamSpec{{
+			Name: "baz", Type: ParamTypeArray,
+		}, {
+			Name: "baz", Type: ParamTypeString,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+		}},
+		expectedError: apis.FieldError{
+			Message: `parameter appears more than once`,
+			Paths:   []string{"params[baz]"},
+		},
 	}, {
 		name: "invalid task use duplicate parameters",
 		tasks: []PipelineTask{{
@@ -1805,9 +1830,6 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			if tt.api == "alpha" {
-				ctx = config.EnableAlphaAPIFields(context.Background())
-			}
 			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
 			err := ValidatePipelineParameterVariables(ctx, tt.tasks, tt.params)
 			if err == nil {
