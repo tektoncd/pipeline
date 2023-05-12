@@ -216,6 +216,15 @@ func (ps Params) validateDuplicateParameters() (errs *apis.FieldError) {
 	return errs
 }
 
+// ReplaceVariables applies string, array and object replacements to variables in Params
+func (ps Params) ReplaceVariables(stringReplacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) Params {
+	params := ps.DeepCopy()
+	for i := range params {
+		params[i].Value.ApplyReplacements(stringReplacements, arrayReplacements, objectReplacements)
+	}
+	return params
+}
+
 // extractParamArrayLengths extract and return the lengths of all array params
 // Example of returned value: {"a-array-params": 2,"b-array-params": 2 }
 func (ps ParamSpecs) extractParamArrayLengths() map[string]int {

@@ -156,11 +156,11 @@ func ApplyPipelineTaskContexts(pt *v1beta1.PipelineTask) *v1beta1.PipelineTask {
 	replacements := map[string]string{
 		"context.pipelineTask.retries": strconv.Itoa(pt.Retries),
 	}
-	pt.Params = replaceParamValues(pt.Params, replacements, map[string][]string{}, map[string]map[string]string{})
+	pt.Params = pt.Params.ReplaceVariables(replacements, map[string][]string{}, map[string]map[string]string{})
 	if pt.IsMatrixed() {
-		pt.Matrix.Params = replaceParamValues(pt.Matrix.Params, replacements, map[string][]string{}, map[string]map[string]string{})
+		pt.Matrix.Params = pt.Params.ReplaceVariables(replacements, map[string][]string{}, map[string]map[string]string{})
 		for i := range pt.Matrix.Include {
-			pt.Matrix.Include[i].Params = replaceParamValues(pt.Matrix.Include[i].Params, replacements, map[string][]string{}, map[string]map[string]string{})
+			pt.Matrix.Include[i].Params = pt.Matrix.Include[i].Params.ReplaceVariables(replacements, map[string][]string{}, map[string]map[string]string{})
 		}
 	}
 	return pt
@@ -174,19 +174,19 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 	for _, resolvedPipelineRunTask := range targets {
 		if resolvedPipelineRunTask.PipelineTask != nil {
 			pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
-			pipelineTask.Params = replaceParamValues(pipelineTask.Params, stringReplacements, arrayReplacements, objectReplacements)
+			pipelineTask.Params = pipelineTask.Params.ReplaceVariables(stringReplacements, arrayReplacements, objectReplacements)
 			if pipelineTask.IsMatrixed() {
 				// Only string replacements from string, array or object results are supported
 				// We plan to support array replacements from array results soon (#5925)
-				pipelineTask.Matrix.Params = replaceParamValues(pipelineTask.Matrix.Params, stringReplacements, nil, nil)
+				pipelineTask.Matrix.Params = pipelineTask.Matrix.Params.ReplaceVariables(stringReplacements, nil, nil)
 				for i := range pipelineTask.Matrix.Include {
 					// matrix include parameters can only be type string
-					pipelineTask.Matrix.Include[i].Params = replaceParamValues(pipelineTask.Matrix.Include[i].Params, stringReplacements, nil, nil)
+					pipelineTask.Matrix.Include[i].Params = pipelineTask.Matrix.Include[i].Params.ReplaceVariables(stringReplacements, nil, nil)
 				}
 			}
 			pipelineTask.WhenExpressions = pipelineTask.WhenExpressions.ReplaceVariables(stringReplacements, arrayReplacements)
 			if pipelineTask.TaskRef != nil && pipelineTask.TaskRef.Params != nil {
-				pipelineTask.TaskRef.Params = replaceParamValues(pipelineTask.TaskRef.Params, stringReplacements, arrayReplacements, objectReplacements)
+				pipelineTask.TaskRef.Params = pipelineTask.TaskRef.Params.ReplaceVariables(stringReplacements, arrayReplacements, objectReplacements)
 			}
 			resolvedPipelineRunTask.PipelineTask = pipelineTask
 		}
@@ -198,10 +198,10 @@ func ApplyPipelineTaskStateContext(state PipelineRunState, replacements map[stri
 	for _, resolvedPipelineRunTask := range state {
 		if resolvedPipelineRunTask.PipelineTask != nil {
 			pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
-			pipelineTask.Params = replaceParamValues(pipelineTask.Params, replacements, nil, nil)
+			pipelineTask.Params = pipelineTask.Params.ReplaceVariables(replacements, nil, nil)
 			pipelineTask.WhenExpressions = pipelineTask.WhenExpressions.ReplaceVariables(replacements, nil)
 			if pipelineTask.TaskRef != nil && pipelineTask.TaskRef.Params != nil {
-				pipelineTask.TaskRef.Params = replaceParamValues(pipelineTask.TaskRef.Params, replacements, nil, nil)
+				pipelineTask.TaskRef.Params = pipelineTask.TaskRef.Params.ReplaceVariables(replacements, nil, nil)
 			}
 			resolvedPipelineRunTask.PipelineTask = pipelineTask
 		}
@@ -229,11 +229,11 @@ func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, 
 	p = p.DeepCopy()
 
 	for i := range p.Tasks {
-		p.Tasks[i].Params = replaceParamValues(p.Tasks[i].Params, replacements, arrayReplacements, objectReplacements)
+		p.Tasks[i].Params = p.Tasks[i].Params.ReplaceVariables(replacements, arrayReplacements, objectReplacements)
 		if p.Tasks[i].IsMatrixed() {
-			p.Tasks[i].Matrix.Params = replaceParamValues(p.Tasks[i].Matrix.Params, replacements, arrayReplacements, nil)
+			p.Tasks[i].Matrix.Params = p.Tasks[i].Matrix.Params.ReplaceVariables(replacements, arrayReplacements, nil)
 			for j := range p.Tasks[i].Matrix.Include {
-				p.Tasks[i].Matrix.Include[j].Params = replaceParamValues(p.Tasks[i].Matrix.Include[j].Params, replacements, nil, nil)
+				p.Tasks[i].Matrix.Include[j].Params = p.Tasks[i].Matrix.Include[j].Params.ReplaceVariables(replacements, nil, nil)
 			}
 		}
 		for j := range p.Tasks[i].Workspaces {
@@ -241,17 +241,17 @@ func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, 
 		}
 		p.Tasks[i].WhenExpressions = p.Tasks[i].WhenExpressions.ReplaceVariables(replacements, arrayReplacements)
 		if p.Tasks[i].TaskRef != nil && p.Tasks[i].TaskRef.Params != nil {
-			p.Tasks[i].TaskRef.Params = replaceParamValues(p.Tasks[i].TaskRef.Params, replacements, arrayReplacements, objectReplacements)
+			p.Tasks[i].TaskRef.Params = p.Tasks[i].TaskRef.Params.ReplaceVariables(replacements, arrayReplacements, objectReplacements)
 		}
 		p.Tasks[i] = propagateParams(p.Tasks[i], replacements, arrayReplacements, objectReplacements)
 	}
 
 	for i := range p.Finally {
-		p.Finally[i].Params = replaceParamValues(p.Finally[i].Params, replacements, arrayReplacements, objectReplacements)
+		p.Finally[i].Params = p.Finally[i].Params.ReplaceVariables(replacements, arrayReplacements, objectReplacements)
 		if p.Finally[i].IsMatrixed() {
-			p.Finally[i].Matrix.Params = replaceParamValues(p.Finally[i].Matrix.Params, replacements, arrayReplacements, nil)
+			p.Finally[i].Matrix.Params = p.Finally[i].Matrix.Params.ReplaceVariables(replacements, arrayReplacements, nil)
 			for j := range p.Finally[i].Matrix.Include {
-				p.Finally[i].Matrix.Include[j].Params = replaceParamValues(p.Finally[i].Matrix.Include[j].Params, replacements, nil, nil)
+				p.Finally[i].Matrix.Include[j].Params = p.Finally[i].Matrix.Include[j].Params.ReplaceVariables(replacements, nil, nil)
 			}
 		}
 		for j := range p.Finally[i].Workspaces {
@@ -259,7 +259,7 @@ func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, 
 		}
 		p.Finally[i].WhenExpressions = p.Finally[i].WhenExpressions.ReplaceVariables(replacements, arrayReplacements)
 		if p.Finally[i].TaskRef != nil && p.Finally[i].TaskRef.Params != nil {
-			p.Finally[i].TaskRef.Params = replaceParamValues(p.Finally[i].TaskRef.Params, replacements, arrayReplacements, objectReplacements)
+			p.Finally[i].TaskRef.Params = p.Finally[i].TaskRef.Params.ReplaceVariables(replacements, arrayReplacements, objectReplacements)
 		}
 		p.Finally[i] = propagateParams(p.Finally[i], replacements, arrayReplacements, objectReplacements)
 	}
@@ -311,13 +311,6 @@ func propagateParams(t v1beta1.PipelineTask, stringReplacements map[string]strin
 		t.TaskSpec.TaskSpec = *resources.ApplyReplacements(&t.TaskSpec.TaskSpec, stringReplacements, arrayReplacements)
 	}
 	return t
-}
-
-func replaceParamValues(params v1beta1.Params, stringReplacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) v1beta1.Params {
-	for i := range params {
-		params[i].Value.ApplyReplacements(stringReplacements, arrayReplacements, objectReplacements)
-	}
-	return params
 }
 
 // ApplyTaskResultsToPipelineResults applies the results of completed TasksRuns and Runs to a Pipeline's
