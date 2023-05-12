@@ -182,7 +182,9 @@ type CreateKeyInput struct {
 
 	// A description of the KMS key. Use a description that helps you decide whether
 	// the KMS key is appropriate for a task. The default value is an empty string (no
-	// description). To set or change the description after the key is created, use
+	// description). Do not include confidential or sensitive information in this
+	// field. This field may be displayed in plaintext in CloudTrail logs and other
+	// output. To set or change the description after the key is created, use
 	// UpdateKeyDescription .
 	Description *string
 
@@ -299,8 +301,10 @@ type CreateKeyInput struct {
 
 	// Assigns one or more tags to the KMS key. Use this parameter to tag the KMS key
 	// when it is created. To tag an existing KMS key, use the TagResource operation.
-	// Tagging or untagging a KMS key can allow or deny permission to the KMS key. For
-	// details, see ABAC for KMS (https://docs.aws.amazon.com/kms/latest/developerguide/abac.html)
+	// Do not include confidential or sensitive information in this field. This field
+	// may be displayed in plaintext in CloudTrail logs and other output. Tagging or
+	// untagging a KMS key can allow or deny permission to the KMS key. For details,
+	// see ABAC for KMS (https://docs.aws.amazon.com/kms/latest/developerguide/abac.html)
 	// in the Key Management Service Developer Guide. To use this parameter, you must
 	// have kms:TagResource (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
 	// permission in an IAM policy. Each tag consists of a tag key and a tag value.
@@ -399,6 +403,9 @@ func (c *Client) addOperationCreateKeyMiddlewares(stack *middleware.Stack, optio
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCreateKey(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

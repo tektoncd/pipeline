@@ -1002,28 +1002,6 @@ func TestDAGExecutionQueue(t *testing.T) {
 // TestDAGExecutionQueueSequentialTasks tests the DAGExecutionQueue function for sequential TaskRuns
 // in different states for a running or stopping PipelineRun.
 func TestDAGExecutionQueueSequentialTasks(t *testing.T) {
-	firstTask := ResolvedPipelineTask{
-		PipelineTask: &v1beta1.PipelineTask{
-			Name:    "task-1",
-			TaskRef: &v1beta1.TaskRef{Name: "task"},
-		},
-		TaskRunName: "task-1",
-		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
-		},
-	}
-	secondTask := ResolvedPipelineTask{
-		PipelineTask: &v1beta1.PipelineTask{
-			Name:     "task-2",
-			TaskRef:  &v1beta1.TaskRef{Name: "task"},
-			RunAfter: []string{"task-1"},
-		},
-		TaskRunName: "task-2",
-		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
-		},
-	}
-
 	tcs := []struct {
 		name          string
 		firstTaskRun  *v1beta1.TaskRun
@@ -1059,10 +1037,29 @@ func TestDAGExecutionQueueSequentialTasks(t *testing.T) {
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
+			firstTask := ResolvedPipelineTask{
+				PipelineTask: &v1beta1.PipelineTask{
+					Name:    "task-1",
+					TaskRef: &v1beta1.TaskRef{Name: "task"},
+				},
+				TaskRunName: "task-1",
+				ResolvedTask: &resources.ResolvedTask{
+					TaskSpec: &task.Spec,
+				},
+			}
+			secondTask := ResolvedPipelineTask{
+				PipelineTask: &v1beta1.PipelineTask{
+					Name:     "task-2",
+					TaskRef:  &v1beta1.TaskRef{Name: "task"},
+					RunAfter: []string{"task-1"},
+				},
+				TaskRunName: "task-2",
+				ResolvedTask: &resources.ResolvedTask{
+					TaskSpec: &task.Spec,
+				},
+			}
 			firstTask.TaskRun = tc.firstTaskRun
-			defer func() { firstTask.TaskRun = nil }()
 			secondTask.TaskRun = tc.secondTaskRun
-			defer func() { secondTask.TaskRun = nil }()
 			state := PipelineRunState{&firstTask, &secondTask}
 			d, err := dagFromState(state)
 			if err != nil {
@@ -1098,24 +1095,6 @@ func TestDAGExecutionQueueSequentialTasks(t *testing.T) {
 // TestDAGExecutionQueueSequentialRuns tests the DAGExecutionQueue function for sequential Runs
 // in different states for a running or stopping PipelineRun.
 func TestDAGExecutionQueueSequentialRuns(t *testing.T) {
-	firstRun := ResolvedPipelineTask{
-		PipelineTask: &v1beta1.PipelineTask{
-			Name:    "task-1",
-			TaskRef: &v1beta1.TaskRef{Name: "task"},
-		},
-		RunObjectName: "task-1",
-		CustomTask:    true,
-	}
-	secondRun := ResolvedPipelineTask{
-		PipelineTask: &v1beta1.PipelineTask{
-			Name:     "task-2",
-			TaskRef:  &v1beta1.TaskRef{Name: "task"},
-			RunAfter: []string{"task-1"},
-		},
-		RunObjectName: "task-2",
-		CustomTask:    true,
-	}
-
 	tcs := []struct {
 		name       string
 		firstRun   *v1beta1.CustomRun
@@ -1151,14 +1130,29 @@ func TestDAGExecutionQueueSequentialRuns(t *testing.T) {
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
+			firstRun := ResolvedPipelineTask{
+				PipelineTask: &v1beta1.PipelineTask{
+					Name:    "task-1",
+					TaskRef: &v1beta1.TaskRef{Name: "task"},
+				},
+				RunObjectName: "task-1",
+				CustomTask:    true,
+			}
+			secondRun := ResolvedPipelineTask{
+				PipelineTask: &v1beta1.PipelineTask{
+					Name:     "task-2",
+					TaskRef:  &v1beta1.TaskRef{Name: "task"},
+					RunAfter: []string{"task-1"},
+				},
+				RunObjectName: "task-2",
+				CustomTask:    true,
+			}
 			if tc.firstRun != nil {
 				firstRun.RunObject = tc.firstRun
 			}
-			defer func() { firstRun.RunObject = nil }()
 			if tc.secondRun != nil {
 				secondRun.RunObject = tc.secondRun
 			}
-			defer func() { secondRun.RunObject = nil }()
 			state := PipelineRunState{&firstRun, &secondRun}
 			d, err := dagFromState(state)
 			if err != nil {

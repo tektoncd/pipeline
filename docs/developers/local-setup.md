@@ -27,20 +27,6 @@ Complete these prerequisites to run Tekton locally using Docker Desktop:
 
 - Verify that you can push to `host.docker.internal:5000/myregistry/<image_name>`.
 
-### Reconfigure `image` resources
-
-You must reconfigure any `image` resource definitions in your `PipelineResources` as follows:
-
-- Set the URL to `host.docker.internal:5000/myregistry/<image_name>`
-- Set the `KO_DOCKER_REPO` variable to `localhost:5000/myregistry` before using `ko`
-- Set your applications (such as deployment definitions) to push to
-  `localhost:5000/myregistry/<image name>`.
-
-> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
->
-> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
-> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
-
 ### Reconfigure logging
 
 - You can keep your logs in memory only without sending them to a logging service
@@ -62,22 +48,6 @@ minikube start --memory 6144 --cpus 2
 ```
 - Point your shell to minikube's docker-daemon by running `eval $(minikube -p minikube docker-env)`
 - Set up a [registry on minikube](https://github.com/kubernetes/minikube/tree/master/deploy/addons/registry-aliases) by running `minikube addons enable registry` and `minikube addons enable registry-aliases`
-
-### Reconfigure `image` resources
-
-The `registry-aliases` addon will create several aliases for the minikube registry. You'll need to reconfigure your `image` resource definitions to use one of these aliases in your `PipelineResources` (for this tutorial, we use `example.com`; for a full list of aliases, you can run `minikube ssh -- cat /etc/hosts`. You can also configure your own alias by editing minikube's `/etc/hosts` file and the `coredns` configmap in the `kube-system` namespace).
-
-- Set the URL to `example.com/<image_name>`
-- When using `ko`, be sure to [use the `-L` flag](https://github.com/google/ko/blob/master/README.md#with-minikube) (i.e. `ko apply -L -f config/`)
-- Set your applications (such as deployment definitions) to push to
-  `example.com/<image name>`.
-
-If you wish to use a different image URL, you can add the appropriate line to minikube's `/etc/hosts`.
-
-> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
->
-> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
-> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
 
 ### Reconfigure logging
 

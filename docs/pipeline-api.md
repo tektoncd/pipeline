@@ -1209,7 +1209,6 @@ Kubernetes meta/v1.Duration
 <td>
 <em>(Optional)</em>
 <p>Time after which one retry attempt times out. Defaults to 1 hour.
-Specified build timeout should be less than 24h.
 Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
 </tr>
@@ -2741,7 +2740,6 @@ Kubernetes meta/v1.Duration
 <td>
 <em>(Optional)</em>
 <p>Time after which the TaskRun times out. Defaults to 1 hour.
-Specified TaskRun timeout should be less than 24h.
 Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
 </tr>
@@ -4516,7 +4514,11 @@ More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/sec
 <th>Description</th>
 </tr>
 </thead>
-<tbody><tr><td><p>&#34;Task&#34;</p></td>
+<tbody><tr><td><p>&#34;ClusterTask&#34;</p></td>
+<td><p>ClusterTaskRefKind is the task type for a reference to a task with cluster scope.
+ClusterTasks are not supported in v1, but v1 types may reference ClusterTasks.</p>
+</td>
+</tr><tr><td><p>&#34;Task&#34;</p></td>
 <td><p>NamespacedTaskKind indicates that the task type has a namespaced scope.</p>
 </td>
 </tr></tbody>
@@ -4995,7 +4997,6 @@ Kubernetes meta/v1.Duration
 <td>
 <em>(Optional)</em>
 <p>Time after which one retry attempt times out. Defaults to 1 hour.
-Specified build timeout should be less than 24h.
 Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
 </tr>
@@ -8545,7 +8546,6 @@ Kubernetes meta/v1.Duration
 <td>
 <em>(Optional)</em>
 <p>Time after which one retry attempt times out. Defaults to 1 hour.
-Specified build timeout should be less than 24h.
 Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
 </tr>
@@ -10755,7 +10755,6 @@ Kubernetes meta/v1.Duration
 <td>
 <em>(Optional)</em>
 <p>Time after which the TaskRun times out. Defaults to 1 hour.
-Specified TaskRun timeout should be less than 24h.
 Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
 </tr>
@@ -13642,7 +13641,6 @@ Kubernetes meta/v1.Duration
 <td>
 <em>(Optional)</em>
 <p>Time after which one retry attempt times out. Defaults to 1 hour.
-Specified build timeout should be less than 24h.
 Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
 </tr>

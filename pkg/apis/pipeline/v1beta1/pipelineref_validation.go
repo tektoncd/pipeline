@@ -64,7 +64,7 @@ func (ref *PipelineRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 			}
 		}
 	}
-	return
+	return //nolint:nakedret
 }
 
 func validateBundleFeatureFlag(ctx context.Context, featureName string, wantValue bool) *apis.FieldError {

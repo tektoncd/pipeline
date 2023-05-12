@@ -122,7 +122,13 @@ func appendOwnerReference(rr *v1beta1.ResolutionRequest, req Request) {
 }
 
 func ownerRefsAreEqual(a, b metav1.OwnerReference) bool {
-	return a.APIVersion == b.APIVersion && a.Kind == b.Kind && a.Name == b.Name && a.UID == b.UID && a.Controller == b.Controller
+	// pointers values cannot be directly compared.
+	if (a.Controller == nil && b.Controller != nil) ||
+		(a.Controller != nil && b.Controller == nil) ||
+		(*a.Controller != *b.Controller) {
+		return false
+	}
+	return a.APIVersion == b.APIVersion && a.Kind == b.Kind && a.Name == b.Name && a.UID == b.UID
 }
 
 // readOnlyResolutionRequest is an opaque wrapper around ResolutionRequest

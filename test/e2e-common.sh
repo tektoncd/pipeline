@@ -48,6 +48,69 @@ function install_pipeline_crd_version() {
   verify_pipeline_installation
 }
 
+# Add the provided spiffeId to the spire-server.
+function spire_apply() {
+  if [ $# -lt 2 -o "$1" != "-spiffeID" ]; then
+    echo "spire_apply requires a spiffeID as the first arg" >&2
+    exit 1
+  fi
+  echo "Checking if spiffeID $2 already exists..."
+  show=$(kubectl exec -n spire deployment/spire-server -- \
+    /opt/spire/bin/spire-server entry show $1 $2)
+  if [ "$show" != "Found 0 entries" ]; then
+    # delete to recreate
+    entryid=$(echo "$show" | grep "^Entry ID" | cut -f2 -d:)
+    echo "Deleting previously existing spiffeID $2 ..."
+    kubectl exec -n spire deployment/spire-server -- \
+      /opt/spire/bin/spire-server entry delete -entryID $entryid
+  fi
+  echo "Adding spiffeID $2 to spire-server."
+  kubectl exec -n spire deployment/spire-server -- \
+    /opt/spire/bin/spire-server entry create "$@"
+}
+
+function install_spire() {
+  echo ">> Deploying Spire"
+  DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+
+  echo "Creating SPIRE namespace..."
+  kubectl create ns spire
+
+  echo "Applying SPIFFE CSI Driver configuration..."
+  kubectl apply -f "$DIR"/testdata/spire/spiffe-csi-driver.yaml
+
+  echo "Deploying SPIRE server"
+  kubectl apply -f "$DIR"/testdata/spire/spire-server.yaml
+
+  echo "Deploying SPIRE agent"
+  kubectl apply -f "$DIR"/testdata/spire/spire-agent.yaml
+
+  wait_until_pods_running spire || fail_test "SPIRE did not come up"
+
+  spire_apply \
+    -spiffeID spiffe://example.org/ns/spire/node/example \
+    -selector k8s_psat:cluster:example-cluster \
+    -selector k8s_psat:agent_ns:spire \
+    -selector k8s_psat:agent_sa:spire-agent \
+    -node
+  spire_apply \
+    -spiffeID spiffe://example.org/ns/tekton-pipelines/sa/tekton-pipelines-controller \
+    -parentID spiffe://example.org/ns/spire/node/example \
+    -selector k8s:ns:tekton-pipelines \
+    -selector k8s:pod-label:app:tekton-pipelines-controller \
+    -selector k8s:sa:tekton-pipelines-controller \
+    -admin
+}
+
+function patch_pipeline_spire() {
+  kubectl patch \
+      deployment tekton-pipelines-controller \
+      -n tekton-pipelines \
+      --patch-file "$DIR"/testdata/patch/pipeline-controller-spire.json
+
+  verify_pipeline_installation
+}
+
 function verify_pipeline_installation() {
   # Make sure that everything is cleaned up in the current namespace.
   delete_pipeline_resources

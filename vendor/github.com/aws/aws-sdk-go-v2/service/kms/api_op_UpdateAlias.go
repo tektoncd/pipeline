@@ -62,7 +62,9 @@ type UpdateAliasInput struct {
 
 	// Identifies the alias that is changing its KMS key. This value must begin with
 	// alias/ followed by the alias name, such as alias/ExampleAlias . You cannot use
-	// UpdateAlias to change the alias name.
+	// UpdateAlias to change the alias name. Do not include confidential or sensitive
+	// information in this field. This field may be displayed in plaintext in
+	// CloudTrail logs and other output.
 	//
 	// This member is required.
 	AliasName *string
@@ -142,6 +144,9 @@ func (c *Client) addOperationUpdateAliasMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opUpdateAlias(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

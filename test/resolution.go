@@ -24,7 +24,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	resolution "github.com/tektoncd/pipeline/pkg/resolution/resource"
+	resolution "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/test/diff"
 )
 
@@ -121,4 +121,58 @@ func (r *ResolvedResource) Annotations() map[string]string {
 // file came from including the url, digest and the entrypoint.
 func (r *ResolvedResource) RefSource() *pipelinev1beta1.RefSource {
 	return r.ResolvedRefSource
+}
+
+// RawRequest stores the raw request data
+type RawRequest struct {
+	// the request name
+	Name string
+	// the request namespace
+	Namespace string
+	// the params for the request
+	Params []pipelinev1beta1.Param
+}
+
+// Request returns a Request interface based on the RawRequest.
+func (r *RawRequest) Request() resolution.Request {
+	if r == nil {
+		r = &RawRequest{}
+	}
+	return &Request{
+		RawRequest: *r,
+	}
+}
+
+// Request implements resolution.Request and makes it easier to mock input for submit
+// Using inline structs is to avoid conflicts between field names and method names.
+type Request struct {
+	RawRequest
+}
+
+var _ resolution.Request = &Request{}
+
+// NewRequest creates a mock request that is populated with the given name namespace and params
+func NewRequest(name, namespace string, params []pipelinev1beta1.Param) *Request {
+	return &Request{
+		RawRequest: RawRequest{
+			Name:      name,
+			Namespace: namespace,
+			Params:    params,
+		},
+	}
+}
+
+// Name implements resolution.Request and returns the mock name given to it on initialization.
+func (r *Request) Name() string {
+	return r.RawRequest.Name
+}
+
+// Namespace implements resolution.Request and returns the mock namespace given to it on initialization.
+func (r *Request) Namespace() string {
+	return r.RawRequest.Namespace
+}
+
+// Params implements resolution.Request and returns the mock params given to it on initialization.
+func (r *Request) Params() pipelinev1beta1.Params {
+	return r.RawRequest.Params
 }

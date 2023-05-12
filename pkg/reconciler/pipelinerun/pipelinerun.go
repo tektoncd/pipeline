@@ -113,6 +113,8 @@ const (
 	// ReasonCouldntTimeOut indicates that a PipelineRun was timed out but attempting to update
 	// all of the running TaskRuns as timed out failed.
 	ReasonCouldntTimeOut = "PipelineRunCouldntTimeOut"
+	// ReasonInvalidMatrixParameterTypes indicates a matrix contains invalid parameter types
+	ReasonInvalidMatrixParameterTypes = "ReasonInvalidMatrixParameterTypes"
 	// ReasonInvalidTaskResultReference indicates a task result was declared
 	// but was not initialized by that task
 	ReasonInvalidTaskResultReference = "InvalidTaskResultReference"
@@ -183,7 +185,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 	// reconcile. We are assuming here that if the PipelineRun has timed out for a long time, it had time to run
 	// before and it kept failing. One reason that can happen is exceeding etcd request size limit. Finishing it early
 	// makes sure the request size is manageable
-	if pr.HasTimedOutForALongTime(ctx, c.Clock) && !pr.IsTimeoutConditionSet() {
+	if !pr.IsDone() && pr.HasTimedOutForALongTime(ctx, c.Clock) && !pr.IsTimeoutConditionSet() {
 		if err := timeoutPipelineRun(ctx, logger, pr, c.PipelineClientSet); err != nil {
 			return err
 		}
@@ -218,7 +220,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 	if err != nil {
 		return fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %w", pr.Namespace, err)
 	}
-	getPipelineFunc := resources.GetVerifiedPipelineFunc(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, pr, vp)
+	getPipelineFunc := resources.GetPipelineFunc(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, pr, vp)
 
 	if pr.IsDone() {
 		pr.SetDefaults(ctx)
@@ -329,7 +331,7 @@ func (c *Reconciler) resolvePipelineState(
 		if err != nil {
 			return nil, fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %w", pr.Namespace, err)
 		}
-		fn := tresources.GetVerifiedTaskFunc(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, pr, task.TaskRef, trName, pr.Namespace, pr.Spec.ServiceAccountName, vp)
+		fn := tresources.GetTaskFunc(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, pr, task.TaskRef, trName, pr.Namespace, pr.Spec.ServiceAccountName, vp)
 
 		getRunObjectFunc := func(name string) (v1beta1.RunObject, error) {
 			r, err := c.customRunLister.CustomRuns(pr.Namespace).Get(name)
@@ -511,7 +513,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	// Update pipelinespec of pipelinerun's status field
 	pr.Status.PipelineSpec = pipelineSpec
 
-	// pipelineState holds a list of pipeline tasks after resolving pipeline resources
+	// pipelineState holds a list of pipeline tasks after fetching their resolved Task specs.
 	// pipelineState also holds a taskRun for each pipeline task after the taskRun is created
 	// pipelineState is instantiated and updated on every reconcile cycle
 	// Resolve the set of tasks (and possibly task runs).
@@ -752,6 +754,15 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 		}
 		if rpt == nil || rpt.Skip(pipelineRunFacts).IsSkipped || rpt.IsFinallySkipped(pipelineRunFacts).IsSkipped {
 			continue
+		}
+
+		// Validate parameter types in matrix after apply substitutions from Task Results
+		if rpt.PipelineTask.IsMatrixed() {
+			if err := resources.ValidateParameterTypesInMatrix(pipelineRunFacts.State); err != nil {
+				logger.Errorf("Failed to validate matrix %q with error %v", pr.Name, err)
+				pr.Status.MarkFailed(ReasonInvalidMatrixParameterTypes, err.Error())
+				return controller.NewPermanentError(err)
+			}
 		}
 
 		defer func() {

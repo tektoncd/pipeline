@@ -462,10 +462,32 @@ type MultiRegionKey struct {
 	noSmithyDocumentSerde
 }
 
+// Contains information about the party that receives the response from the API
+// operation. This data type is designed to support Amazon Web Services Nitro
+// Enclaves, which lets you create an isolated compute environment in Amazon EC2.
+// For information about the interaction between KMS and Amazon Web Services Nitro
+// Enclaves, see How Amazon Web Services Nitro Enclaves uses KMS (https://docs.aws.amazon.com/kms/latest/developerguide/services-nitro-enclaves.html)
+// in the Key Management Service Developer Guide.
+type RecipientInfo struct {
+
+	// The attestation document for an Amazon Web Services Nitro Enclave. This
+	// document includes the enclave's public key.
+	AttestationDocument []byte
+
+	// The encryption algorithm that KMS should use with the public key for an Amazon
+	// Web Services Nitro Enclave to encrypt plaintext values for the response. The
+	// only valid value is RSAES_OAEP_SHA_256 .
+	KeyEncryptionAlgorithm KeyEncryptionMechanism
+
+	noSmithyDocumentSerde
+}
+
 // A key-value pair. A tag consists of a tag key and a tag value. Tag keys and tag
-// values are both required, but tag values can be empty (null) strings. For
-// information about the rules that apply to tag keys and tag values, see
-// User-Defined Tag Restrictions (https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/allocation-tag-restrictions.html)
+// values are both required, but tag values can be empty (null) strings. Do not
+// include confidential or sensitive information in this field. This field may be
+// displayed in plaintext in CloudTrail logs and other output. For information
+// about the rules that apply to tag keys and tag values, see User-Defined Tag
+// Restrictions (https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/allocation-tag-restrictions.html)
 // in the Amazon Web Services Billing and Cost Management User Guide.
 type Tag struct {
 

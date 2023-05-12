@@ -31,6 +31,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/internal/computeresources/tasklevel"
 	"github.com/tektoncd/pipeline/pkg/names"
+	"github.com/tektoncd/pipeline/pkg/spire"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -53,6 +54,9 @@ const (
 	// deadlineFactor is the factor we multiply the taskrun timeout with to determine the activeDeadlineSeconds of the Pod.
 	// It has to be higher than the timeout (to not be killed before)
 	deadlineFactor = 1.5
+
+	// SpiffeCsiDriver is the CSI storage plugin needed for injection of SPIFFE workload api.
+	SpiffeCsiDriver = "csi.spiffe.io"
 )
 
 // These are effectively const, but Go doesn't have such an annotation.
@@ -132,6 +136,10 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	// Secrets, along with any arguments needed by Step entrypoints to process
 	// those secrets.
 	commonExtraEntrypointArgs := []string{}
+	// Entrypoint arg to enable or disable spire
+	if config.IsSpireEnabled(ctx) {
+		commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-enable_spire")
+	}
 	credEntrypointArgs, credVolumes, credVolumeMounts, err := credsInit(ctx, taskRun.Spec.ServiceAccountName, taskRun.Namespace, b.KubeClient)
 	if err != nil {
 		return nil, err
@@ -223,7 +231,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	// Superceded by podTemplate envs
 	if len(implicitEnvVars) > 0 {
 		for i, s := range stepContainers {
-			env := append(implicitEnvVars, s.Env...) // nolint:gocritic
+			env := append(implicitEnvVars, s.Env...) //nolint:gocritic
 			stepContainers[i].Env = env
 		}
 	}
@@ -235,7 +243,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 	if len(podTemplate.Env) > 0 {
 		for i, s := range stepContainers {
-			env := append(s.Env, filteredEnvs...) // nolint:gocritic
+			env := append(s.Env, filteredEnvs...) //nolint:gocritic
 			stepContainers[i].Env = env
 		}
 	}
@@ -243,7 +251,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	if taskRun.Annotations[ExecutionModeAnnotation] == ExecutionModeHermetic && alphaAPIEnabled {
 		for i, s := range stepContainers {
 			// Add it at the end so it overrides
-			env := append(s.Env, corev1.EnvVar{Name: TektonHermeticEnvVar, Value: "1"}) // nolint:gocritic
+			env := append(s.Env, corev1.EnvVar{Name: TektonHermeticEnvVar, Value: "1"}) //nolint:gocritic
 			stepContainers[i].Env = env
 		}
 	}
@@ -280,7 +288,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 				toAdd = append(toAdd, imp)
 			}
 		}
-		vms := append(s.VolumeMounts, toAdd...) // nolint:gocritic
+		vms := append(s.VolumeMounts, toAdd...) //nolint:gocritic
 		stepContainers[i].VolumeMounts = vms
 	}
 
@@ -301,7 +309,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 					toAdd = append(toAdd, imp)
 				}
 			}
-			vms := append(s.VolumeMounts, toAdd...) // nolint:gocritic
+			vms := append(s.VolumeMounts, toAdd...) //nolint:gocritic
 			sidecarContainers[i].VolumeMounts = vms
 		}
 	}
@@ -320,6 +328,39 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 
 	if err := v1beta1.ValidateVolumes(volumes); err != nil {
 		return nil, err
+	}
+
+	readonly := true
+	if config.IsSpireEnabled(ctx) {
+		// add SPIRE's CSI volume to the explicitly declared use volumes
+		volumes = append(volumes, corev1.Volume{
+			Name: spire.WorkloadAPI,
+			VolumeSource: corev1.VolumeSource{
+				CSI: &corev1.CSIVolumeSource{
+					Driver:   SpiffeCsiDriver,
+					ReadOnly: &readonly,
+				},
+			},
+		})
+
+		// mount SPIRE's CSI volume to each Step Container
+		for i := range stepContainers {
+			c := &stepContainers[i]
+			c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{
+				Name:      spire.WorkloadAPI,
+				MountPath: spire.VolumeMountPath,
+				ReadOnly:  readonly,
+			})
+		}
+		for i := range initContainers {
+			// mount SPIRE's CSI volume to each Init Container
+			c := &initContainers[i]
+			c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{
+				Name:      spire.WorkloadAPI,
+				MountPath: spire.VolumeMountPath,
+				ReadOnly:  readonly,
+			})
+		}
 	}
 
 	mergedPodContainers := stepContainers

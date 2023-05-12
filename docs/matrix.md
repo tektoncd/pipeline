@@ -213,6 +213,20 @@ tasks:
     - name: param-two
       value: $(params.bar) # array replacement from array param
 ```
+
+`Matrix.Params` supports whole array replacements from array `Parameters`.
+
+```yaml
+tasks:
+...
+- name: task-4
+  taskRef:
+    name: task-4
+  matrix:
+    params:
+    - name: param-one
+      value: $(params.bar[*]) # whole array replacement from array param
+```
 #### Parameters in Matrix.Include.Params
 
 `Matrix.Include.Params` takes string replacements from `Parameters` of type String, Array or Object.

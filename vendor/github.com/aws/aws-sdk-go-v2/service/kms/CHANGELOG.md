@@ -1,3 +1,19 @@
+# v1.21.1 (2023-05-04)
+
+* No change notes available for this release.
+
+# v1.21.0 (2023-05-01)
+
+* **Feature**: This release makes the NitroEnclave request parameter Recipient and the response field for CiphertextForRecipient available in AWS SDKs. It also adds the regex pattern for CloudHsmClusterId validation.
+
+# v1.20.12 (2023-04-24)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.20.11 (2023-04-20)
+
+* No change notes available for this release.
+
 # v1.20.10 (2023-04-10)
 
 * No change notes available for this release.

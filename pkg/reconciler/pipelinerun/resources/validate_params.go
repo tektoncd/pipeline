@@ -84,3 +84,29 @@ func ValidateObjectParamRequiredKeys(pipelineParameters []v1beta1.ParamSpec, pip
 
 	return nil
 }
+
+// ValidateParameterTypesInMatrix validates the type of Parameter for Matrix.Params
+// and Matrix.Include.Params after any replacements are made from Task parameters or results
+// Matrix.Params must be of type array. Matrix.Include.Params must be of type string.
+func ValidateParameterTypesInMatrix(state PipelineRunState) error {
+	for _, rpt := range state {
+		m := rpt.PipelineTask.Matrix
+		if m.HasInclude() {
+			for _, include := range m.Include {
+				for _, param := range include.Params {
+					if param.Value.Type != v1beta1.ParamTypeString {
+						return fmt.Errorf("parameters of type string only are allowed, but param %s has type %s", param.Name, string(param.Value.Type))
+					}
+				}
+			}
+		}
+		if m.HasParams() {
+			for _, param := range m.Params {
+				if param.Value.Type != v1beta1.ParamTypeArray {
+					return fmt.Errorf("parameters of type array only are allowed, but param %s has type %s", param.Name, string(param.Value.Type))
+				}
+			}
+		}
+	}
+	return nil
+}

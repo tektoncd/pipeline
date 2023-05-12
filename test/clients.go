@@ -62,7 +62,6 @@ type clients struct {
 	V1beta1TaskRunClient             v1beta1.TaskRunInterface
 	V1beta1PipelineRunClient         v1beta1.PipelineRunInterface
 	V1beta1CustomRunClient           v1beta1.CustomRunInterface
-	V1alpha1RunClient                v1alpha1.RunInterface
 	V1alpha1ResolutionRequestclient  resolutionv1alpha1.ResolutionRequestInterface
 	V1alpha1VerificationPolicyClient v1alpha1.VerificationPolicyInterface
 	V1PipelineClient                 v1.PipelineInterface

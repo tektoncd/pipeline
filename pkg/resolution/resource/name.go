@@ -42,6 +42,9 @@ func GenerateDeterministicName(prefix, base string, params v1beta1.Params) (stri
 	}
 
 	sortedParams := make(v1beta1.Params, len(params))
+	for i := range params {
+		sortedParams[i] = *params[i].DeepCopy()
+	}
 	sort.SliceStable(sortedParams, func(i, j int) bool {
 		return sortedParams[i].Name < sortedParams[j].Name
 	})

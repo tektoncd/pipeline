@@ -87,7 +87,9 @@ type CreateCustomKeyStoreInput struct {
 
 	// Specifies a friendly name for the custom key store. The name must be unique in
 	// your Amazon Web Services account and Region. This parameter is required for all
-	// custom key stores.
+	// custom key stores. Do not include confidential or sensitive information in this
+	// field. This field may be displayed in plaintext in CloudTrail logs and other
+	// output.
 	//
 	// This member is required.
 	CustomKeyStoreName *string
@@ -266,6 +268,9 @@ func (c *Client) addOperationCreateCustomKeyStoreMiddlewares(stack *middleware.S
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCreateCustomKeyStore(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

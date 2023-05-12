@@ -2819,6 +2819,23 @@ func awsAwsjson11_serializeDocumentGrantTokenList(v []string, value smithyjson.V
 	return nil
 }
 
+func awsAwsjson11_serializeDocumentRecipientInfo(v *types.RecipientInfo, value smithyjson.Value) error {
+	object := value.Object()
+	defer object.Close()
+
+	if v.AttestationDocument != nil {
+		ok := object.Key("AttestationDocument")
+		ok.Base64EncodeBytes(v.AttestationDocument)
+	}
+
+	if len(v.KeyEncryptionAlgorithm) > 0 {
+		ok := object.Key("KeyEncryptionAlgorithm")
+		ok.String(string(v.KeyEncryptionAlgorithm))
+	}
+
+	return nil
+}
+
 func awsAwsjson11_serializeDocumentTag(v *types.Tag, value smithyjson.Value) error {
 	object := value.Object()
 	defer object.Close()
@@ -3122,6 +3139,13 @@ func awsAwsjson11_serializeOpDocumentDecryptInput(v *DecryptInput, value smithyj
 		ok.String(*v.KeyId)
 	}
 
+	if v.Recipient != nil {
+		ok := object.Key("Recipient")
+		if err := awsAwsjson11_serializeDocumentRecipientInfo(v.Recipient, ok); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -3336,6 +3360,13 @@ func awsAwsjson11_serializeOpDocumentGenerateDataKeyInput(v *GenerateDataKeyInpu
 		ok.Integer(*v.NumberOfBytes)
 	}
 
+	if v.Recipient != nil {
+		ok := object.Key("Recipient")
+		if err := awsAwsjson11_serializeDocumentRecipientInfo(v.Recipient, ok); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -3365,6 +3396,13 @@ func awsAwsjson11_serializeOpDocumentGenerateDataKeyPairInput(v *GenerateDataKey
 	if len(v.KeyPairSpec) > 0 {
 		ok := object.Key("KeyPairSpec")
 		ok.String(string(v.KeyPairSpec))
+	}
+
+	if v.Recipient != nil {
+		ok := object.Key("Recipient")
+		if err := awsAwsjson11_serializeDocumentRecipientInfo(v.Recipient, ok); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -3478,6 +3516,13 @@ func awsAwsjson11_serializeOpDocumentGenerateRandomInput(v *GenerateRandomInput,
 	if v.NumberOfBytes != nil {
 		ok := object.Key("NumberOfBytes")
 		ok.Integer(*v.NumberOfBytes)
+	}
+
+	if v.Recipient != nil {
+		ok := object.Key("Recipient")
+		if err := awsAwsjson11_serializeDocumentRecipientInfo(v.Recipient, ok); err != nil {
+			return err
+		}
 	}
 
 	return nil

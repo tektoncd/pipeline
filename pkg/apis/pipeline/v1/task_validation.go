@@ -609,8 +609,7 @@ func isParamRefs(s string) bool {
 // - `trParams` are params from taskrun.
 // - `taskSpec` contains params declarations.
 func (ts *TaskSpec) ValidateParamArrayIndex(ctx context.Context, params Params) error {
-	cfg := config.FromContextOrDefaults(ctx)
-	if cfg.FeatureFlags.EnableAPIFields != config.AlphaAPIFields {
+	if !config.CheckAlphaOrBetaAPIFields(ctx) {
 		return nil
 	}
 
@@ -619,7 +618,17 @@ func (ts *TaskSpec) ValidateParamArrayIndex(ctx context.Context, params Params) 
 	for k, v := range params.extractParamArrayLengths() {
 		arrayParamsLengths[k] = v
 	}
+	// extract all array indexing references, for example []{"$(params.array-params[1])"}
+	arrayIndexParamRefs := ts.GetIndexingReferencesToArrayParams().List()
 
+	return validateOutofBoundArrayParams(arrayIndexParamRefs, arrayParamsLengths)
+}
+
+// GetIndexingReferencesToArrayParams returns all strings referencing indices of TaskRun array parameters
+// from parameters, workspaces, and when expressions defined in the Task.
+// For example, if a Task has a parameter with a value "$(params.array-param-name[1])",
+// this would be one of the strings returned.
+func (ts *TaskSpec) GetIndexingReferencesToArrayParams() sets.String {
 	// collect all the possible places to use param references
 	paramsRefs := []string{}
 	paramsRefs = append(paramsRefs, extractParamRefsFromSteps(ts.Steps)...)
@@ -629,12 +638,10 @@ func (ts *TaskSpec) ValidateParamArrayIndex(ctx context.Context, params Params) 
 		paramsRefs = append(paramsRefs, v.MountPath)
 	}
 	paramsRefs = append(paramsRefs, extractParamRefsFromSidecars(ts.Sidecars)...)
-
 	// extract all array indexing references, for example []{"$(params.array-params[1])"}
 	arrayIndexParamRefs := []string{}
 	for _, p := range paramsRefs {
 		arrayIndexParamRefs = append(arrayIndexParamRefs, extractArrayIndexingParamRefs(p)...)
 	}
-
-	return validateOutofBoundArrayParams(arrayIndexParamRefs, arrayParamsLengths)
+	return sets.NewString(arrayIndexParamRefs...)
 }

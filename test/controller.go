@@ -164,7 +164,8 @@ func AddToInformer(t *testing.T, store cache.Store) func(ktesting.Action) (bool,
 
 // SeedTestData returns Clients and Informers populated with the
 // given Data.
-// nolint: revive
+//
+//nolint:revive
 func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers) {
 	t.Helper()
 	c := Clients{

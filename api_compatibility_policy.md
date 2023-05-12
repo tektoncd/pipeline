@@ -14,10 +14,8 @@ The API is considered to consist of:
   - The naming of the `step` containers within the `status`
   - The labels propagated from `PipelineRuns` to `TaskRuns` and `TaskRuns` to `Pods`.
 - The structure of the [directories created in executing containers by Tekton](docs/tasks.md#reserved-directories)
-- The order that `PipelineResources` declared within a `Task` are applied in
 - The interfaces of the images that are built as part of Tekton Pipelines,
-  i.e. images in [cmd](https://github.com/tektoncd/pipeline/tree/main/cmd) which are used as part of
-  [PipelineResources](docs/resources.md)
+  i.e. images in [cmd](https://github.com/tektoncd/pipeline/tree/main/cmd)
 
 This policy is about changes to any of the above facets of the API.
 
@@ -31,14 +29,19 @@ The `apiVersion` field in a Tekton CRD determines whether the overall API (and i
 
 Within a stable CRD, certain opt-in features or API fields gated may be considered `alpha` or `beta`. Similarly, within a beta CRD, certain opt-in features may be considered `alpha`. See the section on Feature Gates for details.
 
-The following CRDs are considered beta, though features may be introduced that are
-alpha:
+The following CRDs are considered stable, though features may be introduced that are
+alpha or beta:
 
-- `Task`
-- `TaskRun`
-- `ClusterTask`
-- `Pipeline`
-- `PipelineRun`
+- `v1.Task`
+- `v1.TaskRun`
+- `v1.Pipeline`
+- `v1.PipelineRun`
+
+`v1beta1.CustomRun` is considered a beta CRD. Adding new fields to `CustomRun`
+that all `CustomRun` controllers are required to support is considered a [backwards incompatible change](#backwards-incompatible-changes),
+and follows the [beta policy](#beta-crds) for backwards incompatible changes.
+
+`v1beta1.ClusterTask` is a deprecated beta CRD. New features will not be added to `ClusterTask`.
 
 ### Alpha CRDs
 
@@ -155,4 +158,4 @@ but a change that renames the Go struct type for that field is allowed.
 ## Notes for Developers
 
 Are you a Tekton contributor looking to make a backwards incompatible change?
-Read more on additional considerations at [deprecations.md](./docs/developers/deprecations.md).
+Read more on additional considerations at [api-changes.md](./docs/developers/api-changes.md#deprecations).

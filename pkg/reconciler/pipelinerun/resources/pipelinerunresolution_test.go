@@ -1944,7 +1944,7 @@ func TestResolvePipelineRun_VerificationFailed(t *testing.T) {
 	getTask := func(ctx context.Context, name string) (*v1beta1.Task, *v1beta1.RefSource, error) {
 		return nil, nil, trustedresources.ErrResourceVerificationFailed
 	}
-	getTaskRun := func(name string) (*v1beta1.TaskRun, error) { return nil, nil }
+	getTaskRun := func(name string) (*v1beta1.TaskRun, error) { return nil, nil } //nolint:nilnil
 	pr := v1beta1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pipelinerun",
@@ -2214,7 +2214,7 @@ func TestIsCustomTask(t *testing.T) {
 	getTask := func(ctx context.Context, name string) (*v1beta1.Task, *v1beta1.RefSource, error) {
 		return task, nil, nil
 	}
-	getTaskRun := func(name string) (*v1beta1.TaskRun, error) { return nil, nil }
+	getTaskRun := func(name string) (*v1beta1.TaskRun, error) { return nil, nil } //nolint:nilnil
 	getRun := func(name string) (v1beta1.RunObject, error) { return nil, nil }
 
 	for _, tc := range []struct {

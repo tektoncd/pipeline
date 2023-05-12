@@ -339,7 +339,7 @@ func TestPipelineTask_Validate_Failure(t *testing.T) {
 		expectedError apis.FieldError
 		wc            func(context.Context) context.Context
 	}{{
-		name: "invalid custom task without Kind",
+		name: "custom task reference in taskref missing apiversion Kind",
 		p: PipelineTask{
 			Name:    "invalid-custom-task",
 			TaskRef: &TaskRef{APIVersion: "example.com"},
@@ -348,6 +348,24 @@ func TestPipelineTask_Validate_Failure(t *testing.T) {
 			Message: `invalid value: custom task ref must specify kind`,
 			Paths:   []string{"taskRef.kind"},
 		},
+	}, {
+		name: "custom task reference in taskspec missing kind",
+		p: PipelineTask{Name: "foo", TaskSpec: &EmbeddedTask{
+			TypeMeta: runtime.TypeMeta{
+				APIVersion: "example.com",
+			}}},
+		expectedError: *apis.ErrInvalidValue("custom task spec must specify kind", "taskSpec.kind"),
+	}, {
+		name:          "custom task reference in taskref missing apiversion",
+		p:             PipelineTask{Name: "foo", TaskRef: &TaskRef{Kind: "Example", Name: ""}},
+		expectedError: *apis.ErrInvalidValue("custom task ref must specify apiVersion", "taskRef.apiVersion"),
+	}, {
+		name: "custom task reference in taskspec missing apiversion",
+		p: PipelineTask{Name: "foo", TaskSpec: &EmbeddedTask{
+			TypeMeta: runtime.TypeMeta{
+				Kind: "Example",
+			}}},
+		expectedError: *apis.ErrInvalidValue("custom task spec must specify apiVersion", "taskSpec.apiVersion"),
 	}, {
 		name: "invalid bundle without bundle name",
 		p: PipelineTask{
@@ -624,32 +642,6 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 			}},
 		},
 	}, {
-		name: "parameters in matrix are strings",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Params: Params{{
-					Name: "foo", Value: ParamValue{Type: ParamTypeString, StringVal: "foo"},
-				}, {
-					Name: "bar", Value: ParamValue{Type: ParamTypeString, StringVal: "bar"},
-				}}},
-		},
-		wantErrs: &apis.FieldError{
-			Message: "invalid value: parameters of type array only are allowed, but got param type string",
-			Paths:   []string{"matrix.params[foo]", "matrix.params[bar]"},
-		},
-	}, {
-		name: "parameters in matrix are arrays",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Params: Params{{
-					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}, {
-					Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
-				}}},
-		},
-	}, {
 		name: "duplicate parameters in matrix.include.params",
 		pt: &PipelineTask{
 			Name: "task",
@@ -668,68 +660,42 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 			Paths:   []string{"matrix.include[0].params[1].name"},
 		},
 	}, {
-		name: "parameters in include matrix are strings",
+		name: "parameters in matrix contain references to param arrays",
 		pt: &PipelineTask{
 			Name: "task",
+			Params: Params{{
+				Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}, {
+				Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
+			}},
 			Matrix: &Matrix{
-				Include: IncludeParamsList{{
-					Name: "build-1",
-					Params: Params{{
-						Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
-					}, {
-						Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"},
-					}}},
-				}},
-		},
-	}, {
-		name: "parameters in include matrix are objects",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Include: IncludeParamsList{{
-					Name: "build-1",
-					Params: Params{{
-						Name: "barfoo", Value: ParamValue{Type: ParamTypeObject, ObjectVal: map[string]string{
-							"url":    "$(params.myObject.non-exist-key)",
-							"commit": "$(params.myString)",
-						}},
-					}, {
-						Name: "foobar", Value: ParamValue{Type: ParamTypeObject, ObjectVal: map[string]string{
-							"url":    "$(params.myObject.non-exist-key)",
-							"commit": "$(params.myString)",
-						}},
-					}},
+				Params: Params{{
+					Name: "foo", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.foobar[*])"},
+				}, {
+					Name: "bar", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.barfoo[*])"},
 				}}},
 		},
-		wantErrs: &apis.FieldError{
-			Message: "invalid value: parameters of type string only are allowed, but got param type object",
-			Paths:   []string{"matrix.include.params[barfoo]", "matrix.include.params[foobar]"},
-		},
 	}, {
-		name: "parameters in include matrix are arrays",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Include: IncludeParamsList{{
-					Name: "build-1",
-					Params: Params{{
-						Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-					}, {
-						Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}}}},
-				}}},
-		},
-		wantErrs: &apis.FieldError{
-			Message: "invalid value: parameters of type string only are allowed, but got param type array",
-			Paths:   []string{"matrix.include.params[barfoo]", "matrix.include.params[foobar]"},
-		},
-	}, {
-		name: "parameters in matrix contain results references",
+		name: "parameters in matrix contain result references",
 		pt: &PipelineTask{
 			Name: "task",
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.foo-task.results.a-result)"}},
 				}}},
+		},
+	}, {
+		name: "parameters in matrix contain whole array results references",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: &Matrix{
+				Params: Params{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.foo-task.results.arr-results[*])"},
+				}}},
+		},
+		wantErrs: &apis.FieldError{
+			Message: "matrix parameters cannot contain whole array result references",
+			Paths:   []string{"matrix.params[0]"},
 		},
 	}, {
 		name: "count of combinations of parameters in the matrix exceeds the maximum",

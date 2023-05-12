@@ -45,8 +45,12 @@ const (
 // Skip the verification when no policies are found and trusted-resources-verification-no-match-policy is set to ignore or warn
 // Return an error when no policies are found and trusted-resources-verification-no-match-policy is set to fail,
 // or the resource fails to pass matched enforce verification policy
-// refSourceURI is from RefSource.URI, which will be used to match policy patterns. k8s is used to fetch secret from cluster
-func VerifyTask(ctx context.Context, taskObj *v1beta1.Task, k8s kubernetes.Interface, refSourceURI string, verificationpolicies []*v1alpha1.VerificationPolicy) error {
+// refSource contains the source information of the task.
+func VerifyTask(ctx context.Context, taskObj *v1beta1.Task, k8s kubernetes.Interface, refSource *v1beta1.RefSource, verificationpolicies []*v1alpha1.VerificationPolicy) error {
+	var refSourceURI string
+	if refSource != nil {
+		refSourceURI = refSource.URI
+	}
 	matchedPolicies, err := getMatchedPolicies(taskObj.TaskMetadata().Name, refSourceURI, verificationpolicies)
 	if err != nil {
 		if errors.Is(err, ErrNoMatchedPolicies) {
@@ -81,8 +85,12 @@ func VerifyTask(ctx context.Context, taskObj *v1beta1.Task, k8s kubernetes.Inter
 // Skip the verification when no policies are found and trusted-resources-verification-no-match-policy is set to ignore or warn
 // Return an error when no policies are found and trusted-resources-verification-no-match-policy is set to fail,
 // or the resource fails to pass matched enforce verification policy
-// refSourceURI is from RefSource.URI, which will be used to match policy patterns. k8s is used to fetch secret from cluster
-func VerifyPipeline(ctx context.Context, pipelineObj *v1beta1.Pipeline, k8s kubernetes.Interface, refSourceURI string, verificationpolicies []*v1alpha1.VerificationPolicy) error {
+// refSource contains the source information of the pipeline.
+func VerifyPipeline(ctx context.Context, pipelineObj *v1beta1.Pipeline, k8s kubernetes.Interface, refSource *v1beta1.RefSource, verificationpolicies []*v1alpha1.VerificationPolicy) error {
+	var refSourceURI string
+	if refSource != nil {
+		refSourceURI = refSource.URI
+	}
 	matchedPolicies, err := getMatchedPolicies(pipelineObj.PipelineMetadata().Name, refSourceURI, verificationpolicies)
 	if err != nil {
 		if errors.Is(err, ErrNoMatchedPolicies) {
@@ -120,7 +128,7 @@ func getMatchedPolicies(resourceName string, source string, policies []*v1alpha1
 			matching, err := regexp.MatchString(r.Pattern, source)
 			if err != nil {
 				// FixMe: changing %v to %w breaks integration tests.
-				return matchedPolicies, fmt.Errorf("%v: %w", err, ErrRegexMatch) // nolint:errorlint
+				return matchedPolicies, fmt.Errorf("%v: %w", err, ErrRegexMatch) //nolint:errorlint
 			}
 			if matching {
 				matchedPolicies = append(matchedPolicies, p)
@@ -179,7 +187,7 @@ func verifyInterface(obj interface{}, verifier signature.Verifier, signature []b
 
 	if err := verifier.VerifySignature(bytes.NewReader(signature), bytes.NewReader(h.Sum(nil))); err != nil {
 		// FixMe: changing %v to %w breaks integration tests.
-		return fmt.Errorf("%w:%v", ErrResourceVerificationFailed, err.Error()) // nolint:errorlint
+		return fmt.Errorf("%w:%v", ErrResourceVerificationFailed, err.Error())
 	}
 
 	return nil

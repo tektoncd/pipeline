@@ -81,7 +81,7 @@ const (
 	disableCredsInitKey                 = "disable-creds-init"
 	runningInEnvWithInjectedSidecarsKey = "running-in-environment-with-injected-sidecars"
 	awaitSidecarReadinessKey            = "await-sidecar-readiness"
-	requireGitSSHSecretKnownHostsKey    = "require-git-ssh-secret-known-hosts" // nolint: gosec
+	requireGitSSHSecretKnownHostsKey    = "require-git-ssh-secret-known-hosts" //nolint:gosec
 	enableTektonOCIBundles              = "enable-tekton-oci-bundles"
 	enableAPIFields                     = "enable-api-fields"
 	sendCloudEventsForRuns              = "send-cloudevents-for-runs"
@@ -92,8 +92,13 @@ const (
 	maxResultSize                       = "max-result-size"
 )
 
+// DefaultFeatureFlags holds all the default configurations for the feature flags configmap.
+var DefaultFeatureFlags, _ = NewFeatureFlagsFromMap(map[string]string{})
+
 // FeatureFlags holds the features configurations
 // +k8s:deepcopy-gen=true
+//
+//nolint:musttag
 type FeatureFlags struct {
 	DisableAffinityAssistant         bool
 	DisableCredsInit                 bool

@@ -31,7 +31,7 @@ import (
 	"time"
 
 	vault "github.com/hashicorp/vault/api"
-	"github.com/jellydator/ttlcache/v2"
+	"github.com/jellydator/ttlcache/v3"
 	"github.com/mitchellh/go-homedir"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	"github.com/sigstore/sigstore/pkg/signature"
@@ -48,7 +48,7 @@ type hashivaultClient struct {
 	client                  *vault.Client
 	keyPath                 string
 	transitSecretEnginePath string
-	keyCache                *ttlcache.Cache
+	keyCache                *ttlcache.Cache[string, crypto.PublicKey]
 	keyVersion              uint64
 }
 
@@ -141,11 +141,11 @@ func newHashivaultClient(address, token, transitSecretEnginePath, keyResourceID 
 		client:                  client,
 		keyPath:                 keyPath,
 		transitSecretEnginePath: transitSecretEnginePath,
-		keyCache:                ttlcache.NewCache(),
-		keyVersion:              keyVersion,
+		keyCache: ttlcache.New[string, crypto.PublicKey](
+			ttlcache.WithDisableTouchOnHit[string, crypto.PublicKey](),
+		),
+		keyVersion: keyVersion,
 	}
-	hvClient.keyCache.SetLoaderFunction(hvClient.keyCacheLoaderFunction)
-	hvClient.keyCache.SkipTTLExtensionOnHit(true)
 
 	return hvClient, nil
 }
@@ -178,18 +178,6 @@ func oidcLogin(_ context.Context, address, path, role, token string) (string, er
 		return "", fmt.Errorf("vault oidc login: %w", err)
 	}
 	return resp.TokenID()
-}
-
-func (h *hashivaultClient) keyCacheLoaderFunction(key string) (data interface{}, ttl time.Duration, err error) {
-	ttl = time.Second * 300
-	var pubKey crypto.PublicKey
-	pubKey, err = h.fetchPublicKey(context.Background())
-	if err != nil {
-		data = nil
-		return
-	}
-	data = pubKey
-	return data, ttl, err
 }
 
 func (h *hashivaultClient) fetchPublicKey(_ context.Context) (crypto.PublicKey, error) {
@@ -246,7 +234,21 @@ func (h *hashivaultClient) fetchPublicKey(_ context.Context) (crypto.PublicKey, 
 }
 
 func (h *hashivaultClient) public() (crypto.PublicKey, error) {
-	return h.keyCache.Get(cacheKey)
+	var lerr error
+	loader := ttlcache.LoaderFunc[string, crypto.PublicKey](
+		func(c *ttlcache.Cache[string, crypto.PublicKey], key string) *ttlcache.Item[string, crypto.PublicKey] {
+			var pubkey crypto.PublicKey
+			pubkey, lerr = h.fetchPublicKey(context.Background())
+			if lerr == nil {
+				item := c.Set(key, pubkey, 300*time.Second)
+				return item
+			}
+			return nil
+		},
+	)
+
+	item := h.keyCache.Get(cacheKey, ttlcache.WithLoader[string, crypto.PublicKey](loader))
+	return item.Value(), lerr
 }
 
 func (h hashivaultClient) sign(digest []byte, alg crypto.Hash, opts ...signature.SignOption) ([]byte, error) {

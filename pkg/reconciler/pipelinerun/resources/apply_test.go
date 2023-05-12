@@ -1727,10 +1727,6 @@ func TestApplyParameters(t *testing.T) {
 }
 
 func TestApplyParameters_ArrayIndexing(t *testing.T) {
-	ctx := context.Background()
-	cfg := config.FromContextOrDefaults(ctx)
-	cfg.FeatureFlags.EnableAPIFields = config.BetaAPIFields
-	ctx = config.ToContext(ctx, cfg)
 	for _, tt := range []struct {
 		name     string
 		original v1beta1.PipelineSpec
@@ -2027,7 +2023,7 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 					Params: tt.params,
 				},
 			}
-			got := resources.ApplyParameters(ctx, &tt.original, run)
+			got := resources.ApplyParameters(context.Background(), &tt.original, run)
 			if d := cmp.Diff(&tt.expected, got); d != "" {
 				t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 			}
@@ -2036,10 +2032,6 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 }
 
 func TestApplyReplacementsMatrix(t *testing.T) {
-	ctx := context.Background()
-	cfg := config.FromContextOrDefaults(ctx)
-	cfg.FeatureFlags.EnableAPIFields = config.AlphaAPIFields
-	ctx = config.ToContext(ctx, cfg)
 	for _, tt := range []struct {
 		name     string
 		original v1beta1.PipelineSpec
@@ -2283,7 +2275,7 @@ func TestApplyReplacementsMatrix(t *testing.T) {
 					Params: tt.params,
 				},
 			}
-			got := resources.ApplyParameters(ctx, &tt.original, run)
+			got := resources.ApplyParameters(context.Background(), &tt.original, run)
 			if d := cmp.Diff(&tt.expected, got); d != "" {
 				t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 			}

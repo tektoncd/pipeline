@@ -317,3 +317,104 @@ func TestValidateObjectParamRequiredKeys_Valid(t *testing.T) {
 		})
 	}
 }
+
+// ValidateMatrixPipelineParameterTypes tests that a pipeline task with
+// a matrix has the correct parameter types after any replacements are made
+func TestValidatePipelineParameterTypes(t *testing.T) {
+	for _, tc := range []struct {
+		desc     string
+		state    resources.PipelineRunState
+		wantErrs string
+	}{{
+		desc: "parameters in matrix are arrays",
+		state: resources.PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name: "task",
+				Matrix: &v1beta1.Matrix{
+					Params: v1beta1.Params{{
+						Name: "foobar", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+					}, {
+						Name: "barfoo", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"bar", "foo"}}}},
+				},
+			},
+		}},
+	}, {
+		desc: "parameters in matrix are strings",
+		state: resources.PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name: "task",
+				Matrix: &v1beta1.Matrix{
+					Params: v1beta1.Params{{
+						Name: "foo", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "foo"},
+					}, {
+						Name: "bar", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "bar"},
+					}}},
+			},
+		}},
+		wantErrs: "parameters of type array only are allowed, but param foo has type string",
+	}, {
+		desc: "parameters in include matrix are strings",
+		state: resources.PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name: "task",
+				Matrix: &v1beta1.Matrix{
+					Include: v1beta1.IncludeParamsList{{
+						Name: "build-1",
+						Params: v1beta1.Params{{
+							Name: "foo", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "foo"},
+						}, {
+							Name: "bar", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "bar"}}},
+					}}},
+			},
+		}},
+	}, {
+		desc: "parameters in include matrix are arrays",
+		state: resources.PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name: "task",
+				Matrix: &v1beta1.Matrix{
+					Include: v1beta1.IncludeParamsList{{
+						Name: "build-1",
+						Params: v1beta1.Params{{
+							Name: "foobar", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+						}, {
+							Name: "barfoo", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"bar", "foo"}}}},
+					}}},
+			},
+		}},
+		wantErrs: "parameters of type string only are allowed, but param foobar has type array",
+	}, {
+		desc: "parameters in include matrix are objects",
+		state: resources.PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name: "task",
+				Matrix: &v1beta1.Matrix{
+					Include: v1beta1.IncludeParamsList{{
+						Name: "build-1",
+						Params: v1beta1.Params{{
+							Name: "barfoo", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeObject, ObjectVal: map[string]string{
+								"url":    "$(params.myObject.non-exist-key)",
+								"commit": "$(params.myString)",
+							}},
+						}, {
+							Name: "foobar", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeObject, ObjectVal: map[string]string{
+								"url":    "$(params.myObject.non-exist-key)",
+								"commit": "$(params.myString)",
+							}},
+						}},
+					}}},
+			},
+		}},
+		wantErrs: "parameters of type string only are allowed, but param barfoo has type object",
+	}} {
+		t.Run(tc.desc, func(t *testing.T) {
+			err := resources.ValidateParameterTypesInMatrix(tc.state)
+			if (err != nil) && err.Error() != tc.wantErrs {
+				t.Errorf("expected err: %s, but got err %s", tc.wantErrs, err)
+			}
+			if tc.wantErrs == "" && err != nil {
+				t.Errorf("got unexpected error: %v", err)
+			}
+		})
+	}
+}

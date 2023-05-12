@@ -31,6 +31,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
 
@@ -1929,10 +1930,189 @@ func TestValidateParamArrayIndex(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := config.ToContext(context.Background(), &config.Config{FeatureFlags: &config.FeatureFlags{EnableAPIFields: "alpha"}})
-			err := tc.taskspec.ValidateParamArrayIndex(ctx, tc.params)
+			err := tc.taskspec.ValidateParamArrayIndex(context.Background(), tc.params)
 			if d := cmp.Diff(tc.expectedError.Error(), err.Error()); d != "" {
 				t.Errorf("validateParamArrayIndex() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestGetArrayIndexParamRefs(t *testing.T) {
+	stepsReferences := []string{}
+	for i := 10; i <= 26; i++ {
+		stepsReferences = append(stepsReferences, fmt.Sprintf("$(params.array-params[%d])", i))
+	}
+	volumesReferences := []string{}
+	for i := 10; i <= 22; i++ {
+		volumesReferences = append(volumesReferences, fmt.Sprintf("$(params.array-params[%d])", i))
+	}
+
+	tcs := []struct {
+		name     string
+		taskspec *v1beta1.TaskSpec
+		want     sets.String
+	}{{
+		name: "steps reference",
+		taskspec: &v1beta1.TaskSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name:    "array-params",
+				Default: v1beta1.NewStructuredValues("bar", "foo"),
+			}},
+			Steps: []v1beta1.Step{{
+				Name:    "$(params.array-params[10])",
+				Image:   "$(params.array-params[11])",
+				Command: []string{"$(params.array-params[12])"},
+				Args:    []string{"$(params.array-params[13])"},
+				Script:  "echo $(params.array-params[14])",
+				Env: []corev1.EnvVar{{
+					Value: "$(params.array-params[15])",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							Key: "$(params.array-params[16])",
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "$(params.array-params[17])",
+							},
+						},
+						ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+							Key: "$(params.array-params[18])",
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "$(params.array-params[19])",
+							},
+						},
+					},
+				}},
+				EnvFrom: []corev1.EnvFromSource{{
+					Prefix: "$(params.array-params[20])",
+					ConfigMapRef: &corev1.ConfigMapEnvSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "$(params.array-params[21])",
+						},
+					},
+					SecretRef: &corev1.SecretEnvSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "$(params.array-params[22])",
+						},
+					},
+				}},
+				WorkingDir: "$(params.array-params[23])",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "$(params.array-params[24])",
+					MountPath: "$(params.array-params[25])",
+					SubPath:   "$(params.array-params[26])",
+				}},
+			}},
+			StepTemplate: &v1beta1.StepTemplate{
+				Image: "$(params.array-params[27])",
+			},
+		},
+		want: sets.NewString("$(params.array-params[10])", "$(params.array-params[11])", "$(params.array-params[12])", "$(params.array-params[13])", "$(params.array-params[14])",
+			"$(params.array-params[15])", "$(params.array-params[16])", "$(params.array-params[17])", "$(params.array-params[18])", "$(params.array-params[19])", "$(params.array-params[20])",
+			"$(params.array-params[21])", "$(params.array-params[22])", "$(params.array-params[23])", "$(params.array-params[24])", "$(params.array-params[25])", "$(params.array-params[26])", "$(params.array-params[27])"),
+	}, {
+		name: "stepTemplate reference",
+		taskspec: &v1beta1.TaskSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name:    "array-params",
+				Default: v1beta1.NewStructuredValues("bar", "foo"),
+			}},
+			StepTemplate: &v1beta1.StepTemplate{
+				Image: "$(params.array-params[3])",
+			},
+		},
+		want: sets.NewString("$(params.array-params[3])"),
+	}, {
+		name: "volumes references",
+		taskspec: &v1beta1.TaskSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name:    "array-params",
+				Default: v1beta1.NewStructuredValues("bar", "foo"),
+			}},
+			Volumes: []corev1.Volume{{
+				Name: "$(params.array-params[10])",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "$(params.array-params[11])",
+						},
+						Items: []corev1.KeyToPath{{
+							Key:  "$(params.array-params[12])",
+							Path: "$(params.array-params[13])",
+						},
+						},
+					},
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: "$(params.array-params[14])",
+						Items: []corev1.KeyToPath{{
+							Key:  "$(params.array-params[15])",
+							Path: "$(params.array-params[16])",
+						}},
+					},
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "$(params.array-params[17])",
+					},
+					Projected: &corev1.ProjectedVolumeSource{
+						Sources: []corev1.VolumeProjection{{
+							ConfigMap: &corev1.ConfigMapProjection{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "$(params.array-params[18])",
+								},
+							},
+							Secret: &corev1.SecretProjection{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "$(params.array-params[19])",
+								},
+							},
+							ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+								Audience: "$(params.array-params[20])",
+							},
+						}},
+					},
+					CSI: &corev1.CSIVolumeSource{
+						NodePublishSecretRef: &corev1.LocalObjectReference{
+							Name: "$(params.array-params[21])",
+						},
+						VolumeAttributes: map[string]string{"key": "$(params.array-params[22])"},
+					},
+				},
+			},
+			},
+		},
+		want: sets.NewString("$(params.array-params[10])", "$(params.array-params[11])", "$(params.array-params[12])", "$(params.array-params[13])", "$(params.array-params[14])",
+			"$(params.array-params[15])", "$(params.array-params[16])", "$(params.array-params[17])", "$(params.array-params[18])", "$(params.array-params[19])", "$(params.array-params[20])",
+			"$(params.array-params[21])", "$(params.array-params[22])"),
+	}, {
+		name: "workspaces references",
+		taskspec: &v1beta1.TaskSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name:    "array-params",
+				Default: v1beta1.NewStructuredValues("bar", "foo"),
+			}},
+			Workspaces: []v1beta1.WorkspaceDeclaration{{
+				MountPath: "$(params.array-params[3])",
+			}},
+		},
+		want: sets.NewString("$(params.array-params[3])"),
+	}, {
+		name: "sidecar references",
+		taskspec: &v1beta1.TaskSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name:    "array-params",
+				Default: v1beta1.NewStructuredValues("bar", "foo"),
+			}},
+			Sidecars: []v1beta1.Sidecar{{
+				Script: "$(params.array-params[3])",
+			},
+			},
+		},
+		want: sets.NewString("$(params.array-params[3])"),
+	},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.taskspec.GetIndexingReferencesToArrayParams()
+			if d := cmp.Diff(tc.want, got); d != "" {
+				t.Errorf("GetIndexingReferencesToArrayParams diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}

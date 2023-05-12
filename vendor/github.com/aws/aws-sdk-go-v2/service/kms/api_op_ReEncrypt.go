@@ -123,11 +123,13 @@ type ReEncryptInput struct {
 	// required only when the destination KMS key is an asymmetric KMS key.
 	DestinationEncryptionAlgorithm types.EncryptionAlgorithmSpec
 
-	// Specifies that encryption context to use when the reencrypting the data. A
-	// destination encryption context is valid only when the destination KMS key is a
-	// symmetric encryption KMS key. The standard ciphertext format for asymmetric KMS
-	// keys does not include fields for metadata. An encryption context is a collection
-	// of non-secret key-value pairs that represent additional authenticated data. When
+	// Specifies that encryption context to use when the reencrypting the data. Do not
+	// include confidential or sensitive information in this field. This field may be
+	// displayed in plaintext in CloudTrail logs and other output. A destination
+	// encryption context is valid only when the destination KMS key is a symmetric
+	// encryption KMS key. The standard ciphertext format for asymmetric KMS keys does
+	// not include fields for metadata. An encryption context is a collection of
+	// non-secret key-value pairs that represent additional authenticated data. When
 	// you use an encryption context to encrypt data, you must specify the same (an
 	// exact case-sensitive match) encryption context to decrypt the data. An
 	// encryption context is supported only on operations with symmetric encryption KMS
@@ -262,6 +264,9 @@ func (c *Client) addOperationReEncryptMiddlewares(stack *middleware.Stack, optio
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opReEncrypt(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

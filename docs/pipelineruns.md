@@ -14,13 +14,11 @@ weight: 204
     - [Specifying the target <code>Pipeline</code>](#specifying-the-target-pipeline)
       - [Tekton Bundles](#tekton-bundles)
       - [Remote Pipelines](#remote-pipelines)
-    - [Specifying <code>Resources</code>](#specifying-resources)
     - [Specifying Task-level `ComputeResources`](#specifying-task-level-computeresources)
     - [Specifying <code>Parameters</code>](#specifying-parameters)
       - [Propagated Parameters](#propagated-parameters)
         - [Scope and Precedence](#scope-and-precedence)
         - [Default Values](#default-values)
-        - [Referenced Resources](#referenced-resources)
         - [Object Parameters](#object-parameters) 
     - [Specifying custom <code>ServiceAccount</code> credentials](#specifying-custom-serviceaccount-credentials)
     - [Mapping <code>ServiceAccount</code> credentials to <code>Tasks</code>](#mapping-serviceaccount-credentials-to-tasks)
@@ -28,7 +26,6 @@ weight: 204
     - [Specifying taskRunSpecs](#specifying-taskrunspecs)
     - [Specifying <code>Workspaces</code>](#specifying-workspaces)
       - [Propagated Workspaces](#propagated-workspaces)
-        - [Referenced Resources](#workspace-referenced-resources)
         - [Referenced TaskRuns within Embedded PipelineRuns](#referenced-taskruns-within-embedded-pipelineruns)
     - [Specifying <code>LimitRange</code> values](#specifying-limitrange-values)
     - [Configuring a failure timeout](#configuring-a-failure-timeout)
@@ -71,8 +68,6 @@ A `PipelineRun` definition supports the following fields:
     this `PipelineRun` object.
     - [`pipelineRef` or `pipelineSpec`](#specifying-the-target-pipeline) - Specifies the target [`Pipeline`](pipelines.md).
 - Optional:
-  - [`resources`](#specifying-resources) - Specifies the [`PipelineResources`](resources.md) to provision
-    for executing the target `Pipeline`.
   - [`params`](#specifying-parameters) - Specifies the desired execution parameters for the `Pipeline`.
   - [`serviceAccountName`](#specifying-custom-serviceaccount-credentials) - Specifies a `ServiceAccount`
     object that supplies specific execution credentials for the `Pipeline`.
@@ -160,7 +155,7 @@ spec:
 
 A `Tekton Bundle` is an OCI artifact that contains Tekton resources like `Tasks` which can be referenced within a `taskRef`.
 
-You can reference a `Tekton bundle` in a `TaskRef` in both `v1` and `v1beta1` using [remote resolution](./bundle-resolver.md#pipeline-resolution). The example syntax shown below for `v1` uses remote resolution.
+You can reference a `Tekton bundle` in a `TaskRef` in both `v1` and `v1beta1` using [remote resolution](./bundle-resolver.md#pipeline-resolution). The example syntax shown below for `v1` uses remote resolution and requires enabling [beta features](./additional-configs.md#beta-features).
 
 In `v1beta1`, you can also reference a `Tekton bundle` using OCI bundle syntax, which has been deprecated in favor of remote resolution. The example shown below for `v1beta1` uses OCI bundle syntax, and requires enabling `enable-tekton-oci-bundles: "true"` feature flag.
 

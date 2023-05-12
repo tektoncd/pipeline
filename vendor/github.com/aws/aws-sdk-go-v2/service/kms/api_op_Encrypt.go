@@ -110,11 +110,13 @@ type EncryptInput struct {
 	// encryption context is valid only for cryptographic operations (https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#cryptographic-operations)
 	// with a symmetric encryption KMS key. The standard asymmetric encryption
 	// algorithms and HMAC algorithms that KMS uses do not support an encryption
-	// context. An encryption context is a collection of non-secret key-value pairs
-	// that represent additional authenticated data. When you use an encryption context
-	// to encrypt data, you must specify the same (an exact case-sensitive match)
-	// encryption context to decrypt the data. An encryption context is supported only
-	// on operations with symmetric encryption KMS keys. On operations with symmetric
+	// context. Do not include confidential or sensitive information in this field.
+	// This field may be displayed in plaintext in CloudTrail logs and other output. An
+	// encryption context is a collection of non-secret key-value pairs that represent
+	// additional authenticated data. When you use an encryption context to encrypt
+	// data, you must specify the same (an exact case-sensitive match) encryption
+	// context to decrypt the data. An encryption context is supported only on
+	// operations with symmetric encryption KMS keys. On operations with symmetric
 	// encryption KMS keys, an encryption context is optional, but it is strongly
 	// recommended. For more information, see Encryption context (https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#encrypt_context)
 	// in the Key Management Service Developer Guide.
@@ -198,6 +200,9 @@ func (c *Client) addOperationEncryptMiddlewares(stack *middleware.Stack, options
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opEncrypt(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

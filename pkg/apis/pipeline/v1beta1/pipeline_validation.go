@@ -134,11 +134,21 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if pt.Resources != nil {
 		errs = errs.Also(apis.ErrDisallowedFields("resources"))
 	}
-
+	// taskKinds contains the kinds when the apiVersion is not set, they are not custom tasks,
+	// if apiVersion is set they are custom tasks.
+	taskKinds := map[TaskKind]bool{
+		"":                 true,
+		NamespacedTaskKind: true,
+		ClusterTaskKind:    true,
+	}
 	cfg := config.FromContextOrDefaults(ctx)
 	// Pipeline task having taskRef/taskSpec with APIVersion is classified as custom task
 	switch {
+	case pt.TaskRef != nil && !taskKinds[pt.TaskRef.Kind]:
+		errs = errs.Also(pt.validateCustomTask())
 	case pt.TaskRef != nil && pt.TaskRef.APIVersion != "":
+		errs = errs.Also(pt.validateCustomTask())
+	case pt.TaskSpec != nil && !taskKinds[TaskKind(pt.TaskSpec.Kind)]:
 		errs = errs.Also(pt.validateCustomTask())
 	case pt.TaskSpec != nil && pt.TaskSpec.APIVersion != "":
 		errs = errs.Also(pt.validateCustomTask())
@@ -148,7 +158,7 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	default:
 		errs = errs.Also(pt.validateTask(ctx))
 	}
-	return
+	return //nolint:nakedret
 }
 
 func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldError) {
@@ -157,9 +167,10 @@ func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldErr
 		// when the enable-api-fields feature gate is anything but "alpha".
 		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "matrix", config.AlphaAPIFields))
 		errs = errs.Also(pt.Matrix.validateCombinationsCount(ctx))
+		errs = errs.Also(pt.Matrix.validateNoWholeArrayResults())
+		errs = errs.Also(pt.Matrix.validateUniqueParams())
 	}
 	errs = errs.Also(pt.Matrix.validateParameterInOneOfMatrixOrParams(pt.Params))
-	errs = errs.Also(pt.Matrix.validateParams())
 	return errs
 }
 
@@ -703,16 +714,21 @@ func validateResultsFromMatrixedPipelineTasksNotConsumed(tasks []PipelineTask, f
 // error is returned when the array indexing reference is out of bound of the array param
 // e.g. if a param reference of $(params.array-param[2]) and the array param is of length 2.
 func (ps *PipelineSpec) ValidateParamArrayIndex(ctx context.Context, params Params) error {
-	if !config.CheckAlphaOrBetaAPIFields(ctx) {
-		return nil
-	}
-
 	// Collect all array params lengths
 	arrayParamsLengths := ps.Params.extractParamArrayLengths()
 	for k, v := range params.extractParamArrayLengths() {
 		arrayParamsLengths[k] = v
 	}
+	// extract all array indexing references, for example []{"$(params.array-params[1])"}
+	arrayIndexParamRefs := ps.GetIndexingReferencesToArrayParams().List()
+	return validateOutofBoundArrayParams(arrayIndexParamRefs, arrayParamsLengths)
+}
 
+// GetIndexingReferencesToArrayParams returns all strings referencing indices of PipelineRun array parameters
+// from parameters, workspaces, and when expressions defined in the Pipeline's Tasks and Finally Tasks.
+// For example, if a Task in the Pipeline has a parameter with a value "$(params.array-param-name[1])",
+// this would be one of the strings returned.
+func (ps *PipelineSpec) GetIndexingReferencesToArrayParams() sets.String {
 	paramsRefs := []string{}
 	for i := range ps.Tasks {
 		paramsRefs = append(paramsRefs, ps.Tasks[i].Params.extractValues()...)
@@ -727,22 +743,20 @@ func (ps *PipelineSpec) ValidateParamArrayIndex(ctx context.Context, params Para
 			paramsRefs = append(paramsRefs, wes.Values...)
 		}
 	}
-
 	for i := range ps.Finally {
 		paramsRefs = append(paramsRefs, ps.Finally[i].Params.extractValues()...)
 		if ps.Finally[i].IsMatrixed() {
 			paramsRefs = append(paramsRefs, ps.Finally[i].Matrix.Params.extractValues()...)
 		}
 		for _, wes := range ps.Finally[i].WhenExpressions {
+			paramsRefs = append(paramsRefs, wes.Input)
 			paramsRefs = append(paramsRefs, wes.Values...)
 		}
 	}
-
 	// extract all array indexing references, for example []{"$(params.array-params[1])"}
 	arrayIndexParamRefs := []string{}
 	for _, p := range paramsRefs {
 		arrayIndexParamRefs = append(arrayIndexParamRefs, extractArrayIndexingParamRefs(p)...)
 	}
-
-	return validateOutofBoundArrayParams(arrayIndexParamRefs, arrayParamsLengths)
+	return sets.NewString(arrayIndexParamRefs...)
 }

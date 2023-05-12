@@ -83,7 +83,7 @@ func SortAnnotations(secrets map[string]string, annotationPrefix string) []strin
 // /tekton/creds directory is not considered an error.
 func CopyCredsToHome(credPaths []string) error {
 	if info, err := os.Stat(pipeline.CredsDir); err != nil || !info.IsDir() {
-		return nil
+		return nil //nolint:nilerr // safe to ignore error; no credentials available to copy
 	}
 
 	homepath, err := homedir.Dir()

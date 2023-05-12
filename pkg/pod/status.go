@@ -335,7 +335,7 @@ func extractStartedAtTimeFromResults(results []result.RunResult) (*metav1.Time, 
 			return &startedAt, nil
 		}
 	}
-	return nil, nil
+	return nil, nil //nolint:nilnil // would be more ergonomic to return a sentinel error
 }
 
 func extractExitCodeFromResults(results []result.RunResult) (*int32, error) {
@@ -350,7 +350,7 @@ func extractExitCodeFromResults(results []result.RunResult) (*int32, error) {
 			return &exitCode, nil
 		}
 	}
-	return nil, nil
+	return nil, nil //nolint:nilnil // would be more ergonomic to return a sentinel error
 }
 
 func updateCompletedTaskRunStatus(logger *zap.SugaredLogger, trs *v1beta1.TaskRunStatus, pod *corev1.Pod) {
