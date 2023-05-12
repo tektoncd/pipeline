@@ -1,9 +1,7 @@
 # The OWNERS file is used by prow to automatically merge approved PRs.
 
 approvers:
-- dprotaso
-- mattmoor
-- tcnghia
+- serving-writers
 
 reviewers:
-- whaught
+- serving-reviewers

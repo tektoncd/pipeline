@@ -1,7 +1,7 @@
 # The OWNERS file is used by prow to automatically merge approved PRs.
 
 approvers:
-- pkg-controller-writers
+- serving-writers
 
 reviewers:
-- pkg-controller-reviewers
+- serving-writers

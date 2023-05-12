@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"net"
 	"net/http"
+	"time"
 
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -28,10 +29,10 @@ import (
 
 // NewServer returns a new HTTP Server with HTTP2 handler.
 func NewServer(addr string, h http.Handler) *http.Server {
-	//nolint:gosec
 	h1s := &http.Server{
-		Addr:    addr,
-		Handler: h2c.NewHandler(h, &http2.Server{}),
+		Addr:              addr,
+		Handler:           h2c.NewHandler(h, &http2.Server{}),
+		ReadHeaderTimeout: time.Minute, //https://medium.com/a-journey-with-go/go-understand-and-mitigate-slowloris-attack-711c1b1403f6
 	}
 
 	return h1s

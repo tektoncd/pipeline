@@ -265,7 +265,7 @@ func DefaultResponseRetryChecker(resp *Response) (bool, error) {
 // logZipkinTrace provides support to log Zipkin Trace for param: spoofResponse
 // We only log Zipkin trace for HTTP server errors i.e for HTTP status codes between 500 to 600
 func (sc *SpoofingClient) logZipkinTrace(spoofResp *Response) {
-	if !zipkin.ZipkinTracingEnabled || spoofResp.StatusCode < http.StatusInternalServerError || spoofResp.StatusCode >= 600 {
+	if !zipkin.IsTracingEnabled() || spoofResp.StatusCode < http.StatusInternalServerError || spoofResp.StatusCode >= 600 {
 		return
 	}
 

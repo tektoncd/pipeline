@@ -313,6 +313,13 @@ func MainWithConfig(ctx context.Context, component string, cfg *rest.Config, cto
 		return controller.StartAll(ctx, controllers...)
 	})
 
+	// Setup default health checks to catch issues with cache sync etc.
+	if !healthProbesDisabled(ctx) {
+		eg.Go(func() error {
+			return injection.ServeHealthProbes(ctx, injection.HealthCheckDefaultPort)
+		})
+	}
+
 	// This will block until either a signal arrives or one of the grouped functions
 	// returns an error.
 	<-egCtx.Done()
@@ -322,6 +329,17 @@ func MainWithConfig(ctx context.Context, component string, cfg *rest.Config, cto
 	if err := eg.Wait(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		logger.Errorw("Error while running server", zap.Error(err))
 	}
+}
+
+type healthProbesDisabledKey struct{}
+
+// WithHealthProbesDisabled signals to MainWithContext that it should disable default probes (readiness and liveness).
+func WithHealthProbesDisabled(ctx context.Context) context.Context {
+	return context.WithValue(ctx, healthProbesDisabledKey{}, struct{}{})
+}
+
+func healthProbesDisabled(ctx context.Context) bool {
+	return ctx.Value(healthProbesDisabledKey{}) != nil
 }
 
 func flush(logger *zap.SugaredLogger) {
