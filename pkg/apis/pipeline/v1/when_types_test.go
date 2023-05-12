@@ -201,7 +201,7 @@ func TestReplaceWhenExpressionsVariables(t *testing.T) {
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := tc.whenExpressions.ReplaceWhenExpressionsVariables(tc.replacements, nil)
+			got := tc.whenExpressions.ReplaceVariables(tc.replacements, nil)
 			if d := cmp.Diff(tc.expected, got); d != "" {
 				t.Errorf("Error evaluating When Expressions in test case %s", diff.PrintWantGot(d))
 			}

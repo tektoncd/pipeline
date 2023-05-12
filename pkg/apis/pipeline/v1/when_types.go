@@ -102,9 +102,9 @@ func (wes WhenExpressions) AllowsExecution() bool {
 	return true
 }
 
-// ReplaceWhenExpressionsVariables interpolates variables, such as Parameters and Results, in
+// ReplaceVariables interpolates variables, such as Parameters and Results, in
 // the Input and Values.
-func (wes WhenExpressions) ReplaceWhenExpressionsVariables(replacements map[string]string, arrayReplacements map[string][]string) WhenExpressions {
+func (wes WhenExpressions) ReplaceVariables(replacements map[string]string, arrayReplacements map[string][]string) WhenExpressions {
 	replaced := wes
 	for i := range wes {
 		replaced[i] = wes[i].applyReplacements(replacements, arrayReplacements)

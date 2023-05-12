@@ -184,7 +184,7 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 					pipelineTask.Matrix.Include[i].Params = replaceParamValues(pipelineTask.Matrix.Include[i].Params, stringReplacements, nil, nil)
 				}
 			}
-			pipelineTask.WhenExpressions = pipelineTask.WhenExpressions.ReplaceWhenExpressionsVariables(stringReplacements, arrayReplacements)
+			pipelineTask.WhenExpressions = pipelineTask.WhenExpressions.ReplaceVariables(stringReplacements, arrayReplacements)
 			if pipelineTask.TaskRef != nil && pipelineTask.TaskRef.Params != nil {
 				pipelineTask.TaskRef.Params = replaceParamValues(pipelineTask.TaskRef.Params, stringReplacements, arrayReplacements, objectReplacements)
 			}
@@ -199,7 +199,7 @@ func ApplyPipelineTaskStateContext(state PipelineRunState, replacements map[stri
 		if resolvedPipelineRunTask.PipelineTask != nil {
 			pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
 			pipelineTask.Params = replaceParamValues(pipelineTask.Params, replacements, nil, nil)
-			pipelineTask.WhenExpressions = pipelineTask.WhenExpressions.ReplaceWhenExpressionsVariables(replacements, nil)
+			pipelineTask.WhenExpressions = pipelineTask.WhenExpressions.ReplaceVariables(replacements, nil)
 			if pipelineTask.TaskRef != nil && pipelineTask.TaskRef.Params != nil {
 				pipelineTask.TaskRef.Params = replaceParamValues(pipelineTask.TaskRef.Params, replacements, nil, nil)
 			}
@@ -239,7 +239,7 @@ func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, 
 		for j := range p.Tasks[i].Workspaces {
 			p.Tasks[i].Workspaces[j].SubPath = substitution.ApplyReplacements(p.Tasks[i].Workspaces[j].SubPath, replacements)
 		}
-		p.Tasks[i].WhenExpressions = p.Tasks[i].WhenExpressions.ReplaceWhenExpressionsVariables(replacements, arrayReplacements)
+		p.Tasks[i].WhenExpressions = p.Tasks[i].WhenExpressions.ReplaceVariables(replacements, arrayReplacements)
 		if p.Tasks[i].TaskRef != nil && p.Tasks[i].TaskRef.Params != nil {
 			p.Tasks[i].TaskRef.Params = replaceParamValues(p.Tasks[i].TaskRef.Params, replacements, arrayReplacements, objectReplacements)
 		}
@@ -257,7 +257,7 @@ func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, 
 		for j := range p.Finally[i].Workspaces {
 			p.Finally[i].Workspaces[j].SubPath = substitution.ApplyReplacements(p.Finally[i].Workspaces[j].SubPath, replacements)
 		}
-		p.Finally[i].WhenExpressions = p.Finally[i].WhenExpressions.ReplaceWhenExpressionsVariables(replacements, arrayReplacements)
+		p.Finally[i].WhenExpressions = p.Finally[i].WhenExpressions.ReplaceVariables(replacements, arrayReplacements)
 		if p.Finally[i].TaskRef != nil && p.Finally[i].TaskRef.Params != nil {
 			p.Finally[i].TaskRef.Params = replaceParamValues(p.Finally[i].TaskRef.Params, replacements, arrayReplacements, objectReplacements)
 		}
