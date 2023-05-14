@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	test "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -90,5 +91,50 @@ func verifyConfigFileWithExpectedMetricsConfig(t *testing.T, fileName string, ex
 		}
 	} else {
 		t.Errorf("NewMetricsFromConfigMap(actual) = %v", err)
+	}
+}
+
+func TestMetrics_Equals(t *testing.T) {
+	tests := []struct {
+		name           string
+		otherMetrics   *config.Metrics
+		compareMetrics *config.Metrics
+		want           bool
+	}{
+		{
+			name: "test metrics equals",
+			otherMetrics: &config.Metrics{
+				TaskrunLevel:            config.TaskrunLevelAtTaskrun,
+				PipelinerunLevel:        config.PipelinerunLevelAtPipelinerun,
+				DurationTaskrunType:     config.DurationPipelinerunTypeHistogram,
+				DurationPipelinerunType: config.DurationPipelinerunTypeHistogram,
+			},
+			compareMetrics: &config.Metrics{
+				TaskrunLevel:            config.TaskrunLevelAtTaskrun,
+				PipelinerunLevel:        config.PipelinerunLevelAtPipelinerun,
+				DurationTaskrunType:     config.DurationPipelinerunTypeHistogram,
+				DurationPipelinerunType: config.DurationPipelinerunTypeHistogram,
+			},
+			want: true,
+		},
+		{
+			name:         "test metrics not equals",
+			otherMetrics: &config.Metrics{},
+			compareMetrics: &config.Metrics{
+				TaskrunLevel:            config.TaskrunLevelAtTaskrun,
+				PipelinerunLevel:        config.PipelinerunLevelAtPipelinerun,
+				DurationTaskrunType:     config.DurationPipelinerunTypeHistogram,
+				DurationPipelinerunType: config.DurationPipelinerunTypeHistogram,
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.compareMetrics.Equals(tt.otherMetrics)
+			if !cmp.Equal(got, tt.want) {
+				t.Errorf("Equals() diff:%v", cmp.Diff(got, tt.want, cmpopts.IgnoreUnexported()))
+			}
+		})
 	}
 }

@@ -1972,3 +1972,58 @@ func TestSortPodContainerStatuses(t *testing.T) {
 		}
 	}
 }
+
+func TestDidTaskRunFail(t *testing.T) {
+	tests := []struct {
+		name string
+		args *corev1.Pod
+		want bool
+	}{
+		{
+			name: "test pod status is failed should return true",
+			args: &corev1.Pod{
+				Status: corev1.PodStatus{
+					Phase: corev1.PodFailed,
+				},
+			},
+			want: true,
+		},
+		{
+			name: "test pod condition is failed should return true",
+			args: &corev1.Pod{
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name: stepPrefix + "test",
+							State: corev1.ContainerState{
+								Terminated: &corev1.ContainerStateTerminated{
+									Reason:   "Error",
+									ExitCode: 1,
+								},
+							},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "test pod status is running should return false",
+			args: &corev1.Pod{
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := DidTaskRunFail(tt.args)
+			if !cmp.Equal(got, tt.want) {
+				t.Errorf("DidTaskRunFail() diff: %v", cmp.Diff(got, tt.want, cmpopts.IgnoreUnexported()))
+			}
+		})
+	}
+}
