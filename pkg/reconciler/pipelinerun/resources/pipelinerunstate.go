@@ -112,9 +112,9 @@ func (state PipelineRunState) ToMap() map[string]*ResolvedPipelineTask {
 // IsBeforeFirstTaskRun returns true if the PipelineRun has not yet started its first TaskRun
 func (state PipelineRunState) IsBeforeFirstTaskRun() bool {
 	for _, t := range state {
-		if t.IsCustomTask() && t.RunObject != nil {
+		if t.IsCustomTask() && (t.RunObject != nil || len(t.RunObjects) > 0) {
 			return false
-		} else if t.TaskRun != nil {
+		} else if t.TaskRun != nil || len(t.TaskRuns) > 0 {
 			return false
 		}
 	}
@@ -132,14 +132,26 @@ func (state PipelineRunState) IsBeforeFirstTaskRun() bool {
 func (state PipelineRunState) AdjustStartTime(unadjustedStartTime *metav1.Time) *metav1.Time {
 	adjustedStartTime := unadjustedStartTime
 	for _, rpt := range state {
-		if rpt.TaskRun == nil {
-			if rpt.RunObject != nil {
-				creationTime := rpt.RunObject.GetObjectMeta().GetCreationTimestamp()
+		switch {
+		case len(rpt.RunObjects) > 0:
+			for _, runObject := range rpt.RunObjects {
+				creationTime := runObject.GetObjectMeta().GetCreationTimestamp()
 				if creationTime.Time.Before(adjustedStartTime.Time) {
 					adjustedStartTime = &creationTime
 				}
 			}
-		} else {
+		case rpt.RunObject != nil:
+			creationTime := rpt.RunObject.GetObjectMeta().GetCreationTimestamp()
+			if creationTime.Time.Before(adjustedStartTime.Time) {
+				adjustedStartTime = &creationTime
+			}
+		case len(rpt.TaskRuns) > 0:
+			for _, taskRun := range rpt.TaskRuns {
+				if taskRun.CreationTimestamp.Time.Before(adjustedStartTime.Time) {
+					adjustedStartTime = &taskRun.CreationTimestamp
+				}
+			}
+		case rpt.TaskRun != nil:
 			if rpt.TaskRun.CreationTimestamp.Time.Before(adjustedStartTime.Time) {
 				adjustedStartTime = &rpt.TaskRun.CreationTimestamp
 			}

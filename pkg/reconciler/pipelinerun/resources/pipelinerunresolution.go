@@ -289,32 +289,94 @@ func (t ResolvedPipelineTask) isCancelled() bool {
 	}
 }
 
-// isScheduled returns true when the PipelineRunTask itself has a TaskRun
-// or Run associated.
+// isScheduled returns true when the PipelineRunTask itself has any TaskRuns/CustomRuns
+// or a singular TaskRun/CustomRun associated.
 func (t ResolvedPipelineTask) isScheduled() bool {
 	if t.IsCustomTask() {
-		return t.RunObject != nil
+		return t.RunObject != nil || len(t.RunObjects) > 0
 	}
-	return t.TaskRun != nil
+	return t.TaskRun != nil || len(t.TaskRuns) > 0
 }
 
-// isStarted returns true only if the PipelineRunTask itself has a TaskRun or
-// Run associated that has a Succeeded-type condition.
+// isStarted returns true only if the PipelineRunTask itself has any TaskRuns/CustomRuns
+// or a singular TaskRun/CustomRun that has a Succeeded-type condition.
 func (t ResolvedPipelineTask) isStarted() bool {
-	if t.IsCustomTask() {
-		return t.RunObject != nil && t.RunObject.GetStatusCondition().GetCondition(apis.ConditionSucceeded) != nil
+	switch {
+	case t.IsCustomTask() && len(t.RunObjects) > 0:
+		return t.hasRunObjectsStarted()
+	case t.IsCustomTask() && t.RunObject != nil:
+		return t.RunObject.GetStatusCondition().GetCondition(apis.ConditionSucceeded) != nil
+	case len(t.TaskRuns) > 0:
+		return t.hasTaskRunsStarted()
+	case t.TaskRun != nil:
+		return t.TaskRun.Status.GetCondition(apis.ConditionSucceeded) != nil
+	default:
+		return false
 	}
-	return t.TaskRun != nil && t.TaskRun.Status.GetCondition(apis.ConditionSucceeded) != nil
 }
 
-// isConditionStatusFalse returns true when a task has succeeded condition with status set to false
-// it includes task failed after retries are exhausted, cancelled tasks, and time outs
+// hasTaskRunsStarted returns true only if any TaskRun that has a Succeeded-type condition.
+func (t ResolvedPipelineTask) hasTaskRunsStarted() bool {
+	for _, taskRun := range t.TaskRuns {
+		if taskRun.GetStatusCondition().GetCondition(apis.ConditionSucceeded) != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// hasRunObjectsStarted returns true only if any RunObject that has a Succeeded-type condition.
+func (t ResolvedPipelineTask) hasRunObjectsStarted() bool {
+	for _, runObject := range t.RunObjects {
+		if runObject.GetStatusCondition().GetCondition(apis.ConditionSucceeded) != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// isConditionStatusFalse returns true when any tasks or a singular task has succeeded condition with
+// status set to false. it includes task failed after retries are exhausted, cancelled tasks, and timeouts
 func (t ResolvedPipelineTask) isConditionStatusFalse() bool {
 	if t.isStarted() {
-		if t.IsCustomTask() {
+		switch {
+		case t.IsCustomTask() && len(t.RunObjects) > 0:
+			return t.areRunObjectConditionStatusFalse()
+		case t.IsCustomTask() && t.RunObject != nil:
 			return t.RunObject.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsFalse()
+		case len(t.TaskRuns) > 0:
+			return t.areTaskRunsConditionStatusFalse()
+		case t.TaskRun != nil:
+			return t.TaskRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse()
+		default:
+			return false
 		}
-		return t.TaskRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse()
+	}
+	return false
+}
+
+// areTaskRunsConditionStatusFalse returns true when any of the taskRuns have succeeded condition with status set to false
+// it includes task failed after retries are exhausted, cancelled tasks, and timeouts
+func (t ResolvedPipelineTask) areTaskRunsConditionStatusFalse() bool {
+	if t.hasTaskRunsStarted() {
+		for _, taskRun := range t.TaskRuns {
+			if taskRun.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsFalse() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// areRunObjectConditionStatusFalse returns true when a RunObject has succeeded condition with status set to false
+// it includes task failed after retries are exhausted, cancelled tasks, and timeouts
+func (t ResolvedPipelineTask) areRunObjectConditionStatusFalse() bool {
+	if t.hasRunObjectsStarted() {
+		for _, runObject := range t.RunObjects {
+			if runObject.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsFalse() {
+				return true
+			}
+		}
 	}
 	return false
 }
