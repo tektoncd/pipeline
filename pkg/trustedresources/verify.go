@@ -41,6 +41,28 @@ const (
 	SignatureAnnotation = "tekton.dev/signature"
 )
 
+const (
+	VerificationSkip = iota
+	VerificationPass
+	VerificationWarn
+	VerificationError
+)
+
+// VerificationResultType indicates different cases of a verification result
+type VerificationResultType int
+
+// VerificationResult contains the type and message about the result of verification
+type VerificationResult struct {
+	// VerificationResultType has 4 types which is corresponding to 4 cases:
+	// 0 (VerificationSkip): The verification was skipped. Err is nil in this case.
+	// 1 (VerificationPass): The verification passed. Err is nil in this case.
+	// 2 (VerificationWarn): A warning is logged. It could be no matching policies and feature flag "no-match-policy" is "warn", or only Warn mode verification policies fail.
+	// 3 (VerificationError): The verification failed, it could be the signature doesn't match the public key, no matching policies and "no-match-policy" is set to "fail" or there are errors during verification.
+	VerificationResultType VerificationResultType
+	// Err contains the error message when there is a warning logged or error returned.
+	Err error
+}
+
 // VerifyTask verifies the signature and public key against task.
 // Skip the verification when no policies are found and trusted-resources-verification-no-match-policy is set to ignore or warn
 // Return an error when no policies are found and trusted-resources-verification-no-match-policy is set to fail,
