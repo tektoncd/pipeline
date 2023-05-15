@@ -1639,6 +1639,430 @@ func TestIsFailure(t *testing.T) {
 	}
 }
 
+func TestIsStarted(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		rpt  ResolvedPipelineTask
+		want bool
+	}{{
+		name: "taskrun not started",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+		},
+		want: false,
+	}, {
+		name: "run not started",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			CustomTask:   true,
+		},
+		want: false,
+	}, {
+		name: "taskrun running",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			TaskRun:      makeStarted(trs[0]),
+		},
+		want: true,
+	}, {
+		name: "run running",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			CustomTask:   true,
+			RunObject:    makeCustomRunStarted(customRuns[0]),
+		},
+		want: true,
+	}, {
+		name: "taskrun succeeded",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			TaskRun:      makeSucceeded(trs[0]),
+		},
+		want: true,
+	}, {
+		name: "run succeeded",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			CustomTask:   true,
+			RunObject:    makeCustomRunSucceeded(customRuns[0]),
+		},
+		want: true,
+	}, {
+		name: "taskrun failed",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			TaskRun:      makeFailed(trs[0]),
+		},
+		want: true,
+	}, {
+		name: "run failed",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			CustomTask:   true,
+			RunObject:    makeCustomRunFailed(customRuns[0]),
+		},
+		want: true,
+	}, {
+		name: "matrixed taskruns not started",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: matrixedPipelineTask,
+		},
+		want: false,
+	}, {
+		name: "matrixed runs not started",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+		},
+		want: false,
+	}, {
+		name: "matrixed taskruns running",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{makeStarted(trs[0]), makeStarted(trs[1])},
+		},
+		want: true,
+	}, {
+		name: "matrixed runs running",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			RunObjects:   []v1beta1.RunObject{makeCustomRunStarted(customRuns[0]), makeCustomRunStarted(customRuns[1])},
+		},
+		want: true,
+	}, {
+		name: "one matrixed taskrun running",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{makeStarted(trs[0]), makeSucceeded(trs[1])},
+		},
+		want: true,
+	}, {
+		name: "one matrixed run running",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			RunObjects:   []v1beta1.RunObject{makeCustomRunStarted(customRuns[0]), makeCustomRunSucceeded(customRuns[1])},
+		},
+		want: true,
+	}, {
+		name: "matrixed taskruns succeeded",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{makeSucceeded(trs[0]), makeSucceeded(trs[1])},
+		},
+		want: true,
+	}, {
+		name: "one matrixed taskrun succeeded",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{makeSucceeded(trs[0]), makeStarted(trs[1])},
+		},
+		want: true,
+	}, {
+		name: "one matrixed run succeeded",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			RunObjects:   []v1beta1.RunObject{makeCustomRunSucceeded(customRuns[0]), makeCustomRunStarted(customRuns[1])},
+		},
+		want: true,
+	}, {
+		name: "matrixed taskruns failed",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), makeFailed(trs[1])},
+		},
+		want: true,
+	}, {
+		name: "matrixed runs failed",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			RunObjects:   []v1beta1.RunObject{makeCustomRunFailed(customRuns[0]), makeCustomRunFailed(customRuns[1])},
+		},
+		want: true,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.rpt.isStarted(); got != tc.want {
+				t.Errorf("expected isStarted: %t but got %t", tc.want, got)
+			}
+		})
+	}
+}
+
+func TestIsConditionStatusFalse(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		rpt  ResolvedPipelineTask
+		want bool
+	}{{
+		name: "taskrun not started",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+		},
+		want: false,
+	}, {
+		name: "run not started",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			CustomTask:   true,
+		},
+		want: false,
+	}, {
+		name: "taskrun running",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			TaskRun:      makeStarted(trs[0]),
+		},
+		want: false,
+	}, {
+		name: "run running",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			CustomTask:   true,
+			RunObject:    makeCustomRunStarted(customRuns[0]),
+		},
+		want: false,
+	}, {
+		name: "taskrun succeeded",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			TaskRun:      makeSucceeded(trs[0]),
+		},
+		want: false,
+	}, {
+		name: "run succeeded",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			CustomTask:   true,
+			RunObject:    makeCustomRunSucceeded(customRuns[0]),
+		},
+		want: false,
+	}, {
+		name: "taskrun failed",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			TaskRun:      makeFailed(trs[0]),
+		},
+		want: true,
+	}, {
+		name: "run failed",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			CustomTask:   true,
+			RunObject:    makeCustomRunFailed(customRuns[0]),
+		},
+		want: true,
+	}, {
+		name: "taskrun cancelled",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			TaskRun:      withCancelled(makeFailed(trs[0])),
+		},
+		want: true,
+	}, {
+		name: "taskrun cancelled but not failed",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			TaskRun:      withCancelled(newTaskRun(trs[0])),
+		},
+		want: false,
+	}, {
+		name: "taskrun cancelled for timeout",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			TaskRun:      withCancelledForTimeout(makeFailed(trs[0])),
+		},
+		want: true,
+	}, {
+		name: "customrun cancelled",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			RunObject:    withCustomRunCancelled(makeCustomRunFailed(customRuns[0])),
+			CustomTask:   true,
+		},
+		want: true,
+	}, {
+		name: "customrun cancelled for timeout",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			RunObject:    withCustomRunCancelledForTimeout(makeCustomRunFailed(customRuns[0])),
+			CustomTask:   true,
+		},
+		want: true,
+	}, {
+		name: "customrun cancelled but not failed",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			RunObject:    withCustomRunCancelled(newCustomRun(customRuns[0])),
+			CustomTask:   true,
+		},
+		want: false,
+	}, {
+		name: "matrixed taskruns not started",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: matrixedPipelineTask,
+		},
+		want: false,
+	}, {
+		name: "matrixed runs not started",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+		},
+		want: false,
+	}, {
+		name: "matrixed taskruns running",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{makeStarted(trs[0]), makeStarted(trs[1])},
+		},
+		want: false,
+	}, {
+		name: "matrixed runs running",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			RunObjects:   []v1beta1.RunObject{makeCustomRunStarted(customRuns[0]), makeCustomRunStarted(customRuns[1])},
+		},
+		want: false,
+	}, {
+		name: "one matrixed taskrun running",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{makeStarted(trs[0]), makeSucceeded(trs[1])},
+		},
+		want: false,
+	}, {
+		name: "one matrixed run running",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			RunObjects:   []v1beta1.RunObject{makeCustomRunStarted(customRuns[0]), makeCustomRunSucceeded(customRuns[1])},
+		},
+		want: false,
+	}, {
+		name: "matrixed taskruns succeeded",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{makeSucceeded(trs[0]), makeSucceeded(trs[1])},
+		},
+		want: false,
+	}, {
+		name: "one matrixed taskrun succeeded",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{makeSucceeded(trs[0]), makeStarted(trs[1])},
+		},
+		want: false,
+	}, {
+		name: "one matrixed run succeeded",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			RunObjects:   []v1beta1.RunObject{makeCustomRunSucceeded(customRuns[0]), makeCustomRunStarted(customRuns[1])},
+		},
+		want: false,
+	}, {
+		name: "matrixed taskruns failed",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), makeFailed(trs[1])},
+		},
+		want: true,
+	}, {
+		name: "matrixed runs failed",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			RunObjects:   []v1beta1.RunObject{makeCustomRunFailed(customRuns[0]), makeCustomRunFailed(customRuns[1])},
+		},
+		want: true,
+	}, {
+		name: "one matrixed taskrun failed, one matrixed taskrun running",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), makeStarted(trs[1])},
+		},
+		want: true,
+	}, {
+		name: "one matrixed run failed, one matrixed run running",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			RunObjects:   []v1beta1.RunObject{makeCustomRunFailed(customRuns[0]), makeCustomRunStarted(customRuns[1])},
+		},
+		want: true,
+	}, {
+		name: "matrixed taskruns cancelled",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), withCancelled(makeFailed(trs[1]))},
+		},
+		want: true,
+	}, {
+		name: "matrixed runs cancelled",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			RunObjects:   []v1beta1.RunObject{withCustomRunCancelled(makeCustomRunFailed(customRuns[0])), withCustomRunCancelled(makeCustomRunFailed(customRuns[1]))},
+		},
+		want: true,
+	}, {
+		name: "one matrixed taskrun cancelled, one matrixed taskrun running",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), makeStarted(trs[1])},
+		},
+		want: true,
+	}, {
+		name: "one matrixed run cancelled, one matrixed run running",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			RunObjects:   []v1beta1.RunObject{withCustomRunCancelled(makeCustomRunFailed(customRuns[0])), makeCustomRunStarted(customRuns[1])},
+		},
+		want: true,
+	}, {
+		name: "matrixed taskruns cancelled but not failed",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{withCancelled(newTaskRun(trs[0])), withCancelled(newTaskRun(trs[1]))},
+		},
+		want: false,
+	}, {
+		name: "matrixed runs cancelled but not failed",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			RunObjects:   []v1beta1.RunObject{withCustomRunCancelled(newCustomRun(customRuns[0])), withCustomRunCancelled(newCustomRun(customRuns[1]))},
+		},
+		want: false,
+	}, {
+		name: "one matrixed taskrun cancelled but not failed",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{withCancelled(newTaskRun(trs[0])), makeStarted(trs[1])},
+		},
+		want: false,
+	}, {
+		name: "one matrixed run cancelled but not failed",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			RunObjects:   []v1beta1.RunObject{withCustomRunCancelled(newCustomRun(customRuns[0])), makeCustomRunStarted(customRuns[1])},
+		},
+		want: false,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.rpt.isConditionStatusFalse(); got != tc.want {
+				t.Errorf("expected isConditionStatusFalse: %t but got %t", tc.want, got)
+			}
+		})
+	}
+}
+
 func TestSkipBecauseParentTaskWasSkipped(t *testing.T) {
 	for _, tc := range []struct {
 		name     string

@@ -2108,7 +2108,52 @@ func TestAdjustStartTime(t *testing.T) {
 		// We expect this to adjust to the earlier time.
 		want: baseline.Time.Add(-2 * time.Second),
 	}, {
-		name: "run starts later",
+		name: "multiple taskruns, some earlier",
+		prs: PipelineRunState{{
+			TaskRuns: []*v1beta1.TaskRun{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "blah1",
+					CreationTimestamp: metav1.Time{Time: baseline.Time.Add(-1 * time.Second)},
+				},
+			}, {
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "blah2",
+					CreationTimestamp: metav1.Time{Time: baseline.Time.Add(-2 * time.Second)},
+				},
+			}, {
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "blah3",
+					CreationTimestamp: metav1.Time{Time: baseline.Time.Add(2 * time.Second)},
+				},
+			}},
+		}},
+		// We expect this to adjust to the earlier time.
+		want: baseline.Time.Add(-2 * time.Second),
+	}, {
+		name: "multiple CustomRuns, some earlier",
+		prs: PipelineRunState{{
+			RunObjects: []v1beta1.RunObject{
+				&v1beta1.CustomRun{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "blah1",
+						CreationTimestamp: metav1.Time{Time: baseline.Time.Add(-1 * time.Second)},
+					},
+				}, &v1beta1.CustomRun{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "blah2",
+						CreationTimestamp: metav1.Time{Time: baseline.Time.Add(-2 * time.Second)},
+					},
+				}, &v1beta1.CustomRun{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "blah3",
+						CreationTimestamp: metav1.Time{Time: baseline.Time.Add(2 * time.Second)},
+					},
+				}},
+		}},
+		// We expect this to adjust to the earlier time.
+		want: baseline.Time.Add(-2 * time.Second),
+	}, {
+		name: "CustomRun starts later",
 		prs: PipelineRunState{{
 			RunObject: &v1beta1.CustomRun{
 				ObjectMeta: metav1.ObjectMeta{
@@ -2120,7 +2165,7 @@ func TestAdjustStartTime(t *testing.T) {
 		// Stay where you are, you are before the Run.
 		want: baseline.Time,
 	}, {
-		name: "run starts earlier",
+		name: "CustomRun starts earlier",
 		prs: PipelineRunState{{
 			RunObject: &v1beta1.CustomRun{
 				ObjectMeta: metav1.ObjectMeta{
