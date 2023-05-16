@@ -1629,6 +1629,28 @@ spec:
           value: bah
 ```
 
+## Context Variables
+
+The `Parameters` in the `Params` field will accept
+[context variables](variables.md) that will be substituted, including:
+
+* `PipelineRun` name, namespace and uid
+* `Pipeline` name
+* `PipelineTask` retries
+
+```yaml
+spec:
+  tasks:
+    - name: run-custom-task
+      taskRef:
+        apiVersion: example.dev/v1alpha1
+        kind: Example
+        name: myexample
+      params:
+        - name: foo
+          value: $(context.pipeline.name)
+```
+
 ### Specifying matrix
 
 > :seedling: **`Matrix` is an [alpha](install.md#alpha-features) feature.**
