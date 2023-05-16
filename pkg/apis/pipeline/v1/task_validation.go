@@ -72,13 +72,6 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(apis.ErrMissingField("steps"))
 	}
 
-	if config.IsSubstituted(ctx) {
-		// Validate the task's workspaces only.
-		errs = errs.Also(validateDeclaredWorkspaces(ts.Workspaces, ts.Steps, ts.StepTemplate).ViaField("workspaces"))
-		errs = errs.Also(validateWorkspaceUsages(ctx, ts))
-
-		return errs
-	}
 	// When propagating parameters, parameters used in the Task spec may not be declared by the Task.
 	// Only perform this validation after all declared parameters have been propagated.
 	// TODO(#6647): Remove this flag and call this function in the reconciler instead
