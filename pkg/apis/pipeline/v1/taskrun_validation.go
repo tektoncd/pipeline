@@ -62,8 +62,6 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 	// Validate TaskSpec if it's present.
 	if ts.TaskSpec != nil {
-		// skip validation of parameter and workspaces variables since we validate them via taskrunspec below.
-		ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, true)
 		errs = errs.Also(ts.TaskSpec.Validate(ctx).ViaField("taskSpec"))
 	}
 
@@ -142,7 +140,7 @@ func (ts *TaskRunSpec) validateInlineParameters(ctx context.Context) (errs *apis
 	if ts.TaskSpec != nil && ts.TaskSpec.Steps != nil {
 		errs = errs.Also(ValidateParameterTypes(ctx, paramSpec))
 		errs = errs.Also(ValidateParameterVariables(ctx, ts.TaskSpec.Steps, paramSpec))
-		errs = errs.Also(validateUsageOfDeclaredParameters(ctx, ts.TaskSpec.Steps, paramSpec))
+		errs = errs.Also(ValidateUsageOfDeclaredParameters(ctx, ts.TaskSpec.Steps, paramSpec))
 	}
 	return errs
 }

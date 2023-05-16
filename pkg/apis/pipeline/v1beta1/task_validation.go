@@ -62,21 +62,16 @@ var objectVariableNameFormatRegex = regexp.MustCompile(objectVariableNameFormat)
 // Validate implements apis.Validatable
 func (t *Task) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(t.GetObjectMeta()).ViaField("metadata")
-	ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
-	return errs.Also(t.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
+	errs = errs.Also(t.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
+	// When a Task is created directly, instead of declared inline in a TaskRun or PipelineRun,
+	// we do not support propagated parameters. Validate that all params it uses are declared.
+	return errs.Also(ValidateUsageOfDeclaredParameters(ctx, t.Spec.Steps, t.Spec.Params).ViaField("spec"))
 }
 
 // Validate implements apis.Validatable
 func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if len(ts.Steps) == 0 {
 		errs = errs.Also(apis.ErrMissingField("steps"))
-	}
-
-	// When propagating parameters, parameters used in the Task spec may not be declared by the Task.
-	// Only perform this validation after all declared parameters have been propagated.
-	// TODO(#6647): Remove this flag and call this function in the reconciler instead
-	if config.ValidateParameterVariablesAndWorkspaces(ctx) {
-		errs = errs.Also(validateUsageOfDeclaredParameters(ctx, ts.Steps, ts.Params))
 	}
 
 	errs = errs.Also(ValidateVolumes(ts.Volumes).ViaField("volumes"))
@@ -104,8 +99,8 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	return errs
 }
 
-// validateUsageOfDeclaredParameters validates that all parameters referenced in the Task are declared by the Task.
-func validateUsageOfDeclaredParameters(ctx context.Context, steps []Step, params ParamSpecs) *apis.FieldError {
+// ValidateUsageOfDeclaredParameters validates that all parameters referenced in the Task are declared by the Task.
+func ValidateUsageOfDeclaredParameters(ctx context.Context, steps []Step, params ParamSpecs) *apis.FieldError {
 	var errs *apis.FieldError
 	_, _, objectParams := params.sortByType()
 	allParameterNames := sets.NewString(params.getNames()...)

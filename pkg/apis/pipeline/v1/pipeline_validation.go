@@ -46,8 +46,12 @@ func (p *Pipeline) SupportedVerbs() []admissionregistrationv1.OperationType {
 // that any references resources exist, that is done at run time.
 func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(p.GetObjectMeta()).ViaField("metadata")
-	ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
-	return errs.Also(p.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
+	errs = errs.Also(p.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
+	// When a Pipeline is created directly, instead of declared inline in a PipelineRun,
+	// we do not support propagated parameters and workspaces.
+	// Validate that all params and workspaces it uses are declared.
+	errs = errs.Also(p.Spec.validatePipelineParameterUsage().ViaField("spec"))
+	return errs.Also(p.Spec.validatePipelineWorkspacesUsage().ViaField("spec"))
 }
 
 // Validate checks that taskNames in the Pipeline are valid and that the graph
@@ -77,13 +81,6 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateMatrix(ctx, ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validateMatrix(ctx, ps.Finally).ViaField("finally"))
 	errs = errs.Also(validateResultsFromMatrixedPipelineTasksNotConsumed(ps.Tasks, ps.Finally))
-	// When propagating params and workspaces, params and workspaces used in the Pipeline spec may not be declared by the Pipeline.
-	// Only perform this validation after all declared params and workspaces have been propagated.
-	// TODO(#6647): Remove this flag and call this function in the reconciler instead
-	if config.ValidateParameterVariablesAndWorkspaces(ctx) {
-		errs = errs.Also(ps.validatePipelineParameterUsage())
-		errs = errs.Also(ps.validatePipelineWorkspacesUsage())
-	}
 	return errs
 }
 

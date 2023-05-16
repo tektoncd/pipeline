@@ -614,8 +614,7 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := config.SkipValidationDueToPropagatedParametersAndWorkspaces(context.Background(), false)
-			err := tt.ps.Validate(ctx)
+			err := tt.ps.Validate(context.Background())
 			if err == nil {
 				t.Errorf("PipelineSpec.Validate() did not return error for invalid pipelineSpec")
 			}
@@ -637,8 +636,7 @@ func TestPipelineSpec_Validate_Failure_CycleDAG(t *testing.T) {
 			Name: "baz", TaskRef: &TaskRef{Name: "baz-task"}, RunAfter: []string{"bar"},
 		}},
 	}
-	ctx := config.SkipValidationDueToPropagatedParametersAndWorkspaces(context.Background(), false)
-	err := ps.Validate(ctx)
+	err := ps.Validate(context.Background())
 	if err == nil {
 		t.Errorf("PipelineSpec.Validate() did not return error for invalid pipelineSpec: %s", name)
 	}
@@ -705,8 +703,7 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := config.SkipValidationDueToPropagatedParametersAndWorkspaces(context.Background(), false)
-			err := ValidatePipelineTasks(ctx, tt.tasks, tt.finalTasks)
+			err := ValidatePipelineTasks(context.Background(), tt.tasks, tt.finalTasks)
 			if err == nil {
 				t.Error("ValidatePipelineTasks() did not return error for invalid pipeline tasks")
 			}
@@ -1293,7 +1290,6 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := config.EnableAlphaAPIFields(context.Background())
-			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
 			err := ValidatePipelineParameterVariables(ctx, tt.tasks, tt.params)
 			if err != nil {
 				t.Errorf("Pipeline.ValidatePipelineParameterVariables() returned error for valid pipeline parameters: %v", err)
@@ -3039,7 +3035,6 @@ func TestMatrixIncompatibleAPIVersions(t *testing.T) {
 				ctx := config.ToContext(context.Background(), cfg)
 
 				ps.SetDefaults(ctx)
-				ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
 				err := ps.Validate(ctx)
 
 				if tt.requiredVersion != version && err == nil {
