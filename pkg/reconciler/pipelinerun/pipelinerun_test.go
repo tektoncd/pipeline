@@ -463,6 +463,8 @@ spec:
       params:
       - name: param1
         value: value1
+      - name: contextPipelineParam
+        value: $(context.pipeline.name)
       taskSpec:
         apiVersion: example.dev/v0
         kind: Example
@@ -480,6 +482,8 @@ spec:
   params:
   - name: param1
     value: value1
+  - name: contextPipelineParam
+    value: test-pipelinerun
   serviceAccountName: default
   customSpec:
     apiVersion: example.dev/v0

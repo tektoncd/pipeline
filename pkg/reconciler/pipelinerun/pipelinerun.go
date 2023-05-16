@@ -836,7 +836,6 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createTaskRun")
 	defer span.End()
 	logger := logging.FromContext(ctx)
-
 	rpt.PipelineTask = resources.ApplyPipelineTaskContexts(rpt.PipelineTask)
 	taskRunSpec := pr.GetTaskRunSpec(rpt.PipelineTask.Name)
 	params = append(params, rpt.PipelineTask.Params...)
@@ -910,6 +909,7 @@ func (c *Reconciler) createRunObject(ctx context.Context, runName string, params
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createRunObject")
 	defer span.End()
 	logger := logging.FromContext(ctx)
+	rpt.PipelineTask = resources.ApplyPipelineTaskContexts(rpt.PipelineTask)
 	taskRunSpec := pr.GetTaskRunSpec(rpt.PipelineTask.Name)
 	params = append(params, rpt.PipelineTask.Params...)
 
