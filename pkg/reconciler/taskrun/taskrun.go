@@ -108,11 +108,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 	defer span.End()
 
 	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
-
-	// By this time, params and workspaces should not be propagated for embedded tasks so we cannot
-	// validate that all parameter variables and workspaces used in the TaskSpec are declared by the Task.
-	ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, true)
-
 	// Read the initial condition
 	before := tr.Status.GetCondition(apis.ConditionSucceeded)
 
@@ -696,7 +691,10 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1beta1.TaskSpec, tr *v1
 
 	// By this time, params and workspaces should be propagated down so we can
 	// validate that all parameter variables and workspaces used in the TaskSpec are declared by the Task.
-	ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
+	if validateErr := v1beta1.ValidateUsageOfDeclaredParameters(ctx, ts.Steps, ts.Params); validateErr != nil {
+		logger.Errorf("Failed to create a pod for taskrun: %s due to task validation error %v", tr.Name, validateErr)
+		return nil, validateErr
+	}
 	if validateErr := ts.Validate(ctx); validateErr != nil {
 		logger.Errorf("Failed to create a pod for taskrun: %s due to task validation error %v", tr.Name, validateErr)
 		return nil, validateErr

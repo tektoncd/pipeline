@@ -66,7 +66,6 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 
 	// Validate PipelineSpec if it's present
 	if ps.PipelineSpec != nil {
-		ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, true)
 		errs = errs.Also(ps.PipelineSpec.Validate(ctx).ViaField("pipelineSpec"))
 	}
 
@@ -180,7 +179,7 @@ func (ps *PipelineRunSpec) validateInlineParameters(ctx context.Context) (errs *
 			if pt.TaskSpec != nil && pt.TaskSpec.Steps != nil {
 				errs = errs.Also(ValidateParameterTypes(ctx, paramSpec))
 				errs = errs.Also(ValidateParameterVariables(ctx, pt.TaskSpec.Steps, paramSpec))
-				errs = errs.Also(validateUsageOfDeclaredParameters(ctx, pt.TaskSpec.Steps, paramSpec))
+				errs = errs.Also(ValidateUsageOfDeclaredParameters(ctx, pt.TaskSpec.Steps, paramSpec))
 			}
 		}
 		errs = errs.Also(ValidatePipelineParameterVariables(ctx, ps.PipelineSpec.Tasks, paramSpec))

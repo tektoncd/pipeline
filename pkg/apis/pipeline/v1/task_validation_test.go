@@ -141,7 +141,6 @@ func TestTaskSpecValidatePropagatedParamsAndWorkspaces(t *testing.T) {
 			}
 			ctx := config.EnableBetaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
-			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, true)
 			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
 			}
@@ -718,7 +717,6 @@ func TestTaskValidateError(t *testing.T) {
 				}}
 			ctx := config.EnableAlphaAPIFields(context.Background())
 			task.SetDefaults(ctx)
-			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
 			err := task.Validate(ctx)
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing for %v", task)
@@ -1352,7 +1350,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ts := &v1.TaskSpec{
+			ts := v1.TaskSpec{
 				Params:       tt.fields.Params,
 				Steps:        tt.fields.Steps,
 				Volumes:      tt.fields.Volumes,
@@ -1445,7 +1443,6 @@ func TestStepAndSidecarWorkspaces(t *testing.T) {
 			}
 			ctx := config.EnableAlphaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
-			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, true)
 			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
 			}
@@ -1503,7 +1500,6 @@ func TestStepAndSidecarWorkspacesErrors(t *testing.T) {
 
 			ctx := config.EnableAlphaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
-			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, true)
 			err := ts.Validate(ctx)
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing for %v", ts)
@@ -1568,7 +1564,6 @@ func TestStepOnError(t *testing.T) {
 			}
 			ctx := context.Background()
 			ts.SetDefaults(ctx)
-			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
 			err := ts.Validate(ctx)
 			if tt.expectedError == nil && err != nil {
 				t.Errorf("No error expected from TaskSpec.Validate() but got = %v", err)
@@ -1666,7 +1661,6 @@ func TestIncompatibleAPIVersions(t *testing.T) {
 					ctx = config.EnableAlphaAPIFields(ctx)
 				}
 				ts.SetDefaults(ctx)
-				ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, true)
 				err := ts.Validate(ctx)
 
 				if tt.requiredVersion != version && err == nil {
@@ -1901,6 +1895,173 @@ func TestTaskSpecBetaFields(t *testing.T) {
 			ctx := config.EnableBetaAPIFields(context.Background())
 			if err := tt.spec.Validate(ctx); err != nil {
 				t.Errorf("unexpected error when using beta field: %s", err)
+			}
+		})
+	}
+}
+
+func TestTaskSpecValidateUsageOfDeclaredParams(t *testing.T) {
+	tests := []struct {
+		name          string
+		Params        []v1.ParamSpec
+		Steps         []v1.Step
+		expectedError apis.FieldError
+	}{{
+		name: "inexistent param variable",
+		Steps: []v1.Step{{
+			Name:  "mystep",
+			Image: "myimage",
+			Args:  []string{"--flag=$(params.inexistent)"},
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "--flag=$(params.inexistent)"`,
+			Paths:   []string{"steps[0].args[0]"},
+		},
+	}, {
+		name: "object used in a string field",
+		Params: []v1.ParamSpec{{
+			Name: "gitrepo",
+			Type: v1.ParamTypeObject,
+			Properties: map[string]v1.PropertySpec{
+				"url":    {},
+				"commit": {},
+			},
+		}},
+		Steps: []v1.Step{{
+			Name:       "do-the-clone",
+			Image:      "$(params.gitrepo)",
+			Args:       []string{"echo"},
+			WorkingDir: "/foo/bar/src/",
+		}},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.gitrepo)"`,
+			Paths:   []string{"steps[0].image"},
+		},
+	}, {
+		name: "object star used in a string field",
+		Params: []v1.ParamSpec{{
+			Name: "gitrepo",
+			Type: v1.ParamTypeObject,
+			Properties: map[string]v1.PropertySpec{
+				"url":    {},
+				"commit": {},
+			},
+		}},
+		Steps: []v1.Step{{
+			Name:       "do-the-clone",
+			Image:      "$(params.gitrepo[*])",
+			Args:       []string{"echo"},
+			WorkingDir: "/foo/bar/src/",
+		}},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.gitrepo[*])"`,
+			Paths:   []string{"steps[0].image"},
+		},
+	}, {
+		name: "object used in a field that can accept array type",
+		Params: []v1.ParamSpec{{
+			Name: "gitrepo",
+			Type: v1.ParamTypeObject,
+			Properties: map[string]v1.PropertySpec{
+				"url":    {},
+				"commit": {},
+			},
+		}},
+		Steps: []v1.Step{{
+			Name:       "do-the-clone",
+			Image:      "myimage",
+			Args:       []string{"$(params.gitrepo)"},
+			WorkingDir: "/foo/bar/src/",
+		}},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.gitrepo)"`,
+			Paths:   []string{"steps[0].args[0]"},
+		},
+	}, {
+		name: "object star used in a field that can accept array type",
+		Params: []v1.ParamSpec{{
+			Name: "gitrepo",
+			Type: v1.ParamTypeObject,
+			Properties: map[string]v1.PropertySpec{
+				"url":    {},
+				"commit": {},
+			},
+		}},
+		Steps: []v1.Step{{
+			Name:       "do-the-clone",
+			Image:      "some-git-image",
+			Args:       []string{"$(params.gitrepo[*])"},
+			WorkingDir: "/foo/bar/src/",
+		}},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.gitrepo[*])"`,
+			Paths:   []string{"steps[0].args[0]"},
+		},
+	}, {
+		name: "non-existent individual key of an object param is used in task step",
+		Params: []v1.ParamSpec{{
+			Name: "gitrepo",
+			Type: v1.ParamTypeObject,
+			Properties: map[string]v1.PropertySpec{
+				"url":    {},
+				"commit": {},
+			},
+		}},
+		Steps: []v1.Step{{
+			Name:       "do-the-clone",
+			Image:      "some-git-image",
+			Args:       []string{"$(params.gitrepo.non-exist-key)"},
+			WorkingDir: "/foo/bar/src/",
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.gitrepo.non-exist-key)"`,
+			Paths:   []string{"steps[0].args[0]"},
+		},
+	}, {
+		name: "Inexistent param variable in volumeMount with existing",
+		Params: []v1.ParamSpec{
+			{
+				Name:        "foo",
+				Description: "param",
+				Default:     v1.NewStructuredValues("default"),
+			},
+		},
+		Steps: []v1.Step{{
+			Name:  "mystep",
+			Image: "myimage",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name: "$(params.inexistent)-foo",
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.inexistent)-foo"`,
+			Paths:   []string{"steps[0].volumeMount[0].name"},
+		},
+	}, {
+		name: "Inexistent param variable with existing",
+		Params: []v1.ParamSpec{{
+			Name:        "foo",
+			Description: "param",
+			Default:     v1.NewStructuredValues("default"),
+		}},
+		Steps: []v1.Step{{
+			Name:  "mystep",
+			Image: "myimage",
+			Args:  []string{"$(params.foo) && $(params.inexistent)"},
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.foo) && $(params.inexistent)"`,
+			Paths:   []string{"steps[0].args[0]"},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := v1.ValidateUsageOfDeclaredParameters(context.Background(), tt.Steps, tt.Params)
+			if err == nil {
+				t.Fatalf("Expected an error, got nothing")
+			}
+			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("TaskSpec.Validate() errors diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}

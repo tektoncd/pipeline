@@ -442,9 +442,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 		return controller.NewPermanentError(err)
 	}
 
-	// Because of parameter propagation, we skip validating it inside the pipelineSpec since it may
-	// not have the full list of defined parameters
-	ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, true)
 	if err := pipelineSpec.Validate(ctx); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.MarkFailed(ReasonFailedValidation,
