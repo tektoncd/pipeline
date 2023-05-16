@@ -172,9 +172,12 @@ func readRuntimeObjectAsTask(ctx context.Context, obj runtime.Object, k8s kubern
 	switch obj := obj.(type) {
 	case *v1beta1.Task:
 		// Verify the Task once we fetch from the remote resolution, mutating, validation and conversion of the task should happen after the verification, since signatures are based on the remote task contents
-		err := trustedresources.VerifyTask(ctx, obj, k8s, refSource, verificationPolicies)
-		if err != nil {
-			return nil, fmt.Errorf("remote Task verification failed for object %s: %w", obj.GetName(), err)
+		vr := trustedresources.VerifyTask(ctx, obj, k8s, refSource, verificationPolicies)
+		if vr.VerificationResultType == trustedresources.VerificationError {
+			if vr.Err != nil {
+				return nil, fmt.Errorf("remote Task verification failed for object %s: %w", obj.GetName(), vr.Err)
+			}
+			return nil, fmt.Errorf("remote Task verification failed for object %s", obj.GetName())
 		}
 		return obj, nil
 	case *v1beta1.ClusterTask:
