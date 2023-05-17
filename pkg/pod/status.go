@@ -189,8 +189,10 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 	}
 	// Continue with extraction of termination messages
 	for _, s := range stepStatuses {
-		if s.State.Terminated != nil && len(s.State.Terminated.Message) != 0 {
-			msg := s.State.Terminated.Message
+		// Avoid changing the original value by modifying the pointer value.
+		state := s.State.DeepCopy()
+		if state.Terminated != nil && len(state.Terminated.Message) != 0 {
+			msg := state.Terminated.Message
 
 			results, err := termination.ParseMessage(logger, msg)
 			if err != nil {
@@ -217,18 +219,18 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 					logger.Errorf("%v", err)
 					merr = multierror.Append(merr, err)
 				} else {
-					s.State.Terminated.Message = msg
+					state.Terminated.Message = msg
 				}
 				if time != nil {
-					s.State.Terminated.StartedAt = *time
+					state.Terminated.StartedAt = *time
 				}
 				if exitCode != nil {
-					s.State.Terminated.ExitCode = *exitCode
+					state.Terminated.ExitCode = *exitCode
 				}
 			}
 		}
 		trs.Steps = append(trs.Steps, v1beta1.StepState{
-			ContainerState: *s.State.DeepCopy(),
+			ContainerState: *state,
 			Name:           trimStepPrefix(s.Name),
 			ContainerName:  s.Name,
 			ImageID:        s.ImageID,
