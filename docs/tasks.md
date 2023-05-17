@@ -137,7 +137,7 @@ Below is an example of a Pipeline declaration that uses a `ClusterTask`:
 - The cluster resolver syntax below can be used to reference any task, not just a clustertask.
 
 {{< tabs >}}
-{{< tab "v1 & v1beta1" >}}
+{{< tab header="v1 & v1beta1" code=true lang="yaml" >}}
 ```yaml
 apiVersion: tekton.dev/v1
 kind: Pipeline
@@ -158,7 +158,7 @@ spec:
 ```
 {{< /tab >}}
 
-{{< tab "v1beta1" >}}
+{{< tab header="v1beta1" code=true lang="yaml" >}}
 ```yaml
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
@@ -201,7 +201,7 @@ Below is an example of setting the resource requests and limits for a step:
 
 
 {{< tabs >}}
-{{< tab "v1" >}}
+{{< tab header="v1" code=true lang="yaml" >}}
 ```yaml
 spec:
   steps:
@@ -216,7 +216,7 @@ spec:
 ```
 {{< /tab >}}
 
-{{< tab "v1beta1" >}}
+{{< tab header="v1beta1" code=true lang="yaml" >}}
 ```yaml
 spec:
   steps:
@@ -790,7 +790,7 @@ When this Task is executed in a TaskRun, the results will appear in the TaskRun'
 
 
 {{< tabs >}}
-{{< tab "v1" >}}
+{{< tab header="v1" code=true lang="yaml" >}}
 ```yaml
 apiVersion: tekton.dev/v1
 kind: TaskRun
@@ -807,7 +807,7 @@ status:
 ```
 {{< /tab >}}
 
-{{< tab "v1beta1" >}}
+{{< tab header="v1beta1" code=true lang="yaml" >}}
 ```yaml
 apiVersion: tekton.dev/v1beta1
 kind: TaskRun
