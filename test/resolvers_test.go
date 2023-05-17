@@ -197,7 +197,7 @@ spec:
 	}
 }
 
-func TestGitResolver_Clone(t *testing.T) {
+func TestGitResolver_WriteFile(t *testing.T) {
 	ctx := context.Background()
 	c, namespace := setup(ctx, t, gitFeatureFlags)
 
@@ -235,14 +235,14 @@ spec:
           - name: url
             value: https://github.com/tektoncd/catalog.git
           - name: pathInRepo
-            value: /task/git-clone/0.7/git-clone.yaml
+            value: task/write-file/0.1/write-file.yaml
           - name: revision
             value: main
         params:
-          - name: url
-            value: https://github.com/tektoncd/pipeline
-          - name: deleteExisting
-            value: "true"
+          - name: path
+            value: ./foo.txt
+          - name: contents
+            value: "hello world"
 `, prName, namespace))
 
 	_, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})

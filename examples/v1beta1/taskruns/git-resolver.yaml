@@ -10,10 +10,10 @@ spec:
     securityContext:
       fsGroup: 65532
   params:
-    - name: url
-      value: https://github.com/kelseyhightower/nocode
-    - name: revision
-      value: master
+    - name: path
+      value: ./foo.txt
+    - name: contents
+      value: "hello world"
   taskRef:
     resolver: git
     params:
@@ -22,4 +22,4 @@ spec:
       - name: revision
         value: main
       - name: pathInRepo
-        value: task/git-clone/0.8/git-clone.yaml
+        value: /task/write-file/0.1/write-file.yaml
