@@ -525,6 +525,214 @@ func TestTaskSpecValidate(t *testing.T) {
 	}
 }
 
+func TestTaskValidateError(t *testing.T) {
+	type fields struct {
+		Params []v1beta1.ParamSpec
+		Steps  []v1beta1.Step
+	}
+	tests := []struct {
+		name          string
+		fields        fields
+		expectedError apis.FieldError
+	}{{
+		name: "inexistent param variable",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Name:  "mystep",
+				Image: "myimage",
+				Args:  []string{"--flag=$(params.inexistent)"},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "--flag=$(params.inexistent)"`,
+			Paths:   []string{"spec.steps[0].args[0]"},
+		},
+	}, {
+		name: "object used in a string field",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name: "gitrepo",
+				Type: v1beta1.ParamTypeObject,
+				Properties: map[string]v1beta1.PropertySpec{
+					"url":    {},
+					"commit": {},
+				},
+			}},
+			Steps: []v1beta1.Step{{
+				Name:       "do-the-clone",
+				Image:      "$(params.gitrepo)",
+				Args:       []string{"echo"},
+				WorkingDir: "/foo/bar/src/",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.gitrepo)"`,
+			Paths:   []string{"spec.steps[0].image"},
+		},
+	}, {
+		name: "object star used in a string field",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name: "gitrepo",
+				Type: v1beta1.ParamTypeObject,
+				Properties: map[string]v1beta1.PropertySpec{
+					"url":    {},
+					"commit": {},
+				},
+			}},
+			Steps: []v1beta1.Step{{
+				Name:       "do-the-clone",
+				Image:      "$(params.gitrepo[*])",
+				Args:       []string{"echo"},
+				WorkingDir: "/foo/bar/src/",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.gitrepo[*])"`,
+			Paths:   []string{"spec.steps[0].image"},
+		},
+	}, {
+		name: "object used in a field that can accept array type",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name: "gitrepo",
+				Type: v1beta1.ParamTypeObject,
+				Properties: map[string]v1beta1.PropertySpec{
+					"url":    {},
+					"commit": {},
+				},
+			}},
+			Steps: []v1beta1.Step{{
+				Name:       "do-the-clone",
+				Image:      "myimage",
+				Args:       []string{"$(params.gitrepo)"},
+				WorkingDir: "/foo/bar/src/",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.gitrepo)"`,
+			Paths:   []string{"spec.steps[0].args[0]"},
+		},
+	}, {
+		name: "object star used in a field that can accept array type",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name: "gitrepo",
+				Type: v1beta1.ParamTypeObject,
+				Properties: map[string]v1beta1.PropertySpec{
+					"url":    {},
+					"commit": {},
+				},
+			}},
+			Steps: []v1beta1.Step{{
+				Name:       "do-the-clone",
+				Image:      "some-git-image",
+				Args:       []string{"$(params.gitrepo[*])"},
+				WorkingDir: "/foo/bar/src/",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.gitrepo[*])"`,
+			Paths:   []string{"spec.steps[0].args[0]"},
+		},
+	}, {
+		name: "non-existent individual key of an object param is used in task step",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name: "gitrepo",
+				Type: v1beta1.ParamTypeObject,
+				Properties: map[string]v1beta1.PropertySpec{
+					"url":    {},
+					"commit": {},
+				},
+			}},
+			Steps: []v1beta1.Step{{
+				Name:       "do-the-clone",
+				Image:      "some-git-image",
+				Args:       []string{"$(params.gitrepo.non-exist-key)"},
+				WorkingDir: "/foo/bar/src/",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.gitrepo.non-exist-key)"`,
+			Paths:   []string{"spec.steps[0].args[0]"},
+		},
+	}, {
+		name: "Inexistent param variable in volumeMount with existing",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{
+				{
+					Name:        "foo",
+					Description: "param",
+					Default:     v1beta1.NewStructuredValues("default"),
+				},
+			},
+			Steps: []v1beta1.Step{{
+				Name:  "mystep",
+				Image: "myimage",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name: "$(params.inexistent)-foo",
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.inexistent)-foo"`,
+			Paths:   []string{"spec.steps[0].volumeMount[0].name"},
+		},
+	}, {
+		name: "Inexistent param variable with existing",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name:        "foo",
+				Description: "param",
+				Default:     v1beta1.NewStructuredValues("default"),
+			}},
+			Steps: []v1beta1.Step{{
+				Name:  "mystep",
+				Image: "myimage",
+				Args:  []string{"$(params.foo) && $(params.inexistent)"},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.foo) && $(params.inexistent)"`,
+			Paths:   []string{"spec.steps[0].args[0]"},
+		},
+	}, {
+		name: "invalid step - invalid onError usage - set to a parameter which does not exist in the task",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				OnError: "$(params.CONTINUE)",
+				Image:   "image",
+				Args:    []string{"arg"},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.CONTINUE)"`,
+			Paths:   []string{"spec.steps[0].onError"},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			task := &v1beta1.Task{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				Spec: v1beta1.TaskSpec{
+					Params: tt.fields.Params,
+					Steps:  tt.fields.Steps,
+				}}
+			ctx := config.EnableAlphaAPIFields(context.Background())
+			task.SetDefaults(ctx)
+			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
+			err := task.Validate(ctx)
+			if err == nil {
+				t.Fatalf("Expected an error, got nothing for %v", task)
+			}
+			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("TaskSpec.Validate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestTaskSpecValidateError(t *testing.T) {
 	type fields struct {
 		Params       []v1beta1.ParamSpec
@@ -772,19 +980,6 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Details: "Task step name must be a valid DNS Label, For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
 		},
 	}, {
-		name: "inexistent param variable",
-		fields: fields{
-			Steps: []v1beta1.Step{{
-				Name:  "mystep",
-				Image: "myimage",
-				Args:  []string{"--flag=$(params.inexistent)"},
-			}},
-		},
-		expectedError: apis.FieldError{
-			Message: `non-existent variable in "--flag=$(params.inexistent)"`,
-			Paths:   []string{"steps[0].args[0]"},
-		},
-	}, {
 		name: "array used in unaccepted field",
 		fields: fields{
 			Params: []v1beta1.ParamSpec{{
@@ -936,156 +1131,6 @@ func TestTaskSpecValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: `variable is not properly isolated in "not isolated: $(params.baz[*])"`,
-			Paths:   []string{"steps[0].args[0]"},
-		},
-	}, {
-		name: "object used in a string field",
-		fields: fields{
-			Params: []v1beta1.ParamSpec{{
-				Name: "gitrepo",
-				Type: v1beta1.ParamTypeObject,
-				Properties: map[string]v1beta1.PropertySpec{
-					"url":    {},
-					"commit": {},
-				},
-			}},
-			Steps: []v1beta1.Step{{
-				Name:       "do-the-clone",
-				Image:      "$(params.gitrepo)",
-				Args:       []string{"echo"},
-				WorkingDir: "/foo/bar/src/",
-			}},
-		},
-		expectedError: apis.FieldError{
-			Message: `variable type invalid in "$(params.gitrepo)"`,
-			Paths:   []string{"steps[0].image"},
-		},
-	}, {
-		name: "object star used in a string field",
-		fields: fields{
-			Params: []v1beta1.ParamSpec{{
-				Name: "gitrepo",
-				Type: v1beta1.ParamTypeObject,
-				Properties: map[string]v1beta1.PropertySpec{
-					"url":    {},
-					"commit": {},
-				},
-			}},
-			Steps: []v1beta1.Step{{
-				Name:       "do-the-clone",
-				Image:      "$(params.gitrepo[*])",
-				Args:       []string{"echo"},
-				WorkingDir: "/foo/bar/src/",
-			}},
-		},
-		expectedError: apis.FieldError{
-			Message: `variable type invalid in "$(params.gitrepo[*])"`,
-			Paths:   []string{"steps[0].image"},
-		},
-	}, {
-		name: "object used in a field that can accept array type",
-		fields: fields{
-			Params: []v1beta1.ParamSpec{{
-				Name: "gitrepo",
-				Type: v1beta1.ParamTypeObject,
-				Properties: map[string]v1beta1.PropertySpec{
-					"url":    {},
-					"commit": {},
-				},
-			}},
-			Steps: []v1beta1.Step{{
-				Name:       "do-the-clone",
-				Image:      "myimage",
-				Args:       []string{"$(params.gitrepo)"},
-				WorkingDir: "/foo/bar/src/",
-			}},
-		},
-		expectedError: apis.FieldError{
-			Message: `variable type invalid in "$(params.gitrepo)"`,
-			Paths:   []string{"steps[0].args[0]"},
-		},
-	}, {
-		name: "object star used in a field that can accept array type",
-		fields: fields{
-			Params: []v1beta1.ParamSpec{{
-				Name: "gitrepo",
-				Type: v1beta1.ParamTypeObject,
-				Properties: map[string]v1beta1.PropertySpec{
-					"url":    {},
-					"commit": {},
-				},
-			}},
-			Steps: []v1beta1.Step{{
-				Name:       "do-the-clone",
-				Image:      "some-git-image",
-				Args:       []string{"$(params.gitrepo[*])"},
-				WorkingDir: "/foo/bar/src/",
-			}},
-		},
-		expectedError: apis.FieldError{
-			Message: `variable type invalid in "$(params.gitrepo[*])"`,
-			Paths:   []string{"steps[0].args[0]"},
-		},
-	}, {
-		name: "non-existent individual key of an object param is used in task step",
-		fields: fields{
-			Params: []v1beta1.ParamSpec{{
-				Name: "gitrepo",
-				Type: v1beta1.ParamTypeObject,
-				Properties: map[string]v1beta1.PropertySpec{
-					"url":    {},
-					"commit": {},
-				},
-			}},
-			Steps: []v1beta1.Step{{
-				Name:       "do-the-clone",
-				Image:      "some-git-image",
-				Args:       []string{"$(params.gitrepo.non-exist-key)"},
-				WorkingDir: "/foo/bar/src/",
-			}},
-		},
-		expectedError: apis.FieldError{
-			Message: `non-existent variable in "$(params.gitrepo.non-exist-key)"`,
-			Paths:   []string{"steps[0].args[0]"},
-		},
-	}, {
-		name: "Inexistent param variable in volumeMount with existing",
-		fields: fields{
-			Params: []v1beta1.ParamSpec{
-				{
-					Name:        "foo",
-					Description: "param",
-					Default:     v1beta1.NewStructuredValues("default"),
-				},
-			},
-			Steps: []v1beta1.Step{{
-				Name:  "mystep",
-				Image: "myimage",
-				VolumeMounts: []corev1.VolumeMount{{
-					Name: "$(params.inexistent)-foo",
-				}},
-			}},
-		},
-		expectedError: apis.FieldError{
-			Message: `non-existent variable in "$(params.inexistent)-foo"`,
-			Paths:   []string{"steps[0].volumeMount[0].name"},
-		},
-	}, {
-		name: "Inexistent param variable with existing",
-		fields: fields{
-			Params: []v1beta1.ParamSpec{{
-				Name:        "foo",
-				Description: "param",
-				Default:     v1beta1.NewStructuredValues("default"),
-			}},
-			Steps: []v1beta1.Step{{
-				Name:  "mystep",
-				Image: "myimage",
-				Args:  []string{"$(params.foo) && $(params.inexistent)"},
-			}},
-		},
-		expectedError: apis.FieldError{
-			Message: `non-existent variable in "$(params.foo) && $(params.inexistent)"`,
 			Paths:   []string{"steps[0].args[0]"},
 		},
 	}, {
@@ -1329,7 +1374,6 @@ func TestTaskSpecValidateError(t *testing.T) {
 			}
 			ctx := config.EnableAlphaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
-			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
 			err := ts.Validate(ctx)
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing for %v", ts)
@@ -1526,17 +1570,6 @@ func TestStepOnError(t *testing.T) {
 			Message: `invalid value: "onError"`,
 			Paths:   []string{"steps[0].onError"},
 			Details: `Task step onError must be either "continue" or "stopAndFail"`,
-		},
-	}, {
-		name: "invalid step - invalid onError usage - set to a parameter which does not exist in the task",
-		steps: []v1beta1.Step{{
-			OnError: "$(params.CONTINUE)",
-			Image:   "image",
-			Args:    []string{"arg"},
-		}},
-		expectedError: &apis.FieldError{
-			Message: `non-existent variable in "$(params.CONTINUE)"`,
-			Paths:   []string{"steps[0].onError"},
 		},
 	}}
 	for _, tt := range tests {
