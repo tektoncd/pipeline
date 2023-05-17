@@ -71,6 +71,17 @@ func TestSetTaskRunStatusBasedOnStepStatus(t *testing.T) {
 					},
 				},
 			}},
+	}, {
+		desc: "The ExitCode in the result cannot modify the original ExitCode",
+		ContainerStatuses: []corev1.ContainerStatus{{
+			Name: "step-bar-0",
+			State: corev1.ContainerState{
+				Terminated: &corev1.ContainerStateTerminated{
+					ExitCode: 0,
+					Message:  `[{"key":"ExitCode","value":"1","type":3}]`,
+				},
+			},
+		}},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			startTime := time.Date(2010, 1, 1, 1, 1, 1, 1, time.UTC)
@@ -88,9 +99,16 @@ func TestSetTaskRunStatusBasedOnStepStatus(t *testing.T) {
 
 			logger, _ := logging.NewLogger("", "status")
 			kubeclient := fakek8s.NewSimpleClientset()
+			originalStatuses := make([]corev1.ContainerStatus, 0, len(c.ContainerStatuses))
+			for _, cs := range c.ContainerStatuses {
+				originalStatuses = append(originalStatuses, *cs.DeepCopy())
+			}
 			merr := setTaskRunStatusBasedOnStepStatus(context.Background(), logger, c.ContainerStatuses, &tr, corev1.PodRunning, kubeclient, &v1beta1.TaskSpec{})
 			if merr != nil {
 				t.Errorf("setTaskRunStatusBasedOnStepStatus: %s", merr)
+			}
+			if d := cmp.Diff(originalStatuses, c.ContainerStatuses); d != "" {
+				t.Errorf("container statuses changed:  %s", diff.PrintWantGot(d))
 			}
 		})
 	}
