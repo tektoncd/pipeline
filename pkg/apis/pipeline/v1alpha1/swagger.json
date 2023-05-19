@@ -1,0 +1,664 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "Tekton Pipeline",
+    "title": "Tekton",
+    "version": "v0.17.2"
+  },
+  "paths": {},
+  "definitions": {
+    "pod.AffinityAssistantTemplate": {
+      "description": "AffinityAssistantTemplate holds pod specific configuration and is a subset of the generic pod Template",
+      "type": "object",
+      "properties": {
+        "imagePullSecrets": {
+          "description": "ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.LocalObjectReference"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "nodeSelector": {
+          "description": "NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "tolerations": {
+          "description": "If specified, the pod's tolerations.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Toleration"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "pod.Template": {
+      "description": "Template holds pod specific configuration",
+      "type": "object",
+      "properties": {
+        "affinity": {
+          "description": "If specified, the pod's scheduling constraints",
+          "$ref": "#/definitions/v1.Affinity"
+        },
+        "automountServiceAccountToken": {
+          "description": "AutomountServiceAccountToken indicates whether pods running as this service account should have an API token automatically mounted.",
+          "type": "boolean"
+        },
+        "dnsConfig": {
+          "description": "Specifies the DNS parameters of a pod. Parameters specified here will be merged to the generated DNS configuration based on DNSPolicy.",
+          "$ref": "#/definitions/v1.PodDNSConfig"
+        },
+        "dnsPolicy": {
+          "description": "Set DNS policy for the pod. Defaults to \"ClusterFirst\". Valid values are 'ClusterFirst', 'Default' or 'None'. DNS parameters given in DNSConfig will be merged with the policy selected with DNSPolicy.",
+          "type": "string"
+        },
+        "enableServiceLinks": {
+          "description": "EnableServiceLinks indicates whether information about services should be injected into pod's environment variables, matching the syntax of Docker links. Optional: Defaults to true.",
+          "type": "boolean"
+        },
+        "env": {
+          "description": "List of environment variables that can be provided to the containers belonging to the pod.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.EnvVar"
+          },
+          "x-kubernetes-list-type": "atomic",
+          "x-kubernetes-patch-merge-key": "name",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "hostAliases": {
+          "description": "HostAliases is an optional list of hosts and IPs that will be injected into the pod's hosts file if specified. This is only valid for non-hostNetwork pods.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.HostAlias"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "hostNetwork": {
+          "description": "HostNetwork specifies whether the pod may use the node network namespace",
+          "type": "boolean"
+        },
+        "imagePullSecrets": {
+          "description": "ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.LocalObjectReference"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "nodeSelector": {
+          "description": "NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "priorityClassName": {
+          "description": "If specified, indicates the pod's priority. \"system-node-critical\" and \"system-cluster-critical\" are two special keywords which indicate the highest priorities with the former being the highest priority. Any other name must be defined by creating a PriorityClass object with that name. If not specified, the pod priority will be default or zero if there is no default.",
+          "type": "string"
+        },
+        "runtimeClassName": {
+          "description": "RuntimeClassName refers to a RuntimeClass object in the node.k8s.io group, which should be used to run this pod. If no RuntimeClass resource matches the named class, the pod will not be run. If unset or empty, the \"legacy\" RuntimeClass will be used, which is an implicit class with an empty definition that uses the default runtime handler. More info: https://git.k8s.io/enhancements/keps/sig-node/runtime-class.md This is a beta feature as of Kubernetes v1.14.",
+          "type": "string"
+        },
+        "schedulerName": {
+          "description": "SchedulerName specifies the scheduler to be used to dispatch the Pod",
+          "type": "string"
+        },
+        "securityContext": {
+          "description": "SecurityContext holds pod-level security attributes and common container settings. Optional: Defaults to empty.  See type description for default values of each field.",
+          "$ref": "#/definitions/v1.PodSecurityContext"
+        },
+        "tolerations": {
+          "description": "If specified, the pod's tolerations.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Toleration"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "topologySpreadConstraints": {
+          "description": "TopologySpreadConstraints controls how Pods are spread across your cluster among failure-domains such as regions, zones, nodes, and other user-defined topology domains.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.TopologySpreadConstraint"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "volumes": {
+          "description": "List of volumes that can be mounted by containers belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Volume"
+          },
+          "x-kubernetes-list-type": "atomic",
+          "x-kubernetes-patch-merge-key": "name",
+          "x-kubernetes-patch-strategy": "merge,retainKeys"
+        }
+      }
+    },
+    "v1alpha1.Authority": {
+      "description": "The Authority block defines the keys for validating signatures.",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "key": {
+          "description": "Key contains the public key to validate the resource.",
+          "$ref": "#/definitions/v1alpha1.KeyRef"
+        },
+        "name": {
+          "description": "Name is the name for this authority.",
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "v1alpha1.EmbeddedRunSpec": {
+      "description": "EmbeddedRunSpec allows custom task definitions to be embedded",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1beta1.PipelineTaskMetadata"
+        },
+        "spec": {
+          "description": "Spec is a specification of a custom task",
+          "default": {},
+          "$ref": "#/definitions/k8s.io.apimachinery.pkg.runtime.RawExtension"
+        }
+      }
+    },
+    "v1alpha1.KeyRef": {
+      "description": "KeyRef defines the reference to a public key",
+      "type": "object",
+      "properties": {
+        "data": {
+          "description": "Data contains the inline public key.",
+          "type": "string"
+        },
+        "hashAlgorithm": {
+          "description": "HashAlgorithm always defaults to sha256 if the algorithm hasn't been explicitly set",
+          "type": "string"
+        },
+        "kms": {
+          "description": "KMS contains the KMS url of the public key Supported formats differ based on the KMS system used. One example of a KMS url could be: gcpkms://projects/[PROJECT]/locations/[LOCATION]\u003e/keyRings/[KEYRING]/cryptoKeys/[KEY]/cryptoKeyVersions/[KEY_VERSION] For more examples please refer https://docs.sigstore.dev/cosign/kms_support. Note that the KMS is not supported yet.",
+          "type": "string"
+        },
+        "secretRef": {
+          "description": "SecretRef sets a reference to a secret with the key.",
+          "$ref": "#/definitions/v1.SecretReference"
+        }
+      }
+    },
+    "v1alpha1.ParamSpec": {
+      "description": "ParamSpec defines arbitrary parameters needed beyond typed inputs (such as resources). Parameter values are provided by users as inputs on a TaskRun or PipelineRun.",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "default": {
+          "description": "Default is the value a parameter takes if no input value is supplied. If default is set, a Task may be executed without a supplied value for the parameter.",
+          "$ref": "#/definitions/v1alpha1.ParamValue"
+        },
+        "description": {
+          "description": "Description is a user-facing description of the parameter that may be used to populate a UI.",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name declares the name by which a parameter is referenced.",
+          "type": "string",
+          "default": ""
+        },
+        "properties": {
+          "description": "Properties is the JSON Schema properties to support key-value pairs parameter.",
+          "type": "object",
+          "additionalProperties": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.PropertySpec"
+          }
+        },
+        "type": {
+          "description": "Type is the user-specified type of the parameter. The possible types are currently \"string\", \"array\" and \"object\", and \"string\" is the default.",
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1.ParamValue": {
+      "description": "ResultValue is a type alias of ParamValue",
+      "type": "object",
+      "required": [
+        "Type",
+        "StringVal",
+        "ArrayVal",
+        "ObjectVal"
+      ],
+      "properties": {
+        "ArrayVal": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "ObjectVal": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "StringVal": {
+          "description": "Represents the stored type of ParamValues.",
+          "type": "string",
+          "default": ""
+        },
+        "Type": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "v1alpha1.PropertySpec": {
+      "description": "PropertySpec defines the struct for object keys",
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1.ResourcePattern": {
+      "description": "ResourcePattern defines the pattern of the resource source",
+      "type": "object",
+      "required": [
+        "pattern"
+      ],
+      "properties": {
+        "pattern": {
+          "description": "Pattern defines a resource pattern. Regex is created to filter resources based on `Pattern` Example patterns: GitHub resource: https://github.com/tektoncd/catalog.git, https://github.com/tektoncd/* Bundle resource: gcr.io/tekton-releases/catalog/upstream/git-clone, gcr.io/tekton-releases/catalog/upstream/* Hub resource: https://artifacthub.io/*,",
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "v1alpha1.Run": {
+      "description": "Run represents a single execution of a Custom Task.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.RunSpec"
+        },
+        "status": {
+          "default": {},
+          "$ref": "#/definitions/github.com.tektoncd.pipeline.pkg.apis.run.v1alpha1.RunStatus"
+        }
+      }
+    },
+    "v1alpha1.RunList": {
+      "description": "RunList contains a list of Run",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.Run"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1alpha1.RunSpec": {
+      "description": "RunSpec defines the desired state of Run",
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.Param"
+          }
+        },
+        "podTemplate": {
+          "description": "PodTemplate holds pod specific configuration",
+          "$ref": "#/definitions/pod.Template"
+        },
+        "ref": {
+          "$ref": "#/definitions/v1beta1.TaskRef"
+        },
+        "retries": {
+          "description": "Used for propagating retries count to custom tasks",
+          "type": "integer",
+          "format": "int32"
+        },
+        "serviceAccountName": {
+          "type": "string",
+          "default": ""
+        },
+        "spec": {
+          "description": "Spec is a specification of a custom task",
+          "$ref": "#/definitions/v1alpha1.EmbeddedRunSpec"
+        },
+        "status": {
+          "description": "Used for cancelling a run (and maybe more later on)",
+          "type": "string"
+        },
+        "statusMessage": {
+          "description": "Status message for cancellation.",
+          "type": "string"
+        },
+        "timeout": {
+          "description": "Time after which the custom-task times out. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "$ref": "#/definitions/v1.Duration"
+        },
+        "workspaces": {
+          "description": "Workspaces is a list of WorkspaceBindings from volumes to workspaces.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.WorkspaceBinding"
+          }
+        }
+      }
+    },
+    "v1alpha1.StepAction": {
+      "description": "StepAction represents a collection of sequential steps that are run as part of a Pipeline using a set of inputs and producing a set of outputs. Steps execute when StepRuns are created that provide the input parameters and resources and output resources the Step requires.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec holds the desired state of the Step from the client",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.StepActionSpec"
+        }
+      }
+    },
+    "v1alpha1.StepActionList": {
+      "description": "StepList contains a list of Step",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.StepAction"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1alpha1.StepActionResult": {
+      "description": "StepActionResult used to describe the results of a task",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "description": {
+          "description": "Description is a human-readable description of the result",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name the given name",
+          "type": "string",
+          "default": ""
+        },
+        "properties": {
+          "description": "Properties is the JSON Schema properties to support key-value pairs results.",
+          "type": "object",
+          "additionalProperties": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.PropertySpec"
+          }
+        },
+        "type": {
+          "description": "Type is the user-specified type of the result. The possible type is currently \"string\" and will support \"array\" in following work.",
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1.StepActionSpec": {
+      "description": "StepActionSpec is the actionable components of a step.",
+      "type": "object",
+      "required": [
+        "name",
+        "Results"
+      ],
+      "properties": {
+        "Params": {
+          "description": "Params is a list of input parameters required to run the stepAction. Params must be supplied as inputs in Tasks unless they declare a default value.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.ParamSpec"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "Results": {
+          "description": "Results are values that this StepAction can output",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.StepActionResult"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "args": {
+          "description": "Arguments to the entrypoint. The image's CMD is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. \"$$(VAR_NAME)\" will produce the string literal \"$(VAR_NAME)\". Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "command": {
+          "description": "Entrypoint array. Not executed within a shell. The image's ENTRYPOINT is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. \"$$(VAR_NAME)\" will produce the string literal \"$(VAR_NAME)\". Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "env": {
+          "description": "List of environment variables to set in the container. Cannot be updated.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.EnvVar"
+          },
+          "x-kubernetes-list-type": "atomic",
+          "x-kubernetes-patch-merge-key": "name",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "envFrom": {
+          "description": "List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence. Cannot be updated.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.EnvFromSource"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "image": {
+          "description": "Image reference name to run for this Step. More info: https://kubernetes.io/docs/concepts/containers/images",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name of the Step specified as a DNS_LABEL. Each Step in a Task must have a unique name.",
+          "type": "string",
+          "default": ""
+        },
+        "script": {
+          "description": "Script is the contents of an executable file to execute.\n\nIf Script is not empty, the Step cannot have an Command and the Args will be passed to the Script.",
+          "type": "string"
+        },
+        "workingDir": {
+          "description": "Step's working directory. If not specified, the container runtime's default will be used, which might be configured in the container image. Cannot be updated.",
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1.VerificationPolicy": {
+      "description": "VerificationPolicy defines the rules to verify Tekton resources. VerificationPolicy can config the mapping from resources to a list of public keys, so when verifying the resources we can use the corresponding public keys.",
+      "type": "object",
+      "required": [
+        "spec"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec holds the desired state of the VerificationPolicy.",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.VerificationPolicySpec"
+        }
+      }
+    },
+    "v1alpha1.VerificationPolicyList": {
+      "description": "VerificationPolicyList contains a list of VerificationPolicy",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.VerificationPolicy"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1alpha1.VerificationPolicySpec": {
+      "description": "VerificationPolicySpec defines the patterns and authorities.",
+      "type": "object",
+      "required": [
+        "resources",
+        "authorities"
+      ],
+      "properties": {
+        "authorities": {
+          "description": "Authorities defines the rules for validating signatures.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.Authority"
+          }
+        },
+        "mode": {
+          "description": "Mode controls whether a failing policy will fail the taskrun/pipelinerun, or only log the warnings enforce - fail the taskrun/pipelinerun if verification fails (default) warn - don't fail the taskrun/pipelinerun if verification fails but log warnings",
+          "type": "string"
+        },
+        "resources": {
+          "description": "Resources defines the patterns of resources sources that should be subject to this policy. For example, we may want to apply this Policy from a certain GitHub repo. Then the ResourcesPattern should be valid regex. E.g. If using gitresolver, and we want to config keys from a certain git repo. `ResourcesPattern` can be `https://github.com/tektoncd/catalog.git`, we will use regex to filter out those resources.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.ResourcePattern"
+          }
+        }
+      }
+    }
+  }
+}

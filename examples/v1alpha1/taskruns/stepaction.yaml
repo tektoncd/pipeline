@@ -1,0 +1,8 @@
+apiVersion: tekton.dev/v1alpha1
+kind: StepAction
+metadata:
+  name: step-action
+spec:
+  image: alpine
+  script: |
+    echo "I am not github action!!!"

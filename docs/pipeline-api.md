@@ -6047,6 +6047,8 @@ Resource Types:
 <ul><li>
 <a href="#tekton.dev/v1alpha1.Run">Run</a>
 </li><li>
+<a href="#tekton.dev/v1alpha1.StepAction">StepAction</a>
+</li><li>
 <a href="#tekton.dev/v1alpha1.VerificationPolicy">VerificationPolicy</a>
 </li><li>
 <a href="#tekton.dev/v1alpha1.PipelineResource">PipelineResource</a>
@@ -6262,6 +6264,228 @@ RunStatus
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1alpha1.StepAction">StepAction
+</h3>
+<div>
+<p>StepAction represents a collection of sequential steps that are run as part of a
+Pipeline using a set of inputs and producing a set of outputs. Steps execute
+when StepRuns are created that provide the input parameters and resources and
+output resources the Step requires.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+tekton.dev/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>StepAction</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.StepActionSpec">
+StepActionSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Spec holds the desired state of the Step from the client</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the Step specified as a DNS_LABEL.
+Each Step in a Task must have a unique name.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>image</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Image reference name to run for this Step.
+More info: <a href="https://kubernetes.io/docs/concepts/containers/images">https://kubernetes.io/docs/concepts/containers/images</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>command</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Entrypoint array. Not executed within a shell.
+The image&rsquo;s ENTRYPOINT is used if this is not provided.
+Variable references $(VAR_NAME) are expanded using the container&rsquo;s environment. If a variable
+cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
+to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. &ldquo;$$(VAR_NAME)&rdquo; will
+produce the string literal &ldquo;$(VAR_NAME)&rdquo;. Escaped references will never be expanded, regardless
+of whether the variable exists or not. Cannot be updated.
+More info: <a href="https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell">https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>args</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Arguments to the entrypoint.
+The image&rsquo;s CMD is used if this is not provided.
+Variable references $(VAR_NAME) are expanded using the container&rsquo;s environment. If a variable
+cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
+to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. &ldquo;$$(VAR_NAME)&rdquo; will
+produce the string literal &ldquo;$(VAR_NAME)&rdquo;. Escaped references will never be expanded, regardless
+of whether the variable exists or not. Cannot be updated.
+More info: <a href="https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell">https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>workingDir</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Step&rsquo;s working directory.
+If not specified, the container runtime&rsquo;s default will be used, which
+might be configured in the container image.
+Cannot be updated.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>envFrom</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envfromsource-v1-core">
+[]Kubernetes core/v1.EnvFromSource
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>List of sources to populate environment variables in the container.
+The keys defined within a source must be a C_IDENTIFIER. All invalid keys
+will be reported as an event when the container is starting. When a key exists in multiple
+sources, the value associated with the last source will take precedence.
+Values defined by an Env with a duplicate key will take precedence.
+Cannot be updated.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>env</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envvar-v1-core">
+[]Kubernetes core/v1.EnvVar
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>List of environment variables to set in the container.
+Cannot be updated.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>script</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Script is the contents of an executable file to execute.</p>
+<p>If Script is not empty, the Step cannot have an Command and the Args will be passed to the Script.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>Params</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.ParamSpecs">
+ParamSpecs
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Params is a list of input parameters required to run the stepAction. Params
+must be supplied as inputs in Tasks unless they declare a default
+value.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>Results</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.StepActionResult">
+[]StepActionResult
+</a>
+</em>
+</td>
+<td>
+<p>Results are values that this StepAction can output</p>
+</td>
+</tr>
+</table>
 </td>
 </tr>
 </tbody>
@@ -6711,6 +6935,200 @@ HashAlgorithm
 <div>
 <p>ModeType indicates the type of a mode for VerificationPolicy</p>
 </div>
+<h3 id="tekton.dev/v1alpha1.ParamSpec">ParamSpec
+</h3>
+<div>
+<p>ParamSpec defines arbitrary parameters needed beyond typed inputs (such as
+resources). Parameter values are provided by users as inputs on a TaskRun
+or PipelineRun.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name declares the name by which a parameter is referenced.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>type</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.ParamType">
+ParamType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Type is the user-specified type of the parameter. The possible types
+are currently &ldquo;string&rdquo;, &ldquo;array&rdquo; and &ldquo;object&rdquo;, and &ldquo;string&rdquo; is the default.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>description</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Description is a user-facing description of the parameter that may be
+used to populate a UI.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>properties</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.PropertySpec">
+map[string]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.PropertySpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Properties is the JSON Schema properties to support key-value pairs parameter.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>default</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.ParamValue">
+ParamValue
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Default is the value a parameter takes if no input value is supplied. If
+default is set, a Task may be executed without a supplied value for the
+parameter.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1alpha1.ParamSpecs">ParamSpecs
+(<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ParamSpec</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.StepActionSpec">StepActionSpec</a>)
+</p>
+<div>
+<p>ParamSpecs is a list of ParamSpec</p>
+</div>
+<h3 id="tekton.dev/v1alpha1.ParamType">ParamType
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1alpha1.ParamValue">ParamValue</a>, <a href="#tekton.dev/v1alpha1.PropertySpec">PropertySpec</a>)
+</p>
+<div>
+<p>ParamType indicates the type of an input parameter;
+Used to distinguish between a single string and an array of strings.</p>
+</div>
+<h3 id="tekton.dev/v1alpha1.ParamValue">ParamValue
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.ParamSpec">ParamSpec</a>)
+</p>
+<div>
+<p>ResultValue is a type alias of ParamValue</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>Type</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.ParamType">
+ParamType
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>StringVal</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Represents the stored type of ParamValues.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ArrayVal</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>ObjectVal</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1alpha1.PropertySpec">PropertySpec
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1alpha1.StepActionResult">StepActionResult</a>)
+</p>
+<div>
+<p>PropertySpec defines the struct for object keys</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>type</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.ParamType">
+ParamType
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1alpha1.ResourcePattern">ResourcePattern
 </h3>
 <p>
@@ -6744,6 +7162,18 @@ Hub resource: <a href="https://artifacthub.io/*">https://artifacthub.io/*</a>,</
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1alpha1.ResultsType">ResultsType
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.StepActionResult">StepActionResult</a>)
+</p>
+<div>
+<p>ResultsType indicates the type of a result;
+Used to distinguish between a single string and an array of strings.
+Note that there is ResultType used to find out whether a
+RunResult is from a task result or not, which is different from
+this ResultsType.</p>
+</div>
 <h3 id="tekton.dev/v1alpha1.RunReason">RunReason
 (<code>string</code> alias)</h3>
 <div>
@@ -6921,6 +7351,253 @@ Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https
 <div>
 <p>RunSpecStatusMessage defines human readable status messages for the TaskRun.</p>
 </div>
+<h3 id="tekton.dev/v1alpha1.StepActionObject">StepActionObject
+</h3>
+<div>
+<p>MyStepObject is implemented by Task and ClusterTask</p>
+</div>
+<h3 id="tekton.dev/v1alpha1.StepActionResult">StepActionResult
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.StepActionSpec">StepActionSpec</a>)
+</p>
+<div>
+<p>StepActionResult used to describe the results of a task</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name the given name</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>type</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.ResultsType">
+ResultsType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Type is the user-specified type of the result. The possible type
+is currently &ldquo;string&rdquo; and will support &ldquo;array&rdquo; in following work.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>properties</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.PropertySpec">
+map[string]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.PropertySpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Properties is the JSON Schema properties to support key-value pairs results.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>description</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Description is a human-readable description of the result</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1alpha1.StepActionSpec">StepActionSpec
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.StepAction">StepAction</a>)
+</p>
+<div>
+<p>StepActionSpec is the actionable components of a step.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the Step specified as a DNS_LABEL.
+Each Step in a Task must have a unique name.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>image</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Image reference name to run for this Step.
+More info: <a href="https://kubernetes.io/docs/concepts/containers/images">https://kubernetes.io/docs/concepts/containers/images</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>command</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Entrypoint array. Not executed within a shell.
+The image&rsquo;s ENTRYPOINT is used if this is not provided.
+Variable references $(VAR_NAME) are expanded using the container&rsquo;s environment. If a variable
+cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
+to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. &ldquo;$$(VAR_NAME)&rdquo; will
+produce the string literal &ldquo;$(VAR_NAME)&rdquo;. Escaped references will never be expanded, regardless
+of whether the variable exists or not. Cannot be updated.
+More info: <a href="https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell">https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>args</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Arguments to the entrypoint.
+The image&rsquo;s CMD is used if this is not provided.
+Variable references $(VAR_NAME) are expanded using the container&rsquo;s environment. If a variable
+cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
+to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. &ldquo;$$(VAR_NAME)&rdquo; will
+produce the string literal &ldquo;$(VAR_NAME)&rdquo;. Escaped references will never be expanded, regardless
+of whether the variable exists or not. Cannot be updated.
+More info: <a href="https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell">https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>workingDir</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Step&rsquo;s working directory.
+If not specified, the container runtime&rsquo;s default will be used, which
+might be configured in the container image.
+Cannot be updated.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>envFrom</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envfromsource-v1-core">
+[]Kubernetes core/v1.EnvFromSource
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>List of sources to populate environment variables in the container.
+The keys defined within a source must be a C_IDENTIFIER. All invalid keys
+will be reported as an event when the container is starting. When a key exists in multiple
+sources, the value associated with the last source will take precedence.
+Values defined by an Env with a duplicate key will take precedence.
+Cannot be updated.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>env</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envvar-v1-core">
+[]Kubernetes core/v1.EnvVar
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>List of environment variables to set in the container.
+Cannot be updated.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>script</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Script is the contents of an executable file to execute.</p>
+<p>If Script is not empty, the Step cannot have an Command and the Args will be passed to the Script.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>Params</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.ParamSpecs">
+ParamSpecs
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Params is a list of input parameters required to run the stepAction. Params
+must be supplied as inputs in Tasks unless they declare a default
+value.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>Results</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.StepActionResult">
+[]StepActionResult
+</a>
+</em>
+</td>
+<td>
+<p>Results are values that this StepAction can output</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1alpha1.VerificationPolicySpec">VerificationPolicySpec
 </h3>
 <p>

@@ -25,6 +25,8 @@ const (
 	// ClusterTaskLabelKey is used as the label identifier for a ClusterTask
 	ClusterTaskLabelKey = GroupName + "/clusterTask"
 
+	StepActionLabelKey = GroupName + "/stepAction"
+
 	// TaskLabelKey is used as the label identifier for a Task
 	TaskLabelKey = GroupName + "/task"
 
@@ -52,6 +54,12 @@ const (
 )
 
 var (
+	// StepActionResource represents a Tekton Task
+	StepActionResource = schema.GroupResource{
+		Group:    GroupName,
+		Resource: "stepactions",
+	}
+
 	// TaskResource represents a Tekton Task
 	TaskResource = schema.GroupResource{
 		Group:    GroupName,
