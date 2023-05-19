@@ -395,7 +395,7 @@ In `v1beta1`, you can also reference a `Tekton bundle` using OCI bundle syntax, 
 
 
 {{< tabs >}}
-{{< tab "v1 & v1beta1" >}}
+{{% tab "v1 & v1beta1" %}}
 ```yaml
 spec:
   taskRef:
@@ -408,9 +408,9 @@ spec:
     - name: kind
       value: Task
 ```
-{{< /tab >}}
+{{% /tab %}}
 
-{{< tab "v1beta1" >}}
+{{% tab "v1beta1" %}}
 ```yaml
 spec:
   tasks:
@@ -419,7 +419,7 @@ spec:
         name: echo-task
         bundle: docker.com/myrepo/mycatalog
 ```
-{{< /tab >}}
+{{% /tab %}}
 {{< /tabs >}}
 
 Here, the `bundle` field is the full reference url to the artifact. The name is the
@@ -429,7 +429,7 @@ You may also specify a `tag` as you would with a Docker image which will give yo
 repeatable reference to a `Task`.
 
 {{< tabs >}}
-{{< tab "v1 & v1beta1" >}}
+{{% tab "v1 & v1beta1" %}}
 ```yaml
 spec:
   taskRef:
@@ -442,9 +442,9 @@ spec:
     - name: kind
       value: Task
 ```
-{{< /tab >}}
+{{% /tab %}}
 
-{{< tab "v1beta1" >}}
+{{% tab "v1beta1" %}}
 ```yaml
 spec:
   tasks:
@@ -453,13 +453,13 @@ spec:
         name: echo-task
         bundle: docker.com/myrepo/mycatalog:v1.0.1
 ```
-{{< /tab >}}
+{{% /tab %}}
 {{< /tabs >}}
 
 You may also specify a fixed digest instead of a tag.
 
 {{< tabs >}}
-{{< tab "v1 & v1beta1" >}}
+{{% tab "v1 & v1beta1" %}}
 ```yaml
 spec:
   taskRef:
@@ -472,9 +472,9 @@ spec:
     - name: kind
       value: Task
 ```
-{{< /tab >}}
+{{% /tab %}}
 
-{{< tab "v1beta1" >}}
+{{% tab "v1beta1" %}}
 ```yaml
 spec:
   tasks:
@@ -483,7 +483,7 @@ spec:
         name: echo-task
         bundle: docker.io/myrepo/mycatalog@sha256:abc123
 ```
-{{< /tab >}}
+{{% /tab %}}
 {{< /tabs >}}
 
 Any of the above options will fetch the image using the `ImagePullSecrets` attached to the

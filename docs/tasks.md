@@ -137,7 +137,7 @@ Below is an example of a Pipeline declaration that uses a `ClusterTask`:
 - The cluster resolver syntax below can be used to reference any task, not just a clustertask.
 
 {{< tabs >}}
-{{< tab header="v1 & v1beta1" code=true lang="yaml" >}}
+{{% tab header="v1 & v1beta1" %}}
 ```yaml
 apiVersion: tekton.dev/v1
 kind: Pipeline
@@ -156,9 +156,9 @@ spec:
         - name: namespace
           value: default
 ```
-{{< /tab >}}
+{{% /tab %}}
 
-{{< tab header="v1beta1" code=true lang="yaml" >}}
+{{% tab header="v1beta1" %}}
 ```yaml
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
@@ -173,7 +173,7 @@ spec:
         kind: ClusterTask
       params: ....
 ```
-{{< /tab >}}
+{{% /tab %}}
 {{< /tabs >}}
 
 ### Defining `Steps`
@@ -201,7 +201,7 @@ Below is an example of setting the resource requests and limits for a step:
 
 
 {{< tabs >}}
-{{< tab header="v1" code=true lang="yaml" >}}
+{{% tab header="v1" %}}
 ```yaml
 spec:
   steps:
@@ -214,9 +214,9 @@ spec:
           memory: 2Gi
           cpu: 800m
 ```
-{{< /tab >}}
+{{% /tab %}}
 
-{{< tab header="v1beta1" code=true lang="yaml" >}}
+{{% tab header="v1beta1" %}}
 ```yaml
 spec:
   steps:
@@ -229,7 +229,7 @@ spec:
           memory: 2Gi
           cpu: 800m
 ```
-{{< /tab >}}
+{{% /tab %}}
 {{< /tabs >}}
 
 #### Reserved directories
@@ -790,7 +790,7 @@ When this Task is executed in a TaskRun, the results will appear in the TaskRun'
 
 
 {{< tabs >}}
-{{< tab header="v1" code=true lang="yaml" >}}
+{{% tab header="v1" %}}
 ```yaml
 apiVersion: tekton.dev/v1
 kind: TaskRun
@@ -805,9 +805,9 @@ status:
       value: |
         1579722445
 ```
-{{< /tab >}}
+{{% /tab %}}
 
-{{< tab header="v1beta1" code=true lang="yaml" >}}
+{{% tab header="v1beta1" %}}
 ```yaml
 apiVersion: tekton.dev/v1beta1
 kind: TaskRun
@@ -822,7 +822,7 @@ status:
       value: |
         1579722445
 ```
-{{< /tab >}}
+{{% /tab %}}
 {{< /tabs >}}
 
 Tekton does not perform any processing on the contents of results; they are emitted
