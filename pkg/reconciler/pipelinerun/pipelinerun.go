@@ -362,11 +362,6 @@ func (c *Reconciler) resolvePipelineState(
 			if errors.Is(err, remote.ErrRequestInProgress) {
 				return nil, err
 			}
-			if errors.Is(err, trustedresources.ErrResourceVerificationFailed) {
-				message := fmt.Sprintf("PipelineRun %s/%s referred task %s failed signature verification", pr.Namespace, pr.Name, task.Name)
-				pr.Status.MarkFailed(ReasonResourceVerificationFailed, message)
-				return nil, controller.NewPermanentError(err)
-			}
 			var nfErr *resources.TaskNotFoundError
 			if errors.As(err, &nfErr) {
 				pr.Status.MarkFailed(ReasonCouldntGetTask,
@@ -378,6 +373,14 @@ func (c *Reconciler) resolvePipelineState(
 					pipelineMeta.Namespace, pr.Name, err)
 			}
 			return nil, controller.NewPermanentError(err)
+		}
+		if resolvedTask.ResolvedTask != nil && resolvedTask.ResolvedTask.VerificationResult != nil {
+			vr := resolvedTask.ResolvedTask.VerificationResult
+			if vr.VerificationResultType == trustedresources.VerificationError {
+				err := fmt.Errorf("PipelineRun %s/%s referred pipeline failed signature verification for task %s : %w", pr.Namespace, pr.Name, resolvedTask.ResolvedTask.TaskName, vr.Err)
+				pr.Status.MarkFailed(ReasonResourceVerificationFailed, err.Error())
+				return nil, controller.NewPermanentError(vr.Err)
+			}
 		}
 		pst = append(pst, resolvedTask)
 	}
