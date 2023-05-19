@@ -142,6 +142,58 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 			Message: `expected at least one, got none`,
 			Paths:   []string{"spec.description", "spec.params", "spec.resources", "spec.tasks", "spec.workspaces"},
 		},
+	}, {
+		name: "invalid parameter usage in pipeline task",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name: "invalid-pipeline-task",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Steps: []Step{{
+							Name:   "some-step",
+							Image:  "some-image",
+							Script: "$(params.doesnotexist)",
+						}},
+					}},
+				}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.doesnotexist)"`,
+			Paths:   []string{"spec.tasks[0].steps[0].script"},
+		},
+	}, {
+		name: "invalid parameter usage in finally pipeline task",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name: "pipeline-task",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Steps: []Step{{
+							Name:    "some-step",
+							Image:   "some-image",
+							Command: []string{"cmd"},
+						}},
+					}},
+				}},
+				Finally: []PipelineTask{{
+					Name: "invalid-pipeline-task",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Steps: []Step{{
+							Name:   "some-step",
+							Image:  "some-image",
+							Script: "$(params.doesnotexist)",
+						}},
+					}},
+				}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.doesnotexist)"`,
+			Paths:   []string{"spec.finally[0].steps[0].script"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
