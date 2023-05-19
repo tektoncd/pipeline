@@ -19,7 +19,6 @@ package cluster_test
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -211,13 +210,13 @@ func TestResolve(t *testing.T) {
 			}},
 		},
 	}
+	taskChecksum, err := exampleTask.Checksum()
+	if err != nil {
+		t.Fatalf("couldn't checksum task: %v", err)
+	}
 	taskAsYAML, err := yaml.Marshal(exampleTask)
 	if err != nil {
 		t.Fatalf("couldn't marshal task: %v", err)
-	}
-	taskSpec, err := yaml.Marshal(exampleTask.Spec)
-	if err != nil {
-		t.Fatalf("couldn't marshal task spec: %v", err)
 	}
 
 	examplePipeline := &pipelinev1.Pipeline{
@@ -241,13 +240,13 @@ func TestResolve(t *testing.T) {
 			}},
 		},
 	}
+	pipelineChecksum, err := examplePipeline.Checksum()
+	if err != nil {
+		t.Fatalf("couldn't checksum pipeline: %v", err)
+	}
 	pipelineAsYAML, err := yaml.Marshal(examplePipeline)
 	if err != nil {
 		t.Fatalf("couldn't marshal pipeline: %v", err)
-	}
-	pipelineSpec, err := yaml.Marshal(examplePipeline.Spec)
-	if err != nil {
-		t.Fatalf("couldn't marshal pipeline spec: %v", err)
 	}
 
 	testCases := []struct {
@@ -272,7 +271,7 @@ func TestResolve(t *testing.T) {
 					RefSource: &pipelinev1.RefSource{
 						URI: "/apis/tekton.dev/v1/namespaces/task-ns/task/example-task@a123",
 						Digest: map[string]string{
-							"sha256": sha256CheckSum(taskSpec),
+							"sha256": hex.EncodeToString(taskChecksum),
 						},
 					},
 				},
@@ -289,7 +288,7 @@ func TestResolve(t *testing.T) {
 					RefSource: &pipelinev1.RefSource{
 						URI: "/apis/tekton.dev/v1/namespaces/pipeline-ns/pipeline/example-pipeline@b123",
 						Digest: map[string]string{
-							"sha256": sha256CheckSum(pipelineSpec),
+							"sha256": hex.EncodeToString(pipelineChecksum),
 						},
 					},
 				},
@@ -305,7 +304,7 @@ func TestResolve(t *testing.T) {
 					RefSource: &pipelinev1.RefSource{
 						URI: "/apis/tekton.dev/v1/namespaces/pipeline-ns/pipeline/example-pipeline@b123",
 						Digest: map[string]string{
-							"sha256": sha256CheckSum(pipelineSpec),
+							"sha256": hex.EncodeToString(pipelineChecksum),
 						},
 					},
 				},
@@ -321,7 +320,7 @@ func TestResolve(t *testing.T) {
 					RefSource: &pipelinev1.RefSource{
 						URI: "/apis/tekton.dev/v1/namespaces/task-ns/task/example-task@a123",
 						Digest: map[string]string{
-							"sha256": sha256CheckSum(taskSpec),
+							"sha256": hex.EncodeToString(taskChecksum),
 						},
 					},
 				},
@@ -470,10 +469,4 @@ func createRequest(kind, name, namespace string) *v1beta1.ResolutionRequest {
 
 func resolverDisabledContext() context.Context {
 	return frtesting.ContextWithClusterResolverDisabled(context.Background())
-}
-
-func sha256CheckSum(input []byte) string {
-	h := sha256.New()
-	h.Write(input)
-	return hex.EncodeToString(h.Sum(nil))
 }
