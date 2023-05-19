@@ -18,12 +18,14 @@ package v1beta1
 
 import (
 	"context"
+	"encoding/hex"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/test/diff"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
@@ -949,6 +951,59 @@ func TestEmbeddedTask_IsCustomTask(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.et.IsCustomTask(); got != tt.want {
 				t.Errorf("IsCustomTask() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPipelineChecksum(t *testing.T) {
+	tests := []struct {
+		name     string
+		pipeline *Pipeline
+	}{{
+		name: "pipeline ignore uid",
+		pipeline: &Pipeline{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "tekton.dev/v1beta1",
+				Kind:       "Pipeline"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        "pipeline",
+				Namespace:   "pipeline-ns",
+				UID:         "abc",
+				Labels:      map[string]string{"label": "foo"},
+				Annotations: map[string]string{"foo": "bar"},
+			},
+			Spec: PipelineSpec{},
+		},
+	}, {
+		name: "pipeline ignore system annotations",
+		pipeline: &Pipeline{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "tekton.dev/v1beta1",
+				Kind:       "Pipeline"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pipeline",
+				Namespace: "pipeline-ns",
+				UID:       "abc",
+				Labels:    map[string]string{"label": "foo"},
+				Annotations: map[string]string{
+					"foo":                       "bar",
+					"kubectl-client-side-apply": "client",
+					"kubectl.kubernetes.io/last-applied-configuration": "config",
+				},
+			},
+			Spec: PipelineSpec{},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sha, err := tt.pipeline.Checksum()
+			if err != nil {
+				t.Fatalf("Error computing checksuum: %v", err)
+			}
+
+			if d := cmp.Diff(hex.EncodeToString(sha), "ef400089e645c69a588e71fe629ce2a989743e303c058073b0829c6c6338ab8a"); d != "" {
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}

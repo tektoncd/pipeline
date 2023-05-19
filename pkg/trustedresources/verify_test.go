@@ -28,7 +28,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -36,7 +35,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/trustedresources/verifier"
 	test "github.com/tektoncd/pipeline/test"
-	"github.com/tektoncd/pipeline/test/diff"
 	"go.uber.org/zap/zaptest"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/logging"
@@ -77,89 +75,6 @@ var unsignedPipeline = v1.Pipeline{
 			},
 		},
 	},
-}
-
-func TestVerifyInterface_Task_Success(t *testing.T) {
-	sv, _, err := signature.NewDefaultECDSASignerVerifier()
-	if err != nil {
-		t.Fatalf("failed to get signerverifier %v", err)
-	}
-
-	unsignedTask := test.GetUnsignedTask("test-task")
-	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, sv, "signed")
-	if err != nil {
-		t.Fatalf("Failed to get signed task %v", err)
-	}
-
-	signature := []byte{}
-
-	if sig, ok := signedTask.Annotations[SignatureAnnotation]; ok {
-		delete(signedTask.Annotations, SignatureAnnotation)
-		signature, err = base64.StdEncoding.DecodeString(sig)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	err = verifyInterface(signedTask, sv, signature)
-	if err != nil {
-		t.Fatalf("VerifyInterface() get err %v", err)
-	}
-}
-
-func TestVerifyInterface_Task_Error(t *testing.T) {
-	sv, _, err := signature.NewDefaultECDSASignerVerifier()
-	if err != nil {
-		t.Fatalf("failed to get signerverifier %v", err)
-	}
-
-	unsignedTask := test.GetUnsignedTask("test-task")
-
-	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, sv, "signed")
-	if err != nil {
-		t.Fatalf("Failed to get signed task %v", err)
-	}
-
-	tamperedTask := signedTask.DeepCopy()
-	tamperedTask.Name = "tampered"
-
-	tcs := []struct {
-		name          string
-		task          *v1beta1.Task
-		expectedError error
-	}{{
-		name:          "Unsigned Task Fail Verification",
-		task:          unsignedTask,
-		expectedError: ErrResourceVerificationFailed,
-	}, {
-		name:          "Empty task Fail Verification",
-		task:          nil,
-		expectedError: ErrResourceVerificationFailed,
-	}, {
-		name:          "Tampered task Fail Verification",
-		task:          tamperedTask,
-		expectedError: ErrResourceVerificationFailed,
-	}}
-	for _, tc := range tcs {
-		t.Run(tc.name, func(t *testing.T) {
-			signature := []byte{}
-
-			if tc.task != nil {
-				if sig, ok := tc.task.Annotations[SignatureAnnotation]; ok {
-					delete(tc.task.Annotations, SignatureAnnotation)
-					signature, err = base64.StdEncoding.DecodeString(sig)
-					if err != nil {
-						t.Fatal(err)
-					}
-				}
-			}
-
-			err := verifyInterface(tc.task, sv, signature)
-			if !errors.Is(err, tc.expectedError) {
-				t.Errorf("verifyInterface got: %v, want: %v", err, tc.expectedError)
-			}
-		})
-	}
 }
 
 func TestVerifyResource_Task_Success(t *testing.T) {
@@ -598,81 +513,6 @@ func TestVerifyResource_TypeNotSupported(t *testing.T) {
 	vr := VerifyResource(context.Background(), &resource, k8sclient, refSource, vps)
 	if !errors.Is(vr.Err, ErrResourceNotSupported) {
 		t.Errorf("want:%v got:%v ", ErrResourceNotSupported, vr.Err)
-	}
-}
-
-func TestPrepareObjectMeta(t *testing.T) {
-	unsigned := test.GetUnsignedTask("test-task").ObjectMeta
-
-	signed := unsigned.DeepCopy()
-	sig := "tY805zV53PtwDarK3VD6dQPx5MbIgctNcg/oSle+MG0="
-	signed.Annotations = map[string]string{SignatureAnnotation: sig}
-
-	signedWithLabels := signed.DeepCopy()
-	signedWithLabels.Labels = map[string]string{"label": "foo"}
-
-	signedWithExtraAnnotations := signed.DeepCopy()
-	signedWithExtraAnnotations.Annotations["kubectl-client-side-apply"] = "client"
-	signedWithExtraAnnotations.Annotations["kubectl.kubernetes.io/last-applied-configuration"] = "config"
-
-	tcs := []struct {
-		name              string
-		objectmeta        *metav1.ObjectMeta
-		expected          metav1.ObjectMeta
-		expectedSignature string
-	}{{
-		name:       "Prepare signed objectmeta without labels",
-		objectmeta: signed,
-		expected: metav1.ObjectMeta{
-			Name:        "test-task",
-			Namespace:   namespace,
-			Annotations: map[string]string{},
-		},
-		expectedSignature: sig,
-	}, {
-		name:       "Prepare signed objectmeta with labels",
-		objectmeta: signedWithLabels,
-		expected: metav1.ObjectMeta{
-			Name:        "test-task",
-			Namespace:   namespace,
-			Labels:      map[string]string{"label": "foo"},
-			Annotations: map[string]string{},
-		},
-		expectedSignature: sig,
-	}, {
-		name:       "Prepare signed objectmeta with extra annotations",
-		objectmeta: signedWithExtraAnnotations,
-		expected: metav1.ObjectMeta{
-			Name:        "test-task",
-			Namespace:   namespace,
-			Annotations: map[string]string{},
-		},
-		expectedSignature: sig,
-	}, {
-		name:       "resource without signature shouldn't fail",
-		objectmeta: &unsigned,
-		expected: metav1.ObjectMeta{
-			Name:        "test-task",
-			Namespace:   namespace,
-			Annotations: map[string]string{"foo": "bar"},
-		},
-		expectedSignature: "",
-	}}
-
-	for _, tc := range tcs {
-		t.Run(tc.name, func(t *testing.T) {
-			task, signature, err := prepareObjectMeta(tc.objectmeta)
-			if err != nil {
-				t.Fatalf("got unexpected err: %v", err)
-			}
-			if d := cmp.Diff(task, tc.expected); d != "" {
-				t.Error(diff.PrintWantGot(d))
-			}
-			got := base64.StdEncoding.EncodeToString(signature)
-			if d := cmp.Diff(got, tc.expectedSignature); d != "" {
-				t.Error(diff.PrintWantGot(d))
-			}
-		})
 	}
 }
 

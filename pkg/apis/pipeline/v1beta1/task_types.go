@@ -18,6 +18,7 @@ package v1beta1
 
 import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internal/checksum"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -65,6 +66,27 @@ func (t *Task) Copy() TaskObject {
 // GetGroupVersionKind implements kmeta.OwnerRefable.
 func (*Task) GetGroupVersionKind() schema.GroupVersionKind {
 	return SchemeGroupVersion.WithKind(pipeline.TaskControllerName)
+}
+
+// Checksum computes the sha256 checksum of the task object.
+// Prior to computing the checksum, it performs some preprocessing on the
+// metadata of the object where it removes system provided annotations.
+// Only the name, namespace, generateName, user-provided labels and annotations
+// and the taskSpec are included for the checksum computation.
+func (t *Task) Checksum() ([]byte, error) {
+	objectMeta := checksum.PrepareObjectMeta(t)
+	preprocessedTask := Task{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1beta1",
+			Kind:       "Task"},
+		ObjectMeta: objectMeta,
+		Spec:       t.Spec,
+	}
+	sha256Checksum, err := checksum.ComputeSha256Checksum(preprocessedTask)
+	if err != nil {
+		return nil, err
+	}
+	return sha256Checksum, nil
 }
 
 // TaskSpec defines the desired state of Task.

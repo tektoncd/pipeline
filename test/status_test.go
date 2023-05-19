@@ -21,7 +21,6 @@ package test
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"testing"
@@ -35,7 +34,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
-	"sigs.k8s.io/yaml"
 )
 
 var (
@@ -136,14 +134,14 @@ func TestProvenanceFieldInPipelineRunTaskRunStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", taskName, err)
 	}
-	taskSpec, err := yaml.Marshal(exampleTask.Spec)
+	checksum, err := exampleTask.Checksum()
 	if err != nil {
-		t.Fatalf("couldn't marshal task spec: %v", err)
+		t.Fatalf("couldn't extract the checksum: %s", err)
 	}
 	expectedTaskRunProvenance := &v1.Provenance{
 		RefSource: &v1.RefSource{
 			URI:    fmt.Sprintf("/apis/%s/namespaces/%s/%s/%s@%s", v1.SchemeGroupVersion.String(), namespace, "task", exampleTask.Name, exampleTask.UID),
-			Digest: map[string]string{"sha256": sha256CheckSum(taskSpec)},
+			Digest: map[string]string{"sha256": hex.EncodeToString(checksum)},
 		},
 	}
 
@@ -153,14 +151,14 @@ func TestProvenanceFieldInPipelineRunTaskRunStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", pipelineName, err)
 	}
-	pipelineSpec, err := yaml.Marshal(examplePipeline.Spec)
+	checksum, err = examplePipeline.Checksum()
 	if err != nil {
-		t.Fatalf("couldn't marshal pipeline spec: %v", err)
+		t.Fatalf("couldn't extract the checksum: %s", err)
 	}
 	expectedPipelineRunProvenance := &v1.Provenance{
 		RefSource: &v1.RefSource{
 			URI:    fmt.Sprintf("/apis/%s/namespaces/%s/%s/%s@%s", v1.SchemeGroupVersion.String(), namespace, "pipeline", examplePipeline.Name, examplePipeline.UID),
-			Digest: map[string]string{"sha256": sha256CheckSum(pipelineSpec)},
+			Digest: map[string]string{"sha256": hex.EncodeToString(checksum)},
 		},
 		FeatureFlags: &config.FeatureFlags{
 			EnableAPIFields: config.DefaultEnableAPIFields,
@@ -283,10 +281,4 @@ spec:
     - name: namespace
       value: %s
 `, prName, namespace, pipelineName, namespace))
-}
-
-func sha256CheckSum(input []byte) string {
-	h := sha256.New()
-	h.Write(input)
-	return hex.EncodeToString(h.Sum(nil))
 }

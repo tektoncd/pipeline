@@ -18,7 +18,6 @@ package cluster
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -104,6 +103,7 @@ func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1.Param) (
 
 	var data []byte
 	var spec []byte
+	var sha256Checksum []byte
 	var uid string
 	groupVersion := pipelinev1.SchemeGroupVersion.String()
 
@@ -120,6 +120,10 @@ func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1.Param) (
 		data, err = yaml.Marshal(task)
 		if err != nil {
 			logger.Infof("failed to marshal task %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
+			return nil, err
+		}
+		sha256Checksum, err = task.Checksum()
+		if err != nil {
 			return nil, err
 		}
 
@@ -143,6 +147,11 @@ func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1.Param) (
 			return nil, err
 		}
 
+		sha256Checksum, err = pipeline.Checksum()
+		if err != nil {
+			return nil, err
+		}
+
 		spec, err = yaml.Marshal(pipeline.Spec)
 		if err != nil {
 			logger.Infof("failed to marshal the spec of the pipeline %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
@@ -159,6 +168,7 @@ func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1.Param) (
 		Name:       params[NameParam],
 		Namespace:  params[NamespaceParam],
 		Identifier: fmt.Sprintf("/apis/%s/namespaces/%s/%s/%s@%s", groupVersion, params[NamespaceParam], params[KindParam], params[NameParam], uid),
+		Checksum:   sha256Checksum,
 	}, nil
 }
 
@@ -190,6 +200,8 @@ type ResolvedClusterResource struct {
 	// Resource URI is the namespace-scoped uri i.e. /apis/GROUP/VERSION/namespaces/NAMESPACE/RESOURCETYPE/NAME.
 	// https://kubernetes.io/docs/reference/using-api/api-concepts/#resource-uris
 	Identifier string
+	// Sha256 Checksum of the cluster resource
+	Checksum []byte
 }
 
 var _ framework.ResolvedResource = &ResolvedClusterResource{}
@@ -210,14 +222,10 @@ func (r *ResolvedClusterResource) Annotations() map[string]string {
 // RefSource is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint.
 func (r ResolvedClusterResource) RefSource() *pipelinev1.RefSource {
-	h := sha256.New()
-	h.Write(r.Spec)
-	sha256CheckSum := hex.EncodeToString(h.Sum(nil))
-
 	return &pipelinev1.RefSource{
 		URI: r.Identifier,
 		Digest: map[string]string{
-			"sha256": sha256CheckSum,
+			"sha256": hex.EncodeToString(r.Checksum),
 		},
 	}
 }
