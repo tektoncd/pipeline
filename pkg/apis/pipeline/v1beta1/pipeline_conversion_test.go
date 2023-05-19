@@ -244,3 +244,71 @@ func TestPipelineConversion(t *testing.T) {
 		})
 	}
 }
+
+func TestPipelineConversionFromDeprecated(t *testing.T) {
+	tests := []struct {
+		name string
+		in   *v1beta1.Pipeline
+		want *v1beta1.Pipeline
+	}{{
+		name: "pipeline resources",
+		in: &v1beta1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.PipelineSpec{
+				Resources: []v1beta1.PipelineDeclaredResource{
+					{
+						Name:     "1st pipeline resource",
+						Type:     v1beta1.PipelineResourceTypeGit,
+						Optional: true,
+					}, {
+						Name:     "2nd pipeline resource",
+						Type:     v1beta1.PipelineResourceTypeGit,
+						Optional: false,
+					},
+				},
+			}},
+		want: &v1beta1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.PipelineSpec{
+				Resources: []v1beta1.PipelineDeclaredResource{
+					{
+						Name:     "1st pipeline resource",
+						Type:     v1beta1.PipelineResourceTypeGit,
+						Optional: true,
+					}, {
+						Name:     "2nd pipeline resource",
+						Type:     v1beta1.PipelineResourceTypeGit,
+						Optional: false,
+					},
+				},
+			},
+		},
+	}}
+
+	for _, test := range tests {
+		versions := []apis.Convertible{&v1.Pipeline{}}
+		for _, version := range versions {
+			t.Run(test.name, func(t *testing.T) {
+				ver := version
+				if err := test.in.ConvertTo(context.Background(), ver); err != nil {
+					t.Errorf("ConvertTo() = %v", err)
+				}
+				t.Logf("ConvertTo() = %#v", ver)
+				got := &v1beta1.Pipeline{}
+				if err := got.ConvertFrom(context.Background(), ver); err != nil {
+					t.Errorf("ConvertFrom() = %v", err)
+				}
+				t.Logf("ConvertFrom() = %#v", got)
+				if d := cmp.Diff(test.want, got); d != "" {
+					t.Errorf("roundtrip %s", diff.PrintWantGot(d))
+				}
+			})
+		}
+	}
+}

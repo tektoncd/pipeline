@@ -47,6 +47,16 @@ type ResourceParam = resource.ResourceParam
 // Deprecated: Unused, preserved only for backwards compatibility
 type PipelineResourceType = resource.PipelineResourceType
 
+const (
+	// PipelineResourceTypeGit indicates that this source is a GitHub repo.
+	// Deprecated: Unused, preserved only for backwards compatibility
+	PipelineResourceTypeGit PipelineResourceType = resource.PipelineResourceTypeGit
+
+	// PipelineResourceTypeStorage indicates that this source is a storage blob resource.
+	// Deprecated: Unused, preserved only for backwards compatibility
+	PipelineResourceTypeStorage PipelineResourceType = resource.PipelineResourceTypeStorage
+)
+
 // PipelineDeclaredResource is used by a Pipeline to declare the types of the
 // PipelineResources that it will required to run and names which can be used to
 // refer to these PipelineResources in PipelineTaskResourceBindings.

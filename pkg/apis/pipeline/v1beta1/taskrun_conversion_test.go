@@ -410,6 +410,56 @@ func TestTaskRunConversionFromDeprecated(t *testing.T) {
 				},
 			},
 		},
+	}, {
+		name: "resourcesResult",
+		in: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: "test-resources-result",
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					ResourcesResult: []v1beta1.RunResult{{
+						Key:          "digest",
+						Value:        "sha256:1234",
+						ResourceName: "source-image",
+					}, {
+						Key:          "digest-11",
+						Value:        "sha256:1234",
+						ResourceName: "source-image",
+					}},
+				},
+			},
+		},
+		want: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: "test-resources-result",
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					ResourcesResult: []v1beta1.RunResult{{
+						Key:          "digest",
+						Value:        "sha256:1234",
+						ResourceName: "source-image",
+					}, {
+						Key:          "digest-11",
+						Value:        "sha256:1234",
+						ResourceName: "source-image",
+					}},
+				},
+			},
+		},
 	}}
 	for _, test := range tests {
 		versions := []apis.Convertible{&v1.TaskRun{}}

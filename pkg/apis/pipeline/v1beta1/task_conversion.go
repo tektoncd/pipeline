@@ -53,7 +53,10 @@ import (
 //	      "deprecatedSteps":[{"tty":true}],
 //	    },
 //	}`
-const TaskDeprecationsAnnotationKey = "tekton.dev/v1beta1.task-deprecations"
+const (
+	TaskDeprecationsAnnotationKey = "tekton.dev/v1beta1.task-deprecations"
+	resourcesAnnotationKey        = "tekton.dev/v1beta1Resources"
+)
 
 var _ apis.Convertible = (*Task)(nil)
 
@@ -65,6 +68,9 @@ func (t *Task) ConvertTo(ctx context.Context, to apis.Convertible) error {
 	switch sink := to.(type) {
 	case *v1.Task:
 		sink.ObjectMeta = t.ObjectMeta
+		if err := serializeResources(&sink.ObjectMeta, &t.Spec); err != nil {
+			return err
+		}
 		return t.Spec.ConvertTo(ctx, &sink.Spec, &sink.ObjectMeta, t.Name)
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
@@ -125,6 +131,9 @@ func (t *Task) ConvertFrom(ctx context.Context, from apis.Convertible) error {
 	switch source := from.(type) {
 	case *v1.Task:
 		t.ObjectMeta = source.ObjectMeta
+		if err := deserializeResources(&t.ObjectMeta, &t.Spec); err != nil {
+			return err
+		}
 		return t.Spec.ConvertFrom(ctx, &source.Spec, &t.ObjectMeta, t.Name)
 	default:
 		return fmt.Errorf("unknown version, got: %T", t)
@@ -312,4 +321,23 @@ func retrieveTaskDeprecation(spec *TaskSpec) *taskDeprecation {
 		DeprecatedSteps:        ds,
 		DeprecatedStepTemplate: dst,
 	}
+}
+
+func serializeResources(meta *metav1.ObjectMeta, spec *TaskSpec) error {
+	if spec.Resources == nil {
+		return nil
+	}
+	return version.SerializeToMetadata(meta, spec.Resources, resourcesAnnotationKey)
+}
+
+func deserializeResources(meta *metav1.ObjectMeta, spec *TaskSpec) error {
+	resources := &TaskResources{}
+	err := version.DeserializeFromMetadata(meta, resources, resourcesAnnotationKey)
+	if err != nil {
+		return err
+	}
+	if resources.Inputs != nil || resources.Outputs != nil {
+		spec.Resources = resources
+	}
+	return nil
 }
