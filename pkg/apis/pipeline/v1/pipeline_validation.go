@@ -50,7 +50,7 @@ func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
 	// When a Pipeline is created directly, instead of declared inline in a PipelineRun,
 	// we do not support propagated parameters and workspaces.
 	// Validate that all params and workspaces it uses are declared.
-	errs = errs.Also(p.Spec.validatePipelineParameterUsage().ViaField("spec"))
+	errs = errs.Also(p.Spec.validatePipelineParameterUsage(ctx).ViaField("spec"))
 	return errs.Also(p.Spec.validatePipelineWorkspacesUsage().ViaField("spec"))
 }
 
@@ -106,6 +106,16 @@ func (l PipelineTaskList) Validate(ctx context.Context, taskNames sets.String, p
 		taskNames.Insert(t.Name)
 		// validate custom task, dag, or final task
 		errs = errs.Also(t.Validate(ctx).ViaFieldIndex(path, i))
+	}
+	return errs
+}
+
+// validateUsageOfDeclaredPipelineTaskParameters validates that all parameters referenced in the pipeline Task are declared by the pipeline Task.
+func (l PipelineTaskList) validateUsageOfDeclaredPipelineTaskParameters(ctx context.Context, path string) (errs *apis.FieldError) {
+	for i, t := range l {
+		if t.TaskSpec != nil {
+			errs = errs.Also(ValidateUsageOfDeclaredParameters(ctx, t.TaskSpec.Steps, t.TaskSpec.Params).ViaFieldIndex(path, i))
+		}
 	}
 	return errs
 }
@@ -300,7 +310,9 @@ func validatePipelineWorkspacesDeclarations(wss []PipelineWorkspaceDeclaration) 
 }
 
 // validatePipelineParameterUsage validates that parameters referenced in the Pipeline are declared by the Pipeline
-func (ps *PipelineSpec) validatePipelineParameterUsage() (errs *apis.FieldError) {
+func (ps *PipelineSpec) validatePipelineParameterUsage(ctx context.Context) (errs *apis.FieldError) {
+	errs = errs.Also(PipelineTaskList(ps.Tasks).validateUsageOfDeclaredPipelineTaskParameters(ctx, "tasks"))
+	errs = errs.Also(PipelineTaskList(ps.Finally).validateUsageOfDeclaredPipelineTaskParameters(ctx, "finally"))
 	errs = errs.Also(validatePipelineTaskParameterUsage(ps.Tasks, ps.Params).ViaField("tasks"))
 	errs = errs.Also(validatePipelineTaskParameterUsage(ps.Finally, ps.Params).ViaField("finally"))
 	return errs
