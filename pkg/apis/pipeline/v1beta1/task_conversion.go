@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"reflect"
 
 	"github.com/tektoncd/pipeline/pkg/apis/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -293,21 +292,21 @@ func retrieveTaskDeprecation(spec *TaskSpec) *taskDeprecation {
 			DeprecatedTTY:                      s.DeprecatedTTY,
 		})
 	}
-	dst := &StepTemplate{
-		DeprecatedName:                     spec.StepTemplate.DeprecatedName,
-		DeprecatedPorts:                    spec.StepTemplate.DeprecatedPorts,
-		DeprecatedLivenessProbe:            spec.StepTemplate.DeprecatedLivenessProbe,
-		DeprecatedReadinessProbe:           spec.StepTemplate.DeprecatedReadinessProbe,
-		DeprecatedStartupProbe:             spec.StepTemplate.DeprecatedStartupProbe,
-		DeprecatedLifecycle:                spec.StepTemplate.DeprecatedLifecycle,
-		DeprecatedTerminationMessagePath:   spec.StepTemplate.DeprecatedTerminationMessagePath,
-		DeprecatedTerminationMessagePolicy: spec.StepTemplate.DeprecatedTerminationMessagePolicy,
-		DeprecatedStdin:                    spec.StepTemplate.DeprecatedStdin,
-		DeprecatedStdinOnce:                spec.StepTemplate.DeprecatedStdinOnce,
-		DeprecatedTTY:                      spec.StepTemplate.DeprecatedTTY,
-	}
-	if reflect.DeepEqual(dst, &StepTemplate{}) {
-		dst = nil
+	var dst *StepTemplate
+	if spec.StepTemplate != nil {
+		dst = &StepTemplate{
+			DeprecatedName:                     spec.StepTemplate.DeprecatedName,
+			DeprecatedPorts:                    spec.StepTemplate.DeprecatedPorts,
+			DeprecatedLivenessProbe:            spec.StepTemplate.DeprecatedLivenessProbe,
+			DeprecatedReadinessProbe:           spec.StepTemplate.DeprecatedReadinessProbe,
+			DeprecatedStartupProbe:             spec.StepTemplate.DeprecatedStartupProbe,
+			DeprecatedLifecycle:                spec.StepTemplate.DeprecatedLifecycle,
+			DeprecatedTerminationMessagePath:   spec.StepTemplate.DeprecatedTerminationMessagePath,
+			DeprecatedTerminationMessagePolicy: spec.StepTemplate.DeprecatedTerminationMessagePolicy,
+			DeprecatedStdin:                    spec.StepTemplate.DeprecatedStdin,
+			DeprecatedStdinOnce:                spec.StepTemplate.DeprecatedStdinOnce,
+			DeprecatedTTY:                      spec.StepTemplate.DeprecatedTTY,
+		}
 	}
 	return &taskDeprecation{
 		DeprecatedSteps:        ds,

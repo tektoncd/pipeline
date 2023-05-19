@@ -236,6 +236,24 @@ spec:
   stepTemplate:
     image: foo
 `
+	taskWithoutStepTemplateYAML := `
+metadata:
+  name: foo
+  namespace: bar
+  generation: 1
+spec:
+  steps:
+  - image: alpine
+    name: echo
+    readinessProbe:
+      exec:
+        command:
+        - cat
+        - /tmp/healthy
+    resources: {}
+    script: |
+      echo "Good Morning!"
+`
 	simpleTaskV1beta1 := parse.MustParseV1beta1Task(t, simpleTaskYAML)
 	simpleTaskV1 := parse.MustParseV1Task(t, simpleTaskYAML)
 
@@ -251,6 +269,11 @@ spec:
 		v1beta1.TaskDeprecationsAnnotationKey: `{"foo":{"deprecatedSteps":` +
 			`[{"name":"","ports":[{"name":"port","containerPort":0}],"resources":{},"livenessProbe":{"initialDelaySeconds":1},"readinessProbe":{"initialDelaySeconds":2},"startupProbe":{"initialDelaySeconds":3},"lifecycle":{"postStart":{"exec":{"command":["lifecycle command"]}}},"terminationMessagePath":"path","terminationMessagePolicy":"policy","stdin":true,"stdinOnce":true,"tty":true}],` +
 			`"deprecatedStepTemplate":{"name":"","ports":[{"name":"port","containerPort":0}],"resources":{},"livenessProbe":{"initialDelaySeconds":1},"readinessProbe":{"initialDelaySeconds":2},"startupProbe":{"initialDelaySeconds":3},"lifecycle":{"postStart":{"exec":{"command":["lifecycle command"]}}},"terminationMessagePath":"path","terminationMessagePolicy":"policy","stdin":true,"stdinOnce":true,"tty":true}}}`,
+	}
+	taskWithoutStepTemplateYAMLV1beta1 := parse.MustParseV1beta1Task(t, taskWithoutStepTemplateYAML)
+	taskWithoutStepTemplateYAMLV1 := parse.MustParseV1Task(t, taskWithoutStepTemplateYAML)
+	taskWithoutStepTemplateYAMLV1.ObjectMeta.Annotations = map[string]string{
+		v1beta1.TaskDeprecationsAnnotationKey: `{"foo":{"deprecatedSteps":[{"name":"","resources":{},"readinessProbe":{"exec":{"command":["cat","/tmp/healthy"]}}}]}}`,
 	}
 
 	tests := []struct {
@@ -273,6 +296,10 @@ spec:
 		name:        "task conversion deprecated fields",
 		v1beta1Task: taskWithDeprecatedFieldsV1beta1,
 		v1Task:      taskWithDeprecatedFieldsV1,
+	}, {
+		name:        "task conversion deprecated step template fields panic check",
+		v1beta1Task: taskWithoutStepTemplateYAMLV1beta1,
+		v1Task:      taskWithoutStepTemplateYAMLV1,
 	},
 	}
 	var ignoreTypeMeta = cmpopts.IgnoreFields(metav1.TypeMeta{}, "Kind", "APIVersion")
