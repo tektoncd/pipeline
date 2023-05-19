@@ -26,7 +26,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/remote"
-	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/kmeta"
@@ -603,8 +602,7 @@ func (t *ResolvedPipelineTask) setTaskRunsAndResolvedTask(
 
 // resolveTask fetches the Task spec for the PipelineTask and sets its default values.
 // It returns a ResolvedTask with the defaulted spec, name, and kind (namespaced Task or Cluster Task) of the Task.
-// Returns an error if the Task could not be found because resolution was in progress,
-// verification failed, or any other reason.
+// Returns an error if the Task could not be found because resolution was in progress or any other reason.
 func resolveTask(
 	ctx context.Context,
 	taskRun *v1beta1.TaskRun,
@@ -620,11 +618,9 @@ func resolveTask(
 		} else {
 			// Following minimum status principle (TEP-0100), no need to propagate the RefSource about PipelineTask up to PipelineRun status.
 			// Instead, the child TaskRun's status will be the place recording the RefSource of individual task.
-			t, _, err := getTask(ctx, pipelineTask.TaskRef.Name)
+			t, _, vr, err := getTask(ctx, pipelineTask.TaskRef.Name)
 			switch {
 			case errors.Is(err, remote.ErrRequestInProgress):
-				return rt, err
-			case errors.Is(err, trustedresources.ErrResourceVerificationFailed):
 				return rt, err
 			case err != nil:
 				return rt, &TaskNotFoundError{
@@ -635,6 +631,7 @@ func resolveTask(
 				spec := t.TaskSpec()
 				rt.TaskSpec = &spec
 				rt.TaskName = t.TaskMetadata().Name
+				rt.VerificationResult = vr
 			}
 		}
 		rt.Kind = pipelineTask.TaskRef.Kind
