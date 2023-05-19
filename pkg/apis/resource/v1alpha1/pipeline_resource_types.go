@@ -26,6 +26,20 @@ import (
 // Deprecated: Unused, preserved only for backwards compatibility
 type PipelineResourceType = string
 
+const (
+	// PipelineResourceTypeGit indicates that this source is a GitHub repo.
+	// Deprecated: Unused, preserved only for backwards compatibility
+	PipelineResourceTypeGit PipelineResourceType = "git"
+
+	// PipelineResourceTypeStorage indicates that this source is a storage blob resource.
+	// Deprecated: Unused, preserved only for backwards compatibility
+	PipelineResourceTypeStorage PipelineResourceType = "storage"
+
+	// PipelineResourceTypeGCS is the subtype for the GCSResources, which is backed by a GCS blob/directory.
+	// Deprecated: Unused, preserved only for backwards compatibility
+	PipelineResourceTypeGCS PipelineResourceType = "gcs"
+)
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient:noStatus

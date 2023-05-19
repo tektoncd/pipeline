@@ -23,6 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/version"
 	"knative.dev/pkg/apis"
 )
 
@@ -36,6 +37,9 @@ func (pr *PipelineRun) ConvertTo(ctx context.Context, to apis.Convertible) error
 	switch sink := to.(type) {
 	case *v1.PipelineRun:
 		sink.ObjectMeta = pr.ObjectMeta
+		if err := serializePipelineRunResources(&sink.ObjectMeta, &pr.Spec); err != nil {
+			return err
+		}
 		if err := pr.Status.convertTo(ctx, &sink.Status, &sink.ObjectMeta); err != nil {
 			return err
 		}
@@ -96,6 +100,9 @@ func (pr *PipelineRun) ConvertFrom(ctx context.Context, from apis.Convertible) e
 	switch source := from.(type) {
 	case *v1.PipelineRun:
 		pr.ObjectMeta = source.ObjectMeta
+		if err := deserializePipelineRunResources(&pr.ObjectMeta, &pr.Spec); err != nil {
+			return err
+		}
 		if err := pr.Status.convertFrom(ctx, &source.Status, &pr.ObjectMeta); err != nil {
 			return err
 		}
@@ -344,4 +351,23 @@ func (csr *ChildStatusReference) convertFrom(ctx context.Context, source v1.Chil
 		new.convertFrom(ctx, we)
 		csr.WhenExpressions = append(csr.WhenExpressions, new)
 	}
+}
+
+func serializePipelineRunResources(meta *metav1.ObjectMeta, spec *PipelineRunSpec) error {
+	if spec.Resources == nil {
+		return nil
+	}
+	return version.SerializeToMetadata(meta, spec.Resources, resourcesAnnotationKey)
+}
+
+func deserializePipelineRunResources(meta *metav1.ObjectMeta, spec *PipelineRunSpec) error {
+	resources := []PipelineResourceBinding{}
+	err := version.DeserializeFromMetadata(meta, &resources, resourcesAnnotationKey)
+	if err != nil {
+		return err
+	}
+	if len(resources) != 0 {
+		spec.Resources = resources
+	}
+	return nil
 }

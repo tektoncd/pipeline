@@ -401,6 +401,42 @@ func TestPipelineRunConversionFromDeprecated(t *testing.T) {
 		in   *v1beta1.PipelineRun
 		want *v1beta1.PipelineRun
 	}{{
+		name: "resources",
+		in: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				Resources: []v1beta1.PipelineResourceBinding{
+					{
+						Name:        "git-resource",
+						ResourceRef: &v1beta1.PipelineResourceRef{Name: "sweet-resource"},
+					}, {
+						Name:        "image-resource",
+						ResourceRef: &v1beta1.PipelineResourceRef{Name: "sweet-resource2"},
+					},
+				},
+			},
+		},
+		want: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				Resources: []v1beta1.PipelineResourceBinding{
+					{
+						Name:        "git-resource",
+						ResourceRef: &v1beta1.PipelineResourceRef{Name: "sweet-resource"},
+					}, {
+						Name:        "image-resource",
+						ResourceRef: &v1beta1.PipelineResourceRef{Name: "sweet-resource2"},
+					},
+				},
+			},
+		},
+	}, {
 		name: "timeout to timeouts",
 		in: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{

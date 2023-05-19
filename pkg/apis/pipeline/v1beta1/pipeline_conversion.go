@@ -23,6 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/version"
 	"knative.dev/pkg/apis"
 )
 
@@ -36,6 +37,9 @@ func (p *Pipeline) ConvertTo(ctx context.Context, to apis.Convertible) error {
 	switch sink := to.(type) {
 	case *v1.Pipeline:
 		sink.ObjectMeta = p.ObjectMeta
+		if err := serializePipelineResources(&sink.ObjectMeta, &p.Spec); err != nil {
+			return err
+		}
 		return p.Spec.ConvertTo(ctx, &sink.Spec, &sink.ObjectMeta)
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
@@ -90,6 +94,9 @@ func (p *Pipeline) ConvertFrom(ctx context.Context, from apis.Convertible) error
 	switch source := from.(type) {
 	case *v1.Pipeline:
 		p.ObjectMeta = source.ObjectMeta
+		if err := deserializePipelineResources(&p.ObjectMeta, &p.Spec); err != nil {
+			return err
+		}
 		return p.Spec.ConvertFrom(ctx, &source.Spec, &p.ObjectMeta)
 	default:
 		return fmt.Errorf("unknown version, got: %T", p)
@@ -320,4 +327,23 @@ func (ptm PipelineTaskMetadata) convertTo(ctx context.Context, sink *v1.Pipeline
 func (ptm *PipelineTaskMetadata) convertFrom(ctx context.Context, source v1.PipelineTaskMetadata) {
 	ptm.Labels = source.Labels
 	ptm.Annotations = source.Labels
+}
+
+func serializePipelineResources(meta *metav1.ObjectMeta, spec *PipelineSpec) error {
+	if spec.Resources == nil {
+		return nil
+	}
+	return version.SerializeToMetadata(meta, spec.Resources, resourcesAnnotationKey)
+}
+
+func deserializePipelineResources(meta *metav1.ObjectMeta, spec *PipelineSpec) error {
+	resources := &[]PipelineDeclaredResource{}
+	err := version.DeserializeFromMetadata(meta, resources, resourcesAnnotationKey)
+	if err != nil {
+		return err
+	}
+	if len(*resources) != 0 {
+		spec.Resources = *resources
+	}
+	return nil
 }
