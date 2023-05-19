@@ -160,7 +160,7 @@ You can reference a `Tekton bundle` in a `TaskRef` in both `v1` and `v1beta1` us
 In `v1beta1`, you can also reference a `Tekton bundle` using OCI bundle syntax, which has been deprecated in favor of remote resolution. The example shown below for `v1beta1` uses OCI bundle syntax, and requires enabling `enable-tekton-oci-bundles: "true"` feature flag.
 
 {{< tabs >}}
-{{< tab "v1 & v1beta1" >}}
+{{% tab "v1 & v1beta1" %}}
 ```yaml
 spec:
   pipelineRef:
@@ -173,16 +173,16 @@ spec:
     - name: kind
       value: Pipeline
 ```
-{{< /tab >}}
+{{% /tab %}}
 
-{{< tab "v1beta1" >}}
+{{% tab "v1beta1" %}}
  ```yaml
  spec:
    pipelineRef:
      name: mypipeline
      bundle: docker.io/myrepo/mycatalog:v1.0
  ```
-{{< /tab >}}
+{{% /tab %}}
 {{< /tabs >}}
 
 The syntax and caveats are similar to using `Tekton Bundles` for  `Task` references
@@ -706,7 +706,7 @@ map a specific `serviceAccountName` value to a specific `Task` in the `Pipeline`
 For example, if you specify these mappings:
 
 {{< tabs >}}
-{{< tab "v1" >}}
+{{% tab "v1" %}}
 ```yaml
 spec:
   taskRunTemplate:
@@ -715,9 +715,9 @@ spec:
     - pipelineTaskName: build-task
       serviceAccountName: sa-for-build
 ```
-{{< /tab >}}
+{{% /tab %}}
 
-{{< tab "v1beta1" >}}
+{{% tab "v1beta1" %}}
 ```yaml
 spec:
   serviceAccountName: sa-1
@@ -725,7 +725,7 @@ spec:
     - pipelineTaskName: build-task
       taskServiceAccountName: sa-for-build
 ```
-{{< /tab >}}
+{{% /tab %}}
 {{< /tabs >}}
 
 for this `Pipeline`:
@@ -754,7 +754,7 @@ In the following example, the `Task` defines a `volumeMount` object named `my-ca
 provisions this object for the `Task` using a `persistentVolumeClaim` and executes it as user 1001.
 
 {{< tabs >}}
-{{< tab "v1" >}}
+{{% tab "v1" %}}
 ```yaml
 apiVersion: tekton.dev/v1
 kind: Task
@@ -797,9 +797,9 @@ spec:
           persistentVolumeClaim:
             claimName: my-volume-claim
 ```
-{{< /tab >}}
+{{% /tab %}}
 
-{{< tab "v1beta1" >}}
+{{% tab "v1beta1" %}}
 ```yaml
 apiVersion: tekton.dev/v1beta1
 kind: Task
@@ -841,7 +841,7 @@ spec:
         persistentVolumeClaim:
           claimName: my-volume-claim
 ```
-{{< /tab >}}
+{{% /tab %}}
 {{< /tabs >}}
 
 [`Custom tasks`](pipelines.md#using-custom-tasks) may or may not use a pod template.
@@ -856,7 +856,7 @@ wide `ServiceAccountName`  and [`podTemplate`](./podtemplates.md) configuration,
 for example:
 
 {{< tabs >}}
-{{< tab "v1" >}}
+{{% tab "v1" %}}
 ```yaml
 spec:
   podTemplate:
@@ -871,9 +871,9 @@ spec:
         nodeSelector:
           disktype: ssd
 ```
-{{< /tab >}}
+{{% /tab %}}
 
-{{< tab "v1beta1" >}}
+{{% tab "v1beta1" %}}
 ```yaml
 spec:
   podTemplate:
@@ -888,7 +888,7 @@ spec:
         nodeSelector:
           disktype: ssd
 ```
-{{< /tab >}}
+{{% /tab %}}
 {{< /tabs >}}
 
 If used with this `Pipeline`,  `build-task` will use the task specific `PodTemplate` (where `nodeSelector` has `disktype` equal to `ssd`).
