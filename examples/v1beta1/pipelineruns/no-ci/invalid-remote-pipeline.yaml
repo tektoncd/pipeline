@@ -1,0 +1,11 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: invalid-pipeline-no-params-defined
+spec:
+  tasks:
+  - name: foo
+    taskSpec:
+      steps:
+      - image: busybox
+        script: echo $(params.abcd)
