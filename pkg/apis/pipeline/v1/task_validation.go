@@ -90,10 +90,39 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateSidecarNames(ts.Sidecars))
 	errs = errs.Also(ValidateParameterTypes(ctx, ts.Params).ViaField("params"))
 	errs = errs.Also(ValidateParameterVariables(ctx, ts.Steps, ts.Params))
-	errs = errs.Also(ts.ValidateBetaFeaturesEnabledForParamArrayIndexing(ctx))
+	errs = errs.Also(ts.validateBetaFields(ctx))
 	errs = errs.Also(validateTaskContextVariables(ctx, ts.Steps))
 	errs = errs.Also(validateTaskResultsVariables(ctx, ts.Steps, ts.Results))
 	errs = errs.Also(validateResults(ctx, ts.Results).ViaField("results"))
+	return errs
+}
+
+// validateBetaFields returns an error if the Task spec uses beta features but does not
+// have "enable-api-fields" set to "alpha" or "beta".
+func (ts *TaskSpec) validateBetaFields(ctx context.Context) *apis.FieldError {
+	var errs *apis.FieldError
+	// Object parameters
+	for i, p := range ts.Params {
+		if p.Type == ParamTypeObject {
+			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "object type parameter", config.BetaAPIFields).ViaFieldIndex("params", i))
+		}
+	}
+	// Indexing into array parameters
+	arrayIndexParamRefs := ts.GetIndexingReferencesToArrayParams()
+	if len(arrayIndexParamRefs) != 0 && !config.CheckAlphaOrBetaAPIFields(ctx) {
+		errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("cannot index into array parameters when 'enable-api-fields' is 'stable', but found indexing references: %s", arrayIndexParamRefs)))
+	}
+	// Array and object results
+	for i, result := range ts.Results {
+		switch result.Type {
+		case ResultsTypeObject:
+			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "object results", config.BetaAPIFields).ViaFieldIndex("results", i))
+		case ResultsTypeArray:
+			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "array results", config.BetaAPIFields).ViaFieldIndex("results", i))
+		case ResultsTypeString:
+		default:
+		}
+	}
 	return errs
 }
 
@@ -311,11 +340,6 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 // ValidateParameterTypes validates all the types within a slice of ParamSpecs
 func ValidateParameterTypes(ctx context.Context, params []ParamSpec) (errs *apis.FieldError) {
 	for _, p := range params {
-		if p.Type == ParamTypeObject {
-			// Object type parameter is a beta feature and will fail validation if it's used in a task spec
-			// when the enable-api-fields feature gate is not "alpha" or "beta".
-			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "object type parameter", config.BetaAPIFields))
-		}
 		errs = errs.Also(p.ValidateType(ctx))
 	}
 	return errs
@@ -576,20 +600,6 @@ func validateStepVariables(ctx context.Context, step Step, prefix string, vars s
 // This is useful to make sure the specified value looks like a Parameter Reference before performing any strict validation
 func isParamRefs(s string) bool {
 	return strings.HasPrefix(s, "$("+ParamsPrefix)
-}
-
-// ValidateBetaFeaturesEnabledForParamArrayIndexing validates that "enable-api-fields" is set to "alpha" or "beta" if the task spec
-// contains indexing references to array params.
-// This can be removed when array param indexing is moved to "stable".
-func (ts *TaskSpec) ValidateBetaFeaturesEnabledForParamArrayIndexing(ctx context.Context) *apis.FieldError {
-	if config.CheckAlphaOrBetaAPIFields(ctx) {
-		return nil
-	}
-	arrayIndexParamRefs := ts.GetIndexingReferencesToArrayParams()
-	if len(arrayIndexParamRefs) == 0 {
-		return nil
-	}
-	return apis.ErrGeneric(fmt.Sprintf("cannot index into array parameters when 'enable-api-fields' is 'stable', but found indexing references: %s", arrayIndexParamRefs))
 }
 
 // ValidateParamArrayIndex validates if the param reference to an array param is out of bound.
