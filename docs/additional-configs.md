@@ -305,6 +305,8 @@ Features currently in "beta" are:
 | [Object Parameters and Results](pipelineruns.md#specifying-parameters) | [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md) | [v0.46.0](https://github.com/tektoncd/pipeline/releases/tag/v0.46.0) |
 | [Remote Tasks](./taskruns.md#remote-tasks) and [Remote Pipelines](./pipelineruns.md#remote-pipelines) | [TEP-0060](https://github.com/tektoncd/community/blob/main/teps/0060-remote-resolution.md) | [v0.41.0](https://github.com/tektoncd/pipeline/releases/tag/v0.41.0) |
 | [`Provenance` field in Status](pipeline-api.md#provenance)| [issue#5550](https://github.com/tektoncd/pipeline/issues/5550)| [v0.41.0](https://github.com/tektoncd/pipeline/releases/tag/v0.41.0)| [v0.48.0](https://github.com/tektoncd/pipeline/releases/tag/v0.48.0) | `enable-provenance-in-status`|
+| [CSI workspaces](workspaces.md#csi)| [issue#4446](https://github.com/tektoncd/pipeline/issues/4446)| [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0)| [v0.41.0](https://github.com/tektoncd/pipeline/releases/tag/v0.41.0) | |
+| [Projected volume workspaces](workspaces.md#projected)| [issue#5075](https://github.com/tektoncd/pipeline/issues/5075)| [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0)| [v0.41.0](https://github.com/tektoncd/pipeline/releases/tag/v0.41.0) | |
 
 ## Enabling larger results using sidecar logs
 
