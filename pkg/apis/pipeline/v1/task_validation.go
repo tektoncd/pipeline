@@ -65,7 +65,13 @@ func (t *Task) Validate(ctx context.Context) *apis.FieldError {
 	errs = errs.Also(t.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 	// When a Task is created directly, instead of declared inline in a TaskRun or PipelineRun,
 	// we do not support propagated parameters. Validate that all params it uses are declared.
-	return errs.Also(ValidateUsageOfDeclaredParameters(ctx, t.Spec.Steps, t.Spec.Params).ViaField("spec"))
+	errs = errs.Also(ValidateUsageOfDeclaredParameters(ctx, t.Spec.Steps, t.Spec.Params).ViaField("spec"))
+	// Validate beta fields when a Task is defined, but not as part of validating a Task spec.
+	// This prevents validation from failing when a Task is converted to a different API version.
+	// See https://github.com/tektoncd/pipeline/issues/6616 for more information.
+	// TODO(#6592): Decouple API versioning from feature versioning
+	errs = errs.Also(t.Spec.ValidateBetaFields(ctx))
+	return errs
 }
 
 // Validate implements apis.Validatable
@@ -90,7 +96,6 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateSidecarNames(ts.Sidecars))
 	errs = errs.Also(ValidateParameterTypes(ctx, ts.Params).ViaField("params"))
 	errs = errs.Also(ValidateParameterVariables(ctx, ts.Steps, ts.Params))
-	errs = errs.Also(ts.ValidateBetaFields(ctx))
 	errs = errs.Also(validateTaskContextVariables(ctx, ts.Steps))
 	errs = errs.Also(validateTaskResultsVariables(ctx, ts.Steps, ts.Results))
 	errs = errs.Also(validateResults(ctx, ts.Results).ViaField("results"))

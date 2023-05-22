@@ -51,7 +51,13 @@ func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
 	// we do not support propagated parameters and workspaces.
 	// Validate that all params and workspaces it uses are declared.
 	errs = errs.Also(p.Spec.validatePipelineParameterUsage(ctx).ViaField("spec"))
-	return errs.Also(p.Spec.validatePipelineWorkspacesUsage().ViaField("spec"))
+	errs = errs.Also(p.Spec.validatePipelineWorkspacesUsage().ViaField("spec"))
+	// Validate beta fields when a Pipeline is defined, but not as part of validating a Pipeline spec.
+	// This prevents validation from failing when a Pipeline is converted to a different API version.
+	// See https://github.com/tektoncd/pipeline/issues/6616 for more information.
+	// TODO(#6592): Decouple API versioning from feature versioning
+	errs = errs.Also(p.Spec.ValidateBetaFields(ctx))
+	return errs
 }
 
 // Validate checks that taskNames in the Pipeline are valid and that the graph
@@ -70,7 +76,6 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validatePipelineContextVariables(ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validatePipelineContextVariables(ps.Finally).ViaField("finally"))
 	errs = errs.Also(validateExecutionStatusVariables(ps.Tasks, ps.Finally))
-	errs = errs.Also(ps.ValidateBetaFields(ctx))
 	// Validate the pipeline's workspaces.
 	errs = errs.Also(validatePipelineWorkspacesDeclarations(ps.Workspaces))
 	// Validate the pipeline's results
