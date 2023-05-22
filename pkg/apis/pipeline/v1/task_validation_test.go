@@ -1885,6 +1885,43 @@ func TestTaskSpecBetaFields(t *testing.T) {
 					echo $(params.foo[1])`,
 			}},
 		},
+	}, {
+		name: "object params",
+		spec: v1.TaskSpec{
+			Params: []v1.ParamSpec{{Name: "foo", Type: v1.ParamTypeObject, Properties: map[string]v1.PropertySpec{"bar": {Type: v1.ParamTypeString}}}},
+			Steps: []v1.Step{{
+				Name:  "my-step",
+				Image: "my-image",
+				Script: `
+					#!/usr/bin/env  bash
+					echo $(params.foo.bar)`,
+			}},
+		},
+	}, {
+		name: "array results",
+		spec: v1.TaskSpec{
+			Results: []v1.TaskResult{{Name: "array-result", Type: v1.ResultsTypeArray}},
+			Steps: []v1.Step{{
+				Name:  "my-step",
+				Image: "my-image",
+				Script: `
+					#!/usr/bin/env  bash
+					echo -n "[\"hello\",\"world\"]" | tee $(results.array-result.path)`,
+			}},
+		},
+	}, {
+		name: "object results",
+		spec: v1.TaskSpec{
+			Results: []v1.TaskResult{{Name: "object-result", Type: v1.ResultsTypeObject,
+				Properties: map[string]v1.PropertySpec{}}},
+			Steps: []v1.Step{{
+				Name:  "my-step",
+				Image: "my-image",
+				Script: `
+					#!/usr/bin/env  bash
+					echo -n "{\"hello\":\"world\"}" | tee $(results.object-result.path)`,
+			}},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

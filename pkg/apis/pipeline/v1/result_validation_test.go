@@ -22,7 +22,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"knative.dev/pkg/apis"
@@ -30,16 +29,14 @@ import (
 
 func TestResultsValidate(t *testing.T) {
 	tests := []struct {
-		name      string
-		Result    v1.TaskResult
-		apiFields string
+		name   string
+		Result v1.TaskResult
 	}{{
 		name: "valid result type empty",
 		Result: v1.TaskResult{
 			Name:        "MY-RESULT",
 			Description: "my great result",
 		},
-		apiFields: "stable",
 	}, {
 		name: "valid result type string",
 		Result: v1.TaskResult{
@@ -47,8 +44,6 @@ func TestResultsValidate(t *testing.T) {
 			Type:        v1.ResultsTypeString,
 			Description: "my great result",
 		},
-
-		apiFields: "stable",
 	}, {
 		name: "valid result type array",
 		Result: v1.TaskResult{
@@ -56,8 +51,6 @@ func TestResultsValidate(t *testing.T) {
 			Type:        v1.ResultsTypeArray,
 			Description: "my great result",
 		},
-
-		apiFields: "alpha",
 	}, {
 		name: "valid result type object",
 		Result: v1.TaskResult{
@@ -66,14 +59,10 @@ func TestResultsValidate(t *testing.T) {
 			Description: "my great result",
 			Properties:  map[string]v1.PropertySpec{"hello": {Type: v1.ParamTypeString}},
 		},
-		apiFields: "alpha",
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			if tt.apiFields == "alpha" {
-				ctx = config.EnableAlphaAPIFields(ctx)
-			}
 			if err := tt.Result.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
 			}
@@ -85,56 +74,18 @@ func TestResultsValidateError(t *testing.T) {
 	tests := []struct {
 		name          string
 		Result        v1.TaskResult
-		apiFields     string
 		expectedError apis.FieldError
 	}{{
-		name: "invalid result type in stable",
+		name: "invalid result type",
 		Result: v1.TaskResult{
 			Name:        "MY-RESULT",
 			Type:        "wrong",
 			Description: "my great result",
 		},
-		apiFields: "stable",
 		expectedError: apis.FieldError{
 			Message: `invalid value: wrong`,
 			Paths:   []string{"type"},
 			Details: "type must be string",
-		},
-	}, {
-		name: "invalid result type in alpha",
-		Result: v1.TaskResult{
-			Name:        "MY-RESULT",
-			Type:        "wrong",
-			Description: "my great result",
-		},
-		apiFields: "alpha",
-		expectedError: apis.FieldError{
-			Message: `invalid value: wrong`,
-			Paths:   []string{"type"},
-			Details: "type must be string",
-		},
-	}, {
-		name: "invalid array result type in stable",
-		Result: v1.TaskResult{
-			Name:        "MY-RESULT",
-			Type:        v1.ResultsTypeArray,
-			Description: "my great result",
-		},
-		apiFields: "stable",
-		expectedError: apis.FieldError{
-			Message: "results type requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"",
-		},
-	}, {
-		name: "invalid object result type in stable",
-		Result: v1.TaskResult{
-			Name:        "MY-RESULT",
-			Type:        v1.ResultsTypeObject,
-			Description: "my great result",
-			Properties:  map[string]v1.PropertySpec{"hello": {Type: v1.ParamTypeString}},
-		},
-		apiFields: "stable",
-		expectedError: apis.FieldError{
-			Message: "results type requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"",
 		},
 	}, {
 		name: "invalid object properties type",
@@ -144,7 +95,6 @@ func TestResultsValidateError(t *testing.T) {
 			Description: "my great result",
 			Properties:  map[string]v1.PropertySpec{"hello": {Type: "wrong type"}},
 		},
-		apiFields: "alpha",
 		expectedError: apis.FieldError{
 			Message: "The value type specified for these keys [hello] is invalid, the type must be string",
 			Paths:   []string{"MY-RESULT.properties"},
@@ -156,7 +106,6 @@ func TestResultsValidateError(t *testing.T) {
 			Type:        v1.ResultsTypeObject,
 			Description: "my great result",
 		},
-		apiFields: "alpha",
 		expectedError: apis.FieldError{
 			Message: "missing field(s)",
 			Paths:   []string{"MY-RESULT.properties"},
@@ -164,11 +113,7 @@ func TestResultsValidateError(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			if tt.apiFields == "alpha" {
-				ctx = config.EnableAlphaAPIFields(ctx)
-			}
-			err := tt.Result.Validate(ctx)
+			err := tt.Result.Validate(context.Background())
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing for %v", tt.Result)
 			}

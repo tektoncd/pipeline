@@ -70,7 +70,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validatePipelineContextVariables(ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validatePipelineContextVariables(ps.Finally).ViaField("finally"))
 	errs = errs.Also(validateExecutionStatusVariables(ps.Tasks, ps.Finally))
-	errs = errs.Also(ps.ValidateBetaFeaturesEnabledForParamArrayIndexing(ctx))
+	errs = errs.Also(ps.validateBetaFields(ctx))
 	// Validate the pipeline's workspaces.
 	errs = errs.Also(validatePipelineWorkspacesDeclarations(ps.Workspaces))
 	// Validate the pipeline's results
@@ -81,6 +81,60 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateMatrix(ctx, ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validateMatrix(ctx, ps.Finally).ViaField("finally"))
 	errs = errs.Also(validateResultsFromMatrixedPipelineTasksNotConsumed(ps.Tasks, ps.Finally))
+	return errs
+}
+
+// validateBetaFields returns an error if the Pipeline spec uses beta features but does not
+// have "enable-api-fields" set to "alpha" or "beta".
+func (ps *PipelineSpec) validateBetaFields(ctx context.Context) *apis.FieldError {
+	var errs *apis.FieldError
+	// Object parameters
+	for i, p := range ps.Params {
+		if p.Type == ParamTypeObject {
+			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "object type parameter", config.BetaAPIFields).ViaFieldIndex("params", i))
+		}
+	}
+	// Indexing into array parameters
+	arrayParamIndexingRefs := ps.GetIndexingReferencesToArrayParams()
+	if len(arrayParamIndexingRefs) != 0 && !config.CheckAlphaOrBetaAPIFields(ctx) {
+		errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("cannot index into array parameters when 'enable-api-fields' is 'stable', but found indexing references: %s", arrayParamIndexingRefs)))
+	}
+	// array and object results
+	for i, result := range ps.Results {
+		switch result.Type {
+		case ResultsTypeObject:
+			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "object results", config.BetaAPIFields).ViaFieldIndex("results", i))
+		case ResultsTypeArray:
+			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "array results", config.BetaAPIFields).ViaFieldIndex("results", i))
+		case ResultsTypeString:
+		default:
+		}
+	}
+	for i, pt := range ps.Tasks {
+		errs = errs.Also(pt.validateBetaFields(ctx).ViaFieldIndex("tasks", i))
+	}
+	for i, pt := range ps.Finally {
+		errs = errs.Also(pt.validateBetaFields(ctx).ViaFieldIndex("tasks", i))
+	}
+
+	return errs
+}
+
+// validateBetaFields returns an error if the PipelineTask uses beta features but does not
+// have "enable-api-fields" set to "alpha" or "beta".
+func (pt *PipelineTask) validateBetaFields(ctx context.Context) *apis.FieldError {
+	var errs *apis.FieldError
+	if pt.TaskRef != nil {
+		// Resolvers
+		if pt.TaskRef.Resolver != "" {
+			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "taskref.resolver", config.BetaAPIFields))
+		}
+		if len(pt.TaskRef.Params) > 0 {
+			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "taskref.params", config.BetaAPIFields))
+		}
+	} else if pt.TaskSpec != nil {
+		errs = errs.Also(pt.TaskSpec.validateBetaFields(ctx))
+	}
 	return errs
 }
 
@@ -263,7 +317,6 @@ func (pt PipelineTask) validateCustomTask() (errs *apis.FieldError) {
 
 // validateTask validates a pipeline task or a final task for taskRef and taskSpec
 func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError) {
-	cfg := config.FromContextOrDefaults(ctx)
 	// Validate TaskSpec if it's present
 	if pt.TaskSpec != nil {
 		errs = errs.Also(pt.TaskSpec.Validate(ctx).ViaField("taskSpec"))
@@ -276,15 +329,6 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 			}
 		} else if pt.TaskRef.Resolver == "" {
 			errs = errs.Also(apis.ErrInvalidValue("taskRef must specify name", "taskRef.name"))
-		}
-		if cfg.FeatureFlags.EnableAPIFields != config.BetaAPIFields && cfg.FeatureFlags.EnableAPIFields != config.AlphaAPIFields {
-			// fail if resolver or resource are present when enable-api-fields is false.
-			if pt.TaskRef.Resolver != "" {
-				errs = errs.Also(apis.ErrDisallowedFields("taskref.resolver"))
-			}
-			if len(pt.TaskRef.Params) > 0 {
-				errs = errs.Also(apis.ErrDisallowedFields("taskref.params"))
-			}
 		}
 	}
 	return errs
@@ -722,20 +766,6 @@ func (ps *PipelineSpec) ValidateParamArrayIndex(ctx context.Context, params Para
 	// extract all array indexing references, for example []{"$(params.array-params[1])"}
 	arrayIndexParamRefs := ps.GetIndexingReferencesToArrayParams().List()
 	return validateOutofBoundArrayParams(arrayIndexParamRefs, arrayParamsLengths)
-}
-
-// ValidateBetaFeaturesEnabledForParamArrayIndexing validates that "enable-api-fields" is set to "alpha" or "beta" if the pipeline spec
-// contains indexing references to array params.
-// This can be removed when array param indexing is moved to "stable".
-func (ps *PipelineSpec) ValidateBetaFeaturesEnabledForParamArrayIndexing(ctx context.Context) (errs *apis.FieldError) {
-	if config.CheckAlphaOrBetaAPIFields(ctx) {
-		return nil
-	}
-	arrayParamIndexingRefs := ps.GetIndexingReferencesToArrayParams()
-	if len(arrayParamIndexingRefs) == 0 {
-		return nil
-	}
-	return apis.ErrGeneric(fmt.Sprintf("cannot index into array parameters when 'enable-api-fields' is 'stable', but found indexing references: %s", arrayParamIndexingRefs))
 }
 
 // GetIndexingReferencesToArrayParams returns all strings referencing indices of PipelineRun array parameters
