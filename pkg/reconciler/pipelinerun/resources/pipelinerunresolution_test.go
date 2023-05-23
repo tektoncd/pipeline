@@ -1639,6 +1639,257 @@ func TestIsFailure(t *testing.T) {
 	}
 }
 
+func TestIsCancelled(t *testing.T) {
+	tcs := []struct {
+		name string
+		rpt  ResolvedPipelineTask
+		want bool
+	}{{
+		name: "taskruns not started",
+		rpt: ResolvedPipelineTask{
+			TaskRuns: []*v1beta1.TaskRun{},
+		},
+		want: false,
+	}, {
+		name: "taskrun not done",
+		rpt: ResolvedPipelineTask{
+			TaskRuns: []*v1beta1.TaskRun{makeStarted(trs[0])},
+		},
+		want: false,
+	}, {
+		name: "taskrun succeeded but not cancelled",
+		rpt: ResolvedPipelineTask{
+			TaskRuns: []*v1beta1.TaskRun{(makeSucceeded(trs[0]))},
+		},
+		want: false,
+	}, {
+		name: "taskrun failed but not cancelled",
+		rpt: ResolvedPipelineTask{
+			TaskRuns: []*v1beta1.TaskRun{(makeFailed(trs[0]))},
+		},
+		want: false,
+	}, {
+		name: "taskrun cancelled and failed",
+		rpt: ResolvedPipelineTask{
+			TaskRuns: []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0]))},
+		},
+		want: true,
+	}, {
+		name: "taskrun cancelled but still running",
+		rpt: ResolvedPipelineTask{
+			TaskRuns: []*v1beta1.TaskRun{withCancelled(makeStarted(trs[0]))},
+		},
+		want: false,
+	}, {
+		name: "one taskrun cancelled, one not done",
+		rpt: ResolvedPipelineTask{
+			TaskRuns: []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), makeStarted(trs[1])},
+		},
+		want: false,
+	}, {
+		name: "one taskrun cancelled, one done but not cancelled",
+		rpt: ResolvedPipelineTask{
+			TaskRuns: []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), makeSucceeded(trs[1])},
+		},
+		want: true,
+	}, {
+		name: "customruns not started",
+		rpt: ResolvedPipelineTask{
+			CustomTask: true,
+			RunObjects: []v1beta1.RunObject{},
+		},
+		want: false,
+	}, {
+		name: "customrun not done",
+		rpt: ResolvedPipelineTask{
+			CustomTask: true,
+			RunObjects: []v1beta1.RunObject{makeCustomRunStarted(customRuns[0])},
+		},
+		want: false,
+	}, {
+		name: "customrun succeeded but not cancelled",
+		rpt: ResolvedPipelineTask{
+			CustomTask: true,
+			RunObjects: []v1beta1.RunObject{(makeCustomRunSucceeded(customRuns[0]))},
+		},
+		want: false,
+	}, {
+		name: "customrun failed but not cancelled",
+		rpt: ResolvedPipelineTask{
+			CustomTask: true,
+			RunObjects: []v1beta1.RunObject{(makeCustomRunFailed(customRuns[0]))},
+		},
+		want: false,
+	}, {
+		name: "customrun cancelled and failed",
+		rpt: ResolvedPipelineTask{
+			CustomTask: true,
+			RunObjects: []v1beta1.RunObject{withCustomRunCancelled(makeCustomRunFailed(customRuns[0]))},
+		},
+		want: true,
+	}, {
+		name: "customrun cancelled but still running",
+		rpt: ResolvedPipelineTask{
+			CustomTask: true,
+			RunObjects: []v1beta1.RunObject{withCustomRunCancelled(makeCustomRunStarted(customRuns[0]))},
+		},
+		want: false,
+	}, {
+		name: "one customrun cancelled, one not done",
+		rpt: ResolvedPipelineTask{
+			CustomTask: true,
+			RunObjects: []v1beta1.RunObject{withCustomRunCancelled(makeCustomRunFailed(customRuns[0])), makeCustomRunStarted(customRuns[1])},
+		},
+		want: false,
+	}, {
+		name: "one customrun cancelled, one done but not cancelled",
+		rpt: ResolvedPipelineTask{
+			CustomTask: true,
+			RunObjects: []v1beta1.RunObject{withCustomRunCancelled(makeCustomRunFailed(customRuns[0])), makeCustomRunSucceeded(customRuns[1])},
+		},
+		want: true,
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.rpt.isCancelled(); got != tc.want {
+				t.Errorf("expected isCancelled: %t but got %t", tc.want, got)
+			}
+		})
+	}
+}
+
+func TestIsCancelledForTimeout(t *testing.T) {
+	tcs := []struct {
+		name string
+		rpt  ResolvedPipelineTask
+		want bool
+	}{{
+		name: "taskruns not started",
+		rpt: ResolvedPipelineTask{
+			TaskRuns: []*v1beta1.TaskRun{},
+		},
+		want: false,
+	}, {
+		name: "taskrun not done",
+		rpt: ResolvedPipelineTask{
+			TaskRuns: []*v1beta1.TaskRun{makeStarted(trs[0])},
+		},
+		want: false,
+	}, {
+		name: "taskrun succeeded but not cancelled",
+		rpt: ResolvedPipelineTask{
+			TaskRuns: []*v1beta1.TaskRun{(makeSucceeded(trs[0]))},
+		},
+		want: false,
+	}, {
+		name: "taskrun failed but not cancelled",
+		rpt: ResolvedPipelineTask{
+			TaskRuns: []*v1beta1.TaskRun{(makeFailed(trs[0]))},
+		},
+		want: false,
+	}, {
+		name: "taskrun cancelled by spec and failed",
+		rpt: ResolvedPipelineTask{
+			TaskRuns: []*v1beta1.TaskRun{withCancelledBySpec(makeFailed(trs[0]))},
+		},
+		want: false,
+	}, {
+		name: "taskrun cancelled for timeout and failed",
+		rpt: ResolvedPipelineTask{
+			TaskRuns: []*v1beta1.TaskRun{withCancelledForTimeout(makeFailed(trs[0]))},
+		},
+		want: true,
+	}, {
+		name: "taskrun cancelled for timeout but still running",
+		rpt: ResolvedPipelineTask{
+			TaskRuns: []*v1beta1.TaskRun{withCancelledForTimeout(makeStarted(trs[0]))},
+		},
+		want: false,
+	}, {
+		name: "one taskrun cancelled for timeout, one not done",
+		rpt: ResolvedPipelineTask{
+			TaskRuns: []*v1beta1.TaskRun{withCancelledForTimeout(makeFailed(trs[0])), makeStarted(trs[1])},
+		},
+		want: false,
+	}, {
+		name: "one taskrun cancelled for timeout, one done but not cancelled",
+		rpt: ResolvedPipelineTask{
+			TaskRuns: []*v1beta1.TaskRun{withCancelledForTimeout(makeFailed(trs[0])), makeSucceeded(trs[1])},
+		},
+		want: true,
+	}, {
+		name: "customruns not started",
+		rpt: ResolvedPipelineTask{
+			CustomTask: true,
+			RunObjects: []v1beta1.RunObject{},
+		},
+		want: false,
+	}, {
+		name: "customrun not done",
+		rpt: ResolvedPipelineTask{
+			CustomTask: true,
+			RunObjects: []v1beta1.RunObject{makeCustomRunStarted(customRuns[0])},
+		},
+		want: false,
+	}, {
+		name: "customrun succeeded but not cancelled",
+		rpt: ResolvedPipelineTask{
+			CustomTask: true,
+			RunObjects: []v1beta1.RunObject{(makeCustomRunSucceeded(customRuns[0]))},
+		},
+		want: false,
+	}, {
+		name: "customrun failed but not cancelled",
+		rpt: ResolvedPipelineTask{
+			CustomTask: true,
+			RunObjects: []v1beta1.RunObject{(makeCustomRunFailed(customRuns[0]))},
+		},
+		want: false,
+	}, {
+		name: "customrun cancelled by spec and failed",
+		rpt: ResolvedPipelineTask{
+			CustomTask: true,
+			RunObjects: []v1beta1.RunObject{withCustomRunCancelledBySpec(makeCustomRunFailed(customRuns[0]))},
+		},
+		want: false,
+	}, {
+		name: "customrun cancelled for timeout and failed",
+		rpt: ResolvedPipelineTask{
+			CustomTask: true,
+			RunObjects: []v1beta1.RunObject{withCustomRunCancelledForTimeout(makeCustomRunFailed(customRuns[0]))},
+		},
+		want: true,
+	}, {
+		name: "customrun cancelled for timeout but still running",
+		rpt: ResolvedPipelineTask{
+			CustomTask: true,
+			RunObjects: []v1beta1.RunObject{withCustomRunCancelledForTimeout(makeCustomRunStarted(customRuns[0]))},
+		},
+		want: false,
+	}, {
+		name: "one customrun cancelled for timeout, one not done",
+		rpt: ResolvedPipelineTask{
+			CustomTask: true,
+			RunObjects: []v1beta1.RunObject{withCustomRunCancelledForTimeout(makeCustomRunFailed(customRuns[0])), makeCustomRunStarted(customRuns[1])},
+		},
+		want: false,
+	}, {
+		name: "one customrun cancelled for timeout, one done but not cancelled",
+		rpt: ResolvedPipelineTask{
+			CustomTask: true,
+			RunObjects: []v1beta1.RunObject{withCustomRunCancelledForTimeout(makeCustomRunFailed(customRuns[0])), makeCustomRunSucceeded(customRuns[1])},
+		},
+		want: true,
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.rpt.isCancelledForTimeOut(); got != tc.want {
+				t.Errorf("expected isCancelledForTimeOut: %t but got %t", tc.want, got)
+			}
+		})
+	}
+}
+
 func TestHasTaskRunsStarted(t *testing.T) {
 	for _, tc := range []struct {
 		name string
