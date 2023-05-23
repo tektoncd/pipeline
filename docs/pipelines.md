@@ -279,6 +279,8 @@ tasks:
       name: build-push
 ```
 
+**Note:** Using both `apiVersion` and `kind` will create [CustomRun](customruns.md), don't set `apiVersion` if only referring to [`Task`](tasks.md).
+
 or
 
 ```yaml
@@ -1537,7 +1539,8 @@ that is responsible for watching and updating `CustomRun`s which reference their
 ### Specifying the target Custom Task
 
 To specify the custom task type you want to execute, the `taskRef` field
-must include the custom task's `apiVersion` and `kind` as shown below:
+must include the custom task's `apiVersion` and `kind` as shown below.
+Using `apiVersion` will always create a `CustomRun`. If `apiVersion` is set, `kind` is required as well.
 
 ```yaml
 spec:
