@@ -396,10 +396,9 @@ func TestGetTaskFunc(t *testing.T) {
 				},
 			},
 			ref: &v1beta1.TaskRef{
-				Name:       "simple",
-				APIVersion: "tekton.dev/v1beta1",
-				Kind:       v1beta1.ClusterTaskKind,
-				Bundle:     u.Host + "/remote-cluster-task",
+				Name:   "simple",
+				Kind:   v1beta1.ClusterTaskKind,
+				Bundle: u.Host + "/remote-cluster-task",
 			},
 			expected: &v1beta1.Task{
 				ObjectMeta: metav1.ObjectMeta{Name: "simple"},
