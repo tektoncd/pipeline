@@ -12,17 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package internal // import "go.opentelemetry.io/otel/sdk/internal"
+package trace // import "go.opentelemetry.io/otel/sdk/trace"
 
-import "time"
-
-// MonotonicEndTime returns the end time at present
-// but offset from start, monotonically.
-//
-// The monotonic clock is used in subtractions hence
-// the duration since start added back to start gives
-// end as a monotonic time.
-// See https://golang.org/pkg/time/#hdr-Monotonic_Clocks
-func MonotonicEndTime(start time.Time) time.Time {
-	return start.Add(time.Since(start))
+// version is the current release version of the metric SDK in use.
+func version() string {
+	return "1.16.0-rc.1"
 }
