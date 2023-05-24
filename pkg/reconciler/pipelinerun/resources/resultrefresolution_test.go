@@ -104,9 +104,9 @@ var pipelineRunState = PipelineRunState{{
 	},
 }, {
 	CustomTask:     true,
-	RunObjectNames: []string{"aRun"},
-	RunObjects: []v1beta1.RunObject{
-		&v1beta1.CustomRun{
+	CustomRunNames: []string{"aRun"},
+	CustomRuns: []*v1beta1.CustomRun{
+		{
 			ObjectMeta: metav1.ObjectMeta{Name: "aRun"},
 			Status: v1beta1.CustomRunStatus{
 				Status: duckv1.Status{
@@ -262,9 +262,9 @@ var pipelineRunState = PipelineRunState{{
 	},
 }, {
 	CustomTask:     true,
-	RunObjectNames: []string{"xRun"},
-	RunObjects: []v1beta1.RunObject{
-		&v1beta1.CustomRun{
+	CustomRunNames: []string{"xRun"},
+	CustomRuns: []*v1beta1.CustomRun{
+		{
 			ObjectMeta: metav1.ObjectMeta{Name: "xRun"},
 			Status: v1beta1.CustomRunStatus{
 				Status: duckv1.Status{
@@ -277,7 +277,7 @@ var pipelineRunState = PipelineRunState{{
 					}},
 				},
 			},
-		}, &v1beta1.CustomRun{
+		}, {
 			ObjectMeta: metav1.ObjectMeta{Name: "yRun"},
 			Status: v1beta1.CustomRunStatus{
 				Status: duckv1.Status{

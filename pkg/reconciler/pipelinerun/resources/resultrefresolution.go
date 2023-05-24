@@ -130,12 +130,12 @@ func resolveResultRef(pipelineState PipelineRunState, resultRef *v1beta1.ResultR
 	var resultValue v1beta1.ResultValue
 	var err error
 	if referencedPipelineTask.IsCustomTask() {
-		if len(referencedPipelineTask.RunObjects) != 1 {
+		if len(referencedPipelineTask.CustomRuns) != 1 {
 			return nil, resultRef.PipelineTask, fmt.Errorf("referenced tasks can only have length of 1 since a matrixed task does not support producing results, but was length %d", len(referencedPipelineTask.TaskRuns))
 		}
-		runObject := referencedPipelineTask.RunObjects[0]
-		runName = runObject.GetObjectMeta().GetName()
-		runValue, err = findRunResultForParam(runObject, resultRef)
+		customRun := referencedPipelineTask.CustomRuns[0]
+		runName = customRun.GetObjectMeta().GetName()
+		runValue, err = findRunResultForParam(customRun, resultRef)
 		resultValue = *v1beta1.NewStructuredValues(runValue)
 		if err != nil {
 			return nil, resultRef.PipelineTask, err
@@ -161,9 +161,8 @@ func resolveResultRef(pipelineState PipelineRunState, resultRef *v1beta1.ResultR
 	}, "", nil
 }
 
-func findRunResultForParam(runObj v1beta1.RunObject, reference *v1beta1.ResultRef) (string, error) {
-	run := runObj.(*v1beta1.CustomRun)
-	for _, result := range run.Status.Results {
+func findRunResultForParam(customRun *v1beta1.CustomRun, reference *v1beta1.ResultRef) (string, error) {
+	for _, result := range customRun.Status.Results {
 		if result.Name == reference.Result {
 			return result.Value, nil
 		}
