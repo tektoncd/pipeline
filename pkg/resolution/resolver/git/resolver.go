@@ -115,13 +115,13 @@ func (r *Resolver) ValidateParams(ctx context.Context, params []pipelinev1beta1.
 		return errors.New(disabledError)
 	}
 
-	_, err := populateDefaultParams(ctx, params)
+	rawParams, err := populateDefaultParams(ctx, params)
 	if err != nil {
 		return err
 	}
 
-	// vest to make sure we can actually resolve the repositories
-	_, err = r.Resolve(ctx, params)
+	// make sure we can actually resolve the repositories as the resource will never run successfully if we can't
+	_, err = r.resolveGit(ctx, rawParams)
 	if err != nil {
 		return err
 	}
@@ -141,6 +141,10 @@ func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1beta1.Par
 		return nil, err
 	}
 
+	return r.resolveGit(ctx, params)
+}
+
+func (r *Resolver) resolveGit(ctx context.Context, params map[string]string) (framework.ResolvedResource, error) {
 	if params[urlParam] != "" {
 		return r.resolveAnonymousGit(ctx, params)
 	}
