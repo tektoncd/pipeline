@@ -66,6 +66,7 @@ func (t *Task) ConvertTo(ctx context.Context, to apis.Convertible) error {
 	switch sink := to.(type) {
 	case *v1.Task:
 		sink.ObjectMeta = t.ObjectMeta
+		version.AddVersioningInfoIfAbsent(ctx, &sink.ObjectMeta, &t.TypeMeta)
 		return t.Spec.ConvertTo(ctx, &sink.Spec, &sink.ObjectMeta, t.Name)
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)

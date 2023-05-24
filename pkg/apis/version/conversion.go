@@ -17,11 +17,37 @@ limitations under the License.
 package version
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+const OriginalVersionKey = "tekton.dev/original-api-version"
+const OriginalEnableAPIFieldsKey = "tekton.dev/enable-api-fields"
+
+// AddVersioningInfoIfAbsent adds annotations indicating the api version of the object
+// and the current value of the "enable-api-fields" feature flag.
+// If this information is already present in the object's annotations, it is not changed.
+func AddVersioningInfoIfAbsent(ctx context.Context, objectMeta *metav1.ObjectMeta, typeMeta *metav1.TypeMeta) {
+	currentVersion := typeMeta.APIVersion
+	currentEnableAPIFields := config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields
+	if objectMeta.Annotations == nil {
+		objectMeta.Annotations = map[string]string{
+			OriginalVersionKey:         currentVersion,
+			OriginalEnableAPIFieldsKey: currentEnableAPIFields,
+		}
+	} else {
+		if _, ok := objectMeta.Annotations[OriginalVersionKey]; !ok {
+			objectMeta.Annotations[OriginalVersionKey] = currentVersion
+		}
+		if _, ok := objectMeta.Annotations[OriginalEnableAPIFieldsKey]; !ok {
+			objectMeta.Annotations[OriginalEnableAPIFieldsKey] = currentEnableAPIFields
+		}
+	}
+}
 
 // SerializeToMetadata serializes the input field and adds it as an annotation to
 // the metadata under the input key.

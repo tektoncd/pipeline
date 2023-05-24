@@ -31,6 +31,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
@@ -62,14 +63,14 @@ var objectVariableNameFormatRegex = regexp.MustCompile(objectVariableNameFormat)
 // Validate implements apis.Validatable
 func (t *Task) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(t.GetObjectMeta()).ViaField("metadata")
-	errs = errs.Also(t.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
+	errs = errs.Also(t.Spec.Validate(apis.WithinSpec(ctx), &t.ObjectMeta).ViaField("spec"))
 	// When a Task is created directly, instead of declared inline in a TaskRun or PipelineRun,
 	// we do not support propagated parameters. Validate that all params it uses are declared.
 	return errs.Also(ValidateUsageOfDeclaredParameters(ctx, t.Spec.Steps, t.Spec.Params).ViaField("spec"))
 }
 
 // Validate implements apis.Validatable
-func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
+func (ts *TaskSpec) Validate(ctx context.Context, meta *metav1.ObjectMeta) (errs *apis.FieldError) {
 	if len(ts.Steps) == 0 {
 		errs = errs.Also(apis.ErrMissingField("steps"))
 	}

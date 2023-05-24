@@ -23,6 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/version"
 	"knative.dev/pkg/apis"
 )
 
@@ -36,6 +37,7 @@ func (p *Pipeline) ConvertTo(ctx context.Context, to apis.Convertible) error {
 	switch sink := to.(type) {
 	case *v1.Pipeline:
 		sink.ObjectMeta = p.ObjectMeta
+		version.AddVersioningInfoIfAbsent(ctx, &sink.ObjectMeta, &p.TypeMeta)
 		return p.Spec.ConvertTo(ctx, &sink.Spec, &sink.ObjectMeta)
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)

@@ -21,14 +21,47 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
+
+// ValidateEnabledAPIFieldsBasedOnOriginalObject determines the value of "enable-api-fields" when the object was first created
+func ValidateEnabledAPIFieldsBasedOnOriginalObject(ctx context.Context, featureName string, wantVersion string, objectMeta *metav1.ObjectMeta) *apis.FieldError {
+	if objectMeta.Annotations != nil {
+		originalAPIVersion := objectMeta.Annotations[OriginalVersionKey]
+		originalEnableAPIFields := objectMeta.Annotations[OriginalEnableAPIFieldsKey]
+
+		// If object was created as v1beta1 with "enable-api-fields" set to "stable", but has since been converted to v1,
+		// we need to validate as if "enable-api-fields" is "beta".
+		//
+		//   Original Object Version | Original enable-api-fields | Value of enable-api-fields to use | reason
+		//   ----------------------- | -------------------------- | --------------------------------- | ------
+		//   v1beta1                 | alpha                      | alpha                             |
+		//   v1beta1                 | beta                       | beta                              |
+		//   v1beta1                 | stable                     | beta                              | Avoid breaking v1beta1 objects converted to v1
+		//   v1                      | alpha                      | alpha                             |
+		//   v1                      | beta                       | beta                              |
+		//   v1                      | stable                     | stable                            |
+
+		if originalAPIVersion == "v1beta1" && originalEnableAPIFields == config.StableAPIFields {
+			return validateEnabledAPIFields(config.BetaAPIFields, featureName, wantVersion)
+		}
+	}
+
+	// Otherwise, we can use the current value of enable-api-fields.
+	currentEnableAPIFields := config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields
+	return validateEnabledAPIFields(currentEnableAPIFields, featureName, wantVersion)
+}
 
 // ValidateEnabledAPIFields checks that the enable-api-fields feature gate is set
 // to a version at most as stable as wantVersion, if not, returns an error stating which feature
 // is dependent on the version and what the current version actually is.
 func ValidateEnabledAPIFields(ctx context.Context, featureName string, wantVersion string) *apis.FieldError {
 	currentVersion := config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields
+	return validateEnabledAPIFields(currentVersion, featureName, wantVersion)
+}
+
+func validateEnabledAPIFields(version string, featureName string, wantVersion string) *apis.FieldError {
 	var errs *apis.FieldError
 	message := `%s requires "enable-api-fields" feature gate to be %s but it is %q`
 	switch wantVersion {
@@ -36,14 +69,14 @@ func ValidateEnabledAPIFields(ctx context.Context, featureName string, wantVersi
 		// If the feature is stable, it doesn't matter what the current version is
 	case config.BetaAPIFields:
 		// If the feature requires "beta" fields to be enabled, the current version may be "beta" or "alpha"
-		if currentVersion != config.BetaAPIFields && currentVersion != config.AlphaAPIFields {
-			message = fmt.Sprintf(message, featureName, fmt.Sprintf("%q or %q", config.AlphaAPIFields, config.BetaAPIFields), currentVersion)
+		if version != config.BetaAPIFields && version != config.AlphaAPIFields {
+			message = fmt.Sprintf(message, featureName, fmt.Sprintf("%q or %q", config.AlphaAPIFields, config.BetaAPIFields), version)
 			errs = apis.ErrGeneric(message)
 		}
 	case config.AlphaAPIFields:
 		// If the feature requires "alpha" fields to be enabled, the current version must be "alpha"
-		if currentVersion != wantVersion {
-			message = fmt.Sprintf(message, featureName, fmt.Sprintf("%q", config.AlphaAPIFields), currentVersion)
+		if version != wantVersion {
+			message = fmt.Sprintf(message, featureName, fmt.Sprintf("%q", config.AlphaAPIFields), version)
 			errs = apis.ErrGeneric(message)
 		}
 	default:
