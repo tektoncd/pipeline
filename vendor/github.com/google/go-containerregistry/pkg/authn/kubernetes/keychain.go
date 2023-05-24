@@ -25,23 +25,45 @@ import (
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/logs"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
 
+const (
+	// NoServiceAccount is a constant that can be passed via ServiceAccountName
+	// to tell the keychain that looking up the service account is unnecessary.
+	// This value cannot collide with an actual service account name because
+	// service accounts do not allow spaces.
+	NoServiceAccount = "no service account"
+)
+
 // Options holds configuration data for guiding credential resolution.
 type Options struct {
-	// Namespace holds the namespace inside of which we are resolving the
-	// image reference.  If empty, "default" is assumed.
+	// Namespace holds the namespace inside of which we are resolving service
+	// account and pull secret references to access the image.
+	// If empty, "default" is assumed.
 	Namespace string
-	// ServiceAccountName holds the serviceaccount as which the container
-	// will run (scoped to Namespace).  If empty, "default" is assumed.
+
+	// ServiceAccountName holds the serviceaccount (within Namespace) as which a
+	// Pod might access the image.  Service accounts may have image pull secrets
+	// attached, so we lookup the service account to complete the keychain.
+	// If empty, "default" is assumed.  To avoid a service account lookup, pass
+	// NoServiceAccount explicitly.
 	ServiceAccountName string
+
 	// ImagePullSecrets holds the names of the Kubernetes secrets (scoped to
 	// Namespace) containing credential data to use for the image pull.
 	ImagePullSecrets []string
+
+	// UseMountSecrets determines whether or not mount secrets in the ServiceAccount
+	// should be considered. Mount secrets are those listed under the `.secrets`
+	// attribute of the ServiceAccount resource. Ignored if ServiceAccountName is set
+	// to NoServiceAccount.
+	UseMountSecrets bool
 }
 
 // New returns a new authn.Keychain suitable for resolving image references as
@@ -65,23 +87,50 @@ func New(ctx context.Context, client kubernetes.Interface, opt Options) (authn.K
 	var pullSecrets []corev1.Secret
 	for _, name := range opt.ImagePullSecrets {
 		ps, err := client.CoreV1().Secrets(opt.Namespace).Get(ctx, name, metav1.GetOptions{})
-		if err != nil {
+		if k8serrors.IsNotFound(err) {
+			logs.Warn.Printf("secret %s/%s not found; ignoring", opt.Namespace, name)
+			continue
+		} else if err != nil {
 			return nil, err
 		}
 		pullSecrets = append(pullSecrets, *ps)
 	}
 
-	// Second, fetch all of the pull secrets attached to our service account.
-	sa, err := client.CoreV1().ServiceAccounts(opt.Namespace).Get(ctx, opt.ServiceAccountName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-	for _, localObj := range sa.ImagePullSecrets {
-		ps, err := client.CoreV1().Secrets(opt.Namespace).Get(ctx, localObj.Name, metav1.GetOptions{})
-		if err != nil {
+	// Second, fetch all of the pull secrets attached to our service account,
+	// unless the user has explicitly specified that no service account lookup
+	// is desired.
+	if opt.ServiceAccountName != NoServiceAccount {
+		sa, err := client.CoreV1().ServiceAccounts(opt.Namespace).Get(ctx, opt.ServiceAccountName, metav1.GetOptions{})
+		if k8serrors.IsNotFound(err) {
+			logs.Warn.Printf("serviceaccount %s/%s not found; ignoring", opt.Namespace, opt.ServiceAccountName)
+		} else if err != nil {
 			return nil, err
 		}
-		pullSecrets = append(pullSecrets, *ps)
+		if sa != nil {
+			for _, localObj := range sa.ImagePullSecrets {
+				ps, err := client.CoreV1().Secrets(opt.Namespace).Get(ctx, localObj.Name, metav1.GetOptions{})
+				if k8serrors.IsNotFound(err) {
+					logs.Warn.Printf("secret %s/%s not found; ignoring", opt.Namespace, localObj.Name)
+					continue
+				} else if err != nil {
+					return nil, err
+				}
+				pullSecrets = append(pullSecrets, *ps)
+			}
+
+			if opt.UseMountSecrets {
+				for _, obj := range sa.Secrets {
+					s, err := client.CoreV1().Secrets(opt.Namespace).Get(ctx, obj.Name, metav1.GetOptions{})
+					if k8serrors.IsNotFound(err) {
+						logs.Warn.Printf("secret %s/%s not found; ignoring", opt.Namespace, obj.Name)
+						continue
+					} else if err != nil {
+						return nil, err
+					}
+					pullSecrets = append(pullSecrets, *s)
+				}
+			}
+		}
 	}
 
 	return NewFromPullSecrets(ctx, pullSecrets)
@@ -236,8 +285,9 @@ func splitURL(url *url.URL) (parts []string, port string) {
 // glob wild cards in the host name.
 //
 // Examples:
-//    globURL=*.docker.io, targetURL=blah.docker.io => match
-//    globURL=*.docker.io, targetURL=not.right.io   => no match
+//
+//	globURL=*.docker.io, targetURL=blah.docker.io => match
+//	globURL=*.docker.io, targetURL=not.right.io   => no match
 //
 // Note that we don't support wildcards in ports and paths yet.
 func urlsMatch(globURL *url.URL, targetURL *url.URL) (bool, error) {

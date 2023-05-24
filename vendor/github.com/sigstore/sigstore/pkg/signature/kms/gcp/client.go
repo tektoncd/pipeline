@@ -30,11 +30,11 @@ import (
 	"time"
 
 	gcpkms "cloud.google.com/go/kms/apiv1"
-	"cloud.google.com/go/kms/apiv1/kmspb"
 	"google.golang.org/api/option"
+	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/jellydator/ttlcache/v3"
+	"github.com/jellydator/ttlcache/v2"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	"github.com/sigstore/sigstore/pkg/signature"
 	sigkms "github.com/sigstore/sigstore/pkg/signature/kms"
@@ -82,7 +82,7 @@ type gcpClient struct {
 	keyRing    string
 	keyName    string
 	version    string
-	kvCache    *ttlcache.Cache[string, cryptoKeyVersion]
+	kvCache    *ttlcache.Cache
 	kmsClient  *gcpkms.KeyManagementClient
 }
 
@@ -98,7 +98,7 @@ func newGCPClient(ctx context.Context, refStr string, opts ...option.ClientOptio
 	g := &gcpClient{
 		defaultCtx: ctx,
 		refString:  refStr,
-		kvCache:    nil,
+		kvCache:    ttlcache.NewCache(),
 	}
 	var err error
 	g.projectID, g.locationID, g.keyRing, g.keyName, g.version, err = parseReference(refStr)
@@ -111,12 +111,13 @@ func newGCPClient(ctx context.Context, refStr string, opts ...option.ClientOptio
 		return nil, fmt.Errorf("new gcp kms client: %w", err)
 	}
 
-	g.kvCache = ttlcache.New[string, cryptoKeyVersion](
-		ttlcache.WithDisableTouchOnHit[string, cryptoKeyVersion](),
-	)
-
+	g.kvCache.SetLoaderFunction(g.kvCacheLoaderFunction)
+	g.kvCache.SkipTTLExtensionOnHit(true)
 	// prime the cache
-	g.kvCache.Get(cacheKey)
+	_, err = g.kvCache.Get(cacheKey)
+	if err != nil {
+		return nil, fmt.Errorf("initializing key version from GCP KMS: %w", err)
+	}
 	return g, nil
 }
 
@@ -155,6 +156,18 @@ type cryptoKeyVersion struct {
 
 // use a consistent key for cache lookups
 const cacheKey = "crypto_key_version"
+
+func (g *gcpClient) kvCacheLoaderFunction(key string) (data interface{}, ttl time.Duration, err error) {
+	// if we're given an explicit version, cache this value forever
+	if g.version != "" {
+		ttl = time.Second * 0
+	} else {
+		ttl = time.Second * 300
+	}
+	data, err = g.keyVersionName(context.Background())
+
+	return
+}
 
 // keyVersionName returns the first key version found for a key in KMS
 func (g *gcpClient) keyVersionName(ctx context.Context) (*cryptoKeyVersion, error) {
@@ -261,33 +274,18 @@ func (g *gcpClient) getHashFunc() (crypto.Hash, error) {
 // getCKV gets the latest CryptoKeyVersion from the client's cache, which may trigger an actual
 // call to GCP if the existing entry in the cache has expired.
 func (g *gcpClient) getCKV() (*cryptoKeyVersion, error) {
-	var lerr error
-	loader := ttlcache.LoaderFunc[string, cryptoKeyVersion](
-		func(c *ttlcache.Cache[string, cryptoKeyVersion], key string) *ttlcache.Item[string, cryptoKeyVersion] {
-			var ttl time.Duration
-			var data *cryptoKeyVersion
-
-			// if we're given an explicit version, cache this value forever
-			if g.version != "" {
-				ttl = time.Second * 0
-			} else {
-				ttl = time.Second * 300
-			}
-			data, lerr = g.keyVersionName(context.Background())
-			if lerr == nil {
-				return c.Set(key, *data, ttl)
-			}
-			return nil
-		},
-	)
-
 	// we get once and use consistently to ensure the cache value doesn't change underneath us
-	item := g.kvCache.Get(cacheKey, ttlcache.WithLoader[string, cryptoKeyVersion](loader))
-	if item != nil {
-		v := item.Value()
-		return &v, nil
+	kmsVersionInt, err := g.kvCache.Get(cacheKey)
+	if err != nil {
+		return nil, err
 	}
-	return nil, lerr
+
+	kv, ok := kmsVersionInt.(*cryptoKeyVersion)
+	if !ok {
+		return nil, fmt.Errorf("could not parse kms version cache value as CryptoKeyVersion")
+	}
+
+	return kv, nil
 }
 
 func (g *gcpClient) sign(ctx context.Context, digest []byte, alg crypto.Hash, crc uint32) ([]byte, error) {
@@ -356,7 +354,7 @@ func (g *gcpClient) verify(sig, message io.Reader, opts ...signature.VerifyOptio
 	if err := crv.Verifier.VerifySignature(sig, message, opts...); err != nil {
 		// key could have been rotated, clear cache and try again if we're not pinned to a version
 		if g.version == "" {
-			g.kvCache.Delete(cacheKey)
+			_ = g.kvCache.Remove(cacheKey)
 			crv, err = g.getCKV()
 			if err != nil {
 				return fmt.Errorf("transient error getting info from KMS: %w", err)

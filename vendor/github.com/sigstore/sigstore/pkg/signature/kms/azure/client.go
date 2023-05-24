@@ -29,8 +29,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-jose/go-jose/v3"
-	"github.com/jellydator/ttlcache/v3"
+	"github.com/jellydator/ttlcache/v2"
+	jose "gopkg.in/square/go-jose.v2"
 
 	kvauth "github.com/Azure/azure-sdk-for-go/services/keyvault/auth"
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.1/keyvault"
@@ -46,16 +46,9 @@ func init() {
 	})
 }
 
-type kvClient interface {
-	CreateKey(ctx context.Context, vaultBaseURL, keyName string, parameters keyvault.KeyCreateParameters) (result keyvault.KeyBundle, err error)
-	GetKey(ctx context.Context, vaultBaseURL, keyName, keyVersion string) (result keyvault.KeyBundle, err error)
-	Sign(ctx context.Context, vaultBaseURL, keyName, keyVersion string, parameters keyvault.KeySignParameters) (result keyvault.KeyOperationResult, err error)
-	Verify(ctx context.Context, vaultBaseURL, keyName, keyVersion string, parameters keyvault.KeyVerifyParameters) (result keyvault.KeyVerifyResult, err error)
-}
-
 type azureVaultClient struct {
-	client    kvClient
-	keyCache  *ttlcache.Cache[string, crypto.PublicKey]
+	client    *keyvault.BaseClient
+	keyCache  *ttlcache.Cache
 	vaultURL  string
 	vaultName string
 	keyName   string
@@ -112,10 +105,11 @@ func newAzureKMS(_ context.Context, keyResourceID string) (*azureVaultClient, er
 		vaultURL:  vaultURL,
 		vaultName: vaultName,
 		keyName:   keyName,
-		keyCache: ttlcache.New[string, crypto.PublicKey](
-			ttlcache.WithDisableTouchOnHit[string, crypto.PublicKey](),
-		),
+		keyCache:  ttlcache.NewCache(),
 	}
+
+	azClient.keyCache.SetLoaderFunction(azClient.keyCacheLoaderFunction)
+	azClient.keyCache.SkipTTLExtensionOnHit(true)
 
 	return azClient, nil
 }
@@ -201,29 +195,27 @@ func getKeysClient() (keyvault.BaseClient, error) {
 	return keyClient, nil
 }
 
+func (a *azureVaultClient) keyCacheLoaderFunction(key string) (data interface{}, ttl time.Duration, err error) {
+	ttl = time.Second * 300
+	var pubKey crypto.PublicKey
+
+	pubKey, err = a.fetchPublicKey(context.Background())
+	if err != nil {
+		data = nil
+		return
+	}
+
+	data = pubKey
+	return data, ttl, err
+}
+
 func (a *azureVaultClient) fetchPublicKey(ctx context.Context) (crypto.PublicKey, error) {
-	keyBundle, err := a.getKey(ctx)
+	key, err := a.getKey(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("public key: %w", err)
 	}
 
-	key := keyBundle.Key
-	keyType := string(key.Kty)
-
-	// Azure Key Vault allows keys to be stored in either default Key Vault storage
-	// or in managed HSMs. If the key is stored in a HSM, the key type is suffixed
-	// with "-HSM". Since this suffix is specific to Azure Key Vault, it needs
-	// be stripped from the key type before attempting to represent the key
-	// with a go-jose/JSONWebKey struct.
-	if strings.HasSuffix(keyType, "-HSM") {
-		split := strings.Split(keyType, "-HSM")
-		// since we split on the suffix, there should be only two elements
-		// the first element should contain the key type without the -HSM suffix
-		newKeyType := split[0]
-		key.Kty = keyvault.JSONWebKeyType(newKeyType)
-	}
-
-	jwkJSON, err := json.Marshal(*key)
+	jwkJSON, err := json.Marshal(*key.Key)
 	if err != nil {
 		return nil, fmt.Errorf("encoding the jsonWebKey: %w", err)
 	}
@@ -253,30 +245,14 @@ func (a *azureVaultClient) getKey(ctx context.Context) (keyvault.KeyBundle, erro
 	return key, err
 }
 
-func (a *azureVaultClient) public(ctx context.Context) (crypto.PublicKey, error) {
-	var lerr error
-	loader := ttlcache.LoaderFunc[string, crypto.PublicKey](
-		func(c *ttlcache.Cache[string, crypto.PublicKey], key string) *ttlcache.Item[string, crypto.PublicKey] {
-			ttl := 300 * time.Second
-			var pubKey crypto.PublicKey
-			pubKey, lerr = a.fetchPublicKey(ctx)
-			if lerr == nil {
-				return c.Set(cacheKey, pubKey, ttl)
-			}
-			return nil
-		},
-	)
-	item := a.keyCache.Get(cacheKey, ttlcache.WithLoader[string, crypto.PublicKey](loader))
-	if lerr != nil {
-		return nil, lerr
-	}
-	return item.Value(), nil
+func (a *azureVaultClient) public() (crypto.PublicKey, error) {
+	return a.keyCache.Get(cacheKey)
 }
 
 func (a *azureVaultClient) createKey(ctx context.Context) (crypto.PublicKey, error) {
 	_, err := a.getKey(ctx)
 	if err == nil {
-		return a.public(ctx)
+		return a.public()
 	}
 
 	_, err = a.client.CreateKey(
@@ -301,30 +277,12 @@ func (a *azureVaultClient) createKey(ctx context.Context) (crypto.PublicKey, err
 		return nil, err
 	}
 
-	return a.public(ctx)
+	return a.public()
 }
 
-func getKeyVaultSignatureAlgo(algo crypto.Hash) (keyvault.JSONWebKeySignatureAlgorithm, error) {
-	switch algo {
-	case crypto.SHA256:
-		return keyvault.ES256, nil
-	case crypto.SHA384:
-		return keyvault.ES384, nil
-	case crypto.SHA512:
-		return keyvault.ES512, nil
-	default:
-		return "", fmt.Errorf("unsupported algorithm: %s", algo)
-	}
-}
-
-func (a *azureVaultClient) sign(ctx context.Context, hash []byte, algo crypto.Hash) ([]byte, error) {
-	keyVaultAlgo, err := getKeyVaultSignatureAlgo(algo)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get KeyVaultSignatureAlgorithm: %w", err)
-	}
-
+func (a *azureVaultClient) sign(ctx context.Context, hash []byte) ([]byte, error) {
 	params := keyvault.KeySignParameters{
-		Algorithm: keyVaultAlgo,
+		Algorithm: keyvault.ES256,
 		Value:     to.StringPtr(base64.RawURLEncoding.EncodeToString(hash)),
 	}
 
@@ -341,14 +299,9 @@ func (a *azureVaultClient) sign(ctx context.Context, hash []byte, algo crypto.Ha
 	return decResult, nil
 }
 
-func (a *azureVaultClient) verify(ctx context.Context, signature, hash []byte, algo crypto.Hash) error {
-	keyVaultAlgo, err := getKeyVaultSignatureAlgo(algo)
-	if err != nil {
-		return fmt.Errorf("failed to get KeyVaultSignatureAlgorithm: %w", err)
-	}
-
+func (a *azureVaultClient) verify(ctx context.Context, signature, hash []byte) error {
 	params := keyvault.KeyVerifyParameters{
-		Algorithm: keyVaultAlgo,
+		Algorithm: keyvault.ES256,
 		Digest:    to.StringPtr(base64.RawURLEncoding.EncodeToString(hash)),
 		Signature: to.StringPtr(base64.RawURLEncoding.EncodeToString(signature)),
 	}
