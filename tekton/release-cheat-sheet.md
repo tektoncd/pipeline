@@ -111,21 +111,66 @@ the pipelines repo, a terminal window and a text editor.
     TEKTON_RELEASE_NAME=# The release name you just chose, e.g.: "Ragdoll Norby"
     ```
 
-    1. Execute the Draft Release Pipeline.
+    1. Create the Draft Release PipelineRun file.
 
-    ```bash
-    tkn --context dogfooding pipeline start \
-      --workspace name=shared,volumeClaimTemplateFile=workspace-template.yaml \
-      --workspace name=credentials,secret=release-secret \
-      -p package="tektoncd/pipeline" \
-      -p git-revision="$TEKTON_RELEASE_GIT_SHA" \
-      -p release-tag="${TEKTON_VERSION}" \
-      -p previous-release-tag="${TEKTON_OLD_VERSION}" \
-      -p release-name="${TEKTON_RELEASE_NAME}" \
-      -p bucket="gs://tekton-releases/pipeline" \
-      -p rekor-uuid="$REKOR_UUID" \
-      release-draft
-    ```
+        <details>
+        <summary>Click to see the command</summary>
+        
+        ```bash
+        cat <<EOF > github-release-pipelinerun.yaml
+        apiVersion: tekton.dev/v1beta1
+        kind: PipelineRun
+        metadata:
+          generateName: github-release-pipelinerun-
+        spec:
+          params:
+            - name: package
+              value: tektoncd/pipeline
+            - name: git-revision
+              value: ${TEKTON_RELEASE_GIT_SHA}
+            - name: release-tag
+              value: ${TEKTON_VERSION}
+            - name: previous-release-tag
+              value: ${TEKTON_OLD_VERSION}
+            - name: release-name
+              value: ${TEKTON_RELEASE_NAME}
+            - name: bucket
+              value: gs://tekton-releases/pipeline
+            - name: rekor-uuid
+              value: ${REKOR_UUID}
+          workspaces:
+            - name: credentials
+              secret:
+                secretName: release-secret
+            - name: shared
+              volumeClaimTemplate:
+                spec:
+                  accessModes:
+                  - ReadWriteOnce
+                  resources:
+                    requests:
+                      storage: 1Gi
+          pipelineRef:
+            resolver: git
+            params:
+              - name: org
+                value: tektoncd
+              - name: repo
+                value: plumbing
+              - name: revision
+                value: main
+              - name: pathInRepo
+                value: tekton/resources/release/base/github_release.yaml
+        EOF
+        ```
+        </details>
+    
+    
+    1. Execute the Draft Release PipelineRun.
+
+        ```bash
+        kubectl --context dogfooding create -f github-release-pipelinerun.yaml
+        ```
 
     1. Watch logs of create-draft-release
 
