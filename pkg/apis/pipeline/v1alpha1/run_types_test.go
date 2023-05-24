@@ -163,6 +163,44 @@ func TestRunIsDone(t *testing.T) {
 	}
 }
 
+func TestRunIsSuccessful(t *testing.T) {
+	tcs := []struct {
+		name string
+		run  *v1alpha1.Run
+		want bool
+	}{{
+		name: "nil taskrun",
+		want: false,
+	}, {
+		name: "still running",
+		run: &v1alpha1.Run{Status: v1alpha1.RunStatus{Status: duckv1.Status{Conditions: []apis.Condition{{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+		}}}}},
+		want: false,
+	}, {
+		name: "succeeded",
+		run: &v1alpha1.Run{Status: v1alpha1.RunStatus{Status: duckv1.Status{Conditions: []apis.Condition{{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionTrue,
+		}}}}},
+		want: true,
+	}, {
+		name: "failed",
+		run: &v1alpha1.Run{Status: v1alpha1.RunStatus{Status: duckv1.Status{Conditions: []apis.Condition{{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+		}}}}},
+		want: false,
+	}}
+	for _, tc := range tcs {
+		got := tc.run.IsSuccessful()
+		if tc.want != got {
+			t.Errorf("wanted isSuccessful to be %t but was %t", tc.want, got)
+		}
+	}
+}
+
 func TestRunIsCancelled(t *testing.T) {
 	run := v1alpha1.Run{
 		Spec: v1alpha1.RunSpec{
