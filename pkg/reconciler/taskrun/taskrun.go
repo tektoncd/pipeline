@@ -350,6 +350,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	}
 
 	rtr := &resources.ResolvedTask{
+		TaskMeta: taskMeta.ObjectMeta,
 		TaskName: taskMeta.Name,
 		TaskSpec: taskSpec,
 		Kind:     resources.GetTaskKind(tr),
@@ -695,7 +696,8 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1beta1.TaskSpec, tr *v1
 		logger.Errorf("Failed to create a pod for taskrun: %s due to task validation error %v", tr.Name, validateErr)
 		return nil, validateErr
 	}
-	if validateErr := ts.Validate(ctx); validateErr != nil {
+
+	if validateErr := ts.Validate(ctx, rtr.TaskMeta); validateErr != nil {
 		logger.Errorf("Failed to create a pod for taskrun: %s due to task validation error %v", tr.Name, validateErr)
 		return nil, validateErr
 	}

@@ -29,6 +29,7 @@ import (
 // ResolvedTask contains the data that is needed to execute
 // the TaskRun.
 type ResolvedTask struct {
+	TaskMeta *metav1.ObjectMeta
 	TaskName string
 	Kind     v1beta1.TaskKind
 	TaskSpec *v1beta1.TaskSpec

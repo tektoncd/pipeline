@@ -26,6 +26,7 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/version"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	rprp "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/pipelinespec"
 	"github.com/tektoncd/pipeline/pkg/remote"
@@ -158,6 +159,7 @@ func readRuntimeObjectAsPipeline(ctx context.Context, obj runtime.Object, k8s ku
 			}
 			return nil, fmt.Errorf("remote Pipeline verification failed for object %s", obj.GetName())
 		}
+		version.AddVersioningInfoIfAbsent(ctx, &obj.ObjectMeta, &obj.TypeMeta)
 		return obj, nil
 	case *v1.Pipeline:
 		// TODO(#6356): Support V1 Task verification
@@ -167,6 +169,7 @@ func readRuntimeObjectAsPipeline(ctx context.Context, obj runtime.Object, k8s ku
 				APIVersion: "tekton.dev/v1beta1",
 			},
 		}
+		version.AddVersioningInfoIfAbsent(ctx, &obj.ObjectMeta, &obj.TypeMeta)
 		if err := t.ConvertFrom(ctx, obj); err != nil {
 			return nil, fmt.Errorf("failed to convert obj %s into Pipeline", obj.GetObjectKind().GroupVersionKind().String())
 		}

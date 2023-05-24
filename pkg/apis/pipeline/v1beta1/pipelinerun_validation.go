@@ -71,7 +71,8 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 
 	// Validate PipelineSpec if it's present
 	if ps.PipelineSpec != nil {
-		errs = errs.Also(ps.PipelineSpec.Validate(ctx).ViaField("pipelineSpec"))
+		// Since Pipeline spec is declared inline, there's no object meta needed for validation
+		errs = errs.Also(ps.PipelineSpec.Validate(ctx, nil /* objectMeta */).ViaField("pipelineSpec"))
 	}
 
 	// Validate PipelineRun parameters

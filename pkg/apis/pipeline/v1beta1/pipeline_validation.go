@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
@@ -47,7 +48,7 @@ func (p *Pipeline) SupportedVerbs() []admissionregistrationv1.OperationType {
 // that any references resources exist, that is done at run time.
 func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(p.GetObjectMeta()).ViaField("metadata")
-	errs = errs.Also(p.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
+	errs = errs.Also(p.Spec.Validate(apis.WithinSpec(ctx), &p.ObjectMeta).ViaField("spec"))
 	// When a Pipeline is created directly, instead of declared inline in a PipelineRun,
 	// we do not support propagated parameters and workspaces.
 	// Validate that all params and workspaces it uses are declared.
@@ -57,7 +58,7 @@ func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
 
 // Validate checks that taskNames in the Pipeline are valid and that the graph
 // of Tasks expressed in the Pipeline makes sense.
-func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
+func (ps *PipelineSpec) Validate(ctx context.Context, pipelineMeta *metav1.ObjectMeta) (errs *apis.FieldError) {
 	if equality.Semantic.DeepEqual(ps, &PipelineSpec{}) {
 		errs = errs.Also(apis.ErrGeneric("expected at least one, got none", "description", "params", "resources", "tasks", "workspaces"))
 	}
@@ -81,8 +82,8 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateTasksAndFinallySection(ps))
 	errs = errs.Also(validateFinalTasks(ps.Tasks, ps.Finally))
 	errs = errs.Also(validateWhenExpressions(ps.Tasks, ps.Finally))
-	errs = errs.Also(validateMatrix(ctx, ps.Tasks).ViaField("tasks"))
-	errs = errs.Also(validateMatrix(ctx, ps.Finally).ViaField("finally"))
+	errs = errs.Also(validateMatrix(ctx, ps.Tasks, pipelineMeta).ViaField("tasks"))
+	errs = errs.Also(validateMatrix(ctx, ps.Finally, pipelineMeta).ViaField("finally"))
 	errs = errs.Also(validateResultsFromMatrixedPipelineTasksNotConsumed(ps.Tasks, ps.Finally))
 	return errs
 }
@@ -163,11 +164,11 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	return //nolint:nakedret
 }
 
-func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldError) {
+func (pt *PipelineTask) validateMatrix(ctx context.Context, pipelineMeta *metav1.ObjectMeta) (errs *apis.FieldError) {
 	if pt.IsMatrixed() {
 		// This is an alpha feature and will fail validation if it's used in a pipeline spec
 		// when the enable-api-fields feature gate is anything but "alpha".
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "matrix", config.AlphaAPIFields))
+		errs = errs.Also(version.ValidateEnabledAPIFieldsBasedOnOriginalObject(ctx, "matrix", config.AlphaAPIFields, pipelineMeta))
 		errs = errs.Also(pt.Matrix.validateCombinationsCount(ctx))
 		errs = errs.Also(pt.Matrix.validateNoWholeArrayResults())
 		errs = errs.Also(pt.Matrix.validateUniqueParams())
@@ -282,7 +283,8 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 	cfg := config.FromContextOrDefaults(ctx)
 	// Validate TaskSpec if it's present
 	if pt.TaskSpec != nil {
-		errs = errs.Also(pt.TaskSpec.Validate(ctx).ViaField("taskSpec"))
+		// Since Task spec is declared inline, no objectMeta is needed here for validation
+		errs = errs.Also(pt.TaskSpec.Validate(ctx, nil /* objectMeta */).ViaField("taskSpec"))
 	}
 	if pt.TaskRef != nil {
 		if pt.TaskRef.Name != "" {
@@ -698,9 +700,9 @@ func validateGraph(tasks []PipelineTask) (errs *apis.FieldError) {
 	return errs
 }
 
-func validateMatrix(ctx context.Context, tasks []PipelineTask) (errs *apis.FieldError) {
+func validateMatrix(ctx context.Context, tasks []PipelineTask, pipelineMeta *metav1.ObjectMeta) (errs *apis.FieldError) {
 	for idx, task := range tasks {
-		errs = errs.Also(task.validateMatrix(ctx).ViaIndex(idx))
+		errs = errs.Also(task.validateMatrix(ctx, pipelineMeta).ViaIndex(idx))
 	}
 	return errs
 }

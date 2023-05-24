@@ -31,18 +31,6 @@ func ValidateEnabledAPIFieldsBasedOnOriginalObject(ctx context.Context, featureN
 		originalAPIVersion := objectMeta.Annotations[OriginalVersionKey]
 		originalEnableAPIFields := objectMeta.Annotations[OriginalEnableAPIFieldsKey]
 
-		// If object was created as v1beta1 with "enable-api-fields" set to "stable", but has since been converted to v1,
-		// we need to validate as if "enable-api-fields" is "beta".
-		//
-		//   Original Object Version | Original enable-api-fields | Value of enable-api-fields to use | reason
-		//   ----------------------- | -------------------------- | --------------------------------- | ------
-		//   v1beta1                 | alpha                      | alpha                             |
-		//   v1beta1                 | beta                       | beta                              |
-		//   v1beta1                 | stable                     | beta                              | Avoid breaking v1beta1 objects converted to v1
-		//   v1                      | alpha                      | alpha                             |
-		//   v1                      | beta                       | beta                              |
-		//   v1                      | stable                     | stable                            |
-
 		if originalAPIVersion == "v1beta1" && originalEnableAPIFields == config.StableAPIFields {
 			return validateEnabledAPIFields(config.BetaAPIFields, featureName, wantVersion)
 		}

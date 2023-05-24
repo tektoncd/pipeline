@@ -66,7 +66,8 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 
 	// Validate PipelineSpec if it's present
 	if ps.PipelineSpec != nil {
-		errs = errs.Also(ps.PipelineSpec.Validate(ctx).ViaField("pipelineSpec"))
+		// Since Pipeline spec is declared inline, there's no object meta to use in validation
+		errs = errs.Also(ps.PipelineSpec.Validate(ctx, nil /* objectMeta */).ViaField("pipelineSpec"))
 	}
 
 	// Validate PipelineRun parameters
@@ -177,12 +178,12 @@ func (ps *PipelineRunSpec) validateInlineParameters(ctx context.Context) (errs *
 	if ps.PipelineSpec != nil && ps.PipelineSpec.Tasks != nil {
 		for _, pt := range ps.PipelineSpec.Tasks {
 			if pt.TaskSpec != nil && pt.TaskSpec.Steps != nil {
-				errs = errs.Also(ValidateParameterTypes(ctx, paramSpec))
+				errs = errs.Also(ValidateParameterTypes(ctx, paramSpec, nil))
 				errs = errs.Also(ValidateParameterVariables(ctx, pt.TaskSpec.Steps, paramSpec))
 				errs = errs.Also(ValidateUsageOfDeclaredParameters(ctx, pt.TaskSpec.Steps, paramSpec))
 			}
 		}
-		errs = errs.Also(ValidatePipelineParameterVariables(ctx, ps.PipelineSpec.Tasks, paramSpec))
+		errs = errs.Also(ValidatePipelineParameterVariables(ctx, ps.PipelineSpec.Tasks, paramSpec, nil))
 		errs = errs.Also(validatePipelineTaskParameterUsage(ps.PipelineSpec.Tasks, paramSpec))
 	}
 	return errs

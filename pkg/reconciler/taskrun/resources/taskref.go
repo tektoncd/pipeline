@@ -27,6 +27,7 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/version"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"github.com/tektoncd/pipeline/pkg/remote"
 	"github.com/tektoncd/pipeline/pkg/remote/oci"
@@ -179,8 +180,10 @@ func readRuntimeObjectAsTask(ctx context.Context, obj runtime.Object, k8s kubern
 			}
 			return nil, fmt.Errorf("remote Task verification failed for object %s", obj.GetName())
 		}
+		version.AddVersioningInfoIfAbsent(ctx, &obj.ObjectMeta, &obj.TypeMeta)
 		return obj, nil
 	case *v1beta1.ClusterTask:
+		version.AddVersioningInfoIfAbsent(ctx, &obj.ObjectMeta, &obj.TypeMeta)
 		return convertClusterTaskToTask(*obj), nil
 	case *v1.Task:
 		// TODO(#6356): Support V1 Task verification
@@ -190,6 +193,7 @@ func readRuntimeObjectAsTask(ctx context.Context, obj runtime.Object, k8s kubern
 				APIVersion: "tekton.dev/v1beta1",
 			},
 		}
+		version.AddVersioningInfoIfAbsent(ctx, &obj.ObjectMeta, &obj.TypeMeta)
 		if err := t.ConvertFrom(ctx, obj); err != nil {
 			return nil, fmt.Errorf("failed to convert obj %s into Task", obj.GetObjectKind().GroupVersionKind().String())
 		}

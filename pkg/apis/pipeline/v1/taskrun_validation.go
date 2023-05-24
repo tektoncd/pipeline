@@ -62,7 +62,8 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 	// Validate TaskSpec if it's present.
 	if ts.TaskSpec != nil {
-		errs = errs.Also(ts.TaskSpec.Validate(ctx).ViaField("taskSpec"))
+		// Since task spec is declared inline, there's no object meta to use in validation
+		errs = errs.Also(ts.TaskSpec.Validate(ctx, nil /* objectMeta */).ViaField("taskSpec"))
 	}
 
 	errs = errs.Also(ValidateParameters(ctx, ts.Params).ViaField("params"))
@@ -138,7 +139,7 @@ func (ts *TaskRunSpec) validateInlineParameters(ctx context.Context) (errs *apis
 		paramSpec = append(paramSpec, v)
 	}
 	if ts.TaskSpec != nil && ts.TaskSpec.Steps != nil {
-		errs = errs.Also(ValidateParameterTypes(ctx, paramSpec))
+		errs = errs.Also(ValidateParameterTypes(ctx, paramSpec, nil))
 		errs = errs.Also(ValidateParameterVariables(ctx, ts.TaskSpec.Steps, paramSpec))
 		errs = errs.Also(ValidateUsageOfDeclaredParameters(ctx, ts.TaskSpec.Steps, paramSpec))
 	}

@@ -62,7 +62,8 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 	// Validate TaskSpec if it's present.
 	if ts.TaskSpec != nil {
-		errs = errs.Also(ts.TaskSpec.Validate(ctx).ViaField("taskSpec"))
+		// Since Task spec is declared inline, no objectMeta is needed here for validation
+		errs = errs.Also(ts.TaskSpec.Validate(ctx, nil /* objectMeta */).ViaField("taskSpec"))
 	}
 
 	errs = errs.Also(ValidateParameters(ctx, ts.Params).ViaField("params"))

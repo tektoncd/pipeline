@@ -442,7 +442,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 		return controller.NewPermanentError(err)
 	}
 
-	if err := pipelineSpec.Validate(ctx); err != nil {
+	if err := pipelineSpec.Validate(ctx, pipelineMeta.ObjectMeta); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.MarkFailed(ReasonFailedValidation,
 			"Pipeline %s/%s can't be Run; it has an invalid spec: %s",

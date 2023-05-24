@@ -70,14 +70,14 @@ func (t *Task) Validate(ctx context.Context) *apis.FieldError {
 }
 
 // Validate implements apis.Validatable
-func (ts *TaskSpec) Validate(ctx context.Context, meta *metav1.ObjectMeta) (errs *apis.FieldError) {
+func (ts *TaskSpec) Validate(ctx context.Context, taskMeta *metav1.ObjectMeta) (errs *apis.FieldError) {
 	if len(ts.Steps) == 0 {
 		errs = errs.Also(apis.ErrMissingField("steps"))
 	}
 
 	errs = errs.Also(ValidateVolumes(ts.Volumes).ViaField("volumes"))
 	errs = errs.Also(validateDeclaredWorkspaces(ts.Workspaces, ts.Steps, ts.StepTemplate).ViaField("workspaces"))
-	errs = errs.Also(validateWorkspaceUsages(ctx, ts))
+	errs = errs.Also(validateWorkspaceUsages(ctx, ts, taskMeta))
 	mergedSteps, err := MergeStepsWithStepTemplate(ts.StepTemplate, ts.Steps)
 	if err != nil {
 		errs = errs.Also(&apis.FieldError{
@@ -87,7 +87,7 @@ func (ts *TaskSpec) Validate(ctx context.Context, meta *metav1.ObjectMeta) (errs
 		})
 	}
 
-	errs = errs.Also(validateSteps(ctx, mergedSteps).ViaField("steps"))
+	errs = errs.Also(validateSteps(ctx, mergedSteps, taskMeta).ViaField("steps"))
 	errs = errs.Also(validateSidecarNames(ts.Sidecars))
 	errs = errs.Also(ValidateParameterTypes(ctx, ts.Params).ViaField("params"))
 	errs = errs.Also(ValidateParameterVariables(ctx, ts.Steps, ts.Params))
@@ -179,7 +179,7 @@ func validateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step,
 //
 // This is an alpha feature and will fail validation if it's used by a step
 // or sidecar when the enable-api-fields feature gate is anything but "alpha".
-func validateWorkspaceUsages(ctx context.Context, ts *TaskSpec) (errs *apis.FieldError) {
+func validateWorkspaceUsages(ctx context.Context, ts *TaskSpec, taskMeta *metav1.ObjectMeta) (errs *apis.FieldError) {
 	workspaces := ts.Workspaces
 	steps := ts.Steps
 	sidecars := ts.Sidecars
@@ -191,7 +191,7 @@ func validateWorkspaceUsages(ctx context.Context, ts *TaskSpec) (errs *apis.Fiel
 
 	for stepIdx, step := range steps {
 		if len(step.Workspaces) != 0 {
-			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "step workspaces", config.AlphaAPIFields).ViaIndex(stepIdx).ViaField("steps"))
+			errs = errs.Also(version.ValidateEnabledAPIFieldsBasedOnOriginalObject(ctx, "step workspaces", config.AlphaAPIFields, taskMeta).ViaIndex(stepIdx).ViaField("steps"))
 		}
 		for workspaceIdx, w := range step.Workspaces {
 			if !wsNames.Has(w.Name) {
@@ -202,7 +202,7 @@ func validateWorkspaceUsages(ctx context.Context, ts *TaskSpec) (errs *apis.Fiel
 
 	for sidecarIdx, sidecar := range sidecars {
 		if len(sidecar.Workspaces) != 0 {
-			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "sidecar workspaces", config.AlphaAPIFields).ViaIndex(sidecarIdx).ViaField("sidecars"))
+			errs = errs.Also(version.ValidateEnabledAPIFieldsBasedOnOriginalObject(ctx, "sidecar workspaces", config.AlphaAPIFields, taskMeta).ViaIndex(sidecarIdx).ViaField("sidecars"))
 		}
 		for workspaceIdx, w := range sidecar.Workspaces {
 			if !wsNames.Has(w.Name) {
@@ -228,16 +228,16 @@ func ValidateVolumes(volumes []corev1.Volume) (errs *apis.FieldError) {
 	return errs
 }
 
-func validateSteps(ctx context.Context, steps []Step) (errs *apis.FieldError) {
+func validateSteps(ctx context.Context, steps []Step, taskMeta *metav1.ObjectMeta) (errs *apis.FieldError) {
 	// Task must not have duplicate step names.
 	names := sets.NewString()
 	for idx, s := range steps {
-		errs = errs.Also(validateStep(ctx, s, names).ViaIndex(idx))
+		errs = errs.Also(validateStep(ctx, s, names, taskMeta).ViaIndex(idx))
 	}
 	return errs
 }
 
-func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.FieldError) {
+func validateStep(ctx context.Context, s Step, names sets.String, taskMeta *metav1.ObjectMeta) (errs *apis.FieldError) {
 	if s.Image == "" {
 		errs = errs.Also(apis.ErrMissingField("Image"))
 	}
@@ -294,19 +294,19 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 	if s.Script != "" {
 		cleaned := strings.TrimSpace(s.Script)
 		if strings.HasPrefix(cleaned, "#!win") {
-			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "windows script support", config.AlphaAPIFields).ViaField("script"))
+			errs = errs.Also(version.ValidateEnabledAPIFieldsBasedOnOriginalObject(ctx, "windows script support", config.AlphaAPIFields, taskMeta).ViaField("script"))
 		}
 	}
 
 	// StdoutConfig is an alpha feature and will fail validation if it's used in a task spec
 	// when the enable-api-fields feature gate is not "alpha".
 	if s.StdoutConfig != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "step stdout stream support", config.AlphaAPIFields).ViaField("stdoutconfig"))
+		errs = errs.Also(version.ValidateEnabledAPIFieldsBasedOnOriginalObject(ctx, "step stdout stream support", config.AlphaAPIFields, taskMeta).ViaField("stdoutconfig"))
 	}
 	// StderrConfig is an alpha feature and will fail validation if it's used in a task spec
 	// when the enable-api-fields feature gate is not "alpha".
 	if s.StderrConfig != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "step stderr stream support", config.AlphaAPIFields).ViaField("stderrconfig"))
+		errs = errs.Also(version.ValidateEnabledAPIFieldsBasedOnOriginalObject(ctx, "step stderr stream support", config.AlphaAPIFields, taskMeta).ViaField("stderrconfig"))
 	}
 	return errs
 }
