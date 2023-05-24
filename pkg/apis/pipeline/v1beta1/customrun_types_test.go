@@ -158,6 +158,82 @@ func TestRunIsDone(t *testing.T) {
 	}
 }
 
+func TestCustomRunIsSuccessful(t *testing.T) {
+	tcs := []struct {
+		name      string
+		customRun *v1beta1.CustomRun
+		want      bool
+	}{{
+		name: "nil taskrun",
+		want: false,
+	}, {
+		name: "still running",
+		customRun: &v1beta1.CustomRun{Status: v1beta1.CustomRunStatus{Status: duckv1.Status{Conditions: []apis.Condition{{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+		}}}}},
+		want: false,
+	}, {
+		name: "succeeded",
+		customRun: &v1beta1.CustomRun{Status: v1beta1.CustomRunStatus{Status: duckv1.Status{Conditions: []apis.Condition{{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionTrue,
+		}}}}},
+		want: true,
+	}, {
+		name: "failed",
+		customRun: &v1beta1.CustomRun{Status: v1beta1.CustomRunStatus{Status: duckv1.Status{Conditions: []apis.Condition{{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+		}}}}},
+		want: false,
+	}}
+	for _, tc := range tcs {
+		got := tc.customRun.IsSuccessful()
+		if tc.want != got {
+			t.Errorf("wanted isSuccessful to be %t but was %t", tc.want, got)
+		}
+	}
+}
+
+func TestCustomRunIsFailure(t *testing.T) {
+	tcs := []struct {
+		name    string
+		taskRun *v1beta1.TaskRun
+		want    bool
+	}{{
+		name: "nil taskrun",
+		want: false,
+	}, {
+		name: "still running",
+		taskRun: &v1beta1.TaskRun{Status: v1beta1.TaskRunStatus{Status: duckv1.Status{Conditions: []apis.Condition{{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+		}}}}},
+		want: false,
+	}, {
+		name: "succeeded",
+		taskRun: &v1beta1.TaskRun{Status: v1beta1.TaskRunStatus{Status: duckv1.Status{Conditions: []apis.Condition{{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionTrue,
+		}}}}},
+		want: false,
+	}, {
+		name: "failed",
+		taskRun: &v1beta1.TaskRun{Status: v1beta1.TaskRunStatus{Status: duckv1.Status{Conditions: []apis.Condition{{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+		}}}}},
+		want: true,
+	}}
+	for _, tc := range tcs {
+		got := tc.taskRun.IsFailure()
+		if tc.want != got {
+			t.Errorf("wanted isFailure to be %t but was %t", tc.want, got)
+		}
+	}
+}
+
 func TestRunIsCancelled(t *testing.T) {
 	customRun := v1beta1.CustomRun{
 		Spec: v1beta1.CustomRunSpec{

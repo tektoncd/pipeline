@@ -112,44 +112,28 @@ func (t ResolvedPipelineTask) isSuccessful() bool {
 	return true
 }
 
-// isFailure returns true only if the run has failed and will not be retried.
-// If the PipelineTask has a Matrix, isFailure returns true if any run has failed (no remaining retries)
-// and all other runs are done.
+// isFailure returns true only if the run has failed (if it has ConditionSucceeded = False).
+// If the PipelineTask has a Matrix, isFailure returns true if any run has failed and all other runs are done.
 func (t ResolvedPipelineTask) isFailure() bool {
-	if t.isCancelledForTimeOut() {
-		return true
-	}
-	if t.isCancelled() {
-		return true
-	}
-	if t.isSuccessful() {
-		return false
-	}
 	var isDone bool
 	if t.IsCustomTask() {
 		if len(t.CustomRuns) == 0 {
 			return false
 		}
 		isDone = true
-		atLeastOneFailed := false
 		for _, run := range t.CustomRuns {
 			isDone = isDone && run.IsDone()
-			runFailed := run.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsFalse()
-			atLeastOneFailed = atLeastOneFailed || runFailed
 		}
-		return atLeastOneFailed && isDone
+		return t.haveAnyRunsFailed() && isDone
 	}
 	if len(t.TaskRuns) == 0 {
 		return false
 	}
 	isDone = true
-	atLeastOneFailed := false
 	for _, taskRun := range t.TaskRuns {
 		isDone = isDone && taskRun.IsDone()
-		taskRunFailed := taskRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse()
-		atLeastOneFailed = atLeastOneFailed || taskRunFailed
 	}
-	return atLeastOneFailed && isDone
+	return t.haveAnyTaskRunsFailed() && isDone
 }
 
 // isCancelledForTimeOut returns true only if the run is cancelled due to PipelineRun-controlled timeout
@@ -227,56 +211,29 @@ func (t ResolvedPipelineTask) isScheduled() bool {
 	return len(t.TaskRuns) > 0
 }
 
-// hasTaskRunsStarted returns true only if any TaskRun that has a Succeeded-type condition.
-func (t ResolvedPipelineTask) hasTaskRunsStarted() bool {
-	for _, taskRun := range t.TaskRuns {
-		if taskRun.GetStatusCondition().GetCondition(apis.ConditionSucceeded) != nil {
-			return true
-		}
-	}
-	return false
-}
-
-// hasCustomRunsStarted returns true only if any CustomRun that has a Succeeded-type condition.
-func (t ResolvedPipelineTask) hasCustomRunsStarted() bool {
-	for _, CustomRun := range t.CustomRuns {
-		if CustomRun.GetStatusCondition().GetCondition(apis.ConditionSucceeded) != nil {
-			return true
-		}
-	}
-	return false
-}
-
-// isConditionStatusFalse returns true when any of the taskRuns/customRuns have succeeded condition with status set to false
-// it includes task failed after retries are exhausted, cancelled tasks, and time outs
-func (t ResolvedPipelineTask) isConditionStatusFalse() bool {
+// haveAnyRunsFailed returns true when any of the taskRuns/customRuns have succeeded condition with status set to false
+func (t ResolvedPipelineTask) haveAnyRunsFailed() bool {
 	if t.IsCustomTask() {
-		return t.areCustomRunsConditionStatusFalse()
+		return t.haveAnyCustomRunsFailed()
 	}
-	return t.areTaskRunsConditionStatusFalse()
+	return t.haveAnyTaskRunsFailed()
 }
 
-// areTaskRunsConditionStatusFalse returns true when any of the taskRuns have succeeded condition with status set to false
-// it includes task failed after retries are exhausted, cancelled tasks, and time outs
-func (t ResolvedPipelineTask) areTaskRunsConditionStatusFalse() bool {
-	if t.hasTaskRunsStarted() {
-		for _, taskRun := range t.TaskRuns {
-			if taskRun.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsFalse() {
-				return true
-			}
+// haveAnyTaskRunsFailed returns true when any of the taskRuns have succeeded condition with status set to false
+func (t ResolvedPipelineTask) haveAnyTaskRunsFailed() bool {
+	for _, taskRun := range t.TaskRuns {
+		if taskRun.IsFailure() {
+			return true
 		}
 	}
 	return false
 }
 
-// areCustomRunsConditionStatusFalse returns true when a CustomRun has succeeded condition with status set to false
-// it includes task failed after retries are exhausted, cancelled tasks, and time outs
-func (t ResolvedPipelineTask) areCustomRunsConditionStatusFalse() bool {
-	if t.hasCustomRunsStarted() {
-		for _, CustomRun := range t.CustomRuns {
-			if CustomRun.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsFalse() {
-				return true
-			}
+// haveAnyCustomRunsFailed returns true when a CustomRun has succeeded condition with status set to false
+func (t ResolvedPipelineTask) haveAnyCustomRunsFailed() bool {
+	for _, customRun := range t.CustomRuns {
+		if customRun.IsFailure() {
+			return true
 		}
 	}
 	return false

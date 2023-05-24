@@ -280,6 +280,82 @@ func TestTaskRunHasStarted(t *testing.T) {
 	}
 }
 
+func TestIsSuccessful(t *testing.T) {
+	tcs := []struct {
+		name    string
+		taskRun *v1beta1.TaskRun
+		want    bool
+	}{{
+		name: "nil taskrun",
+		want: false,
+	}, {
+		name: "still running",
+		taskRun: &v1beta1.TaskRun{Status: v1beta1.TaskRunStatus{Status: duckv1.Status{Conditions: []apis.Condition{{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+		}}}}},
+		want: false,
+	}, {
+		name: "succeeded",
+		taskRun: &v1beta1.TaskRun{Status: v1beta1.TaskRunStatus{Status: duckv1.Status{Conditions: []apis.Condition{{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionTrue,
+		}}}}},
+		want: true,
+	}, {
+		name: "failed",
+		taskRun: &v1beta1.TaskRun{Status: v1beta1.TaskRunStatus{Status: duckv1.Status{Conditions: []apis.Condition{{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+		}}}}},
+		want: false,
+	}}
+	for _, tc := range tcs {
+		got := tc.taskRun.IsSuccessful()
+		if tc.want != got {
+			t.Errorf("wanted isSuccessful to be %t but was %t", tc.want, got)
+		}
+	}
+}
+
+func TestIsFailure(t *testing.T) {
+	tcs := []struct {
+		name    string
+		taskRun *v1beta1.TaskRun
+		want    bool
+	}{{
+		name: "nil taskrun",
+		want: false,
+	}, {
+		name: "still running",
+		taskRun: &v1beta1.TaskRun{Status: v1beta1.TaskRunStatus{Status: duckv1.Status{Conditions: []apis.Condition{{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+		}}}}},
+		want: false,
+	}, {
+		name: "succeeded",
+		taskRun: &v1beta1.TaskRun{Status: v1beta1.TaskRunStatus{Status: duckv1.Status{Conditions: []apis.Condition{{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionTrue,
+		}}}}},
+		want: false,
+	}, {
+		name: "failed",
+		taskRun: &v1beta1.TaskRun{Status: v1beta1.TaskRunStatus{Status: duckv1.Status{Conditions: []apis.Condition{{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+		}}}}},
+		want: true,
+	}}
+	for _, tc := range tcs {
+		got := tc.taskRun.IsFailure()
+		if tc.want != got {
+			t.Errorf("wanted isFailure to be %t but was %t", tc.want, got)
+		}
+	}
+}
+
 func TestHasTimedOut(t *testing.T) {
 	// IsZero reports whether t represents the zero time instant, January 1, year 1, 00:00:00 UTC
 	zeroTime := time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC)

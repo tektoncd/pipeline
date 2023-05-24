@@ -230,7 +230,7 @@ func (r *Run) HasStarted() bool {
 	return r.Status.StartTime != nil && !r.Status.StartTime.IsZero()
 }
 
-// IsSuccessful returns true if the Run's status indicates that it is done.
+// IsSuccessful returns true if the Run's status indicates that it has succeeded.
 func (r *Run) IsSuccessful() bool {
 	return r != nil && r.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 }
