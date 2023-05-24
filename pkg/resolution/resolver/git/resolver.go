@@ -119,6 +119,13 @@ func (r *Resolver) ValidateParams(ctx context.Context, params []pipelinev1beta1.
 	if err != nil {
 		return err
 	}
+
+	// vest to make sure we can actually resolve the repositories
+	_, err = r.Resolve(ctx, params)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -460,8 +467,6 @@ func populateDefaultParams(ctx context.Context, params []pipelinev1beta1.Param) 
 		return nil, fmt.Errorf("missing required git resolver params: %s", strings.Join(missingParams, ", "))
 	}
 
-	// TODO(sbwsg): validate repo url is well-formed, git:// or https://
-	// TODO(sbwsg): validate pathInRepo is valid relative pathInRepo
 	return paramsMap, nil
 }
 
