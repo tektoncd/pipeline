@@ -14,12 +14,6 @@ the pipelines repo, a terminal window and a text editor.
    most recent commit at https://github.com/tektoncd/pipeline/commits/main
    and note the commit's full (40-digit) hash.
 
-1. Ensure the correct version of the release pipeline is installed on the cluster:
-
-    ```bash
-    kustomize build tekton | kubectl --context dogfooding replace -f -
-    ```
-
 1. Create environment variables for bash scripts in later steps.
 
     ```bash
@@ -33,32 +27,65 @@ the pipelines repo, a terminal window and a text editor.
     git show $TEKTON_RELEASE_GIT_SHA
     ```
 
-1. Create a workspace template file:
-
-   ```bash
-   cat <<EOF > workspace-template.yaml
-   spec:
-     accessModes:
-     - ReadWriteOnce
-     resources:
-       requests:
-         storage: 1Gi
-   EOF
-   ```
-
-1. Execute the release pipeline (takes ~45 mins).
-
-    **If you are back-porting include this flag: `--param=releaseAsLatest="false"`**
+1. Create the release PipelineRun file.
+    
+    <details>
+    <summary>Click to see the command</summary>
 
     ```bash
-    tkn --context dogfooding pipeline start pipeline-release \
-      --serviceaccount=release-right-meow \
-      --param=gitRevision="${TEKTON_RELEASE_GIT_SHA}" \
-      --param=serviceAccountPath=release.json \
-      --param=versionTag="${TEKTON_VERSION}" \
-      --param=releaseBucket=gs://tekton-releases/pipeline \
-      --workspace name=release-secret,secret=release-secret \
-      --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml
+    cat <<EOF > release-pipelinerun.yaml
+    apiVersion: tekton.dev/v1beta1
+    kind: PipelineRun
+    metadata:
+      generateName: release-pipelinerun-
+    spec:
+      serviceAccountName: release-right-meow
+      params:
+        - name: gitRevision
+          value: ${TEKTON_RELEASE_GIT_SHA}
+        - name: serviceAccountPath
+          value: release.json
+        - name: versionTag
+          value: ${TEKTON_VERSION}
+        - name: releaseBucket
+          value: gs://tekton-releases/pipeline
+      workspaces:
+        - name: release-secret
+          secret:
+            secretName: release-secret
+        - name: workarea
+          volumeClaimTemplate:
+            spec:
+              accessModes:
+              - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 1Gi
+      pipelineRef:
+        resolver: git
+        params:
+          - name: org
+            value: tektoncd
+          - name: repo
+            value: pipeline
+          - name: revision
+            value: ${TEKTON_RELEASE_GIT_SHA}
+          - name: pathInRepo
+            value: tekton/release-pipeline.yaml
+    EOF
+    ```
+    </details>
+
+    **If you are back-porting include this in the params list:**
+    ```yaml
+    - name: releaseAsLatest
+      value: false
+    ````
+
+1. Execute the release PipelineRun (takes ~45 mins).
+
+    ```bash
+    kubectl --context dogfooding create -f release-pipelinerun.yaml
     ```
 
     Accept the default values of the parameters (except for "releaseAsLatest" if backporting).
