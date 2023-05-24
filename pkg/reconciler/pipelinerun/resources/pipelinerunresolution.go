@@ -53,14 +53,14 @@ func (e *TaskNotFoundError) Error() string {
 	return fmt.Sprintf("Couldn't retrieve Task %q: %s", e.Name, e.Msg)
 }
 
-// ResolvedPipelineTask contains a PipelineTask and its associated TaskRun(s) or RunObjects, if they exist.
+// ResolvedPipelineTask contains a PipelineTask and its associated TaskRun(s) or CustomRuns, if they exist.
 type ResolvedPipelineTask struct {
 	TaskRunNames []string
 	TaskRuns     []*v1beta1.TaskRun
-	// If the PipelineTask is a Custom Task, RunObjectName and RunObject will be set.
+	// If the PipelineTask is a Custom Task, CustomRunName and CustomRun will be set.
 	CustomTask     bool
-	RunObjectNames []string
-	RunObjects     []v1beta1.RunObject
+	CustomRunNames []string
+	CustomRuns     []*v1beta1.CustomRun
 	PipelineTask   *v1beta1.PipelineTask
 	ResolvedTask   *resources.ResolvedTask
 }
@@ -72,7 +72,7 @@ func (t ResolvedPipelineTask) isDone(facts *PipelineRunFacts) bool {
 
 // IsRunning returns true only if the task is neither succeeded, cancelled nor failed
 func (t ResolvedPipelineTask) IsRunning() bool {
-	if t.IsCustomTask() && len(t.RunObjects) == 0 {
+	if t.IsCustomTask() && len(t.CustomRuns) == 0 {
 		return false
 	}
 	if !t.IsCustomTask() && len(t.TaskRuns) == 0 {
@@ -90,10 +90,10 @@ func (t ResolvedPipelineTask) IsCustomTask() bool {
 // If the PipelineTask has a Matrix, isSuccessful returns true if all runs have completed successfully
 func (t ResolvedPipelineTask) isSuccessful() bool {
 	if t.IsCustomTask() {
-		if len(t.RunObjects) == 0 {
+		if len(t.CustomRuns) == 0 {
 			return false
 		}
-		for _, run := range t.RunObjects {
+		for _, run := range t.CustomRuns {
 			if !run.IsSuccessful() {
 				return false
 			}
@@ -126,12 +126,12 @@ func (t ResolvedPipelineTask) isFailure() bool {
 	}
 	var isDone bool
 	if t.IsCustomTask() {
-		if len(t.RunObjects) == 0 {
+		if len(t.CustomRuns) == 0 {
 			return false
 		}
 		isDone = true
 		atLeastOneFailed := false
-		for _, run := range t.RunObjects {
+		for _, run := range t.CustomRuns {
 			isDone = isDone && run.IsDone()
 			runFailed := run.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsFalse()
 			atLeastOneFailed = atLeastOneFailed || runFailed
@@ -155,12 +155,12 @@ func (t ResolvedPipelineTask) isFailure() bool {
 // If the PipelineTask has a Matrix, isCancelled returns true if any run is cancelled due to PipelineRun-controlled timeout and all other runs are done.
 func (t ResolvedPipelineTask) isCancelledForTimeOut() bool {
 	if t.IsCustomTask() {
-		if len(t.RunObjects) == 0 {
+		if len(t.CustomRuns) == 0 {
 			return false
 		}
 		isDone := true
 		atLeastOneCancelled := false
-		for _, run := range t.RunObjects {
+		for _, run := range t.CustomRuns {
 			isDone = isDone && run.IsDone()
 			c := run.GetStatusCondition().GetCondition(apis.ConditionSucceeded)
 			runCancelled := c.IsFalse() &&
@@ -190,12 +190,12 @@ func (t ResolvedPipelineTask) isCancelledForTimeOut() bool {
 // If the PipelineTask has a Matrix, isCancelled returns true if any run is cancelled and all other runs are done.
 func (t ResolvedPipelineTask) isCancelled() bool {
 	if t.IsCustomTask() {
-		if len(t.RunObjects) == 0 {
+		if len(t.CustomRuns) == 0 {
 			return false
 		}
 		isDone := true
 		atLeastOneCancelled := false
-		for _, run := range t.RunObjects {
+		for _, run := range t.CustomRuns {
 			isDone = isDone && run.IsDone()
 			c := run.GetStatusCondition().GetCondition(apis.ConditionSucceeded)
 			runCancelled := c.IsFalse() && c.Reason == v1beta1.CustomRunReasonCancelled.String()
@@ -221,7 +221,7 @@ func (t ResolvedPipelineTask) isCancelled() bool {
 // or a singular TaskRun/CustomRun associated.
 func (t ResolvedPipelineTask) isScheduled() bool {
 	if t.IsCustomTask() {
-		return len(t.RunObjects) > 0
+		return len(t.CustomRuns) > 0
 	}
 	return len(t.TaskRuns) > 0
 }
@@ -236,10 +236,10 @@ func (t ResolvedPipelineTask) hasTaskRunsStarted() bool {
 	return false
 }
 
-// hasRunObjectsStarted returns true only if any RunObject that has a Succeeded-type condition.
-func (t ResolvedPipelineTask) hasRunObjectsStarted() bool {
-	for _, runObject := range t.RunObjects {
-		if runObject.GetStatusCondition().GetCondition(apis.ConditionSucceeded) != nil {
+// hasCustomRunsStarted returns true only if any CustomRun that has a Succeeded-type condition.
+func (t ResolvedPipelineTask) hasCustomRunsStarted() bool {
+	for _, CustomRun := range t.CustomRuns {
+		if CustomRun.GetStatusCondition().GetCondition(apis.ConditionSucceeded) != nil {
 			return true
 		}
 	}
@@ -250,7 +250,7 @@ func (t ResolvedPipelineTask) hasRunObjectsStarted() bool {
 // it includes task failed after retries are exhausted, cancelled tasks, and time outs
 func (t ResolvedPipelineTask) isConditionStatusFalse() bool {
 	if t.IsCustomTask() {
-		return t.areRunObjectsConditionStatusFalse()
+		return t.areCustomRunsConditionStatusFalse()
 	}
 	return t.areTaskRunsConditionStatusFalse()
 }
@@ -268,12 +268,12 @@ func (t ResolvedPipelineTask) areTaskRunsConditionStatusFalse() bool {
 	return false
 }
 
-// areRunObjectsConditionStatusFalse returns true when a RunObject has succeeded condition with status set to false
+// areCustomRunsConditionStatusFalse returns true when a CustomRun has succeeded condition with status set to false
 // it includes task failed after retries are exhausted, cancelled tasks, and time outs
-func (t ResolvedPipelineTask) areRunObjectsConditionStatusFalse() bool {
-	if t.hasRunObjectsStarted() {
-		for _, runObject := range t.RunObjects {
-			if runObject.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsFalse() {
+func (t ResolvedPipelineTask) areCustomRunsConditionStatusFalse() bool {
+	if t.hasCustomRunsStarted() {
+		for _, CustomRun := range t.CustomRuns {
+			if CustomRun.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsFalse() {
 				return true
 			}
 		}
@@ -485,8 +485,8 @@ func (t *ResolvedPipelineTask) IsFinallySkipped(facts *PipelineRunFacts) TaskSki
 	}
 }
 
-// GetRun is a function that will retrieve a Run by name.
-type GetRun func(name string) (v1beta1.RunObject, error)
+// GetRun is a function that will retrieve a CustomRun by name.
+type GetRun func(name string) (*v1beta1.CustomRun, error)
 
 // ValidateWorkspaceBindings validates that the Workspaces expected by a Pipeline are provided by a PipelineRun.
 func ValidateWorkspaceBindings(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) error {
@@ -551,14 +551,14 @@ func ResolvePipelineTask(
 		numCombinations = pipelineTask.Matrix.CountCombinations()
 	}
 	if rpt.IsCustomTask() {
-		rpt.RunObjectNames = getNamesOfRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, numCombinations)
-		for _, runName := range rpt.RunObjectNames {
+		rpt.CustomRunNames = getNamesOfCustomRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, numCombinations)
+		for _, runName := range rpt.CustomRunNames {
 			run, err := getRun(runName)
 			if err != nil && !kerrors.IsNotFound(err) {
-				return nil, fmt.Errorf("error retrieving RunObject %s: %w", runName, err)
+				return nil, fmt.Errorf("error retrieving CustomRun %s: %w", runName, err)
 			}
 			if run != nil {
-				rpt.RunObjects = append(rpt.RunObjects, run)
+				rpt.CustomRuns = append(rpt.CustomRuns, run)
 			}
 		}
 	} else {
@@ -657,7 +657,7 @@ func GetNamesOfTaskRuns(childRefs []v1beta1.ChildStatusReference, ptName, prName
 	if taskRunNames := getTaskRunNamesFromChildRefs(childRefs, ptName); taskRunNames != nil {
 		return taskRunNames
 	}
-	return getNewTaskRunNames(ptName, prName, numberOfTaskRuns)
+	return getNewRunNames(ptName, prName, numberOfTaskRuns)
 }
 
 // getTaskRunNamesFromChildRefs returns the names of TaskRuns defined in childRefs that are associated with the named Pipeline Task.
@@ -671,9 +671,9 @@ func getTaskRunNamesFromChildRefs(childRefs []v1beta1.ChildStatusReference, ptNa
 	return taskRunNames
 }
 
-func getNewTaskRunNames(ptName, prName string, numberOfRuns int) []string {
+func getNewRunNames(ptName, prName string, numberOfRuns int) []string {
 	var taskRunNames []string
-	// If it is a singular TaskRun, we only append the ptName
+	// If it is a singular TaskRun/CustomRun, we only append the ptName
 	if numberOfRuns == 1 {
 		taskRunName := kmeta.ChildName(prName, fmt.Sprintf("-%s", ptName))
 		return append(taskRunNames, taskRunName)
@@ -686,9 +686,9 @@ func getNewTaskRunNames(ptName, prName string, numberOfRuns int) []string {
 	return taskRunNames
 }
 
-// getRunName should return a unique name for a `Run` if one has not already
+// getCustomRunName should return a unique name for a `Run` if one has not already
 // been defined, and the existing one otherwise.
-func getRunName(childRefs []v1beta1.ChildStatusReference, ptName, prName string) string {
+func getCustomRunName(childRefs []v1beta1.ChildStatusReference, ptName, prName string) string {
 	for _, cr := range childRefs {
 		if cr.PipelineTaskName == ptName {
 			if cr.Kind == pipeline.CustomRunControllerName {
@@ -700,13 +700,13 @@ func getRunName(childRefs []v1beta1.ChildStatusReference, ptName, prName string)
 	return kmeta.ChildName(prName, fmt.Sprintf("-%s", ptName))
 }
 
-// getNamesOfRuns should return a unique names for `RunObjects` if they have not already been defined,
+// getNamesOfCustomRuns should return a unique names for `CustomRuns` if they have not already been defined,
 // and the existing ones otherwise.
-func getNamesOfRuns(childRefs []v1beta1.ChildStatusReference, ptName, prName string, numberOfRuns int) []string {
-	if runNames := getRunNamesFromChildRefs(childRefs, ptName); runNames != nil {
-		return runNames
+func getNamesOfCustomRuns(childRefs []v1beta1.ChildStatusReference, ptName, prName string, numberOfRuns int) []string {
+	if customRunNames := getRunNamesFromChildRefs(childRefs, ptName); customRunNames != nil {
+		return customRunNames
 	}
-	return getNewTaskRunNames(ptName, prName, numberOfRuns)
+	return getNewRunNames(ptName, prName, numberOfRuns)
 }
 
 // getRunNamesFromChildRefs returns the names of CustomRuns defined in childRefs that are associated with the named Pipeline Task.
@@ -744,7 +744,6 @@ func (t *ResolvedPipelineTask) hasResultReferences() bool {
 	return false
 }
 
-func isCustomRunCancelledByPipelineRunTimeout(ro v1beta1.RunObject) bool {
-	cr := ro.(*v1beta1.CustomRun)
+func isCustomRunCancelledByPipelineRunTimeout(cr *v1beta1.CustomRun) bool {
 	return cr.Spec.StatusMessage == v1beta1.CustomRunCancelledByPipelineTimeoutMsg
 }

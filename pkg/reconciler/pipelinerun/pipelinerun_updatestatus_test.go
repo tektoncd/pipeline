@@ -299,9 +299,9 @@ func TestUpdatePipelineRunStatusFromChildRefs(t *testing.T) {
 		},
 	}
 
-	allTaskRuns, taskRunsFromAnotherPR, taskRunsWithNoOwner, _, runsFromAnotherPR, runsWithNoOwner := getTestTaskRunsAndRuns(t)
+	allTaskRuns, taskRunsFromAnotherPR, taskRunsWithNoOwner, _, runsFromAnotherPR, runsWithNoOwner := getTestTaskRunsAndCustomRuns(t)
 
-	singleRun := []v1beta1.RunObject{parse.MustParseCustomRun(t, `
+	singleRun := []*v1beta1.CustomRun{parse.MustParseCustomRun(t, `
 metadata:
   labels:
     tekton.dev/pipelineTask: task-6
@@ -314,20 +314,20 @@ metadata:
 		prName           string
 		prStatus         v1beta1.PipelineRunStatus
 		trs              []*v1beta1.TaskRun
-		runs             []v1beta1.RunObject
+		customRuns       []*v1beta1.CustomRun
 		expectedPrStatus v1beta1.PipelineRunStatus
 	}{
 		{
 			prName:           "no-status-no-taskruns-or-runs",
 			prStatus:         v1beta1.PipelineRunStatus{},
 			trs:              nil,
-			runs:             nil,
+			customRuns:       nil,
 			expectedPrStatus: v1beta1.PipelineRunStatus{},
 		}, {
 			prName:           "status-no-taskruns-or-runs",
 			prStatus:         prStatusWithNoTaskRuns,
 			trs:              nil,
-			runs:             nil,
+			customRuns:       nil,
 			expectedPrStatus: prStatusWithNoTaskRuns,
 		}, {
 			prName:   "status-nil-taskruns",
@@ -344,7 +344,7 @@ metadata:
 		}, {
 			prName:           "status-nil-runs",
 			prStatus:         prStatusWithEmptyChildRefs,
-			runs:             singleRun,
+			customRuns:       singleRun,
 			expectedPrStatus: prStatusRecoveredSimpleWithRun,
 		}, {
 			prName:   "status-missing-taskruns",
@@ -363,7 +363,7 @@ metadata:
 		}, {
 			prName:           "status-missing-runs",
 			prStatus:         prStatusMissingRun,
-			runs:             singleRun,
+			customRuns:       singleRun,
 			expectedPrStatus: prStatusWithNoTaskRuns,
 		}, {
 			prName:           "status-matching-taskruns-pr",
@@ -374,19 +374,19 @@ metadata:
 			prName:           "orphaned-taskruns-pr",
 			prStatus:         prStatusWithOrphans,
 			trs:              allTaskRuns,
-			runs:             singleRun,
+			customRuns:       singleRun,
 			expectedPrStatus: prStatusRecovered,
 		}, {
 			prName:           "tr-and-run-from-another-pr",
 			prStatus:         prStatusWithEmptyChildRefs,
 			trs:              taskRunsFromAnotherPR,
-			runs:             runsFromAnotherPR,
+			customRuns:       runsFromAnotherPR,
 			expectedPrStatus: prStatusWithEmptyChildRefs,
 		}, {
 			prName:           "tr-and-run-with-no-owner",
 			prStatus:         prStatusWithEmptyChildRefs,
 			trs:              taskRunsWithNoOwner,
-			runs:             runsWithNoOwner,
+			customRuns:       runsWithNoOwner,
 			expectedPrStatus: prStatusWithEmptyChildRefs,
 		}, {
 			prName:   "matrixed-taskruns-pr",
@@ -409,7 +409,7 @@ metadata:
   - uid: 11111111-1111-1111-1111-111111111111
 `),
 			},
-			runs: nil,
+			customRuns: nil,
 			expectedPrStatus: v1beta1.PipelineRunStatus{
 				Status: prRunningStatus,
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
@@ -441,7 +441,7 @@ pipelineTaskName: task
 				Status:     tc.prStatus,
 			}
 
-			updatePipelineRunStatusFromChildRefs(logger, pr, tc.trs, tc.runs)
+			updatePipelineRunStatusFromChildRefs(logger, pr, tc.trs, tc.customRuns)
 
 			actualPrStatus := pr.Status
 
@@ -501,9 +501,9 @@ func TestUpdatePipelineRunStatusFromChildObjects(t *testing.T) {
 		}
 	}
 
-	allTaskRuns, _, _, _, _, _ := getTestTaskRunsAndRuns(t)
+	allTaskRuns, _, _, _, _, _ := getTestTaskRunsAndCustomRuns(t)
 
-	singleCustomRun := []v1beta1.RunObject{parse.MustParseCustomRun(t, `
+	singleCustomRun := []*v1beta1.CustomRun{parse.MustParseCustomRun(t, `
 metadata:
   labels:
     tekton.dev/pipelineTask: task-6
@@ -516,7 +516,7 @@ metadata:
 		prName             string
 		prStatus           func() v1beta1.PipelineRunStatus
 		trs                []*v1beta1.TaskRun
-		runs               []v1beta1.RunObject
+		runs               []*v1beta1.CustomRun
 		expectedStatusTRs  map[string]*v1beta1.PipelineRunTaskRunStatus
 		expectedStatusRuns map[string]*v1beta1.PipelineRunRunStatus
 		expectedStatusCRs  []v1beta1.ChildStatusReference
@@ -698,7 +698,7 @@ func prStatusFromInputs(status duckv1.Status, taskRuns map[string]*v1beta1.Pipel
 	return prs
 }
 
-func getTestTaskRunsAndRuns(t *testing.T) ([]*v1beta1.TaskRun, []*v1beta1.TaskRun, []*v1beta1.TaskRun, []v1beta1.RunObject, []v1beta1.RunObject, []v1beta1.RunObject) {
+func getTestTaskRunsAndCustomRuns(t *testing.T) ([]*v1beta1.TaskRun, []*v1beta1.TaskRun, []*v1beta1.TaskRun, []*v1beta1.CustomRun, []*v1beta1.CustomRun, []*v1beta1.CustomRun) {
 	t.Helper()
 	allTaskRuns := []*v1beta1.TaskRun{
 		parse.MustParseV1beta1TaskRun(t, `
@@ -735,7 +735,7 @@ metadata:
   name: pr-task-1-xxyyy
 `)}
 
-	allRuns := []v1beta1.RunObject{
+	allCustomRuns := []*v1beta1.CustomRun{
 		parse.MustParseCustomRun(t, `
 metadata:
   labels:
@@ -762,7 +762,7 @@ metadata:
 `),
 	}
 
-	runsFromAnotherPR := []v1beta1.RunObject{parse.MustParseCustomRun(t, `
+	customRunsFromAnotherPR := []*v1beta1.CustomRun{parse.MustParseCustomRun(t, `
 metadata:
   labels:
     tekton.dev/pipelineTask: run-1
@@ -771,14 +771,14 @@ metadata:
   - uid: 22222222-2222-2222-2222-222222222222
 `)}
 
-	runsWithNoOwner := []v1beta1.RunObject{parse.MustParseCustomRun(t, `
+	customRunsWithNoOwner := []*v1beta1.CustomRun{parse.MustParseCustomRun(t, `
 metadata:
   labels:
     tekton.dev/pipelineTask: run-1
   name: pr-run-1-xxyyy
 `)}
 
-	return allTaskRuns, taskRunsFromAnotherPR, taskRunsWithNoOwner, allRuns, runsFromAnotherPR, runsWithNoOwner
+	return allTaskRuns, taskRunsFromAnotherPR, taskRunsWithNoOwner, allCustomRuns, customRunsFromAnotherPR, customRunsWithNoOwner
 }
 
 func mustParsePipelineRunTaskRunStatus(t *testing.T, yamlStr string) *v1beta1.PipelineRunTaskRunStatus {

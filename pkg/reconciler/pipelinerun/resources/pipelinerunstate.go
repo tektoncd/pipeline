@@ -112,7 +112,7 @@ func (state PipelineRunState) ToMap() map[string]*ResolvedPipelineTask {
 // IsBeforeFirstTaskRun returns true if the PipelineRun has not yet started its first TaskRun
 func (state PipelineRunState) IsBeforeFirstTaskRun() bool {
 	for _, t := range state {
-		if len(t.RunObjects) > 0 || len(t.TaskRuns) > 0 {
+		if len(t.CustomRuns) > 0 || len(t.TaskRuns) > 0 {
 			return false
 		}
 	}
@@ -130,8 +130,8 @@ func (state PipelineRunState) IsBeforeFirstTaskRun() bool {
 func (state PipelineRunState) AdjustStartTime(unadjustedStartTime *metav1.Time) *metav1.Time {
 	adjustedStartTime := unadjustedStartTime
 	for _, rpt := range state {
-		for _, runObject := range rpt.RunObjects {
-			creationTime := runObject.GetObjectMeta().GetCreationTimestamp()
+		for _, customRun := range rpt.CustomRuns {
+			creationTime := customRun.GetObjectMeta().GetCreationTimestamp()
 			if creationTime.Time.Before(adjustedStartTime.Time) {
 				adjustedStartTime = &creationTime
 			}
@@ -176,8 +176,8 @@ func (state PipelineRunState) GetRunsResults() map[string][]v1beta1.CustomRunRes
 			continue
 		}
 		// Currently a Matrix cannot produce results so this is for a singular CustomRun
-		if len(rpt.RunObjects) == 1 {
-			cr := rpt.RunObjects[0].(*v1beta1.CustomRun)
+		if len(rpt.CustomRuns) == 1 {
+			cr := rpt.CustomRuns[0]
 			results[rpt.PipelineTask.Name] = cr.Status.Results
 		}
 	}
@@ -198,24 +198,22 @@ func (state PipelineRunState) GetChildReferences() []v1beta1.ChildStatusReferenc
 					childRefs = append(childRefs, rpt.getChildRefForTaskRun(taskRun))
 				}
 			}
-		case len(rpt.RunObjects) != 0:
-			for _, run := range rpt.RunObjects {
-				if run != nil {
-					childRefs = append(childRefs, rpt.getChildRefForRun(run))
-				}
+		case len(rpt.CustomRuns) != 0:
+			for _, run := range rpt.CustomRuns {
+				childRefs = append(childRefs, rpt.getChildRefForRun(run))
 			}
 		}
 	}
 	return childRefs
 }
 
-func (t *ResolvedPipelineTask) getChildRefForRun(runObj v1beta1.RunObject) v1beta1.ChildStatusReference {
+func (t *ResolvedPipelineTask) getChildRefForRun(customRun *v1beta1.CustomRun) v1beta1.ChildStatusReference {
 	return v1beta1.ChildStatusReference{
 		TypeMeta: runtime.TypeMeta{
 			APIVersion: v1beta1.SchemeGroupVersion.String(),
 			Kind:       pipeline.CustomRunControllerName,
 		},
-		Name:             runObj.GetObjectMeta().GetName(),
+		Name:             customRun.GetObjectMeta().GetName(),
 		PipelineTaskName: t.PipelineTask.Name,
 		WhenExpressions:  t.PipelineTask.WhenExpressions,
 	}
@@ -240,7 +238,7 @@ func (state PipelineRunState) getNextTasks(candidateTasks sets.String) []*Resolv
 	tasks := []*ResolvedPipelineTask{}
 	for _, t := range state {
 		if _, ok := candidateTasks[t.PipelineTask.Name]; ok {
-			if len(t.TaskRuns) == 0 && len(t.RunObjects) == 0 {
+			if len(t.TaskRuns) == 0 && len(t.CustomRuns) == 0 {
 				tasks = append(tasks, t)
 			}
 		}
@@ -497,7 +495,7 @@ func (facts *PipelineRunFacts) GetPipelineTaskStatus() map[string]string {
 		for _, t := range facts.State {
 			if facts.isDAGTask(t.PipelineTask.Name) {
 				// if any of the dag task failed, change the aggregate status to failed and return
-				if !t.IsCustomTask() && t.areTaskRunsConditionStatusFalse() || t.IsCustomTask() && t.areRunObjectsConditionStatusFalse() {
+				if !t.IsCustomTask() && t.areTaskRunsConditionStatusFalse() || t.IsCustomTask() && t.areCustomRunsConditionStatusFalse() {
 					aggregateStatus = v1beta1.PipelineRunReasonFailed.String()
 					break
 				}

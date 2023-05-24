@@ -50,9 +50,7 @@ import (
 )
 
 const (
-	apiVersion      = "wait.testing.tekton.dev/v1alpha1"
 	kind            = "Wait"
-	waitTaskDir     = "./custom-task-ctrls/wait-task-alpha"
 	betaAPIVersion  = "wait.testing.tekton.dev/v1beta1"
 	betaWaitTaskDir = "./custom-task-ctrls/wait-task-beta"
 )
@@ -118,7 +116,7 @@ spec:
         - args: ['-c', 'echo $(input-result-from-custom-task-ref) $(input-result-from-custom-task-spec)']
           command: ['/bin/bash']
           image: ubuntu
-`, pipelineRunName, apiVersion, kind, apiVersion, kind, customTaskRawSpec)),
+`, pipelineRunName, betaAPIVersion, kind, betaAPIVersion, kind, customTaskRawSpec)),
 		metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun %q: %v", pipelineRunName, err)
 	}
@@ -135,23 +133,23 @@ spec:
 	}
 
 	// Get the Run name.
-	var runNames []string
+	var customRunNames []string
 	for _, cr := range pr.Status.ChildReferences {
 		if cr.Kind == pipeline.CustomRunControllerName {
-			runNames = append(runNames, cr.Name)
+			customRunNames = append(customRunNames, cr.Name)
 		}
 	}
-	if len(runNames) != 2 {
-		t.Fatalf("PipelineRun had unexpected number of Runs in .status.childReferences; got %d, want 2", len(runNames))
+	if len(customRunNames) != 2 {
+		t.Fatalf("PipelineRun had unexpected number of CustomRuns in .status.childReferences; got %d, want 2", len(customRunNames))
 	}
-	for _, runName := range runNames {
-		// Get the Run.
-		cr, err := c.V1beta1CustomRunClient.Get(ctx, runName, metav1.GetOptions{})
+	for _, customRunName := range customRunNames {
+		// Get the CustomRun.
+		cr, err := c.V1beta1CustomRunClient.Get(ctx, customRunName, metav1.GetOptions{})
 		if err != nil {
-			t.Fatalf("Failed to get Run %q: %v", runName, err)
+			t.Fatalf("Failed to get CustomRun %q: %v", customRunName, err)
 		}
 		if cr.IsDone() {
-			t.Fatalf("Run unexpectedly done: %v", cr.Status.GetCondition(apis.ConditionSucceeded))
+			t.Fatalf("CustomRun unexpectedly done: %v", cr.Status.GetCondition(apis.ConditionSucceeded))
 		}
 
 		// Simulate a Custom Task controller updating the CustomRun to done/successful.
@@ -171,16 +169,16 @@ spec:
 		}
 
 		if _, err := c.V1beta1CustomRunClient.UpdateStatus(ctx, cr, metav1.UpdateOptions{}); err != nil {
-			t.Fatalf("Failed to update Run to successful: %v", err)
+			t.Fatalf("Failed to update CustomRun to successful: %v", err)
 		}
 
-		// Get the Run.
-		cr, err = c.V1beta1CustomRunClient.Get(ctx, runName, metav1.GetOptions{})
+		// Get the CustomRun.
+		cr, err = c.V1beta1CustomRunClient.Get(ctx, customRunName, metav1.GetOptions{})
 		if err != nil {
-			t.Fatalf("Failed to get Run %q: %v", runName, err)
+			t.Fatalf("Failed to get CustomRun %q: %v", customRunName, err)
 		}
 
-		if strings.Contains(runName, "custom-task-spec") {
+		if strings.Contains(customRunName, "custom-task-spec") {
 			if d := cmp.Diff(customTaskRawSpec, cr.Spec.CustomSpec.Spec.Raw); d != "" {
 				t.Fatalf("Unexpected value of Spec.Raw: %s", diff.PrintWantGot(d))
 			}
@@ -250,10 +248,10 @@ spec:
 	}
 }
 
-// WaitForRunSpecCancelled polls the spec.status of the Run until it is
+// WaitForCustomRunSpecCancelled polls the spec.status of the Run until it is
 // "RunCancelled", returns an error on timeout. desc will be used to name
 // the metric that is emitted to track how long it took.
-func WaitForRunSpecCancelled(ctx context.Context, c *clients, name string, desc string) error {
+func WaitForCustomRunSpecCancelled(ctx context.Context, c *clients, name string, desc string) error {
 	metricName := fmt.Sprintf("WaitForRunSpecCancelled/%s/%s", name, desc)
 	_, span := trace.StartSpan(context.Background(), metricName)
 	defer span.End()
@@ -287,7 +285,7 @@ spec:
     taskRef:
       apiVersion: %s
       kind: %s
-`, helpers.ObjectNameForTest(t), namespace, apiVersion, kind))
+`, helpers.ObjectNameForTest(t), namespace, betaAPIVersion, kind))
 	pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -314,18 +312,18 @@ spec:
 		t.Fatalf("Failed to get PipelineRun %q: %v", pipelineRun.Name, err)
 	}
 
-	// Get the Run name.
-	runName := ""
+	// Get the CustomRun name.
+	customRunName := ""
 
 	if len(pr.Status.ChildReferences) != 1 {
 		t.Fatalf("PipelineRun had unexpected .status.childReferences; got %d, want 1", len(pr.Status.ChildReferences))
 	}
-	runName = pr.Status.ChildReferences[0].Name
+	customRunName = pr.Status.ChildReferences[0].Name
 
 	// Get the Run.
-	cr, err := c.V1beta1CustomRunClient.Get(ctx, runName, metav1.GetOptions{})
+	cr, err := c.V1beta1CustomRunClient.Get(ctx, customRunName, metav1.GetOptions{})
 	if err != nil {
-		t.Fatalf("Failed to get Run %q: %v", runName, err)
+		t.Fatalf("Failed to get Run %q: %v", customRunName, err)
 	}
 	if cr.IsDone() {
 		t.Fatalf("Run unexpectedly done: %v", cr.Status.GetCondition(apis.ConditionSucceeded))
@@ -353,18 +351,18 @@ spec:
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 	}
 
-	runList, err := c.V1beta1CustomRunClient.List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", pipelineRun.Name)})
+	customRunList, err := c.V1beta1CustomRunClient.List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", pipelineRun.Name)})
 	if err != nil {
 		t.Fatalf("Error listing Runs for PipelineRun %s: %s", pipelineRun.Name, err)
 	}
 
 	t.Logf("Runs from PipelineRun %s in namespace %s must be cancelled", pipelineRun.Name, namespace)
 	var wg sync.WaitGroup
-	for _, crItem := range runList.Items {
+	for _, crItem := range customRunList.Items {
 		wg.Add(1)
 		go func(name string) {
 			defer wg.Done()
-			err := WaitForRunSpecCancelled(ctx, c, name, "RunCancelled")
+			err := WaitForCustomRunSpecCancelled(ctx, c, name, "RunCancelled")
 			if err != nil {
 				t.Errorf("Error waiting for Run %s to cancel: %s", name, err)
 			}
