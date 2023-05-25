@@ -57,6 +57,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	fakek8s "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 	clock "k8s.io/utils/clock/testing"
@@ -108,6 +109,7 @@ const (
 	apiFieldsFeatureFlag           = "enable-api-fields"
 	ociBundlesFeatureFlag          = "enable-tekton-oci-bundles"
 	maxMatrixCombinationsCountFlag = "default-max-matrix-combinations-count"
+	disableAffinityAssistantFlag   = "disable-affinity-assistant"
 )
 
 type PipelineRunTest struct {
@@ -1215,6 +1217,12 @@ func withOCIBundles(cm *corev1.ConfigMap) *corev1.ConfigMap {
 func withMaxMatrixCombinationsCount(cm *corev1.ConfigMap, count int) *corev1.ConfigMap {
 	newCM := cm.DeepCopy()
 	newCM.Data[maxMatrixCombinationsCountFlag] = strconv.Itoa(count)
+	return newCM
+}
+
+func withoutAffinityAssistant(cm *corev1.ConfigMap) *corev1.ConfigMap {
+	newCM := cm.DeepCopy()
+	newCM.Data[disableAffinityAssistantFlag] = "true"
 	return newCM
 }
 
@@ -3979,11 +3987,13 @@ spec:
         name: myclaim
 `)}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
+	cms := []*corev1.ConfigMap{withoutAffinityAssistant(newFeatureFlagsConfigMap())}
 
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
 		Tasks:        ts,
+		ConfigMaps:   cms,
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -4007,11 +4017,7 @@ spec:
 
 	for _, pr := range prs {
 		for _, w := range pr.Spec.Workspaces {
-			expectedPVCName := volumeclaim.GetPersistentVolumeClaimName(&corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: w.VolumeClaimTemplate.Name,
-				},
-			}, w, *kmeta.NewControllerRef(pr))
+			expectedPVCName := volumeclaim.GetPVCNameWithoutAffinityAssistant(w.VolumeClaimTemplate.Name, w, *kmeta.NewControllerRef(pr))
 			_, err := clients.Kube.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(prt.TestAssets.Ctx, expectedPVCName, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("expected PVC %s to exist but instead got error when getting it: %v", expectedPVCName, err)
@@ -7385,8 +7391,11 @@ spec:
 	ctx := config.EnableAlphaAPIFields(context.Background())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			c := Reconciler{
+				KubeClientSet: fakek8s.NewSimpleClientset(),
+			}
 			rprt := &resources.ResolvedPipelineTask{PipelineTask: &tt.pr.Spec.PipelineSpec.Tasks[0]}
-			_, _, err := getTaskrunWorkspaces(ctx, tt.pr, rprt)
+			_, _, err := c.getTaskrunWorkspaces(ctx, tt.pr, rprt)
 			if err == nil {
 				t.Errorf("Pipeline.getTaskrunWorkspaces() did not return error for invalid workspace")
 			} else if d := cmp.Diff(tt.expectedError, err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
@@ -7492,10 +7501,92 @@ spec:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, _, err := getTaskrunWorkspaces(context.Background(), tt.pr, tt.rprt)
+			c := Reconciler{
+				KubeClientSet: fakek8s.NewSimpleClientset(),
+			}
+			_, _, err := c.getTaskrunWorkspaces(context.Background(), tt.pr, tt.rprt)
 
 			if err != nil {
 				t.Errorf("Pipeline.getTaskrunWorkspaces() returned error for valid pipeline: %v", err)
+			}
+		})
+	}
+}
+
+func Test_taskWorkspaceByWorkspaceVolumeSource(t *testing.T) {
+	testPr := &v1beta1.PipelineRun{}
+	tests := []struct {
+		name, taskWorkspaceName, pipelineWorkspaceName, prName string
+		wb                                                     v1beta1.WorkspaceBinding
+		expectedBinding                                        v1beta1.WorkspaceBinding
+		disableAffinityAssistant                               bool
+	}{
+		{
+			name:                  "PVC Workspace with Affinity Assistant",
+			prName:                "test-pipeline-run",
+			taskWorkspaceName:     "task-workspace",
+			pipelineWorkspaceName: "pipeline-workspace",
+			wb: v1beta1.WorkspaceBinding{
+				Name:                "foo",
+				VolumeClaimTemplate: &corev1.PersistentVolumeClaim{},
+			},
+			expectedBinding: v1beta1.WorkspaceBinding{
+				Name: "task-workspace",
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "pvc-2c26b46b68-affinity-assistant-e011a5ef79-0",
+				},
+			},
+		},
+		{
+			name:              "PVC Workspace without Affinity Assistant",
+			prName:            "test-pipeline-run",
+			taskWorkspaceName: "task-workspace",
+			wb: v1beta1.WorkspaceBinding{
+				Name:                "foo",
+				VolumeClaimTemplate: &corev1.PersistentVolumeClaim{},
+			},
+			expectedBinding: v1beta1.WorkspaceBinding{
+				Name: "task-workspace",
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "pvc-2c26b46b68",
+				},
+			},
+			disableAffinityAssistant: true,
+		},
+		{
+			name:              "non-PVC Workspace",
+			taskWorkspaceName: "task-workspace",
+			wb: v1beta1.WorkspaceBinding{
+				Name:     "foo",
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+			expectedBinding: v1beta1.WorkspaceBinding{
+				Name:     "task-workspace",
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			c := Reconciler{}
+			ctx := context.Background()
+			if tc.disableAffinityAssistant {
+				featureFlags, err := config.NewFeatureFlagsFromMap(map[string]string{
+					"disable-affinity-assistant": "true",
+				})
+				if err != nil {
+					t.Fatalf("error creating feature flag disable-affinity-assistant from map: %v", err)
+				}
+				cfg := &config.Config{
+					FeatureFlags: featureFlags,
+				}
+				ctx = config.ToContext(context.Background(), cfg)
+			}
+
+			binding := c.taskWorkspaceByWorkspaceVolumeSource(ctx, tc.pipelineWorkspaceName, tc.prName, tc.wb, tc.taskWorkspaceName, "", *kmeta.NewControllerRef(testPr))
+			if d := cmp.Diff(tc.expectedBinding, binding); d != "" {
+				t.Errorf("WorkspaceBinding diff: %s", diff.PrintWantGot(d))
 			}
 		})
 	}

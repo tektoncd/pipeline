@@ -38,7 +38,7 @@ const (
 
 // PvcHandler is used to create PVCs for workspaces
 type PvcHandler interface {
-	CreatePersistentVolumeClaimsForWorkspaces(ctx context.Context, wb []v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error
+	CreatePVCsForWorkspacesWithoutAffinityAssistant(ctx context.Context, wb []v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error
 }
 
 type defaultPVCHandler struct {
@@ -51,13 +51,15 @@ func NewPVCHandler(clientset clientset.Interface, logger *zap.SugaredLogger) Pvc
 	return &defaultPVCHandler{clientset, logger}
 }
 
-// CreatePersistentVolumeClaimsForWorkspaces checks if a PVC named <claim-name>-<workspace-name>-<owner-name> exists;
+// CreatePVCsForWorkspacesWithoutAffinityAssistant checks if a PVC named <claim-name>-<workspace-name>-<owner-name> exists;
 // where claim-name is provided by the user in the volumeClaimTemplate, and owner-name is the name of the
 // resource with the volumeClaimTemplate declared, a PipelineRun or TaskRun. If the PVC did not exist, a new PVC
 // with that name is created with the provided OwnerReference.
-func (c *defaultPVCHandler) CreatePersistentVolumeClaimsForWorkspaces(ctx context.Context, wb []v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error {
+// This function is only called when Affinity Assistant is disabled.
+// When Affinity Assistant is enabled, the PersistentVolumeClaims will be created by the Affinity Assistant StatefulSet VolumeClaimTemplate instead.
+func (c *defaultPVCHandler) CreatePVCsForWorkspacesWithoutAffinityAssistant(ctx context.Context, wb []v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error {
 	var errs []error
-	for _, claim := range getPersistentVolumeClaims(wb, ownerReference, namespace) {
+	for _, claim := range getPVCsWithoutAffinityAssistant(wb, ownerReference, namespace) {
 		_, err := c.clientset.CoreV1().PersistentVolumeClaims(claim.Namespace).Get(ctx, claim.Name, metav1.GetOptions{})
 		switch {
 		case apierrors.IsNotFound(err):
@@ -81,7 +83,7 @@ func (c *defaultPVCHandler) CreatePersistentVolumeClaimsForWorkspaces(ctx contex
 	return errorutils.NewAggregate(errs)
 }
 
-func getPersistentVolumeClaims(workspaceBindings []v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) map[string]*corev1.PersistentVolumeClaim {
+func getPVCsWithoutAffinityAssistant(workspaceBindings []v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) map[string]*corev1.PersistentVolumeClaim {
 	claims := make(map[string]*corev1.PersistentVolumeClaim)
 	for _, workspaceBinding := range workspaceBindings {
 		if workspaceBinding.VolumeClaimTemplate == nil {
@@ -89,7 +91,7 @@ func getPersistentVolumeClaims(workspaceBindings []v1beta1.WorkspaceBinding, own
 		}
 
 		claim := workspaceBinding.VolumeClaimTemplate.DeepCopy()
-		claim.Name = GetPersistentVolumeClaimName(workspaceBinding.VolumeClaimTemplate, workspaceBinding, ownerReference)
+		claim.Name = GetPVCNameWithoutAffinityAssistant(workspaceBinding.VolumeClaimTemplate.Name, workspaceBinding, ownerReference)
 		claim.Namespace = namespace
 		claim.OwnerReferences = []metav1.OwnerReference{ownerReference}
 		claims[workspaceBinding.Name] = claim
@@ -97,16 +99,18 @@ func getPersistentVolumeClaims(workspaceBindings []v1beta1.WorkspaceBinding, own
 	return claims
 }
 
-// GetPersistentVolumeClaimName gets the name of PersistentVolumeClaim for a Workspace and PipelineRun or TaskRun. claim
+// GetPVCNameWithoutAffinityAssistant gets the name of PersistentVolumeClaim for a Workspace and PipelineRun or TaskRun. claim
 // must be a PersistentVolumeClaim from a volumeClaimTemplate. The returned name must be consistent given the same
 // workspaceBinding name and ownerReference UID - because it is first used for creating a PVC and later,
 // possibly several TaskRuns to lookup the PVC to mount.
 // We use ownerReference UID over ownerReference name to distinguish runs with the same name.
-func GetPersistentVolumeClaimName(claim *corev1.PersistentVolumeClaim, wb v1beta1.WorkspaceBinding, owner metav1.OwnerReference) string {
-	if claim.Name == "" {
+// If the given volumeClaimTemplate name is empty, the prefix "pvc" will be applied to the PersistentVolumeClaim name.
+// See function `getPersistentVolumeClaimNameWithAffinityAssistant` when the PersistentVolumeClaim is created by Affinity Assistant StatefulSet.
+func GetPVCNameWithoutAffinityAssistant(claimName string, wb v1beta1.WorkspaceBinding, owner metav1.OwnerReference) string {
+	if claimName == "" {
 		return fmt.Sprintf("%s-%s", "pvc", getPersistentVolumeClaimIdentity(wb.Name, string(owner.UID)))
 	}
-	return fmt.Sprintf("%s-%s", claim.Name, getPersistentVolumeClaimIdentity(wb.Name, string(owner.UID)))
+	return fmt.Sprintf("%s-%s", claimName, getPersistentVolumeClaimIdentity(wb.Name, string(owner.UID)))
 }
 
 func getPersistentVolumeClaimIdentity(workspaceName, ownerName string) string {

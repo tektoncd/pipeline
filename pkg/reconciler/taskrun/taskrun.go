@@ -464,7 +464,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	// Please note that this block is required to run before `applyParamsContextsResultsAndWorkspaces` is called the first time,
 	// and that `applyParamsContextsResultsAndWorkspaces` _must_ be called on every reconcile.
 	if pod == nil && tr.HasVolumeClaimTemplate() {
-		if err := c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(ctx, tr.Spec.Workspaces, *kmeta.NewControllerRef(tr), tr.Namespace); err != nil {
+		if err := c.pvcHandler.CreatePVCsForWorkspacesWithoutAffinityAssistant(ctx, tr.Spec.Workspaces, *kmeta.NewControllerRef(tr), tr.Namespace); err != nil {
 			logger.Errorf("Failed to create PVC for TaskRun %s: %v", tr.Name, err)
 			tr.Status.MarkResourceFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
 				fmt.Errorf("Failed to create PVC for TaskRun %s workspaces correctly: %w",
@@ -851,7 +851,7 @@ func applyVolumeClaimTemplates(workspaceBindings []v1beta1.WorkspaceBinding, own
 			Name:    wb.Name,
 			SubPath: wb.SubPath,
 			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-				ClaimName: volumeclaim.GetPersistentVolumeClaimName(wb.VolumeClaimTemplate, wb, owner),
+				ClaimName: volumeclaim.GetPVCNameWithoutAffinityAssistant(wb.VolumeClaimTemplate.Name, wb, owner),
 			},
 		}
 		taskRunWorkspaceBindings = append(taskRunWorkspaceBindings, b)

@@ -83,7 +83,7 @@ func TestCreatePersistentVolumeClaimsForWorkspaces(t *testing.T) {
 
 	// when
 
-	err := pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(ctx, workspaces, ownerRef, namespace)
+	err := pvcHandler.CreatePVCsForWorkspacesWithoutAffinityAssistant(ctx, workspaces, ownerRef, namespace)
 	if err != nil {
 		t.Fatalf("unexpexted error: %v", err)
 	}
@@ -147,7 +147,7 @@ func TestCreatePersistentVolumeClaimsForWorkspacesWithoutMetadata(t *testing.T) 
 
 	// when
 
-	err := pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(ctx, workspaces, ownerRef, namespace)
+	err := pvcHandler.CreatePVCsForWorkspacesWithoutAffinityAssistant(ctx, workspaces, ownerRef, namespace)
 	if err != nil {
 		t.Fatalf("unexpexted error: %v", err)
 	}
@@ -186,7 +186,7 @@ func TestCreateExistPersistentVolumeClaims(t *testing.T) {
 	fakekubeclient := fakek8s.NewSimpleClientset()
 	pvcHandler := defaultPVCHandler{fakekubeclient, zap.NewExample().Sugar()}
 
-	for _, claim := range getPersistentVolumeClaims(workspaces, ownerRef, namespace) {
+	for _, claim := range getPVCsWithoutAffinityAssistant(workspaces, ownerRef, namespace) {
 		_, err := fakekubeclient.CoreV1().PersistentVolumeClaims(namespace).Create(ctx, claim, metav1.CreateOptions{})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -205,7 +205,7 @@ func TestCreateExistPersistentVolumeClaims(t *testing.T) {
 	}
 	fakekubeclient.Fake.PrependReactor(actionGet, "*", fn)
 
-	err := pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(ctx, workspaces, ownerRef, namespace)
+	err := pvcHandler.CreatePVCsForWorkspacesWithoutAffinityAssistant(ctx, workspaces, ownerRef, namespace)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
