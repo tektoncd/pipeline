@@ -723,7 +723,7 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 	}
 }
 
-func TestGetTaskFunc_VerifySuccess(t *testing.T) {
+func TestGetTaskFunc_VerifyNoError(t *testing.T) {
 	// This test case tests the success cases of trusted-resources-verification-no-match-policy when it is set to
 	// fail: passed matching policy verification
 	// warn and ignore: no matching policies.
@@ -764,6 +764,12 @@ func TestGetTaskFunc_VerifySuccess(t *testing.T) {
 	resolvedMatched := test.NewResolvedResource(signedTaskBytes, nil, matchPolicyRefSource, nil)
 	requesterMatched := test.NewRequester(resolvedMatched, nil)
 
+	warnPolicyRefSource := &v1beta1.RefSource{
+		URI: "	warnVP",
+	}
+	resolvedUnsignedMatched := test.NewResolvedResource(unsignedTaskBytes, nil, warnPolicyRefSource, nil)
+	requesterUnsignedMatched := test.NewRequester(resolvedUnsignedMatched, nil)
+
 	taskRef := &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
 
 	testcases := []struct {
@@ -802,24 +808,17 @@ func TestGetTaskFunc_VerifySuccess(t *testing.T) {
 		expected:                  unsignedTask,
 		expectedRefSource:         noMatchPolicyRefSource,
 	}, {
-		name:                      "allow unsigned task without matching policies",
+		name:                      "task fails warn mode policy doesn't return error",
+		requester:                 requesterUnsignedMatched,
+		verificationNoMatchPolicy: config.FailNoMatchPolicy,
+		policies:                  vps,
+		expected:                  unsignedTask,
+		expectedRefSource:         warnPolicyRefSource,
+	}, {
+		name:                      "ignore unsigned task without matching policies",
 		requester:                 requesterUnmatched,
 		verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
 		policies:                  vps,
-		expected:                  unsignedTask,
-		expectedRefSource:         noMatchPolicyRefSource,
-	}, {
-		name:                      "warn no policies",
-		requester:                 requesterUnmatched,
-		verificationNoMatchPolicy: config.WarnNoMatchPolicy,
-		policies:                  []*v1alpha1.VerificationPolicy{},
-		expected:                  unsignedTask,
-		expectedRefSource:         noMatchPolicyRefSource,
-	}, {
-		name:                      "allow no policies",
-		requester:                 requesterUnmatched,
-		verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
-		policies:                  []*v1alpha1.VerificationPolicy{},
 		expected:                  unsignedTask,
 		expectedRefSource:         noMatchPolicyRefSource,
 	},
