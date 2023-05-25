@@ -66,13 +66,6 @@ uninstall_pipeline_crd_version $PREVIOUS_PIPELINE_VERSION
 header "Install the previous release of Tekton pipeline $PREVIOUS_PIPELINE_VERSION"
 install_pipeline_crd_version $PREVIOUS_PIPELINE_VERSION
 
-# Create the resources of taskrun and pipelinerun, under the directories example/taskrun
-# and example/pipelinerun.
-for test in taskrun pipelinerun; do
-  header "Applying the resources ${test}s"
-  apply_resources ${test}
-done
-
 # Upgrade to the current release.
 header "Upgrade to the current release of Tekton pipeline"
 install_pipeline_crd
