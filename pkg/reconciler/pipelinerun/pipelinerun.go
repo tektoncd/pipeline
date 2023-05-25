@@ -604,28 +604,26 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 			return controller.NewPermanentError(err)
 		}
 
-		if pr.HasVolumeClaimTemplate() {
+		// Make an attempt to create Affinity Assistant if it does not exist
+		// if the Affinity Assistant already exists, handle the possibility of assigned node becoming unschedulable by deleting the pod
+		if !c.isAffinityAssistantDisabled(ctx) {
+			// create Affinity Assistant (StatefulSet) so that taskRun pods that share workspace PVC achieve Node Affinity
+			if err = c.createOrUpdateAffinityAssistants(ctx, pr.Spec.Workspaces, pr, pr.Namespace); err != nil {
+				logger.Errorf("Failed to create affinity assistant StatefulSet for PipelineRun %s: %v", pr.Name, err)
+				pr.Status.MarkFailed(ReasonCouldntCreateOrUpdateAffinityAssistantStatefulSet,
+					"Failed to create StatefulSet for PipelineRun %s/%s correctly: %s",
+					pr.Namespace, pr.Name, err)
+				return controller.NewPermanentError(err)
+			}
+		} else if pr.HasVolumeClaimTemplate() {
 			// create workspace PVC from template
-			if err = c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(ctx, pr.Spec.Workspaces, *kmeta.NewControllerRef(pr), pr.Namespace); err != nil {
+			if err = c.pvcHandler.CreatePVCsForWorkspacesWithoutAffinityAssistant(ctx, pr.Spec.Workspaces, *kmeta.NewControllerRef(pr), pr.Namespace); err != nil {
 				logger.Errorf("Failed to create PVC for PipelineRun %s: %v", pr.Name, err)
 				pr.Status.MarkFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
 					"Failed to create PVC for PipelineRun %s/%s Workspaces correctly: %s",
 					pr.Namespace, pr.Name, err)
 				return controller.NewPermanentError(err)
 			}
-		}
-	}
-
-	// Make an attempt to create Affinity Assistant if it does not exist
-	// if the Affinity Assistant already exists, handle the possibility of assigned node becoming unschedulable by deleting the pod
-	if !c.isAffinityAssistantDisabled(ctx) {
-		// create Affinity Assistant (StatefulSet) so that taskRun pods that share workspace PVC achieve Node Affinity
-		if err = c.createOrUpdateAffinityAssistants(ctx, pr.Spec.Workspaces, pr, pr.Namespace); err != nil {
-			logger.Errorf("Failed to create affinity assistant StatefulSet for PipelineRun %s: %v", pr.Name, err)
-			pr.Status.MarkFailed(ReasonCouldntCreateOrUpdateAffinityAssistantStatefulSet,
-				"Failed to create StatefulSet or update affinity assistant replicas for PipelineRun %s/%s correctly: %s",
-				pr.Namespace, pr.Name, err)
-			return controller.NewPermanentError(err)
 		}
 	}
 
@@ -876,7 +874,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 
 	var pipelinePVCWorkspaceName string
 	var err error
-	tr.Spec.Workspaces, pipelinePVCWorkspaceName, err = getTaskrunWorkspaces(ctx, pr, rpt)
+	tr.Spec.Workspaces, pipelinePVCWorkspaceName, err = c.getTaskrunWorkspaces(ctx, pr, rpt)
 	if err != nil {
 		return nil, err
 	}
@@ -925,7 +923,7 @@ func (c *Reconciler) createRunObject(ctx context.Context, runName string, params
 	var pipelinePVCWorkspaceName string
 	var err error
 	var workspaces []v1beta1.WorkspaceBinding
-	workspaces, pipelinePVCWorkspaceName, err = getTaskrunWorkspaces(ctx, pr, rpt)
+	workspaces, pipelinePVCWorkspaceName, err = c.getTaskrunWorkspaces(ctx, pr, rpt)
 	if err != nil {
 		return nil, err
 	}
@@ -999,7 +997,7 @@ func propagateWorkspaces(rpt *resources.ResolvedPipelineTask) (*resources.Resolv
 	return rpt, nil
 }
 
-func getTaskrunWorkspaces(ctx context.Context, pr *v1beta1.PipelineRun, rpt *resources.ResolvedPipelineTask) ([]v1beta1.WorkspaceBinding, string, error) {
+func (c *Reconciler) getTaskrunWorkspaces(ctx context.Context, pr *v1beta1.PipelineRun, rpt *resources.ResolvedPipelineTask) ([]v1beta1.WorkspaceBinding, string, error) {
 	var err error
 	var workspaces []v1beta1.WorkspaceBinding
 	var pipelinePVCWorkspaceName string
@@ -1029,7 +1027,9 @@ func getTaskrunWorkspaces(ctx context.Context, pr *v1beta1.PipelineRun, rpt *res
 			if b.PersistentVolumeClaim != nil || b.VolumeClaimTemplate != nil {
 				pipelinePVCWorkspaceName = pipelineWorkspace
 			}
-			workspaces = append(workspaces, taskWorkspaceByWorkspaceVolumeSource(b, taskWorkspaceName, pipelineTaskSubPath, *kmeta.NewControllerRef(pr)))
+
+			workspace := c.taskWorkspaceByWorkspaceVolumeSource(ctx, pipelinePVCWorkspaceName, pr.Name, b, taskWorkspaceName, pipelineTaskSubPath, *kmeta.NewControllerRef(pr))
+			workspaces = append(workspaces, workspace)
 		} else {
 			workspaceIsOptional := false
 			if rpt.ResolvedTask != nil && rpt.ResolvedTask.TaskSpec != nil {
@@ -1060,9 +1060,10 @@ func getTaskrunWorkspaces(ctx context.Context, pr *v1beta1.PipelineRun, rpt *res
 	return workspaces, pipelinePVCWorkspaceName, nil
 }
 
-// taskWorkspaceByWorkspaceVolumeSource is returning the WorkspaceBinding with the TaskRun specified name.
-// If the volume source is a volumeClaimTemplate, the template is applied and passed to TaskRun as a persistentVolumeClaim
-func taskWorkspaceByWorkspaceVolumeSource(wb v1beta1.WorkspaceBinding, taskWorkspaceName string, pipelineTaskSubPath string, owner metav1.OwnerReference) v1beta1.WorkspaceBinding {
+// taskWorkspaceByWorkspaceVolumeSource returns the WorkspaceBinding to be bound to each TaskRun in the Pipeline Task.
+// If the PipelineRun WorkspaceBinding is a volumeClaimTemplate, the returned WorkspaceBinding references a PersistentVolumeClaim created for the PipelineRun WorkspaceBinding based on the PipelineRun as OwnerReference.
+// Otherwise, the returned WorkspaceBinding references the same volume as the PipelineRun WorkspaceBinding, with the file path joined with pipelineTaskSubPath as the binding subpath.
+func (c *Reconciler) taskWorkspaceByWorkspaceVolumeSource(ctx context.Context, pipelineWorkspaceName string, prName string, wb v1beta1.WorkspaceBinding, taskWorkspaceName string, pipelineTaskSubPath string, owner metav1.OwnerReference) v1beta1.WorkspaceBinding {
 	if wb.VolumeClaimTemplate == nil {
 		binding := *wb.DeepCopy()
 		binding.Name = taskWorkspaceName
@@ -1070,14 +1071,18 @@ func taskWorkspaceByWorkspaceVolumeSource(wb v1beta1.WorkspaceBinding, taskWorks
 		return binding
 	}
 
-	// apply template
 	binding := v1beta1.WorkspaceBinding{
-		SubPath: combinedSubPath(wb.SubPath, pipelineTaskSubPath),
-		PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-			ClaimName: volumeclaim.GetPersistentVolumeClaimName(wb.VolumeClaimTemplate, wb, owner),
-		},
+		SubPath:               combinedSubPath(wb.SubPath, pipelineTaskSubPath),
+		PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{},
 	}
 	binding.Name = taskWorkspaceName
+
+	if !c.isAffinityAssistantDisabled(ctx) {
+		binding.PersistentVolumeClaim.ClaimName = getPersistentVolumeClaimNameWithAffinityAssistant(pipelineWorkspaceName, prName, wb, owner)
+	} else {
+		binding.PersistentVolumeClaim.ClaimName = volumeclaim.GetPVCNameWithoutAffinityAssistant(wb.VolumeClaimTemplate.Name, wb, owner)
+	}
+
 	return binding
 }
 

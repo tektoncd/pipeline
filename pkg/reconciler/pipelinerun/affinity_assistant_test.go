@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
@@ -29,6 +30,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/parse"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -60,36 +62,151 @@ var testPipelineRun = &v1beta1.PipelineRun{
 }
 
 // TestCreateAndDeleteOfAffinityAssistant tests to create and delete an Affinity Assistant
-// for a given PipelineRun with a PVC workspace
+// for a given PipelineRun
 func TestCreateAndDeleteOfAffinityAssistant(t *testing.T) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	tests := []struct {
+		name                  string
+		pr                    *v1beta1.PipelineRun
+		expectStatefulSetSpec []*appsv1.StatefulSetSpec
+	}{{
+		name: "PersistentVolumeClaim Workspace type",
+		pr: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-with-pvc"},
+			Spec: v1beta1.PipelineRunSpec{
+				Workspaces: []v1beta1.WorkspaceBinding{{
+					Name: "PersistentVolumeClaim Workspace",
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "myclaim",
+					},
+				}},
+			},
+		},
+		expectStatefulSetSpec: []*appsv1.StatefulSetSpec{{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Volumes: []corev1.Volume{{
+						Name: "workspace-0",
+						VolumeSource: corev1.VolumeSource{
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "myclaim"},
+						},
+					}},
+				},
+			},
+		}},
+	}, {
+		name: "VolumeClaimTemplate Workspace type",
+		pr: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-with-volumeClaimTemplate"},
+			Spec: v1beta1.PipelineRunSpec{
+				Workspaces: []v1beta1.WorkspaceBinding{{
+					Name:                "VolumeClaimTemplate Workspace",
+					VolumeClaimTemplate: &corev1.PersistentVolumeClaim{},
+				}},
+			},
+		},
+		expectStatefulSetSpec: []*appsv1.StatefulSetSpec{{
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{{
+				ObjectMeta: metav1.ObjectMeta{Name: "pvc-f0680e1c9c"},
+			}},
+		}},
+	}, {
+		name: "VolumeClaimTemplate and PersistentVolumeClaim Workspaces",
+		pr: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-with-volumeClaimTemplate-and-pvc"},
+			Spec: v1beta1.PipelineRunSpec{
+				Workspaces: []v1beta1.WorkspaceBinding{{
+					Name:                "VolumeClaimTemplate Workspace",
+					VolumeClaimTemplate: &corev1.PersistentVolumeClaim{},
+				}, {
+					Name: "PersistentVolumeClaim Workspace",
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "myclaim",
+					}},
+				},
+			},
+		},
+		expectStatefulSetSpec: []*appsv1.StatefulSetSpec{{
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{{
+				ObjectMeta: metav1.ObjectMeta{Name: "pvc-f0680e1c9c"},
+			}}}, {
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Volumes: []corev1.Volume{{
+						Name: "workspace-0",
+						VolumeSource: corev1.VolumeSource{
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "myclaim"},
+						},
+					}},
+				},
+			},
+		}},
+	}, {
+		name: "other Workspace type",
+		pr: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-with-emptyDir"},
+			Spec: v1beta1.PipelineRunSpec{
+				Workspaces: []v1beta1.WorkspaceBinding{{
+					Name:     "EmptyDir Workspace",
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				}},
+			},
+		},
+		expectStatefulSetSpec: nil,
+	}}
 
-	c := Reconciler{
-		KubeClientSet: fakek8s.NewSimpleClientset(),
-		Images:        pipeline.Images{},
-	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
 
-	err := c.createOrUpdateAffinityAssistants(ctx, testPipelineRun.Spec.Workspaces, testPipelineRun, testPipelineRun.Namespace)
-	if err != nil {
-		t.Errorf("unexpected error from createOrUpdateAffinityAssistants: %v", err)
-	}
+			c := Reconciler{
+				KubeClientSet: fakek8s.NewSimpleClientset(),
+			}
 
-	expectedAffinityAssistantName := getAffinityAssistantName(workspaceName, testPipelineRun.Name)
-	_, err = c.KubeClientSet.AppsV1().StatefulSets(testPipelineRun.Namespace).Get(ctx, expectedAffinityAssistantName, metav1.GetOptions{})
-	if err != nil {
-		t.Errorf("unexpected error when retrieving StatefulSet: %v", err)
-	}
+			err := c.createOrUpdateAffinityAssistants(ctx, tc.pr.Spec.Workspaces, tc.pr, tc.pr.Namespace)
+			if err != nil {
+				t.Errorf("unexpected error from createOrUpdateAffinityAssistants: %v", err)
+			}
 
-	err = c.cleanupAffinityAssistants(ctx, testPipelineRun)
-	if err != nil {
-		t.Errorf("unexpected error from cleanupAffinityAssistants: %v", err)
-	}
+			// validate StatefulSets from Affinity Assistant
+			for i, w := range tc.pr.Spec.Workspaces {
+				expectAAName := getAffinityAssistantName(w.Name, tc.pr.Name)
+				aa, err := c.KubeClientSet.AppsV1().StatefulSets(testPipelineRun.Namespace).Get(ctx, expectAAName, metav1.GetOptions{})
+				if tc.expectStatefulSetSpec != nil {
+					if err != nil {
+						t.Fatalf("unexpected error when retrieving StatefulSet: %v", err)
+					}
 
-	_, err = c.KubeClientSet.AppsV1().StatefulSets(testPipelineRun.Namespace).Get(ctx, expectedAffinityAssistantName, metav1.GetOptions{})
-	if !apierrors.IsNotFound(err) {
-		t.Errorf("expected a NotFound response, got: %v", err)
+					podSpecFilter := cmpopts.IgnoreFields(corev1.PodSpec{}, "Containers", "Affinity")
+					statefulSetSpecFilter := cmpopts.IgnoreFields(appsv1.StatefulSetSpec{}, "Replicas", "Selector")
+					podTemplateSpecFilter := cmpopts.IgnoreFields(corev1.PodTemplateSpec{}, "ObjectMeta")
+					if d := cmp.Diff(tc.expectStatefulSetSpec[i], &aa.Spec, statefulSetSpecFilter, podSpecFilter, podTemplateSpecFilter); d != "" {
+						t.Errorf("StatefulSetSpec diff: %s", diff.PrintWantGot(d))
+					}
+				} else if !apierrors.IsNotFound(err) {
+					t.Errorf("unexpected error when retrieving StatefulSet which expects nil: %v", err)
+				}
+			}
+
+			// clean up Affinity Assistant
+			c.cleanupAffinityAssistants(ctx, tc.pr)
+			if err != nil {
+				t.Errorf("unexpected error from cleanupAffinityAssistants: %v", err)
+			}
+			for _, w := range tc.pr.Spec.Workspaces {
+				if w.PersistentVolumeClaim == nil && w.VolumeClaimTemplate == nil {
+					continue
+				}
+
+				expectAAName := getAffinityAssistantName(w.Name, tc.pr.Name)
+				_, err = c.KubeClientSet.AppsV1().StatefulSets(tc.pr.Namespace).Get(ctx, expectAAName, metav1.GetOptions{})
+				if !apierrors.IsNotFound(err) {
+					t.Errorf("expected a NotFound response, got: %v", err)
+				}
+			}
+		})
 	}
 }
 
@@ -239,7 +356,7 @@ func TestPipelineRunPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 		},
 	}
 
-	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithCustomPodTemplate, "mypvc", "nginx", nil)
+	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []corev1.PersistentVolumeClaimVolumeSource{}, "nginx", nil)
 
 	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 1 {
 		t.Errorf("expected Tolerations in the StatefulSet")
@@ -277,7 +394,7 @@ func TestDefaultPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 		}},
 	}
 
-	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithCustomPodTemplate, "mypvc", "nginx", defaultTpl)
+	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []corev1.PersistentVolumeClaimVolumeSource{}, "nginx", defaultTpl)
 
 	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 1 {
 		t.Errorf("expected Tolerations in the StatefulSet")
@@ -323,7 +440,7 @@ func TestMergedPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 		}},
 	}
 
-	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithCustomPodTemplate, "mypvc", "nginx", defaultTpl)
+	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []corev1.PersistentVolumeClaimVolumeSource{}, "nginx", defaultTpl)
 
 	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 1 {
 		t.Errorf("expected Tolerations from spec in the StatefulSet")
@@ -360,7 +477,7 @@ func TestOnlySelectPodTemplateFieldsArePropagatedToAffinityAssistant(t *testing.
 		},
 	}
 
-	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithCustomPodTemplate, "mypvc", "nginx", nil)
+	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []corev1.PersistentVolumeClaimVolumeSource{}, "nginx", nil)
 
 	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 1 {
 		t.Errorf("expected Tolerations from spec in the StatefulSet")
@@ -380,7 +497,7 @@ func TestThatTheAffinityAssistantIsWithoutNodeSelectorAndTolerations(t *testing.
 		Spec: v1beta1.PipelineRunSpec{},
 	}
 
-	stsWithoutTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithoutCustomPodTemplate, "mypvc", "nginx", nil)
+	stsWithoutTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithoutCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []corev1.PersistentVolumeClaimVolumeSource{}, "nginx", nil)
 
 	if len(stsWithoutTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 0 {
 		t.Errorf("unexpected Tolerations in the StatefulSet")
