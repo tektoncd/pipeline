@@ -124,7 +124,7 @@ func TestVerifyInterface_Task_Error(t *testing.T) {
 	}
 }
 
-func TestVerifyTask_Success(t *testing.T) {
+func TestVerifyResource_Task_Success(t *testing.T) {
 	signer256, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 	unsignedTask := test.GetUnsignedTask("test-task")
 	signedTask, err := test.GetSignedTask(unsignedTask, signer256, "signed")
@@ -281,7 +281,7 @@ func TestVerifyTask_Success(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := test.SetupTrustedResourceConfig(context.Background(), tc.verificationNoMatchPolicy)
-			vr := VerifyTask(ctx, tc.task, k8sclient, tc.source, tc.verificationPolicies)
+			vr := VerifyResource(ctx, tc.task, k8sclient, tc.source, tc.verificationPolicies)
 			if tc.expectedVerificationResult.VerificationResultType != vr.VerificationResultType && errors.Is(vr.Err, tc.expectedVerificationResult.Err) {
 				t.Errorf("VerificationResult mismatch: want %v, got %v", tc.expectedVerificationResult, vr)
 			}
@@ -289,7 +289,7 @@ func TestVerifyTask_Success(t *testing.T) {
 	}
 }
 
-func TestVerifyTask_Error(t *testing.T) {
+func TestVerifyResource_Task_Error(t *testing.T) {
 	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
 	ctx = test.SetupTrustedResourceConfig(ctx, config.FailNoMatchPolicy)
 	sv, _, k8sclient, vps := test.SetupVerificationPolicies(t)
@@ -381,15 +381,15 @@ func TestVerifyTask_Error(t *testing.T) {
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			vr := VerifyTask(ctx, tc.task, k8sclient, tc.source, tc.verificationPolicy)
+			vr := VerifyResource(ctx, tc.task, k8sclient, tc.source, tc.verificationPolicy)
 			if !errors.Is(vr.Err, tc.expectedError) && vr.VerificationResultType == VerificationError {
-				t.Errorf("VerifyTask got: %v, want: %v", err, tc.expectedError)
+				t.Errorf("VerifyResource got: %v, want: %v", err, tc.expectedError)
 			}
 		})
 	}
 }
 
-func TestVerifyPipeline_Success(t *testing.T) {
+func TestVerifyResource_Pipeline_Success(t *testing.T) {
 	sv, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 	unsignedPipeline := test.GetUnsignedPipeline("test-pipeline")
 	signedPipeline, err := test.GetSignedPipeline(unsignedPipeline, sv, "signed")
@@ -432,7 +432,7 @@ func TestVerifyPipeline_Success(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := test.SetupTrustedResourceConfig(context.Background(), tc.verificationNoMatchPolicy)
-			vr := VerifyPipeline(ctx, tc.pipeline, k8sclient, tc.source, vps)
+			vr := VerifyResource(ctx, tc.pipeline, k8sclient, tc.source, vps)
 			if tc.expectedVerificationResult.VerificationResultType != vr.VerificationResultType && errors.Is(vr.Err, tc.expectedVerificationResult.Err) {
 				t.Errorf("VerificationResult mismatch: want %v, got %v", tc.expectedVerificationResult, vr)
 			}
@@ -440,7 +440,7 @@ func TestVerifyPipeline_Success(t *testing.T) {
 	}
 }
 
-func TestVerifyPipeline_Error(t *testing.T) {
+func TestVerifyResource_Pipeline_Error(t *testing.T) {
 	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
 	ctx = test.SetupTrustedResourceConfig(ctx, config.FailNoMatchPolicy)
 	sv, _, k8sclient, vps := test.SetupVerificationPolicies(t)
@@ -494,11 +494,21 @@ func TestVerifyPipeline_Error(t *testing.T) {
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			vr := VerifyPipeline(ctx, tc.pipeline, k8sclient, tc.source, tc.verificationPolicy)
+			vr := VerifyResource(ctx, tc.pipeline, k8sclient, tc.source, tc.verificationPolicy)
 			if !errors.Is(vr.Err, tc.expectedError) && vr.VerificationResultType == VerificationError {
-				t.Errorf("VerifyPipeline got: %v, want: %v", vr.Err, tc.expectedError)
+				t.Errorf("VerifyResource got: %v, want: %v", vr.Err, tc.expectedError)
 			}
 		})
+	}
+}
+
+func TestVerifyResource_TypeNotSupported(t *testing.T) {
+	resource := v1beta1.ClusterTask{}
+	refSource := &v1beta1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"}
+	_, _, k8sclient, vps := test.SetupVerificationPolicies(t)
+	vr := VerifyResource(context.Background(), &resource, k8sclient, refSource, vps)
+	if !errors.Is(vr.Err, ErrResourceNotSupported) {
+		t.Errorf("want:%v got:%v ", ErrResourceNotSupported, vr.Err)
 	}
 }
 

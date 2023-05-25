@@ -63,19 +63,21 @@ type VerificationResult struct {
 	Err error
 }
 
-// VerifyTask verifies the signature and public key against task.
+// VerifyResource verifies the signature and public key against resource (v1beta1 task and pipeline).
 // VerificationResult is returned with different types for different cases:
 // 1) Return VerificationResult with VerificationSkip type, when no policies are found and no-match-policy is set to ignore
 // 2) Return VerificationResult with VerificationPass type when verification passed;
 // 3) Return VerificationResult with VerificationWarn type, when no matching policies and feature flag "no-match-policy" is "warn", or only Warn mode verification policies fail. Err field is filled with the warning;
 // 4) Return VerificationResult with VerificationError type when no policies are found and no-match-policy is set to fail, the resource fails to pass matched enforce verification policy, or there are errors during verification. Err is filled with the err.
-// refSource contains the source information of the task.
-func VerifyTask(ctx context.Context, taskObj *v1beta1.Task, k8s kubernetes.Interface, refSource *v1beta1.RefSource, verificationpolicies []*v1alpha1.VerificationPolicy) VerificationResult {
+// refSource contains the source information of the resource.
+// TODO(#6729): Support v1 task and pipeline
+func VerifyResource(ctx context.Context, resource metav1.Object, k8s kubernetes.Interface, refSource *v1beta1.RefSource, verificationpolicies []*v1alpha1.VerificationPolicy) VerificationResult {
 	var refSourceURI string
 	if refSource != nil {
 		refSourceURI = refSource.URI
 	}
-	matchedPolicies, err := getMatchedPolicies(taskObj.TaskMetadata().Name, refSourceURI, verificationpolicies)
+
+	matchedPolicies, err := getMatchedPolicies(resource.GetName(), refSourceURI, verificationpolicies)
 	if err != nil {
 		if errors.Is(err, ErrNoMatchedPolicies) {
 			switch config.GetVerificationNoMatchPolicy(ctx) {
@@ -91,61 +93,45 @@ func VerifyTask(ctx context.Context, taskObj *v1beta1.Task, k8s kubernetes.Inter
 		return VerificationResult{VerificationResultType: VerificationError, Err: fmt.Errorf("failed to get matched policies: %w", err)}
 	}
 
-	tm, signature, err := prepareObjectMeta(taskObj.TaskMetadata())
-	if err != nil {
-		return VerificationResult{VerificationResultType: VerificationError, Err: err}
+	switch v := resource.(type) {
+	case *v1beta1.Task:
+		tm, signature, err := prepareObjectMeta(v.ObjectMeta)
+		if err != nil {
+			return VerificationResult{VerificationResultType: VerificationError, Err: err}
+		}
+		task := v1beta1.Task{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "tekton.dev/v1beta1",
+				Kind:       "Task"},
+			ObjectMeta: tm,
+			Spec:       v.TaskSpec(),
+		}
+		return verifyResource(ctx, &task, k8s, signature, matchedPolicies)
+	case *v1beta1.Pipeline:
+		pm, signature, err := prepareObjectMeta(v.ObjectMeta)
+		if err != nil {
+			return VerificationResult{VerificationResultType: VerificationError, Err: err}
+		}
+		pipeline := v1beta1.Pipeline{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "tekton.dev/v1beta1",
+				Kind:       "Pipeline"},
+			ObjectMeta: pm,
+			Spec:       v.PipelineSpec(),
+		}
+		return verifyResource(ctx, &pipeline, k8s, signature, matchedPolicies)
 	}
-	task := v1beta1.Task{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1beta1",
-			Kind:       "Task"},
-		ObjectMeta: tm,
-		Spec:       taskObj.TaskSpec(),
-	}
-
-	return verifyResource(ctx, &task, k8s, signature, matchedPolicies)
+	return VerificationResult{VerificationResultType: VerificationError, Err: fmt.Errorf("%w: got resource %v but v1beta1.Task and v1beta1.Pipeline are currently supported", ErrResourceNotSupported, resource)}
 }
 
-// VerifyPipeline verifies the signature and public key against pipeline.
-// VerificationResult is returned with different types for different cases:
-// 1) Return VerificationResult with VerificationSkip type, when no policies are found and no-match-policy is set to ignore
-// 2) Return VerificationResult with VerificationPass type when verification passed;
-// 3) Return VerificationResult with VerificationWarn type, when no matching policies and feature flag "no-match-policy" is "warn", or only Warn mode verification policies fail. Err field is filled with the warning;
-// 4) Return VerificationResult with VerificationError type when no policies are found and no-match-policy is set to fail, the resource fails to pass matched enforce verification policy, or there are errors during verification. Err is filled with the err.
-// refSource contains the source information of the pipeline.
-func VerifyPipeline(ctx context.Context, pipelineObj *v1beta1.Pipeline, k8s kubernetes.Interface, refSource *v1beta1.RefSource, verificationpolicies []*v1alpha1.VerificationPolicy) VerificationResult {
-	var refSourceURI string
-	if refSource != nil {
-		refSourceURI = refSource.URI
-	}
-	matchedPolicies, err := getMatchedPolicies(pipelineObj.PipelineMetadata().Name, refSourceURI, verificationpolicies)
-	if err != nil {
-		if errors.Is(err, ErrNoMatchedPolicies) {
-			switch config.GetVerificationNoMatchPolicy(ctx) {
-			case config.IgnoreNoMatchPolicy:
-				return VerificationResult{VerificationResultType: VerificationSkip}
-			case config.WarnNoMatchPolicy:
-				logger := logging.FromContext(ctx)
-				warning := fmt.Errorf("failed to get matched policies: %w", err)
-				logger.Warnf(warning.Error())
-				return VerificationResult{VerificationResultType: VerificationWarn, Err: warning}
-			}
-		}
-		return VerificationResult{VerificationResultType: VerificationError, Err: fmt.Errorf("failed to get matched policies: %w", err)}
-	}
-	pm, signature, err := prepareObjectMeta(pipelineObj.PipelineMetadata())
-	if err != nil {
-		return VerificationResult{VerificationResultType: VerificationError, Err: err}
-	}
-	pipeline := v1beta1.Pipeline{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1beta1",
-			Kind:       "Pipeline"},
-		ObjectMeta: pm,
-		Spec:       pipelineObj.PipelineSpec(),
-	}
+// VerifyTask is the deprecated, this is to keep backward compatibility
+func VerifyTask(ctx context.Context, taskObj *v1beta1.Task, k8s kubernetes.Interface, refSource *v1beta1.RefSource, verificationpolicies []*v1alpha1.VerificationPolicy) VerificationResult {
+	return VerifyResource(ctx, taskObj, k8s, refSource, verificationpolicies)
+}
 
-	return verifyResource(ctx, &pipeline, k8s, signature, matchedPolicies)
+// VerifyPipeline is the deprecated, this is to keep backward compatibility
+func VerifyPipeline(ctx context.Context, pipelineObj *v1beta1.Pipeline, k8s kubernetes.Interface, refSource *v1beta1.RefSource, verificationpolicies []*v1alpha1.VerificationPolicy) VerificationResult {
+	return VerifyResource(ctx, pipelineObj, k8s, refSource, verificationpolicies)
 }
 
 // getMatchedPolicies filters out the policies by checking if the resource url (source) is matching any of the `patterns` in the `resources` list.
