@@ -459,7 +459,7 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 	}
 }
 
-func TestGetPipelineFunc_VerifySuccess(t *testing.T) {
+func TestGetPipelineFunc_VerifyNoError(t *testing.T) {
 	// This test case tests the success cases of trusted-resources-verification-no-match-policy when it is set to
 	// fail: passed matching policy verification
 	// warn and ignore: no matching policies.
@@ -535,6 +535,12 @@ func TestGetPipelineFunc_VerifySuccess(t *testing.T) {
 		},
 	}
 
+	warnPolicyRefSource := &v1beta1.RefSource{
+		URI: "	warnVP",
+	}
+	resolvedUnsignedMatched := test.NewResolvedResource(unsignedPipelineBytes, nil, warnPolicyRefSource, nil)
+	requesterUnsignedMatched := test.NewRequester(resolvedUnsignedMatched, nil)
+
 	testcases := []struct {
 		name                      string
 		requester                 *test.Requester
@@ -576,27 +582,19 @@ func TestGetPipelineFunc_VerifySuccess(t *testing.T) {
 		expected:                  unsignedPipeline,
 		expectedRefSource:         noMatchPolicyRefSource,
 	}, {
+		name:                      "unsigned pipeline fails warn mode policies doesn't return error",
+		requester:                 requesterUnsignedMatched,
+		verificationNoMatchPolicy: config.FailNoMatchPolicy,
+		pipelinerun:               pr,
+		policies:                  vps,
+		expected:                  unsignedPipeline,
+		expectedRefSource:         warnPolicyRefSource,
+	}, {
 		name:                      "ignore unsigned pipeline without matching policies",
 		requester:                 requesterUnmatched,
 		verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
 		pipelinerun:               pr,
 		policies:                  vps,
-		expected:                  unsignedPipeline,
-		expectedRefSource:         noMatchPolicyRefSource,
-	}, {
-		name:                      "warn no policies",
-		requester:                 requesterUnmatched,
-		verificationNoMatchPolicy: config.WarnNoMatchPolicy,
-		pipelinerun:               pr,
-		policies:                  []*v1alpha1.VerificationPolicy{},
-		expected:                  unsignedPipeline,
-		expectedRefSource:         noMatchPolicyRefSource,
-	}, {
-		name:                      "ignore no policies",
-		requester:                 requesterUnmatched,
-		verificationNoMatchPolicy: config.IgnoreNoMatchPolicy,
-		pipelinerun:               pr,
-		policies:                  []*v1alpha1.VerificationPolicy{},
 		expected:                  unsignedPipeline,
 		expectedRefSource:         noMatchPolicyRefSource,
 	}, {
