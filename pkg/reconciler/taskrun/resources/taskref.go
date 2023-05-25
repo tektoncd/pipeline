@@ -175,15 +175,20 @@ func readRuntimeObjectAsTask(ctx context.Context, obj runtime.Object, k8s kubern
 		vr := trustedresources.VerifyTask(ctx, obj, k8s, refSource, verificationPolicies)
 		if vr.VerificationResultType == trustedresources.VerificationError {
 			if vr.Err != nil {
-				return nil, fmt.Errorf("remote Task verification failed for object %s: %w", obj.GetName(), vr.Err)
+				return nil, fmt.Errorf("Task verification failed for object %s: %w", obj.GetName(), vr.Err)
 			}
-			return nil, fmt.Errorf("remote Task verification failed for object %s", obj.GetName())
+			return nil, fmt.Errorf("Task verification failed for object %s", obj.GetName())
 		}
 		return obj, nil
 	case *v1beta1.ClusterTask:
 		return convertClusterTaskToTask(*obj), nil
 	case *v1.Task:
 		// TODO(#6356): Support V1 Task verification
+		// Validation of beta fields must happen before the V1 Task is converted into the storage version of the API.
+		// TODO(#6592): Decouple API versioning from feature versioning
+		if err := obj.Spec.ValidateBetaFields(ctx); err != nil {
+			return nil, fmt.Errorf("invalid Task %s: %w", obj.GetName(), err)
+		}
 		t := &v1beta1.Task{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "Task",

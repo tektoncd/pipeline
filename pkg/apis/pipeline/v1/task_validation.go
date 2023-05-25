@@ -90,16 +90,16 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateSidecarNames(ts.Sidecars))
 	errs = errs.Also(ValidateParameterTypes(ctx, ts.Params).ViaField("params"))
 	errs = errs.Also(ValidateParameterVariables(ctx, ts.Steps, ts.Params))
-	errs = errs.Also(ts.validateBetaFields(ctx))
+	errs = errs.Also(ts.ValidateBetaFields(ctx))
 	errs = errs.Also(validateTaskContextVariables(ctx, ts.Steps))
 	errs = errs.Also(validateTaskResultsVariables(ctx, ts.Steps, ts.Results))
 	errs = errs.Also(validateResults(ctx, ts.Results).ViaField("results"))
 	return errs
 }
 
-// validateBetaFields returns an error if the Task spec uses beta features but does not
+// ValidateBetaFields returns an error if the Task spec uses beta features but does not
 // have "enable-api-fields" set to "alpha" or "beta".
-func (ts *TaskSpec) validateBetaFields(ctx context.Context) *apis.FieldError {
+func (ts *TaskSpec) ValidateBetaFields(ctx context.Context) *apis.FieldError {
 	var errs *apis.FieldError
 	// Object parameters
 	for i, p := range ts.Params {

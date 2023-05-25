@@ -551,12 +551,13 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 	ctx := context.Background()
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
-	task := parse.MustParseV1beta1Task(t, taskYAMLString)
 	taskRef := &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
 
 	testcases := []struct {
 		name     string
 		taskYAML string
+		wantTask *v1beta1.Task
+		wantErr  bool
 	}{{
 		name: "v1beta1 task",
 		taskYAML: strings.Join([]string{
@@ -564,6 +565,15 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 			"apiVersion: tekton.dev/v1beta1",
 			taskYAMLString,
 		}, "\n"),
+		wantTask: parse.MustParseV1beta1Task(t, taskYAMLString),
+	}, {
+		name: "v1beta1 task with beta features",
+		taskYAML: strings.Join([]string{
+			"kind: Task",
+			"apiVersion: tekton.dev/v1beta1",
+			taskYAMLStringWithBetaFeatures,
+		}, "\n"),
+		wantTask: parse.MustParseV1beta1Task(t, taskYAMLStringWithBetaFeatures),
 	}, {
 		name: "v1 task",
 		taskYAML: strings.Join([]string{
@@ -571,6 +581,15 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 			"apiVersion: tekton.dev/v1",
 			taskYAMLString,
 		}, "\n"),
+		wantTask: parse.MustParseV1beta1Task(t, taskYAMLString),
+	}, {
+		name: "v1 task with beta features",
+		taskYAML: strings.Join([]string{
+			"kind: Task",
+			"apiVersion: tekton.dev/v1",
+			taskYAMLStringWithBetaFeatures,
+		}, "\n"),
+		wantErr: true,
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -586,16 +605,22 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 			fn := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default", nil /*VerificationPolicies*/)
 
 			resolvedTask, resolvedRefSource, err := fn(ctx, taskRef.Name)
-			if err != nil {
-				t.Fatalf("failed to call pipelinefn: %s", err.Error())
-			}
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected an error when calling taskfunc but got none")
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("failed to call taskfn: %s", err.Error())
+				}
 
-			if d := cmp.Diff(sampleRefSource, resolvedRefSource); d != "" {
-				t.Errorf("refSources did not match: %s", diff.PrintWantGot(d))
-			}
+				if d := cmp.Diff(sampleRefSource, resolvedRefSource); d != "" {
+					t.Errorf("refSources did not match: %s", diff.PrintWantGot(d))
+				}
 
-			if d := cmp.Diff(task, resolvedTask); d != "" {
-				t.Errorf("resolvedTask did not match: %s", diff.PrintWantGot(d))
+				if d := cmp.Diff(tc.wantTask, resolvedTask); d != "" {
+					t.Errorf("resolvedTask did not match: %s", diff.PrintWantGot(d))
+				}
 			}
 		})
 	}
@@ -1077,4 +1102,18 @@ spec:
     image: ubuntu
     script: |
       echo "hello world!"
+`
+
+var taskYAMLStringWithBetaFeatures = `
+metadata:
+  name: foo
+spec:
+  steps:
+  - name: step1
+    image: ubuntu
+    script: |
+      echo "hello world!"
+  results:
+  - name: array-result
+    type: array
 `

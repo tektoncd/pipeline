@@ -154,13 +154,18 @@ func readRuntimeObjectAsPipeline(ctx context.Context, obj runtime.Object, k8s ku
 		vr := trustedresources.VerifyPipeline(ctx, obj, k8s, refSource, verificationPolicies)
 		if vr.VerificationResultType == trustedresources.VerificationError {
 			if vr.Err != nil {
-				return nil, fmt.Errorf("remote Pipeline verification failed for object %s: %w", obj.GetName(), vr.Err)
+				return nil, fmt.Errorf("Pipeline verification failed for object %s: %w", obj.GetName(), vr.Err)
 			}
-			return nil, fmt.Errorf("remote Pipeline verification failed for object %s", obj.GetName())
+			return nil, fmt.Errorf("Pipeline verification failed for object %s", obj.GetName())
 		}
 		return obj, nil
 	case *v1.Pipeline:
 		// TODO(#6356): Support V1 Task verification
+		// Validation of beta fields must happen before the V1 Pipeline is converted into the storage version of the API.
+		// TODO(#6592): Decouple API versioning from feature versioning
+		if err := obj.Spec.ValidateBetaFields(ctx); err != nil {
+			return nil, fmt.Errorf("invalid Pipeline %s: %w", obj.GetName(), err)
+		}
 		t := &v1beta1.Pipeline{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "Pipeline",
