@@ -70,7 +70,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validatePipelineContextVariables(ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validatePipelineContextVariables(ps.Finally).ViaField("finally"))
 	errs = errs.Also(validateExecutionStatusVariables(ps.Tasks, ps.Finally))
-	errs = errs.Also(ps.validateBetaFields(ctx))
+	errs = errs.Also(ps.ValidateBetaFields(ctx))
 	// Validate the pipeline's workspaces.
 	errs = errs.Also(validatePipelineWorkspacesDeclarations(ps.Workspaces))
 	// Validate the pipeline's results
@@ -84,9 +84,9 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	return errs
 }
 
-// validateBetaFields returns an error if the Pipeline spec uses beta features but does not
+// ValidateBetaFields returns an error if the Pipeline spec uses beta features but does not
 // have "enable-api-fields" set to "alpha" or "beta".
-func (ps *PipelineSpec) validateBetaFields(ctx context.Context) *apis.FieldError {
+func (ps *PipelineSpec) ValidateBetaFields(ctx context.Context) *apis.FieldError {
 	var errs *apis.FieldError
 	// Object parameters
 	for i, p := range ps.Params {
@@ -133,7 +133,7 @@ func (pt *PipelineTask) validateBetaFields(ctx context.Context) *apis.FieldError
 			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "taskref.params", config.BetaAPIFields))
 		}
 	} else if pt.TaskSpec != nil {
-		errs = errs.Also(pt.TaskSpec.validateBetaFields(ctx))
+		errs = errs.Also(pt.TaskSpec.ValidateBetaFields(ctx))
 	}
 	return errs
 }

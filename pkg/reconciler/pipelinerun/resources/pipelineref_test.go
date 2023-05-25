@@ -291,12 +291,13 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 	ctx := context.Background()
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
-	pipeline := parse.MustParseV1beta1Pipeline(t, pipelineYAMLString)
 	pipelineRef := &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
 
 	testcases := []struct {
 		name         string
 		pipelineYAML string
+		wantPipeline *v1beta1.Pipeline
+		wantErr      bool
 	}{{
 		name: "v1beta1 pipeline",
 		pipelineYAML: strings.Join([]string{
@@ -304,6 +305,15 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 			"apiVersion: tekton.dev/v1beta1",
 			pipelineYAMLString,
 		}, "\n"),
+		wantPipeline: parse.MustParseV1beta1Pipeline(t, pipelineYAMLString),
+	}, {
+		name: "v1beta1 pipeline with beta features",
+		pipelineYAML: strings.Join([]string{
+			"kind: Pipeline",
+			"apiVersion: tekton.dev/v1beta1",
+			pipelineYAMLStringWithBetaFeatures,
+		}, "\n"),
+		wantPipeline: parse.MustParseV1beta1Pipeline(t, pipelineYAMLStringWithBetaFeatures),
 	}, {
 		name: "v1 pipeline",
 		pipelineYAML: strings.Join([]string{
@@ -311,6 +321,16 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 			"apiVersion: tekton.dev/v1",
 			pipelineYAMLString,
 		}, "\n"),
+		wantPipeline: parse.MustParseV1beta1Pipeline(t, pipelineYAMLString),
+	}, {
+		name: "v1 pipeline with beta features",
+		pipelineYAML: strings.Join([]string{
+			"kind: Pipeline",
+			"apiVersion: tekton.dev/v1",
+			pipelineYAMLStringWithBetaFeatures,
+		}, "\n"),
+		wantPipeline: nil,
+		wantErr:      true,
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -325,16 +345,22 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 			}, nil /*VerificationPolicies*/)
 
 			resolvedPipeline, resolvedRefSource, err := fn(ctx, pipelineRef.Name)
-			if err != nil {
-				t.Fatalf("failed to call pipelinefn: %s", err.Error())
-			}
+			if tc.wantErr {
+				if err == nil {
+					t.Errorf("expected an error when calling pipelinefunc but got none")
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("failed to call pipelinefn: %s", err.Error())
+				}
 
-			if diff := cmp.Diff(pipeline, resolvedPipeline); diff != "" {
-				t.Error(diff)
-			}
+				if diff := cmp.Diff(tc.wantPipeline, resolvedPipeline); diff != "" {
+					t.Error(diff)
+				}
 
-			if d := cmp.Diff(sampleRefSource, resolvedRefSource); d != "" {
-				t.Errorf("refSources did not match: %s", diff.PrintWantGot(d))
+				if d := cmp.Diff(sampleRefSource, resolvedRefSource); d != "" {
+					t.Errorf("refSources did not match: %s", diff.PrintWantGot(d))
+				}
 			}
 		})
 	}
@@ -899,4 +925,17 @@ spec:
         image: ubuntu
         script: |
           echo "hello world!"
+`
+
+var pipelineYAMLStringWithBetaFeatures = `
+metadata:
+  name: foo
+spec:
+  tasks:
+  - name: task1
+    taskRef:
+      resolver: git
+      params:
+      - name: name
+        value: test-task
 `
