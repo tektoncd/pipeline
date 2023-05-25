@@ -453,6 +453,25 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 		return controller.NewPermanentError(err)
 	}
 
+	// If the pipeline spec was fetched from a referenced pipeline then
+	// we expect the referenced pipeline to be fully specified since propagation of parameters
+	// is not supported for referenced pipelines. Therefore, we need to ensure
+	// explicit declaration of parameters and workspaces.
+	if pr.Spec.PipelineRef != nil {
+		if err := pipelineSpec.ValidatePipelineParameterUsage(ctx); err != nil {
+			pr.Status.MarkFailed(ReasonFailedValidation,
+				"Pipeline %s/%s can't be Run; it has an invalid param usage: %s",
+				pipelineMeta.Namespace, pipelineMeta.Name, err)
+			return controller.NewPermanentError(err)
+		}
+		if err := pipelineSpec.ValidatePipelineWorkspacesUsage(); err != nil {
+			pr.Status.MarkFailed(ReasonFailedValidation,
+				"Pipeline %s/%s can't be Run; it has an invalid workspace usage: %s",
+				pipelineMeta.Namespace, pipelineMeta.Name, err)
+			return controller.NewPermanentError(err)
+		}
+	}
+
 	// Ensure that the PipelineRun provides all the parameters required by the Pipeline
 	if err := resources.ValidateRequiredParametersProvided(&pipelineSpec.Params, &pr.Spec.Params); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
@@ -748,21 +767,23 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 		}
 	}
 
+	// Validate parameter types in matrix after apply substitutions from Task Results
 	for _, rpt := range nextRpts {
-		if rpt.IsFinalTask(pipelineRunFacts) {
-			c.setFinallyStartedTimeIfNeeded(pr, pipelineRunFacts)
-		}
-		if rpt == nil || rpt.Skip(pipelineRunFacts).IsSkipped || rpt.IsFinallySkipped(pipelineRunFacts).IsSkipped {
-			continue
-		}
-
-		// Validate parameter types in matrix after apply substitutions from Task Results
 		if rpt.PipelineTask.IsMatrixed() {
 			if err := resources.ValidateParameterTypesInMatrix(pipelineRunFacts.State); err != nil {
 				logger.Errorf("Failed to validate matrix %q with error %v", pr.Name, err)
 				pr.Status.MarkFailed(ReasonInvalidMatrixParameterTypes, err.Error())
 				return controller.NewPermanentError(err)
 			}
+		}
+	}
+
+	for _, rpt := range nextRpts {
+		if rpt.IsFinalTask(pipelineRunFacts) {
+			c.setFinallyStartedTimeIfNeeded(pr, pipelineRunFacts)
+		}
+		if rpt == nil || rpt.Skip(pipelineRunFacts).IsSkipped || rpt.IsFinallySkipped(pipelineRunFacts).IsSkipped {
+			continue
 		}
 
 		defer func() {
@@ -869,8 +890,16 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 
 	var pipelinePVCWorkspaceName string
 	var err error
+	// Propagate workspaces from pipelineRun to the taskRun.
 	tr.Spec.Workspaces, pipelinePVCWorkspaceName, err = c.getTaskrunWorkspaces(ctx, pr, rpt)
 	if err != nil {
+		return nil, err
+	}
+	// By this time, params should be propagated so we can
+	// validate their usage. However, we propagate the workspaces from pipelineRun directly to
+	// the pipeline tasks so we cannot validate workspaces. TaskRun validation will ensure that
+	// the workspaces were bound in the created taskrun.
+	if err := pr.Status.PipelineSpec.ValidatePipelineParameterUsage(ctx); err != nil {
 		return nil, err
 	}
 

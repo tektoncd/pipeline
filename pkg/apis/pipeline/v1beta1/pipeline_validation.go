@@ -51,8 +51,8 @@ func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
 	// When a Pipeline is created directly, instead of declared inline in a PipelineRun,
 	// we do not support propagated parameters and workspaces.
 	// Validate that all params and workspaces it uses are declared.
-	errs = errs.Also(p.Spec.validatePipelineParameterUsage(ctx).ViaField("spec"))
-	return errs.Also(p.Spec.validatePipelineWorkspacesUsage().ViaField("spec"))
+	errs = errs.Also(p.Spec.ValidatePipelineParameterUsage(ctx).ViaField("spec"))
+	return errs.Also(p.Spec.ValidatePipelineWorkspacesUsage().ViaField("spec"))
 }
 
 // Validate checks that taskNames in the Pipeline are valid and that the graph
@@ -330,8 +330,8 @@ func validatePipelineWorkspacesDeclarations(wss []PipelineWorkspaceDeclaration) 
 	return errs
 }
 
-// validatePipelineParameterUsage validates that parameters referenced in the Pipeline are declared by the Pipeline
-func (ps *PipelineSpec) validatePipelineParameterUsage(ctx context.Context) (errs *apis.FieldError) {
+// ValidatePipelineParameterUsage validates that parameters referenced in the Pipeline are declared by the Pipeline
+func (ps *PipelineSpec) ValidatePipelineParameterUsage(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(PipelineTaskList(ps.Tasks).validateUsageOfDeclaredPipelineTaskParameters(ctx, "tasks"))
 	errs = errs.Also(PipelineTaskList(ps.Finally).validateUsageOfDeclaredPipelineTaskParameters(ctx, "finally"))
 	errs = errs.Also(validatePipelineTaskParameterUsage(ps.Tasks, ps.Params).ViaField("tasks"))
@@ -357,8 +357,8 @@ func validatePipelineTaskParameterUsage(tasks []PipelineTask, params ParamSpecs)
 	return errs
 }
 
-// validatePipelineWorkspacesUsage validates that Workspaces referenced in the Pipeline are declared by the Pipeline
-func (ps *PipelineSpec) validatePipelineWorkspacesUsage() (errs *apis.FieldError) {
+// ValidatePipelineWorkspacesUsage validates that Workspaces referenced in the Pipeline are declared by the Pipeline
+func (ps *PipelineSpec) ValidatePipelineWorkspacesUsage() (errs *apis.FieldError) {
 	errs = errs.Also(validatePipelineTasksWorkspacesUsage(ps.Workspaces, ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validatePipelineTasksWorkspacesUsage(ps.Workspaces, ps.Finally).ViaField("finally"))
 	return errs

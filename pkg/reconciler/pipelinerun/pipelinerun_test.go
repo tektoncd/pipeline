@@ -710,6 +710,34 @@ spec:
 `),
 		parse.MustParseV1beta1Pipeline(t, `
 metadata:
+  name: a-pipeline-with-invalid-param-usage
+  namespace: foo
+spec:
+  tasks:
+    - name: some-task
+      taskSpec:
+        steps:
+          - name: some-step
+            image: some-image
+            script: $(params.doesnotexist)
+`),
+		parse.MustParseV1beta1Pipeline(t, `
+metadata:
+  name: a-pipeline-with-invalid-workspace-usage
+  namespace: foo
+spec:
+  tasks:
+    - name: some-task
+      workspaces:
+        - name: shared
+      taskSpec:
+        steps:
+          - name: some-step
+            image: some-image
+            script: some-script
+`),
+		parse.MustParseV1beta1Pipeline(t, `
+metadata:
   name: a-pipeline-without-params
   namespace: foo
 spec:
@@ -798,6 +826,38 @@ spec:
 		wantEvents: []string{
 			"Normal Started",
 			"Warning Failed Error retrieving pipeline for pipelinerun",
+		},
+	}, {
+		name: "invalid-pipeline-run-with-invalid-param-usage-in-pipeline-task",
+		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
+metadata:
+  name: pipelinerun-with-invalid-param-usage
+  namespace: foo
+spec:
+  pipelineRef:
+    name: a-pipeline-with-invalid-param-usage
+`),
+		reason:         ReasonFailedValidation,
+		permanentError: true,
+		wantEvents: []string{
+			"Normal Started",
+			"Warning Failed Pipeline foo/a-pipeline-with-invalid-param-usage can't be Run",
+		},
+	}, {
+		name: "invalid-pipeline-run-with-missing-workspace-in-pipeline",
+		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
+metadata:
+  name: pipelinerun-with-invalid-workspace-usage
+  namespace: foo
+spec:
+  pipelineRef:
+    name: a-pipeline-with-invalid-workspace-usage
+`),
+		reason:         ReasonFailedValidation,
+		permanentError: true,
+		wantEvents: []string{
+			"Normal Started",
+			"Warning Failed Pipeline foo/a-pipeline-with-invalid-workspace-usage can't be Run",
 		},
 	}, {
 		name: "invalid-pipeline-run-missing-tasks-shd-stop-reconciling",
@@ -6624,6 +6684,59 @@ func (prt PipelineRunTest) reconcileRun(namespace, pipelineRunName string, wantE
 	}
 
 	return reconciledRun, clients
+}
+
+func TestReconcile_RemotePipelineRefValidation_Failure(t *testing.T) {
+	namespace := "foo"
+	prName := "test-pipeline-run-failure"
+
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    resolver: bar
+  serviceAccountName: test-sa
+  timeout: 1h0m0s
+`, prName, namespace))}
+
+	pipelineBytes := []byte(fmt.Sprintf(`
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: invalid-pipeline-no-params-defined
+  namespace: %s
+spec:
+  tasks:
+  - name: unit-test-1
+    taskSpec:
+      steps:
+        - name: my-steps
+          image: my-image
+          script: "$(params.doesnotexist)"
+`, namespace))
+
+	pipelineReq := getResolvedResolutionRequest(t, "bar", pipelineBytes, "foo", prName)
+
+	// The Pipeline is not seeded as test data, since it is fetched via remote resolution
+	d := test.Data{
+		PipelineRuns:       prs,
+		ResolutionRequests: []*resolutionv1beta1.ResolutionRequest{&pipelineReq},
+	}
+
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	wantEvents := []string{
+		"Normal Started",
+		"Warning Failed Pipeline foo/invalid-pipeline-no-params-defined can't be Run",
+		"Warning InternalError 1 error occurred",
+	}
+	reconciledRun, _ := prt.reconcileRun(namespace, prName, wantEvents, true)
+
+	// Since the PipelineRun is invalid, the status should say it has failed
+	checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionFalse, ReasonFailedValidation)
 }
 
 func TestReconcile_RemotePipelineRef(t *testing.T) {
