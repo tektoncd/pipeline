@@ -160,8 +160,7 @@ You can reference a `Tekton bundle` in a `TaskRef` in both `v1` and `v1beta1` us
 In `v1beta1`, you can also reference a `Tekton bundle` using OCI bundle syntax, which has been deprecated in favor of remote resolution. The example shown below for `v1beta1` uses OCI bundle syntax, and requires enabling `enable-tekton-oci-bundles: "true"` feature flag.
 
 {{< tabs >}}
-{{< tab "v1 & v1beta1" >}}
-```yaml
+{{< tab header="v1 & v1beta1" code=true lang="yaml" >}}
 spec:
   pipelineRef:
     resolver: bundles
@@ -172,16 +171,13 @@ spec:
       value: mypipeline
     - name: kind
       value: Pipeline
-```
 {{< /tab >}}
 
-{{< tab "v1beta1" >}}
- ```yaml
+{{< tab header="v1beta1" code=true lang="yaml" >}}
  spec:
    pipelineRef:
      name: mypipeline
      bundle: docker.io/myrepo/mycatalog:v1.0
- ```
 {{< /tab >}}
 {{< /tabs >}}
 
@@ -706,25 +702,21 @@ map a specific `serviceAccountName` value to a specific `Task` in the `Pipeline`
 For example, if you specify these mappings:
 
 {{< tabs >}}
-{{< tab "v1" >}}
-```yaml
+{{< tab header="v1" code=true lang="yaml" >}}
 spec:
   taskRunTemplate:
     serviceAccountName: sa-1
   taskRunSpecs:
     - pipelineTaskName: build-task
       serviceAccountName: sa-for-build
-```
 {{< /tab >}}
 
-{{< tab "v1beta1" >}}
-```yaml
+{{< tab header="v1beta1" code=true lang="yaml" >}}
 spec:
   serviceAccountName: sa-1
   taskRunSpecs:
     - pipelineTaskName: build-task
       taskServiceAccountName: sa-for-build
-```
 {{< /tab >}}
 {{< /tabs >}}
 
@@ -754,8 +746,8 @@ In the following example, the `Task` defines a `volumeMount` object named `my-ca
 provisions this object for the `Task` using a `persistentVolumeClaim` and executes it as user 1001.
 
 {{< tabs >}}
-{{< tab "v1" >}}
-```yaml
+{{< tab header="v1" code=true lang="yaml" >}}
+
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
@@ -796,11 +788,10 @@ spec:
         - name: my-cache
           persistentVolumeClaim:
             claimName: my-volume-claim
-```
+
 {{< /tab >}}
 
-{{< tab "v1beta1" >}}
-```yaml
+{{< tab header="v1beta1" code=true lang="yaml" >}}
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
@@ -840,7 +831,6 @@ spec:
       - name: my-cache
         persistentVolumeClaim:
           claimName: my-volume-claim
-```
 {{< /tab >}}
 {{< /tabs >}}
 
@@ -856,8 +846,8 @@ wide `ServiceAccountName`  and [`podTemplate`](./podtemplates.md) configuration,
 for example:
 
 {{< tabs >}}
-{{< tab "v1" >}}
-```yaml
+{{< tab header="v1" code=true lang="yaml" >}}
+
 spec:
   podTemplate:
     securityContext:
@@ -870,11 +860,11 @@ spec:
       podTemplate:
         nodeSelector:
           disktype: ssd
-```
+
 {{< /tab >}}
 
-{{< tab "v1beta1" >}}
-```yaml
+{{< tab header="v1beta1" code=true lang="yaml" >}}
+
 spec:
   podTemplate:
     securityContext:
@@ -887,7 +877,7 @@ spec:
       taskPodTemplate:
         nodeSelector:
           disktype: ssd
-```
+
 {{< /tab >}}
 {{< /tabs >}}
 
