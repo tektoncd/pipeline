@@ -24,4 +24,6 @@ var (
 	ErrNoMatchedPolicies = errors.New("no policies are matched")
 	// ErrRegexMatch is returned when regex match returns error
 	ErrRegexMatch = errors.New("regex failed to match")
+	// ErrResourceNotSupported is returned when the resource type is not supported
+	ErrResourceNotSupported = errors.New("resource type not supported")
 )

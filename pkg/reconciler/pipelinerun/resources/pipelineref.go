@@ -151,7 +151,7 @@ func readRuntimeObjectAsPipeline(ctx context.Context, obj runtime.Object, k8s ku
 	switch obj := obj.(type) {
 	case *v1beta1.Pipeline:
 		// Verify the Pipeline once we fetch from the remote resolution, mutating, validation and conversion of the pipeline should happen after the verification, since signatures are based on the remote pipeline contents
-		vr := trustedresources.VerifyPipeline(ctx, obj, k8s, refSource, verificationPolicies)
+		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
 		if vr.VerificationResultType == trustedresources.VerificationError {
 			if vr.Err != nil {
 				return nil, fmt.Errorf("Pipeline verification failed for object %s: %w", obj.GetName(), vr.Err)
