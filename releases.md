@@ -41,6 +41,12 @@ Further documentation available:
 
 ## Release
 
+### v0.48
+- **Latest Release**: [v0.48.0][v0-48-0] (2023-05-25) ([docs][v0-48-0-docs], [examples][v0-48-0-examples])
+- **Initial Release**: [v0.48.0][v0-48-0] (2023-05-25)
+- **Estimated End of Life**: 2023-06-25
+- **Patch Releases**: [v0.48.0][v0-48-0]
+
 ### v0.46
 
 - **Latest Release**: [v0.46.0][v0-46-0] (2023-03-17) ([docs][v0-46-0-docs], [examples][v0-46-0-examples])
