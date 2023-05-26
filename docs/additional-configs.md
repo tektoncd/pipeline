@@ -237,9 +237,10 @@ not running.
 and use Workspaces to mount credentials from Secrets instead.
 The default is `false`. For more information, see the [associated issue](https://github.com/tektoncd/pipeline/issues/3399).
 
-- `enable-api-fields`: set this flag to "stable" to allow only the
-most stable features to be used. Set it to "alpha" to allow [alpha
-features](#alpha-features) to be used.
+- `enable-api-fields`: When using v1beta1 APIs, setting this field to "stable" or "beta"
+enables [beta features](#beta-features). When using v1 APIs, setting this field to "stable"
+allows only stable features, and setting it to "beta" allows only beta features.
+Set this field to "alpha" to allow [alpha features](#alpha-features) to be used.
 
 - `trusted-resources-verification-no-match-policy`: Setting this flag to `fail` will fail the taskrun/pipelinerun if no matching policies found. Setting to `warn` will skip verification and log a warning if no matching policies are found, but not fail the taskrun/pipelinerun. Setting to `ignore` will skip verification if no matching policies found.
 Defaults to "ignore".

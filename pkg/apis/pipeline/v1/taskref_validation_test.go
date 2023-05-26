@@ -92,6 +92,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 				Resolver: "git",
 			},
 		},
+		wc:      config.EnableStableAPIFields,
 		wantErr: apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\""),
 	}, {
 		name: "taskref params disallowed without beta feature gate",
@@ -100,6 +101,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 				Params: v1.Params{},
 			},
 		},
+		wc:      config.EnableStableAPIFields,
 		wantErr: apis.ErrMissingField("resolver").Also(apis.ErrGeneric("resolver params requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"")),
 	}, {
 		name: "taskref params disallowed without resolver",

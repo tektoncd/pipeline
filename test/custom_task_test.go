@@ -721,16 +721,26 @@ func resetConfigMap(ctx context.Context, t *testing.T, c *clients, namespace, co
 
 func getFeatureFlagsBaseOnAPIFlag(t *testing.T) *config.FeatureFlags {
 	t.Helper()
-	alphaFeatureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
+	alphaFeatureFlags, err := config.NewFeatureFlagsFromMap(map[string]string{
 		"enable-api-fields":         "alpha",
 		"results-from":              "sidecar-logs",
 		"enable-tekton-oci-bundles": "true",
 	})
-	betaFeatureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
+	if err != nil {
+		t.Fatalf("error creating alpha feature flags configmap: %v", err)
+	}
+	betaFeatureFlags, err := config.NewFeatureFlagsFromMap(map[string]string{
 		"enable-api-fields": "beta",
 	})
-	stableFeatureFlags := config.DefaultFeatureFlags.DeepCopy()
-
+	if err != nil {
+		t.Fatalf("error creating beta feature flags configmap: %v", err)
+	}
+	stableFeatureFlags, err := config.NewFeatureFlagsFromMap(map[string]string{
+		"enable-api-fields": "stable",
+	})
+	if err != nil {
+		t.Fatalf("error creating stable feature flags configmap: %v", err)
+	}
 	enabledFeatureGate, err := getAPIFeatureGate()
 	if err != nil {
 		t.Fatalf("error reading enabled feature gate: %v", err)

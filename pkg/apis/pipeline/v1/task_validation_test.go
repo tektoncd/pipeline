@@ -1730,12 +1730,13 @@ func TestTaskBetaFields(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := config.EnableStableAPIFields(context.Background())
 			task := v1.Task{ObjectMeta: metav1.ObjectMeta{Name: "foo"}, Spec: tt.spec}
-			if err := task.Validate(context.Background()); err == nil {
+			if err := task.Validate(ctx); err == nil {
 				t.Errorf("no error when using beta field when `enable-api-fields` is stable")
 			}
 
-			ctx := config.EnableBetaAPIFields(context.Background())
+			ctx = config.EnableBetaAPIFields(context.Background())
 			if err := task.Validate(ctx); err != nil {
 				t.Errorf("unexpected error when using beta field: %s", err)
 			}

@@ -4595,7 +4595,7 @@ status:
   provenance:
     featureFlags:
       RunningInEnvWithInjectedSidecars: true
-      EnableAPIFields: "stable"
+      EnableAPIFields: "beta"
       AwaitSidecarReadiness: true
       VerificationNoMatchPolicy: "ignore"
       EnableProvenanceInStatus: true
@@ -4752,7 +4752,7 @@ status:
   provenance:
     featureFlags:
       RunningInEnvWithInjectedSidecars: true
-      EnableAPIFields: "stable"
+      EnableAPIFields: "beta"
       AwaitSidecarReadiness: true
       VerificationNoMatchPolicy: "ignore"
       EnableProvenanceInStatus: true

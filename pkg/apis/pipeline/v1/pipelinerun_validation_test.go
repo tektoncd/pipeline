@@ -931,7 +931,8 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 				},
 			},
 		},
-		wantErr: apis.ErrGeneric("stepSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
+		withContext: config.EnableStableAPIFields,
+		wantErr:     apis.ErrGeneric("stepSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
 	}, {
 		name: "sidecarSpec disallowed without alpha feature gate",
 		spec: v1.PipelineRunSpec{
@@ -948,7 +949,8 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 				},
 			},
 		},
-		wantErr: apis.ErrGeneric("sidecarSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
+		withContext: config.EnableStableAPIFields,
+		wantErr:     apis.ErrGeneric("sidecarSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
 	}, {
 		name: "missing stepSpecs name",
 		spec: v1.PipelineRunSpec{
@@ -1035,7 +1037,8 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 				},
 			},
 		},
-		wantErr: apis.ErrGeneric("computeResources requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
+		withContext: config.EnableStableAPIFields,
+		wantErr:     apis.ErrGeneric("computeResources requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
 	}}
 
 	for _, ps := range tests {

@@ -44,7 +44,8 @@ func TestPipelineRef_Invalid(t *testing.T) {
 				Resolver: "foo",
 			},
 		},
-		wantErr: apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\""),
+		withContext: config.EnableStableAPIFields,
+		wantErr:     apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\""),
 	}, {
 		name: "pipelineref params disallowed without beta feature gate",
 		ref: &v1.PipelineRef{
@@ -52,7 +53,8 @@ func TestPipelineRef_Invalid(t *testing.T) {
 				Params: v1.Params{},
 			},
 		},
-		wantErr: apis.ErrMissingField("resolver").Also(apis.ErrGeneric("resolver params requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"")),
+		withContext: config.EnableStableAPIFields,
+		wantErr:     apis.ErrMissingField("resolver").Also(apis.ErrGeneric("resolver params requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"")),
 	}, {
 		name: "pipelineref params disallowed without resolver",
 		ref: &v1.PipelineRef{

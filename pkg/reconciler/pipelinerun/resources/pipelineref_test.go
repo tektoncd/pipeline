@@ -315,7 +315,7 @@ func TestGetPipelineFuncSpecAlreadyFetched(t *testing.T) {
 }
 
 func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
-	ctx := context.Background()
+	ctx := config.EnableStableAPIFields(context.Background())
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
 	pipelineRef := &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
