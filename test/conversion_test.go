@@ -63,13 +63,6 @@ spec:
     env:
     - name: MY_VAR1
       value: foo
-    resources:
-      inputs:
-      - name: workspace
-        resource: source-repo
-      outputs:
-      - name: workspace
-        resource: source-repo
     volumeMounts:
       - name: messages
         mountPath: /messages
@@ -91,13 +84,6 @@ spec:
     env:
     - name: MY_VAR1
       value: foo
-    resources:
-      inputs:
-      - name: workspaces
-        resource: source-repo
-      outputs:
-      - name: workspace
-        resource: source-repo
     volumeMounts:
     - name: messages
       mountPath: /messages
@@ -113,13 +99,6 @@ spec:
     env:
     - name: MY_VAR1
       value: foo
-    resources:
-      inputs:
-      - name: workspace
-        resource: source-repo
-      outputs:
-      - name: workspace
-        resource: source-repo
     volumeMounts:
     - name: messages
       mountPath: /messages
@@ -161,13 +140,6 @@ spec:
     env:
     - name: MY_VAR1
       value: foo
-    resources:
-      inputs:
-      - name: workspace
-        resource: source-repo
-      outputs:
-      - name: workspace
-        resource: source-repo
     volumeMounts:
       - name: messages
         mountPath: /messages
@@ -204,13 +176,6 @@ spec:
     env:
     - name: MY_VAR1
       value: foo
-    resources:
-      inputs:
-      - name: workspace
-        resource: source-repo
-      outputs:
-      - name: workspace
-        resource: source-repo
     readinessProbe:
       periodSeconds: 1
     volumeMounts:
@@ -351,7 +316,6 @@ spec:
   params:
   - name: STRING_LENGTH
     value: 1
-    type: string
   serviceAccountName: default
   taskSpec:
     steps:
@@ -368,7 +332,7 @@ spec:
       emptyDir: {}
   podTemplate:
     securityContext:
-      allowPrivilegeEscalation: false
+      fsGroup: 65532
 `
 
 	v1beta1TaskRunExpectedYaml = `
@@ -385,7 +349,7 @@ spec:
   timeout: 60s
   podTemplate:
     securityContext:
-      allowPrivilegeEscalation: false
+      fsGroup: 65532
   taskSpec:
     steps:
     - computeResources: {}
@@ -437,7 +401,7 @@ spec:
   timeout: 60s
   podTemplate:
     securityContext:
-      allowPrivilegeEscalation: false
+      fsGroup: 65532
   workspaces:
   - emptyDir: {}
     name: output     
@@ -467,7 +431,7 @@ spec:
   timeout: 60s
   podTemplate:
     securityContext:
-      allowPrivilegeEscalation: false
+      fsGroup: 65532
   workspaces:
     - emptyDir: {}
       name: output 
@@ -512,21 +476,26 @@ spec:
   params:
   - name: STRING_LENGTH
     value: 1
-    type: string
   serviceAccountName: default
   workspaces:
-  - name: password-vault
-    secret:
-      secretName: secret-password
+  - name: empty-dir
+    emptyDir: {}
   timeout: 60s
   pipelineSpec:
+    workspaces:
+    - name: empty-dir
     tasks:
-    - name: fetch-secure-data
+    - name: hello-task
+      workspaces:
+      - name: dir
+        workspace: empty-dir
       taskSpec:
         steps:
-        - name: fetch-and-write-secure
+        - name: echo-hello
           image: ubuntu
-          script: echo hello
+          script: |
+            ls $(workspaces.dir.path)
+            echo hello
 `
 
 	v1beta1PipelineRunExpectedYaml = `
@@ -537,22 +506,27 @@ spec:
   params:
   - name: STRING_LENGTH
     value: 1
-    type: string
   timeouts:
     pipeline: 60s
   workspaces:
-  - name: password-vault
-    secret:
-      secretName: secret-password
+  - name: empty-dir
+    emptyDir: {}
   serviceAccountName: default
   pipelineSpec:
+    workspaces:
+    - name: empty-dir
     tasks:
-    - name: fetch-secure-data
+    - name: hello-task
+      workspaces:
+      - name: dir
+        workspace: empty-dir
       taskSpec:
         steps:
-        - name: fetch-and-write-secure
+        - name: echo-hello
           image: ubuntu
-          script: echo hello
+          script: |
+            ls $(workspaces.dir.path)
+            echo hello
 status:
   conditions:
   - type: Succeeded
@@ -560,16 +534,23 @@ status:
     reason: "Succeeded"
   pipelineSpec:
     tasks:
-    - name: fetch-secure-data
+    - name: hello-task
       taskSpec:
         name: cluster-task-pipeline-4
         steps:
-        - name: "fetch-and-write-secure"
+        - name: "echo-hello"
           image: "ubuntu"
-          script: "echo hello"
+          script: |
+            ls $(workspaces.dir.path)
+            echo hello
+      workspaces:
+      - name: dir
+        workspace: empty-dir
+    workspaces:
+    - name: empty-dir
   childReferences:
-    - name: %s-fetch-secure-data
-      pipelineTaskName: fetch-secure-data
+    - name: %s-hello-task
+      pipelineTaskName: hello-task
       apiVersion: tekton.dev/v1beta1
       kind: TaskRun
 `
@@ -582,21 +563,29 @@ spec:
   params:
   - name: STRING_LENGTH
     value: 1
-    type: string
+  workspaces:
+  - name: empty-dir
+    emptyDir: {}
   pipelineSpec:
+    workspaces:
+    - name: empty-dir
     tasks:
-    - name: fetch-secure-data
+    - name: hello-task
+      workspaces:
+      - name: dir
+        workspace: empty-dir
       taskSpec:
         steps:
-        - name: fetch-and-write-secure
+        - name: echo-hello
           image: ubuntu
-          script: echo hello
+          script: |
+            ls $(workspaces.dir.path)
+            echo hello
   timeouts:
     pipeline: 60s
   workspaces:
-  - name: password-vault
-    secret:
-      secretName: secret-password
+  - name: empty-dir
+    emptyDir: {}
   taskRunTemplate: {
     serviceAccountName: default
   }
@@ -610,21 +599,26 @@ spec:
   params:
   - name: STRING_LENGTH
     value: 1
-    type: string
   pipelineSpec:
+    workspaces:
+    - name: empty-dir
     tasks:
-    - name: fetch-secure-data
+    - name: hello-task
+      workspaces:
+      - name: dir
+        workspace: empty-dir
       taskSpec:
         steps:
-        - name: fetch-and-write-secure
+        - name: echo-hello
           image: ubuntu
-          script: echo hello
+          script: |
+            ls $(workspaces.dir.path)
+            echo hello
   timeouts:
     pipeline: 60s
   workspaces:
-  - name: password-vault
-    secret:
-      secretName: secret-password
+  - name: empty-dir
+    emptyDir: {}
   taskRunTemplate: {
     serviceAccountName: default
   }
@@ -635,18 +629,25 @@ status:
     reason: "Succeeded"
   pipelineSpec:
     tasks:
-    - name: fetch-secure-data
+    - name: hello-task
       taskSpec:
         name: cluster-task-pipeline-4
         steps:
-        - name: "fetch-and-write-secure"
+        - name: "echo-hello"
           image: "ubuntu"
-          script: "echo hello"
+          script: |
+            ls $(workspaces.dir.path)
+            echo hello
+      workspaces:
+        - name: dir
+          workspace: empty-dir
+    workspaces:
+    - name: empty-dir
   childReferences:
     - apiVersion: tekton.dev/v1beta1
       kind: TaskRun
-      name: %s-fetch-secure-data
-      pipelineTaskName: fetch-secure-data
+      name: %s-hello-task
+      pipelineTaskName: hello-task
 `
 )
 
