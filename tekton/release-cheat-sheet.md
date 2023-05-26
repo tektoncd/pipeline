@@ -10,9 +10,9 @@ the pipelines repo, a terminal window and a text editor.
 
 1. `cd` to root of Pipelines git checkout.
 
-1. Select the commit you would like to build the release from, most likely the
-   most recent commit at https://github.com/tektoncd/pipeline/commits/main
-   and note the commit's full (40-digit) hash.
+1. Select the commit you would like to build the release from (NOTE: the commit is full (40-digit) hash.)
+    - Select the most recent commit on the ***main branch*** if you are cutting a major or minor release i.e. `x.0.0` or `0.x.0`
+    - Select the most recent commit on the ***`release-<version number>x` branch***, e.g. [`release-v0.47.x`](https://github.com/tektoncd/pipeline/tree/release-v0.47.x) if you are patching a release i.e. `v0.47.2`.
 
 1. Ensure the correct version of the release pipeline is installed on the cluster:
 
@@ -143,6 +143,7 @@ the pipelines repo, a terminal window and a text editor.
    and push it to the repo https://github.com/tektoncd/pipeline.
    (This can be done on the Github UI.)
    Make sure to fetch the commit specified in `TEKTON_RELEASE_GIT_SHA` to create the released branch.
+   > Background: The reason why we need to create a branch for the release named `release-<version number>x` is for future patch releases. Cherrypicked PRs for the patch release will be merged to this branch. For example, [v0.47.0](https://github.com/tektoncd/pipeline/releases/tag/v0.47.0) has been already released, but later on we found that an important [PR](https://github.com/tektoncd/pipeline/pull/6622) should have been included to that release. Therefore, we need to do a patch release i.e. v0.47.1 by [cherrypicking this PR](https://github.com/tektoncd/pipeline/pull/6622#pullrequestreview-1414804838), which will trigger [tekton-robot to create a new PR](https://github.com/tektoncd/pipeline/pull/6622#issuecomment-1539030091) to merge the changes to the [release-v0.47.x branch](https://github.com/tektoncd/pipeline/tree/release-v0.47.x).
 
 1. If the release introduces a new minimum version of Kubernetes required,
    edit `README.md` on `main` branch and add the new requirement with in the
