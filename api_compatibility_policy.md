@@ -70,14 +70,14 @@ and follows the [beta policy](#beta-crds) for backwards incompatible changes.
 
 - We will not make any backwards incompatible changes to fields that are stable without incrementing the api version.
 
-- Alpha and Beta features may be present within a stable API version. However, they will not be enabled by default and must be enabled by setting `enable-api-fields` to `alpha` or `beta`.
+- Alpha and Beta features may be present within a stable API version. Alpha features will not be enabled by default and must be enabled by setting `enable-api-fields` to `alpha`. To disable beta features as well, set `enable-api-fields` to `stable`.
 
 ## Feature Gates
 
 CRD API versions gate the overall stability of the CRD and its default behaviors. Within a particular CRD version, certain opt-in features may be at a lower stability level as described in [TEP-33](https://github.com/tektoncd/community/blob/main/teps/0033-tekton-feature-gates.md). These fields may be disabled by default and can be enabled by setting the right `enable-api-fields` feature-flag as described in TEP-33:
 
-* `stable` (default) - This value indicates that only fields of the highest stability level are enabled; For `beta` CRDs, this means only     beta stability fields are enabled, i.e. `alpha` fields are not enabled. For  `GA` CRDs, this means only `GA` fields are enabled by defaultd, i.e. `beta` and `alpha` fields would not be enabled.
-* `beta` - This value indicates that only fields which are of `beta` (or greater) stability are enabled, i.e. `alpha` fields are not enabled. 
+* `stable` - This value indicates that only fields of the highest stability level are enabled; For `beta` CRDs, this means only beta stability fields are enabled, i.e. `alpha` fields are not enabled. For `GA` CRDs, this means only `GA` fields are enabled, i.e. `beta` and `alpha` fields would not be enabled.
+* `beta` (default) - This value indicates that only fields which are of `beta` (or greater) stability are enabled, i.e. `alpha` fields are not enabled. 
 * `alpha` - This value indicates that fields of all stability levels are enabled, specifically `alpha`, `beta` and `GA`.
 
 
@@ -101,7 +101,7 @@ See the current list of [alpha features](https://github.com/tektoncd/pipeline/bl
 
 ### Beta features
 
-- Beta features in GA CRDs are disabled by default and must be enabled by [setting `enable-api-fields` to `beta`](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#beta-features). In beta API versions, beta features are enabled by default.
+- Beta features are enabled by default and can be disabled by [setting `enable-api-fields` to `stable`](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#beta-features).
 
 - Beta features may be deprecated or changed in a backwards incompatible way by following the same process as [Beta CRDs](#beta-crds) 
   i.e. by providing a 9 month support period.

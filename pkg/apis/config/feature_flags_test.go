@@ -144,7 +144,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		},
 		{
 			expectedConfig: &config.FeatureFlags{
-				EnableAPIFields:                  "stable",
+				EnableAPIFields:                  config.DefaultEnableAPIFields,
 				VerificationNoMatchPolicy:        config.DefaultNoMatchPolicyConfig,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,

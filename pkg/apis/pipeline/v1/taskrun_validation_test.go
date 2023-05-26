@@ -640,6 +640,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				Breakpoint: []string{"onFailure"},
 			},
 		},
+		wc:      config.EnableStableAPIFields,
 		wantErr: apis.ErrGeneric("debug requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}, {
 		name: "invalid breakpoint",
@@ -666,6 +667,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				},
 			}},
 		},
+		wc:      config.EnableStableAPIFields,
 		wantErr: apis.ErrGeneric("stepSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}, {
 		name: "sidecarSpec disallowed without alpha feature gate",
@@ -680,6 +682,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				},
 			}},
 		},
+		wc:      config.EnableStableAPIFields,
 		wantErr: apis.ErrGeneric("sidecarSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}, {
 		name: "duplicate stepSpecs names",
@@ -776,6 +779,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				},
 			},
 		},
+		wc:      config.EnableStableAPIFields,
 		wantErr: apis.ErrGeneric("computeResources requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}}
 

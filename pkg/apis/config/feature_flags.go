@@ -59,7 +59,7 @@ const (
 	// DefaultEnableTektonOciBundles is the default value for "enable-tekton-oci-bundles".
 	DefaultEnableTektonOciBundles = false
 	// DefaultEnableAPIFields is the default value for "enable-api-fields".
-	DefaultEnableAPIFields = StableAPIFields
+	DefaultEnableAPIFields = BetaAPIFields
 	// DefaultSendCloudEventsForRuns is the default value for "send-cloudevents-for-runs".
 	DefaultSendCloudEventsForRuns = false
 	// EnforceNonfalsifiabilityWithSpire is the value used for  "enable-nonfalsifiability" when SPIRE is used to enable non-falsifiability.

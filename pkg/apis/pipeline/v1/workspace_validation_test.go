@@ -186,6 +186,7 @@ func TestWorkspaceBindingValidateInvalid(t *testing.T) {
 				Driver: "csi-driver",
 			},
 		},
+		wc: config.EnableStableAPIFields,
 	}, {
 		name: "Provide csi without a driver",
 		binding: &v1.WorkspaceBinding{
