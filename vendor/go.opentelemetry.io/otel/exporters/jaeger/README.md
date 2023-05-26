@@ -2,7 +2,7 @@
 
 [![Go Reference](https://pkg.go.dev/badge/go.opentelemetry.io/otel/exporters/jaeger.svg)](https://pkg.go.dev/go.opentelemetry.io/otel/exporters/jaeger)
 
-[OpenTelemetry span exporter for Jaeger](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/sdk_exporters/jaeger.md) implementation.
+[OpenTelemetry span exporter for Jaeger](https://github.com/open-telemetry/opentelemetry-specification/blob/v1.20.0/specification/trace/sdk_exporters/jaeger.md) implementation.
 
 ## Installation
 
@@ -46,5 +46,5 @@ When re-generating Thrift code in the future, please adapt import paths as neces
 ## References
 
 - [Jaeger](https://www.jaegertracing.io/)
-- [OpenTelemetry to Jaeger Transformation](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/sdk_exporters/jaeger.md)
-- [OpenTelemetry Environment Variable Specification](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md)
+- [OpenTelemetry to Jaeger Transformation](https://github.com/open-telemetry/opentelemetry-specification/blob/v1.20.0/specification/trace/sdk_exporters/jaeger.md)
+- [OpenTelemetry Environment Variable Specification](https://github.com/open-telemetry/opentelemetry-specification/blob/v1.20.0/specification/sdk-environment-variables.md#jaeger-exporter)
