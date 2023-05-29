@@ -406,10 +406,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 		message := fmt.Sprintf("PipelineRun %s/%s awaiting remote resource", pr.Namespace, pr.Name)
 		pr.Status.MarkRunning(ReasonResolvingPipelineRef, message)
 		return nil
-	case errors.Is(err, trustedresources.ErrResourceVerificationFailed):
-		message := fmt.Sprintf("PipelineRun %s/%s referred pipeline failed signature verification", pr.Namespace, pr.Name)
-		pr.Status.MarkFailed(ReasonResourceVerificationFailed, message)
-		return controller.NewPermanentError(err)
 	case err != nil:
 		logger.Errorf("Failed to determine Pipeline spec to use for pipelinerun %s: %v", pr.Name, err)
 		pr.Status.MarkFailed(ReasonCouldntGetPipeline,
@@ -421,6 +417,12 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 		if err := storePipelineSpecAndMergeMeta(ctx, pr, pipelineSpec, pipelineMeta); err != nil {
 			logger.Errorf("Failed to store PipelineSpec on PipelineRun.Status for pipelinerun %s: %v", pr.Name, err)
 		}
+	}
+
+	if pipelineMeta.VerificationResult != nil && pipelineMeta.VerificationResult.VerificationResultType == trustedresources.VerificationError {
+		err := fmt.Errorf("PipelineRun %s/%s referred pipeline failed signature verification: %w", pr.Namespace, pr.Name, pipelineMeta.VerificationResult.Err)
+		pr.Status.MarkFailed(ReasonResourceVerificationFailed, err.Error())
+		return controller.NewPermanentError(err)
 	}
 
 	d, err := dag.Build(v1beta1.PipelineTaskList(pipelineSpec.Tasks), v1beta1.PipelineTaskList(pipelineSpec.Tasks).Deps())
