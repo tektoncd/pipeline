@@ -17,16 +17,21 @@ limitations under the License.
 package trustedresources
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"crypto/elliptic"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/trustedresources/verifier"
@@ -40,6 +45,39 @@ import (
 const (
 	namespace = "trusted-resources"
 )
+
+var unsignedTask = v1.Task{
+	TypeMeta: metav1.TypeMeta{
+		APIVersion: "tekton.dev/v1",
+		Kind:       "Task"},
+	ObjectMeta: metav1.ObjectMeta{
+		Name:        "task",
+		Annotations: map[string]string{"foo": "bar"},
+	},
+	Spec: v1.TaskSpec{
+		Steps: []v1.Step{{
+			Image: "ubuntu",
+			Name:  "echo",
+		}},
+	},
+}
+
+var unsignedPipeline = v1.Pipeline{
+	TypeMeta: metav1.TypeMeta{
+		APIVersion: "tekton.dev/v1",
+		Kind:       "Pipeline"},
+	ObjectMeta: metav1.ObjectMeta{
+		Name:        "pipeline",
+		Annotations: map[string]string{"foo": "bar"},
+	},
+	Spec: v1.PipelineSpec{
+		Tasks: []v1.PipelineTask{
+			{
+				Name: "task",
+			},
+		},
+	},
+}
 
 func TestVerifyInterface_Task_Success(t *testing.T) {
 	sv, _, err := signature.NewDefaultECDSASignerVerifier()
@@ -502,6 +540,57 @@ func TestVerifyResource_Pipeline_Error(t *testing.T) {
 	}
 }
 
+func TestVerifyResource_V1Task_Success(t *testing.T) {
+	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
+	signedTask, err := getSignedV1Task(unsignedTask.DeepCopy(), signer, "signed")
+	if err != nil {
+		t.Error(err)
+	}
+	vr := VerifyResource(context.Background(), signedTask, k8sclient, &v1beta1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"}, vps)
+	if vr.VerificationResultType != VerificationPass {
+		t.Errorf("VerificationResult mismatch: want %v, got %v", VerificationPass, vr.VerificationResultType)
+	}
+}
+func TestVerifyResource_V1Task_Error(t *testing.T) {
+	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
+	signedTask, err := getSignedV1Task(unsignedTask.DeepCopy(), signer, "signed")
+	if err != nil {
+		t.Error(err)
+	}
+	modifiedTask := signedTask.DeepCopy()
+	modifiedTask.Annotations["foo"] = "modified"
+	vr := VerifyResource(context.Background(), modifiedTask, k8sclient, &v1beta1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"}, vps)
+	if vr.VerificationResultType != VerificationError && !errors.Is(vr.Err, ErrResourceVerificationFailed) {
+		t.Errorf("VerificationResult mismatch: want %v, got %v", VerificationResult{VerificationResultType: VerificationError, Err: ErrResourceVerificationFailed}, vr)
+	}
+}
+
+func TestVerifyResource_V1Pipeline_Success(t *testing.T) {
+	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
+	signed, err := getSignedV1Pipeline(unsignedPipeline.DeepCopy(), signer, "signed")
+	if err != nil {
+		t.Error(err)
+	}
+	vr := VerifyResource(context.Background(), signed, k8sclient, &v1beta1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"}, vps)
+	if vr.VerificationResultType != VerificationPass {
+		t.Errorf("VerificationResult mismatch: want %v, got %v", VerificationPass, vr.VerificationResultType)
+	}
+}
+
+func TestVerifyResource_V1Pipeline_Error(t *testing.T) {
+	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
+	signed, err := getSignedV1Pipeline(unsignedPipeline.DeepCopy(), signer, "signed")
+	if err != nil {
+		t.Error(err)
+	}
+	modifiedTask := signed.DeepCopy()
+	modifiedTask.Annotations["foo"] = "modified"
+	vr := VerifyResource(context.Background(), modifiedTask, k8sclient, &v1beta1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"}, vps)
+	if vr.VerificationResultType != VerificationError && !errors.Is(vr.Err, ErrResourceVerificationFailed) {
+		t.Errorf("VerificationResult mismatch: want %v, got %v", VerificationResult{VerificationResultType: VerificationError, Err: ErrResourceVerificationFailed}, vr)
+	}
+}
+
 func TestVerifyResource_TypeNotSupported(t *testing.T) {
 	resource := v1beta1.ClusterTask{}
 	refSource := &v1beta1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"}
@@ -572,7 +661,7 @@ func TestPrepareObjectMeta(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			task, signature, err := prepareObjectMeta(*tc.objectmeta)
+			task, signature, err := prepareObjectMeta(tc.objectmeta)
 			if err != nil {
 				t.Fatalf("got unexpected err: %v", err)
 			}
@@ -585,4 +674,51 @@ func TestPrepareObjectMeta(t *testing.T) {
 			}
 		})
 	}
+}
+
+func signInterface(signer signature.Signer, i interface{}) ([]byte, error) {
+	if signer == nil {
+		return nil, fmt.Errorf("signer is nil")
+	}
+	b, err := json.Marshal(i)
+	if err != nil {
+		return nil, err
+	}
+	h := sha256.New()
+	h.Write(b)
+
+	sig, err := signer.SignMessage(bytes.NewReader(h.Sum(nil)))
+	if err != nil {
+		return nil, err
+	}
+
+	return sig, nil
+}
+
+func getSignedV1Task(unsigned *v1.Task, signer signature.Signer, name string) (*v1.Task, error) {
+	signed := unsigned.DeepCopy()
+	signed.Name = name
+	if signed.Annotations == nil {
+		signed.Annotations = map[string]string{}
+	}
+	signature, err := signInterface(signer, signed)
+	if err != nil {
+		return nil, err
+	}
+	signed.Annotations[SignatureAnnotation] = base64.StdEncoding.EncodeToString(signature)
+	return signed, nil
+}
+
+func getSignedV1Pipeline(unsigned *v1.Pipeline, signer signature.Signer, name string) (*v1.Pipeline, error) {
+	signed := unsigned.DeepCopy()
+	signed.Name = name
+	if signed.Annotations == nil {
+		signed.Annotations = map[string]string{}
+	}
+	signature, err := signInterface(signer, signed)
+	if err != nil {
+		return nil, err
+	}
+	signed.Annotations[SignatureAnnotation] = base64.StdEncoding.EncodeToString(signature)
+	return signed, nil
 }
