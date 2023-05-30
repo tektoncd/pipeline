@@ -101,6 +101,10 @@ spec:
           value: config-leader-election
         - name: CONFIG_FEATURE_FLAGS_NAME
           value: feature-flags
+        # If you change PROBES_PORT, you will also need to change the
+        # containerPort "probes" to the same value.
+        - name: PROBES_PORT
+          value: "8080"
         # If you change WEBHOOK_PORT, you will also need to change the
         # containerPort "https-webhook" to the same value.
         - name: WEBHOOK_PORT
@@ -139,6 +143,7 @@ spec:
         # This must match the value of the environment variable WEBHOOK_PORT.
         - name: https-webhook
           containerPort: 8443
+        # This must match the value of the environment variable PROBES_PORT.
         - name: probes
           containerPort: 8080
         livenessProbe:
@@ -179,15 +184,16 @@ spec:
   # Define metrics and profiling for them to be accessible within service meshes.
   - name: http-metrics
     port: 9090
-    targetPort: 9090
+    targetPort: metrics
   - name: http-profiling
     port: 8008
-    targetPort: 8008
+    targetPort: profiling
   - name: https-webhook
     port: 443
     targetPort: https-webhook
   - name: probes
     port: 8080
+    targetPort: probes
   selector:
     app.kubernetes.io/name: webhook
     app.kubernetes.io/component: webhook
