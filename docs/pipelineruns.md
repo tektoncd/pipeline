@@ -567,7 +567,7 @@ status:
 
 ##### Object Parameters
 
-**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
+Object params is a [beta feature](./additional-configs.md#beta-features).
 
 When using an inlined spec, object parameters from the parent `PipelineRun` will also be
 propagated to any inlined specs without needing to be explicitly defined. This
