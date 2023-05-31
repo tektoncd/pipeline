@@ -36,6 +36,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
@@ -4925,6 +4926,24 @@ spec:
 		t.Fatal("fail to marshal task", err)
 	}
 
+	noMatchPolicy := []*v1alpha1.VerificationPolicy{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "no-match",
+			Namespace: ts.Namespace,
+		},
+		Spec: v1alpha1.VerificationPolicySpec{
+			Resources: []v1alpha1.ResourcePattern{{Pattern: "no-match"}},
+		}}}
+	// warnPolicy doesn't contain keys so it will fail verification but doesn't fail the run
+	warnPolicy := []*v1alpha1.VerificationPolicy{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "warn-policy",
+			Namespace: ts.Namespace,
+		},
+		Spec: v1alpha1.VerificationPolicySpec{
+			Resources: []v1alpha1.ResourcePattern{{Pattern: ".*"}},
+			Mode:      v1alpha1.ModeWarn,
+		}}}
 	tr := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: test-taskrun
@@ -4939,41 +4958,67 @@ spec:
 status:
   podName: the-pod
 `, resolverName))
+	testCases := []struct {
+		name                 string
+		task                 []*v1beta1.Task
+		noMatchPolicy        string
+		verificationPolicies []*v1alpha1.VerificationPolicy
+	}{{
+		name:                 "ignore no match policy",
+		noMatchPolicy:        config.IgnoreNoMatchPolicy,
+		verificationPolicies: noMatchPolicy,
+	}, {
+		name:                 "warn no match policy",
+		noMatchPolicy:        config.WarnNoMatchPolicy,
+		verificationPolicies: noMatchPolicy,
+	}, {
+		name:                 "pass enforce policy",
+		noMatchPolicy:        config.FailNoMatchPolicy,
+		verificationPolicies: vps,
+	}, {
+		name:                 "only fail warn policy",
+		noMatchPolicy:        config.FailNoMatchPolicy,
+		verificationPolicies: warnPolicy,
+	},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cms := []*corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+					Data: map[string]string{
+						"trusted-resources-verification-no-match-policy": tc.noMatchPolicy,
+					},
+				},
+			}
+			rr := getResolvedResolutionRequest(t, resolverName, signedTaskBytes, tr.Namespace, tr.Name)
+			d := test.Data{
+				TaskRuns:             []*v1beta1.TaskRun{tr},
+				ConfigMaps:           cms,
+				VerificationPolicies: tc.verificationPolicies,
+				ResolutionRequests:   []*resolutionv1beta1.ResolutionRequest{&rr},
+			}
 
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"trusted-resources-verification-no-match-policy": config.FailNoMatchPolicy,
-			},
-		},
-	}
-	rr := getResolvedResolutionRequest(t, resolverName, signedTaskBytes, tr.Namespace, tr.Name)
-	d := test.Data{
-		TaskRuns:             []*v1beta1.TaskRun{tr},
-		ConfigMaps:           cms,
-		VerificationPolicies: vps,
-		ResolutionRequests:   []*resolutionv1beta1.ResolutionRequest{&rr},
-	}
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			createServiceAccount(t, testAssets, tr.Spec.ServiceAccountName, tr.Namespace)
+			err = testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
 
-	testAssets, cancel := getTaskRunController(t, d)
-	defer cancel()
-	createServiceAccount(t, testAssets, tr.Spec.ServiceAccountName, tr.Namespace)
-	err = testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
-
-	if ok, _ := controller.IsRequeueKey(err); !ok {
-		t.Errorf("Error reconciling TaskRun. Got error %v", err)
-	}
-	tr, err = testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("getting updated taskrun: %v", err)
-	}
-	condition := tr.Status.GetCondition(apis.ConditionSucceeded)
-	if condition == nil || condition.Status != corev1.ConditionUnknown {
-		t.Errorf("Expected fresh TaskRun to have in progress status, but had %v", condition)
-	}
-	if condition != nil && condition.Reason != v1beta1.TaskRunReasonRunning.String() {
-		t.Errorf("Expected reason %q but was %s", v1beta1.TaskRunReasonRunning.String(), condition.Reason)
+			if ok, _ := controller.IsRequeueKey(err); !ok {
+				t.Errorf("Error reconciling TaskRun. Got error %v", err)
+			}
+			reconciledRun, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("getting updated taskrun: %v", err)
+			}
+			condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+			if condition == nil || condition.Status != corev1.ConditionUnknown {
+				t.Errorf("Expected fresh TaskRun to have in progress status, but had %v", condition)
+			}
+			if condition != nil && condition.Reason != v1beta1.TaskRunReasonRunning.String() {
+				t.Errorf("Expected reason %q but was %s", v1beta1.TaskRunReasonRunning.String(), condition.Reason)
+			}
+		})
 	}
 }
 
@@ -5023,7 +5068,20 @@ spec:
 			},
 		},
 	}
-
+	tr := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+metadata:
+  name: test-taskrun
+  namespace: foo
+spec:
+  params:
+  - name: myarg
+    value: foo
+  taskRef:
+    resolver: %s
+    name: test-task
+status:
+  podName: the-pod
+`, resolverName))
 	testCases := []struct {
 		name      string
 		taskBytes []byte
@@ -5040,20 +5098,6 @@ spec:
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			tr := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
-metadata:
-  name: test-taskrun
-  namespace: foo
-spec:
-  params:
-  - name: myarg
-    value: foo
-  taskRef:
-    resolver: %s
-    name: test-task
-status:
-  podName: the-pod
-`, resolverName))
 			rr := getResolvedResolutionRequest(t, resolverName, tc.taskBytes, tr.Namespace, tr.Name)
 			d := test.Data{
 				TaskRuns:             []*v1beta1.TaskRun{tr},
@@ -5070,11 +5114,11 @@ status:
 			if !errors.Is(err, trustedresources.ErrResourceVerificationFailed) {
 				t.Errorf("Reconcile got %v but want %v", err, trustedresources.ErrResourceVerificationFailed)
 			}
-			tr, err = testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+			reconciledRun, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("getting updated taskrun: %v", err)
 			}
-			condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+			condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
 			if condition.Type != apis.ConditionSucceeded || condition.Status != corev1.ConditionFalse || condition.Reason != podconvert.ReasonResourceVerificationFailed {
 				t.Errorf("Expected TaskRun to fail with reason \"%s\" but it did not. Final conditions were:\n%#v", podconvert.ReasonResourceVerificationFailed, tr.Status.Conditions)
 			}
