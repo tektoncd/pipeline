@@ -35,6 +35,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
@@ -11580,6 +11581,25 @@ spec:
 		t.Fatal("fail to marshal task", err)
 	}
 
+	noMatchPolicy := []*v1alpha1.VerificationPolicy{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "no-match",
+			Namespace: ts.Namespace,
+		},
+		Spec: v1alpha1.VerificationPolicySpec{
+			Resources: []v1alpha1.ResourcePattern{{Pattern: "no-match"}},
+		}}}
+	// warnPolicy doesn't contain keys so it will fail verification but doesn't fail the run
+	warnPolicy := []*v1alpha1.VerificationPolicy{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "warn-policy",
+			Namespace: ts.Namespace,
+		},
+		Spec: v1alpha1.VerificationPolicySpec{
+			Resources: []v1alpha1.ResourcePattern{{Pattern: ".*"}},
+			Mode:      v1alpha1.ModeWarn,
+		}}}
+
 	prs := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: test-pipelinerun
@@ -11590,30 +11610,57 @@ spec:
     resolver: %s
 `, resolverName))
 
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"trusted-resources-verification-no-match-policy": config.FailNoMatchPolicy,
-			},
-		},
+	testCases := []struct {
+		name                 string
+		task                 []*v1beta1.Task
+		noMatchPolicy        string
+		verificationPolicies []*v1alpha1.VerificationPolicy
+	}{{
+		name:                 "ignore no match policy",
+		noMatchPolicy:        config.IgnoreNoMatchPolicy,
+		verificationPolicies: noMatchPolicy,
+	}, {
+		name:                 "warn no match policy",
+		noMatchPolicy:        config.WarnNoMatchPolicy,
+		verificationPolicies: noMatchPolicy,
+	}, {
+		name:                 "pass enforce policy",
+		noMatchPolicy:        config.FailNoMatchPolicy,
+		verificationPolicies: vps,
+	}, {
+		name:                 "only fail warn policy",
+		noMatchPolicy:        config.FailNoMatchPolicy,
+		verificationPolicies: warnPolicy,
+	},
 	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cms := []*corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+					Data: map[string]string{
+						"trusted-resources-verification-no-match-policy": tc.noMatchPolicy,
+					},
+				},
+			}
 
-	pipelineReq := getResolvedResolutionRequest(t, resolverName, signedPipelineBytes, prs.Namespace, prs.Name)
-	taskReq := getResolvedResolutionRequest(t, resolverName, signedTaskBytes, prs.Namespace, prs.Name+"-"+ps.Spec.Tasks[0].Name)
+			pipelineReq := getResolvedResolutionRequest(t, resolverName, signedPipelineBytes, prs.Namespace, prs.Name)
+			taskReq := getResolvedResolutionRequest(t, resolverName, signedTaskBytes, prs.Namespace, prs.Name+"-"+ps.Spec.Tasks[0].Name)
 
-	d := test.Data{
-		PipelineRuns:         []*v1beta1.PipelineRun{prs},
-		VerificationPolicies: vps,
-		ConfigMaps:           cms,
-		ResolutionRequests:   []*resolutionv1beta1.ResolutionRequest{&pipelineReq, &taskReq},
+			d := test.Data{
+				PipelineRuns:         []*v1beta1.PipelineRun{prs},
+				VerificationPolicies: tc.verificationPolicies,
+				ConfigMaps:           cms,
+				ResolutionRequests:   []*resolutionv1beta1.ResolutionRequest{&pipelineReq, &taskReq},
+			}
+			prt := newPipelineRunTest(t, d)
+			defer prt.Cancel()
+
+			reconciledRun, _ := prt.reconcileRun("foo", "test-pipelinerun", []string{}, false)
+
+			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
+		})
 	}
-	prt := newPipelineRunTest(t, d)
-	defer prt.Cancel()
-
-	reconciledRun, _ := prt.reconcileRun("foo", "test-pipelinerun", []string{}, false)
-
-	checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
 }
 
 func TestReconcile_verifyResolvedPipeline_Error(t *testing.T) {
@@ -11737,6 +11784,17 @@ spec:
 		},
 	}
 
+	pr := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: test-pipelinerun
+  namespace: foo
+  selfLink: /pipeline/1234
+spec:
+  pipelineRef:
+    resolver: %s
+  serviceAccountName: default
+`, resolverName))
+
 	testCases := []struct {
 		name          string
 		pipelinerun   []*v1beta1.PipelineRun
@@ -11766,22 +11824,11 @@ spec:
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			prs := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
-metadata:
-  name: test-pipelinerun
-  namespace: foo
-  selfLink: /pipeline/1234
-spec:
-  pipelineRef:
-    resolver: %s
-  serviceAccountName: default
-`, resolverName))
-
-			pipelineReq := getResolvedResolutionRequest(t, resolverName, tc.pipelineBytes, prs.Namespace, prs.Name)
-			taskReq := getResolvedResolutionRequest(t, resolverName, tc.taskBytes, prs.Namespace, prs.Name+"-"+ps.Spec.Tasks[0].Name)
+			pipelineReq := getResolvedResolutionRequest(t, resolverName, tc.pipelineBytes, pr.Namespace, pr.Name)
+			taskReq := getResolvedResolutionRequest(t, resolverName, tc.taskBytes, pr.Namespace, pr.Name+"-"+ps.Spec.Tasks[0].Name)
 
 			d := test.Data{
-				PipelineRuns:         []*v1beta1.PipelineRun{prs},
+				PipelineRuns:         []*v1beta1.PipelineRun{pr},
 				ConfigMaps:           cms,
 				VerificationPolicies: vps,
 				ResolutionRequests:   []*resolutionv1beta1.ResolutionRequest{&pipelineReq, &taskReq},
