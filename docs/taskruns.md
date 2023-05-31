@@ -315,7 +315,7 @@ status:
 ```
 
 #### Propagated Object Parameters
-**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
+Object params is a [beta feature](./additional-configs.md#beta-features).
 
 When using an inlined `taskSpec`, object parameters from the parent `TaskRun` will be
 available to the `Task` without needing to be explicitly defined.
