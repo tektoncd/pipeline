@@ -46,6 +46,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
+	"github.com/tektoncd/pipeline/pkg/trustedresources"
+	"github.com/tektoncd/pipeline/pkg/trustedresources/verifier"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
@@ -11609,28 +11611,46 @@ spec:
   pipelineRef:
     resolver: %s
 `, resolverName))
-
+	failNoMatchCondition := &apis.Condition{
+		Type:    trustedresources.ConditionTrustedResourcesVerified,
+		Status:  corev1.ConditionFalse,
+		Message: fmt.Sprintf("failed to get matched policies: %s: no matching policies are found for resource: %s against source: %s", trustedresources.ErrNoMatchedPolicies, ts.Name, ""),
+	}
+	passCondition := &apis.Condition{
+		Type:   trustedresources.ConditionTrustedResourcesVerified,
+		Status: corev1.ConditionTrue,
+	}
+	failNoKeysCondition := &apis.Condition{
+		Type:    trustedresources.ConditionTrustedResourcesVerified,
+		Status:  corev1.ConditionFalse,
+		Message: fmt.Sprintf("failed to get verifiers for resource %s from namespace %s: %s", ts.Name, ts.Namespace, verifier.ErrEmptyPublicKeys),
+	}
 	testCases := []struct {
-		name                 string
-		task                 []*v1beta1.Task
-		noMatchPolicy        string
-		verificationPolicies []*v1alpha1.VerificationPolicy
+		name                          string
+		task                          []*v1beta1.Task
+		noMatchPolicy                 string
+		verificationPolicies          []*v1alpha1.VerificationPolicy
+		wantTrustedResourcesCondition *apis.Condition
 	}{{
-		name:                 "ignore no match policy",
-		noMatchPolicy:        config.IgnoreNoMatchPolicy,
-		verificationPolicies: noMatchPolicy,
+		name:                          "ignore no match policy",
+		noMatchPolicy:                 config.IgnoreNoMatchPolicy,
+		verificationPolicies:          noMatchPolicy,
+		wantTrustedResourcesCondition: nil,
 	}, {
-		name:                 "warn no match policy",
-		noMatchPolicy:        config.WarnNoMatchPolicy,
-		verificationPolicies: noMatchPolicy,
+		name:                          "warn no match policy",
+		noMatchPolicy:                 config.WarnNoMatchPolicy,
+		verificationPolicies:          noMatchPolicy,
+		wantTrustedResourcesCondition: failNoMatchCondition,
 	}, {
-		name:                 "pass enforce policy",
-		noMatchPolicy:        config.FailNoMatchPolicy,
-		verificationPolicies: vps,
+		name:                          "pass enforce policy",
+		noMatchPolicy:                 config.FailNoMatchPolicy,
+		verificationPolicies:          vps,
+		wantTrustedResourcesCondition: passCondition,
 	}, {
-		name:                 "only fail warn policy",
-		noMatchPolicy:        config.FailNoMatchPolicy,
-		verificationPolicies: warnPolicy,
+		name:                          "only fail warn policy",
+		noMatchPolicy:                 config.FailNoMatchPolicy,
+		verificationPolicies:          warnPolicy,
+		wantTrustedResourcesCondition: failNoKeysCondition,
 	},
 	}
 	for _, tc := range testCases {
@@ -11659,6 +11679,10 @@ spec:
 			reconciledRun, _ := prt.reconcileRun("foo", "test-pipelinerun", []string{}, false)
 
 			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
+			gotVerificationCondition := reconciledRun.Status.GetCondition(trustedresources.ConditionTrustedResourcesVerified)
+			if d := cmp.Diff(tc.wantTrustedResourcesCondition, gotVerificationCondition, ignoreLastTransitionTime); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
 		})
 	}
 }
@@ -11838,6 +11862,10 @@ spec:
 
 			reconciledRun, _ := prt.reconcileRun("foo", "test-pipelinerun", []string{}, true)
 			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionFalse, ReasonResourceVerificationFailed)
+			gotVerificationCondition := reconciledRun.Status.GetCondition(trustedresources.ConditionTrustedResourcesVerified)
+			if gotVerificationCondition == nil || gotVerificationCondition.Status != corev1.ConditionFalse {
+				t.Errorf("Expected to have false condition, but had %v", gotVerificationCondition)
+			}
 		})
 	}
 }

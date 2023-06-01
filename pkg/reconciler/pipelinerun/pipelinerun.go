@@ -375,11 +375,11 @@ func (c *Reconciler) resolvePipelineState(
 			return nil, controller.NewPermanentError(err)
 		}
 		if resolvedTask.ResolvedTask != nil && resolvedTask.ResolvedTask.VerificationResult != nil {
-			vr := resolvedTask.ResolvedTask.VerificationResult
-			if vr.VerificationResultType == trustedresources.VerificationError {
-				err := fmt.Errorf("PipelineRun %s/%s referred pipeline failed signature verification for task %s : %w", pr.Namespace, pr.Name, resolvedTask.ResolvedTask.TaskName, vr.Err)
+			cond, err := conditionFromVerificationResult(resolvedTask.ResolvedTask.VerificationResult, pr, task.Name)
+			pr.Status.SetCondition(cond)
+			if err != nil {
 				pr.Status.MarkFailed(ReasonResourceVerificationFailed, err.Error())
-				return nil, controller.NewPermanentError(vr.Err)
+				return nil, controller.NewPermanentError(err)
 			}
 		}
 		pst = append(pst, resolvedTask)
@@ -419,10 +419,13 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 		}
 	}
 
-	if pipelineMeta.VerificationResult != nil && pipelineMeta.VerificationResult.VerificationResultType == trustedresources.VerificationError {
-		err := fmt.Errorf("PipelineRun %s/%s referred pipeline failed signature verification: %w", pr.Namespace, pr.Name, pipelineMeta.VerificationResult.Err)
-		pr.Status.MarkFailed(ReasonResourceVerificationFailed, err.Error())
-		return controller.NewPermanentError(err)
+	if pipelineMeta.VerificationResult != nil {
+		cond, err := conditionFromVerificationResult(pipelineMeta.VerificationResult, pr, pipelineMeta.Name)
+		pr.Status.SetCondition(cond)
+		if err != nil {
+			pr.Status.MarkFailed(ReasonResourceVerificationFailed, err.Error())
+			return controller.NewPermanentError(err)
+		}
 	}
 
 	d, err := dag.Build(v1beta1.PipelineTaskList(pipelineSpec.Tasks), v1beta1.PipelineTaskList(pipelineSpec.Tasks).Deps())
@@ -1410,4 +1413,33 @@ func updatePipelineRunStatusFromChildRefs(logger *zap.SugaredLogger, pr *v1beta1
 		newChildRefs = append(newChildRefs, *childRefByName[k])
 	}
 	pr.Status.ChildReferences = newChildRefs
+}
+
+// conditionFromVerificationResult returns the ConditionTrustedResourcesVerified condition based on the VerificationResult, err is returned when the VerificationResult type is VerificationError
+func conditionFromVerificationResult(verificationResult *trustedresources.VerificationResult, pr *v1beta1.PipelineRun, resourceName string) (*apis.Condition, error) {
+	var condition *apis.Condition
+	var err error
+	switch verificationResult.VerificationResultType {
+	case trustedresources.VerificationError:
+		err = fmt.Errorf("PipelineRun %s/%s referred resource %s failed signature verification: %w", pr.Namespace, pr.Name, resourceName, verificationResult.Err)
+		condition = &apis.Condition{
+			Type:    trustedresources.ConditionTrustedResourcesVerified,
+			Status:  corev1.ConditionFalse,
+			Message: err.Error(),
+		}
+	case trustedresources.VerificationWarn:
+		condition = &apis.Condition{
+			Type:    trustedresources.ConditionTrustedResourcesVerified,
+			Status:  corev1.ConditionFalse,
+			Message: verificationResult.Err.Error(),
+		}
+	case trustedresources.VerificationPass:
+		condition = &apis.Condition{
+			Type:   trustedresources.ConditionTrustedResourcesVerified,
+			Status: corev1.ConditionTrue,
+		}
+	case trustedresources.VerificationSkip:
+		// do nothing
+	}
+	return condition, err
 }
