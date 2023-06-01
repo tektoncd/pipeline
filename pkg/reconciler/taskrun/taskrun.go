@@ -345,10 +345,31 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		}
 	}
 
-	if taskMeta.VerificationResult != nil && taskMeta.VerificationResult.VerificationResultType == trustedresources.VerificationError {
-		logger.Errorf("TaskRun %s/%s referred task failed signature verification", tr.Namespace, tr.Name)
-		tr.Status.MarkResourceFailed(podconvert.ReasonResourceVerificationFailed, taskMeta.VerificationResult.Err)
-		return nil, nil, controller.NewPermanentError(taskMeta.VerificationResult.Err)
+	if taskMeta.VerificationResult != nil {
+		switch taskMeta.VerificationResult.VerificationResultType {
+		case trustedresources.VerificationError:
+			logger.Errorf("TaskRun %s/%s referred task failed signature verification", tr.Namespace, tr.Name)
+			tr.Status.MarkResourceFailed(podconvert.ReasonResourceVerificationFailed, taskMeta.VerificationResult.Err)
+			tr.Status.SetCondition(&apis.Condition{
+				Type:    trustedresources.ConditionTrustedResourcesVerified,
+				Status:  corev1.ConditionFalse,
+				Message: taskMeta.VerificationResult.Err.Error(),
+			})
+			return nil, nil, controller.NewPermanentError(taskMeta.VerificationResult.Err)
+		case trustedresources.VerificationSkip:
+			// do nothing
+		case trustedresources.VerificationWarn:
+			tr.Status.SetCondition(&apis.Condition{
+				Type:    trustedresources.ConditionTrustedResourcesVerified,
+				Status:  corev1.ConditionFalse,
+				Message: taskMeta.VerificationResult.Err.Error(),
+			})
+		case trustedresources.VerificationPass:
+			tr.Status.SetCondition(&apis.Condition{
+				Type:   trustedresources.ConditionTrustedResourcesVerified,
+				Status: corev1.ConditionTrue,
+			})
+		}
 	}
 
 	rtr := &resources.ResolvedTask{

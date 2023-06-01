@@ -33,12 +33,15 @@ import (
 	"github.com/tektoncd/pipeline/pkg/trustedresources/verifier"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 )
 
 const (
 	// SignatureAnnotation is the key of signature in annotation map
 	SignatureAnnotation = "tekton.dev/signature"
+	// ConditionTrustedResourcesVerified specifies that the resources pass trusted resources verification or not.
+	ConditionTrustedResourcesVerified apis.ConditionType = "TrustedResourcesVerified"
 )
 
 const (
@@ -191,7 +194,7 @@ func verifyResource(ctx context.Context, resource metav1.Object, k8s kubernetes.
 	for _, p := range warnPolicies {
 		verifiers, err := verifier.FromPolicy(ctx, k8s, p)
 		if err != nil {
-			warn := fmt.Errorf("fails to get verifiers for resource %s from namespace %s: %w", resource.GetName(), resource.GetNamespace(), err)
+			warn := fmt.Errorf("failed to get verifiers for resource %s from namespace %s: %w", resource.GetName(), resource.GetNamespace(), err)
 			logger.Warnf(warn.Error())
 			return VerificationResult{VerificationResultType: VerificationWarn, Err: warn}
 		}
