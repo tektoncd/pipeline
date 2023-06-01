@@ -28,6 +28,7 @@ import (
 
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/trustedresources/verifier"
@@ -63,14 +64,13 @@ type VerificationResult struct {
 	Err error
 }
 
-// VerifyResource verifies the signature and public key against resource (v1beta1 task and pipeline).
+// VerifyResource verifies the signature and public key against resource (v1beta1 and v1 task and pipeline).
 // VerificationResult is returned with different types for different cases:
 // 1) Return VerificationResult with VerificationSkip type, when no policies are found and no-match-policy is set to ignore
 // 2) Return VerificationResult with VerificationPass type when verification passed;
 // 3) Return VerificationResult with VerificationWarn type, when no matching policies and feature flag "no-match-policy" is "warn", or only Warn mode verification policies fail. Err field is filled with the warning;
 // 4) Return VerificationResult with VerificationError type when no policies are found and no-match-policy is set to fail, the resource fails to pass matched enforce verification policy, or there are errors during verification. Err is filled with the err.
 // refSource contains the source information of the resource.
-// TODO(#6729): Support v1 task and pipeline
 func VerifyResource(ctx context.Context, resource metav1.Object, k8s kubernetes.Interface, refSource *v1beta1.RefSource, verificationpolicies []*v1alpha1.VerificationPolicy) VerificationResult {
 	var refSourceURI string
 	if refSource != nil {
@@ -94,6 +94,19 @@ func VerifyResource(ctx context.Context, resource metav1.Object, k8s kubernetes.
 	}
 
 	switch v := resource.(type) {
+	case *v1.Task:
+		tm, signature, err := prepareObjectMeta(v.ObjectMeta)
+		if err != nil {
+			return VerificationResult{VerificationResultType: VerificationError, Err: err}
+		}
+		task := v1.Task{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "tekton.dev/v1",
+				Kind:       "Task"},
+			ObjectMeta: tm,
+			Spec:       v.Spec,
+		}
+		return verifyResource(ctx, &task, k8s, signature, matchedPolicies)
 	case *v1beta1.Task:
 		tm, signature, err := prepareObjectMeta(v.ObjectMeta)
 		if err != nil {
@@ -107,6 +120,19 @@ func VerifyResource(ctx context.Context, resource metav1.Object, k8s kubernetes.
 			Spec:       v.TaskSpec(),
 		}
 		return verifyResource(ctx, &task, k8s, signature, matchedPolicies)
+	case *v1.Pipeline:
+		pm, signature, err := prepareObjectMeta(v.ObjectMeta)
+		if err != nil {
+			return VerificationResult{VerificationResultType: VerificationError, Err: err}
+		}
+		pipeline := v1.Pipeline{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "tekton.dev/v1",
+				Kind:       "Pipeline"},
+			ObjectMeta: pm,
+			Spec:       v.Spec,
+		}
+		return verifyResource(ctx, &pipeline, k8s, signature, matchedPolicies)
 	case *v1beta1.Pipeline:
 		pm, signature, err := prepareObjectMeta(v.ObjectMeta)
 		if err != nil {
