@@ -14,7 +14,7 @@ weight: 312
 
 ## Overview
 
-Trusted Resources is a feature which can be used to sign Tekton Resources and verify them. Details of design can be found at [TEP--0091](https://github.com/tektoncd/community/blob/main/teps/0091-trusted-resources.md). This is an alpha feature and supports `v1beta1` version of  `Task` and `Pipeline` and `v1` `Task`.
+Trusted Resources is a feature which can be used to sign Tekton Resources and verify them. Details of design can be found at [TEP--0091](https://github.com/tektoncd/community/blob/main/teps/0091-trusted-resources.md). This is an alpha feature and supports `v1beta1` and `v1` version of  `Task` and `Pipeline`.
 
 **Note**: Currently, trusted resources only support verifying Tekton resources that come from remote places i.e. git, OCI registry and Artifact Hub. To use [cluster resolver](./cluster-resolver.md) for in-cluster resources, make sure to set all default values for the resources before applied to cluster, because the mutating webhook will update the default fields if not given and fail the verification.
 

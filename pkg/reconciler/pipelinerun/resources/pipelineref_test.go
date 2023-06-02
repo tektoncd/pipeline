@@ -17,7 +17,10 @@
 package resources_test
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,7 +31,9 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/registry"
+	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
@@ -64,6 +69,24 @@ var (
 			"sha1": "a123",
 		},
 		EntryPoint: "foo/bar",
+	}
+
+	unsignedV1Pipeline = &pipelinev1.Pipeline{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1beta1",
+			Kind:       "Pipeline"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "pipeline",
+			Namespace:   "trusted-resources",
+			Annotations: map[string]string{"foo": "bar"},
+		},
+		Spec: pipelinev1.PipelineSpec{
+			Tasks: []pipelinev1.PipelineTask{
+				{
+					Name: "task",
+				},
+			},
+		},
 	}
 
 	verificationResultCmp = cmp.Comparer(func(x, y trustedresources.VerificationResult) bool {
@@ -793,6 +816,329 @@ func TestGetPipelineFunc_VerifyError(t *testing.T) {
 	}
 }
 
+func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
+	ctx := context.Background()
+	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
+	tektonclient := fake.NewSimpleClientset()
+
+	v1beta1UnsignedPipeline := &v1beta1.Pipeline{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Pipeline",
+			APIVersion: "tekton.dev/v1beta1",
+		},
+	}
+	if err := v1beta1UnsignedPipeline.ConvertFrom(ctx, unsignedV1Pipeline.DeepCopy()); err != nil {
+		t.Error(err)
+	}
+
+	unsignedPipelineBytes, err := json.Marshal(unsignedV1Pipeline)
+	if err != nil {
+		t.Fatal("fail to marshal pipeline", err)
+	}
+	noMatchPolicyRefSource := &v1beta1.RefSource{
+		URI: "abc.com",
+		Digest: map[string]string{
+			"sha1": "a123",
+		},
+		EntryPoint: "foo/bar",
+	}
+	resolvedUnmatched := test.NewResolvedResource(unsignedPipelineBytes, nil, noMatchPolicyRefSource, nil)
+	requesterUnmatched := test.NewRequester(resolvedUnmatched, nil)
+
+	signedPipeline, err := getSignedV1Pipeline(unsignedV1Pipeline, signer, "signed")
+	if err != nil {
+		t.Fatal("fail to sign pipeline", err)
+	}
+
+	v1beta1SignedPipeline := &v1beta1.Pipeline{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Pipeline",
+			APIVersion: "tekton.dev/v1beta1",
+		},
+	}
+	if err := v1beta1SignedPipeline.ConvertFrom(ctx, signedPipeline.DeepCopy()); err != nil {
+		t.Error(err)
+	}
+
+	signedPipelineBytes, err := json.Marshal(signedPipeline)
+	if err != nil {
+		t.Fatal("fail to marshal pipeline", err)
+	}
+	matchPolicyRefSource := &v1beta1.RefSource{
+		URI: "	https://github.com/tektoncd/catalog.git",
+		Digest: map[string]string{
+			"sha1": "a123",
+		},
+		EntryPoint: "foo/bar",
+	}
+	resolvedMatched := test.NewResolvedResource(signedPipelineBytes, nil, matchPolicyRefSource, nil)
+	requesterMatched := test.NewRequester(resolvedMatched, nil)
+
+	pipelineRef := &v1beta1.PipelineRef{
+		Name: signedPipeline.Name,
+		ResolverRef: v1beta1.ResolverRef{
+			Resolver: "git",
+		},
+	}
+
+	pr := v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineRef:        pipelineRef,
+			ServiceAccountName: "default",
+		},
+	}
+
+	prWithStatus := v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineRef:        pipelineRef,
+			ServiceAccountName: "default",
+		},
+		Status: v1beta1.PipelineRunStatus{
+			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+				PipelineSpec: &v1beta1SignedPipeline.Spec,
+				Provenance: &v1beta1.Provenance{
+					RefSource: &v1beta1.RefSource{
+						URI:        "abc.com",
+						Digest:     map[string]string{"sha1": "a123"},
+						EntryPoint: "foo/bar",
+					},
+				},
+			},
+		},
+	}
+
+	warnPolicyRefSource := &v1beta1.RefSource{
+		URI: "	warnVP",
+	}
+	resolvedUnsignedMatched := test.NewResolvedResource(unsignedPipelineBytes, nil, warnPolicyRefSource, nil)
+	requesterUnsignedMatched := test.NewRequester(resolvedUnsignedMatched, nil)
+
+	testcases := []struct {
+		name                       string
+		requester                  *test.Requester
+		verificationNoMatchPolicy  string
+		pipelinerun                v1beta1.PipelineRun
+		policies                   []*v1alpha1.VerificationPolicy
+		expected                   runtime.Object
+		expectedRefSource          *v1beta1.RefSource
+		expectedVerificationResult *trustedresources.VerificationResult
+	}{{
+		name:                       "signed pipeline with matching policy pass verification with enforce no match policy",
+		requester:                  requesterMatched,
+		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
+		pipelinerun:                pr,
+		policies:                   vps,
+		expected:                   v1beta1SignedPipeline,
+		expectedRefSource:          matchPolicyRefSource,
+		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
+	}, {
+		name:                       "signed pipeline with matching policy pass verification with warn no match policy",
+		requester:                  requesterMatched,
+		verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
+		pipelinerun:                pr,
+		policies:                   vps,
+		expected:                   v1beta1SignedPipeline,
+		expectedRefSource:          matchPolicyRefSource,
+		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
+	}, {
+		name:                       "signed pipeline with matching policy pass verification with ignore no match policy",
+		requester:                  requesterMatched,
+		verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
+		pipelinerun:                pr,
+		policies:                   vps,
+		expected:                   v1beta1SignedPipeline,
+		expectedRefSource:          matchPolicyRefSource,
+		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
+	}, {
+		name:                       "warn unsigned pipeline without matching policies",
+		requester:                  requesterUnmatched,
+		verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
+		pipelinerun:                pr,
+		policies:                   vps,
+		expected:                   v1beta1UnsignedPipeline,
+		expectedRefSource:          noMatchPolicyRefSource,
+		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationWarn, Err: trustedresources.ErrNoMatchedPolicies},
+	}, {
+		name:                       "unsigned pipeline fails warn mode policies doesn't return error",
+		requester:                  requesterUnsignedMatched,
+		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
+		pipelinerun:                pr,
+		policies:                   vps,
+		expected:                   v1beta1UnsignedPipeline,
+		expectedRefSource:          warnPolicyRefSource,
+		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationWarn, Err: trustedresources.ErrResourceVerificationFailed},
+	}, {
+		name:                       "ignore unsigned pipeline without matching policies",
+		requester:                  requesterUnmatched,
+		verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
+		pipelinerun:                pr,
+		policies:                   vps,
+		expected:                   v1beta1UnsignedPipeline,
+		expectedRefSource:          noMatchPolicyRefSource,
+		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationSkip},
+	}, {
+		name:                      "signed pipeline in status no need to verify",
+		requester:                 requesterMatched,
+		verificationNoMatchPolicy: config.FailNoMatchPolicy,
+		pipelinerun:               prWithStatus,
+		policies:                  vps,
+		expected: &v1beta1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      signedPipeline.Name,
+				Namespace: signedPipeline.Namespace,
+			},
+			Spec: v1beta1SignedPipeline.Spec,
+		},
+		expectedRefSource:          noMatchPolicyRefSource,
+		expectedVerificationResult: nil,
+	},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx = test.SetupTrustedResourceConfig(ctx, tc.verificationNoMatchPolicy)
+			fn := resources.GetPipelineFunc(ctx, k8sclient, tektonclient, tc.requester, &tc.pipelinerun, tc.policies)
+
+			gotResolvedPipeline, gotSource, gotVerificationResult, err := fn(ctx, pipelineRef.Name)
+			if err != nil {
+				t.Fatalf("Received unexpected error ( %#v )", err)
+			}
+			if d := cmp.Diff(tc.expected, gotResolvedPipeline); d != "" {
+				t.Errorf("resolvedPipeline did not match: %s", diff.PrintWantGot(d))
+			}
+			if d := cmp.Diff(tc.expectedRefSource, gotSource); d != "" {
+				t.Errorf("configSources did not match: %s", diff.PrintWantGot(d))
+			}
+			if tc.expectedVerificationResult == nil {
+				if gotVerificationResult != nil {
+					t.Errorf("VerificationResult did not match: want %v, got %v", tc.expectedVerificationResult, gotVerificationResult)
+				}
+				return
+			}
+			if d := cmp.Diff(gotVerificationResult, tc.expectedVerificationResult, verificationResultCmp); d != "" {
+				t.Errorf("VerificationResult did not match:%s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestGetPipelineFunc_V1Pipeline_VerifyError(t *testing.T) {
+	ctx := context.Background()
+	tektonclient := fake.NewSimpleClientset()
+	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
+
+	unsignedPipelineBytes, err := json.Marshal(unsignedV1Pipeline)
+	if err != nil {
+		t.Fatal("fail to marshal pipeline", err)
+	}
+	matchPolicyRefSource := &v1beta1.RefSource{
+		URI: "https://github.com/tektoncd/catalog.git",
+		Digest: map[string]string{
+			"sha1": "a123",
+		},
+		EntryPoint: "foo/bar",
+	}
+
+	resolvedUnsigned := test.NewResolvedResource(unsignedPipelineBytes, nil, matchPolicyRefSource, nil)
+	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
+
+	signedPipeline, err := getSignedV1Pipeline(unsignedV1Pipeline, signer, "signed")
+	if err != nil {
+		t.Fatal("fail to sign pipeline", err)
+	}
+	signedPipelineBytes, err := json.Marshal(signedPipeline)
+	if err != nil {
+		t.Fatal("fail to marshal pipeline", err)
+	}
+
+	noMatchPolicyRefSource := &v1beta1.RefSource{
+		URI: "abc.com",
+		Digest: map[string]string{
+			"sha1": "a123",
+		},
+		EntryPoint: "foo/bar",
+	}
+	resolvedUnmatched := test.NewResolvedResource(signedPipelineBytes, nil, noMatchPolicyRefSource, nil)
+	requesterUnmatched := test.NewRequester(resolvedUnmatched, nil)
+
+	modifiedPipeline := signedPipeline.DeepCopy()
+	modifiedPipeline.Annotations["random"] = "attack"
+	modifiedPipelineBytes, err := json.Marshal(modifiedPipeline)
+	if err != nil {
+		t.Fatal("fail to marshal pipeline", err)
+	}
+	resolvedModified := test.NewResolvedResource(modifiedPipelineBytes, nil, matchPolicyRefSource, nil)
+	requesterModified := test.NewRequester(resolvedModified, nil)
+
+	pipelineRef := &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
+
+	testcases := []struct {
+		name                       string
+		requester                  *test.Requester
+		verificationNoMatchPolicy  string
+		expectedVerificationResult *trustedresources.VerificationResult
+	}{
+		{
+			name:                       "unsigned pipeline fails verification with fail no match policy",
+			requester:                  requesterUnsigned,
+			verificationNoMatchPolicy:  config.FailNoMatchPolicy,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationError, Err: trustedresources.ErrResourceVerificationFailed},
+		}, {
+			name:                       "unsigned pipeline fails verification with warn no match policy",
+			requester:                  requesterUnsigned,
+			verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationError, Err: trustedresources.ErrResourceVerificationFailed},
+		}, {
+			name:                       "unsigned pipeline fails verification with ignore no match policy",
+			requester:                  requesterUnsigned,
+			verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationError, Err: trustedresources.ErrResourceVerificationFailed},
+		}, {
+			name:                       "modified pipeline fails verification with fail no match policy",
+			requester:                  requesterModified,
+			verificationNoMatchPolicy:  config.FailNoMatchPolicy,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationError, Err: trustedresources.ErrResourceVerificationFailed},
+		}, {
+			name:                       "modified pipeline fails verification with warn no match policy",
+			requester:                  requesterModified,
+			verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationError, Err: trustedresources.ErrResourceVerificationFailed},
+		}, {
+			name:                       "modified pipeline fails verification with ignore no match policy",
+			requester:                  requesterModified,
+			verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationError, Err: trustedresources.ErrResourceVerificationFailed},
+		}, {
+			name:                       "unmatched pipeline fails with fail no match policy",
+			requester:                  requesterUnmatched,
+			verificationNoMatchPolicy:  config.FailNoMatchPolicy,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationError, Err: trustedresources.ErrNoMatchedPolicies},
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx = test.SetupTrustedResourceConfig(ctx, tc.verificationNoMatchPolicy)
+			pr := &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef:        pipelineRef,
+					ServiceAccountName: "default",
+				},
+			}
+			fn := resources.GetPipelineFunc(ctx, k8sclient, tektonclient, tc.requester, pr, vps)
+
+			_, _, gotVerificationResult, err := fn(ctx, pipelineRef.Name)
+			if err != nil {
+				t.Errorf("want err nil but got %v", err)
+			}
+			if d := cmp.Diff(gotVerificationResult, tc.expectedVerificationResult, verificationResultCmp); d != "" {
+				t.Errorf("VerificationResult did not match:%s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestGetPipelineFunc_GetFuncError(t *testing.T) {
 	ctx := context.Background()
 	tektonclient := fake.NewSimpleClientset()
@@ -954,3 +1300,36 @@ spec:
       - name: name
         value: test-task
 `
+
+func getSignedV1Pipeline(unsigned *pipelinev1.Pipeline, signer signature.Signer, name string) (*pipelinev1.Pipeline, error) {
+	signed := unsigned.DeepCopy()
+	signed.Name = name
+	if signed.Annotations == nil {
+		signed.Annotations = map[string]string{}
+	}
+	signature, err := signInterface(signer, signed)
+	if err != nil {
+		return nil, err
+	}
+	signed.Annotations[trustedresources.SignatureAnnotation] = base64.StdEncoding.EncodeToString(signature)
+	return signed, nil
+}
+
+func signInterface(signer signature.Signer, i interface{}) ([]byte, error) {
+	if signer == nil {
+		return nil, fmt.Errorf("signer is nil")
+	}
+	b, err := json.Marshal(i)
+	if err != nil {
+		return nil, err
+	}
+	h := sha256.New()
+	h.Write(b)
+
+	sig, err := signer.SignMessage(bytes.NewReader(h.Sum(nil)))
+	if err != nil {
+		return nil, err
+	}
+
+	return sig, nil
+}
