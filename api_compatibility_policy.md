@@ -55,10 +55,11 @@ and follows the [beta policy](#beta-crds) for backwards incompatible changes.
 
 - These features will not be dropped, though the details may change.
 
-- Any [backwards incompatible changes](#backwards-incompatible-changes) must be introduced in a backwards compatible manner first, with a   deprecation warning in the release notes and migration instructions.
+- Any [backwards incompatible changes](#backwards-incompatible-changes) must be introduced in a backwards compatible manner first, with a deprecation warning in the release notes and migration instructions.
 
 - Users will be given at least 9 months to migrate before a backward incompatible change is made. This means an older beta API version will continue to be supported in new releases for a period of at least 9 months from the time a newer version is made available.
 
+- Alpha features may be present within a beta API version. However, they will not be enabled by default and must be enabled by setting `enable-api-fields` to `alpha`.
 
 ### GA CRDs
 
@@ -76,7 +77,7 @@ and follows the [beta policy](#beta-crds) for backwards incompatible changes.
 
 CRD API versions gate the overall stability of the CRD and its default behaviors. Within a particular CRD version, certain opt-in features may be at a lower stability level as described in [TEP-33](https://github.com/tektoncd/community/blob/main/teps/0033-tekton-feature-gates.md). These fields may be disabled by default and can be enabled by setting the right `enable-api-fields` feature-flag as described in TEP-33:
 
-* `stable` - This value indicates that only fields of the highest stability level are enabled; For `beta` CRDs, this means only beta stability fields are enabled, i.e. `alpha` fields are not enabled. For `GA` CRDs, this means only `GA` fields are enabled, i.e. `beta` and `alpha` fields would not be enabled.
+* `stable` - This value indicates that only fields of the highest stability level are enabled; For `beta` CRDs, this means only beta stability fields are enabled, i.e. `alpha` fields are not enabled. For `GA` CRDs, this means only `GA` fields are enabled, i.e. `beta` and `alpha` fields would not be enabled. TODO(#6592): Decouple feature stability from API stability.
 * `beta` (default) - This value indicates that only fields which are of `beta` (or greater) stability are enabled, i.e. `alpha` fields are not enabled. 
 * `alpha` - This value indicates that fields of all stability levels are enabled, specifically `alpha`, `beta` and `GA`.
 
@@ -95,7 +96,7 @@ See the current list of [alpha features](https://github.com/tektoncd/pipeline/bl
 
 - Alpha feature in beta or GA CRDs are disabled by default and must be enabled by [setting `enable-api-fields` to `alpha`](https://github.com/tektoncd/pipeline/blob/main/docs/additional-configs.md#alpha-features)
 
-- These features may be dropped or backwards incompatible changes made at any time though will be given at least one release worth of warning
+- These features may be dropped or backwards incompatible changes made at any time, though one release worth of warning will be provided.
 
 - Alpha features are reviewed for promotion to beta at a regular basis. However, there is no guarantee that they will be promoted to beta.
 
@@ -103,7 +104,9 @@ See the current list of [alpha features](https://github.com/tektoncd/pipeline/bl
 
 - Beta features are enabled by default and can be disabled by [setting `enable-api-fields` to `stable`](https://github.com/tektoncd/pipeline/blob/main/docs/additional-configs.md#beta-features).
 
-- Beta features may be deprecated or changed in a backwards incompatible way by following the same process as [Beta CRDs](#beta-crds) 
+- These features will not be dropped, though the details may change.
+
+- Beta features may be changed in a backwards incompatible way by following the same process as [Beta CRDs](#beta-crds) 
   i.e. by providing a 9 month support period.
 
 - Beta features are reviewed for promotion to GA/Stable on a regular basis. However, there is no guarantee that they will be promoted to GA/stable.
@@ -150,10 +153,52 @@ which includes the earliest date each feature will be removed.
 
 ## Go libraries compatibility policy
 
-Tekton Pipelines may introduce breaking changes to its Go client libraries, as long as these changes
-do not impact users' yaml/json CRD definitions. For example, a change that renames a field of a CRD
-would need to follow the policy on [backwards incompatible changes](#backwards-incompatible-changes),
-but a change that renames the Go struct type for that field is allowed.
+In this context, "tombstoning" refers to retaining a field in client libraries, so that clients can continue to deserialize objects created with an older server version,
+while disallowing new usage of the field.
+
+### Covered parts of the codebase
+
+The compatibility policy for the [github.com/tektoncd/pipeline Go package](https://pkg.go.dev/github.com/tektoncd/pipeline) currently only covers
+Go structs representing CRDs in `pkg/apis`, the generated client libraries in `pkg/client`, and the [resolver interface](https://github.com/tektoncd/pipeline/blob/main/pkg/resolution/resolver/framework/interface.go).
+Backwards compatibility for other parts of the codebase is on a best-effort basis.
+
+Pipelines contributors are working on modularizing `pkg/apis`, so that clients only need to import a minimal set of dependencies.
+This work is tracked in [issue #6483](https://github.com/tektoncd/pipeline/issues/6483).
+Pipelines contributors also plan to move all internal functionality in the entire [github.com/tektoncd/pipeline Go package](https://pkg.go.dev/github.com/tektoncd/pipeline)
+into internal packages. This work is tracked in [issue #5679](https://github.com/tektoncd/pipeline/issues/5679).
+Please follow these issues for developments in this area and any related changes to compatibility policies.
+
+### Alpha CRDs
+
+- Go structs representing alpha CRDs may change in breaking ways at any time. If the change impacts the yaml/JSON API, we will provide one release of warning.
+
+- If an alpha CRD stops being served, its client library will not be removed until the last release with support for the CRD has reached its end of life.
+
+- If support for a field is dropped, the field may also be removed from the client libraries; i.e. it is not guaranteed to be tombstoned.
+
+### Beta CRDs
+
+- Go structs representing beta CRDs may change in breaking ways if the yaml/JSON API is unaffected.
+
+- If a beta CRD stops being served, its client library will not be removed until the last release with support for the CRD has reached its end of life.
+
+- If support for an alpha field is dropped, the field will be tombstoned in client libraries and will not be removed until the last release with support for the field.
+
+### Stable CRDs
+
+- Go structs representing stable fields may not change in breaking ways without a semver major version bump, even if the yaml/JSON API is unaffected.
+
+- If a GA CRD stops being served (via a semver major version bump), the client libraries for this CRD will not be removed.
+
+- If support for an alpha field is dropped, the field will be tombstoned in client libraries and will not be removed.
+
+- If an alpha or beta field is renamed, the old field name will be tombstoned in client libraries and will not be removed.
+
+### Resolver Interface
+
+Remote resolution is currently a beta feature. [Issue #6579](https://github.com/tektoncd/pipeline/issues/6579) tracks promoting resolution to stable.
+Backwards compatibility for the [resolver interface](https://github.com/tektoncd/pipeline/blob/main/pkg/resolution/resolver/framework/interface.go)
+is currently on a best-effort basis. When remote resolution is promoted to stable, backwards incompatible changes may not be made to the resolver interface.
 
 ## Notes for Developers
 
