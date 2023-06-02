@@ -155,7 +155,7 @@ func readRuntimeObjectAsPipeline(ctx context.Context, obj runtime.Object, k8s ku
 		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
 		return obj, &vr, nil
 	case *v1.Pipeline:
-		// TODO(#6356): Support V1 Task verification
+		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
 		// Validation of beta fields must happen before the V1 Pipeline is converted into the storage version of the API.
 		// TODO(#6592): Decouple API versioning from feature versioning
 		if err := obj.Spec.ValidateBetaFields(ctx); err != nil {
@@ -170,7 +170,7 @@ func readRuntimeObjectAsPipeline(ctx context.Context, obj runtime.Object, k8s ku
 		if err := t.ConvertFrom(ctx, obj); err != nil {
 			return nil, nil, fmt.Errorf("failed to convert obj %s into Pipeline", obj.GetObjectKind().GroupVersionKind().String())
 		}
-		return t, nil, nil
+		return t, &vr, nil
 	}
 
 	return nil, nil, errors.New("resource is not a pipeline")
