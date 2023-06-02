@@ -28,6 +28,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	faketaskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/taskrun/fake"
 	"github.com/tektoncd/pipeline/pkg/names"
+	"github.com/tektoncd/pipeline/pkg/pod"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -418,6 +419,85 @@ func TestRecordRunningTaskRunsCount(t *testing.T) {
 	metricstest.CheckLastValueData(t, "running_taskruns_count", map[string]string{}, 1)
 }
 
+func TestRecordRunningTaskRunsThrottledCounts(t *testing.T) {
+	for _, tc := range []struct {
+		status     corev1.ConditionStatus
+		reason     string
+		nodeCount  float64
+		quotaCount float64
+	}{
+		{
+			status: corev1.ConditionTrue,
+			reason: "",
+		},
+		{
+			status: corev1.ConditionTrue,
+			reason: pod.ReasonExceededResourceQuota,
+		},
+		{
+			status: corev1.ConditionTrue,
+			reason: pod.ReasonExceededNodeResources,
+		},
+		{
+			status: corev1.ConditionFalse,
+			reason: "",
+		},
+		{
+			status: corev1.ConditionFalse,
+			reason: pod.ReasonExceededResourceQuota,
+		},
+		{
+			status: corev1.ConditionFalse,
+			reason: pod.ReasonExceededNodeResources,
+		},
+		{
+			status: corev1.ConditionUnknown,
+			reason: "",
+		},
+		{
+			status:     corev1.ConditionUnknown,
+			reason:     pod.ReasonExceededResourceQuota,
+			quotaCount: 1,
+		},
+		{
+			status:    corev1.ConditionUnknown,
+			reason:    pod.ReasonExceededNodeResources,
+			nodeCount: 1,
+		},
+	} {
+		unregisterMetrics()
+		tr := &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("taskrun-")},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: tc.status,
+						Reason: tc.reason,
+					}},
+				},
+			},
+		}
+		ctx, _ := ttesting.SetupFakeContext(t)
+		informer := faketaskruninformer.Get(ctx)
+		if err := informer.Informer().GetIndexer().Add(tr); err != nil {
+			t.Fatalf("Adding TaskRun to informer: %v", err)
+		}
+
+		ctx = getConfigContext()
+		metrics, err := NewRecorder(ctx)
+		if err != nil {
+			t.Fatalf("NewRecorder: %v", err)
+		}
+
+		if err := metrics.RunningTaskRuns(ctx, informer.Lister()); err != nil {
+			t.Errorf("RunningTaskRuns: %v", err)
+		}
+		metricstest.CheckLastValueData(t, "running_taskruns_throttled_by_quota_count", map[string]string{}, tc.quotaCount)
+		metricstest.CheckLastValueData(t, "running_taskruns_throttled_by_node_count", map[string]string{}, tc.nodeCount)
+	}
+}
+
 func TestRecordPodLatency(t *testing.T) {
 	creationTime := metav1.Now()
 
@@ -685,7 +765,7 @@ func TestRecordCloudEvents(t *testing.T) {
 }
 
 func unregisterMetrics() {
-	metricstest.Unregister("taskrun_duration_seconds", "pipelinerun_taskrun_duration_seconds", "taskrun_count", "running_taskruns_count", "taskruns_pod_latency", "cloudevent_count")
+	metricstest.Unregister("taskrun_duration_seconds", "pipelinerun_taskrun_duration_seconds", "taskrun_count", "running_taskruns_count", "running_taskruns_throttled_by_quota_count", "running_taskruns_throttled_by_node_count", "taskruns_pod_latency", "cloudevent_count")
 
 	// Allow the recorder singleton to be recreated.
 	once = sync.Once{}

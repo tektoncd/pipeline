@@ -27,6 +27,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/pod"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
@@ -51,12 +52,14 @@ var (
 	statusTag      = tag.MustNewKey("status")
 	podTag         = tag.MustNewKey("pod")
 
-	trDurationView      *view.View
-	prTRDurationView    *view.View
-	trCountView         *view.View
-	runningTRsCountView *view.View
-	podLatencyView      *view.View
-	cloudEventsView     *view.View
+	trDurationView                      *view.View
+	prTRDurationView                    *view.View
+	trCountView                         *view.View
+	runningTRsCountView                 *view.View
+	runningTRsThrottledByQuotaCountView *view.View
+	runningTRsThrottledByNodeCountView  *view.View
+	podLatencyView                      *view.View
+	cloudEventsView                     *view.View
 
 	trDuration = stats.Float64(
 		"taskrun_duration_seconds",
@@ -74,6 +77,14 @@ var (
 
 	runningTRsCount = stats.Float64("running_taskruns_count",
 		"Number of taskruns executing currently",
+		stats.UnitDimensionless)
+
+	runningTRsThrottledByQuotaCount = stats.Float64("running_taskruns_throttled_by_quota_count",
+		"Number of taskruns executing currently, but whose underlying Pods or Containers are suspended by k8s because of defined ResourceQuotas.  Such suspensions can occur as part of initial scheduling of the Pod, or scheduling of any of the subsequent Container(s) in the Pod after the first Container is started",
+		stats.UnitDimensionless)
+
+	runningTRsThrottledByNodeCount = stats.Float64("running_taskruns_throttled_by_node_count",
+		"Number of taskruns executing currently, but whose underlying Pods or Containers are suspended by k8s because of Node level constraints. Such suspensions can occur as part of initial scheduling of the Pod, or scheduling of any of the subsequent Container(s) in the Pod after the first Container is started",
 		stats.UnitDimensionless)
 
 	podLatency = stats.Float64("taskruns_pod_latency",
@@ -203,6 +214,16 @@ func viewRegister(cfg *config.Metrics) error {
 		Measure:     runningTRsCount,
 		Aggregation: view.LastValue(),
 	}
+	runningTRsThrottledByQuotaCountView = &view.View{
+		Description: runningTRsThrottledByQuotaCount.Description(),
+		Measure:     runningTRsThrottledByQuotaCount,
+		Aggregation: view.LastValue(),
+	}
+	runningTRsThrottledByNodeCountView = &view.View{
+		Description: runningTRsThrottledByNodeCount.Description(),
+		Measure:     runningTRsThrottledByNodeCount,
+		Aggregation: view.LastValue(),
+	}
 	podLatencyView = &view.View{
 		Description: podLatency.Description(),
 		Measure:     podLatency,
@@ -220,6 +241,8 @@ func viewRegister(cfg *config.Metrics) error {
 		prTRDurationView,
 		trCountView,
 		runningTRsCountView,
+		runningTRsThrottledByQuotaCountView,
+		runningTRsThrottledByNodeCountView,
 		podLatencyView,
 		cloudEventsView,
 	)
@@ -231,6 +254,8 @@ func viewUnregister() {
 		prTRDurationView,
 		trCountView,
 		runningTRsCountView,
+		runningTRsThrottledByQuotaCountView,
+		runningTRsThrottledByNodeCountView,
 		podLatencyView,
 		cloudEventsView,
 	)
@@ -357,9 +382,21 @@ func (r *Recorder) RunningTaskRuns(ctx context.Context, lister listers.TaskRunLi
 	}
 
 	var runningTrs int
+	var trsThrottledByQuota int
+	var trsThrottledByNode int
 	for _, pr := range trs {
-		if !pr.IsDone() {
-			runningTrs++
+		if pr.IsDone() {
+			continue
+		}
+		runningTrs++
+		succeedCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
+		if succeedCondition != nil && succeedCondition.Status == corev1.ConditionUnknown {
+			switch succeedCondition.Reason {
+			case pod.ReasonExceededResourceQuota:
+				trsThrottledByQuota++
+			case pod.ReasonExceededNodeResources:
+				trsThrottledByNode++
+			}
 		}
 	}
 
@@ -368,6 +405,8 @@ func (r *Recorder) RunningTaskRuns(ctx context.Context, lister listers.TaskRunLi
 		return err
 	}
 	metrics.Record(ctx, runningTRsCount.M(float64(runningTrs)))
+	metrics.Record(ctx, runningTRsThrottledByNodeCount.M(float64(trsThrottledByNode)))
+	metrics.Record(ctx, runningTRsThrottledByQuotaCount.M(float64(trsThrottledByQuota)))
 
 	return nil
 }
@@ -387,7 +426,7 @@ func (r *Recorder) ReportRunningTaskRuns(ctx context.Context, lister listers.Tas
 			return
 
 		case <-delay.C:
-			// Every 30s surface a metric for the number of running tasks.
+			// Every 30s surface a metric for the number of running tasks, as well as those running tasks that are currently throttled by k8s.
 			if err := r.RunningTaskRuns(ctx, lister); err != nil {
 				logger.Warnf("Failed to log the metrics : %v", err)
 			}
