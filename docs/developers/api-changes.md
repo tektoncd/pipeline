@@ -74,3 +74,8 @@ how these affect your deprecation or timeline, ask the maintainers.
    versions. Once you are reasonably confident that the field is no longer used
    by supported servers (rule of thumb: target currently supported LTS servers),
    it can safely be removed from client types.
+
+4. Maintain backwards compatibility of Go libraries when possible.
+
+   [Keeping Your Modules Compatible](https://go.dev/blog/module-compatibility)
+   offers some helpful suggestions.
