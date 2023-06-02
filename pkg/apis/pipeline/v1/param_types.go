@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/substitution"
@@ -28,12 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
-
-// exactVariableSubstitutionFormat matches strings that only contain a single reference to result or param variables, but nothing else
-// i.e. `$(result.resultname)` is a match, but `foo $(result.resultname)` is not.
-const exactVariableSubstitutionFormat = `^\$\([_a-zA-Z0-9.-]+(\.[_a-zA-Z0-9.-]+)*(\[([0-9]+|\*)\])?\)$`
-
-var exactVariableSubstitutionRegex = regexp.MustCompile(exactVariableSubstitutionFormat)
 
 // ParamsPrefix is the prefix used in $(...) expressions referring to parameters
 const ParamsPrefix = "params"
@@ -473,7 +466,7 @@ func (paramValues ParamValue) MarshalJSON() ([]byte, error) {
 func (paramValues *ParamValue) ApplyReplacements(stringReplacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) {
 	switch paramValues.Type {
 	case ParamTypeArray:
-		var newArrayVal []string
+		newArrayVal := []string{}
 		for _, v := range paramValues.ArrayVal {
 			newArrayVal = append(newArrayVal, substitution.ApplyArrayReplacements(v, stringReplacements, arrayReplacements)...)
 		}
@@ -505,7 +498,7 @@ func (paramValues *ParamValue) applyOrCorrect(stringReplacements map[string]stri
 
 	// trim the head "$(" and the tail ")" or "[*])"
 	// i.e. get "params.name" from "$(params.name)" or "$(params.name[*])"
-	trimedStringVal := StripStarVarSubExpression(stringVal)
+	trimedStringVal := substitution.StripStarVarSubExpression(stringVal)
 
 	// if the stringVal is a reference to a string param
 	if _, ok := stringReplacements[trimedStringVal]; ok {
@@ -525,11 +518,6 @@ func (paramValues *ParamValue) applyOrCorrect(stringReplacements map[string]stri
 		paramValues.ObjectVal = objectReplacements[trimedStringVal]
 		paramValues.Type = ParamTypeObject
 	}
-}
-
-// StripStarVarSubExpression strips "$(target[*])"" to get "target"
-func StripStarVarSubExpression(s string) string {
-	return strings.TrimSuffix(strings.TrimSuffix(strings.TrimPrefix(s, "$("), ")"), "[*]")
 }
 
 // NewStructuredValues creates an ParamValues of type ParamTypeString or ParamTypeArray, based on

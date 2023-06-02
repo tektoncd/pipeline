@@ -18,6 +18,7 @@ package v1
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -153,6 +154,22 @@ func (pr *PipelineRun) GetNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Namespace: pr.Namespace, Name: pr.Name}
 }
 
+// IsTimeoutConditionSet returns true when the pipelinerun has the pipelinerun timed out reason
+func (pr *PipelineRun) IsTimeoutConditionSet() bool {
+	condition := pr.Status.GetCondition(apis.ConditionSucceeded)
+	return condition.IsFalse() && condition.Reason == PipelineRunReasonTimedOut.String()
+}
+
+// SetTimeoutCondition sets the status of the PipelineRun to timed out.
+func (pr *PipelineRun) SetTimeoutCondition(ctx context.Context) {
+	pr.Status.SetCondition(&apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionFalse,
+		Reason:  PipelineRunReasonTimedOut.String(),
+		Message: fmt.Sprintf("PipelineRun %q failed to finish within %q", pr.Name, pr.PipelineTimeout(ctx).String()),
+	})
+}
+
 // HasTimedOut returns true if a pipelinerun has exceeded its spec.Timeout based on its status.Timeout
 func (pr *PipelineRun) HasTimedOut(ctx context.Context, c clock.PassiveClock) bool {
 	timeout := pr.PipelineTimeout(ctx)
@@ -168,6 +185,19 @@ func (pr *PipelineRun) HasTimedOut(ctx context.Context, c clock.PassiveClock) bo
 		}
 	}
 	return false
+}
+
+// HasTimedOutForALongTime returns true if a pipelinerun has exceeed its spec.Timeout based its status.StartTime
+// by a large margin
+func (pr *PipelineRun) HasTimedOutForALongTime(ctx context.Context, c clock.PassiveClock) bool {
+	if !pr.HasTimedOut(ctx, c) {
+		return false
+	}
+	timeout := pr.PipelineTimeout(ctx)
+	startTime := pr.Status.StartTime
+	runtime := c.Since(startTime.Time)
+	// We are arbitrarily defining large margin as doubling the spec.timeout
+	return runtime >= 2*timeout
 }
 
 // HaveTasksTimedOut returns true if a pipelinerun has exceeded its spec.Timeouts.Tasks

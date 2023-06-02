@@ -16,15 +16,9 @@ package v1
 import (
 	"context"
 	"fmt"
-	"regexp"
 
 	"knative.dev/pkg/apis"
 )
-
-// ResultNameFormat Constant used to define the regex Result.Name should follow
-const ResultNameFormat = `^([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]$`
-
-var resultNameFormatRegex = regexp.MustCompile(ResultNameFormat)
 
 // Validate implements apis.Validatable
 func (tr TaskResult) Validate(ctx context.Context) (errs *apis.FieldError) {
