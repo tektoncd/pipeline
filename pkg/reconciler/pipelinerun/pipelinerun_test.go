@@ -1049,6 +1049,179 @@ spec:
 	}
 }
 
+func TestMissingResultWhenStepErrorIsIgnored(t *testing.T) {
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
+metadata:
+  name: test-pipeline-missing-results
+  namespace: foo
+spec:
+  serviceAccountName: test-sa-0
+  pipelineSpec:
+    tasks:
+    - name: task1
+      taskSpec:
+        results:
+        - name: result1
+          type: string
+        - name: result2
+          type: string
+        steps:
+        - name: failing-step
+          onError: continue
+          image: busybox
+          script: 'echo -n 123 | tee $(results.result1.path); exit 1; echo -n 456 | tee $(results.result2.path)'
+    - name: task2
+      runAfter: [ task1 ]
+      params:
+      - name: param1
+        value: $(tasks.task1.results.result1)
+      - name: param2
+        value: $(tasks.task1.results.result2)
+      taskSpec:
+        params:
+        - name: param1
+          type: string
+        - name: param2
+          type: string
+        steps:
+        - name: foo
+          image: busybox
+          script: 'exit 0'
+ `)}
+
+	trs := []*v1beta1.TaskRun{mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipeline-missing-results-task1", "foo",
+			"test-pipeline-missing-results", "test-pipeline", "task1", true),
+		`
+spec:
+  serviceAccountName: test-sa
+  timeout: 1h0m0s
+status:
+  conditions:
+  - status: "True"
+    type: Succeeded
+  taskResults:
+  - name: result1
+    value: 123
+`)}
+
+	expectedPipelineRun :=
+		parse.MustParseV1beta1PipelineRun(t, `
+metadata:
+  name: test-pipeline-missing-results
+  namespace: foo
+  annotations: {}
+  labels:
+    tekton.dev/pipeline: test-pipeline-missing-results
+spec:
+  serviceAccountName: test-sa-0
+  pipelineSpec:
+    tasks:
+    - name: task1
+      taskSpec:
+        results:
+        - name: result1
+          type: string
+        - name: result2
+          type: string
+        steps:
+        - name: failing-step
+          onError: continue
+          image: busybox
+          script: 'echo -n 123 | tee $(results.result1.path); exit 1; echo -n 456 | tee $(results.result2.path)'
+    - name: task2
+      runAfter: [ task1 ]
+      params:
+      - name: param1
+        value: $(tasks.task1.results.result1)
+      - name: param2
+        value: $(tasks.task1.results.result2)
+      taskSpec:
+        params:
+        - name: param1
+          type: string
+        - name: param2
+          type: string
+        steps:
+        - name: foo
+          image: busybox
+          script: 'exit 0'
+status:
+  pipelineSpec:
+    tasks:
+    - name: task1
+      taskSpec:
+        results:
+        - name: result1
+          type: string
+        - name: result2
+          type: string
+        steps:
+        - name: failing-step
+          onError: continue
+          image: busybox
+          script: 'echo -n 123 | tee $(results.result1.path); exit 1; echo -n 456 | tee $(results.result2.path)'
+    - name: task2
+      runAfter: [ task1 ]
+      params:
+      - name: param1
+        value: $(tasks.task1.results.result1)
+      - name: param2
+        value: $(tasks.task1.results.result2)
+      taskSpec:
+        params:
+        - name: param1
+          type: string
+        - name: param2
+          type: string
+        steps:
+        - name: foo
+          image: busybox
+          script: 'exit 0'
+  conditions:
+  - message: "Could not find result with name result2 for task task1"
+    reason: InvalidTaskResultReference
+    status: "False"
+    type: Succeeded
+  childReferences:
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: test-pipeline-missing-results-task1
+    pipelineTaskName: task1
+  provenance:
+    featureFlags:
+      RunningInEnvWithInjectedSidecars: true
+      EnableAPIFields: "beta"
+      AwaitSidecarReadiness: true
+      VerificationNoMatchPolicy: "ignore"
+      EnableProvenanceInStatus: true
+      ResultExtractionMethod: "termination-message"
+      MaxResultSize: 4096
+`)
+	d := test.Data{
+		PipelineRuns: prs,
+		TaskRuns:     trs,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-missing-results", []string{}, true)
+	if reconciledRun.Status.CompletionTime == nil {
+		t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
+	}
+
+	// The PipelineRun should be marked as failed due to InvalidTaskResultReference.
+	if d := cmp.Diff(reconciledRun, expectedPipelineRun, ignoreResourceVersion, ignoreLastTransitionTime, ignoreTypeMeta, ignoreStartTime, ignoreCompletionTime); d != "" {
+		t.Errorf("Expected to see PipelineRun run marked as failed with the reason: InvalidTaskResultReference. Diff %s", diff.PrintWantGot(d))
+	}
+
+	// Check that the expected TaskRun was created
+	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, "foo", "test-pipeline-missing-results")
+
+	// We expect only 1 TaskRun to be created, since the PipelineRun should fail before creating the 2nd TaskRun due to the InvalidTaskResultReference
+	validateTaskRunsCount(t, taskRuns, 1)
+}
+
 func TestReconcile_InvalidPipelineRunNames(t *testing.T) {
 	// TestReconcile_InvalidPipelineRunNames runs "Reconcile" on several PipelineRuns that have invalid names.
 	// It verifies that reconcile fails, how it fails and which events are triggered.
