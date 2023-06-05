@@ -542,14 +542,25 @@ func ResolvePipelineTask(
 	getTaskRun resources.GetTaskRun,
 	getRun GetRun,
 	pipelineTask v1.PipelineTask,
+	pst PipelineRunState,
 ) (*ResolvedPipelineTask, error) {
 	rpt := ResolvedPipelineTask{
 		PipelineTask: &pipelineTask,
 	}
 	rpt.CustomTask = rpt.PipelineTask.TaskRef.IsCustomTask() || rpt.PipelineTask.TaskSpec.IsCustomTask()
 	numCombinations := 1
+	// We want to resolve all of the result references and ignore any errors at this point since there could be
+	// instances where result references are missing here, but will be later skipped or resolved in a subsequent
+	// TaskRun. The final validation is handled in skipBecauseResultReferencesAreMissing.
+	resolvedResultRefs, _, _ := ResolveResultRefs(pst, PipelineRunState{&rpt})
+	if err := validateArrayResultsIndex(resolvedResultRefs); err != nil {
+		return nil, err
+	}
+
+	ApplyTaskResults(PipelineRunState{&rpt}, resolvedResultRefs)
+
 	if rpt.PipelineTask.IsMatrixed() {
-		numCombinations = pipelineTask.Matrix.CountCombinations()
+		numCombinations = rpt.PipelineTask.Matrix.CountCombinations()
 	}
 	if rpt.IsCustomTask() {
 		rpt.CustomRunNames = getNamesOfCustomRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, numCombinations)
@@ -747,4 +758,29 @@ func (t *ResolvedPipelineTask) hasResultReferences() bool {
 
 func isCustomRunCancelledByPipelineRunTimeout(cr *v1beta1.CustomRun) bool {
 	return cr.Spec.StatusMessage == v1beta1.CustomRunCancelledByPipelineTimeoutMsg
+}
+
+// CheckMissingResultReferences returns an error if it is missing any result references.
+// Missing result references can occur if task fails to produce a result but has
+// OnError: continue (ie TestMissingResultWhenStepErrorIsIgnored)
+func CheckMissingResultReferences(pipelineRunState PipelineRunState, targets PipelineRunState) error {
+	for _, target := range targets {
+		for _, resultRef := range v1.PipelineTaskResultRefs(target.PipelineTask) {
+			referencedPipelineTask := pipelineRunState.ToMap()[resultRef.PipelineTask]
+			if referencedPipelineTask.IsCustomTask() {
+				customRun := referencedPipelineTask.CustomRuns[0]
+				_, err := findRunResultForParam(customRun, resultRef)
+				if err != nil {
+					return err
+				}
+			} else {
+				taskRun := referencedPipelineTask.TaskRuns[0]
+				_, err := findTaskResultForParam(taskRun, resultRef)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }

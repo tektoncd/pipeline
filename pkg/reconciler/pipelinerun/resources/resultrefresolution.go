@@ -17,11 +17,18 @@ limitations under the License.
 package resources
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+)
+
+var (
+	// ErrInvalidTaskResultReference indicates that the reason for the failure status is that there
+	// is an invalid task result reference
+	ErrInvalidTaskResultReference = errors.New("Invalid task result reference")
 )
 
 // ResolvedResultRefs represents all of the ResolvedResultRef for a pipeline task
@@ -43,7 +50,7 @@ func ResolveResultRef(pipelineRunState PipelineRunState, target *ResolvedPipelin
 	if err != nil {
 		return nil, pt, err
 	}
-	return validateArrayResultsIndex(removeDup(resolvedResultRefs))
+	return removeDup(resolvedResultRefs), "", nil
 }
 
 // ResolveResultRefs resolves any ResultReference that are found in the target ResolvedPipelineTask
@@ -56,19 +63,19 @@ func ResolveResultRefs(pipelineRunState PipelineRunState, targets PipelineRunSta
 		}
 		allResolvedResultRefs = append(allResolvedResultRefs, resolvedResultRefs...)
 	}
-	return validateArrayResultsIndex(removeDup(allResolvedResultRefs))
+	return removeDup(allResolvedResultRefs), "", nil
 }
 
 // validateArrayResultsIndex checks if the result array indexing reference is out of bound of the array size
-func validateArrayResultsIndex(allResolvedResultRefs ResolvedResultRefs) (ResolvedResultRefs, string, error) {
+func validateArrayResultsIndex(allResolvedResultRefs ResolvedResultRefs) error {
 	for _, r := range allResolvedResultRefs {
 		if r.Value.Type == v1.ParamTypeArray {
 			if r.ResultReference.ResultsIndex >= len(r.Value.ArrayVal) {
-				return nil, "", fmt.Errorf("Array Result Index %d for Task %s Result %s is out of bound of size %d", r.ResultReference.ResultsIndex, r.ResultReference.PipelineTask, r.ResultReference.Result, len(r.Value.ArrayVal))
+				return fmt.Errorf("Array Result Index %d for Task %s Result %s is out of bound of size %d", r.ResultReference.ResultsIndex, r.ResultReference.PipelineTask, r.ResultReference.Result, len(r.Value.ArrayVal))
 			}
 		}
 	}
-	return allResolvedResultRefs, "", nil
+	return nil
 }
 
 func removeDup(refs ResolvedResultRefs) ResolvedResultRefs {
@@ -168,7 +175,8 @@ func findRunResultForParam(customRun *v1beta1.CustomRun, reference *v1.ResultRef
 			return result.Value, nil
 		}
 	}
-	return "", fmt.Errorf("Could not find result with name %s for task %s", reference.Result, reference.PipelineTask)
+	err := fmt.Errorf("%w: Could not find result with name %s for task %s", ErrInvalidTaskResultReference, reference.Result, reference.PipelineTask)
+	return "", err
 }
 
 func findTaskResultForParam(taskRun *v1.TaskRun, reference *v1.ResultRef) (v1.ResultValue, error) {
@@ -178,7 +186,8 @@ func findTaskResultForParam(taskRun *v1.TaskRun, reference *v1.ResultRef) (v1.Re
 			return result.Value, nil
 		}
 	}
-	return v1.ResultValue{}, fmt.Errorf("Could not find result with name %s for task %s", reference.Result, reference.PipelineTask)
+	err := fmt.Errorf("%w: Could not find result with name %s for task %s", ErrInvalidTaskResultReference, reference.Result, reference.PipelineTask)
+	return v1.ResultValue{}, err
 }
 
 func (rs ResolvedResultRefs) getStringReplacements() map[string]string {

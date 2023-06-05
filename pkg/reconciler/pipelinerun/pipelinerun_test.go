@@ -1089,7 +1089,7 @@ spec:
         - name: foo
           image: busybox
           script: 'exit 0'
- `)}
+`)}
 
 	trs := []*v1.TaskRun{mustParseTaskRunWithObjectMeta(t,
 		taskRunObjectMeta("test-pipeline-missing-results-task1", "foo",
@@ -1181,7 +1181,7 @@ status:
           image: busybox
           script: 'exit 0'
   conditions:
-  - message: "Could not find result with name result2 for task task1"
+  - message: "Invalid task result reference: Could not find result with name result2 for task task1"
     reason: InvalidTaskResultReference
     status: "False"
     type: Succeeded

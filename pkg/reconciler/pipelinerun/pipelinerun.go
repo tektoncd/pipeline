@@ -351,6 +351,7 @@ func (c *Reconciler) resolvePipelineState(
 			},
 			getCustomRunFunc,
 			task,
+			pst,
 		)
 		if err != nil {
 			if tresources.IsGetTaskErrTransient(err) {
@@ -719,17 +720,13 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 		return controller.NewPermanentError(err)
 	}
 
-	resolvedResultRefs, _, err := resources.ResolveResultRefs(pipelineRunFacts.State, nextRpts)
+	// Check for Missing Result References
+	err = resources.CheckMissingResultReferences(pipelineRunFacts.State, nextRpts)
 	if err != nil {
 		logger.Infof("Failed to resolve task result reference for %q with error %v", pr.Name, err)
 		pr.Status.MarkFailed(ReasonInvalidTaskResultReference, err.Error())
 		return controller.NewPermanentError(err)
 	}
-
-	resources.ApplyTaskResults(nextRpts, resolvedResultRefs)
-	// After we apply Task Results, we may be able to evaluate more
-	// when expressions, so reset the skipped cache
-	pipelineRunFacts.ResetSkippedCache()
 
 	// GetFinalTasks only returns final tasks when a DAG is complete
 	fNextRpts := pipelineRunFacts.GetFinalTasks()
@@ -754,6 +751,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 		if rpt.IsFinalTask(pipelineRunFacts) {
 			c.setFinallyStartedTimeIfNeeded(pr, pipelineRunFacts)
 		}
+
 		if rpt == nil || rpt.Skip(pipelineRunFacts).IsSkipped || rpt.IsFinallySkipped(pipelineRunFacts).IsSkipped {
 			continue
 		}
