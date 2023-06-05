@@ -23,7 +23,6 @@ import (
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -87,14 +86,13 @@ func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekto
 // OCI bundle and remote resolution tasks will be verified by trusted resources if the feature is enabled
 func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester,
 	owner kmeta.OwnerRefable, tr *v1beta1.TaskRef, trName string, namespace, saName string, verificationPolicies []*v1alpha1.VerificationPolicy) GetTask {
-	cfg := config.FromContextOrDefaults(ctx)
 	kind := v1beta1.NamespacedTaskKind
 	if tr != nil && tr.Kind != "" {
 		kind = tr.Kind
 	}
 
 	switch {
-	case cfg.FeatureFlags.EnableTektonOCIBundles && tr != nil && tr.Bundle != "":
+	case tr != nil && tr.Bundle != "":
 		// Return an inline function that implements GetTask by calling Resolver.Get with the specified task type and
 		// casting it to a TaskObject.
 		return func(ctx context.Context, name string) (*v1beta1.Task, *v1beta1.RefSource, *trustedresources.VerificationResult, error) {

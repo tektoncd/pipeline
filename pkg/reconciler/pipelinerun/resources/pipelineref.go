@@ -22,7 +22,6 @@ import (
 	"fmt"
 
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -43,7 +42,6 @@ import (
 // the pipeline. It knows whether it needs to look in the cluster or in a remote location to fetch the reference.
 // OCI bundle and remote resolution pipelines will be verified by trusted resources if the feature is enabled
 func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester, pipelineRun *v1beta1.PipelineRun, verificationPolicies []*v1alpha1.VerificationPolicy) rprp.GetPipeline {
-	cfg := config.FromContextOrDefaults(ctx)
 	pr := pipelineRun.Spec.PipelineRef
 	namespace := pipelineRun.Namespace
 	// if the spec is already in the status, do not try to fetch it again, just use it as source of truth.
@@ -65,7 +63,7 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 	}
 
 	switch {
-	case cfg.FeatureFlags.EnableTektonOCIBundles && pr != nil && pr.Bundle != "":
+	case pr != nil && pr.Bundle != "":
 		// Return an inline function that implements GetTask by calling Resolver.Get with the specified task type and
 		// casting it to a PipelineObject.
 		return func(ctx context.Context, name string) (*v1beta1.Pipeline, *v1beta1.RefSource, *trustedresources.VerificationResult, error) {
