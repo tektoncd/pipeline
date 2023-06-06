@@ -131,6 +131,19 @@ type TaskRunStatus struct {
 // reasons that emerge from underlying resources are not included here
 type TaskRunReason string
 
+// TaskRunConditionType is an enum used to store TaskRun custom
+// conditions such as one used in spire results verification
+type TaskRunConditionType string
+
+const (
+	// TaskRunConditionResultsVerified is a Condition Type that indicates that the results were verified by spire
+	TaskRunConditionResultsVerified TaskRunConditionType = "SignedResultsVerified"
+)
+
+func (t TaskRunConditionType) String() string {
+	return string(t)
+}
+
 const (
 	// TaskRunReasonStarted is the reason set when the TaskRun has just started
 	TaskRunReasonStarted TaskRunReason = "Started"
@@ -155,6 +168,12 @@ const (
 	TaskRunReasonResultLargerThanAllowedLimit TaskRunReason = "TaskRunResultLargerThanAllowedLimit"
 	// TaskRunReasonStopSidecarFailed indicates that the sidecar is not properly stopped.
 	TaskRunReasonStopSidecarFailed = "TaskRunStopSidecarFailed"
+	// TaskRunReasonResultsVerified is the reason set when the TaskRun results are verified by spire
+	TaskRunReasonResultsVerified TaskRunReason = "TaskRunResultsVerified"
+	// TaskRunReasonsResultsVerificationFailed is the reason set when the TaskRun results are failed to verify by spire
+	TaskRunReasonsResultsVerificationFailed TaskRunReason = "TaskRunResultsVerificationFailed"
+	// AwaitingTaskRunResults is the reason set when waiting upon `TaskRun` results and signatures to verify
+	AwaitingTaskRunResults TaskRunReason = "AwaitingTaskRunResults"
 )
 
 func (t TaskRunReason) String() string {
@@ -433,4 +452,14 @@ func (tr *TaskRun) HasVolumeClaimTemplate() bool {
 		}
 	}
 	return false
+}
+
+// IsTaskRunResultVerified returns true if the TaskRun's results have been validated by spire.
+func (tr *TaskRun) IsTaskRunResultVerified() bool {
+	return tr.Status.GetCondition(apis.ConditionType(TaskRunConditionResultsVerified.String())).IsTrue()
+}
+
+// IsTaskRunResultDone returns true if the TaskRun's results are available for verification
+func (tr *TaskRun) IsTaskRunResultDone() bool {
+	return !tr.Status.GetCondition(apis.ConditionType(TaskRunConditionResultsVerified.String())).IsUnknown()
 }

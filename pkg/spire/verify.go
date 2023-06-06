@@ -33,13 +33,13 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/result"
 	"go.uber.org/zap"
 )
 
 // VerifyTaskRunResults ensures that the TaskRun results are valid and have not been tampered with
-func (sc *spireControllerAPIClient) VerifyTaskRunResults(ctx context.Context, prs []result.RunResult, tr *v1beta1.TaskRun) error {
+func (sc *spireControllerAPIClient) VerifyTaskRunResults(ctx context.Context, prs []result.RunResult, tr *v1.TaskRun) error {
 	err := sc.setupClient(ctx)
 	if err != nil {
 		return err
@@ -90,7 +90,7 @@ func (sc *spireControllerAPIClient) VerifyTaskRunResults(ctx context.Context, pr
 }
 
 // VerifyStatusInternalAnnotation run multuple verification steps to ensure that the spire status annotations are valid
-func (sc *spireControllerAPIClient) VerifyStatusInternalAnnotation(ctx context.Context, tr *v1beta1.TaskRun, logger *zap.SugaredLogger) error {
+func (sc *spireControllerAPIClient) VerifyStatusInternalAnnotation(ctx context.Context, tr *v1.TaskRun, logger *zap.SugaredLogger) error {
 	err := sc.setupClient(ctx)
 	if err != nil {
 		return err
@@ -143,14 +143,14 @@ func (sc *spireControllerAPIClient) VerifyStatusInternalAnnotation(ctx context.C
 }
 
 // CheckSpireVerifiedFlag checks if the verified status annotation is set which would result in spire verification failed
-func (sc *spireControllerAPIClient) CheckSpireVerifiedFlag(tr *v1beta1.TaskRun) bool {
+func (sc *spireControllerAPIClient) CheckSpireVerifiedFlag(tr *v1.TaskRun) bool {
 	if _, ok := tr.Status.Annotations[VerifiedAnnotation]; !ok {
 		return true
 	}
 	return false
 }
 
-func hashTaskrunStatusInternal(tr *v1beta1.TaskRun) (string, error) {
+func hashTaskrunStatusInternal(tr *v1.TaskRun) (string, error) {
 	s, err := json.Marshal(tr.Status.TaskRunStatusFields)
 	if err != nil {
 		return "", err
@@ -159,7 +159,7 @@ func hashTaskrunStatusInternal(tr *v1beta1.TaskRun) (string, error) {
 }
 
 // CheckStatusInternalAnnotation ensures that the internal status annotation hash and current status hash match
-func CheckStatusInternalAnnotation(tr *v1beta1.TaskRun) error {
+func CheckStatusInternalAnnotation(tr *v1.TaskRun) error {
 	// get stored hash of status
 	annotations := tr.Status.Annotations
 	hash, ok := annotations[TaskRunStatusHashAnnotation]
@@ -219,12 +219,12 @@ func getTrustBundle(ctx context.Context, client *workloadapi.Client) (*x509.Cert
 	return nil, errors.Wrap(err, "trust domain bundle empty")
 }
 
-func getFullPath(tr *v1beta1.TaskRun) string {
+func getFullPath(tr *v1.TaskRun) string {
 	// URI:spiffe://example.org/ns/default/taskrun/cache-image-pipelinerun-r4r22-fetch-from-git
 	return fmt.Sprintf("/ns/%s/taskrun/%s", tr.Namespace, tr.Name)
 }
 
-func verifyCertURI(cert *x509.Certificate, tr *v1beta1.TaskRun, trustDomain string) error {
+func verifyCertURI(cert *x509.Certificate, tr *v1.TaskRun, trustDomain string) error {
 	path := getFullPath(tr)
 	switch {
 	case len(cert.URIs) == 0:
@@ -326,27 +326,27 @@ func verifySignature(pub crypto.PublicKey, signature string, value string) error
 }
 
 func getResultValue(result result.RunResult) (string, error) {
-	aos := v1beta1.ArrayOrString{}
-	err := aos.UnmarshalJSON([]byte(result.Value))
+	pv := v1.ParamValue{}
+	err := pv.UnmarshalJSON([]byte(result.Value))
 	valList := []string{}
 	if err != nil {
 		return "", fmt.Errorf("unmarshal error for key: %s", result.Key)
 	}
-	switch aos.Type {
-	case v1beta1.ParamTypeString:
-		return aos.StringVal, nil
-	case v1beta1.ParamTypeArray:
-		valList = append(valList, aos.ArrayVal...)
+	switch pv.Type {
+	case v1.ParamTypeString:
+		return pv.StringVal, nil
+	case v1.ParamTypeArray:
+		valList = append(valList, pv.ArrayVal...)
 		return strings.Join(valList, ","), nil
-	case v1beta1.ParamTypeObject:
-		keys := make([]string, 0, len(aos.ObjectVal))
-		for k := range aos.ObjectVal {
+	case v1.ParamTypeObject:
+		keys := make([]string, 0, len(pv.ObjectVal))
+		for k := range pv.ObjectVal {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
 			valList = append(valList, k)
-			valList = append(valList, aos.ObjectVal[k])
+			valList = append(valList, pv.ObjectVal[k])
 		}
 		return strings.Join(valList, ","), nil
 	}

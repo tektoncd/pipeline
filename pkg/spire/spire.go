@@ -28,7 +28,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/result"
 	spireconfig "github.com/tektoncd/pipeline/pkg/spire/config"
 	"go.uber.org/zap"
@@ -59,13 +59,13 @@ const (
 
 // ControllerAPIClient interface maps to the spire controller API to interact with spire
 type ControllerAPIClient interface {
-	AppendStatusInternalAnnotation(ctx context.Context, tr *v1beta1.TaskRun) error
-	CheckSpireVerifiedFlag(tr *v1beta1.TaskRun) bool
+	AppendStatusInternalAnnotation(ctx context.Context, tr *v1.TaskRun) error
+	CheckSpireVerifiedFlag(tr *v1.TaskRun) bool
 	Close() error
-	CreateEntries(ctx context.Context, tr *v1beta1.TaskRun, pod *corev1.Pod, ttl time.Duration) error
-	DeleteEntry(ctx context.Context, tr *v1beta1.TaskRun, pod *corev1.Pod) error
-	VerifyStatusInternalAnnotation(ctx context.Context, tr *v1beta1.TaskRun, logger *zap.SugaredLogger) error
-	VerifyTaskRunResults(ctx context.Context, prs []result.RunResult, tr *v1beta1.TaskRun) error
+	CreateEntries(ctx context.Context, tr *v1.TaskRun, pod *corev1.Pod, ttl time.Duration) error
+	DeleteEntry(ctx context.Context, tr *v1.TaskRun, pod *corev1.Pod) error
+	VerifyStatusInternalAnnotation(ctx context.Context, tr *v1.TaskRun, logger *zap.SugaredLogger) error
+	VerifyTaskRunResults(ctx context.Context, prs []result.RunResult, tr *v1.TaskRun) error
 	SetConfig(c spireconfig.SpireConfig)
 }
 

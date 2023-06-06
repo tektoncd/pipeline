@@ -232,9 +232,9 @@ func TestMakeTaskRunStatusVerify(t *testing.T) {
 	statusSRVUnknown := func() duckv1.Status {
 		status := statusRunning()
 		status.Conditions = append(status.Conditions, apis.Condition{
-			Type:    apis.ConditionType(v1beta1.TaskRunConditionResultsVerified.String()),
+			Type:    apis.ConditionType(v1.TaskRunConditionResultsVerified.String()),
 			Status:  corev1.ConditionUnknown,
-			Reason:  v1beta1.AwaitingTaskRunResults.String(),
+			Reason:  v1.AwaitingTaskRunResults.String(),
 			Message: "Waiting upon TaskRun results and signatures to verify",
 		})
 		return status
@@ -242,9 +242,9 @@ func TestMakeTaskRunStatusVerify(t *testing.T) {
 	statusSRVVerified := func() duckv1.Status {
 		status := statusSuccess()
 		status.Conditions = append(status.Conditions, apis.Condition{
-			Type:    apis.ConditionType(v1beta1.TaskRunConditionResultsVerified.String()),
+			Type:    apis.ConditionType(v1.TaskRunConditionResultsVerified.String()),
 			Status:  corev1.ConditionTrue,
-			Reason:  v1beta1.TaskRunReasonResultsVerified.String(),
+			Reason:  v1.TaskRunReasonResultsVerified.String(),
 			Message: "Successfully verified all spire signed taskrun results",
 		})
 		return status
@@ -252,9 +252,9 @@ func TestMakeTaskRunStatusVerify(t *testing.T) {
 	statusSRVUnverified := func() duckv1.Status {
 		status := statusSuccess()
 		status.Conditions = append(status.Conditions, apis.Condition{
-			Type:    apis.ConditionType(v1beta1.TaskRunConditionResultsVerified.String()),
+			Type:    apis.ConditionType(v1.TaskRunConditionResultsVerified.String()),
 			Status:  corev1.ConditionFalse,
-			Reason:  v1beta1.TaskRunReasonsResultsVerificationFailed.String(),
+			Reason:  v1.TaskRunReasonsResultsVerificationFailed.String(),
 			Message: "",
 		})
 		return status
@@ -262,20 +262,20 @@ func TestMakeTaskRunStatusVerify(t *testing.T) {
 	for _, c := range []struct {
 		desc                 string
 		specifyTaskRunResult bool
-		resultOut            []v1beta1.PipelineResourceResult
+		resultOut            []result.RunResult
 		podStatus            corev1.PodStatus
 		pod                  corev1.Pod
-		want                 v1beta1.TaskRunStatus
+		want                 v1.TaskRunStatus
 	}{{
 		// test awaiting results
 		desc:      "running pod awaiting results",
 		podStatus: corev1.PodStatus{},
 
-		want: v1beta1.TaskRunStatus{
+		want: v1.TaskRunStatus{
 			Status: statusSRVUnknown(),
-			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-				Steps:    []v1beta1.StepState{},
-				Sidecars: []v1beta1.SidecarState{},
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Steps:    []v1.StepState{},
+				Sidecars: []v1.SidecarState{},
 			},
 		},
 	}, {
@@ -291,22 +291,22 @@ func TestMakeTaskRunStatusVerify(t *testing.T) {
 				},
 			}},
 		},
-		want: v1beta1.TaskRunStatus{
+		want: v1.TaskRunStatus{
 			Status: statusSRVUnverified(),
-			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-				Steps: []v1beta1.StepState{{
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							Message: `[{"key":"digest","value":"sha256:1234","type":1}]`,
 						}},
-					Name:          "bar",
-					ContainerName: "step-bar",
+					Name:      "bar",
+					Container: "step-bar",
 				}},
-				Sidecars: []v1beta1.SidecarState{},
-				TaskRunResults: []v1beta1.TaskRunResult{{
+				Sidecars: []v1.SidecarState{},
+				Results: []v1.TaskRunResult{{
 					Name:  "digest",
-					Type:  v1beta1.ResultsTypeString,
-					Value: *v1beta1.NewStructuredValues("sha256:1234"),
+					Type:  v1.ResultsTypeString,
+					Value: *v1.NewStructuredValues("sha256:1234"),
 				}},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
@@ -332,22 +332,22 @@ func TestMakeTaskRunStatusVerify(t *testing.T) {
 				},
 			}},
 		},
-		want: v1beta1.TaskRunStatus{
+		want: v1.TaskRunStatus{
 			Status: statusSRVVerified(),
-			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-				Steps: []v1beta1.StepState{{
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							Message: `to be overridden by signing`,
 						}},
-					Name:          "bar",
-					ContainerName: "step-bar",
+					Name:      "bar",
+					Container: "step-bar",
 				}},
-				Sidecars: []v1beta1.SidecarState{},
-				TaskRunResults: []v1beta1.TaskRunResult{{
+				Sidecars: []v1.SidecarState{},
+				Results: []v1.TaskRunResult{{
 					Name:  "resultName",
-					Type:  v1beta1.ResultsTypeString,
-					Value: *v1beta1.NewStructuredValues("resultValue"),
+					Type:  v1.ResultsTypeString,
+					Value: *v1.NewStructuredValues("resultValue"),
 				}},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
@@ -373,22 +373,22 @@ func TestMakeTaskRunStatusVerify(t *testing.T) {
 				},
 			}},
 		},
-		want: v1beta1.TaskRunStatus{
+		want: v1.TaskRunStatus{
 			Status: statusSRVVerified(),
-			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-				Steps: []v1beta1.StepState{{
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							Message: `to be overridden by signing`,
 						}},
-					Name:          "bar",
-					ContainerName: "step-bar",
+					Name:      "bar",
+					Container: "step-bar",
 				}},
-				Sidecars: []v1beta1.SidecarState{},
-				TaskRunResults: []v1beta1.TaskRunResult{{
+				Sidecars: []v1.SidecarState{},
+				Results: []v1.TaskRunResult{{
 					Name:  "resultName",
-					Type:  v1beta1.ResultsTypeArray,
-					Value: *v1beta1.NewStructuredValues("hello", "world"),
+					Type:  v1.ResultsTypeArray,
+					Value: *v1.NewStructuredValues("hello", "world"),
 				}},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
@@ -396,7 +396,7 @@ func TestMakeTaskRunStatusVerify(t *testing.T) {
 		},
 	}, {
 		desc:      "test result with no result with signed termination message",
-		resultOut: []v1beta1.PipelineResourceResult{},
+		resultOut: []result.RunResult{},
 		podStatus: corev1.PodStatus{
 			Phase: corev1.PodSucceeded,
 			ContainerStatuses: []corev1.ContainerStatus{{
@@ -408,18 +408,18 @@ func TestMakeTaskRunStatusVerify(t *testing.T) {
 				},
 			}},
 		},
-		want: v1beta1.TaskRunStatus{
+		want: v1.TaskRunStatus{
 			Status: statusSRVVerified(),
-			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-				Steps: []v1beta1.StepState{{
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							Message: `to be overridden by signing`,
 						}},
-					Name:          "bar",
-					ContainerName: "step-bar",
+					Name:      "bar",
+					Container: "step-bar",
 				}},
-				Sidecars: []v1beta1.SidecarState{},
+				Sidecars: []v1.SidecarState{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -437,18 +437,18 @@ func TestMakeTaskRunStatusVerify(t *testing.T) {
 				},
 			}},
 		},
-		want: v1beta1.TaskRunStatus{
+		want: v1.TaskRunStatus{
 			Status: statusSRVVerified(),
-			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-				Steps: []v1beta1.StepState{{
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							Message: "[]",
 						}},
-					Name:          "bar",
-					ContainerName: "step-bar",
+					Name:      "bar",
+					Container: "step-bar",
 				}},
-				Sidecars: []v1beta1.SidecarState{},
+				Sidecars: []v1.SidecarState{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -467,18 +467,18 @@ func TestMakeTaskRunStatusVerify(t *testing.T) {
 				},
 			}},
 		},
-		want: v1beta1.TaskRunStatus{
+		want: v1.TaskRunStatus{
 			Status: statusSRVUnverified(),
-			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-				Steps: []v1beta1.StepState{{
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							Message: "[]",
 						}},
-					Name:          "bar",
-					ContainerName: "step-bar",
+					Name:      "bar",
+					Container: "step-bar",
 				}},
-				Sidecars: []v1beta1.SidecarState{},
+				Sidecars: []v1.SidecarState{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -503,21 +503,21 @@ func TestMakeTaskRunStatusVerify(t *testing.T) {
 			}
 
 			startTime := time.Date(2010, 1, 1, 1, 1, 1, 1, time.UTC)
-			tr := v1beta1.TaskRun{
+			tr := v1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "task-run",
 					Namespace: "foo",
 				},
-				Status: v1beta1.TaskRunStatus{
-					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Status: v1.TaskRunStatus{
+					TaskRunStatusFields: v1.TaskRunStatusFields{
 						StartTime: &metav1.Time{Time: startTime},
 					},
 				},
 			}
 			if c.specifyTaskRunResult {
 				// Specify result
-				tr.Status.TaskSpec = &v1beta1.TaskSpec{
-					Results: []v1beta1.TaskResult{{
+				tr.Status.TaskSpec = &v1.TaskSpec{
+					Results: []v1.TaskResult{{
 						Name: "some-task-result",
 					}},
 				}
@@ -550,7 +550,7 @@ func TestMakeTaskRunStatusVerify(t *testing.T) {
 
 			logger, _ := logging.NewLogger("", "status")
 			kubeclient := fakek8s.NewSimpleClientset()
-			got, err := MakeTaskRunStatus(ctx, logger, tr, &c.pod, kubeclient, &v1beta1.TaskSpec{}, sc)
+			got, err := MakeTaskRunStatus(ctx, logger, tr, &c.pod, kubeclient, &v1.TaskSpec{}, sc)
 			if err != nil {
 				t.Errorf("MakeTaskRunResult: %s", err)
 			}

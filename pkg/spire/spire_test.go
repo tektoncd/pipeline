@@ -27,7 +27,7 @@ import (
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
 	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
 	pconf "github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/result"
 	"github.com/tektoncd/pipeline/pkg/spire/config"
@@ -169,7 +169,7 @@ func TestCheckHashSimilarities(t *testing.T) {
 
 	tr2c.Status.Status.Annotations = map[string]string{"new": "value"}
 
-	signTrs := []*v1beta1.TaskRun{tr1, tr1c, tr2, tr2c}
+	signTrs := []*v1.TaskRun{tr1, tr1c, tr2, tr2c}
 
 	for _, tr := range signTrs {
 		err := cc.AppendStatusInternalAnnotation(ctx, tr)
@@ -329,7 +329,7 @@ func TestCheckTamper(t *testing.T) {
 			}
 
 			if tt.modifyStatus {
-				tr.Status.TaskRunStatusFields.Steps = append(tr.Status.TaskRunStatusFields.Steps, v1beta1.StepState{
+				tr.Status.TaskRunStatusFields.Steps = append(tr.Status.TaskRunStatusFields.Steps, v1.StepState{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{ExitCode: int32(54321)},
 					}})
@@ -701,6 +701,6 @@ func x509svids(ca *test.CA, ids ...spiffeid.ID) []*x509svid.SVID {
 	return svids
 }
 
-func taskrunPath(tr *v1beta1.TaskRun) string {
+func taskrunPath(tr *v1.TaskRun) string {
 	return fmt.Sprintf("/ns/%v/taskrun/%v", tr.Namespace, tr.Name)
 }

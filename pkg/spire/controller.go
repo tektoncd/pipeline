@@ -28,7 +28,7 @@ import (
 	entryv1 "github.com/spiffe/spire-api-sdk/proto/spire/api/server/entry/v1"
 	spiffetypes "github.com/spiffe/spire-api-sdk/proto/spire/api/types"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	spireconfig "github.com/tektoncd/pipeline/pkg/spire/config"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -173,7 +173,7 @@ func (sc *spireControllerAPIClient) nodeEntry(nodeName string) *spiffetypes.Entr
 	}
 }
 
-func (sc *spireControllerAPIClient) workloadEntry(tr *v1beta1.TaskRun, pod *corev1.Pod, expiry int64) *spiffetypes.Entry {
+func (sc *spireControllerAPIClient) workloadEntry(tr *v1.TaskRun, pod *corev1.Pod, expiry int64) *spiffetypes.Entry {
 	// Note: We can potentially add attestation on the container images as well since
 	// the information is available here.
 	selectors := []*spiffetypes.Selector{
@@ -202,7 +202,7 @@ func (sc *spireControllerAPIClient) workloadEntry(tr *v1beta1.TaskRun, pod *core
 }
 
 // ttl is the TTL for the SPIRE entry in seconds, not the SVID TTL
-func (sc *spireControllerAPIClient) CreateEntries(ctx context.Context, tr *v1beta1.TaskRun, pod *corev1.Pod, ttl time.Duration) error {
+func (sc *spireControllerAPIClient) CreateEntries(ctx context.Context, tr *v1.TaskRun, pod *corev1.Pod, ttl time.Duration) error {
 	err := sc.setupClient(ctx)
 	if err != nil {
 		return err
@@ -244,7 +244,7 @@ func (sc *spireControllerAPIClient) CreateEntries(ctx context.Context, tr *v1bet
 	return nil
 }
 
-func (sc *spireControllerAPIClient) getEntries(ctx context.Context, tr *v1beta1.TaskRun, pod *corev1.Pod) ([]*spiffetypes.Entry, error) {
+func (sc *spireControllerAPIClient) getEntries(ctx context.Context, tr *v1.TaskRun, pod *corev1.Pod) ([]*spiffetypes.Entry, error) {
 	req := &entryv1.ListEntriesRequest{
 		Filter: &entryv1.ListEntriesRequest_Filter{
 			BySpiffeId: &spiffetypes.SPIFFEID{
@@ -273,7 +273,7 @@ func (sc *spireControllerAPIClient) getEntries(ctx context.Context, tr *v1beta1.
 	return entries, nil
 }
 
-func (sc *spireControllerAPIClient) DeleteEntry(ctx context.Context, tr *v1beta1.TaskRun, pod *corev1.Pod) error {
+func (sc *spireControllerAPIClient) DeleteEntry(ctx context.Context, tr *v1.TaskRun, pod *corev1.Pod) error {
 	entries, err := sc.getEntries(ctx, tr, pod)
 	if err != nil {
 		return err

@@ -23,7 +23,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/result"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,7 +55,7 @@ func TestMock_TaskRunSign(t *testing.T) {
 	}
 }
 
-// test CheckSpireVerifiedFlag(tr *v1beta1.TaskRun) bool
+// test CheckSpireVerifiedFlag(tr *v1.TaskRun) bool
 func TestMock_CheckSpireVerifiedFlag(t *testing.T) {
 	spireMockClient := &MockClient{}
 	var (
@@ -95,7 +95,7 @@ func TestMock_CheckHashSimilarities(t *testing.T) {
 
 	tr2c.Status.Status.Annotations = map[string]string{"new": "value"}
 
-	signTrs := []*v1beta1.TaskRun{tr1, tr1c, tr2, tr2c}
+	signTrs := []*v1.TaskRun{tr1, tr1c, tr2, tr2c}
 
 	for _, tr := range signTrs {
 		err := cc.AppendStatusInternalAnnotation(ctx, tr)
@@ -220,7 +220,7 @@ func TestMock_CheckTamper(t *testing.T) {
 			}
 
 			if tt.modifyStatus {
-				tr.Status.TaskRunStatusFields.Steps = append(tr.Status.TaskRunStatusFields.Steps, v1beta1.StepState{
+				tr.Status.TaskRunStatusFields.Steps = append(tr.Status.TaskRunStatusFields.Steps, v1.StepState{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{ExitCode: int32(54321)},
 					}})
@@ -545,13 +545,13 @@ func objectMeta(name, ns string) metav1.ObjectMeta {
 	}
 }
 
-func testTaskRuns() []*v1beta1.TaskRun {
-	return []*v1beta1.TaskRun{
+func testTaskRuns() []*v1.TaskRun {
+	return []*v1.TaskRun{
 		// taskRun 1
 		{
 			ObjectMeta: objectMeta("taskrun-example", "foo"),
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef: &v1beta1.TaskRef{
+			Spec: v1.TaskRunSpec{
+				TaskRef: &v1.TaskRef{
 					Name:       "taskname",
 					APIVersion: "a1",
 				},
@@ -561,14 +561,14 @@ func testTaskRuns() []*v1beta1.TaskRun {
 		// taskRun 2
 		{
 			ObjectMeta: objectMeta("taskrun-example-populated", "foo"),
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef:            &v1beta1.TaskRef{Name: "unit-test-task"},
+			Spec: v1.TaskRunSpec{
+				TaskRef:            &v1.TaskRef{Name: "unit-test-task"},
 				ServiceAccountName: "test-sa",
 				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 			},
-			Status: v1beta1.TaskRunStatus{
-				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-					Steps: []v1beta1.StepState{{
+			Status: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Steps: []v1.StepState{{
 						ContainerState: corev1.ContainerState{
 							Terminated: &corev1.ContainerStateTerminated{ExitCode: int32(0)},
 						},
@@ -579,12 +579,12 @@ func testTaskRuns() []*v1beta1.TaskRun {
 		// taskRun 3
 		{
 			ObjectMeta: objectMeta("taskrun-example-with-objmeta", "foo"),
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef:            &v1beta1.TaskRef{Name: "unit-test-task"},
+			Spec: v1.TaskRunSpec{
+				TaskRef:            &v1.TaskRef{Name: "unit-test-task"},
 				ServiceAccountName: "test-sa",
 				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 			},
-			Status: v1beta1.TaskRunStatus{
+			Status: v1.TaskRunStatus{
 				Status: duckv1.Status{
 					Conditions: duckv1.Conditions{
 						apis.Condition{
@@ -592,8 +592,8 @@ func testTaskRuns() []*v1beta1.TaskRun {
 						},
 					},
 				},
-				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-					Steps: []v1beta1.StepState{{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Steps: []v1.StepState{{
 						ContainerState: corev1.ContainerState{
 							Terminated: &corev1.ContainerStateTerminated{ExitCode: int32(0)},
 						},
@@ -603,12 +603,12 @@ func testTaskRuns() []*v1beta1.TaskRun {
 		},
 		{
 			ObjectMeta: objectMeta("taskrun-example-with-objmeta-annotations", "foo"),
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef:            &v1beta1.TaskRef{Name: "unit-test-task"},
+			Spec: v1.TaskRunSpec{
+				TaskRef:            &v1.TaskRef{Name: "unit-test-task"},
 				ServiceAccountName: "test-sa",
 				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 			},
-			Status: v1beta1.TaskRunStatus{
+			Status: v1.TaskRunStatus{
 				Status: duckv1.Status{
 					Conditions: duckv1.Conditions{
 						apis.Condition{
@@ -620,8 +620,8 @@ func testTaskRuns() []*v1beta1.TaskRun {
 						"annotation2": "a2value",
 					},
 				},
-				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-					Steps: []v1beta1.StepState{{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Steps: []v1.StepState{{
 						ContainerState: corev1.ContainerState{
 							Terminated: &corev1.ContainerStateTerminated{ExitCode: int32(0)},
 						},
@@ -716,11 +716,11 @@ func testRunResults() [][]result.RunResult {
 	}
 }
 
-func getHash(tr *v1beta1.TaskRun) string {
+func getHash(tr *v1.TaskRun) string {
 	return tr.Status.Status.Annotations[TaskRunStatusHashAnnotation]
 }
 
-func genPodObj(tr *v1beta1.TaskRun, uid string) *corev1.Pod {
+func genPodObj(tr *v1.TaskRun, uid string) *corev1.Pod {
 	if uid == "" {
 		uid = uuid.NewString()
 	}

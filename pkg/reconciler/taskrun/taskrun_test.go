@@ -1479,7 +1479,7 @@ spec:
 		t.Errorf("expected no error. Got error %v", err)
 	}
 
-	client := testAssets.Clients.ResolutionRequests.ResolutionV1().ResolutionRequests("default")
+	client := testAssets.Clients.ResolutionRequests.ResolutionV1beta1().ResolutionRequests("default")
 	resolutionrequests, err := client.List(testAssets.Ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error listing resource requests: %v", err)
@@ -1579,7 +1579,7 @@ spec:
 		t.Errorf("expected no error. Got error %v", err)
 	}
 
-	client := testAssets.Clients.ResolutionRequests.ResolutionV1().ResolutionRequests("default")
+	client := testAssets.Clients.ResolutionRequests.ResolutionV1beta1().ResolutionRequests("default")
 	resolutionrequests, err := client.List(testAssets.Ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error listing resource requests: %v", err)

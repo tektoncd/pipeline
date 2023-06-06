@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/result"
 	"github.com/tektoncd/pipeline/pkg/spire"
 	"github.com/tektoncd/pipeline/pkg/termination"
@@ -165,10 +166,10 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.Tas
 }
 
 func setTaskRunStatusBasedOnSpireVerification(ctx context.Context, logger *zap.SugaredLogger, tr *v1.TaskRun, trs *v1.TaskRunStatus,
-	filteredResults []v1beta1.PipelineResourceResult, spireAPI spire.ControllerAPIClient) {
+	filteredResults []result.RunResult, spireAPI spire.ControllerAPIClient) {
 	if tr.IsSuccessful() && spireAPI != nil &&
 		((tr.Status.TaskSpec != nil && len(tr.Status.TaskSpec.Results) >= 1) || len(filteredResults) >= 1) {
-		logger.Info("validating signed results with spire: ", trs.TaskRunResults)
+		logger.Info("validating signed results with spire: ", trs.Results)
 		if err := spireAPI.VerifyTaskRunResults(ctx, filteredResults, tr); err != nil {
 			logger.Errorf("failed to verify signed results with spire: %w", err)
 			markStatusSignedResultsFailure(trs, err.Error())
@@ -238,7 +239,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 
 				taskResults, filteredResults := filterResults(results, specResults, spireEnabled)
 				if tr.IsDone() {
-					trs.Results = append(trs.TaskRunResults, taskResults...)
+					trs.Results = append(trs.Results, taskResults...)
 					if spireEnabled {
 						setTaskRunStatusBasedOnSpireVerification(ctx, logger, tr, trs, filteredResults, spireAPI)
 					}
@@ -641,31 +642,31 @@ func markStatusSuccess(trs *v1.TaskRunStatus) {
 }
 
 // markStatusResultsVerified sets taskrun status to verified
-func markStatusSignedResultsVerified(trs *v1beta1.TaskRunStatus) {
+func markStatusSignedResultsVerified(trs *v1.TaskRunStatus) {
 	trs.SetCondition(&apis.Condition{
 		Type:    apis.ConditionType(v1beta1.TaskRunConditionResultsVerified.String()),
 		Status:  corev1.ConditionTrue,
-		Reason:  v1beta1.TaskRunReasonResultsVerified.String(),
+		Reason:  v1.TaskRunReasonResultsVerified.String(),
 		Message: "Successfully verified all spire signed taskrun results",
 	})
 }
 
 // markStatusFailure sets taskrun status to failure with specified reason
-func markStatusSignedResultsFailure(trs *v1beta1.TaskRunStatus, message string) {
+func markStatusSignedResultsFailure(trs *v1.TaskRunStatus, message string) {
 	trs.SetCondition(&apis.Condition{
-		Type:    apis.ConditionType(v1beta1.TaskRunConditionResultsVerified.String()),
+		Type:    apis.ConditionType(v1.TaskRunConditionResultsVerified.String()),
 		Status:  corev1.ConditionFalse,
-		Reason:  v1beta1.TaskRunReasonsResultsVerificationFailed.String(),
+		Reason:  v1.TaskRunReasonsResultsVerificationFailed.String(),
 		Message: message,
 	})
 }
 
 // markStatusRunning sets taskrun status to running
-func markStatusSignedResultsRunning(trs *v1beta1.TaskRunStatus) {
+func markStatusSignedResultsRunning(trs *v1.TaskRunStatus) {
 	trs.SetCondition(&apis.Condition{
-		Type:    apis.ConditionType(v1beta1.TaskRunConditionResultsVerified.String()),
+		Type:    apis.ConditionType(v1.TaskRunConditionResultsVerified.String()),
 		Status:  corev1.ConditionUnknown,
-		Reason:  v1beta1.AwaitingTaskRunResults.String(),
+		Reason:  v1.AwaitingTaskRunResults.String(),
 		Message: "Waiting upon TaskRun results and signatures to verify",
 	})
 }

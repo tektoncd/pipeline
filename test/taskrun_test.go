@@ -31,8 +31,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
@@ -324,8 +324,8 @@ spec:
 				Reason:   "Error",
 			},
 		},
-		Name:          "unnamed-0",
-		ContainerName: "step-unnamed-0",
+		Name:      "unnamed-0",
+		Container: "step-unnamed-0",
 	}}
 
 	ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
@@ -410,8 +410,8 @@ spec:
 				Reason:   "Completed",
 			},
 		},
-		Name:          "unnamed-0",
-		ContainerName: "step-unnamed-0",
+		Name:      "unnamed-0",
+		Container: "step-unnamed-0",
 	}}
 
 	ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")

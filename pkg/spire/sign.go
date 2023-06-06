@@ -27,7 +27,7 @@ import (
 	"strings"
 
 	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/result"
 )
 
@@ -116,7 +116,7 @@ func getManifest(results []result.RunResult) string {
 }
 
 // AppendStatusInternalAnnotation creates the status annotations which are used by the controller to verify the status hash
-func (sc *spireControllerAPIClient) AppendStatusInternalAnnotation(ctx context.Context, tr *v1beta1.TaskRun) error {
+func (sc *spireControllerAPIClient) AppendStatusInternalAnnotation(ctx context.Context, tr *v1.TaskRun) error {
 	err := sc.setupClient(ctx)
 	if err != nil {
 		return err
