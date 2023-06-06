@@ -24,8 +24,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http/httptest"
-	"net/url"
 	"strconv"
 	"testing"
 	"time"
@@ -34,7 +32,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -1210,12 +1207,6 @@ func newDefaultsConfigMap() *corev1.ConfigMap {
 func withEnabledAlphaAPIFields(cm *corev1.ConfigMap) *corev1.ConfigMap {
 	newCM := cm.DeepCopy()
 	newCM.Data[apiFieldsFeatureFlag] = config.AlphaAPIFields
-	return newCM
-}
-
-func withOCIBundles(cm *corev1.ConfigMap) *corev1.ConfigMap {
-	newCM := cm.DeepCopy()
-	newCM.Data[ociBundlesFeatureFlag] = "true"
 	return newCM
 }
 
@@ -6463,33 +6454,17 @@ func TestReconcile_RemotePipelineRef(t *testing.T) {
 	prName := "test-pipeline-run-success"
 	trName := "test-pipeline-run-success-unit-test-1"
 
-	ctx := context.Background()
-	cfg := config.NewStore(logtesting.TestLogger(t))
-	cfg.OnConfigChanged(withOCIBundles(newFeatureFlagsConfigMap()))
-	ctx = cfg.ToContext(ctx)
-
-	// Set up a fake registry to push an image to.
-	s := httptest.NewServer(registry.New())
-	defer s.Close()
-	u, err := url.Parse(s.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ref := u.Host + "/testreconcile_remotepipelineref"
-
-	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-success
   namespace: foo
 spec:
   pipelineRef:
-    bundle: %s
-    name: test-pipeline
+    resolver: bar
   serviceAccountName: test-sa
   timeout: 1h0m0s
-`, ref))}
-	ps := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+`)}
+	ps := parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -6497,22 +6472,27 @@ spec:
   tasks:
   - name: unit-test-1
     taskRef:
-      bundle: %s
-      name: unit-test-task
-`, ref))
-	cms := []*corev1.ConfigMap{withOCIBundles(newFeatureFlagsConfigMap())}
+      resolver: bar
+`)
 
-	// This task will be uploaded along with the pipeline definition.
 	remoteTask := parse.MustParseV1beta1Task(t, `
 metadata:
   name: unit-test-task
   namespace: foo
 `)
 
-	// Create a bundle from our pipeline and tasks.
-	if _, err := test.CreateImage(ref, ps, remoteTask); err != nil {
-		t.Fatalf("failed to create image in pipeline renconcile: %s", err.Error())
+	pipelineBytes, err := yaml.Marshal(ps)
+	if err != nil {
+		t.Fatal("fail to marshal task", err)
 	}
+
+	taskBytes, err := yaml.Marshal(remoteTask)
+	if err != nil {
+		t.Fatal("fail to marshal task", err)
+	}
+
+	pipelineReq := getResolvedResolutionRequest(t, "bar", pipelineBytes, "foo", prName)
+	taskReq := getResolvedResolutionRequest(t, "bar", taskBytes, "foo", trName)
 
 	// Unlike the tests above, we do *not* locally define our pipeline or unit-test task.
 	d := test.Data{
@@ -6520,7 +6500,7 @@ metadata:
 		ServiceAccounts: []*corev1.ServiceAccount{{
 			ObjectMeta: metav1.ObjectMeta{Name: prs[0].Spec.ServiceAccountName, Namespace: namespace},
 		}},
-		ConfigMaps: cms,
+		ResolutionRequests: []*resolutionv1beta1.ResolutionRequest{&taskReq, &pipelineReq},
 	}
 
 	prt := newPipelineRunTest(t, d)
@@ -6540,14 +6520,13 @@ metadata:
 	expectedTaskRun := mustParseTaskRunWithObjectMeta(t,
 		taskRunObjectMeta(trName, namespace, prName,
 			"test-pipeline", "unit-test-1", false),
-		fmt.Sprintf(`
+		`
 spec:
   serviceAccountName: test-sa
   taskRef:
-    bundle: %s
     kind: Task
-    name: unit-test-task
-`, ref))
+    resolver: bar
+`)
 
 	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, ignoreResourceVersion); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
