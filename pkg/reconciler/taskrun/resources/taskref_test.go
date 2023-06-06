@@ -48,7 +48,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 	"knative.dev/pkg/logging"
-	logtesting "knative.dev/pkg/logging/testing"
 )
 
 var (
@@ -261,7 +260,9 @@ func TestLocalTaskRef(t *testing.T) {
 	}
 }
 
-func TestGetTaskFunc(t *testing.T) {
+// TestGetTaskFunc_Bundle tests the deprecated v1beta1 bundle syntax, this
+// can be removed when support for the bundle syntax is removed
+func TestGetTaskFunc_Bundle(t *testing.T) {
 	// Set up a fake registry to push an image to.
 	s := httptest.NewServer(registry.New())
 	defer s.Close()
@@ -271,14 +272,6 @@ func TestGetTaskFunc(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	cfg := config.NewStore(logtesting.TestLogger(t))
-	cfg.OnConfigChanged(&corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
-		Data: map[string]string{
-			"enable-tekton-oci-bundles": "true",
-		},
-	})
-	ctx = cfg.ToContext(ctx)
 
 	testcases := []struct {
 		name         string
@@ -289,7 +282,7 @@ func TestGetTaskFunc(t *testing.T) {
 		expectedKind v1beta1.TaskKind
 	}{
 		{
-			name:       "remote-task",
+			name:       "remote-task-bundle",
 			localTasks: []runtime.Object{simpleNamespacedTask},
 			remoteTasks: []runtime.Object{
 				&v1beta1.Task{
@@ -313,7 +306,7 @@ func TestGetTaskFunc(t *testing.T) {
 			},
 			ref: &v1beta1.TaskRef{
 				Name:   "simple",
-				Bundle: u.Host + "/remote-task",
+				Bundle: u.Host + "/remote-task-bundle",
 			},
 			expected: &v1beta1.Task{
 				ObjectMeta: metav1.ObjectMeta{
@@ -325,53 +318,60 @@ func TestGetTaskFunc(t *testing.T) {
 				},
 			},
 			expectedKind: v1beta1.NamespacedTaskKind,
-		}, {
-			name:       "remote-task-without-defaults",
-			localTasks: []runtime.Object{},
-			remoteTasks: []runtime.Object{
-				&v1beta1.Task{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "simple",
-						Namespace: "default",
-					},
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "tekton.dev/v1beta1",
-						Kind:       "Task",
-					},
-					Spec: v1beta1.TaskSpec{
-						Steps: []v1beta1.Step{{
-							Image: "something",
-						}},
-						Params: []v1beta1.ParamSpec{{
-							Name: "foo",
-						},
-						},
-					},
-				}},
-			ref: &v1beta1.TaskRef{
-				Name:   "simple",
-				Bundle: u.Host + "/remote-task-without-defaults",
-			},
-			expected: &v1beta1.Task{
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			tektonclient := fake.NewSimpleClientset(tc.localTasks...)
+			kubeclient := fakek8s.NewSimpleClientset(&v1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "simple",
 					Namespace: "default",
+					Name:      "default",
 				},
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "tekton.dev/v1beta1",
-					Kind:       "Task",
+			})
+
+			_, err := test.CreateImage(u.Host+"/"+tc.name, tc.remoteTasks...)
+			if err != nil {
+				t.Fatalf("failed to upload test image: %s", err.Error())
+			}
+
+			tr := &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+				Spec: v1beta1.TaskRunSpec{
+					TaskRef:            tc.ref,
+					ServiceAccountName: "default",
 				},
-				Spec: v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{
-						Image: "something",
-					}},
-					Params: []v1beta1.ParamSpec{{
-						Name: "foo",
-					}},
-				},
-			},
-			expectedKind: v1beta1.NamespacedTaskKind,
-		}, {
+			}
+			fn := resources.GetTaskFunc(ctx, kubeclient, tektonclient, nil, tr, tc.ref, "", "default", "default", nil /*VerificationPolicies*/)
+
+			task, refSource, _, err := fn(ctx, tc.ref.Name)
+			if err != nil {
+				t.Fatalf("failed to call taskfn: %s", err.Error())
+			}
+
+			if diff := cmp.Diff(task, tc.expected); tc.expected != nil && diff != "" {
+				t.Error(diff)
+			}
+
+			if refSource != nil {
+				t.Errorf("expected refSource is nil, but got %v", refSource)
+			}
+		})
+	}
+}
+
+func TestGetTaskFunc_Local(t *testing.T) {
+	ctx := context.Background()
+
+	testcases := []struct {
+		name         string
+		localTasks   []runtime.Object
+		remoteTasks  []runtime.Object
+		ref          *v1beta1.TaskRef
+		expected     runtime.Object
+		expectedKind v1beta1.TaskKind
+	}{
+		{
 			name:       "local-task",
 			localTasks: []runtime.Object{simpleNamespacedTask},
 			remoteTasks: []runtime.Object{
@@ -399,38 +399,6 @@ func TestGetTaskFunc(t *testing.T) {
 			},
 			expected:     simpleNamespacedTask,
 			expectedKind: v1beta1.NamespacedTaskKind,
-		}, {
-			name: "remote-cluster-task",
-			localTasks: []runtime.Object{
-				&v1beta1.ClusterTask{
-					TypeMeta:   metav1.TypeMeta{APIVersion: "v1beta1", Kind: "ClusterTask"},
-					ObjectMeta: metav1.ObjectMeta{Name: "simple"},
-					Spec:       v1beta1.TaskSpec{Params: []v1beta1.ParamSpec{{Name: "foo"}}},
-				},
-			},
-			remoteTasks: []runtime.Object{
-				&v1beta1.ClusterTask{
-					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1", Kind: "ClusterTask"},
-					ObjectMeta: metav1.ObjectMeta{Name: "simple"},
-				},
-				&v1beta1.ClusterTask{
-					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1", Kind: "ClusterTask"},
-					ObjectMeta: metav1.ObjectMeta{Name: "dummy"},
-				},
-			},
-			ref: &v1beta1.TaskRef{
-				Name:   "simple",
-				Kind:   v1beta1.ClusterTaskKind,
-				Bundle: u.Host + "/remote-cluster-task",
-			},
-			expected: &v1beta1.Task{
-				ObjectMeta: metav1.ObjectMeta{Name: "simple"},
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "tekton.dev/v1beta1",
-					Kind:       "Task",
-				},
-			},
-			expectedKind: v1beta1.ClusterTaskKind,
 		}, {
 			name:       "local-cluster-task",
 			localTasks: []runtime.Object{simpleClusterTask},
@@ -475,11 +443,6 @@ func TestGetTaskFunc(t *testing.T) {
 					Name:      "default",
 				},
 			})
-
-			_, err := test.CreateImage(u.Host+"/"+tc.name, tc.remoteTasks...)
-			if err != nil {
-				t.Fatalf("failed to upload test image: %s", err.Error())
-			}
 
 			trForFunc := &v1beta1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Name: "some-tr"},
@@ -598,6 +561,14 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 		}, "\n"),
 		wantTask: parse.MustParseV1beta1Task(t, taskYAMLStringWithBetaFeatures),
 	}, {
+		name: "v1beta1 cluster task",
+		taskYAML: strings.Join([]string{
+			"kind: ClusterTask",
+			"apiVersion: tekton.dev/v1beta1",
+			taskYAMLString,
+		}, "\n"),
+		wantTask: parse.MustParseV1beta1Task(t, taskYAMLString),
+	}, {
 		name: "v1 task",
 		taskYAML: strings.Join([]string{
 			"kind: Task",
@@ -613,6 +584,24 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 			taskYAMLStringWithBetaFeatures,
 		}, "\n"),
 		wantErr: true,
+	}, {
+		name: "v1 task without defaults",
+		taskYAML: strings.Join([]string{
+			"kind: Task",
+			"apiVersion: tekton.dev/v1",
+			remoteTaskYamlWithoutDefaults,
+		}, "\n"),
+		wantTask: parse.MustParseV1beta1Task(t, `
+metadata:
+  name: simple
+  namespace: default
+spec:
+  steps:
+  - image: something
+  params:
+  - name: foo
+    type: string
+`),
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1382,6 +1371,17 @@ spec:
   results:
   - name: array-result
     type: array
+`
+
+var remoteTaskYamlWithoutDefaults = `
+metadata:
+  name: simple
+  namespace: default
+spec:
+  steps:
+  - image: something
+  params:
+  - name: foo
 `
 
 func bytesToRequester(data []byte, source *v1beta1.RefSource) *test.Requester {
