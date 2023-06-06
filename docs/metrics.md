@@ -51,11 +51,11 @@ Following values are available in the configmap:
 | metrics.pipelinerun.level | `pipeline` | Level of metrics is pipeline and pipelinerun label isn't present in the metrics |
 | metrics.pipelinerun.level | `namespace` | Level of metrics is namespace, pipeline and pipelinerun label isn't present in the metrics |
 | metrics.taskrun.duration-type | `histogram` | `tekton_pipelines_controller_pipelinerun_taskrun_duration_seconds` and `tekton_pipelines_controller_taskrun_duration_seconds` is of type histogram |
-| metrics.taskrun.duration-type | `lastvalue` | `tekton_pipelines_controller_pipelinerun_taskrun_duration_seconds` and `tekton_pipelines_controller_taskrun_duration_seconds` is of type gauge |
+| metrics.taskrun.duration-type | `lastvalue` | `tekton_pipelines_controller_pipelinerun_taskrun_duration_seconds` and  `tekton_pipelines_controller_taskrun_duration_seconds` is of type gauge or lastvalue |
 | metrics.pipelinerun.duration-type | `histogram` | `tekton_pipelines_controller_pipelinerun_duration_seconds` is of type histogram |
-| metrics.pipelinerun.duration-type | `histogram` | `tekton_pipelines_controller_pipelinerun_duration_seconds` is of type gauge or lastvalue |
+| metrics.pipelinerun.duration-type | `lastvalue` | `tekton_pipelines_controller_pipelinerun_duration_seconds` is of type gauge or lastvalue |
 
-Histogram value isn't available when pipelinerun or taskrun labels are selected. The Lastvalue or Gauge will be provided.
+Histogram value isn't available when pipelinerun or taskrun labels are selected. The Lastvalue or Gauge will be provided. It serves no purpose because we will get only bar in a histogram. Also, setting `*-run` level metrics aren't recommended because they lead to unbounded cardinality which degrades observability database.
 
 To check that appropriate values have been applied in response to configmap changes, use the following commands:
 ```shell
