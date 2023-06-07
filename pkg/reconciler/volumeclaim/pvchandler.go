@@ -19,13 +19,16 @@ package volumeclaim
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"go.uber.org/zap"
+	"gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	types "k8s.io/apimachinery/pkg/types"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	clientset "k8s.io/client-go/kubernetes"
 )
@@ -34,11 +37,13 @@ const (
 	// ReasonCouldntCreateWorkspacePVC indicates that a Pipeline expects a workspace from a
 	// volumeClaimTemplate but couldn't create a claim.
 	ReasonCouldntCreateWorkspacePVC = "CouldntCreateWorkspacePVC"
+	LabelPVCProtectionFinalizer     = "pvc-protection-finalizer"
 )
 
 // PvcHandler is used to create PVCs for workspaces
 type PvcHandler interface {
 	CreatePersistentVolumeClaimsForWorkspaces(ctx context.Context, wb []v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error
+	PurgeProtectionFromPersistentVolumeClaimsForWorkspaces(ctx context.Context, wb []v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error
 }
 
 type defaultPVCHandler struct {
@@ -76,6 +81,46 @@ func (c *defaultPVCHandler) CreatePersistentVolumeClaimsForWorkspaces(ctx contex
 			}
 		case err != nil:
 			errs = append(errs, fmt.Errorf("failed to retrieve PVC %s: %w", claim.Name, err))
+		}
+	}
+	return errorutils.NewAggregate(errs)
+}
+
+func (c *defaultPVCHandler) PurgeProtectionFromPersistentVolumeClaimsForWorkspaces(ctx context.Context, wb []v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error {
+	var errs []error
+	for _, claim := range getPersistentVolumeClaims(wb, ownerReference, namespace) {
+		p, err := c.clientset.CoreV1().PersistentVolumeClaims(claim.Namespace).Get(ctx, claim.Name, metav1.GetOptions{})
+		if err != nil {
+			errs = append(errs, fmt.Errorf("failed to get the PVC %s: %w", claim.Name, err))
+		}
+		// the label to remove PVC protection "pvc-protection-finalizer" is set to "remove"
+		if err == nil && p != nil && p.Labels[LabelPVCProtectionFinalizer] == "remove" {
+			err = c.clientset.CoreV1().PersistentVolumeClaims(claim.Namespace).Delete(ctx, claim.Name, metav1.DeleteOptions{})
+			if err != nil {
+				errs = append(errs, fmt.Errorf("failed to delete the PVC %s: %w", claim.Name, err))
+			}
+
+			// get the list of existing finalizers and drop `pvc-protection` if exists
+			var finalizers []string
+			for _, f := range p.ObjectMeta.Finalizers {
+				if f == "kubernetes.io/pvc-protection" {
+					continue
+				}
+				finalizers = append(finalizers, f)
+			}
+
+			// prepare data to remove pvc-protection from the list of finalizers
+			removeFinalizerBytes, err := json.Marshal([]jsonpatch.JsonPatchOperation{{
+				Path:      "/metadata/finalizers",
+				Operation: "replace",
+				Value:     finalizers,
+			}})
+
+			// patch the existing PVC to update the finalizers
+			_, err = c.clientset.CoreV1().PersistentVolumeClaims(claim.Namespace).Patch(ctx, claim.Name, types.JSONPatchType, removeFinalizerBytes, metav1.PatchOptions{})
+			if err != nil {
+				errs = append(errs, fmt.Errorf("failed to patch the PVC %s: %w", claim.Name, err))
+			}
 		}
 	}
 	return errorutils.NewAggregate(errs)
