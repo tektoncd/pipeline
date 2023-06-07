@@ -101,7 +101,7 @@ spec:
 # Using the catalog fails for unknown reasons, so we're keeping this here.
 # Adding `--ignore-path=/product_uuid` EXTRA_ARGS is a workaround for the 'build unlinkat
 # //product_uuid' error filed at https://github.com/GoogleContainerTools/kaniko/issues/2164.
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: kaniko

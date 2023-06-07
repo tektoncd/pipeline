@@ -1,4 +1,4 @@
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: TaskRun
 metadata:
   generateName: hub-resolver-simple-semver-
@@ -26,7 +26,7 @@ spec:
       - name: version
         value: "0.6"
 ---
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: TaskRun
 metadata:
   generateName: hub-resolver-semver-required-fields-only-
