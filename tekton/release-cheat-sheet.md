@@ -203,3 +203,35 @@ Congratulations, you're done!
     ```bash
     kubectl config use-context my-dev-cluster
     ```
+
+## Cherry-picking commits for patch releases
+
+The easiest way to cherry-pick a commit into a release branch is to use the "cherrypicker" plugin (see https://prow.tekton.dev/plugins for documentation).
+To use the plugin, comment "/cherry-pick <branch-to-cherry-pick-onto>" on the pull request containing the commits that need to be cherry-picked.
+Make sure this command is on its own line, and use one comment per branch that you're cherry-picking onto.
+Automation will create a pull request cherry-picking the commits into the named branch, e.g. `release-v0.47.x`.
+
+The cherrypicker plugin isn't able to resolve merge conflicts. If there are merge conflicts, you'll have to manually cherry-pick following these steps:
+1. Fetch the branch you're backporting to and check it out:
+```sh
+git fetch upstream <branchname>
+git checkout upstream/<branchname>
+```
+1. (Optional) Rename the local branch to make it easier to work with:
+```sh
+git switch -c <new-name-for-local-branch>
+```
+1. Find the 40-character commit hash to cherry-pick. Note: automation creates a new commit when merging contributors' commits into main.
+You'll need to use the hash of the commit created by tekton-robot.
+
+1. [Cherry-pick](https://git-scm.com/docs/git-cherry-pick) the commit onto the branch:
+```sh
+git cherry-pick <commit-hash>
+```
+1. Resolve any merge conflicts.
+1. Finish the cherry-pick:
+```sh
+git add <changed-files>
+git cherry-pick --continue
+```
+1. Push your changes to your fork and open a pull request against the upstream branch.
