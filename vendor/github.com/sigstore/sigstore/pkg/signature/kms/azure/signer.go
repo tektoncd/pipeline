@@ -65,13 +65,13 @@ func LoadSignerVerifier(defaultCtx context.Context, referenceStr string, hashFun
 	}
 
 	var err error
-	a.client, err = newAzureKMS(defaultCtx, referenceStr)
+	a.client, err = newAzureKMS(referenceStr)
 	if err != nil {
 		return nil, err
 	}
 
 	switch hashFunc {
-	case 0, crypto.SHA224, crypto.SHA256, crypto.SHA384, crypto.SHA512:
+	case 0, crypto.SHA256, crypto.SHA384, crypto.SHA512:
 		a.hashFunc = hashFunc
 	default:
 		return nil, errors.New("hash function not supported by Azure Key Vault")
