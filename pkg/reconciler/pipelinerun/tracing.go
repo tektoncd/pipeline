@@ -65,7 +65,7 @@ func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, pr *v
 	// Create a new root span since there was no parent spanContext provided through annotations
 	ctxWithTrace, span := tracerProvider.Tracer(TracerName).Start(ctx, "PipelineRun:Reconciler")
 	defer span.End()
-	span.SetAttributes(attribute.String("taskrun", pr.Name), attribute.String("namespace", pr.Namespace))
+	span.SetAttributes(attribute.String("pipelinerun", pr.Name), attribute.String("namespace", pr.Namespace))
 
 	pro.Inject(ctxWithTrace, propagation.MapCarrier(spanContext))
 
