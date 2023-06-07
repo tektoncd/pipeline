@@ -278,6 +278,8 @@ func affinityAssistantStatefulSet(name string, pr *v1.PipelineRun, claimTemplate
 // be created for each PipelineRun that use workspaces with PersistentVolumeClaims
 // as volume source. The default behaviour is to enable the Affinity Assistant to
 // provide Node Affinity for TaskRuns that share a PVC workspace.
+//
+// TODO(#6740)(WIP): replace this function with GetAffinityAssistantBehavior
 func (c *Reconciler) isAffinityAssistantDisabled(ctx context.Context) bool {
 	cfg := config.FromContextOrDefaults(ctx)
 	return cfg.FeatureFlags.DisableAffinityAssistant
