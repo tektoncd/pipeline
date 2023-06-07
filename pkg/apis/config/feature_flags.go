@@ -42,6 +42,14 @@ const (
 	// IgnoreNoMatchPolicy is the value used for "trusted-resources-verification-no-match-policy" to skip verification
 	// when no matching policies are found
 	IgnoreNoMatchPolicy = "ignore"
+	// CoscheduleWorkspaces is the value used for "coschedule" to coschedule PipelineRun Pods sharing the same PVC workspaces to the same node
+	CoscheduleWorkspaces = "workspaces"
+	// CoschedulePipelineRuns is the value used for "coschedule" to coschedule all PipelineRun Pods to the same node
+	CoschedulePipelineRuns = "pipelineruns"
+	// CoscheduleIsolatePipelineRun is the value used for "coschedule" to coschedule all PipelineRun Pods to the same node, and only allows one PipelineRun to run on a node at a time
+	CoscheduleIsolatePipelineRun = "isolate-pipelinerun"
+	// CoscheduleDisabled is the value used for "coschedule" to disabled PipelineRun Pods coschedule
+	CoscheduleDisabled = "disabled"
 	// ResultExtractionMethodTerminationMessage is the value used for "results-from" as a way to extract results from tasks using kubernetes termination message.
 	ResultExtractionMethodTerminationMessage = "termination-message"
 	// ResultExtractionMethodSidecarLogs is the value used for "results-from" as a way to extract results from tasks using sidecar logs.
@@ -78,6 +86,8 @@ const (
 	DefaultMaxResultSize = 4096
 	// DefaultSetSecurityContext is the default value for "set-security-context"
 	DefaultSetSecurityContext = false
+	// DefaultCoschedule is the default value for coschedule
+	DefaultCoschedule = CoscheduleWorkspaces
 
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
@@ -93,6 +103,7 @@ const (
 	resultExtractionMethod              = "results-from"
 	maxResultSize                       = "max-result-size"
 	setSecurityContextKey               = "set-security-context"
+	coscheduleKey                       = "coschedule"
 )
 
 // DefaultFeatureFlags holds all the default configurations for the feature flags configmap.
@@ -123,6 +134,7 @@ type FeatureFlags struct {
 	ResultExtractionMethod    string
 	MaxResultSize             int
 	SetSecurityContext        bool
+	Coschedule                string
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -190,6 +202,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 
+	if err := setCoschedule(cfgMap, DefaultCoschedule, tc.DisableAffinityAssistant, &tc.Coschedule); err != nil {
+		return nil, err
+	}
 	// Given that they are alpha features, Tekton Bundles and Custom Tasks should be switched on if
 	// enable-api-fields is "alpha". If enable-api-fields is not "alpha" then fall back to the value of
 	// each feature's individual flag.
@@ -219,6 +234,29 @@ func setEnabledAPIFields(cfgMap map[string]string, defaultValue string, feature 
 	default:
 		return fmt.Errorf("invalid value for feature flag %q: %q", enableAPIFields, value)
 	}
+	return nil
+}
+
+// setCoschedule sets the "coschedule" flag based on the content of a given map.
+// If the feature gate is invalid or incompatible with `disable-affinity-assistant`, then an error is returned.
+func setCoschedule(cfgMap map[string]string, defaultValue string, disabledAffinityAssistant bool, feature *string) error {
+	value := defaultValue
+	if cfg, ok := cfgMap[coscheduleKey]; ok {
+		value = strings.ToLower(cfg)
+	}
+
+	switch value {
+	case CoscheduleDisabled, CoscheduleWorkspaces, CoschedulePipelineRuns, CoscheduleIsolatePipelineRun:
+		// validate that "coschedule" is compatible with "disable-affinity-assistant"
+		// "coschedule" must be set to "workspaces" when "disable-affinity-assistant" is false
+		if !disabledAffinityAssistant && value != CoscheduleWorkspaces {
+			return fmt.Errorf("coschedule value %v is incompatible with %v setting to false", value, disableAffinityAssistantKey)
+		}
+		*feature = value
+	default:
+		return fmt.Errorf("invalid value for feature flag %q: %q", coscheduleKey, value)
+	}
+
 	return nil
 }
 

@@ -52,6 +52,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				ResultExtractionMethod:    config.DefaultResultExtractionMethod,
 				MaxResultSize:             config.DefaultMaxResultSize,
 				SetSecurityContext:        config.DefaultSetSecurityContext,
+				Coschedule:                config.DefaultCoschedule,
 			},
 			fileName: config.GetFeatureFlagsConfigName(),
 		},
@@ -70,6 +71,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				ResultExtractionMethod:           "termination-message",
 				MaxResultSize:                    4096,
 				SetSecurityContext:               true,
+				Coschedule:                       config.CoscheduleDisabled,
 			},
 			fileName: "feature-flags-all-flags-set",
 		},
@@ -91,6 +93,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				ResultExtractionMethod:           config.DefaultResultExtractionMethod,
 				MaxResultSize:                    config.DefaultMaxResultSize,
 				SetSecurityContext:               config.DefaultSetSecurityContext,
+				Coschedule:                       config.DefaultCoschedule,
 			},
 			fileName: "feature-flags-enable-api-fields-overrides-bundles-and-custom-tasks",
 		},
@@ -110,6 +113,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				ResultExtractionMethod:           config.DefaultResultExtractionMethod,
 				MaxResultSize:                    config.DefaultMaxResultSize,
 				SetSecurityContext:               config.DefaultSetSecurityContext,
+				Coschedule:                       config.DefaultCoschedule,
 			},
 			fileName: "feature-flags-bundles-and-custom-tasks",
 		},
@@ -129,6 +133,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				ResultExtractionMethod:           config.DefaultResultExtractionMethod,
 				MaxResultSize:                    config.DefaultMaxResultSize,
 				SetSecurityContext:               config.DefaultSetSecurityContext,
+				Coschedule:                       config.DefaultCoschedule,
 			},
 			fileName: "feature-flags-beta-api-fields",
 		},
@@ -144,6 +149,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				ResultExtractionMethod:           config.DefaultResultExtractionMethod,
 				MaxResultSize:                    config.DefaultMaxResultSize,
 				SetSecurityContext:               config.DefaultSetSecurityContext,
+				Coschedule:                       config.DefaultCoschedule,
 			},
 			fileName: "feature-flags-enforce-nonfalsifiability-spire",
 		},
@@ -157,6 +163,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				ResultExtractionMethod:           config.ResultExtractionMethodSidecarLogs,
 				MaxResultSize:                    8192,
 				SetSecurityContext:               config.DefaultSetSecurityContext,
+				Coschedule:                       config.DefaultCoschedule,
 			},
 			fileName: "feature-flags-results-via-sidecar-logs",
 		},
@@ -188,6 +195,7 @@ func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 		ResultExtractionMethod:           config.DefaultResultExtractionMethod,
 		MaxResultSize:                    config.DefaultMaxResultSize,
 		SetSecurityContext:               config.DefaultSetSecurityContext,
+		Coschedule:                       config.DefaultCoschedule,
 	}
 	verifyConfigFileWithExpectedFeatureFlagsConfig(t, FeatureFlagsConfigEmptyName, expectedConfig)
 }
@@ -247,6 +255,12 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 	}, {
 		fileName: "feature-flags-spire-with-stable",
 		want:     `"enforce-nonfalsifiability" can be set to non-default values ("spire") only in alpha`,
+	}, {
+		fileName: "feature-flags-invalid-coschedule-affinity-assistant-comb",
+		want:     `coschedule value pipelineruns is incompatible with disable-affinity-assistant setting to false`,
+	}, {
+		fileName: "feature-flags-invalid-coschedule",
+		want:     `invalid value for feature flag "coschedule": "invalid"`,
 	}} {
 		t.Run(tc.fileName, func(t *testing.T) {
 			cm := test.ConfigMapFromTestFile(t, tc.fileName)

@@ -1200,6 +1200,7 @@ status:
       EnableProvenanceInStatus: true
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
+      Coschedule: "workspaces" 
 `)
 	d := test.Data{
 		PipelineRuns: prs,
@@ -4753,6 +4754,7 @@ status:
       EnableProvenanceInStatus: true
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
+      Coschedule: "workspaces"
 `)
 
 	expectedPr := expectedPrStatus
@@ -4910,6 +4912,7 @@ status:
       EnableProvenanceInStatus: true
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
+      Coschedule: "workspaces"
 `)
 
 	expectedPr := expectedPrStatus
@@ -8174,6 +8177,7 @@ status:
       EnableProvenanceInStatus: true
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
+      Coschedule: "workspaces"
 `),
 	}, {
 		name:     "p-finally",
@@ -8339,6 +8343,8 @@ status:
       EnableProvenanceInStatus: true
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
+      Coschedule: "workspaces"
+
 `),
 	}}
 	for _, tt := range tests {
@@ -8548,6 +8554,7 @@ status:
       EnableProvenanceInStatus: true
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
+      Coschedule: "workspaces"
 `),
 	}}
 	for _, tt := range tests {
@@ -8958,6 +8965,7 @@ status:
       EnableProvenanceInStatus: true
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
+      Coschedule: "workspaces"
 `),
 	}, {
 		name:     "p-finally",
@@ -9161,6 +9169,7 @@ status:
       EnableProvenanceInStatus: true
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
+      Coschedule: "workspaces"
 `),
 	}}
 	for _, tt := range tests {
@@ -9395,6 +9404,7 @@ status:
       EnableProvenanceInStatus: true
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
+      Coschedule: "workspaces"
 `),
 	},
 	}
@@ -9837,6 +9847,7 @@ status:
       EnableProvenanceInStatus: true
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
+      Coschedule: "workspaces"
 `),
 	}, {
 		name:     "p-finally",
@@ -10013,6 +10024,7 @@ status:
       EnableProvenanceInStatus: true
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
+      Coschedule: "workspaces"
 `),
 	}}
 	for _, tt := range tests {
@@ -10237,6 +10249,7 @@ status:
       EnableProvenanceInStatus: true
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
+      Coschedule: "workspaces"
 `),
 	}, {
 		name:  "indexing results in matrix.params",
@@ -10400,6 +10413,7 @@ status:
       EnableProvenanceInStatus: true
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
+      Coschedule: "workspaces"
 `),
 	}, {
 		name:  "whole array result replacements in matrix.params",
@@ -10783,6 +10797,7 @@ status:
       EnableProvenanceInStatus: true
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
+      Coschedule: "workspaces"
 `),
 	}}
 	for _, tt := range tests {
@@ -11007,6 +11022,7 @@ status:
       EnableProvenanceInStatus: true
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
+      Coschedule: "workspaces"
 `),
 		expectedTaskRuns: []*v1.TaskRun{
 			mustParseTaskRunWithObjectMeta(t,
@@ -11203,6 +11219,7 @@ status:
       EnableProvenanceInStatus: true
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
+      Coschedule: "workspaces"
 `),
 		expectedTaskRuns: []*v1.TaskRun{
 			mustParseTaskRunWithObjectMeta(t,
@@ -11617,6 +11634,7 @@ status:
       EnableProvenanceInStatus: true
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
+      Coschedule: "workspaces"
 `),
 	}, {
 		name:     "p-finally",
@@ -11783,6 +11801,7 @@ status:
       EnableProvenanceInStatus: true
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
+      Coschedule: "workspaces"
 `),
 	}}
 	for _, tt := range tests {
