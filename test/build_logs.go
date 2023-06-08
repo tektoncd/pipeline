@@ -45,7 +45,7 @@ func getContainersLogsFromPod(ctx context.Context, c kubernetes.Interface, pod, 
 
 	sb := strings.Builder{}
 	for _, container := range p.Spec.Containers {
-		sb.WriteString(fmt.Sprintf("\n>>> Container %s:\n", container.Name))
+		sb.WriteString(fmt.Sprintf("\n>>> Pod %s Container %s:\n", p.Name, container.Name))
 		logs, err := getContainerLogsFromPod(ctx, c, pod, container.Name, namespace)
 		if err != nil {
 			return "", err
