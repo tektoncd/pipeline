@@ -292,7 +292,7 @@ func (r *Resolver) validateParams(ctx context.Context, paramsMap map[string]stri
 		}
 
 		if hubType == TektonHubType && r.TektonHubURL == "" {
-			return fmt.Errorf("pleaes configure TEKTON_HUB_API env variable to use tekton type")
+			return fmt.Errorf("please configure TEKTON_HUB_API env variable to use tekton type")
 		}
 	}
 
