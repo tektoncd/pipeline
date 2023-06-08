@@ -87,6 +87,22 @@ var (
 		},
 		EntryPoint: "foo/bar",
 	}
+	unsignedV1beta1Task = &v1beta1.Task{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1beta1",
+			Kind:       "Task"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "test-task",
+			Namespace:   "trusted-resources",
+			Annotations: map[string]string{"foo": "bar"},
+		},
+		Spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Image: "ubuntu",
+				Name:  "echo",
+			}},
+		},
+	}
 	unsignedV1Task = v1.Task{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1",
@@ -738,7 +754,7 @@ func TestGetTaskFunc_V1beta1Task_VerifyNoError(t *testing.T) {
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 	tektonclient := fake.NewSimpleClientset()
 
-	unsignedTask := test.GetUnsignedTask("test-task")
+	unsignedTask := unsignedV1beta1Task
 	unsignedTaskBytes, err := json.Marshal(unsignedTask)
 	unsignedV1Task := &v1.Task{}
 	unsignedTask.ConvertTo(ctx, unsignedV1Task)
@@ -872,7 +888,7 @@ func TestGetTaskFunc_V1beta1Task_VerifyError(t *testing.T) {
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 	tektonclient := fake.NewSimpleClientset()
 
-	unsignedTask := test.GetUnsignedTask("test-task")
+	unsignedTask := unsignedV1beta1Task
 	unsignedTaskBytes, err := json.Marshal(unsignedTask)
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
@@ -1249,7 +1265,7 @@ func TestGetTaskFunc_GetFuncError(t *testing.T) {
 	_, k8sclient, vps := test.SetupMatchAllVerificationPolicies(t, "trusted-resources")
 	tektonclient := fake.NewSimpleClientset()
 
-	unsignedTask := test.GetUnsignedTask("test-task")
+	unsignedTask := unsignedV1beta1Task
 	unsignedTaskBytes, err := json.Marshal(unsignedTask)
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
