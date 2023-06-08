@@ -74,27 +74,6 @@ func GetUnsignedTask(name string) *v1beta1.Task {
 	}
 }
 
-// GetUnsignedPipeline returns unsigned pipeline with given name
-func GetUnsignedPipeline(name string) *v1beta1.Pipeline {
-	return &v1beta1.Pipeline{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1beta1",
-			Kind:       "Pipeline"},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        name,
-			Namespace:   namespace,
-			Annotations: map[string]string{"foo": "bar"},
-		},
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{
-				{
-					Name: "task",
-				},
-			},
-		},
-	}
-}
-
 // SetupTrustedResourceConfig configures the trusted-resources-verification-no-match-policy feature flag with the given mode for testing
 func SetupTrustedResourceConfig(ctx context.Context, verificationNoMatchPolicy string) context.Context {
 	store := config.NewStore(logging.FromContext(ctx).Named("config-store"))

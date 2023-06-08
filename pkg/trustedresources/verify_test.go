@@ -44,38 +44,56 @@ const (
 	namespace = "trusted-resources"
 )
 
-var unsignedTask = v1.Task{
-	TypeMeta: metav1.TypeMeta{
-		APIVersion: "tekton.dev/v1",
-		Kind:       "Task"},
-	ObjectMeta: metav1.ObjectMeta{
-		Name:        "task",
-		Annotations: map[string]string{"foo": "bar"},
-	},
-	Spec: v1.TaskSpec{
-		Steps: []v1.Step{{
-			Image: "ubuntu",
-			Name:  "echo",
-		}},
-	},
-}
-
-var unsignedPipeline = v1.Pipeline{
-	TypeMeta: metav1.TypeMeta{
-		APIVersion: "tekton.dev/v1",
-		Kind:       "Pipeline"},
-	ObjectMeta: metav1.ObjectMeta{
-		Name:        "pipeline",
-		Annotations: map[string]string{"foo": "bar"},
-	},
-	Spec: v1.PipelineSpec{
-		Tasks: []v1.PipelineTask{
-			{
-				Name: "task",
+var (
+	unsignedV1Task = v1.Task{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1",
+			Kind:       "Task"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "task",
+			Annotations: map[string]string{"foo": "bar"},
+		},
+		Spec: v1.TaskSpec{
+			Steps: []v1.Step{{
+				Image: "ubuntu",
+				Name:  "echo",
+			}},
+		},
+	}
+	unsignedV1beta1Pipeline = &v1beta1.Pipeline{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1beta1",
+			Kind:       "Pipeline"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "test-pipeline",
+			Namespace:   "trusted-resources",
+			Annotations: map[string]string{"foo": "bar"},
+		},
+		Spec: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{
+				{
+					Name: "task",
+				},
 			},
 		},
-	},
-}
+	}
+	unsignedV1Pipeline = v1.Pipeline{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1",
+			Kind:       "Pipeline"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "pipeline",
+			Annotations: map[string]string{"foo": "bar"},
+		},
+		Spec: v1.PipelineSpec{
+			Tasks: []v1.PipelineTask{
+				{
+					Name: "task",
+				},
+			},
+		},
+	}
+)
 
 func TestVerifyResource_Task_Success(t *testing.T) {
 	signer256, _, k8sclient, vps := test.SetupVerificationPolicies(t)
@@ -344,7 +362,7 @@ func TestVerifyResource_Task_Error(t *testing.T) {
 
 func TestVerifyResource_Pipeline_Success(t *testing.T) {
 	sv, _, k8sclient, vps := test.SetupVerificationPolicies(t)
-	unsignedPipeline := test.GetUnsignedPipeline("test-pipeline")
+	unsignedPipeline := unsignedV1beta1Pipeline
 	signedPipeline, err := test.GetSignedV1beta1Pipeline(unsignedPipeline, sv, "signed")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
@@ -398,7 +416,7 @@ func TestVerifyResource_Pipeline_Error(t *testing.T) {
 	ctx = test.SetupTrustedResourceConfig(ctx, config.FailNoMatchPolicy)
 	sv, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 
-	unsignedPipeline := test.GetUnsignedPipeline("test-pipeline")
+	unsignedPipeline := unsignedV1beta1Pipeline
 
 	signedPipeline, err := test.GetSignedV1beta1Pipeline(unsignedPipeline, sv, "signed")
 	if err != nil {
@@ -457,7 +475,7 @@ func TestVerifyResource_Pipeline_Error(t *testing.T) {
 
 func TestVerifyResource_V1Task_Success(t *testing.T) {
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
-	signedTask, err := getSignedV1Task(unsignedTask.DeepCopy(), signer, "signed")
+	signedTask, err := getSignedV1Task(unsignedV1Task.DeepCopy(), signer, "signed")
 	if err != nil {
 		t.Error(err)
 	}
@@ -468,7 +486,7 @@ func TestVerifyResource_V1Task_Success(t *testing.T) {
 }
 func TestVerifyResource_V1Task_Error(t *testing.T) {
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
-	signedTask, err := getSignedV1Task(unsignedTask.DeepCopy(), signer, "signed")
+	signedTask, err := getSignedV1Task(unsignedV1Task.DeepCopy(), signer, "signed")
 	if err != nil {
 		t.Error(err)
 	}
@@ -482,7 +500,7 @@ func TestVerifyResource_V1Task_Error(t *testing.T) {
 
 func TestVerifyResource_V1Pipeline_Success(t *testing.T) {
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
-	signed, err := getSignedV1Pipeline(unsignedPipeline.DeepCopy(), signer, "signed")
+	signed, err := getSignedV1Pipeline(unsignedV1Pipeline.DeepCopy(), signer, "signed")
 	if err != nil {
 		t.Error(err)
 	}
@@ -494,7 +512,7 @@ func TestVerifyResource_V1Pipeline_Success(t *testing.T) {
 
 func TestVerifyResource_V1Pipeline_Error(t *testing.T) {
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
-	signed, err := getSignedV1Pipeline(unsignedPipeline.DeepCopy(), signer, "signed")
+	signed, err := getSignedV1Pipeline(unsignedV1Pipeline.DeepCopy(), signer, "signed")
 	if err != nil {
 		t.Error(err)
 	}
