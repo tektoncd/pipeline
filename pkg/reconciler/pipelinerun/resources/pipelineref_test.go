@@ -65,6 +65,23 @@ var (
 		},
 		EntryPoint: "foo/bar",
 	}
+	unsignedV1beta1Pipeline = &v1beta1.Pipeline{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1beta1",
+			Kind:       "Pipeline"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "test-pipeline",
+			Namespace:   "trusted-resources",
+			Annotations: map[string]string{"foo": "bar"},
+		},
+		Spec: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{
+				{
+					Name: "task",
+				},
+			},
+		},
+	}
 
 	unsignedV1Pipeline = &v1.Pipeline{
 		TypeMeta: metav1.TypeMeta{
@@ -485,7 +502,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 	tektonclient := fake.NewSimpleClientset()
 
-	unsignedPipeline := test.GetUnsignedPipeline("test-pipeline")
+	unsignedPipeline := unsignedV1beta1Pipeline
 	unsignedV1Pipeline := &v1.Pipeline{}
 	unsignedPipeline.ConvertTo(ctx, unsignedV1Pipeline)
 	unsignedV1Pipeline.APIVersion = "tekton.dev/v1"
@@ -688,7 +705,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyError(t *testing.T) {
 	tektonclient := fake.NewSimpleClientset()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 
-	unsignedPipeline := test.GetUnsignedPipeline("test-pipeline")
+	unsignedPipeline := unsignedV1beta1Pipeline
 	unsignedPipelineBytes, err := json.Marshal(unsignedPipeline)
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
@@ -1134,7 +1151,7 @@ func TestGetPipelineFunc_GetFuncError(t *testing.T) {
 	tektonclient := fake.NewSimpleClientset()
 	_, k8sclient, vps := test.SetupMatchAllVerificationPolicies(t, "trusted-resources")
 
-	unsignedPipeline := test.GetUnsignedPipeline("test-pipeline")
+	unsignedPipeline := unsignedV1beta1Pipeline
 	unsignedPipelineBytes, err := json.Marshal(unsignedPipeline)
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
