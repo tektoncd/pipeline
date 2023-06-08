@@ -395,7 +395,7 @@ func TestPipelineRunConversionFromDeprecated(t *testing.T) {
 						Params: v1beta1.Params{
 							{Name: "bundle", Value: v1beta1.ParamValue{StringVal: "test-bundle", Type: "string"}},
 							{Name: "name", Value: v1beta1.ParamValue{StringVal: "test-bundle-name", Type: "string"}},
-							{Name: "kind", Value: v1beta1.ParamValue{StringVal: "Task", Type: "string"}},
+							{Name: "kind", Value: v1beta1.ParamValue{StringVal: "Pipeline", Type: "string"}},
 						},
 					},
 				},
