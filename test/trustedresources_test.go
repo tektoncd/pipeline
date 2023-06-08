@@ -26,8 +26,27 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/sigstore/sigstore/pkg/signature"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+var unsignedV1beta1Task = &v1beta1.Task{
+	TypeMeta: metav1.TypeMeta{
+		APIVersion: "tekton.dev/v1beta1",
+		Kind:       "Task"},
+	ObjectMeta: metav1.ObjectMeta{
+		Name:        "test-task",
+		Namespace:   "trusted-resources",
+		Annotations: map[string]string{"foo": "bar"},
+	},
+	Spec: v1beta1.TaskSpec{
+		Steps: []v1beta1.Step{{
+			Image: "ubuntu",
+			Name:  "echo",
+		}},
+	},
+}
 
 func TestSignInterface(t *testing.T) {
 	sv, _, err := signature.NewDefaultECDSASignerVerifier()
@@ -46,7 +65,7 @@ func TestSignInterface(t *testing.T) {
 	}{{
 		name:    "Sign Task",
 		signer:  sv,
-		target:  GetUnsignedTask("unsigned"),
+		target:  unsignedV1beta1Task,
 		wantErr: false,
 	}, {
 		name:    "Sign String with cosign signer",
@@ -61,7 +80,7 @@ func TestSignInterface(t *testing.T) {
 	}, {
 		name:    "Empty Signer",
 		signer:  nil,
-		target:  GetUnsignedTask("unsigned"),
+		target:  unsignedV1beta1Task,
 		wantErr: true,
 	}, {
 		name:     "Sign String with mock signer",
