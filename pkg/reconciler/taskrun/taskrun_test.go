@@ -1638,6 +1638,11 @@ status:
     - name: aResult
       type: string
       value: aResultValue
+    - name: objectResult
+      type: object
+      value:
+        url: abc
+        commit: xyz
 `)
 		failedOnReconcileFailureTaskRun = parse.MustParseV1beta1TaskRun(t, `
 metadata:
@@ -1652,17 +1657,23 @@ status:
   - reason: ToBeRetried
     status: Unknown
     type: Succeeded
-    message: "Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\""
+    message: "Provided results don't match declared results:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\""
   sideCars:
   retriesStatus:
   - conditions:
     - reason: TaskRunValidationFailed
       status: "False"
       type: "Succeeded"
-      message: "Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\""
+      message: "Provided results don't match declared results:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\""
     startTime: "2021-12-31T23:59:59Z"
     completionTime: "2022-01-01T00:00:00Z"
     podName: "test-taskrun-results-type-mismatched-pod"
+    taskResults:
+    - name: objectResult
+      type: object
+      value:
+        url: abc
+        commit: xyz
     provenance:
       featureFlags:
         RunningInEnvWithInjectedSidecars: true
@@ -1673,6 +1684,12 @@ status:
         EnableProvenanceInStatus: true
         ResultExtractionMethod: "termination-message"
         MaxResultSize: 4096
+  taskResults:
+    - name: objectResult
+      type: object
+      value:
+        url: abc
+        commit: xyz
   provenance:
     featureFlags:
       RunningInEnvWithInjectedSidecars: true
@@ -1684,7 +1701,7 @@ status:
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
 `)
-		reconciliatonError = fmt.Errorf("1 error occurred:\n\t* Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\"")
+		reconciliatonError = fmt.Errorf("1 error occurred:\n\t* Provided results don't match declared results:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\"")
 		toBeRetriedTaskRun = parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-to-be-retried
@@ -1841,6 +1858,8 @@ status:
 				ignoreTaskRunStatusFields,
 			}
 			if d := cmp.Diff(reconciledTaskRun, tc.wantTr, ignoreFields...); d != "" {
+				fmt.Println("wantStatus", tc.wantTr.Status.TaskRunResults)
+				fmt.Println("gotStatus", reconciledTaskRun.Status.TaskRunResults)
 				t.Errorf("Didn't get expected TaskRun: %v", diff.PrintWantGot(d))
 			}
 
@@ -4660,6 +4679,11 @@ status:
     - name: aResult
       type: array
       value: aResultValue
+    - name: objectResult
+      type: object
+      value:
+        url: abc
+        commit: xyz
 `)
 
 	taskRunResultsObjectValid := parse.MustParseV1beta1TaskRun(t, `
@@ -4671,6 +4695,9 @@ spec:
     name: test-results-task
 status:
   taskResults:
+    - name: aResult
+      type: array
+      value: aResultValue
     - name: objectResult
       type: object
       value:
@@ -4678,12 +4705,8 @@ status:
         commit: xyz
 `)
 
-	taskruns := []*v1beta1.TaskRun{
-		taskRunResultsTypeMatched, taskRunResultsObjectValid,
-	}
-
 	d := test.Data{
-		TaskRuns: taskruns,
+		TaskRuns: []*v1beta1.TaskRun{},
 		Tasks:    []*v1beta1.Task{resultsTask},
 		ConfigMaps: []*corev1.ConfigMap{{
 			ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
@@ -4703,6 +4726,7 @@ status:
 		taskRun: taskRunResultsObjectValid,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
+			d.TaskRuns = append(d.TaskRuns, tc.taskRun)
 			testAssets, cancel := getTaskRunController(t, d)
 			defer cancel()
 			createServiceAccount(t, testAssets, tc.taskRun.Spec.ServiceAccountName, tc.taskRun.Namespace)
@@ -4788,7 +4812,7 @@ status:
 		name:             "taskrun results type mismatched",
 		taskRun:          taskRunResultsTypeMismatched,
 		wantFailedReason: podconvert.ReasonFailedValidation,
-		expectedError:    fmt.Errorf("1 error occurred:\n\t* Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\", \"objectResult\": task result is expected to be \"object\" type but was initialized to a different type \"string\""),
+		expectedError:    fmt.Errorf("1 error occurred:\n\t* Provided results don't match declared results:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\", \"objectResult\": task result is expected to be \"object\" type but was initialized to a different type \"string\""),
 		expectedResults:  nil,
 	}, {
 		name:             "taskrun results object miss key",

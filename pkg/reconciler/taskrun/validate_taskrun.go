@@ -233,61 +233,98 @@ func validateSidecarOverrides(ts *v1beta1.TaskSpec, trs *v1beta1.TaskRunSpec) er
 	return err
 }
 
-// validateResults checks the emitted results type and object properties against the ones defined in spec.
+// validateTaskRunResults checks that the results defined in spec are actually emitted and validates
+// that the results type and object properties produced match what is defined in TaskSpec
 func validateTaskRunResults(tr *v1beta1.TaskRun, resolvedTaskSpec *v1beta1.TaskSpec) error {
-	specResults := []v1beta1.TaskResult{}
+	var definedResults []v1beta1.TaskResult
+	var validResults []v1beta1.TaskRunResult
+	var err error
+
 	if tr.Spec.TaskSpec != nil {
-		specResults = append(specResults, tr.Spec.TaskSpec.Results...)
+		definedResults = append(definedResults, tr.Spec.TaskSpec.Results...)
 	}
 
 	if resolvedTaskSpec != nil {
-		specResults = append(specResults, resolvedTaskSpec.Results...)
+		definedResults = append(definedResults, resolvedTaskSpec.Results...)
 	}
 
-	// When get the results, check if the type of result is the expected one
-	if missmatchedTypes := mismatchedTypesResults(tr, specResults); len(missmatchedTypes) != 0 {
-		var s []string
-		for k, v := range missmatchedTypes {
-			s = append(s, fmt.Sprintf(" \"%v\": %v", k, v))
+	// Map Emitted Results
+	mappedResults := make(map[string]v1beta1.TaskRunResult)
+	for _, rawResult := range tr.Status.TaskRunResults {
+		mappedResults[rawResult.Name] = rawResult
+	}
+
+	if len(definedResults) > 0 {
+		// Check that all of the results defined in the Spec were actually produced
+		if validResults, err = checkMissingResults(mappedResults, definedResults, tr.Name); err != nil {
+			tr.Status.TaskRunResults = validResults
+			return err
 		}
-		sort.Strings(s)
-		return fmt.Errorf("Provided results don't match declared results; may be invalid JSON or missing result declaration: %v", strings.Join(s, ","))
-	}
 
-	// When get the results, for object value need to check if they have missing keys.
-	if missingKeysObjectNames := missingKeysofObjectResults(tr, specResults); len(missingKeysObjectNames) != 0 {
-		return fmt.Errorf("missing keys for these results which are required in TaskResult's properties %v", missingKeysObjectNames)
+		// Check that the types match what was defined in the Spec
+		if validResults, err = checkMismatchedTypes(mappedResults, definedResults); err != nil {
+			tr.Status.TaskRunResults = validResults
+			return err
+		}
+
+		// For Object Results check all of the keys defined in the Spec were produced
+		if missingKeysObjectNames := missingKeysofObjectResults(mappedResults, definedResults); len(missingKeysObjectNames) != 0 {
+			return fmt.Errorf("missing keys for these results which are required in TaskResult's properties %v", missingKeysObjectNames)
+		}
 	}
 	return nil
 }
 
-// mismatchedTypesResults checks and returns all the mismatched types of emitted results against specified results.
-func mismatchedTypesResults(tr *v1beta1.TaskRun, specResults []v1beta1.TaskResult) map[string]string {
-	neededTypes := make(map[string]string)
-	mismatchedTypes := make(map[string]string)
-	var filteredResults []v1beta1.TaskRunResult
-	// collect needed types for results
-	for _, r := range specResults {
-		neededTypes[r.Name] = string(r.Type)
-	}
+func checkMissingResults(mappedResults map[string]v1beta1.TaskRunResult, definedResults []v1beta1.TaskResult, taskRunName string) (correctResults []v1beta1.TaskRunResult, err error) {
+	var missingResultNames []string
 
-	// collect mismatched types for results, and correct results in filteredResults
-	// TODO(#6097): Validate if the emitted results are defined in taskspec
-	for _, trr := range tr.Status.TaskRunResults {
-		needed, ok := neededTypes[trr.Name]
-		if ok && needed != string(trr.Type) {
-			mismatchedTypes[trr.Name] = fmt.Sprintf("task result is expected to be \"%v\" type but was initialized to a different type \"%v\"", needed, trr.Type)
+	for _, wantResult := range definedResults {
+		if result, ok := mappedResults[wantResult.Name]; !ok {
+			missingResultNames = append(missingResultNames, wantResult.Name)
 		} else {
-			filteredResults = append(filteredResults, trr)
+			correctResults = append(correctResults, result)
 		}
 	}
-	// remove the mismatched results
-	tr.Status.TaskRunResults = filteredResults
-	return mismatchedTypes
+
+	// There were missing results
+	if len(missingResultNames) > 0 {
+		sort.Strings(missingResultNames)
+		err = fmt.Errorf("Could not find results with names: %v for task %s", strings.Join(missingResultNames, ","), taskRunName)
+		return correctResults, err
+	}
+
+	return correctResults, nil
+}
+
+func checkMismatchedTypes(mappedResults map[string]v1beta1.TaskRunResult, definedResults []v1beta1.TaskResult) (correctResults []v1beta1.TaskRunResult, err error) {
+	mismatchedTypes := make(map[string]string)
+	for _, wantResult := range definedResults {
+		if result, ok := mappedResults[wantResult.Name]; ok {
+			if string(result.Type) != string(wantResult.Type) {
+				// If the result type is incorrect, add error to mapping of mismatchedTypes
+				mismatchedTypes[string(wantResult.Name)] = fmt.Sprintf("task result is expected to be \"%v\" type but was initialized to a different type \"%v\"", wantResult.Type, result.Type)
+			} else {
+				correctResults = append(correctResults, result)
+			}
+		}
+	}
+
+	// There were missing types
+	if len(mismatchedTypes) > 0 {
+		var errs []string
+		for k, v := range mismatchedTypes {
+			errs = append(errs, fmt.Sprintf(" \"%v\": %v", k, v))
+		}
+		sort.Strings(errs)
+		err = fmt.Errorf("Provided results don't match declared results: %v", strings.Join(errs, ","))
+		return correctResults, err
+	}
+
+	return correctResults, nil
 }
 
 // missingKeysofObjectResults checks and returns the missing keys of object results.
-func missingKeysofObjectResults(tr *v1beta1.TaskRun, specResults []v1beta1.TaskResult) map[string][]string {
+func missingKeysofObjectResults(mappedResults map[string]v1beta1.TaskRunResult, specResults []v1beta1.TaskResult) map[string][]string {
 	neededKeys := make(map[string][]string)
 	providedKeys := make(map[string][]string)
 	// collect needed keys for object results
@@ -300,7 +337,7 @@ func missingKeysofObjectResults(tr *v1beta1.TaskRun, specResults []v1beta1.TaskR
 	}
 
 	// collect provided keys for object results
-	for _, trr := range tr.Status.TaskRunResults {
+	for _, trr := range mappedResults {
 		if trr.Value.Type == v1beta1.ParamTypeObject {
 			for key := range trr.Value.ObjectVal {
 				providedKeys[trr.Name] = append(providedKeys[trr.Name], key)
