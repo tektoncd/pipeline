@@ -48,7 +48,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 	"knative.dev/pkg/logging"
-	logtesting "knative.dev/pkg/logging/testing"
 )
 
 var (
@@ -152,7 +151,9 @@ func TestLocalPipelineRef(t *testing.T) {
 	}
 }
 
-func TestGetPipelineFunc(t *testing.T) {
+// TestGetPipelineFunc_Bundle tests the deprecated v1beta1 bundle syntax, this
+// can be removed when support for the bundle syntax is removed
+func TestGetPipelineFunc_Bundle(t *testing.T) {
 	// Set up a fake registry to push an image to.
 	s := httptest.NewServer(registry.New())
 	defer s.Close()
@@ -162,14 +163,6 @@ func TestGetPipelineFunc(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	cfg := config.NewStore(logtesting.TestLogger(t))
-	cfg.OnConfigChanged(&corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
-		Data: map[string]string{
-			"enable-tekton-oci-bundles": "true",
-		},
-	})
-	ctx = cfg.ToContext(ctx)
 
 	testcases := []struct {
 		name            string
@@ -178,7 +171,7 @@ func TestGetPipelineFunc(t *testing.T) {
 		ref             *v1beta1.PipelineRef
 		expected        runtime.Object
 	}{{
-		name: "remote-pipeline",
+		name: "remote-pipeline-bundle",
 		localPipelines: []runtime.Object{
 			simplePipelineWithBaseSpec(),
 			dummyPipeline,
@@ -186,31 +179,9 @@ func TestGetPipelineFunc(t *testing.T) {
 		remotePipelines: []runtime.Object{simplePipeline(), dummyPipeline},
 		ref: &v1beta1.PipelineRef{
 			Name:   "simple",
-			Bundle: u.Host + "/remote-pipeline",
+			Bundle: u.Host + "/remote-pipeline-bundle",
 		},
 		expected: simplePipeline(),
-	}, {
-		name: "local-pipeline",
-		localPipelines: []runtime.Object{
-			simplePipelineWithBaseSpec(),
-			dummyPipeline,
-		},
-		remotePipelines: []runtime.Object{simplePipeline(), dummyPipeline},
-		ref: &v1beta1.PipelineRef{
-			Name: "simple",
-		},
-		expected: simplePipelineWithBaseSpec(),
-	}, {
-		name:           "remote-pipeline-without-defaults",
-		localPipelines: []runtime.Object{simplePipeline()},
-		remotePipelines: []runtime.Object{
-			simplePipelineWithSpecAndParam(""),
-			dummyPipeline},
-		ref: &v1beta1.PipelineRef{
-			Name:   "simple",
-			Bundle: u.Host + "/remote-pipeline-without-defaults",
-		},
-		expected: simplePipelineWithSpecParamAndKind(),
 	}}
 
 	for _, tc := range testcases {
@@ -228,6 +199,67 @@ func TestGetPipelineFunc(t *testing.T) {
 				t.Fatalf("failed to upload test image: %s", err.Error())
 			}
 
+			pr := &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef:        tc.ref,
+					ServiceAccountName: "default",
+				},
+			}
+
+			fn := resources.GetPipelineFunc(ctx, kubeclient, tektonclient, nil, pr, nil /*VerificationPolicies*/)
+			if err != nil {
+				t.Fatalf("failed to get pipeline fn: %s", err.Error())
+			}
+
+			pipeline, refSource, _, err := fn(ctx, tc.ref.Name)
+			if err != nil {
+				t.Fatalf("failed to call pipelinefn: %s", err.Error())
+			}
+
+			if diff := cmp.Diff(pipeline, tc.expected); tc.expected != nil && diff != "" {
+				t.Error(diff)
+			}
+
+			if refSource != nil {
+				t.Errorf("expected refSource is nil, but got %v", refSource)
+			}
+		})
+	}
+}
+
+func TestGetPipelineFunc_Local(t *testing.T) {
+	ctx := context.Background()
+
+	testcases := []struct {
+		name            string
+		localPipelines  []runtime.Object
+		remotePipelines []runtime.Object
+		ref             *v1beta1.PipelineRef
+		expected        runtime.Object
+	}{{
+		name: "local-pipeline",
+		localPipelines: []runtime.Object{
+			simplePipelineWithBaseSpec(),
+			dummyPipeline,
+		},
+		remotePipelines: []runtime.Object{simplePipeline(), dummyPipeline},
+		ref: &v1beta1.PipelineRef{
+			Name: "simple",
+		},
+		expected: simplePipelineWithBaseSpec(),
+	}}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			tektonclient := fake.NewSimpleClientset(tc.localPipelines...)
+			kubeclient := fakek8s.NewSimpleClientset(&v1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default",
+					Name:      "default",
+				},
+			})
+
 			fn := resources.GetPipelineFunc(ctx, kubeclient, tektonclient, nil, &v1beta1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
 				Spec: v1beta1.PipelineRunSpec{
@@ -235,9 +267,6 @@ func TestGetPipelineFunc(t *testing.T) {
 					ServiceAccountName: "default",
 				},
 			}, nil /*VerificationPolicies*/)
-			if err != nil {
-				t.Fatalf("failed to get pipeline fn: %s", err.Error())
-			}
 
 			pipeline, refSource, _, err := fn(ctx, tc.ref.Name)
 			if err != nil {
@@ -358,6 +387,26 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 		}, "\n"),
 		wantPipeline: nil,
 		wantErr:      true,
+	}, {
+		name: "v1 remote pipeline without defaults",
+		pipelineYAML: strings.Join([]string{
+			"kind: Pipeline",
+			"apiVersion: tekton.dev/v1",
+			pipelineYAMLStringWithoutDefaults,
+		}, "\n"),
+		wantPipeline: parse.MustParseV1beta1Pipeline(t, `
+metadata:
+  name: foo
+  namespace: bar
+spec:
+  tasks:
+  - name: something
+    taskRef:
+      name: something
+  params:
+  - name: foo
+    type: string
+`),
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1253,25 +1302,6 @@ func simplePipelineWithBaseSpec() *v1beta1.Pipeline {
 	return p
 }
 
-func simplePipelineWithSpecAndParam(pt v1beta1.ParamType) *v1beta1.Pipeline {
-	p := simplePipelineWithBaseSpec()
-	p.Spec.Params = []v1beta1.ParamSpec{{
-		Name: "foo",
-		Type: pt,
-	}}
-
-	return p
-}
-
-func simplePipelineWithSpecParamAndKind() *v1beta1.Pipeline {
-	p := simplePipelineWithBaseSpec()
-	p.Spec.Params = []v1beta1.ParamSpec{{
-		Name: "foo",
-	}}
-
-	return p
-}
-
 // This is missing the kind and apiVersion because those are added by
 // the MustParse helpers from the test package.
 var pipelineYAMLString = `
@@ -1299,6 +1329,20 @@ spec:
       params:
       - name: name
         value: test-task
+`
+
+var pipelineYAMLStringWithoutDefaults = `
+metadata:
+  name: foo
+  namespace: bar
+spec:
+  tasks:
+  - name: something
+    taskRef:
+      name: something
+  params:
+  - name: foo
+    type: ""
 `
 
 func getSignedV1Pipeline(unsigned *pipelinev1.Pipeline, signer signature.Signer, name string) (*pipelinev1.Pipeline, error) {
