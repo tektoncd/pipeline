@@ -512,7 +512,7 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 	}
 }
 
-func TestGetPipelineFunc_VerifyNoError(t *testing.T) {
+func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 	ctx := context.Background()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 	tektonclient := fake.NewSimpleClientset()
@@ -532,7 +532,7 @@ func TestGetPipelineFunc_VerifyNoError(t *testing.T) {
 	resolvedUnmatched := test.NewResolvedResource(unsignedPipelineBytes, nil, noMatchPolicyRefSource, nil)
 	requesterUnmatched := test.NewRequester(resolvedUnmatched, nil)
 
-	signedPipeline, err := test.GetSignedPipeline(unsignedPipeline, signer, "signed")
+	signedPipeline, err := test.GetSignedV1beta1Pipeline(unsignedPipeline, signer, "signed")
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
@@ -699,7 +699,7 @@ func TestGetPipelineFunc_VerifyNoError(t *testing.T) {
 	}
 }
 
-func TestGetPipelineFunc_VerifyError(t *testing.T) {
+func TestGetPipelineFunc_V1beta1Pipeline_VerifyError(t *testing.T) {
 	ctx := context.Background()
 	tektonclient := fake.NewSimpleClientset()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
@@ -720,7 +720,7 @@ func TestGetPipelineFunc_VerifyError(t *testing.T) {
 	resolvedUnsigned := test.NewResolvedResource(unsignedPipelineBytes, nil, matchPolicyRefSource, nil)
 	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
 
-	signedPipeline, err := test.GetSignedPipeline(unsignedPipeline, signer, "signed")
+	signedPipeline, err := test.GetSignedV1beta1Pipeline(unsignedPipeline, signer, "signed")
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}

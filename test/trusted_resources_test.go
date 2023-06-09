@@ -96,7 +96,7 @@ spec:
     args: ['-c', 'echo hello']
 `, helpers.ObjectNameForTest(t), namespace, fqImageName))
 
-	signedTask, err := GetSignedTask(task, signer, "signedtask")
+	signedTask, err := GetSignedV1beta1Task(task, signer, "signedtask")
 	if err != nil {
 		t.Errorf("error getting signed task: %v", err)
 	}
@@ -123,7 +123,7 @@ spec:
         value: %s
 `, helpers.ObjectNameForTest(t), namespace, signedTask.Name, namespace))
 
-	signedPipeline, err := GetSignedPipeline(pipeline, signer, "signedpipeline")
+	signedPipeline, err := GetSignedV1beta1Pipeline(pipeline, signer, "signedpipeline")
 	if err != nil {
 		t.Errorf("error getting signed pipeline: %v", err)
 	}
@@ -210,7 +210,7 @@ spec:
     args: ['-c', 'echo hello']
 `, helpers.ObjectNameForTest(t), namespace, fqImageName))
 
-	signedTask, err := GetSignedTask(task, signer, "signedtask")
+	signedTask, err := GetSignedV1beta1Task(task, signer, "signedtask")
 	if err != nil {
 		t.Errorf("error getting signed task: %v", err)
 	}
@@ -239,7 +239,7 @@ spec:
         value: %s
 `, helpers.ObjectNameForTest(t), namespace, signedTask.Name, namespace))
 
-	signedPipeline, err := GetSignedPipeline(pipeline, signer, "signedpipeline")
+	signedPipeline, err := GetSignedV1beta1Pipeline(pipeline, signer, "signedpipeline")
 	if err != nil {
 		t.Errorf("error getting signed pipeline: %v", err)
 	}

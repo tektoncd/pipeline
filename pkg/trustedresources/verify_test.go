@@ -86,7 +86,7 @@ func TestVerifyInterface_Task_Success(t *testing.T) {
 	}
 
 	unsignedTask := test.GetUnsignedTask("test-task")
-	signedTask, err := test.GetSignedTask(unsignedTask, sv, "signed")
+	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, sv, "signed")
 	if err != nil {
 		t.Fatalf("Failed to get signed task %v", err)
 	}
@@ -115,7 +115,7 @@ func TestVerifyInterface_Task_Error(t *testing.T) {
 
 	unsignedTask := test.GetUnsignedTask("test-task")
 
-	signedTask, err := test.GetSignedTask(unsignedTask, sv, "signed")
+	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, sv, "signed")
 	if err != nil {
 		t.Fatalf("Failed to get signed task %v", err)
 	}
@@ -165,7 +165,7 @@ func TestVerifyInterface_Task_Error(t *testing.T) {
 func TestVerifyResource_Task_Success(t *testing.T) {
 	signer256, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 	unsignedTask := test.GetUnsignedTask("test-task")
-	signedTask, err := test.GetSignedTask(unsignedTask, signer256, "signed")
+	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, signer256, "signed")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
@@ -246,7 +246,7 @@ func TestVerifyResource_Task_Success(t *testing.T) {
 		},
 	}
 
-	signedTask384, err := test.GetSignedTask(unsignedTask, signer384, "signed384")
+	signedTask384, err := test.GetSignedV1beta1Task(unsignedTask, signer384, "signed384")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
@@ -334,7 +334,7 @@ func TestVerifyResource_Task_Error(t *testing.T) {
 
 	unsignedTask := test.GetUnsignedTask("test-task")
 
-	signedTask, err := test.GetSignedTask(unsignedTask, sv, "signed")
+	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, sv, "signed")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
@@ -430,7 +430,7 @@ func TestVerifyResource_Task_Error(t *testing.T) {
 func TestVerifyResource_Pipeline_Success(t *testing.T) {
 	sv, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 	unsignedPipeline := test.GetUnsignedPipeline("test-pipeline")
-	signedPipeline, err := test.GetSignedPipeline(unsignedPipeline, sv, "signed")
+	signedPipeline, err := test.GetSignedV1beta1Pipeline(unsignedPipeline, sv, "signed")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
@@ -485,7 +485,7 @@ func TestVerifyResource_Pipeline_Error(t *testing.T) {
 
 	unsignedPipeline := test.GetUnsignedPipeline("test-pipeline")
 
-	signedPipeline, err := test.GetSignedPipeline(unsignedPipeline, sv, "signed")
+	signedPipeline, err := test.GetSignedV1beta1Pipeline(unsignedPipeline, sv, "signed")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}

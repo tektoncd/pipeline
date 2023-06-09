@@ -11628,7 +11628,7 @@ spec:
 `)
 
 	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, ts.Namespace)
-	signedTask, err := test.GetSignedTask(ts, signer, "test-task")
+	signedTask, err := test.GetSignedV1beta1Task(ts, signer, "test-task")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
@@ -11648,7 +11648,7 @@ spec:
         resolver: %s
 `, resolverName))
 
-	signedPipeline, err := test.GetSignedPipeline(ps, signer, "test-pipeline")
+	signedPipeline, err := test.GetSignedV1beta1Pipeline(ps, signer, "test-pipeline")
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
@@ -11800,7 +11800,7 @@ spec:
 
 	// Case2: signed Pipeline refers to unsigned Task
 	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, unsignedTask.Namespace)
-	signedPipelineWithUnsignedTask, err := test.GetSignedPipeline(unsignedPipeline, signer, "test-pipeline")
+	signedPipelineWithUnsignedTask, err := test.GetSignedV1beta1Pipeline(unsignedPipeline, signer, "test-pipeline")
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
@@ -11810,7 +11810,7 @@ spec:
 	}
 
 	// Case3: signed Pipeline refers to modified Task
-	signedTask, err := test.GetSignedTask(unsignedTask, signer, "test-task")
+	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, signer, "test-task")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
@@ -11838,7 +11838,7 @@ spec:
       taskRef:
         resolver: %s
 `, resolverName))
-	signedPipelineWithModifiedTask, err := test.GetSignedPipeline(ps, signer, "test-pipeline")
+	signedPipelineWithModifiedTask, err := test.GetSignedV1beta1Pipeline(ps, signer, "test-pipeline")
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
@@ -11858,7 +11858,7 @@ spec:
       taskRef:
         resolver: %s
 `, resolverName))
-	signedPipeline, err := test.GetSignedPipeline(ps, signer, "test-pipeline")
+	signedPipeline, err := test.GetSignedV1beta1Pipeline(ps, signer, "test-pipeline")
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
@@ -12135,7 +12135,7 @@ spec:
 
 	// Case2: signed Pipeline refers to unsigned Task
 	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, unsignedTask.Namespace)
-	signedPipelineWithUnsignedTask, err := test.GetSignedPipeline(unsignedPipeline, signer, "test-pipeline")
+	signedPipelineWithUnsignedTask, err := test.GetSignedV1beta1Pipeline(unsignedPipeline, signer, "test-pipeline")
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
@@ -12145,7 +12145,7 @@ spec:
 	}
 
 	// Case3: signed Pipeline refers to modified Task
-	signedTask, err := test.GetSignedTask(unsignedTask, signer, "test-task")
+	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, signer, "test-task")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
@@ -12173,7 +12173,7 @@ spec:
       taskRef:
         resolver: %s
 `, resolverName))
-	signedPipelineWithModifiedTask, err := test.GetSignedPipeline(ps, signer, "test-pipeline")
+	signedPipelineWithModifiedTask, err := test.GetSignedV1beta1Pipeline(ps, signer, "test-pipeline")
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
@@ -12193,7 +12193,7 @@ spec:
       taskRef:
         resolver: %s
 `, resolverName))
-	signedPipeline, err := test.GetSignedPipeline(ps, signer, "test-pipeline")
+	signedPipeline, err := test.GetSignedV1beta1Pipeline(ps, signer, "test-pipeline")
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
