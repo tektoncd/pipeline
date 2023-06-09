@@ -89,6 +89,7 @@ var partitionRegexp = struct {
 	AwsCn    *regexp.Regexp
 	AwsIso   *regexp.Regexp
 	AwsIsoB  *regexp.Regexp
+	AwsIsoE  *regexp.Regexp
 	AwsUsGov *regexp.Regexp
 }{
 
@@ -96,6 +97,7 @@ var partitionRegexp = struct {
 	AwsCn:    regexp.MustCompile("^cn\\-\\w+\\-\\d+$"),
 	AwsIso:   regexp.MustCompile("^us\\-iso\\-\\w+\\-\\d+$"),
 	AwsIsoB:  regexp.MustCompile("^us\\-isob\\-\\w+\\-\\d+$"),
+	AwsIsoE:  regexp.MustCompile("^eu\\-isoe\\-\\w+\\-\\d+$"),
 	AwsUsGov: regexp.MustCompile("^us\\-gov\\-\\w+\\-\\d+$"),
 }
 
@@ -184,6 +186,14 @@ var defaultPartitions = endpoints.Partitions{
 				},
 			},
 			endpoints.EndpointKey{
+				Region: "ap-south-2",
+			}: endpoints.Endpoint{
+				Hostname: "api.ecr.ap-south-2.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "ap-south-2",
+				},
+			},
+			endpoints.EndpointKey{
 				Region: "ap-southeast-1",
 			}: endpoints.Endpoint{
 				Hostname: "api.ecr.ap-southeast-1.amazonaws.com",
@@ -205,6 +215,14 @@ var defaultPartitions = endpoints.Partitions{
 				Hostname: "api.ecr.ap-southeast-3.amazonaws.com",
 				CredentialScope: endpoints.CredentialScope{
 					Region: "ap-southeast-3",
+				},
+			},
+			endpoints.EndpointKey{
+				Region: "ap-southeast-4",
+			}: endpoints.Endpoint{
+				Hostname: "api.ecr.ap-southeast-4.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "ap-southeast-4",
 				},
 			},
 			endpoints.EndpointKey{
@@ -296,6 +314,14 @@ var defaultPartitions = endpoints.Partitions{
 				},
 			},
 			endpoints.EndpointKey{
+				Region: "eu-central-2",
+			}: endpoints.Endpoint{
+				Hostname: "api.ecr.eu-central-2.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "eu-central-2",
+				},
+			},
+			endpoints.EndpointKey{
 				Region: "eu-north-1",
 			}: endpoints.Endpoint{
 				Hostname: "api.ecr.eu-north-1.amazonaws.com",
@@ -309,6 +335,14 @@ var defaultPartitions = endpoints.Partitions{
 				Hostname: "api.ecr.eu-south-1.amazonaws.com",
 				CredentialScope: endpoints.CredentialScope{
 					Region: "eu-south-1",
+				},
+			},
+			endpoints.EndpointKey{
+				Region: "eu-south-2",
+			}: endpoints.Endpoint{
+				Hostname: "api.ecr.eu-south-2.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "eu-south-2",
 				},
 			},
 			endpoints.EndpointKey{
@@ -623,6 +657,27 @@ var defaultPartitions = endpoints.Partitions{
 				},
 			},
 		},
+	},
+	{
+		ID: "aws-iso-e",
+		Defaults: map[endpoints.DefaultKey]endpoints.Endpoint{
+			{
+				Variant: endpoints.FIPSVariant,
+			}: {
+				Hostname:          "api.ecr-fips.{region}.cloud.adc-e.uk",
+				Protocols:         []string{"https"},
+				SignatureVersions: []string{"v4"},
+			},
+			{
+				Variant: 0,
+			}: {
+				Hostname:          "api.ecr.{region}.cloud.adc-e.uk",
+				Protocols:         []string{"https"},
+				SignatureVersions: []string{"v4"},
+			},
+		},
+		RegionRegex:    partitionRegexp.AwsIsoE,
+		IsRegionalized: true,
 	},
 	{
 		ID: "aws-us-gov",
