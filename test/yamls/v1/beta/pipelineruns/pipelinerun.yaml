@@ -1,0 +1,226 @@
+# This demo modifies the cluster (deploys to it) you must use a service
+# account with permission to admin the cluster (or make your default user an admin
+# of the `default` namespace with default-cluster-admin.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  generateName: default-cluster-admin-
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+# Copied from https://github.com/tektoncd/catalog/blob/v1/git/git-clone.yaml
+# With a few fixes being ported over in https://github.com/tektoncd/catalog/pull/290
+# Post #1839 we can refer to the remote Task in a registry or post #2298 in git directly
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: git-clone
+spec:
+  workspaces:
+  - name: output
+    description: The git repo will be cloned onto the volume backing this workspace
+  params:
+  - name: url
+    description: git url to clone
+    type: string
+  - name: revision
+    description: git revision to checkout (branch, tag, sha, ref…)
+    type: string
+    default: master
+  - name: submodules
+    description: defines if the resource should initialize and fetch the submodules
+    type: string
+    default: "true"
+  - name: depth
+    description: performs a shallow clone where only the most recent commit(s) will be fetched
+    type: string
+    default: "1"
+  - name: sslVerify
+    description: defines if http.sslVerify should be set to true or false in the global git config
+    type: string
+    default: "true"
+  - name: subdirectory
+    description: subdirectory inside the "output" workspace to clone the git repo into
+    type: string
+    default: ""
+  - name: deleteExisting
+    description: clean out the contents of the repo's destination directory (if it already exists) before trying to clone the repo there
+    type: string
+    default: "false"
+  results:
+  - name: commit
+    description: The precise commit SHA that was fetched by this Task
+  steps:
+  - name: clone
+    image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:latest
+    securityContext:
+      runAsUser: 0 # This needs root, and git-init is nonroot by default
+    script: |
+      CHECKOUT_DIR="$(workspaces.output.path)/$(params.subdirectory)"
+      cleandir() {
+        # Delete any existing contents of the repo directory if it exists.
+        #
+        # We don't just "rm -rf $CHECKOUT_DIR" because $CHECKOUT_DIR might be "/"
+        # or the root of a mounted volume.
+        if [[ -d "$CHECKOUT_DIR" ]] ; then
+          # Delete non-hidden files and directories
+          rm -rf "$CHECKOUT_DIR"/*
+          # Delete files and directories starting with . but excluding ..
+          rm -rf "$CHECKOUT_DIR"/.[!.]*
+          # Delete files and directories starting with .. plus any other character
+          rm -rf "$CHECKOUT_DIR"/..?*
+        fi
+      }
+      if [[ "$(params.deleteExisting)" == "true" ]] ; then
+        cleandir
+      fi
+      /ko-app/git-init \
+        -url "$(params.url)" \
+        -revision "$(params.revision)" \
+        -path "$CHECKOUT_DIR" \
+        -sslVerify="$(params.sslVerify)" \
+        -submodules="$(params.submodules)" \
+        -depth="$(params.depth)"
+      cd "$CHECKOUT_DIR"
+      RESULT_SHA="$(git rev-parse HEAD | tr -d '\n')"
+      EXIT_CODE="$?"
+      if [ "$EXIT_CODE" != 0 ]
+      then
+        exit $EXIT_CODE
+      fi
+      # Make sure we don't add a trailing newline to the result!
+      echo -n "$RESULT_SHA" > $(results.commit.path)
+---
+# Copied from https://github.com/tektoncd/catalog/blob/main/task/kaniko/0.6/kaniko.yaml
+# Using the catalog fails for unknown reasons, so we're keeping this here.
+# Adding `--ignore-path=/product_uuid` EXTRA_ARGS is a workaround for the 'build unlinkat
+# //product_uuid' error filed at https://github.com/GoogleContainerTools/kaniko/issues/2164.
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: kaniko
+  labels:
+    app.kubernetes.io/version: "0.6"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.17.0"
+    tekton.dev/categories: Image Build
+    tekton.dev/tags: image-build
+    tekton.dev/displayName: "Build and upload container image using Kaniko"
+    tekton.dev/platforms: "linux/amd64,linux/arm64,linux/ppc64le"
+spec:
+  description: >-
+    This Task builds a simple Dockerfile with kaniko and pushes to a registry.
+    This Task stores the image name and digest as results, allowing Tekton Chains to pick up
+    that an image was built & sign it.
+  params:
+    - name: IMAGE
+      description: Name (reference) of the image to build.
+    - name: DOCKERFILE
+      description: Path to the Dockerfile to build.
+      default: ./Dockerfile
+    - name: CONTEXT
+      description: The build context used by Kaniko.
+      default: ./
+    - name: EXTRA_ARGS
+      type: array
+      default: [--ignore-path=/product_uuid]
+    - name: BUILDER_IMAGE
+      description: The image on which builds will run
+      default: gcr.io/kaniko-project/executor:v1.8.1
+  workspaces:
+    - name: source
+      description: Holds the context and Dockerfile
+    - name: dockerconfig
+      description: Includes a docker `config.json`
+      optional: true
+      mountPath: /kaniko/.docker
+  results:
+    - name: IMAGE_DIGEST
+      description: Digest of the image just built.
+    - name: IMAGE_URL
+      description: URL of the image just built.
+  steps:
+    - name: build-and-push
+      workingDir: $(workspaces.source.path)
+      image: $(params.BUILDER_IMAGE)
+      args:
+        - $(params.EXTRA_ARGS)
+        - --dockerfile=$(params.DOCKERFILE)
+        - --context=$(workspaces.source.path)/$(params.CONTEXT) # The user does not need to care the workspace and the source.
+        - --destination=$(params.IMAGE)
+        - --digest-file=$(results.IMAGE_DIGEST.path)
+      # kaniko assumes it is running as root, which means this example fails on platforms
+      # that default to run containers as random uid (like OpenShift). Adding this securityContext
+      # makes it explicit that it needs to run as root.
+      securityContext:
+        runAsUser: 0
+    - name: write-url
+      image: docker.io/library/bash:5.1.4@sha256:c523c636b722339f41b6a431b44588ab2f762c5de5ec3bd7964420ff982fb1d9
+      script: |
+        set -e
+        image="$(params.IMAGE)"
+        echo -n "${image}" | tee "$(results.IMAGE_URL.path)"
+---
+# This Pipeline Builds a container image (https://github.com/GoogleContainerTools/skaffold/tree/master/examples/getting-started)
+# and pushes it to a registry.
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: "demo.pipeline"
+spec:
+  params:
+  - name: image-registry
+    default: gcr.io/christiewilson-catfactory
+  workspaces:
+  - name: git-source
+  tasks:
+  - name: fetch-from-git
+    taskRef:
+      name: git-clone
+    params:
+    - name: url
+      value: https://github.com/GoogleContainerTools/skaffold
+    - name: revision
+      value: main
+    workspaces:
+    - name: output
+      workspace: git-source
+  - name: build-image
+    runAfter: [fetch-from-git]
+    taskRef:
+      name: kaniko
+    params:
+    - name: IMAGE
+      value: $(params.image-registry)/getting-started
+    - name: CONTEXT
+      value: examples/getting-started
+    - name: DOCKERFILE
+      value: $(workspaces.source.path)/examples/getting-started/Dockerfile
+    workspaces:
+    - name: source
+      workspace: git-source
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: demo-pipeline-run-1
+spec:
+  pipelineRef:
+    name: "demo.pipeline"
+  taskRunTemplate:
+    serviceAccountName: 'default'
+  workspaces:
+  - name: git-source
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
