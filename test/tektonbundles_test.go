@@ -39,6 +39,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	corev1 "k8s.io/api/core/v1"
@@ -49,7 +50,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-var requireFeatureFlags = requireAnyGate(map[string]string{
+var bundleFeatureFlags = requireAnyGate(map[string]string{
 	"enable-tekton-oci-bundles": "true",
 	"enable-api-fields":         "alpha",
 })
@@ -62,7 +63,7 @@ var resolverFeatureFlags = requireAnyGate(map[string]string{
 // images.
 func TestTektonBundlesSimpleWorkingExample(t *testing.T) {
 	ctx := context.Background()
-	c, namespace := setup(ctx, t, withRegistry, requireFeatureFlags)
+	c, namespace := setup(ctx, t, withRegistry, bundleFeatureFlags)
 
 	t.Parallel()
 
@@ -102,47 +103,7 @@ spec:
       bundle: %s
 `, pipelineName, namespace, taskName, repo))
 
-	// Write the task and pipeline into an image to the registry in the proper format.
-	rawTask, err := yaml.Marshal(task)
-	if err != nil {
-		t.Fatalf("Failed to marshal task to yaml: %s", err)
-	}
-
-	rawPipeline, err := yaml.Marshal(pipeline)
-	if err != nil {
-		t.Fatalf("Failed to marshal task to yaml: %s", err)
-	}
-
-	img := empty.Image
-	taskLayer, err := tarball.LayerFromReader(bytes.NewBuffer(rawTask))
-	if err != nil {
-		t.Fatalf("Failed to create oci layer from task: %s", err)
-	}
-	pipelineLayer, err := tarball.LayerFromReader(bytes.NewBuffer(rawPipeline))
-	if err != nil {
-		t.Fatalf("Failed to create oci layer from pipeline: %s", err)
-	}
-	img, err = mutate.Append(img, mutate.Addendum{
-		Layer: taskLayer,
-		Annotations: map[string]string{
-			"dev.tekton.image.name":       taskName,
-			"dev.tekton.image.kind":       strings.ToLower(task.Kind),
-			"dev.tekton.image.apiVersion": task.APIVersion,
-		},
-	}, mutate.Addendum{
-		Layer: pipelineLayer,
-		Annotations: map[string]string{
-			"dev.tekton.image.name":       pipelineName,
-			"dev.tekton.image.kind":       strings.ToLower(pipeline.Kind),
-			"dev.tekton.image.apiVersion": pipeline.APIVersion,
-		},
-	})
-	if err != nil {
-		t.Fatalf("Failed to create an oci image from the task and pipeline layers: %s", err)
-	}
-
-	// Publish this image to the in-cluster registry.
-	publishImg(ctx, t, c, namespace, img, ref)
+	setupBundle(ctx, t, c, namespace, repo, task, pipeline)
 
 	// Now generate a PipelineRun to invoke this pipeline and task.
 	pr := parse.MustParsePipelineRun(t, fmt.Sprintf(`
@@ -212,10 +173,6 @@ func TestTektonBundlesResolver(t *testing.T) {
 	pipelineName := helpers.ObjectNameForTest(t)
 	pipelineRunName := helpers.ObjectNameForTest(t)
 	repo := fmt.Sprintf("%s:5000/tektonbundlesresolver", getRegistryServiceIP(ctx, t, c, namespace))
-	ref, err := name.ParseReference(repo)
-	if err != nil {
-		t.Fatalf("Failed to parse %s as an OCI reference: %s", repo, err)
-	}
 
 	task := parse.MustParseTask(t, fmt.Sprintf(`
 metadata:
@@ -244,47 +201,7 @@ spec:
         value: %s
 `, pipelineName, namespace, repo, taskName))
 
-	// Write the task and pipeline into an image to the registry in the proper format.
-	rawTask, err := yaml.Marshal(task)
-	if err != nil {
-		t.Fatalf("Failed to marshal task to yaml: %s", err)
-	}
-
-	rawPipeline, err := yaml.Marshal(pipeline)
-	if err != nil {
-		t.Fatalf("Failed to marshal task to yaml: %s", err)
-	}
-
-	img := empty.Image
-	taskLayer, err := tarball.LayerFromReader(bytes.NewBuffer(rawTask))
-	if err != nil {
-		t.Fatalf("Failed to create oci layer from task: %s", err)
-	}
-	pipelineLayer, err := tarball.LayerFromReader(bytes.NewBuffer(rawPipeline))
-	if err != nil {
-		t.Fatalf("Failed to create oci layer from pipeline: %s", err)
-	}
-	img, err = mutate.Append(img, mutate.Addendum{
-		Layer: taskLayer,
-		Annotations: map[string]string{
-			"dev.tekton.image.name":       taskName,
-			"dev.tekton.image.kind":       strings.ToLower(task.Kind),
-			"dev.tekton.image.apiVersion": task.APIVersion,
-		},
-	}, mutate.Addendum{
-		Layer: pipelineLayer,
-		Annotations: map[string]string{
-			"dev.tekton.image.name":       pipelineName,
-			"dev.tekton.image.kind":       strings.ToLower(pipeline.Kind),
-			"dev.tekton.image.apiVersion": pipeline.APIVersion,
-		},
-	})
-	if err != nil {
-		t.Fatalf("Failed to create an oci image from the task and pipeline layers: %s", err)
-	}
-
-	// Publish this image to the in-cluster registry.
-	publishImg(ctx, t, c, namespace, img, ref)
+	setupBundle(ctx, t, c, namespace, repo, task, pipeline)
 
 	// Now generate a PipelineRun to invoke this pipeline and task.
 	pr := parse.MustParsePipelineRun(t, fmt.Sprintf(`
@@ -348,7 +265,7 @@ spec:
 // TestTektonBundlesUsingRegularImage is an integration test which passes a non-Tekton bundle as a task reference.
 func TestTektonBundlesUsingRegularImage(t *testing.T) {
 	ctx := context.Background()
-	c, namespace := setup(ctx, t, withRegistry, requireFeatureFlags)
+	c, namespace := setup(ctx, t, withRegistry, bundleFeatureFlags)
 
 	t.Parallel()
 
@@ -377,32 +294,7 @@ spec:
       bundle: registry
 `, pipelineName, namespace, taskName))
 
-	// Write the pipeline into an image to the registry in the proper format. We don't write the task because we are
-	// using an non Tekton Bundle.
-	rawPipeline, err := yaml.Marshal(pipeline)
-	if err != nil {
-		t.Fatalf("Failed to marshal task to yaml: %s", err)
-	}
-
-	img := empty.Image
-	pipelineLayer, err := tarball.LayerFromReader(bytes.NewBuffer(rawPipeline))
-	if err != nil {
-		t.Fatalf("Failed to create oci layer from pipeline: %s", err)
-	}
-	img, err = mutate.Append(img, mutate.Addendum{
-		Layer: pipelineLayer,
-		Annotations: map[string]string{
-			"dev.tekton.image.name":       pipelineName,
-			"dev.tekton.image.kind":       strings.ToLower(pipeline.Kind),
-			"dev.tekton.image.apiVersion": pipeline.APIVersion,
-		},
-	})
-	if err != nil {
-		t.Fatalf("Failed to create an oci image from the task and pipeline layers: %s", err)
-	}
-
-	// Publish this image to the in-cluster registry.
-	publishImg(ctx, t, c, namespace, img, ref)
+	setupBundle(ctx, t, c, namespace, repo, nil, pipeline)
 
 	// Now generate a PipelineRun to invoke this pipeline and task.
 	pr := parse.MustParsePipelineRun(t, fmt.Sprintf(`
@@ -431,7 +323,7 @@ spec:
 // task reference.
 func TestTektonBundlesUsingImproperFormat(t *testing.T) {
 	ctx := context.Background()
-	c, namespace := setup(ctx, t, withRegistry, requireFeatureFlags)
+	c, namespace := setup(ctx, t, withRegistry, bundleFeatureFlags)
 
 	t.Parallel()
 
@@ -670,4 +562,63 @@ func publishImg(ctx context.Context, t *testing.T, c *clients, namespace string,
 			t.Fatalf("Failed to create image. Pod logs are: \n%s", string(logs))
 		}
 	}
+}
+
+// setupBundle creates an empty image, provides a reference to the fake registry and pushes the
+// bundled task and pipeline within an image into the registry
+func setupBundle(ctx context.Context, t *testing.T, c *clients, namespace, repo string, task *v1beta1.Task, pipeline *v1beta1.Pipeline) {
+	t.Helper()
+	img := empty.Image
+	ref, err := name.ParseReference(repo)
+	if err != nil {
+		t.Fatalf("Failed to parse %s as an OCI reference: %s", repo, err)
+	}
+
+	var rawTask, rawPipeline []byte
+	var taskLayer, pipelineLayer v1.Layer
+	// Write the task and pipeline into an image to the registry in the proper format.
+	if task != nil {
+		rawTask, err = yaml.Marshal(task)
+		if err != nil {
+			t.Fatalf("Failed to marshal task to yaml: %s", err)
+		}
+		taskLayer, err = tarball.LayerFromReader(bytes.NewBuffer(rawTask))
+		if err != nil {
+			t.Fatalf("Failed to create oci layer from task: %s", err)
+		}
+		img, err = mutate.Append(img, mutate.Addendum{
+			Layer: taskLayer,
+			Annotations: map[string]string{
+				"dev.tekton.image.name":       task.Name,
+				"dev.tekton.image.kind":       strings.ToLower(task.Kind),
+				"dev.tekton.image.apiVersion": task.APIVersion,
+			},
+		})
+	}
+
+	if pipeline != nil {
+		rawPipeline, err = yaml.Marshal(pipeline)
+		if err != nil {
+			t.Fatalf("Failed to marshal task to yaml: %s", err)
+		}
+		pipelineLayer, err = tarball.LayerFromReader(bytes.NewBuffer(rawPipeline))
+		if err != nil {
+			t.Fatalf("Failed to create oci layer from pipeline: %s", err)
+		}
+		img, err = mutate.Append(img, mutate.Addendum{
+			Layer: pipelineLayer,
+			Annotations: map[string]string{
+				"dev.tekton.image.name":       pipeline.Name,
+				"dev.tekton.image.kind":       strings.ToLower(pipeline.Kind),
+				"dev.tekton.image.apiVersion": pipeline.APIVersion,
+			},
+		})
+	}
+
+	if err != nil {
+		t.Fatalf("Failed to create an oci image from the task and pipeline layers: %s", err)
+	}
+
+	// Publish this image to the in-cluster registry.
+	publishImg(ctx, t, c, namespace, img, ref)
 }
