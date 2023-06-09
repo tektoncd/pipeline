@@ -324,8 +324,8 @@ func signInterface(signer signature.Signer, i interface{}) ([]byte, error) {
 	return sig, nil
 }
 
-// GetSignedPipeline signed the given pipeline and rename it with given name
-func GetSignedPipeline(unsigned *v1beta1.Pipeline, signer signature.Signer, name string) (*v1beta1.Pipeline, error) {
+// GetSignedV1beta1Pipeline signed the given pipeline and rename it with given name
+func GetSignedV1beta1Pipeline(unsigned *v1beta1.Pipeline, signer signature.Signer, name string) (*v1beta1.Pipeline, error) {
 	signedPipeline := unsigned.DeepCopy()
 	signedPipeline.Name = name
 	if signedPipeline.Annotations == nil {
@@ -339,8 +339,8 @@ func GetSignedPipeline(unsigned *v1beta1.Pipeline, signer signature.Signer, name
 	return signedPipeline, nil
 }
 
-// GetSignedTask signed the given task and rename it with given name
-func GetSignedTask(unsigned *v1beta1.Task, signer signature.Signer, name string) (*v1beta1.Task, error) {
+// GetSignedV1beta1Task signed the given task and rename it with given name
+func GetSignedV1beta1Task(unsigned *v1beta1.Task, signer signature.Signer, name string) (*v1beta1.Task, error) {
 	signedTask := unsigned.DeepCopy()
 	signedTask.Name = name
 	if signedTask.Annotations == nil {

@@ -760,7 +760,7 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 	}
 }
 
-func TestGetTaskFunc_VerifyNoError(t *testing.T) {
+func TestGetTaskFunc_V1beta1Task_VerifyNoError(t *testing.T) {
 	ctx := context.Background()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 	tektonclient := fake.NewSimpleClientset()
@@ -775,7 +775,7 @@ func TestGetTaskFunc_VerifyNoError(t *testing.T) {
 	}
 	requesterUnmatched := bytesToRequester(unsignedTaskBytes, noMatchPolicyRefSource)
 
-	signedTask, err := test.GetSignedTask(unsignedTask, signer, "signed")
+	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, signer, "signed")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
@@ -885,7 +885,7 @@ func TestGetTaskFunc_VerifyNoError(t *testing.T) {
 	}
 }
 
-func TestGetTaskFunc_VerifyError(t *testing.T) {
+func TestGetTaskFunc_V1beta1Task_VerifyError(t *testing.T) {
 	ctx := context.Background()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 	tektonclient := fake.NewSimpleClientset()
@@ -900,7 +900,7 @@ func TestGetTaskFunc_VerifyError(t *testing.T) {
 	}
 	requesterUnsigned := bytesToRequester(unsignedTaskBytes, matchPolicyRefSource)
 
-	signedTask, err := test.GetSignedTask(unsignedTask, signer, "signed")
+	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, signer, "signed")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}

@@ -4919,7 +4919,7 @@ spec:
 `)
 
 	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, ts.Namespace)
-	signedTask, err := test.GetSignedTask(ts, signer, "test-task")
+	signedTask, err := test.GetSignedV1beta1Task(ts, signer, "test-task")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
@@ -5070,7 +5070,7 @@ spec:
 	}
 
 	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, unsignedTask.Namespace)
-	signedTask, err := test.GetSignedTask(unsignedTask, signer, "test-task")
+	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, signer, "test-task")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
