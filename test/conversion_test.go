@@ -691,6 +691,7 @@ spec:
 metadata:
   name: %s
   namespace: %s
+  annotations: {}
 spec:
   taskRef:
     name: %s
@@ -711,6 +712,7 @@ spec:
 metadata:
   name: %s
   namespace: %s
+  annotations: {}
 spec:
   serviceAccountName: default
   timeout: 1h
@@ -789,6 +791,7 @@ status:
 metadata:
   name: %s
   namespace: %s
+  annotations: {}
 spec:
   timeout: 1h
   taskRef:
@@ -1161,13 +1164,6 @@ func TestBundleConversion(t *testing.T) {
 	v1TaskRunExpected := parse.MustParseV1TaskRun(t, fmt.Sprintf(v1TaskRunWithBundleExpectedYaml, v1beta1TaskRunName, namespace, repo, taskName, v1beta1TaskRunName))
 	v1beta1TaskRunRoundTripExpected := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(v1beta1TaskRunWithBundleRoundTripYaml, v1beta1TaskRunName, namespace, repo, taskName, v1beta1TaskRunName))
 
-	v1TaskRunExpected.Status.Provenance = &v1.Provenance{
-		FeatureFlags: getFeatureFlagsBaseOnAPIFlag(t),
-	}
-	v1beta1TaskRunRoundTripExpected.Status.Provenance = &v1beta1.Provenance{
-		FeatureFlags: getFeatureFlagsBaseOnAPIFlag(t),
-	}
-
 	if _, err := c.V1beta1TaskRunClient.Create(ctx, v1beta1TaskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create v1beta1 TaskRun: %s", err)
 	}
@@ -1195,13 +1191,6 @@ func TestBundleConversion(t *testing.T) {
 	v1beta1PipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(v1beta1PipelineRunWithBundleYaml, v1beta1ToV1PipelineRunName, namespace, pipelineName, repo))
 	v1PipelineRunExpected := parse.MustParseV1PipelineRun(t, fmt.Sprintf(v1PipelineRunWithBundleExpectedYaml, v1beta1ToV1PipelineRunName, namespace, repo, pipelineName, repo, taskName, v1beta1ToV1PipelineRunName))
 	v1beta1PRRoundTripExpected := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(v1beta1PipelineRunWithBundleRoundTripYaml, v1beta1ToV1PipelineRunName, namespace, repo, pipelineName, repo, taskName, v1beta1ToV1PipelineRunName))
-
-	v1PipelineRunExpected.Status.Provenance = &v1.Provenance{
-		FeatureFlags: getFeatureFlagsBaseOnAPIFlag(t),
-	}
-	v1beta1PRRoundTripExpected.Status.Provenance = &v1beta1.Provenance{
-		FeatureFlags: getFeatureFlagsBaseOnAPIFlag(t),
-	}
 
 	if _, err := c.V1beta1PipelineRunClient.Create(ctx, v1beta1PipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create v1beta1 PipelineRun: %s", err)
