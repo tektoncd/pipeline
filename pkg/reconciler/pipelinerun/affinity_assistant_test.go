@@ -36,9 +36,11 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/typed/core/v1/fake"
 	testing2 "k8s.io/client-go/testing"
+	"knative.dev/pkg/kmeta"
 	logtesting "knative.dev/pkg/logging/testing"
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
@@ -524,6 +526,105 @@ func TestThatAffinityAssistantNameIsNoLongerThan53(t *testing.T) {
 	}
 }
 
+func TestCleanupAffinityAssistants_Success(t *testing.T) {
+	workspace := v1beta1.WorkspaceBinding{
+		Name:                "volumeClaimTemplate workspace",
+		VolumeClaimTemplate: &corev1.PersistentVolumeClaim{},
+	}
+	pr := &v1beta1.PipelineRun{
+		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-pipelinerun-volumeclaimtemplate",
+		},
+		Spec: v1beta1.PipelineRunSpec{
+			Workspaces: []v1beta1.WorkspaceBinding{workspace},
+		},
+	}
+
+	// seed data to create StatefulSets and PVCs
+	expectedAffinityAssistantName := getAffinityAssistantName(workspace.Name, pr.Name)
+	aa := []*v1.StatefulSet{{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "StatefulSet",
+			APIVersion: "apps/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   expectedAffinityAssistantName,
+			Labels: getStatefulSetLabels(pr, expectedAffinityAssistantName),
+		},
+		Status: v1.StatefulSetStatus{
+			ReadyReplicas: 1,
+		},
+	}}
+
+	expectedPVCName := getPersistentVolumeClaimNameWithAffinityAssistant(workspace.Name, pr.Name, workspace, *kmeta.NewControllerRef(pr))
+	pvc := []*corev1.PersistentVolumeClaim{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: expectedPVCName,
+		}},
+	}
+
+	data := Data{
+		StatefulSets: aa,
+		PVCs:         pvc,
+	}
+	ctx, c, _ := seedTestData(data)
+
+	// call clean up
+	err := c.cleanupAffinityAssistants(ctx, pr)
+	if err != nil {
+		t.Fatalf("unexpected err when clean up Affinity Assistant: %v", err)
+	}
+
+	// validate the cleanup result
+	_, err = c.KubeClientSet.AppsV1().StatefulSets(pr.Namespace).Get(ctx, expectedAffinityAssistantName, metav1.GetOptions{})
+	if !apierrors.IsNotFound(err) {
+		t.Errorf("expected a NotFound response of StatefulSet, got: %v", err)
+	}
+	_, err = c.KubeClientSet.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(ctx, expectedPVCName, metav1.GetOptions{})
+	if !apierrors.IsNotFound(err) {
+		t.Errorf("expected a NotFound response of PersistentVolumeClaims, got: %v", err)
+	}
+}
+
+func TestCleanupAffinityAssistants_Failure(t *testing.T) {
+	pr := &v1beta1.PipelineRun{
+		Spec: v1beta1.PipelineRunSpec{
+			Workspaces: []v1beta1.WorkspaceBinding{{
+				VolumeClaimTemplate: &corev1.PersistentVolumeClaim{},
+			}},
+		},
+	}
+
+	ctx := context.Background()
+	c := Reconciler{
+		KubeClientSet: fakek8s.NewSimpleClientset(),
+	}
+
+	// introduce a reactor to mock delete statefulsets & persistentvolumeclaims errors
+	c.KubeClientSet.CoreV1().(*fake.FakeCoreV1).PrependReactor("delete", "statefulsets",
+		func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
+			return true, &corev1.NodeList{}, errors.New("error deleting statefulsets")
+		})
+	c.KubeClientSet.CoreV1().(*fake.FakeCoreV1).PrependReactor("delete", "persistentvolumeclaims",
+		func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
+			return true, &corev1.Pod{}, errors.New("error deleting persistentvolumeclaims")
+		})
+
+	expectedErrs := errorutils.NewAggregate([]error{
+		errors.New("failed to delete StatefulSet affinity-assistant-e3b0c44298: error deleting statefulsets"),
+		errors.New("failed to delete PersistentVolumeClaim pvc-e3b0c44298-affinity-assistant-e3b0c44298-0: error deleting persistentvolumeclaims"),
+	})
+
+	errs := c.cleanupAffinityAssistants(ctx, pr)
+	if errs == nil {
+		t.Fatalf("expecting Affinity Assistant cleanup error but got nil")
+	}
+	if d := cmp.Diff(expectedErrs.Error(), errs.Error()); d != "" {
+		t.Errorf("expected err mismatching: %v", diff.PrintWantGot(d))
+	}
+}
+
 // TestThatCleanupIsAvoidedIfAssistantIsDisabled tests that
 // cleanup of Affinity Assistants is omitted when the
 // Affinity Assistant is disabled
@@ -748,6 +849,7 @@ type Data struct {
 	StatefulSets []*v1.StatefulSet
 	Nodes        []*corev1.Node
 	Pods         []*corev1.Pod
+	PVCs         []*corev1.PersistentVolumeClaim
 }
 
 func seedTestData(d Data) (context.Context, Reconciler, func()) {
@@ -765,6 +867,9 @@ func seedTestData(d Data) (context.Context, Reconciler, func()) {
 	}
 	for _, p := range d.Pods {
 		c.KubeClientSet.CoreV1().Pods(p.Namespace).Create(ctx, p, metav1.CreateOptions{})
+	}
+	for _, pvc := range d.PVCs {
+		c.KubeClientSet.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(ctx, pvc, metav1.CreateOptions{})
 	}
 	return ctx, c, cancel
 }
