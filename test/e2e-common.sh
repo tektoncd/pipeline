@@ -169,3 +169,10 @@ function delete_pipeline_resources() {
 function delete_resolvers_resources() {
   kubectl delete --ignore-not-found=true resolutionrequests.resolution.tekton.dev --all
 }
+
+function get_tests_from_release() {
+  previous_release=$1
+  PREVIOUS_BRANCH=release-${previous_release%.*}.x
+  echo ">> Retrieving tests from PREVIOUS_BRANCH"
+  git checkout $PREVIOUS_BRANCH
+}
