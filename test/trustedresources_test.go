@@ -46,7 +46,7 @@ func TestSignInterface(t *testing.T) {
 	}{{
 		name:    "Sign Task",
 		signer:  sv,
-		target:  GetUnsignedTask("unsigned"),
+		target:  GetUnsignedV1beta1Task("unsigned"),
 		wantErr: false,
 	}, {
 		name:    "Sign String with cosign signer",
@@ -61,7 +61,7 @@ func TestSignInterface(t *testing.T) {
 	}, {
 		name:    "Empty Signer",
 		signer:  nil,
-		target:  GetUnsignedTask("unsigned"),
+		target:  GetUnsignedV1beta1Task("unsigned"),
 		wantErr: true,
 	}, {
 		name:     "Sign String with mock signer",

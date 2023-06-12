@@ -11783,7 +11783,7 @@ spec:
 		t.Fatal("fail to marshal task", err)
 	}
 
-	unsignedPipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+	unsignedV1beta1Pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: test-pipeline
   namespace: foo
@@ -11793,14 +11793,14 @@ spec:
       taskRef:
         resolver: %s
 `, resolverName))
-	unsignedPipelineBytes, err := yaml.Marshal(unsignedPipeline)
+	unsignedV1beta1PipelineBytes, err := yaml.Marshal(unsignedV1beta1Pipeline)
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
 
 	// Case2: signed Pipeline refers to unsigned Task
 	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, unsignedTask.Namespace)
-	signedPipelineWithUnsignedTask, err := test.GetSignedV1beta1Pipeline(unsignedPipeline, signer, "test-pipeline")
+	signedPipelineWithUnsignedTask, err := test.GetSignedV1beta1Pipeline(unsignedV1beta1Pipeline, signer, "test-pipeline")
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
@@ -11901,7 +11901,7 @@ spec:
 	}{
 		{
 			name:          "unsigned pipeline fails verification",
-			pipelineBytes: unsignedPipelineBytes,
+			pipelineBytes: unsignedV1beta1PipelineBytes,
 			taskBytes:     unsignedTaskBytes,
 		},
 		{
@@ -12118,7 +12118,7 @@ spec:
 		t.Fatal("fail to marshal task", err)
 	}
 
-	unsignedPipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+	unsignedV1beta1Pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: test-pipeline
   namespace: foo
@@ -12128,14 +12128,14 @@ spec:
       taskRef:
         resolver: %s
 `, resolverName))
-	unsignedPipelineBytes, err := yaml.Marshal(unsignedPipeline)
+	unsignedV1beta1PipelineBytes, err := yaml.Marshal(unsignedV1beta1Pipeline)
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
 
 	// Case2: signed Pipeline refers to unsigned Task
 	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, unsignedTask.Namespace)
-	signedPipelineWithUnsignedTask, err := test.GetSignedV1beta1Pipeline(unsignedPipeline, signer, "test-pipeline")
+	signedPipelineWithUnsignedTask, err := test.GetSignedV1beta1Pipeline(unsignedV1beta1Pipeline, signer, "test-pipeline")
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
@@ -12236,7 +12236,7 @@ spec:
 	}{
 		{
 			name:          "unsigned pipeline fails verification",
-			pipelineBytes: unsignedPipelineBytes,
+			pipelineBytes: unsignedV1beta1PipelineBytes,
 			taskBytes:     unsignedTaskBytes,
 		},
 		{

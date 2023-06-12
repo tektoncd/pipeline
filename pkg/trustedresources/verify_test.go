@@ -62,7 +62,7 @@ var unsignedTask = v1.Task{
 	},
 }
 
-var unsignedPipeline = v1.Pipeline{
+var unsignedV1Pipeline = v1.Pipeline{
 	TypeMeta: metav1.TypeMeta{
 		APIVersion: "tekton.dev/v1",
 		Kind:       "Pipeline"},
@@ -85,7 +85,7 @@ func TestVerifyInterface_Task_Success(t *testing.T) {
 		t.Fatalf("failed to get signerverifier %v", err)
 	}
 
-	unsignedTask := test.GetUnsignedTask("test-task")
+	unsignedTask := test.GetUnsignedV1beta1Task("test-task")
 	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, sv, "signed")
 	if err != nil {
 		t.Fatalf("Failed to get signed task %v", err)
@@ -113,7 +113,7 @@ func TestVerifyInterface_Task_Error(t *testing.T) {
 		t.Fatalf("failed to get signerverifier %v", err)
 	}
 
-	unsignedTask := test.GetUnsignedTask("test-task")
+	unsignedTask := test.GetUnsignedV1beta1Task("test-task")
 
 	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, sv, "signed")
 	if err != nil {
@@ -164,7 +164,7 @@ func TestVerifyInterface_Task_Error(t *testing.T) {
 
 func TestVerifyResource_Task_Success(t *testing.T) {
 	signer256, _, k8sclient, vps := test.SetupVerificationPolicies(t)
-	unsignedTask := test.GetUnsignedTask("test-task")
+	unsignedTask := test.GetUnsignedV1beta1Task("test-task")
 	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, signer256, "signed")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
@@ -332,7 +332,7 @@ func TestVerifyResource_Task_Error(t *testing.T) {
 	ctx = test.SetupTrustedResourceConfig(ctx, config.FailNoMatchPolicy)
 	sv, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 
-	unsignedTask := test.GetUnsignedTask("test-task")
+	unsignedTask := test.GetUnsignedV1beta1Task("test-task")
 
 	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, sv, "signed")
 	if err != nil {
@@ -429,7 +429,7 @@ func TestVerifyResource_Task_Error(t *testing.T) {
 
 func TestVerifyResource_Pipeline_Success(t *testing.T) {
 	sv, _, k8sclient, vps := test.SetupVerificationPolicies(t)
-	unsignedPipeline := test.GetUnsignedPipeline("test-pipeline")
+	unsignedPipeline := test.GetUnsignedV1beta1Pipeline("test-pipeline")
 	signedPipeline, err := test.GetSignedV1beta1Pipeline(unsignedPipeline, sv, "signed")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
@@ -483,9 +483,9 @@ func TestVerifyResource_Pipeline_Error(t *testing.T) {
 	ctx = test.SetupTrustedResourceConfig(ctx, config.FailNoMatchPolicy)
 	sv, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 
-	unsignedPipeline := test.GetUnsignedPipeline("test-pipeline")
+	unsignedV1beta1Pipeline := test.GetUnsignedV1beta1Pipeline("test-pipeline")
 
-	signedPipeline, err := test.GetSignedV1beta1Pipeline(unsignedPipeline, sv, "signed")
+	signedPipeline, err := test.GetSignedV1beta1Pipeline(unsignedV1beta1Pipeline, sv, "signed")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
@@ -567,7 +567,7 @@ func TestVerifyResource_V1Task_Error(t *testing.T) {
 
 func TestVerifyResource_V1Pipeline_Success(t *testing.T) {
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
-	signed, err := getSignedV1Pipeline(unsignedPipeline.DeepCopy(), signer, "signed")
+	signed, err := getSignedV1Pipeline(unsignedV1Pipeline.DeepCopy(), signer, "signed")
 	if err != nil {
 		t.Error(err)
 	}
@@ -579,7 +579,7 @@ func TestVerifyResource_V1Pipeline_Success(t *testing.T) {
 
 func TestVerifyResource_V1Pipeline_Error(t *testing.T) {
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
-	signed, err := getSignedV1Pipeline(unsignedPipeline.DeepCopy(), signer, "signed")
+	signed, err := getSignedV1Pipeline(unsignedV1Pipeline.DeepCopy(), signer, "signed")
 	if err != nil {
 		t.Error(err)
 	}
@@ -602,7 +602,7 @@ func TestVerifyResource_TypeNotSupported(t *testing.T) {
 }
 
 func TestPrepareObjectMeta(t *testing.T) {
-	unsigned := test.GetUnsignedTask("test-task").ObjectMeta
+	unsigned := test.GetUnsignedV1beta1Task("test-task").ObjectMeta
 
 	signed := unsigned.DeepCopy()
 	sig := "tY805zV53PtwDarK3VD6dQPx5MbIgctNcg/oSle+MG0="

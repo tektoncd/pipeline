@@ -54,8 +54,8 @@ var (
 	read = readPasswordFn
 )
 
-// GetUnsignedTask returns unsigned task with given name
-func GetUnsignedTask(name string) *v1beta1.Task {
+// GetUnsignedV1beta1Task returns unsigned task with given name
+func GetUnsignedV1beta1Task(name string) *v1beta1.Task {
 	return &v1beta1.Task{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1beta1",
@@ -74,8 +74,8 @@ func GetUnsignedTask(name string) *v1beta1.Task {
 	}
 }
 
-// GetUnsignedPipeline returns unsigned pipeline with given name
-func GetUnsignedPipeline(name string) *v1beta1.Pipeline {
+// GetUnsignedV1beta1Pipeline returns unsigned pipeline with given name
+func GetUnsignedV1beta1Pipeline(name string) *v1beta1.Pipeline {
 	return &v1beta1.Pipeline{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1beta1",
