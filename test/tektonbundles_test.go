@@ -75,11 +75,6 @@ func TestTektonBundlesSimpleWorkingExample(t *testing.T) {
 	pipelineRunName := helpers.ObjectNameForTest(t)
 	repo := fmt.Sprintf("%s:5000/tektonbundlessimple", getRegistryServiceIP(ctx, t, c, namespace))
 
-	ref, err := name.ParseReference(repo)
-	if err != nil {
-		t.Fatalf("Failed to parse %s as an OCI reference: %s", repo, err)
-	}
-
 	task := parse.MustParseTask(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -276,11 +271,6 @@ func TestTektonBundlesUsingRegularImage(t *testing.T) {
 	pipelineName := helpers.ObjectNameForTest(t)
 	pipelineRunName := helpers.ObjectNameForTest(t)
 	repo := fmt.Sprintf("%s:5000/tektonbundlesregularimage", getRegistryServiceIP(ctx, t, c, namespace))
-
-	ref, err := name.ParseReference(repo)
-	if err != nil {
-		t.Fatalf("Failed to parse %s as an OCI reference: %s", repo, err)
-	}
 
 	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
 metadata:
