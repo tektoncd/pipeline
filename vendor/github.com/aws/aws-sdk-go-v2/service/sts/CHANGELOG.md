@@ -1,3 +1,7 @@
+# v1.19.0 (2023-05-08)
+
+* **Feature**: Documentation updates for AWS Security Token Service.
+
 # v1.18.11 (2023-05-04)
 
 * No change notes available for this release.
