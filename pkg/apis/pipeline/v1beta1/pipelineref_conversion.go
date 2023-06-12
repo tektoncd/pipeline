@@ -40,7 +40,7 @@ func (pr PipelineRef) convertBundleToResolver(sink *v1.PipelineRef) {
 				Value: v1.ParamValue{StringVal: pr.Name, Type: v1.ParamTypeString},
 			}, {
 				Name:  "kind",
-				Value: v1.ParamValue{StringVal: "Task", Type: v1.ParamTypeString},
+				Value: v1.ParamValue{StringVal: "Pipeline", Type: v1.ParamTypeString},
 			}},
 		}
 	}
