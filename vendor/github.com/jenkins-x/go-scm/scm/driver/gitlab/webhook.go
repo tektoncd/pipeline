@@ -184,6 +184,15 @@ func convertPushHook(src *pushHook) *scm.PushHook {
 		// get the last commit (most recent)
 		dst.Commit.Message = src.Commits[len(src.Commits)-1].Message
 		dst.Commit.Link = src.Commits[len(src.Commits)-1].URL
+		for i := range src.Commits {
+			dst.Commits = append(dst.Commits, scm.PushCommit{
+				ID:       src.Commits[i].URL,
+				Message:  src.Commits[i].Message,
+				Added:    src.Commits[i].Added,
+				Removed:  src.Commits[i].Removed,
+				Modified: src.Commits[i].Modified,
+			})
+		}
 	}
 	return dst
 }
@@ -513,9 +522,9 @@ type (
 				Name  string `json:"name"`
 				Email string `json:"email"`
 			} `json:"author"`
-			Added    []string      `json:"added"`
-			Modified []interface{} `json:"modified"`
-			Removed  []interface{} `json:"removed"`
+			Added    []string `json:"added"`
+			Modified []string `json:"modified"`
+			Removed  []string `json:"removed"`
 		} `json:"commits"`
 		TotalCommitsCount int `json:"total_commits_count"`
 		Repository        struct {

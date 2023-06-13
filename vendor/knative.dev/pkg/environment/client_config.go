@@ -19,8 +19,10 @@ package environment
 import (
 	"flag"
 	"fmt"
+	"log"
 	"math"
 	"os"
+	"strconv"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -45,9 +47,19 @@ func (c *ClientConfig) InitFlags(fs *flag.FlagSet) {
 	fs.StringVar(&c.Kubeconfig, "kubeconfig", os.Getenv("KUBECONFIG"),
 		"Path to a kubeconfig. Only required if out-of-cluster.")
 
-	fs.IntVar(&c.Burst, "kube-api-burst", 0, "Maximum burst for throttle.")
+	fs.IntVar(&c.Burst, "kube-api-burst", int(envVarOrDefault("KUBE_API_BURST", 0)), "Maximum burst for throttle.")
 
-	fs.Float64Var(&c.QPS, "kube-api-qps", 0, "Maximum QPS to the server from the client.")
+	fs.Float64Var(&c.QPS, "kube-api-qps", envVarOrDefault("KUBE_API_QPS", 0.0), "Maximum QPS to the server from the client.")
+}
+
+func envVarOrDefault(key string, val float64) float64 {
+	var err error
+	if v := os.Getenv(key); v != "" {
+		if val, err = strconv.ParseFloat(v, 64); err != nil {
+			log.Fatal(err)
+		}
+	}
+	return val
 }
 
 func (c *ClientConfig) GetRESTConfig() (*rest.Config, error) {

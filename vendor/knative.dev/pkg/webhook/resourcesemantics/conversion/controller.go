@@ -90,16 +90,32 @@ func NewConversionController(
 	withContext func(context.Context) context.Context,
 ) *controller.Impl {
 
+	opts := []OptionFunc{
+		WithPath(path),
+		WithWrapContext(withContext),
+		WithKinds(kinds),
+	}
+
+	return newController(ctx, opts...)
+}
+
+func newController(ctx context.Context, optsFunc ...OptionFunc) *controller.Impl {
 	secretInformer := secretinformer.Get(ctx)
 	crdInformer := crdinformer.Get(ctx)
 	client := apixclient.Get(ctx)
-	options := webhook.GetOptions(ctx)
+	woptions := webhook.GetOptions(ctx)
+
+	opts := &options{}
+
+	for _, f := range optsFunc {
+		f(opts)
+	}
 
 	r := &reconciler{
 		LeaderAwareFuncs: pkgreconciler.LeaderAwareFuncs{
 			// Have this reconciler enqueue our types whenever it becomes leader.
 			PromoteFunc: func(bkt pkgreconciler.Bucket, enq func(pkgreconciler.Bucket, types.NamespacedName)) error {
-				for _, gkc := range kinds {
+				for _, gkc := range opts.kinds {
 					name := gkc.DefinitionName
 					enq(bkt, types.NamespacedName{Name: name})
 				}
@@ -107,22 +123,26 @@ func NewConversionController(
 			},
 		},
 
-		kinds:       kinds,
-		path:        path,
-		secretName:  options.SecretName,
-		withContext: withContext,
+		kinds:       opts.kinds,
+		path:        opts.path,
+		secretName:  woptions.SecretName,
+		withContext: opts.wc,
 
 		client:       client,
 		secretLister: secretInformer.Lister(),
 		crdLister:    crdInformer.Lister(),
 	}
 
-	const queueName = "ConversionWebhook"
 	logger := logging.FromContext(ctx)
-	c := controller.NewContext(ctx, r, controller.ControllerOptions{WorkQueueName: queueName, Logger: logger.Named(queueName)})
+	controllerOptions := woptions.ControllerOptions
+	if controllerOptions == nil {
+		const queueName = "ConversionWebhook"
+		controllerOptions = &controller.ControllerOptions{WorkQueueName: queueName, Logger: logger.Named(queueName)}
+	}
+	c := controller.NewContext(ctx, r, *controllerOptions)
 
 	// Reconciler when the named CRDs change.
-	for _, gkc := range kinds {
+	for _, gkc := range opts.kinds {
 		name := gkc.DefinitionName
 
 		crdInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
@@ -134,7 +154,7 @@ func NewConversionController(
 
 		// Reconcile when the cert bundle changes.
 		secretInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.FilterWithNameAndNamespace(system.Namespace(), options.SecretName),
+			FilterFunc: controller.FilterWithNameAndNamespace(system.Namespace(), woptions.SecretName),
 			Handler:    controller.HandleAll(sentinel),
 		})
 	}

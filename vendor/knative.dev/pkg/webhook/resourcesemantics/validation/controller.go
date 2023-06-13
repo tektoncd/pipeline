@@ -45,10 +45,31 @@ func NewAdmissionControllerWithConfig(
 	disallowUnknownFields bool,
 	callbacks map[schema.GroupVersionKind]Callback,
 ) *controller.Impl {
+
+	opts := []OptionFunc{
+		WithPath(path),
+		WithTypes(handlers),
+		WithWrapContext(wc),
+		WithCallbacks(callbacks),
+	}
+
+	if disallowUnknownFields {
+		opts = append(opts, WithDisallowUnknownFields())
+	}
+	return newController(ctx, name, opts...)
+}
+
+func newController(ctx context.Context, name string, optsFunc ...OptionFunc) *controller.Impl {
 	client := kubeclient.Get(ctx)
 	vwhInformer := vwhinformer.Get(ctx)
 	secretInformer := secretinformer.Get(ctx)
-	options := webhook.GetOptions(ctx)
+	woptions := webhook.GetOptions(ctx)
+
+	opts := &options{}
+
+	for _, f := range optsFunc {
+		f(opts)
+	}
 
 	wh := &reconciler{
 		LeaderAwareFuncs: pkgreconciler.LeaderAwareFuncs{
@@ -62,13 +83,13 @@ func NewAdmissionControllerWithConfig(
 		key: types.NamespacedName{
 			Name: name,
 		},
-		path:      path,
-		handlers:  handlers,
-		callbacks: callbacks,
+		path:      opts.path,
+		handlers:  opts.types,
+		callbacks: opts.callbacks,
 
-		withContext:           wc,
-		disallowUnknownFields: disallowUnknownFields,
-		secretName:            options.SecretName,
+		withContext:           opts.wc,
+		disallowUnknownFields: opts.DisallowUnknownFields(),
+		secretName:            woptions.SecretName,
 
 		client:       client,
 		vwhlister:    vwhInformer.Lister(),
@@ -76,8 +97,13 @@ func NewAdmissionControllerWithConfig(
 	}
 
 	logger := logging.FromContext(ctx)
-	const queueName = "ValidationWebhook"
-	c := controller.NewContext(ctx, wh, controller.ControllerOptions{WorkQueueName: queueName, Logger: logger.Named(queueName)})
+
+	controllerOptions := woptions.ControllerOptions
+	if woptions.ControllerOptions == nil {
+		const queueName = "ValidationWebhook"
+		controllerOptions = &controller.ControllerOptions{WorkQueueName: queueName, Logger: logger.Named(queueName)}
+	}
+	c := controller.NewContext(ctx, wh, *controllerOptions)
 
 	// Reconcile when the named ValidatingWebhookConfiguration changes.
 	vwhInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
