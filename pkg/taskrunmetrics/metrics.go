@@ -59,7 +59,6 @@ var (
 	runningTRsThrottledByQuotaCountView *view.View
 	runningTRsThrottledByNodeCountView  *view.View
 	podLatencyView                      *view.View
-	cloudEventsView                     *view.View
 
 	trDuration = stats.Float64(
 		"taskrun_duration_seconds",
@@ -90,10 +89,6 @@ var (
 	podLatency = stats.Float64("taskruns_pod_latency",
 		"scheduling latency for the taskruns pods",
 		stats.UnitMilliseconds)
-
-	cloudEvents = stats.Int64("cloudevent_count",
-		"number of cloud events sent including retries",
-		stats.UnitDimensionless)
 )
 
 // Recorder is used to actually record TaskRun metrics
@@ -230,12 +225,6 @@ func viewRegister(cfg *config.Metrics) error {
 		Aggregation: view.LastValue(),
 		TagKeys:     append([]tag.Key{namespaceTag, podTag}, trunTag...),
 	}
-	cloudEventsView = &view.View{
-		Description: cloudEvents.Description(),
-		Measure:     cloudEvents,
-		Aggregation: view.Sum(),
-		TagKeys:     append([]tag.Key{statusTag, namespaceTag}, append(trunTag, prunTag...)...),
-	}
 	return view.Register(
 		trDurationView,
 		prTRDurationView,
@@ -244,7 +233,6 @@ func viewRegister(cfg *config.Metrics) error {
 		runningTRsThrottledByQuotaCountView,
 		runningTRsThrottledByNodeCountView,
 		podLatencyView,
-		cloudEventsView,
 	)
 }
 
@@ -257,7 +245,6 @@ func viewUnregister() {
 		runningTRsThrottledByQuotaCountView,
 		runningTRsThrottledByNodeCountView,
 		podLatencyView,
-		cloudEventsView,
 	)
 }
 
@@ -456,42 +443,6 @@ func (r *Recorder) RecordPodLatency(ctx context.Context, pod *corev1.Pod, tr *v1
 	return nil
 }
 
-// CloudEvents logs the number of cloud events sent for TaskRun
-// returns an error if it fails to log the metrics
-func (r *Recorder) CloudEvents(ctx context.Context, tr *v1beta1.TaskRun) error {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	if !r.initialized {
-		return fmt.Errorf("ignoring the metrics recording for %s , failed to initialize the metrics recorder", tr.Name)
-	}
-
-	taskName := anonymous
-	if tr.Spec.TaskRef != nil {
-		taskName = tr.Spec.TaskRef.Name
-	}
-
-	status := "success"
-	if cond := tr.Status.GetCondition(apis.ConditionSucceeded); cond.Status == corev1.ConditionFalse {
-		status = "failed"
-	}
-
-	tags := []tag.Mutator{tag.Insert(namespaceTag, tr.Namespace), tag.Insert(statusTag, status)}
-	if ok, pipeline, pipelinerun := IsPartOfPipeline(tr); ok {
-		tags = append(tags, r.insertPipelineTag(pipeline, pipelinerun)...)
-	}
-	tags = append(tags, r.insertTaskTag(taskName, tr.Name)...)
-
-	ctx, err := tag.New(ctx, tags...)
-	if err != nil {
-		return err
-	}
-
-	metrics.Record(ctx, cloudEvents.M(sentCloudEvents(tr)))
-
-	return nil
-}
-
 // IsPartOfPipeline return true if TaskRun is a part of a Pipeline.
 // It also return the name of Pipeline and PipelineRun
 func IsPartOfPipeline(tr *v1beta1.TaskRun) (bool, string, string) {
@@ -503,16 +454,6 @@ func IsPartOfPipeline(tr *v1beta1.TaskRun) (bool, string, string) {
 	}
 
 	return false, "", ""
-}
-
-func sentCloudEvents(tr *v1beta1.TaskRun) int64 {
-	var sent int64
-	for _, event := range tr.Status.CloudEvents {
-		if event.Status.Condition != v1beta1.CloudEventConditionUnknown {
-			sent += 1 + int64(event.Status.RetryCount)
-		}
-	}
-	return sent
 }
 
 func getScheduledTime(pod *corev1.Pod) metav1.Time {
