@@ -235,9 +235,6 @@ func (c *Reconciler) durationAndCountMetrics(ctx context.Context, tr *v1beta1.Ta
 		if err := c.metrics.DurationAndCount(ctx, tr, beforeCondition); err != nil {
 			logger.Warnf("Failed to log the duration and count of taskruns : %v", err)
 		}
-		if err := c.metrics.CloudEvents(ctx, tr); err != nil {
-			logger.Warnf("Failed to log the number of cloud events: %v", err)
-		}
 	}
 }
 
