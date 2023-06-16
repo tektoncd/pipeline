@@ -88,12 +88,12 @@ CRD API versions gate the overall stability of the CRD and its default behaviors
 | alpha               | x  | x    | x     |
 
 
-See the current list of [alpha features](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features) and [beta features](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#beta-features).
+See the current list of [alpha features](https://github.com/tektoncd/pipeline/blob/main/docs/additional-configs.md#alpha-features) and [beta features](https://github.com/tektoncd/pipeline/blob/main/docs/additional-configs.md#beta-features).
 
 
 ### Alpha features
 
-- Alpha feature in beta or GA CRDs are disabled by default and must be enabled by [setting `enable-api-fields` to `alpha`](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features)
+- Alpha feature in beta or GA CRDs are disabled by default and must be enabled by [setting `enable-api-fields` to `alpha`](https://github.com/tektoncd/pipeline/blob/main/docs/additional-configs.md#alpha-features)
 
 - These features may be dropped or backwards incompatible changes made at any time though will be given at least one release worth of warning
 
@@ -101,7 +101,7 @@ See the current list of [alpha features](https://github.com/tektoncd/pipeline/bl
 
 ### Beta features
 
-- Beta features are enabled by default and can be disabled by [setting `enable-api-fields` to `stable`](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#beta-features).
+- Beta features are enabled by default and can be disabled by [setting `enable-api-fields` to `stable`](https://github.com/tektoncd/pipeline/blob/main/docs/additional-configs.md#beta-features).
 
 - Beta features may be deprecated or changed in a backwards incompatible way by following the same process as [Beta CRDs](#beta-crds) 
   i.e. by providing a 9 month support period.
