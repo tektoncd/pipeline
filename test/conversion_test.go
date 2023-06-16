@@ -33,19 +33,21 @@ import (
 )
 
 var (
-	filterLabels                   = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "Labels")
-	filterAnnotations              = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "Annotations")
-	filterV1TaskRunStatus          = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "StartTime", "CompletionTime")
-	filterV1PipelineRunStatus      = cmpopts.IgnoreFields(v1.PipelineRunStatusFields{}, "StartTime", "CompletionTime")
-	filterV1beta1TaskRunStatus     = cmpopts.IgnoreFields(v1beta1.TaskRunStatusFields{}, "StartTime", "CompletionTime")
-	filterV1beta1PipelineRunStatus = cmpopts.IgnoreFields(v1beta1.PipelineRunStatusFields{}, "StartTime", "CompletionTime")
-	filterContainerStateTerminated = cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID", "Message")
-	filterV1StepState              = cmpopts.IgnoreFields(v1.StepState{}, "Name", "ImageID", "Container")
-	filterV1beta1StepState         = cmpopts.IgnoreFields(v1beta1.StepState{}, "Name", "ImageID", "ContainerName")
-	filterV1TaskRunSA              = cmpopts.IgnoreFields(v1.TaskRunSpec{}, "ServiceAccountName")
-	filterV1beta1TaskRunSA         = cmpopts.IgnoreFields(v1beta1.TaskRunSpec{}, "ServiceAccountName")
-	filterV1PipelineRunSA          = cmpopts.IgnoreFields(v1.PipelineTaskRunTemplate{}, "ServiceAccountName")
-	filterV1beta1PipelineRunSA     = cmpopts.IgnoreFields(v1beta1.PipelineRunSpec{}, "ServiceAccountName")
+	filterLabels                      = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "Labels")
+	filterAnnotations                 = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "Annotations")
+	filterV1TaskRunStatus             = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "StartTime", "CompletionTime")
+	filterV1PipelineRunStatus         = cmpopts.IgnoreFields(v1.PipelineRunStatusFields{}, "StartTime", "CompletionTime")
+	filterV1beta1TaskRunStatus        = cmpopts.IgnoreFields(v1beta1.TaskRunStatusFields{}, "StartTime", "CompletionTime")
+	filterV1beta1PipelineRunStatus    = cmpopts.IgnoreFields(v1beta1.PipelineRunStatusFields{}, "StartTime", "CompletionTime")
+	filterContainerStateTerminated    = cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID", "Message")
+	filterV1StepState                 = cmpopts.IgnoreFields(v1.StepState{}, "Name", "ImageID", "Container")
+	filterV1beta1StepState            = cmpopts.IgnoreFields(v1beta1.StepState{}, "Name", "ImageID", "ContainerName")
+	filterV1TaskRunSA                 = cmpopts.IgnoreFields(v1.TaskRunSpec{}, "ServiceAccountName")
+	filterV1beta1TaskRunSA            = cmpopts.IgnoreFields(v1beta1.TaskRunSpec{}, "ServiceAccountName")
+	filterV1PipelineRunSA             = cmpopts.IgnoreFields(v1.PipelineTaskRunTemplate{}, "ServiceAccountName")
+	filterV1beta1PipelineRunSA        = cmpopts.IgnoreFields(v1beta1.PipelineRunSpec{}, "ServiceAccountName")
+	filterV1RefSourceImageDigest      = cmpopts.IgnoreFields(v1.RefSource{}, "Digest")
+	filterV1beta1RefSourceImageDigest = cmpopts.IgnoreFields(v1beta1.RefSource{}, "Digest")
 
 	filterMetadata                 = []cmp.Option{filterTypeMeta, filterObjectMeta, filterAnnotations}
 	filterV1TaskRunFields          = []cmp.Option{filterTypeMeta, filterObjectMeta, filterLabels, filterAnnotations, filterCondition, filterV1TaskRunStatus, filterContainerStateTerminated, filterV1StepState}
@@ -555,7 +557,7 @@ status:
   childReferences:
     - name: %s-hello-task
       pipelineTaskName: hello-task
-      apiVersion: tekton.dev/v1beta1
+      apiVersion: tekton.dev/v1
       kind: TaskRun
 `
 
@@ -648,7 +650,7 @@ status:
     workspaces:
     - name: empty-dir
   childReferences:
-    - apiVersion: tekton.dev/v1beta1
+    - apiVersion: tekton.dev/v1
       kind: TaskRun
       name: %s-hello-task
       pipelineTaskName: hello-task
@@ -773,7 +775,7 @@ status:
         - name: name
           value: %s
   childReferences:
-  - apiVersion: tekton.dev/v1beta1
+  - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: %s-hello-world
     pipelineTaskName: hello-world
@@ -849,7 +851,7 @@ status:
         - name: name
           value: %s
   childReferences:
-  - apiVersion: tekton.dev/v1beta1
+  - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: %s-hello-world
     pipelineTaskName: hello-world
@@ -1184,9 +1186,19 @@ func TestBundleConversion(t *testing.T) {
 
 	v1TaskRunExpected.Status.Provenance = &v1.Provenance{
 		FeatureFlags: getFeatureFlagsBaseOnAPIFlag(t),
+		RefSource: &v1.RefSource{
+			URI:        repo,
+			Digest:     map[string]string{"sha256": "a123"},
+			EntryPoint: taskName,
+		},
 	}
 	v1beta1TaskRunRoundTripExpected.Status.Provenance = &v1beta1.Provenance{
 		FeatureFlags: getFeatureFlagsBaseOnAPIFlag(t),
+		RefSource: &v1beta1.RefSource{
+			URI:        repo,
+			Digest:     map[string]string{"sha256": "a123"},
+			EntryPoint: taskName,
+		},
 	}
 
 	if _, err := c.V1beta1TaskRunClient.Create(ctx, v1beta1TaskRun, metav1.CreateOptions{}); err != nil {
@@ -1200,7 +1212,7 @@ func TestBundleConversion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't get expected v1 TaskRun for %s: %s", v1beta1TaskRunName, err)
 	}
-	if d := cmp.Diff(v1TaskRunExpected, v1TaskRunGot, append(filterV1TaskRunFields, filterV1TaskRunSA)...); d != "" {
+	if d := cmp.Diff(v1TaskRunExpected, v1TaskRunGot, append([]cmp.Option{filterV1RefSourceImageDigest, filterV1TaskRunSA}, filterV1TaskRunFields...)...); d != "" {
 		t.Errorf("-want, +got: %v", d)
 	}
 
@@ -1208,7 +1220,7 @@ func TestBundleConversion(t *testing.T) {
 	if err := v1beta1TaskRunRoundTrip.ConvertFrom(context.Background(), v1TaskRunGot); err != nil {
 		t.Fatalf("Failed to convert roundtrip v1beta1TaskRunGot ConvertFrom v1 = %v", err)
 	}
-	if d := cmp.Diff(v1beta1TaskRunRoundTripExpected, v1beta1TaskRunRoundTrip, append(filterV1beta1TaskRunFields, filterV1beta1TaskRunSA)...); d != "" {
+	if d := cmp.Diff(v1beta1TaskRunRoundTripExpected, v1beta1TaskRunRoundTrip, append([]cmp.Option{filterV1beta1RefSourceImageDigest, filterV1beta1TaskRunSA}, filterV1beta1TaskRunFields...)...); d != "" {
 		t.Errorf("-want, +got: %v", d)
 	}
 
@@ -1219,9 +1231,19 @@ func TestBundleConversion(t *testing.T) {
 
 	v1PipelineRunExpected.Status.Provenance = &v1.Provenance{
 		FeatureFlags: getFeatureFlagsBaseOnAPIFlag(t),
+		RefSource: &v1.RefSource{
+			URI:        repo,
+			Digest:     map[string]string{"sha256": "a123"},
+			EntryPoint: pipelineName,
+		},
 	}
 	v1beta1PRRoundTripExpected.Status.Provenance = &v1beta1.Provenance{
 		FeatureFlags: getFeatureFlagsBaseOnAPIFlag(t),
+		RefSource: &v1beta1.RefSource{
+			URI:        repo,
+			Digest:     map[string]string{"sha256": "a123"},
+			EntryPoint: pipelineName,
+		},
 	}
 
 	if _, err := c.V1beta1PipelineRunClient.Create(ctx, v1beta1PipelineRun, metav1.CreateOptions{}); err != nil {
@@ -1235,7 +1257,7 @@ func TestBundleConversion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't get expected v1 PipelineRun for %s: %s", v1beta1ToV1PipelineRunName, err)
 	}
-	if d := cmp.Diff(v1PipelineRunExpected, v1PipelineRunGot, append(filterV1PipelineRunFields, filterV1PipelineRunSA)...); d != "" {
+	if d := cmp.Diff(v1PipelineRunExpected, v1PipelineRunGot, append([]cmp.Option{filterV1RefSourceImageDigest, filterV1PipelineRunSA}, filterV1PipelineRunFields...)...); d != "" {
 		t.Errorf("-want, +got: %v", d)
 	}
 
@@ -1243,7 +1265,7 @@ func TestBundleConversion(t *testing.T) {
 	if err := v1beta1PRRoundTrip.ConvertFrom(context.Background(), v1PipelineRunGot); err != nil {
 		t.Fatalf("Error roundtrip v1beta1PipelineRun ConvertFrom v1PipelineRunGot = %v", err)
 	}
-	if d := cmp.Diff(v1beta1PRRoundTripExpected, v1beta1PRRoundTrip, append(filterV1beta1PipelineRunFields, filterV1beta1PipelineRunSA)...); d != "" {
+	if d := cmp.Diff(v1beta1PRRoundTripExpected, v1beta1PRRoundTrip, append([]cmp.Option{filterV1beta1RefSourceImageDigest, filterV1beta1PipelineRunSA}, filterV1beta1PipelineRunFields...)...); d != "" {
 		t.Errorf("-want, +got: %v", d)
 	}
 }

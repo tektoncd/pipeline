@@ -16,7 +16,7 @@ package remote
 import (
 	"context"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -32,5 +32,5 @@ type ResolvedObject struct {
 //   - Get:      retrieves a specific object with the given Kind and name, and the refSource identifying where the resource came from.
 type Resolver interface {
 	List(ctx context.Context) ([]ResolvedObject, error)
-	Get(ctx context.Context, kind, name string) (runtime.Object, *v1beta1.RefSource, error)
+	Get(ctx context.Context, kind, name string) (runtime.Object, *v1.RefSource, error)
 }

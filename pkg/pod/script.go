@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -77,7 +77,7 @@ var (
 //   - debugConfig: the TaskRun's debug configuration
 //   - setSecurityContext: whether the init container should include a security context that will
 //     allow it to run in a namespace with "restricted" pod security admission
-func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta1.Step, sidecars []v1beta1.Sidecar, debugConfig *v1beta1.TaskRunDebug, setSecurityContext bool) (*corev1.Container, []corev1.Container, []corev1.Container) {
+func convertScripts(shellImageLinux string, shellImageWin string, steps []v1.Step, sidecars []v1.Sidecar, debugConfig *v1.TaskRunDebug, setSecurityContext bool) (*corev1.Container, []corev1.Container, []corev1.Container) {
 	// Place scripts is an init container used for creating scripts in the
 	// /tekton/scripts directory which would be later used by the step containers
 	// as a Command
@@ -125,7 +125,7 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta
 
 // convertListOfSidecars iterates through the list of sidecars, generates the script file name and heredoc termination string,
 // adds an entry to the init container args, sets up the step container to run the script, and sets the volume mounts.
-func convertListOfSidecars(sidecars []v1beta1.Sidecar, initContainer *corev1.Container, namePrefix string) []corev1.Container {
+func convertListOfSidecars(sidecars []v1.Sidecar, initContainer *corev1.Container, namePrefix string) []corev1.Container {
 	containers := []corev1.Container{}
 	for i, s := range sidecars {
 		c := s.ToK8sContainer()
@@ -139,7 +139,7 @@ func convertListOfSidecars(sidecars []v1beta1.Sidecar, initContainer *corev1.Con
 
 // convertListOfSteps iterates through the list of steps, generates the script file name and heredoc termination string,
 // adds an entry to the init container args, sets up the step container to run the script, and sets the volume mounts.
-func convertListOfSteps(steps []v1beta1.Step, initContainer *corev1.Container, breakpoints []string, namePrefix string) []corev1.Container {
+func convertListOfSteps(steps []v1.Step, initContainer *corev1.Container, breakpoints []string, namePrefix string) []corev1.Container {
 	containers := []corev1.Container{}
 	for i, s := range steps {
 		c := steps[i].ToK8sContainer()
@@ -248,7 +248,7 @@ func placeDebugScriptInContainers(containers []corev1.Container, initContainer *
 }
 
 // hasScripts determines if we need to generate scripts in InitContainer given steps, sidecars and breakpoints.
-func hasScripts(steps []v1beta1.Step, sidecars []v1beta1.Sidecar, breakpoints []string) bool {
+func hasScripts(steps []v1.Step, sidecars []v1.Sidecar, breakpoints []string) bool {
 	for _, s := range steps {
 		if s.Script != "" {
 			return true
@@ -262,7 +262,7 @@ func hasScripts(steps []v1beta1.Step, sidecars []v1beta1.Sidecar, breakpoints []
 	return len(breakpoints) > 0
 }
 
-func checkWindowsRequirement(steps []v1beta1.Step, sidecars []v1beta1.Sidecar) bool {
+func checkWindowsRequirement(steps []v1.Step, sidecars []v1.Sidecar) bool {
 	// Detect windows shebangs
 	for _, step := range steps {
 		cleaned := strings.TrimSpace(step.Script)

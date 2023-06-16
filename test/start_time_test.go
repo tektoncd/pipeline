@@ -49,7 +49,7 @@ func TestStartTime(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 	t.Logf("Creating TaskRun in namespace %q", namespace)
-	tr, err := c.V1beta1TaskRunClient.Create(ctx, parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+	tr, err := c.V1TaskRunClient.Create(ctx, parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -72,10 +72,10 @@ spec:
 	}
 	t.Logf("Created TaskRun %q in namespace %q", tr.Name, namespace)
 	// Wait for the TaskRun to complete.
-	if err := WaitForTaskRunState(ctx, c, tr.Name, TaskRunSucceed(tr.Name), "TaskRunSuccess", v1beta1Version); err != nil {
+	if err := WaitForTaskRunState(ctx, c, tr.Name, TaskRunSucceed(tr.Name), "TaskRunSuccess", v1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun to succeed: %v", err)
 	}
-	tr, err = c.V1beta1TaskRunClient.Get(ctx, tr.Name, metav1.GetOptions{})
+	tr, err = c.V1TaskRunClient.Get(ctx, tr.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Error getting TaskRun: %v", err)
 	}

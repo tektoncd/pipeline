@@ -40,7 +40,7 @@ func TestCreateImage(t *testing.T) {
 	defer s.Close()
 	u, _ := url.Parse(s.URL)
 
-	task := parse.MustParseV1beta1Task(t, `
+	task := parse.MustParseV1Task(t, `
 metadata:
   name: test-create-image
 `)
@@ -77,7 +77,7 @@ metadata:
 	if diff := cmp.Diff(m.Layers[0].Annotations[tkremote.KindAnnotation], "task"); diff != "" {
 		t.Error(diff)
 	}
-	if diff := cmp.Diff(m.Layers[0].Annotations[tkremote.APIVersionAnnotation], "v1beta1"); diff != "" {
+	if diff := cmp.Diff(m.Layers[0].Annotations[tkremote.APIVersionAnnotation], "v1"); diff != "" {
 		t.Error(diff)
 	}
 

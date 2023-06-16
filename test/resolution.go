@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"github.com/google/go-cmp/cmp"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	resolution "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/test/diff"
 )
@@ -43,7 +43,7 @@ func NewRequester(resource resolution.ResolvedResource, err error) *Requester {
 // NewResolvedResource creates a mock resolved resource that is
 // populated with the given data and annotations or returns the given
 // error from its Data() method.
-func NewResolvedResource(data []byte, annotations map[string]string, source *pipelinev1beta1.RefSource, dataErr error) *ResolvedResource {
+func NewResolvedResource(data []byte, annotations map[string]string, source *pipelinev1.RefSource, dataErr error) *ResolvedResource {
 	return &ResolvedResource{
 		ResolvedData:        data,
 		ResolvedAnnotations: annotations,
@@ -61,7 +61,7 @@ type Requester struct {
 	// An error to return when a request is submitted.
 	SubmitErr error
 	// Params that should match those on the request in order to return the resolved resource
-	Params []pipelinev1beta1.Param
+	Params []pipelinev1.Param
 }
 
 // Submit implements resolution.Requester, accepting the name of a
@@ -71,7 +71,7 @@ func (r *Requester) Submit(ctx context.Context, resolverName resolution.Resolver
 	if len(r.Params) == 0 {
 		return r.ResolvedResource, r.SubmitErr
 	}
-	reqParams := make(map[string]pipelinev1beta1.ParamValue)
+	reqParams := make(map[string]pipelinev1.ParamValue)
 	for _, p := range req.Params() {
 		reqParams[p.Name] = p.Value
 	}
@@ -102,7 +102,7 @@ type ResolvedResource struct {
 	// Annotations to return when resolution is complete.
 	ResolvedAnnotations map[string]string
 	// ResolvedRefSource to return the source reference of the remote data
-	ResolvedRefSource *pipelinev1beta1.RefSource
+	ResolvedRefSource *pipelinev1.RefSource
 }
 
 // Data implements resolution.ResolvedResource and returns the mock
@@ -119,7 +119,7 @@ func (r *ResolvedResource) Annotations() map[string]string {
 
 // RefSource is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint.
-func (r *ResolvedResource) RefSource() *pipelinev1beta1.RefSource {
+func (r *ResolvedResource) RefSource() *pipelinev1.RefSource {
 	return r.ResolvedRefSource
 }
 
@@ -130,7 +130,7 @@ type RawRequest struct {
 	// the request namespace
 	Namespace string
 	// the params for the request
-	Params []pipelinev1beta1.Param
+	Params []pipelinev1.Param
 }
 
 // Request returns a Request interface based on the RawRequest.
@@ -152,7 +152,7 @@ type Request struct {
 var _ resolution.Request = &Request{}
 
 // NewRequest creates a mock request that is populated with the given name namespace and params
-func NewRequest(name, namespace string, params []pipelinev1beta1.Param) *Request {
+func NewRequest(name, namespace string, params []pipelinev1.Param) *Request {
 	return &Request{
 		RawRequest: RawRequest{
 			Name:      name,
@@ -173,6 +173,6 @@ func (r *Request) Namespace() string {
 }
 
 // Params implements resolution.Request and returns the mock params given to it on initialization.
-func (r *Request) Params() pipelinev1beta1.Params {
+func (r *Request) Params() pipelinev1.Params {
 	return r.RawRequest.Params
 }

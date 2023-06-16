@@ -24,8 +24,8 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	fakepipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipelinerun/fake"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	fakepipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1/pipelinerun/fake"
 	"github.com/tektoncd/pipeline/pkg/names"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"go.uber.org/zap"
@@ -58,7 +58,7 @@ func getConfigContext() context.Context {
 func TestUninitializedMetrics(t *testing.T) {
 	metrics := Recorder{}
 
-	if err := metrics.DurationAndCount(&v1beta1.PipelineRun{}, nil); err == nil {
+	if err := metrics.DurationAndCount(&v1.PipelineRun{}, nil); err == nil {
 		t.Error("DurationAndCount recording expected to return error but got nil")
 	}
 	if err := metrics.RunningPipelineRuns(nil); err == nil {
@@ -111,7 +111,7 @@ func TestMetricsOnStore(t *testing.T) {
 func TestRecordPipelineRunDurationCount(t *testing.T) {
 	for _, test := range []struct {
 		name                 string
-		pipelineRun          *v1beta1.PipelineRun
+		pipelineRun          *v1.PipelineRun
 		expectedDurationTags map[string]string
 		expectedCountTags    map[string]string
 		expectedDuration     float64
@@ -119,19 +119,19 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 		beforeCondition      *apis.Condition
 	}{{
 		name: "for succeeded pipeline",
-		pipelineRun: &v1beta1.PipelineRun{
+		pipelineRun: &v1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-1", Namespace: "ns"},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: "pipeline-1"},
+			Spec: v1.PipelineRunSpec{
+				PipelineRef: &v1.PipelineRef{Name: "pipeline-1"},
 			},
-			Status: v1beta1.PipelineRunStatus{
+			Status: v1.PipelineRunStatus{
 				Status: duckv1.Status{
 					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionTrue,
 					}},
 				},
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+				PipelineRunStatusFields: v1.PipelineRunStatusFields{
 					StartTime:      &startTime,
 					CompletionTime: &completionTime,
 				},
@@ -151,19 +151,19 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 		beforeCondition:  nil,
 	}, {
 		name: "for succeeded pipeline different condition",
-		pipelineRun: &v1beta1.PipelineRun{
+		pipelineRun: &v1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-1", Namespace: "ns"},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: "pipeline-1"},
+			Spec: v1.PipelineRunSpec{
+				PipelineRef: &v1.PipelineRef{Name: "pipeline-1"},
 			},
-			Status: v1beta1.PipelineRunStatus{
+			Status: v1.PipelineRunStatus{
 				Status: duckv1.Status{
 					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionTrue,
 					}},
 				},
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+				PipelineRunStatusFields: v1.PipelineRunStatusFields{
 					StartTime:      &startTime,
 					CompletionTime: &completionTime,
 				},
@@ -186,19 +186,19 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 		},
 	}, {
 		name: "for succeeded pipeline recount",
-		pipelineRun: &v1beta1.PipelineRun{
+		pipelineRun: &v1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-1", Namespace: "ns"},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: "pipeline-1"},
+			Spec: v1.PipelineRunSpec{
+				PipelineRef: &v1.PipelineRef{Name: "pipeline-1"},
 			},
-			Status: v1beta1.PipelineRunStatus{
+			Status: v1.PipelineRunStatus{
 				Status: duckv1.Status{
 					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionTrue,
 					}},
 				},
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+				PipelineRunStatusFields: v1.PipelineRunStatusFields{
 					StartTime:      &startTime,
 					CompletionTime: &completionTime,
 				},
@@ -214,12 +214,12 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 		},
 	}, {
 		name: "for cancelled pipeline",
-		pipelineRun: &v1beta1.PipelineRun{
+		pipelineRun: &v1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-1", Namespace: "ns"},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: "pipeline-1"},
+			Spec: v1.PipelineRunSpec{
+				PipelineRef: &v1.PipelineRef{Name: "pipeline-1"},
 			},
-			Status: v1beta1.PipelineRunStatus{
+			Status: v1.PipelineRunStatus{
 				Status: duckv1.Status{
 					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
@@ -227,7 +227,7 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 						Reason: ReasonCancelled,
 					}},
 				},
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+				PipelineRunStatusFields: v1.PipelineRunStatusFields{
 					StartTime:      &startTime,
 					CompletionTime: &completionTime,
 				},
@@ -247,19 +247,19 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 		beforeCondition:  nil,
 	}, {
 		name: "for failed pipeline",
-		pipelineRun: &v1beta1.PipelineRun{
+		pipelineRun: &v1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-1", Namespace: "ns"},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: "pipeline-1"},
+			Spec: v1.PipelineRunSpec{
+				PipelineRef: &v1.PipelineRef{Name: "pipeline-1"},
 			},
-			Status: v1beta1.PipelineRunStatus{
+			Status: v1.PipelineRunStatus{
 				Status: duckv1.Status{
 					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionFalse,
 					}},
 				},
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+				PipelineRunStatusFields: v1.PipelineRunStatusFields{
 					StartTime:      &startTime,
 					CompletionTime: &completionTime,
 				},
@@ -279,13 +279,13 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 		beforeCondition:  nil,
 	}, {
 		name: "for pipeline without start or completion time",
-		pipelineRun: &v1beta1.PipelineRun{
+		pipelineRun: &v1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-1", Namespace: "ns"},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: "pipeline-1"},
-				Status:      v1beta1.PipelineRunSpecStatusPending,
+			Spec: v1.PipelineRunSpec{
+				PipelineRef: &v1.PipelineRef{Name: "pipeline-1"},
+				Status:      v1.PipelineRunSpecStatusPending,
 			},
-			Status: v1beta1.PipelineRunStatus{
+			Status: v1.PipelineRunStatus{
 				Status: duckv1.Status{
 					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
@@ -336,10 +336,10 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 func TestRecordRunningPipelineRunsCount(t *testing.T) {
 	unregisterMetrics()
 
-	newPipelineRun := func(status corev1.ConditionStatus) *v1beta1.PipelineRun {
-		return &v1beta1.PipelineRun{
+	newPipelineRun := func(status corev1.ConditionStatus) *v1.PipelineRun {
+		return &v1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("pipelinerun-")},
-			Status: v1beta1.PipelineRunStatus{
+			Status: v1.PipelineRunStatus{
 				Status: duckv1.Status{
 					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
@@ -353,7 +353,7 @@ func TestRecordRunningPipelineRunsCount(t *testing.T) {
 	ctx, _ := ttesting.SetupFakeContext(t)
 	informer := fakepipelineruninformer.Get(ctx)
 	// Add N randomly-named PipelineRuns with differently-succeeded statuses.
-	for _, tr := range []*v1beta1.PipelineRun{
+	for _, tr := range []*v1.PipelineRun{
 		newPipelineRun(corev1.ConditionTrue),
 		newPipelineRun(corev1.ConditionUnknown),
 		newPipelineRun(corev1.ConditionFalse),

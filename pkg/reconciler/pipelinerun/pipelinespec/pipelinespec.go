@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,16 +29,16 @@ import (
 
 // GetPipeline is a function used to retrieve Pipelines.
 // VerificationResult is the result from trusted resources if the feature is enabled.
-type GetPipeline func(context.Context, string) (*v1beta1.Pipeline, *v1beta1.RefSource, *trustedresources.VerificationResult, error)
+type GetPipeline func(context.Context, string) (*v1.Pipeline, *v1.RefSource, *trustedresources.VerificationResult, error)
 
 // GetPipelineData will retrieve the Pipeline metadata and Spec associated with the
 // provided PipelineRun. This can come from a reference Pipeline or from the PipelineRun's
 // metadata and embedded PipelineSpec.
-func GetPipelineData(ctx context.Context, pipelineRun *v1beta1.PipelineRun, getPipeline GetPipeline) (*resolutionutil.ResolvedObjectMeta, *v1beta1.PipelineSpec, error) {
+func GetPipelineData(ctx context.Context, pipelineRun *v1.PipelineRun, getPipeline GetPipeline) (*resolutionutil.ResolvedObjectMeta, *v1.PipelineSpec, error) {
 	pipelineMeta := metav1.ObjectMeta{}
-	var refSource *v1beta1.RefSource
+	var refSource *v1.RefSource
 	var verificationResult *trustedresources.VerificationResult
-	pipelineSpec := v1beta1.PipelineSpec{}
+	pipelineSpec := v1.PipelineSpec{}
 	switch {
 	case pipelineRun.Spec.PipelineRef != nil && pipelineRun.Spec.PipelineRef.Name != "":
 		// Get related pipeline for pipelinerun

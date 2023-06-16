@@ -34,7 +34,7 @@ import (
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/factory"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"go.uber.org/zap"
@@ -110,7 +110,7 @@ func (r *Resolver) GetSelector(_ context.Context) map[string]string {
 
 // ValidateParams returns an error if the given parameter map is not
 // valid for a resource request targeting the gitresolver.
-func (r *Resolver) ValidateParams(ctx context.Context, params []pipelinev1beta1.Param) error {
+func (r *Resolver) ValidateParams(ctx context.Context, params []pipelinev1.Param) error {
 	if r.isDisabled(ctx) {
 		return errors.New(disabledError)
 	}
@@ -124,7 +124,7 @@ func (r *Resolver) ValidateParams(ctx context.Context, params []pipelinev1beta1.
 
 // Resolve performs the work of fetching a file from git given a map of
 // parameters.
-func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1beta1.Param) (framework.ResolvedResource, error) {
+func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1.Param) (framework.ResolvedResource, error) {
 	if r.isDisabled(ctx) {
 		return nil, errors.New(disabledError)
 	}
@@ -337,8 +337,8 @@ func (r *resolvedGitResource) Annotations() map[string]string {
 
 // RefSource is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint.
-func (r *resolvedGitResource) RefSource() *pipelinev1beta1.RefSource {
-	return &pipelinev1beta1.RefSource{
+func (r *resolvedGitResource) RefSource() *pipelinev1.RefSource {
+	return &pipelinev1.RefSource{
 		URI: spdxGit(r.URL),
 		Digest: map[string]string{
 			"sha1": r.Revision,
@@ -414,7 +414,7 @@ func (r *Resolver) getAPIToken(ctx context.Context) ([]byte, error) {
 	return secretVal, nil
 }
 
-func populateDefaultParams(ctx context.Context, params []pipelinev1beta1.Param) (map[string]string, error) {
+func populateDefaultParams(ctx context.Context, params []pipelinev1.Param) (map[string]string, error) {
 	conf := framework.GetResolverConfigFromContext(ctx)
 
 	paramsMap := make(map[string]string)

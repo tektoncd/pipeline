@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/container"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -34,7 +34,7 @@ func TestApplySidecarReplacements(t *testing.T) {
 		"array.replace.me": {"val1", "val2"},
 	}
 
-	s := v1beta1.Sidecar{
+	s := v1.Sidecar{
 		Script:     "$(replace.me)",
 		Name:       "$(replace.me)",
 		Image:      "$(replace.me)",
@@ -78,7 +78,7 @@ func TestApplySidecarReplacements(t *testing.T) {
 		}},
 	}
 
-	expected := v1beta1.Sidecar{
+	expected := v1.Sidecar{
 		Script:     "replaced!",
 		Name:       "replaced!",
 		Image:      "replaced!",

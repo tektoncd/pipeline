@@ -17,12 +17,12 @@
 package container
 
 import (
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 )
 
 // ApplySidecarReplacements applies variable interpolation on a Sidecar.
-func ApplySidecarReplacements(sidecar *v1beta1.Sidecar, stringReplacements map[string]string, arrayReplacements map[string][]string) {
+func ApplySidecarReplacements(sidecar *v1.Sidecar, stringReplacements map[string]string, arrayReplacements map[string][]string) {
 	sidecar.Script = substitution.ApplyReplacements(sidecar.Script, stringReplacements)
 	applySidecarReplacements(sidecar, stringReplacements, arrayReplacements)
 }

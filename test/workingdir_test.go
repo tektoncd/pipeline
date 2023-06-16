@@ -45,7 +45,7 @@ func TestWorkingDirCreated(t *testing.T) {
 	wdTaskName := helpers.ObjectNameForTest(t)
 	wdTaskRunName := helpers.ObjectNameForTest(t)
 
-	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
+	task := parse.MustParseV1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -55,12 +55,12 @@ spec:
     workingDir: /workspace/HELLOMOTO
     args: ['-c', 'echo YES']
 `, wdTaskName, namespace))
-	if _, err := c.V1beta1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
 
 	t.Logf("Creating TaskRun  namespace %s", namespace)
-	taskRun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+	taskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -69,16 +69,16 @@ spec:
     name: %s
   serviceAccountName: default
 `, wdTaskRunName, namespace, wdTaskName))
-	if _, err := c.V1beta1TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
 
 	t.Logf("Waiting for TaskRun in namespace %s to finish successfully", namespace)
-	if err := WaitForTaskRunState(ctx, c, wdTaskRunName, TaskRunSucceed(wdTaskRunName), "TaskRunSuccess", v1beta1Version); err != nil {
+	if err := WaitForTaskRunState(ctx, c, wdTaskRunName, TaskRunSucceed(wdTaskRunName), "TaskRunSuccess", v1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish successfully: %s", err)
 	}
 
-	tr, err := c.V1beta1TaskRunClient.Get(ctx, wdTaskRunName, metav1.GetOptions{})
+	tr, err := c.V1TaskRunClient.Get(ctx, wdTaskRunName, metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Error retrieving taskrun: %s", err)
 	}
@@ -118,7 +118,7 @@ func TestWorkingDirIgnoredNonSlashWorkspace(t *testing.T) {
 	wdTaskName := helpers.ObjectNameForTest(t)
 	wdTaskRunName := helpers.ObjectNameForTest(t)
 
-	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
+	task := parse.MustParseV1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -128,12 +128,12 @@ spec:
     workingDir: /HELLOMOTO
     args: ['-c', 'echo YES']
 `, wdTaskName, namespace))
-	if _, err := c.V1beta1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
 
 	t.Logf("Creating TaskRun  namespace %s", namespace)
-	taskRun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+	taskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -142,16 +142,16 @@ spec:
     name: %s
   serviceAccountName: default
 `, wdTaskRunName, namespace, wdTaskName))
-	if _, err := c.V1beta1TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
 
 	t.Logf("Waiting for TaskRun in namespace %s to finish successfully", namespace)
-	if err := WaitForTaskRunState(ctx, c, wdTaskRunName, TaskRunSucceed(wdTaskRunName), "TaskRunSuccess", v1beta1Version); err != nil {
+	if err := WaitForTaskRunState(ctx, c, wdTaskRunName, TaskRunSucceed(wdTaskRunName), "TaskRunSuccess", v1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish successfully: %s", err)
 	}
 
-	tr, err := c.V1beta1TaskRunClient.Get(ctx, wdTaskRunName, metav1.GetOptions{})
+	tr, err := c.V1TaskRunClient.Get(ctx, wdTaskRunName, metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Error retrieving taskrun: %s", err)
 	}

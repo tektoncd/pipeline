@@ -23,7 +23,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -32,7 +32,7 @@ import (
 )
 
 func TestResolutionRequestConversionBadType(t *testing.T) {
-	good, bad := &v1alpha1.ResolutionRequest{}, &pipelinev1beta1.Task{}
+	good, bad := &v1alpha1.ResolutionRequest{}, &pipelinev1.Task{}
 
 	if err := good.ConvertTo(context.Background(), bad); err == nil {
 		t.Errorf("ConvertTo() = %#v, wanted error", bad)
@@ -90,9 +90,9 @@ func TestResolutionRequestConvertTo(t *testing.T) {
 					Namespace: "bar",
 				},
 				Spec: v1beta1.ResolutionRequestSpec{
-					Params: []pipelinev1beta1.Param{{
+					Params: []pipelinev1.Param{{
 						Name:  "some-param",
-						Value: *pipelinev1beta1.NewStructuredValues("some-value"),
+						Value: *pipelinev1.NewStructuredValues("some-value"),
 					}},
 				},
 			},
@@ -152,9 +152,9 @@ func TestResolutionRequestConvertFrom(t *testing.T) {
 					Namespace: "bar",
 				},
 				Spec: v1beta1.ResolutionRequestSpec{
-					Params: []pipelinev1beta1.Param{{
+					Params: []pipelinev1.Param{{
 						Name:  "some-param",
-						Value: *pipelinev1beta1.NewStructuredValues("some-value"),
+						Value: *pipelinev1.NewStructuredValues("some-value"),
 					}},
 				},
 			},
@@ -177,16 +177,16 @@ func TestResolutionRequestConvertFrom(t *testing.T) {
 					Namespace: "bar",
 				},
 				Spec: v1beta1.ResolutionRequestSpec{
-					Params: []pipelinev1beta1.Param{
+					Params: []pipelinev1.Param{
 						{
 							Name:  "array-val",
-							Value: *pipelinev1beta1.NewStructuredValues("one", "two"),
+							Value: *pipelinev1.NewStructuredValues("one", "two"),
 						}, {
 							Name:  "string-val",
-							Value: *pipelinev1beta1.NewStructuredValues("a-string"),
+							Value: *pipelinev1.NewStructuredValues("a-string"),
 						}, {
 							Name: "object-val",
-							Value: *pipelinev1beta1.NewObject(map[string]string{
+							Value: *pipelinev1.NewObject(map[string]string{
 								"key-one": "value-one",
 								"key-two": "value-two",
 							}),

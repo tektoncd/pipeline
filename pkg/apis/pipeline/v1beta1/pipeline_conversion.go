@@ -191,7 +191,7 @@ func (pt *PipelineTask) convertFrom(ctx context.Context, source v1.PipelineTask,
 	pt.Description = source.Description
 	if source.TaskRef != nil {
 		newTaskRef := TaskRef{}
-		newTaskRef.convertFrom(ctx, *source.TaskRef)
+		newTaskRef.ConvertFrom(ctx, *source.TaskRef)
 		pt.TaskRef = &newTaskRef
 	}
 	if source.TaskSpec != nil {
@@ -213,7 +213,7 @@ func (pt *PipelineTask) convertFrom(ctx context.Context, source v1.PipelineTask,
 	pt.Params = nil
 	for _, p := range source.Params {
 		new := Param{}
-		new.convertFrom(ctx, p)
+		new.ConvertFrom(ctx, p)
 		pt.Params = append(pt.Params, new)
 	}
 	pt.Matrix = nil
@@ -280,7 +280,7 @@ func (m *Matrix) convertTo(ctx context.Context, sink *v1.Matrix) {
 func (m *Matrix) convertFrom(ctx context.Context, source v1.Matrix) {
 	for _, param := range source.Params {
 		new := Param{}
-		new.convertFrom(ctx, param)
+		new.ConvertFrom(ctx, param)
 		m.Params = append(m.Params, new)
 	}
 
@@ -288,7 +288,7 @@ func (m *Matrix) convertFrom(ctx context.Context, source v1.Matrix) {
 		m.Include = append(m.Include, IncludeParams{Name: include.Name})
 		for _, p := range include.Params {
 			new := Param{}
-			new.convertFrom(ctx, p)
+			new.ConvertFrom(ctx, p)
 			m.Include[i].Params = append(m.Include[i].Params, new)
 		}
 	}

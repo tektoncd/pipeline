@@ -17,7 +17,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
@@ -30,14 +30,14 @@ func TestInitTracing(t *testing.T) {
 
 	testcases := []struct {
 		name                    string
-		taskRun                 *v1beta1.TaskRun
+		taskRun                 *v1.TaskRun
 		tracerProvider          trace.TracerProvider
 		expectSpanContextStatus bool
 		expectValidSpanContext  bool
 		parentTraceID           string
 	}{{
 		name: "with-tracerprovider-no-parent-trace",
-		taskRun: &v1beta1.TaskRun{
+		taskRun: &v1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
 				Namespace: "testns",
@@ -48,7 +48,7 @@ func TestInitTracing(t *testing.T) {
 		expectValidSpanContext:  true,
 	}, {
 		name: "with-tracerprovider-with-parent-trace",
-		taskRun: &v1beta1.TaskRun{
+		taskRun: &v1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
 				Namespace: "testns",
@@ -63,7 +63,7 @@ func TestInitTracing(t *testing.T) {
 		parentTraceID:           "00-0f57e147e992b304d977436289d10628-73d5909e31793992-01",
 	}, {
 		name: "without-tracerprovider",
-		taskRun: &v1beta1.TaskRun{
+		taskRun: &v1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
 				Namespace: "testns",
@@ -74,7 +74,7 @@ func TestInitTracing(t *testing.T) {
 		expectValidSpanContext:  false,
 	}, {
 		name: "without-tracerprovider-existing-annotations",
-		taskRun: &v1beta1.TaskRun{
+		taskRun: &v1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
 				Namespace: "testns",

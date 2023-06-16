@@ -26,7 +26,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -79,9 +79,9 @@ func TestReconcile(t *testing.T) {
 					},
 				},
 				Spec: v1beta1.ResolutionRequestSpec{
-					Params: []pipelinev1beta1.Param{{
+					Params: []pipelinev1.Param{{
 						Name:  framework.FakeParamName,
-						Value: *pipelinev1beta1.NewStructuredValues("bar"),
+						Value: *pipelinev1.NewStructuredValues("bar"),
 					}},
 				},
 				Status: v1beta1.ResolutionRequestStatus{},
@@ -103,9 +103,9 @@ func TestReconcile(t *testing.T) {
 					},
 				},
 				Spec: v1beta1.ResolutionRequestSpec{
-					Params: []pipelinev1beta1.Param{{
+					Params: []pipelinev1.Param{{
 						Name:  framework.FakeParamName,
-						Value: *pipelinev1beta1.NewStructuredValues("bar"),
+						Value: *pipelinev1.NewStructuredValues("bar"),
 					}},
 				},
 				Status: v1beta1.ResolutionRequestStatus{},
@@ -114,7 +114,7 @@ func TestReconcile(t *testing.T) {
 				"bar": {
 					Content:       "some content",
 					AnnotationMap: map[string]string{"foo": "bar"},
-					ContentSource: &pipelinev1beta1.RefSource{
+					ContentSource: &pipelinev1.RefSource{
 						URI: "https://abc.com",
 						Digest: map[string]string{
 							"sha1": "xyz",
@@ -131,14 +131,14 @@ func TestReconcile(t *testing.T) {
 				},
 				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
 					Data: base64.StdEncoding.Strict().EncodeToString([]byte("some content")),
-					RefSource: &pipelinev1beta1.RefSource{
+					RefSource: &pipelinev1.RefSource{
 						URI: "https://abc.com",
 						Digest: map[string]string{
 							"sha1": "xyz",
 						},
 						EntryPoint: "foo/bar",
 					},
-					Source: &pipelinev1beta1.ConfigSource{
+					Source: &pipelinev1.RefSource{
 						URI: "https://abc.com",
 						Digest: map[string]string{
 							"sha1": "xyz",
@@ -163,9 +163,9 @@ func TestReconcile(t *testing.T) {
 					},
 				},
 				Spec: v1beta1.ResolutionRequestSpec{
-					Params: []pipelinev1beta1.Param{{
+					Params: []pipelinev1.Param{{
 						Name:  framework.FakeParamName,
-						Value: *pipelinev1beta1.NewStructuredValues("bar"),
+						Value: *pipelinev1.NewStructuredValues("bar"),
 					}},
 				},
 				Status: v1beta1.ResolutionRequestStatus{},
@@ -192,9 +192,9 @@ func TestReconcile(t *testing.T) {
 					},
 				},
 				Spec: v1beta1.ResolutionRequestSpec{
-					Params: []pipelinev1beta1.Param{{
+					Params: []pipelinev1.Param{{
 						Name:  framework.FakeParamName,
-						Value: *pipelinev1beta1.NewStructuredValues("bar"),
+						Value: *pipelinev1.NewStructuredValues("bar"),
 					}},
 				},
 				Status: v1beta1.ResolutionRequestStatus{},

@@ -17,6 +17,7 @@ limitations under the License.
 package cloudevent
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -25,6 +26,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"knative.dev/pkg/apis"
 )
@@ -94,22 +96,34 @@ type TektonCloudEventData struct {
 }
 
 // newTektonCloudEventData returns a new instance of TektonCloudEventData
-func newTektonCloudEventData(runObject objectWithCondition) TektonCloudEventData {
+func newTektonCloudEventData(ctx context.Context, runObject objectWithCondition) (TektonCloudEventData, error) {
 	tektonCloudEventData := TektonCloudEventData{}
 	switch v := runObject.(type) {
 	case *v1beta1.TaskRun:
 		tektonCloudEventData.TaskRun = v
 	case *v1beta1.PipelineRun:
 		tektonCloudEventData.PipelineRun = v
+	case *v1.TaskRun:
+		v1beta1TaskRun := &v1beta1.TaskRun{}
+		if err := v1beta1TaskRun.ConvertFrom(ctx, v); err != nil {
+			return TektonCloudEventData{}, err
+		}
+		tektonCloudEventData.TaskRun = v1beta1TaskRun
+	case *v1.PipelineRun:
+		v1beta1PipelineRun := &v1beta1.PipelineRun{}
+		if err := v1beta1PipelineRun.ConvertFrom(ctx, v); err != nil {
+			return TektonCloudEventData{}, err
+		}
+		tektonCloudEventData.PipelineRun = v1beta1PipelineRun
 	case *v1beta1.CustomRun:
 		tektonCloudEventData.CustomRun = v
 	}
-	return tektonCloudEventData
+	return tektonCloudEventData, nil
 }
 
 // eventForObjectWithCondition creates a new event based for a objectWithCondition,
 // or return an error if not possible.
-func eventForObjectWithCondition(runObject objectWithCondition) (*cloudevents.Event, error) {
+func eventForObjectWithCondition(ctx context.Context, runObject objectWithCondition) (*cloudevents.Event, error) {
 	event := cloudevents.NewEvent()
 	event.SetID(uuid.New().String())
 	event.SetSubject(runObject.GetObjectMeta().GetName())
@@ -134,7 +148,12 @@ func eventForObjectWithCondition(runObject objectWithCondition) (*cloudevents.Ev
 	}
 	event.SetType(eventType.String())
 
-	if err := event.SetData(cloudevents.ApplicationJSON, newTektonCloudEventData(runObject)); err != nil {
+	tektonCloudEventData, err := newTektonCloudEventData(ctx, runObject)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := event.SetData(cloudevents.ApplicationJSON, tektonCloudEventData); err != nil {
 		return nil, err
 	}
 	return &event, nil
@@ -167,11 +186,29 @@ func getEventType(runObject objectWithCondition) (*TektonEventType, error) {
 			default:
 				eventType = TaskRunUnknownEventV1
 			}
+		case *v1.TaskRun:
+			switch c.Reason {
+			case v1.TaskRunReasonStarted.String():
+				eventType = TaskRunStartedEventV1
+			case v1.TaskRunReasonRunning.String():
+				eventType = TaskRunRunningEventV1
+			default:
+				eventType = TaskRunUnknownEventV1
+			}
 		case *v1beta1.PipelineRun:
 			switch c.Reason {
 			case v1beta1.PipelineRunReasonStarted.String():
 				eventType = PipelineRunStartedEventV1
 			case v1beta1.PipelineRunReasonRunning.String():
+				eventType = PipelineRunRunningEventV1
+			default:
+				eventType = PipelineRunUnknownEventV1
+			}
+		case *v1.PipelineRun:
+			switch c.Reason {
+			case v1.PipelineRunReasonStarted.String():
+				eventType = PipelineRunStartedEventV1
+			case v1.PipelineRunReasonRunning.String():
 				eventType = PipelineRunRunningEventV1
 			default:
 				eventType = PipelineRunUnknownEventV1
@@ -185,6 +222,10 @@ func getEventType(runObject objectWithCondition) (*TektonEventType, error) {
 		}
 	case c.IsFalse():
 		switch runObject.(type) {
+		case *v1.TaskRun:
+			eventType = TaskRunFailedEventV1
+		case *v1.PipelineRun:
+			eventType = PipelineRunFailedEventV1
 		case *v1beta1.TaskRun:
 			eventType = TaskRunFailedEventV1
 		case *v1beta1.PipelineRun:
@@ -197,6 +238,10 @@ func getEventType(runObject objectWithCondition) (*TektonEventType, error) {
 		case *v1beta1.TaskRun:
 			eventType = TaskRunSuccessfulEventV1
 		case *v1beta1.PipelineRun:
+			eventType = PipelineRunSuccessfulEventV1
+		case *v1.TaskRun:
+			eventType = TaskRunSuccessfulEventV1
+		case *v1.PipelineRun:
 			eventType = PipelineRunSuccessfulEventV1
 		case *v1beta1.CustomRun:
 			eventType = CustomRunSuccessfulEventV1

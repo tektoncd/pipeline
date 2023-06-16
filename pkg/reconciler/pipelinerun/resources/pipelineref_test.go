@@ -24,16 +24,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
@@ -43,7 +40,6 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
@@ -51,18 +47,18 @@ import (
 )
 
 var (
-	dummyPipeline = &v1beta1.Pipeline{
+	dummyPipeline = &v1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "dummy",
 			Namespace: "default",
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pipeline",
-			APIVersion: "tekton.dev/v1beta1",
+			APIVersion: "tekton.dev/v1",
 		},
 	}
 
-	sampleRefSource = &v1beta1.RefSource{
+	sampleRefSource = &v1.RefSource{
 		URI: "abc.com",
 		Digest: map[string]string{
 			"sha1": "a123",
@@ -70,17 +66,17 @@ var (
 		EntryPoint: "foo/bar",
 	}
 
-	unsignedV1Pipeline = &pipelinev1.Pipeline{
+	unsignedV1Pipeline = &v1.Pipeline{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1beta1",
+			APIVersion: "tekton.dev/v1",
 			Kind:       "Pipeline"},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "pipeline",
 			Namespace:   "trusted-resources",
 			Annotations: map[string]string{"foo": "bar"},
 		},
-		Spec: pipelinev1.PipelineSpec{
-			Tasks: []pipelinev1.PipelineTask{
+		Spec: v1.PipelineSpec{
+			Tasks: []v1.PipelineTask{
 				{
 					Name: "task",
 				},
@@ -97,14 +93,14 @@ func TestLocalPipelineRef(t *testing.T) {
 	testcases := []struct {
 		name      string
 		pipelines []runtime.Object
-		ref       *v1beta1.PipelineRef
+		ref       *v1.PipelineRef
 		expected  runtime.Object
 		wantErr   bool
 	}{
 		{
 			name:      "local-pipeline",
 			pipelines: []runtime.Object{simplePipeline(), dummyPipeline},
-			ref: &v1beta1.PipelineRef{
+			ref: &v1.PipelineRef{
 				Name: "simple",
 			},
 			expected: simplePipeline(),
@@ -113,7 +109,7 @@ func TestLocalPipelineRef(t *testing.T) {
 		{
 			name:      "pipeline-not-found",
 			pipelines: []runtime.Object{},
-			ref: &v1beta1.PipelineRef{
+			ref: &v1.PipelineRef{
 				Name: "simple",
 			},
 			expected: nil,
@@ -151,83 +147,6 @@ func TestLocalPipelineRef(t *testing.T) {
 	}
 }
 
-// TestGetPipelineFunc_Bundle tests the deprecated v1beta1 bundle syntax, this
-// can be removed when support for the bundle syntax is removed
-func TestGetPipelineFunc_Bundle(t *testing.T) {
-	// Set up a fake registry to push an image to.
-	s := httptest.NewServer(registry.New())
-	defer s.Close()
-	u, err := url.Parse(s.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ctx := context.Background()
-
-	testcases := []struct {
-		name            string
-		localPipelines  []runtime.Object
-		remotePipelines []runtime.Object
-		ref             *v1beta1.PipelineRef
-		expected        runtime.Object
-	}{{
-		name: "remote-pipeline-bundle",
-		localPipelines: []runtime.Object{
-			simplePipelineWithBaseSpec(),
-			dummyPipeline,
-		},
-		remotePipelines: []runtime.Object{simplePipeline(), dummyPipeline},
-		ref: &v1beta1.PipelineRef{
-			Name:   "simple",
-			Bundle: u.Host + "/remote-pipeline-bundle",
-		},
-		expected: simplePipeline(),
-	}}
-
-	for _, tc := range testcases {
-		t.Run(tc.name, func(t *testing.T) {
-			tektonclient := fake.NewSimpleClientset(tc.localPipelines...)
-			kubeclient := fakek8s.NewSimpleClientset(&v1.ServiceAccount{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "default",
-					Name:      "default",
-				},
-			})
-
-			_, err := test.CreateImage(u.Host+"/"+tc.name, tc.remotePipelines...)
-			if err != nil {
-				t.Fatalf("failed to upload test image: %s", err.Error())
-			}
-
-			pr := &v1beta1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
-				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef:        tc.ref,
-					ServiceAccountName: "default",
-				},
-			}
-
-			fn := resources.GetPipelineFunc(ctx, kubeclient, tektonclient, nil, pr, nil /*VerificationPolicies*/)
-			if err != nil {
-				t.Fatalf("failed to get pipeline fn: %s", err.Error())
-			}
-
-			pipeline, refSource, _, err := fn(ctx, tc.ref.Name)
-			if err != nil {
-				t.Fatalf("failed to call pipelinefn: %s", err.Error())
-			}
-
-			if diff := cmp.Diff(pipeline, tc.expected); tc.expected != nil && diff != "" {
-				t.Error(diff)
-			}
-
-			if refSource != nil {
-				t.Errorf("expected refSource is nil, but got %v", refSource)
-			}
-		})
-	}
-}
-
 func TestGetPipelineFunc_Local(t *testing.T) {
 	ctx := context.Background()
 
@@ -235,7 +154,7 @@ func TestGetPipelineFunc_Local(t *testing.T) {
 		name            string
 		localPipelines  []runtime.Object
 		remotePipelines []runtime.Object
-		ref             *v1beta1.PipelineRef
+		ref             *v1.PipelineRef
 		expected        runtime.Object
 	}{{
 		name: "local-pipeline",
@@ -244,7 +163,7 @@ func TestGetPipelineFunc_Local(t *testing.T) {
 			dummyPipeline,
 		},
 		remotePipelines: []runtime.Object{simplePipeline(), dummyPipeline},
-		ref: &v1beta1.PipelineRef{
+		ref: &v1.PipelineRef{
 			Name: "simple",
 		},
 		expected: simplePipelineWithBaseSpec(),
@@ -253,18 +172,20 @@ func TestGetPipelineFunc_Local(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			tektonclient := fake.NewSimpleClientset(tc.localPipelines...)
-			kubeclient := fakek8s.NewSimpleClientset(&v1.ServiceAccount{
+			kubeclient := fakek8s.NewSimpleClientset(&corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "default",
 					Name:      "default",
 				},
 			})
 
-			fn := resources.GetPipelineFunc(ctx, kubeclient, tektonclient, nil, &v1beta1.PipelineRun{
+			fn := resources.GetPipelineFunc(ctx, kubeclient, tektonclient, nil, &v1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
-				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef:        tc.ref,
-					ServiceAccountName: "default",
+				Spec: v1.PipelineRunSpec{
+					PipelineRef: tc.ref,
+					TaskRunTemplate: v1.PipelineTaskRunTemplate{
+						ServiceAccountName: "default",
+					},
 				},
 			}, nil /*VerificationPolicies*/)
 
@@ -289,7 +210,7 @@ func TestGetPipelineFuncSpecAlreadyFetched(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	tektonclient := fake.NewSimpleClientset(simplePipeline(), dummyPipeline)
-	kubeclient := fakek8s.NewSimpleClientset(&v1.ServiceAccount{
+	kubeclient := fakek8s.NewSimpleClientset(&corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "default",
 			Name:      "default",
@@ -297,30 +218,32 @@ func TestGetPipelineFuncSpecAlreadyFetched(t *testing.T) {
 	})
 
 	name := "anyname-really"
-	pipelineSpec := v1beta1.PipelineSpec{
-		Tasks: []v1beta1.PipelineTask{{
+	pipelineSpec := v1.PipelineSpec{
+		Tasks: []v1.PipelineTask{{
 			Name:    "task1",
-			TaskRef: &v1beta1.TaskRef{Name: "task"},
+			TaskRef: &v1.TaskRef{Name: "task"},
 		}},
 	}
-	pipelineRun := &v1beta1.PipelineRun{
+	pipelineRun := &v1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{
+		Spec: v1.PipelineRunSpec{
+			PipelineRef: &v1.PipelineRef{
 				// Using simple here to show that, it won't fetch the simple pipelinespec,
 				// which is different from the pipelineSpec above
 				Name: "simple",
 			},
-			ServiceAccountName: "default",
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				ServiceAccountName: "default",
+			},
 		},
-		Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+		Status: v1.PipelineRunStatus{PipelineRunStatusFields: v1.PipelineRunStatusFields{
 			PipelineSpec: &pipelineSpec,
-			Provenance: &v1beta1.Provenance{
+			Provenance: &v1.Provenance{
 				RefSource: sampleRefSource.DeepCopy(),
 			},
 		}},
 	}
-	expectedPipeline := &v1beta1.Pipeline{
+	expectedPipeline := &v1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: "default",
@@ -347,12 +270,12 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 	ctx := config.EnableStableAPIFields(context.Background())
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
-	pipelineRef := &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
+	pipelineRef := &v1.PipelineRef{ResolverRef: v1.ResolverRef{Resolver: "git"}}
 
 	testcases := []struct {
 		name         string
 		pipelineYAML string
-		wantPipeline *v1beta1.Pipeline
+		wantPipeline *v1.Pipeline
 		wantErr      bool
 	}{{
 		name: "v1beta1 pipeline",
@@ -361,7 +284,7 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 			"apiVersion: tekton.dev/v1beta1",
 			pipelineYAMLString,
 		}, "\n"),
-		wantPipeline: parse.MustParseV1beta1Pipeline(t, pipelineYAMLString),
+		wantPipeline: parse.MustParseV1Pipeline(t, pipelineYAMLString),
 	}, {
 		name: "v1beta1 pipeline with beta features",
 		pipelineYAML: strings.Join([]string{
@@ -369,7 +292,7 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 			"apiVersion: tekton.dev/v1beta1",
 			pipelineYAMLStringWithBetaFeatures,
 		}, "\n"),
-		wantPipeline: parse.MustParseV1beta1Pipeline(t, pipelineYAMLStringWithBetaFeatures),
+		wantPipeline: parse.MustParseV1Pipeline(t, pipelineYAMLStringWithBetaFeatures),
 	}, {
 		name: "v1 pipeline",
 		pipelineYAML: strings.Join([]string{
@@ -377,7 +300,7 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 			"apiVersion: tekton.dev/v1",
 			pipelineYAMLString,
 		}, "\n"),
-		wantPipeline: parse.MustParseV1beta1Pipeline(t, pipelineYAMLString),
+		wantPipeline: parse.MustParseV1Pipeline(t, pipelineYAMLString),
 	}, {
 		name: "v1 pipeline with beta features",
 		pipelineYAML: strings.Join([]string{
@@ -394,29 +317,19 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 			"apiVersion: tekton.dev/v1",
 			pipelineYAMLStringWithoutDefaults,
 		}, "\n"),
-		wantPipeline: parse.MustParseV1beta1Pipeline(t, `
-metadata:
-  name: foo
-  namespace: bar
-spec:
-  tasks:
-  - name: something
-    taskRef:
-      name: something
-  params:
-  - name: foo
-    type: string
-`),
+		wantPipeline: parse.MustParseV1Pipeline(t, pipelineYAMLStringWithoutDefaults),
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			resolved := test.NewResolvedResource([]byte(tc.pipelineYAML), nil /* annotations */, sampleRefSource.DeepCopy(), nil /* data error */)
 			requester := test.NewRequester(resolved, nil)
-			fn := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1beta1.PipelineRun{
+			fn := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
-				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef:        pipelineRef,
-					ServiceAccountName: "default",
+				Spec: v1.PipelineRunSpec{
+					PipelineRef: pipelineRef,
+					TaskRunTemplate: v1.PipelineTaskRunTemplate{
+						ServiceAccountName: "default",
+					},
 				},
 			}, nil /*VerificationPolicies*/)
 
@@ -446,47 +359,49 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	ctx := context.Background()
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
-	pipeline := parse.MustParseV1beta1Pipeline(t, pipelineYAMLString)
-	pipelineRef := &v1beta1.PipelineRef{
-		ResolverRef: v1beta1.ResolverRef{
+	pipeline := parse.MustParseV1Pipeline(t, pipelineYAMLString)
+	pipelineRef := &v1.PipelineRef{
+		ResolverRef: v1.ResolverRef{
 			Resolver: "git",
-			Params: v1beta1.Params{{
+			Params: []v1.Param{{
 				Name:  "foo",
-				Value: *v1beta1.NewStructuredValues("$(params.resolver-param)"),
+				Value: *v1.NewStructuredValues("$(params.resolver-param)"),
 			}, {
 				Name:  "bar",
-				Value: *v1beta1.NewStructuredValues("$(context.pipelineRun.name)"),
+				Value: *v1.NewStructuredValues("$(context.pipelineRun.name)"),
 			}},
 		},
 	}
 	pipelineYAML := strings.Join([]string{
 		"kind: Pipeline",
-		"apiVersion: tekton.dev/v1beta1",
+		"apiVersion: tekton.dev/v1",
 		pipelineYAMLString,
 	}, "\n")
 
 	resolved := test.NewResolvedResource([]byte(pipelineYAML), nil, sampleRefSource.DeepCopy(), nil)
 	requester := &test.Requester{
 		ResolvedResource: resolved,
-		Params: v1beta1.Params{{
+		Params: v1.Params{{
 			Name:  "foo",
-			Value: *v1beta1.NewStructuredValues("bar"),
+			Value: *v1.NewStructuredValues("bar"),
 		}, {
 			Name:  "bar",
-			Value: *v1beta1.NewStructuredValues("test-pipeline"),
+			Value: *v1.NewStructuredValues("test-pipeline"),
 		}},
 	}
-	fn := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1beta1.PipelineRun{
+	fn := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pipeline",
 			Namespace: "default",
 		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        pipelineRef,
-			ServiceAccountName: "default",
-			Params: v1beta1.Params{{
+		Spec: v1.PipelineRunSpec{
+			PipelineRef: pipelineRef,
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				ServiceAccountName: "default",
+			},
+			Params: []v1.Param{{
 				Name:  "resolver-param",
-				Value: *v1beta1.NewStructuredValues("bar"),
+				Value: *v1.NewStructuredValues("bar"),
 			}},
 		},
 	}, nil /*VerificationPolicies*/)
@@ -504,30 +419,32 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 		t.Errorf("refSources did not match: %s", diff.PrintWantGot(d))
 	}
 
-	pipelineRefNotMatching := &v1beta1.PipelineRef{
-		ResolverRef: v1beta1.ResolverRef{
+	pipelineRefNotMatching := &v1.PipelineRef{
+		ResolverRef: v1.ResolverRef{
 			Resolver: "git",
-			Params: v1beta1.Params{{
+			Params: []v1.Param{{
 				Name:  "foo",
-				Value: *v1beta1.NewStructuredValues("$(params.resolver-param)"),
+				Value: *v1.NewStructuredValues("$(params.resolver-param)"),
 			}, {
 				Name:  "bar",
-				Value: *v1beta1.NewStructuredValues("$(context.pipelineRun.name)"),
+				Value: *v1.NewStructuredValues("$(context.pipelineRun.name)"),
 			}},
 		},
 	}
 
-	fnNotMatching := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1beta1.PipelineRun{
+	fnNotMatching := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "other-pipeline",
 			Namespace: "default",
 		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        pipelineRefNotMatching,
-			ServiceAccountName: "default",
-			Params: v1beta1.Params{{
+		Spec: v1.PipelineRunSpec{
+			PipelineRef: pipelineRefNotMatching,
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				ServiceAccountName: "default",
+			},
+			Params: []v1.Param{{
 				Name:  "resolver-param",
-				Value: *v1beta1.NewStructuredValues("banana"),
+				Value: *v1.NewStructuredValues("banana"),
 			}},
 		},
 	}, nil /*VerificationPolicies*/)
@@ -545,15 +462,17 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 	ctx := context.Background()
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
-	pipelineRef := &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
+	pipelineRef := &v1.PipelineRef{ResolverRef: v1.ResolverRef{Resolver: "git"}}
 	resolvesTo := []byte("INVALID YAML")
 	resource := test.NewResolvedResource(resolvesTo, nil, nil, nil)
 	requester := test.NewRequester(resource, nil)
-	fn := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1beta1.PipelineRun{
+	fn := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        pipelineRef,
-			ServiceAccountName: "default",
+		Spec: v1.PipelineRunSpec{
+			PipelineRef: pipelineRef,
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				ServiceAccountName: "default",
+			},
 		},
 	}, nil /*VerificationPolicies*/)
 	if _, _, _, err := fn(ctx, pipelineRef.Name); err == nil {
@@ -567,11 +486,16 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 	tektonclient := fake.NewSimpleClientset()
 
 	unsignedPipeline := test.GetUnsignedPipeline("test-pipeline")
+	unsignedV1Pipeline := &v1.Pipeline{}
+	unsignedPipeline.ConvertTo(ctx, unsignedV1Pipeline)
+	unsignedV1Pipeline.APIVersion = "tekton.dev/v1"
+	unsignedV1Pipeline.Kind = "Pipeline"
+
 	unsignedPipelineBytes, err := json.Marshal(unsignedPipeline)
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
 	}
-	noMatchPolicyRefSource := &v1beta1.RefSource{
+	noMatchPolicyRefSource := &v1.RefSource{
 		URI: "abc.com",
 		Digest: map[string]string{
 			"sha1": "a123",
@@ -585,11 +509,16 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
+	signedV1Pipeline := &v1.Pipeline{}
+	signedPipeline.ConvertTo(ctx, signedV1Pipeline)
+	signedV1Pipeline.APIVersion = "tekton.dev/v1"
+	signedV1Pipeline.Kind = "Pipeline"
+
 	signedPipelineBytes, err := json.Marshal(signedPipeline)
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
 	}
-	matchPolicyRefSource := &v1beta1.RefSource{
+	matchPolicyRefSource := &v1.RefSource{
 		URI: "	https://github.com/tektoncd/catalog.git",
 		Digest: map[string]string{
 			"sha1": "a123",
@@ -599,32 +528,38 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 	resolvedMatched := test.NewResolvedResource(signedPipelineBytes, nil, matchPolicyRefSource, nil)
 	requesterMatched := test.NewRequester(resolvedMatched, nil)
 
-	pipelineRef := &v1beta1.PipelineRef{
+	pipelineRef := &v1.PipelineRef{
 		Name: signedPipeline.Name,
-		ResolverRef: v1beta1.ResolverRef{
+		ResolverRef: v1.ResolverRef{
 			Resolver: "git",
 		},
 	}
 
-	pr := v1beta1.PipelineRun{
+	pr := v1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        pipelineRef,
-			ServiceAccountName: "default",
+		Spec: v1.PipelineRunSpec{
+			PipelineRef: pipelineRef,
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				ServiceAccountName: "default",
+			},
 		},
 	}
 
-	prWithStatus := v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        pipelineRef,
-			ServiceAccountName: "default",
+	prWithStatus := v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "trusted-resources",
 		},
-		Status: v1beta1.PipelineRunStatus{
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				PipelineSpec: &signedPipeline.Spec,
-				Provenance: &v1beta1.Provenance{
-					RefSource: &v1beta1.RefSource{
+		Spec: v1.PipelineRunSpec{
+			PipelineRef: pipelineRef,
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				ServiceAccountName: "default",
+			},
+		},
+		Status: v1.PipelineRunStatus{
+			PipelineRunStatusFields: v1.PipelineRunStatusFields{
+				PipelineSpec: &signedV1Pipeline.Spec,
+				Provenance: &v1.Provenance{
+					RefSource: &v1.RefSource{
 						URI:        "abc.com",
 						Digest:     map[string]string{"sha1": "a123"},
 						EntryPoint: "foo/bar",
@@ -634,7 +569,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 		},
 	}
 
-	warnPolicyRefSource := &v1beta1.RefSource{
+	warnPolicyRefSource := &v1.RefSource{
 		URI: "	warnVP",
 	}
 	resolvedUnsignedMatched := test.NewResolvedResource(unsignedPipelineBytes, nil, warnPolicyRefSource, nil)
@@ -644,10 +579,10 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 		name                       string
 		requester                  *test.Requester
 		verificationNoMatchPolicy  string
-		pipelinerun                v1beta1.PipelineRun
+		pipelinerun                v1.PipelineRun
 		policies                   []*v1alpha1.VerificationPolicy
 		expected                   runtime.Object
-		expectedRefSource          *v1beta1.RefSource
+		expectedRefSource          *v1.RefSource
 		expectedVerificationResult *trustedresources.VerificationResult
 	}{{
 		name:                       "signed pipeline with matching policy pass verification with enforce no match policy",
@@ -655,7 +590,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
 		pipelinerun:                pr,
 		policies:                   vps,
-		expected:                   signedPipeline,
+		expected:                   signedV1Pipeline,
 		expectedRefSource:          matchPolicyRefSource,
 		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
 	}, {
@@ -664,7 +599,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 		verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
 		pipelinerun:                pr,
 		policies:                   vps,
-		expected:                   signedPipeline,
+		expected:                   signedV1Pipeline,
 		expectedRefSource:          matchPolicyRefSource,
 		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
 	}, {
@@ -673,7 +608,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 		verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
 		pipelinerun:                pr,
 		policies:                   vps,
-		expected:                   signedPipeline,
+		expected:                   signedV1Pipeline,
 		expectedRefSource:          matchPolicyRefSource,
 		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
 	}, {
@@ -682,7 +617,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 		verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
 		pipelinerun:                pr,
 		policies:                   vps,
-		expected:                   unsignedPipeline,
+		expected:                   unsignedV1Pipeline,
 		expectedRefSource:          noMatchPolicyRefSource,
 		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationWarn, Err: trustedresources.ErrNoMatchedPolicies},
 	}, {
@@ -691,7 +626,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
 		pipelinerun:                pr,
 		policies:                   vps,
-		expected:                   unsignedPipeline,
+		expected:                   unsignedV1Pipeline,
 		expectedRefSource:          warnPolicyRefSource,
 		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationWarn, Err: trustedresources.ErrResourceVerificationFailed},
 	}, {
@@ -700,7 +635,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 		verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
 		pipelinerun:                pr,
 		policies:                   vps,
-		expected:                   unsignedPipeline,
+		expected:                   unsignedV1Pipeline,
 		expectedRefSource:          noMatchPolicyRefSource,
 		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationSkip},
 	}, {
@@ -709,12 +644,12 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 		verificationNoMatchPolicy: config.FailNoMatchPolicy,
 		pipelinerun:               prWithStatus,
 		policies:                  vps,
-		expected: &v1beta1.Pipeline{
+		expected: &v1.Pipeline{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      signedPipeline.Name,
-				Namespace: signedPipeline.Namespace,
+				Name:      signedV1Pipeline.Name,
+				Namespace: signedV1Pipeline.Namespace,
 			},
-			Spec: signedPipeline.Spec,
+			Spec: signedV1Pipeline.Spec,
 		},
 		expectedRefSource:          noMatchPolicyRefSource,
 		expectedVerificationResult: nil,
@@ -733,7 +668,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 				t.Errorf("resolvedPipeline did not match: %s", diff.PrintWantGot(d))
 			}
 			if d := cmp.Diff(tc.expectedRefSource, gotSource); d != "" {
-				t.Errorf("configSources did not match: %s", diff.PrintWantGot(d))
+				t.Errorf("refSources did not match: %s", diff.PrintWantGot(d))
 			}
 			if tc.expectedVerificationResult == nil {
 				if gotVerificationResult != nil {
@@ -758,7 +693,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyError(t *testing.T) {
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
 	}
-	matchPolicyRefSource := &v1beta1.RefSource{
+	matchPolicyRefSource := &v1.RefSource{
 		URI: "https://github.com/tektoncd/catalog.git",
 		Digest: map[string]string{
 			"sha1": "a123",
@@ -778,7 +713,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyError(t *testing.T) {
 		t.Fatal("fail to marshal pipeline", err)
 	}
 
-	noMatchPolicyRefSource := &v1beta1.RefSource{
+	noMatchPolicyRefSource := &v1.RefSource{
 		URI: "abc.com",
 		Digest: map[string]string{
 			"sha1": "a123",
@@ -797,7 +732,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyError(t *testing.T) {
 	resolvedModified := test.NewResolvedResource(modifiedPipelineBytes, nil, matchPolicyRefSource, nil)
 	requesterModified := test.NewRequester(resolvedModified, nil)
 
-	pipelineRef := &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
+	pipelineRef := &v1.PipelineRef{ResolverRef: v1.ResolverRef{Resolver: "git"}}
 
 	testcases := []struct {
 		name                       string
@@ -845,11 +780,13 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyError(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx = test.SetupTrustedResourceConfig(ctx, tc.verificationNoMatchPolicy)
-			pr := &v1beta1.PipelineRun{
+			pr := &v1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
-				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef:        pipelineRef,
-					ServiceAccountName: "default",
+				Spec: v1.PipelineRunSpec{
+					PipelineRef: pipelineRef,
+					TaskRunTemplate: v1.PipelineTaskRunTemplate{
+						ServiceAccountName: "default",
+					},
 				},
 			}
 			fn := resources.GetPipelineFunc(ctx, k8sclient, tektonclient, tc.requester, pr, vps)
@@ -884,7 +821,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
 	}
-	noMatchPolicyRefSource := &v1beta1.RefSource{
+	noMatchPolicyRefSource := &v1.RefSource{
 		URI: "abc.com",
 		Digest: map[string]string{
 			"sha1": "a123",
@@ -913,7 +850,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
 	}
-	matchPolicyRefSource := &v1beta1.RefSource{
+	matchPolicyRefSource := &v1.RefSource{
 		URI: "	https://github.com/tektoncd/catalog.git",
 		Digest: map[string]string{
 			"sha1": "a123",
@@ -923,32 +860,36 @@ func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 	resolvedMatched := test.NewResolvedResource(signedPipelineBytes, nil, matchPolicyRefSource, nil)
 	requesterMatched := test.NewRequester(resolvedMatched, nil)
 
-	pipelineRef := &v1beta1.PipelineRef{
+	pipelineRef := &v1.PipelineRef{
 		Name: signedPipeline.Name,
-		ResolverRef: v1beta1.ResolverRef{
+		ResolverRef: v1.ResolverRef{
 			Resolver: "git",
 		},
 	}
 
-	pr := v1beta1.PipelineRun{
+	pr := v1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        pipelineRef,
-			ServiceAccountName: "default",
+		Spec: v1.PipelineRunSpec{
+			PipelineRef: pipelineRef,
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				ServiceAccountName: "default",
+			},
 		},
 	}
 
-	prWithStatus := v1beta1.PipelineRun{
+	prWithStatus := v1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        pipelineRef,
-			ServiceAccountName: "default",
+		Spec: v1.PipelineRunSpec{
+			PipelineRef: pipelineRef,
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				ServiceAccountName: "default",
+			},
 		},
-		Status: v1beta1.PipelineRunStatus{
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				PipelineSpec: &v1beta1SignedPipeline.Spec,
-				Provenance: &v1beta1.Provenance{
-					RefSource: &v1beta1.RefSource{
+		Status: v1.PipelineRunStatus{
+			PipelineRunStatusFields: v1.PipelineRunStatusFields{
+				PipelineSpec: &signedPipeline.Spec,
+				Provenance: &v1.Provenance{
+					RefSource: &v1.RefSource{
 						URI:        "abc.com",
 						Digest:     map[string]string{"sha1": "a123"},
 						EntryPoint: "foo/bar",
@@ -958,7 +899,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 		},
 	}
 
-	warnPolicyRefSource := &v1beta1.RefSource{
+	warnPolicyRefSource := &v1.RefSource{
 		URI: "	warnVP",
 	}
 	resolvedUnsignedMatched := test.NewResolvedResource(unsignedPipelineBytes, nil, warnPolicyRefSource, nil)
@@ -968,10 +909,10 @@ func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 		name                       string
 		requester                  *test.Requester
 		verificationNoMatchPolicy  string
-		pipelinerun                v1beta1.PipelineRun
+		pipelinerun                v1.PipelineRun
 		policies                   []*v1alpha1.VerificationPolicy
 		expected                   runtime.Object
-		expectedRefSource          *v1beta1.RefSource
+		expectedRefSource          *v1.RefSource
 		expectedVerificationResult *trustedresources.VerificationResult
 	}{{
 		name:                       "signed pipeline with matching policy pass verification with enforce no match policy",
@@ -979,7 +920,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
 		pipelinerun:                pr,
 		policies:                   vps,
-		expected:                   v1beta1SignedPipeline,
+		expected:                   signedPipeline,
 		expectedRefSource:          matchPolicyRefSource,
 		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
 	}, {
@@ -988,7 +929,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 		verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
 		pipelinerun:                pr,
 		policies:                   vps,
-		expected:                   v1beta1SignedPipeline,
+		expected:                   signedPipeline,
 		expectedRefSource:          matchPolicyRefSource,
 		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
 	}, {
@@ -997,7 +938,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 		verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
 		pipelinerun:                pr,
 		policies:                   vps,
-		expected:                   v1beta1SignedPipeline,
+		expected:                   signedPipeline,
 		expectedRefSource:          matchPolicyRefSource,
 		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
 	}, {
@@ -1006,7 +947,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 		verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
 		pipelinerun:                pr,
 		policies:                   vps,
-		expected:                   v1beta1UnsignedPipeline,
+		expected:                   unsignedV1Pipeline,
 		expectedRefSource:          noMatchPolicyRefSource,
 		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationWarn, Err: trustedresources.ErrNoMatchedPolicies},
 	}, {
@@ -1015,7 +956,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
 		pipelinerun:                pr,
 		policies:                   vps,
-		expected:                   v1beta1UnsignedPipeline,
+		expected:                   unsignedV1Pipeline,
 		expectedRefSource:          warnPolicyRefSource,
 		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationWarn, Err: trustedresources.ErrResourceVerificationFailed},
 	}, {
@@ -1024,7 +965,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 		verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
 		pipelinerun:                pr,
 		policies:                   vps,
-		expected:                   v1beta1UnsignedPipeline,
+		expected:                   unsignedV1Pipeline,
 		expectedRefSource:          noMatchPolicyRefSource,
 		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationSkip},
 	}, {
@@ -1033,12 +974,12 @@ func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 		verificationNoMatchPolicy: config.FailNoMatchPolicy,
 		pipelinerun:               prWithStatus,
 		policies:                  vps,
-		expected: &v1beta1.Pipeline{
+		expected: &v1.Pipeline{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      signedPipeline.Name,
 				Namespace: signedPipeline.Namespace,
 			},
-			Spec: v1beta1SignedPipeline.Spec,
+			Spec: signedPipeline.Spec,
 		},
 		expectedRefSource:          noMatchPolicyRefSource,
 		expectedVerificationResult: nil,
@@ -1057,7 +998,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 				t.Errorf("resolvedPipeline did not match: %s", diff.PrintWantGot(d))
 			}
 			if d := cmp.Diff(tc.expectedRefSource, gotSource); d != "" {
-				t.Errorf("configSources did not match: %s", diff.PrintWantGot(d))
+				t.Errorf("refSources did not match: %s", diff.PrintWantGot(d))
 			}
 			if tc.expectedVerificationResult == nil {
 				if gotVerificationResult != nil {
@@ -1081,7 +1022,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyError(t *testing.T) {
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
 	}
-	matchPolicyRefSource := &v1beta1.RefSource{
+	matchPolicyRefSource := &v1.RefSource{
 		URI: "https://github.com/tektoncd/catalog.git",
 		Digest: map[string]string{
 			"sha1": "a123",
@@ -1101,7 +1042,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyError(t *testing.T) {
 		t.Fatal("fail to marshal pipeline", err)
 	}
 
-	noMatchPolicyRefSource := &v1beta1.RefSource{
+	noMatchPolicyRefSource := &v1.RefSource{
 		URI: "abc.com",
 		Digest: map[string]string{
 			"sha1": "a123",
@@ -1120,7 +1061,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyError(t *testing.T) {
 	resolvedModified := test.NewResolvedResource(modifiedPipelineBytes, nil, matchPolicyRefSource, nil)
 	requesterModified := test.NewRequester(resolvedModified, nil)
 
-	pipelineRef := &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
+	pipelineRef := &v1.PipelineRef{ResolverRef: v1.ResolverRef{Resolver: "git"}}
 
 	testcases := []struct {
 		name                       string
@@ -1168,11 +1109,11 @@ func TestGetPipelineFunc_V1Pipeline_VerifyError(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx = test.SetupTrustedResourceConfig(ctx, tc.verificationNoMatchPolicy)
-			pr := &v1beta1.PipelineRun{
+			pr := &v1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
-				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef:        pipelineRef,
-					ServiceAccountName: "default",
+				Spec: v1.PipelineRunSpec{
+					PipelineRef:     pipelineRef,
+					TaskRunTemplate: v1.PipelineTaskRunTemplate{ServiceAccountName: "default"},
 				},
 			}
 			fn := resources.GetPipelineFunc(ctx, k8sclient, tektonclient, tc.requester, pr, vps)
@@ -1203,42 +1144,27 @@ func TestGetPipelineFunc_GetFuncError(t *testing.T) {
 	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
 	resolvedUnsigned.DataErr = fmt.Errorf("resolution error")
 
-	prBundleError := &v1beta1.PipelineRun{
+	prResolutionError := &v1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{
-				Name:   "pipelineName",
-				Bundle: "bundle",
-			},
-			ServiceAccountName: "default",
-		},
-	}
-
-	prResolutionError := &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{
+		Spec: v1.PipelineRunSpec{
+			PipelineRef: &v1.PipelineRef{
 				Name: "pipelineName",
-				ResolverRef: v1beta1.ResolverRef{
+				ResolverRef: v1.ResolverRef{
 					Resolver: "git",
 				},
 			},
-			ServiceAccountName: "default",
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				ServiceAccountName: "default",
+			},
 		},
 	}
 
 	testcases := []struct {
 		name        string
 		requester   *test.Requester
-		pipelinerun v1beta1.PipelineRun
+		pipelinerun v1.PipelineRun
 		expectedErr error
 	}{
-		{
-			name:        "get error when oci bundle return error",
-			requester:   requesterUnsigned,
-			pipelinerun: *prBundleError,
-			expectedErr: fmt.Errorf(`failed to get keychain: serviceaccounts "default" not found`),
-		},
 		{
 			name:        "get error when remote resolution return error",
 			requester:   requesterUnsigned,
@@ -1271,29 +1197,29 @@ func TestGetPipelineFunc_GetFuncError(t *testing.T) {
 	}
 }
 
-func basePipeline(name string) *v1beta1.Pipeline {
-	return &v1beta1.Pipeline{
+func basePipeline(name string) *v1.Pipeline {
+	return &v1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: "default",
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pipeline",
-			APIVersion: "tekton.dev/v1beta1",
+			APIVersion: "tekton.dev/v1",
 		},
 	}
 }
 
-func simplePipeline() *v1beta1.Pipeline {
+func simplePipeline() *v1.Pipeline {
 	return basePipeline("simple")
 }
 
-func simplePipelineWithBaseSpec() *v1beta1.Pipeline {
+func simplePipelineWithBaseSpec() *v1.Pipeline {
 	p := simplePipeline()
-	p.Spec = v1beta1.PipelineSpec{
-		Tasks: []v1beta1.PipelineTask{{
+	p.Spec = v1.PipelineSpec{
+		Tasks: []v1.PipelineTask{{
 			Name: "something",
-			TaskRef: &v1beta1.TaskRef{
+			TaskRef: &v1.TaskRef{
 				Name: "something",
 			},
 		}},
@@ -1345,7 +1271,7 @@ spec:
     type: ""
 `
 
-func getSignedV1Pipeline(unsigned *pipelinev1.Pipeline, signer signature.Signer, name string) (*pipelinev1.Pipeline, error) {
+func getSignedV1Pipeline(unsigned *v1.Pipeline, signer signature.Signer, name string) (*v1.Pipeline, error) {
 	signed := unsigned.DeepCopy()
 	signed.Name = name
 	if signed.Annotations == nil {

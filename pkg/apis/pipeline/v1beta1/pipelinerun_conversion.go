@@ -123,7 +123,7 @@ func (prs *PipelineRunSpec) ConvertFrom(ctx context.Context, source *v1.Pipeline
 	prs.Params = nil
 	for _, p := range source.Params {
 		new := Param{}
-		new.convertFrom(ctx, p)
+		new.ConvertFrom(ctx, p)
 		prs.Params = append(prs.Params, new)
 	}
 	prs.ServiceAccountName = source.TaskRunTemplate.ServiceAccountName
@@ -137,7 +137,7 @@ func (prs *PipelineRunSpec) ConvertFrom(ctx context.Context, source *v1.Pipeline
 	prs.Workspaces = nil
 	for _, w := range source.Workspaces {
 		new := WorkspaceBinding{}
-		new.convertFrom(ctx, w)
+		new.ConvertFrom(ctx, w)
 		prs.Workspaces = append(prs.Workspaces, new)
 	}
 	prs.TaskRunSpecs = nil

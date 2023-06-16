@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	status "github.com/tektoncd/pipeline/pkg/status"
@@ -38,14 +39,14 @@ import (
 func TestGetTaskRunStatusForPipelineTask(t *testing.T) {
 	testCases := []struct {
 		name           string
-		taskRun        *v1beta1.TaskRun
-		childRef       v1beta1.ChildStatusReference
-		expectedStatus *v1beta1.TaskRunStatus
+		taskRun        *v1.TaskRun
+		childRef       v1.ChildStatusReference
+		expectedStatus *v1.TaskRunStatus
 		expectedErr    error
 	}{
 		{
 			name: "wrong kind",
-			childRef: v1beta1.ChildStatusReference{
+			childRef: v1.ChildStatusReference{
 				TypeMeta: runtime.TypeMeta{
 					Kind: "something-else",
 				},
@@ -54,7 +55,7 @@ func TestGetTaskRunStatusForPipelineTask(t *testing.T) {
 			expectedErr: errors.New("could not fetch status for PipelineTask some-task: should have kind TaskRun, but is something-else"),
 		}, {
 			name: "taskrun not found",
-			childRef: v1beta1.ChildStatusReference{
+			childRef: v1.ChildStatusReference{
 				TypeMeta: runtime.TypeMeta{
 					Kind: "TaskRun",
 				},
@@ -63,7 +64,7 @@ func TestGetTaskRunStatusForPipelineTask(t *testing.T) {
 			},
 		}, {
 			name: "success",
-			taskRun: parse.MustParseV1beta1TaskRun(t, `
+			taskRun: parse.MustParseV1TaskRun(t, `
 metadata:
   name: some-task-run
 spec: {}
@@ -73,19 +74,19 @@ status:
     type: Succeeded
   podName: my-pod-name
 `),
-			childRef: v1beta1.ChildStatusReference{
+			childRef: v1.ChildStatusReference{
 				TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
 				Name:             "some-task-run",
 				PipelineTaskName: "some-task",
 			},
-			expectedStatus: &v1beta1.TaskRunStatus{
+			expectedStatus: &v1.TaskRunStatus{
 				Status: duckv1.Status{
 					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionFalse,
 					}},
 				},
-				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
 					PodName: "my-pod-name",
 				},
 			},
@@ -97,7 +98,7 @@ status:
 			ctx, _ := ttesting.SetupFakeContext(t)
 			d := test.Data{}
 			if tc.taskRun != nil {
-				d.TaskRuns = []*v1beta1.TaskRun{tc.taskRun}
+				d.TaskRuns = []*v1.TaskRun{tc.taskRun}
 			}
 			clients, _ := test.SeedTestData(t, ctx, d)
 
@@ -126,13 +127,13 @@ func TestGetRunStatusForPipelineTask(t *testing.T) {
 	testCases := []struct {
 		name           string
 		run            *v1beta1.CustomRun
-		childRef       v1beta1.ChildStatusReference
+		childRef       v1.ChildStatusReference
 		expectedStatus *v1beta1.CustomRunStatus
 		expectedErr    error
 	}{
 		{
 			name: "wrong kind",
-			childRef: v1beta1.ChildStatusReference{
+			childRef: v1.ChildStatusReference{
 				TypeMeta: runtime.TypeMeta{
 					Kind: "something-else",
 				},
@@ -141,7 +142,7 @@ func TestGetRunStatusForPipelineTask(t *testing.T) {
 			expectedErr: errors.New("could not fetch status for PipelineTask some-task: should have kind CustomRun, but is something-else"),
 		}, {
 			name: "run not found",
-			childRef: v1beta1.ChildStatusReference{
+			childRef: v1.ChildStatusReference{
 				TypeMeta: runtime.TypeMeta{
 					Kind: "CustomRun",
 				},
@@ -159,7 +160,7 @@ status:
   - status: "False"
     type: Succeeded
 `),
-			childRef: v1beta1.ChildStatusReference{
+			childRef: v1.ChildStatusReference{
 				TypeMeta:         runtime.TypeMeta{Kind: "CustomRun"},
 				Name:             "some-run",
 				PipelineTaskName: "some-task",
@@ -206,7 +207,7 @@ status:
 }
 
 func TestGetPipelineTaskStatuses(t *testing.T) {
-	tr1 := parse.MustParseV1beta1TaskRun(t, `
+	tr1 := parse.MustParseV1TaskRun(t, `
 metadata:
   name: pr-task-1
 spec: {}
@@ -214,7 +215,7 @@ status:
   conditions:
   - status: "True"
     type: Succeeded
-  taskResults:
+  results:
   - name: aResult
     value: aResultValue
 `)
@@ -236,11 +237,11 @@ status:
 
 	testCases := []struct {
 		name                string
-		originalPR          *v1beta1.PipelineRun
-		taskRuns            []*v1beta1.TaskRun
+		originalPR          *v1.PipelineRun
+		taskRuns            []*v1.TaskRun
 		runs                []*v1beta1.CustomRun
-		expectedTRStatuses  map[string]*v1beta1.PipelineRunTaskRunStatus
-		expectedRunStatuses map[string]*v1beta1.PipelineRunRunStatus
+		expectedTRStatuses  map[string]*v1.PipelineRunTaskRunStatus
+		expectedRunStatuses map[string]*v1.PipelineRunRunStatus
 		expectedErr         error
 	}{
 		{
@@ -252,7 +253,7 @@ status:
 		},
 		{
 			name: "taskruns and customruns",
-			originalPR: parse.MustParseV1beta1PipelineRun(t, `
+			originalPR: parse.MustParseV1PipelineRun(t, `
 metadata:
   name: pr
 spec: {}
@@ -272,7 +273,7 @@ status:
     status: Unknown
     type: Succeeded
 `),
-			taskRuns: []*v1beta1.TaskRun{tr1},
+			taskRuns: []*v1.TaskRun{tr1},
 			runs:     []*v1beta1.CustomRun{customRun1},
 			expectedTRStatuses: mustParseTaskRunStatusMap(t, `
 pr-task-1:
@@ -281,7 +282,7 @@ pr-task-1:
     conditions:
     - status: "True"
       type: Succeeded
-    taskResults:
+    results:
     - name: aResult
       value: aResultValue
 `),
@@ -301,7 +302,7 @@ pr-run-1:
 			expectedErr: nil,
 		}, {
 			name: "missing run",
-			originalPR: parse.MustParseV1beta1PipelineRun(t, `
+			originalPR: parse.MustParseV1PipelineRun(t, `
 metadata:
   name: pr
 spec: {}
@@ -321,7 +322,7 @@ status:
     status: Unknown
     type: Succeeded
 `),
-			taskRuns: []*v1beta1.TaskRun{tr1},
+			taskRuns: []*v1.TaskRun{tr1},
 			expectedTRStatuses: mustParseTaskRunStatusMap(t, `
 pr-task-1:
   pipelineTaskName: task-1
@@ -329,7 +330,7 @@ pr-task-1:
     conditions:
     - status: "True"
       type: Succeeded
-    taskResults:
+    results:
     - name: aResult
       value: aResultValue
 `),
@@ -348,7 +349,7 @@ pr-run-1:
 			d := test.Data{}
 
 			if tc.originalPR != nil {
-				d.PipelineRuns = []*v1beta1.PipelineRun{tc.originalPR}
+				d.PipelineRuns = []*v1.PipelineRun{tc.originalPR}
 			}
 			d.TaskRuns = append(d.TaskRuns, tc.taskRuns...)
 			d.CustomRuns = append(d.CustomRuns, tc.runs...)
@@ -378,18 +379,18 @@ pr-run-1:
 	}
 }
 
-func mustParseTaskRunStatusMap(t *testing.T, yamlStr string) map[string]*v1beta1.PipelineRunTaskRunStatus {
+func mustParseTaskRunStatusMap(t *testing.T, yamlStr string) map[string]*v1.PipelineRunTaskRunStatus {
 	t.Helper()
-	var output map[string]*v1beta1.PipelineRunTaskRunStatus
+	var output map[string]*v1.PipelineRunTaskRunStatus
 	if err := yaml.Unmarshal([]byte(yamlStr), &output); err != nil {
 		t.Fatalf("parsing task run status map %s: %v", yamlStr, err)
 	}
 	return output
 }
 
-func mustParseRunStatusMap(t *testing.T, yamlStr string) map[string]*v1beta1.PipelineRunRunStatus {
+func mustParseRunStatusMap(t *testing.T, yamlStr string) map[string]*v1.PipelineRunRunStatus {
 	t.Helper()
-	var output map[string]*v1beta1.PipelineRunRunStatus
+	var output map[string]*v1.PipelineRunRunStatus
 	if err := yaml.Unmarshal([]byte(yamlStr), &output); err != nil {
 		t.Fatalf("parsing run status map %s: %v", yamlStr, err)
 	}

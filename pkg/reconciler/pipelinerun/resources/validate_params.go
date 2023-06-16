@@ -19,16 +19,16 @@ package resources
 import (
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 	trresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 )
 
 // ValidateParamTypesMatching validate that parameters in PipelineRun override corresponding parameters in Pipeline of the same type.
-func ValidateParamTypesMatching(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) error {
+func ValidateParamTypesMatching(p *v1.PipelineSpec, pr *v1.PipelineRun) error {
 	// Build a map of parameter names/types declared in p.
-	paramTypes := make(map[string]v1beta1.ParamType)
+	paramTypes := make(map[string]v1.ParamType)
 	for _, param := range p.Params {
 		paramTypes[param.Name] = param.Type
 	}
@@ -52,7 +52,7 @@ func ValidateParamTypesMatching(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun
 
 // ValidateRequiredParametersProvided validates that all the parameters expected by the Pipeline are provided by the PipelineRun.
 // Extra Parameters are allowed, the Pipeline will use the Parameters it needs and ignore the other Parameters.
-func ValidateRequiredParametersProvided(pipelineParameters *v1beta1.ParamSpecs, pipelineRunParameters *v1beta1.Params) error {
+func ValidateRequiredParametersProvided(pipelineParameters *v1.ParamSpecs, pipelineRunParameters *v1.Params) error {
 	// Build a list of parameter names declared in pr.
 	var providedParams []string
 	for _, param := range *pipelineRunParameters {
@@ -77,7 +77,7 @@ func ValidateRequiredParametersProvided(pipelineParameters *v1beta1.ParamSpecs, 
 }
 
 // ValidateObjectParamRequiredKeys validates that the required keys of all the object parameters expected by the Pipeline are provided by the PipelineRun.
-func ValidateObjectParamRequiredKeys(pipelineParameters []v1beta1.ParamSpec, pipelineRunParameters v1beta1.Params) error {
+func ValidateObjectParamRequiredKeys(pipelineParameters []v1.ParamSpec, pipelineRunParameters []v1.Param) error {
 	missings := taskrun.MissingKeysObjectParamNames(pipelineParameters, pipelineRunParameters)
 	if len(missings) != 0 {
 		return fmt.Errorf("PipelineRun missing object keys for parameters: %v", missings)
@@ -95,7 +95,7 @@ func ValidateParameterTypesInMatrix(state PipelineRunState) error {
 		if m.HasInclude() {
 			for _, include := range m.Include {
 				for _, param := range include.Params {
-					if param.Value.Type != v1beta1.ParamTypeString {
+					if param.Value.Type != v1.ParamTypeString {
 						return fmt.Errorf("parameters of type string only are allowed, but param %s has type %s", param.Name, string(param.Value.Type))
 					}
 				}
@@ -103,7 +103,7 @@ func ValidateParameterTypesInMatrix(state PipelineRunState) error {
 		}
 		if m.HasParams() {
 			for _, param := range m.Params {
-				if param.Value.Type != v1beta1.ParamTypeArray {
+				if param.Value.Type != v1.ParamTypeArray {
 					return fmt.Errorf("parameters of type array only are allowed, but param %s has type %s", param.Name, string(param.Value.Type))
 				}
 			}
@@ -115,6 +115,6 @@ func ValidateParameterTypesInMatrix(state PipelineRunState) error {
 // ValidateParamArrayIndex validates if the param reference to an array param is out of bound.
 // error is returned when the array indexing reference is out of bound of the array param
 // e.g. if a param reference of $(params.array-param[2]) and the array param is of length 2.
-func ValidateParamArrayIndex(ps *v1beta1.PipelineSpec, params v1beta1.Params) error {
+func ValidateParamArrayIndex(ps *v1.PipelineSpec, params v1.Params) error {
 	return trresources.ValidateOutOfBoundArrayParams(ps.Params, params, ps.GetIndexingReferencesToArrayParams())
 }

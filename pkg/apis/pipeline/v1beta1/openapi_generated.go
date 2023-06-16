@@ -6012,7 +6012,7 @@ func schema_pkg_apis_resolution_v1beta1_ResolutionRequestSpec(ref common.Referen
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param"),
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"),
 									},
 								},
 							},
@@ -6022,7 +6022,7 @@ func schema_pkg_apis_resolution_v1beta1_ResolutionRequestSpec(ref common.Referen
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"},
 	}
 }
 
@@ -6087,13 +6087,13 @@ func schema_pkg_apis_resolution_v1beta1_ResolutionRequestStatus(ref common.Refer
 					"source": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Deprecated: Use RefSource instead",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource"),
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.RefSource"),
 						},
 					},
 					"refSource": {
 						SchemaProps: spec.SchemaProps{
 							Description: "RefSource is the source reference of the remote data that records the url, digest and the entrypoint.",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.RefSource"),
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.RefSource"),
 						},
 					},
 				},
@@ -6101,7 +6101,7 @@ func schema_pkg_apis_resolution_v1beta1_ResolutionRequestStatus(ref common.Refer
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.RefSource", "knative.dev/pkg/apis.Condition"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.RefSource", "knative.dev/pkg/apis.Condition"},
 	}
 }
 
@@ -6123,13 +6123,13 @@ func schema_pkg_apis_resolution_v1beta1_ResolutionRequestStatusFields(ref common
 					"source": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Deprecated: Use RefSource instead",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource"),
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.RefSource"),
 						},
 					},
 					"refSource": {
 						SchemaProps: spec.SchemaProps{
 							Description: "RefSource is the source reference of the remote data that records the url, digest and the entrypoint.",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.RefSource"),
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.RefSource"),
 						},
 					},
 				},
@@ -6137,6 +6137,6 @@ func schema_pkg_apis_resolution_v1beta1_ResolutionRequestStatusFields(ref common
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.RefSource"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.RefSource"},
 	}
 }

@@ -53,8 +53,9 @@ var bundleFeatureFlags = requireAnyGate(map[string]string{
 	"enable-api-fields":         "alpha",
 })
 
-var resolverFeatureFlags = requireAnyGate(map[string]string{
+var resolverFeatureFlags = requireAllGates(map[string]string{
 	"enable-bundles-resolver": "true",
+	"enable-api-fields":       "beta",
 })
 
 // TestTektonBundlesSimpleWorkingExample is an integration test which tests a simple, working Tekton bundle using OCI
@@ -196,7 +197,7 @@ spec:
 	setupBundle(ctx, t, c, namespace, repo, task, pipeline)
 
 	// Now generate a PipelineRun to invoke this pipeline and task.
-	pr := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
 spec:
@@ -210,16 +211,16 @@ spec:
     - name: kind
       value: pipeline
 `, pipelineRunName, repo, pipelineName))
-	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun: %s", err)
 	}
 
 	t.Logf("Waiting for PipelineRun in namespace %s to finish", namespace)
-	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, timeout, PipelineRunSucceed(pipelineRunName), "PipelineRunCompleted", v1beta1Version); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, timeout, PipelineRunSucceed(pipelineRunName), "PipelineRunCompleted", v1Version); err != nil {
 		t.Errorf("Error waiting for PipelineRun to finish with error: %s", err)
 	}
 
-	trs, err := c.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{})
+	trs, err := c.V1TaskRunClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Errorf("Error retrieving taskrun: %s", err)
 	}

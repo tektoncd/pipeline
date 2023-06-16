@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -50,7 +50,7 @@ func TestCreatePersistentVolumeClaimsForWorkspaces(t *testing.T) {
 	claimName1 := "pvc1"
 	ws1 := "myws1"
 	ownerName := "taskrun1"
-	workspaces := []v1beta1.WorkspaceBinding{{
+	workspaces := []v1.WorkspaceBinding{{
 		Name: ws1,
 		VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
@@ -130,7 +130,7 @@ func TestCreatePersistentVolumeClaimsForWorkspacesWithoutMetadata(t *testing.T) 
 	// workspace with volumeClaimTemplate without metadata
 	workspaceName := "ws-with-volume-claim-template-without-metadata"
 	ownerName := "taskrun1"
-	workspaces := []v1beta1.WorkspaceBinding{{
+	workspaces := []v1.WorkspaceBinding{{
 		Name: workspaceName,
 		VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
 			Spec: corev1.PersistentVolumeClaimSpec{},
@@ -171,7 +171,7 @@ func TestCreatePersistentVolumeClaimsForWorkspacesWithoutMetadata(t *testing.T) 
 func TestCreateExistPersistentVolumeClaims(t *testing.T) {
 	workspaceName := "ws-with-volume-claim-template"
 	ownerName := "taskrun1"
-	workspaces := []v1beta1.WorkspaceBinding{{
+	workspaces := []v1.WorkspaceBinding{{
 		Name: workspaceName,
 		VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
 			Spec: corev1.PersistentVolumeClaimSpec{},

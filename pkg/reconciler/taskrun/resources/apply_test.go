@@ -22,7 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -34,8 +34,8 @@ import (
 )
 
 var (
-	simpleTaskSpec = &v1beta1.TaskSpec{
-		Sidecars: []v1beta1.Sidecar{{
+	simpleTaskSpec = &v1.TaskSpec{
+		Sidecars: []v1.Sidecar{{
 			Name:  "foo",
 			Image: `$(params["myimage"])`,
 			Env: []corev1.EnvVar{{
@@ -43,14 +43,14 @@ var (
 				Value: "$(params['FOO'])",
 			}},
 		}},
-		StepTemplate: &v1beta1.StepTemplate{
+		StepTemplate: &v1.StepTemplate{
 			Env: []corev1.EnvVar{{
 				Name:  "template-var",
 				Value: `$(params["FOO"])`,
 			}},
 			Image: "$(params.myimage)",
 		},
-		Steps: []v1beta1.Step{{
+		Steps: []v1.Step{{
 			Name:  "foo",
 			Image: "$(params.myimage)",
 		}, {
@@ -177,8 +177,8 @@ var (
 	}
 
 	// a taskspec for testing object var in all places i.e. Sidecars, StepTemplate, Steps and Volumns
-	objectParamTaskSpec = &v1beta1.TaskSpec{
-		Sidecars: []v1beta1.Sidecar{{
+	objectParamTaskSpec = &v1.TaskSpec{
+		Sidecars: []v1.Sidecar{{
 			Name:  "foo",
 			Image: `$(params.myObject.key1)`,
 			Env: []corev1.EnvVar{{
@@ -186,14 +186,14 @@ var (
 				Value: "$(params.myObject.key2)",
 			}},
 		}},
-		StepTemplate: &v1beta1.StepTemplate{
+		StepTemplate: &v1.StepTemplate{
 			Image: "$(params.myObject.key1)",
 			Env: []corev1.EnvVar{{
 				Name:  "template-var",
 				Value: `$(params.myObject.key2)`,
 			}},
 		},
-		Steps: []v1beta1.Step{{
+		Steps: []v1.Step{{
 			Name:       "foo",
 			Image:      "$(params.myObject.key1)",
 			WorkingDir: "path/to/$(params.myObject.key2)",
@@ -298,8 +298,8 @@ var (
 		}},
 	}
 
-	simpleTaskSpecArrayIndexing = &v1beta1.TaskSpec{
-		Sidecars: []v1beta1.Sidecar{{
+	simpleTaskSpecArrayIndexing = &v1.TaskSpec{
+		Sidecars: []v1.Sidecar{{
 			Name:  "foo",
 			Image: `$(params["myimage"][0])`,
 			Env: []corev1.EnvVar{{
@@ -307,14 +307,14 @@ var (
 				Value: "$(params['FOO'][1])",
 			}},
 		}},
-		StepTemplate: &v1beta1.StepTemplate{
+		StepTemplate: &v1.StepTemplate{
 			Env: []corev1.EnvVar{{
 				Name:  "template-var",
 				Value: `$(params["FOO"][1])`,
 			}},
 			Image: "$(params.myimage[0])",
 		},
-		Steps: []v1beta1.Step{{
+		Steps: []v1.Step{{
 			Name:  "foo",
 			Image: "$(params.myimage[0])",
 		}, {
@@ -440,8 +440,8 @@ var (
 		}},
 	}
 
-	arrayParamTaskSpec = &v1beta1.TaskSpec{
-		Steps: []v1beta1.Step{{
+	arrayParamTaskSpec = &v1.TaskSpec{
+		Steps: []v1.Step{{
 			Name:  "simple-image",
 			Image: "some-image",
 		}, {
@@ -452,8 +452,8 @@ var (
 		}},
 	}
 
-	arrayAndStringParamTaskSpec = &v1beta1.TaskSpec{
-		Steps: []v1beta1.Step{{
+	arrayAndStringParamTaskSpec = &v1.TaskSpec{
+		Steps: []v1.Step{{
 			Name:  "simple-image",
 			Image: "some-image",
 		}, {
@@ -464,8 +464,8 @@ var (
 		}},
 	}
 
-	arrayAndObjectParamTaskSpec = &v1beta1.TaskSpec{
-		Steps: []v1beta1.Step{{
+	arrayAndObjectParamTaskSpec = &v1.TaskSpec{
+		Steps: []v1.Step{{
 			Name:  "simple-image",
 			Image: "some-image",
 		}, {
@@ -476,8 +476,8 @@ var (
 		}},
 	}
 
-	multipleArrayParamsTaskSpec = &v1beta1.TaskSpec{
-		Steps: []v1beta1.Step{{
+	multipleArrayParamsTaskSpec = &v1.TaskSpec{
+		Steps: []v1.Step{{
 			Name:  "simple-image",
 			Image: "some-image",
 		}, {
@@ -488,8 +488,8 @@ var (
 		}},
 	}
 
-	multipleArrayAndStringsParamsTaskSpec = &v1beta1.TaskSpec{
-		Steps: []v1beta1.Step{{
+	multipleArrayAndStringsParamsTaskSpec = &v1.TaskSpec{
+		Steps: []v1.Step{{
 			Name:  "simple-image",
 			Image: "image-$(params.string-param2)",
 		}, {
@@ -500,8 +500,8 @@ var (
 		}},
 	}
 
-	multipleArrayAndObjectParamsTaskSpec = &v1beta1.TaskSpec{
-		Steps: []v1beta1.Step{{
+	multipleArrayAndObjectParamsTaskSpec = &v1.TaskSpec{
+		Steps: []v1.Step{{
 			Name:  "simple-image",
 			Image: "image-$(params.myObject.key1)",
 		}, {
@@ -512,68 +512,68 @@ var (
 		}},
 	}
 
-	arrayTaskRun0Elements = &v1beta1.TaskRun{
-		Spec: v1beta1.TaskRunSpec{
-			Params: v1beta1.Params{{
+	arrayTaskRun0Elements = &v1.TaskRun{
+		Spec: v1.TaskRunSpec{
+			Params: []v1.Param{{
 				Name: "array-param",
-				Value: v1beta1.ParamValue{
-					Type:     v1beta1.ParamTypeArray,
+				Value: v1.ParamValue{
+					Type:     v1.ParamTypeArray,
 					ArrayVal: []string{},
 				}},
 			},
 		},
 	}
 
-	arrayTaskRun1Elements = &v1beta1.TaskRun{
-		Spec: v1beta1.TaskRunSpec{
-			Params: v1beta1.Params{{
+	arrayTaskRun1Elements = &v1.TaskRun{
+		Spec: v1.TaskRunSpec{
+			Params: []v1.Param{{
 				Name:  "array-param",
-				Value: *v1beta1.NewStructuredValues("foo"),
+				Value: *v1.NewStructuredValues("foo"),
 			}},
 		},
 	}
 
-	arrayTaskRun3Elements = &v1beta1.TaskRun{
-		Spec: v1beta1.TaskRunSpec{
-			Params: v1beta1.Params{{
+	arrayTaskRun3Elements = &v1.TaskRun{
+		Spec: v1.TaskRunSpec{
+			Params: []v1.Param{{
 				Name:  "array-param",
-				Value: *v1beta1.NewStructuredValues("foo", "bar", "third"),
+				Value: *v1.NewStructuredValues("foo", "bar", "third"),
 			}},
 		},
 	}
 
-	arrayTaskRunMultipleArrays = &v1beta1.TaskRun{
-		Spec: v1beta1.TaskRunSpec{
-			Params: v1beta1.Params{{
+	arrayTaskRunMultipleArrays = &v1.TaskRun{
+		Spec: v1.TaskRunSpec{
+			Params: []v1.Param{{
 				Name:  "array-param",
-				Value: *v1beta1.NewStructuredValues("foo", "bar", "third"),
+				Value: *v1.NewStructuredValues("foo", "bar", "third"),
 			}, {
 				Name:  "another-array-param",
-				Value: *v1beta1.NewStructuredValues("part1", "part2"),
+				Value: *v1.NewStructuredValues("part1", "part2"),
 			}},
 		},
 	}
 
-	arrayTaskRunWith1StringParam = &v1beta1.TaskRun{
-		Spec: v1beta1.TaskRunSpec{
-			Params: v1beta1.Params{{
+	arrayTaskRunWith1StringParam = &v1.TaskRun{
+		Spec: v1.TaskRunSpec{
+			Params: []v1.Param{{
 				Name:  "array-param",
-				Value: *v1beta1.NewStructuredValues("middlefirst", "middlesecond"),
+				Value: *v1.NewStructuredValues("middlefirst", "middlesecond"),
 			}, {
 				Name:  "normal-param",
-				Value: *v1beta1.NewStructuredValues("foo"),
+				Value: *v1.NewStructuredValues("foo"),
 			}},
 		},
 	}
 
-	arrayTaskRunWith1ObjectParam = &v1beta1.TaskRun{
-		Spec: v1beta1.TaskRunSpec{
-			Params: v1beta1.Params{{
+	arrayTaskRunWith1ObjectParam = &v1.TaskRun{
+		Spec: v1.TaskRunSpec{
+			Params: []v1.Param{{
 				Name:  "array-param",
-				Value: *v1beta1.NewStructuredValues("middlefirst", "middlesecond"),
+				Value: *v1.NewStructuredValues("middlefirst", "middlesecond"),
 			}, {
 				Name: "myObject",
-				Value: *v1beta1.NewObject(map[string]string{
+				Value: *v1.NewObject(map[string]string{
 					"key1": "object value1",
 					"key2": "object value2",
 				}),
@@ -581,35 +581,35 @@ var (
 		},
 	}
 
-	arrayTaskRunMultipleArraysAndStrings = &v1beta1.TaskRun{
-		Spec: v1beta1.TaskRunSpec{
-			Params: v1beta1.Params{{
+	arrayTaskRunMultipleArraysAndStrings = &v1.TaskRun{
+		Spec: v1.TaskRunSpec{
+			Params: []v1.Param{{
 				Name:  "array-param1",
-				Value: *v1beta1.NewStructuredValues("1-param1", "2-param1", "3-param1", "4-param1"),
+				Value: *v1.NewStructuredValues("1-param1", "2-param1", "3-param1", "4-param1"),
 			}, {
 				Name:  "array-param2",
-				Value: *v1beta1.NewStructuredValues("1-param2", "2-param2", "2-param3"),
+				Value: *v1.NewStructuredValues("1-param2", "2-param2", "2-param3"),
 			}, {
 				Name:  "string-param1",
-				Value: *v1beta1.NewStructuredValues("foo"),
+				Value: *v1.NewStructuredValues("foo"),
 			}, {
 				Name:  "string-param2",
-				Value: *v1beta1.NewStructuredValues("bar"),
+				Value: *v1.NewStructuredValues("bar"),
 			}},
 		},
 	}
 
-	arrayTaskRunMultipleArraysAndObject = &v1beta1.TaskRun{
-		Spec: v1beta1.TaskRunSpec{
-			Params: v1beta1.Params{{
+	arrayTaskRunMultipleArraysAndObject = &v1.TaskRun{
+		Spec: v1.TaskRunSpec{
+			Params: []v1.Param{{
 				Name:  "array-param1",
-				Value: *v1beta1.NewStructuredValues("1-param1", "2-param1", "3-param1", "4-param1"),
+				Value: *v1.NewStructuredValues("1-param1", "2-param1", "3-param1", "4-param1"),
 			}, {
 				Name:  "array-param2",
-				Value: *v1beta1.NewStructuredValues("1-param2", "2-param2", "3-param3"),
+				Value: *v1.NewStructuredValues("1-param2", "2-param2", "3-param3"),
 			}, {
 				Name: "myObject",
-				Value: *v1beta1.NewObject(map[string]string{
+				Value: *v1.NewObject(map[string]string{
 					"key1": "value1",
 					"key2": "value2",
 				}),
@@ -618,7 +618,7 @@ var (
 	}
 )
 
-func applyMutation(ts *v1beta1.TaskSpec, f func(*v1beta1.TaskSpec)) *v1beta1.TaskSpec {
+func applyMutation(ts *v1.TaskSpec, f func(*v1.TaskSpec)) *v1.TaskSpec {
 	ts = ts.DeepCopy()
 	f(ts)
 	return ts
@@ -626,21 +626,21 @@ func applyMutation(ts *v1beta1.TaskSpec, f func(*v1beta1.TaskSpec)) *v1beta1.Tas
 
 func TestApplyArrayParameters(t *testing.T) {
 	type args struct {
-		ts *v1beta1.TaskSpec
-		tr *v1beta1.TaskRun
-		dp []v1beta1.ParamSpec
+		ts *v1.TaskSpec
+		tr *v1.TaskRun
+		dp []v1.ParamSpec
 	}
 	tests := []struct {
 		name string
 		args args
-		want *v1beta1.TaskSpec
+		want *v1.TaskSpec
 	}{{
 		name: "array parameter with 0 elements",
 		args: args{
 			ts: arrayParamTaskSpec,
 			tr: arrayTaskRun0Elements,
 		},
-		want: applyMutation(arrayParamTaskSpec, func(spec *v1beta1.TaskSpec) {
+		want: applyMutation(arrayParamTaskSpec, func(spec *v1.TaskSpec) {
 			spec.Steps[1].Args = []string{"first", "second", "last"}
 		}),
 	}, {
@@ -649,7 +649,7 @@ func TestApplyArrayParameters(t *testing.T) {
 			ts: arrayParamTaskSpec,
 			tr: arrayTaskRun1Elements,
 		},
-		want: applyMutation(arrayParamTaskSpec, func(spec *v1beta1.TaskSpec) {
+		want: applyMutation(arrayParamTaskSpec, func(spec *v1.TaskSpec) {
 			spec.Steps[1].Args = []string{"first", "second", "foo", "last"}
 		}),
 	}, {
@@ -658,7 +658,7 @@ func TestApplyArrayParameters(t *testing.T) {
 			ts: arrayParamTaskSpec,
 			tr: arrayTaskRun3Elements,
 		},
-		want: applyMutation(arrayParamTaskSpec, func(spec *v1beta1.TaskSpec) {
+		want: applyMutation(arrayParamTaskSpec, func(spec *v1.TaskSpec) {
 			spec.Steps[1].Args = []string{"first", "second", "foo", "bar", "third", "last"}
 		}),
 	}, {
@@ -667,7 +667,7 @@ func TestApplyArrayParameters(t *testing.T) {
 			ts: multipleArrayParamsTaskSpec,
 			tr: arrayTaskRunMultipleArrays,
 		},
-		want: applyMutation(multipleArrayParamsTaskSpec, func(spec *v1beta1.TaskSpec) {
+		want: applyMutation(multipleArrayParamsTaskSpec, func(spec *v1.TaskSpec) {
 			spec.Steps[1].Command = []string{"cmd", "part1", "part2"}
 			spec.Steps[1].Args = []string{"first", "second", "foo", "bar", "third", "last"}
 		}),
@@ -677,7 +677,7 @@ func TestApplyArrayParameters(t *testing.T) {
 			ts: arrayAndStringParamTaskSpec,
 			tr: arrayTaskRunWith1StringParam,
 		},
-		want: applyMutation(arrayAndStringParamTaskSpec, func(spec *v1beta1.TaskSpec) {
+		want: applyMutation(arrayAndStringParamTaskSpec, func(spec *v1.TaskSpec) {
 			spec.Steps[1].Args = []string{"foo", "second", "middlefirst", "middlesecond", "last"}
 		}),
 	}, {
@@ -686,7 +686,7 @@ func TestApplyArrayParameters(t *testing.T) {
 			ts: multipleArrayAndStringsParamsTaskSpec,
 			tr: arrayTaskRunMultipleArraysAndStrings,
 		},
-		want: applyMutation(multipleArrayAndStringsParamsTaskSpec, func(spec *v1beta1.TaskSpec) {
+		want: applyMutation(multipleArrayAndStringsParamsTaskSpec, func(spec *v1.TaskSpec) {
 			spec.Steps[0].Image = "image-bar"
 			spec.Steps[1].Command = []string{"cmd", "1-param1", "2-param1", "3-param1", "4-param1"}
 			spec.Steps[1].Args = []string{"1-param2", "2-param2", "2-param3", "second", "1-param1", "2-param1", "3-param1", "4-param1", "foo", "last"}
@@ -697,7 +697,7 @@ func TestApplyArrayParameters(t *testing.T) {
 			ts: arrayAndObjectParamTaskSpec,
 			tr: arrayTaskRunWith1ObjectParam,
 		},
-		want: applyMutation(arrayAndObjectParamTaskSpec, func(spec *v1beta1.TaskSpec) {
+		want: applyMutation(arrayAndObjectParamTaskSpec, func(spec *v1.TaskSpec) {
 			spec.Steps[1].Args = []string{"object value1", "object value2", "middlefirst", "middlesecond", "last"}
 		}),
 	}, {
@@ -706,7 +706,7 @@ func TestApplyArrayParameters(t *testing.T) {
 			ts: multipleArrayAndObjectParamsTaskSpec,
 			tr: arrayTaskRunMultipleArraysAndObject,
 		},
-		want: applyMutation(multipleArrayAndObjectParamsTaskSpec, func(spec *v1beta1.TaskSpec) {
+		want: applyMutation(multipleArrayAndObjectParamsTaskSpec, func(spec *v1.TaskSpec) {
 			spec.Steps[0].Image = "image-value1"
 			spec.Steps[1].Command = []string{"cmd", "1-param1", "2-param1", "3-param1", "4-param1"}
 			spec.Steps[1].Args = []string{"1-param2", "2-param2", "3-param3", "second", "1-param1", "2-param1", "3-param1", "4-param1", "value2", "last"}
@@ -715,13 +715,13 @@ func TestApplyArrayParameters(t *testing.T) {
 		name: "default array parameter",
 		args: args{
 			ts: arrayParamTaskSpec,
-			tr: &v1beta1.TaskRun{},
-			dp: []v1beta1.ParamSpec{{
+			tr: &v1.TaskRun{},
+			dp: []v1.ParamSpec{{
 				Name:    "array-param",
-				Default: v1beta1.NewStructuredValues("defaulted", "value!"),
+				Default: v1.NewStructuredValues("defaulted", "value!"),
 			}},
 		},
-		want: applyMutation(arrayParamTaskSpec, func(spec *v1beta1.TaskSpec) {
+		want: applyMutation(arrayParamTaskSpec, func(spec *v1.TaskSpec) {
 			spec.Steps[1].Args = []string{"first", "second", "defaulted", "value!", "last"}
 		}),
 	}}
@@ -736,25 +736,25 @@ func TestApplyArrayParameters(t *testing.T) {
 }
 
 func TestApplyParameters(t *testing.T) {
-	tr := &v1beta1.TaskRun{
-		Spec: v1beta1.TaskRunSpec{
-			Params: v1beta1.Params{{
+	tr := &v1.TaskRun{
+		Spec: v1.TaskRunSpec{
+			Params: []v1.Param{{
 				Name:  "myimage",
-				Value: *v1beta1.NewStructuredValues("bar"),
+				Value: *v1.NewStructuredValues("bar"),
 			}, {
 				Name:  "FOO",
-				Value: *v1beta1.NewStructuredValues("world"),
+				Value: *v1.NewStructuredValues("world"),
 			}},
 		},
 	}
-	dp := []v1beta1.ParamSpec{{
+	dp := []v1.ParamSpec{{
 		Name:    "something",
-		Default: v1beta1.NewStructuredValues("mydefault"),
+		Default: v1.NewStructuredValues("mydefault"),
 	}, {
 		Name:    "somethingelse",
-		Default: v1beta1.NewStructuredValues(""),
+		Default: v1.NewStructuredValues(""),
 	}}
-	want := applyMutation(simpleTaskSpec, func(spec *v1beta1.TaskSpec) {
+	want := applyMutation(simpleTaskSpec, func(spec *v1.TaskSpec) {
 		spec.StepTemplate.Env[0].Value = "world"
 		spec.StepTemplate.Image = "bar"
 
@@ -803,25 +803,25 @@ func TestApplyParameters(t *testing.T) {
 }
 
 func TestApplyParameters_ArrayIndexing(t *testing.T) {
-	tr := &v1beta1.TaskRun{
-		Spec: v1beta1.TaskRunSpec{
-			Params: v1beta1.Params{{
+	tr := &v1.TaskRun{
+		Spec: v1.TaskRunSpec{
+			Params: []v1.Param{{
 				Name:  "myimage",
-				Value: *v1beta1.NewStructuredValues("bar", "foo"),
+				Value: *v1.NewStructuredValues("bar", "foo"),
 			}, {
 				Name:  "FOO",
-				Value: *v1beta1.NewStructuredValues("hello", "world"),
+				Value: *v1.NewStructuredValues("hello", "world"),
 			}},
 		},
 	}
-	dp := []v1beta1.ParamSpec{{
+	dp := []v1.ParamSpec{{
 		Name:    "something",
-		Default: v1beta1.NewStructuredValues("mydefault", "mydefault2"),
+		Default: v1.NewStructuredValues("mydefault", "mydefault2"),
 	}, {
 		Name:    "somethingelse",
-		Default: v1beta1.NewStructuredValues(""),
+		Default: v1.NewStructuredValues(""),
 	}}
-	want := applyMutation(simpleTaskSpec, func(spec *v1beta1.TaskSpec) {
+	want := applyMutation(simpleTaskSpec, func(spec *v1.TaskSpec) {
 		spec.StepTemplate.Env[0].Value = "world"
 		spec.StepTemplate.Image = "bar"
 
@@ -870,26 +870,26 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 
 func TestApplyObjectParameters(t *testing.T) {
 	// define the taskrun to test values provided by taskrun can overwrite the values provided in spec's default
-	tr := &v1beta1.TaskRun{
-		Spec: v1beta1.TaskRunSpec{
-			Params: v1beta1.Params{{
+	tr := &v1.TaskRun{
+		Spec: v1.TaskRunSpec{
+			Params: []v1.Param{{
 				Name: "myObject",
-				Value: *v1beta1.NewObject(map[string]string{
+				Value: *v1.NewObject(map[string]string{
 					"key1": "taskrun-value-for-key1",
 					"key2": "taskrun-value-for-key2",
 				}),
 			}},
 		},
 	}
-	dp := []v1beta1.ParamSpec{{
+	dp := []v1.ParamSpec{{
 		Name: "myObject",
-		Default: v1beta1.NewObject(map[string]string{
+		Default: v1.NewObject(map[string]string{
 			"key1": "default-value-for-key1",
 			"key2": "default-value-for-key2",
 		}),
 	}}
 
-	want := applyMutation(objectParamTaskSpec, func(spec *v1beta1.TaskSpec) {
+	want := applyMutation(objectParamTaskSpec, func(spec *v1.TaskSpec) {
 		spec.Sidecars[0].Image = "taskrun-value-for-key1"
 		spec.Sidecars[0].Env[0].Value = "taskrun-value-for-key2"
 
@@ -936,8 +936,8 @@ func TestApplyObjectParameters(t *testing.T) {
 
 func TestApplyWorkspaces(t *testing.T) {
 	names.TestingSeed()
-	ts := &v1beta1.TaskSpec{
-		StepTemplate: &v1beta1.StepTemplate{
+	ts := &v1.TaskSpec{
+		StepTemplate: &v1.StepTemplate{
 			Env: []corev1.EnvVar{{
 				Name:  "template-var",
 				Value: "$(workspaces.myws.volume)",
@@ -949,7 +949,7 @@ func TestApplyWorkspaces(t *testing.T) {
 				Value: "$(workspaces.otherws.claim)",
 			}},
 		},
-		Steps: []v1beta1.Step{{
+		Steps: []v1.Step{{
 			Name:       "$(workspaces.myws.volume)",
 			Image:      "$(workspaces.otherws.volume)",
 			WorkingDir: "$(workspaces.otherws.volume)",
@@ -1009,20 +1009,20 @@ func TestApplyWorkspaces(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		name  string
-		spec  *v1beta1.TaskSpec
-		decls []v1beta1.WorkspaceDeclaration
-		binds []v1beta1.WorkspaceBinding
-		want  *v1beta1.TaskSpec
+		spec  *v1.TaskSpec
+		decls []v1.WorkspaceDeclaration
+		binds []v1.WorkspaceBinding
+		want  *v1.TaskSpec
 	}{{
 		name: "workspace-variable-replacement",
 		spec: ts.DeepCopy(),
-		decls: []v1beta1.WorkspaceDeclaration{{
+		decls: []v1.WorkspaceDeclaration{{
 			Name: "myws",
 		}, {
 			Name:      "otherws",
 			MountPath: "/foo",
 		}},
-		binds: []v1beta1.WorkspaceBinding{{
+		binds: []v1.WorkspaceBinding{{
 			Name: "myws",
 			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 				ClaimName: "foo",
@@ -1031,7 +1031,7 @@ func TestApplyWorkspaces(t *testing.T) {
 			Name:     "otherws",
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		}},
-		want: applyMutation(ts, func(spec *v1beta1.TaskSpec) {
+		want: applyMutation(ts, func(spec *v1.TaskSpec) {
 			spec.StepTemplate.Env[0].Value = "ws-9l9zj"
 			spec.StepTemplate.Env[1].Value = "foo"
 			spec.StepTemplate.Env[2].Value = ""
@@ -1058,31 +1058,31 @@ func TestApplyWorkspaces(t *testing.T) {
 		}),
 	}, {
 		name: "optional-workspace-provided-variable-replacement",
-		spec: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
+		spec: &v1.TaskSpec{Steps: []v1.Step{{
 			Script: `test "$(workspaces.ows.bound)" = "true" && echo "$(workspaces.ows.path)"`,
 		}}},
-		decls: []v1beta1.WorkspaceDeclaration{{
+		decls: []v1.WorkspaceDeclaration{{
 			Name:     "ows",
 			Optional: true,
 		}},
-		binds: []v1beta1.WorkspaceBinding{{
+		binds: []v1.WorkspaceBinding{{
 			Name:     "ows",
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		}},
-		want: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
+		want: &v1.TaskSpec{Steps: []v1.Step{{
 			Script: `test "true" = "true" && echo "/workspace/ows"`,
 		}}},
 	}, {
 		name: "optional-workspace-omitted-variable-replacement",
-		spec: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
+		spec: &v1.TaskSpec{Steps: []v1.Step{{
 			Script: `test "$(workspaces.ows.bound)" = "true" && echo "$(workspaces.ows.path)"`,
 		}}},
-		decls: []v1beta1.WorkspaceDeclaration{{
+		decls: []v1.WorkspaceDeclaration{{
 			Name:     "ows",
 			Optional: true,
 		}},
-		binds: []v1beta1.WorkspaceBinding{}, // intentionally omitted ows binding
-		want: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
+		binds: []v1.WorkspaceBinding{}, // intentionally omitted ows binding
+		want: &v1.TaskSpec{Steps: []v1.Step{{
 			Script: `test "false" = "true" && echo ""`,
 		}}},
 	}} {
@@ -1099,56 +1099,56 @@ func TestApplyWorkspaces(t *testing.T) {
 func TestApplyWorkspaces_IsolatedWorkspaces(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
-		spec  *v1beta1.TaskSpec
-		decls []v1beta1.WorkspaceDeclaration
-		binds []v1beta1.WorkspaceBinding
-		want  *v1beta1.TaskSpec
+		spec  *v1.TaskSpec
+		decls []v1.WorkspaceDeclaration
+		binds []v1.WorkspaceBinding
+		want  *v1.TaskSpec
 	}{{
 		name: "step-workspace-with-custom-mountpath",
-		spec: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
+		spec: &v1.TaskSpec{Steps: []v1.Step{{
 			Script: `echo "$(workspaces.ws.path)"`,
-			Workspaces: []v1beta1.WorkspaceUsage{{
+			Workspaces: []v1.WorkspaceUsage{{
 				Name:      "ws",
 				MountPath: "/foo",
 			}},
 		}, {
 			Script: `echo "$(workspaces.ws.path)"`,
-		}}, Sidecars: []v1beta1.Sidecar{{
+		}}, Sidecars: []v1.Sidecar{{
 			Script: `echo "$(workspaces.ws.path)"`,
 		}}},
-		decls: []v1beta1.WorkspaceDeclaration{{
+		decls: []v1.WorkspaceDeclaration{{
 			Name: "ws",
 		}},
-		want: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
+		want: &v1.TaskSpec{Steps: []v1.Step{{
 			Script: `echo "/foo"`,
-			Workspaces: []v1beta1.WorkspaceUsage{{
+			Workspaces: []v1.WorkspaceUsage{{
 				Name:      "ws",
 				MountPath: "/foo",
 			}},
 		}, {
 			Script: `echo "/workspace/ws"`,
-		}}, Sidecars: []v1beta1.Sidecar{{
+		}}, Sidecars: []v1.Sidecar{{
 			Script: `echo "/workspace/ws"`,
 		}}},
 	}, {
 		name: "sidecar-workspace-with-custom-mountpath",
-		spec: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
+		spec: &v1.TaskSpec{Steps: []v1.Step{{
 			Script: `echo "$(workspaces.ws.path)"`,
-		}}, Sidecars: []v1beta1.Sidecar{{
+		}}, Sidecars: []v1.Sidecar{{
 			Script: `echo "$(workspaces.ws.path)"`,
-			Workspaces: []v1beta1.WorkspaceUsage{{
+			Workspaces: []v1.WorkspaceUsage{{
 				Name:      "ws",
 				MountPath: "/bar",
 			}},
 		}}},
-		decls: []v1beta1.WorkspaceDeclaration{{
+		decls: []v1.WorkspaceDeclaration{{
 			Name: "ws",
 		}},
-		want: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
+		want: &v1.TaskSpec{Steps: []v1.Step{{
 			Script: `echo "/workspace/ws"`,
-		}}, Sidecars: []v1beta1.Sidecar{{
+		}}, Sidecars: []v1.Sidecar{{
 			Script: `echo "/bar"`,
-			Workspaces: []v1beta1.WorkspaceUsage{{
+			Workspaces: []v1.WorkspaceUsage{{
 				Name:      "ws",
 				MountPath: "/bar",
 			}},
@@ -1173,21 +1173,21 @@ func TestContext(t *testing.T) {
 	for _, tc := range []struct {
 		description string
 		taskName    string
-		tr          v1beta1.TaskRun
-		spec        v1beta1.TaskSpec
-		want        v1beta1.TaskSpec
+		tr          v1.TaskRun
+		spec        v1.TaskSpec
+		want        v1.TaskSpec
 	}{{
 		description: "context taskName replacement without taskRun in spec container",
 		taskName:    "Task1",
-		tr:          v1beta1.TaskRun{},
-		spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		tr:          v1.TaskRun{},
+		spec: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Name:  "ImageName",
 				Image: "$(context.task.name)-1",
 			}},
 		},
-		want: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		want: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Name:  "ImageName",
 				Image: "Task1-1",
 			}},
@@ -1195,19 +1195,19 @@ func TestContext(t *testing.T) {
 	}, {
 		description: "context taskName replacement with taskRun in spec container",
 		taskName:    "Task1",
-		tr: v1beta1.TaskRun{
+		tr: v1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "taskrunName",
 			},
 		},
-		spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		spec: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Name:  "ImageName",
 				Image: "$(context.task.name)-1",
 			}},
 		},
-		want: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		want: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Name:  "ImageName",
 				Image: "Task1-1",
 			}},
@@ -1215,19 +1215,19 @@ func TestContext(t *testing.T) {
 	}, {
 		description: "context taskRunName replacement with defined taskRun in spec container",
 		taskName:    "Task1",
-		tr: v1beta1.TaskRun{
+		tr: v1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "taskrunName",
 			},
 		},
-		spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		spec: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Name:  "ImageName",
 				Image: "$(context.taskRun.name)-1",
 			}},
 		},
-		want: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		want: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Name:  "ImageName",
 				Image: "taskrunName-1",
 			}},
@@ -1235,15 +1235,15 @@ func TestContext(t *testing.T) {
 	}, {
 		description: "context taskRunName replacement with no defined taskRun name in spec container",
 		taskName:    "Task1",
-		tr:          v1beta1.TaskRun{},
-		spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		tr:          v1.TaskRun{},
+		spec: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Name:  "ImageName",
 				Image: "$(context.taskRun.name)-1",
 			}},
 		},
-		want: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		want: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Name:  "ImageName",
 				Image: "-1",
 			}},
@@ -1251,15 +1251,15 @@ func TestContext(t *testing.T) {
 	}, {
 		description: "context taskRun namespace replacement with no defined namepsace in spec container",
 		taskName:    "Task1",
-		tr:          v1beta1.TaskRun{},
-		spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		tr:          v1.TaskRun{},
+		spec: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Name:  "ImageName",
 				Image: "$(context.taskRun.namespace)-1",
 			}},
 		},
-		want: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		want: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Name:  "ImageName",
 				Image: "-1",
 			}},
@@ -1267,35 +1267,35 @@ func TestContext(t *testing.T) {
 	}, {
 		description: "context taskRun namespace replacement with defined namepsace in spec container",
 		taskName:    "Task1",
-		tr: v1beta1.TaskRun{
+		tr: v1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "taskrunName",
 				Namespace: "trNamespace",
 			},
 		},
-		spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		spec: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Name:  "ImageName",
 				Image: "$(context.taskRun.namespace)-1",
 			}},
 		},
-		want: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		want: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Name:  "ImageName",
 				Image: "trNamespace-1",
 			}},
 		},
 	}, {
 		description: "context taskRunName replacement with no defined taskName in spec container",
-		tr:          v1beta1.TaskRun{},
-		spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		tr:          v1.TaskRun{},
+		spec: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Name:  "ImageName",
 				Image: "$(context.task.name)-1",
 			}},
 		},
-		want: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		want: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Name:  "ImageName",
 				Image: "-1",
 			}},
@@ -1303,29 +1303,29 @@ func TestContext(t *testing.T) {
 	}, {
 		description: "context UID replacement",
 		taskName:    "Task1",
-		tr: v1beta1.TaskRun{
+		tr: v1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
 				UID: "UID-1",
 			},
 		},
-		spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		spec: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Name:  "ImageName",
 				Image: "$(context.taskRun.uid)",
 			}},
 		},
-		want: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		want: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Name:  "ImageName",
 				Image: "UID-1",
 			}},
 		},
 	}, {
 		description: "context retry count replacement",
-		tr: v1beta1.TaskRun{
-			Status: v1beta1.TaskRunStatus{
-				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-					RetriesStatus: []v1beta1.TaskRunStatus{{
+		tr: v1.TaskRun{
+			Status: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					RetriesStatus: []v1.TaskRunStatus{{
 						Status: duckv1.Status{
 							Conditions: []apis.Condition{{
 								Type:   apis.ConditionSucceeded,
@@ -1343,29 +1343,29 @@ func TestContext(t *testing.T) {
 				},
 			},
 		},
-		spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		spec: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Name:  "ImageName",
 				Image: "$(context.task.retry-count)-1",
 			}},
 		},
-		want: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		want: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Name:  "ImageName",
 				Image: "2-1",
 			}},
 		},
 	}, {
 		description: "context retry count replacement with task that never retries",
-		tr:          v1beta1.TaskRun{},
-		spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		tr:          v1.TaskRun{},
+		spec: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Name:  "ImageName",
 				Image: "$(context.task.retry-count)-1",
 			}},
 		},
-		want: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		want: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Name:  "ImageName",
 				Image: "0-1",
 			}},
@@ -1382,15 +1382,15 @@ func TestContext(t *testing.T) {
 
 func TestTaskResults(t *testing.T) {
 	names.TestingSeed()
-	ts := &v1beta1.TaskSpec{
-		Results: []v1beta1.TaskResult{{
+	ts := &v1.TaskSpec{
+		Results: []v1.TaskResult{{
 			Name:        "current.date.unix.timestamp",
 			Description: "The current date in unix timestamp format",
 		}, {
 			Name:        "current-date-human-readable",
 			Description: "The current date in humand readable format"},
 		},
-		Steps: []v1beta1.Step{{
+		Steps: []v1.Step{{
 			Name:   "print-date-unix-timestamp",
 			Image:  "bash:latest",
 			Args:   []string{"$(results[\"current.date.unix.timestamp\"].path)"},
@@ -1405,7 +1405,7 @@ func TestTaskResults(t *testing.T) {
 			Script: "#!/usr/bin/env bash\ndate | tee $(results['current-date-human-readable'].path)",
 		}},
 	}
-	want := applyMutation(ts, func(spec *v1beta1.TaskSpec) {
+	want := applyMutation(ts, func(spec *v1.TaskSpec) {
 		spec.Steps[0].Script = "#!/usr/bin/env bash\ndate +%s | tee /tekton/results/current.date.unix.timestamp"
 		spec.Steps[0].Args[0] = "/tekton/results/current.date.unix.timestamp"
 		spec.Steps[1].Script = "#!/usr/bin/env bash\ndate | tee /tekton/results/current-date-human-readable"
@@ -1419,8 +1419,8 @@ func TestTaskResults(t *testing.T) {
 
 func TestApplyStepExitCodePath(t *testing.T) {
 	names.TestingSeed()
-	ts := &v1beta1.TaskSpec{
-		Steps: []v1beta1.Step{{
+	ts := &v1.TaskSpec{
+		Steps: []v1.Step{{
 			Image:  "bash:latest",
 			Script: "#!/usr/bin/env bash\nexit 11",
 		}, {
@@ -1433,7 +1433,7 @@ func TestApplyStepExitCodePath(t *testing.T) {
 			Script: "#!/usr/bin/env bash\ncat $(steps.step-failing-step.exitCode.path)",
 		}},
 	}
-	expected := applyMutation(ts, func(spec *v1beta1.TaskSpec) {
+	expected := applyMutation(ts, func(spec *v1.TaskSpec) {
 		spec.Steps[1].Script = "#!/usr/bin/env bash\ncat /tekton/steps/step-unnamed-0/exitCode"
 		spec.Steps[2].Script = "#!/usr/bin/env bash\ncat /tekton/steps/step-failing-step/exitCode"
 	})
@@ -1446,34 +1446,34 @@ func TestApplyStepExitCodePath(t *testing.T) {
 func TestApplyCredentialsPath(t *testing.T) {
 	for _, tc := range []struct {
 		description string
-		spec        v1beta1.TaskSpec
+		spec        v1.TaskSpec
 		path        string
-		want        v1beta1.TaskSpec
+		want        v1.TaskSpec
 	}{{
 		description: "replacement in spec container",
-		spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		spec: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Command: []string{"cp"},
 				Args:    []string{"-R", "$(credentials.path)/", "$HOME"},
 			}},
 		},
 		path: "/tekton/creds",
-		want: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		want: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Command: []string{"cp"},
 				Args:    []string{"-R", "/tekton/creds/", "$HOME"},
 			}},
 		},
 	}, {
 		description: "replacement in spec Script",
-		spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		spec: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Script: `cp -R "$(credentials.path)/" $HOME`,
 			}},
 		},
 		path: "/tekton/home",
-		want: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		want: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Script: `cp -R "/tekton/home/" $HOME`,
 			}},
 		},

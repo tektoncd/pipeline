@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 )
 
@@ -50,7 +50,7 @@ var _ Resolver = &FakeResolver{}
 type FakeResolvedResource struct {
 	Content       string
 	AnnotationMap map[string]string
-	ContentSource *pipelinev1beta1.RefSource
+	ContentSource *pipelinev1.RefSource
 	ErrorWith     string
 	WaitFor       time.Duration
 }
@@ -67,7 +67,7 @@ func (f *FakeResolvedResource) Annotations() map[string]string {
 
 // RefSource is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint.
-func (f *FakeResolvedResource) RefSource() *pipelinev1beta1.RefSource {
+func (f *FakeResolvedResource) RefSource() *pipelinev1.RefSource {
 	return f.ContentSource
 }
 
@@ -102,8 +102,8 @@ func (r *FakeResolver) GetSelector(_ context.Context) map[string]string {
 
 // ValidateParams returns an error if the given parameter map is not
 // valid for a resource request targeting the fake resolver.
-func (r *FakeResolver) ValidateParams(_ context.Context, params []pipelinev1beta1.Param) error {
-	paramsMap := make(map[string]pipelinev1beta1.ParamValue)
+func (r *FakeResolver) ValidateParams(_ context.Context, params []pipelinev1.Param) error {
+	paramsMap := make(map[string]pipelinev1.ParamValue)
 	for _, p := range params {
 		paramsMap[p.Name] = p.Value
 	}
@@ -131,8 +131,8 @@ func (r *FakeResolver) ValidateParams(_ context.Context, params []pipelinev1beta
 
 // Resolve performs the work of fetching a file from the fake resolver given a map of
 // parameters.
-func (r *FakeResolver) Resolve(_ context.Context, params []pipelinev1beta1.Param) (ResolvedResource, error) {
-	paramsMap := make(map[string]pipelinev1beta1.ParamValue)
+func (r *FakeResolver) Resolve(_ context.Context, params []pipelinev1.Param) (ResolvedResource, error) {
+	paramsMap := make(map[string]pipelinev1.ParamValue)
 	for _, p := range params {
 		paramsMap[p.Name] = p.Value
 	}

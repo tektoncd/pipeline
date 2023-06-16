@@ -84,7 +84,8 @@ func (w WorkspaceBinding) convertTo(ctx context.Context, sink *v1.WorkspaceBindi
 	sink.CSI = w.CSI
 }
 
-func (w *WorkspaceBinding) convertFrom(ctx context.Context, source v1.WorkspaceBinding) {
+// ConvertFrom converts v1beta1 Param from v1 Param
+func (w *WorkspaceBinding) ConvertFrom(ctx context.Context, source v1.WorkspaceBinding) {
 	w.Name = source.Name
 	w.SubPath = source.SubPath
 	w.VolumeClaimTemplate = source.VolumeClaimTemplate

@@ -62,6 +62,7 @@ import (
 const (
 	interval       = 1 * time.Second
 	timeout        = 10 * time.Minute
+	v1Version      = "v1"
 	v1beta1Version = "v1beta1"
 )
 
@@ -91,7 +92,7 @@ func WaitForTaskRunState(ctx context.Context, c *clients, name string, inState C
 
 	return pollImmediateWithContext(ctx, func() (bool, error) {
 		switch version {
-		case "v1":
+		case v1Version:
 			r, err := c.V1TaskRunClient.Get(ctx, name, metav1.GetOptions{})
 			if err != nil {
 				return true, err

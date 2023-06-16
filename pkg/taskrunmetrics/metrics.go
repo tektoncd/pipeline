@@ -25,8 +25,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/pod"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
@@ -293,7 +293,7 @@ func nilInsertTag(task, taskrun string) []tag.Mutator {
 // DurationAndCount logs the duration of TaskRun execution and
 // count for number of TaskRuns succeed or failed
 // returns an error if its failed to log the metrics
-func (r *Recorder) DurationAndCount(ctx context.Context, tr *v1beta1.TaskRun, beforeCondition *apis.Condition) error {
+func (r *Recorder) DurationAndCount(ctx context.Context, tr *v1.TaskRun, beforeCondition *apis.Condition) error {
 	if !r.initialized {
 		return fmt.Errorf("ignoring the metrics recording for %s , failed to initialize the metrics recorder", tr.Name)
 	}
@@ -410,7 +410,7 @@ func (r *Recorder) ReportRunningTaskRuns(ctx context.Context, lister listers.Tas
 
 // RecordPodLatency logs the duration required to schedule the pod for TaskRun
 // returns an error if its failed to log the metrics
-func (r *Recorder) RecordPodLatency(ctx context.Context, pod *corev1.Pod, tr *v1beta1.TaskRun) error {
+func (r *Recorder) RecordPodLatency(ctx context.Context, pod *corev1.Pod, tr *v1.TaskRun) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -445,7 +445,7 @@ func (r *Recorder) RecordPodLatency(ctx context.Context, pod *corev1.Pod, tr *v1
 
 // IsPartOfPipeline return true if TaskRun is a part of a Pipeline.
 // It also return the name of Pipeline and PipelineRun
-func IsPartOfPipeline(tr *v1beta1.TaskRun) (bool, string, string) {
+func IsPartOfPipeline(tr *v1.TaskRun) (bool, string, string) {
 	pipelineLabel, hasPipelineLabel := tr.Labels[pipeline.PipelineLabelKey]
 	pipelineRunLabel, hasPipelineRunLabel := tr.Labels[pipeline.PipelineRunLabelKey]
 

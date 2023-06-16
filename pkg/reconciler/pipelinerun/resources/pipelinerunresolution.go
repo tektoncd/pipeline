@@ -23,6 +23,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/remote"
@@ -40,7 +41,7 @@ const (
 // TaskSkipStatus stores whether a task was skipped and why
 type TaskSkipStatus struct {
 	IsSkipped      bool
-	SkippingReason v1beta1.SkippingReason
+	SkippingReason v1.SkippingReason
 }
 
 // TaskNotFoundError indicates that the resolution failed because a referenced Task couldn't be retrieved
@@ -56,12 +57,12 @@ func (e *TaskNotFoundError) Error() string {
 // ResolvedPipelineTask contains a PipelineTask and its associated TaskRun(s) or CustomRuns, if they exist.
 type ResolvedPipelineTask struct {
 	TaskRunNames []string
-	TaskRuns     []*v1beta1.TaskRun
+	TaskRuns     []*v1.TaskRun
 	// If the PipelineTask is a Custom Task, CustomRunName and CustomRun will be set.
 	CustomTask     bool
 	CustomRunNames []string
 	CustomRuns     []*v1beta1.CustomRun
-	PipelineTask   *v1beta1.PipelineTask
+	PipelineTask   *v1.PipelineTask
 	ResolvedTask   *resources.ResolvedTask
 }
 
@@ -180,7 +181,7 @@ func (t ResolvedPipelineTask) isCancelledForTimeOut() bool {
 		c := taskRun.Status.GetCondition(apis.ConditionSucceeded)
 		taskRunCancelled := c.IsFalse() &&
 			c.Reason == v1beta1.TaskRunReasonCancelled.String() &&
-			taskRun.Spec.StatusMessage == v1beta1.TaskRunCancelledByPipelineTimeoutMsg
+			taskRun.Spec.StatusMessage == v1.TaskRunCancelledByPipelineTimeoutMsg
 		atLeastOneCancelled = atLeastOneCancelled || taskRunCancelled
 	}
 	return atLeastOneCancelled && isDone
@@ -296,35 +297,35 @@ func (t *ResolvedPipelineTask) checkParentsDone(facts *PipelineRunFacts) bool {
 }
 
 func (t *ResolvedPipelineTask) skip(facts *PipelineRunFacts) TaskSkipStatus {
-	var skippingReason v1beta1.SkippingReason
+	var skippingReason v1.SkippingReason
 
 	switch {
 	case facts.isFinalTask(t.PipelineTask.Name) || t.isScheduled():
-		skippingReason = v1beta1.None
+		skippingReason = v1.None
 	case facts.IsStopping():
-		skippingReason = v1beta1.StoppingSkip
+		skippingReason = v1.StoppingSkip
 	case facts.IsGracefullyCancelled():
-		skippingReason = v1beta1.GracefullyCancelledSkip
+		skippingReason = v1.GracefullyCancelledSkip
 	case facts.IsGracefullyStopped():
-		skippingReason = v1beta1.GracefullyStoppedSkip
+		skippingReason = v1.GracefullyStoppedSkip
 	case t.skipBecauseParentTaskWasSkipped(facts):
-		skippingReason = v1beta1.ParentTasksSkip
+		skippingReason = v1.ParentTasksSkip
 	case t.skipBecauseResultReferencesAreMissing(facts):
-		skippingReason = v1beta1.MissingResultsSkip
+		skippingReason = v1.MissingResultsSkip
 	case t.skipBecauseWhenExpressionsEvaluatedToFalse(facts):
-		skippingReason = v1beta1.WhenExpressionsSkip
+		skippingReason = v1.WhenExpressionsSkip
 	case t.skipBecausePipelineRunPipelineTimeoutReached(facts):
-		skippingReason = v1beta1.PipelineTimedOutSkip
+		skippingReason = v1.PipelineTimedOutSkip
 	case t.skipBecausePipelineRunTasksTimeoutReached(facts):
-		skippingReason = v1beta1.TasksTimedOutSkip
+		skippingReason = v1.TasksTimedOutSkip
 	case t.skipBecauseEmptyArrayInMatrixParams():
-		skippingReason = v1beta1.EmptyArrayInMatrixParams
+		skippingReason = v1.EmptyArrayInMatrixParams
 	default:
-		skippingReason = v1beta1.None
+		skippingReason = v1.None
 	}
 
 	return TaskSkipStatus{
-		IsSkipped:      skippingReason != v1beta1.None,
+		IsSkipped:      skippingReason != v1.None,
 		SkippingReason: skippingReason,
 	}
 }
@@ -349,7 +350,7 @@ func (t *ResolvedPipelineTask) Skip(facts *PipelineRunFacts) TaskSkipStatus {
 // it returns true if any of the when expressions evaluate to false
 func (t *ResolvedPipelineTask) skipBecauseWhenExpressionsEvaluatedToFalse(facts *PipelineRunFacts) bool {
 	if t.checkParentsDone(facts) {
-		if !t.PipelineTask.WhenExpressions.AllowsExecution() {
+		if !t.PipelineTask.When.AllowsExecution() {
 			return true
 		}
 	}
@@ -370,7 +371,7 @@ func (t *ResolvedPipelineTask) skipBecauseParentTaskWasSkipped(facts *PipelineRu
 		if parentSkipStatus := parentTask.Skip(facts); parentSkipStatus.IsSkipped {
 			// if the parent task was skipped due to its `when` expressions,
 			// then we should ignore that and continue evaluating if we should skip because of other parent tasks
-			if parentSkipStatus.SkippingReason == v1beta1.WhenExpressionsSkip {
+			if parentSkipStatus.SkippingReason == v1.WhenExpressionsSkip {
 				continue
 			}
 			return true
@@ -386,7 +387,7 @@ func (t *ResolvedPipelineTask) skipBecauseResultReferencesAreMissing(facts *Pipe
 		resolvedResultRefs, pt, err := ResolveResultRefs(facts.State, PipelineRunState{t})
 		rpt := facts.State.ToMap()[pt]
 		if rpt != nil {
-			if err != nil && (t.IsFinalTask(facts) || rpt.Skip(facts).SkippingReason == v1beta1.WhenExpressionsSkip) {
+			if err != nil && (t.IsFinalTask(facts) || rpt.Skip(facts).SkippingReason == v1.WhenExpressionsSkip) {
 				return true
 			}
 		}
@@ -439,7 +440,7 @@ func (t *ResolvedPipelineTask) skipBecausePipelineRunFinallyTimeoutReached(facts
 func (t *ResolvedPipelineTask) skipBecauseEmptyArrayInMatrixParams() bool {
 	if t.PipelineTask.IsMatrixed() {
 		for _, ps := range t.PipelineTask.Matrix.Params {
-			if ps.Value.Type == v1beta1.ParamTypeArray && len(ps.Value.ArrayVal) == 0 {
+			if ps.Value.Type == v1.ParamTypeArray && len(ps.Value.ArrayVal) == 0 {
 				return true
 			}
 		}
@@ -455,32 +456,32 @@ func (t *ResolvedPipelineTask) IsFinalTask(facts *PipelineRunFacts) bool {
 
 // IsFinallySkipped returns true if a finally task is not executed and skipped due to task result validation failure
 func (t *ResolvedPipelineTask) IsFinallySkipped(facts *PipelineRunFacts) TaskSkipStatus {
-	var skippingReason v1beta1.SkippingReason
+	var skippingReason v1.SkippingReason
 
 	switch {
 	case t.isScheduled():
-		skippingReason = v1beta1.None
+		skippingReason = v1.None
 	case facts.checkDAGTasksDone() && facts.isFinalTask(t.PipelineTask.Name):
 		switch {
 		case t.skipBecauseResultReferencesAreMissing(facts):
-			skippingReason = v1beta1.MissingResultsSkip
+			skippingReason = v1.MissingResultsSkip
 		case t.skipBecauseWhenExpressionsEvaluatedToFalse(facts):
-			skippingReason = v1beta1.WhenExpressionsSkip
+			skippingReason = v1.WhenExpressionsSkip
 		case t.skipBecausePipelineRunPipelineTimeoutReached(facts):
-			skippingReason = v1beta1.PipelineTimedOutSkip
+			skippingReason = v1.PipelineTimedOutSkip
 		case t.skipBecausePipelineRunFinallyTimeoutReached(facts):
-			skippingReason = v1beta1.FinallyTimedOutSkip
+			skippingReason = v1.FinallyTimedOutSkip
 		case t.skipBecauseEmptyArrayInMatrixParams():
-			skippingReason = v1beta1.EmptyArrayInMatrixParams
+			skippingReason = v1.EmptyArrayInMatrixParams
 		default:
-			skippingReason = v1beta1.None
+			skippingReason = v1.None
 		}
 	default:
-		skippingReason = v1beta1.None
+		skippingReason = v1.None
 	}
 
 	return TaskSkipStatus{
-		IsSkipped:      skippingReason != v1beta1.None,
+		IsSkipped:      skippingReason != v1.None,
 		SkippingReason: skippingReason,
 	}
 }
@@ -489,8 +490,8 @@ func (t *ResolvedPipelineTask) IsFinallySkipped(facts *PipelineRunFacts) TaskSki
 type GetRun func(name string) (*v1beta1.CustomRun, error)
 
 // ValidateWorkspaceBindings validates that the Workspaces expected by a Pipeline are provided by a PipelineRun.
-func ValidateWorkspaceBindings(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) error {
-	pipelineRunWorkspaces := make(map[string]v1beta1.WorkspaceBinding)
+func ValidateWorkspaceBindings(p *v1.PipelineSpec, pr *v1.PipelineRun) error {
+	pipelineRunWorkspaces := make(map[string]v1.WorkspaceBinding)
 	for _, binding := range pr.Spec.Workspaces {
 		pipelineRunWorkspaces[binding.Name] = binding
 	}
@@ -507,7 +508,7 @@ func ValidateWorkspaceBindings(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun)
 }
 
 // ValidateTaskRunSpecs that the TaskRunSpecs defined by a PipelineRun are correct.
-func ValidateTaskRunSpecs(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) error {
+func ValidateTaskRunSpecs(p *v1.PipelineSpec, pr *v1.PipelineRun) error {
 	pipelineTasks := make(map[string]string)
 	for _, task := range p.Tasks {
 		pipelineTasks[task.Name] = task.Name
@@ -536,11 +537,11 @@ func ValidateTaskRunSpecs(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) erro
 // It also sets the ResolvedPipelineTask's RunName(s) with the names of CustomRuns that should be or already have been created.
 func ResolvePipelineTask(
 	ctx context.Context,
-	pipelineRun v1beta1.PipelineRun,
+	pipelineRun v1.PipelineRun,
 	getTask resources.GetTask,
 	getTaskRun resources.GetTaskRun,
 	getRun GetRun,
-	pipelineTask v1beta1.PipelineTask,
+	pipelineTask v1.PipelineTask,
 ) (*ResolvedPipelineTask, error) {
 	rpt := ResolvedPipelineTask{
 		PipelineTask: &pipelineTask,
@@ -580,7 +581,7 @@ func (t *ResolvedPipelineTask) setTaskRunsAndResolvedTask(
 	taskRunName string,
 	getTask resources.GetTask,
 	getTaskRun resources.GetTaskRun,
-	pipelineTask v1beta1.PipelineTask,
+	pipelineTask v1.PipelineTask,
 ) error {
 	taskRun, err := getTaskRun(taskRunName)
 	if err != nil {
@@ -605,9 +606,9 @@ func (t *ResolvedPipelineTask) setTaskRunsAndResolvedTask(
 // Returns an error if the Task could not be found because resolution was in progress or any other reason.
 func resolveTask(
 	ctx context.Context,
-	taskRun *v1beta1.TaskRun,
+	taskRun *v1.TaskRun,
 	getTask resources.GetTask,
-	pipelineTask v1beta1.PipelineTask,
+	pipelineTask v1.PipelineTask,
 ) (*resources.ResolvedTask, error) {
 	rt := &resources.ResolvedTask{}
 	if pipelineTask.TaskRef != nil {
@@ -628,9 +629,9 @@ func resolveTask(
 					Msg:  err.Error(),
 				}
 			default:
-				spec := t.TaskSpec()
+				spec := t.Spec
 				rt.TaskSpec = &spec
-				rt.TaskName = t.TaskMetadata().Name
+				rt.TaskName = t.Name
 				rt.VerificationResult = vr
 			}
 		}
@@ -643,7 +644,7 @@ func resolveTask(
 }
 
 // GetTaskRunName should return a unique name for a `TaskRun` if one has not already been defined, and the existing one otherwise.
-func GetTaskRunName(childRefs []v1beta1.ChildStatusReference, ptName, prName string) string {
+func GetTaskRunName(childRefs []v1.ChildStatusReference, ptName, prName string) string {
 	for _, cr := range childRefs {
 		if cr.Kind == pipeline.TaskRunControllerName && cr.PipelineTaskName == ptName {
 			return cr.Name
@@ -653,7 +654,7 @@ func GetTaskRunName(childRefs []v1beta1.ChildStatusReference, ptName, prName str
 }
 
 // GetNamesOfTaskRuns should return unique names for `TaskRuns` if one has not already been defined, and the existing one otherwise.
-func GetNamesOfTaskRuns(childRefs []v1beta1.ChildStatusReference, ptName, prName string, numberOfTaskRuns int) []string {
+func GetNamesOfTaskRuns(childRefs []v1.ChildStatusReference, ptName, prName string, numberOfTaskRuns int) []string {
 	if taskRunNames := getTaskRunNamesFromChildRefs(childRefs, ptName); taskRunNames != nil {
 		return taskRunNames
 	}
@@ -661,7 +662,7 @@ func GetNamesOfTaskRuns(childRefs []v1beta1.ChildStatusReference, ptName, prName
 }
 
 // getTaskRunNamesFromChildRefs returns the names of TaskRuns defined in childRefs that are associated with the named Pipeline Task.
-func getTaskRunNamesFromChildRefs(childRefs []v1beta1.ChildStatusReference, ptName string) []string {
+func getTaskRunNamesFromChildRefs(childRefs []v1.ChildStatusReference, ptName string) []string {
 	var taskRunNames []string
 	for _, cr := range childRefs {
 		if cr.Kind == pipeline.TaskRunControllerName && cr.PipelineTaskName == ptName {
@@ -688,7 +689,7 @@ func getNewRunNames(ptName, prName string, numberOfRuns int) []string {
 
 // getCustomRunName should return a unique name for a `Run` if one has not already
 // been defined, and the existing one otherwise.
-func getCustomRunName(childRefs []v1beta1.ChildStatusReference, ptName, prName string) string {
+func getCustomRunName(childRefs []v1.ChildStatusReference, ptName, prName string) string {
 	for _, cr := range childRefs {
 		if cr.PipelineTaskName == ptName {
 			if cr.Kind == pipeline.CustomRunControllerName {
@@ -702,7 +703,7 @@ func getCustomRunName(childRefs []v1beta1.ChildStatusReference, ptName, prName s
 
 // getNamesOfCustomRuns should return a unique names for `CustomRuns` if they have not already been defined,
 // and the existing ones otherwise.
-func getNamesOfCustomRuns(childRefs []v1beta1.ChildStatusReference, ptName, prName string, numberOfRuns int) []string {
+func getNamesOfCustomRuns(childRefs []v1.ChildStatusReference, ptName, prName string, numberOfRuns int) []string {
 	if customRunNames := getRunNamesFromChildRefs(childRefs, ptName); customRunNames != nil {
 		return customRunNames
 	}
@@ -710,7 +711,7 @@ func getNamesOfCustomRuns(childRefs []v1beta1.ChildStatusReference, ptName, prNa
 }
 
 // getRunNamesFromChildRefs returns the names of CustomRuns defined in childRefs that are associated with the named Pipeline Task.
-func getRunNamesFromChildRefs(childRefs []v1beta1.ChildStatusReference, ptName string) []string {
+func getRunNamesFromChildRefs(childRefs []v1.ChildStatusReference, ptName string) []string {
 	var runNames []string
 	for _, cr := range childRefs {
 		if cr.PipelineTaskName == ptName {
@@ -723,20 +724,20 @@ func getRunNamesFromChildRefs(childRefs []v1beta1.ChildStatusReference, ptName s
 }
 
 func (t *ResolvedPipelineTask) hasResultReferences() bool {
-	var matrixParams v1beta1.Params
+	var matrixParams v1.Params
 	if t.PipelineTask.IsMatrixed() {
 		matrixParams = t.PipelineTask.Params
 	}
 	for _, param := range append(t.PipelineTask.Params, matrixParams...) {
-		if ps, ok := v1beta1.GetVarSubstitutionExpressionsForParam(param); ok {
-			if v1beta1.LooksLikeContainsResultRefs(ps) {
+		if ps, ok := v1.GetVarSubstitutionExpressionsForParam(param); ok {
+			if v1.LooksLikeContainsResultRefs(ps) {
 				return true
 			}
 		}
 	}
-	for _, we := range t.PipelineTask.WhenExpressions {
+	for _, we := range t.PipelineTask.When {
 		if ps, ok := we.GetVarSubstitutionExpressions(); ok {
-			if v1beta1.LooksLikeContainsResultRefs(ps) {
+			if v1.LooksLikeContainsResultRefs(ps) {
 				return true
 			}
 		}

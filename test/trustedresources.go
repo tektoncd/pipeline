@@ -34,10 +34,10 @@ import (
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 	"knative.dev/pkg/logging"
@@ -132,7 +132,7 @@ func SetupVerificationPolicies(t *testing.T) (signature.SignerVerifier, *ecdsa.P
 		t.Fatalf("failed to generate keys %v", err)
 	}
 
-	secret := &v1.Secret{
+	secret := &corev1.Secret{
 		Data: map[string][]byte{"cosign.pub": pub},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "verification-secrets",
@@ -164,7 +164,7 @@ func SetupVerificationPolicies(t *testing.T) (signature.SignerVerifier, *ecdsa.P
 			{
 				Name: "pubkey",
 				Key: &v1alpha1.KeyRef{
-					SecretRef: &v1.SecretReference{
+					SecretRef: &corev1.SecretReference{
 						Name:      secret.Name,
 						Namespace: secret.Namespace,
 					},
@@ -199,7 +199,7 @@ func SetupVerificationPolicies(t *testing.T) (signature.SignerVerifier, *ecdsa.P
 			{
 				Name: "pubkey",
 				Key: &v1alpha1.KeyRef{
-					SecretRef: &v1.SecretReference{
+					SecretRef: &corev1.SecretReference{
 						Name:      secret.Name,
 						Namespace: secret.Namespace,
 					},
@@ -224,7 +224,7 @@ func SetupMatchAllVerificationPolicies(t *testing.T, namespace string) (signatur
 		t.Fatalf("failed to generate keys %v", err)
 	}
 
-	secret := &v1.Secret{
+	secret := &corev1.Secret{
 		Data: map[string][]byte{"cosign.pub": pub},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "verification-secrets",
@@ -341,6 +341,36 @@ func GetSignedV1beta1Pipeline(unsigned *v1beta1.Pipeline, signer signature.Signe
 
 // GetSignedV1beta1Task signed the given task and rename it with given name
 func GetSignedV1beta1Task(unsigned *v1beta1.Task, signer signature.Signer, name string) (*v1beta1.Task, error) {
+	signedTask := unsigned.DeepCopy()
+	signedTask.Name = name
+	if signedTask.Annotations == nil {
+		signedTask.Annotations = map[string]string{}
+	}
+	signature, err := signInterface(signer, signedTask)
+	if err != nil {
+		return nil, err
+	}
+	signedTask.Annotations[signatureAnnotation] = base64.StdEncoding.EncodeToString(signature)
+	return signedTask, nil
+}
+
+// GetSignedV1Pipeline signed the given pipeline and rename it with given name
+func GetSignedV1Pipeline(unsigned *v1.Pipeline, signer signature.Signer, name string) (*v1.Pipeline, error) {
+	signedPipeline := unsigned.DeepCopy()
+	signedPipeline.Name = name
+	if signedPipeline.Annotations == nil {
+		signedPipeline.Annotations = map[string]string{}
+	}
+	signature, err := signInterface(signer, signedPipeline)
+	if err != nil {
+		return nil, err
+	}
+	signedPipeline.Annotations[signatureAnnotation] = base64.StdEncoding.EncodeToString(signature)
+	return signedPipeline, nil
+}
+
+// GetSignedV1Task signed the given task and rename it with given name
+func GetSignedV1Task(unsigned *v1.Task, signer signature.Signer, name string) (*v1.Task, error) {
 	signedTask := unsigned.DeepCopy()
 	signedTask.Name = name
 	if signedTask.Annotations == nil {

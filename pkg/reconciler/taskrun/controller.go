@@ -21,11 +21,11 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
+	taskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1/taskrun"
 	verificationpolicyinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/verificationpolicy"
-	taskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/taskrun"
-	taskrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/taskrun"
+	taskrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1/taskrun"
 	resolutionclient "github.com/tektoncd/pipeline/pkg/client/resolution/injection/client"
 	resolutioninformer "github.com/tektoncd/pipeline/pkg/client/resolution/injection/informers/resolution/v1beta1/resolutionrequest"
 	"github.com/tektoncd/pipeline/pkg/pod"
@@ -52,7 +52,7 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock, tracerProvi
 		kubeclientset := kubeclient.Get(ctx)
 		pipelineclientset := pipelineclient.Get(ctx)
 		taskRunInformer := taskruninformer.Get(ctx)
-		podInformer := filteredpodinformer.Get(ctx, v1beta1.ManagedByLabelKey)
+		podInformer := filteredpodinformer.Get(ctx, v1.ManagedByLabelKey)
 		limitrangeInformer := limitrangeinformer.Get(ctx)
 		verificationpolicyInformer := verificationpolicyinformer.Get(ctx)
 		resolutionInformer := resolutioninformer.Get(ctx)
@@ -92,7 +92,7 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock, tracerProvi
 		taskRunInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
 
 		podInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.FilterController(&v1beta1.TaskRun{}),
+			FilterFunc: controller.FilterController(&v1.TaskRun{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 

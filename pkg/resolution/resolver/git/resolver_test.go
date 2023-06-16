@@ -34,7 +34,7 @@ import (
 	"github.com/jenkins-x/go-scm/scm/driver/fake"
 	"github.com/jenkins-x/go-scm/scm/factory"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -525,14 +525,14 @@ func TestResolve(t *testing.T) {
 					}
 
 					// status.refSource
-					expectedStatus.RefSource = &pipelinev1beta1.RefSource{
+					expectedStatus.RefSource = &pipelinev1.RefSource{
 						URI: "git+" + expectedStatus.Annotations[AnnotationKeyURL],
 						Digest: map[string]string{
 							"sha1": tc.expectedCommitSHA,
 						},
 						EntryPoint: tc.args.pathInRepo,
 					}
-					expectedStatus.Source = (*pipelinev1beta1.ConfigSource)(expectedStatus.RefSource)
+					expectedStatus.Source = expectedStatus.RefSource
 				} else {
 					expectedStatus.Status.Conditions[0].Message = tc.expectedErr.Error()
 				}
@@ -706,33 +706,33 @@ func createRequest(args *params) *v1beta1.ResolutionRequest {
 			},
 		},
 		Spec: v1beta1.ResolutionRequestSpec{
-			Params: []pipelinev1beta1.Param{{
+			Params: []pipelinev1.Param{{
 				Name:  pathParam,
-				Value: *pipelinev1beta1.NewStructuredValues(args.pathInRepo),
+				Value: *pipelinev1.NewStructuredValues(args.pathInRepo),
 			}},
 		},
 	}
 
 	if args.revision != "" {
-		rr.Spec.Params = append(rr.Spec.Params, pipelinev1beta1.Param{
+		rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
 			Name:  revisionParam,
-			Value: *pipelinev1beta1.NewStructuredValues(args.revision),
+			Value: *pipelinev1.NewStructuredValues(args.revision),
 		})
 	}
 
 	if args.url != "" {
-		rr.Spec.Params = append(rr.Spec.Params, pipelinev1beta1.Param{
+		rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
 			Name:  urlParam,
-			Value: *pipelinev1beta1.NewStructuredValues(args.url),
+			Value: *pipelinev1.NewStructuredValues(args.url),
 		})
 	} else {
-		rr.Spec.Params = append(rr.Spec.Params, pipelinev1beta1.Param{
+		rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
 			Name:  repoParam,
-			Value: *pipelinev1beta1.NewStructuredValues(args.repo),
+			Value: *pipelinev1.NewStructuredValues(args.repo),
 		})
-		rr.Spec.Params = append(rr.Spec.Params, pipelinev1beta1.Param{
+		rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
 			Name:  orgParam,
-			Value: *pipelinev1beta1.NewStructuredValues(args.org),
+			Value: *pipelinev1.NewStructuredValues(args.org),
 		})
 	}
 
@@ -751,13 +751,13 @@ func createError(msg string) error {
 	}
 }
 
-func toParams(m map[string]string) []pipelinev1beta1.Param {
-	var params []pipelinev1beta1.Param
+func toParams(m map[string]string) []pipelinev1.Param {
+	var params []pipelinev1.Param
 
 	for k, v := range m {
-		params = append(params, pipelinev1beta1.Param{
+		params = append(params, pipelinev1.Param{
 			Name:  k,
-			Value: *pipelinev1beta1.NewStructuredValues(v),
+			Value: *pipelinev1.NewStructuredValues(v),
 		})
 	}
 

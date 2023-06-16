@@ -17,7 +17,7 @@ import (
 	"context"
 	"errors"
 
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
@@ -52,7 +52,7 @@ func (r *resolver) GetSelector(context.Context) map[string]string {
 }
 
 // ValidateParams ensures parameters from a request are as expected.
-func (r *resolver) ValidateParams(ctx context.Context, params []pipelinev1beta1.Param) error {
+func (r *resolver) ValidateParams(ctx context.Context, params []pipelinev1.Param) error {
 	if len(params) > 0 {
 		return errors.New("no params allowed")
 	}
@@ -60,13 +60,13 @@ func (r *resolver) ValidateParams(ctx context.Context, params []pipelinev1beta1.
 }
 
 // Resolve uses the given params to resolve the requested file or resource.
-func (r *resolver) Resolve(ctx context.Context, params []pipelinev1beta1.Param) (framework.ResolvedResource, error) {
+func (r *resolver) Resolve(ctx context.Context, params []pipelinev1.Param) (framework.ResolvedResource, error) {
 	return &myResolvedResource{}, nil
 }
 
 // our hard-coded resolved file to return
 const pipeline = `
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: my-pipeline
@@ -95,6 +95,6 @@ func (*myResolvedResource) Annotations() map[string]string {
 
 // RefSource is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint. None atm.
-func (*myResolvedResource) RefSource() *pipelinev1beta1.RefSource {
+func (*myResolvedResource) RefSource() *pipelinev1.RefSource {
 	return nil
 }

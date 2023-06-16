@@ -21,13 +21,13 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
+	pipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1/pipelinerun"
+	taskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1/taskrun"
 	verificationpolicyinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/verificationpolicy"
 	customruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/customrun"
-	pipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipelinerun"
-	taskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/taskrun"
-	pipelinerunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/pipelinerun"
+	pipelinerunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1/pipelinerun"
 	resolutionclient "github.com/tektoncd/pipeline/pkg/client/resolution/injection/client"
 	resolutioninformer "github.com/tektoncd/pipeline/pkg/client/resolution/injection/informers/resolution/v1beta1/resolutionrequest"
 	"github.com/tektoncd/pipeline/pkg/pipelinerunmetrics"
@@ -82,15 +82,15 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock, tracerProvi
 		pipelineRunInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
 
 		taskRunInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.FilterController(&v1beta1.PipelineRun{}),
+			FilterFunc: controller.FilterController(&v1.PipelineRun{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 		customRunInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.FilterController(&v1beta1.PipelineRun{}),
+			FilterFunc: controller.FilterController(&v1.PipelineRun{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 		resolutionInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.FilterController(&v1beta1.PipelineRun{}),
+			FilterFunc: controller.FilterController(&v1.PipelineRun{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 

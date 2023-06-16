@@ -197,7 +197,7 @@ import (
   "github.com/tektoncd/pipeline/pkg/resolution/common"
   "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
   "knative.dev/pkg/injection/sharedmain"
-  pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+  pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 )
 ```
 
@@ -269,7 +269,7 @@ func (*myResolvedResource) Annotations() map[string]string {
 
 // RefSource is the source reference of the remote data that records where the remote 
 // file came from including the url, digest and the entrypoint. None atm.
-func (*myResolvedResource) RefSource() *pipelinev1beta1.RefSource {
+func (*myResolvedResource) RefSource() *pipelinev1.RefSource {
 	return nil
 }
 ```
@@ -282,8 +282,8 @@ following example.
 ```go
 // RefSource is the source reference of the remote data that records where the remote 
 // file came from including the url, digest and the entrypoint.
-func (*myResolvedResource) RefSource() *pipelinev1beta1.RefSource {
-	return &v1alpha1.RefSource{
+func (*myResolvedResource) RefSource() *pipelinev1.RefSource {
+	return &v1.RefSource{
 		URI: "https://github.com/user/example",
 		Digest: map[string]string{
 			"sha1": "example",
