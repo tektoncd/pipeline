@@ -74,7 +74,7 @@ type VerificationResult struct {
 // 3) Return VerificationResult with VerificationWarn type, when no matching policies and feature flag "no-match-policy" is "warn", or only Warn mode verification policies fail. Err field is filled with the warning;
 // 4) Return VerificationResult with VerificationError type when no policies are found and no-match-policy is set to fail, the resource fails to pass matched enforce verification policy, or there are errors during verification. Err is filled with the err.
 // refSource contains the source information of the resource.
-func VerifyResource(ctx context.Context, resource metav1.Object, k8s kubernetes.Interface, refSource *v1beta1.RefSource, verificationpolicies []*v1alpha1.VerificationPolicy) VerificationResult {
+func VerifyResource(ctx context.Context, resource metav1.Object, k8s kubernetes.Interface, refSource *v1.RefSource, verificationpolicies []*v1alpha1.VerificationPolicy) VerificationResult {
 	var refSourceURI string
 	if refSource != nil {
 		refSourceURI = refSource.URI
@@ -142,12 +142,12 @@ func VerifyResource(ctx context.Context, resource metav1.Object, k8s kubernetes.
 }
 
 // VerifyTask is the deprecated, this is to keep backward compatibility
-func VerifyTask(ctx context.Context, taskObj *v1beta1.Task, k8s kubernetes.Interface, refSource *v1beta1.RefSource, verificationpolicies []*v1alpha1.VerificationPolicy) VerificationResult {
+func VerifyTask(ctx context.Context, taskObj *v1beta1.Task, k8s kubernetes.Interface, refSource *v1.RefSource, verificationpolicies []*v1alpha1.VerificationPolicy) VerificationResult {
 	return VerifyResource(ctx, taskObj, k8s, refSource, verificationpolicies)
 }
 
 // VerifyPipeline is the deprecated, this is to keep backward compatibility
-func VerifyPipeline(ctx context.Context, pipelineObj *v1beta1.Pipeline, k8s kubernetes.Interface, refSource *v1beta1.RefSource, verificationpolicies []*v1alpha1.VerificationPolicy) VerificationResult {
+func VerifyPipeline(ctx context.Context, pipelineObj *v1beta1.Pipeline, k8s kubernetes.Interface, refSource *v1.RefSource, verificationpolicies []*v1alpha1.VerificationPolicy) VerificationResult {
 	return VerifyResource(ctx, pipelineObj, k8s, refSource, verificationpolicies)
 }
 

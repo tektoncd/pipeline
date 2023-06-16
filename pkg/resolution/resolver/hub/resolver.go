@@ -25,7 +25,7 @@ import (
 	"strings"
 
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 )
@@ -75,7 +75,7 @@ func (r *Resolver) GetSelector(context.Context) map[string]string {
 }
 
 // ValidateParams ensures parameters from a request are as expected.
-func (r *Resolver) ValidateParams(ctx context.Context, params []pipelinev1beta1.Param) error {
+func (r *Resolver) ValidateParams(ctx context.Context, params []pipelinev1.Param) error {
 	if r.isDisabled(ctx) {
 		return errors.New(disabledError)
 	}
@@ -108,7 +108,7 @@ type artifactHubResponse struct {
 }
 
 // Resolve uses the given params to resolve the requested file or resource.
-func (r *Resolver) Resolve(ctx context.Context, params []pipelinev1beta1.Param) (framework.ResolvedResource, error) {
+func (r *Resolver) Resolve(ctx context.Context, params []pipelinev1.Param) (framework.ResolvedResource, error) {
 	if r.isDisabled(ctx) {
 		return nil, errors.New(disabledError)
 	}
@@ -174,12 +174,12 @@ func (*ResolvedHubResource) Annotations() map[string]string {
 
 // RefSource is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint.
-func (rr *ResolvedHubResource) RefSource() *pipelinev1beta1.RefSource {
+func (rr *ResolvedHubResource) RefSource() *pipelinev1.RefSource {
 	h := sha256.New()
 	h.Write(rr.Content)
 	sha256CheckSum := hex.EncodeToString(h.Sum(nil))
 
-	return &pipelinev1beta1.RefSource{
+	return &pipelinev1.RefSource{
 		URI: rr.URL,
 		Digest: map[string]string{
 			"sha256": sha256CheckSum,
@@ -303,7 +303,7 @@ func (r *Resolver) validateParams(ctx context.Context, paramsMap map[string]stri
 	return nil
 }
 
-func populateDefaultParams(ctx context.Context, params []pipelinev1beta1.Param) (map[string]string, error) {
+func populateDefaultParams(ctx context.Context, params []pipelinev1.Param) (map[string]string, error) {
 	conf := framework.GetResolverConfigFromContext(ctx)
 	paramsMap := make(map[string]string)
 	for _, p := range params {

@@ -17,7 +17,7 @@ limitations under the License.
 package resolution
 
 import (
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -26,7 +26,7 @@ import (
 type ResolvedObjectMeta struct {
 	*metav1.ObjectMeta `json:",omitempty"`
 	// RefSource identifies where the spec came from.
-	RefSource *v1beta1.RefSource `json:",omitempty"`
+	RefSource *v1.RefSource `json:",omitempty"`
 	// VerificationResult contains the result of trusted resources verification
 	VerificationResult *trustedresources.VerificationResult `json:",omitempty"`
 }

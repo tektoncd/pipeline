@@ -114,7 +114,7 @@ func TestPipelineRunWithServiceAccounts(t *testing.T) {
 	}
 
 	// Create a Pipeline with multiple tasks
-	pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+	pipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -136,38 +136,39 @@ spec:
       - image: ubuntu
         script: echo task3
 `, helpers.ObjectNameForTest(t), namespace))
-	if _, err := c.V1beta1PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", pipeline.Name, err)
 	}
 
 	// Create a PipelineRun that uses those ServiceAccount
-	pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
 spec:
   pipelineRef:
     name: %s
-  serviceAccountName: sa1
+  taskRunTemplate:
+    serviceAccountName: sa1
   taskRunSpecs:
   - pipelineTaskName: task2
-    taskServiceAccountName: sa2
+    serviceAccountName: sa2
   - pipelineTaskName: task3
-    taskServiceAccountName: sa3
+    serviceAccountName: sa3
 `, helpers.ObjectNameForTest(t), namespace, pipeline.Name))
 
-	_, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
+	_, err := c.V1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", pipelineRun.Name, err)
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", pipelineRun.Name, namespace)
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunSucceed(pipelineRun.Name), "PipelineRunSuccess", v1beta1Version); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunSucceed(pipelineRun.Name), "PipelineRunSuccess", v1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 	}
 
 	// Verify it used those serviceAccount
-	taskRuns, err := c.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", pipelineRun.Name)})
+	taskRuns, err := c.V1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", pipelineRun.Name)})
 	if err != nil {
 		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 	}
@@ -231,7 +232,7 @@ func TestPipelineRunWithServiceAccountNameAndTaskRunSpec(t *testing.T) {
 	}
 
 	// Create a Pipeline with multiple tasks
-	pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+	pipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -244,37 +245,38 @@ spec:
       - image: ubuntu
         script: echo task1
 `, helpers.ObjectNameForTest(t), namespace))
-	if _, err := c.V1beta1PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", pipeline.Name, err)
 	}
 
 	dnsPolicy := corev1.DNSClusterFirst
 	// Create a PipelineRun that uses those ServiceAccount
-	pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
 spec:
   pipelineRef:
     name: %s
-  serviceAccountName: sa1
+  taskRunTemplate:
+    serviceAccountName: sa1
   taskRunSpecs:
   - pipelineTaskName: task1
     taskPodTemplate:
       dnsPolicy: %s
 `, helpers.ObjectNameForTest(t), namespace, pipeline.Name, dnsPolicy))
 
-	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", pipelineRun.Name, err)
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", pipelineRun.Name, namespace)
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunSucceed(pipelineRun.Name), "PipelineRunSuccess", v1beta1Version); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunSucceed(pipelineRun.Name), "PipelineRunSuccess", v1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 	}
 
 	// Verify it used those serviceAccount
-	taskRuns, err := c.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", pipelineRun.Name)})
+	taskRuns, err := c.V1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", pipelineRun.Name)})
 	if err != nil {
 		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 	}

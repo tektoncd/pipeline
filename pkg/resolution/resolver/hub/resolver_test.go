@@ -24,7 +24,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	frtesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
@@ -419,13 +419,13 @@ func resolverDisabledContext() context.Context {
 	return frtesting.ContextWithHubResolverDisabled(context.Background())
 }
 
-func toParams(m map[string]string) []pipelinev1beta1.Param {
-	var params []pipelinev1beta1.Param
+func toParams(m map[string]string) []pipelinev1.Param {
+	var params []pipelinev1.Param
 
 	for k, v := range m {
-		params = append(params, pipelinev1beta1.Param{
+		params = append(params, pipelinev1.Param{
 			Name:  k,
-			Value: *pipelinev1beta1.NewStructuredValues(v),
+			Value: *pipelinev1.NewStructuredValues(v),
 		})
 	}
 

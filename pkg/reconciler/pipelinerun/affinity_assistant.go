@@ -24,7 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	appsv1 "k8s.io/api/apps/v1"
@@ -49,7 +49,7 @@ const (
 // createOrUpdateAffinityAssistants creates an Affinity Assistant StatefulSet for every workspace in the PipelineRun that
 // use a PersistentVolumeClaim volume. This is done to achieve Node Affinity for all TaskRuns that
 // share the workspace volume and make it possible for the tasks to execute parallel while sharing volume.
-func (c *Reconciler) createOrUpdateAffinityAssistants(ctx context.Context, wb []v1beta1.WorkspaceBinding, pr *v1beta1.PipelineRun, namespace string) error {
+func (c *Reconciler) createOrUpdateAffinityAssistants(ctx context.Context, wb []v1.WorkspaceBinding, pr *v1.PipelineRun, namespace string) error {
 	logger := logging.FromContext(ctx)
 	cfg := config.FromContextOrDefaults(ctx)
 
@@ -125,7 +125,7 @@ func (c *Reconciler) createOrUpdateAffinityAssistants(ctx context.Context, wb []
 	return errorutils.NewAggregate(errs)
 }
 
-func (c *Reconciler) cleanupAffinityAssistants(ctx context.Context, pr *v1beta1.PipelineRun) error {
+func (c *Reconciler) cleanupAffinityAssistants(ctx context.Context, pr *v1.PipelineRun) error {
 	// omit cleanup if the feature is disabled
 	if c.isAffinityAssistantDisabled(ctx) {
 		return nil
@@ -154,7 +154,7 @@ func (c *Reconciler) cleanupAffinityAssistants(ctx context.Context, pr *v1beta1.
 // getPersistentVolumeClaimNameWithAffinityAssistant returns the PersistentVolumeClaim name that is
 // created by the Affinity Assistant StatefulSet VolumeClaimTemplate when Affinity Assistant is enabled.
 // The PVCs created by StatefulSet VolumeClaimTemplates follow the format `<pvcName>-<affinityAssistantName>-0`
-func getPersistentVolumeClaimNameWithAffinityAssistant(pipelineWorkspaceName, prName string, wb v1beta1.WorkspaceBinding, owner metav1.OwnerReference) string {
+func getPersistentVolumeClaimNameWithAffinityAssistant(pipelineWorkspaceName, prName string, wb v1.WorkspaceBinding, owner metav1.OwnerReference) string {
 	pvcName := volumeclaim.GetPVCNameWithoutAffinityAssistant(wb.VolumeClaimTemplate.Name, wb, owner)
 	affinityAssistantName := getAffinityAssistantName(pipelineWorkspaceName, prName)
 	return fmt.Sprintf("%s-%s-0", pvcName, affinityAssistantName)
@@ -166,7 +166,7 @@ func getAffinityAssistantName(pipelineWorkspaceName string, pipelineRunName stri
 	return fmt.Sprintf("%s-%s", workspace.ComponentNameAffinityAssistant, hashString[:10])
 }
 
-func getStatefulSetLabels(pr *v1beta1.PipelineRun, affinityAssistantName string) map[string]string {
+func getStatefulSetLabels(pr *v1.PipelineRun, affinityAssistantName string) map[string]string {
 	// Propagate labels from PipelineRun to StatefulSet.
 	labels := make(map[string]string, len(pr.ObjectMeta.Labels)+1)
 	for key, val := range pr.ObjectMeta.Labels {
@@ -184,14 +184,14 @@ func getStatefulSetLabels(pr *v1beta1.PipelineRun, affinityAssistantName string)
 // affinityAssistantStatefulSet returns an Affinity Assistant as a StatefulSet with the given AffinityAssistantTemplate applied to the StatefulSet PodTemplateSpec.
 // The VolumeClaimTemplates and Volume of StatefulSet reference the PipelineRun WorkspaceBinding VolumeClaimTempalte and the PVCs respectively.
 // The PVs created by the StatefulSet are scheduled to the same availability zone which avoids PV scheduling conflict.
-func affinityAssistantStatefulSet(name string, pr *v1beta1.PipelineRun, claimTemplates []corev1.PersistentVolumeClaim, claims []corev1.PersistentVolumeClaimVolumeSource, affinityAssistantImage string, defaultAATpl *pod.AffinityAssistantTemplate) *appsv1.StatefulSet {
+func affinityAssistantStatefulSet(name string, pr *v1.PipelineRun, claimTemplates []corev1.PersistentVolumeClaim, claims []corev1.PersistentVolumeClaimVolumeSource, affinityAssistantImage string, defaultAATpl *pod.AffinityAssistantTemplate) *appsv1.StatefulSet {
 	// We want a singleton pod
 	replicas := int32(1)
 
 	tpl := &pod.AffinityAssistantTemplate{}
 	// merge pod template from spec and default if any of them are defined
-	if pr.Spec.PodTemplate != nil || defaultAATpl != nil {
-		tpl = pod.MergeAAPodTemplateWithDefault(pr.Spec.PodTemplate.ToAffinityAssistantTemplate(), defaultAATpl)
+	if pr.Spec.TaskRunTemplate.PodTemplate != nil || defaultAATpl != nil {
+		tpl = pod.MergeAAPodTemplateWithDefault(pr.Spec.TaskRunTemplate.PodTemplate.ToAffinityAssistantTemplate(), defaultAATpl)
 	}
 
 	var mounts []corev1.VolumeMount
@@ -284,7 +284,7 @@ func (c *Reconciler) isAffinityAssistantDisabled(ctx context.Context) bool {
 }
 
 // getAssistantAffinityMergedWithPodTemplateAffinity return the affinity that merged with PipelineRun PodTemplate affinity.
-func getAssistantAffinityMergedWithPodTemplateAffinity(pr *v1beta1.PipelineRun) *corev1.Affinity {
+func getAssistantAffinityMergedWithPodTemplateAffinity(pr *v1.PipelineRun) *corev1.Affinity {
 	// use podAntiAffinity to repel other affinity assistants
 	repelOtherAffinityAssistantsPodAffinityTerm := corev1.WeightedPodAffinityTerm{
 		Weight: 100,
@@ -299,8 +299,8 @@ func getAssistantAffinityMergedWithPodTemplateAffinity(pr *v1beta1.PipelineRun) 
 	}
 
 	affinityAssistantsAffinity := &corev1.Affinity{}
-	if pr.Spec.PodTemplate != nil && pr.Spec.PodTemplate.Affinity != nil {
-		affinityAssistantsAffinity = pr.Spec.PodTemplate.Affinity
+	if pr.Spec.TaskRunTemplate.PodTemplate != nil && pr.Spec.TaskRunTemplate.PodTemplate.Affinity != nil {
+		affinityAssistantsAffinity = pr.Spec.TaskRunTemplate.PodTemplate.Affinity
 	}
 	if affinityAssistantsAffinity.PodAntiAffinity == nil {
 		affinityAssistantsAffinity.PodAntiAffinity = &corev1.PodAntiAffinity{}

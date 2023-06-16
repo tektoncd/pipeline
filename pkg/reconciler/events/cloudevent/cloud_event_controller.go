@@ -90,7 +90,7 @@ func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error
 	if ceClient == nil {
 		return errors.New("no cloud events client found in the context")
 	}
-	event, err := eventForObjectWithCondition(o)
+	event, err := eventForObjectWithCondition(ctx, o)
 	if err != nil {
 		return err
 	}

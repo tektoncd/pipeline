@@ -33,7 +33,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/random"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	remotetest "github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -111,9 +111,9 @@ func TestGetImageWithImagePullSecrets(t *testing.T) {
 		t.Errorf("Parsing url with an error: %v", err)
 	}
 
-	task := &v1beta1.Task{
+	task := &pipelinev1.Task{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1beta1",
+			APIVersion: "tekton.dev/v1",
 			Kind:       "Task"},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-create-image"},

@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/parse"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -43,7 +43,7 @@ func TestHermeticTaskRun(t *testing.T) {
 
 	tests := []struct {
 		desc       string
-		getTaskRun func(*testing.T, string, string, string) *v1beta1.TaskRun
+		getTaskRun func(*testing.T, string, string, string) *v1.TaskRun
 	}{
 		{
 			desc:       "run-as-root",
@@ -60,10 +60,10 @@ func TestHermeticTaskRun(t *testing.T) {
 			regularTaskRunName := fmt.Sprintf("not-hermetic-%s", test.desc)
 			regularTaskRun := test.getTaskRun(t, regularTaskRunName, namespace, "")
 			t.Logf("Creating TaskRun %s, hermetic=false", regularTaskRunName)
-			if _, err := c.V1beta1TaskRunClient.Create(ctx, regularTaskRun, metav1.CreateOptions{}); err != nil {
+			if _, err := c.V1TaskRunClient.Create(ctx, regularTaskRun, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create TaskRun `%s`: %s", regularTaskRunName, err)
 			}
-			if err := WaitForTaskRunState(ctx, c, regularTaskRunName, Succeed(regularTaskRunName), "TaskRunCompleted", v1beta1Version); err != nil {
+			if err := WaitForTaskRunState(ctx, c, regularTaskRunName, Succeed(regularTaskRunName), "TaskRunCompleted", v1Version); err != nil {
 				t.Errorf("Error waiting for TaskRun %s to finish: %s", regularTaskRunName, err)
 			}
 
@@ -72,19 +72,19 @@ func TestHermeticTaskRun(t *testing.T) {
 			hermeticTaskRunName := fmt.Sprintf("hermetic-should-fail-%s", test.desc)
 			hermeticTaskRun := test.getTaskRun(t, hermeticTaskRunName, namespace, "hermetic")
 			t.Logf("Creating TaskRun %s, hermetic=true", hermeticTaskRunName)
-			if _, err := c.V1beta1TaskRunClient.Create(ctx, hermeticTaskRun, metav1.CreateOptions{}); err != nil {
+			if _, err := c.V1TaskRunClient.Create(ctx, hermeticTaskRun, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create TaskRun `%s`: %s", regularTaskRun.Name, err)
 			}
-			if err := WaitForTaskRunState(ctx, c, hermeticTaskRunName, Failed(hermeticTaskRunName), "Failed", v1beta1Version); err != nil {
+			if err := WaitForTaskRunState(ctx, c, hermeticTaskRunName, Failed(hermeticTaskRunName), "Failed", v1Version); err != nil {
 				t.Errorf("Error waiting for TaskRun %s to fail: %s", hermeticTaskRunName, err)
 			}
 		})
 	}
 }
 
-func taskRun(t *testing.T, name, namespace, executionMode string) *v1beta1.TaskRun {
+func taskRun(t *testing.T, name, namespace, executionMode string) *v1.TaskRun {
 	t.Helper()
-	return parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+	return parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   annotations:
     experimental.tekton.dev/execution-mode: %s
@@ -106,9 +106,9 @@ spec:
 `, executionMode, name, namespace))
 }
 
-func unpriviligedTaskRun(t *testing.T, name, namespace, executionMode string) *v1beta1.TaskRun {
+func unpriviligedTaskRun(t *testing.T, name, namespace, executionMode string) *v1.TaskRun {
 	t.Helper()
-	return parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+	return parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   annotations:
     experimental.tekton.dev/execution-mode: %s

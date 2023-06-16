@@ -225,7 +225,7 @@ object.</p>
 <td>
 <code>refSource</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.RefSource">
+<a href="#tekton.dev/v1.RefSource">
 RefSource
 </a>
 </em>
@@ -291,7 +291,7 @@ ResolutionRequestSpec
 <td>
 <code>params</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.Param">
+<a href="#tekton.dev/v1.Param">
 []Param
 </a>
 </em>
@@ -345,7 +345,7 @@ ResolutionRequest CRD.</p>
 <td>
 <code>params</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.Param">
+<a href="#tekton.dev/v1.Param">
 []Param
 </a>
 </em>
@@ -443,8 +443,8 @@ object.</p>
 <td>
 <code>source</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.ConfigSource">
-ConfigSource
+<a href="#tekton.dev/v1.RefSource">
+RefSource
 </a>
 </em>
 </td>
@@ -456,7 +456,7 @@ ConfigSource
 <td>
 <code>refSource</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.RefSource">
+<a href="#tekton.dev/v1.RefSource">
 RefSource
 </a>
 </em>
@@ -1569,6 +1569,9 @@ IncludeParamsList
 </table>
 <h3 id="tekton.dev/v1.Param">Param
 </h3>
+<p>
+(<em>Appears on:</em><a href="#resolution.tekton.dev/v1beta1.ResolutionRequestSpec">ResolutionRequestSpec</a>)
+</p>
 <div>
 <p>Param declares an ParamValues to use for the parameter called name.</p>
 </div>
@@ -3125,7 +3128,7 @@ github.com/tektoncd/pipeline/pkg/apis/config.FeatureFlags
 <h3 id="tekton.dev/v1.RefSource">RefSource
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.Provenance">Provenance</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.Provenance">Provenance</a>, <a href="#resolution.tekton.dev/v1alpha1.ResolutionRequestStatusFields">ResolutionRequestStatusFields</a>, <a href="#resolution.tekton.dev/v1beta1.ResolutionRequestStatusFields">ResolutionRequestStatusFields</a>)
 </p>
 <div>
 <p>RefSource contains the information that can uniquely identify where a remote
@@ -8825,7 +8828,7 @@ int32
 <h3 id="tekton.dev/v1beta1.ConfigSource">ConfigSource
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Provenance">Provenance</a>, <a href="#resolution.tekton.dev/v1beta1.ResolutionRequestStatusFields">ResolutionRequestStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Provenance">Provenance</a>)
 </p>
 <div>
 <p>ConfigSource contains the information that can uniquely identify where a remote
@@ -9348,7 +9351,7 @@ IncludeParamsList
 <h3 id="tekton.dev/v1beta1.Param">Param
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskRunInputs">TaskRunInputs</a>, <a href="#resolution.tekton.dev/v1beta1.ResolutionRequestSpec">ResolutionRequestSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskRunInputs">TaskRunInputs</a>)
 </p>
 <div>
 <p>Param declares an ParamValues to use for the parameter called name.</p>
@@ -11258,7 +11261,7 @@ github.com/tektoncd/pipeline/pkg/apis/config.FeatureFlags
 <h3 id="tekton.dev/v1beta1.RefSource">RefSource
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Provenance">Provenance</a>, <a href="#resolution.tekton.dev/v1alpha1.ResolutionRequestStatusFields">ResolutionRequestStatusFields</a>, <a href="#resolution.tekton.dev/v1beta1.ResolutionRequestStatusFields">ResolutionRequestStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Provenance">Provenance</a>)
 </p>
 <div>
 <p>RefSource contains the information that can uniquely identify where a remote

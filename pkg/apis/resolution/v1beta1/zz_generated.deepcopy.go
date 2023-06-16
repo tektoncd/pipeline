@@ -22,7 +22,7 @@ limitations under the License.
 package v1beta1
 
 import (
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -92,7 +92,7 @@ func (in *ResolutionRequestSpec) DeepCopyInto(out *ResolutionRequestSpec) {
 	*out = *in
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
-		*out = make([]pipelinev1beta1.Param, len(*in))
+		*out = make([]v1.Param, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -133,12 +133,12 @@ func (in *ResolutionRequestStatusFields) DeepCopyInto(out *ResolutionRequestStat
 	*out = *in
 	if in.Source != nil {
 		in, out := &in.Source, &out.Source
-		*out = new(pipelinev1beta1.ConfigSource)
+		*out = new(v1.RefSource)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.RefSource != nil {
 		in, out := &in.RefSource, &out.RefSource
-		*out = new(pipelinev1beta1.RefSource)
+		*out = new(v1.RefSource)
 		(*in).DeepCopyInto(*out)
 	}
 	return

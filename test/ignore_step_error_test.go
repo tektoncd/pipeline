@@ -25,7 +25,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/parse"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,7 +41,7 @@ func TestFailingStepOnContinue(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 	taskRunName := "mytaskrun"
-	tr := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+	tr := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -57,16 +57,16 @@ spec:
         script: 'echo -n 123 | tee $(results.result1.path); exit 1; echo -n 456 | tee $(results.result2.path)'
 `, taskRunName, namespace))
 
-	if _, err := c.V1beta1TaskRunClient.Create(ctx, tr, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1TaskRunClient.Create(ctx, tr, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
 
 	t.Logf("Waiting for TaskRun in namespace %s to finish", namespace)
-	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunSucceed(taskRunName), "TaskRunSucceeded", v1beta1Version); err != nil {
+	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunSucceed(taskRunName), "TaskRunSucceeded", v1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
 
-	taskRun, err := c.V1beta1TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
+	taskRun, err := c.V1TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Couldn't get expected TaskRun %s: %s", taskRunName, err)
 	}
@@ -75,13 +75,13 @@ spec:
 		t.Fatalf("Expected TaskRun %s to have succeeded but Status is %v", taskRunName, taskRun.Status)
 	}
 
-	expectedResults := []v1beta1.TaskRunResult{{
+	expectedResults := []v1.TaskRunResult{{
 		Name:  "result1",
 		Type:  "string",
-		Value: *v1beta1.NewArrayOrString("123"),
+		Value: *v1.NewStructuredValues("123"),
 	}}
 
-	if d := cmp.Diff(expectedResults, taskRun.Status.TaskRunResults); d != "" {
+	if d := cmp.Diff(expectedResults, taskRun.Status.Results); d != "" {
 		t.Errorf("Got unexpected results %s", diff.PrintWantGot(d))
 	}
 }

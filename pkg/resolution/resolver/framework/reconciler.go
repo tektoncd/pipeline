@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"time"
 
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	rrclient "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned"
@@ -197,7 +198,7 @@ type statusDataPatch struct {
 	Annotations map[string]string             `json:"annotations"`
 	Data        string                        `json:"data"`
 	Source      *pipelinev1beta1.ConfigSource `json:"source"`
-	RefSource   *pipelinev1beta1.RefSource    `json:"refSource"`
+	RefSource   *pipelinev1.RefSource         `json:"refSource"`
 }
 
 func (r *Reconciler) writeResolvedData(ctx context.Context, rr *v1beta1.ResolutionRequest, resource ResolvedResource) error {

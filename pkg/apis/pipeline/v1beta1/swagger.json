@@ -1630,7 +1630,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1beta1.Param"
+            "$ref": "#/definitions/v1.Param"
           },
           "x-kubernetes-list-type": "atomic"
         }
@@ -1675,11 +1675,11 @@
         },
         "refSource": {
           "description": "RefSource is the source reference of the remote data that records the url, digest and the entrypoint.",
-          "$ref": "#/definitions/v1beta1.RefSource"
+          "$ref": "#/definitions/v1.RefSource"
         },
         "source": {
           "description": "Deprecated: Use RefSource instead",
-          "$ref": "#/definitions/v1beta1.ConfigSource"
+          "$ref": "#/definitions/v1.RefSource"
         }
       }
     },
@@ -1699,11 +1699,11 @@
         },
         "refSource": {
           "description": "RefSource is the source reference of the remote data that records the url, digest and the entrypoint.",
-          "$ref": "#/definitions/v1beta1.RefSource"
+          "$ref": "#/definitions/v1.RefSource"
         },
         "source": {
           "description": "Deprecated: Use RefSource instead",
-          "$ref": "#/definitions/v1beta1.ConfigSource"
+          "$ref": "#/definitions/v1.RefSource"
         }
       }
     },

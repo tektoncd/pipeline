@@ -21,7 +21,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -38,7 +38,7 @@ const (
 
 // PvcHandler is used to create PVCs for workspaces
 type PvcHandler interface {
-	CreatePVCsForWorkspacesWithoutAffinityAssistant(ctx context.Context, wb []v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error
+	CreatePVCsForWorkspacesWithoutAffinityAssistant(ctx context.Context, wb []v1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error
 }
 
 type defaultPVCHandler struct {
@@ -57,7 +57,7 @@ func NewPVCHandler(clientset clientset.Interface, logger *zap.SugaredLogger) Pvc
 // with that name is created with the provided OwnerReference.
 // This function is only called when Affinity Assistant is disabled.
 // When Affinity Assistant is enabled, the PersistentVolumeClaims will be created by the Affinity Assistant StatefulSet VolumeClaimTemplate instead.
-func (c *defaultPVCHandler) CreatePVCsForWorkspacesWithoutAffinityAssistant(ctx context.Context, wb []v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error {
+func (c *defaultPVCHandler) CreatePVCsForWorkspacesWithoutAffinityAssistant(ctx context.Context, wb []v1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error {
 	var errs []error
 	for _, claim := range getPVCsWithoutAffinityAssistant(wb, ownerReference, namespace) {
 		_, err := c.clientset.CoreV1().PersistentVolumeClaims(claim.Namespace).Get(ctx, claim.Name, metav1.GetOptions{})
@@ -83,7 +83,7 @@ func (c *defaultPVCHandler) CreatePVCsForWorkspacesWithoutAffinityAssistant(ctx 
 	return errorutils.NewAggregate(errs)
 }
 
-func getPVCsWithoutAffinityAssistant(workspaceBindings []v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) map[string]*corev1.PersistentVolumeClaim {
+func getPVCsWithoutAffinityAssistant(workspaceBindings []v1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) map[string]*corev1.PersistentVolumeClaim {
 	claims := make(map[string]*corev1.PersistentVolumeClaim)
 	for _, workspaceBinding := range workspaceBindings {
 		if workspaceBinding.VolumeClaimTemplate == nil {
@@ -106,7 +106,7 @@ func getPVCsWithoutAffinityAssistant(workspaceBindings []v1beta1.WorkspaceBindin
 // We use ownerReference UID over ownerReference name to distinguish runs with the same name.
 // If the given volumeClaimTemplate name is empty, the prefix "pvc" will be applied to the PersistentVolumeClaim name.
 // See function `getPersistentVolumeClaimNameWithAffinityAssistant` when the PersistentVolumeClaim is created by Affinity Assistant StatefulSet.
-func GetPVCNameWithoutAffinityAssistant(claimName string, wb v1beta1.WorkspaceBinding, owner metav1.OwnerReference) string {
+func GetPVCNameWithoutAffinityAssistant(claimName string, wb v1.WorkspaceBinding, owner metav1.OwnerReference) string {
 	if claimName == "" {
 		return fmt.Sprintf("%s-%s", "pvc", getPersistentVolumeClaimIdentity(wb.Name, string(owner.UID)))
 	}

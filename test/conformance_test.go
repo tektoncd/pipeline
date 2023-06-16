@@ -27,7 +27,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,13 +51,13 @@ func TestTaskRun(t *testing.T) {
 
 	for _, tc := range []struct {
 		name                    string
-		tr                      *v1beta1.TaskRun
+		tr                      *v1.TaskRun
 		fn                      conditionFn
 		expectedConditionStatus corev1.ConditionStatus
-		expectedStepState       []v1beta1.StepState
+		expectedStepState       []v1.StepState
 	}{{
 		name: "successful-task-run",
-		tr: parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+		tr: parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -69,7 +69,7 @@ spec:
 `, helpers.ObjectNameForTest(t), namespace, fqImageName)),
 		fn:                      TaskRunSucceed,
 		expectedConditionStatus: corev1.ConditionTrue,
-		expectedStepState: []v1beta1.StepState{{
+		expectedStepState: []v1.StepState{{
 			ContainerState: corev1.ContainerState{
 				Terminated: &corev1.ContainerStateTerminated{
 					ExitCode: 0,
@@ -79,7 +79,7 @@ spec:
 		}},
 	}, {
 		name: "failed-task-run",
-		tr: parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+		tr: parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -98,7 +98,7 @@ spec:
 `, helpers.ObjectNameForTest(t), namespace, fqImageName, fqImageName, fqImageName)),
 		fn:                      TaskRunFailed,
 		expectedConditionStatus: corev1.ConditionFalse,
-		expectedStepState: []v1beta1.StepState{{
+		expectedStepState: []v1.StepState{{
 			ContainerState: corev1.ContainerState{
 				Terminated: &corev1.ContainerStateTerminated{
 					ExitCode: 0,
@@ -123,15 +123,15 @@ spec:
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Logf("Creating TaskRun %s", tc.tr.Name)
-			if _, err := c.V1beta1TaskRunClient.Create(ctx, tc.tr, metav1.CreateOptions{}); err != nil {
+			if _, err := c.V1TaskRunClient.Create(ctx, tc.tr, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create TaskRun `%s`: %s", tc.tr.Name, err)
 			}
 
-			if err := WaitForTaskRunState(ctx, c, tc.tr.Name, tc.fn(tc.tr.Name), "WaitTaskRunDone", v1beta1Version); err != nil {
+			if err := WaitForTaskRunState(ctx, c, tc.tr.Name, tc.fn(tc.tr.Name), "WaitTaskRunDone", v1Version); err != nil {
 				t.Errorf("Error waiting for TaskRun to finish: %s", err)
 				return
 			}
-			tr, err := c.V1beta1TaskRunClient.Get(ctx, tc.tr.Name, metav1.GetOptions{})
+			tr, err := c.V1TaskRunClient.Get(ctx, tc.tr.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("Failed to get TaskRun `%s`: %s", tc.tr.Name, err)
 			}
@@ -182,7 +182,7 @@ spec:
 			}
 
 			ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
-			ignoreStepFields := cmpopts.IgnoreFields(v1beta1.StepState{}, "ImageID", "Name", "ContainerName")
+			ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "Name", "ContainerName")
 			if d := cmp.Diff(tr.Status.Steps, tc.expectedStepState, ignoreTerminatedFields, ignoreStepFields); d != "" {
 				t.Fatalf("-got, +want: %v", d)
 			}

@@ -23,7 +23,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -31,28 +31,28 @@ import (
 )
 
 func TestGetTaskSpec_Ref(t *testing.T) {
-	task := &v1beta1.Task{
+	task := &v1.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "orchestrate",
 		},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		Spec: v1.TaskSpec{
+			Steps: []v1.Step{{
 				Name: "step1",
 			}},
 		},
 	}
-	tr := &v1beta1.TaskRun{
+	tr := &v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "mytaskrun",
 		},
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
+		Spec: v1.TaskRunSpec{
+			TaskRef: &v1.TaskRef{
 				Name: "orchestrate",
 			},
 		},
 	}
 
-	gt := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.RefSource, *trustedresources.VerificationResult, error) {
+	gt := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return task, sampleRefSource.DeepCopy(), nil, nil
 	}
 	resolvedObjectMeta, taskSpec, err := resources.GetTaskData(context.Background(), tr, gt)
@@ -74,19 +74,19 @@ func TestGetTaskSpec_Ref(t *testing.T) {
 }
 
 func TestGetTaskSpec_Embedded(t *testing.T) {
-	tr := &v1beta1.TaskRun{
+	tr := &v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "mytaskrun",
 		},
-		Spec: v1beta1.TaskRunSpec{
-			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{
+		Spec: v1.TaskRunSpec{
+			TaskSpec: &v1.TaskSpec{
+				Steps: []v1.Step{{
 					Name: "step1",
 				}},
 			},
 		},
 	}
-	gt := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.RefSource, *trustedresources.VerificationResult, error) {
+	gt := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return nil, nil, nil, errors.New("shouldn't be called")
 	}
 	resolvedObjectMeta, taskSpec, err := resources.GetTaskData(context.Background(), tr, gt)
@@ -110,12 +110,12 @@ func TestGetTaskSpec_Embedded(t *testing.T) {
 }
 
 func TestGetTaskSpec_Invalid(t *testing.T) {
-	tr := &v1beta1.TaskRun{
+	tr := &v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "mytaskrun",
 		},
 	}
-	gt := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.RefSource, *trustedresources.VerificationResult, error) {
+	gt := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return nil, nil, nil, errors.New("shouldn't be called")
 	}
 	_, _, err := resources.GetTaskData(context.Background(), tr, gt)
@@ -125,17 +125,17 @@ func TestGetTaskSpec_Invalid(t *testing.T) {
 }
 
 func TestGetTaskSpec_Error(t *testing.T) {
-	tr := &v1beta1.TaskRun{
+	tr := &v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "mytaskrun",
 		},
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
+		Spec: v1.TaskRunSpec{
+			TaskRef: &v1.TaskRef{
 				Name: "orchestrate",
 			},
 		},
 	}
-	gt := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.RefSource, *trustedresources.VerificationResult, error) {
+	gt := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return nil, nil, nil, errors.New("something went wrong")
 	}
 	_, _, err := resources.GetTaskData(context.Background(), tr, gt)
@@ -145,18 +145,18 @@ func TestGetTaskSpec_Error(t *testing.T) {
 }
 
 func TestGetTaskData_ResolutionSuccess(t *testing.T) {
-	tr := &v1beta1.TaskRun{
+	tr := &v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "mytaskrun",
 		},
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				ResolverRef: v1beta1.ResolverRef{
+		Spec: v1.TaskRunSpec{
+			TaskRef: &v1.TaskRef{
+				ResolverRef: v1.ResolverRef{
 					Resolver: "foo",
-					Params: v1beta1.Params{{
+					Params: []v1.Param{{
 						Name: "bar",
-						Value: v1beta1.ParamValue{
-							Type:      v1beta1.ParamTypeString,
+						Value: v1.ParamValue{
+							Type:      v1.ParamTypeString,
 							StringVal: "baz",
 						},
 					}},
@@ -167,16 +167,16 @@ func TestGetTaskData_ResolutionSuccess(t *testing.T) {
 	sourceMeta := metav1.ObjectMeta{
 		Name: "task",
 	}
-	sourceSpec := v1beta1.TaskSpec{
-		Steps: []v1beta1.Step{{
+	sourceSpec := v1.TaskSpec{
+		Steps: []v1.Step{{
 			Name:   "step1",
 			Image:  "ubuntu",
 			Script: `echo "hello world!"`,
 		}},
 	}
 
-	getTask := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.RefSource, *trustedresources.VerificationResult, error) {
-		return &v1beta1.Task{
+	getTask := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+		return &v1.Task{
 			ObjectMeta: *sourceMeta.DeepCopy(),
 			Spec:       *sourceSpec.DeepCopy(),
 		}, sampleRefSource.DeepCopy(), nil, nil
@@ -200,19 +200,19 @@ func TestGetTaskData_ResolutionSuccess(t *testing.T) {
 }
 
 func TestGetPipelineData_ResolutionError(t *testing.T) {
-	tr := &v1beta1.TaskRun{
+	tr := &v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "mytaskrun",
 		},
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				ResolverRef: v1beta1.ResolverRef{
+		Spec: v1.TaskRunSpec{
+			TaskRef: &v1.TaskRef{
+				ResolverRef: v1.ResolverRef{
 					Resolver: "git",
 				},
 			},
 		},
 	}
-	getTask := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.RefSource, *trustedresources.VerificationResult, error) {
+	getTask := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return nil, nil, nil, errors.New("something went wrong")
 	}
 	ctx := context.Background()
@@ -223,19 +223,19 @@ func TestGetPipelineData_ResolutionError(t *testing.T) {
 }
 
 func TestGetTaskData_ResolvedNilTask(t *testing.T) {
-	tr := &v1beta1.TaskRun{
+	tr := &v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "mytaskrun",
 		},
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				ResolverRef: v1beta1.ResolverRef{
+		Spec: v1.TaskRunSpec{
+			TaskRef: &v1.TaskRef{
+				ResolverRef: v1.ResolverRef{
 					Resolver: "git",
 				},
 			},
 		},
 	}
-	getTask := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.RefSource, *trustedresources.VerificationResult, error) {
+	getTask := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return nil, nil, nil, nil
 	}
 	ctx := context.Background()
@@ -246,18 +246,18 @@ func TestGetTaskData_ResolvedNilTask(t *testing.T) {
 }
 
 func TestGetTaskData_VerificationResult(t *testing.T) {
-	tr := &v1beta1.TaskRun{
+	tr := &v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "mytaskrun",
 		},
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				ResolverRef: v1beta1.ResolverRef{
+		Spec: v1.TaskRunSpec{
+			TaskRef: &v1.TaskRef{
+				ResolverRef: v1.ResolverRef{
 					Resolver: "foo",
-					Params: v1beta1.Params{{
+					Params: v1.Params{{
 						Name: "bar",
-						Value: v1beta1.ParamValue{
-							Type:      v1beta1.ParamTypeString,
+						Value: v1.ParamValue{
+							Type:      v1.ParamTypeString,
 							StringVal: "baz",
 						},
 					}},
@@ -268,8 +268,8 @@ func TestGetTaskData_VerificationResult(t *testing.T) {
 	sourceMeta := metav1.ObjectMeta{
 		Name: "task",
 	}
-	sourceSpec := v1beta1.TaskSpec{
-		Steps: []v1beta1.Step{{
+	sourceSpec := v1.TaskSpec{
+		Steps: []v1.Step{{
 			Name:   "step1",
 			Image:  "ubuntu",
 			Script: `echo "hello world!"`,
@@ -280,8 +280,8 @@ func TestGetTaskData_VerificationResult(t *testing.T) {
 		VerificationResultType: trustedresources.VerificationError,
 		Err:                    trustedresources.ErrResourceVerificationFailed,
 	}
-	getTask := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.RefSource, *trustedresources.VerificationResult, error) {
-		return &v1beta1.Task{
+	getTask := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+		return &v1.Task{
 			ObjectMeta: *sourceMeta.DeepCopy(),
 			Spec:       *sourceSpec.DeepCopy(),
 		}, nil, verificationResult, nil

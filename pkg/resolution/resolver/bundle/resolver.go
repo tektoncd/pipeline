@@ -23,7 +23,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"k8s.io/client-go/kubernetes"
@@ -74,7 +74,7 @@ func (r *Resolver) GetSelector(context.Context) map[string]string {
 }
 
 // ValidateParams ensures parameters from a request are as expected.
-func (r *Resolver) ValidateParams(ctx context.Context, params []pipelinev1beta1.Param) error {
+func (r *Resolver) ValidateParams(ctx context.Context, params []pipelinev1.Param) error {
 	if r.isDisabled(ctx) {
 		return errors.New(disabledError)
 	}
@@ -85,7 +85,7 @@ func (r *Resolver) ValidateParams(ctx context.Context, params []pipelinev1beta1.
 }
 
 // Resolve uses the given params to resolve the requested file or resource.
-func (r *Resolver) Resolve(ctx context.Context, params []pipelinev1beta1.Param) (framework.ResolvedResource, error) {
+func (r *Resolver) Resolve(ctx context.Context, params []pipelinev1.Param) (framework.ResolvedResource, error) {
 	if r.isDisabled(ctx) {
 		return nil, errors.New(disabledError)
 	}

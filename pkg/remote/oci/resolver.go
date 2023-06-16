@@ -29,7 +29,7 @@ import (
 	imgname "github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	ociremote "github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	"github.com/tektoncd/pipeline/pkg/remote"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -90,7 +90,7 @@ func (o *Resolver) List(ctx context.Context) ([]remote.ResolvedObject, error) {
 }
 
 // Get retrieves a specific object with the given Kind and name
-func (o *Resolver) Get(ctx context.Context, kind, name string) (runtime.Object, *v1beta1.RefSource, error) {
+func (o *Resolver) Get(ctx context.Context, kind, name string) (runtime.Object, *pipelinev1.RefSource, error) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, o.timeout)
 	defer cancel()
 	img, err := o.retrieveImage(timeoutCtx)

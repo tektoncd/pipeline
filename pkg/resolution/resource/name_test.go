@@ -19,7 +19,7 @@ package resource_test
 import (
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/resolution/resource"
 )
 
@@ -27,30 +27,30 @@ func TestGenerateDeterministicName(t *testing.T) {
 	type args struct {
 		prefix string
 		base   string
-		params []v1beta1.Param
+		params []v1.Param
 	}
 	golden := args{
 		prefix: "prefix",
 		base:   "base",
-		params: []v1beta1.Param{
+		params: []v1.Param{
 			{
 				Name: "string-param",
-				Value: v1beta1.ParamValue{
-					Type:      v1beta1.ParamTypeString,
+				Value: v1.ParamValue{
+					Type:      v1.ParamTypeString,
 					StringVal: "value1",
 				},
 			},
 			{
 				Name: "array-param",
-				Value: v1beta1.ParamValue{
-					Type:     v1beta1.ParamTypeArray,
+				Value: v1.ParamValue{
+					Type:     v1.ParamTypeArray,
 					ArrayVal: []string{"value1", "value2"},
 				},
 			},
 			{
 				Name: "object-param",
-				Value: v1beta1.ParamValue{
-					Type:      v1beta1.ParamTypeObject,
+				Value: v1.ParamValue{
+					Type:      v1.ParamTypeObject,
 					ObjectVal: map[string]string{"key": "value"},
 				},
 			},
@@ -86,7 +86,7 @@ func TestGenerateDeterministicName(t *testing.T) {
 		{
 			name: "params with different order should generate same hash",
 			args: args{
-				params: []v1beta1.Param{
+				params: []v1.Param{
 					golden.params[2],
 					golden.params[1],
 					golden.params[0],

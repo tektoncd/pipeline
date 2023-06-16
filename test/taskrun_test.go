@@ -28,7 +28,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
@@ -51,7 +51,7 @@ func TestTaskRunFailure(t *testing.T) {
 	taskRunName := helpers.ObjectNameForTest(t)
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
-	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
+	task := parse.MustParseV1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -67,10 +67,10 @@ spec:
     command: ['/bin/sh']
     args: ['-c', 'sleep 30s']
 `, helpers.ObjectNameForTest(t), namespace))
-	if _, err := c.V1beta1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
-	taskRun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+	taskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -78,29 +78,29 @@ spec:
   taskRef:
     name: %s
 `, taskRunName, namespace, task.Name))
-	if _, err := c.V1beta1TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
 
 	t.Logf("Waiting for TaskRun in namespace %s to fail", namespace)
-	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunFailed(taskRunName), "TaskRunFailed", v1beta1Version); err != nil {
+	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunFailed(taskRunName), "TaskRunFailed", v1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
 
-	taskrun, err := c.V1beta1TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
+	taskrun, err := c.V1TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Couldn't get expected TaskRun %s: %s", taskRunName, err)
 	}
 
-	expectedStepState := []v1beta1.StepState{{
+	expectedStepState := []v1.StepState{{
 		ContainerState: corev1.ContainerState{
 			Terminated: &corev1.ContainerStateTerminated{
 				ExitCode: 0,
 				Reason:   "Completed",
 			},
 		},
-		Name:          "unnamed-0",
-		ContainerName: "step-unnamed-0",
+		Name:      "unnamed-0",
+		Container: "step-unnamed-0",
 	}, {
 		ContainerState: corev1.ContainerState{
 			Terminated: &corev1.ContainerStateTerminated{
@@ -108,8 +108,8 @@ spec:
 				Reason:   "Error",
 			},
 		},
-		Name:          "unnamed-1",
-		ContainerName: "step-unnamed-1",
+		Name:      "unnamed-1",
+		Container: "step-unnamed-1",
 	}, {
 		ContainerState: corev1.ContainerState{
 			Terminated: &corev1.ContainerStateTerminated{
@@ -117,11 +117,11 @@ spec:
 				Reason:   "Error",
 			},
 		},
-		Name:          "unnamed-2",
-		ContainerName: "step-unnamed-2",
+		Name:      "unnamed-2",
+		Container: "step-unnamed-2",
 	}}
 	ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
-	ignoreStepFields := cmpopts.IgnoreFields(v1beta1.StepState{}, "ImageID")
+	ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID")
 	if d := cmp.Diff(taskrun.Status.Steps, expectedStepState, ignoreTerminatedFields, ignoreStepFields); d != "" {
 		t.Fatalf("-got, +want: %v", d)
 	}
@@ -149,7 +149,7 @@ func TestTaskRunStatus(t *testing.T) {
 	fqImageName := getTestImage(busyboxImage)
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
-	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
+	task := parse.MustParseV1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -159,10 +159,10 @@ spec:
     command: ['/bin/sh']
     args: ['-c', 'echo hello']
 `, helpers.ObjectNameForTest(t), namespace, fqImageName))
-	if _, err := c.V1beta1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
-	taskRun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+	taskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -170,33 +170,33 @@ spec:
   taskRef:
     name: %s
 `, taskRunName, namespace, task.Name))
-	if _, err := c.V1beta1TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
 
 	t.Logf("Waiting for TaskRun in namespace %s to fail", namespace)
-	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunSucceed(taskRunName), "TaskRunSucceed", v1beta1Version); err != nil {
+	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunSucceed(taskRunName), "TaskRunSucceed", v1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
 
-	taskrun, err := c.V1beta1TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
+	taskrun, err := c.V1TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Couldn't get expected TaskRun %s: %s", taskRunName, err)
 	}
 
-	expectedStepState := []v1beta1.StepState{{
+	expectedStepState := []v1.StepState{{
 		ContainerState: corev1.ContainerState{
 			Terminated: &corev1.ContainerStateTerminated{
 				ExitCode: 0,
 				Reason:   "Completed",
 			},
 		},
-		Name:          "unnamed-0",
-		ContainerName: "step-unnamed-0",
+		Name:      "unnamed-0",
+		Container: "step-unnamed-0",
 	}}
 
 	ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
-	ignoreStepFields := cmpopts.IgnoreFields(v1beta1.StepState{}, "ImageID")
+	ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID")
 	if d := cmp.Diff(taskrun.Status.Steps, expectedStepState, ignoreTerminatedFields, ignoreStepFields); d != "" {
 		t.Fatalf("-got, +want: %v", d)
 	}

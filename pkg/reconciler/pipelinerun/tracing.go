@@ -21,7 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
@@ -40,7 +40,7 @@ const (
 
 // initialize tracing by creating the root span and injecting the
 // spanContext is propogated through annotations in the CR
-func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, pr *v1beta1.PipelineRun) context.Context {
+func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, pr *v1.PipelineRun) context.Context {
 	logger := logging.FromContext(ctx)
 	pro := otel.GetTextMapPropagator()
 

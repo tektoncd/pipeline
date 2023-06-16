@@ -134,13 +134,13 @@ func (trs *TaskRunSpec) ConvertFrom(ctx context.Context, source *v1.TaskRunSpec,
 	trs.Params = nil
 	for _, p := range source.Params {
 		new := Param{}
-		new.convertFrom(ctx, p)
+		new.ConvertFrom(ctx, p)
 		trs.Params = append(trs.Params, new)
 	}
 	trs.ServiceAccountName = source.ServiceAccountName
 	if source.TaskRef != nil {
 		newTaskRef := TaskRef{}
-		newTaskRef.convertFrom(ctx, *source.TaskRef)
+		newTaskRef.ConvertFrom(ctx, *source.TaskRef)
 		trs.TaskRef = &newTaskRef
 	}
 	if source.TaskSpec != nil {
@@ -159,7 +159,7 @@ func (trs *TaskRunSpec) ConvertFrom(ctx context.Context, source *v1.TaskRunSpec,
 	trs.Workspaces = nil
 	for _, w := range source.Workspaces {
 		new := WorkspaceBinding{}
-		new.convertFrom(ctx, w)
+		new.ConvertFrom(ctx, w)
 		trs.Workspaces = append(trs.Workspaces, new)
 	}
 	trs.StepOverrides = nil

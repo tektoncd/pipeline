@@ -19,8 +19,8 @@ package pipelinerunmetrics
 import (
 	"context"
 
-	pipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipelinerun"
-	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
+	pipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1/pipelinerun"
+	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1"
 	"k8s.io/client-go/rest"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"

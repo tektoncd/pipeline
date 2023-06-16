@@ -26,12 +26,11 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/parse"
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -48,13 +47,13 @@ import (
 
 var workspaceName = "test-workspace"
 
-var testPipelineRun = &v1beta1.PipelineRun{
+var testPipelineRun = &v1.PipelineRun{
 	TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
 	ObjectMeta: metav1.ObjectMeta{
 		Name: "test-pipelinerun",
 	},
-	Spec: v1beta1.PipelineRunSpec{
-		Workspaces: []v1beta1.WorkspaceBinding{{
+	Spec: v1.PipelineRunSpec{
+		Workspaces: []v1.WorkspaceBinding{{
 			Name: workspaceName,
 			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 				ClaimName: "myclaim",
@@ -68,14 +67,14 @@ var testPipelineRun = &v1beta1.PipelineRun{
 func TestCreateAndDeleteOfAffinityAssistant(t *testing.T) {
 	tests := []struct {
 		name                  string
-		pr                    *v1beta1.PipelineRun
+		pr                    *v1.PipelineRun
 		expectStatefulSetSpec []*appsv1.StatefulSetSpec
 	}{{
 		name: "PersistentVolumeClaim Workspace type",
-		pr: &v1beta1.PipelineRun{
+		pr: &v1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-with-pvc"},
-			Spec: v1beta1.PipelineRunSpec{
-				Workspaces: []v1beta1.WorkspaceBinding{{
+			Spec: v1.PipelineRunSpec{
+				Workspaces: []v1.WorkspaceBinding{{
 					Name: "PersistentVolumeClaim Workspace",
 					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 						ClaimName: "myclaim",
@@ -97,10 +96,10 @@ func TestCreateAndDeleteOfAffinityAssistant(t *testing.T) {
 		}},
 	}, {
 		name: "VolumeClaimTemplate Workspace type",
-		pr: &v1beta1.PipelineRun{
+		pr: &v1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-with-volumeClaimTemplate"},
-			Spec: v1beta1.PipelineRunSpec{
-				Workspaces: []v1beta1.WorkspaceBinding{{
+			Spec: v1.PipelineRunSpec{
+				Workspaces: []v1.WorkspaceBinding{{
 					Name:                "VolumeClaimTemplate Workspace",
 					VolumeClaimTemplate: &corev1.PersistentVolumeClaim{},
 				}},
@@ -113,10 +112,10 @@ func TestCreateAndDeleteOfAffinityAssistant(t *testing.T) {
 		}},
 	}, {
 		name: "VolumeClaimTemplate and PersistentVolumeClaim Workspaces",
-		pr: &v1beta1.PipelineRun{
+		pr: &v1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-with-volumeClaimTemplate-and-pvc"},
-			Spec: v1beta1.PipelineRunSpec{
-				Workspaces: []v1beta1.WorkspaceBinding{{
+			Spec: v1.PipelineRunSpec{
+				Workspaces: []v1.WorkspaceBinding{{
 					Name:                "VolumeClaimTemplate Workspace",
 					VolumeClaimTemplate: &corev1.PersistentVolumeClaim{},
 				}, {
@@ -144,10 +143,10 @@ func TestCreateAndDeleteOfAffinityAssistant(t *testing.T) {
 		}},
 	}, {
 		name: "other Workspace type",
-		pr: &v1beta1.PipelineRun{
+		pr: &v1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-with-emptyDir"},
-			Spec: v1beta1.PipelineRunSpec{
-				Workspaces: []v1beta1.WorkspaceBinding{{
+			Spec: v1.PipelineRunSpec{
+				Workspaces: []v1.WorkspaceBinding{{
 					Name:     "EmptyDir Workspace",
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				}},
@@ -217,7 +216,7 @@ func TestCreateAndDeleteOfAffinityAssistant(t *testing.T) {
 func TestCreateOrUpdateAffinityAssistantWhenNodeIsCordoned(t *testing.T) {
 	expectedAffinityAssistantName := getAffinityAssistantName(workspaceName, testPipelineRun.Name)
 
-	aa := []*v1.StatefulSet{{
+	aa := []*appsv1.StatefulSet{{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "StatefulSet",
 			APIVersion: "apps/v1",
@@ -226,7 +225,7 @@ func TestCreateOrUpdateAffinityAssistantWhenNodeIsCordoned(t *testing.T) {
 			Name:   expectedAffinityAssistantName,
 			Labels: getStatefulSetLabels(testPipelineRun, expectedAffinityAssistantName),
 		},
-		Status: v1.StatefulSetStatus{
+		Status: appsv1.StatefulSetStatus{
 			ReadyReplicas: 1,
 		},
 	}}
@@ -335,25 +334,27 @@ func TestCreateOrUpdateAffinityAssistantWhenNodeIsCordoned(t *testing.T) {
 }
 
 func TestPipelineRunPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
-	prWithCustomPodTemplate := &v1beta1.PipelineRun{
+	prWithCustomPodTemplate := &v1.PipelineRun{
 		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pipelinerun-with-custom-podtemplate",
 		},
-		Spec: v1beta1.PipelineRunSpec{
-			PodTemplate: &pod.Template{
-				Tolerations: []corev1.Toleration{{
-					Key:      "key",
-					Operator: "Equal",
-					Value:    "value",
-					Effect:   "NoSchedule",
-				}},
-				NodeSelector: map[string]string{
-					"disktype": "ssd",
+		Spec: v1.PipelineRunSpec{
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				PodTemplate: &pod.Template{
+					Tolerations: []corev1.Toleration{{
+						Key:      "key",
+						Operator: "Equal",
+						Value:    "value",
+						Effect:   "NoSchedule",
+					}},
+					NodeSelector: map[string]string{
+						"disktype": "ssd",
+					},
+					ImagePullSecrets: []corev1.LocalObjectReference{{
+						Name: "reg-creds",
+					}},
 				},
-				ImagePullSecrets: []corev1.LocalObjectReference{{
-					Name: "reg-creds",
-				}},
 			},
 		},
 	}
@@ -374,7 +375,7 @@ func TestPipelineRunPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 }
 
 func TestDefaultPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
-	prWithCustomPodTemplate := &v1beta1.PipelineRun{
+	prWithCustomPodTemplate := &v1.PipelineRun{
 		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pipelinerun-with-custom-podtemplate",
@@ -412,24 +413,25 @@ func TestDefaultPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 }
 
 func TestMergedPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
-	prWithCustomPodTemplate := &v1beta1.PipelineRun{
+	prWithCustomPodTemplate := &v1.PipelineRun{
 		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pipelinerun-with-custom-podtemplate",
 		},
-		Spec: v1beta1.PipelineRunSpec{
-			PodTemplate: &pod.Template{
-				Tolerations: []corev1.Toleration{{
-					Key:      "key",
-					Operator: "Equal",
-					Value:    "value",
-					Effect:   "NoSchedule",
+		Spec: v1.PipelineRunSpec{
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				PodTemplate: &pod.Template{
+					Tolerations: []corev1.Toleration{{
+						Key:      "key",
+						Operator: "Equal",
+						Value:    "value",
+						Effect:   "NoSchedule",
+					}},
+					ImagePullSecrets: []corev1.LocalObjectReference{
+						{Name: "reg-creds"},
+						{Name: "alt-creds"},
+					},
 				}},
-				ImagePullSecrets: []corev1.LocalObjectReference{
-					{Name: "reg-creds"},
-					{Name: "alt-creds"},
-				},
-			},
 		},
 	}
 
@@ -458,24 +460,25 @@ func TestMergedPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 }
 
 func TestOnlySelectPodTemplateFieldsArePropagatedToAffinityAssistant(t *testing.T) {
-	prWithCustomPodTemplate := &v1beta1.PipelineRun{
+	prWithCustomPodTemplate := &v1.PipelineRun{
 		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pipelinerun-with-custom-podtemplate",
 		},
-		Spec: v1beta1.PipelineRunSpec{
-			PodTemplate: &pod.Template{
-				Tolerations: []corev1.Toleration{{
-					Key:      "key",
-					Operator: "Equal",
-					Value:    "value",
-					Effect:   "NoSchedule",
+		Spec: v1.PipelineRunSpec{
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				PodTemplate: &pod.Template{
+					Tolerations: []corev1.Toleration{{
+						Key:      "key",
+						Operator: "Equal",
+						Value:    "value",
+						Effect:   "NoSchedule",
+					}},
+					HostAliases: []corev1.HostAlias{{
+						IP:        "1.2.3.4",
+						Hostnames: []string{"localhost"},
+					}},
 				}},
-				HostAliases: []corev1.HostAlias{{
-					IP:        "1.2.3.4",
-					Hostnames: []string{"localhost"},
-				}},
-			},
 		},
 	}
 
@@ -491,12 +494,12 @@ func TestOnlySelectPodTemplateFieldsArePropagatedToAffinityAssistant(t *testing.
 }
 
 func TestThatTheAffinityAssistantIsWithoutNodeSelectorAndTolerations(t *testing.T) {
-	prWithoutCustomPodTemplate := &v1beta1.PipelineRun{
+	prWithoutCustomPodTemplate := &v1.PipelineRun{
 		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pipelinerun-without-custom-podtemplate",
 		},
-		Spec: v1beta1.PipelineRunSpec{},
+		Spec: v1.PipelineRunSpec{},
 	}
 
 	stsWithoutTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithoutCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []corev1.PersistentVolumeClaimVolumeSource{}, "nginx", nil)
@@ -527,23 +530,23 @@ func TestThatAffinityAssistantNameIsNoLongerThan53(t *testing.T) {
 }
 
 func TestCleanupAffinityAssistants_Success(t *testing.T) {
-	workspace := v1beta1.WorkspaceBinding{
+	workspace := v1.WorkspaceBinding{
 		Name:                "volumeClaimTemplate workspace",
 		VolumeClaimTemplate: &corev1.PersistentVolumeClaim{},
 	}
-	pr := &v1beta1.PipelineRun{
+	pr := &v1.PipelineRun{
 		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-pipelinerun-volumeclaimtemplate",
 		},
-		Spec: v1beta1.PipelineRunSpec{
-			Workspaces: []v1beta1.WorkspaceBinding{workspace},
+		Spec: v1.PipelineRunSpec{
+			Workspaces: []v1.WorkspaceBinding{workspace},
 		},
 	}
 
 	// seed data to create StatefulSets and PVCs
 	expectedAffinityAssistantName := getAffinityAssistantName(workspace.Name, pr.Name)
-	aa := []*v1.StatefulSet{{
+	aa := []*appsv1.StatefulSet{{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "StatefulSet",
 			APIVersion: "apps/v1",
@@ -552,7 +555,7 @@ func TestCleanupAffinityAssistants_Success(t *testing.T) {
 			Name:   expectedAffinityAssistantName,
 			Labels: getStatefulSetLabels(pr, expectedAffinityAssistantName),
 		},
-		Status: v1.StatefulSetStatus{
+		Status: appsv1.StatefulSetStatus{
 			ReadyReplicas: 1,
 		},
 	}}
@@ -588,9 +591,9 @@ func TestCleanupAffinityAssistants_Success(t *testing.T) {
 }
 
 func TestCleanupAffinityAssistants_Failure(t *testing.T) {
-	pr := &v1beta1.PipelineRun{
-		Spec: v1beta1.PipelineRunSpec{
-			Workspaces: []v1beta1.WorkspaceBinding{{
+	pr := &v1.PipelineRun{
+		Spec: v1.PipelineRunSpec{
+			Workspaces: []v1.WorkspaceBinding{{
 				VolumeClaimTemplate: &corev1.PersistentVolumeClaim{},
 			}},
 		},
@@ -714,7 +717,7 @@ func TestGetAssistantAffinityMergedWithPodTemplateAffinity(t *testing.T) {
 		},
 	}
 
-	prWithEmptyAffinityPodTemplate := parse.MustParseV1beta1PipelineRun(t, `
+	prWithEmptyAffinityPodTemplate := parse.MustParseV1PipelineRun(t, `
 metadata:
   name: pr-with-no-podTemplate
 `)
@@ -726,25 +729,26 @@ metadata:
 		},
 	}
 
-	prWithPodTemplatePodAffinity := parse.MustParseV1beta1PipelineRun(t, `
+	prWithPodTemplatePodAffinity := parse.MustParseV1PipelineRun(t, `
 metadata:
   name: pr-with-podTemplate-podAffinity
 spec:
-  podTemplate:
-    affinity:
-      podAntiAffinity:
-        preferredDuringSchedulingIgnoredDuringExecution:
-        - podAffinityTerm:
-            labelSelector:
+  taskRunTemplate:
+    podTemplate:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  test/label: test
+              topologyKey: kubernetes.io/hostname
+            weight: 50
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
               matchLabels:
                 test/label: test
             topologyKey: kubernetes.io/hostname
-          weight: 50
-        requiredDuringSchedulingIgnoredDuringExecution:
-        - labelSelector:
-            matchLabels:
-              test/label: test
-          topologyKey: kubernetes.io/hostname
 `)
 	affinityWithPodTemplatePodAffinity := &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
@@ -775,20 +779,21 @@ spec:
 		},
 	}
 
-	prWithPodTemplateNodeAffinity := parse.MustParseV1beta1PipelineRun(t, `
+	prWithPodTemplateNodeAffinity := parse.MustParseV1PipelineRun(t, `
 metadata:
   name: pr-with-podTemplate-nodeAffinity
 spec:
-  podTemplate:
-    affinity:
-      nodeAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-          nodeSelectorTerms:
-          - matchExpressions:
-            - key: kubernetes.io/hostname
-              operator: NotIn
-              values:
-              - 192.168.xx.xx
+  taskRunTemplate:
+    podTemplate:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - 192.168.xx.xx
 `)
 	affinityWithPodTemplateNodeAffinity := &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
@@ -817,7 +822,7 @@ spec:
 
 	for _, tc := range []struct {
 		description string
-		pr          *v1beta1.PipelineRun
+		pr          *v1.PipelineRun
 		expect      *corev1.Affinity
 	}{
 		{
@@ -846,7 +851,7 @@ spec:
 }
 
 type Data struct {
-	StatefulSets []*v1.StatefulSet
+	StatefulSets []*appsv1.StatefulSet
 	Nodes        []*corev1.Node
 	Pods         []*corev1.Pod
 	PVCs         []*corev1.PersistentVolumeClaim

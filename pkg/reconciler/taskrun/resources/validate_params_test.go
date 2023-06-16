@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -24,21 +24,21 @@ func TestValidateParamArrayIndex(t *testing.T) {
 
 	tcs := []struct {
 		name          string
-		params        v1beta1.Params
-		taskspec      *v1beta1.TaskSpec
+		params        v1.Params
+		taskspec      *v1.TaskSpec
 		expectedError error
 	}{{
 		name: "steps reference invalid",
-		params: v1beta1.Params{{
+		params: v1.Params{{
 			Name:  "array-params",
-			Value: *v1beta1.NewStructuredValues("bar", "foo"),
+			Value: *v1.NewStructuredValues("bar", "foo"),
 		}},
-		taskspec: &v1beta1.TaskSpec{
-			Params: []v1beta1.ParamSpec{{
+		taskspec: &v1.TaskSpec{
+			Params: []v1.ParamSpec{{
 				Name:    "array-params",
-				Default: v1beta1.NewStructuredValues("bar", "foo"),
+				Default: v1.NewStructuredValues("bar", "foo"),
 			}},
-			Steps: []v1beta1.Step{{
+			Steps: []v1.Step{{
 				Name:    "$(params.array-params[10])",
 				Image:   "$(params.array-params[11])",
 				Command: []string{"$(params.array-params[12])"},
@@ -85,30 +85,30 @@ func TestValidateParamArrayIndex(t *testing.T) {
 		expectedError: fmt.Errorf("non-existent param references:[%v]", strings.Join(stepsInvalidReferences, " ")),
 	}, {
 		name: "stepTemplate reference invalid",
-		params: v1beta1.Params{{
+		params: v1.Params{{
 			Name:  "array-params",
-			Value: *v1beta1.NewStructuredValues("bar", "foo"),
+			Value: *v1.NewStructuredValues("bar", "foo"),
 		}},
-		taskspec: &v1beta1.TaskSpec{
-			Params: []v1beta1.ParamSpec{{
+		taskspec: &v1.TaskSpec{
+			Params: []v1.ParamSpec{{
 				Name:    "array-params",
-				Default: v1beta1.NewStructuredValues("bar", "foo"),
+				Default: v1.NewStructuredValues("bar", "foo"),
 			}},
-			StepTemplate: &v1beta1.StepTemplate{
+			StepTemplate: &v1.StepTemplate{
 				Image: "$(params.array-params[3])",
 			},
 		},
 		expectedError: fmt.Errorf("non-existent param references:[%v]", "$(params.array-params[3])"),
 	}, {
 		name: "volumes reference invalid",
-		params: v1beta1.Params{{
+		params: v1.Params{{
 			Name:  "array-params",
-			Value: *v1beta1.NewStructuredValues("bar", "foo"),
+			Value: *v1.NewStructuredValues("bar", "foo"),
 		}},
-		taskspec: &v1beta1.TaskSpec{
-			Params: []v1beta1.ParamSpec{{
+		taskspec: &v1.TaskSpec{
+			Params: []v1.ParamSpec{{
 				Name:    "array-params",
-				Default: v1beta1.NewStructuredValues("bar", "foo"),
+				Default: v1.NewStructuredValues("bar", "foo"),
 			}},
 			Volumes: []corev1.Volume{{
 				Name: "$(params.array-params[10])",
@@ -163,32 +163,32 @@ func TestValidateParamArrayIndex(t *testing.T) {
 		expectedError: fmt.Errorf("non-existent param references:[%v]", strings.Join(volumesInvalidReferences, " ")),
 	}, {
 		name: "workspaces reference invalid",
-		params: v1beta1.Params{{
+		params: v1.Params{{
 			Name:  "array-params",
-			Value: *v1beta1.NewStructuredValues("bar", "foo"),
+			Value: *v1.NewStructuredValues("bar", "foo"),
 		}},
-		taskspec: &v1beta1.TaskSpec{
-			Params: []v1beta1.ParamSpec{{
+		taskspec: &v1.TaskSpec{
+			Params: []v1.ParamSpec{{
 				Name:    "array-params",
-				Default: v1beta1.NewStructuredValues("bar", "foo"),
+				Default: v1.NewStructuredValues("bar", "foo"),
 			}},
-			Workspaces: []v1beta1.WorkspaceDeclaration{{
+			Workspaces: []v1.WorkspaceDeclaration{{
 				MountPath: "$(params.array-params[3])",
 			}},
 		},
 		expectedError: fmt.Errorf("non-existent param references:[%v]", "$(params.array-params[3])"),
 	}, {
 		name: "sidecar reference invalid",
-		params: v1beta1.Params{{
+		params: v1.Params{{
 			Name:  "array-params",
-			Value: *v1beta1.NewStructuredValues("bar", "foo"),
+			Value: *v1.NewStructuredValues("bar", "foo"),
 		}},
-		taskspec: &v1beta1.TaskSpec{
-			Params: []v1beta1.ParamSpec{{
+		taskspec: &v1.TaskSpec{
+			Params: []v1.ParamSpec{{
 				Name:    "array-params",
-				Default: v1beta1.NewStructuredValues("bar", "foo"),
+				Default: v1.NewStructuredValues("bar", "foo"),
 			}},
-			Sidecars: []v1beta1.Sidecar{{
+			Sidecars: []v1.Sidecar{{
 				Script: "$(params.array-params[3])",
 			},
 			},

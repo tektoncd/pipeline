@@ -27,7 +27,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/parse"
 	jsonpatch "gomodules.xyz/jsonpatch/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,7 +43,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 	// the retrying TaskRun to retry.
 	for _, numRetries := range []int{0, 1} {
 		numRetries := numRetries // capture range variable
-		specStatus := v1beta1.PipelineRunSpecStatusCancelled
+		specStatus := v1.PipelineRunSpecStatusCancelled
 		t.Run(fmt.Sprintf("retries=%d,status=%s", numRetries, specStatus), func(t *testing.T) {
 			ctx := context.Background()
 			ctx, cancel := context.WithCancel(ctx)
@@ -55,7 +55,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 			knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 			defer tearDown(ctx, t, c, namespace)
 
-			pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+			pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -71,16 +71,16 @@ spec:
 `, helpers.ObjectNameForTest(t), namespace, numRetries))
 
 			t.Logf("Creating PipelineRun in namespace %s", namespace)
-			if _, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
+			if _, err := c.V1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create PipelineRun `%s`: %s", pipelineRun.Name, err)
 			}
 
 			t.Logf("Waiting for Pipelinerun %s in namespace %s to be started", pipelineRun.Name, namespace)
-			if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, Running(pipelineRun.Name), "PipelineRunRunning", v1beta1Version); err != nil {
+			if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, Running(pipelineRun.Name), "PipelineRunRunning", v1Version); err != nil {
 				t.Fatalf("Error waiting for PipelineRun %s to be running: %s", pipelineRun.Name, err)
 			}
 
-			taskrunList, err := c.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
+			taskrunList, err := c.V1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
 			if err != nil {
 				t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 			}
@@ -91,7 +91,7 @@ spec:
 				wg.Add(1)
 				go func(name string) {
 					defer wg.Done()
-					err := WaitForTaskRunState(ctx, c, name, Running(name), "TaskRunRunning", v1beta1Version)
+					err := WaitForTaskRunState(ctx, c, name, Running(name), "TaskRunRunning", v1Version)
 					if err != nil {
 						t.Errorf("Error waiting for TaskRun %s to be running: %v", name, err)
 					}
@@ -99,7 +99,7 @@ spec:
 			}
 			wg.Wait()
 
-			pr, err := c.V1beta1PipelineRunClient.Get(ctx, pipelineRun.Name, metav1.GetOptions{})
+			pr, err := c.V1PipelineRunClient.Get(ctx, pipelineRun.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("Failed to get PipelineRun `%s`: %s", pipelineRun.Name, err)
 			}
@@ -113,14 +113,14 @@ spec:
 			if err != nil {
 				t.Fatalf("failed to marshal patch bytes in order to cancel")
 			}
-			if _, err := c.V1beta1PipelineRunClient.Patch(ctx, pr.Name, types.JSONPatchType, patchBytes, metav1.PatchOptions{}, ""); err != nil {
+			if _, err := c.V1PipelineRunClient.Patch(ctx, pr.Name, types.JSONPatchType, patchBytes, metav1.PatchOptions{}, ""); err != nil {
 				t.Fatalf("Failed to patch PipelineRun `%s` with cancellation: %s", pipelineRun.Name, err)
 			}
 
-			expectedReason := v1beta1.PipelineRunReasonCancelled.String()
+			expectedReason := v1.PipelineRunReasonCancelled.String()
 			expectedCondition := FailedWithReason(expectedReason, pipelineRun.Name)
 			t.Logf("Waiting for PipelineRun %s in namespace %s to be cancelled", pipelineRun.Name, namespace)
-			if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, expectedCondition, expectedReason, v1beta1Version); err != nil {
+			if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, expectedCondition, expectedReason, v1Version); err != nil {
 				t.Errorf("Error waiting for PipelineRun %q to finished: %s", pipelineRun.Name, err)
 			}
 
@@ -129,7 +129,7 @@ spec:
 				wg.Add(1)
 				go func(name string) {
 					defer wg.Done()
-					err := WaitForTaskRunState(ctx, c, name, FailedWithReason("TaskRunCancelled", name), "TaskRunCancelled", v1beta1Version)
+					err := WaitForTaskRunState(ctx, c, name, FailedWithReason("TaskRunCancelled", name), "TaskRunCancelled", v1Version)
 					if err != nil {
 						t.Errorf("Error waiting for TaskRun %s to be finished: %v", name, err)
 					}
@@ -138,17 +138,17 @@ spec:
 			wg.Wait()
 
 			var trName []string
-			taskrunList, err = c.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
+			taskrunList, err = c.V1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
 			if err != nil {
 				t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 			}
 			for _, taskrunItem := range taskrunList.Items {
 				trName = append(trName, taskrunItem.Name)
-				if taskrunItem.Spec.Status != v1beta1.TaskRunSpecStatusCancelled {
-					t.Fatalf("Status is %s while it should have been %s", taskrunItem.Spec.Status, v1beta1.TaskRunSpecStatusCancelled)
+				if taskrunItem.Spec.Status != v1.TaskRunSpecStatusCancelled {
+					t.Fatalf("Status is %s while it should have been %s", taskrunItem.Spec.Status, v1.TaskRunSpecStatusCancelled)
 				}
-				if taskrunItem.Spec.StatusMessage != v1beta1.TaskRunCancelledByPipelineMsg {
-					t.Fatalf("Status message is set to %s while it should be %s.", taskrunItem.Spec.StatusMessage, v1beta1.TaskRunCancelledByPipelineMsg)
+				if taskrunItem.Spec.StatusMessage != v1.TaskRunCancelledByPipelineMsg {
+					t.Fatalf("Status message is set to %s while it should be %s.", taskrunItem.Spec.StatusMessage, v1.TaskRunCancelledByPipelineMsg)
 				}
 			}
 

@@ -28,7 +28,7 @@ import (
 	"github.com/tektoncd/pipeline/internal/sidecarlogresults"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/result"
 	"github.com/tektoncd/pipeline/pkg/termination"
 	"go.uber.org/zap"
@@ -116,11 +116,11 @@ func SidecarsReady(podStatus corev1.PodStatus) bool {
 }
 
 // MakeTaskRunStatus returns a TaskRunStatus based on the Pod's status.
-func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1beta1.TaskRun, pod *corev1.Pod, kubeclient kubernetes.Interface, ts *v1beta1.TaskSpec) (v1beta1.TaskRunStatus, error) {
+func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.TaskRun, pod *corev1.Pod, kubeclient kubernetes.Interface, ts *v1.TaskSpec) (v1.TaskRunStatus, error) {
 	trs := &tr.Status
 	if trs.GetCondition(apis.ConditionSucceeded) == nil || trs.GetCondition(apis.ConditionSucceeded).Status == corev1.ConditionUnknown {
 		// If the taskRunStatus doesn't exist yet, it's because we just started running
-		markStatusRunning(trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
+		markStatusRunning(trs, v1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
 	}
 
 	sortPodContainerStatuses(pod.Status.ContainerStatuses, pod.Spec.Containers)
@@ -134,8 +134,8 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1beta
 	}
 
 	trs.PodName = pod.Name
-	trs.Steps = []v1beta1.StepState{}
-	trs.Sidecars = []v1beta1.SidecarState{}
+	trs.Steps = []v1.StepState{}
+	trs.Sidecars = []v1.SidecarState{}
 
 	var stepStatuses []corev1.ContainerStatus
 	var sidecarStatuses []corev1.ContainerStatus
@@ -154,17 +154,17 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1beta
 
 	setTaskRunStatusBasedOnSidecarStatus(sidecarStatuses, trs)
 
-	trs.TaskRunResults = removeDuplicateResults(trs.TaskRunResults)
+	trs.Results = removeDuplicateResults(trs.Results)
 
 	return *trs, merr.ErrorOrNil()
 }
 
-func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredLogger, stepStatuses []corev1.ContainerStatus, tr *v1beta1.TaskRun, podPhase corev1.PodPhase, kubeclient kubernetes.Interface, ts *v1beta1.TaskSpec) *multierror.Error {
+func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredLogger, stepStatuses []corev1.ContainerStatus, tr *v1.TaskRun, podPhase corev1.PodPhase, kubeclient kubernetes.Interface, ts *v1.TaskSpec) *multierror.Error {
 	trs := &tr.Status
 	var merr *multierror.Error
 
 	// collect results from taskrun spec and taskspec
-	specResults := []v1beta1.TaskResult{}
+	specResults := []v1.TaskResult{}
 	if tr.Spec.TaskSpec != nil {
 		specResults = append(specResults, tr.Spec.TaskSpec.Results...)
 	}
@@ -184,7 +184,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 		// populate task run CRD with results from sidecar logs
 		taskResults, _ := filterResults(sidecarLogResults, specResults)
 		if tr.IsDone() {
-			trs.TaskRunResults = append(trs.TaskRunResults, taskResults...)
+			trs.Results = append(trs.Results, taskResults...)
 		}
 	}
 	// Continue with extraction of termination messages
@@ -212,7 +212,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 
 				taskResults, filteredResults := filterResults(results, specResults)
 				if tr.IsDone() {
-					trs.TaskRunResults = append(trs.TaskRunResults, taskResults...)
+					trs.Results = append(trs.Results, taskResults...)
 				}
 				msg, err = createMessageFromResults(filteredResults)
 				if err != nil {
@@ -229,10 +229,10 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 				}
 			}
 		}
-		trs.Steps = append(trs.Steps, v1beta1.StepState{
+		trs.Steps = append(trs.Steps, v1.StepState{
 			ContainerState: *state,
 			Name:           trimStepPrefix(s.Name),
-			ContainerName:  s.Name,
+			Container:      s.Name,
 			ImageID:        s.ImageID,
 		})
 	}
@@ -240,12 +240,12 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 	return merr
 }
 
-func setTaskRunStatusBasedOnSidecarStatus(sidecarStatuses []corev1.ContainerStatus, trs *v1beta1.TaskRunStatus) {
+func setTaskRunStatusBasedOnSidecarStatus(sidecarStatuses []corev1.ContainerStatus, trs *v1.TaskRunStatus) {
 	for _, s := range sidecarStatuses {
-		trs.Sidecars = append(trs.Sidecars, v1beta1.SidecarState{
+		trs.Sidecars = append(trs.Sidecars, v1.SidecarState{
 			ContainerState: *s.State.DeepCopy(),
 			Name:           TrimSidecarPrefix(s.Name),
-			ContainerName:  s.Name,
+			Container:      s.Name,
 			ImageID:        s.ImageID,
 		})
 	}
@@ -265,32 +265,32 @@ func createMessageFromResults(results []result.RunResult) (string, error) {
 // filterResults filters the RunResults and TaskResults based on the results declared in the task spec.
 // It returns a slice of any of the input results that are defined in the task spec, converted to TaskRunResults,
 // and a slice of any of the RunResults that don't represent internal values (i.e. those that should not be displayed in the TaskRun status.
-func filterResults(results []result.RunResult, specResults []v1beta1.TaskResult) ([]v1beta1.TaskRunResult, []result.RunResult) {
-	var taskResults []v1beta1.TaskRunResult
+func filterResults(results []result.RunResult, specResults []v1.TaskResult) ([]v1.TaskRunResult, []result.RunResult) {
+	var taskResults []v1.TaskRunResult
 	var filteredResults []result.RunResult
-	neededTypes := make(map[string]v1beta1.ResultsType)
+	neededTypes := make(map[string]v1.ResultsType)
 	for _, r := range specResults {
 		neededTypes[r.Name] = r.Type
 	}
 	for _, r := range results {
 		switch r.ResultType {
 		case result.TaskRunResultType:
-			var taskRunResult v1beta1.TaskRunResult
-			if neededTypes[r.Key] == v1beta1.ResultsTypeString {
-				taskRunResult = v1beta1.TaskRunResult{
+			var taskRunResult v1.TaskRunResult
+			if neededTypes[r.Key] == v1.ResultsTypeString {
+				taskRunResult = v1.TaskRunResult{
 					Name:  r.Key,
-					Type:  v1beta1.ResultsTypeString,
-					Value: *v1beta1.NewStructuredValues(r.Value),
+					Type:  v1.ResultsTypeString,
+					Value: *v1.NewStructuredValues(r.Value),
 				}
 			} else {
-				v := v1beta1.ResultValue{}
+				v := v1.ResultValue{}
 				err := v.UnmarshalJSON([]byte(r.Value))
 				if err != nil {
 					continue
 				}
-				taskRunResult = v1beta1.TaskRunResult{
+				taskRunResult = v1.TaskRunResult{
 					Name:  r.Key,
-					Type:  v1beta1.ResultsType(v.Type),
+					Type:  v1.ResultsType(v.Type),
 					Value: v,
 				}
 			}
@@ -307,13 +307,13 @@ func filterResults(results []result.RunResult, specResults []v1beta1.TaskResult)
 	return taskResults, filteredResults
 }
 
-func removeDuplicateResults(taskRunResult []v1beta1.TaskRunResult) []v1beta1.TaskRunResult {
+func removeDuplicateResults(taskRunResult []v1.TaskRunResult) []v1.TaskRunResult {
 	if len(taskRunResult) == 0 {
 		return nil
 	}
 
-	uniq := make([]v1beta1.TaskRunResult, 0)
-	latest := make(map[string]v1beta1.TaskRunResult, 0)
+	uniq := make([]v1.TaskRunResult, 0)
+	latest := make(map[string]v1.TaskRunResult, 0)
 	for _, res := range taskRunResult {
 		if _, seen := latest[res.Name]; !seen {
 			uniq = append(uniq, res)
@@ -355,10 +355,10 @@ func extractExitCodeFromResults(results []result.RunResult) (*int32, error) {
 	return nil, nil //nolint:nilnil // would be more ergonomic to return a sentinel error
 }
 
-func updateCompletedTaskRunStatus(logger *zap.SugaredLogger, trs *v1beta1.TaskRunStatus, pod *corev1.Pod) {
+func updateCompletedTaskRunStatus(logger *zap.SugaredLogger, trs *v1.TaskRunStatus, pod *corev1.Pod) {
 	if DidTaskRunFail(pod) {
 		msg := getFailureMessage(logger, pod)
-		markStatusFailure(trs, v1beta1.TaskRunReasonFailed.String(), msg)
+		markStatusFailure(trs, v1.TaskRunReasonFailed.String(), msg)
 	} else {
 		markStatusSuccess(trs)
 	}
@@ -367,10 +367,10 @@ func updateCompletedTaskRunStatus(logger *zap.SugaredLogger, trs *v1beta1.TaskRu
 	trs.CompletionTime = &metav1.Time{Time: time.Now()}
 }
 
-func updateIncompleteTaskRunStatus(trs *v1beta1.TaskRunStatus, pod *corev1.Pod) {
+func updateIncompleteTaskRunStatus(trs *v1.TaskRunStatus, pod *corev1.Pod) {
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
-		markStatusRunning(trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
+		markStatusRunning(trs, v1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
 	case corev1.PodPending:
 		switch {
 		case IsPodExceedingNodeResources(pod):
@@ -406,7 +406,7 @@ func DidTaskRunFail(pod *corev1.Pod) bool {
 }
 
 // IsPodArchived indicates if a pod is archived in the retriesStatus.
-func IsPodArchived(pod *corev1.Pod, trs *v1beta1.TaskRunStatus) bool {
+func IsPodArchived(pod *corev1.Pod, trs *v1.TaskRunStatus) bool {
 	for _, retryStatus := range trs.RetriesStatus {
 		if retryStatus.PodName == pod.GetName() {
 			return true
@@ -570,7 +570,7 @@ func getWaitingMessage(pod *corev1.Pod) string {
 }
 
 // markStatusRunning sets taskrun status to running
-func markStatusRunning(trs *v1beta1.TaskRunStatus, reason, message string) {
+func markStatusRunning(trs *v1.TaskRunStatus, reason, message string) {
 	trs.SetCondition(&apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionUnknown,
@@ -580,7 +580,7 @@ func markStatusRunning(trs *v1beta1.TaskRunStatus, reason, message string) {
 }
 
 // markStatusFailure sets taskrun status to failure with specified reason
-func markStatusFailure(trs *v1beta1.TaskRunStatus, reason string, message string) {
+func markStatusFailure(trs *v1.TaskRunStatus, reason string, message string) {
 	trs.SetCondition(&apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionFalse,
@@ -590,11 +590,11 @@ func markStatusFailure(trs *v1beta1.TaskRunStatus, reason string, message string
 }
 
 // markStatusSuccess sets taskrun status to success
-func markStatusSuccess(trs *v1beta1.TaskRunStatus) {
+func markStatusSuccess(trs *v1.TaskRunStatus) {
 	trs.SetCondition(&apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionTrue,
-		Reason:  v1beta1.TaskRunReasonSuccessful.String(),
+		Reason:  v1.TaskRunReasonSuccessful.String(),
 		Message: "All Steps have completed executing",
 	})
 }

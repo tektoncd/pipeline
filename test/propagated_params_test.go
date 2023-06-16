@@ -26,7 +26,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,15 +39,15 @@ var (
 	ignoreTypeMeta          = cmpopts.IgnoreFields(metav1.TypeMeta{}, "Kind", "APIVersion")
 	ignoreObjectMeta        = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion", "UID", "CreationTimestamp", "Generation", "ManagedFields", "Labels", "Annotations", "OwnerReferences")
 	ignoreCondition         = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time", "Message")
-	ignorePipelineRunStatus = cmpopts.IgnoreFields(v1beta1.PipelineRunStatusFields{}, "StartTime", "CompletionTime", "FinallyStartTime", "ChildReferences")
-	ignoreTaskRunStatus     = cmpopts.IgnoreFields(v1beta1.TaskRunStatusFields{}, "StartTime", "CompletionTime")
+	ignorePipelineRunStatus = cmpopts.IgnoreFields(v1.PipelineRunStatusFields{}, "StartTime", "CompletionTime", "FinallyStartTime", "ChildReferences")
+	ignoreTaskRunStatus     = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "StartTime", "CompletionTime")
 	ignoreConditions        = cmpopts.IgnoreFields(duckv1.Status{}, "Conditions")
 	ignoreContainerStates   = cmpopts.IgnoreFields(corev1.ContainerState{}, "Terminated")
-	ignoreStepState         = cmpopts.IgnoreFields(v1beta1.StepState{}, "ImageID")
+	ignoreStepState         = cmpopts.IgnoreFields(v1.StepState{}, "ImageID")
 	// ignoreSATaskRunSpec ignores the service account in the TaskRunSpec as it may differ across platforms
-	ignoreSATaskRunSpec = cmpopts.IgnoreFields(v1beta1.TaskRunSpec{}, "ServiceAccountName")
+	ignoreSATaskRunSpec = cmpopts.IgnoreFields(v1.TaskRunSpec{}, "ServiceAccountName")
 	// ignoreSAPipelineRunSpec ignores the service account in the PipelineRunSpec as it may differ across platforms
-	ignoreSAPipelineRunSpec = cmpopts.IgnoreFields(v1beta1.PipelineRunSpec{}, "ServiceAccountName")
+	ignoreSAPipelineRunSpec = cmpopts.IgnoreFields(v1.PipelineTaskRunTemplate{}, "ServiceAccountName")
 )
 
 func TestPropagatedParams(t *testing.T) {
@@ -58,7 +58,7 @@ func TestPropagatedParams(t *testing.T) {
 		name            string
 		pipelineName    string
 		taskName        string
-		pipelineRunFunc func(*testing.T, string) (*v1beta1.PipelineRun, *v1beta1.PipelineRun, []*v1beta1.TaskRun)
+		pipelineRunFunc func(*testing.T, string) (*v1.PipelineRun, *v1.PipelineRun, []*v1.TaskRun)
 	}
 
 	tds := []tests{{
@@ -94,21 +94,21 @@ func TestPropagatedParams(t *testing.T) {
 			t.Logf("Setting up test resources for %q test in namespace %s", td.name, namespace)
 			pipelineRun, expectedResolvedPipelineRun, expectedTaskRuns := td.pipelineRunFunc(t, namespace)
 
-			expectedResolvedPipelineRun.Status.Provenance = &v1beta1.Provenance{
+			expectedResolvedPipelineRun.Status.Provenance = &v1.Provenance{
 				FeatureFlags: expectedFeatureFlags,
 			}
 
 			prName := pipelineRun.Name
-			_, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
+			_, err := c.V1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
 			if err != nil {
 				t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
 			}
 
 			t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
-			if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1beta1Version); err != nil {
+			if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1Version); err != nil {
 				t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 			}
-			cl, _ := c.V1beta1PipelineRunClient.Get(ctx, prName, metav1.GetOptions{})
+			cl, _ := c.V1PipelineRunClient.Get(ctx, prName, metav1.GetOptions{})
 			d := cmp.Diff(expectedResolvedPipelineRun, cl,
 				ignoreTypeMeta,
 				ignoreObjectMeta,
@@ -125,10 +125,10 @@ func TestPropagatedParams(t *testing.T) {
 			}
 			for _, tr := range expectedTaskRuns {
 				t.Logf("Checking Taskrun %s", tr.Name)
-				tr.Status.Provenance = &v1beta1.Provenance{
+				tr.Status.Provenance = &v1.Provenance{
 					FeatureFlags: expectedFeatureFlags,
 				}
-				taskrun, _ := c.V1beta1TaskRunClient.Get(ctx, tr.Name, metav1.GetOptions{})
+				taskrun, _ := c.V1TaskRunClient.Get(ctx, tr.Name, metav1.GetOptions{})
 				d = cmp.Diff(tr, taskrun,
 					ignoreTypeMeta,
 					ignoreObjectMeta,
@@ -148,9 +148,9 @@ func TestPropagatedParams(t *testing.T) {
 	}
 }
 
-func getPropagatedParamPipelineRun(t *testing.T, namespace string) (*v1beta1.PipelineRun, *v1beta1.PipelineRun, []*v1beta1.TaskRun) {
+func getPropagatedParamPipelineRun(t *testing.T, namespace string) (*v1.PipelineRun, *v1.PipelineRun, []*v1.TaskRun) {
 	t.Helper()
-	pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: propagated-parameters-fully
   namespace: %s
@@ -174,12 +174,13 @@ spec:
               image: ubuntu
               script: echo $(params.HELLO)
 `, namespace))
-	expectedPipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+	expectedPipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: propagated-parameters-fully
   namespace: %s
 spec:
-  timeout: 1h
+  timeouts:
+    pipeline: 1h
   params:
   - name: HELLO
     value: "Hello World!"
@@ -215,7 +216,7 @@ status:
               image: ubuntu
               script: echo Hello World!
 `, namespace))
-	taskRun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+	taskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: propagated-parameters-fully-echo-hello
   namespace: %s
@@ -237,7 +238,7 @@ status:
          image: ubuntu
          script: echo Hello World!
 `, namespace))
-	finallyTaskRun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+	finallyTaskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: propagated-parameters-fully-echo-hello-finally
   namespace: %s
@@ -259,12 +260,12 @@ status:
          image: ubuntu
          script: echo Hello World!
 `, namespace))
-	return pipelineRun, expectedPipelineRun, []*v1beta1.TaskRun{taskRun, finallyTaskRun}
+	return pipelineRun, expectedPipelineRun, []*v1.TaskRun{taskRun, finallyTaskRun}
 }
 
-func getPropagatedParamTaskLevelPipelineRun(t *testing.T, namespace string) (*v1beta1.PipelineRun, *v1beta1.PipelineRun, []*v1beta1.TaskRun) {
+func getPropagatedParamTaskLevelPipelineRun(t *testing.T, namespace string) (*v1.PipelineRun, *v1.PipelineRun, []*v1.TaskRun) {
 	t.Helper()
-	pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: propagated-parameters-task-level
   namespace: %s
@@ -284,12 +285,13 @@ spec:
               image: ubuntu
               script: echo $(params.HELLO)
 `, namespace))
-	expectedPipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+	expectedPipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: propagated-parameters-task-level
   namespace: %s
 spec:
-  timeout: 1h
+  timeouts:
+    pipeline: 1h
   params:
   - name: HELLO
     value: "Pipeline Hello World!"
@@ -317,7 +319,7 @@ status:
               image: ubuntu
               script: echo Hello World!
 `, namespace))
-	taskRun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+	taskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: propagated-parameters-task-level-echo-hello
   namespace: %s
@@ -342,12 +344,12 @@ status:
         image: ubuntu
         script: echo Hello World!
 `, namespace))
-	return pipelineRun, expectedPipelineRun, []*v1beta1.TaskRun{taskRun}
+	return pipelineRun, expectedPipelineRun, []*v1.TaskRun{taskRun}
 }
 
-func getPropagatedParamTaskLevelDefaultPipelineRun(t *testing.T, namespace string) (*v1beta1.PipelineRun, *v1beta1.PipelineRun, []*v1beta1.TaskRun) {
+func getPropagatedParamTaskLevelDefaultPipelineRun(t *testing.T, namespace string) (*v1.PipelineRun, *v1.PipelineRun, []*v1.TaskRun) {
 	t.Helper()
-	pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: propagated-parameters-default-task-level
   namespace: %s
@@ -368,12 +370,13 @@ spec:
               image: ubuntu
               script: echo $(params.HELLO)
 `, namespace))
-	expectedPipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+	expectedPipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: propagated-parameters-default-task-level
   namespace: %s
 spec:
-  timeout: 1h
+  timeouts:
+    pipeline: 1h
   params:
   - name: HELLO
     value: "Hello World!"
@@ -403,7 +406,7 @@ status:
               image: ubuntu
               script: echo Hello World!
 `, namespace))
-	taskRun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+	taskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: propagated-parameters-default-task-level-echo-hello
   namespace: %s
@@ -433,5 +436,5 @@ status:
         image: ubuntu
         script: echo Hello World!
 `, namespace))
-	return pipelineRun, expectedPipelineRun, []*v1beta1.TaskRun{taskRun}
+	return pipelineRun, expectedPipelineRun, []*v1.TaskRun{taskRun}
 }

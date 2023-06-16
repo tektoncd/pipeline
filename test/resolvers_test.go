@@ -64,14 +64,17 @@ var (
 
 	hubFeatureFlags = requireAllGates(map[string]string{
 		"enable-hub-resolver": "true",
+		"enable-api-fields":   "beta",
 	})
 
 	gitFeatureFlags = requireAllGates(map[string]string{
 		"enable-git-resolver": "true",
+		"enable-api-fields":   "beta",
 	})
 
 	clusterFeatureFlags = requireAllGates(map[string]string{
 		"enable-cluster-resolver": "true",
+		"enable-api-fields":       "beta",
 	})
 )
 
@@ -86,7 +89,7 @@ func TestHubResolver(t *testing.T) {
 
 	prName := helpers.ObjectNameForTest(t)
 
-	pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -123,13 +126,13 @@ spec:
             value: "true"
 `, prName, namespace))
 
-	_, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
+	_, err := c.V1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
-	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1beta1Version); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 	}
 }
@@ -145,7 +148,7 @@ func TestHubResolver_Failure(t *testing.T) {
 
 	prName := helpers.ObjectNameForTest(t)
 
-	pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -182,7 +185,7 @@ spec:
             value: "true"
 `, prName, namespace))
 
-	_, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
+	_, err := c.V1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
 	}
@@ -192,7 +195,7 @@ spec:
 		Chain(
 			FailedWithReason(pod.ReasonCouldntGetTask, prName),
 			FailedWithMessage("requested resource 'https://artifacthub.io/api/v1/packages/tekton-task/tekton-catalog-tasks/git-clone-this-does-not-exist/0.7.0' not found on hub", prName),
-		), "PipelineRunFailed", v1beta1Version); err != nil {
+		), "PipelineRunFailed", v1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun to finish with expected error: %s", err)
 	}
 }
@@ -208,7 +211,7 @@ func TestGitResolver_Clone(t *testing.T) {
 
 	prName := helpers.ObjectNameForTest(t)
 
-	pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -245,13 +248,13 @@ spec:
             value: "true"
 `, prName, namespace))
 
-	_, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
+	_, err := c.V1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
-	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1beta1Version); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 	}
 }
@@ -309,7 +312,7 @@ func TestGitResolver_Clone_Failure(t *testing.T) {
 
 			prName := helpers.ObjectNameForTest(t)
 
-			pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+			pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -346,7 +349,7 @@ spec:
             value: "true"
 `, prName, namespace, url, pathInRepo, commit))
 
-			_, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
+			_, err := c.V1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
 			if err != nil {
 				t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
 			}
@@ -356,7 +359,7 @@ spec:
 				Chain(
 					FailedWithReason(pod.ReasonCouldntGetTask, prName),
 					FailedWithMessage(expectedErr, prName),
-				), "PipelineRunFailed", v1beta1Version); err != nil {
+				), "PipelineRunFailed", v1Version); err != nil {
 				t.Fatalf("Error waiting for PipelineRun to finish with expected error: %s", err)
 			}
 		})
@@ -373,8 +376,8 @@ func TestClusterResolver(t *testing.T) {
 	defer tearDown(ctx, t, c, namespace)
 
 	pipelineName := helpers.ObjectNameForTest(t)
-	examplePipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
-apiVersion: tekton.dev/v1beta1
+	examplePipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: %s
@@ -392,14 +395,14 @@ spec:
           sleep 10
 `, pipelineName, namespace))
 
-	_, err := c.V1beta1PipelineClient.Create(ctx, examplePipeline, metav1.CreateOptions{})
+	_, err := c.V1PipelineClient.Create(ctx, examplePipeline, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", pipelineName, err)
 	}
 
 	prName := helpers.ObjectNameForTest(t)
 
-	pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -415,13 +418,13 @@ spec:
       value: %s
 `, prName, namespace, pipelineName, namespace))
 
-	_, err = c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
+	_, err = c.V1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
-	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1beta1Version); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 	}
 }
@@ -437,7 +440,7 @@ func TestClusterResolver_Failure(t *testing.T) {
 
 	prName := helpers.ObjectNameForTest(t)
 
-	pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -453,7 +456,7 @@ spec:
       value: %s
 `, prName, namespace, namespace))
 
-	_, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
+	_, err := c.V1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
 	}
@@ -463,7 +466,7 @@ spec:
 		Chain(
 			FailedWithReason(pipelinerun.ReasonCouldntGetPipeline, prName),
 			FailedWithMessage("pipelines.tekton.dev \"does-not-exist\" not found", prName),
-		), "PipelineRunFailed", v1beta1Version); err != nil {
+		), "PipelineRunFailed", v1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun to finish with expected error: %s", err)
 	}
 }
@@ -501,7 +504,7 @@ func TestGitResolver_API(t *testing.T) {
 	defer resetConfigMap(ctx, t, c, resovlerNS, git.ConfigMapName, originalConfigMapData)
 
 	trName := helpers.ObjectNameForTest(t)
-	tr := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+	tr := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -519,13 +522,13 @@ spec:
       value: %s
 `, trName, namespace, scmRemoteBranch, scmRemoteTaskPath, scmRemoteOrg, scmRemoteRepo))
 
-	_, err = c.V1beta1TaskRunClient.Create(ctx, tr, metav1.CreateOptions{})
+	_, err = c.V1TaskRunClient.Create(ctx, tr, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create TaskRun: %v", err)
 	}
 
 	t.Logf("Waiting for TaskRun %s in namespace %s to complete", trName, namespace)
-	if err := WaitForTaskRunState(ctx, c, trName, TaskRunSucceed(trName), "TaskRunSuccess", v1beta1Version); err != nil {
+	if err := WaitForTaskRunState(ctx, c, trName, TaskRunSucceed(trName), "TaskRunSuccess", v1Version); err != nil {
 		t.Fatalf("Error waiting for TaskRun %s to finish: %s", trName, err)
 	}
 }
@@ -575,7 +578,7 @@ func setupGitea(ctx context.Context, t *testing.T, c *clients, namespace string)
 	giteaUserJSON := fmt.Sprintf(`{"admin":true,"email":"%s@example.com","full_name":"%s","login_name":"%s","must_change_password":false,"password":"%s","send_notify":false,"source_id":0,"username":"%s"}`, scmRemoteUser, scmRemoteUser, scmRemoteUser, scmRemoteUserPassword, scmRemoteUser)
 
 	trName := helpers.AppendRandomString("git-resolver-setup-gitea-user")
-	giteaConfigTaskRun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+	giteaConfigTaskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -599,22 +602,22 @@ spec:
 		scmGiteaAdminPassword, giteaInternalHostname, giteaUserJSON,
 		scmRemoteUser, scmRemoteUserPassword, giteaInternalHostname))
 
-	if _, err := c.V1beta1TaskRunClient.Create(ctx, giteaConfigTaskRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1TaskRunClient.Create(ctx, giteaConfigTaskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create gitea user setup TaskRun: %s", err)
 	}
 
 	t.Logf("Waiting for gitea user setup TaskRun in namespace %s to succeed", namespace)
-	if err := WaitForTaskRunState(ctx, c, trName, TaskRunSucceed(trName), "TaskRunSucceed", v1beta1Version); err != nil {
+	if err := WaitForTaskRunState(ctx, c, trName, TaskRunSucceed(trName), "TaskRunSucceed", v1Version); err != nil {
 		t.Fatalf("Error waiting for gitea user setup TaskRun to finish: %s", err)
 	}
 
-	tr, err := c.V1beta1TaskRunClient.Get(ctx, trName, metav1.GetOptions{})
+	tr, err := c.V1TaskRunClient.Get(ctx, trName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Couldn't get expected gitea user setup TaskRun %s: %s", trName, err)
 	}
 
 	token := ""
-	for _, trr := range tr.Status.TaskRunResults {
+	for _, trr := range tr.Status.Results {
 		if trr.Name == "token" {
 			token = trr.Value.StringVal
 		}

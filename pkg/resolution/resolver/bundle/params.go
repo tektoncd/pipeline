@@ -18,7 +18,7 @@ import (
 	"fmt"
 
 	"github.com/google/go-containerregistry/pkg/name"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 )
 
@@ -39,11 +39,11 @@ const ParamKind = "kind"
 
 // OptionsFromParams parses the params from a resolution request and
 // converts them into options to pass as part of a bundle request.
-func OptionsFromParams(ctx context.Context, params []pipelinev1beta1.Param) (RequestOptions, error) {
+func OptionsFromParams(ctx context.Context, params []pipelinev1.Param) (RequestOptions, error) {
 	opts := RequestOptions{}
 	conf := framework.GetResolverConfigFromContext(ctx)
 
-	paramsMap := make(map[string]pipelinev1beta1.ParamValue)
+	paramsMap := make(map[string]pipelinev1.ParamValue)
 	for _, p := range params {
 		paramsMap[p.Name] = p.Value
 	}

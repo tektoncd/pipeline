@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/resolution/resource"
 	"github.com/tektoncd/pipeline/test/diff"
 )
@@ -29,15 +29,15 @@ func TestNewRequest(t *testing.T) {
 	type args struct {
 		name      string
 		namespace string
-		params    v1beta1.Params
+		params    v1.Params
 	}
 	type want = args
 	golden := args{
 		name:      "test-name",
 		namespace: "test-namespace",
-		params: v1beta1.Params{
-			{Name: "param1", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "value1"}},
-			{Name: "param2", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "value2"}},
+		params: v1.Params{
+			{Name: "param1", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "value1"}},
+			{Name: "param2", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "value2"}},
 		},
 	}
 	tests := []struct {

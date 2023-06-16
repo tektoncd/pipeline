@@ -28,6 +28,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/registry"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
@@ -62,36 +63,36 @@ func TestGetSelector(t *testing.T) {
 func TestValidateParams(t *testing.T) {
 	resolver := bundle.Resolver{}
 
-	paramsWithTask := []pipelinev1beta1.Param{{
+	paramsWithTask := []pipelinev1.Param{{
 		Name:  bundle.ParamKind,
-		Value: *pipelinev1beta1.NewStructuredValues("task"),
+		Value: *pipelinev1.NewStructuredValues("task"),
 	}, {
 		Name:  bundle.ParamName,
-		Value: *pipelinev1beta1.NewStructuredValues("foo"),
+		Value: *pipelinev1.NewStructuredValues("foo"),
 	}, {
 		Name:  bundle.ParamBundle,
-		Value: *pipelinev1beta1.NewStructuredValues("bar"),
+		Value: *pipelinev1.NewStructuredValues("bar"),
 	}, {
 		Name:  bundle.ParamServiceAccount,
-		Value: *pipelinev1beta1.NewStructuredValues("baz"),
+		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 
 	if err := resolver.ValidateParams(context.Background(), paramsWithTask); err != nil {
 		t.Fatalf("unexpected error validating params: %v", err)
 	}
 
-	paramsWithPipeline := []pipelinev1beta1.Param{{
+	paramsWithPipeline := []pipelinev1.Param{{
 		Name:  bundle.ParamKind,
-		Value: *pipelinev1beta1.NewStructuredValues("pipeline"),
+		Value: *pipelinev1.NewStructuredValues("pipeline"),
 	}, {
 		Name:  bundle.ParamName,
-		Value: *pipelinev1beta1.NewStructuredValues("foo"),
+		Value: *pipelinev1.NewStructuredValues("foo"),
 	}, {
 		Name:  bundle.ParamBundle,
-		Value: *pipelinev1beta1.NewStructuredValues("bar"),
+		Value: *pipelinev1.NewStructuredValues("bar"),
 	}, {
 		Name:  bundle.ParamServiceAccount,
-		Value: *pipelinev1beta1.NewStructuredValues("baz"),
+		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 	if err := resolver.ValidateParams(context.Background(), paramsWithPipeline); err != nil {
 		t.Fatalf("unexpected error validating params: %v", err)
@@ -103,18 +104,18 @@ func TestValidateParamsDisabled(t *testing.T) {
 
 	var err error
 
-	params := []pipelinev1beta1.Param{{
+	params := []pipelinev1.Param{{
 		Name:  bundle.ParamKind,
-		Value: *pipelinev1beta1.NewStructuredValues("task"),
+		Value: *pipelinev1.NewStructuredValues("task"),
 	}, {
 		Name:  bundle.ParamName,
-		Value: *pipelinev1beta1.NewStructuredValues("foo"),
+		Value: *pipelinev1.NewStructuredValues("foo"),
 	}, {
 		Name:  bundle.ParamBundle,
-		Value: *pipelinev1beta1.NewStructuredValues("bar"),
+		Value: *pipelinev1.NewStructuredValues("bar"),
 	}, {
 		Name:  bundle.ParamServiceAccount,
-		Value: *pipelinev1beta1.NewStructuredValues("baz"),
+		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 	err = resolver.ValidateParams(resolverDisabledContext(), params)
 	if err == nil {
@@ -131,30 +132,30 @@ func TestValidateParamsMissing(t *testing.T) {
 
 	var err error
 
-	paramsMissingBundle := []pipelinev1beta1.Param{{
+	paramsMissingBundle := []pipelinev1.Param{{
 		Name:  bundle.ParamKind,
-		Value: *pipelinev1beta1.NewStructuredValues("task"),
+		Value: *pipelinev1.NewStructuredValues("task"),
 	}, {
 		Name:  bundle.ParamName,
-		Value: *pipelinev1beta1.NewStructuredValues("foo"),
+		Value: *pipelinev1.NewStructuredValues("foo"),
 	}, {
 		Name:  bundle.ParamServiceAccount,
-		Value: *pipelinev1beta1.NewStructuredValues("baz"),
+		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 	err = resolver.ValidateParams(context.Background(), paramsMissingBundle)
 	if err == nil {
 		t.Fatalf("expected missing kind err")
 	}
 
-	paramsMissingName := []pipelinev1beta1.Param{{
+	paramsMissingName := []pipelinev1.Param{{
 		Name:  bundle.ParamKind,
-		Value: *pipelinev1beta1.NewStructuredValues("task"),
+		Value: *pipelinev1.NewStructuredValues("task"),
 	}, {
 		Name:  bundle.ParamBundle,
-		Value: *pipelinev1beta1.NewStructuredValues("bar"),
+		Value: *pipelinev1.NewStructuredValues("bar"),
 	}, {
 		Name:  bundle.ParamServiceAccount,
-		Value: *pipelinev1beta1.NewStructuredValues("baz"),
+		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 	err = resolver.ValidateParams(context.Background(), paramsMissingName)
 	if err == nil {
@@ -167,18 +168,18 @@ func TestResolveDisabled(t *testing.T) {
 
 	var err error
 
-	params := []pipelinev1beta1.Param{{
+	params := []pipelinev1.Param{{
 		Name:  bundle.ParamKind,
-		Value: *pipelinev1beta1.NewStructuredValues("task"),
+		Value: *pipelinev1.NewStructuredValues("task"),
 	}, {
 		Name:  bundle.ParamName,
-		Value: *pipelinev1beta1.NewStructuredValues("foo"),
+		Value: *pipelinev1.NewStructuredValues("foo"),
 	}, {
 		Name:  bundle.ParamBundle,
-		Value: *pipelinev1beta1.NewStructuredValues("bar"),
+		Value: *pipelinev1.NewStructuredValues("bar"),
 	}, {
 		Name:  bundle.ParamServiceAccount,
-		Value: *pipelinev1beta1.NewStructuredValues("baz"),
+		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 	_, err = resolver.Resolve(resolverDisabledContext(), params)
 	if err == nil {
@@ -446,14 +447,14 @@ func TestResolve(t *testing.T) {
 					expectedStatus.Annotations[bundle.ResolverAnnotationName] = tc.args.name
 					expectedStatus.Annotations[bundle.ResolverAnnotationAPIVersion] = "v1beta1"
 
-					expectedStatus.RefSource = &pipelinev1beta1.RefSource{
+					expectedStatus.RefSource = &pipelinev1.RefSource{
 						URI: testImages[tc.imageName].uri,
 						Digest: map[string]string{
 							testImages[tc.imageName].algo: testImages[tc.imageName].hex,
 						},
 						EntryPoint: tc.args.name,
 					}
-					expectedStatus.Source = (*pipelinev1beta1.ConfigSource)(expectedStatus.RefSource)
+					expectedStatus.Source = expectedStatus.RefSource
 				} else {
 					expectedError = createError(tc.args.bundle, tc.expectedErrMessage)
 					expectedStatus.Status.Conditions[0].Message = expectedError.Error()
@@ -480,18 +481,18 @@ func createRequest(p *params) *v1beta1.ResolutionRequest {
 			},
 		},
 		Spec: v1beta1.ResolutionRequestSpec{
-			Params: []pipelinev1beta1.Param{{
+			Params: []pipelinev1.Param{{
 				Name:  bundle.ParamBundle,
-				Value: *pipelinev1beta1.NewStructuredValues(p.bundle),
+				Value: *pipelinev1.NewStructuredValues(p.bundle),
 			}, {
 				Name:  bundle.ParamName,
-				Value: *pipelinev1beta1.NewStructuredValues(p.name),
+				Value: *pipelinev1.NewStructuredValues(p.name),
 			}, {
 				Name:  bundle.ParamKind,
-				Value: *pipelinev1beta1.NewStructuredValues(p.kind),
+				Value: *pipelinev1.NewStructuredValues(p.kind),
 			}, {
 				Name:  bundle.ParamServiceAccount,
-				Value: *pipelinev1beta1.NewStructuredValues(p.serviceAccount),
+				Value: *pipelinev1.NewStructuredValues(p.serviceAccount),
 			}},
 		},
 	}

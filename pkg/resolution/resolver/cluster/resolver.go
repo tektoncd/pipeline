@@ -25,7 +25,7 @@ import (
 	"strings"
 
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -78,7 +78,7 @@ func (r *Resolver) GetSelector(_ context.Context) map[string]string {
 
 // ValidateParams returns an error if the given parameter map is not
 // valid for a resource request targeting the cluster resolver.
-func (r *Resolver) ValidateParams(ctx context.Context, params []pipelinev1beta1.Param) error {
+func (r *Resolver) ValidateParams(ctx context.Context, params []pipelinev1.Param) error {
 	if r.isDisabled(ctx) {
 		return errors.New(disabledError)
 	}
@@ -89,7 +89,7 @@ func (r *Resolver) ValidateParams(ctx context.Context, params []pipelinev1beta1.
 
 // Resolve performs the work of fetching a resource from a namespace with the given
 // parameters.
-func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1beta1.Param) (framework.ResolvedResource, error) {
+func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1.Param) (framework.ResolvedResource, error) {
 	if r.isDisabled(ctx) {
 		return nil, errors.New(disabledError)
 	}
@@ -105,11 +105,11 @@ func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1beta1.Par
 	var data []byte
 	var spec []byte
 	var uid string
-	groupVersion := pipelinev1beta1.SchemeGroupVersion.String()
+	groupVersion := pipelinev1.SchemeGroupVersion.String()
 
 	switch params[KindParam] {
 	case "task":
-		task, err := r.pipelineClientSet.TektonV1beta1().Tasks(params[NamespaceParam]).Get(ctx, params[NameParam], metav1.GetOptions{})
+		task, err := r.pipelineClientSet.TektonV1().Tasks(params[NamespaceParam]).Get(ctx, params[NameParam], metav1.GetOptions{})
 		if err != nil {
 			logger.Infof("failed to load task %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
 			return nil, err
@@ -129,7 +129,7 @@ func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1beta1.Par
 			return nil, err
 		}
 	case "pipeline":
-		pipeline, err := r.pipelineClientSet.TektonV1beta1().Pipelines(params[NamespaceParam]).Get(ctx, params[NameParam], metav1.GetOptions{})
+		pipeline, err := r.pipelineClientSet.TektonV1().Pipelines(params[NamespaceParam]).Get(ctx, params[NameParam], metav1.GetOptions{})
 		if err != nil {
 			logger.Infof("failed to load pipeline %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
 			return nil, err
@@ -209,12 +209,12 @@ func (r *ResolvedClusterResource) Annotations() map[string]string {
 
 // RefSource is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint.
-func (r ResolvedClusterResource) RefSource() *pipelinev1beta1.RefSource {
+func (r ResolvedClusterResource) RefSource() *pipelinev1.RefSource {
 	h := sha256.New()
 	h.Write(r.Spec)
 	sha256CheckSum := hex.EncodeToString(h.Sum(nil))
 
-	return &pipelinev1beta1.RefSource{
+	return &pipelinev1.RefSource{
 		URI: r.Identifier,
 		Digest: map[string]string{
 			"sha256": sha256CheckSum,
@@ -222,10 +222,10 @@ func (r ResolvedClusterResource) RefSource() *pipelinev1beta1.RefSource {
 	}
 }
 
-func populateParamsWithDefaults(ctx context.Context, origParams []pipelinev1beta1.Param) (map[string]string, error) {
+func populateParamsWithDefaults(ctx context.Context, origParams []pipelinev1.Param) (map[string]string, error) {
 	conf := framework.GetResolverConfigFromContext(ctx)
 
-	paramsMap := make(map[string]pipelinev1beta1.ParamValue)
+	paramsMap := make(map[string]pipelinev1.ParamValue)
 	for _, p := range origParams {
 		paramsMap[p.Name] = p.Value
 	}
