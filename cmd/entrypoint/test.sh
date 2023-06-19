@@ -1,0 +1,1 @@
+./entrypoint -post_file .out -termination_path ./term -entrypoint echo hello

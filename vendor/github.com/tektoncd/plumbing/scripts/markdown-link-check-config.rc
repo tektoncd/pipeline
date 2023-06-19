@@ -1,5 +1,0 @@
-# For help, see
-# https://github.com/raviqqe/liche/blob/master/README.md
-
-# Don't check localhost links
--x "^https?://localhost($|[:/].*)"
