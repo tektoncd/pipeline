@@ -24,6 +24,7 @@ import (
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/kmap"
 )
 
 var _ apis.Defaultable = (*TaskRun)(nil)
@@ -35,6 +36,13 @@ const ManagedByLabelKey = "app.kubernetes.io/managed-by"
 func (tr *TaskRun) SetDefaults(ctx context.Context) {
 	ctx = apis.WithinParent(ctx, tr.ObjectMeta)
 	tr.Spec.SetDefaults(ctx)
+
+	// Silently filtering out Tekton Reserved annotations at creation
+	if apis.IsInCreate(ctx) {
+		tr.ObjectMeta.Annotations = kmap.Filter(tr.ObjectMeta.Annotations, func(s string) bool {
+			return filterReservedAnnotationRegexp.MatchString(s)
+		})
+	}
 
 	// If the TaskRun doesn't have a managed-by label, apply the default
 	// specified in the config.

@@ -18,19 +18,32 @@ package v1
 
 import (
 	"context"
+	"regexp"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/kmap"
 )
 
-var _ apis.Defaultable = (*PipelineRun)(nil)
+var (
+	_                              apis.Defaultable = (*PipelineRun)(nil)
+	filterReservedAnnotationRegexp                  = regexp.MustCompile(pipeline.TektonReservedAnnotationExpr)
+)
 
 // SetDefaults implements apis.Defaultable
 func (pr *PipelineRun) SetDefaults(ctx context.Context) {
 	pr.Spec.SetDefaults(ctx)
+
+	// Silently filtering out Tekton Reserved annotations at creation
+	if apis.IsInCreate(ctx) {
+		pr.ObjectMeta.Annotations = kmap.Filter(pr.ObjectMeta.Annotations, func(s string) bool {
+			return filterReservedAnnotationRegexp.MatchString(s)
+		})
+	}
 }
 
 // SetDefaults implements apis.Defaultable

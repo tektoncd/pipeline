@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -163,7 +164,8 @@ type Reconciler struct {
 
 var (
 	// Check that our Reconciler implements pipelinerunreconciler.Interface
-	_ pipelinerunreconciler.Interface = (*Reconciler)(nil)
+	_                              pipelinerunreconciler.Interface = (*Reconciler)(nil)
+	filterReservedAnnotationRegexp                                 = regexp.MustCompile(pipeline.TektonReservedAnnotationExpr)
 )
 
 // ReconcileKind compares the actual state with the desired, and attempts to
@@ -850,7 +852,8 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 			StepSpecs:          taskRunSpec.StepSpecs,
 			SidecarSpecs:       taskRunSpec.SidecarSpecs,
 			ComputeResources:   taskRunSpec.ComputeResources,
-		}}
+		},
+	}
 
 	// Add current spanContext as annotations to TaskRun
 	// so that tracing can be continued under the same traceId
@@ -1123,7 +1126,9 @@ func getTaskrunAnnotations(pr *v1.PipelineRun) map[string]string {
 	for key, val := range pr.ObjectMeta.Annotations {
 		annotations[key] = val
 	}
-	return annotations
+	return kmap.Filter(annotations, func(s string) bool {
+		return filterReservedAnnotationRegexp.MatchString(s)
+	})
 }
 
 func propagatePipelineNameLabelToPipelineRun(pr *v1.PipelineRun) error {

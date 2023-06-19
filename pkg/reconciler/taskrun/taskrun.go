@@ -888,7 +888,7 @@ func storeTaskSpecAndMergeMeta(ctx context.Context, tr *v1.TaskRun, ts *v1.TaskS
 		}
 
 		// Propagate annotations from Task to TaskRun. TaskRun annotations take precedences over Task.
-		tr.ObjectMeta.Annotations = kmap.Union(kmap.ExcludeKeys(meta.Annotations, "kubectl.kubernetes.io/last-applied-configuration"), tr.ObjectMeta.Annotations)
+		tr.ObjectMeta.Annotations = kmap.Union(kmap.ExcludeKeys(meta.Annotations, tknreconciler.KubectlLastAppliedAnnotationKey), tr.ObjectMeta.Annotations)
 		// Propagate labels from Task to TaskRun. TaskRun labels take precedences over Task.
 		tr.ObjectMeta.Labels = kmap.Union(meta.Labels, tr.ObjectMeta.Labels)
 		if tr.Spec.TaskRef != nil {

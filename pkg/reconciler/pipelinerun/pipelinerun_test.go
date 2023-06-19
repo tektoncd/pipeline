@@ -11728,6 +11728,53 @@ spec:
 	}
 }
 
+func TestReconcile_FilterLabels(t *testing.T) {
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `metadata:
+  name: test-annotations
+  namespace: foo
+  annotations:
+    chains.tekton.dev/signed: "true"
+    results.tekton.dev/foo: "bar"
+    tekton.dev/foo: "bar"
+    foo: bar
+spec:
+  pipelineSpec:
+    tasks:
+      - name: hello
+        taskSpec:
+          steps:
+          - image: busybox
+            script: |
+              echo "hello"
+`)}
+
+	ts := []*v1.Task{}
+	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Tasks:        ts,
+		ConfigMaps:   cms,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	_, clients := prt.reconcileRun("foo", "test-annotations", []string{}, false)
+
+	taskRunList, err := clients.Pipeline.TektonV1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("Failure to list TaskRun's %s", err)
+	}
+	if len(taskRunList.Items) != 1 {
+		t.Fatalf("Should have only one TaskRun, got %d", len(taskRunList.Items))
+	}
+	tr := taskRunList.Items[0]
+	vFoo, okFoo := tr.ObjectMeta.Annotations["foo"]
+	vTektonFoo, okTektonFoo := tr.ObjectMeta.Annotations["tekton.dev/foo"]
+	if len(tr.ObjectMeta.Annotations) != 2 || !okFoo || !okTektonFoo || vFoo != "bar" || vTektonFoo != "bar" {
+		t.Fatalf("Should have filtered chains.tekton.dev/* and results.tekton.dev/* annotations and only have one annotations, got %v", tr.ObjectMeta.Annotations)
+	}
+}
 func TestReconcile_CancelUnscheduled(t *testing.T) {
 	pipelineRunName := "cancel-test-run"
 	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `metadata:

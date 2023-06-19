@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
 
 var (
@@ -389,10 +390,82 @@ func TestTaskRunDefaulting(t *testing.T) {
 		defaults: map[string]string{
 			"default-resolver-type": "git",
 		},
+	}, {
+		name: "Reserved Tekton annotations are not filtered on updates",
+		in: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{"chains.tekton.dev/signed": "true", "foo": "bar"},
+			},
+			Spec: v1.TaskRunSpec{
+				TaskRef: &v1.TaskRef{
+					Name: "foo",
+				},
+			},
+		},
+		want: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels:      map[string]string{"app.kubernetes.io/managed-by": "tekton-pipelines"},
+				Annotations: map[string]string{"chains.tekton.dev/signed": "true", "foo": "bar"},
+			},
+			Spec: v1.TaskRunSpec{
+				TaskRef: &v1.TaskRef{
+					Kind: "Task",
+					Name: "foo",
+				},
+				Timeout:            &metav1.Duration{Duration: time.Hour},
+				ServiceAccountName: "default",
+			},
+		},
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := cfgtesting.SetDefaults(context.Background(), t, tc.defaults)
+			got := tc.in
+			got.SetDefaults(ctx)
+			if !cmp.Equal(got, tc.want, ignoreUnexportedResources) {
+				d := cmp.Diff(got, tc.want, ignoreUnexportedResources)
+				t.Errorf("SetDefaults %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestTaskRunDefaultingOnCreate(t *testing.T) {
+	tests := []struct {
+		name     string
+		in       *v1.TaskRun
+		want     *v1.TaskRun
+		defaults map[string]string
+	}{{
+		name: "Reserved Tekton annotations are filtered on create",
+		in: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{"chains.tekton.dev/signed": "true", "results.tekton.dev/hello": "world", "tekton.dev/foo": "bar", "foo": "bar"},
+			},
+			Spec: v1.TaskRunSpec{
+				TaskRef: &v1.TaskRef{
+					Name: "foo",
+				},
+			},
+		},
+		want: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels:      map[string]string{"app.kubernetes.io/managed-by": "tekton-pipelines"},
+				Annotations: map[string]string{"tekton.dev/foo": "bar", "foo": "bar"},
+			},
+			Spec: v1.TaskRunSpec{
+				TaskRef: &v1.TaskRef{
+					Kind: "Task",
+					Name: "foo",
+				},
+				Timeout:            &metav1.Duration{Duration: time.Hour},
+				ServiceAccountName: "default",
+			},
+		},
+	}}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := apis.WithinCreate(cfgtesting.SetDefaults(context.Background(), t, tc.defaults))
 			got := tc.in
 			got.SetDefaults(ctx)
 			if !cmp.Equal(got, tc.want, ignoreUnexportedResources) {
