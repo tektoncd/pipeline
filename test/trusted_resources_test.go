@@ -29,9 +29,10 @@ import (
 
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/test/parse"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
@@ -96,11 +97,12 @@ spec:
     args: ['-c', 'echo hello']
 `, helpers.ObjectNameForTest(t), namespace, fqImageName))
 
-	signedTask, err := GetSignedV1Task(task, signer, "signedtask")
+	signedTask, err := GetSignedTask(task, signer, "signedtask", "v1")
 	if err != nil {
 		t.Errorf("error getting signed task: %v", err)
 	}
-	if _, err := c.V1TaskClient.Create(ctx, signedTask, metav1.CreateOptions{}); err != nil {
+	signedV1Task := signedTask.(*v1.Task)
+	if _, err := c.V1TaskClient.Create(ctx, signedV1Task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
 
@@ -121,14 +123,15 @@ spec:
         value: %s
       - name: namespace
         value: %s
-`, helpers.ObjectNameForTest(t), namespace, signedTask.Name, namespace))
+`, helpers.ObjectNameForTest(t), namespace, signedV1Task.Name, namespace))
 
-	signedPipeline, err := GetSignedV1Pipeline(pipeline, signer, "signedpipeline")
+	signedPipeline, err := GetSignedPipeline(pipeline, signer, "signedpipeline", "v1")
 	if err != nil {
 		t.Errorf("error getting signed pipeline: %v", err)
 	}
+	signedV1Pipeline := signedPipeline.(*v1.Pipeline)
 
-	if _, err := c.V1PipelineClient.Create(ctx, signedPipeline, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1PipelineClient.Create(ctx, signedV1Pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
 
@@ -147,7 +150,7 @@ spec:
       value: %s
     - name: namespace
       value: %s
-`, helpers.ObjectNameForTest(t), namespace, signedPipeline.Name, namespace))
+`, helpers.ObjectNameForTest(t), namespace, signedV1Pipeline.Name, namespace))
 
 	t.Logf("Creating PipelineRun %s", pr.Name)
 	if _, err := c.V1PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
@@ -210,13 +213,14 @@ spec:
     args: ['-c', 'echo hello']
 `, helpers.ObjectNameForTest(t), namespace, fqImageName))
 
-	signedTask, err := GetSignedV1Task(task, signer, "signedtask")
+	signedTask, err := GetSignedTask(task, signer, "signedtask", "v1")
 	if err != nil {
 		t.Errorf("error getting signed task: %v", err)
 	}
+	signedV1Task := signedTask.(*v1.Task)
 	// modify the task to fail the verification
-	signedTask.Annotations["foo"] = "bar"
-	if _, err := c.V1TaskClient.Create(ctx, signedTask, metav1.CreateOptions{}); err != nil {
+	signedV1Task.Annotations["foo"] = "bar"
+	if _, err := c.V1TaskClient.Create(ctx, signedV1Task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
 
@@ -237,14 +241,15 @@ spec:
         value: %s
       - name: namespace
         value: %s
-`, helpers.ObjectNameForTest(t), namespace, signedTask.Name, namespace))
+`, helpers.ObjectNameForTest(t), namespace, signedV1Task.Name, namespace))
 
-	signedPipeline, err := GetSignedV1Pipeline(pipeline, signer, "signedpipeline")
+	signedPipeline, err := GetSignedPipeline(pipeline, signer, "signedpipeline", "v1")
 	if err != nil {
 		t.Errorf("error getting signed pipeline: %v", err)
 	}
+	signedV1Pipeline := signedPipeline.(*v1.Pipeline)
 
-	if _, err := c.V1PipelineClient.Create(ctx, signedPipeline, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1PipelineClient.Create(ctx, signedV1Pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
 
@@ -263,7 +268,7 @@ spec:
       value: %s
     - name: namespace
       value: %s
-`, helpers.ObjectNameForTest(t), namespace, signedPipeline.Name, namespace))
+`, helpers.ObjectNameForTest(t), namespace, signedV1Pipeline.Name, namespace))
 
 	t.Logf("Creating PipelineRun %s", pr.Name)
 	if _, err := c.V1PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
@@ -316,7 +321,7 @@ func setSecretAndConfig(ctx context.Context, t *testing.T, client kubernetes.Int
 		t.Fatal(err)
 	}
 
-	secret := &v1.Secret{Data: map[string][]byte{"cosign.pub": fileBytes}, ObjectMeta: metav1.ObjectMeta{Name: "verification-secrets", Namespace: namespace}}
+	secret := &corev1.Secret{Data: map[string][]byte{"cosign.pub": fileBytes}, ObjectMeta: metav1.ObjectMeta{Name: "verification-secrets", Namespace: namespace}}
 
 	client.CoreV1().Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
 	_, err = client.CoreV1().Secrets(namespace).Get(ctx, secret.Name, metav1.GetOptions{})

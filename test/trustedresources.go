@@ -39,6 +39,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 	"knative.dev/pkg/logging"
 )
@@ -324,34 +325,68 @@ func signInterface(signer signature.Signer, i interface{}) ([]byte, error) {
 	return sig, nil
 }
 
-// GetSignedV1beta1Pipeline signed the given pipeline and rename it with given name
-func GetSignedV1beta1Pipeline(unsigned *v1beta1.Pipeline, signer signature.Signer, name string) (*v1beta1.Pipeline, error) {
-	signedPipeline := unsigned.DeepCopy()
-	signedPipeline.Name = name
-	if signedPipeline.Annotations == nil {
-		signedPipeline.Annotations = map[string]string{}
+// GetSignedPipeline signed the given pipeline and rename it with given name and apiVersion
+func GetSignedPipeline(unsigned runtime.Object, signer signature.Signer, name, apiVersion string) (runtime.Object, error) {
+	switch apiVersion {
+	case v1Version:
+		signedV1Pipeline := unsigned.(*v1.Pipeline).DeepCopy()
+		signedV1Pipeline.Name = name
+		if signedV1Pipeline.Annotations == nil {
+			signedV1Pipeline.Annotations = map[string]string{}
+		}
+		signature, err := signInterface(signer, signedV1Pipeline)
+		if err != nil {
+			return nil, err
+		}
+		signedV1Pipeline.Annotations[signatureAnnotation] = base64.StdEncoding.EncodeToString(signature)
+		return signedV1Pipeline, nil
+	case v1beta1Version:
+		signedV1beta1Pipeline := unsigned.(*v1beta1.Pipeline).DeepCopy()
+		signedV1beta1Pipeline.Name = name
+		if signedV1beta1Pipeline.Annotations == nil {
+			signedV1beta1Pipeline.Annotations = map[string]string{}
+		}
+		signature, err := signInterface(signer, signedV1beta1Pipeline)
+		if err != nil {
+			return nil, err
+		}
+		signedV1beta1Pipeline.Annotations[signatureAnnotation] = base64.StdEncoding.EncodeToString(signature)
+		return signedV1beta1Pipeline, nil
+	default:
+		return nil, fmt.Errorf("could not get signed pipeline from unsigned: %v", unsigned)
 	}
-	signature, err := signInterface(signer, signedPipeline)
-	if err != nil {
-		return nil, err
-	}
-	signedPipeline.Annotations[signatureAnnotation] = base64.StdEncoding.EncodeToString(signature)
-	return signedPipeline, nil
 }
 
-// GetSignedV1beta1Task signed the given task and rename it with given name
-func GetSignedV1beta1Task(unsigned *v1beta1.Task, signer signature.Signer, name string) (*v1beta1.Task, error) {
-	signedTask := unsigned.DeepCopy()
-	signedTask.Name = name
-	if signedTask.Annotations == nil {
-		signedTask.Annotations = map[string]string{}
+// GetSignedTask signed the given task and rename it with given name and apiVersion
+func GetSignedTask(unsigned runtime.Object, signer signature.Signer, name, apiVersion string) (runtime.Object, error) {
+	switch apiVersion {
+	case v1Version:
+		signedV1Task := unsigned.(*v1.Task).DeepCopy()
+		signedV1Task.Name = name
+		if signedV1Task.Annotations == nil {
+			signedV1Task.Annotations = map[string]string{}
+		}
+		signature, err := signInterface(signer, signedV1Task)
+		if err != nil {
+			return nil, err
+		}
+		signedV1Task.Annotations[signatureAnnotation] = base64.StdEncoding.EncodeToString(signature)
+		return signedV1Task, nil
+	case v1beta1Version:
+		signedV1beta1Task := unsigned.(*v1beta1.Task).DeepCopy()
+		signedV1beta1Task.Name = name
+		if signedV1beta1Task.Annotations == nil {
+			signedV1beta1Task.Annotations = map[string]string{}
+		}
+		signature, err := signInterface(signer, signedV1beta1Task)
+		if err != nil {
+			return nil, err
+		}
+		signedV1beta1Task.Annotations[signatureAnnotation] = base64.StdEncoding.EncodeToString(signature)
+		return signedV1beta1Task, nil
+	default:
+		return nil, fmt.Errorf("could not get signed task from unsigned: %v", unsigned)
 	}
-	signature, err := signInterface(signer, signedTask)
-	if err != nil {
-		return nil, err
-	}
-	signedTask.Annotations[signatureAnnotation] = base64.StdEncoding.EncodeToString(signature)
-	return signedTask, nil
 }
 
 // GetSignedV1Pipeline signed the given pipeline and rename it with given name

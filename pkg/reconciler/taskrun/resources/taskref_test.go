@@ -651,10 +651,10 @@ func TestGetTaskFunc_V1beta1Task_VerifyNoError(t *testing.T) {
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 	tektonclient := fake.NewSimpleClientset()
 
-	unsignedTask := test.GetUnsignedTask("test-task")
-	unsignedTaskBytes, err := json.Marshal(unsignedTask)
+	unsignedV1beta1Task := test.GetUnsignedTask("test-task")
+	unsignedTaskBytes, err := json.Marshal(unsignedV1beta1Task)
 	unsignedV1Task := &v1.Task{}
-	unsignedTask.ConvertTo(ctx, unsignedV1Task)
+	unsignedV1beta1Task.ConvertTo(ctx, unsignedV1Task)
 	unsignedV1Task.APIVersion = "tekton.dev/v1"
 	unsignedV1Task.Kind = "Task"
 
@@ -666,15 +666,15 @@ func TestGetTaskFunc_V1beta1Task_VerifyNoError(t *testing.T) {
 	}
 	requesterUnmatched := bytesToRequester(unsignedTaskBytes, noMatchPolicyRefSource)
 
-	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, signer, "signed")
+	signedV1beta1Task, err := test.GetSignedTask(unsignedV1beta1Task, signer, "signed", "v1beta1")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
 	signedV1Task := &v1.Task{}
-	signedTask.ConvertTo(ctx, signedV1Task)
+	signedV1beta1Task.(*v1beta1.Task).ConvertTo(ctx, signedV1Task)
 	signedV1Task.APIVersion = "tekton.dev/v1"
 	signedV1Task.Kind = "Task"
-	signedTaskBytes, err := json.Marshal(signedTask)
+	signedTaskBytes, err := json.Marshal(signedV1Task)
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
@@ -785,8 +785,8 @@ func TestGetTaskFunc_V1beta1Task_VerifyError(t *testing.T) {
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 	tektonclient := fake.NewSimpleClientset()
 
-	unsignedTask := test.GetUnsignedTask("test-task")
-	unsignedTaskBytes, err := json.Marshal(unsignedTask)
+	unsignedV1beta1Task := test.GetUnsignedTask("test-task")
+	unsignedTaskBytes, err := json.Marshal(unsignedV1beta1Task)
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
@@ -795,10 +795,11 @@ func TestGetTaskFunc_V1beta1Task_VerifyError(t *testing.T) {
 	}
 	requesterUnsigned := bytesToRequester(unsignedTaskBytes, matchPolicyRefSource)
 
-	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, signer, "signed")
+	signedTask, err := test.GetSignedTask(unsignedV1beta1Task, signer, "signed", "v1beta1")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
+	signedV1beta1Task := signedTask.(*v1beta1.Task)
 	signedTaskBytes, err := json.Marshal(signedTask)
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
@@ -808,7 +809,7 @@ func TestGetTaskFunc_V1beta1Task_VerifyError(t *testing.T) {
 	}
 	requesterUnmatched := bytesToRequester(signedTaskBytes, noMatchPolicyRefSource)
 
-	modifiedTask := signedTask.DeepCopy()
+	modifiedTask := signedV1beta1Task.DeepCopy()
 	modifiedTask.Annotations["random"] = "attack"
 	modifiedTaskBytes, err := json.Marshal(modifiedTask)
 	if err != nil {
@@ -1162,8 +1163,8 @@ func TestGetTaskFunc_GetFuncError(t *testing.T) {
 	_, k8sclient, vps := test.SetupMatchAllVerificationPolicies(t, "trusted-resources")
 	tektonclient := fake.NewSimpleClientset()
 
-	unsignedTask := test.GetUnsignedTask("test-task")
-	unsignedTaskBytes, err := json.Marshal(unsignedTask)
+	unsignedV1beta1Task := test.GetUnsignedTask("test-task")
+	unsignedTaskBytes, err := json.Marshal(unsignedV1beta1Task)
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}

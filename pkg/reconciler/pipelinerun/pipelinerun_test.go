@@ -79,7 +79,9 @@ import (
 )
 
 var (
-	images = pipeline.Images{
+	v1Version      = "v1"
+	v1beta1Version = "v1beta1"
+	images         = pipeline.Images{
 		EntrypointImage: "override-with-entrypoint:latest",
 		NopImage:        "override-with-nop:latest",
 		ShellImage:      "busybox",
@@ -11813,7 +11815,7 @@ spec:
 `)
 
 	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, ts.Namespace)
-	signedTask, err := test.GetSignedV1beta1Task(ts, signer, "test-task")
+	signedTask, err := test.GetSignedTask(ts, signer, "test-task", v1beta1Version)
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
@@ -11833,7 +11835,7 @@ spec:
         resolver: %s
 `, resolverName))
 
-	signedPipeline, err := test.GetSignedV1beta1Pipeline(ps, signer, "test-pipeline")
+	signedPipeline, err := test.GetSignedPipeline(ps, signer, "test-pipeline", v1beta1Version)
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
@@ -11950,7 +11952,7 @@ func TestReconcile_verifyResolved_V1beta1Pipeline_Error(t *testing.T) {
 	resolverName := "foobar"
 
 	// Case1: unsigned Pipeline refers to unsigned Task
-	unsignedTask := parse.MustParseV1beta1Task(t, `
+	unsignedV1beta1Task := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task
   namespace: foo
@@ -11963,12 +11965,12 @@ spec:
        - name: foo
          value: bar
 `)
-	unsignedTaskBytes, err := yaml.Marshal(unsignedTask)
+	unsignedV1beta1TaskBytes, err := yaml.Marshal(unsignedV1beta1Task)
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
 
-	unsignedPipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+	unsignedV1beta1Pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: test-pipeline
   namespace: foo
@@ -11978,32 +11980,33 @@ spec:
       taskRef:
         resolver: %s
 `, resolverName))
-	unsignedPipelineBytes, err := yaml.Marshal(unsignedPipeline)
+	unsignedPipelineBytes, err := yaml.Marshal(unsignedV1beta1Pipeline)
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
 
 	// Case2: signed Pipeline refers to unsigned Task
-	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, unsignedTask.Namespace)
-	signedPipelineWithUnsignedTask, err := test.GetSignedV1beta1Pipeline(unsignedPipeline, signer, "test-pipeline")
+	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, unsignedV1beta1Task.Namespace)
+	signedV1beta1PipelineWithUnsignedTask, err := test.GetSignedPipeline(unsignedV1beta1Pipeline, signer, "test-pipeline", v1beta1Version)
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
-	signedPipelineWithUnsignedTaskBytes, err := yaml.Marshal(signedPipelineWithUnsignedTask)
+	signedPipelineWithUnsignedTaskBytes, err := yaml.Marshal(signedV1beta1PipelineWithUnsignedTask)
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
 
 	// Case3: signed Pipeline refers to modified Task
-	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, signer, "test-task")
+	signedTask, err := test.GetSignedTask(unsignedV1beta1Task, signer, "test-task", v1beta1Version)
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
+	signedV1beta1Task := signedTask.(*v1beta1.Task)
 	signedTaskBytes, err := yaml.Marshal(signedTask)
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
-	modifiedTask := signedTask.DeepCopy()
+	modifiedTask := signedV1beta1Task.DeepCopy()
 	if modifiedTask.Annotations == nil {
 		modifiedTask.Annotations = make(map[string]string)
 	}
@@ -12023,11 +12026,11 @@ spec:
       taskRef:
         resolver: %s
 `, resolverName))
-	signedPipelineWithModifiedTask, err := test.GetSignedV1beta1Pipeline(ps, signer, "test-pipeline")
+	signedV1beta1PipelineWithModifiedTask, err := test.GetSignedPipeline(ps, signer, "test-pipeline", v1beta1Version)
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
-	signedPipelineWithModifiedTaskBytes, err := yaml.Marshal(signedPipelineWithModifiedTask)
+	signedPipelineWithModifiedTaskBytes, err := yaml.Marshal(signedV1beta1PipelineWithModifiedTask)
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
@@ -12043,11 +12046,11 @@ spec:
       taskRef:
         resolver: %s
 `, resolverName))
-	signedPipeline, err := test.GetSignedV1beta1Pipeline(ps, signer, "test-pipeline")
+	signedPipeline, err := test.GetSignedPipeline(ps, signer, "test-pipeline", v1beta1Version)
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
-	modifiedPipeline := signedPipeline.DeepCopy()
+	modifiedPipeline := signedPipeline.(*v1beta1.Pipeline).DeepCopy()
 	if modifiedPipeline.Annotations == nil {
 		modifiedPipeline.Annotations = make(map[string]string)
 	}
@@ -12087,12 +12090,12 @@ spec:
 		{
 			name:          "unsigned pipeline fails verification",
 			pipelineBytes: unsignedPipelineBytes,
-			taskBytes:     unsignedTaskBytes,
+			taskBytes:     unsignedV1beta1TaskBytes,
 		},
 		{
 			name:          "signed pipeline with unsigned task fails verification",
 			pipelineBytes: signedPipelineWithUnsignedTaskBytes,
-			taskBytes:     unsignedTaskBytes,
+			taskBytes:     unsignedV1beta1TaskBytes,
 		},
 		{
 			name:          "signed pipeline with modified task fails verification",
@@ -12285,7 +12288,7 @@ func TestReconcile_verifyResolved_V1Pipeline_Error(t *testing.T) {
 	resolverName := "foobar"
 
 	// Case1: unsigned Pipeline refers to unsigned Task
-	unsignedTask := parse.MustParseV1beta1Task(t, `
+	unsignedV1Task := parse.MustParseV1Task(t, `
 metadata:
   name: test-task
   namespace: foo
@@ -12298,12 +12301,12 @@ spec:
        - name: foo
          value: bar
 `)
-	unsignedTaskBytes, err := yaml.Marshal(unsignedTask)
+	unsignedV1TaskBytes, err := yaml.Marshal(unsignedV1Task)
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
 
-	unsignedPipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+	unsignedV1Pipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: test-pipeline
   namespace: foo
@@ -12313,32 +12316,33 @@ spec:
       taskRef:
         resolver: %s
 `, resolverName))
-	unsignedPipelineBytes, err := yaml.Marshal(unsignedPipeline)
+	unsignedPipelineBytes, err := yaml.Marshal(unsignedV1Pipeline)
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
 
 	// Case2: signed Pipeline refers to unsigned Task
-	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, unsignedTask.Namespace)
-	signedPipelineWithUnsignedTask, err := test.GetSignedV1beta1Pipeline(unsignedPipeline, signer, "test-pipeline")
+	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, unsignedV1Task.Namespace)
+	signedV1PipelineWithUnsignedTask, err := test.GetSignedPipeline(unsignedV1Pipeline, signer, "test-pipeline", v1Version)
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
-	signedPipelineWithUnsignedTaskBytes, err := yaml.Marshal(signedPipelineWithUnsignedTask)
+	signedPipelineWithUnsignedTaskBytes, err := yaml.Marshal(signedV1PipelineWithUnsignedTask)
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
 
 	// Case3: signed Pipeline refers to modified Task
-	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, signer, "test-task")
+	signedTask, err := test.GetSignedTask(unsignedV1Task, signer, "test-task", v1Version)
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
+	signedV1Task := signedTask.(*v1.Task)
 	signedTaskBytes, err := yaml.Marshal(signedTask)
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
-	modifiedTask := signedTask.DeepCopy()
+	modifiedTask := signedV1Task.DeepCopy()
 	if modifiedTask.Annotations == nil {
 		modifiedTask.Annotations = make(map[string]string)
 	}
@@ -12348,7 +12352,7 @@ spec:
 		t.Fatal("fail to marshal task", err)
 	}
 
-	ps := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+	ps := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: test-pipeline
   namespace: foo
@@ -12358,17 +12362,17 @@ spec:
       taskRef:
         resolver: %s
 `, resolverName))
-	signedPipelineWithModifiedTask, err := test.GetSignedV1beta1Pipeline(ps, signer, "test-pipeline")
+	signedV1PipelineWithModifiedTask, err := test.GetSignedPipeline(ps, signer, "test-pipeline", v1Version)
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
-	signedPipelineWithModifiedTaskBytes, err := yaml.Marshal(signedPipelineWithModifiedTask)
+	signedPipelineWithModifiedTaskBytes, err := yaml.Marshal(signedV1PipelineWithModifiedTask)
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
 
 	// Case4: modified Pipeline refers to signed Task
-	ps = parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+	ps = parse.MustParseV1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: test-pipeline
   namespace: foo
@@ -12378,11 +12382,11 @@ spec:
       taskRef:
         resolver: %s
 `, resolverName))
-	signedPipeline, err := test.GetSignedV1beta1Pipeline(ps, signer, "test-pipeline")
+	signedPipeline, err := test.GetSignedPipeline(ps, signer, "test-pipeline", v1Version)
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
-	modifiedPipeline := signedPipeline.DeepCopy()
+	modifiedPipeline := signedPipeline.(*v1.Pipeline).DeepCopy()
 	if modifiedPipeline.Annotations == nil {
 		modifiedPipeline.Annotations = make(map[string]string)
 	}
@@ -12422,12 +12426,12 @@ spec:
 		{
 			name:          "unsigned pipeline fails verification",
 			pipelineBytes: unsignedPipelineBytes,
-			taskBytes:     unsignedTaskBytes,
+			taskBytes:     unsignedV1TaskBytes,
 		},
 		{
 			name:          "signed pipeline with unsigned task fails verification",
 			pipelineBytes: signedPipelineWithUnsignedTaskBytes,
-			taskBytes:     unsignedTaskBytes,
+			taskBytes:     unsignedV1TaskBytes,
 		},
 		{
 			name:          "signed pipeline with modified task fails verification",

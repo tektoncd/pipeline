@@ -84,6 +84,8 @@ import (
 )
 
 const (
+	v1Version          = "v1"
+	v1beta1Version     = "v1beta1"
 	entrypointLocation = "/tekton/bin/entrypoint"
 	workspaceDir       = "/workspace"
 	currentAPIVersion  = "tekton.dev/v1"
@@ -2837,7 +2839,7 @@ status:
 		expectedReason string
 	}{{
 		description:    "ResourceQuotaConflictError does not fail taskrun",
-		err:            k8sapierrors.NewConflict(k8sruntimeschema.GroupResource{Group: "v1", Resource: "resourcequotas"}, "dummy", errors.New("operation cannot be fulfilled on resourcequotas dummy the object has been modified please apply your changes to the latest version and try again")),
+		err:            k8sapierrors.NewConflict(k8sruntimeschema.GroupResource{Group: v1Version, Resource: "resourcequotas"}, "dummy", errors.New("operation cannot be fulfilled on resourcequotas dummy the object has been modified please apply your changes to the latest version and try again")),
 		expectedType:   apis.ConditionSucceeded,
 		expectedStatus: corev1.ConditionUnknown,
 		expectedReason: podconvert.ReasonPending,
@@ -4605,7 +4607,7 @@ status:
 			pod := &corev1.Pod{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Pod",
-					APIVersion: "v1",
+					APIVersion: v1Version,
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-taskrun-larger-results-sidecar-logs-pod",
@@ -4921,7 +4923,7 @@ spec:
 `)
 
 	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, ts.Namespace)
-	signedTask, err := test.GetSignedV1beta1Task(ts, signer, "test-task")
+	signedTask, err := test.GetSignedTask(ts, signer, "test-task", v1beta1Version)
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
@@ -5072,12 +5074,12 @@ spec:
 	}
 
 	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, unsignedTask.Namespace)
-	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, signer, "test-task")
+	signedTask, err := test.GetSignedTask(unsignedTask, signer, "test-task", v1beta1Version)
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
-
-	modifiedTask := signedTask.DeepCopy()
+	signedV1beta1Task := signedTask.(*v1beta1.Task)
+	modifiedTask := signedV1beta1Task.DeepCopy()
 	if modifiedTask.Annotations == nil {
 		modifiedTask.Annotations = make(map[string]string)
 	}

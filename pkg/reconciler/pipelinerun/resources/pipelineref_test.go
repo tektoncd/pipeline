@@ -491,7 +491,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 	unsignedV1Pipeline.APIVersion = "tekton.dev/v1"
 	unsignedV1Pipeline.Kind = "Pipeline"
 
-	unsignedPipelineBytes, err := json.Marshal(unsignedPipeline)
+	unsignedV1PipelineBytes, err := json.Marshal(unsignedV1Pipeline)
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
 	}
@@ -502,19 +502,19 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 		},
 		EntryPoint: "foo/bar",
 	}
-	resolvedUnmatched := test.NewResolvedResource(unsignedPipelineBytes, nil, noMatchPolicyRefSource, nil)
+	resolvedUnmatched := test.NewResolvedResource(unsignedV1PipelineBytes, nil, noMatchPolicyRefSource, nil)
 	requesterUnmatched := test.NewRequester(resolvedUnmatched, nil)
 
-	signedPipeline, err := test.GetSignedV1beta1Pipeline(unsignedPipeline, signer, "signed")
+	signedV1beta1Pipeline, err := test.GetSignedPipeline(unsignedPipeline, signer, "signed", "v1beta1")
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
 	signedV1Pipeline := &v1.Pipeline{}
-	signedPipeline.ConvertTo(ctx, signedV1Pipeline)
+	signedV1beta1Pipeline.(*v1beta1.Pipeline).ConvertTo(ctx, signedV1Pipeline)
 	signedV1Pipeline.APIVersion = "tekton.dev/v1"
 	signedV1Pipeline.Kind = "Pipeline"
 
-	signedPipelineBytes, err := json.Marshal(signedPipeline)
+	signedV1beta1PipelineBytes, err := json.Marshal(signedV1beta1Pipeline)
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
 	}
@@ -525,11 +525,11 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 		},
 		EntryPoint: "foo/bar",
 	}
-	resolvedMatched := test.NewResolvedResource(signedPipelineBytes, nil, matchPolicyRefSource, nil)
+	resolvedMatched := test.NewResolvedResource(signedV1beta1PipelineBytes, nil, matchPolicyRefSource, nil)
 	requesterMatched := test.NewRequester(resolvedMatched, nil)
 
 	pipelineRef := &v1.PipelineRef{
-		Name: signedPipeline.Name,
+		Name: signedV1beta1Pipeline.(*v1beta1.Pipeline).Name,
 		ResolverRef: v1.ResolverRef{
 			Resolver: "git",
 		},
@@ -572,7 +572,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 	warnPolicyRefSource := &v1.RefSource{
 		URI: "	warnVP",
 	}
-	resolvedUnsignedMatched := test.NewResolvedResource(unsignedPipelineBytes, nil, warnPolicyRefSource, nil)
+	resolvedUnsignedMatched := test.NewResolvedResource(unsignedV1PipelineBytes, nil, warnPolicyRefSource, nil)
 	requesterUnsignedMatched := test.NewRequester(resolvedUnsignedMatched, nil)
 
 	testcases := []struct {
@@ -688,8 +688,8 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyError(t *testing.T) {
 	tektonclient := fake.NewSimpleClientset()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 
-	unsignedPipeline := test.GetUnsignedPipeline("test-pipeline")
-	unsignedPipelineBytes, err := json.Marshal(unsignedPipeline)
+	unsignedV1beta1Pipeline := test.GetUnsignedPipeline("test-pipeline")
+	unsignedV1beta1PipelineBytes, err := json.Marshal(unsignedV1beta1Pipeline)
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
 	}
@@ -701,10 +701,10 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyError(t *testing.T) {
 		EntryPoint: "foo/bar",
 	}
 
-	resolvedUnsigned := test.NewResolvedResource(unsignedPipelineBytes, nil, matchPolicyRefSource, nil)
+	resolvedUnsigned := test.NewResolvedResource(unsignedV1beta1PipelineBytes, nil, matchPolicyRefSource, nil)
 	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
 
-	signedPipeline, err := test.GetSignedV1beta1Pipeline(unsignedPipeline, signer, "signed")
+	signedPipeline, err := test.GetSignedPipeline(unsignedV1beta1Pipeline, signer, "signed", "v1beta1")
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
@@ -723,7 +723,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyError(t *testing.T) {
 	resolvedUnmatched := test.NewResolvedResource(signedPipelineBytes, nil, noMatchPolicyRefSource, nil)
 	requesterUnmatched := test.NewRequester(resolvedUnmatched, nil)
 
-	modifiedPipeline := signedPipeline.DeepCopy()
+	modifiedPipeline := signedPipeline.(*v1beta1.Pipeline).DeepCopy()
 	modifiedPipeline.Annotations["random"] = "attack"
 	modifiedPipelineBytes, err := json.Marshal(modifiedPipeline)
 	if err != nil {
@@ -817,7 +817,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 		t.Error(err)
 	}
 
-	unsignedPipelineBytes, err := json.Marshal(unsignedV1Pipeline)
+	unsignedV1beta1PipelineBytes, err := json.Marshal(unsignedV1Pipeline)
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
 	}
@@ -828,7 +828,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 		},
 		EntryPoint: "foo/bar",
 	}
-	resolvedUnmatched := test.NewResolvedResource(unsignedPipelineBytes, nil, noMatchPolicyRefSource, nil)
+	resolvedUnmatched := test.NewResolvedResource(unsignedV1beta1PipelineBytes, nil, noMatchPolicyRefSource, nil)
 	requesterUnmatched := test.NewRequester(resolvedUnmatched, nil)
 
 	signedPipeline, err := getSignedV1Pipeline(unsignedV1Pipeline, signer, "signed")
@@ -902,7 +902,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 	warnPolicyRefSource := &v1.RefSource{
 		URI: "	warnVP",
 	}
-	resolvedUnsignedMatched := test.NewResolvedResource(unsignedPipelineBytes, nil, warnPolicyRefSource, nil)
+	resolvedUnsignedMatched := test.NewResolvedResource(unsignedV1beta1PipelineBytes, nil, warnPolicyRefSource, nil)
 	requesterUnsignedMatched := test.NewRequester(resolvedUnsignedMatched, nil)
 
 	testcases := []struct {
@@ -1018,7 +1018,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyError(t *testing.T) {
 	tektonclient := fake.NewSimpleClientset()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 
-	unsignedPipelineBytes, err := json.Marshal(unsignedV1Pipeline)
+	unsignedV1beta1PipelineBytes, err := json.Marshal(unsignedV1Pipeline)
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
 	}
@@ -1030,7 +1030,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyError(t *testing.T) {
 		EntryPoint: "foo/bar",
 	}
 
-	resolvedUnsigned := test.NewResolvedResource(unsignedPipelineBytes, nil, matchPolicyRefSource, nil)
+	resolvedUnsigned := test.NewResolvedResource(unsignedV1beta1PipelineBytes, nil, matchPolicyRefSource, nil)
 	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
 
 	signedPipeline, err := getSignedV1Pipeline(unsignedV1Pipeline, signer, "signed")
@@ -1134,13 +1134,13 @@ func TestGetPipelineFunc_GetFuncError(t *testing.T) {
 	tektonclient := fake.NewSimpleClientset()
 	_, k8sclient, vps := test.SetupMatchAllVerificationPolicies(t, "trusted-resources")
 
-	unsignedPipeline := test.GetUnsignedPipeline("test-pipeline")
-	unsignedPipelineBytes, err := json.Marshal(unsignedPipeline)
+	unsignedV1beta1Pipeline := test.GetUnsignedPipeline("test-pipeline")
+	unsignedV1beta1PipelineBytes, err := json.Marshal(unsignedV1beta1Pipeline)
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
 	}
 
-	resolvedUnsigned := test.NewResolvedResource(unsignedPipelineBytes, nil, sampleRefSource.DeepCopy(), nil)
+	resolvedUnsigned := test.NewResolvedResource(unsignedV1beta1PipelineBytes, nil, sampleRefSource.DeepCopy(), nil)
 	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
 	resolvedUnsigned.DataErr = fmt.Errorf("resolution error")
 

@@ -46,7 +46,7 @@ const (
 	namespace = "trusted-resources"
 )
 
-var unsignedTask = v1.Task{
+var unsignedV1Task = v1.Task{
 	TypeMeta: metav1.TypeMeta{
 		APIVersion: "tekton.dev/v1",
 		Kind:       "Task"},
@@ -62,7 +62,7 @@ var unsignedTask = v1.Task{
 	},
 }
 
-var unsignedPipeline = v1.Pipeline{
+var unsignedV1Pipeline = v1.Pipeline{
 	TypeMeta: metav1.TypeMeta{
 		APIVersion: "tekton.dev/v1",
 		Kind:       "Pipeline"},
@@ -86,22 +86,23 @@ func TestVerifyInterface_Task_Success(t *testing.T) {
 	}
 
 	unsignedTask := test.GetUnsignedTask("test-task")
-	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, sv, "signed")
+	signedTask, err := test.GetSignedTask(unsignedTask, sv, "signed", "v1beta1")
 	if err != nil {
 		t.Fatalf("Failed to get signed task %v", err)
 	}
+	signedV1beta1Task := signedTask.(*v1beta1.Task)
 
 	signature := []byte{}
 
-	if sig, ok := signedTask.Annotations[SignatureAnnotation]; ok {
-		delete(signedTask.Annotations, SignatureAnnotation)
+	if sig, ok := signedV1beta1Task.Annotations[SignatureAnnotation]; ok {
+		delete(signedV1beta1Task.Annotations, SignatureAnnotation)
 		signature, err = base64.StdEncoding.DecodeString(sig)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	err = verifyInterface(signedTask, sv, signature)
+	err = verifyInterface(signedV1beta1Task, sv, signature)
 	if err != nil {
 		t.Fatalf("VerifyInterface() get err %v", err)
 	}
@@ -113,14 +114,15 @@ func TestVerifyInterface_Task_Error(t *testing.T) {
 		t.Fatalf("failed to get signerverifier %v", err)
 	}
 
-	unsignedTask := test.GetUnsignedTask("test-task")
+	unsignedV1beta1Task := test.GetUnsignedTask("test-task")
 
-	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, sv, "signed")
+	signedTask, err := test.GetSignedTask(unsignedV1beta1Task, sv, "signed", "v1beta1")
 	if err != nil {
 		t.Fatalf("Failed to get signed task %v", err)
 	}
+	signedV1beta1Task := signedTask.(*v1beta1.Task)
 
-	tamperedTask := signedTask.DeepCopy()
+	tamperedTask := signedV1beta1Task.DeepCopy()
 	tamperedTask.Name = "tampered"
 
 	tcs := []struct {
@@ -129,7 +131,7 @@ func TestVerifyInterface_Task_Error(t *testing.T) {
 		expectedError error
 	}{{
 		name:          "Unsigned Task Fail Verification",
-		task:          unsignedTask,
+		task:          unsignedV1beta1Task,
 		expectedError: ErrResourceVerificationFailed,
 	}, {
 		name:          "Empty task Fail Verification",
@@ -164,13 +166,14 @@ func TestVerifyInterface_Task_Error(t *testing.T) {
 
 func TestVerifyResource_Task_Success(t *testing.T) {
 	signer256, _, k8sclient, vps := test.SetupVerificationPolicies(t)
-	unsignedTask := test.GetUnsignedTask("test-task")
-	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, signer256, "signed")
+	unsignedV1beta1Task := test.GetUnsignedTask("test-task")
+	signedTask, err := test.GetSignedTask(unsignedV1beta1Task, signer256, "signed", "v1beta1")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
+	signedV1beta1Task := signedTask.(*v1beta1.Task)
 
-	modifiedTask := signedTask.DeepCopy()
+	modifiedTask := signedV1beta1Task.DeepCopy()
 	modifiedTask.Name = "modified"
 
 	signer384, _, pub, err := test.GenerateKeys(elliptic.P384(), crypto.SHA384)
@@ -246,10 +249,11 @@ func TestVerifyResource_Task_Success(t *testing.T) {
 		},
 	}
 
-	signedTask384, err := test.GetSignedV1beta1Task(unsignedTask, signer384, "signed384")
+	signedTask384, err := test.GetSignedTask(unsignedV1beta1Task, signer384, "signed384", "v1beta1")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
+	signedV1beta1Task384 := signedTask384.(*v1beta1.Task)
 
 	mismatchedSource := "wrong source"
 	tcs := []struct {
@@ -262,40 +266,40 @@ func TestVerifyResource_Task_Success(t *testing.T) {
 		expectedVerificationResult VerificationResult
 	}{{
 		name:                       "signed git source task passes verification",
-		task:                       signedTask,
+		task:                       signedV1beta1Task,
 		source:                     &v1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"},
 		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
 		verificationPolicies:       vps,
 		expectedVerificationResult: VerificationResult{VerificationResultType: VerificationPass},
 	}, {
 		name:                       "signed bundle source task passes verification",
-		task:                       signedTask,
+		task:                       signedV1beta1Task,
 		source:                     &v1.RefSource{URI: "gcr.io/tekton-releases/catalog/upstream/git-clone"},
 		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
 		verificationPolicies:       vps,
 		expectedVerificationResult: VerificationResult{VerificationResultType: VerificationPass},
 	}, {
 		name:                       "signed task with sha384 key",
-		task:                       signedTask384,
+		task:                       signedV1beta1Task384,
 		source:                     &v1.RefSource{URI: "gcr.io/tekton-releases/catalog/upstream/sha384"},
 		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
 		verificationPolicies:       []*v1alpha1.VerificationPolicy{sha384Vp},
 		expectedVerificationResult: VerificationResult{VerificationResultType: VerificationPass},
 	}, {
 		name:                       "ignore no match policy skips verification when no matching policies",
-		task:                       unsignedTask,
+		task:                       unsignedV1beta1Task,
 		source:                     &v1.RefSource{URI: mismatchedSource},
 		verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
 		expectedVerificationResult: VerificationResult{VerificationResultType: VerificationSkip},
 	}, {
 		name:                       "warn no match policy skips verification when no matching policies",
-		task:                       unsignedTask,
+		task:                       unsignedV1beta1Task,
 		source:                     &v1.RefSource{URI: mismatchedSource},
 		verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
 		expectedVerificationResult: VerificationResult{VerificationResultType: VerificationWarn, Err: ErrNoMatchedPolicies},
 	}, {
 		name:                       "unsigned task matches warn policy doesn't fail verification",
-		task:                       unsignedTask,
+		task:                       unsignedV1beta1Task,
 		source:                     &v1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"},
 		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
 		verificationPolicies:       []*v1alpha1.VerificationPolicy{warnPolicy},
@@ -332,14 +336,15 @@ func TestVerifyResource_Task_Error(t *testing.T) {
 	ctx = test.SetupTrustedResourceConfig(ctx, config.FailNoMatchPolicy)
 	sv, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 
-	unsignedTask := test.GetUnsignedTask("test-task")
+	unsignedV1beta1Task := test.GetUnsignedTask("test-task")
 
-	signedTask, err := test.GetSignedV1beta1Task(unsignedTask, sv, "signed")
+	signedTask, err := test.GetSignedTask(unsignedV1beta1Task, sv, "signed", "v1beta1")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
+	signedV1beta1Task := signedTask.(*v1beta1.Task)
 
-	tamperedTask := signedTask.DeepCopy()
+	tamperedTask := signedV1beta1Task.DeepCopy()
 	tamperedTask.Annotations["random"] = "attack"
 
 	matchingSource := "git+https://github.com/tektoncd/catalog.git"
@@ -352,7 +357,7 @@ func TestVerifyResource_Task_Error(t *testing.T) {
 		expectedError      error
 	}{{
 		name:               "unsigned Task fails verification",
-		task:               unsignedTask,
+		task:               unsignedV1beta1Task,
 		source:             &v1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"},
 		verificationPolicy: vps,
 		expectedError:      ErrResourceVerificationFailed,
@@ -364,7 +369,7 @@ func TestVerifyResource_Task_Error(t *testing.T) {
 		expectedError:      ErrResourceVerificationFailed,
 	}, {
 		name:               "task not matching pattern fails verification",
-		task:               signedTask,
+		task:               signedV1beta1Task,
 		source:             &v1.RefSource{URI: mismatchedSource},
 		verificationPolicy: vps,
 		expectedError:      ErrNoMatchedPolicies,
@@ -376,7 +381,7 @@ func TestVerifyResource_Task_Error(t *testing.T) {
 		expectedError:      ErrNoMatchedPolicies,
 	}, {
 		name:   "Verification fails with regex error",
-		task:   signedTask,
+		task:   signedV1beta1Task,
 		source: &v1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"},
 		verificationPolicy: []*v1alpha1.VerificationPolicy{
 			{
@@ -393,7 +398,7 @@ func TestVerifyResource_Task_Error(t *testing.T) {
 		expectedError: ErrRegexMatch,
 	}, {
 		name:   "Verification fails with error from policy",
-		task:   signedTask,
+		task:   signedV1beta1Task,
 		source: &v1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"},
 		verificationPolicy: []*v1alpha1.VerificationPolicy{
 			{
@@ -429,8 +434,8 @@ func TestVerifyResource_Task_Error(t *testing.T) {
 
 func TestVerifyResource_Pipeline_Success(t *testing.T) {
 	sv, _, k8sclient, vps := test.SetupVerificationPolicies(t)
-	unsignedPipeline := test.GetUnsignedPipeline("test-pipeline")
-	signedPipeline, err := test.GetSignedV1beta1Pipeline(unsignedPipeline, sv, "signed")
+	unsignedV1beta1Pipeline := test.GetUnsignedPipeline("test-pipeline")
+	signedPipeline, err := test.GetSignedPipeline(unsignedV1beta1Pipeline, sv, "signed", "v1beta1")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
@@ -444,25 +449,25 @@ func TestVerifyResource_Pipeline_Success(t *testing.T) {
 		expectedVerificationResult VerificationResult
 	}{{
 		name:                       "signed git source pipeline passes verification",
-		pipeline:                   signedPipeline,
+		pipeline:                   signedPipeline.(*v1beta1.Pipeline),
 		source:                     &v1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"},
 		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
 		expectedVerificationResult: VerificationResult{VerificationResultType: VerificationPass},
 	}, {
 		name:                       "signed bundle source pipeline passes verification",
-		pipeline:                   signedPipeline,
+		pipeline:                   signedPipeline.(*v1beta1.Pipeline),
 		source:                     &v1.RefSource{URI: "gcr.io/tekton-releases/catalog/upstream/git-clone"},
 		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
 		expectedVerificationResult: VerificationResult{VerificationResultType: VerificationPass},
 	}, {
 		name:                       "ignore no match policy skips verification when no matching policies",
-		pipeline:                   unsignedPipeline,
+		pipeline:                   unsignedV1beta1Pipeline,
 		source:                     &v1.RefSource{URI: mismatchedSource},
 		verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
 		expectedVerificationResult: VerificationResult{VerificationResultType: VerificationSkip},
 	}, {
 		name:                       "warn no match policy skips verification when no matching policies",
-		pipeline:                   unsignedPipeline,
+		pipeline:                   unsignedV1beta1Pipeline,
 		source:                     &v1.RefSource{URI: mismatchedSource},
 		verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
 		expectedVerificationResult: VerificationResult{VerificationResultType: VerificationWarn, Err: ErrNoMatchedPolicies},
@@ -483,13 +488,13 @@ func TestVerifyResource_Pipeline_Error(t *testing.T) {
 	ctx = test.SetupTrustedResourceConfig(ctx, config.FailNoMatchPolicy)
 	sv, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 
-	unsignedPipeline := test.GetUnsignedPipeline("test-pipeline")
+	unsignedV1beta1Pipeline := test.GetUnsignedPipeline("test-pipeline")
 
-	signedPipeline, err := test.GetSignedV1beta1Pipeline(unsignedPipeline, sv, "signed")
+	signedPipeline, err := test.GetSignedPipeline(unsignedV1beta1Pipeline, sv, "signed", "v1beta1")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
-	tamperedPipeline := signedPipeline.DeepCopy()
+	tamperedPipeline := signedPipeline.(*v1beta1.Pipeline).DeepCopy()
 	tamperedPipeline.Annotations["random"] = "attack"
 
 	matchingSource := "git+https://github.com/tektoncd/catalog.git"
@@ -508,13 +513,13 @@ func TestVerifyResource_Pipeline_Error(t *testing.T) {
 		expectedError:      ErrResourceVerificationFailed,
 	}, {
 		name:               "Task Not Matching Pattern Fails Verification",
-		pipeline:           signedPipeline,
+		pipeline:           signedPipeline.(*v1beta1.Pipeline),
 		source:             &v1.RefSource{URI: mismatchedSource},
 		verificationPolicy: vps,
 		expectedError:      ErrNoMatchedPolicies,
 	}, {
 		name:     "Verification fails with regex error",
-		pipeline: signedPipeline,
+		pipeline: signedPipeline.(*v1beta1.Pipeline),
 		source:   &v1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"},
 		verificationPolicy: []*v1alpha1.VerificationPolicy{
 			{
@@ -542,22 +547,22 @@ func TestVerifyResource_Pipeline_Error(t *testing.T) {
 
 func TestVerifyResource_V1Task_Success(t *testing.T) {
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
-	signedTask, err := getSignedV1Task(unsignedTask.DeepCopy(), signer, "signed")
+	signedV1Task, err := getSignedV1Task(unsignedV1Task.DeepCopy(), signer, "signed")
 	if err != nil {
 		t.Error(err)
 	}
-	vr := VerifyResource(context.Background(), signedTask, k8sclient, &v1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"}, vps)
+	vr := VerifyResource(context.Background(), signedV1Task, k8sclient, &v1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"}, vps)
 	if vr.VerificationResultType != VerificationPass {
 		t.Errorf("VerificationResult mismatch: want %v, got %v", VerificationPass, vr.VerificationResultType)
 	}
 }
 func TestVerifyResource_V1Task_Error(t *testing.T) {
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
-	signedTask, err := getSignedV1Task(unsignedTask.DeepCopy(), signer, "signed")
+	signedV1Task, err := getSignedV1Task(unsignedV1Task.DeepCopy(), signer, "signed")
 	if err != nil {
 		t.Error(err)
 	}
-	modifiedTask := signedTask.DeepCopy()
+	modifiedTask := signedV1Task.DeepCopy()
 	modifiedTask.Annotations["foo"] = "modified"
 	vr := VerifyResource(context.Background(), modifiedTask, k8sclient, &v1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"}, vps)
 	if vr.VerificationResultType != VerificationError && !errors.Is(vr.Err, ErrResourceVerificationFailed) {
@@ -567,11 +572,11 @@ func TestVerifyResource_V1Task_Error(t *testing.T) {
 
 func TestVerifyResource_V1Pipeline_Success(t *testing.T) {
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
-	signed, err := getSignedV1Pipeline(unsignedPipeline.DeepCopy(), signer, "signed")
+	signedV1Pipeline, err := getSignedV1Pipeline(unsignedV1Pipeline.DeepCopy(), signer, "signed")
 	if err != nil {
 		t.Error(err)
 	}
-	vr := VerifyResource(context.Background(), signed, k8sclient, &v1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"}, vps)
+	vr := VerifyResource(context.Background(), signedV1Pipeline, k8sclient, &v1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"}, vps)
 	if vr.VerificationResultType != VerificationPass {
 		t.Errorf("VerificationResult mismatch: want %v, got %v", VerificationPass, vr.VerificationResultType)
 	}
@@ -579,11 +584,11 @@ func TestVerifyResource_V1Pipeline_Success(t *testing.T) {
 
 func TestVerifyResource_V1Pipeline_Error(t *testing.T) {
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
-	signed, err := getSignedV1Pipeline(unsignedPipeline.DeepCopy(), signer, "signed")
+	signedV1Pipeline, err := getSignedV1Pipeline(unsignedV1Pipeline.DeepCopy(), signer, "signed")
 	if err != nil {
 		t.Error(err)
 	}
-	modifiedTask := signed.DeepCopy()
+	modifiedTask := signedV1Pipeline.DeepCopy()
 	modifiedTask.Annotations["foo"] = "modified"
 	vr := VerifyResource(context.Background(), modifiedTask, k8sclient, &v1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"}, vps)
 	if vr.VerificationResultType != VerificationError && !errors.Is(vr.Err, ErrResourceVerificationFailed) {
