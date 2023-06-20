@@ -22,7 +22,9 @@ import (
 // associated with it, including all aliases that refer to it. Deleting a KMS key
 // is a destructive and potentially dangerous operation. When a KMS key is deleted,
 // all data that was encrypted under the KMS key is unrecoverable. (The only
-// exception is a multi-Region replica key.) To prevent the use of a KMS key
+// exception is a multi-Region replica key , or an asymmetric or HMAC KMS key with
+// imported key material[BUGBUG-link to
+// importing-keys-managing.html#import-delete-key.) To prevent the use of a KMS key
 // without deleting it, use DisableKey . You can schedule the deletion of a
 // multi-Region primary key and its replica keys at any time. However, KMS will not
 // delete a multi-Region primary key with existing replica keys. If you schedule
@@ -84,7 +86,10 @@ type ScheduleKeyDeletionInput struct {
 	// replica keys, the waiting period begins when the last of its replica keys is
 	// deleted. Otherwise, the waiting period begins immediately. This value is
 	// optional. If you include a value, it must be between 7 and 30, inclusive. If you
-	// do not include a value, it defaults to 30.
+	// do not include a value, it defaults to 30. You can use the
+	// kms:ScheduleKeyDeletionPendingWindowInDays (https://docs.aws.amazon.com/kms/latest/developerguide/conditions-kms.html#conditions-pending-deletion-window)
+	// condition key to further constrain the values that principals can specify in the
+	// PendingWindowInDays parameter.
 	PendingWindowInDays *int32
 
 	noSmithyDocumentSerde

@@ -20,6 +20,8 @@ import (
 	"context"
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -43,8 +45,8 @@ import (
 )
 
 func init() {
-	sigkms.AddProvider(ReferenceScheme, func(ctx context.Context, keyResourceID string, hashFunc crypto.Hash, opts ...signature.RPCOption) (sigkms.SignerVerifier, error) {
-		return LoadSignerVerifier(ctx, keyResourceID, hashFunc)
+	sigkms.AddProvider(ReferenceScheme, func(ctx context.Context, keyResourceID string, _ crypto.Hash, opts ...signature.RPCOption) (sigkms.SignerVerifier, error) {
+		return LoadSignerVerifier(ctx, keyResourceID)
 	})
 }
 
@@ -248,14 +250,7 @@ func (a *azureVaultClient) fetchPublicKey(ctx context.Context) (crypto.PublicKey
 		return nil, fmt.Errorf("decoding the jsonWebKey: %w", err)
 	}
 
-	pub, ok := jwk.Key.(*ecdsa.PublicKey)
-	if !ok {
-		if err != nil {
-			return nil, fmt.Errorf("public key was not ECDSA: %#v", pub)
-		}
-	}
-
-	return pub, nil
+	return jwk.Key, nil
 }
 
 func (a *azureVaultClient) getKey(ctx context.Context) (azkeys.KeyBundle, error) {
@@ -317,21 +312,41 @@ func (a *azureVaultClient) createKey(ctx context.Context) (crypto.PublicKey, err
 	return a.public(ctx)
 }
 
-func getKeyVaultSignatureAlgo(algo crypto.Hash) (azkeys.JSONWebKeySignatureAlgorithm, error) {
-	switch algo {
-	case crypto.SHA256:
-		return azkeys.JSONWebKeySignatureAlgorithmES256, nil
-	case crypto.SHA384:
-		return azkeys.JSONWebKeySignatureAlgorithmES384, nil
-	case crypto.SHA512:
-		return azkeys.JSONWebKeySignatureAlgorithmES512, nil
+func (a *azureVaultClient) getKeyVaultHashFunc(ctx context.Context) (crypto.Hash, azkeys.JSONWebKeySignatureAlgorithm, error) {
+	publicKey, err := a.public(ctx)
+	if err != nil {
+		return 0, "", fmt.Errorf("failed to get public key: %w", err)
+	}
+	switch keyImpl := publicKey.(type) {
+	case *ecdsa.PublicKey:
+		switch keyImpl.Curve {
+		case elliptic.P256():
+			return crypto.SHA256, azkeys.JSONWebKeySignatureAlgorithmES256, nil
+		case elliptic.P384():
+			return crypto.SHA384, azkeys.JSONWebKeySignatureAlgorithmES384, nil
+		case elliptic.P521():
+			return crypto.SHA512, azkeys.JSONWebKeySignatureAlgorithmES512, nil
+		default:
+			return 0, "", fmt.Errorf("unsupported key size: %s", keyImpl.Params().Name)
+		}
+	case *rsa.PublicKey:
+		switch keyImpl.Size() {
+		case 256:
+			return crypto.SHA256, azkeys.JSONWebKeySignatureAlgorithmRS256, nil
+		case 384:
+			return crypto.SHA384, azkeys.JSONWebKeySignatureAlgorithmRS384, nil
+		case 512:
+			return crypto.SHA512, azkeys.JSONWebKeySignatureAlgorithmRS512, nil
+		default:
+			return 0, "", fmt.Errorf("unsupported key size: %d", keyImpl.Size())
+		}
 	default:
-		return "", fmt.Errorf("unsupported algorithm: %s", algo)
+		return 0, "", fmt.Errorf("unsupported public key type: %T", publicKey)
 	}
 }
 
-func (a *azureVaultClient) sign(ctx context.Context, hash []byte, algo crypto.Hash) ([]byte, error) {
-	keyVaultAlgo, err := getKeyVaultSignatureAlgo(algo)
+func (a *azureVaultClient) sign(ctx context.Context, hash []byte) ([]byte, error) {
+	_, keyVaultAlgo, err := a.getKeyVaultHashFunc(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get KeyVaultSignatureAlgorithm: %w", err)
 	}
@@ -361,8 +376,8 @@ func (a *azureVaultClient) sign(ctx context.Context, hash []byte, algo crypto.Ha
 	return decodedRes, nil
 }
 
-func (a *azureVaultClient) verify(ctx context.Context, signature, hash []byte, algo crypto.Hash) error {
-	keyVaultAlgo, err := getKeyVaultSignatureAlgo(algo)
+func (a *azureVaultClient) verify(ctx context.Context, signature, hash []byte) error {
+	_, keyVaultAlgo, err := a.getKeyVaultHashFunc(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get KeyVaultSignatureAlgorithm: %w", err)
 	}

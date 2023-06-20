@@ -145,7 +145,7 @@ type SignOutput struct {
 	//   value is defined by PKCS #1 in RFC 8017 (https://tools.ietf.org/html/rfc8017)
 	//   .
 	//   - When used with the ECDSA_SHA_256 , ECDSA_SHA_384 , or ECDSA_SHA_512 signing
-	//   algorithms, this value is a DER-encoded object as defined by ANS X9.62–2005 and
+	//   algorithms, this value is a DER-encoded object as defined by ANSI X9.62–2005 and
 	//   RFC 3279 Section 2.2.3 (https://tools.ietf.org/html/rfc3279#section-2.2.3) .
 	//   This is the most commonly used signature format and is appropriate for most
 	//   uses.

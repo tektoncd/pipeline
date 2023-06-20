@@ -3,10 +3,11 @@ package git
 import (
 	"bytes"
 	"context"
+	"crypto"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	stdioutil "io/ioutil"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -21,7 +22,9 @@ import (
 	"github.com/go-git/go-git/v5/internal/revision"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/cache"
+	formatcfg "github.com/go-git/go-git/v5/plumbing/format/config"
 	"github.com/go-git/go-git/v5/plumbing/format/packfile"
+	"github.com/go-git/go-git/v5/plumbing/hash"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/storer"
 	"github.com/go-git/go-git/v5/storage"
@@ -57,6 +60,7 @@ var (
 	ErrIsBareRepository          = errors.New("worktree not available in a bare repository")
 	ErrUnableToResolveCommit     = errors.New("unable to resolve commit")
 	ErrPackedObjectsNotSupported = errors.New("packed objects not supported")
+	ErrSHA256NotSupported        = errors.New("go-git was not compiled with SHA256 support")
 )
 
 // Repository represents a git repository
@@ -67,12 +71,28 @@ type Repository struct {
 	wt billy.Filesystem
 }
 
+type InitOptions struct {
+	// The default branch (e.g. "refs/heads/master")
+	DefaultBranch plumbing.ReferenceName
+}
+
 // Init creates an empty git repository, based on the given Storer and worktree.
 // The worktree Filesystem is optional, if nil a bare repository is created. If
 // the given storer is not empty ErrRepositoryAlreadyExists is returned
 func Init(s storage.Storer, worktree billy.Filesystem) (*Repository, error) {
+	options := InitOptions{
+		DefaultBranch: plumbing.Master,
+	}
+	return InitWithOptions(s, worktree, options)
+}
+
+func InitWithOptions(s storage.Storer, worktree billy.Filesystem, options InitOptions) (*Repository, error) {
 	if err := initStorer(s); err != nil {
 		return nil, err
+	}
+
+	if options.DefaultBranch == "" {
+		options.DefaultBranch = plumbing.Master
 	}
 
 	r := newRepository(s, worktree)
@@ -85,7 +105,7 @@ func Init(s storage.Storer, worktree billy.Filesystem) (*Repository, error) {
 		return nil, err
 	}
 
-	h := plumbing.NewSymbolicReference(plumbing.HEAD, plumbing.Master)
+	h := plumbing.NewSymbolicReference(plumbing.HEAD, options.DefaultBranch)
 	if err := s.SetReference(h); err != nil {
 		return nil, err
 	}
@@ -228,6 +248,39 @@ func PlainInit(path string, isBare bool) (*Repository, error) {
 	return Init(s, wt)
 }
 
+func PlainInitWithOptions(path string, opts *PlainInitOptions) (*Repository, error) {
+	wt := osfs.New(path)
+	dot, _ := wt.Chroot(GitDirName)
+
+	s := filesystem.NewStorage(dot, cache.NewObjectLRUDefault())
+
+	r, err := Init(s, wt)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg, err := r.Config()
+	if err != nil {
+		return nil, err
+	}
+
+	if opts != nil {
+		if opts.ObjectFormat == formatcfg.SHA256 && hash.CryptoType != crypto.SHA256 {
+			return nil, ErrSHA256NotSupported
+		}
+
+		cfg.Core.RepositoryFormatVersion = formatcfg.Version_1
+		cfg.Extensions.ObjectFormat = opts.ObjectFormat
+	}
+
+	err = r.Storer.SetConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return r, err
+}
+
 // PlainOpen opens a git repository from the given path. It detects if the
 // repository is bare or a normal one. If the path doesn't contain a valid
 // repository ErrRepositoryNotExists is returned
@@ -330,7 +383,7 @@ func dotGitFileToOSFilesystem(path string, fs billy.Filesystem) (bfs billy.Files
 	}
 	defer ioutil.CheckClose(f, &err)
 
-	b, err := stdioutil.ReadAll(f)
+	b, err := io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}
@@ -359,7 +412,7 @@ func dotGitCommonDirectory(fs billy.Filesystem) (commonDir billy.Filesystem, err
 		return nil, err
 	}
 
-	b, err := stdioutil.ReadAll(f)
+	b, err := io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}
@@ -407,6 +460,9 @@ func PlainCloneContext(ctx context.Context, path string, isBare bool, o *CloneOp
 		return nil, err
 	}
 
+	if o.Mirror {
+		isBare = true
+	}
 	r, err := PlainInit(path, isBare)
 	if err != nil {
 		return nil, err
@@ -814,9 +870,10 @@ func (r *Repository) clone(ctx context.Context, o *CloneOptions) error {
 	}
 
 	c := &config.RemoteConfig{
-		Name:  o.RemoteName,
-		URLs:  []string{o.URL},
-		Fetch: r.cloneRefSpec(o),
+		Name:   o.RemoteName,
+		URLs:   []string{o.URL},
+		Fetch:  r.cloneRefSpec(o),
+		Mirror: o.Mirror,
 	}
 
 	if _, err := r.CreateRemote(c); err != nil {
@@ -832,6 +889,7 @@ func (r *Repository) clone(ctx context.Context, o *CloneOptions) error {
 		RemoteName:      o.RemoteName,
 		InsecureSkipTLS: o.InsecureSkipTLS,
 		CABundle:        o.CABundle,
+		ProxyOptions:    o.ProxyOptions,
 	}, o.ReferenceName)
 	if err != nil {
 		return err
@@ -869,7 +927,7 @@ func (r *Repository) clone(ctx context.Context, o *CloneOptions) error {
 		return err
 	}
 
-	if ref.Name().IsBranch() {
+	if !o.Mirror && ref.Name().IsBranch() {
 		branchRef := ref.Name()
 		branchName := strings.Split(string(branchRef), "refs/heads/")[1]
 
@@ -900,6 +958,8 @@ const (
 
 func (r *Repository) cloneRefSpec(o *CloneOptions) []config.RefSpec {
 	switch {
+	case o.Mirror:
+		return []config.RefSpec{"+refs/*:refs/*"}
 	case o.ReferenceName.IsTag():
 		return []config.RefSpec{
 			config.RefSpec(fmt.Sprintf(refspecTag, o.ReferenceName.Short())),
@@ -969,9 +1029,21 @@ func (r *Repository) fetchAndUpdateReferences(
 		return nil, err
 	}
 
-	resolvedRef, err := storer.ResolveReference(remoteRefs, ref)
+	var resolvedRef *plumbing.Reference
+	// return error from checking the raw ref passed in
+	var rawRefError error
+	for _, rule := range append([]string{"%s"}, plumbing.RefRevParseRules...) {
+		resolvedRef, err = storer.ResolveReference(remoteRefs, plumbing.ReferenceName(fmt.Sprintf(rule, ref)))
+
+		if err == nil {
+			break
+		} else if rawRefError == nil {
+			rawRefError = err
+		}
+	}
+
 	if err != nil {
-		return nil, err
+		return nil, rawRefError
 	}
 
 	refsUpdated, err := r.updateReferences(remote.c.Fetch, resolvedRef)
