@@ -53,15 +53,12 @@ spec:
   tasks:
     - name: git-clone
       taskRef:
-        name: git-clone
-        resolver: bundles
+        resolver: hub
         params:
-          - name: bundle
-            value: gcr.io/tekton-releases/catalog/upstream/git-clone:0.9
           - name: name
             value: git-clone
-          - name: kind
-            value: task
+          - name: version
+            value: "0.7"
       workspaces:
         - name: output
           workspace: workarea
@@ -74,7 +71,6 @@ spec:
     - name: precheck
       runAfter: [git-clone]
       taskRef:
-        name: prerelease-checks
         resolver: git
         params:
           - name: repo
@@ -99,7 +95,6 @@ spec:
     - name: unit-tests
       runAfter: [precheck]
       taskRef:
-        name: golang-test
         resolver: bundles
         params:
           - name: bundle
@@ -120,7 +115,6 @@ spec:
     - name: build
       runAfter: [precheck]
       taskRef:
-        name: golang-build
         resolver: bundles
         params:
           - name: bundle
@@ -207,7 +201,6 @@ spec:
           operator: in
           values: ["true"]
       taskRef:
-        name: gcs-upload
         resolver: bundles
         params:
           - name: bundle
