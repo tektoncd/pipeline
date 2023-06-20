@@ -891,7 +891,8 @@ spec:
 {{% /tab %}}
 {{< /tabs >}}
 
-If used with this `Pipeline`,  `build-task` will use the task specific `PodTemplate` (where `nodeSelector` has `disktype` equal to `ssd`).
+If used with this `Pipeline`,  `build-task` will use the task specific `PodTemplate` (where `nodeSelector` has `disktype` equal to `ssd`)
+along with `securityContext` from the `pipelineRun.spec.podTemplate`.
 `PipelineTaskRunSpec` may also contain `StepSpecs` and `SidecarSpecs`; see
 [Overriding `Task` `Steps` and `Sidecars`](./taskruns.md#overriding-task-steps-and-sidecars) for more information.
 
