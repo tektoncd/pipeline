@@ -919,8 +919,9 @@ spec:
           disktype: ssd
 ```
 
-If used with this `Pipeline`,  `build-task` will use the task specific `PodTemplate` (where `nodeSelector` has `disktype` equal to `ssd`).
-`PipelineTaskRunSpec` may also contain `StepOverrides` and `SidecarOverrides`; see
+If used with this `Pipeline`,  `build-task` will use the task specific `PodTemplate` (where `nodeSelector` has `disktype` equal to `ssd`)
+along with `securityContext` from the `pipelineRun.spec.podTemplate`.
+`PipelineTaskRunSpec` may also contain `StepSpecs` and `SidecarSpecs`; see
 [Overriding `Task` `Steps` and `Sidecars`](./taskruns.md#overriding-task-steps-and-sidecars) for more information.
 
 The optional annotations and labels can be added under a `Metadata` field as for a specific running context.

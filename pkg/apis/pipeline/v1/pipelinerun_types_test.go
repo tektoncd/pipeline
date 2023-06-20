@@ -402,3 +402,78 @@ func TestPipelineRunGetPodSpec(t *testing.T) {
 		}
 	}
 }
+
+func TestPipelineRun_GetTaskRunSpec(t *testing.T) {
+	user := int64(1000)
+	group := int64(2000)
+	fsGroup := int64(3000)
+	for _, tt := range []struct {
+		name                 string
+		pr                   *v1.PipelineRun
+		expectedPodTemplates map[string]*pod.PodTemplate
+	}{
+		{
+			name: "pipelineRun Spec podTemplate and taskRunSpec pipelineTask podTemplate",
+			pr: &v1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "pr"},
+				Spec: v1.PipelineRunSpec{
+					TaskRunTemplate: v1.PipelineTaskRunTemplate{
+						PodTemplate: &pod.Template{
+							SecurityContext: &corev1.PodSecurityContext{
+								RunAsUser:  &user,
+								RunAsGroup: &group,
+								FSGroup:    &fsGroup,
+							},
+						},
+						ServiceAccountName: "defaultSA",
+					},
+					PipelineRef: &v1.PipelineRef{Name: "prs"},
+					TaskRunSpecs: []v1.PipelineTaskRunSpec{{
+						PipelineTaskName:   "task-1",
+						ServiceAccountName: "task-1-service-account",
+						PodTemplate: &pod.Template{
+							NodeSelector: map[string]string{
+								"diskType": "ssd",
+							},
+						},
+					}, {
+						PipelineTaskName:   "task-2",
+						ServiceAccountName: "task-2-service-account",
+						PodTemplate: &pod.Template{
+							SchedulerName: "task-2-schedule",
+						},
+					}},
+				},
+			},
+			expectedPodTemplates: map[string]*pod.PodTemplate{
+				"task-1": {
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsUser:  &user,
+						RunAsGroup: &group,
+						FSGroup:    &fsGroup,
+					},
+					NodeSelector: map[string]string{
+						"diskType": "ssd",
+					},
+				},
+				"task-2": {
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsUser:  &user,
+						RunAsGroup: &group,
+						FSGroup:    &fsGroup,
+					},
+					SchedulerName: "task-2-schedule",
+				},
+			},
+		},
+	} {
+		for taskName := range tt.expectedPodTemplates {
+			t.Run(tt.name, func(t *testing.T) {
+				s := tt.pr.GetTaskRunSpec(taskName)
+				if d := cmp.Diff(tt.expectedPodTemplates[taskName], s.PodTemplate); d != "" {
+					t.Error(diff.PrintWantGot(d))
+				}
+			})
+		}
+	}
+}
