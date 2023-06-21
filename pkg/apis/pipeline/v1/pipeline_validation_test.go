@@ -3391,7 +3391,7 @@ func TestPipelineWithBetaFields(t *testing.T) {
 		spec: PipelineSpec{
 			Tasks: []PipelineTask{{
 				Name:    "uses-resolver",
-				TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Resolver: "bar"}},
+				TaskRef: &TaskRef{ResolverRef: ResolverRef{Resolver: "bar"}},
 			}},
 		},
 	}, {
@@ -3399,7 +3399,7 @@ func TestPipelineWithBetaFields(t *testing.T) {
 		spec: PipelineSpec{
 			Tasks: []PipelineTask{{
 				Name:    "uses-resolver-params",
-				TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Params: Params{{}}}},
+				TaskRef: &TaskRef{ResolverRef: ResolverRef{Resolver: "bar", Params: Params{{}}}},
 			}},
 		},
 	}, {
@@ -3411,7 +3411,7 @@ func TestPipelineWithBetaFields(t *testing.T) {
 			}},
 			Finally: []PipelineTask{{
 				Name:    "uses-resolver",
-				TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Resolver: "bar"}},
+				TaskRef: &TaskRef{ResolverRef: ResolverRef{Resolver: "bar"}},
 			}},
 		},
 	}, {
@@ -3423,7 +3423,7 @@ func TestPipelineWithBetaFields(t *testing.T) {
 			}},
 			Finally: []PipelineTask{{
 				Name:    "uses-resolver-params",
-				TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Params: Params{{}}}},
+				TaskRef: &TaskRef{ResolverRef: ResolverRef{Resolver: "bar", Params: Params{{}}}},
 			}},
 		},
 	}, {

@@ -18,8 +18,10 @@ package v1beta1
 
 import (
 	"context"
+	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
 )
 
@@ -30,7 +32,8 @@ func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 		return
 	}
 
-	if ref.Resolver != "" || ref.Params != nil {
+	switch {
+	case ref.Resolver != "" || ref.Params != nil:
 		if ref.Resolver != "" {
 			if ref.Name != "" {
 				errs = errs.Also(apis.ErrMultipleOneOf("name", "resolver"))
@@ -51,16 +54,21 @@ func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 			}
 			errs = errs.Also(ValidateParameters(ctx, ref.Params))
 		}
-	} else {
+	case ref.Bundle != "":
 		if ref.Name == "" {
 			errs = errs.Also(apis.ErrMissingField("name"))
 		}
-		if ref.Bundle != "" {
-			errs = errs.Also(validateBundleFeatureFlag(ctx, "bundle", true).ViaField("bundle"))
-			if _, err := name.ParseReference(ref.Bundle); err != nil {
-				errs = errs.Also(apis.ErrInvalidValue("invalid bundle reference", "bundle", err.Error()))
-			}
+		errs = errs.Also(validateBundleFeatureFlag(ctx, "bundle", true).ViaField("bundle"))
+		if _, err := name.ParseReference(ref.Bundle); err != nil {
+			errs = errs.Also(apis.ErrInvalidValue("invalid bundle reference", "bundle", err.Error()))
+		}
+	default:
+		if ref.Name == "" {
+			errs = errs.Also(apis.ErrMissingField("name"))
+		} else if errSlice := validation.IsQualifiedName(ref.Name); len(errSlice) != 0 {
+			// TaskRef name must be a valid k8s name
+			errs = errs.Also(apis.ErrInvalidValue(strings.Join(errSlice, ","), "name"))
 		}
 	}
-	return //nolint:nakedret
+	return errs
 }
