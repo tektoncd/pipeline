@@ -11452,6 +11452,130 @@ spec:
 	}
 }
 
+func TestReconciler_FailedPipelineTaskMatrixIdxResultsOutOfBounds(t *testing.T) {
+	names.TestingSeed()
+	task := parse.MustParseV1Task(t, `
+metadata:
+  name: mytask
+  namespace: foo
+spec:
+  params:
+    - name: platform
+      default: mac
+  steps:
+    - name: echo
+      image: alpine
+      script: |
+        echo "$(params.platform)"
+`)
+	taskwithresults := parse.MustParseV1Task(t, `
+metadata:
+  name: taskwithresults
+  namespace: foo
+spec:
+  results:
+    - name: platforms
+      type: array
+  steps:
+    - name: produce-a-list-of-platforms
+      image: bash:latest
+      script: |
+        #!/usr/bin/env bash
+        echo -n "[\"linux\",\"mac\",\"windows\"]" | tee $(results.platforms.path)
+`)
+
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
+	tests := []struct {
+		name  string
+		pName string
+		p     *v1.Pipeline
+		tr    *v1.TaskRun
+	}{{
+		name:  "out of bounds array indexing for matrixed pipelinetask",
+		pName: "p-dag",
+		p: parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: foo
+spec:
+  tasks:
+    - name: pt-with-result
+      params:
+       - name: platforms
+         type: array
+      taskRef:
+        name: taskwithresults
+    - name: echo-platforms
+      params:
+        - name: platforms
+          value:
+            - $(tasks.pt-with-result.results.platforms[0])
+            - $(tasks.pt-with-result.results.platforms[3])
+      taskRef:
+        name: mytask
+`, "p-dag")),
+		tr: mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-pt-with-result", "foo",
+				"pr", "p-dag", "pt-with-result", false),
+			`
+spec:
+  serviceAccountName: test-sa
+  taskRef:
+    name: taskwithresults
+status:
+ conditions:
+  - type: Succeeded
+    status: "True"
+    reason: Succeeded
+    message: All Tasks have completed executing
+ results:
+  - name: platforms
+    value:
+     - linux
+     - mac
+     - windows
+`),
+	}}
+	for _, tt := range tests {
+		t.Run(tt.pName, func(t *testing.T) {
+			pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: pr
+  namespace: foo
+spec:
+  taskRunTemplate:
+    serviceAccountName: test-sa
+  pipelineRef:
+    name: %s
+`, tt.pName))
+			d := test.Data{
+				PipelineRuns: []*v1.PipelineRun{pr},
+				Pipelines:    []*v1.Pipeline{tt.p},
+				Tasks:        []*v1.Task{task, taskwithresults},
+				ConfigMaps:   cms,
+			}
+			if tt.tr != nil {
+				d.TaskRuns = []*v1.TaskRun{tt.tr}
+			}
+			wantEvents :=
+				[]string{
+					"Normal Started",
+					"Warning Failed PipelineRun foo/pr can't be Run; couldn't resolve all references: Array Result Index 3 for Task pt-with-result Result platforms is out of bound of size 3",
+					"Warning InternalError 1 error occurred:",
+				}
+			prt := newPipelineRunTest(t, d)
+			defer prt.Cancel()
+			pipelineRun, clients := prt.reconcileRun(pr.Namespace, pr.Name, wantEvents /* wantEvents*/, true /* permanentError*/)
+			// Validate the PR failed due to out of bounds array index reference
+			checkPipelineRunConditionStatusAndReason(t, pipelineRun, corev1.ConditionFalse, "PipelineValidationFailed")
+			taskRuns := getTaskRunsForPipelineTask(prt.TestAssets.Ctx, t, clients, pr.Namespace, pr.Name, "echo-platforms")
+			// Validate no TaskRuns were created
+			validateTaskRunsCount(t, taskRuns, 0)
+		})
+	}
+}
+
 func TestReconcile_SetDefaults(t *testing.T) {
 	names.TestingSeed()
 
