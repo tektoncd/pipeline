@@ -18,9 +18,11 @@ package v1
 
 import (
 	"context"
+	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/version"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
 )
 
@@ -31,7 +33,8 @@ func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 		return
 	}
 
-	if ref.Resolver != "" || ref.Params != nil {
+	switch {
+	case ref.Resolver != "" || ref.Params != nil:
 		if ref.Resolver != "" {
 			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "resolver", config.BetaAPIFields).ViaField("resolver"))
 			if ref.Name != "" {
@@ -48,8 +51,13 @@ func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 			}
 			errs = errs.Also(ValidateParameters(ctx, ref.Params))
 		}
-	} else if ref.Name == "" {
+	case ref.Name != "":
+		// TaskRef name must be a valid k8s name
+		if errSlice := validation.IsQualifiedName(ref.Name); len(errSlice) != 0 {
+			errs = errs.Also(apis.ErrInvalidValue(strings.Join(errSlice, ","), "name"))
+		}
+	default:
 		errs = errs.Also(apis.ErrMissingField("name"))
 	}
-	return
+	return errs
 }

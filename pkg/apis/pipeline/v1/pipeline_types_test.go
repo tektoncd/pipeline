@@ -205,19 +205,19 @@ func TestPipelineTask_ValidateRegularTask_Success(t *testing.T) {
 	}, {
 		name: "pipeline task - use of resolver with the feature flag set",
 		tasks: PipelineTask{
-			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Resolver: "bar"}},
+			TaskRef: &TaskRef{ResolverRef: ResolverRef{Resolver: "bar"}},
 		},
 		enableBetaAPIFields: true,
 	}, {
 		name: "pipeline task - use of resolver with the feature flag set to alpha",
 		tasks: PipelineTask{
-			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Resolver: "bar"}},
+			TaskRef: &TaskRef{ResolverRef: ResolverRef{Resolver: "bar"}},
 		},
 		enableAlphaAPIFields: true,
 	}, {
 		name: "pipeline task - use of resolver params with the feature flag set",
 		tasks: PipelineTask{
-			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Params: Params{{}}}},
+			TaskRef: &TaskRef{ResolverRef: ResolverRef{Resolver: "bar", Params: Params{{}}}},
 		},
 		enableBetaAPIFields: true,
 	}}
@@ -264,7 +264,7 @@ func TestPipelineTask_ValidateRegularTask_Failure(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: `invalid value: name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`,
-			Paths:   []string{"name"},
+			Paths:   []string{"taskRef.name"},
 		},
 	}, {
 		name: "pipeline task - taskRef without name",
@@ -273,8 +273,28 @@ func TestPipelineTask_ValidateRegularTask_Failure(t *testing.T) {
 			TaskRef: &TaskRef{Name: ""},
 		},
 		expectedError: apis.FieldError{
-			Message: `invalid value: taskRef must specify name`,
+			Message: `missing field(s)`,
 			Paths:   []string{"taskRef.name"},
+		},
+	}, {
+		name: "pipeline task - taskRef with resolver and name",
+		task: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo", ResolverRef: ResolverRef{Resolver: "git"}},
+		},
+		expectedError: apis.FieldError{
+			Message: `expected exactly one, got both`,
+			Paths:   []string{"taskRef.name", "taskRef.resolver"},
+		},
+	}, {
+		name: "pipeline task - taskRef with resolver params but no resolver",
+		task: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{ResolverRef: ResolverRef{Params: Params{{Name: "foo", Value: ParamValue{StringVal: "bar"}}}}},
+		},
+		expectedError: apis.FieldError{
+			Message: `missing field(s)`,
+			Paths:   []string{"taskRef.resolver"},
 		},
 	}}
 	for _, tt := range tests {

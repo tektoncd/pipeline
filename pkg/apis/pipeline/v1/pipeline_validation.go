@@ -326,14 +326,7 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 		errs = errs.Also(pt.TaskSpec.Validate(ctx).ViaField("taskSpec"))
 	}
 	if pt.TaskRef != nil {
-		if pt.TaskRef.Name != "" {
-			// TaskRef name must be a valid k8s name
-			if errSlice := validation.IsQualifiedName(pt.TaskRef.Name); len(errSlice) != 0 {
-				errs = errs.Also(apis.ErrInvalidValue(strings.Join(errSlice, ","), "name"))
-			}
-		} else if pt.TaskRef.Resolver == "" {
-			errs = errs.Also(apis.ErrInvalidValue("taskRef must specify name", "taskRef.name"))
-		}
+		errs = errs.Also(pt.TaskRef.Validate(ctx).ViaField("taskRef"))
 	}
 	return errs
 }

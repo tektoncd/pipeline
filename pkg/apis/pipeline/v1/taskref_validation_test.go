@@ -86,6 +86,13 @@ func TestTaskRef_Invalid(t *testing.T) {
 		taskRef: &v1.TaskRef{},
 		wantErr: apis.ErrMissingField("name"),
 	}, {
+		name:    "invalid taskref name",
+		taskRef: &v1.TaskRef{Name: "_foo"},
+		wantErr: &apis.FieldError{
+			Message: `invalid value: name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`,
+			Paths:   []string{"name"},
+		},
+	}, {
 		name: "taskref resolver disallowed without beta feature gate",
 		taskRef: &v1.TaskRef{
 			ResolverRef: v1.ResolverRef{

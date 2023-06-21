@@ -238,12 +238,12 @@ func TestPipelineTask_ValidateRegularTask_Success(t *testing.T) {
 	}, {
 		name: "pipeline task - use of resolver",
 		tasks: PipelineTask{
-			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Resolver: "bar"}},
+			TaskRef: &TaskRef{ResolverRef: ResolverRef{Resolver: "bar"}},
 		},
 	}, {
 		name: "pipeline task - use of params",
 		tasks: PipelineTask{
-			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Params: Params{}}},
+			TaskRef: &TaskRef{ResolverRef: ResolverRef{Resolver: "bar", Params: Params{}}},
 		},
 	}, {
 		name: "pipeline task - use of bundle with the feature flag set",
@@ -306,7 +306,7 @@ func TestPipelineTask_ValidateRegularTask_Failure(t *testing.T) {
 			TaskRef: &TaskRef{Name: ""},
 		},
 		expectedError: apis.FieldError{
-			Message: `invalid value: taskRef must specify name`,
+			Message: `missing field(s)`,
 			Paths:   []string{"taskRef.name"},
 		},
 	}, {
@@ -315,7 +315,27 @@ func TestPipelineTask_ValidateRegularTask_Failure(t *testing.T) {
 			Name:    "foo",
 			TaskRef: &TaskRef{Name: "bar", Bundle: "docker.io/foo"},
 		},
-		expectedError: *apis.ErrDisallowedFields("taskRef.bundle"),
+		expectedError: *apis.ErrGeneric("bundle requires \"enable-tekton-oci-bundles\" feature gate to be true but it is false"),
+	}, {
+		name: "pipeline task - taskRef with resolver and name",
+		task: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo", ResolverRef: ResolverRef{Resolver: "git"}},
+		},
+		expectedError: apis.FieldError{
+			Message: `expected exactly one, got both`,
+			Paths:   []string{"taskRef.name", "taskRef.resolver"},
+		},
+	}, {
+		name: "pipeline task - taskRef with resolver params but no resolver",
+		task: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{ResolverRef: ResolverRef{Params: Params{{Name: "foo", Value: ParamValue{StringVal: "bar"}}}}},
+		},
+		expectedError: apis.FieldError{
+			Message: `missing field(s)`,
+			Paths:   []string{"taskRef.resolver"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -522,7 +542,7 @@ func TestPipelineTaskList_Validate(t *testing.T) {
 			TaskRef: &TaskRef{Name: ""},
 		}},
 		path:          "tasks",
-		expectedError: apis.ErrGeneric(`invalid value: taskRef must specify name`, "tasks[2].taskRef.name"),
+		expectedError: apis.ErrGeneric(`missing field(s)`, "tasks[2].taskRef.name"),
 		wc:            enableFeatures(t, []string{"enable-tekton-oci-bundles"}),
 	}, {
 		name: "validate list of tasks with valid custom task but invalid bundle and invalid regular task",
@@ -537,7 +557,7 @@ func TestPipelineTaskList_Validate(t *testing.T) {
 			TaskRef: &TaskRef{Name: ""},
 		}},
 		path: "tasks",
-		expectedError: apis.ErrGeneric(`invalid value: taskRef must specify name`, "tasks[2].taskRef.name").Also(
+		expectedError: apis.ErrGeneric(`missing field(s)`, "tasks[2].taskRef.name").Also(
 			apis.ErrGeneric(`missing field(s)`, "tasks[1].taskRef.name")),
 		wc: enableFeatures(t, []string{"enable-tekton-oci-bundles"}),
 	}, {
@@ -553,7 +573,7 @@ func TestPipelineTaskList_Validate(t *testing.T) {
 			TaskRef: &TaskRef{Name: ""},
 		}},
 		path: "tasks",
-		expectedError: apis.ErrGeneric(`invalid value: taskRef must specify name`, "tasks[2].taskRef.name").Also(
+		expectedError: apis.ErrGeneric(`missing field(s)`, "tasks[2].taskRef.name").Also(
 			apis.ErrGeneric(`missing field(s)`, "tasks[1].taskRef.name")).Also(
 			apis.ErrGeneric(`invalid value: custom task ref must specify kind`, "tasks[0].taskRef.kind")),
 		wc: enableFeatures(t, []string{"enable-tekton-oci-bundles"}),
