@@ -304,18 +304,8 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 			s.VolumeMounts = append(s.VolumeMounts, runMount(j, i != j))
 		}
 
-		requestedVolumeMounts := map[string]bool{}
-		for _, vm := range s.VolumeMounts {
-			requestedVolumeMounts[filepath.Clean(vm.MountPath)] = true
-		}
-		var toAdd []corev1.VolumeMount
-		for _, imp := range volumeMounts {
-			if !requestedVolumeMounts[filepath.Clean(imp.MountPath)] {
-				toAdd = append(toAdd, imp)
-			}
-		}
-		vms := append(s.VolumeMounts, toAdd...) //nolint:gocritic
-		stepContainers[i].VolumeMounts = vms
+		volumeMountsToCreate := missingVolumeMounts(s, volumeMounts)
+		stepContainers[i].VolumeMounts = append(s.VolumeMounts, volumeMountsToCreate...) //nolint:gocritic
 	}
 
 	if sidecarLogsResultsEnabled && taskSpec.Results != nil {
@@ -325,18 +315,9 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 			for j := 0; j < len(stepContainers); j++ {
 				s.VolumeMounts = append(s.VolumeMounts, runMount(j, true))
 			}
-			requestedVolumeMounts := map[string]bool{}
-			for _, vm := range s.VolumeMounts {
-				requestedVolumeMounts[filepath.Clean(vm.MountPath)] = true
-			}
-			var toAdd []corev1.VolumeMount
-			for _, imp := range volumeMounts {
-				if !requestedVolumeMounts[filepath.Clean(imp.MountPath)] {
-					toAdd = append(toAdd, imp)
-				}
-			}
-			vms := append(s.VolumeMounts, toAdd...) //nolint:gocritic
-			sidecarContainers[i].VolumeMounts = vms
+
+			volumeMountsToCreate := missingVolumeMounts(s, volumeMounts)
+			sidecarContainers[i].VolumeMounts = append(s.VolumeMounts, volumeMountsToCreate...) //nolint:gocritic
 		}
 	}
 
@@ -594,4 +575,21 @@ func usesWindows(tr *v1beta1.TaskRun) bool {
 	}
 	osSelector := tr.Spec.PodTemplate.NodeSelector[osSelectorLabel]
 	return osSelector == "windows"
+}
+
+// missingVolumeMounts checks the existing volume mounts in the current Container and returns a slice
+// of VolumeMounts to be added to the container.
+func missingVolumeMounts(c corev1.Container, requestedVolumeMounts []corev1.VolumeMount) []corev1.VolumeMount {
+	volumeMountsToCreate := []corev1.VolumeMount{}
+	volumeMountState := map[string]bool{}
+
+	for _, vm := range c.VolumeMounts {
+		volumeMountState[filepath.Clean(vm.MountPath)] = true
+	}
+	for _, imp := range requestedVolumeMounts {
+		if !volumeMountState[filepath.Clean(imp.MountPath)] {
+			volumeMountsToCreate = append(volumeMountsToCreate, imp)
+		}
+	}
+	return volumeMountsToCreate
 }
