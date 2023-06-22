@@ -37,11 +37,15 @@ alpha or beta:
 - `v1.Pipeline`
 - `v1.PipelineRun`
 
-`v1beta1.CustomRun` is considered a beta CRD. Adding new fields to `CustomRun`
+`v1beta1.CustomRun` is a beta CRD. Adding new fields to `CustomRun`
 that all `CustomRun` controllers are required to support is considered a [backwards incompatible change](#backwards-incompatible-changes),
 and follows the [beta policy](#beta-crds) for backwards incompatible changes.
 
 `v1beta1.ClusterTask` is a deprecated beta CRD. New features will not be added to `ClusterTask`.
+
+`v1beta1.ResolutionRequest` is a beta CRD. Adding new fields to `ResolutionRequest`
+that all resolvers are required to support is considered a [backwards incompatible change](#backwards-incompatible-changes),
+and follows the [beta policy](#beta-crds) for backwards incompatible changes.
 
 ### Alpha CRDs
 
@@ -141,7 +145,8 @@ spec. These changes will mean that folks using a previous version of the API wil
 to adjust their usage in order to use the new version.
 Adding a new field to the CustomRun API that all CustomRun controllers are expected to support
 is also a backwards incompatible change, as CustomRun controllers that were valid before the change
-would be invalid after the change.
+would be invalid after the change. Similarly, adding a new field to the ResolutionRequest API that
+all resolvers are expected to support is also a backwards incompatible change.
 
 These changes must be approved by [more than half of the project OWNERS](OWNERS)
 (i.e. 50% + 1).
