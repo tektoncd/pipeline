@@ -18,7 +18,6 @@ package v1
 
 import (
 	"context"
-	"regexp"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -30,8 +29,7 @@ import (
 )
 
 var (
-	_                              apis.Defaultable = (*PipelineRun)(nil)
-	filterReservedAnnotationRegexp                  = regexp.MustCompile(pipeline.TektonReservedAnnotationExpr)
+	_ apis.Defaultable = (*PipelineRun)(nil)
 )
 
 // SetDefaults implements apis.Defaultable
@@ -40,9 +38,7 @@ func (pr *PipelineRun) SetDefaults(ctx context.Context) {
 
 	// Silently filtering out Tekton Reserved annotations at creation
 	if apis.IsInCreate(ctx) {
-		pr.ObjectMeta.Annotations = kmap.Filter(pr.ObjectMeta.Annotations, func(s string) bool {
-			return filterReservedAnnotationRegexp.MatchString(s)
-		})
+		pr.ObjectMeta.Annotations = kmap.Filter(pr.ObjectMeta.Annotations, pipeline.FilterReservedAnnotation)
 	}
 }
 

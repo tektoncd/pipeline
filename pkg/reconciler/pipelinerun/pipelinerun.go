@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -164,8 +163,7 @@ type Reconciler struct {
 
 var (
 	// Check that our Reconciler implements pipelinerunreconciler.Interface
-	_                              pipelinerunreconciler.Interface = (*Reconciler)(nil)
-	filterReservedAnnotationRegexp                                 = regexp.MustCompile(pipeline.TektonReservedAnnotationExpr)
+	_ pipelinerunreconciler.Interface = (*Reconciler)(nil)
 )
 
 // ReconcileKind compares the actual state with the desired, and attempts to
@@ -1122,9 +1120,7 @@ func getTaskrunAnnotations(pr *v1.PipelineRun) map[string]string {
 	for key, val := range pr.ObjectMeta.Annotations {
 		annotations[key] = val
 	}
-	return kmap.Filter(annotations, func(s string) bool {
-		return filterReservedAnnotationRegexp.MatchString(s)
-	})
+	return kmap.Filter(annotations, pipeline.FilterReservedAnnotation)
 }
 
 func propagatePipelineNameLabelToPipelineRun(pr *v1.PipelineRun) error {

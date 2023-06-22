@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -424,7 +425,7 @@ func TestTaskRunDefaultingOnCreate(t *testing.T) {
 		name: "Reserved Tekton annotations are filtered on create",
 		in: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
-				Annotations: map[string]string{"chains.tekton.dev/signed": "true", "results.tekton.dev/hello": "world", "tekton.dev/foo": "bar", "foo": "bar"},
+				Annotations: map[string]string{"chains.tekton.dev/signed": "true", "results.tekton.dev/hello": "world", "results.tekton.dev/recordSummaryAnnotations": "test", "results.tekton.dev/resultAnnotations": "resTest", "tekton.dev/foo": "bar", "foo": "bar"},
 			},
 			Spec: v1beta1.TaskRunSpec{
 				TaskRef: &v1beta1.TaskRef{
@@ -435,7 +436,7 @@ func TestTaskRunDefaultingOnCreate(t *testing.T) {
 		want: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels:      map[string]string{"app.kubernetes.io/managed-by": "tekton-pipelines"},
-				Annotations: map[string]string{"tekton.dev/foo": "bar", "foo": "bar"},
+				Annotations: map[string]string{"tekton.dev/foo": "bar", "foo": "bar", pipeline.ResultsAnnotations: "resTest", pipeline.ResultsRecordSummaryAnnotations: "test"},
 			},
 			Spec: v1beta1.TaskRunSpec{
 				TaskRef: &v1beta1.TaskRef{

@@ -19,4 +19,13 @@ package pipeline
 const (
 	// TektonReservedAnnotationExpr is the expression we use to filter out reserved key in annotation
 	TektonReservedAnnotationExpr = "(results.tekton.dev|chains.tekton.dev)/.*"
+	// Integrators add this Result annotation to objects in order to store
+	// arbitrary keys/values into the Result.Annotations field.
+	// Need to ignore this annotation during filtering,
+	ResultsAnnotations = "results.tekton.dev/resultAnnotations"
+
+	// Integrators add this Results annotation to objects in order to store
+	// arbitrary keys/values into the Result.Summary.Annotations field.
+	// Need to ignore this annotation during filtering,
+	ResultsRecordSummaryAnnotations = "results.tekton.dev/recordSummaryAnnotations"
 )
