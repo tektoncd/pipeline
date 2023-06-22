@@ -55,10 +55,20 @@ var (
 		stats.UnitDimensionless)
 	prCountView *view.View
 
+	prTotal = stats.Float64("pipelinerun_total",
+		"Number of pipelineruns",
+		stats.UnitDimensionless)
+	prTotalView *view.View
+
 	runningPRsCount = stats.Float64("running_pipelineruns_count",
 		"Number of pipelineruns executing currently",
 		stats.UnitDimensionless)
 	runningPRsCountView *view.View
+
+	runningPRs = stats.Float64("running_pipelineruns_count",
+		"Number of pipelineruns executing currently",
+		stats.UnitDimensionless)
+	runningPRsView *view.View
 )
 
 const (
@@ -161,15 +171,29 @@ func viewRegister(cfg *config.Metrics) error {
 		Aggregation: view.LastValue(),
 	}
 
+	prTotalView = &view.View{
+		Description: prTotal.Description(),
+		Measure:     prTotal,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{statusTag},
+	}
+	runningPRsView = &view.View{
+		Description: runningPRs.Description(),
+		Measure:     runningPRs,
+		Aggregation: view.LastValue(),
+	}
+
 	return view.Register(
 		prDurationView,
 		prCountView,
 		runningPRsCountView,
+		prTotalView,
+		runningPRsView,
 	)
 }
 
 func viewUnregister() {
-	view.Unregister(prDurationView, prCountView, runningPRsCountView)
+	view.Unregister(prDurationView, prCountView, runningPRsCountView, prTotalView, runningPRsView)
 }
 
 // MetricsOnStore returns a function that checks if metrics are configured for a config.Store, and registers it if so
@@ -252,6 +276,7 @@ func (r *Recorder) DurationAndCount(pr *v1.PipelineRun, beforeCondition *apis.Co
 
 	metrics.Record(ctx, prDuration.M(duration.Seconds()))
 	metrics.Record(ctx, prCount.M(1))
+	metrics.Record(ctx, prTotal.M(1))
 
 	return nil
 }
@@ -271,10 +296,10 @@ func (r *Recorder) RunningPipelineRuns(lister listers.PipelineRunLister) error {
 		return fmt.Errorf("failed to list pipelineruns while generating metrics : %w", err)
 	}
 
-	var runningPRs int
+	var runningPipelineRuns int
 	for _, pr := range prs {
 		if !pr.IsDone() {
-			runningPRs++
+			runningPipelineRuns++
 		}
 	}
 
@@ -282,7 +307,8 @@ func (r *Recorder) RunningPipelineRuns(lister listers.PipelineRunLister) error {
 	if err != nil {
 		return err
 	}
-	metrics.Record(ctx, runningPRsCount.M(float64(runningPRs)))
+	metrics.Record(ctx, runningPRsCount.M(float64(runningPipelineRuns)))
+	metrics.Record(ctx, runningPRs.M(float64(runningPipelineRuns)))
 
 	return nil
 }
