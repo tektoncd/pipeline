@@ -65,7 +65,7 @@ func TestValidateParams(t *testing.T) {
 			version:      "bar",
 			catalog:      "baz",
 			hubType:      TektonHubType,
-			expectedErr:  fmt.Errorf("failed to validate params: pleaes configure TEKTON_HUB_API env variable to use tekton type"),
+			expectedErr:  fmt.Errorf("failed to validate params: plea configure TEKTON_HUB_API env variable to use tekton type"),
 		},
 	}
 
