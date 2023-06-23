@@ -242,6 +242,17 @@ enables [beta features](#beta-features). When using v1 APIs, setting this field 
 allows only stable features, and setting it to "beta" allows only beta features.
 Set this field to "alpha" to allow [alpha features](#alpha-features) to be used.
 
+For example:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: feature-flags
+data:
+  enable-api-fields: "alpha" # Allow alpha fields to be used in Tasks and Pipelines.
+```
+
 - `trusted-resources-verification-no-match-policy`: Setting this flag to `fail` will fail the taskrun/pipelinerun if no matching policies found. Setting to `warn` will skip verification and log a warning if no matching policies are found, but not fail the taskrun/pipelinerun. Setting to `ignore` will skip verification if no matching policies found.
 Defaults to "ignore".
 
@@ -253,16 +264,8 @@ Defaults to "ignore".
   source from where a remote Task/Pipeline definition was fetched. By default, this is set to `true`.
   To disable populating this field, set this flag to `"false"`.
 
-For example:
-
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: feature-flags
-data:
-  enable-api-fields: "alpha" # Allow alpha fields to be used in Tasks and Pipelines.
-```
+- `set-security-context`: Set this flag to `true` to set a security context for containers injected by Tekton that will allow TaskRun pods
+to run in namespaces with `restricted` pod security admission. By default, this is set to `false`.
 
 ### Alpha Features
 
