@@ -58,10 +58,13 @@ import (
 	"gomodules.xyz/jsonpatch/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
@@ -6597,7 +6600,6 @@ func (prt PipelineRunTest) reconcileRun(namespace, pipelineRunName string, wantE
 	// Check generated events match what's expected
 	if len(wantEvents) > 0 {
 		if err := k8sevent.CheckEventsOrdered(prt.Test, prt.TestAssets.Recorder.Events, pipelineRunName, wantEvents); err != nil {
-			prt.Test.Fatalf("falal added: %s:", err.Error())
 			prt.Test.Errorf(err.Error())
 		}
 	}
@@ -13094,12 +13096,12 @@ spec:
 	defer prt.Cancel()
 
 	wantEvents := []string{
-		"Normal Started",
-		"Warning TaskRunsCreationFailed",
-		"error creating TaskRuns called \\[test-pipeline-run-with-create-run-failed-hello-world]\\ for PipelineTask hello-world from PipelineRun test-pipeline-run-with-create-run-failed: expected workspace \"source\" to be provided by pipelinerun for pipeline task \"hello-world\"",
-		"error creating TaskRuns called \\[test-pipeline-run-with-create-run-failed-hello-world]\\ for PipelineTask hello-world from PipelineRun test-pipeline-run-with-create-run-failed: expected workspace \"source\" to be provided by pipelinerun for pipeline task \"hello-world\"",
+		"Normal Started ",
+		"Warning TaskRunsCreationFailed Failed to create TaskRuns [\"test-pipeline-run-with-create-run-failed-hello-world\"]: expected workspace \"source\" to be provided by pipelinerun for pipeline task \"hello-world\"",
+		"Warning Failed expected workspace \"source\" to be provided by pipelinerun for pipeline task \"hello-world\"",
+		"Warning InternalError 1 error occurred:\n\t* error creating TaskRuns called [test-pipeline-run-with-create-run-failed-hello-world] for PipelineTask hello-world from PipelineRun test-pipeline-run-with-create-run-failed: expected workspace \"source\" to be provided by pipelinerun for pipeline task \"hello-world\"\n\n",
 	}
-	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-with-create-run-failed", wantEvents, true)
+	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-with-create-run-failed", wantEvents, true /* permanentError */)
 
 	if reconciledRun.Status.CompletionTime == nil {
 		t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
@@ -13108,6 +13110,131 @@ spec:
 	// The PipelineRun should be create run failed.
 	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "CreateRunFailed" {
 		t.Errorf("Expected PipelineRun to be create run failed, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+	}
+}
+
+func TestHandleTaskRunCreationError(t *testing.T) {
+	prName := "taskrun-creation-fails"
+	namespace := "default"
+	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: hello-world
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo hello
+`, prName, namespace))
+	taskRunGK := schema.GroupKind{Group: "tekton.dev/v1", Kind: "taskrun"}
+
+	tcs := []struct {
+		name        string
+		creationErr error
+	}{{
+		name:        "invalid",
+		creationErr: apierrors.NewInvalid(taskRunGK, fmt.Sprintf("%s-hello-world", prName), field.ErrorList{}),
+	}, {
+		name:        "bad request",
+		creationErr: apierrors.NewBadRequest("bad request"),
+	}}
+	for _, tc := range tcs {
+		d := test.Data{
+			PipelineRuns: []*v1.PipelineRun{pr.DeepCopy()},
+		}
+		testAssets, cancel := getPipelineRunController(t, d)
+		defer cancel()
+		c := testAssets.Controller
+		clients := testAssets.Clients
+
+		// Create an error when the Pipeline client attempts to create TaskRuns
+		clients.Pipeline.PrependReactor("create", "taskruns", func(action ktesting.Action) (bool, runtime.Object, error) {
+			return true, nil, tc.creationErr
+		})
+		err := c.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", namespace, prName))
+		if !controller.IsPermanentError(err) {
+			t.Errorf("expected permanent error but got %s", err)
+		}
+		reconciledRun, err := clients.Pipeline.TektonV1().PipelineRuns(namespace).Get(testAssets.Ctx, prName, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+		}
+
+		if reconciledRun.Status.CompletionTime == nil {
+			t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
+		}
+
+		// The PipelineRun should be create run failed.
+		if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "CreateRunFailed" {
+			t.Errorf("Expected PipelineRun to be create run failed, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+		}
+	}
+}
+
+func TestHandleCustomRunCreationError(t *testing.T) {
+	prName := "customrun-creation-fails"
+	namespace := "default"
+	apiVersion := "example.dev/v1"
+	kind := "example"
+	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: hello-world
+      taskSpec:
+        apiVersion: %s
+        kind: %s
+        spec:
+          foo: bar
+`, prName, namespace, apiVersion, kind))
+	customRunGK := schema.GroupKind{Group: apiVersion, Kind: kind}
+
+	tcs := []struct {
+		name        string
+		creationErr error
+	}{{
+		name:        "invalid",
+		creationErr: apierrors.NewInvalid(customRunGK, fmt.Sprintf("%s-hello-world", prName), field.ErrorList{}),
+	}, {
+		name:        "bad request",
+		creationErr: apierrors.NewBadRequest("bad request"),
+	}}
+	for _, tc := range tcs {
+		d := test.Data{
+			PipelineRuns: []*v1.PipelineRun{pr.DeepCopy()},
+		}
+		testAssets, cancel := getPipelineRunController(t, d)
+		defer cancel()
+		c := testAssets.Controller
+		clients := testAssets.Clients
+
+		// Create an error when the Pipeline client attempts to create CustomRuns
+		clients.Pipeline.PrependReactor("create", "customruns", func(action ktesting.Action) (bool, runtime.Object, error) {
+			return true, nil, tc.creationErr
+		})
+		err := c.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", namespace, prName))
+		if !controller.IsPermanentError(err) {
+			t.Errorf("expected permanent error but got %s", err)
+		}
+		reconciledRun, err := clients.Pipeline.TektonV1().PipelineRuns(namespace).Get(testAssets.Ctx, prName, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+		}
+
+		if reconciledRun.Status.CompletionTime == nil {
+			t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
+		}
+
+		// The PipelineRun should be create run failed.
+		if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "CreateRunFailed" {
+			t.Errorf("Expected PipelineRun to be create run failed, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+		}
 	}
 }
 

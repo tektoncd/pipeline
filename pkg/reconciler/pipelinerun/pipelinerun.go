@@ -56,6 +56,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	k8slabels "k8s.io/apimachinery/pkg/labels"
@@ -767,13 +768,6 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 			}
 		}
 
-		defer func() {
-			// If it is a permanent error, set pipelinerun to a failure state directly to avoid unnecessary retries.
-			if err != nil && controller.IsPermanentError(err) {
-				pr.Status.MarkFailed(ReasonCreateRunFailed, err.Error())
-			}
-		}()
-
 		if rpt.IsCustomTask() {
 			rpt.CustomRuns, err = c.createCustomRuns(ctx, rpt, pr)
 			if err != nil {
@@ -819,6 +813,7 @@ func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.Resolved
 		}
 		taskRun, err := c.createTaskRun(ctx, taskRunName, params, rpt, pr)
 		if err != nil {
+			err := c.handleRunCreationError(ctx, pr, err)
 			return nil, err
 		}
 		taskRuns = append(taskRuns, taskRun)
@@ -884,6 +879,20 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 	return c.PipelineClientSet.TektonV1().TaskRuns(pr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
 }
 
+// handleRunCreationError marks the PipelineRun as failed and returns a permanent error if the run creation error is not retryable
+func (c *Reconciler) handleRunCreationError(ctx context.Context, pr *v1.PipelineRun, err error) error {
+	if controller.IsPermanentError(err) {
+		pr.Status.MarkFailed(ReasonCreateRunFailed, err.Error())
+		return err
+	}
+	// This is not a complete list of permanent errors. Any permanent error with TaskRun/CustomRun creation can be added here.
+	if apierrors.IsInvalid(err) || apierrors.IsBadRequest(err) {
+		pr.Status.MarkFailed(ReasonCreateRunFailed, err.Error())
+		return controller.NewPermanentError(err)
+	}
+	return err
+}
+
 func (c *Reconciler) createCustomRuns(ctx context.Context, rpt *resources.ResolvedPipelineTask, pr *v1.PipelineRun) ([]*v1beta1.CustomRun, error) {
 	var customRuns []*v1beta1.CustomRun
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createCustomRuns")
@@ -900,6 +909,7 @@ func (c *Reconciler) createCustomRuns(ctx context.Context, rpt *resources.Resolv
 		}
 		customRun, err := c.createCustomRun(ctx, customRunName, params, rpt, pr)
 		if err != nil {
+			err := c.handleRunCreationError(ctx, pr, err)
 			return nil, err
 		}
 		customRuns = append(customRuns, customRun)
