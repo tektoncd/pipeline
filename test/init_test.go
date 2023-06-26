@@ -102,20 +102,11 @@ func tearDown(ctx context.Context, t *testing.T, cs *clients, namespace string) 
 			t.Log(string(bs))
 		}
 		header(t, fmt.Sprintf("Dumping logs from Pods in the %s", namespace))
-		v1beta1Taskruns, err := cs.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{})
+		taskRuns, err := cs.V1TaskRunClient.List(ctx, metav1.ListOptions{})
 		if err != nil {
-			t.Errorf("Error getting v1beta1TaskRun list %s", err)
+			t.Errorf("Error listing TaskRuns: %s", err)
 		}
-		for _, tr := range v1beta1Taskruns.Items {
-			if tr.Status.PodName != "" {
-				CollectPodLogs(ctx, cs, tr.Status.PodName, namespace, t.Logf)
-			}
-		}
-		v1Taskruns, err := cs.V1TaskRunClient.List(ctx, metav1.ListOptions{})
-		if err != nil {
-			t.Errorf("Error getting v1TaskRun list %s", err)
-		}
-		for _, tr := range v1Taskruns.Items {
+		for _, tr := range taskRuns.Items {
 			if tr.Status.PodName != "" {
 				CollectPodLogs(ctx, cs, tr.Status.PodName, namespace, t.Logf)
 			}
@@ -210,47 +201,11 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		output = append(output, bs...)
 	}
 
-	v1beta1Pipelines, err := cs.V1beta1PipelineClient.List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("could not get v1beta1 pipeline: %w", err)
-	}
-	for _, i := range v1beta1Pipelines.Items {
-		i.SetManagedFields(nil)
-		printOrAdd(i)
-	}
-
-	v1beta1PipelineRuns, err := cs.V1beta1PipelineRunClient.List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("could not get v1beta1 pipelinerun: %w", err)
-	}
-	for _, i := range v1beta1PipelineRuns.Items {
-		i.SetManagedFields(nil)
-		printOrAdd(i)
-	}
-
-	v1beta1Tasks, err := cs.V1beta1TaskClient.List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("could not get v1beta1 tasks: %w", err)
-	}
-	for _, i := range v1beta1Tasks.Items {
-		i.SetManagedFields(nil)
-		printOrAdd(i)
-	}
-
 	v1beta1ClusterTasks, err := cs.V1beta1ClusterTaskClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get v1beta1 clustertasks: %w", err)
 	}
 	for _, i := range v1beta1ClusterTasks.Items {
-		i.SetManagedFields(nil)
-		printOrAdd(i)
-	}
-
-	v1beta1TaskRuns, err := cs.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("could not get v1beta1 taskruns: %w", err)
-	}
-	for _, i := range v1beta1TaskRuns.Items {
 		i.SetManagedFields(nil)
 		printOrAdd(i)
 	}
