@@ -37,9 +37,10 @@ fi
 
 header "Setting up environment"
 
-# Handle failures ourselves, so we can dump useful info.
-set +o errexit
-set +o pipefail
+# Exit if any failures occur or any unbound variables are referenced
+set -o errexit
+set -o pipefail
+set -o nounset
 
 # First, we will verify if Scenario 1 works.
 # Install the previous release.
@@ -58,6 +59,7 @@ go_test_e2e -timeout=20m ./test || failed=1
 go_test_e2e -tags=examples -timeout=20m ./test/ || failed=1
 
 # Remove all the pipeline CRDs, and clean up the environment for next Scenario.
+delete_tekton_resources
 uninstall_pipeline_crd
 uninstall_pipeline_crd_version $PREVIOUS_PIPELINE_VERSION
 

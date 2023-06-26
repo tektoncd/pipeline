@@ -113,7 +113,7 @@ function patch_pipeline_spire() {
 
 function verify_pipeline_installation() {
   # Make sure that everything is cleaned up in the current namespace.
-  delete_pipeline_resources
+  delete_tekton_resources
 
   # Wait for pods to be running in the namespaces we are deploying to
   wait_until_pods_running tekton-pipelines || fail_test "Tekton Pipeline did not come up"
@@ -143,25 +143,20 @@ function verify_log_access_enabled() {
 function uninstall_pipeline_crd() {
   echo ">> Uninstalling Tekton Pipelines"
   ko delete --ignore-not-found=true -R -f config/
-
-  # Make sure that everything is cleaned up in the current namespace.
-  delete_pipeline_resources
 }
 
 function uninstall_pipeline_crd_version() {
   echo ">> Uninstalling Tekton Pipelines of version $1"
   kubectl delete --ignore-not-found=true -f "https://github.com/tektoncd/pipeline/releases/download/$1/release.yaml"
 
-  if [ "${PIPELINE_FEATURE_GATE}" == "alpha" ]; then
+  if [ -v ${PIPELINE_FEATURE_GATE+x} && "${PIPELINE_FEATURE_GATE}" == "alpha" ]; then
     kubectl delete --ignore-not-found=true -f "https://github.com/tektoncd/pipeline/releases/download/$1/resolvers.yaml"
   fi
-
-  # Make sure that everything is cleaned up in the current namespace.
-  delete_pipeline_resources
 }
 
-function delete_pipeline_resources() {
+function delete_tekton_resources() {
   for res in tasks clustertasks pipelines taskruns pipelineruns; do
+    echo ">> Deleting ${res}"
     kubectl delete --ignore-not-found=true ${res}.tekton.dev --all
   done
 }
