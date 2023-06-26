@@ -20,11 +20,9 @@ limitations under the License.
 package test
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -97,14 +95,6 @@ func substituteEnv(input []byte, namespace string) ([]byte, error) {
 		output = existingImage.ReplaceAll(output, archSpecificImage)
 	}
 	return output, nil
-}
-
-// koCreate wraps the ko binary and invokes `ko create` for input within
-// namespace
-func koCreate(input []byte, namespace string) ([]byte, error) {
-	cmd := exec.Command("ko", "create", "--platform", "linux/"+getTestArch(), "-f", "-", "--", "--namespace", namespace)
-	cmd.Stdin = bytes.NewReader(input)
-	return cmd.CombinedOutput()
 }
 
 // deleteClusterTask removes a single clustertask by name using provided
@@ -233,15 +223,6 @@ func TestExamples(t *testing.T) {
 		return
 	}
 	testYamls(t, "../examples", kubectlCreate, pf)
-}
-
-func TestYamls(t *testing.T) {
-	pf, err := getPathFilter(t)
-	if err != nil {
-		t.Fatal(err.Error())
-		return
-	}
-	testYamls(t, "./yamls", koCreate, pf)
 }
 
 func testYamls(t *testing.T, baseDir string, createFunc createFunc, filter pathFilter) {
