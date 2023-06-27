@@ -95,7 +95,7 @@ func TestOrderContainers(t *testing.T) {
 		},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	got, err := orderContainers([]string{}, steps, nil, nil, true)
+	got, err := orderContainers([]string{}, steps, nil, nil, true, false)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -163,7 +163,7 @@ func TestOrderContainersWithResultsSidecarLogs(t *testing.T) {
 		},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	got, err := orderContainers([]string{"-dont_send_results_to_termination_path"}, steps, nil, nil, true)
+	got, err := orderContainers([]string{"-dont_send_results_to_termination_path"}, steps, nil, nil, true, false)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -209,7 +209,7 @@ func TestOrderContainersWithNoWait(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{volumeMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	got, err := orderContainers([]string{}, steps, nil, nil, false)
+	got, err := orderContainers([]string{}, steps, nil, nil, false, false)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -245,7 +245,35 @@ func TestOrderContainersWithDebugOnFailure(t *testing.T) {
 			OnFailure: "enabled",
 		},
 	}
-	got, err := orderContainers([]string{}, steps, nil, taskRunDebugConfig, true)
+	got, err := orderContainers([]string{}, steps, nil, taskRunDebugConfig, true, false)
+	if err != nil {
+		t.Fatalf("orderContainers: %v", err)
+	}
+	if d := cmp.Diff(want, got); d != "" {
+		t.Errorf("Diff %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestOrderContainersWithEnabelKeepPodOnCancel(t *testing.T) {
+	steps := []corev1.Container{{
+		Image:   "step-1",
+		Command: []string{"cmd"},
+		Args:    []string{"arg1", "arg2"},
+	}}
+	want := []corev1.Container{{
+		Image:   "step-1",
+		Command: []string{entrypointBinary},
+		Args: []string{
+			"-post_file", "/tekton/run/0/out",
+			"-termination_path", "/tekton/termination",
+			"-step_metadata_dir", "/tekton/run/0/status",
+			"-entrypoint", "cmd", "--",
+			"arg1", "arg2",
+		},
+		VolumeMounts:           []corev1.VolumeMount{downwardMount},
+		TerminationMessagePath: "/tekton/termination",
+	}}
+	got, err := orderContainers([]string{}, steps, nil, nil, false, true)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -323,7 +351,7 @@ func TestEntryPointResults(t *testing.T) {
 		},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	got, err := orderContainers([]string{}, steps, &taskSpec, nil, true)
+	got, err := orderContainers([]string{}, steps, &taskSpec, nil, true, false)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -364,7 +392,7 @@ func TestEntryPointResultsSingleStep(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{downwardMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	got, err := orderContainers([]string{}, steps, &taskSpec, nil, true)
+	got, err := orderContainers([]string{}, steps, &taskSpec, nil, true, false)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -401,7 +429,7 @@ func TestEntryPointSingleResultsSingleStep(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{downwardMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	got, err := orderContainers([]string{}, steps, &taskSpec, nil, true)
+	got, err := orderContainers([]string{}, steps, &taskSpec, nil, true, false)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -472,7 +500,7 @@ func TestEntryPointOnError(t *testing.T) {
 		err: errors.New("task step onError must be either \"continue\" or \"stopAndFail\" but it is set to an invalid value \"invalid-on-error\""),
 	}} {
 		t.Run(tc.desc, func(t *testing.T) {
-			got, err := orderContainers([]string{}, steps, &tc.taskSpec, nil, true)
+			got, err := orderContainers([]string{}, steps, &tc.taskSpec, nil, true, false)
 			if len(tc.wantContainers) == 0 {
 				if err == nil {
 					t.Fatalf("expected an error for an invalid value for onError but received none")
@@ -571,7 +599,7 @@ func TestEntryPointStepOutputConfigs(t *testing.T) {
 		},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	got, err := orderContainers([]string{}, steps, &taskSpec, nil, true)
+	got, err := orderContainers([]string{}, steps, &taskSpec, nil, true, false)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -870,6 +898,99 @@ func TestStopSidecars(t *testing.T) {
 				t.Errorf("error stopping sidecar: %v", err)
 			} else if d := cmp.Diff(c.wantContainers, got.Spec.Containers); d != "" {
 				t.Errorf("Containers Diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestCancelPod(t *testing.T) {
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "test-pod",
+			Namespace:   "default",
+			Annotations: map[string]string{"tekton.dev/cancel": ""},
+		},
+	}
+	kubeClient := fakek8s.NewSimpleClientset(pod)
+	type args struct {
+		namespace string
+		podName   string
+	}
+	testCases := []struct {
+		name        string
+		args        args
+		expectedErr bool
+	}{
+		{
+			name: "cancel existed pod",
+			args: args{
+				namespace: "default",
+				podName:   "test-pod",
+			},
+			expectedErr: false,
+		},
+		{
+			name: "cancel non-existed pod",
+			args: args{
+				namespace: "default",
+				podName:   "non-existed-pod",
+			},
+			expectedErr: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := CancelPod(context.Background(), kubeClient, tc.args.namespace, tc.args.podName)
+			if (err != nil) != tc.expectedErr {
+				t.Errorf("expected error: %v, but got: %v", tc.expectedErr, err)
+			}
+		})
+	}
+}
+
+func TestIsSidecarStatusRunning(t *testing.T) {
+	testCases := []struct {
+		name string
+		tr   *v1.TaskRun
+		want bool
+	}{
+		{
+			name: "task not running",
+			tr: &v1.TaskRun{
+				Status: v1.TaskRunStatus{
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						Sidecars: []v1.SidecarState{
+							{
+								ContainerState: corev1.ContainerState{
+									Terminated: &corev1.ContainerStateTerminated{},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "task running",
+			tr: &v1.TaskRun{
+				Status: v1.TaskRunStatus{
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						Sidecars: []v1.SidecarState{
+							{
+								ContainerState: corev1.ContainerState{},
+							},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := IsSidecarStatusRunning(tc.tr); got != tc.want {
+				t.Errorf("expected IsSidecarStatusRunning: %v, but got: %v", tc.want, got)
 			}
 		})
 	}

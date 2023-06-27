@@ -118,7 +118,10 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	// Start defined command
 	if err := cmd.Start(); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return context.DeadlineExceeded
+			return entrypoint.ErrContextDeadlineExceeded
+		}
+		if errors.Is(ctx.Err(), context.Canceled) {
+			return entrypoint.ErrContextCanceled
 		}
 		return err
 	}
@@ -134,9 +137,15 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	}()
 
 	// Wait for command to exit
+	// as os.exec [note](https://github.com/golang/go/blob/ee522e2cdad04a43bc9374776483b6249eb97ec9/src/os/exec/exec.go#L897-L906)
+	// cmd.Wait prefer Process error over context error
+	// but we want to return context error instead
 	if err := cmd.Wait(); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return context.DeadlineExceeded
+			return entrypoint.ErrContextDeadlineExceeded
+		}
+		if errors.Is(ctx.Err(), context.Canceled) {
+			return entrypoint.ErrContextCanceled
 		}
 		return err
 	}

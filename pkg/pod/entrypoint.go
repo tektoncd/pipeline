@@ -59,6 +59,10 @@ const (
 
 	stepPrefix    = "step-"
 	sidecarPrefix = "sidecar-"
+
+	downwardMountCancelFile = "cancel"
+	cancelAnnotation        = "tekton.dev/cancel"
+	cancelAnnotationValue   = "CANCEL"
 )
 
 var (
@@ -81,6 +85,12 @@ var (
 		MountPath: pipeline.StepsDir,
 	}
 
+	downwardCancelVolumeItem = corev1.DownwardAPIVolumeFile{
+		Path: downwardMountCancelFile,
+		FieldRef: &corev1.ObjectFieldSelector{
+			FieldPath: fmt.Sprintf("metadata.annotations['%s']", cancelAnnotation),
+		},
+	}
 	// TODO(#1605): Signal sidecar readiness by injecting entrypoint,
 	// remove dependency on Downward API.
 	downwardVolume = corev1.Volume{
@@ -103,6 +113,8 @@ var (
 		// since the volume itself is readonly, but including for completeness.
 		ReadOnly: true,
 	}
+	// DownwardMountCancelFile is cancellation file mount to step, entrypoint will check this file to cancel the step.
+	DownwardMountCancelFile = filepath.Join(downwardMountPoint, downwardMountCancelFile)
 )
 
 // orderContainers returns the specified steps, modified so that they are
@@ -112,7 +124,7 @@ var (
 // command, we must have fetched the image's ENTRYPOINT before calling this
 // method, using entrypoint_lookup.go.
 // Additionally, Step timeouts are added as entrypoint flag.
-func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1.TaskSpec, breakpointConfig *v1.TaskRunDebug, waitForReadyAnnotation bool) ([]corev1.Container, error) {
+func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1.TaskSpec, breakpointConfig *v1.TaskRunDebug, waitForReadyAnnotation, enableKeepPodOnCancel bool) ([]corev1.Container, error) {
 	if len(steps) == 0 {
 		return nil, errors.New("No steps specified")
 	}
@@ -177,10 +189,11 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 		steps[i].Command = []string{entrypointBinary}
 		steps[i].Args = argsForEntrypoint
 		steps[i].TerminationMessagePath = terminationPath
-	}
-	if waitForReadyAnnotation {
-		// Mount the Downward volume into the first step container.
-		steps[0].VolumeMounts = append(steps[0].VolumeMounts, downwardMount)
+		if (i == 0 && waitForReadyAnnotation) || enableKeepPodOnCancel {
+			// Mount the Downward volume into the first step container.
+			// if enableKeepPodOnCancel is true, mount the Downward volume into all the steps.
+			steps[i].VolumeMounts = append(steps[i].VolumeMounts, downwardMount)
+		}
 	}
 
 	return steps, nil
@@ -201,7 +214,7 @@ func collectResultsName(results []v1.TaskResult) string {
 	return strings.Join(resultNames, ",")
 }
 
-var replaceReadyPatchBytes []byte
+var replaceReadyPatchBytes, replaceCancelPatchBytes []byte
 
 func init() {
 	// https://stackoverflow.com/questions/55573724/create-a-patch-to-add-a-kubernetes-annotation
@@ -215,6 +228,24 @@ func init() {
 	if err != nil {
 		log.Fatalf("failed to marshal replace ready patch bytes: %v", err)
 	}
+
+	cancelAnnotationPath := "/metadata/annotations/" + strings.Replace(cancelAnnotation, "/", "~1", 1)
+	replaceCancelPatchBytes, err = json.Marshal([]jsonpatch.JsonPatchOperation{{
+		Operation: "replace",
+		Path:      cancelAnnotationPath,
+		Value:     cancelAnnotationValue,
+	}})
+	if err != nil {
+		log.Fatalf("failed to marshal replace cancel patch bytes: %v", err)
+	}
+}
+
+// CancelPod cancels the pod
+func CancelPod(ctx context.Context, kubeClient kubernetes.Interface, namespace, podName string) error {
+	// PATCH the Pod's annotations to replace the cancel annotation with the
+	// "CANCEL" value, to signal the pod to be cancelled.
+	_, err := kubeClient.CoreV1().Pods(namespace).Patch(ctx, podName, types.JSONPatchType, replaceCancelPatchBytes, metav1.PatchOptions{})
+	return err
 }
 
 // UpdateReady updates the Pod's annotations to signal the first step to start

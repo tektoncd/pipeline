@@ -3583,6 +3583,7 @@ func TestFailTaskRun(t *testing.T) {
 		pod                *corev1.Pod
 		reason             v1.TaskRunReason
 		message            string
+		featureFlags       map[string]string
 		expectedStatus     apis.Condition
 		expectedStepStates []v1.StepState
 	}{{
@@ -3667,6 +3668,51 @@ status:
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
 			Reason:  v1.TaskRunReasonCancelled.String(),
+			Message: "TaskRun test-taskrun-run-cancel was cancelled. Test cancellation message.",
+		},
+		expectedStepStates: []v1.StepState{
+			{
+				ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 1,
+						Reason:   v1.TaskRunReasonCancelled.String(),
+					},
+				},
+			},
+		},
+	}, {
+		name: "step-status-update-cancel-with-keep-pod-on-cancel",
+		taskRun: parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-run-cancel
+  namespace: foo
+spec:
+  status: TaskRunCancelled
+  statusMessage: "Test cancellation message."
+  taskRef:
+    name: test-task
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+  podName: foo-is-bar
+  steps:
+  - running:
+      startedAt: "2022-01-01T00:00:00Z"
+`),
+		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "foo-is-bar",
+		}},
+		reason:  v1.TaskRunReasonCancelled,
+		message: "TaskRun test-taskrun-run-cancel was cancelled. Test cancellation message.",
+		featureFlags: map[string]string{
+			"keep-pod-on-cancel": "true",
+		},
+		expectedStatus: apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1beta1.TaskRunReasonCancelled.String(),
 			Message: "TaskRun test-taskrun-run-cancel was cancelled. Test cancellation message.",
 		},
 		expectedStepStates: []v1.StepState{
@@ -3904,6 +3950,15 @@ status:
 		t.Run(tc.name, func(t *testing.T) {
 			d := test.Data{
 				TaskRuns: []*v1.TaskRun{tc.taskRun},
+				ConfigMaps: []*corev1.ConfigMap{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      config.GetFeatureFlagsConfigName(),
+							Namespace: system.Namespace(),
+						},
+						Data: tc.featureFlags,
+					},
+				},
 			}
 			if tc.pod != nil {
 				d.Pods = []*corev1.Pod{tc.pod}

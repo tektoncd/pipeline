@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -67,7 +68,7 @@ const (
 
 func checkForBreakpointOnFailure(e entrypoint.Entrypointer, breakpointExitPostFile string) {
 	if e.BreakpointOnFailure {
-		if waitErr := e.Waiter.Wait(breakpointExitPostFile, false, false); waitErr != nil {
+		if waitErr := e.Waiter.Wait(context.Background(), breakpointExitPostFile, false, false); waitErr != nil {
 			log.Println("error occurred while waiting for " + breakpointExitPostFile + " : " + waitErr.Error())
 		}
 		// get exitcode from .breakpointexit
@@ -181,6 +182,15 @@ func main() {
 		case termination.MessageLengthError:
 			log.Print(err.Error())
 			os.Exit(1)
+		case entrypoint.ContextError:
+			if errors.Is(err, entrypoint.ErrContextCanceled) {
+				log.Print("Step was cancelled")
+				// use the SIGKILL signal to distinguish normal exit programs, just like kill -9 PID
+				os.Exit(int(syscall.SIGKILL))
+			} else {
+				log.Print(err.Error())
+				os.Exit(1)
+			}
 		case *exec.ExitError:
 			// Copied from https://stackoverflow.com/questions/10385551/get-exit-code-go
 			// This works on both Unix and Windows. Although

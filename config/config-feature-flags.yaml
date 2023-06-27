@@ -118,3 +118,6 @@ data:
   # This allows TaskRuns to run in namespaces with "restricted" pod security standards.
   # Not all Kubernetes implementations support this option.
   set-security-context: "false"
+  # Setting this flag to "true" will keep pod on cancellation
+  # allowing examination of the logs on the pods from cancelled taskruns
+  keep-pod-on-cancel: "false"

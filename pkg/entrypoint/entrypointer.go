@@ -26,10 +26,12 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/result"
 	"github.com/tektoncd/pipeline/pkg/spire"
 	"github.com/tektoncd/pipeline/pkg/termination"
@@ -41,6 +43,21 @@ const (
 	timeFormat      = "2006-01-02T15:04:05.000Z07:00"
 	ContinueOnError = "continue"
 	FailOnError     = "stopAndFail"
+)
+
+// ContextError context error type
+type ContextError string
+
+// Error implements error interface
+func (e ContextError) Error() string {
+	return string(e)
+}
+
+var (
+	// ErrContextDeadlineExceeded is the error returned when the context deadline is exceeded
+	ErrContextDeadlineExceeded = ContextError(context.DeadlineExceeded.Error())
+	// ErrContextCanceled is the error returned when the context is canceled
+	ErrContextCanceled = ContextError(context.Canceled.Error())
 )
 
 // Entrypointer holds fields for running commands with redirected
@@ -91,8 +108,8 @@ type Entrypointer struct {
 
 // Waiter encapsulates waiting for files to exist.
 type Waiter interface {
-	// Wait blocks until the specified file exists.
-	Wait(file string, expectContent bool, breakpointOnFailure bool) error
+	// Wait blocks until the specified file exists or the context is done.
+	Wait(ctx context.Context, file string, expectContent bool, breakpointOnFailure bool) error
 }
 
 // Runner encapsulates running commands.
@@ -121,7 +138,7 @@ func (e Entrypointer) Go() error {
 	}()
 
 	for _, f := range e.WaitFiles {
-		if err := e.Waiter.Wait(f, e.WaitFileContent, e.BreakpointOnFailure); err != nil {
+		if err := e.Waiter.Wait(context.Background(), f, e.WaitFileContent, e.BreakpointOnFailure); err != nil {
 			// An error happened while waiting, so we bail
 			// *but* we write postfile to make next steps bail too.
 			// In case of breakpoint on failure do not write post file.
@@ -143,21 +160,26 @@ func (e Entrypointer) Go() error {
 		ResultType: result.InternalTektonResultType,
 	})
 
-	ctx := context.Background()
 	var err error
-
 	if e.Timeout != nil && *e.Timeout < time.Duration(0) {
 		err = fmt.Errorf("negative timeout specified")
 	}
-
+	ctx := context.Background()
+	var cancel context.CancelFunc
 	if err == nil {
-		var cancel context.CancelFunc
-		if e.Timeout != nil && *e.Timeout != time.Duration(0) {
+		ctx, cancel = context.WithCancel(ctx)
+		if e.Timeout != nil && *e.Timeout > time.Duration(0) {
 			ctx, cancel = context.WithTimeout(ctx, *e.Timeout)
-			defer cancel()
 		}
+		defer cancel()
+		// start a goroutine to listen for cancellation file
+		go func() {
+			if err := e.waitingCancellation(ctx, cancel); err != nil {
+				logger.Error("Error while waiting for cancellation", zap.Error(err))
+			}
+		}()
 		err = e.Runner.Run(ctx, e.Command...)
-		if errors.Is(err, context.DeadlineExceeded) {
+		if errors.Is(err, ErrContextDeadlineExceeded) {
 			output = append(output, result.RunResult{
 				Key:        "Reason",
 				Value:      "TimeoutExceeded",
@@ -168,6 +190,15 @@ func (e Entrypointer) Go() error {
 
 	var ee *exec.ExitError
 	switch {
+	case err != nil && errors.Is(err, ErrContextCanceled):
+		logger.Info("Step was canceling")
+		output = append(output, result.RunResult{
+			Key:        "Reason",
+			Value:      "Cancelled",
+			ResultType: result.InternalTektonResultType,
+		})
+		e.WritePostFile(e.PostFile, ErrContextCanceled)
+		e.WriteExitCodeFile(e.StepMetadataDir, syscall.SIGKILL.String())
 	case err != nil && e.BreakpointOnFailure:
 		logger.Info("Skipping writing to PostFile")
 	case e.OnError == ContinueOnError && errors.As(err, &ee):
@@ -266,4 +297,13 @@ func (e Entrypointer) WritePostFile(postFile string, err error) {
 func (e Entrypointer) WriteExitCodeFile(stepPath, content string) {
 	exitCodeFile := filepath.Join(stepPath, "exitCode")
 	e.PostWriter.Write(exitCodeFile, content)
+}
+
+// waitingCancellation waiting cancellation file, if no error occurs, call cancelFunc to cancel the context
+func (e Entrypointer) waitingCancellation(ctx context.Context, cancel context.CancelFunc) error {
+	if err := e.Waiter.Wait(ctx, pod.DownwardMountCancelFile, true, false); err != nil {
+		return err
+	}
+	cancel()
+	return nil
 }
