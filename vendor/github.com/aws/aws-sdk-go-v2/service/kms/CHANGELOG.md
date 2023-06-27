@@ -1,3 +1,15 @@
+# v1.22.2 (2023-06-15)
+
+* No change notes available for this release.
+
+# v1.22.1 (2023-06-13)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.22.0 (2023-06-05)
+
+* **Feature**: This release includes feature to import customer's asymmetric (RSA and ECC) and HMAC keys into KMS.  It also includes feature to allow customers to specify number of days to schedule a KMS key deletion as a policy condition key.
+
 # v1.21.1 (2023-05-04)
 
 * No change notes available for this release.
