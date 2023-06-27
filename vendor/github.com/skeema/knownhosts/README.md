@@ -1,6 +1,6 @@
 # knownhosts: enhanced Golang SSH known_hosts management
 
-[![build status](https://img.shields.io/github/workflow/status/skeema/knownhosts/Tests/main)](https://github.com/skeema/knownhosts/actions)
+[![build status](https://img.shields.io/github/actions/workflow/status/skeema/knownhosts/tests.yml?branch=main)](https://github.com/skeema/knownhosts/actions)
 [![godoc](https://img.shields.io/badge/godoc-reference-blue.svg)](https://pkg.go.dev/github.com/skeema/knownhosts)
 
 
@@ -97,3 +97,20 @@ config := &ssh.ClientConfig{
 }
 ```
 
+## License
+
+**Source code copyright 2023 Skeema LLC and the Skeema authors**
+
+```text
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```

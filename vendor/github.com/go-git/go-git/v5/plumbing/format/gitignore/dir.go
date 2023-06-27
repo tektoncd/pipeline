@@ -3,7 +3,7 @@ package gitignore
 import (
 	"bufio"
 	"bytes"
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 
@@ -86,7 +86,7 @@ func loadPatterns(fs billy.Filesystem, path string) (ps []Pattern, err error) {
 
 	defer gioutil.CheckClose(f, &err)
 
-	b, err := ioutil.ReadAll(f)
+	b, err := io.ReadAll(f)
 	if err != nil {
 		return
 	}
