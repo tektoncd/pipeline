@@ -149,6 +149,10 @@ func TestEnsureConfigurationConfigMapsExist(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: config.GetSpireConfigName(), Namespace: system.Namespace()},
 		Data:       map[string]string{},
 	})
+	expected.ConfigMaps = append(expected.ConfigMaps, &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetEventsConfigName(), Namespace: system.Namespace()},
+		Data:       map[string]string{},
+	})
 
 	EnsureConfigurationConfigMapsExist(&d)
 	if d := cmp.Diff(expected, d); d != "" {

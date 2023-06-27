@@ -34,16 +34,23 @@ import (
 	"knative.dev/pkg/logging"
 )
 
+func cloudEventsSink(ctx context.Context) string {
+	configs := config.FromContextOrDefaults(ctx)
+	// Try the sink configuration first
+	sink := configs.Events.Sink
+	if sink == "" {
+		// Fall back to the deprecated flag is the new one is not set
+		// This ensures no changes in behaviour for existing users of the deprecated flag
+		sink = configs.Defaults.DefaultCloudEventsSink
+	}
+	return sink
+}
+
 // EmitCloudEvents emits CloudEvents (only) for object
 func EmitCloudEvents(ctx context.Context, object runtime.Object) {
 	logger := logging.FromContext(ctx)
-	configs := config.FromContextOrDefaults(ctx)
-	sendCloudEvents := (configs.Defaults.DefaultCloudEventsSink != "")
-	if sendCloudEvents {
-		ctx = cloudevents.ContextWithTarget(ctx, configs.Defaults.DefaultCloudEventsSink)
-	}
-
-	if sendCloudEvents {
+	if sink := cloudEventsSink(ctx); sink != "" {
+		ctx = cloudevents.ContextWithTarget(ctx, sink)
 		err := SendCloudEventWithRetries(ctx, object)
 		if err != nil {
 			logger.Warnf("Failed to emit cloud events %v", err.Error())
@@ -54,13 +61,9 @@ func EmitCloudEvents(ctx context.Context, object runtime.Object) {
 // EmitCloudEventsWhenConditionChange emits CloudEvents when there is a change in condition
 func EmitCloudEventsWhenConditionChange(ctx context.Context, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
 	logger := logging.FromContext(ctx)
-	configs := config.FromContextOrDefaults(ctx)
-	sendCloudEvents := (configs.Defaults.DefaultCloudEventsSink != "")
-	if sendCloudEvents {
-		ctx = cloudevents.ContextWithTarget(ctx, configs.Defaults.DefaultCloudEventsSink)
-	}
+	if sink := cloudEventsSink(ctx); sink != "" {
+		ctx = cloudevents.ContextWithTarget(ctx, sink)
 
-	if sendCloudEvents {
 		// Only send events if the new condition represents a change
 		if !equality.Semantic.DeepEqual(beforeCondition, afterCondition) {
 			err := SendCloudEventWithRetries(ctx, object)

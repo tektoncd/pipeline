@@ -168,22 +168,38 @@ func TestEmitCloudEvents(t *testing.T) {
 	}
 	testcases := []struct {
 		name            string
-		data            map[string]string
+		defaults        map[string]string
+		events          map[string]string
 		wantEvents      []string
 		wantCloudEvents []string
 	}{{
 		name:            "without sink",
-		data:            map[string]string{},
+		defaults:        map[string]string{},
+		events:          map[string]string{},
 		wantEvents:      []string{},
 		wantCloudEvents: []string{},
 	}, {
 		name:            "with empty string sink",
-		data:            map[string]string{"default-cloud-events-sink": ""},
+		defaults:        map[string]string{},
+		events:          map[string]string{"sink": ""},
 		wantEvents:      []string{},
 		wantCloudEvents: []string{},
 	}, {
 		name:            "with sink",
-		data:            map[string]string{"default-cloud-events-sink": "http://mysink"},
+		defaults:        map[string]string{},
+		events:          map[string]string{"sink": "http://mysink"},
+		wantEvents:      []string{},
+		wantCloudEvents: []string{`(?s)dev.tekton.event.customrun.started.v1.*test1`},
+	}, {
+		name:            "with legacy sink",
+		defaults:        map[string]string{"default-cloud-events-sink": "http://mysink.defaults"},
+		events:          map[string]string{},
+		wantEvents:      []string{},
+		wantCloudEvents: []string{`(?s)dev.tekton.event.customrun.started.v1.*test1`},
+	}, {
+		name:            "with both sinks",
+		defaults:        map[string]string{"default-cloud-events-sink": "http://mysink.defaults"},
+		events:          map[string]string{"sink": "http://mysink.events"},
 		wantEvents:      []string{},
 		wantCloudEvents: []string{`(?s)dev.tekton.event.customrun.started.v1.*test1`},
 	}}
@@ -195,9 +211,11 @@ func TestEmitCloudEvents(t *testing.T) {
 		fakeClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
 
 		// Setup the config and add it to the context
-		defaults, _ := config.NewDefaultsFromMap(tc.data)
+		eventsConfig, _ := config.NewEventsFromMap(tc.events)
+		defaultsConfig, _ := config.NewDefaultsFromMap(tc.defaults)
 		cfg := &config.Config{
-			Defaults:     defaults,
+			Events:       eventsConfig,
+			Defaults:     defaultsConfig,
 			FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
 		}
 		ctx = config.ToContext(ctx, cfg)
@@ -231,7 +249,7 @@ func TestEmitCloudEventsWhenConditionChange(t *testing.T) {
 		Message: "just starting",
 	}
 
-	data := map[string]string{"default-cloud-events-sink": "http://mysink"}
+	data := map[string]string{"sink": "http://mysink"}
 	wantCloudEvents := []string{`(?s)dev.tekton.event.pipelinerun.started.v1.*test1`}
 
 	// Setup the context and seed test data
@@ -240,9 +258,11 @@ func TestEmitCloudEventsWhenConditionChange(t *testing.T) {
 	fakeClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
 
 	// Setup the config and add it to the context
-	defaults, _ := config.NewDefaultsFromMap(data)
+	defaultsConfig, _ := config.NewDefaultsFromMap(map[string]string{})
+	eventsConfig, _ := config.NewEventsFromMap(data)
 	cfg := &config.Config{
-		Defaults:     defaults,
+		Events:       eventsConfig,
+		Defaults:     defaultsConfig,
 		FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
 	}
 	ctx = config.ToContext(ctx, cfg)
