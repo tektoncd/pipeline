@@ -59,7 +59,7 @@ type SignerVerifier struct {
 // LoadSignerVerifier generates signatures using the specified key in Azure Key Vault and hash algorithm.
 //
 // It also can verify signatures locally using the public key. hashFunc must not be crypto.Hash(0).
-func LoadSignerVerifier(defaultCtx context.Context, referenceStr string, hashFunc crypto.Hash) (*SignerVerifier, error) {
+func LoadSignerVerifier(defaultCtx context.Context, referenceStr string) (*SignerVerifier, error) {
 	a := &SignerVerifier{
 		defaultCtx: defaultCtx,
 	}
@@ -70,11 +70,9 @@ func LoadSignerVerifier(defaultCtx context.Context, referenceStr string, hashFun
 		return nil, err
 	}
 
-	switch hashFunc {
-	case 0, crypto.SHA256, crypto.SHA384, crypto.SHA512:
-		a.hashFunc = hashFunc
-	default:
-		return nil, errors.New("hash function not supported by Azure Key Vault")
+	a.hashFunc, _, err = a.client.getKeyVaultHashFunc(defaultCtx)
+	if err != nil {
+		return nil, err
 	}
 
 	return a, nil
@@ -96,19 +94,22 @@ func LoadSignerVerifier(defaultCtx context.Context, referenceStr string, hashFun
 func (a *SignerVerifier) SignMessage(message io.Reader, opts ...signature.SignOption) ([]byte, error) {
 	ctx := context.Background()
 	var digest []byte
-	var signerOpts crypto.SignerOpts = a.hashFunc
 
 	for _, opt := range opts {
 		opt.ApplyDigest(&digest)
-		opt.ApplyCryptoSignerOpts(&signerOpts)
 	}
 
-	digest, _, err := signature.ComputeDigestForSigning(message, signerOpts.HashFunc(), azureSupportedHashFuncs, opts...)
+	hashFunc, _, err := a.client.getKeyVaultHashFunc(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	rawSig, err := a.client.sign(ctx, digest, a.hashFunc)
+	digest, _, err = signature.ComputeDigestForSigning(message, hashFunc, azureSupportedHashFuncs, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	rawSig, err := a.client.sign(ctx, digest)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +177,7 @@ func (a *SignerVerifier) VerifySignature(sig, message io.Reader, opts ...signatu
 	rawSigBytes := []byte{}
 	rawSigBytes = append(rawSigBytes, r.Bytes()...)
 	rawSigBytes = append(rawSigBytes, s.Bytes()...)
-	return a.client.verify(ctx, rawSigBytes, digest, a.hashFunc)
+	return a.client.verify(ctx, rawSigBytes, digest)
 }
 
 // PublicKey returns the public key that can be used to verify signatures created by
