@@ -17,6 +17,8 @@ limitations under the License.
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -47,11 +49,22 @@ func (rw *realWaiter) setWaitPollingInterval(pollingInterval time.Duration) *rea
 //
 // If a file of the same name with a ".err" extension exists then this Wait
 // will end with a skipError.
-func (rw *realWaiter) Wait(file string, expectContent bool, breakpointOnFailure bool) error {
+func (rw *realWaiter) Wait(ctx context.Context, file string, expectContent bool, breakpointOnFailure bool) error {
 	if file == "" {
 		return nil
 	}
-	for ; ; time.Sleep(rw.waitPollingInterval) {
+	for {
+		select {
+		case <-ctx.Done():
+			if errors.Is(ctx.Err(), context.Canceled) {
+				return entrypoint.ErrContextCanceled
+			}
+			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+				return entrypoint.ErrContextDeadlineExceeded
+			}
+			return nil
+		case <-time.After(rw.waitPollingInterval):
+		}
 		if info, err := os.Stat(file); err == nil {
 			if !expectContent || info.Size() > 0 {
 				return nil

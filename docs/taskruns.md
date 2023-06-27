@@ -910,6 +910,9 @@ When you cancel a TaskRun, the running pod associated with that `TaskRun` is del
 means that the logs of the `TaskRun` are not preserved. The deletion of the `TaskRun` pod is necessary
 in order to stop `TaskRun` step containers from running.
 
+**Note: if `keep-pod-on-cancel` is set to
+`"true"` in the `feature-flags`,  the pod associated with that `TaskRun` will not be deleted**
+
 Example of cancelling a `TaskRun`:
 
 ```yaml

@@ -88,6 +88,10 @@ const (
 	DefaultSetSecurityContext = false
 	// DefaultCoschedule is the default value for coschedule
 	DefaultCoschedule = CoscheduleWorkspaces
+	// KeepPodOnCancel is the flag used to enable cancelling a pod using the entrypoint, and keep pod on cancel
+	KeepPodOnCancel = "keep-pod-on-cancel"
+	// DefaultEnableKeepPodOnCancel is the default value for "keep-pod-on-cancel"
+	DefaultEnableKeepPodOnCancel = false
 
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
@@ -124,6 +128,7 @@ type FeatureFlags struct {
 	SendCloudEventsForRuns           bool
 	AwaitSidecarReadiness            bool
 	EnforceNonfalsifiability         string
+	EnableKeepPodOnCancel            bool
 	// VerificationNoMatchPolicy is the feature flag for "trusted-resources-verification-no-match-policy"
 	// VerificationNoMatchPolicy can be set to "ignore", "warn" and "fail" values.
 	// ignore: skip trusted resources verification when no matching verification policies found
@@ -193,6 +198,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setMaxResultSize(cfgMap, DefaultMaxResultSize, &tc.MaxResultSize); err != nil {
+		return nil, err
+	}
+	if err := setFeature(KeepPodOnCancel, DefaultEnableKeepPodOnCancel, &tc.EnableKeepPodOnCancel); err != nil {
 		return nil, err
 	}
 	if err := setEnforceNonFalsifiability(cfgMap, &tc.EnforceNonfalsifiability); err != nil {

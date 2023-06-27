@@ -1,4 +1,4 @@
-# Copyright 2020 The Tekton Authors
+# Copyright 2023 The Tekton Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,17 +18,4 @@ metadata:
   name: feature-flags
   namespace: tekton-pipelines
 data:
-  disable-affinity-assistant: "true"
-  coschedule: "disabled"
-  running-in-environment-with-injected-sidecars: "false"
-  await-sidecar-readiness: "false"
-  require-git-ssh-secret-known-hosts: "true"
-  enable-tekton-oci-bundles: "true"
-  enable-custom-tasks: "true"
-  enable-api-fields: "alpha"
-  send-cloudevents-for-runs: "true"
-  enforce-nonfalsifiability: "spire"
-  trusted-resources-verification-no-match-policy: "fail"
-  enable-provenance-in-status: "false"
-  set-security-context: "true"
-  keep-pod-on-cancel: "true"
+  disable-affinity-assistant: "truee"

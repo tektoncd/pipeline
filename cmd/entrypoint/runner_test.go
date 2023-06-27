@@ -22,12 +22,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/tektoncd/pipeline/pkg/entrypoint"
 )
 
 // TestRealRunnerSignalForwarding will artificially put an interrupt signal (SIGINT) in the rr.signals chan.
@@ -183,10 +186,52 @@ func TestRealRunnerTimeout(t *testing.T) {
 	defer cancel()
 
 	if err := rr.Run(ctx, "sleep", "0.01"); err != nil {
-		if !errors.Is(err, context.DeadlineExceeded) {
+		if !errors.Is(err, entrypoint.ErrContextDeadlineExceeded) {
 			t.Fatalf("unexpected error received: %v", err)
 		}
 	} else {
 		t.Fatalf("step didn't timeout")
+	}
+}
+
+func TestRealRunnerCancel(t *testing.T) {
+	testCases := []struct {
+		name    string
+		timeout time.Duration
+		wantErr error
+	}{
+		{
+			name:    "cancel before cmd wait",
+			timeout: 0,
+			wantErr: entrypoint.ErrContextCanceled,
+		},
+		{
+			name:    "cancel on cmd wait",
+			timeout: time.Second * time.Duration(rand.Intn(3)),
+			wantErr: entrypoint.ErrContextCanceled,
+		},
+		{
+			name:    "cancel after cmd wait",
+			timeout: time.Second * 4,
+			wantErr: nil,
+		},
+	}
+	for _, tc := range testCases {
+		rr := realRunner{}
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			time.Sleep(tc.timeout)
+			cancel()
+		}()
+		err := rr.Run(ctx, "sleep", "3")
+		if tc.wantErr != nil {
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("unexpected error received: %v", err)
+			}
+		} else {
+			if err != nil {
+				t.Fatalf("unexpected error received: %v", err)
+			}
+		}
 	}
 }

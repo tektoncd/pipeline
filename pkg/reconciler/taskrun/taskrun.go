@@ -687,10 +687,14 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1.TaskRun, reason v1.
 		return nil
 	}
 
-	// tr.Status.PodName will be empty if the pod was never successfully created. This condition
-	// can be reached, for example, by the pod never being schedulable due to limits imposed by
-	// a namespace's ResourceQuota.
-	err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete(ctx, tr.Status.PodName, metav1.DeleteOptions{})
+	var err error
+	if reason == v1.TaskRunReasonCancelled &&
+		(config.FromContextOrDefaults(ctx).FeatureFlags.EnableKeepPodOnCancel && config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == config.AlphaAPIFields) {
+		logger.Infof("canceling task run %q by entrypoint", tr.Name)
+		err = podconvert.CancelPod(ctx, c.KubeClientSet, tr.Namespace, tr.Status.PodName)
+	} else {
+		err = c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete(ctx, tr.Status.PodName, metav1.DeleteOptions{})
+	}
 	if err != nil && !k8serrors.IsNotFound(err) {
 		logger.Infof("Failed to terminate pod: %v", err)
 		return err

@@ -151,6 +151,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	defaultForbiddenEnv := config.FromContextOrDefaults(ctx).Defaults.DefaultForbiddenEnv
 	alphaAPIEnabled := featureFlags.EnableAPIFields == config.AlphaAPIFields
 	sidecarLogsResultsEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.ResultExtractionMethod == config.ResultExtractionMethodSidecarLogs
+	enableKeepPodOnCancel := alphaAPIEnabled && featureFlags.EnableKeepPodOnCancel
 	setSecurityContext := config.FromContextOrDefaults(ctx).FeatureFlags.SetSecurityContext
 
 	// Add our implicit volumes first, so they can be overridden by the user if they prefer.
@@ -238,16 +239,20 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	readyImmediately := isPodReadyImmediately(*featureFlags, taskSpec.Sidecars)
 
 	if alphaAPIEnabled {
-		stepContainers, err = orderContainers(commonExtraEntrypointArgs, stepContainers, &taskSpec, taskRun.Spec.Debug, !readyImmediately)
+		stepContainers, err = orderContainers(commonExtraEntrypointArgs, stepContainers, &taskSpec, taskRun.Spec.Debug, !readyImmediately, enableKeepPodOnCancel)
 	} else {
-		stepContainers, err = orderContainers(commonExtraEntrypointArgs, stepContainers, &taskSpec, nil, !readyImmediately)
+		stepContainers, err = orderContainers(commonExtraEntrypointArgs, stepContainers, &taskSpec, nil, !readyImmediately, enableKeepPodOnCancel)
 	}
 	if err != nil {
 		return nil, err
 	}
 	volumes = append(volumes, binVolume)
-	if !readyImmediately {
-		volumes = append(volumes, downwardVolume)
+	if !readyImmediately || enableKeepPodOnCancel {
+		downwardVolumeDup := downwardVolume.DeepCopy()
+		if enableKeepPodOnCancel {
+			downwardVolumeDup.VolumeSource.DownwardAPI.Items = append(downwardVolumeDup.VolumeSource.DownwardAPI.Items, downwardCancelVolumeItem)
+		}
+		volumes = append(volumes, *downwardVolumeDup)
 	}
 
 	// Order of precedence for envs
