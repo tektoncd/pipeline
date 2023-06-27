@@ -26,6 +26,16 @@ The following features are deprecated but have not yet been removed.
 | [`pipelineRef.bundle` and `taskRef.bundle` are deprecated](https://github.com/tektoncd/pipeline/issues/5514)                                                                                                                 | v0.41.0                                                              | Alpha                                                                                                  | July 13, 2023                       |
 | [The `config-trusted-resources` configMap is deprecated](https://github.com/tektoncd/pipeline/issues/5852)                                                                                                                 | v0.45.0                                                              | Alpha                                                                                                  | v0.46.0                       |
 | [The `default-cloud-events-sink` setting in the `config-defaults` configMap is deprecated](https://github.com/tektoncd/pipeline/pull/6883) in favour of the new `config-events` configMap.                                                                                                                | v0.50.0                                                              | N/A                                                                                                  | v0.59.0                       |
+| [v1beta1 Tasks, TaskRuns, Pipelines, and PipelineRuns are deprecated in favor of v1](https://github.com/tektoncd/pipeline/issues/5541)                                                                                                                 | v0.50.0                                                              | Beta                                                                                                  | v0.62.0                       |
+
+### v1beta1 deprecation
+
+The v1beta1 versions of Task, TaskRun, Pipeline, and PipelineRun are deprecated in favor of the v1 versions of these APIs,
+as of release v0.50.0. Following the [beta CRD compatibility policy](../api_compatibility_policy.md#beta-crds),
+the earliest release the v1beta1 versions of these CRDs may be removed is 1 year later, or v0.62.0 (LTS).
+The v1beta1 client libraries will be retained until v0.62.0 has reached its end of life, 1 year later.
+Therefore, the earliest release the client libraries may be removed is v0.74.0, 12 months after v0.62.0.
+
 ## Removed features
 
 The features listed below have been removed but may still be supported in releases that have not reached their EOL.

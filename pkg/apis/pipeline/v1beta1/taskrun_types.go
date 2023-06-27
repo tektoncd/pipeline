@@ -388,12 +388,13 @@ type CloudEventDeliveryState struct {
 // +genclient
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
 
 // TaskRun represents a single execution of a Task. TaskRuns are how the steps
 // specified in a Task are executed; they specify the parameters and resources
 // used to run the steps in a Task.
 //
-// +k8s:openapi-gen=true
+// Deprecated: Please use v1.TaskRun instead.
 type TaskRun struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional

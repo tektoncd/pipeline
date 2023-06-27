@@ -28,13 +28,14 @@ import (
 // +genclient:noStatus
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
 
 // Task represents a collection of sequential steps that are run as part of a
 // Pipeline using a set of inputs and producing a set of outputs. Tasks execute
 // when TaskRuns are created that provide the input parameters and resources and
 // output resources the Task requires.
 //
-// +k8s:openapi-gen=true
+// Deprecated: Please use v1.Task instead.
 type Task struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
