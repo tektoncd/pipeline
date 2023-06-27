@@ -680,7 +680,7 @@
       }
     },
     "v1beta1.Pipeline": {
-      "description": "Pipeline describes a list of Tasks to execute. It expresses how outputs of tasks feed into inputs of subsequent tasks.",
+      "description": "Pipeline describes a list of Tasks to execute. It expresses how outputs of tasks feed into inputs of subsequent tasks.\n\nDeprecated: Please use v1.Pipeline instead.",
       "type": "object",
       "properties": {
         "apiVersion": {
@@ -834,7 +834,7 @@
       }
     },
     "v1beta1.PipelineRun": {
-      "description": "PipelineRun represents a single execution of a Pipeline. PipelineRuns are how the graph of Tasks declared in a Pipeline are executed; they specify inputs to Pipelines such as parameter values and capture operational aspects of the Tasks execution such as service account and tolerations. Creating a PipelineRun creates TaskRuns for Tasks in the referenced Pipeline.",
+      "description": "PipelineRun represents a single execution of a Pipeline. PipelineRuns are how the graph of Tasks declared in a Pipeline are executed; they specify inputs to Pipelines such as parameter values and capture operational aspects of the Tasks execution such as service account and tolerations. Creating a PipelineRun creates TaskRuns for Tasks in the referenced Pipeline.\n\nDeprecated: Please use v1.PipelineRun instead.",
       "type": "object",
       "properties": {
         "apiVersion": {
@@ -2329,7 +2329,7 @@
       }
     },
     "v1beta1.Task": {
-      "description": "Task represents a collection of sequential steps that are run as part of a Pipeline using a set of inputs and producing a set of outputs. Tasks execute when TaskRuns are created that provide the input parameters and resources and output resources the Task requires.",
+      "description": "Task represents a collection of sequential steps that are run as part of a Pipeline using a set of inputs and producing a set of outputs. Tasks execute when TaskRuns are created that provide the input parameters and resources and output resources the Task requires.\n\nDeprecated: Please use v1.Task instead.",
       "type": "object",
       "properties": {
         "apiVersion": {
@@ -2515,7 +2515,7 @@
       }
     },
     "v1beta1.TaskRun": {
-      "description": "TaskRun represents a single execution of a Task. TaskRuns are how the steps specified in a Task are executed; they specify the parameters and resources used to run the steps in a Task.",
+      "description": "TaskRun represents a single execution of a Task. TaskRuns are how the steps specified in a Task are executed; they specify the parameters and resources used to run the steps in a Task.\n\nDeprecated: Please use v1.TaskRun instead.",
       "type": "object",
       "properties": {
         "apiVersion": {

@@ -41,11 +41,20 @@ alpha or beta:
 that all `CustomRun` controllers are required to support is considered a [backwards incompatible change](#backwards-incompatible-changes),
 and follows the [beta policy](#beta-crds) for backwards incompatible changes.
 
-`v1beta1.ClusterTask` is a deprecated beta CRD. New features will not be added to `ClusterTask`.
-
 `v1beta1.ResolutionRequest` is a beta CRD. Adding new fields to `ResolutionRequest`
 that all resolvers are required to support is considered a [backwards incompatible change](#backwards-incompatible-changes),
 and follows the [beta policy](#beta-crds) for backwards incompatible changes.
+
+The following CRDs are deprecated. New features will not be added, but they will receive bug fixes.
+
+- `v1beta1.Task`
+- `v1beta1.ClusterTask`
+- `v1beta1.TaskRun`
+- `v1beta1.Pipeline`
+- `v1beta1.PipelineRun`
+
+To migrate to the v1 versions of these APIs, see [the migration guide](./docs/migrating-v1beta1-to-v1.md).
+For more information on support windows, see the [deprecations table](./docs/deprecations.md).
 
 ### Alpha CRDs
 
@@ -61,7 +70,7 @@ and follows the [beta policy](#beta-crds) for backwards incompatible changes.
 
 - Any [backwards incompatible changes](#backwards-incompatible-changes) must be introduced in a backwards compatible manner first, with a deprecation warning in the release notes and migration instructions.
 
-- Users will be given at least 9 months to migrate before a backward incompatible change is made. This means an older beta API version will continue to be supported in new releases for a period of at least 9 months from the time a newer version is made available.
+- Users will be given at least 9 months to migrate before a backward incompatible change is made. This means an older beta API version will continue to receive bug fixes in new releases for a period of at least 9 months from the time a newer version is made available.
   - As a special case, the `v1beta1` CRDs will not be removed until 1 year after they are deprecated,
   because no stable API was available when they were created. The 9 month policy will apply to future beta APIs.
 

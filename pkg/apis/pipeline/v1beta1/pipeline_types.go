@@ -39,10 +39,12 @@ const (
 // +genclient:noStatus
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
 
 // Pipeline describes a list of Tasks to execute. It expresses how outputs
 // of tasks feed into inputs of subsequent tasks.
-// +k8s:openapi-gen=true
+//
+// Deprecated: Please use v1.Pipeline instead.
 type Pipeline struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
