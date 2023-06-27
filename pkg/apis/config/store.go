@@ -32,6 +32,7 @@ type Config struct {
 	FeatureFlags *FeatureFlags
 	Metrics      *Metrics
 	SpireConfig  *sc.SpireConfig
+	Events       *Events
 }
 
 // FromContext extracts a Config from the provided context.
@@ -55,6 +56,7 @@ func FromContextOrDefaults(ctx context.Context) *Config {
 		FeatureFlags: DefaultFeatureFlags.DeepCopy(),
 		Metrics:      DefaultMetrics.DeepCopy(),
 		SpireConfig:  DefaultSpire.DeepCopy(),
+		Events:       DefaultEvents.DeepCopy(),
 	}
 }
 
@@ -81,6 +83,7 @@ func NewStore(logger configmap.Logger, onAfterStore ...func(name string, value i
 				GetFeatureFlagsConfigName(): NewFeatureFlagsFromConfigMap,
 				GetMetricsConfigName():      NewMetricsFromConfigMap,
 				GetSpireConfigName():        NewSpireConfigFromConfigMap,
+				GetEventsConfigName():       NewEventsFromConfigMap,
 			},
 			onAfterStore...,
 		),
@@ -108,10 +111,13 @@ func (s *Store) Load() *Config {
 	if metrics == nil {
 		metrics = DefaultMetrics.DeepCopy()
 	}
-
 	spireconfig := s.UntypedLoad(GetSpireConfigName())
 	if spireconfig == nil {
 		spireconfig = DefaultSpire.DeepCopy()
+	}
+	events := s.UntypedLoad(GetEventsConfigName())
+	if events == nil {
+		events = DefaultEvents.DeepCopy()
 	}
 
 	return &Config{
@@ -119,5 +125,6 @@ func (s *Store) Load() *Config {
 		FeatureFlags: featureFlags.(*FeatureFlags).DeepCopy(),
 		Metrics:      metrics.(*Metrics).DeepCopy(),
 		SpireConfig:  spireconfig.(*sc.SpireConfig).DeepCopy(),
+		Events:       events.(*Events).DeepCopy(),
 	}
 }

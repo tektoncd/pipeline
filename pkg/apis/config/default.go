@@ -70,7 +70,7 @@ type Defaults struct {
 	DefaultManagedByLabelValue        string
 	DefaultPodTemplate                *pod.Template
 	DefaultAAPodTemplate              *pod.AffinityAssistantTemplate
-	DefaultCloudEventsSink            string
+	DefaultCloudEventsSink            string // Deprecated. Use the events package instead
 	DefaultTaskRunWorkspaceBinding    string
 	DefaultMaxMatrixCombinationsCount int
 	DefaultForbiddenEnv               []string

@@ -32,17 +32,20 @@ func TestStoreLoadWithContext(t *testing.T) {
 	featuresConfig := test.ConfigMapFromTestFile(t, "feature-flags-all-flags-set")
 	metricsConfig := test.ConfigMapFromTestFile(t, "config-observability")
 	spireConfig := test.ConfigMapFromTestFile(t, "config-spire")
+	eventsConfig := test.ConfigMapFromTestFile(t, "config-events")
 
 	expectedDefaults, _ := config.NewDefaultsFromConfigMap(defaultConfig)
 	expectedFeatures, _ := config.NewFeatureFlagsFromConfigMap(featuresConfig)
 	metrics, _ := config.NewMetricsFromConfigMap(metricsConfig)
 	expectedSpireConfig, _ := config.NewSpireConfigFromConfigMap(spireConfig)
+	expectedEventsConfig, _ := config.NewEventsFromConfigMap(eventsConfig)
 
 	expected := &config.Config{
 		Defaults:     expectedDefaults,
 		FeatureFlags: expectedFeatures,
 		Metrics:      metrics,
 		SpireConfig:  expectedSpireConfig,
+		Events:       expectedEventsConfig,
 	}
 
 	store := config.NewStore(logtesting.TestLogger(t))
@@ -50,6 +53,7 @@ func TestStoreLoadWithContext(t *testing.T) {
 	store.OnConfigChanged(featuresConfig)
 	store.OnConfigChanged(metricsConfig)
 	store.OnConfigChanged(spireConfig)
+	store.OnConfigChanged(eventsConfig)
 
 	cfg := config.FromContext(store.ToContext(context.Background()))
 
@@ -64,6 +68,7 @@ func TestStoreLoadWithContext_Empty(t *testing.T) {
 		FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
 		Metrics:      config.DefaultMetrics.DeepCopy(),
 		SpireConfig:  config.DefaultSpire.DeepCopy(),
+		Events:       config.DefaultEvents.DeepCopy(),
 	}
 
 	store := config.NewStore(logtesting.TestLogger(t))

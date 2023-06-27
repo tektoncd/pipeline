@@ -53,8 +53,25 @@ namespace:
 ## Configuring CloudEvents notifications
 
 When configured so, Tekton can generate `CloudEvents` for `TaskRun`,
-`PipelineRun` and `Run`lifecycle events. The main configuration parameter is the
+`PipelineRun` and `CustomRun`lifecycle events. The main configuration parameter is the
 URL of the sink. When not set, no notification is generated.
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-events
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+data:
+  formats: tektonv1
+  sink: https://my-sink-url
+```
+
+The sink used to be configured in the `config-defaults` config map.
+This option is still available, but deprecated, and will be removed.
 
 ```yaml
 apiVersion: v1
@@ -69,7 +86,7 @@ data:
   default-cloud-events-sink: https://my-sink-url
 ```
 
-Additionally, CloudEvents for `Runs` require an extra configuration to be
+Additionally, CloudEvents for `CustomRuns` require an extra configuration to be
 enabled. This setting exists to avoid collisions with CloudEvents that might
 be sent by custom task controllers:
 
