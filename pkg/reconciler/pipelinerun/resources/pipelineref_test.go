@@ -34,15 +34,19 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
+	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
+	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
+	ktesting "k8s.io/client-go/testing"
 	"knative.dev/pkg/logging"
 )
 
@@ -88,6 +92,13 @@ var (
 		return x.VerificationResultType == y.VerificationResultType && (errors.Is(x.Err, y.Err) || errors.Is(y.Err, x.Err))
 	})
 )
+
+func getFakePipelineClient(t *testing.T) (context.Context, *clientset.Clientset) {
+	t.Helper()
+	ctx, _ := ttesting.SetupFakeContext(t)
+	clients, _ := test.SeedTestData(t, ctx, test.Data{})
+	return ctx, clients.Pipeline
+}
 
 func TestLocalPipelineRef(t *testing.T) {
 	testcases := []struct {
@@ -267,7 +278,8 @@ func TestGetPipelineFuncSpecAlreadyFetched(t *testing.T) {
 }
 
 func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
-	ctx := config.EnableStableAPIFields(context.Background())
+	ctx, clients := getFakePipelineClient(t)
+	ctx = config.EnableStableAPIFields(ctx)
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
 	pipelineRef := &v1.PipelineRef{ResolverRef: v1.ResolverRef{Resolver: "git"}}
@@ -276,7 +288,6 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 		name         string
 		pipelineYAML string
 		wantPipeline *v1.Pipeline
-		wantErr      bool
 	}{{
 		name: "v1beta1 pipeline",
 		pipelineYAML: strings.Join([]string{
@@ -286,14 +297,6 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 		}, "\n"),
 		wantPipeline: parse.MustParseV1Pipeline(t, pipelineYAMLString),
 	}, {
-		name: "v1beta1 pipeline with beta features",
-		pipelineYAML: strings.Join([]string{
-			"kind: Pipeline",
-			"apiVersion: tekton.dev/v1beta1",
-			pipelineYAMLStringWithBetaFeatures,
-		}, "\n"),
-		wantPipeline: parse.MustParseV1Pipeline(t, pipelineYAMLStringWithBetaFeatures),
-	}, {
 		name: "v1 pipeline",
 		pipelineYAML: strings.Join([]string{
 			"kind: Pipeline",
@@ -301,15 +304,6 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 			pipelineYAMLString,
 		}, "\n"),
 		wantPipeline: parse.MustParseV1Pipeline(t, pipelineYAMLString),
-	}, {
-		name: "v1 pipeline with beta features",
-		pipelineYAML: strings.Join([]string{
-			"kind: Pipeline",
-			"apiVersion: tekton.dev/v1",
-			pipelineYAMLStringWithBetaFeatures,
-		}, "\n"),
-		wantPipeline: nil,
-		wantErr:      true,
 	}, {
 		name: "v1 remote pipeline without defaults",
 		pipelineYAML: strings.Join([]string{
@@ -323,7 +317,7 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			resolved := test.NewResolvedResource([]byte(tc.pipelineYAML), nil /* annotations */, sampleRefSource.DeepCopy(), nil /* data error */)
 			requester := test.NewRequester(resolved, nil)
-			fn := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1.PipelineRun{
+			fn := resources.GetPipelineFunc(ctx, nil, clients, requester, &v1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
 				Spec: v1.PipelineRunSpec{
 					PipelineRef: pipelineRef,
@@ -334,29 +328,80 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 			}, nil /*VerificationPolicies*/)
 
 			resolvedPipeline, resolvedRefSource, _, err := fn(ctx, pipelineRef.Name)
-			if tc.wantErr {
-				if err == nil {
-					t.Errorf("expected an error when calling pipelinefunc but got none")
-				}
-			} else {
-				if err != nil {
-					t.Fatalf("failed to call pipelinefn: %s", err.Error())
-				}
+			if err != nil {
+				t.Fatalf("failed to call pipelinefn: %s", err.Error())
+			}
 
-				if diff := cmp.Diff(tc.wantPipeline, resolvedPipeline); diff != "" {
-					t.Error(diff)
-				}
+			if diff := cmp.Diff(tc.wantPipeline, resolvedPipeline); diff != "" {
+				t.Error(diff)
+			}
 
-				if d := cmp.Diff(sampleRefSource, resolvedRefSource); d != "" {
-					t.Errorf("refSources did not match: %s", diff.PrintWantGot(d))
-				}
+			if d := cmp.Diff(sampleRefSource, resolvedRefSource); d != "" {
+				t.Errorf("refSources did not match: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestGetPipelineFunc_RemoteResolution_ValidationFailure(t *testing.T) {
+	ctx, clients := getFakePipelineClient(t)
+	ctx = config.EnableStableAPIFields(ctx)
+	cfg := config.FromContextOrDefaults(ctx)
+	ctx = config.ToContext(ctx, cfg)
+	pipelineRef := &v1.PipelineRef{ResolverRef: v1.ResolverRef{Resolver: "git"}}
+
+	testcases := []struct {
+		name         string
+		pipelineYAML string
+	}{{
+		name: "invalid v1beta1 pipeline",
+		pipelineYAML: strings.Join([]string{
+			"kind: Pipeline",
+			"apiVersion: tekton.dev/v1beta1",
+			pipelineYAMLString,
+		}, "\n"),
+	}, {
+		name: "invalid v1 pipeline",
+		pipelineYAML: strings.Join([]string{
+			"kind: Pipeline",
+			"apiVersion: tekton.dev/v1",
+			pipelineYAMLString,
+		}, "\n"),
+	}}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			resolved := test.NewResolvedResource([]byte(tc.pipelineYAML), nil /* annotations */, sampleRefSource.DeepCopy(), nil /* data error */)
+			requester := test.NewRequester(resolved, nil)
+			fn := resources.GetPipelineFunc(ctx, nil, clients, requester, &v1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+				Spec: v1.PipelineRunSpec{
+					PipelineRef: pipelineRef,
+					TaskRunTemplate: v1.PipelineTaskRunTemplate{
+						ServiceAccountName: "default",
+					},
+				},
+			}, nil /*VerificationPolicies*/)
+
+			clients.PrependReactor("create", "pipelines", func(action ktesting.Action) (bool, runtime.Object, error) {
+				return true, nil, apierrors.NewBadRequest("bad request")
+			})
+
+			resolvedPipeline, resolvedRefSource, _, err := fn(ctx, pipelineRef.Name)
+			if !errors.Is(err, resources.ErrReferencedPipelineValidationFailed) {
+				t.Errorf("expected RemotePipelineValidationFailed error but got none")
+			}
+			if resolvedPipeline != nil {
+				t.Errorf("expected nil Pipeline but was %v", resolvedPipeline)
+			}
+			if resolvedRefSource != nil {
+				t.Errorf("expected nil refSource but was %s", resolvedRefSource)
 			}
 		})
 	}
 }
 
 func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
-	ctx := context.Background()
+	ctx, clients := getFakePipelineClient(t)
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
 	pipeline := parse.MustParseV1Pipeline(t, pipelineYAMLString)
@@ -389,7 +434,7 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 			Value: *v1.NewStructuredValues("test-pipeline"),
 		}},
 	}
-	fn := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1.PipelineRun{
+	fn := resources.GetPipelineFunc(ctx, nil, clients, requester, &v1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pipeline",
 			Namespace: "default",
@@ -432,7 +477,7 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 		},
 	}
 
-	fnNotMatching := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1.PipelineRun{
+	fnNotMatching := resources.GetPipelineFunc(ctx, nil, clients, requester, &v1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "other-pipeline",
 			Namespace: "default",
@@ -459,14 +504,14 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 }
 
 func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
-	ctx := context.Background()
+	ctx, clients := getFakePipelineClient(t)
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
 	pipelineRef := &v1.PipelineRef{ResolverRef: v1.ResolverRef{Resolver: "git"}}
 	resolvesTo := []byte("INVALID YAML")
 	resource := test.NewResolvedResource(resolvesTo, nil, nil, nil)
 	requester := test.NewRequester(resource, nil)
-	fn := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1.PipelineRun{
+	fn := resources.GetPipelineFunc(ctx, nil, clients, requester, &v1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
 		Spec: v1.PipelineRunSpec{
 			PipelineRef: pipelineRef,
@@ -1244,23 +1289,9 @@ spec:
           echo "hello world!"
 `
 
-var pipelineYAMLStringWithBetaFeatures = `
-metadata:
-  name: foo
-spec:
-  tasks:
-  - name: task1
-    taskRef:
-      resolver: git
-      params:
-      - name: name
-        value: test-task
-`
-
 var pipelineYAMLStringWithoutDefaults = `
 metadata:
   name: foo
-  namespace: bar
 spec:
   tasks:
   - name: something

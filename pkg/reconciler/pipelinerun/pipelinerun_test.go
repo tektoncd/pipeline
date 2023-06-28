@@ -28,8 +28,6 @@ import (
 	"testing"
 	"time"
 
-	"sigs.k8s.io/yaml"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/sigstore/sigstore/pkg/signature"
@@ -58,10 +56,13 @@ import (
 	"gomodules.xyz/jsonpatch/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
@@ -76,6 +77,7 @@ import (
 	"knative.dev/pkg/reconciler"
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
+	"sigs.k8s.io/yaml"
 )
 
 var (
@@ -6703,6 +6705,97 @@ spec:
 
 	verifyTaskRunStatusesCount(t, reconciledRun.Status, 1)
 	verifyTaskRunStatusesNames(t, reconciledRun.Status, "test-pipeline-run-success-unit-test-1")
+}
+
+func TestReconcile_InvalidRemotePipeline(t *testing.T) {
+	namespace := "foo"
+	prName := "test-pipeline-run-success"
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-success
+  namespace: foo
+spec:
+  pipelineRef:
+    resolver: bar
+`)}
+	ps := parse.MustParseV1Pipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+  - name: unit-test-1
+    taskSpec:
+      steps:
+      - image: busybox
+        script: echo hello
+`)
+
+	pipelineBytes, err := yaml.Marshal(ps)
+	if err != nil {
+		t.Fatal("failed to marshal pipeline", err)
+	}
+	pipelineReq := getResolvedResolutionRequest(t, "bar", pipelineBytes, "foo", prName)
+
+	tcs := []struct {
+		name             string
+		webhookErr       error
+		wantPermanentErr bool
+		wantFailed       bool
+	}{{
+		name:             "webhook validation fails: invalid object",
+		webhookErr:       apierrors.NewBadRequest("bad request"),
+		wantPermanentErr: true,
+		wantFailed:       true,
+	}, {
+		name:             "webhook validation fails with permanent error",
+		webhookErr:       apierrors.NewInvalid(schema.GroupKind{Group: "tekton.dev/v1", Kind: "PipelineRun"}, "pipelinerun", field.ErrorList{}),
+		wantPermanentErr: true,
+		wantFailed:       true,
+	}, {
+		name:             "webhook validation fails: retryable",
+		webhookErr:       apierrors.NewTimeoutError("timeout", 5),
+		wantPermanentErr: false,
+		wantFailed:       false,
+	}}
+	for _, tc := range tcs {
+		// Unlike the tests above, we do *not* locally define our pipeline or unit-test task.
+		d := test.Data{
+			PipelineRuns: prs,
+			ConfigMaps: []*corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+					Data: map[string]string{
+						"enable-api-fields": "beta",
+					},
+				},
+			},
+			ResolutionRequests: []*resolutionv1beta1.ResolutionRequest{&pipelineReq},
+		}
+		testAssets, cancel := getPipelineRunController(t, d)
+		defer cancel()
+		c := testAssets.Controller
+		clients := testAssets.Clients
+		// Create an error when the Pipeline client attempts to create Pipelines
+		clients.Pipeline.PrependReactor("create", "pipelines", func(action ktesting.Action) (bool, runtime.Object, error) {
+			return true, nil, tc.webhookErr
+		})
+		err = c.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", namespace, prName))
+		if tc.wantPermanentErr != controller.IsPermanentError(err) {
+			t.Errorf("expected permanent error: %t but got %s", tc.wantPermanentErr, err)
+		}
+		reconciledRun, err := clients.Pipeline.TektonV1().PipelineRuns(namespace).Get(testAssets.Ctx, prName, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+		}
+
+		if tc.wantFailed && reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != ReasonFailedValidation {
+			t.Errorf("Expected PipelineRun to have reason FailedValidation, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+		}
+		if !tc.wantFailed && reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
+			t.Errorf("Expected PipelineRun to not be failed but has condition status false")
+		}
+	}
 }
 
 // TestReconcile_OptionalWorkspacesOmitted checks that an optional workspace declared by
