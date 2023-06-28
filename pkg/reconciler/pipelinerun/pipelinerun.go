@@ -556,10 +556,12 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	if pr.Status.FinallyStartTime != nil {
 		pipelineRunFacts.TimeoutsState.FinallyStartTime = &pr.Status.FinallyStartTime.Time
 	}
-	if tasksTimeout := pr.TasksTimeout(); tasksTimeout != nil {
+	tasksTimeout := pr.TasksTimeout()
+	if tasksTimeout != nil {
 		pipelineRunFacts.TimeoutsState.TasksTimeout = &tasksTimeout.Duration
 	}
-	if finallyTimeout := pr.FinallyTimeout(); finallyTimeout != nil {
+	finallyTimeout := pr.FinallyTimeout()
+	if finallyTimeout != nil {
 		pipelineRunFacts.TimeoutsState.FinallyTimeout = &finallyTimeout.Duration
 	}
 	if pipelineTimeout := pr.PipelineTimeout(ctx); pipelineTimeout != 0 {
@@ -642,7 +644,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 				}
 			}
 			if tasksToTimeOut.Len() > 0 {
-				logger.Infof("PipelineRun tasks timeout of %s reached, cancelling tasks", pr.Spec.Timeouts.Tasks.Duration.String())
+				logger.Debugf("PipelineRun tasks timeout of %s reached, cancelling tasks", tasksTimeout)
 				errs := timeoutPipelineTasksForTaskNames(ctx, logger, pr, c.PipelineClientSet, tasksToTimeOut)
 				if len(errs) > 0 {
 					errString := strings.Join(errs, "\n")
@@ -659,7 +661,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 			}
 		}
 		if tasksToTimeOut.Len() > 0 {
-			logger.Infof("PipelineRun finally timeout of %s reached, cancelling finally tasks", pr.Spec.Timeouts.Finally.Duration.String())
+			logger.Debugf("PipelineRun finally timeout of %s reached, cancelling finally tasks", finallyTimeout)
 			errs := timeoutPipelineTasksForTaskNames(ctx, logger, pr, c.PipelineClientSet, tasksToTimeOut)
 			if len(errs) > 0 {
 				errString := strings.Join(errs, "\n")
