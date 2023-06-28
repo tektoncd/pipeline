@@ -21,7 +21,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/tektoncd/pipeline/pkg/reconciler/customrun"
+	"github.com/tektoncd/pipeline/pkg/reconciler/notifications/customrun"
 	"knative.dev/pkg/injection/sharedmain"
 )
 
