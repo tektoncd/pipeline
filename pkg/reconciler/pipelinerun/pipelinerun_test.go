@@ -2319,25 +2319,7 @@ spec:
     taskRef:
       name: hello-world
 `)}
-	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
-metadata:
-  name: test-pipeline-run-with-timeout
-  namespace: foo
-spec:
-  pipelineRef:
-    name: test-pipeline
-  serviceAccountName: test-sa
-  timeouts:
-    tasks: 2m
-status:
-  startTime: "2021-12-31T23:55:00Z"
-  childReferences:
-  - name: test-pipeline-run-with-timeout-hello-world-1
-    pipelineTaskName: hello-world-1
-    kind: TaskRun
-`)}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
-
 	trs := []*v1beta1.TaskRun{mustParseTaskRunWithObjectMeta(t, taskRunObjectMeta("test-pipeline-run-with-timeout-hello-world-1", "foo", "test-pipeline-run-with-timeout",
 		"test-pipeline", "hello-world-1", false), `
 spec:
@@ -2352,46 +2334,89 @@ status:
     type: Succeeded
 `)}
 
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-		TaskRuns:     trs,
-	}
-	prt := newPipelineRunTest(t, d)
-	defer prt.Cancel()
+	tcs := []struct {
+		name string
+		pr   *v1beta1.PipelineRun
+	}{{
+		name: "tasks timeout specified",
+		pr: parse.MustParseV1beta1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-with-timeout
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  timeouts:
+    tasks: 2m
+status:
+  startTime: "2021-12-31T23:55:00Z"
+  childReferences:
+  - name: test-pipeline-run-with-timeout-hello-world-1
+    pipelineTaskName: hello-world-1
+    kind: TaskRun
+`),
+	}, {
+		name: "tasks timeout calculated",
+		pr: parse.MustParseV1beta1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-with-timeout
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  timeouts:
+    pipeline: 4m
+    finally: 2m
+status:
+  startTime: "2021-12-31T23:57:00Z"
+  childReferences:
+  - name: test-pipeline-run-with-timeout-hello-world-1
+    pipelineTaskName: hello-world-1
+    kind: TaskRun
+`),
+	}}
+	for _, tc := range tcs {
+		d := test.Data{
+			PipelineRuns: []*v1beta1.PipelineRun{tc.pr},
+			Pipelines:    ps,
+			Tasks:        ts,
+			TaskRuns:     trs,
+		}
+		prt := newPipelineRunTest(t, d)
+		defer prt.Cancel()
 
-	wantEvents := []string{
-		"Normal Started",
-	}
-	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-with-timeout", wantEvents, false)
+		wantEvents := []string{
+			"Normal Started",
+		}
+		reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-with-timeout", wantEvents, false)
 
-	if reconciledRun.Status.CompletionTime != nil {
-		t.Errorf("Expected nil CompletionTime on PipelineRun but was %s", reconciledRun.Status.CompletionTime)
-	}
+		if reconciledRun.Status.CompletionTime != nil {
+			t.Errorf("Expected nil CompletionTime on PipelineRun but was %s", reconciledRun.Status.CompletionTime)
+		}
 
-	// The PipelineRun should be running.
-	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != v1beta1.PipelineRunReasonRunning.String() {
-		t.Errorf("Expected PipelineRun to be running, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason)
-	}
+		// The PipelineRun should be running.
+		if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != v1beta1.PipelineRunReasonRunning.String() {
+			t.Errorf("Expected PipelineRun to be running, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason)
+		}
 
-	// Check that there is a skipped task for the expected reason
-	if len(reconciledRun.Status.SkippedTasks) != 1 {
-		t.Errorf("expected one skipped task, found %d", len(reconciledRun.Status.SkippedTasks))
-	} else if reconciledRun.Status.SkippedTasks[0].Reason != v1beta1.TasksTimedOutSkip {
-		t.Errorf("expected skipped reason to be '%s', but was '%s", v1beta1.TasksTimedOutSkip, reconciledRun.Status.SkippedTasks[0].Reason)
-	}
+		// Check that there is a skipped task for the expected reason
+		if len(reconciledRun.Status.SkippedTasks) != 1 {
+			t.Errorf("expected one skipped task, found %d", len(reconciledRun.Status.SkippedTasks))
+		} else if reconciledRun.Status.SkippedTasks[0].Reason != v1beta1.TasksTimedOutSkip {
+			t.Errorf("expected skipped reason to be '%s', but was '%s", v1beta1.TasksTimedOutSkip, reconciledRun.Status.SkippedTasks[0].Reason)
+		}
 
-	updatedTaskRun, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").Get(context.Background(), trs[0].Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("error getting updated TaskRun: %#v", err)
-	}
+		updatedTaskRun, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").Get(context.Background(), trs[0].Name, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("error getting updated TaskRun: %#v", err)
+		}
 
-	if updatedTaskRun.Spec.Status != v1beta1.TaskRunSpecStatusCancelled {
-		t.Errorf("expected existing TaskRun Spec.Status to be set to %s, but was %s", v1beta1.TaskRunSpecStatusCancelled, updatedTaskRun.Spec.Status)
-	}
-	if updatedTaskRun.Spec.StatusMessage != v1beta1.TaskRunCancelledByPipelineTimeoutMsg {
-		t.Errorf("expected existing TaskRun Spec.StatusMessage to be set to %s, but was %s", v1beta1.TaskRunCancelledByPipelineTimeoutMsg, updatedTaskRun.Spec.StatusMessage)
+		if updatedTaskRun.Spec.Status != v1beta1.TaskRunSpecStatusCancelled {
+			t.Errorf("expected existing TaskRun Spec.Status to be set to %s, but was %s", v1beta1.TaskRunSpecStatusCancelled, updatedTaskRun.Spec.Status)
+		}
+		if updatedTaskRun.Spec.StatusMessage != v1beta1.TaskRunCancelledByPipelineTimeoutMsg {
+			t.Errorf("expected existing TaskRun Spec.StatusMessage to be set to %s, but was %s", v1beta1.TaskRunCancelledByPipelineTimeoutMsg, updatedTaskRun.Spec.StatusMessage)
+		}
 	}
 }
 
@@ -2416,14 +2441,38 @@ spec:
     taskRef:
       name: hello-world
 `)}
-	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
+	prName := "test-pipeline-run-with-timeout"
+	ts := []*v1beta1.Task{simpleHelloWorldTask}
+	trs := []*v1beta1.TaskRun{
+		getTaskRun(
+			t,
+			"test-pipeline-run-with-timeout-hello-world",
+			prName,
+			ps[0].Name,
+			"hello-world",
+			corev1.ConditionTrue,
+		),
+		mustParseTaskRunWithObjectMeta(t, taskRunObjectMeta("test-pipeline-run-with-timeout-finaltask-1", "foo", "test-pipeline-run-with-timeout",
+			"test-pipeline", "finaltask-1", false), `
+spec:
+  serviceAccountName: test-sa
+  taskRef:
+    name: hello-world
+    kind: Task
+`)}
+
+	tcs := []struct {
+		name string
+		pr   *v1beta1.PipelineRun
+	}{{
+		name: "finally timeout specified",
+		pr: parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
-  name: test-pipeline-run-with-timeout
+  name: %s
   namespace: foo
 spec:
   pipelineRef:
     name: test-pipeline-with-finally
-  serviceAccountName: test-sa
   timeouts:
     finally: 15m
 status:
@@ -2448,67 +2497,85 @@ status:
       - lastTransitionTime: null
         status: "Unknown"
         type: Succeeded
-`)}
-	ts := []*v1beta1.Task{simpleHelloWorldTask}
-	trs := []*v1beta1.TaskRun{
-		getTaskRun(
-			t,
-			"test-pipeline-run-with-timeout-hello-world",
-			prs[0].Name,
-			ps[0].Name,
-			"hello-world",
-			corev1.ConditionTrue,
-		),
-		mustParseTaskRunWithObjectMeta(t, taskRunObjectMeta("test-pipeline-run-with-timeout-finaltask-1", "foo", "test-pipeline-run-with-timeout",
-			"test-pipeline", "finaltask-1", false), `
+`, prName)),
+	}, {
+		name: "finally timeout calculated",
+		pr: parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: foo
 spec:
+  pipelineRef:
+    name: test-pipeline-with-finally
+  timeouts:
+    tasks: 5m
+    pipeline: 20m
+status:
+  finallyStartTime: "2021-12-31T23:44:59Z"
+  startTime: "2021-12-31T23:40:00Z"
+  childReferences:
+  - name: test-pipeline-run-with-timeout-hello-world
+    apiVersion: tekton.dev/v1
+    kind: TaskRun
+    pipelineTaskName: task1
+    status:
+      conditions:
+      - lastTransitionTime: null
+        status: "True"
+        type: Succeeded
+  - name: test-pipeline-run-with-timeout-finaltask-1
+    apiVersion: tekton.dev/v1
+    kind: TaskRun
+    pipelineTaskName: finaltask-1
+    status:
+      conditions:
+      - lastTransitionTime: null
+        status: "Unknown"
+        type: Succeeded
+`, prName)),
+	}}
+	for _, tc := range tcs {
+		d := test.Data{
+			PipelineRuns: []*v1beta1.PipelineRun{tc.pr},
+			Pipelines:    ps,
+			Tasks:        ts,
+			TaskRuns:     trs,
+		}
+		prt := newPipelineRunTest(t, d)
+		defer prt.Cancel()
 
-  serviceAccountName: test-sa
-  taskRef:
-    name: hello-world
-    kind: Task
-`)}
+		wantEvents := []string{
+			"Normal Started",
+		}
+		reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-with-timeout", wantEvents, false)
 
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-		TaskRuns:     trs,
-	}
-	prt := newPipelineRunTest(t, d)
-	defer prt.Cancel()
+		if reconciledRun.Status.CompletionTime != nil {
+			t.Errorf("Expected a nil CompletionTime on running PipelineRun but was %s", reconciledRun.Status.CompletionTime.String())
+		}
 
-	wantEvents := []string{
-		"Normal Started",
-	}
-	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-with-timeout", wantEvents, false)
+		// The PipelineRun should be running.
+		if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != v1beta1.PipelineRunReasonRunning.String() {
+			t.Errorf("Expected PipelineRun to be running, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason)
+		}
 
-	if reconciledRun.Status.CompletionTime != nil {
-		t.Errorf("Expected a nil CompletionTime on running PipelineRun but was %s", reconciledRun.Status.CompletionTime.String())
-	}
+		// Check that there is a skipped task for the expected reason
+		if len(reconciledRun.Status.SkippedTasks) != 1 {
+			t.Errorf("expected one skipped task, found %d", len(reconciledRun.Status.SkippedTasks))
+		} else if reconciledRun.Status.SkippedTasks[0].Reason != v1beta1.FinallyTimedOutSkip {
+			t.Errorf("expected skipped reason to be '%s', but was '%s", v1beta1.FinallyTimedOutSkip, reconciledRun.Status.SkippedTasks[0].Reason)
+		}
 
-	// The PipelineRun should be running.
-	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != v1beta1.PipelineRunReasonRunning.String() {
-		t.Errorf("Expected PipelineRun to be running, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason)
-	}
+		updatedTaskRun, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").Get(context.Background(), trs[1].Name, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("error getting updated TaskRun: %#v", err)
+		}
 
-	// Check that there is a skipped task for the expected reason
-	if len(reconciledRun.Status.SkippedTasks) != 1 {
-		t.Errorf("expected one skipped task, found %d", len(reconciledRun.Status.SkippedTasks))
-	} else if reconciledRun.Status.SkippedTasks[0].Reason != v1beta1.FinallyTimedOutSkip {
-		t.Errorf("expected skipped reason to be '%s', but was '%s", v1beta1.FinallyTimedOutSkip, reconciledRun.Status.SkippedTasks[0].Reason)
-	}
-
-	updatedTaskRun, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").Get(context.Background(), trs[1].Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("error getting updated TaskRun: %#v", err)
-	}
-
-	if updatedTaskRun.Spec.Status != v1beta1.TaskRunSpecStatusCancelled {
-		t.Errorf("expected existing TaskRun Spec.Status to be set to %s, but was %s", v1beta1.TaskRunSpecStatusCancelled, updatedTaskRun.Spec.Status)
-	}
-	if updatedTaskRun.Spec.StatusMessage != v1beta1.TaskRunCancelledByPipelineTimeoutMsg {
-		t.Errorf("expected existing TaskRun Spec.StatusMessage to be set to %s, but was %s", v1beta1.TaskRunCancelledByPipelineTimeoutMsg, updatedTaskRun.Spec.StatusMessage)
+		if updatedTaskRun.Spec.Status != v1beta1.TaskRunSpecStatusCancelled {
+			t.Errorf("expected existing TaskRun Spec.Status to be set to %s, but was %s", v1beta1.TaskRunSpecStatusCancelled, updatedTaskRun.Spec.Status)
+		}
+		if updatedTaskRun.Spec.StatusMessage != v1beta1.TaskRunCancelledByPipelineTimeoutMsg {
+			t.Errorf("expected existing TaskRun Spec.StatusMessage to be set to %s, but was %s", v1beta1.TaskRunCancelledByPipelineTimeoutMsg, updatedTaskRun.Spec.StatusMessage)
+		}
 	}
 }
 
