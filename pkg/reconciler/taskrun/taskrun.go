@@ -418,7 +418,11 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
-	if _, usesAssistant := tr.Annotations[workspace.AnnotationAffinityAssistantName]; usesAssistant {
+	aaBehavior, err := affinityassistant.GetAffinityAssistantBehavior(ctx)
+	if err != nil {
+		return nil, nil, controller.NewPermanentError(err)
+	}
+	if aaBehavior == affinityassistant.AffinityAssistantPerWorkspace {
 		if err := workspace.ValidateOnlyOnePVCIsUsed(tr.Spec.Workspaces); err != nil {
 			logger.Errorf("TaskRun %q workspaces incompatible with Affinity Assistant: %v", tr.Name, err)
 			tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)

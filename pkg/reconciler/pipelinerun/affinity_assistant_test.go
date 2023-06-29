@@ -50,7 +50,6 @@ import (
 )
 
 var podSpecFilter cmp.Option = cmpopts.IgnoreFields(corev1.PodSpec{}, "Containers", "Affinity")
-var statefulSetSpecFilter cmp.Option = cmpopts.IgnoreFields(appsv1.StatefulSetSpec{}, "Replicas", "Selector")
 var podTemplateSpecFilter cmp.Option = cmpopts.IgnoreFields(corev1.PodTemplateSpec{}, "ObjectMeta")
 
 var workspacePVCName = "test-workspace-pvc"
@@ -112,6 +111,7 @@ var testPRWithEmptyDir = &v1.PipelineRun{
 // TestCreateOrUpdateAffinityAssistantsAndPVCsPerPipelineRun tests to create and delete Affinity Assistants and PVCs
 // per pipelinerun for a given PipelineRun
 func TestCreateOrUpdateAffinityAssistantsAndPVCsPerPipelineRun(t *testing.T) {
+	replicas := int32(1)
 	tests := []struct {
 		name                  string
 		pr                    *v1.PipelineRun
@@ -120,6 +120,14 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerPipelineRun(t *testing.T) {
 		name: "PersistentVolumeClaim Workspace type",
 		pr:   testPRWithPVC,
 		expectStatefulSetSpec: &appsv1.StatefulSetSpec{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					pipeline.PipelineRunLabelKey: testPRWithPVC.Name,
+					workspace.LabelInstance:      "affinity-assistant-622aca4516",
+					workspace.LabelComponent:     workspace.ComponentNameAffinityAssistant,
+				},
+			},
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{{
@@ -135,6 +143,14 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerPipelineRun(t *testing.T) {
 		name: "VolumeClaimTemplate Workspace type",
 		pr:   testPRWithVolumeClaimTemplate,
 		expectStatefulSetSpec: &appsv1.StatefulSetSpec{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					pipeline.PipelineRunLabelKey: testPRWithVolumeClaimTemplate.Name,
+					workspace.LabelInstance:      "affinity-assistant-426b306c50",
+					workspace.LabelComponent:     workspace.ComponentNameAffinityAssistant,
+				},
+			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{{
 				ObjectMeta: metav1.ObjectMeta{Name: "pvc-b9eea16dce"},
 			}},
@@ -143,6 +159,14 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerPipelineRun(t *testing.T) {
 		name: "VolumeClaimTemplate and PersistentVolumeClaim Workspaces",
 		pr:   testPRWithVolumeClaimTemplateAndPVC,
 		expectStatefulSetSpec: &appsv1.StatefulSetSpec{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					pipeline.PipelineRunLabelKey: testPRWithVolumeClaimTemplateAndPVC.Name,
+					workspace.LabelInstance:      "affinity-assistant-5bf44db4a8",
+					workspace.LabelComponent:     workspace.ComponentNameAffinityAssistant,
+				},
+			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{{
 				ObjectMeta: metav1.ObjectMeta{Name: "pvc-b9eea16dce"},
 			}},
@@ -158,16 +182,31 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerPipelineRun(t *testing.T) {
 			},
 		},
 	}, {
-		name:                  "other Workspace type",
-		pr:                    testPRWithEmptyDir,
-		expectStatefulSetSpec: nil,
+		name: "other Workspace type",
+		pr:   testPRWithEmptyDir,
+		expectStatefulSetSpec: &appsv1.StatefulSetSpec{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					pipeline.PipelineRunLabelKey: testPRWithEmptyDir.Name,
+					workspace.LabelInstance:      "affinity-assistant-c655a0c8a2",
+					workspace.LabelComponent:     workspace.ComponentNameAffinityAssistant,
+				},
+			},
+		},
 	}}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			configMap := map[string]string{
+				"disable-affinity-assistant": "true",
+				"coschedule":                 "pipelineruns",
+			}
+			kubeClientSet := fakek8s.NewSimpleClientset()
+			ctx := cfgtesting.SetFeatureFlags(context.Background(), t, configMap)
 			c := Reconciler{
-				KubeClientSet: fakek8s.NewSimpleClientset(),
+				KubeClientSet: kubeClientSet,
+				pvcHandler:    volumeclaim.NewPVCHandler(kubeClientSet, zap.NewExample().Sugar()),
 			}
 
 			err := c.createOrUpdateAffinityAssistantsAndPVCs(ctx, tc.pr, aa.AffinityAssistantPerPipelineRun)
@@ -179,7 +218,15 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerPipelineRun(t *testing.T) {
 			expectAAName := GetAffinityAssistantName("", tc.pr.Name)
 			validateStatefulSetSpec(t, ctx, c, expectAAName, tc.expectStatefulSetSpec)
 
-			// TODO(#6740)(WIP): test cleanupAffinityAssistantsAndPVCs for coscheduling-pipelinerun mode when fully implemented
+			// clean up Affinity Assistant
+			c.cleanupAffinityAssistantsAndPVCs(ctx, tc.pr)
+			if err != nil {
+				t.Errorf("unexpected error from cleanupAffinityAssistants: %v", err)
+			}
+			_, err = c.KubeClientSet.AppsV1().StatefulSets(tc.pr.Namespace).Get(ctx, expectAAName, metav1.GetOptions{})
+			if !apierrors.IsNotFound(err) {
+				t.Errorf("expected a NotFound response, got: %v", err)
+			}
 		})
 	}
 }
@@ -187,6 +234,7 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerPipelineRun(t *testing.T) {
 // TestCreateOrUpdateAffinityAssistantsAndPVCsPerWorkspaceOrDisabled tests to create and delete Affinity Assistants and PVCs
 // per workspace or disabled for a given PipelineRun
 func TestCreateOrUpdateAffinityAssistantsAndPVCsPerWorkspaceOrDisabled(t *testing.T) {
+	replicas := int32(1)
 	tests := []struct {
 		name, expectedPVCName string
 		pr                    *v1.PipelineRun
@@ -197,6 +245,14 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerWorkspaceOrDisabled(t *testin
 		aaBehavior: aa.AffinityAssistantPerWorkspace,
 		pr:         testPRWithPVC,
 		expectStatefulSetSpec: []*appsv1.StatefulSetSpec{{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					pipeline.PipelineRunLabelKey: testPRWithPVC.Name,
+					workspace.LabelInstance:      "affinity-assistant-ac9f8fc5ee",
+					workspace.LabelComponent:     workspace.ComponentNameAffinityAssistant,
+				},
+			},
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{{
@@ -214,6 +270,14 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerWorkspaceOrDisabled(t *testin
 		pr:              testPRWithVolumeClaimTemplate,
 		expectedPVCName: "pvc-b9eea16dce",
 		expectStatefulSetSpec: []*appsv1.StatefulSetSpec{{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					pipeline.PipelineRunLabelKey: testPRWithVolumeClaimTemplate.Name,
+					workspace.LabelInstance:      "affinity-assistant-4cf1a1c468",
+					workspace.LabelComponent:     workspace.ComponentNameAffinityAssistant,
+				},
+			},
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{{
@@ -236,6 +300,14 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerWorkspaceOrDisabled(t *testin
 		pr:              testPRWithVolumeClaimTemplateAndPVC,
 		expectedPVCName: "pvc-b9eea16dce",
 		expectStatefulSetSpec: []*appsv1.StatefulSetSpec{{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					pipeline.PipelineRunLabelKey: testPRWithVolumeClaimTemplateAndPVC.Name,
+					workspace.LabelInstance:      "affinity-assistant-6c87e714a0",
+					workspace.LabelComponent:     workspace.ComponentNameAffinityAssistant,
+				},
+			},
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{{
@@ -246,6 +318,14 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerWorkspaceOrDisabled(t *testin
 					}},
 				},
 			}}, {
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					pipeline.PipelineRunLabelKey: testPRWithVolumeClaimTemplateAndPVC.Name,
+					workspace.LabelInstance:      "affinity-assistant-6399c93362",
+					workspace.LabelComponent:     workspace.ComponentNameAffinityAssistant,
+				},
+			},
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{{
@@ -880,53 +960,6 @@ func TestThatCleanupIsAvoidedIfAssistantIsDisabled(t *testing.T) {
 	}
 }
 
-func TestDisableAffinityAssistant(t *testing.T) {
-	for _, tc := range []struct {
-		description string
-		configMap   *corev1.ConfigMap
-		expected    bool
-	}{{
-		description: "Default behaviour: A missing disable-affinity-assistant flag should result in false",
-		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data:       map[string]string{},
-		},
-		expected: false,
-	}, {
-		description: "Setting disable-affinity-assistant to false should result in false",
-		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				featureFlagDisableAffinityAssistantKey: "false",
-			},
-		},
-		expected: false,
-	}, {
-		description: "Setting disable-affinity-assistant to true should result in true",
-		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				featureFlagDisableAffinityAssistantKey: "true",
-			},
-		},
-		expected: true,
-	}} {
-		t.Run(tc.description, func(t *testing.T) {
-			c := Reconciler{
-				KubeClientSet: fakek8s.NewSimpleClientset(
-					tc.configMap,
-				),
-				Images: pipeline.Images{},
-			}
-			store := config.NewStore(logtesting.TestLogger(t))
-			store.OnConfigChanged(tc.configMap)
-			if result := c.isAffinityAssistantDisabled(store.ToContext(context.Background())); result != tc.expected {
-				t.Errorf("Expected %t Received %t", tc.expected, result)
-			}
-		})
-	}
-}
-
 func TestGetAssistantAffinityMergedWithPodTemplateAffinity(t *testing.T) {
 	labelSelector := &metav1.LabelSelector{
 		MatchLabels: map[string]string{
@@ -1101,6 +1134,48 @@ spec:
 	}
 }
 
+func TestGetAffinityAssistantAnnotationVal(t *testing.T) {
+	tcs := []struct {
+		name                                                 string
+		aaBehavior                                           aa.AffinityAssistantBehavior
+		wsName, prName, expectAffinityAssistantAnnotationVal string
+	}{{
+		name:                                 "per workspace",
+		aaBehavior:                           aa.AffinityAssistantPerWorkspace,
+		wsName:                               "my-ws",
+		prName:                               "my-pipelinerun",
+		expectAffinityAssistantAnnotationVal: "affinity-assistant-315f58d30d",
+	}, {
+		name:       "per workspace - empty pipeline workspace name",
+		aaBehavior: aa.AffinityAssistantPerWorkspace,
+		prName:     "my-pipelinerun",
+	}, {
+		name:                                 "per pipelinerun",
+		aaBehavior:                           aa.AffinityAssistantPerPipelineRun,
+		wsName:                               "my-ws",
+		prName:                               "my-pipelinerun",
+		expectAffinityAssistantAnnotationVal: "affinity-assistant-0b79942a50",
+	}, {
+		name:                                 "isolate pipelinerun",
+		aaBehavior:                           aa.AffinityAssistantPerPipelineRunWithIsolation,
+		wsName:                               "my-ws",
+		prName:                               "my-pipelinerun",
+		expectAffinityAssistantAnnotationVal: "affinity-assistant-0b79942a50",
+	}, {
+		name:       "disabled",
+		aaBehavior: aa.AffinityAssistantDisabled,
+		wsName:     "my-ws",
+		prName:     "my-pipelinerun",
+	}}
+
+	for _, tc := range tcs {
+		aaAnnotationVal := getAffinityAssistantAnnotationVal(tc.aaBehavior, tc.wsName, tc.prName)
+		if diff := cmp.Diff(tc.expectAffinityAssistantAnnotationVal, aaAnnotationVal); diff != "" {
+			t.Errorf("Affinity Assistant Annotation Val mismatch: %v", diff)
+		}
+	}
+}
+
 type Data struct {
 	StatefulSets []*appsv1.StatefulSet
 	Nodes        []*corev1.Node
@@ -1139,7 +1214,7 @@ func validateStatefulSetSpec(t *testing.T, ctx context.Context, c Reconciler, ex
 		if err != nil {
 			t.Fatalf("unexpected error when retrieving StatefulSet: %v", err)
 		}
-		if d := cmp.Diff(expectStatefulSetSpec, &aa.Spec, statefulSetSpecFilter, podSpecFilter, podTemplateSpecFilter); d != "" {
+		if d := cmp.Diff(expectStatefulSetSpec, &aa.Spec, podSpecFilter, podTemplateSpecFilter); d != "" {
 			t.Errorf("StatefulSetSpec diff: %s", diff.PrintWantGot(d))
 		}
 	} else if !apierrors.IsNotFound(err) {

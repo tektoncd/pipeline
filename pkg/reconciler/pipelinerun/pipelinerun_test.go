@@ -66,7 +66,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/kubernetes/typed/core/v1/fake"
 	ktesting "k8s.io/client-go/testing"
+	testing2 "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 	clock "k8s.io/utils/clock/testing"
 	"knative.dev/pkg/apis"
@@ -13276,6 +13278,87 @@ spec:
 	// The PipelineRun should be create run failed.
 	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "CreateRunFailed" {
 		t.Errorf("Expected PipelineRun to be create run failed, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+	}
+}
+
+func TestHandleAffinityAssistantAndPVCCreationError(t *testing.T) {
+	prName := "affinity-assistant-creation-fail"
+	namespace := "default"
+	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: hello-world
+      workspaces:
+      - name: my-ws
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo hello
+  workspaces:
+  - name: my-ws
+    volumeClaimTemplate:
+      metadata:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 16Mi
+`, prName, namespace))
+
+	tcs := []struct {
+		name, failureType, expectErrorReason string
+	}{{
+		name:              "pvc creation error",
+		failureType:       "pvc",
+		expectErrorReason: volumeclaim.ReasonCouldntCreateWorkspacePVC,
+	}, {
+		name:              "affinity assistant creation error",
+		failureType:       "statefulset",
+		expectErrorReason: ReasonCouldntCreateOrUpdateAffinityAssistantStatefulSet,
+	}}
+
+	for _, tc := range tcs {
+		d := test.Data{
+			PipelineRuns: []*v1.PipelineRun{pr.DeepCopy()},
+		}
+		testAssets, cancel := getPipelineRunController(t, d)
+		defer cancel()
+		c := testAssets.Controller
+		clients := testAssets.Clients
+
+		// mock pvc creation err
+		switch tc.failureType {
+		case "pvc":
+			clients.Kube.CoreV1().(*fake.FakeCoreV1).PrependReactor("create", "persistentvolumeclaims",
+				func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
+					return true, &corev1.PersistentVolumeClaim{}, errors.New("error creating persistentvolumeclaims")
+				})
+		case "statefulset":
+			clients.Kube.CoreV1().(*fake.FakeCoreV1).PrependReactor("create", "statefulsets",
+				func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
+					return true, &appsv1.StatefulSet{}, errors.New("error creating statefulsets")
+				})
+		}
+
+		// reconciler
+		err := c.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", namespace, prName))
+		if !controller.IsPermanentError(err) {
+			t.Errorf("expected permanent error but got %s", err)
+		}
+
+		// check pr status
+		reconciledPr, err := clients.Pipeline.TektonV1().PipelineRuns(namespace).Get(testAssets.Ctx, prName, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("had error getting reconciled pipelinerun out of fake client: %s", err)
+		}
+		if diff := cmp.Diff(tc.expectErrorReason, reconciledPr.Status.GetCondition(apis.ConditionSucceeded).Reason); diff != "" {
+			t.Errorf("pipelinerun fail reason mismatch: %v", diff)
+		}
 	}
 }
 
