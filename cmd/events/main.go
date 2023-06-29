@@ -47,7 +47,8 @@ func main() {
 	}()
 
 	// start the events controller
-	sharedmain.Main(eventsControllerName, customrun.NewController())
+	sharedmain.Main(eventsControllerName,
+		customrun.NewController())
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
