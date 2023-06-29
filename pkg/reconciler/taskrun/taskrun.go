@@ -484,7 +484,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 	// Please note that this block is required to run before `applyParamsContextsResultsAndWorkspaces` is called the first time,
 	// and that `applyParamsContextsResultsAndWorkspaces` _must_ be called on every reconcile.
 	if pod == nil && tr.HasVolumeClaimTemplate() {
-		if err := c.pvcHandler.CreatePVCsForWorkspacesWithoutAffinityAssistant(ctx, tr.Spec.Workspaces, *kmeta.NewControllerRef(tr), tr.Namespace); err != nil {
+		if err := c.pvcHandler.CreatePVCsForWorkspaces(ctx, tr.Spec.Workspaces, *kmeta.NewControllerRef(tr), tr.Namespace); err != nil {
 			logger.Errorf("Failed to create PVC for TaskRun %s: %v", tr.Name, err)
 			tr.Status.MarkResourceFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
 				fmt.Errorf("Failed to create PVC for TaskRun %s workspaces correctly: %w",

@@ -40,6 +40,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
@@ -532,7 +533,7 @@ spec:
 		wantRun: mustParseCustomRunWithObjectMeta(t,
 			taskRunObjectMetaWithAnnotations("test-pipelinerun-custom-task", "namespace", "test-pipelinerun",
 				"test-pipelinerun", "custom-task", false, map[string]string{
-					"pipeline.tekton.dev/affinity-assistant": getAffinityAssistantName("pipelinews", pipelineRunName),
+					"pipeline.tekton.dev/affinity-assistant": GetAffinityAssistantName("pipelinews", pipelineRunName),
 				}),
 			`
 spec:
@@ -4043,8 +4044,8 @@ spec:
 		t.Fatalf("expected one StatefulSet created. %d was created", len(stsNames))
 	}
 
-	expectedAffinityAssistantName1 := getAffinityAssistantName(workspaceName, pipelineRunName)
-	expectedAffinityAssistantName2 := getAffinityAssistantName(workspaceName2, pipelineRunName)
+	expectedAffinityAssistantName1 := GetAffinityAssistantName(workspaceName, pipelineRunName)
+	expectedAffinityAssistantName2 := GetAffinityAssistantName(workspaceName2, pipelineRunName)
 	expectedAffinityAssistantStsNames := make(map[string]bool)
 	expectedAffinityAssistantStsNames[expectedAffinityAssistantName1] = true
 	expectedAffinityAssistantStsNames[expectedAffinityAssistantName2] = true
@@ -7673,7 +7674,7 @@ func Test_taskWorkspaceByWorkspaceVolumeSource(t *testing.T) {
 		name, taskWorkspaceName, pipelineWorkspaceName, prName string
 		wb                                                     v1.WorkspaceBinding
 		expectedBinding                                        v1.WorkspaceBinding
-		disableAffinityAssistant                               bool
+		aaBehavior                                             affinityassistant.AffinityAssitantBehavior
 	}{
 		{
 			name:                  "PVC Workspace with Affinity Assistant",
@@ -7687,9 +7688,10 @@ func Test_taskWorkspaceByWorkspaceVolumeSource(t *testing.T) {
 			expectedBinding: v1.WorkspaceBinding{
 				Name: "task-workspace",
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: "pvc-2c26b46b68-affinity-assistant-e011a5ef79-0",
+					ClaimName: "pvc-2c26b46b68",
 				},
 			},
+			aaBehavior: affinityassistant.AffinityAssistantPerWorkspace,
 		},
 		{
 			name:              "PVC Workspace without Affinity Assistant",
@@ -7705,7 +7707,7 @@ func Test_taskWorkspaceByWorkspaceVolumeSource(t *testing.T) {
 					ClaimName: "pvc-2c26b46b68",
 				},
 			},
-			disableAffinityAssistant: true,
+			aaBehavior: affinityassistant.AffinityAssistantDisabled,
 		},
 		{
 			name:              "non-PVC Workspace",
@@ -7718,6 +7720,7 @@ func Test_taskWorkspaceByWorkspaceVolumeSource(t *testing.T) {
 				Name:     "task-workspace",
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
+			aaBehavior: affinityassistant.AffinityAssistantPerWorkspace,
 		},
 	}
 
@@ -7725,20 +7728,7 @@ func Test_taskWorkspaceByWorkspaceVolumeSource(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			c := Reconciler{}
 			ctx := context.Background()
-			if tc.disableAffinityAssistant {
-				featureFlags, err := config.NewFeatureFlagsFromMap(map[string]string{
-					"disable-affinity-assistant": "true",
-				})
-				if err != nil {
-					t.Fatalf("error creating feature flag disable-affinity-assistant from map: %v", err)
-				}
-				cfg := &config.Config{
-					FeatureFlags: featureFlags,
-				}
-				ctx = config.ToContext(context.Background(), cfg)
-			}
-
-			binding := c.taskWorkspaceByWorkspaceVolumeSource(ctx, tc.pipelineWorkspaceName, tc.prName, tc.wb, tc.taskWorkspaceName, "", *kmeta.NewControllerRef(testPr))
+			binding := c.taskWorkspaceByWorkspaceVolumeSource(ctx, tc.pipelineWorkspaceName, tc.prName, tc.wb, tc.taskWorkspaceName, "", *kmeta.NewControllerRef(testPr), tc.aaBehavior)
 			if d := cmp.Diff(tc.expectedBinding, binding); d != "" {
 				t.Errorf("WorkspaceBinding diff: %s", diff.PrintWantGot(d))
 			}

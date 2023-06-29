@@ -41,20 +41,19 @@ import (
 
 const (
 	// ReasonCouldntCreateOrUpdateAffinityAssistantStatefulSetPerWorkspace indicates that a PipelineRun uses workspaces with PersistentVolumeClaim
-	// as a volume source and expect an Assistant StatefulSet, but couldn't create a StatefulSet.
+	// as a volume source and expect an Assistant StatefulSet in AffinityAssistantPerWorkspace behavior, but couldn't create a StatefulSet.
 	ReasonCouldntCreateOrUpdateAffinityAssistantStatefulSetPerWorkspace = "ReasonCouldntCreateOrUpdateAffinityAssistantStatefulSetPerWorkspace"
 
 	featureFlagDisableAffinityAssistantKey = "disable-affinity-assistant"
 )
 
-// createOrUpdateAffinityAssistantsPerAABehavior creates Affinity Assistant StatefulSets based on AffinityAssistantBehavior.
+// createOrUpdateAffinityAssistantsAndPVCs creates Affinity Assistant StatefulSets and PVCs based on AffinityAssistantBehavior.
 // This is done to achieve Node Affinity for taskruns in a pipelinerun, and make it possible for the taskruns to execute parallel while sharing volume.
 // If the AffinityAssitantBehavior is AffinityAssistantPerWorkspace, it creates an Affinity Assistant for
 // every taskrun in the pipelinerun that use the same PVC based volume.
 // If the AffinityAssitantBehavior is AffinityAssistantPerPipelineRun or AffinityAssistantPerPipelineRunWithIsolation,
 // it creates one Affinity Assistant for the pipelinerun.
-// Other AffinityAssitantBehaviors are invalid.
-func (c *Reconciler) createOrUpdateAffinityAssistantsPerAABehavior(ctx context.Context, pr *v1.PipelineRun, aaBehavior aa.AffinityAssitantBehavior) error {
+func (c *Reconciler) createOrUpdateAffinityAssistantsAndPVCs(ctx context.Context, pr *v1.PipelineRun, aaBehavior aa.AffinityAssitantBehavior) error {
 	var errs []error
 	var unschedulableNodes sets.Set[string] = nil
 
@@ -79,26 +78,40 @@ func (c *Reconciler) createOrUpdateAffinityAssistantsPerAABehavior(ctx context.C
 		}
 	}
 
+	// create PVCs from PipelineRun's VolumeClaimTemplate when aaBehavior is AffinityAssistantPerWorkspace or AffinityAssistantDisabled before creating
+	// affinity assistant so that the OwnerReference of the PVCs are the pipelineruns, which is used to achieve PVC auto deletion at PipelineRun deletion time
+	if (aaBehavior == aa.AffinityAssistantPerWorkspace || aaBehavior == aa.AffinityAssistantDisabled) && pr.HasVolumeClaimTemplate() {
+		if err := c.pvcHandler.CreatePVCsForWorkspaces(ctx, pr.Spec.Workspaces, *kmeta.NewControllerRef(pr), pr.Namespace); err != nil {
+			return fmt.Errorf("failed to create PVC for PipelineRun %s: %w", pr.Name, err)
+		}
+	}
+
 	switch aaBehavior {
 	case aa.AffinityAssistantPerWorkspace:
 		for claim, workspaceName := range claimToWorkspace {
-			aaName := getAffinityAssistantName(workspaceName, pr.Name)
+			aaName := GetAffinityAssistantName(workspaceName, pr.Name)
 			err := c.createOrUpdateAffinityAssistant(ctx, aaName, pr, nil, []corev1.PersistentVolumeClaimVolumeSource{*claim}, unschedulableNodes)
 			errs = append(errs, err...)
 		}
 		for claimTemplate, workspaceName := range claimTemplatesToWorkspace {
-			aaName := getAffinityAssistantName(workspaceName, pr.Name)
-			err := c.createOrUpdateAffinityAssistant(ctx, aaName, pr, []corev1.PersistentVolumeClaim{*claimTemplate}, nil, unschedulableNodes)
+			aaName := GetAffinityAssistantName(workspaceName, pr.Name)
+			// To support PVC auto deletion at pipelinerun deletion time, the OwnerReference of the PVCs should be set to the owning pipelinerun.
+			// In AffinityAssistantPerWorkspace mode, the reconciler has created PVCs (owned by pipelinerun) from pipelinerun's VolumeClaimTemplate at this point,
+			// so the VolumeClaimTemplates are pass in as PVCs when creating affinity assistant StatefulSet for volume scheduling.
+			// If passed in as VolumeClaimTemplates, the PVCs are owned by Affinity Assistant StatefulSet instead of the pipelinerun.
+			err := c.createOrUpdateAffinityAssistant(ctx, aaName, pr, nil, []corev1.PersistentVolumeClaimVolumeSource{{ClaimName: claimTemplate.Name}}, unschedulableNodes)
 			errs = append(errs, err...)
 		}
 	case aa.AffinityAssistantPerPipelineRun, aa.AffinityAssistantPerPipelineRunWithIsolation:
 		if claims != nil || claimTemplates != nil {
-			aaName := getAffinityAssistantName("", pr.Name)
+			aaName := GetAffinityAssistantName("", pr.Name)
+			// In AffinityAssistantPerPipelineRun or AffinityAssistantPerPipelineRunWithIsolation modes, the PVCs are created via StatefulSet for volume scheduling.
+			// PVCs from pipelinerun's VolumeClaimTemplate are enforced to be deleted at pipelinerun completion time,
+			// so we don't need to worry the OwnerReference of the PVCs
 			err := c.createOrUpdateAffinityAssistant(ctx, aaName, pr, claimTemplates, claims, unschedulableNodes)
 			errs = append(errs, err...)
 		}
 	case aa.AffinityAssistantDisabled:
-		return fmt.Errorf("unexpected Affinity Assistant behavior %v", aa.AffinityAssistantDisabled)
 	}
 
 	return errorutils.NewAggregate(errs)
@@ -175,17 +188,9 @@ func (c *Reconciler) cleanupAffinityAssistants(ctx context.Context, pr *v1.Pipel
 	var errs []error
 	for _, w := range pr.Spec.Workspaces {
 		if w.PersistentVolumeClaim != nil || w.VolumeClaimTemplate != nil {
-			affinityAssistantStsName := getAffinityAssistantName(w.Name, pr.Name)
+			affinityAssistantStsName := GetAffinityAssistantName(w.Name, pr.Name)
 			if err := c.KubeClientSet.AppsV1().StatefulSets(pr.Namespace).Delete(ctx, affinityAssistantStsName, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
 				errs = append(errs, fmt.Errorf("failed to delete StatefulSet %s: %w", affinityAssistantStsName, err))
-			}
-
-			// cleanup PVCs created by Affinity Assistants
-			if w.VolumeClaimTemplate != nil {
-				pvcName := getPersistentVolumeClaimNameWithAffinityAssistant(w.Name, pr.Name, w, *kmeta.NewControllerRef(pr))
-				if err := c.KubeClientSet.CoreV1().PersistentVolumeClaims(pr.Namespace).Delete(ctx, pvcName, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
-					errs = append(errs, fmt.Errorf("failed to delete PersistentVolumeClaim %s: %w", pvcName, err))
-				}
 			}
 		}
 	}
@@ -195,13 +200,15 @@ func (c *Reconciler) cleanupAffinityAssistants(ctx context.Context, pr *v1.Pipel
 // getPersistentVolumeClaimNameWithAffinityAssistant returns the PersistentVolumeClaim name that is
 // created by the Affinity Assistant StatefulSet VolumeClaimTemplate when Affinity Assistant is enabled.
 // The PVCs created by StatefulSet VolumeClaimTemplates follow the format `<pvcName>-<affinityAssistantName>-0`
+// TODO(#6740)(WIP): use this function when adding end-to-end support for AffinityAssistantPerPipelineRun mode
 func getPersistentVolumeClaimNameWithAffinityAssistant(pipelineWorkspaceName, prName string, wb v1.WorkspaceBinding, owner metav1.OwnerReference) string {
 	pvcName := volumeclaim.GetPVCNameWithoutAffinityAssistant(wb.VolumeClaimTemplate.Name, wb, owner)
-	affinityAssistantName := getAffinityAssistantName(pipelineWorkspaceName, prName)
+	affinityAssistantName := GetAffinityAssistantName(pipelineWorkspaceName, prName)
 	return fmt.Sprintf("%s-%s-0", pvcName, affinityAssistantName)
 }
 
-func getAffinityAssistantName(pipelineWorkspaceName string, pipelineRunName string) string {
+// GetAffinityAssistantName returns the Affinity Assistant name based on pipelineWorkspaceName and pipelineRunName
+func GetAffinityAssistantName(pipelineWorkspaceName string, pipelineRunName string) string {
 	hashBytes := sha256.Sum256([]byte(pipelineWorkspaceName + pipelineRunName))
 	hashString := fmt.Sprintf("%x", hashBytes)
 	return fmt.Sprintf("%s-%s", workspace.ComponentNameAffinityAssistant, hashString[:10])
