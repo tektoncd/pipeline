@@ -3273,10 +3273,9 @@ spec:
 	}
 }
 
-// TestReconcileWithWorkspacesIncompatibleWithAffinityAssistant tests that a TaskRun used with an associated
-// Affinity Assistant is validated and that the validation fails for a TaskRun that is incompatible with
-// Affinity Assistant; e.g. using more than one PVC-backed workspace.
-func TestReconcileWithWorkspacesIncompatibleWithAffinityAssistant(t *testing.T) {
+// TestReconcileWithMultiplePVCWorkspaceWithAffinityAssistant tests the execution of a TaskRun binding two VolumeClaimTemplate
+// as Workspace in AffinityAssistantPerWorkspaces mode and AffinityAssistantPerPipelineruns mode.
+func TestReconcileWithMultiplePVCWorkspaceWithAffinityAssistant(t *testing.T) {
 	taskWithTwoWorkspaces := parse.MustParseV1Task(t, `
 metadata:
   name: test-task-two-workspaces
@@ -3288,6 +3287,11 @@ spec:
     readOnly: true
   - description: another workspace
     name: ws2
+  steps:
+  - command:
+    - /mycmd
+    image: foo
+    name: simple-step
 `)
 	taskRun := parse.MustParseV1TaskRun(t, `
 metadata:
@@ -3309,34 +3313,63 @@ spec:
         name: pvc2
 `)
 
-	d := test.Data{
-		Tasks:        []*v1.Task{taskWithTwoWorkspaces},
-		TaskRuns:     []*v1.TaskRun{taskRun},
-		ClusterTasks: nil,
-	}
-	testAssets, cancel := getTaskRunController(t, d)
-	defer cancel()
-	clients := testAssets.Clients
-	createServiceAccount(t, testAssets, "default", "foo")
-	_ = testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun))
+	tcs := []struct {
+		name                string
+		cfgMap              map[string]string
+		expectFailureReason string
+	}{{
+		name: "multiple PVC based Workspaces in per workspace coschedule mode - failure",
+		cfgMap: map[string]string{
+			"disable-affinity-assistant": "false",
+			"coschedule":                 "workspaces",
+		},
+		expectFailureReason: podconvert.ReasonFailedValidation,
+	}, {
+		name: "multiple PVC based Workspaces in per pipelinerun coschedule mode - success",
+		cfgMap: map[string]string{
+			"disable-affinity-assistant": "true",
+			"coschedule":                 "pipelineruns",
+		},
+	}}
 
-	_, err := clients.Pipeline.TektonV1().Tasks(taskRun.Namespace).Get(testAssets.Ctx, taskWithTwoWorkspaces.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("krux: %v", err)
-	}
+	for _, tc := range tcs {
+		d := test.Data{
+			Tasks:        []*v1.Task{taskWithTwoWorkspaces},
+			TaskRuns:     []*v1.TaskRun{taskRun},
+			ClusterTasks: nil,
+			ConfigMaps: []*corev1.ConfigMap{{
+				ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+				Data:       tc.cfgMap,
+			}},
+		}
+		testAssets, cancel := getTaskRunController(t, d)
+		defer cancel()
+		clients := testAssets.Clients
+		createServiceAccount(t, testAssets, "default", "foo")
+		_ = testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun))
 
-	ttt, err := clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
-	}
+		_, err := clients.Pipeline.TektonV1().Tasks(taskRun.Namespace).Get(testAssets.Ctx, taskWithTwoWorkspaces.Name, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("failed to get task: %v", err)
+		}
 
-	if len(ttt.Status.Conditions) != 1 {
-		t.Errorf("unexpected number of Conditions, expected 1 Condition")
-	}
+		ttt, err := clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+		}
 
-	for _, cond := range ttt.Status.Conditions {
-		if cond.Reason != podconvert.ReasonFailedValidation {
-			t.Errorf("unexpected Reason on the Condition, expected: %s, got: %s", podconvert.ReasonFailedValidation, cond.Reason)
+		if len(ttt.Status.Conditions) != 1 {
+			t.Errorf("unexpected number of Conditions, expected 1 Condition")
+		}
+
+		if tc.expectFailureReason != "" {
+			for _, cond := range ttt.Status.Conditions {
+				if cond.Reason != tc.expectFailureReason {
+					t.Errorf("unexpected Reason on the Condition, expected: %s, got: %s", tc.expectFailureReason, cond.Reason)
+				}
+			}
+		} else if ttt.IsFailure() {
+			t.Errorf("Unexpected unsuccessful condition for TaskRun %q:\n%#v", taskRun.Name, ttt.Status.Conditions)
 		}
 	}
 }

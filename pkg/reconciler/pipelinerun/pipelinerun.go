@@ -617,28 +617,21 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		if err != nil {
 			return controller.NewPermanentError(err)
 		}
-
-		switch aaBehavior {
-		case affinityassistant.AffinityAssistantPerWorkspace, affinityassistant.AffinityAssistantDisabled:
-			if err := c.createOrUpdateAffinityAssistantsAndPVCs(ctx, pr, aaBehavior); err != nil {
-				switch {
-				case errors.Is(err, ErrPvcCreationFailed):
-					logger.Errorf("Failed to create PVC for PipelineRun %s: %v", pr.Name, err)
-					pr.Status.MarkFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
-						"Failed to create PVC for PipelineRun %s/%s correctly: %s",
-						pr.Namespace, pr.Name, err)
-				case errors.Is(err, ErrAffinityAssistantCreationFailed):
-					logger.Errorf("Failed to create affinity assistant StatefulSet for PipelineRun %s: %v", pr.Name, err)
-					pr.Status.MarkFailed(ReasonCouldntCreateOrUpdateAffinityAssistantStatefulSet,
-						"Failed to create StatefulSet for PipelineRun %s/%s correctly: %s",
-						pr.Namespace, pr.Name, err)
-				default:
-				}
-				return controller.NewPermanentError(err)
+		if err := c.createOrUpdateAffinityAssistantsAndPVCs(ctx, pr, aaBehavior); err != nil {
+			switch {
+			case errors.Is(err, ErrPvcCreationFailed):
+				logger.Errorf("Failed to create PVC for PipelineRun %s: %v", pr.Name, err)
+				pr.Status.MarkFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
+					"Failed to create PVC for PipelineRun %s/%s correctly: %s",
+					pr.Namespace, pr.Name, err)
+			case errors.Is(err, ErrAffinityAssistantCreationFailed):
+				logger.Errorf("Failed to create affinity assistant StatefulSet for PipelineRun %s: %v", pr.Name, err)
+				pr.Status.MarkFailed(ReasonCouldntCreateOrUpdateAffinityAssistantStatefulSet,
+					"Failed to create StatefulSet for PipelineRun %s/%s correctly: %s",
+					pr.Namespace, pr.Name, err)
+			default:
 			}
-		case affinityassistant.AffinityAssistantPerPipelineRun, affinityassistant.AffinityAssistantPerPipelineRunWithIsolation:
-			// TODO(#6740)(WIP): implement end-to-end support for AffinityAssistantPerPipelineRun and AffinityAssistantPerPipelineRunWithIsolation modes
-			return controller.NewPermanentError(fmt.Errorf("affinity assistant behavior: %v is not implemented", aaBehavior))
+			return controller.NewPermanentError(err)
 		}
 	}
 
@@ -885,8 +878,12 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 		return nil, err
 	}
 
-	if !c.isAffinityAssistantDisabled(ctx) && pipelinePVCWorkspaceName != "" {
-		tr.Annotations[workspace.AnnotationAffinityAssistantName] = GetAffinityAssistantName(pipelinePVCWorkspaceName, pr.Name)
+	aaBehavior, err := affinityassistant.GetAffinityAssistantBehavior(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if aaAnnotationVal := getAffinityAssistantAnnotationVal(aaBehavior, pipelinePVCWorkspaceName, pr.Name); aaAnnotationVal != "" {
+		tr.Annotations[workspace.AnnotationAffinityAssistantName] = aaAnnotationVal
 	}
 
 	logger.Infof("Creating a new TaskRun object %s for pipeline task %s", taskRunName, rpt.PipelineTask.Name)
@@ -1006,10 +1003,15 @@ func (c *Reconciler) createCustomRun(ctx context.Context, runName string, params
 			},
 		}
 	}
+
 	// Set the affinity assistant annotation in case the custom task creates TaskRuns or Pods
 	// that can take advantage of it.
-	if !c.isAffinityAssistantDisabled(ctx) && pipelinePVCWorkspaceName != "" {
-		r.Annotations[workspace.AnnotationAffinityAssistantName] = GetAffinityAssistantName(pipelinePVCWorkspaceName, pr.Name)
+	aaBehavior, err := affinityassistant.GetAffinityAssistantBehavior(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if aaAnnotationVal := getAffinityAssistantAnnotationVal(aaBehavior, pipelinePVCWorkspaceName, pr.Name); aaAnnotationVal != "" {
+		r.Annotations[workspace.AnnotationAffinityAssistantName] = aaAnnotationVal
 	}
 
 	logger.Infof("Creating a new CustomRun object %s", runName)
@@ -1125,9 +1127,11 @@ func (c *Reconciler) taskWorkspaceByWorkspaceVolumeSource(ctx context.Context, p
 	}
 	binding.Name = taskWorkspaceName
 
-	// TODO(#6740)(WIP): get binding for AffinityAssistantPerPipelineRun and AffinityAssistantPerPipelineRunWithIsolation mode
-	if aaBehavior == affinityassistant.AffinityAssistantDisabled || aaBehavior == affinityassistant.AffinityAssistantPerWorkspace {
+	switch aaBehavior {
+	case affinityassistant.AffinityAssistantPerWorkspace, affinityassistant.AffinityAssistantDisabled:
 		binding.PersistentVolumeClaim.ClaimName = volumeclaim.GeneratePVCNameFromWorkspaceBinding(wb.VolumeClaimTemplate.Name, wb, owner)
+	case affinityassistant.AffinityAssistantPerPipelineRun, affinityassistant.AffinityAssistantPerPipelineRunWithIsolation:
+		binding.PersistentVolumeClaim.ClaimName = getPersistentVolumeClaimNameWithAffinityAssistant("", prName, wb, owner)
 	}
 
 	return binding

@@ -26,6 +26,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
 	aa "github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/workspace"
@@ -102,15 +103,13 @@ func (c *Reconciler) createOrUpdateAffinityAssistantsAndPVCs(ctx context.Context
 			}
 		}
 	case aa.AffinityAssistantPerPipelineRun, aa.AffinityAssistantPerPipelineRunWithIsolation:
-		if claimNames != nil || claimTemplates != nil {
-			aaName := GetAffinityAssistantName("", pr.Name)
-			// The PVCs are created via StatefulSet's VolumeClaimTemplate for volume scheduling
-			// in AffinityAssistantPerPipelineRun or AffinityAssistantPerPipelineRunWithIsolation modes.
-			// This is because PVCs from pipelinerun's VolumeClaimTemplate are enforced to be deleted at pipelinerun completion time in these modes,
-			// and there is no requirement of the PVC OwnerReference.
-			if err := c.createOrUpdateAffinityAssistant(ctx, aaName, pr, claimTemplates, claimNames, unschedulableNodes); err != nil {
-				return fmt.Errorf("%w: %v", ErrAffinityAssistantCreationFailed, err)
-			}
+		aaName := GetAffinityAssistantName("", pr.Name)
+		// The PVCs are created via StatefulSet's VolumeClaimTemplate for volume scheduling
+		// in AffinityAssistantPerPipelineRun or AffinityAssistantPerPipelineRunWithIsolation modes.
+		// This is because PVCs from pipelinerun's VolumeClaimTemplate are enforced to be deleted at pipelinerun completion time in these modes,
+		// and there is no requirement of the PVC OwnerReference.
+		if err := c.createOrUpdateAffinityAssistant(ctx, aaName, pr, claimTemplates, claimNames, unschedulableNodes); err != nil {
+			return fmt.Errorf("%w: %v", ErrAffinityAssistantCreationFailed, err)
 		}
 	case aa.AffinityAssistantDisabled:
 		for _, workspace := range claimTemplateToWorkspace {
@@ -232,11 +231,27 @@ func (c *Reconciler) cleanupAffinityAssistantsAndPVCs(ctx context.Context, pr *v
 // getPersistentVolumeClaimNameWithAffinityAssistant returns the PersistentVolumeClaim name that is
 // created by the Affinity Assistant StatefulSet VolumeClaimTemplate when Affinity Assistant is enabled.
 // The PVCs created by StatefulSet VolumeClaimTemplates follow the format `<pvcName>-<affinityAssistantName>-0`
-// TODO(#6740)(WIP): use this function when adding end-to-end support for AffinityAssistantPerPipelineRun mode
 func getPersistentVolumeClaimNameWithAffinityAssistant(pipelineWorkspaceName, prName string, wb v1.WorkspaceBinding, owner metav1.OwnerReference) string {
 	pvcName := volumeclaim.GeneratePVCNameFromWorkspaceBinding(wb.VolumeClaimTemplate.Name, wb, owner)
 	affinityAssistantName := GetAffinityAssistantName(pipelineWorkspaceName, prName)
 	return fmt.Sprintf("%s-%s-0", pvcName, affinityAssistantName)
+}
+
+// getAffinityAssistantAnnotationVal generates and returns the value for `pipeline.tekton.dev/affinity-assistant` annotation
+// based on aaBehavior, pipelinePVCWorkspaceName and prName
+func getAffinityAssistantAnnotationVal(aaBehavior affinityassistant.AffinityAssistantBehavior, pipelinePVCWorkspaceName string, prName string) string {
+	switch aaBehavior {
+	case affinityassistant.AffinityAssistantPerWorkspace:
+		if pipelinePVCWorkspaceName != "" {
+			return GetAffinityAssistantName(pipelinePVCWorkspaceName, prName)
+		}
+	case affinityassistant.AffinityAssistantPerPipelineRun, affinityassistant.AffinityAssistantPerPipelineRunWithIsolation:
+		return GetAffinityAssistantName("", prName)
+
+	case affinityassistant.AffinityAssistantDisabled:
+	}
+
+	return ""
 }
 
 // GetAffinityAssistantName returns the Affinity Assistant name based on pipelineWorkspaceName and pipelineRunName
@@ -353,17 +368,6 @@ func affinityAssistantStatefulSet(aaBehavior aa.AffinityAssistantBehavior, name 
 			},
 		},
 	}
-}
-
-// isAffinityAssistantDisabled returns a bool indicating whether an Affinity Assistant should
-// be created for each PipelineRun that use workspaces with PersistentVolumeClaims
-// as volume source. The default behaviour is to enable the Affinity Assistant to
-// provide Node Affinity for TaskRuns that share a PVC workspace.
-//
-// TODO(#6740)(WIP): replace this function with GetAffinityAssistantBehavior
-func (c *Reconciler) isAffinityAssistantDisabled(ctx context.Context) bool {
-	cfg := config.FromContextOrDefaults(ctx)
-	return cfg.FeatureFlags.DisableAffinityAssistant
 }
 
 // getAssistantAffinityMergedWithPodTemplateAffinity return the affinity that merged with PipelineRun PodTemplate affinity.
