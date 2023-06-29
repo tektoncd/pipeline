@@ -69,3 +69,7 @@ kind.yaml
 
 # Profiling
 cpu.prof
+
+# AI assistant context files
+.assistant
+.claude
