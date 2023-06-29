@@ -38,7 +38,7 @@ const (
 
 // PvcHandler is used to create PVCs for workspaces
 type PvcHandler interface {
-	CreatePVCsForWorkspacesWithoutAffinityAssistant(ctx context.Context, wb []v1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error
+	CreatePVCsForWorkspaces(ctx context.Context, wb []v1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error
 }
 
 type defaultPVCHandler struct {
@@ -51,13 +51,11 @@ func NewPVCHandler(clientset clientset.Interface, logger *zap.SugaredLogger) Pvc
 	return &defaultPVCHandler{clientset, logger}
 }
 
-// CreatePVCsForWorkspacesWithoutAffinityAssistant checks if a PVC named <claim-name>-<workspace-name>-<owner-name> exists;
+// CreatePVCsForWorkspaces checks if a PVC named <claim-name>-<workspace-name>-<owner-name> exists;
 // where claim-name is provided by the user in the volumeClaimTemplate, and owner-name is the name of the
 // resource with the volumeClaimTemplate declared, a PipelineRun or TaskRun. If the PVC did not exist, a new PVC
 // with that name is created with the provided OwnerReference.
-// This function is only called when Affinity Assistant is disabled.
-// When Affinity Assistant is enabled, the PersistentVolumeClaims will be created by the Affinity Assistant StatefulSet VolumeClaimTemplate instead.
-func (c *defaultPVCHandler) CreatePVCsForWorkspacesWithoutAffinityAssistant(ctx context.Context, wb []v1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error {
+func (c *defaultPVCHandler) CreatePVCsForWorkspaces(ctx context.Context, wb []v1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error {
 	var errs []error
 	for _, claim := range getPVCsWithoutAffinityAssistant(wb, ownerReference, namespace) {
 		_, err := c.clientset.CoreV1().PersistentVolumeClaims(claim.Namespace).Get(ctx, claim.Name, metav1.GetOptions{})

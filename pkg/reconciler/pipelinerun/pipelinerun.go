@@ -606,27 +606,30 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 			return controller.NewPermanentError(err)
 		}
 
-		// Make an attempt to create Affinity Assistant if it does not exist
-		// if the Affinity Assistant already exists, handle the possibility of assigned node becoming unschedulable by deleting the pod
-		if !c.isAffinityAssistantDisabled(ctx) {
-			// create Affinity Assistant (StatefulSet) so that taskRun pods that share workspace PVC achieve Node Affinity
-			// TODO(#6740)(WIP): We only support AffinityAssistantPerWorkspace at the point. Implement different AffinityAssitantBehaviors based on `coscheduling` feature flag when adding end-to-end support.
-			if err = c.createOrUpdateAffinityAssistantsPerAABehavior(ctx, pr, affinityassistant.AffinityAssistantPerWorkspace); err != nil {
-				logger.Errorf("Failed to create affinity assistant StatefulSet for PipelineRun %s: %v", pr.Name, err)
-				pr.Status.MarkFailed(ReasonCouldntCreateOrUpdateAffinityAssistantStatefulSetPerWorkspace,
-					"Failed to create StatefulSet for PipelineRun %s/%s correctly: %s",
-					pr.Namespace, pr.Name, err)
+		aaBehavior, err := affinityassistant.GetAffinityAssistantBehavior(ctx)
+		if err != nil {
+			return controller.NewPermanentError(err)
+		}
+
+		switch aaBehavior {
+		case affinityassistant.AffinityAssistantPerWorkspace, affinityassistant.AffinityAssistantDisabled:
+			if err = c.createOrUpdateAffinityAssistantsAndPVCs(ctx, pr, aaBehavior); err != nil {
+				logger.Errorf("Failed to create PVC or affinity assistant StatefulSet for PipelineRun %s: %v", pr.Name, err)
+				if aaBehavior == affinityassistant.AffinityAssistantPerWorkspace {
+					pr.Status.MarkFailed(ReasonCouldntCreateOrUpdateAffinityAssistantStatefulSetPerWorkspace,
+						"Failed to create StatefulSet for PipelineRun %s/%s correctly: %s",
+						pr.Namespace, pr.Name, err)
+				} else {
+					pr.Status.MarkFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
+						"Failed to create PVC for PipelineRun %s/%s Workspaces correctly: %s",
+						pr.Namespace, pr.Name, err)
+				}
+
 				return controller.NewPermanentError(err)
 			}
-		} else if pr.HasVolumeClaimTemplate() {
-			// create workspace PVC from template
-			if err = c.pvcHandler.CreatePVCsForWorkspacesWithoutAffinityAssistant(ctx, pr.Spec.Workspaces, *kmeta.NewControllerRef(pr), pr.Namespace); err != nil {
-				logger.Errorf("Failed to create PVC for PipelineRun %s: %v", pr.Name, err)
-				pr.Status.MarkFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
-					"Failed to create PVC for PipelineRun %s/%s Workspaces correctly: %s",
-					pr.Namespace, pr.Name, err)
-				return controller.NewPermanentError(err)
-			}
+		case affinityassistant.AffinityAssistantPerPipelineRun, affinityassistant.AffinityAssistantPerPipelineRunWithIsolation:
+			// TODO(#6740)(WIP): implement end-to-end support for AffinityAssistantPerPipelineRun and AffinityAssistantPerPipelineRunWithIsolation modes
+			return controller.NewPermanentError(fmt.Errorf("affinity assistant behavior: %v is not implemented", aaBehavior))
 		}
 	}
 
@@ -874,7 +877,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 	}
 
 	if !c.isAffinityAssistantDisabled(ctx) && pipelinePVCWorkspaceName != "" {
-		tr.Annotations[workspace.AnnotationAffinityAssistantName] = getAffinityAssistantName(pipelinePVCWorkspaceName, pr.Name)
+		tr.Annotations[workspace.AnnotationAffinityAssistantName] = GetAffinityAssistantName(pipelinePVCWorkspaceName, pr.Name)
 	}
 
 	logger.Infof("Creating a new TaskRun object %s for pipeline task %s", taskRunName, rpt.PipelineTask.Name)
@@ -997,7 +1000,7 @@ func (c *Reconciler) createCustomRun(ctx context.Context, runName string, params
 	// Set the affinity assistant annotation in case the custom task creates TaskRuns or Pods
 	// that can take advantage of it.
 	if !c.isAffinityAssistantDisabled(ctx) && pipelinePVCWorkspaceName != "" {
-		r.Annotations[workspace.AnnotationAffinityAssistantName] = getAffinityAssistantName(pipelinePVCWorkspaceName, pr.Name)
+		r.Annotations[workspace.AnnotationAffinityAssistantName] = GetAffinityAssistantName(pipelinePVCWorkspaceName, pr.Name)
 	}
 
 	logger.Infof("Creating a new CustomRun object %s", runName)
@@ -1059,7 +1062,12 @@ func (c *Reconciler) getTaskrunWorkspaces(ctx context.Context, pr *v1.PipelineRu
 				pipelinePVCWorkspaceName = pipelineWorkspace
 			}
 
-			workspace := c.taskWorkspaceByWorkspaceVolumeSource(ctx, pipelinePVCWorkspaceName, pr.Name, b, taskWorkspaceName, pipelineTaskSubPath, *kmeta.NewControllerRef(pr))
+			aaBehavior, err := affinityassistant.GetAffinityAssistantBehavior(ctx)
+			if err != nil {
+				return nil, "", err
+			}
+
+			workspace := c.taskWorkspaceByWorkspaceVolumeSource(ctx, pipelinePVCWorkspaceName, pr.Name, b, taskWorkspaceName, pipelineTaskSubPath, *kmeta.NewControllerRef(pr), aaBehavior)
 			workspaces = append(workspaces, workspace)
 		} else {
 			workspaceIsOptional := false
@@ -1094,7 +1102,7 @@ func (c *Reconciler) getTaskrunWorkspaces(ctx context.Context, pr *v1.PipelineRu
 // taskWorkspaceByWorkspaceVolumeSource returns the WorkspaceBinding to be bound to each TaskRun in the Pipeline Task.
 // If the PipelineRun WorkspaceBinding is a volumeClaimTemplate, the returned WorkspaceBinding references a PersistentVolumeClaim created for the PipelineRun WorkspaceBinding based on the PipelineRun as OwnerReference.
 // Otherwise, the returned WorkspaceBinding references the same volume as the PipelineRun WorkspaceBinding, with the file path joined with pipelineTaskSubPath as the binding subpath.
-func (c *Reconciler) taskWorkspaceByWorkspaceVolumeSource(ctx context.Context, pipelineWorkspaceName string, prName string, wb v1.WorkspaceBinding, taskWorkspaceName string, pipelineTaskSubPath string, owner metav1.OwnerReference) v1.WorkspaceBinding {
+func (c *Reconciler) taskWorkspaceByWorkspaceVolumeSource(ctx context.Context, pipelineWorkspaceName string, prName string, wb v1.WorkspaceBinding, taskWorkspaceName string, pipelineTaskSubPath string, owner metav1.OwnerReference, aaBehavior affinityassistant.AffinityAssitantBehavior) v1.WorkspaceBinding {
 	if wb.VolumeClaimTemplate == nil {
 		binding := *wb.DeepCopy()
 		binding.Name = taskWorkspaceName
@@ -1108,9 +1116,8 @@ func (c *Reconciler) taskWorkspaceByWorkspaceVolumeSource(ctx context.Context, p
 	}
 	binding.Name = taskWorkspaceName
 
-	if !c.isAffinityAssistantDisabled(ctx) {
-		binding.PersistentVolumeClaim.ClaimName = getPersistentVolumeClaimNameWithAffinityAssistant(pipelineWorkspaceName, prName, wb, owner)
-	} else {
+	// TODO(#6740)(WIP): get binding for AffinityAssistantPerPipelineRun and AffinityAssistantPerPipelineRunWithIsolation mode
+	if aaBehavior == affinityassistant.AffinityAssistantDisabled || aaBehavior == affinityassistant.AffinityAssistantPerWorkspace {
 		binding.PersistentVolumeClaim.ClaimName = volumeclaim.GetPVCNameWithoutAffinityAssistant(wb.VolumeClaimTemplate.Name, wb, owner)
 	}
 
