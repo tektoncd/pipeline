@@ -1,0 +1,23 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: simple-pipelinerun
+  namespace: upgrade
+spec:
+  pipelineRef:
+    name: simple-pipeline
+  workspaces:
+    - name: workspace
+      emptyDir: {}
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: simple-taskrun
+  namespace: upgrade
+spec:
+  taskRef:
+    name: simple-task
+  workspaces:
+    - name: workspace
+      emptyDir: {}

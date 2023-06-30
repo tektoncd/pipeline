@@ -1,0 +1,67 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: simple-task
+  namespace: upgrade
+spec:
+  params:
+    - name: rsp
+      type: string
+      default: "response"
+  steps:
+  - name: echo-param
+    image: alpine
+    script: |
+      echo "$(params.rsp)"
+  - name: check-workspace
+    image: alpine
+    script: |
+      if [ "$(workspaces.workspace.bound)" == "true" ]; then
+        echo "Workspace provided"
+      fi
+  sidecars:
+  - name: server
+    image: alpine:3.12.0
+    command: ['/bin/bash']
+    workingDir: /foo
+    script: echo server
+  workspaces:
+  - name: workspace
+    mountPath: /foo
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: simple-pipeline
+  namespace: upgrade
+spec:
+  description: foo
+  tasks:
+  - name: check-workspace
+    taskSpec:
+      params:
+        - name: task1-param
+          type: string
+          default: "1"
+      steps:
+        - image: alpine
+          name: check-workspace
+          script: |
+            if [ "$(workspaces.workspace.bound)" == "true" ]; then
+              echo "Workspace provided \n"
+              echo $(params.task1-param)
+            fi
+    timeout: 180s
+  workspaces:
+  - name: workspace
+  finally:
+  - name: echo-status
+    taskSpec:
+      params:
+        - name: echoStatus
+          type: string
+          default: "Succeeded"
+      steps:
+        - name: verify-status
+          image: ubuntu
+          script: echo $(params.echoStatus)

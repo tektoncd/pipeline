@@ -68,17 +68,31 @@ uninstall_pipeline_crd_version $PREVIOUS_PIPELINE_VERSION
 header "Install the previous release of Tekton pipeline $PREVIOUS_PIPELINE_VERSION"
 install_pipeline_crd_version $PREVIOUS_PIPELINE_VERSION
 
+header "Create resources at previous release version"
+kubectl create namespace upgrade
+trap "kubectl delete namespace upgrade" EXIT
+kubectl create -f ./test/upgrade/simpleResources.yaml || fail_test
+
 # Upgrade to the current release.
 header "Upgrade to the current release of Tekton pipeline"
 install_pipeline_crd
 
-# Run the integration tests.
-go_test_e2e -timeout=20m ./test || failed=1
+# Create runs from the Task and Pipeline resources created at the previous release version
+header "Creating TaskRuns and PipelineRuns referencing existing Tasks and Pipelines"
+kubectl create -f ./test/upgrade/simpleRuns.yaml || fail_test
 
 # Run the post-integration tests. We do not need to install the resources again, since
 # they are installed before the upgrade. We verify if they still work, after going through
 # the upgrade.
-go_test_e2e -tags=examples -timeout=20m ./test/ || failed=1
+for test in taskrun pipelinerun; do
+  header "Running YAML e2e tests for ${test}s"
+  if ! run_tests ${test}; then
+    echo "ERROR: one or more YAML tests failed"
+    output_yaml_test_results ${test}
+    output_pods_logs ${test}
+    failed=1
+  fi
+done
 
 (( failed )) && fail_test
 
