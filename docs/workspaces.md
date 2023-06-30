@@ -364,28 +364,7 @@ write to or read from that `Workspace`. Use the `runAfter` field in your `Pipeli
 to define when a `Task` should be executed. For more information, see the [`runAfter` documentation](pipelines.md#using-the-runafter-parameter).
 
 When a `PersistentVolumeClaim` is used as volume source for a `Workspace` in a `PipelineRun`,
-an Affinity Assistant will be created. The Affinity Assistant acts as a placeholder for `TaskRun` pods
-sharing the same `Workspace`. All `TaskRun` pods within the `PipelineRun` that share the `Workspace`
-will be scheduled to the same Node as the Affinity Assistant pod. This means that Affinity Assistant is incompatible
-with e.g. other affinity rules configured for the `TaskRun` pods. If the `PipelineRun` has a custom
-[PodTemplate](pipelineruns.md#specifying-a-pod-template) configured, the `NodeSelector` and `Tolerations` fields
-will also be set on the Affinity Assistant pod. The Affinity Assistant
-is deleted when the `PipelineRun` is completed. The Affinity Assistant can be disabled by setting the
-[disable-affinity-assistant](install.md#customizing-basic-execution-parameters) feature gate to `true`.
-
-**Note:** Affinity Assistant use [Inter-pod affinity and anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity)
-that require substantial amount of processing which can slow down scheduling in large clusters
-significantly. We do not recommend using them in clusters larger than several hundred nodes
-
-**Note:** Pod anti-affinity requires nodes to be consistently labelled, in other words every
-node in the cluster must have an appropriate label matching `topologyKey`. If some or all nodes
-are missing the specified `topologyKey` label, it can lead to unintended behavior.
-
-**Note:** Any time during the execution of a `pipelineRun`, if the node with a placeholder Affinity Assistant pod and
-the `taskRun` pods sharing a `workspace` is `cordoned` or disabled for scheduling anything new (`tainted`), the
-`pipelineRun` controller deletes the placeholder pod. The `taskRun` pods on a `cordoned` node continues running
-until completion. The deletion of a placeholder pod triggers creating a new placeholder pod on any available node
-such that the rest of the `pipelineRun` can continue without any disruption until it finishes.
+an Affinity Assistant will be created. For more information, see the [`Affinity Assistants` documentation](affinityassistants.md).
 
 #### Specifying `Workspaces` in `PipelineRuns`
 
