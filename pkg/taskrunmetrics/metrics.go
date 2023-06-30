@@ -86,7 +86,7 @@ var (
 		"Number of taskruns executing currently, but whose underlying Pods or Containers are suspended by k8s because of Node level constraints. Such suspensions can occur as part of initial scheduling of the Pod, or scheduling of any of the subsequent Container(s) in the Pod after the first Container is started",
 		stats.UnitDimensionless)
 
-	podLatency = stats.Float64("taskruns_pod_latency",
+	podLatency = stats.Float64("taskruns_pod_latency_milliseconds",
 		"scheduling latency for the taskruns pods",
 		stats.UnitMilliseconds)
 )
@@ -438,7 +438,7 @@ func (r *Recorder) RecordPodLatency(ctx context.Context, pod *corev1.Pod, tr *v1
 		return err
 	}
 
-	metrics.Record(ctx, podLatency.M(float64(latency)))
+	metrics.Record(ctx, podLatency.M(float64(latency.Milliseconds())))
 
 	return nil
 }
