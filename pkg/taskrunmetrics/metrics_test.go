@@ -531,7 +531,7 @@ func TestRecordPodLatency(t *testing.T) {
 			"taskrun":   "test-taskrun",
 			"namespace": "foo",
 		},
-		expectedValue: 4e+09,
+		expectedValue: 4000,
 	}, {
 		name: "for non scheduled pod",
 		pod: &corev1.Pod{
@@ -559,7 +559,7 @@ func TestRecordPodLatency(t *testing.T) {
 				if err != nil {
 					t.Errorf("RecordPodLatency: %v", err)
 				}
-				metricstest.CheckLastValueData(t, "taskruns_pod_latency", td.expectedTags, td.expectedValue)
+				metricstest.CheckLastValueData(t, "taskruns_pod_latency_milliseconds", td.expectedTags, td.expectedValue)
 			}
 		})
 	}
@@ -610,7 +610,7 @@ func TestTaskRunIsOfPipelinerun(t *testing.T) {
 }
 
 func unregisterMetrics() {
-	metricstest.Unregister("taskrun_duration_seconds", "pipelinerun_taskrun_duration_seconds", "taskrun_count", "running_taskruns_count", "running_taskruns_throttled_by_quota_count", "running_taskruns_throttled_by_node_count", "taskruns_pod_latency")
+	metricstest.Unregister("taskrun_duration_seconds", "pipelinerun_taskrun_duration_seconds", "taskrun_count", "running_taskruns_count", "running_taskruns_throttled_by_quota_count", "running_taskruns_throttled_by_node_count", "taskruns_pod_latency_milliseconds")
 
 	// Allow the recorder singleton to be recreated.
 	once = sync.Once{}
