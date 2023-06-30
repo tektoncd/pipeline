@@ -26,8 +26,8 @@ data:
   #
   # The default behaviour is for Tekton to create Affinity Assistants
   #
-  # See more in the workspace documentation about Affinity Assistant
-  # https://github.com/tektoncd/pipeline/blob/main/docs/workspaces.md#affinity-assistant-and-specifying-workspace-order-in-a-pipeline
+  # See more in the Affinity Assistant documentation
+  # https://github.com/tektoncd/pipeline/blob/main/docs/affinityassistants.md
   # or https://github.com/tektoncd/pipeline/pull/2630 for more info.
   disable-affinity-assistant: "false"
   # Setting this flag will determine how PipelineRun Pods are scheduled with Affinity Assistant.
@@ -39,7 +39,8 @@ data:
   # and only allows one pipelinerun to run on a node at a time.
   # Setting it to "disabled" will not apply any coschedule policy.
   #
-  # TODO: add links to documentation and migration strategy
+  # See more in the Affinity Assistant documentation
+  # https://github.com/tektoncd/pipeline/blob/main/docs/affinityassistants.md
   # NOTE: this feature is still under development and not yet functional.
   coschedule: "workspaces"
   # Setting this flag to "true" will prevent Tekton scanning attached

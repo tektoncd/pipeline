@@ -193,7 +193,7 @@ that are running while the change occurs.
 
 The flags in this ConfigMap are as follows:
 
-- `disable-affinity-assistant` - set this flag to `true` to disable the [Affinity Assistant](./workspaces.md#specifying-workspace-order-in-a-pipeline-and-affinity-assistants)
+- `disable-affinity-assistant` - set this flag to `true` to disable the [Affinity Assistant](./affinityassistants)
   that is used to provide Node Affinity for `TaskRun` pods that share workspace volume.
   The Affinity Assistant is incompatible with other affinity rules
   configured for `TaskRun` pods.
@@ -205,6 +205,13 @@ The flags in this ConfigMap are as follows:
   **Note:** Pod anti-affinity requires nodes to be consistently labelled, in other words every
   node in the cluster must have an appropriate label matching `topologyKey`. If some or all nodes
   are missing the specified `topologyKey` label, it can lead to unintended behavior.
+
+- `coschedule`: set this flag determines how PipelineRun Pods are scheduled with [Affinity Assistant](./affinityassistants).
+Acceptable values are "workspaces" (default), "pipelineruns", "isolate-pipelinerun", or "disabled".
+Setting it to "workspaces" will schedule all the taskruns sharing the same PVC-based workspace in a pipelinerun to the same node.
+Setting it to "pipelineruns" will schedule all the taskruns in a pipelinerun to the same node.
+Setting it to "isolate-pipelinerun" will schedule all the taskruns in a pipelinerun to the same node,
+and only allows one pipelinerun to run on a node at a time. Setting it to "disabled" will not apply any coschedule policy.
 
 - `await-sidecar-readiness`: set this flag to `"false"` to allow the Tekton controller to start a
 TasksRun's first step immediately without waiting for sidecar containers to be running first. Using
@@ -291,6 +298,7 @@ Features currently in "alpha" are:
 | [Trusted Resources](./trusted-resources.md)                                                         | [TEP-0091](https://github.com/tektoncd/community/blob/main/teps/0091-trusted-resources.md)                                 | N/A                                                                  | `trusted-resources-verification-no-match-policy`  |
 | [Larger Results via Sidecar Logs](#enabling-larger-results-using-sidecar-logs)                      | [TEP-0127](https://github.com/tektoncd/community/blob/main/teps/0127-larger-results-via-sidecar-logs.md)                   | [v0.43.0](https://github.com/tektoncd/pipeline/releases/tag/v0.43.0) | `results-from`                |
 | [Configure Default Resolver](./resolution.md#configuring-built-in-resolvers)                        | [TEP-0133](https://github.com/tektoncd/community/blob/main/teps/0133-configure-default-resolver.md)                        | N/A                                 |                                |
+| [Coschedule](./affinityassistants.md)                        | [TEP-0135](https://github.com/tektoncd/community/blob/main/teps/0135-coscheduling-pipelinerun-pods.md)                        | N/A                                 |`coschedule`                                |
 
 ### Beta Features
 
