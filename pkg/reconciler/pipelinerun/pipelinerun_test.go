@@ -54,7 +54,6 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	"github.com/tektoncd/pipeline/test/parse"
-	"go.opentelemetry.io/otel/trace"
 	"gomodules.xyz/jsonpatch/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -148,7 +147,7 @@ func initializePipelineRunControllerAssets(t *testing.T, d test.Data, opts pipel
 	test.EnsureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
-	ctl := NewController(&opts, testClock, trace.NewNoopTracerProvider())(ctx, configMapWatcher)
+	ctl := NewController(&opts, testClock)(ctx, configMapWatcher)
 	if la, ok := ctl.Reconciler.(reconciler.LeaderAware); ok {
 		if err := la.Promote(reconciler.UniversalBucket(), func(reconciler.Bucket, types.NamespacedName) {}); err != nil {
 			t.Fatalf("error promoting reconciler leader: %v", err)
