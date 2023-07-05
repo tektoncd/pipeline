@@ -685,6 +685,8 @@ func TestWaitCustomTask_V1_PipelineRun(t *testing.T) {
 				filterCondition,
 				filterCustomRunStatus,
 				filterPipelineRunStatus,
+				// ignore serviceaccount field also, because it can be different based on the value in config-defaults
+				ignoreSAPipelineRunSpec,
 			); d != "" {
 				t.Errorf("-want, +got: %v", d)
 			}
