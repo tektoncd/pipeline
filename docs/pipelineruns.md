@@ -159,7 +159,7 @@ You can reference a `Tekton bundle` in a `TaskRef` in both `v1` and `v1beta1` us
 
 In `v1beta1`, you can also reference a `Tekton bundle` using OCI bundle syntax, which has been deprecated in favor of remote resolution. The example shown below for `v1beta1` uses OCI bundle syntax, and requires enabling `enable-tekton-oci-bundles: "true"` feature flag.
 
-{{< tabs >}}
+{{< tabpane >}}
 {{% tab "v1 & v1beta1" %}}
 ```yaml
 spec:
@@ -183,7 +183,7 @@ spec:
      bundle: docker.io/myrepo/mycatalog:v1.0
  ```
 {{% /tab %}}
-{{< /tabs >}}
+{{< /tabpane >}}
 
 The syntax and caveats are similar to using `Tekton Bundles` for  `Task` references
 in [Pipelines](pipelines.md#tekton-bundles) or [TaskRuns](taskruns.md#tekton-bundles).
@@ -705,7 +705,7 @@ map a specific `serviceAccountName` value to a specific `Task` in the `Pipeline`
 
 For example, if you specify these mappings:
 
-{{< tabs >}}
+{{< tabpane >}}
 {{% tab "v1" %}}
 ```yaml
 spec:
@@ -726,7 +726,7 @@ spec:
       taskServiceAccountName: sa-for-build
 ```
 {{% /tab %}}
-{{< /tabs >}}
+{{< /tabpane >}}
 
 for this `Pipeline`:
 
@@ -753,7 +753,7 @@ customize the `Pod` configuration specifically for each `TaskRun`.
 In the following example, the `Task` defines a `volumeMount` object named `my-cache`. The `PipelineRun`
 provisions this object for the `Task` using a `persistentVolumeClaim` and executes it as user 1001.
 
-{{< tabs >}}
+{{< tabpane >}}
 {{% tab "v1" %}}
 ```yaml
 apiVersion: tekton.dev/v1
@@ -842,7 +842,7 @@ spec:
           claimName: my-volume-claim
 ```
 {{% /tab %}}
-{{< /tabs >}}
+{{< /tabpane >}}
 
 [`Custom tasks`](pipelines.md#using-custom-tasks) may or may not use a pod template.
 Consult the documentation of the custom task that you are using to determine whether it supports a pod template.
@@ -855,7 +855,7 @@ will run with the configured  `TaskServiceAccountName` and `TaskPodTemplate` ove
 wide `ServiceAccountName`  and [`podTemplate`](./podtemplates.md) configuration,
 for example:
 
-{{< tabs >}}
+{{< tabpane >}}
 {{% tab "v1" %}}
 ```yaml
 spec:
@@ -889,7 +889,7 @@ spec:
           disktype: ssd
 ```
 {{% /tab %}}
-{{< /tabs >}}
+{{< /tabpane >}}
 
 If used with this `Pipeline`,  `build-task` will use the task specific `PodTemplate` (where `nodeSelector` has `disktype` equal to `ssd`)
 along with `securityContext` from the `pipelineRun.spec.podTemplate`.

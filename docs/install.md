@@ -33,7 +33,7 @@ your computer.
 
 ## Installation
 
-{{% tabs %}}
+{{< tabpane >}}
 
 {{% tab "Kubernetes" %}}
 To install Tekton Pipelines on a Kubernetes cluster:
@@ -96,7 +96,7 @@ Kubernetes cluster.
 
 {{% /tab %}}
 
-{{% /tabs %}}
+{{< /tabpane >}}
 
 ## Additional configuration options
 

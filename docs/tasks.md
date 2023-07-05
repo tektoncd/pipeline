@@ -136,7 +136,7 @@ Below is an example of a Pipeline declaration that uses a `ClusterTask`:
 - There is no `v1` API specification for `ClusterTask` but a `v1beta1 clustertask` can still be referenced in a `v1 pipeline`.
 - The cluster resolver syntax below can be used to reference any task, not just a clustertask.
 
-{{< tabs >}}
+{{< tabpane >}}
 {{% tab header="v1 & v1beta1" %}}
 ```yaml
 apiVersion: tekton.dev/v1
@@ -174,7 +174,7 @@ spec:
       params: ....
 ```
 {{% /tab %}}
-{{< /tabs >}}
+{{< /tabpane >}}
 
 ### Defining `Steps`
 
@@ -200,7 +200,7 @@ The following requirements apply to each container image referenced in a `steps`
 Below is an example of setting the resource requests and limits for a step:
 
 
-{{< tabs >}}
+{{< tabpane >}}
 {{% tab header="v1" %}}
 ```yaml
 spec:
@@ -230,7 +230,7 @@ spec:
           cpu: 800m
 ```
 {{% /tab %}}
-{{< /tabs >}}
+{{< /tabpane >}}
 
 #### Reserved directories
 
@@ -789,7 +789,7 @@ is replaced with the path where Tekton will store the Task's results.
 When this Task is executed in a TaskRun, the results will appear in the TaskRun's status:
 
 
-{{< tabs >}}
+{{< tabpane >}}
 {{% tab header="v1" %}}
 ```yaml
 apiVersion: tekton.dev/v1
@@ -823,7 +823,7 @@ status:
         1579722445
 ```
 {{% /tab %}}
-{{< /tabs >}}
+{{< /tabpane >}}
 
 Tekton does not perform any processing on the contents of results; they are emitted
 verbatim from your Task including any leading or trailing whitespace characters. Make sure to write only the

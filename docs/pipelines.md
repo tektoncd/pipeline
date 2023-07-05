@@ -394,7 +394,7 @@ You can reference a `Tekton bundle` in a `TaskRef` in both `v1` and `v1beta1` us
 In `v1beta1`, you can also reference a `Tekton bundle` using OCI bundle syntax, which has been deprecated in favor of remote resolution. The example shown below for `v1beta1` uses OCI bundle syntax, and requires enabling `enable-tekton-oci-bundles: "true"` feature flag.
 
 
-{{< tabs >}}
+{{< tabpane >}}
 {{% tab "v1 & v1beta1" %}}
 ```yaml
 spec:
@@ -420,7 +420,7 @@ spec:
         bundle: docker.com/myrepo/mycatalog
 ```
 {{% /tab %}}
-{{< /tabs >}}
+{{< /tabpane >}}
 
 Here, the `bundle` field is the full reference url to the artifact. The name is the
 `metadata.name` field of the `Task`.
@@ -428,7 +428,7 @@ Here, the `bundle` field is the full reference url to the artifact. The name is 
 You may also specify a `tag` as you would with a Docker image which will give you a fixed,
 repeatable reference to a `Task`.
 
-{{< tabs >}}
+{{< tabpane >}}
 {{% tab "v1 & v1beta1" %}}
 ```yaml
 spec:
@@ -454,11 +454,11 @@ spec:
         bundle: docker.com/myrepo/mycatalog:v1.0.1
 ```
 {{% /tab %}}
-{{< /tabs >}}
+{{< /tabpane >}}
 
 You may also specify a fixed digest instead of a tag.
 
-{{< tabs >}}
+{{< tabpane >}}
 {{% tab "v1 & v1beta1" %}}
 ```yaml
 spec:
@@ -484,7 +484,7 @@ spec:
         bundle: docker.io/myrepo/mycatalog@sha256:abc123
 ```
 {{% /tab %}}
-{{< /tabs >}}
+{{< /tabpane >}}
 
 Any of the above options will fetch the image using the `ImagePullSecrets` attached to the
 `ServiceAccount` specified in the `PipelineRun`.
