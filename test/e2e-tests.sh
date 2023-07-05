@@ -43,6 +43,7 @@ fi
 header "Setting up environment"
 
 install_pipeline_crd
+export SYSTEM_NAMESPACE=tekton-pipelines
 
 failed=0
 

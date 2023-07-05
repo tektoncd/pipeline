@@ -45,6 +45,8 @@ set -o nounset
 
 export SYSTEM_NAMESPACE=tekton-pipelines
 
+export SYSTEM_NAMESPACE=tekton-pipelines
+
 # First, we will verify if Scenario 1 works.
 # Install the previous release.
 header "Install the previous release of Tekton pipeline $PREVIOUS_PIPELINE_VERSION"
