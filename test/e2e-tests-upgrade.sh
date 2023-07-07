@@ -18,7 +18,8 @@
 # and deploy Tekton Pipelines to it for running upgrading tests. There are
 # two scenarios we need to cover in this script:
 
-# Scenario 1: install the previous release, upgrade to the current release, and
+# Scenario 1: install the previous release, test compatibility with
+# the current clients, and then upgrade to the current release, and
 # validate whether the Tekton pipeline works.
 
 # Scenario 2: install the previous release, create the pipelines and tasks, upgrade
@@ -42,17 +43,24 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
+export SYSTEM_NAMESPACE=tekton-pipelines
+
 # First, we will verify if Scenario 1 works.
 # Install the previous release.
 header "Install the previous release of Tekton pipeline $PREVIOUS_PIPELINE_VERSION"
 install_pipeline_crd_version $PREVIOUS_PIPELINE_VERSION
+
+failed=0
+# Run upgrade tests for the old server version to prevent regressions where a new client
+# is incompatible with an old server (e.g. https://github.com/tektoncd/pipeline/issues/4913)
+go_test_e2e -timeout=20m ./test -run ^TestSimpleTaskRun || failed=1
+go_test_e2e -timeout=20m ./test -run ^TestSimplePipelineRun || failed=1
 
 # Upgrade to the current release.
 header "Upgrade to the current release of Tekton pipeline"
 install_pipeline_crd
 
 # Run the integration tests.
-failed=0
 go_test_e2e -timeout=20m ./test || failed=1
 
 # Run the post-integration tests.
