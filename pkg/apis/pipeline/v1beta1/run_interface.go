@@ -31,7 +31,7 @@ type RunObject interface {
 	// ObjectMetaAccessor requires a GetObjectMeta that returns the ObjectMeta
 	metav1.ObjectMetaAccessor
 
-	// GetStatusCondition returns a ConditionAccessor for the status of the objectWithCondition
+	// GetStatusCondition returns a ConditionAccessor
 	GetStatusCondition() apis.ConditionAccessor
 
 	IsSuccessful() bool
