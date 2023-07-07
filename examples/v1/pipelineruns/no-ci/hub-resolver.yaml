@@ -20,7 +20,7 @@ spec:
   pipelineRef:
     resolver: hub
     params:
-      - name: catalog # optional
+      - name: catalog  # optional
         value: Tekton
       - name: kind
         value: pipeline

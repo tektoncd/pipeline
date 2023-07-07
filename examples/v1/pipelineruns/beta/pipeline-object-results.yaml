@@ -1,0 +1,77 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: pipelinerun-object-results-
+spec:
+  pipelineSpec:
+    tasks:
+      - name: task1
+        taskSpec:
+          results:
+            - name: object-results
+              type: object
+              description: The object results
+              properties:
+                url:
+                  type: string
+                digest:
+                  type: string
+          steps:
+            - name: write-object
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                echo -n "{\"url\":\"abc.dev/sampler\",\"digest\":\"19f02276bf8dbdd62f069b922f10c65262cc34b710eea26ff928129a736be791\"}" | tee $(results.object-results.path)
+      - name: task2
+        params:
+          - name: whole-object
+            value: "$(tasks.task1.results.object-results[*])"
+          - name: object-url
+            value: "$(tasks.task1.results.object-results.url)"
+        taskSpec:
+          params:
+            - name: object-url
+              type: string
+            - name: whole-object
+              type: object
+              properties:
+                url:
+                  type: string
+                digest:
+                  type: string
+          steps:
+            - name: validate-object-url
+              image: bash:latest
+              args: [
+                "$(params.whole-object.url)"
+              ]
+              script: |
+                if [[ $1 != "abc.dev/sampler" ]]; then
+                    echo "failed to validate the one and only argument of the script"
+                    echo "Want: abc.dev/sampler, Got: $1"
+                  exit 1
+                else
+                  echo "validate the object-url successfully"
+                fi
+            - name: validate-whole-object
+              image: ubuntu
+              script: |
+                #!/bin/bash
+                EXPECTED_url=abc.dev/sampler
+                EXPECTED_digest="19f02276bf8dbdd62f069b922f10c65262cc34b710eea26ff928129a736be791"
+
+                if [[ $(params.whole-object.url) != ${EXPECTED_url} ]]; then
+                    echo "failed to validate the object"
+                    echo "Want: ${EXPECTED_url}, Got: $(params.whole-object.url)"
+                  exit 1
+                else
+                  echo "validate the object url successfully"
+                fi
+
+                if [[ $(params.whole-object.digest) != ${EXPECTED_digest} ]]; then
+                    echo "failed to validate the object"
+                    echo "Want: ${EXPECTED_digest}, Got: $(params.whole-object.digest)"
+                  exit 1
+                else
+                  echo "validate the object digest successfully"
+                fi

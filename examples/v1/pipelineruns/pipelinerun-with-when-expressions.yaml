@@ -18,7 +18,7 @@ spec:
         description: |
           This workspace is shared among all the pipeline tasks to read/write common resources
     tasks:
-      - name: create-file # when expression using parameter, evaluates to true
+      - name: create-file  # when expression using parameter, evaluates to true
         when:
           - input: "$(params.path)"
             operator: in
@@ -61,7 +61,7 @@ spec:
                 else
                   printf no | tee $(results.exists.path)
                 fi
-      - name: echo-file-exists # when expression using task result, evaluates to true
+      - name: echo-file-exists  # when expression using task result, evaluates to true
         when:
           - input: "$(tasks.check-file.results.exists)"
             operator: in
@@ -91,7 +91,7 @@ spec:
             - name: echo
               image: ubuntu
               script: exit 1
-      - name: task-should-be-skipped-2 # when expression using parameter, evaluates to false
+      - name: task-should-be-skipped-2  # when expression using parameter, evaluates to false
         when:
           - input: "$(params.path)"
             operator: notin
@@ -101,7 +101,7 @@ spec:
             - name: echo
               image: ubuntu
               script: exit 1
-      - name: task-should-be-skipped-3 # task with when expression and run after
+      - name: task-should-be-skipped-3  # task with when expression and run after
         runAfter:
           - echo-file-exists
         when:
@@ -113,7 +113,7 @@ spec:
             - name: echo
               image: ubuntu
               script: exit 1
-      - name: task-should-be-skipped-4 # task with when expression using array parameter, evaluates to false
+      - name: task-should-be-skipped-4  # task with when expression using array parameter, evaluates to false
         when:
           - input: "master"
             operator: in
@@ -124,7 +124,7 @@ spec:
               image: alpine
               script: exit 1
     finally:
-      - name: finally-task-should-be-skipped-1 # when expression using execution status, evaluates to false
+      - name: finally-task-should-be-skipped-1  # when expression using execution status, evaluates to false
         when:
           - input: "$(tasks.echo-file-exists.status)"
             operator: in
@@ -134,7 +134,7 @@ spec:
             - name: echo
               image: ubuntu
               script: exit 1
-      - name: finally-task-should-be-skipped-2 # when expression using task result, evaluates to false
+      - name: finally-task-should-be-skipped-2  # when expression using task result, evaluates to false
         when:
           - input: "$(tasks.check-file.results.exists)"
             operator: in
@@ -144,7 +144,7 @@ spec:
             - name: echo
               image: ubuntu
               script: exit 1
-      - name: finally-task-should-be-skipped-3 # when expression using parameter, evaluates to false
+      - name: finally-task-should-be-skipped-3  # when expression using parameter, evaluates to false
         when:
           - input: "$(params.path)"
             operator: notin
@@ -154,7 +154,7 @@ spec:
             - name: echo
               image: ubuntu
               script: exit 1
-      - name: finally-task-should-be-skipped-4 # when expression using tasks execution status, evaluates to false
+      - name: finally-task-should-be-skipped-4  # when expression using tasks execution status, evaluates to false
         when:
           - input: "$(tasks.status)"
             operator: in
@@ -164,7 +164,7 @@ spec:
             - name: echo
               image: ubuntu
               script: exit 1
-      - name: finally-task-should-be-skipped-5 # when expression using tasks execution status, evaluates to false
+      - name: finally-task-should-be-skipped-5  # when expression using tasks execution status, evaluates to false
         when:
           - input: "$(tasks.status)"
             operator: in
@@ -174,7 +174,7 @@ spec:
             - name: echo
               image: ubuntu
               script: exit 1
-      - name: finally-task-should-be-executed # when expression using execution status, tasks execution status, param, and results
+      - name: finally-task-should-be-executed  # when expression using execution status, tasks execution status, param, and results
         when:
           - input: "$(tasks.echo-file-exists.status)"
             operator: in

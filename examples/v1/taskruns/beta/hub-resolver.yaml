@@ -17,9 +17,9 @@ spec:
   taskRef:
     resolver: hub
     params:
-      - name: type  #optional
+      - name: type  # optional
         value: artifact
-      - name: kind  #optional
+      - name: kind  # optional
         value: task
       - name: name
         value: git-clone
