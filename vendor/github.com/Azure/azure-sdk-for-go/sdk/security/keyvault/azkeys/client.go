@@ -17,7 +17,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 )
 
@@ -153,7 +152,7 @@ func (client *Client) createKeyHandleResponse(resp *http.Response) (CreateKeyRes
 //   - version - The version of the key.
 //   - parameters - The parameters for the decryption operation.
 //   - options - DecryptOptions contains the optional parameters for the Client.Decrypt method.
-func (client *Client) Decrypt(ctx context.Context, name string, version string, parameters KeyOperationsParameters, options *DecryptOptions) (DecryptResponse, error) {
+func (client *Client) Decrypt(ctx context.Context, name string, version string, parameters KeyOperationParameters, options *DecryptOptions) (DecryptResponse, error) {
 	req, err := client.decryptCreateRequest(ctx, name, version, parameters, options)
 	if err != nil {
 		return DecryptResponse{}, err
@@ -169,7 +168,7 @@ func (client *Client) Decrypt(ctx context.Context, name string, version string, 
 }
 
 // decryptCreateRequest creates the Decrypt request.
-func (client *Client) decryptCreateRequest(ctx context.Context, name string, version string, parameters KeyOperationsParameters, options *DecryptOptions) (*policy.Request, error) {
+func (client *Client) decryptCreateRequest(ctx context.Context, name string, version string, parameters KeyOperationParameters, options *DecryptOptions) (*policy.Request, error) {
 	urlPath := "/keys/{key-name}/{key-version}/decrypt"
 	if name == "" {
 		return nil, errors.New("parameter name cannot be empty")
@@ -240,7 +239,7 @@ func (client *Client) deleteKeyCreateRequest(ctx context.Context, name string, o
 // deleteKeyHandleResponse handles the DeleteKey response.
 func (client *Client) deleteKeyHandleResponse(resp *http.Response) (DeleteKeyResponse, error) {
 	result := DeleteKeyResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.DeletedKeyBundle); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.DeletedKey); err != nil {
 		return DeleteKeyResponse{}, err
 	}
 	return result, nil
@@ -260,7 +259,7 @@ func (client *Client) deleteKeyHandleResponse(resp *http.Response) (DeleteKeyRes
 //   - version - The version of the key.
 //   - parameters - The parameters for the encryption operation.
 //   - options - EncryptOptions contains the optional parameters for the Client.Encrypt method.
-func (client *Client) Encrypt(ctx context.Context, name string, version string, parameters KeyOperationsParameters, options *EncryptOptions) (EncryptResponse, error) {
+func (client *Client) Encrypt(ctx context.Context, name string, version string, parameters KeyOperationParameters, options *EncryptOptions) (EncryptResponse, error) {
 	req, err := client.encryptCreateRequest(ctx, name, version, parameters, options)
 	if err != nil {
 		return EncryptResponse{}, err
@@ -276,7 +275,7 @@ func (client *Client) Encrypt(ctx context.Context, name string, version string, 
 }
 
 // encryptCreateRequest creates the Encrypt request.
-func (client *Client) encryptCreateRequest(ctx context.Context, name string, version string, parameters KeyOperationsParameters, options *EncryptOptions) (*policy.Request, error) {
+func (client *Client) encryptCreateRequest(ctx context.Context, name string, version string, parameters KeyOperationParameters, options *EncryptOptions) (*policy.Request, error) {
 	urlPath := "/keys/{key-name}/{key-version}/encrypt"
 	if name == "" {
 		return nil, errors.New("parameter name cannot be empty")
@@ -347,7 +346,7 @@ func (client *Client) getDeletedKeyCreateRequest(ctx context.Context, name strin
 // getDeletedKeyHandleResponse handles the GetDeletedKey response.
 func (client *Client) getDeletedKeyHandleResponse(resp *http.Response) (GetDeletedKeyResponse, error) {
 	result := GetDeletedKeyResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.DeletedKeyBundle); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.DeletedKey); err != nil {
 		return GetDeletedKeyResponse{}, err
 	}
 	return result, nil
@@ -460,7 +459,7 @@ func (client *Client) getKeyRotationPolicyHandleResponse(resp *http.Response) (G
 // Generated from API version 7.4
 //   - parameters - The request object to get random bytes.
 //   - options - GetRandomBytesOptions contains the optional parameters for the Client.GetRandomBytes method.
-func (client *Client) GetRandomBytes(ctx context.Context, parameters GetRandomBytesRequest, options *GetRandomBytesOptions) (GetRandomBytesResponse, error) {
+func (client *Client) GetRandomBytes(ctx context.Context, parameters GetRandomBytesParameters, options *GetRandomBytesOptions) (GetRandomBytesResponse, error) {
 	req, err := client.getRandomBytesCreateRequest(ctx, parameters, options)
 	if err != nil {
 		return GetRandomBytesResponse{}, err
@@ -476,7 +475,7 @@ func (client *Client) GetRandomBytes(ctx context.Context, parameters GetRandomBy
 }
 
 // getRandomBytesCreateRequest creates the GetRandomBytes request.
-func (client *Client) getRandomBytesCreateRequest(ctx context.Context, parameters GetRandomBytesRequest, options *GetRandomBytesOptions) (*policy.Request, error) {
+func (client *Client) getRandomBytesCreateRequest(ctx context.Context, parameters GetRandomBytesParameters, options *GetRandomBytesOptions) (*policy.Request, error) {
 	urlPath := "/rng"
 	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.endpoint, urlPath))
 	if err != nil {
@@ -550,104 +549,161 @@ func (client *Client) importKeyHandleResponse(resp *http.Response) (ImportKeyRes
 	return result, nil
 }
 
-// NewListDeletedKeysPager - Retrieves a list of the keys in the Key Vault as JSON Web Key structures that contain the public
-// part of a deleted key. This operation includes deletion-specific information. The Get Deleted Keys
+// NewListDeletedKeyPropertiesPager - Retrieves a list of the keys in the Key Vault as JSON Web Key structures that contain
+// the public part of a deleted key. This operation includes deletion-specific information. The Get Deleted Keys
 // operation is applicable for vaults enabled for soft-delete. While the operation can be invoked on any vault, it will return
 // an error if invoked on a non soft-delete enabled vault. This operation
 // requires the keys/list permission.
 //
 // Generated from API version 7.4
-//   - options - ListDeletedKeysOptions contains the optional parameters for the Client.NewListDeletedKeysPager method.
-func (client *Client) NewListDeletedKeysPager(options *ListDeletedKeysOptions) *runtime.Pager[ListDeletedKeysResponse] {
-	return runtime.NewPager(runtime.PagingHandler[ListDeletedKeysResponse]{
-		More: func(page ListDeletedKeysResponse) bool {
+//   - options - ListDeletedKeyPropertiesOptions contains the optional parameters for the Client.NewListDeletedKeyPropertiesPager
+//     method.
+func (client *Client) NewListDeletedKeyPropertiesPager(options *ListDeletedKeyPropertiesOptions) *runtime.Pager[ListDeletedKeyPropertiesResponse] {
+	return runtime.NewPager(runtime.PagingHandler[ListDeletedKeyPropertiesResponse]{
+		More: func(page ListDeletedKeyPropertiesResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
-		Fetcher: func(ctx context.Context, page *ListDeletedKeysResponse) (ListDeletedKeysResponse, error) {
+		Fetcher: func(ctx context.Context, page *ListDeletedKeyPropertiesResponse) (ListDeletedKeyPropertiesResponse, error) {
 			var req *policy.Request
 			var err error
 			if page == nil {
-				req, err = client.listDeletedKeysCreateRequest(ctx, options)
+				req, err = client.listDeletedKeyPropertiesCreateRequest(ctx, options)
 			} else {
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
 			if err != nil {
-				return ListDeletedKeysResponse{}, err
+				return ListDeletedKeyPropertiesResponse{}, err
 			}
 			resp, err := client.internal.Pipeline().Do(req)
 			if err != nil {
-				return ListDeletedKeysResponse{}, err
+				return ListDeletedKeyPropertiesResponse{}, err
 			}
 			if !runtime.HasStatusCode(resp, http.StatusOK) {
-				return ListDeletedKeysResponse{}, runtime.NewResponseError(resp)
+				return ListDeletedKeyPropertiesResponse{}, runtime.NewResponseError(resp)
 			}
-			return client.listDeletedKeysHandleResponse(resp)
+			return client.listDeletedKeyPropertiesHandleResponse(resp)
 		},
 	})
 }
 
-// listDeletedKeysCreateRequest creates the ListDeletedKeys request.
-func (client *Client) listDeletedKeysCreateRequest(ctx context.Context, options *ListDeletedKeysOptions) (*policy.Request, error) {
+// listDeletedKeyPropertiesCreateRequest creates the ListDeletedKeyProperties request.
+func (client *Client) listDeletedKeyPropertiesCreateRequest(ctx context.Context, options *ListDeletedKeyPropertiesOptions) (*policy.Request, error) {
 	urlPath := "/deletedkeys"
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.endpoint, urlPath))
 	if err != nil {
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	if options != nil && options.MaxResults != nil {
-		reqQP.Set("maxresults", strconv.FormatInt(int64(*options.MaxResults), 10))
-	}
 	reqQP.Set("api-version", "7.4")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
 }
 
-// listDeletedKeysHandleResponse handles the ListDeletedKeys response.
-func (client *Client) listDeletedKeysHandleResponse(resp *http.Response) (ListDeletedKeysResponse, error) {
-	result := ListDeletedKeysResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.DeletedKeyListResult); err != nil {
-		return ListDeletedKeysResponse{}, err
+// listDeletedKeyPropertiesHandleResponse handles the ListDeletedKeyProperties response.
+func (client *Client) listDeletedKeyPropertiesHandleResponse(resp *http.Response) (ListDeletedKeyPropertiesResponse, error) {
+	result := ListDeletedKeyPropertiesResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.DeletedKeyPropertiesListResult); err != nil {
+		return ListDeletedKeyPropertiesResponse{}, err
 	}
 	return result, nil
 }
 
-// NewListKeyVersionsPager - The full key identifier, attributes, and tags are provided in the response. This operation requires
-// the keys/list permission.
+// NewListKeyPropertiesPager - Retrieves a list of the keys in the Key Vault as JSON Web Key structures that contain the public
+// part of a stored key. The LIST operation is applicable to all key types, however only the base key
+// identifier, attributes, and tags are provided in the response. Individual versions of a key are not listed in the response.
+// This operation requires the keys/list permission.
 //
 // Generated from API version 7.4
-//   - name - The name of the key.
-//   - options - ListKeyVersionsOptions contains the optional parameters for the Client.NewListKeyVersionsPager method.
-func (client *Client) NewListKeyVersionsPager(name string, options *ListKeyVersionsOptions) *runtime.Pager[ListKeyVersionsResponse] {
-	return runtime.NewPager(runtime.PagingHandler[ListKeyVersionsResponse]{
-		More: func(page ListKeyVersionsResponse) bool {
+//   - options - ListKeyPropertiesOptions contains the optional parameters for the Client.NewListKeyPropertiesPager method.
+func (client *Client) NewListKeyPropertiesPager(options *ListKeyPropertiesOptions) *runtime.Pager[ListKeyPropertiesResponse] {
+	return runtime.NewPager(runtime.PagingHandler[ListKeyPropertiesResponse]{
+		More: func(page ListKeyPropertiesResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
-		Fetcher: func(ctx context.Context, page *ListKeyVersionsResponse) (ListKeyVersionsResponse, error) {
+		Fetcher: func(ctx context.Context, page *ListKeyPropertiesResponse) (ListKeyPropertiesResponse, error) {
 			var req *policy.Request
 			var err error
 			if page == nil {
-				req, err = client.listKeyVersionsCreateRequest(ctx, name, options)
+				req, err = client.listKeyPropertiesCreateRequest(ctx, options)
 			} else {
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
 			if err != nil {
-				return ListKeyVersionsResponse{}, err
+				return ListKeyPropertiesResponse{}, err
 			}
 			resp, err := client.internal.Pipeline().Do(req)
 			if err != nil {
-				return ListKeyVersionsResponse{}, err
+				return ListKeyPropertiesResponse{}, err
 			}
 			if !runtime.HasStatusCode(resp, http.StatusOK) {
-				return ListKeyVersionsResponse{}, runtime.NewResponseError(resp)
+				return ListKeyPropertiesResponse{}, runtime.NewResponseError(resp)
 			}
-			return client.listKeyVersionsHandleResponse(resp)
+			return client.listKeyPropertiesHandleResponse(resp)
 		},
 	})
 }
 
-// listKeyVersionsCreateRequest creates the ListKeyVersions request.
-func (client *Client) listKeyVersionsCreateRequest(ctx context.Context, name string, options *ListKeyVersionsOptions) (*policy.Request, error) {
+// listKeyPropertiesCreateRequest creates the ListKeyProperties request.
+func (client *Client) listKeyPropertiesCreateRequest(ctx context.Context, options *ListKeyPropertiesOptions) (*policy.Request, error) {
+	urlPath := "/keys"
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.endpoint, urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "7.4")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	return req, nil
+}
+
+// listKeyPropertiesHandleResponse handles the ListKeyProperties response.
+func (client *Client) listKeyPropertiesHandleResponse(resp *http.Response) (ListKeyPropertiesResponse, error) {
+	result := ListKeyPropertiesResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.KeyPropertiesListResult); err != nil {
+		return ListKeyPropertiesResponse{}, err
+	}
+	return result, nil
+}
+
+// NewListKeyPropertiesVersionsPager - The full key identifier, attributes, and tags are provided in the response. This operation
+// requires the keys/list permission.
+//
+// Generated from API version 7.4
+//   - name - The name of the key.
+//   - options - ListKeyPropertiesVersionsOptions contains the optional parameters for the Client.NewListKeyPropertiesVersionsPager
+//     method.
+func (client *Client) NewListKeyPropertiesVersionsPager(name string, options *ListKeyPropertiesVersionsOptions) *runtime.Pager[ListKeyPropertiesVersionsResponse] {
+	return runtime.NewPager(runtime.PagingHandler[ListKeyPropertiesVersionsResponse]{
+		More: func(page ListKeyPropertiesVersionsResponse) bool {
+			return page.NextLink != nil && len(*page.NextLink) > 0
+		},
+		Fetcher: func(ctx context.Context, page *ListKeyPropertiesVersionsResponse) (ListKeyPropertiesVersionsResponse, error) {
+			var req *policy.Request
+			var err error
+			if page == nil {
+				req, err = client.listKeyPropertiesVersionsCreateRequest(ctx, name, options)
+			} else {
+				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
+			}
+			if err != nil {
+				return ListKeyPropertiesVersionsResponse{}, err
+			}
+			resp, err := client.internal.Pipeline().Do(req)
+			if err != nil {
+				return ListKeyPropertiesVersionsResponse{}, err
+			}
+			if !runtime.HasStatusCode(resp, http.StatusOK) {
+				return ListKeyPropertiesVersionsResponse{}, runtime.NewResponseError(resp)
+			}
+			return client.listKeyPropertiesVersionsHandleResponse(resp)
+		},
+	})
+}
+
+// listKeyPropertiesVersionsCreateRequest creates the ListKeyPropertiesVersions request.
+func (client *Client) listKeyPropertiesVersionsCreateRequest(ctx context.Context, name string, options *ListKeyPropertiesVersionsOptions) (*policy.Request, error) {
 	urlPath := "/keys/{key-name}/versions"
 	if name == "" {
 		return nil, errors.New("parameter name cannot be empty")
@@ -658,81 +714,17 @@ func (client *Client) listKeyVersionsCreateRequest(ctx context.Context, name str
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	if options != nil && options.MaxResults != nil {
-		reqQP.Set("maxresults", strconv.FormatInt(int64(*options.MaxResults), 10))
-	}
 	reqQP.Set("api-version", "7.4")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
 }
 
-// listKeyVersionsHandleResponse handles the ListKeyVersions response.
-func (client *Client) listKeyVersionsHandleResponse(resp *http.Response) (ListKeyVersionsResponse, error) {
-	result := ListKeyVersionsResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.KeyListResult); err != nil {
-		return ListKeyVersionsResponse{}, err
-	}
-	return result, nil
-}
-
-// NewListKeysPager - Retrieves a list of the keys in the Key Vault as JSON Web Key structures that contain the public part
-// of a stored key. The LIST operation is applicable to all key types, however only the base key
-// identifier, attributes, and tags are provided in the response. Individual versions of a key are not listed in the response.
-// This operation requires the keys/list permission.
-//
-// Generated from API version 7.4
-//   - options - ListKeysOptions contains the optional parameters for the Client.NewListKeysPager method.
-func (client *Client) NewListKeysPager(options *ListKeysOptions) *runtime.Pager[ListKeysResponse] {
-	return runtime.NewPager(runtime.PagingHandler[ListKeysResponse]{
-		More: func(page ListKeysResponse) bool {
-			return page.NextLink != nil && len(*page.NextLink) > 0
-		},
-		Fetcher: func(ctx context.Context, page *ListKeysResponse) (ListKeysResponse, error) {
-			var req *policy.Request
-			var err error
-			if page == nil {
-				req, err = client.listKeysCreateRequest(ctx, options)
-			} else {
-				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
-			}
-			if err != nil {
-				return ListKeysResponse{}, err
-			}
-			resp, err := client.internal.Pipeline().Do(req)
-			if err != nil {
-				return ListKeysResponse{}, err
-			}
-			if !runtime.HasStatusCode(resp, http.StatusOK) {
-				return ListKeysResponse{}, runtime.NewResponseError(resp)
-			}
-			return client.listKeysHandleResponse(resp)
-		},
-	})
-}
-
-// listKeysCreateRequest creates the ListKeys request.
-func (client *Client) listKeysCreateRequest(ctx context.Context, options *ListKeysOptions) (*policy.Request, error) {
-	urlPath := "/keys"
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.endpoint, urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	if options != nil && options.MaxResults != nil {
-		reqQP.Set("maxresults", strconv.FormatInt(int64(*options.MaxResults), 10))
-	}
-	reqQP.Set("api-version", "7.4")
-	req.Raw().URL.RawQuery = reqQP.Encode()
-	req.Raw().Header["Accept"] = []string{"application/json"}
-	return req, nil
-}
-
-// listKeysHandleResponse handles the ListKeys response.
-func (client *Client) listKeysHandleResponse(resp *http.Response) (ListKeysResponse, error) {
-	result := ListKeysResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.KeyListResult); err != nil {
-		return ListKeysResponse{}, err
+// listKeyPropertiesVersionsHandleResponse handles the ListKeyPropertiesVersions response.
+func (client *Client) listKeyPropertiesVersionsHandleResponse(resp *http.Response) (ListKeyPropertiesVersionsResponse, error) {
+	result := ListKeyPropertiesVersionsResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.KeyPropertiesListResult); err != nil {
+		return ListKeyPropertiesVersionsResponse{}, err
 	}
 	return result, nil
 }
@@ -1044,7 +1036,7 @@ func (client *Client) signHandleResponse(resp *http.Response) (SignResponse, err
 //   - version - The version of the key.
 //   - parameters - The parameters for the key operation.
 //   - options - UnwrapKeyOptions contains the optional parameters for the Client.UnwrapKey method.
-func (client *Client) UnwrapKey(ctx context.Context, name string, version string, parameters KeyOperationsParameters, options *UnwrapKeyOptions) (UnwrapKeyResponse, error) {
+func (client *Client) UnwrapKey(ctx context.Context, name string, version string, parameters KeyOperationParameters, options *UnwrapKeyOptions) (UnwrapKeyResponse, error) {
 	req, err := client.unwrapKeyCreateRequest(ctx, name, version, parameters, options)
 	if err != nil {
 		return UnwrapKeyResponse{}, err
@@ -1060,7 +1052,7 @@ func (client *Client) UnwrapKey(ctx context.Context, name string, version string
 }
 
 // unwrapKeyCreateRequest creates the UnwrapKey request.
-func (client *Client) unwrapKeyCreateRequest(ctx context.Context, name string, version string, parameters KeyOperationsParameters, options *UnwrapKeyOptions) (*policy.Request, error) {
+func (client *Client) unwrapKeyCreateRequest(ctx context.Context, name string, version string, parameters KeyOperationParameters, options *UnwrapKeyOptions) (*policy.Request, error) {
 	urlPath := "/keys/{key-name}/{key-version}/unwrapkey"
 	if name == "" {
 		return nil, errors.New("parameter name cannot be empty")
@@ -1258,7 +1250,7 @@ func (client *Client) verifyHandleResponse(resp *http.Response) (VerifyResponse,
 //   - version - The version of the key.
 //   - parameters - The parameters for wrap operation.
 //   - options - WrapKeyOptions contains the optional parameters for the Client.WrapKey method.
-func (client *Client) WrapKey(ctx context.Context, name string, version string, parameters KeyOperationsParameters, options *WrapKeyOptions) (WrapKeyResponse, error) {
+func (client *Client) WrapKey(ctx context.Context, name string, version string, parameters KeyOperationParameters, options *WrapKeyOptions) (WrapKeyResponse, error) {
 	req, err := client.wrapKeyCreateRequest(ctx, name, version, parameters, options)
 	if err != nil {
 		return WrapKeyResponse{}, err
@@ -1274,7 +1266,7 @@ func (client *Client) WrapKey(ctx context.Context, name string, version string, 
 }
 
 // wrapKeyCreateRequest creates the WrapKey request.
-func (client *Client) wrapKeyCreateRequest(ctx context.Context, name string, version string, parameters KeyOperationsParameters, options *WrapKeyOptions) (*policy.Request, error) {
+func (client *Client) wrapKeyCreateRequest(ctx context.Context, name string, version string, parameters KeyOperationParameters, options *WrapKeyOptions) (*policy.Request, error) {
 	urlPath := "/keys/{key-name}/{key-version}/wrapkey"
 	if name == "" {
 		return nil, errors.New("parameter name cannot be empty")

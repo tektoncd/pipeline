@@ -1,12 +1,49 @@
 # Release History
 
+## 0.12.0 (2023-06-08)
+
+### Breaking Changes
+
+* Renamed `GetRandomBytesRequest` to `GetRandomBytesParameters`
+* `ListDeletedKey` to `ListDeletedKeyProperties`
+* `ListKeys` to `ListKeyProperties`
+* `DeletedKeyBundle` to `DeletedKey`
+* `KeyBundle` to `KeyVaultKey`
+* `RestoreKeyParameters.KeyBundleBackup` to `RestoreKeyParameters.KeyBackup`
+* `DeletedKeyItem` to `DeletedKeyProperties`
+* `KeyItem` to `KeyProperties`
+* `DeletedKeyListResult` to `DeletedKeyPropertiesListResult`
+* `KeyListResult` `KeyPropertiesListResult`
+* `KeyOperationsParameters` to `KeyOperationParameters`
+* Changed `JSONWebKey.KeyOperations` from type []*string to []*KeyOperation
+* `ReleaseParameters.Enc` to `ReleaseParameters.Algorithm`
+* `KeyOperationParameters.AAD` to `KeyOperationParameters.AdditionalAuthenticatedData`
+* `KeyOperationParameters.Tag` to `KeyOperationParameters.AuthenticationTag`
+* `JSONWebKeyOperation` to `KeyOperation`
+* `JSONWebKeyCurveName` to `KeyCurveName`
+* `JSONWebKeyEncryptionAlgorithm` to `EncryptionAlgorithm`
+* `JSONWebKeySignatureAlgorithm` to `SignatureAlgorithm`
+* `JSONWebKeyType` to `KeyType`
+* `LifetimeActions` to `LifetimeAction`
+* Removed `DeletionRecoveryLevel` type
+* Removed `SignatureAlgorithmRSNULL` constant
+* Removed `KeyOperationExport` constant
+* Removed `MaxResults` option
+
+### Other Changes
+* Updated dependencies
+
+## 0.11.0 (2023-04-13)
+
+### Breaking Changes
+* Moved from `sdk/keyvault/azkeys` to `sdk/security/keyvault/azkeys`
+
 ## 0.10.0 (2023-04-13)
 
 ### Features Added
 * Upgraded to api version 7.4
 
 ### Breaking Changes
-* This module is now DEPRECATED. The latest supported version of this module is at github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys
 * Renamed `ActionType` to `KeyRotationPolicyAction`
 
 ## 0.9.0 (2022-11-08)

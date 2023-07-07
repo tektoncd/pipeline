@@ -64,10 +64,15 @@ func NewImpl(ctx context.Context, r Interface, optionsFns ...controller.OptionsF
 	lister := pipelinerunInformer.Lister()
 
 	var promoteFilterFunc func(obj interface{}) bool
+	var promoteFunc = func(bkt reconciler.Bucket) {}
 
 	rec := &reconcilerImpl{
 		LeaderAwareFuncs: reconciler.LeaderAwareFuncs{
 			PromoteFunc: func(bkt reconciler.Bucket, enq func(reconciler.Bucket, types.NamespacedName)) error {
+
+				// Signal promotion event
+				promoteFunc(bkt)
+
 				all, err := lister.List(labels.Everything())
 				if err != nil {
 					return err
@@ -124,6 +129,9 @@ func NewImpl(ctx context.Context, r Interface, optionsFns ...controller.OptionsF
 		}
 		if opts.PromoteFilterFunc != nil {
 			promoteFilterFunc = opts.PromoteFilterFunc
+		}
+		if opts.PromoteFunc != nil {
+			promoteFunc = opts.PromoteFunc
 		}
 	}
 

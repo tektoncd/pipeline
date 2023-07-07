@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 
 	prom "contrib.go.opencensus.io/exporter/prometheus"
 	"go.opencensus.io/resource"
@@ -82,10 +83,10 @@ func startNewPromSrv(e *prom.Exporter, host string, port int) *http.Server {
 	if curPromSrv != nil {
 		curPromSrv.Close()
 	}
-	//nolint:gosec
 	curPromSrv = &http.Server{
-		Addr:    host + ":" + strconv.Itoa(port),
-		Handler: sm,
+		Addr:              host + ":" + strconv.Itoa(port),
+		Handler:           sm,
+		ReadHeaderTimeout: time.Minute, //https://medium.com/a-journey-with-go/go-understand-and-mitigate-slowloris-attack-711c1b1403f6
 	}
 	return curPromSrv
 }

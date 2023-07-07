@@ -1,7 +1,5 @@
 # Key Vault Internal Module for Go
 
-[![PkgGoDev](https://pkg.go.dev/badge/github.com/Azure/azure-sdk-for-go/sdk/keyvault/internal)](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/keyvault/internal)
-
 This module contains shared code for all the Key Vault SDKs, mainly the challenge authentication policy.
 
 ## Contributing

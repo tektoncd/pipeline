@@ -40,6 +40,10 @@ import (
 
 // Options contains the configuration for the webhook
 type Options struct {
+	// TLSMinVersion contains the minimum TLS version that is acceptable to communicate with the API server.
+	// TLS 1.3 is the minimum version if not specified otherwise.
+	TLSMinVersion uint16
+
 	// ServiceName is the service name of the webhook.
 	ServiceName string
 
@@ -119,6 +123,13 @@ func New(
 		opts.StatsReporter = reporter
 	}
 
+	defaultTLSMinVersion := uint16(tls.VersionTLS13)
+	if opts.TLSMinVersion == 0 {
+		opts.TLSMinVersion = TLSMinVersionFromEnv(defaultTLSMinVersion)
+	} else if opts.TLSMinVersion != tls.VersionTLS12 && opts.TLSMinVersion != tls.VersionTLS13 {
+		return nil, fmt.Errorf("unsupported TLS version: %d", opts.TLSMinVersion)
+	}
+
 	syncCtx, cancel := context.WithCancel(context.Background())
 
 	webhook = &Webhook{
@@ -136,7 +147,7 @@ func New(
 		secretInformer := kubeinformerfactory.Get(ctx).Core().V1().Secrets()
 
 		webhook.tlsConfig = &tls.Config{
-			MinVersion: tls.VersionTLS12,
+			MinVersion: opts.TLSMinVersion,
 
 			// If we return (nil, error) the client sees - 'tls: internal error"
 			// If we return (nil, nil) the client sees - 'tls: no certificates configured'
@@ -208,11 +219,11 @@ func (wh *Webhook) Run(stop <-chan struct{}) error {
 		QuietPeriod: wh.Options.GracePeriod,
 	}
 
-	//nolint:gosec
 	server := &http.Server{
-		Handler:   drainer,
-		Addr:      fmt.Sprint(":", wh.Options.Port),
-		TLSConfig: wh.tlsConfig,
+		Handler:           drainer,
+		Addr:              fmt.Sprint(":", wh.Options.Port),
+		TLSConfig:         wh.tlsConfig,
+		ReadHeaderTimeout: time.Minute, //https://medium.com/a-journey-with-go/go-understand-and-mitigate-slowloris-attack-711c1b1403f6
 	}
 
 	eg, ctx := errgroup.WithContext(ctx)

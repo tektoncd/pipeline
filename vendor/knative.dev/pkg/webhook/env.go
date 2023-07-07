@@ -17,15 +17,22 @@ limitations under the License.
 package webhook
 
 import (
+	"crypto/tls"
 	"fmt"
 	"os"
 	"strconv"
 )
 
-const portEnvKey = "WEBHOOK_PORT"
+const (
+	portEnvKey = "WEBHOOK_PORT"
 
-// Webhook is the name of the override key used inside of the logging config for Webhook Controller.
-const webhookNameEnv = "WEBHOOK_NAME"
+	// Webhook is the name of the override key used inside of the logging config for Webhook Controller.
+	webhookNameEnvKey = "WEBHOOK_NAME"
+
+	secretNameEnvKey = "WEBHOOK_SECRET_NAME" //nolint:gosec // This is not a hardcoded credential
+
+	tlsMinVersionEnvKey = "WEBHOOK_TLS_MIN_VERSION"
+)
 
 // PortFromEnv returns the webhook port set by portEnvKey, or default port if env var is not set.
 func PortFromEnv(defaultPort int) int {
@@ -42,15 +49,36 @@ func PortFromEnv(defaultPort int) int {
 }
 
 func NameFromEnv() string {
-	if webhook := os.Getenv(webhookNameEnv); webhook != "" {
+	if webhook := os.Getenv(webhookNameEnvKey); webhook != "" {
 		return webhook
 	}
 
-	panic(fmt.Sprintf(`The environment variable %q is not set.
+	panic(fmt.Sprintf(`The environment variable %[1]q is not set.
 This should be unique for the webhooks in a namespace
 If this is a process running on Kubernetes, then initialize this variable via:
   env:
-  - name: WEBHOOK_NAME
+  - name: %[1]s
     value: webhook
-`, webhookNameEnv))
+`, webhookNameEnvKey))
+}
+
+func SecretNameFromEnv(defaultSecretName string) string {
+	secret := os.Getenv(secretNameEnvKey)
+	if secret == "" {
+		return defaultSecretName
+	}
+	return secret
+}
+
+func TLSMinVersionFromEnv(defaultTLSMinVersion uint16) uint16 {
+	switch tlsMinVersion := os.Getenv(tlsMinVersionEnvKey); tlsMinVersion {
+	case "1.2":
+		return tls.VersionTLS12
+	case "1.3":
+		return tls.VersionTLS13
+	case "":
+		return defaultTLSMinVersion
+	default:
+		panic(fmt.Sprintf("the environment variable %q has to be either '1.2' or '1.3'", tlsMinVersionEnvKey))
+	}
 }
