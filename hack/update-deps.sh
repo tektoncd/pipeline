@@ -22,7 +22,7 @@ source $(git rev-parse --show-toplevel)/vendor/github.com/tektoncd/plumbing/scri
 
 cd ${REPO_ROOT_DIR}
 
-KNATIVE_VERSION="release-1.9"
+KNATIVE_VERSION="release-1.10"
 
 # The list of dependencies that we track at HEAD and periodically
 # float forward in this repository.

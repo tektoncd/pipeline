@@ -26,7 +26,7 @@ type DecryptResponse struct {
 
 // DeleteKeyResponse contains the response from method Client.DeleteKey.
 type DeleteKeyResponse struct {
-	DeletedKeyBundle
+	DeletedKey
 }
 
 // EncryptResponse contains the response from method Client.Encrypt.
@@ -36,7 +36,7 @@ type EncryptResponse struct {
 
 // GetDeletedKeyResponse contains the response from method Client.GetDeletedKey.
 type GetDeletedKeyResponse struct {
-	DeletedKeyBundle
+	DeletedKey
 }
 
 // GetKeyResponse contains the response from method Client.GetKey.
@@ -59,19 +59,19 @@ type ImportKeyResponse struct {
 	KeyBundle
 }
 
-// ListDeletedKeysResponse contains the response from method Client.NewListDeletedKeysPager.
-type ListDeletedKeysResponse struct {
-	DeletedKeyListResult
+// ListDeletedKeyPropertiesResponse contains the response from method Client.NewListDeletedKeyPropertiesPager.
+type ListDeletedKeyPropertiesResponse struct {
+	DeletedKeyPropertiesListResult
 }
 
-// ListKeyVersionsResponse contains the response from method Client.NewListKeyVersionsPager.
-type ListKeyVersionsResponse struct {
-	KeyListResult
+// ListKeyPropertiesResponse contains the response from method Client.NewListKeyPropertiesPager.
+type ListKeyPropertiesResponse struct {
+	KeyPropertiesListResult
 }
 
-// ListKeysResponse contains the response from method Client.NewListKeysPager.
-type ListKeysResponse struct {
-	KeyListResult
+// ListKeyPropertiesVersionsResponse contains the response from method Client.NewListKeyPropertiesVersionsPager.
+type ListKeyPropertiesVersionsResponse struct {
+	KeyPropertiesListResult
 }
 
 // PurgeDeletedKeyResponse contains the response from method Client.PurgeDeletedKey.

@@ -22,6 +22,7 @@ import (
 	"net/http/pprof"
 	"os"
 	"strconv"
+	"time"
 
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
@@ -110,9 +111,9 @@ func NewServer(handler http.Handler) *http.Server {
 		port = strconv.Itoa(ProfilingPort)
 	}
 
-	//nolint:gosec
 	return &http.Server{
-		Addr:    ":" + port,
-		Handler: handler,
+		Addr:              ":" + port,
+		Handler:           handler,
+		ReadHeaderTimeout: time.Minute, //https://medium.com/a-journey-with-go/go-understand-and-mitigate-slowloris-attack-711c1b1403f6
 	}
 }

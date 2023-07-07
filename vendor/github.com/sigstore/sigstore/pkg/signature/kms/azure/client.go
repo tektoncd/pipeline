@@ -20,7 +20,8 @@ import (
 	"context"
 	"crypto"
 	"crypto/ecdsa"
-	"encoding/base64"
+	"crypto/elliptic"
+	"crypto/rsa"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -37,14 +38,14 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/azure-sdk-for-go/sdk/keyvault/azkeys"
+	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys"
 	"github.com/sigstore/sigstore/pkg/signature"
 	sigkms "github.com/sigstore/sigstore/pkg/signature/kms"
 )
 
 func init() {
-	sigkms.AddProvider(ReferenceScheme, func(ctx context.Context, keyResourceID string, hashFunc crypto.Hash, opts ...signature.RPCOption) (sigkms.SignerVerifier, error) {
-		return LoadSignerVerifier(ctx, keyResourceID, hashFunc)
+	sigkms.AddProvider(ReferenceScheme, func(ctx context.Context, keyResourceID string, _ crypto.Hash, opts ...signature.RPCOption) (sigkms.SignerVerifier, error) {
+		return LoadSignerVerifier(ctx, keyResourceID)
 	})
 }
 
@@ -56,17 +57,17 @@ type kvClient interface {
 }
 
 type azureVaultClient struct {
-	client    kvClient
-	keyCache  *ttlcache.Cache[string, crypto.PublicKey]
-	vaultURL  string
-	vaultName string
-	keyName   string
+	client     kvClient
+	keyCache   *ttlcache.Cache[string, crypto.PublicKey]
+	vaultURL   string
+	keyName    string
+	keyVersion string
 }
 
 var (
-	errAzureReference = errors.New("kms specification should be in the format azurekms://[VAULT_NAME][VAULT_URL]/[KEY_NAME]")
+	errAzureReference = errors.New("kms specification should be in the format azurekms://[VAULT_NAME][VAULT_URL]/[KEY_NAME]/[VERSION (optional)]")
 
-	referenceRegex = regexp.MustCompile(`^azurekms://([^/]+)/([^/]+)?$`)
+	referenceRegex = regexp.MustCompile(`^azurekms://([^/]+)/([^/]+)(/[a-z0-9]*)?$`)
 )
 
 const (
@@ -83,15 +84,24 @@ func ValidReference(ref string) error {
 	return nil
 }
 
-func parseReference(resourceID string) (vaultURL, vaultName, keyName string, err error) {
-	v := referenceRegex.FindStringSubmatch(resourceID)
-	if len(v) != 3 {
+// The key version can be optionally provided
+// If provided, all key operations will specify this version.
+// If not provided, the key operations will use the latest key version by default.
+func parseReference(resourceID string) (vaultURL, keyName, keyVersion string, err error) {
+	if isIDValid := referenceRegex.MatchString(resourceID); !isIDValid {
 		err = fmt.Errorf("invalid azurekms format %q", resourceID)
 		return
 	}
 
-	vaultURL = fmt.Sprintf("https://%s/", v[1])
-	vaultName, keyName = strings.Split(v[1], ".")[0], v[2]
+	fullRef := strings.Split(resourceID, "azurekms://")[1]
+	splitRef := strings.Split(fullRef, "/")
+	vaultURL = fmt.Sprintf("https://%s/", splitRef[0])
+	keyName = splitRef[1]
+
+	if len(splitRef) == 3 {
+		keyVersion = splitRef[2]
+	}
+
 	return
 }
 
@@ -99,7 +109,7 @@ func newAzureKMS(keyResourceID string) (*azureVaultClient, error) {
 	if err := ValidReference(keyResourceID); err != nil {
 		return nil, err
 	}
-	vaultURL, vaultName, keyName, err := parseReference(keyResourceID)
+	vaultURL, keyName, keyVersion, err := parseReference(keyResourceID)
 	if err != nil {
 		return nil, err
 	}
@@ -110,10 +120,9 @@ func newAzureKMS(keyResourceID string) (*azureVaultClient, error) {
 	}
 
 	azClient := &azureVaultClient{
-		client:    client,
-		vaultURL:  vaultURL,
-		vaultName: vaultName,
-		keyName:   keyName,
+		client:     client,
+		keyName:    keyName,
+		keyVersion: keyVersion,
 		keyCache: ttlcache.New[string, crypto.PublicKey](
 			ttlcache.WithDisableTouchOnHit[string, crypto.PublicKey](),
 		),
@@ -189,16 +198,16 @@ func getAzureCredential(method authenticationMethod) (azureCredential, error) {
 		return nil, fmt.Errorf("you should never reach this")
 	}
 
-	cred, err := azidentity.NewEnvironmentCredential(nil)
+	envCreds, err := azidentity.NewEnvironmentCredential(nil)
 	if err == nil {
-		return cred, nil
+		return envCreds, nil
 	}
 
-	cred2, err := azidentity.NewAzureCLICredential(nil)
+	cliCreds, err := azidentity.NewAzureCLICredential(nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create default Azure credential from env auth method: %w", err)
 	}
-	return cred2, nil
+	return cliCreds, nil
 }
 
 func getKeysClient(vaultURL string) (*azkeys.Client, error) {
@@ -231,10 +240,10 @@ func (a *azureVaultClient) fetchPublicKey(ctx context.Context) (crypto.PublicKey
 	// be stripped from the key type before attempting to represent the key
 	// with a go-jose/JSONWebKey struct.
 	switch *keyType {
-	case azkeys.JSONWebKeyTypeECHSM:
-		*key.Kty = azkeys.JSONWebKeyTypeEC
-	case azkeys.JSONWebKeyTypeRSAHSM:
-		*key.Kty = azkeys.JSONWebKeyTypeRSA
+	case azkeys.KeyTypeECHSM:
+		*key.Kty = azkeys.KeyTypeEC
+	case azkeys.KeyTypeRSAHSM:
+		*key.Kty = azkeys.KeyTypeRSA
 	}
 
 	jwkJSON, err := json.Marshal(*key)
@@ -248,18 +257,11 @@ func (a *azureVaultClient) fetchPublicKey(ctx context.Context) (crypto.PublicKey
 		return nil, fmt.Errorf("decoding the jsonWebKey: %w", err)
 	}
 
-	pub, ok := jwk.Key.(*ecdsa.PublicKey)
-	if !ok {
-		if err != nil {
-			return nil, fmt.Errorf("public key was not ECDSA: %#v", pub)
-		}
-	}
-
-	return pub, nil
+	return jwk.Key, nil
 }
 
 func (a *azureVaultClient) getKey(ctx context.Context) (azkeys.KeyBundle, error) {
-	resp, err := a.client.GetKey(ctx, a.vaultURL, a.keyName, nil)
+	resp, err := a.client.GetKey(ctx, a.keyName, a.keyVersion, nil)
 	if err != nil {
 		return azkeys.KeyBundle{}, fmt.Errorf("public key: %w", err)
 	}
@@ -301,11 +303,11 @@ func (a *azureVaultClient) createKey(ctx context.Context) (crypto.PublicKey, err
 				Enabled: to.Ptr(true),
 			},
 			KeySize: to.Ptr(int32(2048)),
-			KeyOps: []*azkeys.JSONWebKeyOperation{
-				to.Ptr(azkeys.JSONWebKeyOperationSign),
-				to.Ptr(azkeys.JSONWebKeyOperationVerify),
+			KeyOps: []*azkeys.KeyOperation{
+				to.Ptr(azkeys.KeyOperationSign),
+				to.Ptr(azkeys.KeyOperationVerify),
 			},
-			Kty: to.Ptr(azkeys.JSONWebKeyTypeEC),
+			Kty: to.Ptr(azkeys.KeyTypeEC),
 			Tags: map[string]*string{
 				"use": to.Ptr("sigstore"),
 			},
@@ -317,69 +319,71 @@ func (a *azureVaultClient) createKey(ctx context.Context) (crypto.PublicKey, err
 	return a.public(ctx)
 }
 
-func getKeyVaultSignatureAlgo(algo crypto.Hash) (azkeys.JSONWebKeySignatureAlgorithm, error) {
-	switch algo {
-	case crypto.SHA256:
-		return azkeys.JSONWebKeySignatureAlgorithmES256, nil
-	case crypto.SHA384:
-		return azkeys.JSONWebKeySignatureAlgorithmES384, nil
-	case crypto.SHA512:
-		return azkeys.JSONWebKeySignatureAlgorithmES512, nil
+func (a *azureVaultClient) getKeyVaultHashFunc(ctx context.Context) (crypto.Hash, azkeys.SignatureAlgorithm, error) {
+	publicKey, err := a.public(ctx)
+	if err != nil {
+		return 0, "", fmt.Errorf("failed to get public key: %w", err)
+	}
+	switch keyImpl := publicKey.(type) {
+	case *ecdsa.PublicKey:
+		switch keyImpl.Curve {
+		case elliptic.P256():
+			return crypto.SHA256, azkeys.SignatureAlgorithmES256, nil
+		case elliptic.P384():
+			return crypto.SHA384, azkeys.SignatureAlgorithmES384, nil
+		case elliptic.P521():
+			return crypto.SHA512, azkeys.SignatureAlgorithmES512, nil
+		default:
+			return 0, "", fmt.Errorf("unsupported key size: %s", keyImpl.Params().Name)
+		}
+	case *rsa.PublicKey:
+		switch keyImpl.Size() {
+		case 256:
+			return crypto.SHA256, azkeys.SignatureAlgorithmRS256, nil
+		case 384:
+			return crypto.SHA384, azkeys.SignatureAlgorithmRS384, nil
+		case 512:
+			return crypto.SHA512, azkeys.SignatureAlgorithmRS384, nil
+		default:
+			return 0, "", fmt.Errorf("unsupported key size: %d", keyImpl.Size())
+		}
 	default:
-		return "", fmt.Errorf("unsupported algorithm: %s", algo)
+		return 0, "", fmt.Errorf("unsupported public key type: %T", publicKey)
 	}
 }
 
-func (a *azureVaultClient) sign(ctx context.Context, hash []byte, algo crypto.Hash) ([]byte, error) {
-	keyVaultAlgo, err := getKeyVaultSignatureAlgo(algo)
+func (a *azureVaultClient) sign(ctx context.Context, hash []byte) ([]byte, error) {
+	_, keyVaultAlgo, err := a.getKeyVaultHashFunc(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get KeyVaultSignatureAlgorithm: %w", err)
 	}
 
-	encodedHash := make([]byte, base64.RawURLEncoding.EncodedLen(len(hash)))
-	base64.StdEncoding.Encode(encodedHash, hash)
-
 	params := azkeys.SignParameters{
 		Algorithm: &keyVaultAlgo,
-		Value:     encodedHash,
+		Value:     hash,
 	}
 
-	result, err := a.client.Sign(ctx, a.vaultURL, a.keyName, params, nil)
+	result, err := a.client.Sign(ctx, a.keyName, a.keyVersion, params, nil)
 	if err != nil {
 		return nil, fmt.Errorf("signing the payload: %w", err)
 	}
 
-	decodedRes := make([]byte, base64.RawURLEncoding.DecodedLen(len(result.Result)))
-
-	n, err := base64.StdEncoding.Decode(decodedRes, result.Result)
-	if err != nil {
-		return nil, fmt.Errorf("decoding the result: %w", err)
-	}
-
-	decodedRes = decodedRes[:n]
-
-	return decodedRes, nil
+	return result.Result, nil
 }
 
-func (a *azureVaultClient) verify(ctx context.Context, signature, hash []byte, algo crypto.Hash) error {
-	keyVaultAlgo, err := getKeyVaultSignatureAlgo(algo)
+func (a *azureVaultClient) verify(ctx context.Context, signature, hash []byte) error {
+	_, keyVaultAlgo, err := a.getKeyVaultHashFunc(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get KeyVaultSignatureAlgorithm: %w", err)
 	}
 
-	encodedHash := make([]byte, base64.RawURLEncoding.EncodedLen(len(hash)))
-	base64.StdEncoding.Encode(encodedHash, hash)
-
-	encodedSignature := make([]byte, base64.RawURLEncoding.EncodedLen(len(signature)))
-	base64.StdEncoding.Encode(encodedSignature, signature)
-
 	params := azkeys.VerifyParameters{
 		Algorithm: &keyVaultAlgo,
-		Digest:    encodedHash,
-		Signature: encodedSignature,
+		Digest:    hash,
+		Signature: signature,
 	}
 
-	result, err := a.client.Verify(ctx, a.vaultURL, a.keyName, params, nil)
+	result, err := a.client.Verify(ctx, a.keyName, a.keyVersion, params, nil)
 	if err != nil {
 		return fmt.Errorf("verify: %w", err)
 	}

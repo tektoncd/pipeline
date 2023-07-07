@@ -1,5 +1,13 @@
 # Release History
 
+## 0.8.0 (2023-03-08)
+
+### Breaking Changes
+* Moved to new location
+
+### Other Changes
+* Upgrade dependencies
+
 ## 0.7.1 (2022-11-14)
 
 ### Bugs Fixed

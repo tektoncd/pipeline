@@ -8,7 +8,7 @@ trigger:
       - release/*
   paths:
     include:
-    - sdk/keyvault/azkeys
+    - sdk/security/keyvault/internal
 
 pr:
   branches:
@@ -19,16 +19,10 @@ pr:
       - release/*
   paths:
     include:
-    - sdk/keyvault/azkeys
+    - sdk/security/keyvault/internal
 
 stages:
 - template: /eng/pipelines/templates/jobs/archetype-sdk-client.yml
   parameters:
-    TimeoutInMinutes: 120
-    ServiceDirectory: 'keyvault/azkeys'
-    RunLiveTests: true
-    AdditionalMatrixConfigs:
-      - Name: keyvault_test_matrix_addons
-        Path: sdk/keyvault/azkeys/platform-matrix.json
-        Selection: sparse
-        GenerateVMJobs: true
+    ServiceDirectory: 'security/keyvault/internal'
+    RunLiveTests: false

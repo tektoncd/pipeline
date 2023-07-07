@@ -46,6 +46,10 @@ type Options struct {
 	// Objects that pass the filter (return true) will be reconciled when a new leader is promoted.
 	// If no filter is specified, all objects will be reconciled.
 	PromoteFilterFunc func(obj interface{}) bool
+
+	// PromoteFunc is called when a reconciler is promoted for the given bucket
+	// The provided function must not block execution.
+	PromoteFunc func(bkt reconciler.Bucket)
 }
 
 // OptionsFn is a callback method signature that accepts an Impl and returns
