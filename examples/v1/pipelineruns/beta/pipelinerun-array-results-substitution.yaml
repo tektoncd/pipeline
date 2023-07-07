@@ -1,0 +1,94 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: pipelinerun-write-and-read-array-results-
+spec:
+  pipelineSpec:
+    tasks:
+      - name: task1
+        taskSpec:
+          results:
+            # a list of images in array-result-1
+            - name: array-results-1
+              type: array
+              description: The array results
+            # a list of images in array-result-2
+            - name: array-results-2
+              type: array
+              description: The array results
+          steps:
+            - name: write-array
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                image1="abc.dev/sampler/busysample@sha256:19f02276bf8dbdd62f069b922f10c65262cc34b710eea26ff928129a736be791"
+                image2="ubuntu"
+                image3="xyz.dev/awesomeness/awesomeness"
+                echo -n "[\"$image1\", \"$image2\", \"$image3\"]" | tee $(results.array-results-1.path)
+                echo -n "[\"\", \"$image3\"]" | tee $(results.array-results-2.path)
+      - name: task2
+        params:
+          - name: images
+            value: "$(tasks.task1.results.array-results-1[*])"
+          - name: image-1
+            value: "$(tasks.task1.results.array-results-1[2])"
+          - name: image-2
+            value: "$(tasks.task1.results.array-results-2[1])"
+        taskSpec:
+          params:
+            - name: images
+              type: array
+            - name: image-1
+              type: string
+            - name: image-2
+              type: string
+          steps:
+            - name: validate-images
+              image: bash:latest
+              args: [
+                "$(params.images[*])"
+              ]
+              script: |
+                echo "Validating the length of the array parameter - images"
+                echo "The array parameter, array-param1 must have 3 elements"
+                if [[ $# != 3 ]]; then
+                  exit 1
+                fi
+                echo "Done validating the length of the array parameter - images"
+
+                echo "Validating the first image"
+                if [[ $1 != "abc.dev/sampler/busysample@sha256:19f02276bf8dbdd62f069b922f10c65262cc34b710eea26ff928129a736be791" ]]; then
+                  exit 1
+                fi
+                echo "Done validating the first image"
+
+                echo "Validating the second image"
+                if [[ $2 != "ubuntu" ]]; then
+                  exit 1
+                fi
+                echo "Done validating the second image"
+
+                echo "Validating the third image"
+                if [[ $3 != "xyz.dev/awesomeness/awesomeness" ]]; then
+                  exit 1
+                fi
+                echo "Done validating the third image"
+            - name: validate-image
+              image: ubuntu
+              script: |
+                #!/bin/bash
+                VALUE=$(params.image-1)
+                EXPECTED="xyz.dev/awesomeness/awesomeness"
+                diff=$(diff <(printf "%s\n" "${VALUE[@]}") <(printf "%s\n" "${EXPECTED[@]}"))
+                if [[ -z "$diff" ]]; then
+                    echo "Got expected: ${VALUE}"
+                else
+                    echo "Want: ${EXPECTED} Got: ${VALUE}"
+                    exit 1
+                fi
+
+                echo "Validating reading from an array when earlier elements are empty"
+                if [[ $(params.image-2) != $EXPECTED ]]; then
+                  exit 1
+                fi
+                echo "Done validating reading from an array"

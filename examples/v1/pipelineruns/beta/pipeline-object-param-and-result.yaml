@@ -1,0 +1,98 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: write-param-to-result
+spec:
+  params:
+    - name: arg
+      type: object
+      properties:
+        url:
+          type: string
+        commit:
+          type: string
+  results:
+    - name: object-result
+      type: object
+      properties:
+        foo:
+          type: string
+        bar:
+          type: string
+  steps:
+    - name: write-result
+      image: bash:latest
+      script: |
+        #!/usr/bin/env bash
+        echo -n "{\"foo\":\"$(params.arg.url)\",\"bar\":\"$(params.arg.commit)\"}" | tee $(results.object-result.path)
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: echo-param
+spec:
+  params:
+    - name: arg
+      type: object
+      properties:
+        foo:
+          type: string
+        bar:
+          type: string
+  steps:
+    - name: echo-params
+      image: bash:latest
+      args: [
+        "$(params.arg.foo)",
+        "$(params.arg.bar)"
+      ]
+      script: |
+        if [[ $1 != "abc.com" ]]; then
+            echo "Want: abc.com, Got: $1"
+          exit 1
+        else
+          echo "validate the arg.foo successfully"
+        fi
+        if [[ $2 != "sha123" ]]; then
+            echo "Want: sha123, Got: $2"
+          exit 1
+        else
+          echo "validate the arg.bar successfully"
+        fi
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: pipeline-test
+spec:
+  params:
+    - name: gitrepo
+      properties:
+        url: {}
+        commit: {}
+  tasks:
+    - name: task1
+      params:
+        - name: arg
+          value: $(params.gitrepo[*])
+      taskRef:
+        name: write-param-to-result
+    - name: task2
+      params:
+        - name: arg
+          value: "$(tasks.task1.results.object-result[*])"
+      taskRef:
+        name: echo-param
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: pipelinerun-object-param-result-
+spec:
+  params:
+    - name: gitrepo
+      value:
+        url: abc.com
+        commit: sha123
+  pipelineRef:
+    name: pipeline-test

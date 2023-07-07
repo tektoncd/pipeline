@@ -1,0 +1,54 @@
+# In this example a PipelineRun accepts a workspace
+# to use as ssh credentials. The PipelineTask
+# is configured so that only one of its Steps has access
+# to those creds.
+kind: Secret
+apiVersion: v1
+metadata:
+  name: test-ssh-credentials
+stringData:
+  id_rsa: |
+    -----BEGIN OPENSSH PRIVATE KEY-----
+    abcdefghijklmnopqrstuvwxy1234567890
+    -----END OPENSSH PRIVATE KEY-----
+---
+kind: PipelineRun
+apiVersion: tekton.dev/v1
+metadata:
+  generateName: isolated-workspaces-
+spec:
+  timeouts:
+    pipeline: 60s
+  workspaces:
+  - name: ssh-credentials
+    secret:
+      secretName: test-ssh-credentials
+
+  pipelineSpec:
+    workspaces:
+    - name: ssh-credentials
+
+    tasks:
+    - name: test-isolation
+      workspaces:
+      - name: creds
+        workspace: ssh-credentials
+      taskSpec:
+        workspaces:
+        - name: creds
+        steps:
+        - image: alpine:3.12.0
+          script: |
+            if [ ! -d /creds ] ; then
+              echo "unable to access creds"
+              exit 1
+            fi
+          workspaces:
+          - name: creds
+            mountpath: /creds
+        - image: alpine:3.12.0
+          script: |
+            if [ -d /workspace/creds ] ; then
+              echo "this step should not be able to see creds"
+              exit 255
+            fi

@@ -60,7 +60,7 @@ spec:
   - name: clone
     image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:latest
     securityContext:
-      runAsUser: 0 # This needs root, and git-init is nonroot by default
+      runAsUser: 0  # This needs root, and git-init is nonroot by default
     script: |
       CHECKOUT_DIR="$(workspaces.output.path)/$(params.subdirectory)"
       cleandir() {
@@ -152,7 +152,7 @@ spec:
       args:
         - $(params.EXTRA_ARGS)
         - --dockerfile=$(params.DOCKERFILE)
-        - --context=$(workspaces.source.path)/$(params.CONTEXT) # The user does not need to care the workspace and the source.
+        - --context=$(workspaces.source.path)/$(params.CONTEXT)  # The user does not need to care the workspace and the source.
         - --destination=$(params.IMAGE)
         - --digest-file=$(results.IMAGE_DIGEST.path)
       # kaniko assumes it is running as root, which means this example fails on platforms

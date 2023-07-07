@@ -59,7 +59,7 @@ spec:
     - name: clone
       image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:latest
       securityContext:
-        runAsUser: 0 # This needs root, and git-init is nonroot by default
+        runAsUser: 0  # This needs root, and git-init is nonroot by default
       script: |
         CHECKOUT_DIR="$(workspaces.output.path)/$(params.subdirectory)"
 
