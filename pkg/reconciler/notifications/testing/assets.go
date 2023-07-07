@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	lru "github.com/hashicorp/golang-lru"
+	bc "github.com/allegro/bigcache/v3"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	rtesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
@@ -44,14 +44,14 @@ type TestEmitCloudEventsParams struct {
 // Reconciler implements the Reconciler interface from the notification package
 type FakeReconciler struct {
 	cloudEventClient cloudevent.CEClient
-	cacheClient      *lru.Cache
+	cacheClient      *bc.BigCache
 }
 
 func (c *FakeReconciler) GetCloudEventsClient() cloudevent.CEClient {
 	return c.cloudEventClient
 }
 
-func (c *FakeReconciler) GetCacheClient() *lru.Cache {
+func (c *FakeReconciler) GetCacheClient() *bc.BigCache {
 	return c.cacheClient
 }
 
@@ -59,7 +59,7 @@ func (c *FakeReconciler) SetCloudEventsClient(client cloudevent.CEClient) {
 	c.cloudEventClient = client
 }
 
-func (c *FakeReconciler) SetCacheClient(client *lru.Cache) {
+func (c *FakeReconciler) SetCacheClient(client *bc.BigCache) {
 	c.cacheClient = client
 }
 

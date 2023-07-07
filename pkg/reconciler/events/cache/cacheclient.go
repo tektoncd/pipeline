@@ -18,8 +18,9 @@ package cache
 
 import (
 	"context"
+	"time"
 
-	lru "github.com/hashicorp/golang-lru"
+	bc "github.com/allegro/bigcache/v3"
 	"k8s.io/client-go/rest"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
@@ -38,10 +39,12 @@ type cacheKey struct{}
 func withCacheClientFromSize(ctx context.Context, size int) context.Context {
 	logger := logging.FromContext(ctx)
 
-	cacheClient, err := lru.New(size)
-	logger.Infof("CACHE CLIENT %+v", cacheClient)
+	config := bc.DefaultConfig(2 * time.Hour)
+	config.HardMaxCacheSize = size
+
+	cacheClient, err := bc.New(ctx, config)
 	if err != nil {
-		logger.Error("unable to create cacheClient :" + err.Error())
+		logger.Errorf("unable to create cacheClient :%s", err.Error())
 	}
 
 	return ToContext(ctx, cacheClient)
@@ -52,16 +55,16 @@ func withCacheClient(ctx context.Context, cfg *rest.Config) context.Context {
 }
 
 // Get extracts the cloudEventClient client from the context.
-func Get(ctx context.Context) *lru.Cache {
+func Get(ctx context.Context) *bc.BigCache {
 	untyped := ctx.Value(cacheKey{})
 	if untyped == nil {
 		logging.FromContext(ctx).Errorf("Unable to fetch client from context.")
 		return nil
 	}
-	return untyped.(*lru.Cache)
+	return untyped.(*bc.BigCache)
 }
 
 // ToContext adds the cloud events client to the context
-func ToContext(ctx context.Context, c *lru.Cache) context.Context {
+func ToContext(ctx context.Context, c *bc.BigCache) context.Context {
 	return context.WithValue(ctx, cacheKey{}, c)
 }

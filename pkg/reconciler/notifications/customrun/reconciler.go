@@ -19,7 +19,7 @@ package customrun
 import (
 	"context"
 
-	lru "github.com/hashicorp/golang-lru"
+	bc "github.com/allegro/bigcache/v3"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	customrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/customrun"
@@ -31,14 +31,14 @@ import (
 // Reconciler implements controller.Reconciler for Configuration resources.
 type Reconciler struct {
 	cloudEventClient cloudevent.CEClient
-	cacheClient      *lru.Cache
+	cacheClient      *bc.BigCache
 }
 
 func (c *Reconciler) GetCloudEventsClient() cloudevent.CEClient {
 	return c.cloudEventClient
 }
 
-func (c *Reconciler) GetCacheClient() *lru.Cache {
+func (c *Reconciler) GetCacheClient() *bc.BigCache {
 	return c.cacheClient
 }
 
@@ -46,7 +46,7 @@ func (c *Reconciler) SetCloudEventsClient(client cloudevent.CEClient) {
 	c.cloudEventClient = client
 }
 
-func (c *Reconciler) SetCacheClient(client *lru.Cache) {
+func (c *Reconciler) SetCacheClient(client *bc.BigCache) {
 	c.cacheClient = client
 }
 

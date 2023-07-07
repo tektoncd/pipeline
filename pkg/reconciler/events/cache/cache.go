@@ -17,52 +17,131 @@ limitations under the License.
 package cache
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/fnv"
+	"strconv"
+	"time"
 
+	bc "github.com/allegro/bigcache/v3"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
-	lru "github.com/hashicorp/golang-lru"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"knative.dev/pkg/apis"
 )
 
-// Struct to unmarshal the event data
-type eventData struct {
-	CustomRun *v1beta1.CustomRun `json:"customRun,omitempty"`
-}
-
-// ContainsOrAddCloudEvent checks if the event exists in the cache
-func ContainsOrAddCloudEvent(cacheClient *lru.Cache, event *cloudevents.Event) (bool, error) {
+// ContainsOrAddKey checks if the key exists in the cache
+// - it returns true if they key was found in the cache
+// - it returns false if it wasn't and adds the key
+// Either way, the current timestamp is appended as value
+func ContainsOrAddKey(cacheClient *bc.BigCache, key string) (bool, error) {
 	if cacheClient == nil {
 		return false, errors.New("cache client is nil")
 	}
-	eventKey, err := EventKey(event)
+	// Set the new key
+	timeNow, err := hash(time.Now().Format(time.RFC3339Nano))
 	if err != nil {
 		return false, err
 	}
-	isPresent, _ := cacheClient.ContainsOrAdd(eventKey, nil)
-	return isPresent, nil
+	err = cacheClient.Append(key, []byte(timeNow))
+	if err != nil {
+		return false, err
+	}
+	// Get the value - if it matches what we added, the key was new
+	value, err := cacheClient.Get(key)
+	if err != nil {
+		return false, err
+	}
+	return (string(value) != timeNow), nil
 }
 
-// EventKey defines whether an event is considered different from another
-// in future we might want to let specific event types override this
-func EventKey(event *cloudevents.Event) (string, error) {
-	var (
-		data              eventData
-		resourceName      string
-		resourceNamespace string
-		resourceKind      string
-	)
-	err := json.Unmarshal(event.Data(), &data)
+// ContainsOrAddCloudEvent checks if the event exists in the cache
+// - it returns true if they key was found in the cache
+// - it returns false if it wasn't and adds the key
+// Either way, the current timestamp is appended as value
+// The key is calculated via EventKey
+func ContainsOrAddCloudEvent(cacheClient *bc.BigCache, event *cloudevents.Event, object v1beta1.RunObject) (bool, error) {
+	if cacheClient == nil {
+		return false, errors.New("cache client is nil")
+	}
+	eventKey, err := EventKey(event, object)
+	if err != nil {
+		return false, err
+	}
+	return ContainsOrAddKey(cacheClient, eventKey)
+}
+
+// ContainsOrAddObject checks if the object exists in the cache
+// - it returns true if they key was found in the cache
+// - it returns false if it wasn't and adds the key
+// Either way, the current timestamp is appended as value
+// The key is calculated via ObjectKey
+func ContainsOrAddObject(cacheClient *bc.BigCache, object v1beta1.RunObject) (bool, error) {
+	if cacheClient == nil {
+		return false, errors.New("cache client is nil")
+	}
+	eventKey, err := ObjectKey(object)
+	if err != nil {
+		return false, err
+	}
+	return ContainsOrAddKey(cacheClient, eventKey)
+}
+
+// EventKey is the event cache key which combines event type and object kind, namespace and name
+func EventKey(event *cloudevents.Event, object v1beta1.RunObject) (string, error) {
+	if object == nil || event == nil {
+		return "", fmt.Errorf("both object (%v) and event (%v) must be not nil", object, event)
+	}
+	if object.GetObjectKind() == nil {
+		return "", fmt.Errorf("object %v has nil object kind", object)
+	}
+	if object.GetObjectMeta() == nil {
+		return "", fmt.Errorf("object %v has nil object meta", object)
+	}
+	return hash(fmt.Sprintf("%s/%s/%s/%s/%s/%s",
+		event.Type(),
+		object.GetObjectKind().GroupVersionKind().Group,
+		object.GetObjectKind().GroupVersionKind().Version,
+		object.GetObjectKind().GroupVersionKind().Kind,
+		object.GetObjectMeta().GetNamespace(),
+		object.GetObjectMeta().GetName()))
+}
+
+// ObjectKey is the object condition cache key which combines condition and object kind, namespace and name
+func ObjectKey(object v1beta1.RunObject) (string, error) {
+	var condition *apis.Condition
+	if object == nil {
+		return "", errors.New("object must be not nil")
+	}
+	// The condition may not be set, in that case return an empty condition
+	if object.GetStatusCondition() != nil {
+		condition = object.GetStatusCondition().GetCondition(apis.ConditionSucceeded)
+	}
+	if condition == nil {
+		condition = &apis.Condition{}
+	}
+	if object.GetObjectKind() == nil {
+		return "", fmt.Errorf("object %v has nil object kind", object)
+	}
+	if object.GetObjectMeta() == nil {
+		return "", fmt.Errorf("object %v has nil object meta", object)
+	}
+	return hash(fmt.Sprintf("%s/%s/%s/%s/%s/%s/%s/%s",
+		condition.Status,
+		condition.Reason,
+		condition.Message,
+		object.GetObjectKind().GroupVersionKind().Group,
+		object.GetObjectKind().GroupVersionKind().Version,
+		object.GetObjectKind().GroupVersionKind().Kind,
+		object.GetObjectMeta().GetNamespace(),
+		object.GetObjectMeta().GetName()))
+}
+
+// hash provide fnv64 hash converted to string in base36
+func hash(input string) (string, error) {
+	hasher := fnv.New64a()
+	_, err := hasher.Write([]byte(input))
 	if err != nil {
 		return "", err
 	}
-	if data.CustomRun == nil {
-		return "", fmt.Errorf("Invalid CustomRun data in %v", event)
-	}
-	resourceName = data.CustomRun.Name
-	resourceNamespace = data.CustomRun.Namespace
-	resourceKind = "customrun"
-	eventType := event.Type()
-	return fmt.Sprintf("%s/%s/%s/%s", eventType, resourceKind, resourceNamespace, resourceName), nil
+	return strconv.FormatUint(hasher.Sum64(), 36), nil
 }

@@ -19,7 +19,7 @@ package notifications
 import (
 	"context"
 
-	lru "github.com/hashicorp/golang-lru"
+	bc "github.com/allegro/bigcache/v3"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cache"
@@ -32,9 +32,9 @@ import (
 // Reconciler implements controller.Reconciler for Configuration resources.
 type Reconciler interface {
 	GetCloudEventsClient() cloudevent.CEClient
-	GetCacheClient() *lru.Cache
+	GetCacheClient() *bc.BigCache
 	SetCloudEventsClient(cloudevent.CEClient)
-	SetCacheClient(*lru.Cache)
+	SetCacheClient(*bc.BigCache)
 }
 
 // ReconcileRuntimeObject observes a v1beta1.RunObject and triggers notifications

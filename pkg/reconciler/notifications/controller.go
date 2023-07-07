@@ -42,12 +42,19 @@ func ReconcilerFromContext(ctx context.Context, c Reconciler) {
 }
 
 // ControllerOptions returns a function that returns options for a controller implementation
+//
+// Options:
+//   - SkipStatusUpdates: true - ensures that this is a readonly controller
+//   - Concurrency: 1 - Only one thread per controller to keep the cache in order.
+//     We rely on the cache to decide whether to send an event or not. The actual sending
+//     is asynchronous but the cache writes are blocking.
 func ControllerOptions(name string, store *config.Store) func(impl *controller.Impl) controller.Options {
 	return func(impl *controller.Impl) controller.Options {
 		return controller.Options{
 			AgentName:         name,
 			ConfigStore:       store,
 			SkipStatusUpdates: true,
+			Concurrency:       1,
 		}
 	}
 }
