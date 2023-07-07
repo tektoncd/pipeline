@@ -24,12 +24,12 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/cache"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -48,7 +48,7 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 	tests := []struct {
 		name            string
 		clientBehaviour cloudevent.FakeClientBehaviour
-		object          runtime.Object
+		object          v1beta1.RunObject
 		wantCEvents     []string
 		wantEvents      []string
 	}{{
@@ -115,7 +115,7 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 func TestSendCloudEventWithRetriesInvalid(t *testing.T) {
 	tests := []struct {
 		name       string
-		object     runtime.Object
+		object     v1beta1.RunObject
 		wantCEvent string
 		wantEvent  string
 	}{{
@@ -227,6 +227,34 @@ func TestEmitCloudEvents(t *testing.T) {
 		}
 		fakeClient.CheckCloudEventsUnordered(t, tc.name, tc.wantCloudEvents)
 	}
+}
+
+// TestEmitCloudEvents_NoCacheClient verifies that no cloud event is sent when
+// a sink is configured but the cache client is missing from the context.
+func TestEmitCloudEvents_NoCacheClient(t *testing.T) {
+	object := &v1beta1.CustomRun{
+		ObjectMeta: metav1.ObjectMeta{
+			SelfLink: "/customrun/test1",
+		},
+		Status: v1beta1.CustomRunStatus{},
+	}
+
+	ctx, _ := rtesting.SetupFakeContext(t)
+	// Override the injected cache client with nil to simulate a missing client
+	ctx = cache.ToContext(ctx, nil)
+	ctx = cloudevent.WithFakeClient(ctx, &cloudevent.FakeClientBehaviour{SendSuccessfully: true}, 0)
+	fakeClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
+
+	eventsConfig, _ := config.NewEventsFromMap(map[string]string{"sink": "http://mysink"})
+	cfg := &config.Config{
+		Events:       eventsConfig,
+		Defaults:     config.DefaultConfig.DeepCopy(),
+		FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
+	}
+	ctx = config.ToContext(ctx, cfg)
+
+	cloudevent.EmitCloudEvents(ctx, object)
+	fakeClient.CheckCloudEventsUnordered(t, "no cache client", []string{})
 }
 
 func TestEmitCloudEventsWhenConditionChange(t *testing.T) {

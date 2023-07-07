@@ -96,7 +96,7 @@ type TektonCloudEventData struct {
 }
 
 // newTektonCloudEventData returns a new instance of TektonCloudEventData
-func newTektonCloudEventData(ctx context.Context, runObject objectWithCondition) (TektonCloudEventData, error) {
+func newTektonCloudEventData(ctx context.Context, runObject v1beta1.RunObject) (TektonCloudEventData, error) {
 	tektonCloudEventData := TektonCloudEventData{}
 	switch v := runObject.(type) {
 	case *v1beta1.TaskRun:
@@ -121,9 +121,22 @@ func newTektonCloudEventData(ctx context.Context, runObject objectWithCondition)
 	return tektonCloudEventData, nil
 }
 
-// EventForObjectWithCondition creates a new event based for an objectWithCondition,
+// EventForObjectWithCondition creates a new event for an objectWithCondition,
 // or returns an error if not possible.
+//
+// Deprecated: This function was never used outside of this package and will be removed
+// in a future release. There is no replacement.
 func EventForObjectWithCondition(ctx context.Context, runObject objectWithCondition) (*cloudevents.Event, error) {
+	ro, ok := runObject.(v1beta1.RunObject)
+	if !ok {
+		return nil, fmt.Errorf("object %T does not implement v1beta1.RunObject", runObject)
+	}
+	return eventForRunObject(ctx, ro)
+}
+
+// eventForRunObject creates a new event based for a v1beta1.RunObject,
+// or returns an error if not possible.
+func eventForRunObject(ctx context.Context, runObject v1beta1.RunObject) (*cloudevents.Event, error) {
 	event := cloudevents.NewEvent()
 	event.SetID(uuid.New().String())
 	event.SetSubject(runObject.GetObjectMeta().GetName())
@@ -159,7 +172,7 @@ func EventForObjectWithCondition(ctx context.Context, runObject objectWithCondit
 	return &event, nil
 }
 
-func getEventType(runObject objectWithCondition) (*TektonEventType, error) {
+func getEventType(runObject v1beta1.RunObject) (*TektonEventType, error) {
 	var eventType TektonEventType
 	c := runObject.GetStatusCondition().GetCondition(apis.ConditionSucceeded)
 	if c == nil {
