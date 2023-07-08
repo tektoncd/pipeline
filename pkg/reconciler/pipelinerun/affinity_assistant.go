@@ -85,7 +85,6 @@ func (c *Reconciler) createOrUpdateAffinityAssistantsAndPVCs(ctx context.Context
 			return fmt.Errorf("failed to create PVC for PipelineRun %s: %w", pr.Name, err)
 		}
 	}
-
 	switch aaBehavior {
 	case aa.AffinityAssistantPerWorkspace:
 		for claim, workspaceName := range claimToWorkspace {
@@ -129,8 +128,12 @@ func (c *Reconciler) createOrUpdateAffinityAssistant(ctx context.Context, affini
 	switch {
 	// check whether the affinity assistant (StatefulSet) exists or not, create one if it does not exist
 	case apierrors.IsNotFound(err):
-		affinityAssistantStatefulSet := affinityAssistantStatefulSet(affinityAssistantName, pr, claimTemplates, claims, c.Images.NopImage, cfg.Defaults.DefaultAAPodTemplate)
-		_, err := c.KubeClientSet.AppsV1().StatefulSets(pr.Namespace).Create(ctx, affinityAssistantStatefulSet, metav1.CreateOptions{})
+		aaBehavior, err := aa.GetAffinityAssistantBehavior(ctx)
+		if err != nil {
+			return []error{err}
+		}
+		affinityAssistantStatefulSet := affinityAssistantStatefulSet(aaBehavior, affinityAssistantName, pr, claimTemplates, claims, c.Images.NopImage, cfg.Defaults.DefaultAAPodTemplate)
+		_, err = c.KubeClientSet.AppsV1().StatefulSets(pr.Namespace).Create(ctx, affinityAssistantStatefulSet, metav1.CreateOptions{})
 		if err != nil {
 			errs = append(errs, fmt.Errorf("failed to create StatefulSet %s: %w", affinityAssistantName, err))
 		}
@@ -229,10 +232,11 @@ func getStatefulSetLabels(pr *v1.PipelineRun, affinityAssistantName string) map[
 	return labels
 }
 
-// affinityAssistantStatefulSet returns an Affinity Assistant as a StatefulSet with the given AffinityAssistantTemplate applied to the StatefulSet PodTemplateSpec.
+// affinityAssistantStatefulSet returns an Affinity Assistant as a StatefulSet based on the AffinityAssistantBehavior
+// with the given AffinityAssistantTemplate applied to the StatefulSet PodTemplateSpec.
 // The VolumeClaimTemplates and Volume of StatefulSet reference the PipelineRun WorkspaceBinding VolumeClaimTempalte and the PVCs respectively.
 // The PVs created by the StatefulSet are scheduled to the same availability zone which avoids PV scheduling conflict.
-func affinityAssistantStatefulSet(name string, pr *v1.PipelineRun, claimTemplates []corev1.PersistentVolumeClaim, claims []corev1.PersistentVolumeClaimVolumeSource, affinityAssistantImage string, defaultAATpl *pod.AffinityAssistantTemplate) *appsv1.StatefulSet {
+func affinityAssistantStatefulSet(aaBehavior aa.AffinityAssistantBehavior, name string, pr *v1.PipelineRun, claimTemplates []corev1.PersistentVolumeClaim, claims []corev1.PersistentVolumeClaimVolumeSource, affinityAssistantImage string, defaultAATpl *pod.AffinityAssistantTemplate) *appsv1.StatefulSet {
 	// We want a singleton pod
 	replicas := int32(1)
 
@@ -314,7 +318,7 @@ func affinityAssistantStatefulSet(name string, pr *v1.PipelineRun, claimTemplate
 					NodeSelector:     tpl.NodeSelector,
 					ImagePullSecrets: tpl.ImagePullSecrets,
 
-					Affinity: getAssistantAffinityMergedWithPodTemplateAffinity(pr),
+					Affinity: getAssistantAffinityMergedWithPodTemplateAffinity(pr, aaBehavior),
 					Volumes:  volumes,
 				},
 			},
@@ -334,20 +338,7 @@ func (c *Reconciler) isAffinityAssistantDisabled(ctx context.Context) bool {
 }
 
 // getAssistantAffinityMergedWithPodTemplateAffinity return the affinity that merged with PipelineRun PodTemplate affinity.
-func getAssistantAffinityMergedWithPodTemplateAffinity(pr *v1.PipelineRun) *corev1.Affinity {
-	// use podAntiAffinity to repel other affinity assistants
-	repelOtherAffinityAssistantsPodAffinityTerm := corev1.WeightedPodAffinityTerm{
-		Weight: 100,
-		PodAffinityTerm: corev1.PodAffinityTerm{
-			LabelSelector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					workspace.LabelComponent: workspace.ComponentNameAffinityAssistant,
-				},
-			},
-			TopologyKey: "kubernetes.io/hostname",
-		},
-	}
-
+func getAssistantAffinityMergedWithPodTemplateAffinity(pr *v1.PipelineRun, aaBehavior aa.AffinityAssistantBehavior) *corev1.Affinity {
 	affinityAssistantsAffinity := &corev1.Affinity{}
 	if pr.Spec.TaskRunTemplate.PodTemplate != nil && pr.Spec.TaskRunTemplate.PodTemplate.Affinity != nil {
 		affinityAssistantsAffinity = pr.Spec.TaskRunTemplate.PodTemplate.Affinity
@@ -355,9 +346,31 @@ func getAssistantAffinityMergedWithPodTemplateAffinity(pr *v1.PipelineRun) *core
 	if affinityAssistantsAffinity.PodAntiAffinity == nil {
 		affinityAssistantsAffinity.PodAntiAffinity = &corev1.PodAntiAffinity{}
 	}
-	affinityAssistantsAffinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution =
-		append(affinityAssistantsAffinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution,
-			repelOtherAffinityAssistantsPodAffinityTerm)
+
+	repelOtherAffinityAssistantsPodAffinityTerm := corev1.PodAffinityTerm{
+		LabelSelector: &metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				workspace.LabelComponent: workspace.ComponentNameAffinityAssistant,
+			},
+		},
+		TopologyKey: "kubernetes.io/hostname",
+	}
+
+	if aaBehavior == aa.AffinityAssistantPerPipelineRunWithIsolation {
+		// use RequiredDuringSchedulingIgnoredDuringExecution term to enforce only one pipelinerun can run in a node at a time
+		affinityAssistantsAffinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution =
+			append(affinityAssistantsAffinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution,
+				repelOtherAffinityAssistantsPodAffinityTerm)
+	} else {
+		preferredRepelOtherAffinityAssistantsPodAffinityTerm := corev1.WeightedPodAffinityTerm{
+			Weight:          100,
+			PodAffinityTerm: repelOtherAffinityAssistantsPodAffinityTerm,
+		}
+		// use RequiredDuringSchedulingIgnoredDuringExecution term to schedule pipelineruns to different nodes when possible
+		affinityAssistantsAffinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution =
+			append(affinityAssistantsAffinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution,
+				preferredRepelOtherAffinityAssistantsPodAffinityTerm)
+	}
 
 	return affinityAssistantsAffinity
 }
