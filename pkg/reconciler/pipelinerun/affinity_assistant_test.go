@@ -461,7 +461,7 @@ func TestPipelineRunPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 		},
 	}
 
-	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []corev1.PersistentVolumeClaimVolumeSource{}, "nginx", nil)
+	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []corev1.PersistentVolumeClaimVolumeSource{}, "nginx", nil)
 
 	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 1 {
 		t.Errorf("expected Tolerations in the StatefulSet")
@@ -499,7 +499,7 @@ func TestDefaultPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 		}},
 	}
 
-	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []corev1.PersistentVolumeClaimVolumeSource{}, "nginx", defaultTpl)
+	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []corev1.PersistentVolumeClaimVolumeSource{}, "nginx", defaultTpl)
 
 	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 1 {
 		t.Errorf("expected Tolerations in the StatefulSet")
@@ -546,7 +546,7 @@ func TestMergedPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 		}},
 	}
 
-	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []corev1.PersistentVolumeClaimVolumeSource{}, "nginx", defaultTpl)
+	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []corev1.PersistentVolumeClaimVolumeSource{}, "nginx", defaultTpl)
 
 	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 1 {
 		t.Errorf("expected Tolerations from spec in the StatefulSet")
@@ -584,7 +584,7 @@ func TestOnlySelectPodTemplateFieldsArePropagatedToAffinityAssistant(t *testing.
 		},
 	}
 
-	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []corev1.PersistentVolumeClaimVolumeSource{}, "nginx", nil)
+	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []corev1.PersistentVolumeClaimVolumeSource{}, "nginx", nil)
 
 	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 1 {
 		t.Errorf("expected Tolerations from spec in the StatefulSet")
@@ -604,7 +604,7 @@ func TestThatTheAffinityAssistantIsWithoutNodeSelectorAndTolerations(t *testing.
 		Spec: v1.PipelineRunSpec{},
 	}
 
-	stsWithoutTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithoutCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []corev1.PersistentVolumeClaimVolumeSource{}, "nginx", nil)
+	stsWithoutTolerationsAndNodeSelector := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithoutCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []corev1.PersistentVolumeClaimVolumeSource{}, "nginx", nil)
 
 	if len(stsWithoutTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 0 {
 		t.Errorf("unexpected Tolerations in the StatefulSet")
@@ -802,15 +802,34 @@ func TestDisableAffinityAssistant(t *testing.T) {
 }
 
 func TestGetAssistantAffinityMergedWithPodTemplateAffinity(t *testing.T) {
-	assistantPodAffinityTerm := corev1.WeightedPodAffinityTerm{
+	labelSelector := &metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			workspace.LabelComponent: workspace.ComponentNameAffinityAssistant,
+		},
+	}
+
+	assistantWeightedPodAffinityTerm := corev1.WeightedPodAffinityTerm{
 		Weight: 100,
 		PodAffinityTerm: corev1.PodAffinityTerm{
-			LabelSelector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					workspace.LabelComponent: workspace.ComponentNameAffinityAssistant,
-				},
+			LabelSelector: labelSelector,
+			TopologyKey:   "kubernetes.io/hostname",
+		},
+	}
+
+	affinityWithAssistantAffinityPreferred := &corev1.Affinity{
+		PodAntiAffinity: &corev1.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+				assistantWeightedPodAffinityTerm,
 			},
-			TopologyKey: "kubernetes.io/hostname",
+		},
+	}
+
+	affinityWithAssistantAffinityRequired := &corev1.Affinity{
+		PodAntiAffinity: &corev1.PodAntiAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+				LabelSelector: labelSelector,
+				TopologyKey:   "kubernetes.io/hostname",
+			}},
 		},
 	}
 
@@ -818,13 +837,6 @@ func TestGetAssistantAffinityMergedWithPodTemplateAffinity(t *testing.T) {
 metadata:
   name: pr-with-no-podTemplate
 `)
-	affinityWithAssistantAffinity := &corev1.Affinity{
-		PodAntiAffinity: &corev1.PodAntiAffinity{
-			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
-				assistantPodAffinityTerm,
-			},
-		},
-	}
 
 	prWithPodTemplatePodAffinity := parse.MustParseV1PipelineRun(t, `
 metadata:
@@ -861,7 +873,7 @@ spec:
 						TopologyKey: "kubernetes.io/hostname",
 					},
 				},
-				assistantPodAffinityTerm,
+				assistantWeightedPodAffinityTerm,
 			},
 			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
 				{
@@ -895,7 +907,7 @@ spec:
 	affinityWithPodTemplateNodeAffinity := &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
 			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
-				assistantPodAffinityTerm,
+				assistantWeightedPodAffinityTerm,
 			},
 		},
 		NodeAffinity: &corev1.NodeAffinity{
@@ -920,26 +932,42 @@ spec:
 	for _, tc := range []struct {
 		description string
 		pr          *v1.PipelineRun
+		aaBehavior  aa.AffinityAssistantBehavior
 		expect      *corev1.Affinity
 	}{
 		{
-			description: "podTemplate affinity is empty",
+			description: "podTemplate affinity is empty - per workspace",
 			pr:          prWithEmptyAffinityPodTemplate,
-			expect:      affinityWithAssistantAffinity,
+			aaBehavior:  aa.AffinityAssistantPerWorkspace,
+			expect:      affinityWithAssistantAffinityPreferred,
+		},
+		{
+			description: "podTemplate affinity is empty - per pipelineruns",
+			pr:          prWithEmptyAffinityPodTemplate,
+			aaBehavior:  aa.AffinityAssistantPerPipelineRun,
+			expect:      affinityWithAssistantAffinityPreferred,
+		},
+		{
+			description: "podTemplate affinity is empty - per isolate pipelinerun",
+			pr:          prWithEmptyAffinityPodTemplate,
+			aaBehavior:  aa.AffinityAssistantPerPipelineRunWithIsolation,
+			expect:      affinityWithAssistantAffinityRequired,
 		},
 		{
 			description: "podTemplate with affinity which contains podAntiAffinity",
 			pr:          prWithPodTemplatePodAffinity,
+			aaBehavior:  aa.AffinityAssistantPerWorkspace,
 			expect:      affinityWithPodTemplatePodAffinity,
 		},
 		{
 			description: "podTemplate with affinity which contains nodeAntiAffinity",
 			pr:          prWithPodTemplateNodeAffinity,
+			aaBehavior:  aa.AffinityAssistantPerWorkspace,
 			expect:      affinityWithPodTemplateNodeAffinity,
 		},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
-			resultAffinity := getAssistantAffinityMergedWithPodTemplateAffinity(tc.pr)
+			resultAffinity := getAssistantAffinityMergedWithPodTemplateAffinity(tc.pr, tc.aaBehavior)
 			if d := cmp.Diff(tc.expect, resultAffinity); d != "" {
 				t.Errorf("affinity diff: %s", diff.PrintWantGot(d))
 			}
