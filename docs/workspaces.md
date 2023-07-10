@@ -402,6 +402,11 @@ The entry must also include one `VolumeSource`. See [Using `VolumeSources` with 
 
 **Note:** If the `Workspaces` specified by a `Pipeline` are not provided at runtime by a `PipelineRun`, that `PipelineRun` will fail.
 
+You can pass in extra `Workspaces` if needed depending on your use cases. An example use
+case is when your CI system autogenerates `PipelineRuns` and it has `Workspaces` it wants to
+provide to all `PipelineRuns`. Because you can pass in extra `Workspaces`, you don't have to
+go through the complexity of checking each `Pipeline` and providing only the required `Workspaces`.
+
 #### Example `PipelineRun` definition using `Workspaces`
 
 In the example below, a `volumeClaimTemplate` is provided for how a `PersistentVolumeClaim` should be created for a workspace named
