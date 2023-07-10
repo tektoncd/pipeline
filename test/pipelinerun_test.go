@@ -207,7 +207,6 @@ func TestPipelineRun(t *testing.T) {
 		name: "service account propagation and pipeline param",
 		testSetup: func(ctx context.Context, t *testing.T, c *clients, namespace string, index int) *v1.Pipeline {
 			t.Helper()
-			t.Skip("build-crd-testing project got removed, the secret-sauce doesn't exist anymore, skipping")
 			if _, err := c.KubeClient.CoreV1().Secrets(namespace).Create(ctx, getPipelineRunSecret(index, namespace), metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create secret `%s`: %s", getName(secretName, index), err)
 			}
@@ -250,7 +249,6 @@ spec:
 		name: "pipelinerun succeeds with LimitRange minimum in namespace",
 		testSetup: func(ctx context.Context, t *testing.T, c *clients, namespace string, index int) *v1.Pipeline {
 			t.Helper()
-			t.Skip("build-crd-testing project got removed, the secret-sauce doesn't exist anymore, skipping")
 			if _, err := c.KubeClient.CoreV1().LimitRanges(namespace).Create(ctx, getLimitRange("prlimitrange", namespace, "100m", "99Mi", "100m"), metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create LimitRange `%s`: %s", "prlimitrange", err)
 			}
@@ -406,15 +404,15 @@ spec:
   params:
   - name: the.path
     type: string
-  - name: dest
+  - name: the.dest
     type: string
   tasks:
   - name: %s
     params:
     - name: the.path
       value: $(params["the.path"])
-    - name: dest
-      value: $(params.dest)
+    - name: the.dest
+      value: $(params["the.dest"])
     taskRef:
       name: %s
 `, helpers.ObjectNameForTest(t), namespace, task1Name, taskName))
@@ -763,7 +761,7 @@ spec:
   params:
   - name: the.path
     value: docker://gcr.io/build-crd-testing/secret-sauce
-  - name: dest
+  - name: the.dest
     value: dir:///tmp/
   pipelineRef:
     name: %s
