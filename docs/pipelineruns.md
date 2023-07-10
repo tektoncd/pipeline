@@ -946,6 +946,33 @@ workspaces:
 `workspaces[].subPath` can be an absolute value or can reference `pipelineRun` context variables, such as,
 `$(context.pipelineRun.name)` or `$(context.pipelineRun.uid)`.
 
+You can pass in extra `Workspaces` if needed depending on your use cases. An example use
+case is when your CI system autogenerates `PipelineRuns` and it has `Workspaces` it wants to
+provide to all `PipelineRuns`. Because you can pass in extra `Workspaces`, you don't have to
+go through the complexity of checking each `Pipeline` and providing only the required `Workspaces`:
+
+```yaml
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: pipeline
+spec:
+  tasks:
+    - name: task
+---
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pipelinerun
+spec:
+  pipelineRef:
+    name: pipeline
+  workspaces:
+    - name: unusedworkspace
+      persistentVolumeClaim:
+        claimName: mypvc
+```
+
 For more information, see the following topics:
 - For information on mapping `Workspaces` to `Volumes`, see [Specifying `Workspaces` in `PipelineRuns`](workspaces.md#specifying-workspaces-in-pipelineruns).
 - For a list of supported `Volume` types, see [Specifying `VolumeSources` in `Workspaces`](workspaces.md#specifying-volumesources-in-workspaces).
