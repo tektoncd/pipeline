@@ -151,14 +151,16 @@ func TestGetTaskKind(t *testing.T) {
 
 func TestLocalTaskRef(t *testing.T) {
 	testcases := []struct {
-		name     string
-		tasks    []runtime.Object
-		ref      *v1.TaskRef
-		expected runtime.Object
-		wantErr  bool
+		name      string
+		namespace string
+		tasks     []runtime.Object
+		ref       *v1.TaskRef
+		expected  runtime.Object
+		wantErr   error
 	}{
 		{
-			name: "local-task",
+			name:      "local-task",
+			namespace: "default",
 			tasks: []runtime.Object{
 				&v1.Task{
 					ObjectMeta: metav1.ObjectMeta{
@@ -182,10 +184,11 @@ func TestLocalTaskRef(t *testing.T) {
 					Namespace: "default",
 				},
 			},
-			wantErr: false,
+			wantErr: nil,
 		},
 		{
-			name: "local-clustertask",
+			name:      "local-clustertask",
+			namespace: "default",
 			tasks: []runtime.Object{
 				&v1beta1.ClusterTask{
 					ObjectMeta: metav1.ObjectMeta{
@@ -211,16 +214,44 @@ func TestLocalTaskRef(t *testing.T) {
 					Name: "cluster-task",
 				},
 			},
-			wantErr: false,
+			wantErr: nil,
 		},
 		{
-			name:  "task-not-found",
-			tasks: []runtime.Object{},
+			name:      "task-not-found",
+			namespace: "default",
+			tasks:     []runtime.Object{},
 			ref: &v1.TaskRef{
 				Name: "simple",
 			},
 			expected: nil,
-			wantErr:  true,
+			wantErr:  errors.New(`tasks.tekton.dev "simple" not found`),
+		},
+		{
+			name:      "clustertask-not-found",
+			namespace: "default",
+			tasks:     []runtime.Object{},
+			ref: &v1.TaskRef{
+				Name: "cluster-task",
+				Kind: "ClusterTask",
+			},
+			expected: nil,
+			wantErr:  errors.New(`clustertasks.tekton.dev "cluster-task" not found`),
+		},
+		{
+			name:      "local-task-missing-namespace",
+			namespace: "",
+			tasks: []runtime.Object{
+				&v1beta1.Task{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "simple",
+						Namespace: "default",
+					},
+				},
+			},
+			ref: &v1.TaskRef{
+				Name: "simple",
+			},
+			wantErr: fmt.Errorf("must specify namespace to resolve reference to task simple"),
 		},
 	}
 
@@ -232,15 +263,20 @@ func TestLocalTaskRef(t *testing.T) {
 			tektonclient := fake.NewSimpleClientset(tc.tasks...)
 
 			lc := &resources.LocalTaskRefResolver{
-				Namespace:    "default",
+				Namespace:    tc.namespace,
 				Kind:         tc.ref.Kind,
 				Tektonclient: tektonclient,
 			}
 
 			task, refSource, _, err := lc.GetTask(ctx, tc.ref.Name)
-			if tc.wantErr && err == nil {
-				t.Fatal("Expected error but found nil instead")
-			} else if !tc.wantErr && err != nil {
+			if tc.wantErr != nil {
+				if err == nil {
+					t.Fatal("Expected error but found nil instead")
+				}
+				if tc.wantErr.Error() != err.Error() {
+					t.Fatalf("Received different error ( %#v )", err)
+				}
+			} else if tc.wantErr == nil && err != nil {
 				t.Fatalf("Received unexpected error ( %#v )", err)
 			}
 
