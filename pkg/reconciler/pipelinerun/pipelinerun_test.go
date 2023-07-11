@@ -4230,7 +4230,7 @@ spec:
 
 	for _, pr := range prs {
 		for _, w := range pr.Spec.Workspaces {
-			expectedPVCName := volumeclaim.GetPVCNameWithoutAffinityAssistant(w.VolumeClaimTemplate.Name, w, *kmeta.NewControllerRef(pr))
+			expectedPVCName := volumeclaim.GeneratePVCNameFromWorkspaceBinding(w.VolumeClaimTemplate.Name, w, *kmeta.NewControllerRef(pr))
 			_, err := clients.Kube.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(prt.TestAssets.Ctx, expectedPVCName, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("expected PVC %s to exist but instead got error when getting it: %v", expectedPVCName, err)

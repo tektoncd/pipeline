@@ -484,12 +484,14 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 	// Please note that this block is required to run before `applyParamsContextsResultsAndWorkspaces` is called the first time,
 	// and that `applyParamsContextsResultsAndWorkspaces` _must_ be called on every reconcile.
 	if pod == nil && tr.HasVolumeClaimTemplate() {
-		if err := c.pvcHandler.CreatePVCsForWorkspaces(ctx, tr.Spec.Workspaces, *kmeta.NewControllerRef(tr), tr.Namespace); err != nil {
-			logger.Errorf("Failed to create PVC for TaskRun %s: %v", tr.Name, err)
-			tr.Status.MarkResourceFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
-				fmt.Errorf("Failed to create PVC for TaskRun %s workspaces correctly: %w",
-					fmt.Sprintf("%s/%s", tr.Namespace, tr.Name), err))
-			return controller.NewPermanentError(err)
+		for _, ws := range tr.Spec.Workspaces {
+			if err := c.pvcHandler.CreatePVCFromVolumeClaimTemplate(ctx, ws, *kmeta.NewControllerRef(tr), tr.Namespace); err != nil {
+				logger.Errorf("Failed to create PVC for TaskRun %s: %v", tr.Name, err)
+				tr.Status.MarkResourceFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
+					fmt.Errorf("Failed to create PVC for TaskRun %s workspaces correctly: %w",
+						fmt.Sprintf("%s/%s", tr.Namespace, tr.Name), err))
+				return controller.NewPermanentError(err)
+			}
 		}
 
 		taskRunWorkspaces := applyVolumeClaimTemplates(tr.Spec.Workspaces, *kmeta.NewControllerRef(tr))
@@ -871,7 +873,7 @@ func applyVolumeClaimTemplates(workspaceBindings []v1.WorkspaceBinding, owner me
 			Name:    wb.Name,
 			SubPath: wb.SubPath,
 			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-				ClaimName: volumeclaim.GetPVCNameWithoutAffinityAssistant(wb.VolumeClaimTemplate.Name, wb, owner),
+				ClaimName: volumeclaim.GeneratePVCNameFromWorkspaceBinding(wb.VolumeClaimTemplate.Name, wb, owner),
 			},
 		}
 		taskRunWorkspaceBindings = append(taskRunWorkspaceBindings, b)

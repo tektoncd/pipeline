@@ -620,18 +620,20 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 
 		switch aaBehavior {
 		case affinityassistant.AffinityAssistantPerWorkspace, affinityassistant.AffinityAssistantDisabled:
-			if err = c.createOrUpdateAffinityAssistantsAndPVCs(ctx, pr, aaBehavior); err != nil {
-				logger.Errorf("Failed to create PVC or affinity assistant StatefulSet for PipelineRun %s: %v", pr.Name, err)
-				if aaBehavior == affinityassistant.AffinityAssistantPerWorkspace {
-					pr.Status.MarkFailed(ReasonCouldntCreateOrUpdateAffinityAssistantStatefulSetPerWorkspace,
+			if err := c.createOrUpdateAffinityAssistantsAndPVCs(ctx, pr, aaBehavior); err != nil {
+				switch {
+				case errors.Is(err, ErrPvcCreationFailed):
+					logger.Errorf("Failed to create PVC for PipelineRun %s: %v", pr.Name, err)
+					pr.Status.MarkFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
+						"Failed to create PVC for PipelineRun %s/%s correctly: %s",
+						pr.Namespace, pr.Name, err)
+				case errors.Is(err, ErrAffinityAssistantCreationFailed):
+					logger.Errorf("Failed to create affinity assistant StatefulSet for PipelineRun %s: %v", pr.Name, err)
+					pr.Status.MarkFailed(ReasonCouldntCreateOrUpdateAffinityAssistantStatefulSet,
 						"Failed to create StatefulSet for PipelineRun %s/%s correctly: %s",
 						pr.Namespace, pr.Name, err)
-				} else {
-					pr.Status.MarkFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
-						"Failed to create PVC for PipelineRun %s/%s Workspaces correctly: %s",
-						pr.Namespace, pr.Name, err)
+				default:
 				}
-
 				return controller.NewPermanentError(err)
 			}
 		case affinityassistant.AffinityAssistantPerPipelineRun, affinityassistant.AffinityAssistantPerPipelineRunWithIsolation:
@@ -1125,7 +1127,7 @@ func (c *Reconciler) taskWorkspaceByWorkspaceVolumeSource(ctx context.Context, p
 
 	// TODO(#6740)(WIP): get binding for AffinityAssistantPerPipelineRun and AffinityAssistantPerPipelineRunWithIsolation mode
 	if aaBehavior == affinityassistant.AffinityAssistantDisabled || aaBehavior == affinityassistant.AffinityAssistantPerWorkspace {
-		binding.PersistentVolumeClaim.ClaimName = volumeclaim.GetPVCNameWithoutAffinityAssistant(wb.VolumeClaimTemplate.Name, wb, owner)
+		binding.PersistentVolumeClaim.ClaimName = volumeclaim.GeneratePVCNameFromWorkspaceBinding(wb.VolumeClaimTemplate.Name, wb, owner)
 	}
 
 	return binding
