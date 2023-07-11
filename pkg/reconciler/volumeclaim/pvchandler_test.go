@@ -84,9 +84,11 @@ func TestCreatePersistentVolumeClaimsForWorkspaces(t *testing.T) {
 
 	// when
 
-	err := pvcHandler.CreatePVCsForWorkspaces(ctx, workspaces, ownerRef, namespace)
-	if err != nil {
-		t.Fatalf("unexpexted error: %v", err)
+	for _, ws := range workspaces {
+		err := pvcHandler.CreatePVCFromVolumeClaimTemplate(ctx, ws, ownerRef, namespace)
+		if err != nil {
+			t.Fatalf("unexpexted error: %v", err)
+		}
 	}
 
 	expectedPVCName := claimName1 + "-ad02547921"
@@ -148,9 +150,11 @@ func TestCreatePersistentVolumeClaimsForWorkspacesWithoutMetadata(t *testing.T) 
 
 	// when
 
-	err := pvcHandler.CreatePVCsForWorkspaces(ctx, workspaces, ownerRef, namespace)
-	if err != nil {
-		t.Fatalf("unexpexted error: %v", err)
+	for _, ws := range workspaces {
+		err := pvcHandler.CreatePVCFromVolumeClaimTemplate(ctx, ws, ownerRef, namespace)
+		if err != nil {
+			t.Fatalf("unexpexted error: %v", err)
+		}
 	}
 
 	expectedPVCName := fmt.Sprintf("%s-%s", "pvc", "3fc56c2bb2")
@@ -187,7 +191,11 @@ func TestCreateExistPersistentVolumeClaims(t *testing.T) {
 	fakekubeclient := fakek8s.NewSimpleClientset()
 	pvcHandler := defaultPVCHandler{fakekubeclient, zap.NewExample().Sugar()}
 
-	for _, claim := range getPVCsWithoutAffinityAssistant(workspaces, ownerRef, namespace) {
+	for _, ws := range workspaces {
+		claim := pvcHandler.getPVCFromVolumeClaimTemplate(ws, ownerRef, namespace)
+		if claim == nil {
+			t.Fatalf("expect PVC but got nil from workspace: %v", ws.Name)
+		}
 		_, err := fakekubeclient.CoreV1().PersistentVolumeClaims(namespace).Create(ctx, claim, metav1.CreateOptions{})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -206,11 +214,12 @@ func TestCreateExistPersistentVolumeClaims(t *testing.T) {
 	}
 	fakekubeclient.Fake.PrependReactor(actionGet, "*", fn)
 
-	err := pvcHandler.CreatePVCsForWorkspaces(ctx, workspaces, ownerRef, namespace)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	for _, ws := range workspaces {
+		err := pvcHandler.CreatePVCFromVolumeClaimTemplate(ctx, ws, ownerRef, namespace)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 	}
-
 	if len(fakekubeclient.Fake.Actions()) != 3 {
 		t.Fatalf("unexpected numer of actions; expected: %d got: %d", 3, len(fakekubeclient.Fake.Actions()))
 	}

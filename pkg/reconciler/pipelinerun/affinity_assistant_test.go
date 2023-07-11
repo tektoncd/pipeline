@@ -19,6 +19,7 @@ package pipelinerun
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -108,9 +109,9 @@ var testPRWithEmptyDir = &v1.PipelineRun{
 	},
 }
 
-// TestCreateAndDeleteOfAffinityAssistantPerPipelineRun tests to create and delete an Affinity Assistant
+// TestCreateOrUpdateAffinityAssistantsAndPVCsPerPipelineRun tests to create and delete Affinity Assistants and PVCs
 // per pipelinerun for a given PipelineRun
-func TestCreateAndDeleteOfAffinityAssistantPerPipelineRun(t *testing.T) {
+func TestCreateOrUpdateAffinityAssistantsAndPVCsPerPipelineRun(t *testing.T) {
 	tests := []struct {
 		name                  string
 		pr                    *v1.PipelineRun
@@ -183,9 +184,9 @@ func TestCreateAndDeleteOfAffinityAssistantPerPipelineRun(t *testing.T) {
 	}
 }
 
-// TestCreateAndDeleteOfAffinityAssistantPerWorkspaceOrDisabled tests to create and delete an Affinity Assistant
-// per workspace for a given PipelineRun
-func TestCreateAndDeleteOfAffinityAssistantPerWorkspaceOrDisabled(t *testing.T) {
+// TestCreateOrUpdateAffinityAssistantsAndPVCsPerWorkspaceOrDisabled tests to create and delete Affinity Assistants and PVCs
+// per workspace or disabled for a given PipelineRun
+func TestCreateOrUpdateAffinityAssistantsAndPVCsPerWorkspaceOrDisabled(t *testing.T) {
 	tests := []struct {
 		name, expectedPVCName string
 		pr                    *v1.PipelineRun
@@ -275,7 +276,7 @@ func TestCreateAndDeleteOfAffinityAssistantPerWorkspaceOrDisabled(t *testing.T) 
 
 			err := c.createOrUpdateAffinityAssistantsAndPVCs(ctx, tc.pr, tc.aaBehavior)
 			if err != nil {
-				t.Fatalf("unexpected error from createOrUpdateAffinityAssistantsPerWorkspace: %v", err)
+				t.Fatalf("unexpected error from createOrUpdateAffinityAssistantsAndPVCs: %v", err)
 			}
 
 			// validate StatefulSets from Affinity Assistant
@@ -311,6 +312,76 @@ func TestCreateAndDeleteOfAffinityAssistantPerWorkspaceOrDisabled(t *testing.T) 
 				}
 			}
 		})
+	}
+}
+
+func TestCreateOrUpdateAffinityAssistantsAndPVCs_Failure(t *testing.T) {
+	testCases := []struct {
+		name, failureType string
+		aaBehavior        aa.AffinityAssistantBehavior
+		expectedErr       error
+	}{{
+		name:        "affinity assistant creation failed - per workspace",
+		failureType: "statefulset",
+		aaBehavior:  aa.AffinityAssistantPerWorkspace,
+		expectedErr: fmt.Errorf("%w: [failed to create StatefulSet affinity-assistant-4cf1a1c468: error creating statefulsets]", ErrAffinityAssistantCreationFailed),
+	}, {
+		name:        "affinity assistant creation failed - per pipelinerun",
+		failureType: "statefulset",
+		aaBehavior:  aa.AffinityAssistantPerPipelineRun,
+		expectedErr: fmt.Errorf("%w: [failed to create StatefulSet affinity-assistant-426b306c50: error creating statefulsets]", ErrAffinityAssistantCreationFailed),
+	}, {
+		name:        "pvc creation failed - per workspace",
+		failureType: "pvc",
+		aaBehavior:  aa.AffinityAssistantPerWorkspace,
+		expectedErr: fmt.Errorf("%w: failed to create PVC pvc-b9eea16dce: error creating persistentvolumeclaims", ErrPvcCreationFailed),
+	}, {
+		name:        "pvc creation failed - disabled",
+		failureType: "pvc",
+		aaBehavior:  aa.AffinityAssistantDisabled,
+		expectedErr: fmt.Errorf("%w: failed to create PVC pvc-b9eea16dce: error creating persistentvolumeclaims", ErrPvcCreationFailed),
+	}}
+
+	for _, tc := range testCases {
+		ctx := context.Background()
+		kubeClientSet := fakek8s.NewSimpleClientset()
+		c := Reconciler{
+			KubeClientSet: kubeClientSet,
+			pvcHandler:    volumeclaim.NewPVCHandler(kubeClientSet, zap.NewExample().Sugar()),
+		}
+
+		switch tc.failureType {
+		case "pvc":
+			c.KubeClientSet.CoreV1().(*fake.FakeCoreV1).PrependReactor("create", "persistentvolumeclaims",
+				func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
+					return true, &corev1.PersistentVolumeClaim{}, errors.New("error creating persistentvolumeclaims")
+				})
+		case "statefulset":
+			c.KubeClientSet.CoreV1().(*fake.FakeCoreV1).PrependReactor("create", "statefulsets",
+				func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
+					return true, &appsv1.StatefulSet{}, errors.New("error creating statefulsets")
+				})
+		}
+
+		err := c.createOrUpdateAffinityAssistantsAndPVCs(ctx, testPRWithVolumeClaimTemplate, tc.aaBehavior)
+
+		if err == nil {
+			t.Errorf("expect error from createOrUpdateAffinityAssistantsAndPVCs but got nil")
+		}
+
+		switch tc.failureType {
+		case "pvc":
+			if !errors.Is(err, ErrPvcCreationFailed) {
+				t.Errorf("expected err type mismatching, expecting %v but got: %v", ErrPvcCreationFailed, err)
+			}
+		case "statefulset":
+			if !errors.Is(err, ErrAffinityAssistantCreationFailed) {
+				t.Errorf("expected err type mismatching, expecting %v but got: %v", ErrAffinityAssistantCreationFailed, err)
+			}
+		}
+		if d := cmp.Diff(tc.expectedErr.Error(), err.Error()); d != "" {
+			t.Errorf("expected err mismatching: %v", diff.PrintWantGot(d))
+		}
 	}
 }
 
@@ -461,7 +532,7 @@ func TestPipelineRunPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 		},
 	}
 
-	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []corev1.PersistentVolumeClaimVolumeSource{}, "nginx", nil)
+	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []string{}, "nginx", nil)
 
 	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 1 {
 		t.Errorf("expected Tolerations in the StatefulSet")
@@ -499,7 +570,7 @@ func TestDefaultPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 		}},
 	}
 
-	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []corev1.PersistentVolumeClaimVolumeSource{}, "nginx", defaultTpl)
+	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []string{}, "nginx", defaultTpl)
 
 	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 1 {
 		t.Errorf("expected Tolerations in the StatefulSet")
@@ -546,7 +617,7 @@ func TestMergedPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 		}},
 	}
 
-	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []corev1.PersistentVolumeClaimVolumeSource{}, "nginx", defaultTpl)
+	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []string{}, "nginx", defaultTpl)
 
 	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 1 {
 		t.Errorf("expected Tolerations from spec in the StatefulSet")
@@ -584,7 +655,7 @@ func TestOnlySelectPodTemplateFieldsArePropagatedToAffinityAssistant(t *testing.
 		},
 	}
 
-	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []corev1.PersistentVolumeClaimVolumeSource{}, "nginx", nil)
+	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []string{}, "nginx", nil)
 
 	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 1 {
 		t.Errorf("expected Tolerations from spec in the StatefulSet")
@@ -604,7 +675,7 @@ func TestThatTheAffinityAssistantIsWithoutNodeSelectorAndTolerations(t *testing.
 		Spec: v1.PipelineRunSpec{},
 	}
 
-	stsWithoutTolerationsAndNodeSelector := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithoutCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []corev1.PersistentVolumeClaimVolumeSource{}, "nginx", nil)
+	stsWithoutTolerationsAndNodeSelector := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithoutCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []string{}, "nginx", nil)
 
 	if len(stsWithoutTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 0 {
 		t.Errorf("unexpected Tolerations in the StatefulSet")
