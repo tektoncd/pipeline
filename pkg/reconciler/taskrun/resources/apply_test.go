@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/workspace"
@@ -1155,11 +1154,7 @@ func TestApplyWorkspaces_IsolatedWorkspaces(t *testing.T) {
 		}}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := config.ToContext(context.Background(), &config.Config{
-				FeatureFlags: &config.FeatureFlags{
-					EnableAPIFields: "alpha",
-				},
-			})
+			ctx := context.Background()
 			vols := workspace.CreateVolumes(tc.binds)
 			got := resources.ApplyWorkspaces(ctx, tc.spec, tc.decls, tc.binds, vols)
 			if d := cmp.Diff(tc.want, got); d != "" {

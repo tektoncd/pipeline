@@ -1580,13 +1580,28 @@ func TestStepOnError(t *testing.T) {
 // TestIncompatibleAPIVersions exercises validation of fields that
 // require a specific feature gate version in order to work.
 func TestIncompatibleAPIVersions(t *testing.T) {
-	tests := []struct {
+	versions := []string{"alpha", "beta", "stable"}
+	isStricterThen := func(first, second string) bool {
+		// assume values are in order alpha (less strict), beta, stable (strictest)
+		// return true if first is stricter then second
+		switch first {
+		case second, "alpha":
+			return false
+		case "stable":
+			return true
+		default:
+			// first is beta, true is second is alpha, false is second is stable
+			return second == "alpha"
+		}
+	}
+
+	for _, tt := range []struct {
 		name            string
 		requiredVersion string
 		spec            v1.TaskSpec
 	}{{
-		name:            "step workspace requires alpha",
-		requiredVersion: "alpha",
+		name:            "step workspace requires beta",
+		requiredVersion: "beta",
 		spec: v1.TaskSpec{
 			Workspaces: []v1.WorkspaceDeclaration{{
 				Name: "foo",
@@ -1599,8 +1614,8 @@ func TestIncompatibleAPIVersions(t *testing.T) {
 			}},
 		},
 	}, {
-		name:            "sidecar workspace requires alpha",
-		requiredVersion: "alpha",
+		name:            "sidecar workspace requires beta",
+		requiredVersion: "beta",
 		spec: v1.TaskSpec{
 			Workspaces: []v1.WorkspaceDeclaration{{
 				Name: "foo",
@@ -1648,9 +1663,7 @@ func TestIncompatibleAPIVersions(t *testing.T) {
 				},
 			}},
 		}},
-	}
-	versions := []string{"alpha", "stable"}
-	for _, tt := range tests {
+	} {
 		for _, version := range versions {
 			testName := fmt.Sprintf("(using %s) %s", version, tt.name)
 			t.Run(testName, func(t *testing.T) {
@@ -1659,14 +1672,22 @@ func TestIncompatibleAPIVersions(t *testing.T) {
 				if version == "alpha" {
 					ctx = config.EnableAlphaAPIFields(ctx)
 				}
+				if version == "beta" {
+					ctx = config.EnableBetaAPIFields(ctx)
+				}
+				if version == "stable" {
+					ctx = config.EnableStableAPIFields(ctx)
+				}
 				ts.SetDefaults(ctx)
 				err := ts.Validate(ctx)
 
-				if tt.requiredVersion != version && err == nil {
+				// If the configured version is stricter than the required one, we expect an error
+				if isStricterThen(version, tt.requiredVersion) && err == nil {
 					t.Fatalf("no error received even though version required is %q while feature gate is %q", tt.requiredVersion, version)
 				}
 
-				if tt.requiredVersion == version && err != nil {
+				// If the configured version is more permissive than the required one, we expect no error
+				if isStricterThen(tt.requiredVersion, version) && err != nil {
 					t.Fatalf("error received despite required version and feature gate matching %q: %v", version, err)
 				}
 			})

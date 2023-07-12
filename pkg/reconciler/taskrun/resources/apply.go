@@ -22,7 +22,6 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/container"
@@ -157,12 +156,7 @@ func ApplyWorkspaces(ctx context.Context, spec *v1.TaskSpec, declarations []v1.W
 			stringReplacements[prefix+"path"] = ""
 		} else {
 			stringReplacements[prefix+"bound"] = "true"
-			alphaAPIEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == config.AlphaAPIFields
-			if alphaAPIEnabled {
-				spec = applyWorkspaceMountPath(prefix+"path", spec, declaration)
-			} else {
-				stringReplacements[prefix+"path"] = declaration.GetMountPath()
-			}
+			spec = applyWorkspaceMountPath(prefix+"path", spec, declaration)
 		}
 	}
 
