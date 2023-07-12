@@ -67,7 +67,7 @@ information in the `TaskRun` changes.
 configuration involved to add the required `volumeMount`. This allows for a
 long-running process in a `Sidecar` to share data with the executing `Steps` of a `Task`.
 
-**Note**: If the `enable-api-fields` feature-flag is set to `"alpha"` then workspaces
+**Note**: If the `enable-api-fields` feature-flag is set to `"beta"` then workspaces
 will automatically be available to `Sidecars` too!
 
 ### `Workspaces` in `Pipelines` and `PipelineRuns`
@@ -101,7 +101,7 @@ the `optional` field.
 
 ### Isolated `Workspaces`
 
-This is an alpha feature. The `enable-api-fields` feature flag [must be set to `"alpha"`](./install.md)
+This is a beta feature. The `enable-api-fields` feature flag [must be set to `"beta"`](./install.md)
 for Isolated Workspaces to function.
 
 Certain kinds of data are more sensitive than others. To reduce exposure of sensitive data Task
@@ -187,8 +187,8 @@ spec:
         touch "$(workspaces.signals.path)/ready"
 ```
 
-**Note:** Starting in Pipelines v0.24.0 `Sidecars` automatically get access to `Workspaces`.This is an
-alpha feature and requires Pipelines to have [the "alpha" feature gate enabled](./install.md#alpha-features).
+**Note:** Starting in Pipelines v0.24.0 `Sidecars` automatically get access to `Workspaces`. This is a
+beta feature and requires Pipelines to have [the "beta" feature gate enabled](./install.md#beta-features).
 
 If a Sidecar already has a `volumeMount` at the location expected for a `workspace` then that `workspace` is
 not bound to the Sidecar. This preserves backwards-compatibility with any existing uses of the `volumeMount`
@@ -196,7 +196,7 @@ trick described above.
 
 #### Isolating `Workspaces` to Specific `Steps` or `Sidecars`
 
-This is an alpha feature. The `enable-api-fields` feature flag [must be set to `"alpha"`](./install.md)
+This is a beta feature. The `enable-api-fields` feature flag [must be set to `"beta"`](./install.md#beta-features)
 for Isolated Workspaces to function.
 
 To limit access to a `Workspace` from a subset of a `Task's` `Steps` or `Sidecars` requires
