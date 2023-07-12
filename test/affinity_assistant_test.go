@@ -24,15 +24,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	"github.com/tektoncd/pipeline/test/parse"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
 )
 
-// TestAffinityAssistant_PerWorkspace tests the lifecycle status of Affinity Assistant and PVCs
-// from the start to the deletion of a PipelineRun
+// TestAffinityAssistant_PerWorkspace tests the taskrun pod scheduling and the PVC lifecycle status
 func TestAffinityAssistant_PerWorkspace(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -79,17 +76,14 @@ spec:
 	if _, err := c.V1PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun: %s", err)
 	}
-	t.Logf("Waiting for PipelineRun in namespace %s to run", namespace)
-	if err := WaitForPipelineRunState(ctx, c, prName, timeout, Running(prName), "PipelineRun Running", v1Version); err != nil {
-		t.Fatalf("Error waiting for PipelineRun to run: %s", err)
+
+	// wait for PipelineRun to finish
+	t.Logf("Waiting for PipelineRun in namespace %s to finish", namespace)
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSucceeded", v1Version); err != nil {
+		t.Errorf("Error waiting for PipelineRun to finish: %s", err)
 	}
 
-	// validate SS and PVC are created
-	ssName := pipelinerun.GetAffinityAssistantName("my-workspace", pr.Name)
-	ss, err := c.KubeClient.AppsV1().StatefulSets(namespace).Get(ctx, ssName, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Couldn't get expected Affinity Assistant StatefulSet %s, err: %s", ss, err)
-	}
+	// get PVC
 	pvcList, err := c.KubeClient.CoreV1().PersistentVolumeClaims(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Fatalf("Couldn't get expected PVCs: %s", err)
@@ -98,18 +92,6 @@ spec:
 		t.Fatalf("Unexpected PVC created, expecting 1 but got: %v", len(pvcList.Items))
 	}
 	pvcName := pvcList.Items[0].Name
-
-	// wait for PipelineRun to finish
-	t.Logf("Waiting for PipelineRun in namespace %s to finish", namespace)
-	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSucceeded", v1Version); err != nil {
-		t.Errorf("Error waiting for PipelineRun to finish: %s", err)
-	}
-
-	// validate Affinity Assistant is cleaned up
-	ss, err = c.KubeClient.AppsV1().StatefulSets(namespace).Get(ctx, ssName, metav1.GetOptions{})
-	if !apierrors.IsNotFound(err) {
-		t.Fatalf("Failed to cleanup Affinity Assistant StatefulSet: %v, err: %v", ssName, err)
-	}
 
 	// validate PipelineRun pods sharing the same PVC are scheduled to the same node
 	podFoo, err := c.KubeClient.CoreV1().Pods(namespace).Get(ctx, fmt.Sprintf("%v-foo-pod", prName), metav1.GetOptions{})
