@@ -308,37 +308,6 @@ func TestGetVerificationNoMatchPolicy(t *testing.T) {
 	}
 }
 
-// TestCheckAlphaOrBetaAPIFields validates CheckAlphaOrBetaAPIFields for alpha, beta, and stable context
-func TestCheckAlphaOrBetaAPIFields(t *testing.T) {
-	ctx := context.Background()
-	type testCase struct {
-		name           string
-		c              context.Context
-		expectedResult bool
-	}
-	testCases := []testCase{{
-		name:           "when enable-api-fields is set to alpha",
-		c:              config.EnableAlphaAPIFields(ctx),
-		expectedResult: true,
-	}, {
-		name:           "when enable-api-fields is set to beta",
-		c:              config.EnableBetaAPIFields(ctx),
-		expectedResult: true,
-	}, {
-		name:           "when enable-api-fields is set to stable",
-		c:              config.EnableStableAPIFields(ctx),
-		expectedResult: false,
-	}}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			e := config.CheckAlphaOrBetaAPIFields(tc.c)
-			if (tc.expectedResult && !e) || (!tc.expectedResult && e) {
-				t.Errorf("Failed to validate CheckAlphaOrBetaAPIFields for \"%v\", expected \"%v\" but got \"%v\"", tc.name, tc.expectedResult, e)
-			}
-		})
-	}
-}
-
 func TestIsSpireEnabled(t *testing.T) {
 	testCases := []struct {
 		name      string

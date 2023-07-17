@@ -354,12 +354,6 @@ func GetVerificationNoMatchPolicy(ctx context.Context) string {
 	return FromContextOrDefaults(ctx).FeatureFlags.VerificationNoMatchPolicy
 }
 
-// CheckAlphaOrBetaAPIFields return true if the enable-api-fields is either set to alpha or set to beta
-func CheckAlphaOrBetaAPIFields(ctx context.Context) bool {
-	cfg := FromContextOrDefaults(ctx)
-	return cfg.FeatureFlags.EnableAPIFields == AlphaAPIFields || cfg.FeatureFlags.EnableAPIFields == BetaAPIFields
-}
-
 // IsSpireEnabled checks if non-falsifiable provenance is enforced through SPIRE
 func IsSpireEnabled(ctx context.Context) bool {
 	return FromContextOrDefaults(ctx).FeatureFlags.EnforceNonfalsifiability == EnforceNonfalsifiabilityWithSpire

@@ -114,8 +114,8 @@ func (ts *TaskSpec) ValidateBetaFields(ctx context.Context) *apis.FieldError {
 	}
 	// Indexing into array parameters
 	arrayIndexParamRefs := ts.GetIndexingReferencesToArrayParams()
-	if len(arrayIndexParamRefs) != 0 && !config.CheckAlphaOrBetaAPIFields(ctx) {
-		errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("cannot index into array parameters when 'enable-api-fields' is 'stable', but found indexing references: %s", arrayIndexParamRefs)))
+	if len(arrayIndexParamRefs) != 0 {
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "indexing into array parameters", config.BetaAPIFields))
 	}
 	// Array and object results
 	for i, result := range ts.Results {

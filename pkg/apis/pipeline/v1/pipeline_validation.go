@@ -101,8 +101,8 @@ func (ps *PipelineSpec) ValidateBetaFields(ctx context.Context) *apis.FieldError
 	}
 	// Indexing into array parameters
 	arrayParamIndexingRefs := ps.GetIndexingReferencesToArrayParams()
-	if len(arrayParamIndexingRefs) != 0 && !config.CheckAlphaOrBetaAPIFields(ctx) {
-		errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("cannot index into array parameters when 'enable-api-fields' is 'stable', but found indexing references: %s", arrayParamIndexingRefs)))
+	if len(arrayParamIndexingRefs) != 0 {
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "indexing into array parameters", config.BetaAPIFields))
 	}
 	// array and object results
 	for i, result := range ps.Results {
