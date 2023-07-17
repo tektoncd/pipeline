@@ -141,9 +141,10 @@ func newConfigValidationController(name string) func(context.Context, configmap.
 
 			// The configmaps to validate.
 			configmap.Constructors{
-				logging.ConfigMapName():               logging.NewConfigFromConfigMap,
-				defaultconfig.GetDefaultsConfigName(): defaultconfig.NewDefaultsFromConfigMap,
-				pkgleaderelection.ConfigMapName():     pkgleaderelection.NewConfigFromConfigMap,
+				logging.ConfigMapName():                   logging.NewConfigFromConfigMap,
+				defaultconfig.GetDefaultsConfigName():     defaultconfig.NewDefaultsFromConfigMap,
+				pkgleaderelection.ConfigMapName():         pkgleaderelection.NewConfigFromConfigMap,
+				defaultconfig.GetFeatureFlagsConfigName(): defaultconfig.NewFeatureFlagsFromConfigMap,
 			},
 		)
 	}
