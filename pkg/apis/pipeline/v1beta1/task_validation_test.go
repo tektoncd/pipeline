@@ -24,7 +24,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
+	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -717,7 +717,7 @@ func TestTaskValidateError(t *testing.T) {
 					Params: tt.fields.Params,
 					Steps:  tt.fields.Steps,
 				}}
-			ctx := config.EnableAlphaAPIFields(context.Background())
+			ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
 			task.SetDefaults(ctx)
 			err := task.Validate(ctx)
 			if err == nil {
@@ -1452,7 +1452,7 @@ func TestStepAndSidecarWorkspaces(t *testing.T) {
 				Sidecars:   tt.fields.Sidecars,
 				Workspaces: tt.fields.Workspaces,
 			}
-			ctx := config.EnableAlphaAPIFields(context.Background())
+			ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
 			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
@@ -1509,7 +1509,7 @@ func TestStepAndSidecarWorkspacesErrors(t *testing.T) {
 				Sidecars: tt.fields.Sidecars,
 			}
 
-			ctx := config.EnableAlphaAPIFields(context.Background())
+			ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
 			err := ts.Validate(ctx)
 			if err == nil {
@@ -1682,13 +1682,13 @@ func TestIncompatibleAPIVersions(t *testing.T) {
 				ts := tt.spec
 				ctx := context.Background()
 				if version == "alpha" {
-					ctx = config.EnableAlphaAPIFields(ctx)
+					ctx = cfgtesting.EnableAlphaAPIFields(ctx)
 				}
 				if version == "beta" {
-					ctx = config.EnableBetaAPIFields(ctx)
+					ctx = cfgtesting.EnableBetaAPIFields(ctx)
 				}
 				if version == "stable" {
-					ctx = config.EnableStableAPIFields(ctx)
+					ctx = cfgtesting.EnableStableAPIFields(ctx)
 				}
 				ts.SetDefaults(ctx)
 				err := ts.Validate(ctx)

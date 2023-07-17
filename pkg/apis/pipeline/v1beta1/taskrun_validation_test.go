@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -449,7 +450,7 @@ func TestTaskRun_Validate(t *testing.T) {
 				}},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
@@ -628,7 +629,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				Breakpoint: []string{"onFailure"},
 			},
 		},
-		wc:      config.EnableStableAPIFields,
+		wc:      cfgtesting.EnableStableAPIFields,
 		wantErr: apis.ErrGeneric("debug requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}, {
 		name: "invalid breakpoint",
@@ -641,7 +642,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrInvalidValue("breakito is not a valid breakpoint. Available valid breakpoints include [onFailure]", "debug.breakpoint"),
-		wc:      config.EnableAlphaAPIFields,
+		wc:      cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "stepOverride disallowed without alpha feature gate",
 		spec: v1beta1.TaskRunSpec{
@@ -655,7 +656,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				},
 			}},
 		},
-		wc:      config.EnableStableAPIFields,
+		wc:      cfgtesting.EnableStableAPIFields,
 		wantErr: apis.ErrGeneric("stepOverrides requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}, {
 		name: "sidecarOverride disallowed without alpha feature gate",
@@ -670,7 +671,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				},
 			}},
 		},
-		wc:      config.EnableStableAPIFields,
+		wc:      cfgtesting.EnableStableAPIFields,
 		wantErr: apis.ErrGeneric("sidecarOverrides requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}, {
 		name: "duplicate stepOverride names",
@@ -689,7 +690,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			}},
 		},
 		wantErr: apis.ErrMultipleOneOf("stepOverrides[1].name"),
-		wc:      config.EnableAlphaAPIFields,
+		wc:      cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "missing stepOverride names",
 		spec: v1beta1.TaskRunSpec{
@@ -701,7 +702,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			}},
 		},
 		wantErr: apis.ErrMissingField("stepOverrides[0].name"),
-		wc:      config.EnableAlphaAPIFields,
+		wc:      cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "duplicate sidecarOverride names",
 		spec: v1beta1.TaskRunSpec{
@@ -719,7 +720,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			}},
 		},
 		wantErr: apis.ErrMultipleOneOf("sidecarOverrides[1].name"),
-		wc:      config.EnableAlphaAPIFields,
+		wc:      cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "missing sidecarOverride names",
 		spec: v1beta1.TaskRunSpec{
@@ -731,7 +732,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			}},
 		},
 		wantErr: apis.ErrMissingField("sidecarOverrides[0].name"),
-		wc:      config.EnableAlphaAPIFields,
+		wc:      cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "invalid both step-level (stepOverrides.resources) and task-level (spec.computeResources) resource requirements",
 		spec: v1beta1.TaskRunSpec{
@@ -754,7 +755,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			"stepOverrides.resources",
 			"computeResources",
 		),
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "computeResources disallowed without alpha feature gate",
 		spec: v1beta1.TaskRunSpec{
@@ -767,7 +768,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				},
 			},
 		},
-		wc:      config.EnableStableAPIFields,
+		wc:      cfgtesting.EnableStableAPIFields,
 		wantErr: apis.ErrGeneric("computeResources requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}, {
 		name: "uses resources",
@@ -865,7 +866,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "valid sidecar and task-level (spec.resources) resource requirements",
 		spec: v1beta1.TaskRunSpec{
@@ -884,7 +885,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 				},
 			}},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}}
 
 	for _, ts := range tests {

@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
+	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"knative.dev/pkg/apis"
@@ -44,7 +44,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 				Resolver: "foo",
 			},
 		},
-		withContext: config.EnableStableAPIFields,
+		withContext: cfgtesting.EnableStableAPIFields,
 		wantErr:     apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\""),
 	}, {
 		name: "pipelineref params disallowed without beta feature gate",
@@ -53,7 +53,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 				Params: v1.Params{},
 			},
 		},
-		withContext: config.EnableStableAPIFields,
+		withContext: cfgtesting.EnableStableAPIFields,
 		wantErr:     apis.ErrMissingField("resolver").Also(apis.ErrGeneric("resolver params requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"")),
 	}, {
 		name: "pipelineref params disallowed without resolver",
@@ -63,7 +63,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr:     apis.ErrMissingField("resolver"),
-		withContext: config.EnableBetaAPIFields,
+		withContext: cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "pipelineref resolver disallowed in conjunction with pipelineref name",
 		ref: &v1.PipelineRef{
@@ -73,7 +73,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr:     apis.ErrMultipleOneOf("name", "resolver"),
-		withContext: config.EnableBetaAPIFields,
+		withContext: cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "pipelineref params disallowed in conjunction with pipelineref name",
 		ref: &v1.PipelineRef{
@@ -89,7 +89,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr:     apis.ErrMultipleOneOf("name", "params").Also(apis.ErrMissingField("resolver")),
-		withContext: config.EnableBetaAPIFields,
+		withContext: cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "pipelineref param object not allowed in stable",
 		ref: &v1.PipelineRef{
@@ -107,7 +107,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 		wantErr: apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"").Also(
 			apis.ErrGeneric("resolver params requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"")).Also(
 			apis.ErrGeneric("object type parameter requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"")),
-		withContext: config.EnableStableAPIFields,
+		withContext: cfgtesting.EnableStableAPIFields,
 	}}
 
 	for _, tc := range tests {
@@ -135,11 +135,11 @@ func TestPipelineRef_Valid(t *testing.T) {
 	}, {
 		name: "beta feature: valid resolver",
 		ref:  &v1.PipelineRef{ResolverRef: v1.ResolverRef{Resolver: "git"}},
-		wc:   config.EnableBetaAPIFields,
+		wc:   cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "beta feature: valid resolver with alpha flag",
 		ref:  &v1.PipelineRef{ResolverRef: v1.ResolverRef{Resolver: "git"}},
-		wc:   config.EnableAlphaAPIFields,
+		wc:   cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "alpha feature: valid resolver with params",
 		ref: &v1.PipelineRef{ResolverRef: v1.ResolverRef{Resolver: "git", Params: v1.Params{{
@@ -155,7 +155,7 @@ func TestPipelineRef_Valid(t *testing.T) {
 				StringVal: "baz",
 			},
 		}}}},
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}}
 
 	for _, ts := range tests {

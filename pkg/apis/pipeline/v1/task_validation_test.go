@@ -21,7 +21,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
+	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -138,7 +138,7 @@ func TestTaskSpecValidatePropagatedParamsAndWorkspaces(t *testing.T) {
 				Workspaces:   tt.fields.Workspaces,
 				Results:      tt.fields.Results,
 			}
-			ctx := config.EnableBetaAPIFields(context.Background())
+			ctx := cfgtesting.EnableBetaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
 			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
@@ -511,7 +511,7 @@ func TestTaskSpecValidate(t *testing.T) {
 				Workspaces:   tt.fields.Workspaces,
 				Results:      tt.fields.Results,
 			}
-			ctx := config.EnableAlphaAPIFields(context.Background())
+			ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
 			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
@@ -714,7 +714,7 @@ func TestTaskValidateError(t *testing.T) {
 					Params: tt.fields.Params,
 					Steps:  tt.fields.Steps,
 				}}
-			ctx := config.EnableAlphaAPIFields(context.Background())
+			ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
 			task.SetDefaults(ctx)
 			err := task.Validate(ctx)
 			if err == nil {
@@ -1357,7 +1357,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 				Workspaces:   tt.fields.Workspaces,
 				Results:      tt.fields.Results,
 			}
-			ctx := config.EnableAlphaAPIFields(context.Background())
+			ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
 			err := ts.Validate(ctx)
 			if err == nil {
@@ -1440,7 +1440,7 @@ func TestStepAndSidecarWorkspaces(t *testing.T) {
 				Sidecars:   tt.fields.Sidecars,
 				Workspaces: tt.fields.Workspaces,
 			}
-			ctx := config.EnableAlphaAPIFields(context.Background())
+			ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
 			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
@@ -1497,7 +1497,7 @@ func TestStepAndSidecarWorkspacesErrors(t *testing.T) {
 				Sidecars: tt.fields.Sidecars,
 			}
 
-			ctx := config.EnableAlphaAPIFields(context.Background())
+			ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
 			err := ts.Validate(ctx)
 			if err == nil {
@@ -1670,13 +1670,13 @@ func TestIncompatibleAPIVersions(t *testing.T) {
 				ts := tt.spec
 				ctx := context.Background()
 				if version == "alpha" {
-					ctx = config.EnableAlphaAPIFields(ctx)
+					ctx = cfgtesting.EnableAlphaAPIFields(ctx)
 				}
 				if version == "beta" {
-					ctx = config.EnableBetaAPIFields(ctx)
+					ctx = cfgtesting.EnableBetaAPIFields(ctx)
 				}
 				if version == "stable" {
-					ctx = config.EnableStableAPIFields(ctx)
+					ctx = cfgtesting.EnableStableAPIFields(ctx)
 				}
 				ts.SetDefaults(ctx)
 				err := ts.Validate(ctx)
@@ -1751,13 +1751,13 @@ func TestTaskBetaFields(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := config.EnableStableAPIFields(context.Background())
+			ctx := cfgtesting.EnableStableAPIFields(context.Background())
 			task := v1.Task{ObjectMeta: metav1.ObjectMeta{Name: "foo"}, Spec: tt.spec}
 			if err := task.Validate(ctx); err == nil {
 				t.Errorf("no error when using beta field when `enable-api-fields` is stable")
 			}
 
-			ctx = config.EnableBetaAPIFields(context.Background())
+			ctx = cfgtesting.EnableBetaAPIFields(context.Background())
 			if err := task.Validate(ctx); err != nil {
 				t.Errorf("unexpected error when using beta field: %s", err)
 			}

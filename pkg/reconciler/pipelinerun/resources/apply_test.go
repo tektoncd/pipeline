@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
+	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resources "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
@@ -212,7 +212,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "parameter propagation object finally task",
 		original: v1.PipelineSpec{
@@ -242,7 +242,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "parameter propagation with task default but no task winner pipeline",
 		original: v1.PipelineSpec{
@@ -617,7 +617,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "Finally task parameter propagation object with task default but no task winner pipeline",
 		original: v1.PipelineSpec{
@@ -672,7 +672,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "parameter propagation object with task default and task winner task",
 		original: v1.PipelineSpec{
@@ -736,7 +736,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "Finally task parameter propagation object with task default and task winner task",
 		original: v1.PipelineSpec{
@@ -800,7 +800,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "single parameter with when expression",
 		original: v1.PipelineSpec{
@@ -1409,7 +1409,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "single parameter in finally workspace subpath",
 		original: v1.PipelineSpec{

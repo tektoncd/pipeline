@@ -20,7 +20,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
+	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -169,7 +169,7 @@ func TestWorkspaceBindingValidateInvalid(t *testing.T) {
 			Name:      "beth",
 			Projected: &corev1.ProjectedVolumeSource{},
 		},
-		wc: config.EnableBetaAPIFields,
+		wc: cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "Provide csi without a driver",
 		binding: &v1.WorkspaceBinding{
@@ -178,7 +178,7 @@ func TestWorkspaceBindingValidateInvalid(t *testing.T) {
 				Driver: "",
 			},
 		},
-		wc: config.EnableBetaAPIFields,
+		wc: cfgtesting.EnableBetaAPIFields,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()

@@ -38,3 +38,31 @@ func SetFeatureFlags(ctx context.Context, t *testing.T, data map[string]string) 
 	})
 	return s.ToContext(ctx)
 }
+
+// EnableAlphaAPIFields enables alpha features in an existing context (for use in testing)
+func EnableAlphaAPIFields(ctx context.Context) context.Context {
+	return setEnableAPIFields(ctx, config.AlphaAPIFields)
+}
+
+// EnableBetaAPIFields enables beta features in an existing context (for use in testing)
+func EnableBetaAPIFields(ctx context.Context) context.Context {
+	return setEnableAPIFields(ctx, config.BetaAPIFields)
+}
+
+// EnableStableAPIFields enables stable features in an existing context (for use in testing)
+func EnableStableAPIFields(ctx context.Context) context.Context {
+	return setEnableAPIFields(ctx, config.StableAPIFields)
+}
+
+func setEnableAPIFields(ctx context.Context, want string) context.Context {
+	featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
+		"enable-api-fields": want,
+	})
+	cfg := &config.Config{
+		Defaults: &config.Defaults{
+			DefaultTimeoutMinutes: 60,
+		},
+		FeatureFlags: featureFlags,
+	}
+	return config.ToContext(ctx, cfg)
+}

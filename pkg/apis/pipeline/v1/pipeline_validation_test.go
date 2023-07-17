@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -1341,7 +1342,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := config.EnableAlphaAPIFields(context.Background())
+			ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
 			err := ValidatePipelineParameterVariables(ctx, tt.tasks, tt.params)
 			if err != nil {
 				t.Errorf("Pipeline.ValidatePipelineParameterVariables() returned error for valid pipeline parameters: %v", err)
@@ -3537,12 +3538,12 @@ func TestPipelineWithBetaFields(t *testing.T) {
 	for _, tt := range tts {
 		t.Run(tt.name, func(t *testing.T) {
 			pipeline := Pipeline{ObjectMeta: metav1.ObjectMeta{Name: "foo"}, Spec: tt.spec}
-			ctx := config.EnableStableAPIFields(context.Background())
+			ctx := cfgtesting.EnableStableAPIFields(context.Background())
 			if err := pipeline.Validate(ctx); err == nil {
 				t.Errorf("no error when using beta field when `enable-api-fields` is stable")
 			}
 
-			ctx = config.EnableBetaAPIFields(context.Background())
+			ctx = cfgtesting.EnableBetaAPIFields(context.Background())
 			if err := pipeline.Validate(ctx); err != nil {
 				t.Errorf("unexpected error when using beta field: %s", err)
 			}
