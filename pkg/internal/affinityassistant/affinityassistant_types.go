@@ -20,19 +20,19 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 )
 
-type AffinityAssitantBehavior string
+type AffinityAssistantBehavior string
 
 const (
-	AffinityAssistantDisabled                    = AffinityAssitantBehavior("AffinityAssistantDisabled")
-	AffinityAssistantPerWorkspace                = AffinityAssitantBehavior("AffinityAssistantPerWorkspace")
-	AffinityAssistantPerPipelineRun              = AffinityAssitantBehavior("AffinityAssistantPerPipelineRun")
-	AffinityAssistantPerPipelineRunWithIsolation = AffinityAssitantBehavior("AffinityAssistantPerPipelineRunWithIsolation")
+	AffinityAssistantDisabled                    = AffinityAssistantBehavior("AffinityAssistantDisabled")
+	AffinityAssistantPerWorkspace                = AffinityAssistantBehavior("AffinityAssistantPerWorkspace")
+	AffinityAssistantPerPipelineRun              = AffinityAssistantBehavior("AffinityAssistantPerPipelineRun")
+	AffinityAssistantPerPipelineRunWithIsolation = AffinityAssistantBehavior("AffinityAssistantPerPipelineRunWithIsolation")
 )
 
-// GetAffinityAssistantBehavior returns an AffinityAssitantBehavior based on the
+// GetAffinityAssistantBehavior returns an AffinityAssistantBehavior based on the
 // combination of "disable-affinity-assistant" and "coschedule" feature flags
 // TODO(#6740)(WIP): consume this function in the PipelineRun reconciler to determine Affinity Assistant behavior.
-func GetAffinityAssistantBehavior(ctx context.Context) (AffinityAssitantBehavior, error) {
+func GetAffinityAssistantBehavior(ctx context.Context) (AffinityAssistantBehavior, error) {
 	cfg := config.FromContextOrDefaults(ctx)
 	disableAA := cfg.FeatureFlags.DisableAffinityAssistant
 	coschedule := cfg.FeatureFlags.Coschedule

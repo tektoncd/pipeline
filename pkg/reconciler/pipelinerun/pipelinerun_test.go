@@ -7742,7 +7742,7 @@ func Test_taskWorkspaceByWorkspaceVolumeSource(t *testing.T) {
 		name, taskWorkspaceName, pipelineWorkspaceName, prName string
 		wb                                                     v1.WorkspaceBinding
 		expectedBinding                                        v1.WorkspaceBinding
-		aaBehavior                                             affinityassistant.AffinityAssitantBehavior
+		aaBehavior                                             affinityassistant.AffinityAssistantBehavior
 	}{
 		{
 			name:                  "PVC Workspace with Affinity Assistant",
