@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
+	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"knative.dev/pkg/apis"
@@ -40,11 +40,11 @@ func TestTaskRef_Valid(t *testing.T) {
 	}, {
 		name:    "beta feature: valid resolver",
 		taskRef: &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "git"}},
-		wc:      config.EnableBetaAPIFields,
+		wc:      cfgtesting.EnableBetaAPIFields,
 	}, {
 		name:    "beta feature: valid resolver with alpha flag",
 		taskRef: &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "git"}},
-		wc:      config.EnableAlphaAPIFields,
+		wc:      cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "beta feature: valid resolver with params",
 		taskRef: &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "git", Params: v1.Params{{
@@ -60,7 +60,7 @@ func TestTaskRef_Valid(t *testing.T) {
 				StringVal: "baz",
 			},
 		}}}},
-		wc: config.EnableBetaAPIFields,
+		wc: cfgtesting.EnableBetaAPIFields,
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
@@ -99,7 +99,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 				Resolver: "git",
 			},
 		},
-		wc:      config.EnableStableAPIFields,
+		wc:      cfgtesting.EnableStableAPIFields,
 		wantErr: apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\""),
 	}, {
 		name: "taskref params disallowed without beta feature gate",
@@ -108,7 +108,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 				Params: v1.Params{},
 			},
 		},
-		wc:      config.EnableStableAPIFields,
+		wc:      cfgtesting.EnableStableAPIFields,
 		wantErr: apis.ErrMissingField("resolver").Also(apis.ErrGeneric("resolver params requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"")),
 	}, {
 		name: "taskref params disallowed without resolver",
@@ -118,7 +118,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrMissingField("resolver"),
-		wc:      config.EnableBetaAPIFields,
+		wc:      cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "taskref resolver disallowed in conjunction with taskref name",
 		taskRef: &v1.TaskRef{
@@ -128,7 +128,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrMultipleOneOf("name", "resolver"),
-		wc:      config.EnableBetaAPIFields,
+		wc:      cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "taskref params disallowed in conjunction with taskref name",
 		taskRef: &v1.TaskRef{
@@ -144,7 +144,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrMultipleOneOf("name", "params").Also(apis.ErrMissingField("resolver")),
-		wc:      config.EnableBetaAPIFields,
+		wc:      cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "taskref param object requires beta",
 		taskRef: &v1.TaskRef{
@@ -159,7 +159,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 				}},
 			},
 		},
-		wc: config.EnableStableAPIFields,
+		wc: cfgtesting.EnableStableAPIFields,
 		wantErr: apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"").Also(
 			apis.ErrGeneric("resolver params requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"")).Also(
 			apis.ErrGeneric("object type parameter requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"")),

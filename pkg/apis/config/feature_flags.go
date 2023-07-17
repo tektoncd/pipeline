@@ -334,21 +334,6 @@ func NewFeatureFlagsFromConfigMap(config *corev1.ConfigMap) (*FeatureFlags, erro
 	return NewFeatureFlagsFromMap(config.Data)
 }
 
-// EnableAlphaAPIFields enables alpha features in an existing context (for use in testing)
-func EnableAlphaAPIFields(ctx context.Context) context.Context {
-	return setEnableAPIFields(ctx, AlphaAPIFields)
-}
-
-// EnableBetaAPIFields enables beta features in an existing context (for use in testing)
-func EnableBetaAPIFields(ctx context.Context) context.Context {
-	return setEnableAPIFields(ctx, BetaAPIFields)
-}
-
-// EnableStableAPIFields enables stable features in an existing context (for use in testing)
-func EnableStableAPIFields(ctx context.Context) context.Context {
-	return setEnableAPIFields(ctx, StableAPIFields)
-}
-
 // GetVerificationNoMatchPolicy returns the "trusted-resources-verification-no-match-policy" value
 func GetVerificationNoMatchPolicy(ctx context.Context) string {
 	return FromContextOrDefaults(ctx).FeatureFlags.VerificationNoMatchPolicy
@@ -357,17 +342,4 @@ func GetVerificationNoMatchPolicy(ctx context.Context) string {
 // IsSpireEnabled checks if non-falsifiable provenance is enforced through SPIRE
 func IsSpireEnabled(ctx context.Context) bool {
 	return FromContextOrDefaults(ctx).FeatureFlags.EnforceNonfalsifiability == EnforceNonfalsifiabilityWithSpire
-}
-
-func setEnableAPIFields(ctx context.Context, want string) context.Context {
-	featureFlags, _ := NewFeatureFlagsFromMap(map[string]string{
-		"enable-api-fields": want,
-	})
-	cfg := &Config{
-		Defaults: &Defaults{
-			DefaultTimeoutMinutes: 60,
-		},
-		FeatureFlags: featureFlags,
-	}
-	return ToContext(ctx, cfg)
 }

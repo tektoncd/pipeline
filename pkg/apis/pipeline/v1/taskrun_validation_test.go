@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -63,7 +64,7 @@ func TestTaskRun_Invalidate(t *testing.T) {
 			Message: `non-existent variable in "$(params.task-words[*])"`,
 			Paths:   []string{"spec.steps[0].args[0]"},
 		},
-		wc: config.EnableBetaAPIFields,
+		wc: cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "propagating object params not provided but used by step",
 		taskRun: &v1.TaskRun{
@@ -83,7 +84,7 @@ func TestTaskRun_Invalidate(t *testing.T) {
 			Message: `non-existent variable in "$(params.task-words.hello)"`,
 			Paths:   []string{"spec.steps[0].args[0]"},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "propagating object properties not provided",
 		taskRun: &v1.TaskRun{
@@ -118,7 +119,7 @@ func TestTaskRun_Invalidate(t *testing.T) {
 			Message: `missing field(s)`,
 			Paths:   []string{"spec.task-words.properties"},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
@@ -161,7 +162,7 @@ func TestTaskRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableBetaAPIFields,
+		wc: cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "propagating object params from taskrun to steps",
 		taskRun: &v1.TaskRun{
@@ -184,7 +185,7 @@ func TestTaskRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "propagating object params with taskrun mixing value types",
 		taskRun: &v1.TaskRun{
@@ -217,7 +218,7 @@ func TestTaskRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "propagating partial params with different provided and default names",
 		taskRun: &v1.TaskRun{
@@ -249,7 +250,7 @@ func TestTaskRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableBetaAPIFields,
+		wc: cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "propagating object params with one declared in taskspec and other provided by taskrun",
 		taskRun: &v1.TaskRun{
@@ -283,7 +284,7 @@ func TestTaskRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "propagating partial params in taskrun",
 		taskRun: &v1.TaskRun{
@@ -318,7 +319,7 @@ func TestTaskRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableBetaAPIFields,
+		wc: cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "propagating partial object params with multiple keys",
 		taskRun: &v1.TaskRun{
@@ -353,7 +354,7 @@ func TestTaskRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "propagating params with taskrun same names",
 		taskRun: &v1.TaskRun{
@@ -380,7 +381,7 @@ func TestTaskRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableBetaAPIFields,
+		wc: cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "object params without propagation",
 		taskRun: &v1.TaskRun{
@@ -414,7 +415,7 @@ func TestTaskRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "alpha feature: valid step and sidecar specs",
 		taskRun: &v1.TaskRun{
@@ -435,7 +436,7 @@ func TestTaskRun_Validate(t *testing.T) {
 				}},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
@@ -499,7 +500,7 @@ func TestTaskRun_Workspaces_Invalid(t *testing.T) {
 }
 
 func EnableForbiddenEnv(ctx context.Context) context.Context {
-	ctx = config.EnableAlphaAPIFields(ctx)
+	ctx = cfgtesting.EnableAlphaAPIFields(ctx)
 	c := config.FromContext(ctx)
 	c.Defaults.DefaultForbiddenEnv = []string{"TEST_ENV"}
 	return config.ToContext(ctx, c)
@@ -629,7 +630,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			TaskRef: &v1.TaskRef{Name: "mytask"},
 		},
 		wantErr: apis.ErrMultipleOneOf("params[myobjectparam].name"),
-		wc:      config.EnableAlphaAPIFields,
+		wc:      cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "using debug when apifields stable",
 		spec: v1.TaskRunSpec{
@@ -640,7 +641,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				Breakpoint: []string{"onFailure"},
 			},
 		},
-		wc:      config.EnableStableAPIFields,
+		wc:      cfgtesting.EnableStableAPIFields,
 		wantErr: apis.ErrGeneric("debug requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}, {
 		name: "invalid breakpoint",
@@ -653,7 +654,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrInvalidValue("breakito is not a valid breakpoint. Available valid breakpoints include [onFailure]", "debug.breakpoint"),
-		wc:      config.EnableAlphaAPIFields,
+		wc:      cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "stepSpecs disallowed without alpha feature gate",
 		spec: v1.TaskRunSpec{
@@ -667,7 +668,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				},
 			}},
 		},
-		wc:      config.EnableStableAPIFields,
+		wc:      cfgtesting.EnableStableAPIFields,
 		wantErr: apis.ErrGeneric("stepSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}, {
 		name: "sidecarSpec disallowed without alpha feature gate",
@@ -682,7 +683,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				},
 			}},
 		},
-		wc:      config.EnableStableAPIFields,
+		wc:      cfgtesting.EnableStableAPIFields,
 		wantErr: apis.ErrGeneric("sidecarSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}, {
 		name: "duplicate stepSpecs names",
@@ -701,7 +702,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			}},
 		},
 		wantErr: apis.ErrMultipleOneOf("stepSpecs[1].name"),
-		wc:      config.EnableAlphaAPIFields,
+		wc:      cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "missing stepSpecs names",
 		spec: v1.TaskRunSpec{
@@ -713,7 +714,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			}},
 		},
 		wantErr: apis.ErrMissingField("stepSpecs[0].name"),
-		wc:      config.EnableAlphaAPIFields,
+		wc:      cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "duplicate sidecarSpecs names",
 		spec: v1.TaskRunSpec{
@@ -731,7 +732,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			}},
 		},
 		wantErr: apis.ErrMultipleOneOf("sidecarSpecs[1].name"),
-		wc:      config.EnableAlphaAPIFields,
+		wc:      cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "missing sidecarSpecs names",
 		spec: v1.TaskRunSpec{
@@ -743,7 +744,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			}},
 		},
 		wantErr: apis.ErrMissingField("sidecarSpecs[0].name"),
-		wc:      config.EnableAlphaAPIFields,
+		wc:      cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "invalid both step-level (stepSpecs.resources) and task-level (spec.computeResources) resource requirements",
 		spec: v1.TaskRunSpec{
@@ -766,7 +767,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			"stepSpecs.resources",
 			"computeResources",
 		),
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "computeResources disallowed without alpha feature gate",
 		spec: v1.TaskRunSpec{
@@ -779,7 +780,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				},
 			},
 		},
-		wc:      config.EnableStableAPIFields,
+		wc:      cfgtesting.EnableStableAPIFields,
 		wantErr: apis.ErrGeneric("computeResources requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}}
 
@@ -859,7 +860,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "valid sidecar and task-level (spec.resources) resource requirements",
 		spec: v1.TaskRunSpec{
@@ -878,7 +879,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 				},
 			}},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}}
 
 	for _, ts := range tests {

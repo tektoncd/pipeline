@@ -38,6 +38,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -2675,7 +2676,7 @@ spec:
 		Kind:     "Task",
 		TaskSpec: &v1.TaskSpec{Steps: simpleTask.Spec.Steps, Workspaces: simpleTask.Spec.Workspaces},
 	}
-	ctx := config.EnableAlphaAPIFields(context.Background())
+	ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
 	workspaceVolumes := workspace.CreateVolumes(taskRun.Spec.Workspaces)
 	taskSpec, err := applyParamsContextsResultsAndWorkspaces(ctx, taskRun, rtr, workspaceVolumes)
 	if err != nil {
@@ -2786,7 +2787,7 @@ spec:
 	}
 
 	workspaceVolumes := workspace.CreateVolumes(taskRun.Spec.Workspaces)
-	ctx := config.EnableAlphaAPIFields(context.Background())
+	ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
 	taskSpec, err := applyParamsContextsResultsAndWorkspaces(ctx, taskRun, rtr, workspaceVolumes)
 	if err != nil {
 		t.Errorf("update task spec threw an error: %v", err)
