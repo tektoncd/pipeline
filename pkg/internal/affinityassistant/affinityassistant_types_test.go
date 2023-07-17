@@ -28,7 +28,7 @@ func Test_GetAffinityAssistantBehavior(t *testing.T) {
 	tcs := []struct {
 		name      string
 		configMap map[string]string
-		expect    AffinityAssitantBehavior
+		expect    AffinityAssistantBehavior
 	}{{
 		name: "affinity-assistant-enabled",
 		configMap: map[string]string{
@@ -73,7 +73,7 @@ func Test_GetAffinityAssistantBehavior(t *testing.T) {
 		}
 
 		if d := cmp.Diff(tc.expect, get); d != "" {
-			t.Errorf("AffinityAssitantBehavior mismatch: %v", diff.PrintWantGot(d))
+			t.Errorf("AffinityAssistantBehavior mismatch: %v", diff.PrintWantGot(d))
 		}
 	}
 }

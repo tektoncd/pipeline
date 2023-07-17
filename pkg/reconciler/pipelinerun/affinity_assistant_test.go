@@ -190,7 +190,7 @@ func TestCreateAndDeleteOfAffinityAssistantPerWorkspaceOrDisabled(t *testing.T) 
 		name, expectedPVCName string
 		pr                    *v1.PipelineRun
 		expectStatefulSetSpec []*appsv1.StatefulSetSpec
-		aaBehavior            aa.AffinityAssitantBehavior
+		aaBehavior            aa.AffinityAssistantBehavior
 	}{{
 		name:       "PersistentVolumeClaim Workspace type",
 		aaBehavior: aa.AffinityAssistantPerWorkspace,
