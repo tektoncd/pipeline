@@ -104,7 +104,7 @@ data:
   # If set to "spire", then SPIRE will be used to ensure non-falsifiable provenance.
   # If set to "none", then Tekton will not have non-falsifiable provenance.
   # This is an experimental feature and thus should still be considered an alpha feature.
-  enforce-nonfalsifiablity: "none"
+  enforce-nonfalsifiability: "none"
   # Setting this flag will determine how Tekton pipelines will handle extracting results from the task.
   # Acceptable values are "termination-message" or "sidecar-logs".
   # "sidecar-logs" is an experimental feature and thus should still be considered

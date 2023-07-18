@@ -1201,6 +1201,7 @@ status:
     featureFlags:
       RunningInEnvWithInjectedSidecars: true
       EnableAPIFields: "beta"
+      EnforceNonfalsifiability: "none"
       AwaitSidecarReadiness: true
       VerificationNoMatchPolicy: "ignore"
       EnableProvenanceInStatus: true
@@ -4821,6 +4822,7 @@ status:
     featureFlags:
       RunningInEnvWithInjectedSidecars: true
       EnableAPIFields: "beta"
+      EnforceNonfalsifiability: "none"
       AwaitSidecarReadiness: true
       VerificationNoMatchPolicy: "ignore"
       EnableProvenanceInStatus: true
@@ -4979,6 +4981,7 @@ status:
     featureFlags:
       RunningInEnvWithInjectedSidecars: true
       EnableAPIFields: "beta"
+      EnforceNonfalsifiability: "none"
       AwaitSidecarReadiness: true
       VerificationNoMatchPolicy: "ignore"
       EnableProvenanceInStatus: true
@@ -8323,6 +8326,7 @@ status:
       RunningInEnvWithInjectedSidecars: true
       EnableTektonOCIBundles: true
       EnableAPIFields: "alpha"
+      EnforceNonfalsifiability: "none"
       AwaitSidecarReadiness: true
       VerificationNoMatchPolicy: "ignore"
       EnableProvenanceInStatus: true
@@ -8489,6 +8493,7 @@ status:
       RunningInEnvWithInjectedSidecars: true
       EnableTektonOCIBundles: true
       EnableAPIFields: "alpha"
+      EnforceNonfalsifiability: "none"
       AwaitSidecarReadiness: true
       VerificationNoMatchPolicy: "ignore"
       EnableProvenanceInStatus: true
@@ -8700,6 +8705,7 @@ status:
       RunningInEnvWithInjectedSidecars: true
       EnableTektonOCIBundles: true
       EnableAPIFields: "alpha"
+      EnforceNonfalsifiability: "none"
       AwaitSidecarReadiness: true
       VerificationNoMatchPolicy: "ignore"
       EnableProvenanceInStatus: true
@@ -9111,6 +9117,7 @@ status:
       RunningInEnvWithInjectedSidecars: true
       EnableTektonOCIBundles: true
       EnableAPIFields: "alpha"
+      EnforceNonfalsifiability: "none"
       AwaitSidecarReadiness: true
       VerificationNoMatchPolicy: "ignore"
       EnableProvenanceInStatus: true
@@ -9315,6 +9322,7 @@ status:
       RunningInEnvWithInjectedSidecars: true
       EnableTektonOCIBundles: true
       EnableAPIFields: "alpha"
+      EnforceNonfalsifiability: "none"
       AwaitSidecarReadiness: true
       VerificationNoMatchPolicy: "ignore"
       EnableProvenanceInStatus: true
@@ -9550,6 +9558,7 @@ status:
       RunningInEnvWithInjectedSidecars: true
       EnableTektonOCIBundles: true
       EnableAPIFields: "alpha"
+      EnforceNonfalsifiability: "none"
       AwaitSidecarReadiness: true
       VerificationNoMatchPolicy: "ignore"
       EnableProvenanceInStatus: true
@@ -9993,6 +10002,7 @@ status:
       RunningInEnvWithInjectedSidecars: true
       EnableTektonOCIBundles: true
       EnableAPIFields: "alpha"
+      EnforceNonfalsifiability: "none"
       AwaitSidecarReadiness: true
       VerificationNoMatchPolicy: "ignore"
       EnableProvenanceInStatus: true
@@ -10170,6 +10180,7 @@ status:
       RunningInEnvWithInjectedSidecars: true
       EnableTektonOCIBundles: true
       EnableAPIFields: "alpha"
+      EnforceNonfalsifiability: "none"
       AwaitSidecarReadiness: true
       VerificationNoMatchPolicy: "ignore"
       EnableProvenanceInStatus: true
@@ -10395,6 +10406,7 @@ status:
       RunningInEnvWithInjectedSidecars: true
       EnableTektonOCIBundles: true
       EnableAPIFields: "alpha"
+      EnforceNonfalsifiability: "none"
       AwaitSidecarReadiness: true
       VerificationNoMatchPolicy: "ignore"
       EnableProvenanceInStatus: true
@@ -10559,6 +10571,7 @@ status:
       RunningInEnvWithInjectedSidecars: true
       EnableTektonOCIBundles: true
       EnableAPIFields: "alpha"
+      EnforceNonfalsifiability: "none"
       AwaitSidecarReadiness: true
       VerificationNoMatchPolicy: "ignore"
       EnableProvenanceInStatus: true
@@ -10943,6 +10956,7 @@ status:
       RunningInEnvWithInjectedSidecars: true
       EnableTektonOCIBundles: true
       EnableAPIFields: "alpha"
+      EnforceNonfalsifiability: "none"
       AwaitSidecarReadiness: true
       VerificationNoMatchPolicy: "ignore"
       EnableProvenanceInStatus: true
@@ -11168,6 +11182,7 @@ status:
       RunningInEnvWithInjectedSidecars: true
       EnableTektonOCIBundles: true
       EnableAPIFields: "alpha"
+      EnforceNonfalsifiability: "none"
       AwaitSidecarReadiness: true
       VerificationNoMatchPolicy: "ignore"
       EnableProvenanceInStatus: true
@@ -11365,6 +11380,7 @@ status:
       RunningInEnvWithInjectedSidecars: true
       EnableTektonOCIBundles: true
       EnableAPIFields: "alpha"
+      EnforceNonfalsifiability: "none"
       AwaitSidecarReadiness: true
       VerificationNoMatchPolicy: "ignore"
       EnableProvenanceInStatus: true
@@ -11780,6 +11796,7 @@ status:
       RunningInEnvWithInjectedSidecars: true
       EnableTektonOCIBundles: true
       EnableAPIFields: "alpha"
+      EnforceNonfalsifiability: "none"
       AwaitSidecarReadiness: true
       VerificationNoMatchPolicy: "ignore"
       EnableProvenanceInStatus: true
@@ -11947,6 +11964,7 @@ status:
       RunningInEnvWithInjectedSidecars: true
       EnableTektonOCIBundles: true
       EnableAPIFields: "alpha"
+      EnforceNonfalsifiability: "none"
       AwaitSidecarReadiness: true
       VerificationNoMatchPolicy: "ignore"
       EnableProvenanceInStatus: true

@@ -81,7 +81,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				// These are prescribed as true by enabling "alpha" API fields, even
 				// if the submitted text value is "false".
 				EnableTektonOCIBundles:           true,
-				EnforceNonfalsifiability:         "",
+				EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
 				DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
@@ -99,9 +99,9 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		},
 		{
 			expectedConfig: &config.FeatureFlags{
-				EnableAPIFields:        "stable",
-				EnableTektonOCIBundles: true,
-
+				EnableAPIFields:                  "stable",
+				EnableTektonOCIBundles:           true,
+				EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
 				DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
@@ -119,9 +119,9 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		},
 		{
 			expectedConfig: &config.FeatureFlags{
-				EnableAPIFields: "beta",
-
+				EnableAPIFields:                  "beta",
 				EnableTektonOCIBundles:           config.DefaultEnableTektonOciBundles,
+				EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
 				DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
@@ -156,6 +156,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		{
 			expectedConfig: &config.FeatureFlags{
 				EnableAPIFields:                  config.DefaultEnableAPIFields,
+				EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
 				VerificationNoMatchPolicy:        config.DefaultNoMatchPolicyConfig,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
