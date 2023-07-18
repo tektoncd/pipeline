@@ -62,6 +62,8 @@ and follows the [beta policy](#beta-crds) for backwards incompatible changes.
 - Any [backwards incompatible changes](#backwards-incompatible-changes) must be introduced in a backwards compatible manner first, with a deprecation warning in the release notes and migration instructions.
 
 - Users will be given at least 9 months to migrate before a backward incompatible change is made. This means an older beta API version will continue to be supported in new releases for a period of at least 9 months from the time a newer version is made available.
+  - As a special case, the `v1beta1` CRDs will not be removed until 1 year after they are deprecated,
+  because no stable API was available when they were created. The 9 month policy will apply to future beta APIs.
 
 - Alpha features may be present within a beta API version. However, they will not be enabled by default and must be enabled by setting `enable-api-fields` to `alpha`.
 
