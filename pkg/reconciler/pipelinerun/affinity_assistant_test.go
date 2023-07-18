@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -42,7 +43,6 @@ import (
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/typed/core/v1/fake"
 	testing2 "k8s.io/client-go/testing"
-	"knative.dev/pkg/kmeta"
 	logtesting "knative.dev/pkg/logging/testing"
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
@@ -178,7 +178,7 @@ func TestCreateAndDeleteOfAffinityAssistantPerPipelineRun(t *testing.T) {
 			expectAAName := GetAffinityAssistantName("", tc.pr.Name)
 			validateStatefulSetSpec(t, ctx, c, expectAAName, tc.expectStatefulSetSpec)
 
-			// TODO(#6740)(WIP): test cleanupAffinityAssistants for coscheduling-pipelinerun mode when fully implemented
+			// TODO(#6740)(WIP): test cleanupAffinityAssistantsAndPVCs for coscheduling-pipelinerun mode when fully implemented
 		})
 	}
 }
@@ -295,9 +295,9 @@ func TestCreateAndDeleteOfAffinityAssistantPerWorkspaceOrDisabled(t *testing.T) 
 			}
 
 			// clean up Affinity Assistant
-			c.cleanupAffinityAssistants(ctx, tc.pr)
+			c.cleanupAffinityAssistantsAndPVCs(ctx, tc.pr)
 			if err != nil {
-				t.Errorf("unexpected error from cleanupAffinityAssistants: %v", err)
+				t.Errorf("unexpected error from cleanupAffinityAssistantsAndPVCs: %v", err)
 			}
 			for _, w := range tc.pr.Spec.Workspaces {
 				if w.PersistentVolumeClaim == nil && w.VolumeClaimTemplate == nil {
@@ -630,11 +630,16 @@ func TestThatAffinityAssistantNameIsNoLongerThan53(t *testing.T) {
 		t.Errorf("affinity assistant name can not be longer than 53 chars")
 	}
 }
-
 func TestCleanupAffinityAssistants_Success(t *testing.T) {
-	workspace := v1.WorkspaceBinding{
-		Name:                "volumeClaimTemplate workspace",
-		VolumeClaimTemplate: &corev1.PersistentVolumeClaim{},
+	workspaces := []v1.WorkspaceBinding{
+		{
+			Name:                "volumeClaimTemplate workspace 1",
+			VolumeClaimTemplate: &corev1.PersistentVolumeClaim{},
+		},
+		{
+			Name:                "volumeClaimTemplate workspace 2",
+			VolumeClaimTemplate: &corev1.PersistentVolumeClaim{},
+		},
 	}
 	pr := &v1.PipelineRun{
 		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
@@ -642,57 +647,107 @@ func TestCleanupAffinityAssistants_Success(t *testing.T) {
 			Name: "test-pipelinerun-volumeclaimtemplate",
 		},
 		Spec: v1.PipelineRunSpec{
-			Workspaces: []v1.WorkspaceBinding{workspace},
+			Workspaces: workspaces,
 		},
 	}
 
-	// seed data to create StatefulSets and PVCs
-	expectedAffinityAssistantName := GetAffinityAssistantName(workspace.Name, pr.Name)
-	aa := []*appsv1.StatefulSet{{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "StatefulSet",
-			APIVersion: "apps/v1",
+	testCases := []struct {
+		name                   string
+		aaBehavior             aa.AffinityAssistantBehavior
+		cfgMap                 map[string]string
+		affinityAssistantNames []string
+		pvcNames               []string
+	}{{
+		name:       "Affinity Assistant Cleanup - per workspace",
+		aaBehavior: aa.AffinityAssistantPerWorkspace,
+		cfgMap: map[string]string{
+			"disable-affinity-assistant": "false",
+			"coschedule":                 "workspaces",
 		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   expectedAffinityAssistantName,
-			Labels: getStatefulSetLabels(pr, expectedAffinityAssistantName),
+		affinityAssistantNames: []string{"affinity-assistant-9d8b15fa2e", "affinity-assistant-39883fc3b2"},
+		pvcNames:               []string{"pvc-a12c589442", "pvc-5ce7cd98c5"},
+	}, {
+		name:       "Affinity Assistant Cleanup - per pipelinerun",
+		aaBehavior: aa.AffinityAssistantPerPipelineRun,
+		cfgMap: map[string]string{
+			"disable-affinity-assistant": "true",
+			"coschedule":                 "pipelineruns",
 		},
-		Status: appsv1.StatefulSetStatus{
-			ReadyReplicas: 1,
-		},
+		affinityAssistantNames: []string{"affinity-assistant-62843d388a"},
+		pvcNames:               []string{"pvc-a12c589442-affinity-assistant-62843d388a-0", "pvc-5ce7cd98c5-affinity-assistant-62843d388a-0"},
 	}}
-	expectedPVCName := getPersistentVolumeClaimNameWithAffinityAssistant(workspace.Name, pr.Name, workspace, *kmeta.NewControllerRef(pr))
-	pvc := []*corev1.PersistentVolumeClaim{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: expectedPVCName,
-		}},
-	}
-	data := Data{
-		StatefulSets: aa,
-		PVCs:         pvc,
-	}
-	ctx, c, _ := seedTestData(data)
 
-	// call clean up
-	err := c.cleanupAffinityAssistants(ctx, pr)
-	if err != nil {
-		t.Fatalf("unexpected err when clean up Affinity Assistant: %v", err)
-	}
+	for _, tc := range testCases {
+		// seed data to create StatefulSets and PVCs
+		var statefulsets []*appsv1.StatefulSet
+		for _, expectedAffinityAssistantName := range tc.affinityAssistantNames {
+			ss := &appsv1.StatefulSet{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "StatefulSet",
+					APIVersion: "apps/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   expectedAffinityAssistantName,
+					Labels: getStatefulSetLabels(pr, expectedAffinityAssistantName),
+				},
+				Status: appsv1.StatefulSetStatus{
+					ReadyReplicas: 1,
+				},
+			}
+			statefulsets = append(statefulsets, ss)
+		}
 
-	// validate the cleanup result
-	_, err = c.KubeClientSet.AppsV1().StatefulSets(pr.Namespace).Get(ctx, expectedAffinityAssistantName, metav1.GetOptions{})
-	if !apierrors.IsNotFound(err) {
-		t.Errorf("expected a NotFound response of StatefulSet, got: %v", err)
-	}
+		var pvcs []*corev1.PersistentVolumeClaim
+		for _, expectedPVCName := range tc.pvcNames {
+			pvc := &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: expectedPVCName,
+				},
+			}
+			pvcs = append(pvcs, pvc)
+		}
 
-	//  the PVCs are NOT expected to be deleted at Affinity Assistant cleanup time
-	_, err = c.KubeClientSet.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(ctx, expectedPVCName, metav1.GetOptions{})
-	if err != nil {
-		t.Errorf("unexpected err when getting PersistentVolumeClaims, err: %v", err)
+		data := Data{
+			StatefulSets: statefulsets,
+			PVCs:         pvcs,
+		}
+
+		_, c, _ := seedTestData(data)
+		ctx := cfgtesting.SetFeatureFlags(context.Background(), t, tc.cfgMap)
+
+		// call clean up
+		err := c.cleanupAffinityAssistantsAndPVCs(ctx, pr)
+		if err != nil {
+			t.Fatalf("unexpected err when clean up Affinity Assistant: %v", err)
+		}
+
+		// validate the cleanup result
+		for _, expectedAffinityAssistantName := range tc.affinityAssistantNames {
+			_, err = c.KubeClientSet.AppsV1().StatefulSets(pr.Namespace).Get(ctx, expectedAffinityAssistantName, metav1.GetOptions{})
+			if !apierrors.IsNotFound(err) {
+				t.Errorf("expected a NotFound response of StatefulSet, got: %v", err)
+			}
+		}
+
+		// validate pvcs
+		for _, expectedPVCName := range tc.pvcNames {
+			if tc.aaBehavior == aa.AffinityAssistantPerWorkspace {
+				//  the PVCs are NOT expected to be deleted at Affinity Assistant cleanup time in AffinityAssistantPerWorkspace mode
+				_, err = c.KubeClientSet.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(ctx, expectedPVCName, metav1.GetOptions{})
+				if err != nil {
+					t.Errorf("unexpected err when getting PersistentVolumeClaims, err: %v", err)
+				}
+			} else {
+				_, err = c.KubeClientSet.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(ctx, expectedPVCName, metav1.GetOptions{})
+				if !apierrors.IsNotFound(err) {
+					t.Errorf("failed to clean up PersistentVolumeClaim")
+				}
+			}
+		}
 	}
 }
 
-func TestCleanupAffinityAssistants_Failure(t *testing.T) {
+func TestCleanupAffinityAssistantsAndPVCs_Failure(t *testing.T) {
 	pr := &v1.PipelineRun{
 		Spec: v1.PipelineRunSpec{
 			Workspaces: []v1.WorkspaceBinding{{
@@ -716,7 +771,7 @@ func TestCleanupAffinityAssistants_Failure(t *testing.T) {
 		errors.New("failed to delete StatefulSet affinity-assistant-e3b0c44298: error deleting statefulsets"),
 	})
 
-	errs := c.cleanupAffinityAssistants(ctx, pr)
+	errs := c.cleanupAffinityAssistantsAndPVCs(ctx, pr)
 	if errs == nil {
 		t.Fatalf("expecting Affinity Assistant cleanup error but got nil")
 	}
@@ -747,7 +802,7 @@ func TestThatCleanupIsAvoidedIfAssistantIsDisabled(t *testing.T) {
 	store := config.NewStore(logtesting.TestLogger(t))
 	store.OnConfigChanged(configMap)
 
-	_ = c.cleanupAffinityAssistants(store.ToContext(context.Background()), testPRWithPVC)
+	_ = c.cleanupAffinityAssistantsAndPVCs(store.ToContext(context.Background()), testPRWithPVC)
 
 	if len(fakeClientSet.Actions()) != 0 {
 		t.Errorf("Expected 0 k8s client requests, did %d request", len(fakeClientSet.Actions()))
@@ -958,8 +1013,10 @@ func seedTestData(d Data) (context.Context, Reconciler, func()) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 
+	kubeClientSet := fakek8s.NewSimpleClientset()
 	c := Reconciler{
-		KubeClientSet: fakek8s.NewSimpleClientset(),
+		KubeClientSet: kubeClientSet,
+		pvcHandler:    volumeclaim.NewPVCHandler(kubeClientSet, zap.NewExample().Sugar()),
 	}
 	for _, s := range d.StatefulSets {
 		c.KubeClientSet.AppsV1().StatefulSets(s.Namespace).Create(ctx, s, metav1.CreateOptions{})

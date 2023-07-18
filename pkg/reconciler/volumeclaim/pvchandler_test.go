@@ -25,6 +25,7 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -231,5 +232,37 @@ func TestCreateExistPersistentVolumeClaims(t *testing.T) {
 	}
 	if pvcList.Items[0].Name != expectedPVCName {
 		t.Fatalf("unexpected PVC name on created PVC; expected: %s got: %s", expectedPVCName, pvcList.Items[0].Name)
+	}
+}
+
+func TestPurgeFinalizerAndDeletePVCForWorkspace(t *testing.T) {
+	ctx := context.Background()
+	kubeClientSet := fakek8s.NewSimpleClientset()
+
+	// seed data
+	namespace := "my-ns"
+	pvcName := "my-pvc"
+	pvc := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      pvcName,
+			Namespace: namespace,
+			Finalizers: []string{
+				"kubernetes.io/pvc-protection",
+			},
+		}}
+	if _, err := kubeClientSet.CoreV1().PersistentVolumeClaims(namespace).Create(ctx, pvc, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("unexpected error when creating PVC: %v", err)
+	}
+
+	// call PurgeFinalizerAndDeletePVCForWorkspace to delete pvc
+	pvcHandler := defaultPVCHandler{kubeClientSet, zap.NewExample().Sugar()}
+	if err := pvcHandler.PurgeFinalizerAndDeletePVCForWorkspace(ctx, pvcName, namespace); err != nil {
+		t.Fatalf("unexpected error when calling PurgeFinalizerAndDeletePVCForWorkspace: %v", err)
+	}
+
+	// validate pvc is deleted
+	_, err := kubeClientSet.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, pvcName, metav1.GetOptions{})
+	if !apierrors.IsNotFound(err) {
+		t.Errorf("expected a NotFound response of PersistentVolumeClaims, got: %v", err)
 	}
 }

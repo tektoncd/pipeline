@@ -178,22 +178,44 @@ func (c *Reconciler) createOrUpdateAffinityAssistant(ctx context.Context, affini
 	return errs
 }
 
-// TODO(#6740)(WIP) implement cleanupAffinityAssistants for AffinityAssistantPerPipelineRun and AffinityAssistantPerPipelineRunWithIsolation affinity assistant modes
-func (c *Reconciler) cleanupAffinityAssistants(ctx context.Context, pr *v1.PipelineRun) error {
-	// omit cleanup if the feature is disabled
-	if c.isAffinityAssistantDisabled(ctx) {
-		return nil
+// cleanupAffinityAssistantsAndPVCs deletes Affinity Assistant StatefulSets and PVCs created from VolumeClaimTemplates
+func (c *Reconciler) cleanupAffinityAssistantsAndPVCs(ctx context.Context, pr *v1.PipelineRun) error {
+	aaBehavior, err := aa.GetAffinityAssistantBehavior(ctx)
+	if err != nil {
+		return err
 	}
 
 	var errs []error
-	for _, w := range pr.Spec.Workspaces {
-		if w.PersistentVolumeClaim != nil || w.VolumeClaimTemplate != nil {
-			affinityAssistantStsName := GetAffinityAssistantName(w.Name, pr.Name)
-			if err := c.KubeClientSet.AppsV1().StatefulSets(pr.Namespace).Delete(ctx, affinityAssistantStsName, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
-				errs = append(errs, fmt.Errorf("failed to delete StatefulSet %s: %w", affinityAssistantStsName, err))
+	switch aaBehavior {
+	case aa.AffinityAssistantPerWorkspace:
+		// TODO (#5776): support optional PVC deletion behavior for per-workspace mode
+		for _, w := range pr.Spec.Workspaces {
+			if w.PersistentVolumeClaim != nil || w.VolumeClaimTemplate != nil {
+				affinityAssistantName := GetAffinityAssistantName(w.Name, pr.Name)
+				if err := c.KubeClientSet.AppsV1().StatefulSets(pr.Namespace).Delete(ctx, affinityAssistantName, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+					errs = append(errs, fmt.Errorf("failed to delete StatefulSet %s: %w", affinityAssistantName, err))
+				}
 			}
 		}
+	case aa.AffinityAssistantPerPipelineRun, aa.AffinityAssistantPerPipelineRunWithIsolation:
+		affinityAssistantName := GetAffinityAssistantName("", pr.Name)
+		if err := c.KubeClientSet.AppsV1().StatefulSets(pr.Namespace).Delete(ctx, affinityAssistantName, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+			errs = append(errs, fmt.Errorf("failed to delete StatefulSet %s: %w", affinityAssistantName, err))
+		}
+
+		// cleanup PVCs created by Affinity Assistants
+		for _, w := range pr.Spec.Workspaces {
+			if w.VolumeClaimTemplate != nil {
+				pvcName := getPersistentVolumeClaimNameWithAffinityAssistant("", pr.Name, w, *kmeta.NewControllerRef(pr))
+				if err := c.pvcHandler.PurgeFinalizerAndDeletePVCForWorkspace(ctx, pvcName, pr.Namespace); err != nil {
+					errs = append(errs, err)
+				}
+			}
+		}
+	case aa.AffinityAssistantDisabled:
+		return nil
 	}
+
 	return errorutils.NewAggregate(errs)
 }
 

@@ -230,9 +230,9 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 
 	if pr.IsDone() {
 		pr.SetDefaults(ctx)
-		err := c.cleanupAffinityAssistants(ctx, pr)
+		err := c.cleanupAffinityAssistantsAndPVCs(ctx, pr)
 		if err != nil {
-			logger.Errorf("Failed to delete StatefulSet for PipelineRun %s: %v", pr.Name, err)
+			logger.Errorf("Failed to delete StatefulSet or PVC for PipelineRun %s: %v", pr.Name, err)
 		}
 		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 	}
