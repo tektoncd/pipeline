@@ -5,4 +5,3 @@ metadata:
   namespace: tekton-pipelines
 data:
   enforce-nonfalsifiability: "spire"
-  enable-api-fields: "alpha"

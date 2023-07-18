@@ -41,18 +41,18 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				DisableAffinityAssistant:         false,
 				RunningInEnvWithInjectedSidecars: true,
 				RequireGitSSHSecretKnownHosts:    false,
-
-				DisableCredsInit:          config.DefaultDisableCredsInit,
-				AwaitSidecarReadiness:     config.DefaultAwaitSidecarReadiness,
-				EnableTektonOCIBundles:    config.DefaultEnableTektonOciBundles,
-				EnableAPIFields:           config.DefaultEnableAPIFields,
-				SendCloudEventsForRuns:    config.DefaultSendCloudEventsForRuns,
-				VerificationNoMatchPolicy: config.DefaultNoMatchPolicyConfig,
-				EnableProvenanceInStatus:  config.DefaultEnableProvenanceInStatus,
-				ResultExtractionMethod:    config.DefaultResultExtractionMethod,
-				MaxResultSize:             config.DefaultMaxResultSize,
-				SetSecurityContext:        config.DefaultSetSecurityContext,
-				Coschedule:                config.DefaultCoschedule,
+				DisableCredsInit:                 config.DefaultDisableCredsInit,
+				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
+				EnableTektonOCIBundles:           config.DefaultEnableTektonOciBundles,
+				EnableAPIFields:                  config.DefaultEnableAPIFields,
+				SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
+				VerificationNoMatchPolicy:        config.DefaultNoMatchPolicyConfig,
+				EnableProvenanceInStatus:         config.DefaultEnableProvenanceInStatus,
+				ResultExtractionMethod:           config.DefaultResultExtractionMethod,
+				MaxResultSize:                    config.DefaultMaxResultSize,
+				SetSecurityContext:               config.DefaultSetSecurityContext,
+				Coschedule:                       config.DefaultCoschedule,
+				EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
 			},
 			fileName: config.GetFeatureFlagsConfigName(),
 		},
@@ -139,9 +139,9 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		},
 		{
 			expectedConfig: &config.FeatureFlags{
-				EnableAPIFields:                  "alpha",
-				EnforceNonfalsifiability:         "spire",
-				EnableTektonOCIBundles:           true,
+				EnableAPIFields:                  config.DefaultEnableAPIFields,
+				EnforceNonfalsifiability:         config.EnforceNonfalsifiabilityWithSpire,
+				EnableTektonOCIBundles:           config.DefaultEnableTektonOciBundles,
 				VerificationNoMatchPolicy:        config.DefaultNoMatchPolicyConfig,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
@@ -253,9 +253,6 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 		fileName: "feature-flags-enforce-nonfalsifiability-bad-flag",
 		want:     `invalid value for feature flag "enforce-nonfalsifiability": "bad-value"`,
 	}, {
-		fileName: "feature-flags-spire-with-stable",
-		want:     `"enforce-nonfalsifiability" can be set to non-default values ("spire") only in alpha`,
-	}, {
 		fileName: "feature-flags-invalid-coschedule-affinity-assistant-comb",
 		want:     `coschedule value pipelineruns is incompatible with disable-affinity-assistant setting to false`,
 	}, {
@@ -360,7 +357,7 @@ func TestIsSpireEnabled(t *testing.T) {
 			"enable-api-fields":         "beta",
 			"enforce-nonfalsifiability": config.EnforceNonfalsifiabilityWithSpire,
 		},
-		want: false,
+		want: true,
 	}, {
 		name: "when enable-api-fields is set to alpha and non-falsifiability is not set",
 		configmap: map[string]string{

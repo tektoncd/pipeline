@@ -5,4 +5,3 @@ metadata:
   namespace: tekton-pipelines
 data:
   enforce-nonfalsifiability: "bad-value"
-  enable-api-fields: "alpha"
