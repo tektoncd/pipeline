@@ -271,22 +271,11 @@ func setEnforceNonFalsifiability(cfgMap map[string]string, enableAPIFields strin
 	// validate that "enforce-nonfalsifiability" is set to a valid value
 	switch value {
 	case EnforceNonfalsifiabilityNone, EnforceNonfalsifiabilityWithSpire:
-		break
+		*feature = value
+		return nil
 	default:
 		return fmt.Errorf("invalid value for feature flag %q: %q", enforceNonfalsifiability, value)
 	}
-
-	// validate that "enforce-nonfalsifiability" is set to allowed values for stability level
-	switch enableAPIFields {
-	case AlphaAPIFields:
-		*feature = value
-	default:
-		// Do not consider any form of non-falsifiability enforcement in non-alpha mode
-		if value != DefaultEnforceNonfalsifiability {
-			return fmt.Errorf("%q can be set to non-default values (%q) only in alpha", enforceNonfalsifiability, value)
-		}
-	}
-	return nil
 }
 
 // setResultExtractionMethod sets the "results-from" flag based on the content of a given map.

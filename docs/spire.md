@@ -64,7 +64,7 @@ When a TaskRun is created:
 ## Enabling TaskRun result attestations
 
 To enable TaskRun attestations:
-1. Make sure `enforce-nonfalsifiability` is set to `"spire"` and `enable-api-fields` is set to `"alpha"` in the `feature-flags` configmap, see [`install.md`](./install.md#customizing-the-pipelines-controller-behavior) for details
+1. Make sure `enforce-nonfalsifiability` is set to `"spire"`. See [`additional-configs.md`](./additional-configs.md#customizing-the-pipelines-controller-behavior) for details
 1. Create a SPIRE deployment containing a SPIRE server, SPIRE agents and the SPIRE CSI driver, for convenience, [this sample single cluster deployment](https://github.com/spiffe/spiffe-csi/tree/main/example/config) can be used.
 1. Register the SPIRE workload entry for Tekton with the "Admin" flag, which will allow the Tekton controller to communicate with the SPIRE server to manage the TaskRun identities dynamically.
     ```
