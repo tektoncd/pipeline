@@ -73,7 +73,7 @@ const (
 	// EnforceNonfalsifiabilityWithSpire is the value used for  "enable-nonfalsifiability" when SPIRE is used to enable non-falsifiability.
 	EnforceNonfalsifiabilityWithSpire = "spire"
 	// EnforceNonfalsifiabilityNone is the value used for  "enable-nonfalsifiability" when non-falsifiability is not enabled.
-	EnforceNonfalsifiabilityNone = ""
+	EnforceNonfalsifiabilityNone = "none"
 	// DefaultEnforceNonfalsifiability is the default value for "enforce-nonfalsifiability".
 	DefaultEnforceNonfalsifiability = EnforceNonfalsifiabilityNone
 	// DefaultNoMatchPolicyConfig is the default value for "trusted-resources-verification-no-match-policy".
@@ -195,7 +195,7 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if err := setMaxResultSize(cfgMap, DefaultMaxResultSize, &tc.MaxResultSize); err != nil {
 		return nil, err
 	}
-	if err := setEnforceNonFalsifiability(cfgMap, tc.EnableAPIFields, &tc.EnforceNonfalsifiability); err != nil {
+	if err := setEnforceNonFalsifiability(cfgMap, &tc.EnforceNonfalsifiability); err != nil {
 		return nil, err
 	}
 	if err := setFeature(setSecurityContextKey, DefaultSetSecurityContext, &tc.SetSecurityContext); err != nil {
@@ -262,7 +262,7 @@ func setCoschedule(cfgMap map[string]string, defaultValue string, disabledAffini
 
 // setEnforceNonFalsifiability sets the "enforce-nonfalsifiability" flag based on the content of a given map.
 // If the feature gate is invalid, then an error is returned.
-func setEnforceNonFalsifiability(cfgMap map[string]string, enableAPIFields string, feature *string) error {
+func setEnforceNonFalsifiability(cfgMap map[string]string, feature *string) error {
 	var value = DefaultEnforceNonfalsifiability
 	if cfg, ok := cfgMap[enforceNonfalsifiability]; ok {
 		value = strings.ToLower(cfg)
