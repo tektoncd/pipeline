@@ -19,13 +19,16 @@ package volumeclaim
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.uber.org/zap"
+	"gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	clientset "k8s.io/client-go/kubernetes"
 )
@@ -39,6 +42,7 @@ const (
 // PvcHandler is used to create PVCs for workspaces
 type PvcHandler interface {
 	CreatePVCsForWorkspaces(ctx context.Context, wb []v1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error
+	PurgeFinalizerAndDeletePVCForWorkspace(ctx context.Context, pvcName, namespace string) error
 }
 
 type defaultPVCHandler struct {
@@ -79,6 +83,49 @@ func (c *defaultPVCHandler) CreatePVCsForWorkspaces(ctx context.Context, wb []v1
 		}
 	}
 	return errorutils.NewAggregate(errs)
+}
+
+// PurgeFinalizerAndDeletePVCForWorkspace purges the `kubernetes.io/pvc-protection` finalizer protection of the given pvc and then deletes it.
+// Purging the `kubernetes.io/pvc-protection` finalizer allows the pvc to be deleted even when it is referenced by a taskrun pod.
+// See mode details in https://kubernetes.io/docs/concepts/storage/persistent-volumes/#storage-object-in-use-protection.
+func (c *defaultPVCHandler) PurgeFinalizerAndDeletePVCForWorkspace(ctx context.Context, pvcName, namespace string) error {
+	p, err := c.clientset.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, pvcName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get the PVC %s: %w", pvcName, err)
+	}
+
+	// get the list of existing finalizers and drop `pvc-protection` if exists
+	var finalizers []string
+	for _, f := range p.ObjectMeta.Finalizers {
+		if f == "kubernetes.io/pvc-protection" {
+			continue
+		}
+		finalizers = append(finalizers, f)
+	}
+
+	// prepare data to remove pvc-protection from the list of finalizers
+	removeFinalizerBytes, err := json.Marshal([]jsonpatch.JsonPatchOperation{{
+		Path:      "/metadata/finalizers",
+		Operation: "replace",
+		Value:     finalizers,
+	}})
+	if err != nil {
+		return fmt.Errorf("failed to marshal jsonpatch: %w", err)
+	}
+
+	// patch the existing PVC to update the finalizers
+	_, err = c.clientset.CoreV1().PersistentVolumeClaims(namespace).Patch(ctx, pvcName, types.JSONPatchType, removeFinalizerBytes, metav1.PatchOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to patch the PVC %s: %w", pvcName, err)
+	}
+
+	// delete PVC
+	err = c.clientset.CoreV1().PersistentVolumeClaims(namespace).Delete(ctx, pvcName, metav1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to delete the PVC %s: %w", pvcName, err)
+	}
+
+	return nil
 }
 
 func getPVCsWithoutAffinityAssistant(workspaceBindings []v1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) map[string]*corev1.PersistentVolumeClaim {
