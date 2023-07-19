@@ -51,6 +51,10 @@ const (
 	// that taskrun failed runtime validation
 	ReasonFailedValidation = "TaskRunValidationFailed"
 
+	// ReasonTaskFailedValidation indicated that the reason for failure status is
+	// that task failed runtime validation
+	ReasonTaskFailedValidation = "TaskValidationFailed"
+
 	// ReasonExceededResourceQuota indicates that the TaskRun failed to create a pod due to
 	// a ResourceQuota in the namespace
 	ReasonExceededResourceQuota = "ExceededResourceQuota"

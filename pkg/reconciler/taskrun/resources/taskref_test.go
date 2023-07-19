@@ -35,15 +35,18 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
+	"github.com/tektoncd/pipeline/pkg/reconciler/apiserver"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
+	ktesting "k8s.io/client-go/testing"
 	"knative.dev/pkg/logging"
 )
 
@@ -486,14 +489,6 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 		}, "\n"),
 		wantTask: parse.MustParseV1Task(t, taskYAMLString),
 	}, {
-		name: "v1beta1 task with beta features",
-		taskYAML: strings.Join([]string{
-			"kind: Task",
-			"apiVersion: tekton.dev/v1beta1",
-			taskYAMLStringWithBetaFeatures,
-		}, "\n"),
-		wantTask: parse.MustParseV1Task(t, taskYAMLStringWithBetaFeatures),
-	}, {
 		name: "v1beta1 cluster task",
 		taskYAML: strings.Join([]string{
 			"kind: ClusterTask",
@@ -509,14 +504,6 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 			taskYAMLString,
 		}, "\n"),
 		wantTask: parse.MustParseV1Task(t, taskYAMLString),
-	}, {
-		name: "v1 task with beta features",
-		taskYAML: strings.Join([]string{
-			"kind: Task",
-			"apiVersion: tekton.dev/v1",
-			taskYAMLStringWithBetaFeatures,
-		}, "\n"),
-		wantErr: true,
 	}, {
 		name: "v1 task without defaults",
 		taskYAML: strings.Join([]string{
@@ -537,7 +524,8 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 					ServiceAccountName: "default",
 				},
 			}
-			fn := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default", nil /*VerificationPolicies*/)
+			tektonclient := fake.NewSimpleClientset()
+			fn := resources.GetTaskFunc(ctx, nil, tektonclient, requester, tr, tr.Spec.TaskRef, "", "default", "default", nil /*VerificationPolicies*/)
 
 			resolvedTask, resolvedRefSource, _, err := fn(ctx, taskRef.Name)
 			if tc.wantErr {
@@ -556,6 +544,67 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 				if d := cmp.Diff(tc.wantTask, resolvedTask); d != "" {
 					t.Errorf("resolvedTask did not match: %s", diff.PrintWantGot(d))
 				}
+			}
+		})
+	}
+}
+
+func TestGetTaskFunc_RemoteResolution_ValidationFailure(t *testing.T) {
+	ctx := context.Background()
+	cfg := config.FromContextOrDefaults(ctx)
+	ctx = config.ToContext(ctx, cfg)
+	taskRef := &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "git"}}
+
+	testcases := []struct {
+		name     string
+		taskYAML string
+	}{{
+		name: "invalid v1beta1 task",
+		taskYAML: strings.Join([]string{
+			"kind: Task",
+			"apiVersion: tekton.dev/v1beta1",
+			taskYAMLString,
+		}, "\n"),
+	}, {
+		name: "invalid v1beta1 clustertask",
+		taskYAML: strings.Join([]string{
+			"kind: ClusterTask",
+			"apiVersion: tekton.dev/v1beta1",
+			taskYAMLString,
+		}, "\n"),
+	}, {
+		name: "invalid v1 task",
+		taskYAML: strings.Join([]string{
+			"kind: Task",
+			"apiVersion: tekton.dev/v1",
+			taskYAMLString,
+		}, "\n"),
+	}}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			resolved := test.NewResolvedResource([]byte(tc.taskYAML), nil /* annotations */, sampleRefSource.DeepCopy(), nil /* data error */)
+			requester := test.NewRequester(resolved, nil)
+			tektonclient := fake.NewSimpleClientset()
+			fn := resources.GetTaskFunc(ctx, nil, tektonclient, requester, &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+				Spec: v1.TaskRunSpec{
+					TaskRef: taskRef,
+				},
+			}, taskRef, "trName", "default", "default", nil /*VerificationPolicies*/)
+
+			tektonclient.PrependReactor("create", "tasks", func(action ktesting.Action) (bool, runtime.Object, error) {
+				return true, nil, apierrors.NewBadRequest("bad request")
+			})
+
+			resolvedTask, resolvedRefSource, _, err := fn(ctx, taskRef.Name)
+			if !errors.Is(err, apiserver.ErrReferencedObjectValidationFailed) {
+				t.Errorf("expected ReferencedObjectValidationFailed error but got none")
+			}
+			if resolvedTask != nil {
+				t.Errorf("expected nil Task but was %v", resolvedTask)
+			}
+			if resolvedRefSource != nil {
+				t.Errorf("expected nil refSource but was %s", resolvedRefSource)
 			}
 		})
 	}
@@ -609,7 +658,8 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 			}},
 		},
 	}
-	fn := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default", nil /*VerificationPolicies*/)
+	tektonclient := fake.NewSimpleClientset()
+	fn := resources.GetTaskFunc(ctx, nil, tektonclient, requester, tr, tr.Spec.TaskRef, "", "default", "default", nil /*VerificationPolicies*/)
 
 	resolvedTask, resolvedRefSource, _, err := fn(ctx, taskRef.Name)
 	if err != nil {
@@ -795,7 +845,7 @@ func TestGetTaskFunc_V1beta1Task_VerifyNoError(t *testing.T) {
 					ServiceAccountName: "default",
 				},
 			}
-			fn := resources.GetTaskFunc(ctx, k8sclient, tektonclient, tc.requester, tr, tr.Spec.TaskRef, "", "default", "default", tc.policies)
+			fn := resources.GetTaskFunc(ctx, k8sclient, tektonclient, tc.requester, tr, tr.Spec.TaskRef, "", "trusted-resources", "default", tc.policies)
 
 			resolvedTask, refSource, vr, err := fn(ctx, taskRef.Name)
 
@@ -923,7 +973,7 @@ func TestGetTaskFunc_V1beta1Task_VerifyError(t *testing.T) {
 					ServiceAccountName: "default",
 				},
 			}
-			fn := resources.GetTaskFunc(ctx, k8sclient, tektonclient, tc.requester, tr, tr.Spec.TaskRef, "", "default", "default", vps)
+			fn := resources.GetTaskFunc(ctx, k8sclient, tektonclient, tc.requester, tr, tr.Spec.TaskRef, "", "trusted-resources", "default", vps)
 
 			_, _, vr, _ := fn(ctx, taskRef.Name)
 			if !errors.Is(vr.Err, tc.expectedErr) {
@@ -1272,20 +1322,6 @@ spec:
     image: ubuntu
     script: |
       echo "hello world!"
-`
-
-var taskYAMLStringWithBetaFeatures = `
-metadata:
-  name: foo
-spec:
-  steps:
-  - name: step1
-    image: ubuntu
-    script: |
-      echo "hello world!"
-  results:
-  - name: array-result
-    type: array
 `
 
 var remoteTaskYamlWithoutDefaults = `

@@ -21,26 +21,19 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/google/uuid"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	"github.com/tektoncd/pipeline/pkg/reconciler/apiserver"
 	rprp "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/pipelinespec"
 	"github.com/tektoncd/pipeline/pkg/remote"
 	"github.com/tektoncd/pipeline/pkg/remote/resolution"
 	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
-)
-
-var (
-	ErrReferencedPipelineValidationFailed = errors.New("validation failed for referenced Pipeline")
-	ErrCouldntValidatePipelineRetryable   = errors.New("retryable error validating referenced Pipeline")
-	ErrCouldntValidatePipelinePermanent   = errors.New("permanent error validating referenced Pipeline")
 )
 
 // GetPipelineFunc is a factory function that will use the given PipelineRef to return a valid GetPipeline function that
@@ -150,11 +143,8 @@ func readRuntimeObjectAsPipeline(ctx context.Context, namespace string, obj runt
 		// Validation must happen before the v1beta1 Pipeline is converted into the storage version of the API,
 		// since validation of beta features differs between v1 and v1beta1
 		// TODO(#6592): Decouple API versioning from feature versioning
-		dryRunObj := obj.DeepCopy()
-		dryRunObj.Name = uuid.NewString() // Use a randomized name for the Pipeline in case there is already another Pipeline of the same name
-		dryRunObj.Namespace = namespace   // Make sure the namespace is the same as the PipelineRun
-		if _, err := tekton.TektonV1beta1().Pipelines(namespace).Create(ctx, dryRunObj, metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}}); err != nil {
-			return nil, nil, handleDryRunCreateErr(err, obj.Name)
+		if err := apiserver.DryRunValidate(ctx, namespace, obj, tekton); err != nil {
+			return nil, nil, err
 		}
 		p := &v1.Pipeline{
 			TypeMeta: metav1.TypeMeta{
@@ -170,30 +160,10 @@ func readRuntimeObjectAsPipeline(ctx context.Context, namespace string, obj runt
 		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
 		// Issue a dry-run request to create the remote Pipeline, so that it can undergo validation from validating admission webhooks
 		// without actually creating the Pipeline on the cluster
-		dryRunObj := obj.DeepCopy()
-		dryRunObj.Name = uuid.NewString() // Use a randomized name for the Pipeline in case there is already another Pipeline of the same name
-		dryRunObj.Namespace = namespace   // Make sure the namespace is the same as the PipelineRun
-		if _, err := tekton.TektonV1().Pipelines(namespace).Create(ctx, dryRunObj, metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}}); err != nil {
-			return nil, nil, handleDryRunCreateErr(err, obj.Name)
+		if err := apiserver.DryRunValidate(ctx, namespace, obj, tekton); err != nil {
+			return nil, nil, err
 		}
 		return obj, &vr, nil
 	}
 	return nil, nil, errors.New("resource is not a pipeline")
-}
-
-func handleDryRunCreateErr(err error, objectName string) error {
-	var errType error
-	switch {
-	case apierrors.IsBadRequest(err): // Pipeline rejected by validating webhook
-		errType = ErrReferencedPipelineValidationFailed
-	case apierrors.IsInvalid(err), apierrors.IsMethodNotSupported(err):
-		errType = ErrCouldntValidatePipelinePermanent
-	case apierrors.IsTimeout(err), apierrors.IsServerTimeout(err), apierrors.IsTooManyRequests(err):
-		errType = ErrCouldntValidatePipelineRetryable
-	default:
-		// Assume unknown errors are retryable
-		// Additional errors can be added to the switch statements as needed
-		errType = ErrCouldntValidatePipelineRetryable
-	}
-	return fmt.Errorf("%w %s: %s", errType, objectName, err.Error())
 }
