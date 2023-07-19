@@ -26,6 +26,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	"github.com/tektoncd/pipeline/pkg/reconciler/apiserver"
 	"github.com/tektoncd/pipeline/pkg/remote"
 	"github.com/tektoncd/pipeline/pkg/remote/resolution"
 	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
@@ -108,7 +109,7 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 				replacedParams = append(replacedParams, tr.Params...)
 			}
 			resolver := resolution.NewResolver(requester, owner, string(tr.Resolver), trName, namespace, replacedParams)
-			return resolveTask(ctx, resolver, name, kind, k8s, verificationPolicies)
+			return resolveTask(ctx, resolver, name, namespace, kind, k8s, tekton, verificationPolicies)
 		}
 
 	default:
@@ -127,14 +128,14 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 // An error is returned if the remoteresource doesn't work
 // A VerificationResult is returned if trusted resources is enabled, VerificationResult contains the result type and err.
 // or the returned data isn't a valid *v1beta1.Task.
-func resolveTask(ctx context.Context, resolver remote.Resolver, name string, kind v1.TaskKind, k8s kubernetes.Interface, verificationPolicies []*v1alpha1.VerificationPolicy) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+func resolveTask(ctx context.Context, resolver remote.Resolver, name, namespace string, kind v1.TaskKind, k8s kubernetes.Interface, tekton clientset.Interface, verificationPolicies []*v1alpha1.VerificationPolicy) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 	// Because the resolver will only return references with the same kind (eg ClusterTask), this will ensure we
 	// don't accidentally return a Task with the same name but different kind.
 	obj, refSource, err := resolver.Get(ctx, strings.TrimSuffix(strings.ToLower(string(kind)), "s"), name)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	taskObj, vr, err := readRuntimeObjectAsTask(ctx, obj, k8s, refSource, verificationPolicies)
+	taskObj, vr, err := readRuntimeObjectAsTask(ctx, namespace, obj, k8s, tekton, refSource, verificationPolicies)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -150,11 +151,18 @@ func resolveTask(ctx context.Context, resolver remote.Resolver, name string, kin
 // A VerificationResult is returned if trusted resources is enabled, VerificationResult contains the result type and err.
 // v1beta1 task will be verified by trusted resources if the feature is enabled
 // TODO(#5541): convert v1beta1 obj to v1 once we use v1 as the stored version
-func readRuntimeObjectAsTask(ctx context.Context, obj runtime.Object, k8s kubernetes.Interface, refSource *v1.RefSource, verificationPolicies []*v1alpha1.VerificationPolicy) (*v1.Task, *trustedresources.VerificationResult, error) {
+func readRuntimeObjectAsTask(ctx context.Context, namespace string, obj runtime.Object, k8s kubernetes.Interface, tekton clientset.Interface, refSource *v1.RefSource, verificationPolicies []*v1alpha1.VerificationPolicy) (*v1.Task, *trustedresources.VerificationResult, error) {
 	switch obj := obj.(type) {
 	case *v1beta1.Task:
 		// Verify the Task once we fetch from the remote resolution, mutating, validation and conversion of the task should happen after the verification, since signatures are based on the remote task contents
 		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
+		// Issue a dry-run request to create the remote Task, so that it can undergo validation from validating admission webhooks
+		// without actually creating the Task on the cluster.
+		// Validation must happen before converting the Task into the storage version of the API,
+		// since validation differs between API versions.
+		if err := apiserver.DryRunValidate(ctx, namespace, obj, tekton); err != nil {
+			return nil, nil, err
+		}
 		t := &v1.Task{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "Task",
@@ -167,13 +175,18 @@ func readRuntimeObjectAsTask(ctx context.Context, obj runtime.Object, k8s kubern
 		return t, &vr, nil
 	case *v1beta1.ClusterTask:
 		t, err := convertClusterTaskToTask(ctx, *obj)
+		// Issue a dry-run request to create the remote Task, so that it can undergo validation from validating admission webhooks
+		// without actually creating the Task on the cluster
+		if err := apiserver.DryRunValidate(ctx, namespace, t, tekton); err != nil {
+			return nil, nil, err
+		}
 		return t, nil, err
 	case *v1.Task:
 		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
-		// Validation of beta fields must happen before the V1 Task is converted into the storage version of the API.
-		// TODO(#6592): Decouple API versioning from feature versioning
-		if err := obj.Spec.ValidateBetaFields(ctx); err != nil {
-			return nil, nil, fmt.Errorf("invalid Task %s: %w", obj.GetName(), err)
+		// Issue a dry-run request to create the remote Task, so that it can undergo validation from validating admission webhooks
+		// without actually creating the Task on the cluster
+		if err := apiserver.DryRunValidate(ctx, namespace, obj, tekton); err != nil {
+			return nil, nil, err
 		}
 		return obj, &vr, nil
 	}

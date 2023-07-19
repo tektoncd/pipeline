@@ -63,12 +63,15 @@ import (
 	"github.com/tektoncd/pipeline/test/parse"
 	"go.opentelemetry.io/otel/trace"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	k8sapierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8sruntimeschema "k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
@@ -1913,6 +1916,93 @@ spec:
 	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
 	if !condition.IsUnknown() {
 		t.Errorf("Expected TaskRun to still be running but succeeded condition is %v", condition.Status)
+	}
+}
+
+func TestReconcile_InvalidRemoteTask(t *testing.T) {
+	namespace := "foo"
+	trName := "test-task-run-success"
+	trs := []*v1.TaskRun{parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-task-run-success
+  namespace: foo
+spec:
+  taskRef:
+    resolver: bar
+`)}
+	ts := parse.MustParseV1Task(t, `
+metadata:
+  name: test-task
+  namespace: foo
+spec:
+  steps:
+  - image: busybox
+    script: echo hello
+`)
+
+	taskBytes, err := yaml.Marshal(ts)
+	if err != nil {
+		t.Fatal("failed to marshal task", err)
+	}
+	taskReq := getResolvedResolutionRequest(t, "bar", taskBytes, "foo", trName)
+
+	tcs := []struct {
+		name             string
+		webhookErr       error
+		wantPermanentErr bool
+		wantFailed       bool
+	}{{
+		name:             "webhook validation fails: invalid object",
+		webhookErr:       apierrors.NewBadRequest("bad request"),
+		wantPermanentErr: true,
+		wantFailed:       true,
+	}, {
+		name:             "webhook validation fails with permanent error",
+		webhookErr:       apierrors.NewInvalid(schema.GroupKind{Group: "tekton.dev/v1", Kind: "TaskRun"}, "taskrun", field.ErrorList{}),
+		wantPermanentErr: true,
+		wantFailed:       true,
+	}, {
+		name:             "webhook validation fails: retryable",
+		webhookErr:       apierrors.NewTimeoutError("timeout", 5),
+		wantPermanentErr: false,
+		wantFailed:       false,
+	}}
+	for _, tc := range tcs {
+		d := test.Data{
+			TaskRuns: trs,
+			ConfigMaps: []*corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+					Data: map[string]string{
+						"enable-api-fields": "beta",
+					},
+				},
+			},
+			ResolutionRequests: []*resolutionv1beta1.ResolutionRequest{&taskReq},
+		}
+		testAssets, cancel := getTaskRunController(t, d)
+		defer cancel()
+		c := testAssets.Controller
+		clients := testAssets.Clients
+		// Create an error when the Pipeline client attempts to create Tasks
+		clients.Pipeline.PrependReactor("create", "tasks", func(action ktesting.Action) (bool, runtime.Object, error) {
+			return true, nil, tc.webhookErr
+		})
+		err = c.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", namespace, trName))
+		if tc.wantPermanentErr != controller.IsPermanentError(err) {
+			t.Errorf("expected permanent error: %t but got %s", tc.wantPermanentErr, err)
+		}
+		reconciledRun, err := clients.Pipeline.TektonV1().TaskRuns(namespace).Get(testAssets.Ctx, trName, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+		}
+
+		if tc.wantFailed && reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != podconvert.ReasonTaskFailedValidation {
+			t.Errorf("Expected TaskRun to have reason FailedValidation, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+		}
+		if !tc.wantFailed && reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
+			t.Errorf("Expected TaskRun to not be failed but has condition status false")
+		}
 	}
 }
 

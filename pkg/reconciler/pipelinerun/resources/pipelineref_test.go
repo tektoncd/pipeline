@@ -36,6 +36,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
+	"github.com/tektoncd/pipeline/pkg/reconciler/apiserver"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
@@ -397,7 +398,7 @@ func TestGetPipelineFunc_RemoteResolution_ValidationFailure(t *testing.T) {
 			})
 
 			resolvedPipeline, resolvedRefSource, _, err := fn(ctx, pipelineRef.Name)
-			if !errors.Is(err, resources.ErrReferencedPipelineValidationFailed) {
+			if !errors.Is(err, apiserver.ErrReferencedObjectValidationFailed) {
 				t.Errorf("expected RemotePipelineValidationFailed error but got none")
 			}
 			if resolvedPipeline != nil {
