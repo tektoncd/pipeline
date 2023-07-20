@@ -364,7 +364,7 @@ spec:
   - name: pipelinetask1
     taskRef:
       name: %s
-    timeout: 60s
+    timeout: 0s
   - name: pipelinetask2
     taskRef:
       name: %s
