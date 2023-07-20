@@ -102,7 +102,6 @@ func TestWorkspaceBindingValidateValid(t *testing.T) {
 				}},
 			},
 		},
-		wc: config.EnableBetaAPIFields,
 	}, {
 		name: "Valid csi",
 		binding: &v1.WorkspaceBinding{
@@ -111,7 +110,6 @@ func TestWorkspaceBindingValidateValid(t *testing.T) {
 				Driver: "my-csi",
 			},
 		},
-		wc: config.EnableBetaAPIFields,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
@@ -166,27 +164,12 @@ func TestWorkspaceBindingValidateInvalid(t *testing.T) {
 			Secret: &corev1.SecretVolumeSource{},
 		},
 	}, {
-		name: "projected workspace should be disallowed without beta feature gate",
-		binding: &v1.WorkspaceBinding{
-			Name:      "beth",
-			Projected: &corev1.ProjectedVolumeSource{},
-		},
-	}, {
 		name: "Provide projected without sources",
 		binding: &v1.WorkspaceBinding{
 			Name:      "beth",
 			Projected: &corev1.ProjectedVolumeSource{},
 		},
 		wc: config.EnableBetaAPIFields,
-	}, {
-		name: "csi workspace should be disallowed without beta feature gate",
-		binding: &v1.WorkspaceBinding{
-			Name: "beth",
-			CSI: &corev1.CSIVolumeSource{
-				Driver: "csi-driver",
-			},
-		},
-		wc: config.EnableStableAPIFields,
 	}, {
 		name: "Provide csi without a driver",
 		binding: &v1.WorkspaceBinding{
