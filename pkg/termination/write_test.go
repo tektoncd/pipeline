@@ -47,7 +47,7 @@ func TestExistingFile(t *testing.T) {
 	}}
 
 	if err := termination.WriteMessage(tmpFile.Name(), output); err != nil {
-		logger.Fatalf("Errot while writing message: %s", err)
+		logger.Fatalf("Error while writing message: %s", err)
 	}
 
 	output = []result.RunResult{{
@@ -56,7 +56,7 @@ func TestExistingFile(t *testing.T) {
 	}}
 
 	if err := termination.WriteMessage(tmpFile.Name(), output); err != nil {
-		logger.Fatalf("Errot while writing message: %s", err)
+		logger.Fatalf("Error while writing message: %s", err)
 	}
 
 	if fileContents, err := os.ReadFile(tmpFile.Name()); err != nil {
