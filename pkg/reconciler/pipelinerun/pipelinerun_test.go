@@ -6885,6 +6885,24 @@ spec:
           - name: platform
             value: linux
 `),
+		parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pipelinerun-with-invalid-taskrunspecs
+  namespace: foo
+spec:
+  taskRunSpecs:
+  - metadata:
+      annotations:
+        env: test
+    pipelineTaskName: invalid-task-name
+  pipelineSpec:
+    tasks:
+    - name: pt0
+      taskSpec:
+        steps:
+        - image: foo:latest
+  serviceAccountName: test-sa
+`),
 	}
 
 	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
@@ -6915,6 +6933,9 @@ spec:
 		}, {
 			name:   "pipelinerun-matrix-param-invalid-type",
 			reason: ReasonInvalidMatrixParameterTypes,
+		}, {
+			name:   "pipelinerun-with-invalid-taskrunspecs",
+			reason: ReasonInvalidTaskRunSpec,
 		},
 	}
 	for _, tc := range testCases {
