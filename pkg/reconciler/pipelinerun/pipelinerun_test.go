@@ -16735,7 +16735,7 @@ func Test_runNextSchedulableTask(t *testing.T) {
 				Clock:             clock.NewFakePassiveClock(time.Now()),
 				KubeClientSet:     testAssets.Clients.Kube,
 				PipelineClientSet: testAssets.Clients.Pipeline,
-				tracerProvider:    tracing.New("pipelinerun"),
+				tracerProvider:    tracing.New("pipelinerun", logging.FromContext(ctx)),
 			}
 			err := c.runNextSchedulableTask(ctx, tc.pr, tc.pipelineRunFacts)
 			if (err != nil) != tc.wantErr {

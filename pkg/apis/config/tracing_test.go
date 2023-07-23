@@ -60,3 +60,90 @@ func TestNewTracingFromConfigMap(t *testing.T) {
 		})
 	}
 }
+
+func TestTracingEquals(t *testing.T) {
+	testCases := []struct {
+		name     string
+		left     *config.Tracing
+		right    *config.Tracing
+		expected bool
+	}{
+		{
+			name:     "left and right nil",
+			left:     nil,
+			right:    nil,
+			expected: true,
+		},
+		{
+			name:     "left nil",
+			left:     nil,
+			right:    &config.Tracing{},
+			expected: false,
+		},
+		{
+			name:     "right nil",
+			left:     &config.Tracing{},
+			right:    nil,
+			expected: false,
+		},
+		{
+			name:     "right and right default",
+			left:     &config.Tracing{},
+			right:    &config.Tracing{},
+			expected: true,
+		},
+		{
+			name: "different enabled",
+			left: &config.Tracing{
+				Enabled: true,
+			},
+			right: &config.Tracing{
+				Enabled: false,
+			},
+			expected: false,
+		},
+		{
+			name: "different endpoint",
+			left: &config.Tracing{
+				Endpoint: "a",
+			},
+			right: &config.Tracing{
+				Endpoint: "b",
+			},
+			expected: false,
+		},
+		{
+			name: "different credentialsSecret",
+			left: &config.Tracing{
+				CredentialsSecret: "a",
+			},
+			right: &config.Tracing{
+				CredentialsSecret: "b",
+			},
+			expected: false,
+		},
+		{
+			name: "same all fields",
+			left: &config.Tracing{
+				Enabled:           true,
+				Endpoint:          "a",
+				CredentialsSecret: "b",
+			},
+			right: &config.Tracing{
+				Enabled:           true,
+				Endpoint:          "a",
+				CredentialsSecret: "b",
+			},
+			expected: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := tc.left.Equals(tc.right)
+			if actual != tc.expected {
+				t.Errorf("Comparison failed expected: %t, actual: %t", tc.expected, actual)
+			}
+		})
+	}
+}

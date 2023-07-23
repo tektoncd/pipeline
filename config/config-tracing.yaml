@@ -42,3 +42,5 @@ data:
     # API endpoint to send the traces to
     # (optional): The default value is given below
     endpoint: "http://jaeger-collector.jaeger.svc.cluster.local:14268/api/traces"
+    # (optional) Name of the k8s secret which contains basic auth credentials
+    credentialsSecret: "jaeger-creds"
