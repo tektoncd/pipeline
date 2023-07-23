@@ -30,8 +30,4 @@ The configmap `config/config-tracing.yaml` contains the configuration for tracin
 
 * enabled: Set this to true to enable tracing
 * endpoint: API endpoint for jaeger collector to send the traces. By default the endpoint is configured to be `http://jaeger-collector.jaeger.svc.cluster.local:14268/api/traces`.
-
-Tekton pipelines controller also supports the following additional environment variables to be able to connect to jaeger:
-
-* `OTEL_EXPORTER_JAEGER_USER` is the username to be sent as authentication to the collector endpoint.
-* `OTEL_EXPORTER_JAEGER_PASSWORD` is the password to be sent as authentication to the collector endpoint.
+* credentialsSecret: Name of the secret which contains `username` and `password` to authenticate against the endpoint

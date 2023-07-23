@@ -30,6 +30,9 @@ const (
 	// tracingEndpintKey is the configmap key for tracing api endpoint
 	tracingEndpointKey = "endpoint"
 
+	// tracingCredentialsSecretKey is the name of the secret which contains credentials for tracing endpoint
+	tracingCredentialsSecretKey = "credentialsSecret"
+
 	// DefaultEndpoint is the default destination for sending traces
 	DefaultEndpoint = "http://jaeger-collector.jaeger.svc.cluster.local:14268/api/traces"
 )
@@ -40,8 +43,9 @@ var DefaultTracing, _ = newTracingFromMap(map[string]string{})
 // Tracing holds the configurations for tracing
 // +k8s:deepcopy-gen=true
 type Tracing struct {
-	Enabled  bool
-	Endpoint string
+	Enabled           bool
+	Endpoint          string
+	CredentialsSecret string
 }
 
 // Equals returns true if two Configs are identical
@@ -55,7 +59,8 @@ func (cfg *Tracing) Equals(other *Tracing) bool {
 	}
 
 	return other.Enabled == cfg.Enabled &&
-		other.Endpoint == cfg.Endpoint
+		other.Endpoint == cfg.Endpoint &&
+		other.CredentialsSecret == cfg.CredentialsSecret
 }
 
 // GetTracingConfigName returns the name of the configmap containing all
@@ -76,6 +81,10 @@ func newTracingFromMap(config map[string]string) (*Tracing, error) {
 
 	if endpoint, ok := config[tracingEndpointKey]; ok {
 		t.Endpoint = endpoint
+	}
+
+	if secret, ok := config[tracingCredentialsSecretKey]; ok {
+		t.CredentialsSecret = secret
 	}
 
 	if enabled, ok := config[tracingEnabledKey]; ok {

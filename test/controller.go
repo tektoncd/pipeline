@@ -61,6 +61,7 @@ import (
 	fakeconfigmapinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/configmap/fake"
 	fakelimitrangeinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/limitrange/fake"
 	fakefilteredpodinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod/filtered/fake"
+	fakesecretinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret/fake"
 	fakeserviceaccountinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/serviceaccount/fake"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/system"
@@ -84,6 +85,7 @@ type Data struct {
 	ResolutionRequests      []*resolutionv1alpha1.ResolutionRequest
 	ExpectedCloudEventCount int
 	VerificationPolicies    []*v1alpha1.VerificationPolicy
+	Secrets                 []*corev1.Secret
 }
 
 // Clients holds references to clients which are useful for reconciler tests.
@@ -110,6 +112,7 @@ type Informers struct {
 	LimitRange         coreinformers.LimitRangeInformer
 	ResolutionRequest  resolutioninformersv1alpha1.ResolutionRequestInformer
 	VerificationPolicy informersv1alpha1.VerificationPolicyInformer
+	Secret             coreinformers.SecretInformer
 }
 
 // Assets holds references to the controller, logs, clients, and informers.
@@ -196,6 +199,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		LimitRange:         fakelimitrangeinformer.Get(ctx),
 		ResolutionRequest:  fakeresolutionrequestinformer.Get(ctx),
 		VerificationPolicy: fakeverificationpolicyinformer.Get(ctx),
+		Secret:             fakesecretinformer.Get(ctx),
 	}
 
 	// Attach reactors that add resource mutations to the appropriate
@@ -289,6 +293,14 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 	for _, vp := range d.VerificationPolicies {
 		vp := vp.DeepCopy() // Avoid assumptions that the informer's copy is modified.
 		if _, err := c.Pipeline.TektonV1alpha1().VerificationPolicies(vp.Namespace).Create(ctx, vp, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	c.Kube.PrependReactor("*", "secrets", AddToInformer(t, i.Secret.Informer().GetIndexer()))
+	for _, s := range d.Secrets {
+		s := s.DeepCopy() // Avoid assumptions that the informer's copy is modified.
+		if _, err := c.Kube.CoreV1().Secrets(s.Namespace).Create(ctx, s, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
