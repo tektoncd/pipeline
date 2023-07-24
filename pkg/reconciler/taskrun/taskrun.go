@@ -689,6 +689,14 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1beta1.TaskSpec, tr *v1
 	defer span.End()
 	logger := logging.FromContext(ctx)
 
+	// We don't want to mutate tr.Status.TaskSpec inside
+	// the createPod function. It's possible that pod will
+	// be killed before running and when rescheduling it
+	// will cause bugs. As this function could be called
+	// multiple times, we copy tr.Status.TaskSpec to help
+	// in scheduling Pod.
+	ts = ts.DeepCopy()
+
 	// By this time, params and workspaces should be propagated down so we can
 	// validate that all parameter variables and workspaces used in the TaskSpec are declared by the Task.
 	if validateErr := v1beta1.ValidateUsageOfDeclaredParameters(ctx, ts.Steps, ts.Params); validateErr != nil {
