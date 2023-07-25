@@ -848,6 +848,21 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 		withContext: EnableForbiddenEnv,
 		wantErr:     apis.ErrInvalidValue("PodTemplate cannot update a forbidden env: TEST_ENV", "taskRunSpecs[0].PodTemplate.Env"),
 	}, {
+		name: "TaskRunTemplate.PodTemplate contains forbidden env",
+		spec: v1.PipelineRunSpec{
+			PipelineRef: &v1.PipelineRef{Name: "foo"},
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				PodTemplate: &pod.PodTemplate{
+					Env: []corev1.EnvVar{{
+						Name:  "TEST_ENV",
+						Value: "test",
+					}},
+				},
+			},
+		},
+		withContext: EnableForbiddenEnv,
+		wantErr:     apis.ErrInvalidValue("PodTemplate cannot update a forbidden env: TEST_ENV", "taskRunTemplate.PodTemplate.Env"),
+	}, {
 		name: "pipelineRef and pipelineSpec together",
 		spec: v1.PipelineRunSpec{
 			PipelineRef: &v1.PipelineRef{
