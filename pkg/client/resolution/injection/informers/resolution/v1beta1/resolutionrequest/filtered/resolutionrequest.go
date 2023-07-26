@@ -21,15 +21,8 @@ package filtered
 import (
 	context "context"
 
-	apisresolutionv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
-	versioned "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned"
 	v1beta1 "github.com/tektoncd/pipeline/pkg/client/resolution/informers/externalversions/resolution/v1beta1"
-	client "github.com/tektoncd/pipeline/pkg/client/resolution/injection/client"
 	filtered "github.com/tektoncd/pipeline/pkg/client/resolution/injection/informers/factory/filtered"
-	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/client/resolution/listers/resolution/v1beta1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	cache "k8s.io/client-go/tools/cache"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
 	logging "knative.dev/pkg/logging"
@@ -37,7 +30,6 @@ import (
 
 func init() {
 	injection.Default.RegisterFilteredInformers(withInformer)
-	injection.Dynamic.RegisterDynamicInformer(withDynamicInformer)
 }
 
 // Key is used for associating the Informer inside the context.Context.
@@ -62,20 +54,6 @@ func withInformer(ctx context.Context) (context.Context, []controller.Informer) 
 	return ctx, infs
 }
 
-func withDynamicInformer(ctx context.Context) context.Context {
-	untyped := ctx.Value(filtered.LabelKey{})
-	if untyped == nil {
-		logging.FromContext(ctx).Panic(
-			"Unable to fetch labelkey from context.")
-	}
-	labelSelectors := untyped.([]string)
-	for _, selector := range labelSelectors {
-		inf := &wrapper{client: client.Get(ctx), selector: selector}
-		ctx = context.WithValue(ctx, Key{Selector: selector}, inf)
-	}
-	return ctx
-}
-
 // Get extracts the typed informer from the context.
 func Get(ctx context.Context, selector string) v1beta1.ResolutionRequestInformer {
 	untyped := ctx.Value(Key{Selector: selector})
@@ -84,53 +62,4 @@ func Get(ctx context.Context, selector string) v1beta1.ResolutionRequestInformer
 			"Unable to fetch github.com/tektoncd/pipeline/pkg/client/resolution/informers/externalversions/resolution/v1beta1.ResolutionRequestInformer with selector %s from context.", selector)
 	}
 	return untyped.(v1beta1.ResolutionRequestInformer)
-}
-
-type wrapper struct {
-	client versioned.Interface
-
-	namespace string
-
-	selector string
-}
-
-var _ v1beta1.ResolutionRequestInformer = (*wrapper)(nil)
-var _ resolutionv1beta1.ResolutionRequestLister = (*wrapper)(nil)
-
-func (w *wrapper) Informer() cache.SharedIndexInformer {
-	return cache.NewSharedIndexInformer(nil, &apisresolutionv1beta1.ResolutionRequest{}, 0, nil)
-}
-
-func (w *wrapper) Lister() resolutionv1beta1.ResolutionRequestLister {
-	return w
-}
-
-func (w *wrapper) ResolutionRequests(namespace string) resolutionv1beta1.ResolutionRequestNamespaceLister {
-	return &wrapper{client: w.client, namespace: namespace, selector: w.selector}
-}
-
-func (w *wrapper) List(selector labels.Selector) (ret []*apisresolutionv1beta1.ResolutionRequest, err error) {
-	reqs, err := labels.ParseToRequirements(w.selector)
-	if err != nil {
-		return nil, err
-	}
-	selector = selector.Add(reqs...)
-	lo, err := w.client.ResolutionV1beta1().ResolutionRequests(w.namespace).List(context.TODO(), v1.ListOptions{
-		LabelSelector: selector.String(),
-		// TODO(mattmoor): Incorporate resourceVersion bounds based on staleness criteria.
-	})
-	if err != nil {
-		return nil, err
-	}
-	for idx := range lo.Items {
-		ret = append(ret, &lo.Items[idx])
-	}
-	return ret, nil
-}
-
-func (w *wrapper) Get(name string) (*apisresolutionv1beta1.ResolutionRequest, error) {
-	// TODO(mattmoor): Check that the fetched object matches the selector.
-	return w.client.ResolutionV1beta1().ResolutionRequests(w.namespace).Get(context.TODO(), name, v1.GetOptions{
-		// TODO(mattmoor): Incorporate resourceVersion bounds based on staleness criteria.
-	})
 }

@@ -24,6 +24,7 @@ import (
 	"k8s.io/utils/clock"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/logging"
 )
 
 // NewController returns a func that returns a knative controller for processing
@@ -36,7 +37,9 @@ func NewController(clock clock.PassiveClock) func(ctx context.Context, cmw confi
 		impl := resolutionrequestreconciler.NewImpl(ctx, r)
 
 		reqinformer := resolutionrequestinformer.Get(ctx)
-		reqinformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+		if _, err := reqinformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
+			logging.FromContext(ctx).Panicf("Couldn't register ResolutionRequest informer event handler: %w", err)
+		}
 
 		return impl
 	}

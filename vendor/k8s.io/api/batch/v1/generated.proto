@@ -213,8 +213,8 @@ message JobSpec {
   // checked against the backoffLimit. This field cannot be used in combination
   // with restartPolicy=OnFailure.
   //
-  // This field is alpha-level. To use this field, you must enable the
-  // `JobPodFailurePolicy` feature gate (disabled by default).
+  // This field is beta-level. It can be used when the `JobPodFailurePolicy`
+  // feature gate is enabled (enabled by default).
   // +optional
   optional PodFailurePolicy podFailurePolicy = 11;
 
@@ -355,9 +355,6 @@ message JobStatus {
   // (3) Remove the pod UID from the arrays while increasing the corresponding
   //     counter.
   //
-  // This field is beta-level. The job controller only makes use of this field
-  // when the feature gate JobTrackingWithFinalizers is enabled (enabled
-  // by default).
   // Old jobs might not be tracked using this field, in which case the field
   // remains null.
   // +optional

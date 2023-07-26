@@ -81,7 +81,7 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 			Logger:        logger,
 		})
 
-		rrInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		_, err := rrInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: filterResolutionRequestsBySelector(resolver.GetSelector(ctx)),
 			Handler: cache.ResourceEventHandlerFuncs{
 				AddFunc: impl.Enqueue,
@@ -93,6 +93,9 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 				// DeleteFunc: impl.Enqueue,
 			},
 		})
+		if err != nil {
+			logging.FromContext(ctx).Panicf("Couldn't register ResolutionRequest informer event handler: %w", err)
+		}
 
 		return impl
 	}

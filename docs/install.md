@@ -21,7 +21,7 @@ This guide explains how to install Tekton Pipelines.
 
 ## Prerequisites
 
--   A [Kubernetes cluster][k8s] running version 1.24 or later.
+-   A [Kubernetes cluster][k8s] running version 1.25 or later.
 -   [Kubectl][].
 -   Grant `cluster-admin` privileges to the current user. See the [Kubernetes
     role-based access control (RBAC) docs][rbac] for more information.

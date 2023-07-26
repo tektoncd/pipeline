@@ -46,13 +46,6 @@ func NewAdmissionController(
 	callbacks ...map[schema.GroupVersionKind]Callback,
 ) *controller.Impl {
 
-	client := kubeclient.Get(ctx)
-	mwhInformer := mwhinformer.Get(ctx)
-	secretInformer := secretinformer.Get(ctx)
-	options := webhook.GetOptions(ctx)
-
-	key := types.NamespacedName{Name: name}
-
 	// This not ideal, we are using a variadic argument to effectively make callbacks optional
 	// This allows this addition to be non-breaking to consumers of /pkg
 	// TODO: once all sub-repos have adopted this, we might move this back to a traditional param.
@@ -66,6 +59,34 @@ func NewAdmissionController(
 		panic("NewAdmissionController may not be called with multiple callback maps")
 	}
 
+	opts := []OptionFunc{
+		WithPath(path),
+		WithTypes(handlers),
+		WithWrapContext(wc),
+		WithCallbacks(unwrappedCallbacks),
+	}
+
+	if disallowUnknownFields {
+		opts = append(opts, WithDisallowUnknownFields())
+	}
+
+	return newController(ctx, name, opts...)
+}
+
+func newController(ctx context.Context, name string, optsFunc ...OptionFunc) *controller.Impl {
+	client := kubeclient.Get(ctx)
+	mwhInformer := mwhinformer.Get(ctx)
+	secretInformer := secretinformer.Get(ctx)
+
+	opts := &options{}
+	wopts := webhook.GetOptions(ctx)
+
+	for _, f := range optsFunc {
+		f(opts)
+	}
+
+	key := types.NamespacedName{Name: name}
+
 	wh := &reconciler{
 		LeaderAwareFuncs: pkgreconciler.LeaderAwareFuncs{
 			// Have this reconciler enqueue our singleton whenever it becomes leader.
@@ -76,13 +97,13 @@ func NewAdmissionController(
 		},
 
 		key:       key,
-		path:      path,
-		handlers:  handlers,
-		callbacks: unwrappedCallbacks,
+		path:      opts.path,
+		handlers:  opts.types,
+		callbacks: opts.callbacks,
 
-		withContext:           wc,
-		disallowUnknownFields: disallowUnknownFields,
-		secretName:            options.SecretName,
+		withContext:           opts.wc,
+		disallowUnknownFields: opts.disallowUnknownFields,
+		secretName:            wopts.SecretName,
 
 		client:       client,
 		mwhlister:    mwhInformer.Lister(),
@@ -90,8 +111,12 @@ func NewAdmissionController(
 	}
 
 	logger := logging.FromContext(ctx)
-	const queueName = "DefaultingWebhook"
-	c := controller.NewContext(ctx, wh, controller.ControllerOptions{WorkQueueName: queueName, Logger: logger.Named(queueName)})
+	controllerOptions := wopts.ControllerOptions
+	if controllerOptions == nil {
+		const queueName = "DefaultingWebhook"
+		controllerOptions = &controller.ControllerOptions{WorkQueueName: queueName, Logger: logger.Named(queueName)}
+	}
+	c := controller.NewContext(ctx, wh, *controllerOptions)
 
 	// Reconcile when the named MutatingWebhookConfiguration changes.
 	mwhInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
