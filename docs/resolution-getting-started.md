@@ -18,7 +18,7 @@ with a Pipeline stored in a git repo.
 
 - A computer with
   [`kubectl`](https://kubernetes.io/docs/tasks/tools/#kubectl).
-- A Kubernetes cluster running at least Kubernetes 1.24. A [`kind`
+- A Kubernetes cluster running at least Kubernetes 1.25. A [`kind`
   cluster](https://kind.sigs.k8s.io/docs/user/quick-start/#installation)
   should work fine for following the guide on your local machine.
 - An image registry that you can push images to. If you're using `kind`

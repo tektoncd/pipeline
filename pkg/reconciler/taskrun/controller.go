@@ -89,12 +89,16 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock, tracerProvi
 			}
 		})
 
-		taskRunInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+		if _, err := taskRunInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
+			logging.FromContext(ctx).Panicf("Couldn't register TaskRun informer event handler: %w", err)
+		}
 
-		podInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		if _, err := podInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1.TaskRun{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
-		})
+		}); err != nil {
+			logging.FromContext(ctx).Panicf("Couldn't register Pod informer event handler: %w", err)
+		}
 
 		return impl
 	}

@@ -35,8 +35,7 @@ type Interface interface {
 	ResolutionV1beta1() resolutionv1beta1.ResolutionV1beta1Interface
 }
 
-// Clientset contains the clients for groups. Each group has exactly one
-// version included in a Clientset.
+// Clientset contains the clients for groups.
 type Clientset struct {
 	*discovery.DiscoveryClient
 	resolutionV1alpha1 *resolutionv1alpha1.ResolutionV1alpha1Client

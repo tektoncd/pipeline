@@ -31,19 +31,19 @@ require (
 	k8s.io/api v0.27.1
 	k8s.io/apimachinery v0.27.1
 	k8s.io/client-go v0.27.1
-	k8s.io/code-generator v0.25.9
+	k8s.io/code-generator v0.26.5
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20230515203736-54b630e78af5
-	knative.dev/pkg v0.0.0-20230418073056-dfad48eaa5d0
+	knative.dev/pkg v0.0.0-20230718152110-aef227e72ead
 	sigs.k8s.io/yaml v1.3.0
 )
 
 //  TODO: Remove this once https://github.com/knative/pkg/issues/2759 is fixed
 replace (
-	k8s.io/api => k8s.io/api v0.25.9
-	k8s.io/apimachinery => k8s.io/apimachinery v0.26.5
-	k8s.io/client-go => k8s.io/client-go v0.25.9
-	k8s.io/code-generator => k8s.io/code-generator v0.25.9
+	k8s.io/api => k8s.io/api v0.26.7
+	k8s.io/apimachinery => k8s.io/apimachinery v0.26.7
+	k8s.io/client-go => k8s.io/client-go v0.26.7
+	k8s.io/code-generator => k8s.io/code-generator v0.26.7
 )
 
 require github.com/benbjohnson/clock v1.3.0 // indirect
@@ -232,7 +232,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.25.4 // indirect
+	k8s.io/apiextensions-apiserver v0.26.5 // indirect
 	k8s.io/gengo v0.0.0-20221011193443-fad74ee6edd9 // indirect
 	k8s.io/klog/v2 v2.100.1 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect

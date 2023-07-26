@@ -46,7 +46,9 @@ func (ca *CustomArgs) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&ca.ExternalVersionsInformersPackage, "external-versions-informers-package", ca.ExternalVersionsInformersPackage, "the full package name for the external versions injection informer to use")
 	fs.StringVar(&ca.ListersPackage, "listers-package", ca.ListersPackage, "the full package name for client listers to use")
 	fs.StringVar(&ca.ForceKinds, "force-genreconciler-kinds", ca.ForceKinds, `force kinds will override the genreconciler tag setting for the given set of kinds, comma separated: "Foo,Bar,Baz"`)
-	fs.BoolVar(&ca.ListerHasPointerElem, "lister-has-pointer-elem", ca.ListerHasPointerElem, "set to true if the List types have an Item array of pointer element types")
+
+	fs.BoolVar(&ca.ListerHasPointerElem, "lister-has-pointer-elem", false, "")
+	fs.MarkDeprecated("lister-has-pointer-elem", "this flag has no effect")
 }
 
 // Validate checks the given arguments.

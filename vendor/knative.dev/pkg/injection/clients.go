@@ -62,22 +62,3 @@ func (i *impl) FetchAllClients(ctx context.Context) []interface{} {
 	}
 	return clients
 }
-
-// DynamicClientInjector holds the type of a callback that attaches a particular
-// client type to a context.
-type DynamicClientInjector func(context.Context) context.Context
-
-func (i *impl) RegisterDynamicClient(ci DynamicClientInjector) {
-	i.m.Lock()
-	defer i.m.Unlock()
-
-	i.dynamicClients = append(i.dynamicClients, ci)
-}
-
-func (i *impl) GetDynamicClients() []DynamicClientInjector {
-	i.m.RLock()
-	defer i.m.RUnlock()
-
-	// Copy the slice before returning.
-	return append(i.dynamicClients[:0:0], i.dynamicClients...)
-}
