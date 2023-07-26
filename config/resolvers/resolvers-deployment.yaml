@@ -74,6 +74,11 @@ spec:
         ports:
         - name: metrics
           containerPort: 9090
+        - name: profiling
+          containerPort: 8008
+        # This must match the value of the environment variable PROBES_PORT.
+        - name: probes
+          containerPort: 8080
         env:
         - name: SYSTEM_NAMESPACE
           valueFrom:
@@ -92,7 +97,9 @@ spec:
           value: config-leader-election
         - name: METRICS_DOMAIN
           value: tekton.dev/resolution
-        # Override this env var to set a private hub api endpoint
+        - name: PROBES_PORT
+          value: "8080"
+      # Override this env var to set a private hub api endpoint
         - name: ARTIFACT_HUB_API
           value: "https://artifacthub.io/"
         securityContext:
