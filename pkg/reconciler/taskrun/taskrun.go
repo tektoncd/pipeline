@@ -422,7 +422,10 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	if err != nil {
 		return nil, nil, controller.NewPermanentError(err)
 	}
-	if aaBehavior == affinityassistant.AffinityAssistantPerWorkspace {
+
+	// binding multiple PVC-based workspaces is not allowed in taskruns without affinity assistant (i.e. AffinityAssistantDisabled or standalone taskruns)
+	// or taskruns created from pipelinerun in AffinityAssistantPerWorkspace mode due to Availability Zone conflict
+	if tr.Annotations[workspace.AnnotationAffinityAssistantName] == "" || aaBehavior == affinityassistant.AffinityAssistantPerWorkspace {
 		if err := workspace.ValidateOnlyOnePVCIsUsed(tr.Spec.Workspaces); err != nil {
 			logger.Errorf("TaskRun %q workspaces incompatible with Affinity Assistant: %v", tr.Name, err)
 			tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)

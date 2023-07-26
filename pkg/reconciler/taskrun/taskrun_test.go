@@ -3296,7 +3296,6 @@ spec:
 	taskRun := parse.MustParseV1TaskRun(t, `
 metadata:
   annotations:
-    pipeline.tekton.dev/affinity-assistant: dummy-affinity-assistant
   name: taskrun-with-two-workspaces
   namespace: foo
 spec:
@@ -3312,20 +3311,34 @@ spec:
       metadata:
         name: pvc2
 `)
+	taskRunWithAffinityAssistant := taskRun.DeepCopy()
+	taskRunWithAffinityAssistant.Annotations = map[string]string{}
+	taskRunWithAffinityAssistant.Annotations[workspace.AnnotationAffinityAssistantName] = "dummy-affinity-assistant"
 
 	tcs := []struct {
 		name                string
+		taskRun             *v1.TaskRun
 		cfgMap              map[string]string
 		expectFailureReason string
 	}{{
-		name: "multiple PVC based Workspaces in per workspace coschedule mode - failure",
+		name:    "multiple PVC based Workspaces in per workspace coschedule mode - failure",
+		taskRun: taskRunWithAffinityAssistant,
 		cfgMap: map[string]string{
 			"disable-affinity-assistant": "false",
 			"coschedule":                 "workspaces",
 		},
 		expectFailureReason: podconvert.ReasonFailedValidation,
 	}, {
-		name: "multiple PVC based Workspaces in per pipelinerun coschedule mode - success",
+		name:    "multiple PVC based Workspaces without affinity assistant - failure",
+		taskRun: taskRun,
+		cfgMap: map[string]string{
+			"disable-affinity-assistant": "false",
+			"coschedule":                 "workspaces",
+		},
+		expectFailureReason: podconvert.ReasonFailedValidation,
+	}, {
+		name:    "multiple PVC based Workspaces in per pipelinerun coschedule mode - success",
+		taskRun: taskRunWithAffinityAssistant,
 		cfgMap: map[string]string{
 			"disable-affinity-assistant": "true",
 			"coschedule":                 "pipelineruns",
@@ -3335,7 +3348,7 @@ spec:
 	for _, tc := range tcs {
 		d := test.Data{
 			Tasks:        []*v1.Task{taskWithTwoWorkspaces},
-			TaskRuns:     []*v1.TaskRun{taskRun},
+			TaskRuns:     []*v1.TaskRun{tc.taskRun},
 			ClusterTasks: nil,
 			ConfigMaps: []*corev1.ConfigMap{{
 				ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
@@ -3346,16 +3359,16 @@ spec:
 		defer cancel()
 		clients := testAssets.Clients
 		createServiceAccount(t, testAssets, "default", "foo")
-		_ = testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun))
+		_ = testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun))
 
-		_, err := clients.Pipeline.TektonV1().Tasks(taskRun.Namespace).Get(testAssets.Ctx, taskWithTwoWorkspaces.Name, metav1.GetOptions{})
+		_, err := clients.Pipeline.TektonV1().Tasks(tc.taskRun.Namespace).Get(testAssets.Ctx, taskWithTwoWorkspaces.Name, metav1.GetOptions{})
 		if err != nil {
 			t.Fatalf("failed to get task: %v", err)
 		}
 
-		ttt, err := clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+		ttt, err := clients.Pipeline.TektonV1().TaskRuns(tc.taskRun.Namespace).Get(testAssets.Ctx, tc.taskRun.Name, metav1.GetOptions{})
 		if err != nil {
-			t.Fatalf("expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+			t.Fatalf("expected TaskRun %s to exist but instead got error when getting it: %v", tc.taskRun.Name, err)
 		}
 
 		if len(ttt.Status.Conditions) != 1 {
@@ -3369,7 +3382,7 @@ spec:
 				}
 			}
 		} else if ttt.IsFailure() {
-			t.Errorf("Unexpected unsuccessful condition for TaskRun %q:\n%#v", taskRun.Name, ttt.Status.Conditions)
+			t.Errorf("Unexpected unsuccessful condition for TaskRun %q:\n%#v", tc.taskRun.Name, ttt.Status.Conditions)
 		}
 	}
 }

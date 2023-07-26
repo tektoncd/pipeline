@@ -22,6 +22,7 @@ const (
 
 	// LabelComponent is used to configure PodAntiAffinity to other Affinity Assistants
 	LabelComponent = "app.kubernetes.io/component"
+
 	// ComponentNameAffinityAssistant is the component name for an Affinity Assistant
 	ComponentNameAffinityAssistant = "affinity-assistant"
 

@@ -26,7 +26,7 @@ weight: 405
   - [Specifying `VolumeSources` in `Workspaces`](#specifying-volumesources-in-workspaces)
     - [Using `PersistentVolumeClaims` as `VolumeSource`](#using-persistentvolumeclaims-as-volumesource)
     - [Using other types of `VolumeSources`](#using-other-types-of-volumesources)
-- [Using Persistent Volumes within a `PipelineRun`](#using-persistent-volumes-within-a-pipelinerun)
+- [Using Persistent Volumes in a Workspace](#using-persistent-volumes-in-a-workspace)
 - [More examples](#more-examples)
 
 ## Overview
@@ -69,6 +69,9 @@ long-running process in a `Sidecar` to share data with the executing `Steps` of 
 
 **Note**: If the `enable-api-fields` feature-flag is set to `"beta"` then workspaces
 will automatically be available to `Sidecars` too!
+
+**Note**: It is not allowed to bind multiple [`PersistentVolumeClaim` based workspaces](#using-persistentvolumeclaims-as-volumesource) to a `TaskRun`
+due to potential Availability Zone conflict. See more details about Availability Zone in [using persistent volumes in a workspace](#using-persistent-volumes-in-a-workspace).
 
 ### `Workspaces` in `Pipelines` and `PipelineRuns`
 
@@ -366,6 +369,9 @@ to define when a `Task` should be executed. For more information, see the [`runA
 When a `PersistentVolumeClaim` is used as volume source for a `Workspace` in a `PipelineRun`,
 an Affinity Assistant will be created. For more information, see the [`Affinity Assistants` documentation](affinityassistants.md).
 
+**Note**: It is not allowed to bind multiple [`PersistentVolumeClaim` based workspaces](#using-persistentvolumeclaims-as-volumesource) to a `PipelineTaskRun` in the `coschedule workspaces` or `disabled` coschedule modes due to potential Availability Zone conflict.
+See more details about Availability Zone in [using persistent volumes in a workspace](#using-persistent-volumes-in-a-workspace).
+
 #### Specifying `Workspaces` in `PipelineRuns`
 
 For a `PipelineRun` to execute a `Pipeline` that includes one or more `Workspaces`, it needs to
@@ -561,7 +567,7 @@ ttl=20m
 If you need support for a `VolumeSource` type not listed above, [open an issue](https://github.com/tektoncd/pipeline/issues) or
 a [pull request](https://github.com/tektoncd/pipeline/blob/main/CONTRIBUTING.md).
 
-## Using Persistent Volumes within a `PipelineRun`
+## Using Persistent Volumes in a Workspace
 
 When using a workspace with a [`PersistentVolumeClaim` as `VolumeSource`](#using-persistentvolumeclaims-as-volumesource),
 a Kubernetes [Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) is used within the `PipelineRun`.
@@ -577,12 +583,19 @@ only available to Nodes within *one* Availability Zone. There is usually an opti
 but they have trade-offs, e.g. you need to pay for multiple volumes since they are replicated and your volume may have 
 substantially higher latency.
 
-When using a workspace backed by a `PersistentVolumeClaim` (typically only available within a Data Center) and the `TaskRun`
-pods can be scheduled to any Availability Zone in a regional cluster, some techniques must be used to avoid deadlock in the `Pipeline`.
+`Persistent Volumes` are usually "zonal" (i.e. they live within a single Availability Zone and cannot be accessed from a `pod` living in another Availability Zone).
+When using a workspace backed by a `PersistentVolumeClaim` (typically only available within a Data Center), the `TaskRun`
+pods can be scheduled to any Availability Zone in a regional cluster. If multiple `PersistentVolumeClaims` are binded to a `TaskRun` 
+and the `PersistentVolumeClaims` are scheduled to different Availability Zone, it is impossible to schedule the `TaskRun` pod to an Availability Zone
+that can access all the binded `PersistentVolumeClaims` (i.e. `pvc1` is scheduled to Zone 1 and `pvc2` is scheduled to Zone 2, where should I schedule the `pod`?). This scheduling conflict then leads to deadlock in the `TaskRun`/`PipelineRun`.
 
-Tekton provides an Affinity Assistant that schedules all `TaskRun` Pods sharing a `PersistentVolumeClaim` to the same
-Node. This avoids deadlocks that can happen when two Pods requiring the same Volume are scheduled to different Availability Zones.
-A volume typically only lives within a single Availability Zone.
+To avoid such deadlocks in `PipelineRuns`, Tekton provides [Affinity Assistants](affinityassistants.md) that schedule all `TaskRun` Pods or all `TaskRun`sharing a `PersistentVolumeClaim` to the same Node depending on the `coschedule` mode. 
+This avoids deadlocks that can happen when two Pods requiring the same Volume are scheduled to different Availability Zones.
+
+Binding multiple `PersistentVolumeClaim` based workspaces to `PipelineTaskRuns` in `coschedule: pipelineruns` coschedule mode (which schedules all `TaskRuns` in a `PipelineRun` to the same node) is allowed since all the `PersistentVolumeClaim`
+will be scheduled to the same Availability Zone as the `PipelineRun` so there is no Availability Zone conflict.
+
+Binding multiple` PersistentVolumeClaim` based workspaces to a standalone `TaskRuns` or `PipelineTaskRuns` in other Affinity Assistant modes are **NOT** allowed due to the Availability Zone conflict described above.
 
 ### Access Modes
 
