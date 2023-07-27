@@ -29,7 +29,8 @@ configured for the `TaskRun` pods (i.e. other affinity rules specified in custom
 If the `PipelineRun` has a custom [PodTemplate](pipelineruns.md#specifying-a-pod-template) configured, the `NodeSelector` and `Tolerations` fields will also be set on the Affinity Assistant pod. The Affinity Assistant
 is deleted when the `PipelineRun` is completed. 
 
-Currently, the Affinity Assistant Modes can be configured by the `disable-affinity-assistant` and `coschedule` feature flags. In 9 months, the `disable-affinity-assistant` feature flag will be deprecated, and the Affinity Assistant Modes will be only determined by the `coschedule` feature flag. 
+Currently, the Affinity Assistant Modes can be configured by the `disable-affinity-assistant` and `coschedule` feature flags. 
+The `disable-affinity-assistant` feature flag is now deprecated and will be removed in release `v0.60`. At the time, the Affinity Assistant Modes will be only determined by the `coschedule` feature flag. 
 
 The following chart summarizes the Affinity Assistant Modes with different combinations of the `disable-affinity-assistant` and `coschedule` feature flags during migration (when both feature flags are present) and after the migration (when only the `coschedule` flag is present).
 
