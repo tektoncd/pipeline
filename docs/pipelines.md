@@ -338,9 +338,6 @@ spec:
 
 > :seedling: **`Matrix` is an [alpha](install.md#alpha-features) feature.**
 > The `enable-api-fields` feature flag must be set to `"alpha"` to specify `Matrix` in a `PipelineTask`.
->
-> :warning: This feature is in a preview mode.
-> It is still in a very early stage of development and is not yet fully functional.
 
 You can also provide [`Parameters`](tasks.md#specifying-parameters) through the `matrix` field:
 
@@ -1202,9 +1199,6 @@ spec:
 
 > :seedling: **`Matrix` is an [alpha](install.md#alpha-features) feature.**
 > The `enable-api-fields` feature flag must be set to `"alpha"` to specify `Matrix` in a `PipelineTask`.
->
-> :warning: This feature is in a preview mode.
-> It is still in a very early stage of development and is not yet fully functional.
 
 Similar to `tasks`, you can also provide [`Parameters`](tasks.md#specifying-parameters) through `matrix`
 in `finally` tasks:
@@ -1658,9 +1652,6 @@ spec:
 
 > :seedling: **`Matrix` is an [alpha](install.md#alpha-features) feature.**
 > The `enable-api-fields` feature flag must be set to `"alpha"` to specify `Matrix` in a `PipelineTask`.
->
-> :warning: This feature is in a preview mode.
-> It is still in a very early stage of development and is not yet fully functional.
 
 If a custom task supports [`parameters`](tasks.md#specifying-parameters), you can use the
 `matrix` field to specify their values, if you want to fan:
