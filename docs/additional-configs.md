@@ -256,7 +256,7 @@ The default is `false`. For more information, see the [associated issue](https:/
 
 - `enable-api-fields`: When using v1beta1 APIs, setting this field to "stable" or "beta"
 enables [beta features](#beta-features). When using v1 APIs, setting this field to "stable"
-allows only stable features, and setting it to "beta" allows only beta features.
+allows only stable features, and setting it to "beta" allows also beta features.
 Set this field to "alpha" to allow [alpha features](#alpha-features) to be used.
 
 For example:

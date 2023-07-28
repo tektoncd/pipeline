@@ -119,9 +119,9 @@ See the current list of [alpha features](https://github.com/tektoncd/pipeline/bl
   
 ### GA/Stable features
 
-- GA/Stable features are present in a [GA CRD](#ga-crds) only.
+- GA/Stable features are enabled by default.
 
-- GA/Stable features are enabled by default
+- GA/Stable features cannot be disabled in any CRD version.
 
 - GA/Stable features will not be removed or changed in a backwards incompatible manner without incrementing the API Version.
 
