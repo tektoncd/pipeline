@@ -1015,7 +1015,7 @@ func TestPipelineChecksum(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			sha, err := tt.pipeline.Checksum()
 			if err != nil {
-				t.Fatalf("Error computing checksuum: %v", err)
+				t.Fatalf("Error computing checksum: %v", err)
 			}
 
 			if d := cmp.Diff(hex.EncodeToString(sha), "98bc732636b8fbc08f3d353932147e4eff4e667f0c1af675656a48efdc8178e3"); d != "" {

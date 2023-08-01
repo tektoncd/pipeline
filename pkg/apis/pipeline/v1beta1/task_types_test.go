@@ -79,7 +79,7 @@ func TestTask_Checksum(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			sha, err := tt.task.Checksum()
 			if err != nil {
-				t.Fatalf("Error computing checksuum: %v", err)
+				t.Fatalf("Error computing checksum: %v", err)
 			}
 
 			if d := cmp.Diff(hex.EncodeToString(sha), "c913fb33ce186f8a98e77eb2885495da71103de323a1dc420d1df1809a10dfd4"); d != "" {
