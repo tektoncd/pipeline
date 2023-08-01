@@ -231,7 +231,7 @@ func extractSignature(in metav1.Object) ([]byte, error) {
 func getChecksum(resource metav1.Object) ([]byte, error) {
 	h, ok := resource.(Hashable)
 	if !ok {
-		return nil, fmt.Errorf("%w: got resource %v but v1.Task, v1beta1.Task, v1.Pipeline and v1beta1.Pipeline are currently supported", ErrResourceNotSupported, resource)
+		return nil, fmt.Errorf("%w: resource %T is not a Hashable type", ErrResourceNotSupported, resource)
 	}
 	checksumBytes, err := h.Checksum()
 	if err != nil {
