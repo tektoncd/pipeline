@@ -482,7 +482,104 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		}
 	}
 
+	// update init container and containers resource requirements
+	// resource limits values are taken from a config map
+	configDefaults := config.FromContextOrDefaults(ctx).Defaults
+	updateResourceRequirements(configDefaults.DefaultContainerResourceRequirements, newPod)
+
 	return newPod, nil
+}
+
+// updates init containers and containers resource requirements of a pod
+func updateResourceRequirements(resourceRequirementsMap map[string]corev1.ResourceRequirements, pod *corev1.Pod) {
+	if len(resourceRequirementsMap) == 0 {
+		return
+	}
+
+	// collect all the available container names from the resource requirement map
+	// some of the container names: place-scripts, prepare, working-dir-initializer
+	// some of the container names with prefix: prefix-scripts, prefix-sidecar-scripts
+	containerNames := []string{}
+	containerNamesWithPrefix := []string{}
+	for containerName := range resourceRequirementsMap {
+		// skip the default key
+		if containerName == config.ResourceRequirementDefaultContainerKey {
+			continue
+		}
+
+		if strings.HasPrefix(containerName, "prefix-") {
+			containerNamesWithPrefix = append(containerNamesWithPrefix, containerName)
+		} else {
+			containerNames = append(containerNames, containerName)
+		}
+	}
+
+	// update the containers name which does not have resource requirements
+	for _, containerName := range containerNames {
+		resourceRequirements := resourceRequirementsMap[containerName]
+		if resourceRequirements.Size() == 0 {
+			continue
+		}
+
+		// update init containers
+		for index := range pod.Spec.InitContainers {
+			targetContainer := pod.Spec.InitContainers[index]
+			if containerName == targetContainer.Name && targetContainer.Resources.Size() == 0 {
+				pod.Spec.InitContainers[index].Resources = resourceRequirements
+			}
+		}
+		// update containers
+		for index := range pod.Spec.Containers {
+			targetContainer := pod.Spec.Containers[index]
+			if containerName == targetContainer.Name && targetContainer.Resources.Size() == 0 {
+				pod.Spec.Containers[index].Resources = resourceRequirements
+			}
+		}
+	}
+
+	// update the containers name which does not have resource requirements with the mentioned prefix
+	for _, containerPrefix := range containerNamesWithPrefix {
+		resourceRequirements := resourceRequirementsMap[containerPrefix]
+		if resourceRequirements.Size() == 0 {
+			continue
+		}
+
+		// get actual container name, remove "prefix-" string and append "-" at the end
+		// append '-' in the container prefix
+		containerPrefix = strings.Replace(containerPrefix, "prefix-", "", 1)
+		containerPrefix = fmt.Sprintf("%s-", containerPrefix)
+
+		// update init containers
+		for index := range pod.Spec.InitContainers {
+			targetContainer := pod.Spec.InitContainers[index]
+			if strings.HasPrefix(targetContainer.Name, containerPrefix) && targetContainer.Resources.Size() == 0 {
+				pod.Spec.InitContainers[index].Resources = resourceRequirements
+			}
+		}
+		// update containers
+		for index := range pod.Spec.Containers {
+			targetContainer := pod.Spec.Containers[index]
+			if strings.HasPrefix(targetContainer.Name, containerPrefix) && targetContainer.Resources.Size() == 0 {
+				pod.Spec.Containers[index].Resources = resourceRequirements
+			}
+		}
+	}
+
+	// update reset of the containers resource requirements which has empty resource requirements
+	if resourceRequirements, found := resourceRequirementsMap[config.ResourceRequirementDefaultContainerKey]; found && resourceRequirements.Size() != 0 {
+		// update init containers
+		for index := range pod.Spec.InitContainers {
+			if pod.Spec.InitContainers[index].Resources.Size() == 0 {
+				pod.Spec.InitContainers[index].Resources = resourceRequirements
+			}
+		}
+		// update containers
+		for index := range pod.Spec.Containers {
+			if pod.Spec.Containers[index].Resources.Size() == 0 {
+				pod.Spec.Containers[index].Resources = resourceRequirements
+			}
+		}
+	}
 }
 
 // makeLabels constructs the labels we will propagate from TaskRuns to Pods.

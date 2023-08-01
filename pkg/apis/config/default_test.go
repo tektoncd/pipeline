@@ -24,6 +24,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	test "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test/diff"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 func TestNewDefaultsFromConfigMap(t *testing.T) {
@@ -115,6 +117,64 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultMaxMatrixCombinationsCount: 256,
 				DefaultManagedByLabelValue:        "tekton-pipelines",
 				DefaultForbiddenEnv:               []string{"TEKTON_POWER_MODE", "TEST_ENV", "TEST_TEKTON"},
+			},
+		},
+		{
+			expectedError: false,
+			fileName:      "config-defaults-container-resource-requirements-empty",
+			expectedConfig: &config.Defaults{
+				DefaultTimeoutMinutes:                60,
+				DefaultServiceAccount:                "default",
+				DefaultManagedByLabelValue:           "tekton-pipelines",
+				DefaultMaxMatrixCombinationsCount:    256,
+				DefaultContainerResourceRequirements: map[string]corev1.ResourceRequirements{},
+			},
+		},
+		{
+			expectedError: true,
+			fileName:      "config-defaults-container-resource-requirements-error",
+		},
+		{
+			expectedError: false,
+			fileName:      "config-defaults-container-resource-requirements-with-values",
+			expectedConfig: &config.Defaults{
+				DefaultTimeoutMinutes:             60,
+				DefaultServiceAccount:             "default",
+				DefaultManagedByLabelValue:        "tekton-pipelines",
+				DefaultMaxMatrixCombinationsCount: 256,
+				DefaultContainerResourceRequirements: map[string]corev1.ResourceRequirements{
+					config.ResourceRequirementDefaultContainerKey: {
+						Requests: corev1.ResourceList{
+							corev1.ResourceMemory: resource.MustParse("64Mi"),
+							corev1.ResourceCPU:    resource.MustParse("250m"),
+						},
+						Limits: corev1.ResourceList{
+							corev1.ResourceMemory: resource.MustParse("128Mi"),
+							corev1.ResourceCPU:    resource.MustParse("500m"),
+						},
+					},
+					"prepare": {
+						Requests: corev1.ResourceList{
+							corev1.ResourceMemory: resource.MustParse("128Mi"),
+							corev1.ResourceCPU:    resource.MustParse("500m"),
+						},
+						Limits: corev1.ResourceList{
+							corev1.ResourceMemory: resource.MustParse("256Mi"),
+							corev1.ResourceCPU:    resource.MustParse("1"),
+						},
+					},
+					"prefix-scripts": {
+						Requests: corev1.ResourceList{
+							corev1.ResourceMemory: resource.MustParse("512Mi"),
+							corev1.ResourceCPU:    resource.MustParse("1010m"),
+						},
+						Limits: corev1.ResourceList{
+							corev1.ResourceMemory: resource.MustParse("1Gi"),
+							corev1.ResourceCPU:    resource.MustParse("2500m"),
+						},
+					},
+					"test": {},
+				},
 			},
 		},
 	}
