@@ -921,8 +921,6 @@ Array and Object result is a beta feature and can be enabled by setting `enable-
 
 **Note:** Whole Array and Object `Results` (using star notation) cannot be referred in `script`.
 
-**Note:** `Matrix` does not support `object` and `array` results.
-
 When one `Task` receives the `Results` of another, there is a dependency created between those
 two `Tasks`. In order for the receiving `Task` to get data from another `Task's` `Result`,
 the `Task` producing the `Result` must run first. Tekton enforces this `Task` ordering

@@ -358,11 +358,10 @@ tasks:
           value: $(tasks.task-2.results.duh.key) # string replacement from object result
 ```
 
-### Results from fanned out PipelineTasks
+### Results from fanned out Matrixed PipelineTasks
 
-Consuming `Results` from fanned out `PipelineTasks` will not be in the supported in the initial iteration
-of `Matrix`. Supporting consuming `Results` from fanned out `PipelineTasks` will be revisited after array
-and object `Results` are supported.
+Emitting `Results` from fanned out `PipelineTasks`  is not currently supported.
+We plan to support emitting `Results` from fanned out `PipelineTasks` in the near future.
 
 
 ## Retries
