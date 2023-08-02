@@ -63,6 +63,25 @@ rules:
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
+  name: tekton-pipelines-events-controller
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/component: events
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["list", "watch"]
+  # The controller needs access to these configmaps for logging information and runtime configuration.
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get"]
+    resourceNames: ["config-logging", "config-observability", "feature-flags", "config-leader-election", "config-registry-cert"]
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
   name: tekton-pipelines-leader-election
   namespace: tekton-pipelines
   labels:
