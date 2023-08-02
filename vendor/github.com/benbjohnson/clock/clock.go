@@ -1,10 +1,14 @@
 package clock
 
 import (
+	"context"
 	"sort"
 	"sync"
 	"time"
 )
+
+// Re-export of time.Duration
+type Duration = time.Duration
 
 // Clock represents an interface to the functions in the standard library time
 // package. Two implementations are available in the clock package. The first
@@ -16,10 +20,13 @@ type Clock interface {
 	AfterFunc(d time.Duration, f func()) *Timer
 	Now() time.Time
 	Since(t time.Time) time.Duration
+	Until(t time.Time) time.Duration
 	Sleep(d time.Duration)
 	Tick(d time.Duration) <-chan time.Time
 	Ticker(d time.Duration) *Ticker
 	Timer(d time.Duration) *Timer
+	WithDeadline(parent context.Context, d time.Time) (context.Context, context.CancelFunc)
+	WithTimeout(parent context.Context, t time.Duration) (context.Context, context.CancelFunc)
 }
 
 // New returns an instance of a real-time clock.
@@ -40,6 +47,8 @@ func (c *clock) Now() time.Time { return time.Now() }
 
 func (c *clock) Since(t time.Time) time.Duration { return time.Since(t) }
 
+func (c *clock) Until(t time.Time) time.Duration { return time.Until(t) }
+
 func (c *clock) Sleep(d time.Duration) { time.Sleep(d) }
 
 func (c *clock) Tick(d time.Duration) <-chan time.Time { return time.Tick(d) }
@@ -54,7 +63,15 @@ func (c *clock) Timer(d time.Duration) *Timer {
 	return &Timer{C: t.C, timer: t}
 }
 
-// Mock represents a mock clock that only moves forward programmatically.
+func (c *clock) WithDeadline(parent context.Context, d time.Time) (context.Context, context.CancelFunc) {
+	return context.WithDeadline(parent, d)
+}
+
+func (c *clock) WithTimeout(parent context.Context, t time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(parent, t)
+}
+
+// Mock represents a mock clock that only moves forward programmically.
 // It can be preferable to a real-time clock when testing time-based functionality.
 type Mock struct {
 	mu     sync.Mutex
@@ -161,9 +178,14 @@ func (m *Mock) Now() time.Time {
 	return m.now
 }
 
-// Since returns time since the mock clock's wall time.
+// Since returns time since `t` using the mock clock's wall time.
 func (m *Mock) Since(t time.Time) time.Duration {
 	return m.Now().Sub(t)
+}
+
+// Until returns time until `t` using the mock clock's wall time.
+func (m *Mock) Until(t time.Time) time.Duration {
+	return t.Sub(m.Now())
 }
 
 // Sleep pauses the goroutine for the given duration on the mock clock.
@@ -284,16 +306,20 @@ type internalTimer Timer
 
 func (t *internalTimer) Next() time.Time { return t.next }
 func (t *internalTimer) Tick(now time.Time) {
+	// a gosched() after ticking, to allow any consequences of the
+	// tick to complete
+	defer gosched()
+
 	t.mock.mu.Lock()
 	if t.fn != nil {
-		t.fn()
+		// defer function execution until the lock is released, and
+		defer t.fn()
 	} else {
 		t.c <- now
 	}
 	t.mock.removeClockTimer((*internalTimer)(t))
 	t.stopped = true
 	t.mock.mu.Unlock()
-	gosched()
 }
 
 // Ticker holds a channel that receives "ticks" at regular intervals.
@@ -321,7 +347,14 @@ func (t *Ticker) Stop() {
 func (t *Ticker) Reset(dur time.Duration) {
 	if t.ticker != nil {
 		t.ticker.Reset(dur)
+		return
 	}
+
+	t.mock.mu.Lock()
+	defer t.mock.mu.Unlock()
+
+	t.d = dur
+	t.next = t.mock.now.Add(dur)
 }
 
 type internalTicker Ticker
@@ -338,3 +371,8 @@ func (t *internalTicker) Tick(now time.Time) {
 
 // Sleep momentarily so that other goroutines can process.
 func gosched() { time.Sleep(1 * time.Millisecond) }
+
+var (
+	// type checking
+	_ Clock = &Mock{}
+)

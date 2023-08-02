@@ -23,7 +23,7 @@ require (
 	github.com/spiffe/spire-api-sdk v1.7.1
 	github.com/tektoncd/plumbing v0.0.0-20220817140952-3da8ce01aeeb
 	go.opencensus.io v0.24.0
-	go.uber.org/zap v1.24.0
+	go.uber.org/zap v1.25.0
 	golang.org/x/exp v0.0.0-20230307190834-24139beb5833
 	golang.org/x/oauth2 v0.9.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0
@@ -46,7 +46,7 @@ replace (
 	k8s.io/code-generator => k8s.io/code-generator v0.25.9
 )
 
-require github.com/benbjohnson/clock v1.1.0 // indirect
+require github.com/benbjohnson/clock v1.3.0 // indirect
 
 require (
 	code.gitea.io/sdk/gitea v0.15.1
@@ -213,7 +213,7 @@ require (
 	github.com/vbatts/tar-split v0.11.3 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/automaxprocs v1.4.0 // indirect
-	go.uber.org/multierr v1.8.0 // indirect
+	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/crypto v0.10.0 // indirect
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/net v0.11.0 // indirect
