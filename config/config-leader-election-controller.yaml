@@ -15,10 +15,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: config-leader-election-resolvers
-  namespace: tekton-pipelines-resolvers
+  name: config-leader-election-controller
+  namespace: tekton-pipelines
   labels:
-    app.kubernetes.io/component: resolvers
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 data:

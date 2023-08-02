@@ -83,7 +83,7 @@ spec:
         - name: CONFIG_OBSERVABILITY_NAME
           value: config-observability
         - name: CONFIG_LEADERELECTION_NAME
-          value: config-leader-election
+          value: config-leader-election-events
         - name: SSL_CERT_FILE
           value: /etc/config-registry-cert/cert
         - name: SSL_CERT_DIR

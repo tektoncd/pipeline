@@ -1,4 +1,4 @@
-# Copyright 2020 Tekton Authors LLC
+# Copyright 2023 Tekton Authors LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,10 +15,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: config-leader-election-resolvers
-  namespace: tekton-pipelines-resolvers
+  name: config-leader-election-webhook
+  namespace: tekton-pipelines
   labels:
-    app.kubernetes.io/component: resolvers
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 data:

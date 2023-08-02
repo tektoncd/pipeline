@@ -38,7 +38,7 @@ kubectl -n tekton-pipelines scale deployment tekton-pipelines-controller --repli
 
 ### Configuring Leader Election
 
-Leader election can be configured in [config-leader-election.yaml](./../config/config-leader-election.yaml). The ConfigMap defines the following parameters:
+Leader election can be configured in [config-leader-election.yaml](./../config/config-leader-election-controller.yaml). The ConfigMap defines the following parameters:
 
 | Parameter            | Default  |
 | -------------------- | -------- |

@@ -1,4 +1,4 @@
-# Copyright 2020 Tekton Authors LLC
+# Copyright 2023 Tekton Authors LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: config-leader-election
+  name: config-leader-election-events
   namespace: tekton-pipelines
   labels:
     app.kubernetes.io/instance: default
