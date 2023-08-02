@@ -101,7 +101,7 @@ spec:
         - name: CONFIG_FEATURE_FLAGS_NAME
           value: feature-flags
         - name: CONFIG_LEADERELECTION_NAME
-          value: config-leader-election
+          value: config-leader-election-controller
         - name: CONFIG_SPIRE
           value: config-spire
         - name: SSL_CERT_FILE
