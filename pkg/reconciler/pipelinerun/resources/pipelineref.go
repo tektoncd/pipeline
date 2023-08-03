@@ -37,9 +37,11 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-var ErrReferencedPipelineValidationFailed = errors.New("validation failed for referenced Pipeline")
-var ErrCouldntValidatePipelineRetryable = errors.New("retryable error validating referenced Pipeline")
-var ErrCouldntValidatePipelinePermanent = errors.New("permanent error validating referenced Pipeline")
+var (
+	ErrReferencedPipelineValidationFailed = errors.New("validation failed for referenced Pipeline")
+	ErrCouldntValidatePipelineRetryable   = errors.New("retryable error validating referenced Pipeline")
+	ErrCouldntValidatePipelinePermanent   = errors.New("permanent error validating referenced Pipeline")
+)
 
 // GetPipelineFunc is a factory function that will use the given PipelineRef to return a valid GetPipeline function that
 // looks up the pipeline. It uses as context a k8s client, tekton client, namespace, and service account name to return
@@ -150,6 +152,7 @@ func readRuntimeObjectAsPipeline(ctx context.Context, namespace string, obj runt
 		// TODO(#6592): Decouple API versioning from feature versioning
 		dryRunObj := obj.DeepCopy()
 		dryRunObj.Name = uuid.NewString() // Use a randomized name for the Pipeline in case there is already another Pipeline of the same name
+		dryRunObj.Namespace = namespace   // Make sure the namespace is the same as the PipelineRun
 		if _, err := tekton.TektonV1beta1().Pipelines(namespace).Create(ctx, dryRunObj, metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}}); err != nil {
 			return nil, nil, handleDryRunCreateErr(err, obj.Name)
 		}
@@ -169,6 +172,7 @@ func readRuntimeObjectAsPipeline(ctx context.Context, namespace string, obj runt
 		// without actually creating the Pipeline on the cluster
 		dryRunObj := obj.DeepCopy()
 		dryRunObj.Name = uuid.NewString() // Use a randomized name for the Pipeline in case there is already another Pipeline of the same name
+		dryRunObj.Namespace = namespace   // Make sure the namespace is the same as the PipelineRun
 		if _, err := tekton.TektonV1().Pipelines(namespace).Create(ctx, dryRunObj, metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}}); err != nil {
 			return nil, nil, handleDryRunCreateErr(err, obj.Name)
 		}
