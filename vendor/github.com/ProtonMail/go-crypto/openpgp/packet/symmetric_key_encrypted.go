@@ -198,7 +198,7 @@ func SerializeSymmetricKeyEncryptedReuseKey(w io.Writer, sessionKey []byte, pass
 	}
 	cipherFunc := config.Cipher()
 	// cipherFunc must be AES
-	if !cipherFunc.IsSupported() ||  cipherFunc < CipherAES128 || cipherFunc > CipherAES256 {
+	if !cipherFunc.IsSupported() || cipherFunc < CipherAES128 || cipherFunc > CipherAES256 {
 		return errors.UnsupportedError("unsupported cipher: " + strconv.Itoa(int(cipherFunc)))
 	}
 
@@ -207,7 +207,7 @@ func SerializeSymmetricKeyEncryptedReuseKey(w io.Writer, sessionKey []byte, pass
 	keyEncryptingKey := make([]byte, keySize)
 	// s2k.Serialize salts and stretches the passphrase, and writes the
 	// resulting key to keyEncryptingKey and the s2k descriptor to s2kBuf.
-	err = s2k.Serialize(s2kBuf, keyEncryptingKey, config.Random(), passphrase, &s2k.Config{Hash: config.Hash(), S2KCount: config.PasswordHashIterations()})
+	err = s2k.Serialize(s2kBuf, keyEncryptingKey, config.Random(), passphrase, config.S2K())
 	if err != nil {
 		return
 	}
@@ -232,7 +232,7 @@ func SerializeSymmetricKeyEncryptedReuseKey(w io.Writer, sessionKey []byte, pass
 
 	if version == 5 {
 		// Scalar octet count
-		buf = append(buf, byte(3 + len(s2kBytes) + config.AEAD().Mode().IvLength()))
+		buf = append(buf, byte(3+len(s2kBytes)+config.AEAD().Mode().IvLength()))
 	}
 
 	// Cipher function
