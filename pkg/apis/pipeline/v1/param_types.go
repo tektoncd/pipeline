@@ -63,6 +63,12 @@ type PropertySpec struct {
 	Type ParamType `json:"type,omitempty"`
 }
 
+var artifactSchema = map[string]PropertySpec{
+	"Path": {Type: ParamTypeString},
+	"Hash": {Type: ParamTypeString},
+	"Type": {Type: ParamTypeString},
+}
+
 // SetDefaults set the default type
 func (pp *ParamSpec) SetDefaults(context.Context) {
 	if pp == nil {
@@ -73,6 +79,13 @@ func (pp *ParamSpec) SetDefaults(context.Context) {
 	// The sequence to look at is type in ParamSpec -> properties -> type in default -> array/string/object value in default
 	// If neither `properties` or `default` section is provided, ParamTypeString will be the default type.
 	switch {
+	case pp.Type == ParamTypeArtifact:
+		// SetDefaults is invoked before validation
+		// If custom properties are set, it's up to the validation logic to
+		// decide wheather to fail
+		if pp.Properties == nil {
+			pp.Properties = artifactSchema // Artifact type cannot be inferred
+		}
 	case pp.Type != "":
 		// If param type is provided by the author, do nothing but just set default type for PropertySpec in case `properties` section is provided.
 		pp.setDefaultsForProperties()
@@ -88,7 +101,7 @@ func (pp *ParamSpec) SetDefaults(context.Context) {
 	case pp.Default.ArrayVal != nil:
 		pp.Type = ParamTypeArray
 	case pp.Default.ObjectVal != nil:
-		pp.Type = ParamTypeObject
+		pp.Type = ParamTypeObject // Artifact type cannot be inferred
 	default:
 		pp.Type = ParamTypeString
 	}
@@ -119,7 +132,7 @@ func (ps ParamSpecs) sortByType() (ParamSpecs, ParamSpecs, ParamSpecs) {
 		switch p.Type {
 		case ParamTypeArray:
 			arrayParams = append(arrayParams, p)
-		case ParamTypeObject:
+		case ParamTypeObject, ParamTypeArtifact:
 			objectParams = append(objectParams, p)
 		case ParamTypeString:
 			fallthrough
@@ -133,8 +146,8 @@ func (ps ParamSpecs) sortByType() (ParamSpecs, ParamSpecs, ParamSpecs) {
 // validateNoDuplicateNames returns an error if any of the params have the same name
 func (ps ParamSpecs) validateNoDuplicateNames() *apis.FieldError {
 	names := ps.getNames()
-	seen := sets.String{}
-	dups := sets.String{}
+	seen := sets.New[string]()
+	dups := sets.New[string]()
 	var errs *apis.FieldError
 	for _, n := range names {
 		if seen.Has(n) {
@@ -155,8 +168,8 @@ type Param struct {
 }
 
 // ExtractNames returns a set of unique names
-func (ps Params) ExtractNames() sets.String {
-	names := sets.String{}
+func (ps Params) ExtractNames() sets.Set[string] {
+	names := sets.New[string]()
 	for _, p := range ps {
 		names.Insert(p.Name)
 	}
@@ -381,18 +394,19 @@ func extractParamRefsFromContainer(c *corev1.Container) []string {
 }
 
 // ParamType indicates the type of an input parameter;
-// Used to distinguish between a single string and an array of strings.
+// Used to distinguish between a single string, an array of strings, an object and an artifact
 type ParamType string
 
 // Valid ParamTypes:
 const (
-	ParamTypeString ParamType = "string"
-	ParamTypeArray  ParamType = "array"
-	ParamTypeObject ParamType = "object"
+	ParamTypeString   ParamType = "string"
+	ParamTypeArray    ParamType = "array"
+	ParamTypeObject   ParamType = "object"
+	ParamTypeArtifact ParamType = "artifact" // artifact applies only to ParamSpec, the corresponding ParamValue is of type ParamTypeObject
 )
 
 // AllParamTypes can be used for ParamType validation.
-var AllParamTypes = []ParamType{ParamTypeString, ParamTypeArray, ParamTypeObject}
+var AllParamTypes = []ParamType{ParamTypeString, ParamTypeArray, ParamTypeObject, ParamTypeArtifact}
 
 // ParamValues is modeled after IntOrString in kubernetes/apimachinery:
 
@@ -471,7 +485,7 @@ func (paramValues *ParamValue) ApplyReplacements(stringReplacements map[string]s
 			newArrayVal = append(newArrayVal, substitution.ApplyArrayReplacements(v, stringReplacements, arrayReplacements)...)
 		}
 		paramValues.ArrayVal = newArrayVal
-	case ParamTypeObject:
+	case ParamTypeObject, ParamTypeArtifact:
 		newObjectVal := map[string]string{}
 		for k, v := range paramValues.ObjectVal {
 			newObjectVal[k] = substitution.ApplyReplacements(v, stringReplacements)

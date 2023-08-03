@@ -1346,6 +1346,23 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Message: "invalid value: -10s",
 			Paths:   []string{"steps[0].negative timeout"},
 		},
+	}, {
+		name: "invalid artifact param format - schema cannot be defined.",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name:        "name1",
+				Description: "artifact param",
+				Type:        v1.ParamTypeArtifact,
+				Properties: map[string]v1.PropertySpec{
+					"mykey1": {Type: v1.ParamTypeString},
+				},
+			}},
+			Steps: validSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: "\"artifact\" type does not permit a custom schema definition: \"map[mykey1:{string}]\"",
+			Paths:   []string{"params.artifact.type", "params.map[mykey1:{string}].properties"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

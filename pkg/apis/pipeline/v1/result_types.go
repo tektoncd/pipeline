@@ -60,13 +60,14 @@ type ResultsType string
 
 // Valid ResultsType:
 const (
-	ResultsTypeString ResultsType = "string"
-	ResultsTypeArray  ResultsType = "array"
-	ResultsTypeObject ResultsType = "object"
+	ResultsTypeString   ResultsType = "string"
+	ResultsTypeArray    ResultsType = "array"
+	ResultsTypeObject   ResultsType = "object"
+	ResultsTypeArtifact ResultsType = "artifact"
 )
 
 // AllResultsTypes can be used for ResultsTypes validation.
-var AllResultsTypes = []ResultsType{ResultsTypeString, ResultsTypeArray, ResultsTypeObject}
+var AllResultsTypes = []ResultsType{ResultsTypeString, ResultsTypeArray, ResultsTypeObject, ResultsTypeArtifact}
 
 // ResultsArrayReference returns the reference of the result. e.g. results.resultname from $(results.resultname[*])
 func ResultsArrayReference(a string) string {

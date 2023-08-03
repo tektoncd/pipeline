@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -371,6 +372,20 @@ func (p ParamSpec) ValidateType(ctx context.Context) *apis.FieldError {
 			Paths: []string{
 				fmt.Sprintf("%s.type", p.Name),
 				fmt.Sprintf("%s.default.type", p.Name),
+			},
+		}
+	}
+
+	// If artifact type is used, ensure that the schema is correct
+	// SetDefaults is invoked before validation - this relies on SetDefaults not overriding
+	// the schema if it was already set by the user
+	if (p.Type == ParamTypeArtifact) && (!reflect.DeepEqual(p.Properties, artifactSchema)) {
+		return &apis.FieldError{
+			Message: fmt.Sprintf(
+				"\"%v\" type does not permit a custom schema definition: \"%v\"", p.Type, p.Properties),
+			Paths: []string{
+				fmt.Sprintf("%s.type", p.Type),
+				fmt.Sprintf("%s.properties", p.Properties),
 			},
 		}
 	}

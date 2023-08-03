@@ -1708,7 +1708,7 @@ parameter.</p>
 </p>
 <div>
 <p>ParamType indicates the type of an input parameter;
-Used to distinguish between a single string and an array of strings.</p>
+Used to distinguish between a single string, an array of strings, an object and an artifact</p>
 </div>
 <table>
 <thead>
@@ -1718,6 +1718,8 @@ Used to distinguish between a single string and an array of strings.</p>
 </tr>
 </thead>
 <tbody><tr><td><p>&#34;array&#34;</p></td>
+<td></td>
+</tr><tr><td><p>&#34;artifact&#34;</p></td>
 <td></td>
 </tr><tr><td><p>&#34;object&#34;</p></td>
 <td></td>
@@ -3318,6 +3320,8 @@ this ResultsType.</p>
 </tr>
 </thead>
 <tbody><tr><td><p>&#34;array&#34;</p></td>
+<td></td>
+</tr><tr><td><p>&#34;artifact&#34;</p></td>
 <td></td>
 </tr><tr><td><p>&#34;object&#34;</p></td>
 <td></td>
