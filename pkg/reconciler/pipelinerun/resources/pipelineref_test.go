@@ -74,7 +74,8 @@ var (
 	unsignedV1Pipeline = &v1.Pipeline{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1",
-			Kind:       "Pipeline"},
+			Kind:       "Pipeline",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "pipeline",
 			Namespace:   "trusted-resources",
@@ -313,6 +314,14 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 			pipelineYAMLStringWithoutDefaults,
 		}, "\n"),
 		wantPipeline: parse.MustParseV1Pipeline(t, pipelineYAMLStringWithoutDefaults),
+	}, {
+		name: "v1 remote pipeline with different namespace",
+		pipelineYAML: strings.Join([]string{
+			"kind: Pipeline",
+			"apiVersion: tekton.dev/v1",
+			pipelineYAMLStringNamespaceFoo,
+		}, "\n"),
+		wantPipeline: parse.MustParseV1Pipeline(t, pipelineYAMLStringNamespaceFoo),
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1301,6 +1310,21 @@ spec:
   params:
   - name: foo
     type: ""
+`
+
+var pipelineYAMLStringNamespaceFoo = `
+metadata:
+  name: foo
+  namespace: foo
+spec:
+  tasks:
+  - name: task1
+    taskSpec:
+      steps:
+      - name: step1
+        image: ubuntu
+        script: |
+          echo "hello world!"
 `
 
 func getSignedV1Pipeline(unsigned *v1.Pipeline, signer signature.Signer, name string) (*v1.Pipeline, error) {
