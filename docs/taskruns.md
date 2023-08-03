@@ -499,7 +499,7 @@ workspaces:
 ```
 
 For more information, see the following topics:
-- For information mapping `Workspaces` to `Volumes`, see [Using `Workspace` variables in `TaskRuns`](workspaces.md#using-workspace-variables-in-taskruns).
+- For information on mapping `Workspaces` to `Volumes`, see [Using `Workspace` variables in `TaskRuns`](workspaces.md#using-workspace-variables-in-taskruns).
 - For a list of supported `Volume` types, see [Specifying `VolumeSources` in `Workspaces`](workspaces.md#specifying-volumesources-in-workspaces).
 - For an end-to-end example, see [`Workspaces` in a `TaskRun`](../examples/v1beta1/taskruns/workspace.yaml).
 
@@ -530,7 +530,7 @@ spec:
     name: tr-workspace
 ```
 
-Upon execution, the workspaces will be interpolated during resolution through to the taskspec.
+Upon execution, the workspaces will be interpolated during resolution through to the `taskSpec`.
 
 ```yaml
 apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
@@ -580,7 +580,7 @@ spec:
     name: tr-workspace 
 ```
 
-Upon execution, the above taskrun will fail because the task is referenced and workspace is not propagated. It mist be explicitly defined in the `spec` of the defined Task.
+Upon execution, the above `TaskRun` will fail because the `Task` is referenced and workspace is not propagated. It must be explicitly defined in the `spec` of the defined `Task`.
 
 ```yaml
 apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
@@ -705,6 +705,7 @@ spec:
 ```
 {{% /tab %}}
 {{< /tabs >}}
+
 `StepSpecs` and `SidecarSpecs` must include the `name` field and may include `resources`.
 No other fields can be overridden.
 If the overridden `Task` uses a [`StepTemplate`](./tasks.md#specifying-a-step-template), configuration on
@@ -720,7 +721,7 @@ memory request, the memory limit from the `Step` will be preserved.
 ### Specifying `LimitRange` values
 
 In order to only consume the bare minimum amount of resources needed to execute one `Step` at a
-time from the invoked `Task`, Tekton will requests the compute values for CPU, memory, and ephemeral
+time from the invoked `Task`, Tekton will request the compute values for CPU, memory, and ephemeral
 storage for each `Step` based on the [`LimitRange`](https://kubernetes.io/docs/concepts/policy/limit-range/)
 object(s), if present. Any `Request` or `Limit` specified by the user (on `Task` for example) will be left unchanged.
 
