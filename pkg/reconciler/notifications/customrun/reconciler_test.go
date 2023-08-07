@@ -17,8 +17,6 @@ limitations under the License.
 package customrun_test
 
 import (
-	"context"
-	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -26,73 +24,27 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
-	"github.com/tektoncd/pipeline/pkg/reconciler/notifications/customrun"
-	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
+	"github.com/tektoncd/pipeline/pkg/reconciler/notifications"
+	ntesting "github.com/tektoncd/pipeline/pkg/reconciler/notifications/testing"
 	"github.com/tektoncd/pipeline/test"
-	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
-	cminformer "knative.dev/pkg/configmap/informer"
-	"knative.dev/pkg/controller"
-	"knative.dev/pkg/logging"
-	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/system"
-	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
+	// _ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 )
 
-func initializeCustomRunControllerAssets(t *testing.T, d test.Data) (test.Assets, func()) {
-	t.Helper()
-	ctx, _ := ttesting.SetupFakeContext(t)
-	ctx = ttesting.SetupFakeCloudClientContext(ctx, d.ExpectedCloudEventCount)
-	ctx, cancel := context.WithCancel(ctx)
-	test.EnsureConfigurationConfigMapsExist(&d)
-	c, informers := test.SeedTestData(t, ctx, d)
-	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
-	ctl := customrun.NewController()(ctx, configMapWatcher)
-	if err := configMapWatcher.Start(ctx.Done()); err != nil {
-		t.Fatalf("error starting configmap watcher: %v", err)
-	}
-
-	if la, ok := ctl.Reconciler.(pkgreconciler.LeaderAware); ok {
-		la.Promote(pkgreconciler.UniversalBucket(), func(pkgreconciler.Bucket, types.NamespacedName) {})
-	}
-
-	return test.Assets{
-		Logger:     logging.FromContext(ctx),
-		Controller: ctl,
-		Clients:    c,
-		Informers:  informers,
-		Recorder:   controller.GetEventRecorder(ctx).(*record.FakeRecorder),
-		Ctx:        ctx,
-	}, cancel
-}
-
-func getCustomRunName(customRun v1beta1.CustomRun) string {
-	return strings.Join([]string{customRun.Namespace, customRun.Name}, "/")
-}
-
-// getCustomRunController returns an instance of the CustomRun controller/reconciler that has been seeded with
-// d, where d represents the state of the system (existing resources) needed for the test.
-func getCustomRunController(t *testing.T, d test.Data) (test.Assets, func()) {
-	t.Helper()
-	names.TestingSeed()
-	return initializeCustomRunControllerAssets(t, d)
-}
-
-// TestReconcile_CloudEvents runs reconcile with a cloud event sink configured
+// TestReconcileKind_CloudEvents runs reconcile with a cloud event sink configured
 // to ensure that events are sent in different cases
-func TestReconcile_CloudEvents(t *testing.T) {
+func TestReconcileKind_CloudEvents(t *testing.T) {
 	ignoreResourceVersion := cmpopts.IgnoreFields(v1beta1.CustomRun{}, "ObjectMeta.ResourceVersion")
 
 	cms := []*corev1.ConfigMap{
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetEventsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
-				"default-cloud-events-sink": "http://synk:8080",
+				"sink": "http://synk:8080",
 			},
 		}, {
 			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
@@ -101,6 +53,7 @@ func TestReconcile_CloudEvents(t *testing.T) {
 			},
 		},
 	}
+
 	testcases := []struct {
 		name            string
 		condition       *apis.Condition
@@ -162,13 +115,14 @@ func TestReconcile_CloudEvents(t *testing.T) {
 				ConfigMaps:              cms,
 				ExpectedCloudEventCount: len(tc.wantCloudEvents),
 			}
-			testAssets, cancel := getCustomRunController(t, d)
+			testAssets, cancel := ntesting.InitializeTestAssets(t, &d)
 			defer cancel()
-			c := testAssets.Controller
 			clients := testAssets.Clients
+			reconciler := &ntesting.FakeReconciler{}
+			notifications.ReconcilerFromContext(testAssets.Ctx, reconciler)
 
-			if err := c.Reconciler.Reconcile(testAssets.Ctx, getCustomRunName(customRun)); err != nil {
-				t.Fatal("Didn't expect an error, but got one.")
+			if err := notifications.ReconcileRuntimeObject(testAssets.Ctx, reconciler, &customRun); err != nil {
+				t.Errorf("didn't expect an error, but got one: %v", err)
 			}
 
 			for _, a := range clients.Kube.Actions() {
@@ -178,21 +132,21 @@ func TestReconcile_CloudEvents(t *testing.T) {
 				}
 			}
 
-			updatedCR, err := clients.Pipeline.TektonV1beta1().CustomRuns(customRun.Namespace).Get(testAssets.Ctx, customRun.Name, metav1.GetOptions{})
+			crAfter, err := clients.Pipeline.TektonV1beta1().CustomRuns(customRun.Namespace).Get(testAssets.Ctx, customRun.Name, metav1.GetOptions{})
 			if err != nil {
-				t.Fatalf("getting updated customRun: %v", err)
+				t.Errorf("getting updated customRun: %v", err)
 			}
 
-			if d := cmp.Diff(&customRun, updatedCR, ignoreResourceVersion); d != "" {
-				t.Fatalf("CustomRun should not have changed, got %v instead", d)
+			if d := cmp.Diff(&customRun, crAfter, ignoreResourceVersion); d != "" {
+				t.Errorf("CustomRun should not have changed, got %v instead", d)
 			}
 
 			ceClient := clients.CloudEvents.(cloudevent.FakeClient)
 			ceClient.CheckCloudEventsUnordered(t, tc.name, tc.wantCloudEvents)
 
 			// Try and reconcile again - expect no event
-			if err := c.Reconciler.Reconcile(testAssets.Ctx, getCustomRunName(customRun)); err != nil {
-				t.Fatal("Didn't expect an error, but got one.")
+			if err := notifications.ReconcileRuntimeObject(testAssets.Ctx, reconciler, &customRun); err != nil {
+				t.Errorf("didn't expect an error, but got one: %v", err)
 			}
 			ceClient.CheckCloudEventsUnordered(t, tc.name, []string{})
 		})
@@ -201,15 +155,15 @@ func TestReconcile_CloudEvents(t *testing.T) {
 
 func TestReconcile_CloudEvents_Disabled(t *testing.T) {
 	cmSinkOn := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetEventsConfigName(), Namespace: system.Namespace()},
 		Data: map[string]string{
-			"default-cloud-events-sink": "http://synk:8080",
+			"sink": "http://synk:8080",
 		},
 	}
 	cmSinkOff := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetEventsConfigName(), Namespace: system.Namespace()},
 		Data: map[string]string{
-			"default-cloud-events-sink": "",
+			"sink": "",
 		},
 	}
 	cmRunsOn := &corev1.ConfigMap{
@@ -224,7 +178,7 @@ func TestReconcile_CloudEvents_Disabled(t *testing.T) {
 			"send-cloudevents-for-runs": "false",
 		},
 	}
-	testcases := []struct {
+	for _, tc := range []struct {
 		name string
 		cms  []*corev1.ConfigMap
 	}{{
@@ -236,9 +190,7 @@ func TestReconcile_CloudEvents_Disabled(t *testing.T) {
 	}, {
 		name: "CustomRuns Disabled",
 		cms:  []*corev1.ConfigMap{cmSinkOn, cmRunsOff},
-	}}
-
-	for _, tc := range testcases {
+	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			objectStatus := duckv1.Status{
 				Conditions: []apis.Condition{
@@ -267,24 +219,22 @@ func TestReconcile_CloudEvents_Disabled(t *testing.T) {
 				CustomRuns: customRuns,
 				ConfigMaps: tc.cms,
 			}
-			testAssets, cancel := getCustomRunController(t, d)
+			testAssets, cancel := ntesting.InitializeTestAssets(t, &d)
 			defer cancel()
-			c := testAssets.Controller
 			clients := testAssets.Clients
+			reconciler := &ntesting.FakeReconciler{}
+			notifications.ReconcilerFromContext(testAssets.Ctx, reconciler)
 
-			if err := c.Reconciler.Reconcile(testAssets.Ctx, getCustomRunName(customRun)); err != nil {
-				t.Fatal("Didn't expect an error, but got one.")
-			}
-			if len(clients.Kube.Actions()) == 0 {
-				t.Errorf("Expected actions to be logged in the kubeclient, got none")
+			if err := notifications.ReconcileRuntimeObject(testAssets.Ctx, reconciler, &customRun); err != nil {
+				t.Fatalf("didn't expect an error, but got one: %v", err)
 			}
 
-			updatedCR, err := clients.Pipeline.TektonV1beta1().CustomRuns(customRun.Namespace).Get(testAssets.Ctx, customRun.Name, metav1.GetOptions{})
+			crAfter, err := clients.Pipeline.TektonV1beta1().CustomRuns(customRun.Namespace).Get(testAssets.Ctx, customRun.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("getting updated customRun: %v", err)
 			}
 
-			if d := cmp.Diff(customRun.Status, updatedCR.Status); d != "" {
+			if d := cmp.Diff(customRun.Status, crAfter.Status); d != "" {
 				t.Fatalf("CustomRun should not have changed, got %v instead", d)
 			}
 

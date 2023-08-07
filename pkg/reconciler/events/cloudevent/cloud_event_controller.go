@@ -21,8 +21,8 @@ import (
 	"errors"
 	"time"
 
+	bc "github.com/allegro/bigcache/v3"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
-	lru "github.com/hashicorp/golang-lru"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cache"
@@ -49,11 +49,24 @@ func cloudEventsSink(ctx context.Context) string {
 // EmitCloudEvents emits CloudEvents (only) for object
 func EmitCloudEvents(ctx context.Context, object runtime.Object) {
 	logger := logging.FromContext(ctx)
+	runObject, ok := object.(v1beta1.RunObject)
+	if !ok {
+		logger.Warnf("failed to emit cloud events, runtime.Object %v is not a v1beta1.RunObject", object)
+	}
+
 	if sink := cloudEventsSink(ctx); sink != "" {
-		ctx = cloudevents.ContextWithTarget(ctx, sink)
-		err := SendCloudEventWithRetries(ctx, object)
+		// Check the cache first, if this object was handled already, there's nothing else to do
+		cacheClient := cache.Get(ctx)
+		wasPresent, err := cache.ContainsOrAddObject(cacheClient, runObject)
 		if err != nil {
-			logger.Warnf("Failed to emit cloud events %v", err.Error())
+			logger.Warnf("failed to emit cloud events: could not check the events cache %v", err.Error())
+		}
+		if err == nil && !wasPresent {
+			ctx = cloudevents.ContextWithTarget(ctx, sink)
+			err := SendCloudEventWithRetries(ctx, runObject)
+			if err != nil {
+				logger.Warnf("failed to emit cloud events %v", err.Error())
+			}
 		}
 	}
 }
@@ -61,12 +74,16 @@ func EmitCloudEvents(ctx context.Context, object runtime.Object) {
 // EmitCloudEventsWhenConditionChange emits CloudEvents when there is a change in condition
 func EmitCloudEventsWhenConditionChange(ctx context.Context, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
 	logger := logging.FromContext(ctx)
+	runObject, ok := object.(v1beta1.RunObject)
+	if !ok {
+		logger.Warnf("failed to emit cloud events, runtime.Object %v is not a v1beta1.RunObject", object)
+	}
 	if sink := cloudEventsSink(ctx); sink != "" {
 		ctx = cloudevents.ContextWithTarget(ctx, sink)
 
 		// Only send events if the new condition represents a change
 		if !equality.Semantic.DeepEqual(beforeCondition, afterCondition) {
-			err := SendCloudEventWithRetries(ctx, object)
+			err := SendCloudEventWithRetries(ctx, runObject)
 			if err != nil {
 				logger.Warnf("Failed to emit cloud events %v", err.Error())
 			}
@@ -77,23 +94,16 @@ func EmitCloudEventsWhenConditionChange(ctx context.Context, beforeCondition *ap
 // SendCloudEventWithRetries sends a cloud event for the specified resource.
 // It does not block and it perform retries with backoff using the cloudevents
 // sdk-go capabilities.
-// It accepts a runtime.Object to avoid making objectWithCondition public since
-// it's only used within the events/cloudevents packages.
-func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error {
+func SendCloudEventWithRetries(ctx context.Context, object v1beta1.RunObject) error {
 	var (
-		o           objectWithCondition
-		ok          bool
-		cacheClient *lru.Cache
+		cacheClient *bc.BigCache
 	)
-	if o, ok = object.(objectWithCondition); !ok {
-		return errors.New("input object does not satisfy objectWithCondition")
-	}
 	logger := logging.FromContext(ctx)
 	ceClient := Get(ctx)
 	if ceClient == nil {
 		return errors.New("no cloud events client found in the context")
 	}
-	event, err := eventForObjectWithCondition(ctx, o)
+	event, err := eventForRunObject(ctx, object)
 	if err != nil {
 		return err
 	}
@@ -112,7 +122,7 @@ func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error
 		logger.Debugf("Sending cloudevent of type %q", event.Type())
 		// In case of Run event, check cache if cloudevent is already sent
 		if isCustomRun {
-			cloudEventSent, err := cache.ContainsOrAddCloudEvent(cacheClient, event)
+			cloudEventSent, err := cache.ContainsOrAddCloudEvent(cacheClient, event, object)
 			if err != nil {
 				logger.Errorf("error while checking cache: %s", err)
 			}

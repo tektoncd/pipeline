@@ -37,7 +37,7 @@ data:
     # this example block and unindented to be in the data block
     # to actually change the configuration.
 
-    # formats contains a comma seperated list of event formats to be used
+    # formats contains a comma separated list of event formats to be used
     # the only format supported today is "tektonv1". An empty string is not
     # a valid configuration. To disable events, do not specify the sink.
     formats: "tektonv1"
