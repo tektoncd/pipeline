@@ -11449,7 +11449,12 @@ this ResultsType.</p>
 <h3 id="tekton.dev/v1beta1.RunObject">RunObject
 </h3>
 <div>
-<p>RunObject is implemented by CustomRun and Run</p>
+<p>RunObject is implemented by Run, CustomRun, TaskRun and PipelineRun</p>
+</div>
+<h3 id="tekton.dev/v1beta1.RunObjectWithRetries">RunObjectWithRetries
+</h3>
+<div>
+<p>RunObject is implemented by Run and CustomRun</p>
 </div>
 <h3 id="tekton.dev/v1beta1.Sidecar">Sidecar
 </h3>
