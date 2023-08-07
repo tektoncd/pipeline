@@ -25,6 +25,7 @@ import (
 	_ "github.com/tektoncd/plumbing/cmd/combine"
 	_ "github.com/tektoncd/plumbing/scripts"
 	_ "k8s.io/code-generator/cmd/client-gen"
+	_ "k8s.io/code-generator/cmd/conversion-gen"
 	_ "k8s.io/code-generator/cmd/deepcopy-gen"
 	_ "k8s.io/code-generator/cmd/defaulter-gen"
 	_ "k8s.io/code-generator/cmd/informer-gen"
