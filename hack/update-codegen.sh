@@ -57,6 +57,12 @@ bash ${REPO_ROOT_DIR}/hack/generate-groups.sh "deepcopy,client,informer,lister" 
   github.com/tektoncd/pipeline/pkg/client/resolution github.com/tektoncd/pipeline/pkg/apis \
   "resolution:v1alpha1,v1beta1" \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
+# This generates conversion betwee v1 and internalversion
+bash ${REPO_ROOT_DIR}/hack/generate-groups.sh "conversion" \
+  "" \
+  github.com/tektoncd/pipeline/pkg/apis \
+  "pipeline:v1" \
+  --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
 
 # Depends on generate-groups.sh to install bin/deepcopy-gen
 ${PREFIX}/deepcopy-gen \
