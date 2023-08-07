@@ -31,6 +31,7 @@ import (
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internalversion"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -59,6 +60,21 @@ var (
 		},
 		Spec: v1.TaskSpec{
 			Steps: []v1.Step{{
+				Image: "something",
+			}},
+		},
+	}
+	simpleInternalNamespacedTask = &internalversion.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "simple",
+			Namespace: "default",
+		},
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: runtime.APIVersionInternal,
+			Kind:       "Task",
+		},
+		Spec: internalversion.TaskSpec{
+			Steps: []internalversion.Step{{
 				Image: "something",
 			}},
 		},
@@ -156,7 +172,7 @@ func TestLocalTaskRef(t *testing.T) {
 		namespace string
 		tasks     []runtime.Object
 		ref       *v1.TaskRef
-		expected  runtime.Object
+		expected  *internalversion.Task
 		wantErr   error
 	}{
 		{
@@ -179,7 +195,11 @@ func TestLocalTaskRef(t *testing.T) {
 			ref: &v1.TaskRef{
 				Name: "simple",
 			},
-			expected: &v1.Task{
+			expected: &internalversion.Task{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: runtime.APIVersionInternal,
+					Kind:       "Task",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "simple",
 					Namespace: "default",
@@ -206,9 +226,9 @@ func TestLocalTaskRef(t *testing.T) {
 				Name: "cluster-task",
 				Kind: "ClusterTask",
 			},
-			expected: &v1.Task{
+			expected: &internalversion.Task{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "tekton.dev/v1",
+					APIVersion: runtime.APIVersionInternal,
 					Kind:       "Task",
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -330,7 +350,7 @@ func TestGetTaskFunc_Local(t *testing.T) {
 			ref: &v1.TaskRef{
 				Name: "simple",
 			},
-			expected:     simpleNamespacedTask,
+			expected:     simpleInternalNamespacedTask,
 			expectedKind: v1.NamespacedTaskKind,
 		}, {
 			name:       "local-cluster-task",
@@ -349,16 +369,16 @@ func TestGetTaskFunc_Local(t *testing.T) {
 				Name: "simple",
 				Kind: v1.ClusterTaskRefKind,
 			},
-			expected: &v1.Task{
+			expected: &internalversion.Task{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "simple",
 				},
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "tekton.dev/v1",
+					APIVersion: runtime.APIVersionInternal,
 					Kind:       "Task",
 				},
-				Spec: v1.TaskSpec{
-					Steps: []v1.Step{{
+				Spec: internalversion.TaskSpec{
+					Steps: []internalversion.Step{{
 						Image: "something",
 					}},
 				},
@@ -424,6 +444,15 @@ echo hello
 `,
 		}},
 	}
+	internalTaskSpec := internalversion.TaskSpec{
+		Steps: []internalversion.Step{{
+			Image: "myimage",
+			Script: `
+#!/usr/bin/env bash
+echo hello
+`,
+		}},
+	}
 
 	TaskRun := &v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
@@ -442,12 +471,12 @@ echo hello
 			},
 		}},
 	}
-	expectedTask := &v1.Task{
+	expectedTask := &internalversion.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: "default",
 		},
-		Spec: TaskSpec,
+		Spec: internalTaskSpec,
 	}
 
 	fn := resources.GetTaskFuncFromTaskRun(ctx, kubeclient, tektonclient, nil, TaskRun, []*v1alpha1.VerificationPolicy{})
@@ -553,7 +582,17 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 					t.Errorf("refSources did not match: %s", diff.PrintWantGot(d))
 				}
 
-				if d := cmp.Diff(tc.wantTask, resolvedTask); d != "" {
+				internalTask := &internalversion.Task{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: runtime.APIVersionInternal,
+						Kind:       "Task",
+					}}
+				err := v1.Convert_v1_Task_To_internalversion_Task(tc.wantTask, internalTask, nil)
+				if err != nil {
+					t.Error(err)
+				}
+
+				if d := cmp.Diff(internalTask, resolvedTask); d != "" {
 					t.Errorf("resolvedTask did not match: %s", diff.PrintWantGot(d))
 				}
 			}
@@ -616,7 +655,16 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 		t.Fatalf("failed to call pipelinefn: %s", err.Error())
 	}
 
-	if d := cmp.Diff(task, resolvedTask); d != "" {
+	internalTask := &internalversion.Task{TypeMeta: metav1.TypeMeta{
+		APIVersion: runtime.APIVersionInternal,
+		Kind:       "Task",
+	}}
+	err = v1.Convert_v1_Task_To_internalversion_Task(task, internalTask, nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if d := cmp.Diff(internalTask, resolvedTask); d != "" {
 		t.Errorf("resolvedTask did not match: %s", diff.PrintWantGot(d))
 	}
 
@@ -732,7 +780,7 @@ func TestGetTaskFunc_V1beta1Task_VerifyNoError(t *testing.T) {
 		requester                  *test.Requester
 		verificationNoMatchPolicy  string
 		policies                   []*v1alpha1.VerificationPolicy
-		expected                   runtime.Object
+		expected                   *v1.Task
 		expectedRefSource          *v1.RefSource
 		expectedVerificationResult *trustedresources.VerificationResult
 	}{{
@@ -803,7 +851,16 @@ func TestGetTaskFunc_V1beta1Task_VerifyNoError(t *testing.T) {
 				t.Fatalf("Received unexpected error ( %#v )", err)
 			}
 
-			if d := cmp.Diff(tc.expected, resolvedTask); d != "" {
+			internalTask := &internalversion.Task{TypeMeta: metav1.TypeMeta{
+				APIVersion: runtime.APIVersionInternal,
+				Kind:       "Task",
+			}}
+			err = v1.Convert_v1_Task_To_internalversion_Task(tc.expected, internalTask, nil)
+			if err != nil {
+				t.Error(err)
+			}
+
+			if d := cmp.Diff(internalTask, resolvedTask); d != "" {
 				t.Errorf("resolvedTask did not match: %s", diff.PrintWantGot(d))
 			}
 
@@ -995,7 +1052,7 @@ func TestGetTaskFunc_V1Task_VerifyNoError(t *testing.T) {
 		requester                  *test.Requester
 		verificationNoMatchPolicy  string
 		policies                   []*v1alpha1.VerificationPolicy
-		expected                   runtime.Object
+		expected                   *v1.Task
 		expectedRefSource          *v1.RefSource
 		expectedVerificationResult *trustedresources.VerificationResult
 	}{{
@@ -1066,7 +1123,15 @@ func TestGetTaskFunc_V1Task_VerifyNoError(t *testing.T) {
 				t.Fatalf("Received unexpected error ( %#v )", err)
 			}
 
-			if d := cmp.Diff(tc.expected, gotResolvedTask); d != "" {
+			internalTask := &internalversion.Task{TypeMeta: metav1.TypeMeta{
+				APIVersion: runtime.APIVersionInternal,
+				Kind:       "Task",
+			}}
+			err = v1.Convert_v1_Task_To_internalversion_Task(tc.expected, internalTask, nil)
+			if err != nil {
+				t.Error(err)
+			}
+			if d := cmp.Diff(internalTask, gotResolvedTask); d != "" {
 				t.Errorf("resolvedTask did not match: %s", diff.PrintWantGot(d))
 			}
 

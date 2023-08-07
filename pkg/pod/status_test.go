@@ -28,6 +28,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/tektoncd/pipeline/internal/sidecarlogresults"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internalversion"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -102,7 +103,7 @@ func TestSetTaskRunStatusBasedOnStepStatus(t *testing.T) {
 			for _, cs := range c.ContainerStatuses {
 				originalStatuses = append(originalStatuses, *cs.DeepCopy())
 			}
-			merr := setTaskRunStatusBasedOnStepStatus(context.Background(), logger, c.ContainerStatuses, &tr, corev1.PodRunning, kubeclient, &v1.TaskSpec{})
+			merr := setTaskRunStatusBasedOnStepStatus(context.Background(), logger, c.ContainerStatuses, &tr, corev1.PodRunning, kubeclient, &internalversion.TaskSpec{})
 			if merr != nil {
 				t.Errorf("setTaskRunStatusBasedOnStepStatus: %s", merr)
 			}
@@ -180,7 +181,7 @@ func TestSetTaskRunStatusBasedOnStepStatus_sidecar_logs(t *testing.T) {
 			})
 			var wantErr *multierror.Error
 			wantErr = multierror.Append(wantErr, c.wantErr)
-			merr := setTaskRunStatusBasedOnStepStatus(ctx, logger, []corev1.ContainerStatus{{}}, &tr, pod.Status.Phase, kubeclient, &v1.TaskSpec{})
+			merr := setTaskRunStatusBasedOnStepStatus(ctx, logger, []corev1.ContainerStatus{{}}, &tr, pod.Status.Phase, kubeclient, &internalversion.TaskSpec{})
 
 			if d := cmp.Diff(wantErr.Error(), merr.Error()); d != "" {
 				t.Errorf("Got unexpected error  %s", diff.PrintWantGot(d))
@@ -1268,7 +1269,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			}
 			logger, _ := logging.NewLogger("", "status")
 			kubeclient := fakek8s.NewSimpleClientset()
-			got, err := MakeTaskRunStatus(context.Background(), logger, tr, &c.pod, kubeclient, &v1.TaskSpec{})
+			got, err := MakeTaskRunStatus(context.Background(), logger, tr, &c.pod, kubeclient, &internalversion.TaskSpec{})
 			if err != nil {
 				t.Errorf("MakeTaskRunResult: %s", err)
 			}
@@ -1298,7 +1299,7 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 		desc      string
 		podStatus corev1.PodStatus
 		pod       corev1.Pod
-		taskSpec  v1.TaskSpec
+		taskSpec  internalversion.TaskSpec
 		want      v1.TaskRunStatus
 	}{{
 		desc: "test empty result",
@@ -1313,11 +1314,11 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 				},
 			}},
 		},
-		taskSpec: v1.TaskSpec{
-			Results: []v1.TaskResult{
+		taskSpec: internalversion.TaskSpec{
+			Results: []internalversion.TaskResult{
 				{
 					Name: "resultName",
-					Type: v1.ResultsTypeString,
+					Type: internalversion.ResultsTypeString,
 				},
 			},
 		},
@@ -1355,11 +1356,11 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 				},
 			}},
 		},
-		taskSpec: v1.TaskSpec{
-			Results: []v1.TaskResult{
+		taskSpec: internalversion.TaskSpec{
+			Results: []internalversion.TaskResult{
 				{
 					Name: "resultName",
-					Type: v1.ResultsTypeString,
+					Type: internalversion.ResultsTypeString,
 				},
 			},
 		},
@@ -1397,11 +1398,11 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 				},
 			}},
 		},
-		taskSpec: v1.TaskSpec{
-			Results: []v1.TaskResult{
+		taskSpec: internalversion.TaskSpec{
+			Results: []internalversion.TaskResult{
 				{
 					Name: "resultName",
-					Type: v1.ResultsTypeArray,
+					Type: internalversion.ResultsTypeArray,
 				},
 			},
 		},
@@ -1439,11 +1440,11 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 				},
 			}},
 		},
-		taskSpec: v1.TaskSpec{
-			Results: []v1.TaskResult{
+		taskSpec: internalversion.TaskSpec{
+			Results: []internalversion.TaskResult{
 				{
 					Name: "resultName",
-					Type: v1.ResultsTypeObject,
+					Type: internalversion.ResultsTypeObject,
 				},
 			},
 		},
@@ -1481,15 +1482,15 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 				},
 			}},
 		},
-		taskSpec: v1.TaskSpec{
-			Results: []v1.TaskResult{
+		taskSpec: internalversion.TaskSpec{
+			Results: []internalversion.TaskResult{
 				{
 					Name: "resultName",
-					Type: v1.ResultsTypeString,
+					Type: internalversion.ResultsTypeString,
 				},
 				{
 					Name: "resultName2",
-					Type: v1.ResultsTypeString,
+					Type: internalversion.ResultsTypeString,
 				},
 			},
 		},
@@ -1666,7 +1667,7 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 
 	logger, _ := logging.NewLogger("", "status")
 	kubeclient := fakek8s.NewSimpleClientset()
-	gotTr, err := MakeTaskRunStatus(context.Background(), logger, tr, pod, kubeclient, &v1.TaskSpec{})
+	gotTr, err := MakeTaskRunStatus(context.Background(), logger, tr, pod, kubeclient, &internalversion.TaskSpec{})
 	if err == nil {
 		t.Error("Expected error, got nil")
 	}

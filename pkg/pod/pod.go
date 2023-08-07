@@ -27,6 +27,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internalversion"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/internal/computeresources/tasklevel"
@@ -64,7 +65,7 @@ const (
 
 // These are effectively const, but Go doesn't have such an annotation.
 var (
-	ReleaseAnnotation = "pipeline.tekton.dev/release"
+	ReleaseAnnotation = "internalversion.tekton.dev/release"
 
 	groupVersionKind = schema.GroupVersionKind{
 		Group:   v1.SchemeGroupVersion.Group,
@@ -139,7 +140,7 @@ type Transformer func(*corev1.Pod) (*corev1.Pod, error)
 // Build creates a Pod using the configuration options set on b and the TaskRun
 // and TaskSpec provided in its arguments. An error is returned if there are
 // any problems during the conversion.
-func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.TaskSpec, transformers ...Transformer) (*corev1.Pod, error) {
+func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec internalversion.TaskSpec, transformers ...Transformer) (*corev1.Pod, error) {
 	var (
 		scriptsInit                                       *corev1.Container
 		initContainers, stepContainers, sidecarContainers []corev1.Container
@@ -175,10 +176,17 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 
 	// Merge step template with steps.
 	// TODO(#1605): Move MergeSteps to pkg/pod
-	steps, err := v1.MergeStepsWithStepTemplate(taskSpec.StepTemplate, taskSpec.Steps)
+	internalsteps, err := internalversion.MergeStepsWithStepTemplate(taskSpec.StepTemplate, taskSpec.Steps)
 	if err != nil {
 		return nil, err
 	}
+	var steps []v1.Step
+	for _, s := range internalsteps {
+		var v1step v1.Step
+		v1.Convert_internalversion_Step_To_v1_Step(&s, &v1step, nil)
+		steps = append(steps, v1step)
+	}
+
 	steps, err = v1.MergeStepsWithSpecs(steps, taskRun.Spec.StepSpecs)
 	if err != nil {
 		return nil, err
@@ -193,13 +201,20 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		taskSpec.Sidecars = append(taskSpec.Sidecars, resultsSidecar)
 		commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-result_from", config.ResultExtractionMethodSidecarLogs)
 	}
-	sidecars, err := v1.MergeSidecarsWithSpecs(taskSpec.Sidecars, taskRun.Spec.SidecarSpecs)
+	var v1sidecars []v1.Sidecar
+	for _, s := range taskSpec.Sidecars {
+		var v1sidecar v1.Sidecar
+		v1.Convert_internalversion_Sidecar_To_v1_Sidecar(&s, &v1sidecar, nil)
+		v1sidecars = append(v1sidecars, v1sidecar)
+	}
+
+	sidecars, err := v1.MergeSidecarsWithSpecs(v1sidecars, taskRun.Spec.SidecarSpecs)
 	if err != nil {
 		return nil, err
 	}
 
 	initContainers = []corev1.Container{
-		entrypointInitContainer(b.Images.EntrypointImage, steps, setSecurityContext, windows),
+		entrypointInitContainer(b.Images.EntrypointImage, internalsteps, setSecurityContext, windows),
 	}
 
 	// Convert any steps with Script to command+args.
@@ -497,7 +512,7 @@ func makeLabels(s *v1.TaskRun) map[string]string {
 // controller should consider the Pod "Ready" as soon as it's deployed.
 // This will add the `Ready` annotation when creating the Pod,
 // and prevent the first step from waiting for the annotation to appear before starting.
-func isPodReadyImmediately(featureFlags config.FeatureFlags, sidecars []v1.Sidecar) bool {
+func isPodReadyImmediately(featureFlags config.FeatureFlags, sidecars []internalversion.Sidecar) bool {
 	// If the TaskRun has sidecars, we must wait for them
 	if len(sidecars) > 0 || featureFlags.RunningInEnvWithInjectedSidecars {
 		if featureFlags.AwaitSidecarReadiness {
@@ -527,7 +542,7 @@ func runVolume(i int) corev1.Volume {
 // This should effectively merge multiple command and volumes together.
 // If setSecurityContext is true, the init container will include a security context
 // allowing it to run in namespaces with restriced pod security admission.
-func entrypointInitContainer(image string, steps []v1.Step, setSecurityContext, windows bool) corev1.Container {
+func entrypointInitContainer(image string, steps []internalversion.Step, setSecurityContext, windows bool) corev1.Container {
 	// Invoke the entrypoint binary in "cp mode" to copy itself
 	// into the correct location for later steps and initialize steps folder
 	command := []string{"/ko-app/entrypoint", "init", "/ko-app/entrypoint", entrypointBinary}
@@ -563,7 +578,7 @@ func entrypointInitContainer(image string, steps []v1.Step, setSecurityContext, 
 // based on the spec of the Task, the image that should run in the results sidecar,
 // whether it will run on a windows node, and whether the sidecar should include a security context
 // that will allow it to run in namespaces with "restricted" pod security admission.
-func createResultsSidecar(taskSpec v1.TaskSpec, image string, setSecurityContext, windows bool) v1.Sidecar {
+func createResultsSidecar(taskSpec internalversion.TaskSpec, image string, setSecurityContext, windows bool) internalversion.Sidecar {
 	names := make([]string, 0, len(taskSpec.Results))
 	for _, r := range taskSpec.Results {
 		names = append(names, r.Name)
@@ -574,7 +589,7 @@ func createResultsSidecar(taskSpec v1.TaskSpec, image string, setSecurityContext
 	}
 	resultsStr := strings.Join(names, ",")
 	command := []string{"/ko-app/sidecarlogresults", "-results-dir", pipeline.DefaultResultPath, "-result-names", resultsStr}
-	sidecar := v1.Sidecar{
+	sidecar := internalversion.Sidecar{
 		Name:    pipeline.ReservedResultsSidecarName,
 		Image:   image,
 		Command: command,

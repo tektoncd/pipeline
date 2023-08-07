@@ -21,6 +21,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internalversion"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	workspace "github.com/tektoncd/pipeline/pkg/workspace"
 	corev1 "k8s.io/api/core/v1"
@@ -29,7 +30,7 @@ import (
 func TestValidateBindingsValid(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
-		declarations []v1.WorkspaceDeclaration
+		declarations []internalversion.WorkspaceDeclaration
 		bindings     []v1.WorkspaceBinding
 	}{{
 		name:         "no bindings provided or required",
@@ -37,11 +38,11 @@ func TestValidateBindingsValid(t *testing.T) {
 		bindings:     nil,
 	}, {
 		name:         "empty list of bindings provided and required",
-		declarations: []v1.WorkspaceDeclaration{},
+		declarations: []internalversion.WorkspaceDeclaration{},
 		bindings:     []v1.WorkspaceBinding{},
 	}, {
 		name: "Successfully bound with PVC",
-		declarations: []v1.WorkspaceDeclaration{{
+		declarations: []internalversion.WorkspaceDeclaration{{
 			Name: "beth",
 		}},
 		bindings: []v1.WorkspaceBinding{{
@@ -52,7 +53,7 @@ func TestValidateBindingsValid(t *testing.T) {
 		}},
 	}, {
 		name: "Successfully bound with emptyDir",
-		declarations: []v1.WorkspaceDeclaration{{
+		declarations: []internalversion.WorkspaceDeclaration{{
 			Name: "beth",
 		}},
 		bindings: []v1.WorkspaceBinding{{
@@ -61,7 +62,7 @@ func TestValidateBindingsValid(t *testing.T) {
 		}},
 	}, {
 		name: "Included optional workspace",
-		declarations: []v1.WorkspaceDeclaration{{
+		declarations: []internalversion.WorkspaceDeclaration{{
 			Name:     "beth",
 			Optional: true,
 		}},
@@ -71,7 +72,7 @@ func TestValidateBindingsValid(t *testing.T) {
 		}},
 	}, {
 		name: "Omitted optional workspace",
-		declarations: []v1.WorkspaceDeclaration{{
+		declarations: []internalversion.WorkspaceDeclaration{{
 			Name:     "beth",
 			Optional: true,
 		}},
@@ -88,11 +89,11 @@ func TestValidateBindingsValid(t *testing.T) {
 func TestValidateBindingsInvalid(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
-		declarations []v1.WorkspaceDeclaration
+		declarations []internalversion.WorkspaceDeclaration
 		bindings     []v1.WorkspaceBinding
 	}{{
 		name: "Didn't provide binding matching declared workspace",
-		declarations: []v1.WorkspaceDeclaration{{
+		declarations: []internalversion.WorkspaceDeclaration{{
 			Name: "beth",
 		}},
 		bindings: []v1.WorkspaceBinding{{
@@ -104,7 +105,7 @@ func TestValidateBindingsInvalid(t *testing.T) {
 		}},
 	}, {
 		name: "Provided a binding that wasn't needed",
-		declarations: []v1.WorkspaceDeclaration{{
+		declarations: []internalversion.WorkspaceDeclaration{{
 			Name: "randall",
 		}, {
 			Name: "beth",
@@ -115,7 +116,7 @@ func TestValidateBindingsInvalid(t *testing.T) {
 		}},
 	}, {
 		name: "Provided both pvc and emptydir",
-		declarations: []v1.WorkspaceDeclaration{{
+		declarations: []internalversion.WorkspaceDeclaration{{
 			Name: "beth",
 		}},
 		bindings: []v1.WorkspaceBinding{{
@@ -127,7 +128,7 @@ func TestValidateBindingsInvalid(t *testing.T) {
 		}},
 	}, {
 		name: "Provided neither pvc nor emptydir",
-		declarations: []v1.WorkspaceDeclaration{{
+		declarations: []internalversion.WorkspaceDeclaration{{
 			Name: "beth",
 		}},
 		bindings: []v1.WorkspaceBinding{{
@@ -135,7 +136,7 @@ func TestValidateBindingsInvalid(t *testing.T) {
 		}},
 	}, {
 		name: "Provided pvc without claim name",
-		declarations: []v1.WorkspaceDeclaration{{
+		declarations: []internalversion.WorkspaceDeclaration{{
 			Name: "beth",
 		}},
 		bindings: []v1.WorkspaceBinding{{
@@ -144,7 +145,7 @@ func TestValidateBindingsInvalid(t *testing.T) {
 		}},
 	}, {
 		name: "Mismatch between declarations and bindings",
-		declarations: []v1.WorkspaceDeclaration{{
+		declarations: []internalversion.WorkspaceDeclaration{{
 			Name:     "Notbeth",
 			Optional: true,
 		}},

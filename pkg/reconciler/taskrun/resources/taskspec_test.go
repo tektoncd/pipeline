@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internalversion"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
@@ -31,12 +32,12 @@ import (
 )
 
 func TestGetTaskSpec_Ref(t *testing.T) {
-	task := &v1.Task{
+	task := &internalversion.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "orchestrate",
 		},
-		Spec: v1.TaskSpec{
-			Steps: []v1.Step{{
+		Spec: internalversion.TaskSpec{
+			Steps: []internalversion.Step{{
 				Name: "step1",
 			}},
 		},
@@ -52,7 +53,7 @@ func TestGetTaskSpec_Ref(t *testing.T) {
 		},
 	}
 
-	gt := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+	gt := func(ctx context.Context, n string) (*internalversion.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return task, sampleRefSource.DeepCopy(), nil, nil
 	}
 	resolvedObjectMeta, taskSpec, err := resources.GetTaskData(context.Background(), tr, gt)
@@ -86,7 +87,7 @@ func TestGetTaskSpec_Embedded(t *testing.T) {
 			},
 		},
 	}
-	gt := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+	gt := func(ctx context.Context, n string) (*internalversion.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return nil, nil, nil, errors.New("shouldn't be called")
 	}
 	resolvedObjectMeta, taskSpec, err := resources.GetTaskData(context.Background(), tr, gt)
@@ -115,7 +116,7 @@ func TestGetTaskSpec_Invalid(t *testing.T) {
 			Name: "mytaskrun",
 		},
 	}
-	gt := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+	gt := func(ctx context.Context, n string) (*internalversion.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return nil, nil, nil, errors.New("shouldn't be called")
 	}
 	_, _, err := resources.GetTaskData(context.Background(), tr, gt)
@@ -135,7 +136,7 @@ func TestGetTaskSpec_Error(t *testing.T) {
 			},
 		},
 	}
-	gt := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+	gt := func(ctx context.Context, n string) (*internalversion.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return nil, nil, nil, errors.New("something went wrong")
 	}
 	_, _, err := resources.GetTaskData(context.Background(), tr, gt)
@@ -167,16 +168,16 @@ func TestGetTaskData_ResolutionSuccess(t *testing.T) {
 	sourceMeta := metav1.ObjectMeta{
 		Name: "task",
 	}
-	sourceSpec := v1.TaskSpec{
-		Steps: []v1.Step{{
+	sourceSpec := internalversion.TaskSpec{
+		Steps: []internalversion.Step{{
 			Name:   "step1",
 			Image:  "ubuntu",
 			Script: `echo "hello world!"`,
 		}},
 	}
 
-	getTask := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
-		return &v1.Task{
+	getTask := func(ctx context.Context, n string) (*internalversion.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+		return &internalversion.Task{
 			ObjectMeta: *sourceMeta.DeepCopy(),
 			Spec:       *sourceSpec.DeepCopy(),
 		}, sampleRefSource.DeepCopy(), nil, nil
@@ -212,7 +213,7 @@ func TestGetPipelineData_ResolutionError(t *testing.T) {
 			},
 		},
 	}
-	getTask := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+	getTask := func(ctx context.Context, n string) (*internalversion.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return nil, nil, nil, errors.New("something went wrong")
 	}
 	ctx := context.Background()
@@ -235,7 +236,7 @@ func TestGetTaskData_ResolvedNilTask(t *testing.T) {
 			},
 		},
 	}
-	getTask := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+	getTask := func(ctx context.Context, n string) (*internalversion.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return nil, nil, nil, nil
 	}
 	ctx := context.Background()
@@ -268,8 +269,8 @@ func TestGetTaskData_VerificationResult(t *testing.T) {
 	sourceMeta := metav1.ObjectMeta{
 		Name: "task",
 	}
-	sourceSpec := v1.TaskSpec{
-		Steps: []v1.Step{{
+	sourceSpec := internalversion.TaskSpec{
+		Steps: []internalversion.Step{{
 			Name:   "step1",
 			Image:  "ubuntu",
 			Script: `echo "hello world!"`,
@@ -280,8 +281,8 @@ func TestGetTaskData_VerificationResult(t *testing.T) {
 		VerificationResultType: trustedresources.VerificationError,
 		Err:                    trustedresources.ErrResourceVerificationFailed,
 	}
-	getTask := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
-		return &v1.Task{
+	getTask := func(ctx context.Context, n string) (*internalversion.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+		return &internalversion.Task{
 			ObjectMeta: *sourceMeta.DeepCopy(),
 			Spec:       *sourceSpec.DeepCopy(),
 		}, nil, verificationResult, nil

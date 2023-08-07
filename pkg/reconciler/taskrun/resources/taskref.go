@@ -18,10 +18,10 @@ package resources
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internalversion"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -60,17 +60,23 @@ func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekto
 	// if the spec is already in the status, do not try to fetch it again, just use it as source of truth.
 	// Same for the RefSource field in the Status.Provenance.
 	if taskrun.Status.TaskSpec != nil {
-		return func(_ context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+		return func(_ context.Context, name string) (*internalversion.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 			var refSource *v1.RefSource
 			if taskrun.Status.Provenance != nil {
 				refSource = taskrun.Status.Provenance.RefSource
 			}
-			return &v1.Task{
+			// convert *taskrun.Status.TaskSpec to internalspec
+			internalspec := internalversion.TaskSpec{}
+			err := v1.Convert_v1_TaskSpec_To_internalversion_TaskSpec(taskrun.Status.TaskSpec, &internalspec, nil)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			return &internalversion.Task{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: taskrun.Namespace,
 				},
-				Spec: *taskrun.Status.TaskSpec,
+				Spec: internalspec,
 			}, refSource, nil, nil
 		}
 	}
@@ -93,7 +99,7 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 	case tr != nil && tr.Resolver != "" && requester != nil:
 		// Return an inline function that implements GetTask by calling Resolver.Get with the specified task type and
 		// casting it to a TaskObject.
-		return func(ctx context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+		return func(ctx context.Context, name string) (*internalversion.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 			var replacedParams v1.Params
 			if ownerAsTR, ok := owner.(*v1.TaskRun); ok {
 				stringReplacements, arrayReplacements := paramsFromTaskRun(ctx, ownerAsTR)
@@ -127,7 +133,7 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 // An error is returned if the remoteresource doesn't work
 // A VerificationResult is returned if trusted resources is enabled, VerificationResult contains the result type and err.
 // or the returned data isn't a valid *v1beta1.Task.
-func resolveTask(ctx context.Context, resolver remote.Resolver, name string, kind v1.TaskKind, k8s kubernetes.Interface, verificationPolicies []*v1alpha1.VerificationPolicy) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+func resolveTask(ctx context.Context, resolver remote.Resolver, name string, kind v1.TaskKind, k8s kubernetes.Interface, verificationPolicies []*v1alpha1.VerificationPolicy) (*internalversion.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 	// Because the resolver will only return references with the same kind (eg ClusterTask), this will ensure we
 	// don't accidentally return a Task with the same name but different kind.
 	obj, refSource, err := resolver.Get(ctx, strings.TrimSuffix(strings.ToLower(string(kind)), "s"), name)
@@ -150,34 +156,51 @@ func resolveTask(ctx context.Context, resolver remote.Resolver, name string, kin
 // A VerificationResult is returned if trusted resources is enabled, VerificationResult contains the result type and err.
 // v1beta1 task will be verified by trusted resources if the feature is enabled
 // TODO(#5541): convert v1beta1 obj to v1 once we use v1 as the stored version
-func readRuntimeObjectAsTask(ctx context.Context, obj runtime.Object, k8s kubernetes.Interface, refSource *v1.RefSource, verificationPolicies []*v1alpha1.VerificationPolicy) (*v1.Task, *trustedresources.VerificationResult, error) {
+func readRuntimeObjectAsTask(ctx context.Context, obj runtime.Object, k8s kubernetes.Interface, refSource *v1.RefSource, verificationPolicies []*v1alpha1.VerificationPolicy) (*internalversion.Task, *trustedresources.VerificationResult, error) {
+	t := &v1.Task{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Task",
+			APIVersion: "tekton.dev/v1",
+		},
+	}
+	var vr trustedresources.VerificationResult
+	var err error
 	switch obj := obj.(type) {
 	case *v1beta1.Task:
 		// Verify the Task once we fetch from the remote resolution, mutating, validation and conversion of the task should happen after the verification, since signatures are based on the remote task contents
-		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
-		t := &v1.Task{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Task",
-				APIVersion: "tekton.dev/v1",
-			},
-		}
+		vr = trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
+
 		if err := obj.ConvertTo(ctx, t); err != nil {
 			return nil, nil, fmt.Errorf("failed to convert obj %s into Pipeline", obj.GetObjectKind().GroupVersionKind().String())
 		}
-		return t, &vr, nil
+		//return t, &vr, nil
 	case *v1beta1.ClusterTask:
-		t, err := convertClusterTaskToTask(ctx, *obj)
-		return t, nil, err
+		t, err = convertClusterTaskToTask(ctx, *obj)
+		if err != nil {
+			return nil, nil, err
+		}
+		//return t, nil, err
 	case *v1.Task:
-		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
+		vr = trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
 		// Validation of beta fields must happen before the V1 Task is converted into the storage version of the API.
 		// TODO(#6592): Decouple API versioning from feature versioning
 		if err := obj.Spec.ValidateBetaFields(ctx); err != nil {
 			return nil, nil, fmt.Errorf("invalid Task %s: %w", obj.GetName(), err)
 		}
-		return obj, &vr, nil
+		t = obj
+		//return obj, &vr, nil
 	}
-	return nil, nil, errors.New("resource is not a task")
+
+	internalTask := &internalversion.Task{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: runtime.APIVersionInternal,
+			Kind:       "Task",
+		}}
+	err = v1.Convert_v1_Task_To_internalversion_Task(t, internalTask, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	return internalTask, &vr, nil
 }
 
 // LocalTaskRefResolver uses the current cluster to resolve a task reference.
@@ -190,14 +213,23 @@ type LocalTaskRefResolver struct {
 // GetTask will resolve either a Task or ClusterTask from the local cluster using a versioned Tekton client. It will
 // return an error if it can't find an appropriate Task for any reason.
 // TODO(#6666): support local task verification
-func (l *LocalTaskRefResolver) GetTask(ctx context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+func (l *LocalTaskRefResolver) GetTask(ctx context.Context, name string) (*internalversion.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 	if l.Kind == v1.ClusterTaskRefKind {
 		task, err := l.Tektonclient.TektonV1beta1().ClusterTasks().Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		v1task, err := convertClusterTaskToTask(ctx, *task)
-		return v1task, nil, nil, err
+		internalTask := &internalversion.Task{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: runtime.APIVersionInternal,
+				Kind:       "Task",
+			}}
+		err = v1.Convert_v1_Task_To_internalversion_Task(v1task, internalTask, nil)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		return internalTask, nil, nil, err
 	}
 
 	// If we are going to resolve this reference locally, we need a namespace scope.
@@ -208,7 +240,18 @@ func (l *LocalTaskRefResolver) GetTask(ctx context.Context, name string) (*v1.Ta
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	return task, nil, nil, nil
+
+	internalTask := &internalversion.Task{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: runtime.APIVersionInternal,
+			Kind:       "Task",
+		}}
+	err = v1.Convert_v1_Task_To_internalversion_Task(task, internalTask, nil)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return internalTask, nil, nil, nil
 }
 
 // IsGetTaskErrTransient returns true if an error returned by GetTask is retryable.

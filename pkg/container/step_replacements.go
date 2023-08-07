@@ -17,14 +17,14 @@
 package container
 
 import (
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internalversion"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 )
 
 // ApplyStepReplacements applies variable interpolation on a Step.
-func ApplyStepReplacements(step *v1.Step, stringReplacements map[string]string, arrayReplacements map[string][]string) {
+func ApplyStepReplacements(step *internalversion.Step, stringReplacements map[string]string, arrayReplacements map[string][]string) {
 	step.Script = substitution.ApplyReplacements(step.Script, stringReplacements)
-	step.OnError = (v1.OnErrorType)(substitution.ApplyReplacements(string(step.OnError), stringReplacements))
+	step.OnError = (internalversion.OnErrorType)(substitution.ApplyReplacements(string(step.OnError), stringReplacements))
 	if step.StdoutConfig != nil {
 		step.StdoutConfig.Path = substitution.ApplyReplacements(step.StdoutConfig.Path, stringReplacements)
 	}
@@ -35,7 +35,7 @@ func ApplyStepReplacements(step *v1.Step, stringReplacements map[string]string, 
 }
 
 // ApplyStepTemplateReplacements applies variable interpolation on a StepTemplate (aka a container)
-func ApplyStepTemplateReplacements(stepTemplate *v1.StepTemplate, stringReplacements map[string]string, arrayReplacements map[string][]string) {
+func ApplyStepTemplateReplacements(stepTemplate *internalversion.StepTemplate, stringReplacements map[string]string, arrayReplacements map[string][]string) {
 	container := stepTemplate.ToK8sContainer()
 	applyContainerReplacements(container, stringReplacements, arrayReplacements)
 	stepTemplate.SetContainerFields(*container)

@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internalversion"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
@@ -32,7 +33,7 @@ import (
 
 // validateParams validates that all Pipeline Task, Matrix.Params and Matrix.Include parameters all have values, match the specified
 // type and object params have all the keys required
-func validateParams(ctx context.Context, paramSpecs []v1.ParamSpec, params v1.Params, matrixParams v1.Params) error {
+func validateParams(ctx context.Context, paramSpecs []internalversion.ParamSpec, params internalversion.Params, matrixParams internalversion.Params) error {
 	if paramSpecs == nil {
 		return nil
 	}
@@ -53,9 +54,9 @@ func validateParams(ctx context.Context, paramSpecs []v1.ParamSpec, params v1.Pa
 }
 
 // neededParamsNamesAndTypes returns the needed parameter names and types based on the paramSpec
-func neededParamsNamesAndTypes(paramSpecs []v1.ParamSpec) (sets.String, map[string]v1.ParamType) {
+func neededParamsNamesAndTypes(paramSpecs []internalversion.ParamSpec) (sets.String, map[string]internalversion.ParamType) {
 	neededParamsNames := sets.String{}
-	neededParamsTypes := make(map[string]v1.ParamType)
+	neededParamsTypes := make(map[string]internalversion.ParamType)
 	for _, inputResourceParam := range paramSpecs {
 		neededParamsNames.Insert(inputResourceParam.Name)
 		neededParamsTypes[inputResourceParam.Name] = inputResourceParam.Type
@@ -65,7 +66,7 @@ func neededParamsNamesAndTypes(paramSpecs []v1.ParamSpec) (sets.String, map[stri
 
 // missingParamsNames returns a slice of missing parameter names that have not been declared with a default value
 // in the paramSpec
-func missingParamsNames(neededParams sets.String, providedParams sets.String, paramSpecs []v1.ParamSpec) []string {
+func missingParamsNames(neededParams sets.String, providedParams sets.String, paramSpecs []internalversion.ParamSpec) []string {
 	missingParamsNames := neededParams.Difference(providedParams)
 	var missingParamsNamesWithNoDefaults []string
 	for _, inputResourceParam := range paramSpecs {
@@ -75,7 +76,7 @@ func missingParamsNames(neededParams sets.String, providedParams sets.String, pa
 	}
 	return missingParamsNamesWithNoDefaults
 }
-func wrongTypeParamsNames(params []v1.Param, matrix v1.Params, neededParamsTypes map[string]v1.ParamType) []string {
+func wrongTypeParamsNames(params []internalversion.Param, matrix internalversion.Params, neededParamsTypes map[string]internalversion.ParamType) []string {
 	// TODO(#4723): validate that $(task.taskname.result.resultname) is invalid for array and object type.
 	// It should be used to refer string and need to add [*] to refer to array or object.
 	var wrongTypeParamNames []string
@@ -89,7 +90,7 @@ func wrongTypeParamsNames(params []v1.Param, matrix v1.Params, neededParamsTypes
 		// to pass array result to array param, yet in yaml format this will be
 		// unmarshalled to string for ParamValues. So we need to check and skip this validation.
 		// Please refer issue #4879 for more details and examples.
-		if param.Value.Type == v1.ParamTypeString && (neededParamsTypes[param.Name] == v1.ParamTypeArray || neededParamsTypes[param.Name] == v1.ParamTypeObject) && v1.VariableSubstitutionRegex.MatchString(param.Value.StringVal) {
+		if param.Value.Type == internalversion.ParamTypeString && (neededParamsTypes[param.Name] == internalversion.ParamTypeArray || neededParamsTypes[param.Name] == internalversion.ParamTypeObject) && v1.VariableSubstitutionRegex.MatchString(param.Value.StringVal) {
 			continue
 		}
 		if param.Value.Type != neededParamsTypes[param.Name] {
@@ -103,7 +104,7 @@ func wrongTypeParamsNames(params []v1.Param, matrix v1.Params, neededParamsTypes
 			continue
 		}
 		// Matrix param replacements must be of type String
-		if neededParamsTypes[param.Name] != v1.ParamTypeString {
+		if neededParamsTypes[param.Name] != internalversion.ParamTypeString {
 			wrongTypeParamNames = append(wrongTypeParamNames, param.Name)
 		}
 	}
@@ -111,12 +112,12 @@ func wrongTypeParamsNames(params []v1.Param, matrix v1.Params, neededParamsTypes
 }
 
 // MissingKeysObjectParamNames checks if all required keys of object type param definitions are provided in params or param definitions' defaults.
-func MissingKeysObjectParamNames(paramSpecs []v1.ParamSpec, params v1.Params) map[string][]string {
+func MissingKeysObjectParamNames(paramSpecs []internalversion.ParamSpec, params internalversion.Params) map[string][]string {
 	neededKeys := make(map[string][]string)
 	providedKeys := make(map[string][]string)
 
 	for _, spec := range paramSpecs {
-		if spec.Type == v1.ParamTypeObject {
+		if spec.Type == internalversion.ParamTypeObject {
 			// collect required keys from properties section
 			for key := range spec.Properties {
 				neededKeys[spec.Name] = append(neededKeys[spec.Name], key)
@@ -133,7 +134,7 @@ func MissingKeysObjectParamNames(paramSpecs []v1.ParamSpec, params v1.Params) ma
 
 	// collect provided keys from run level value
 	for _, p := range params {
-		if p.Value.Type == v1.ParamTypeObject {
+		if p.Value.Type == internalversion.ParamTypeObject {
 			for key := range p.Value.ObjectVal {
 				providedKeys[p.Name] = append(providedKeys[p.Name], key)
 			}
@@ -163,8 +164,8 @@ func findMissingKeys(neededKeys, providedKeys map[string][]string) map[string][]
 // ValidateResolvedTask validates that all parameters declared in the TaskSpec are present in the taskrun
 // It also validates that all parameters have values, parameter types match the specified type and
 // object params have all the keys required
-func ValidateResolvedTask(ctx context.Context, params []v1.Param, matrix *v1.Matrix, rtr *resources.ResolvedTask) error {
-	var paramSpecs v1.ParamSpecs
+func ValidateResolvedTask(ctx context.Context, params []internalversion.Param, matrix *internalversion.Matrix, rtr *resources.ResolvedTask) error {
+	var paramSpecs internalversion.ParamSpecs
 	if rtr != nil {
 		paramSpecs = rtr.TaskSpec.Params
 	}
@@ -174,7 +175,7 @@ func ValidateResolvedTask(ctx context.Context, params []v1.Param, matrix *v1.Mat
 	return nil
 }
 
-func validateTaskSpecRequestResources(taskSpec *v1.TaskSpec) error {
+func validateTaskSpecRequestResources(taskSpec *internalversion.TaskSpec) error {
 	if taskSpec != nil {
 		for _, step := range taskSpec.Steps {
 			for k, request := range step.ComputeResources.Requests {
@@ -199,13 +200,13 @@ func validateTaskSpecRequestResources(taskSpec *v1.TaskSpec) error {
 }
 
 // validateOverrides validates that all stepOverrides map to valid steps, and likewise for sidecarOverrides
-func validateOverrides(ts *v1.TaskSpec, trs *v1.TaskRunSpec) error {
+func validateOverrides(ts *internalversion.TaskSpec, trs *v1.TaskRunSpec) error {
 	stepErr := validateStepOverrides(ts, trs)
 	sidecarErr := validateSidecarOverrides(ts, trs)
 	return multierror.Append(stepErr, sidecarErr).ErrorOrNil()
 }
 
-func validateStepOverrides(ts *v1.TaskSpec, trs *v1.TaskRunSpec) error {
+func validateStepOverrides(ts *internalversion.TaskSpec, trs *v1.TaskRunSpec) error {
 	var err error
 	stepNames := sets.NewString()
 	for _, step := range ts.Steps {
@@ -219,7 +220,7 @@ func validateStepOverrides(ts *v1.TaskSpec, trs *v1.TaskRunSpec) error {
 	return err
 }
 
-func validateSidecarOverrides(ts *v1.TaskSpec, trs *v1.TaskRunSpec) error {
+func validateSidecarOverrides(ts *internalversion.TaskSpec, trs *v1.TaskRunSpec) error {
 	var err error
 	sidecarNames := sets.NewString()
 	for _, sidecar := range ts.Sidecars {
@@ -234,10 +235,12 @@ func validateSidecarOverrides(ts *v1.TaskSpec, trs *v1.TaskRunSpec) error {
 }
 
 // validateResults checks the emitted results type and object properties against the ones defined in spec.
-func validateTaskRunResults(tr *v1.TaskRun, resolvedTaskSpec *v1.TaskSpec) error {
-	specResults := []v1.TaskResult{}
+func validateTaskRunResults(tr *v1.TaskRun, resolvedTaskSpec *internalversion.TaskSpec) error {
+	specResults := []internalversion.TaskResult{}
 	if tr.Spec.TaskSpec != nil {
-		specResults = append(specResults, tr.Spec.TaskSpec.Results...)
+		ts := &internalversion.TaskSpec{}
+		v1.Convert_v1_TaskSpec_To_internalversion_TaskSpec(tr.Spec.TaskSpec, ts, nil)
+		specResults = append(specResults, ts.Results...)
 	}
 
 	if resolvedTaskSpec != nil {
@@ -262,7 +265,7 @@ func validateTaskRunResults(tr *v1.TaskRun, resolvedTaskSpec *v1.TaskSpec) error
 }
 
 // mismatchedTypesResults checks and returns all the mismatched types of emitted results against specified results.
-func mismatchedTypesResults(tr *v1.TaskRun, specResults []v1.TaskResult) map[string]string {
+func mismatchedTypesResults(tr *v1.TaskRun, specResults []internalversion.TaskResult) map[string]string {
 	neededTypes := make(map[string]string)
 	mismatchedTypes := make(map[string]string)
 	var filteredResults []v1.TaskRunResult
@@ -287,7 +290,7 @@ func mismatchedTypesResults(tr *v1.TaskRun, specResults []v1.TaskResult) map[str
 }
 
 // missingKeysofObjectResults checks and returns the missing keys of object results.
-func missingKeysofObjectResults(tr *v1.TaskRun, specResults []v1.TaskResult) map[string][]string {
+func missingKeysofObjectResults(tr *v1.TaskRun, specResults []internalversion.TaskResult) map[string][]string {
 	neededKeys := make(map[string][]string)
 	providedKeys := make(map[string][]string)
 	// collect needed keys for object results

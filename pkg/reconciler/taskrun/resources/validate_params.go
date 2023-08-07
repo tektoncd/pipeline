@@ -3,6 +3,7 @@ package resources
 import (
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internalversion"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -13,7 +14,7 @@ import (
 // e.g. if a param reference of $(params.array-param[2]) and the array param is of length 2.
 // - `params` are params from taskrun.
 // - `ts` contains params declarations and references to array params.
-func ValidateParamArrayIndex(ts *v1.TaskSpec, params v1.Params) error {
+func ValidateParamArrayIndex(ts *internalversion.TaskSpec, params v1.Params) error {
 	return ValidateOutOfBoundArrayParams(ts.Params, params, ts.GetIndexingReferencesToArrayParams())
 }
 
@@ -21,7 +22,7 @@ func ValidateParamArrayIndex(ts *v1.TaskSpec, params v1.Params) error {
 // based on the param declarations, the parameters passed in at runtime, and the indexing references
 // to array params from a task or pipeline spec.
 // Example of arrayIndexingReferences: ["$(params.a-array-param[1])", "$(params.b-array-param[2])"]
-func ValidateOutOfBoundArrayParams(declarations v1.ParamSpecs, params v1.Params, arrayIndexingReferences sets.String) error {
+func ValidateOutOfBoundArrayParams(declarations internalversion.ParamSpecs, params v1.Params, arrayIndexingReferences sets.String) error {
 	arrayParamLengths := declarations.ExtractDefaultParamArrayLengths()
 	for k, v := range params.ExtractParamArrayLengths() {
 		arrayParamLengths[k] = v

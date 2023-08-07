@@ -28,6 +28,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internalversion"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -114,7 +115,7 @@ var (
 // command, we must have fetched the image's ENTRYPOINT before calling this
 // method, using entrypoint_lookup.go.
 // Additionally, Step timeouts are added as entrypoint flag.
-func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1.TaskSpec, breakpointConfig *v1.TaskRunDebug, waitForReadyAnnotation bool) ([]corev1.Container, error) {
+func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *internalversion.TaskSpec, breakpointConfig *v1.TaskRunDebug, waitForReadyAnnotation bool) ([]corev1.Container, error) {
 	if len(steps) == 0 {
 		return nil, errors.New("No steps specified")
 	}
@@ -143,7 +144,7 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 		if taskSpec != nil {
 			if taskSpec.Steps != nil && len(taskSpec.Steps) >= i+1 {
 				if taskSpec.Steps[i].OnError != "" {
-					if taskSpec.Steps[i].OnError != v1.Continue && taskSpec.Steps[i].OnError != v1.StopAndFail {
+					if taskSpec.Steps[i].OnError != internalversion.Continue && taskSpec.Steps[i].OnError != internalversion.StopAndFail {
 						return nil, fmt.Errorf("task step onError must be either \"%s\" or \"%s\" but it is set to an invalid value \"%s\"",
 							v1.Continue, v1.StopAndFail, taskSpec.Steps[i].OnError)
 					}
@@ -194,14 +195,14 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 	return steps, nil
 }
 
-func resultArgument(steps []corev1.Container, results []v1.TaskResult) []string {
+func resultArgument(steps []corev1.Container, results []internalversion.TaskResult) []string {
 	if len(results) == 0 {
 		return nil
 	}
 	return []string{"-results", collectResultsName(results)}
 }
 
-func collectResultsName(results []v1.TaskResult) string {
+func collectResultsName(results []internalversion.TaskResult) string {
 	var resultNames []string
 	for _, r := range results {
 		resultNames = append(resultNames, r.Name)

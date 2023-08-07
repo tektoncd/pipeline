@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internalversion"
 	"github.com/tektoncd/pipeline/pkg/container"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -35,7 +35,7 @@ func TestApplyStepReplacements(t *testing.T) {
 		"array.replace.me": {"val1", "val2"},
 	}
 
-	s := v1.Step{
+	s := internalversion.Step{
 		Script:     "$(replace.me)",
 		Name:       "$(replace.me)",
 		Image:      "$(replace.me)",
@@ -78,15 +78,15 @@ func TestApplyStepReplacements(t *testing.T) {
 			MountPath: "$(replace.me)",
 			SubPath:   "$(replace.me)",
 		}},
-		StdoutConfig: &v1.StepOutputConfig{
+		StdoutConfig: &internalversion.StepOutputConfig{
 			Path: "$(workspaces.data.path)/stdout.txt",
 		},
-		StderrConfig: &v1.StepOutputConfig{
+		StderrConfig: &internalversion.StepOutputConfig{
 			Path: "$(workspaces.data.path)/stderr.txt",
 		},
 	}
 
-	expected := v1.Step{
+	expected := internalversion.Step{
 		Script:     "replaced!",
 		Name:       "replaced!",
 		Image:      "replaced!",
@@ -129,10 +129,10 @@ func TestApplyStepReplacements(t *testing.T) {
 			MountPath: "replaced!",
 			SubPath:   "replaced!",
 		}},
-		StdoutConfig: &v1.StepOutputConfig{
+		StdoutConfig: &internalversion.StepOutputConfig{
 			Path: "/workspace/data/stdout.txt",
 		},
-		StderrConfig: &v1.StepOutputConfig{
+		StderrConfig: &internalversion.StepOutputConfig{
 			Path: "/workspace/data/stderr.txt",
 		},
 	}

@@ -23,6 +23,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internalversion"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
@@ -582,7 +583,12 @@ func resolveTask(
 	if pipelineTask.TaskRef != nil {
 		// If the TaskRun has already a stored TaskSpec in its status, use it as source of truth
 		if taskRun != nil && taskRun.Status.TaskSpec != nil {
-			rt.TaskSpec = taskRun.Status.TaskSpec
+			internalts := &internalversion.TaskSpec{}
+			err := v1.Convert_v1_TaskSpec_To_internalversion_TaskSpec(taskRun.Status.TaskSpec, internalts, nil)
+			if err != nil {
+				return nil, err
+			}
+			rt.TaskSpec = internalts
 			rt.TaskName = pipelineTask.TaskRef.Name
 		} else {
 			// Following minimum status principle (TEP-0100), no need to propagate the RefSource about PipelineTask up to PipelineRun status.
@@ -605,7 +611,12 @@ func resolveTask(
 		}
 		rt.Kind = pipelineTask.TaskRef.Kind
 	} else {
-		rt.TaskSpec = &pipelineTask.TaskSpec.TaskSpec
+		internalts := &internalversion.TaskSpec{}
+		err := v1.Convert_v1_TaskSpec_To_internalversion_TaskSpec(&pipelineTask.TaskSpec.TaskSpec, internalts, nil)
+		if err != nil {
+			return nil, err
+		}
+		rt.TaskSpec = internalts
 	}
 	rt.TaskSpec.SetDefaults(ctx)
 	return rt, nil

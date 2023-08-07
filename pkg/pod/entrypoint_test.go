@@ -25,6 +25,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internalversion"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -253,8 +254,8 @@ func TestOrderContainersWithDebugOnFailure(t *testing.T) {
 }
 
 func TestEntryPointResults(t *testing.T) {
-	taskSpec := v1.TaskSpec{
-		Results: []v1.TaskResult{{
+	taskSpec := internalversion.TaskSpec{
+		Results: []internalversion.TaskResult{{
 			Name:        "sum",
 			Description: "This is the sum result of the task",
 		}, {
@@ -331,8 +332,8 @@ func TestEntryPointResults(t *testing.T) {
 }
 
 func TestEntryPointResultsSingleStep(t *testing.T) {
-	taskSpec := v1.TaskSpec{
-		Results: []v1.TaskResult{{
+	taskSpec := internalversion.TaskSpec{
+		Results: []internalversion.TaskResult{{
 			Name:        "sum",
 			Description: "This is the sum result of the task",
 		}, {
@@ -371,8 +372,8 @@ func TestEntryPointResultsSingleStep(t *testing.T) {
 	}
 }
 func TestEntryPointSingleResultsSingleStep(t *testing.T) {
-	taskSpec := v1.TaskSpec{
-		Results: []v1.TaskResult{{
+	taskSpec := internalversion.TaskSpec{
+		Results: []internalversion.TaskResult{{
 			Name:        "sum",
 			Description: "This is the sum result of the task",
 		}},
@@ -421,15 +422,15 @@ func TestEntryPointOnError(t *testing.T) {
 
 	for _, tc := range []struct {
 		desc           string
-		taskSpec       v1.TaskSpec
+		taskSpec       internalversion.TaskSpec
 		wantContainers []corev1.Container
 		err            error
 	}{{
-		taskSpec: v1.TaskSpec{
-			Steps: []v1.Step{{
-				OnError: v1.Continue,
+		taskSpec: internalversion.TaskSpec{
+			Steps: []internalversion.Step{{
+				OnError: internalversion.Continue,
 			}, {
-				OnError: v1.StopAndFail,
+				OnError: internalversion.StopAndFail,
 			}},
 		},
 		wantContainers: []corev1.Container{{
@@ -462,8 +463,8 @@ func TestEntryPointOnError(t *testing.T) {
 			TerminationMessagePath: "/tekton/termination",
 		}},
 	}, {
-		taskSpec: v1.TaskSpec{
-			Steps: []v1.Step{{
+		taskSpec: internalversion.TaskSpec{
+			Steps: []internalversion.Step{{
 				OnError: "invalid-on-error",
 			}},
 		},
@@ -491,20 +492,20 @@ func TestEntryPointOnError(t *testing.T) {
 }
 
 func TestEntryPointStepOutputConfigs(t *testing.T) {
-	taskSpec := v1.TaskSpec{
-		Steps: []v1.Step{{
-			StdoutConfig: &v1.StepOutputConfig{
+	taskSpec := internalversion.TaskSpec{
+		Steps: []internalversion.Step{{
+			StdoutConfig: &internalversion.StepOutputConfig{
 				Path: "step-1-out",
 			},
 		}, {
-			StderrConfig: &v1.StepOutputConfig{
+			StderrConfig: &internalversion.StepOutputConfig{
 				Path: "step-2-err",
 			},
 		}, {
-			StdoutConfig: &v1.StepOutputConfig{
+			StdoutConfig: &internalversion.StepOutputConfig{
 				Path: "step-3-out",
 			},
-			StderrConfig: &v1.StepOutputConfig{
+			StderrConfig: &internalversion.StepOutputConfig{
 				Path: "step-3-err",
 			},
 		}},

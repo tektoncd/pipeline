@@ -28,6 +28,7 @@ import (
 	"github.com/tektoncd/pipeline/internal/sidecarlogresults"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internalversion"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/result"
 	"github.com/tektoncd/pipeline/pkg/termination"
@@ -116,7 +117,7 @@ func SidecarsReady(podStatus corev1.PodStatus) bool {
 }
 
 // MakeTaskRunStatus returns a TaskRunStatus based on the Pod's status.
-func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.TaskRun, pod *corev1.Pod, kubeclient kubernetes.Interface, ts *v1.TaskSpec) (v1.TaskRunStatus, error) {
+func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.TaskRun, pod *corev1.Pod, kubeclient kubernetes.Interface, ts *internalversion.TaskSpec) (v1.TaskRunStatus, error) {
 	trs := &tr.Status
 	if trs.GetCondition(apis.ConditionSucceeded) == nil || trs.GetCondition(apis.ConditionSucceeded).Status == corev1.ConditionUnknown {
 		// If the taskRunStatus doesn't exist yet, it's because we just started running
@@ -159,14 +160,20 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.Tas
 	return *trs, merr.ErrorOrNil()
 }
 
-func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredLogger, stepStatuses []corev1.ContainerStatus, tr *v1.TaskRun, podPhase corev1.PodPhase, kubeclient kubernetes.Interface, ts *v1.TaskSpec) *multierror.Error {
+func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredLogger, stepStatuses []corev1.ContainerStatus, tr *v1.TaskRun, podPhase corev1.PodPhase, kubeclient kubernetes.Interface, ts *internalversion.TaskSpec) *multierror.Error {
 	trs := &tr.Status
 	var merr *multierror.Error
 
 	// collect results from taskrun spec and taskspec
-	specResults := []v1.TaskResult{}
+	specResults := []internalversion.TaskResult{}
+
 	if tr.Spec.TaskSpec != nil {
-		specResults = append(specResults, tr.Spec.TaskSpec.Results...)
+		internalts := &internalversion.TaskSpec{}
+		err := v1.Convert_v1_TaskSpec_To_internalversion_TaskSpec(tr.Spec.TaskSpec, internalts, nil)
+		if err != nil {
+			merr = multierror.Append(merr, err)
+		}
+		specResults = append(specResults, internalts.Results...)
 	}
 	if ts != nil {
 		specResults = append(specResults, ts.Results...)
@@ -265,10 +272,10 @@ func createMessageFromResults(results []result.RunResult) (string, error) {
 // filterResults filters the RunResults and TaskResults based on the results declared in the task spec.
 // It returns a slice of any of the input results that are defined in the task spec, converted to TaskRunResults,
 // and a slice of any of the RunResults that don't represent internal values (i.e. those that should not be displayed in the TaskRun status.
-func filterResults(results []result.RunResult, specResults []v1.TaskResult) ([]v1.TaskRunResult, []result.RunResult) {
+func filterResults(results []result.RunResult, specResults []internalversion.TaskResult) ([]v1.TaskRunResult, []result.RunResult) {
 	var taskResults []v1.TaskRunResult
 	var filteredResults []result.RunResult
-	neededTypes := make(map[string]v1.ResultsType)
+	neededTypes := make(map[string]internalversion.ResultsType)
 	for _, r := range specResults {
 		neededTypes[r.Name] = r.Type
 	}
@@ -276,7 +283,7 @@ func filterResults(results []result.RunResult, specResults []v1.TaskResult) ([]v
 		switch r.ResultType {
 		case result.TaskRunResultType:
 			var taskRunResult v1.TaskRunResult
-			if neededTypes[r.Key] == v1.ResultsTypeString {
+			if neededTypes[r.Key] == internalversion.ResultsTypeString {
 				taskRunResult = v1.TaskRunResult{
 					Name:  r.Key,
 					Type:  v1.ResultsTypeString,

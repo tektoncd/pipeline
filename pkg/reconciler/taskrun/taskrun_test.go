@@ -40,6 +40,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internalversion"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -2029,7 +2030,16 @@ func makePod(taskRun *v1.TaskRun, task *v1.Task) (*corev1.Pod, error) {
 		KubeClient:      kubeclient,
 		EntrypointCache: entrypointCache,
 	}
-	return builder.Build(context.Background(), taskRun, task.Spec)
+	internalTask := &internalversion.Task{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: runtime.APIVersionInternal,
+			Kind:       "Task",
+		}}
+	err = v1.Convert_v1_Task_To_internalversion_Task(task, internalTask, nil)
+	if err != nil {
+		return nil, err
+	}
+	return builder.Build(context.Background(), taskRun, internalTask.Spec)
 }
 
 func TestReconcilePodUpdateStatus(t *testing.T) {
@@ -2616,6 +2626,17 @@ spec:
     readOnly: true
 `)
 
+	internalSimpleTask := &internalversion.Task{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: runtime.APIVersionInternal,
+			Kind:       "Task",
+		},
+	}
+	err := v1.Convert_v1_Task_To_internalversion_Task(simpleTask, internalSimpleTask, nil)
+	if err != nil {
+		t.Error(err)
+	}
+
 	taskRun := parse.MustParseV1TaskRun(t, `
 metadata:
   name: test-taskrun-not-started
@@ -2664,7 +2685,7 @@ spec:
 	rtr := &resources.ResolvedTask{
 		TaskName: "test-task",
 		Kind:     "Task",
-		TaskSpec: &v1.TaskSpec{Steps: simpleTask.Spec.Steps, Workspaces: simpleTask.Spec.Workspaces},
+		TaskSpec: &internalversion.TaskSpec{Steps: internalSimpleTask.Spec.Steps, Workspaces: internalSimpleTask.Spec.Workspaces},
 	}
 	ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
 	workspaceVolumes := workspace.CreateVolumes(taskRun.Spec.Workspaces)
@@ -2720,6 +2741,17 @@ spec:
     readOnly: true
 `)
 
+	internalSimpleTask := &internalversion.Task{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: runtime.APIVersionInternal,
+			Kind:       "Task",
+		},
+	}
+	err := v1.Convert_v1_Task_To_internalversion_Task(simpleTask, internalSimpleTask, nil)
+	if err != nil {
+		t.Error(err)
+	}
+
 	// The parameter values will cause the two Workspaces to have duplicate mount path values after the parameters are expanded.
 	taskRun := parse.MustParseV1TaskRun(t, `
 metadata:
@@ -2773,7 +2805,7 @@ spec:
 	rtr := &resources.ResolvedTask{
 		TaskName: "test-task",
 		Kind:     "Task",
-		TaskSpec: &v1.TaskSpec{Steps: simpleTask.Spec.Steps, Workspaces: simpleTask.Spec.Workspaces},
+		TaskSpec: &internalversion.TaskSpec{Steps: internalSimpleTask.Spec.Steps, Workspaces: internalSimpleTask.Spec.Workspaces},
 	}
 
 	workspaceVolumes := workspace.CreateVolumes(taskRun.Spec.Workspaces)
@@ -3822,7 +3854,10 @@ spec:
 	ts := v1.TaskSpec{
 		Description: "foo-task",
 	}
-	ts1 := v1.TaskSpec{
+	internalts := internalversion.TaskSpec{
+		Description: "foo-task",
+	}
+	internalts1 := internalversion.TaskSpec{
 		Description: "bar-task",
 	}
 
@@ -3839,7 +3874,7 @@ spec:
 	want.ObjectMeta.Labels["tekton.dev/task"] = tr.ObjectMeta.Name
 
 	type args struct {
-		taskSpec           *v1.TaskSpec
+		taskSpec           *internalversion.TaskSpec
 		resolvedObjectMeta *resolutionutil.ResolvedObjectMeta
 	}
 
@@ -3852,14 +3887,14 @@ spec:
 		{
 			name: "spec and refSource are available in the same reconcile",
 			reconcile1Args: &args{
-				taskSpec: &ts,
+				taskSpec: &internalts,
 				resolvedObjectMeta: &resolutionutil.ResolvedObjectMeta{
 					ObjectMeta: &tr.ObjectMeta,
 					RefSource:  refSource.DeepCopy(),
 				},
 			},
 			reconcile2Args: &args{
-				taskSpec:           &ts1,
+				taskSpec:           &internalts1,
 				resolvedObjectMeta: &resolutionutil.ResolvedObjectMeta{},
 			},
 			wantTaskRun: want,
@@ -3867,13 +3902,13 @@ spec:
 		{
 			name: "spec comes in the first reconcile and refSource comes in next reconcile",
 			reconcile1Args: &args{
-				taskSpec: &ts,
+				taskSpec: &internalts,
 				resolvedObjectMeta: &resolutionutil.ResolvedObjectMeta{
 					ObjectMeta: &tr.ObjectMeta,
 				},
 			},
 			reconcile2Args: &args{
-				taskSpec: &ts,
+				taskSpec: &internalts,
 				resolvedObjectMeta: &resolutionutil.ResolvedObjectMeta{
 					RefSource: refSource.DeepCopy(),
 				},
@@ -3918,7 +3953,7 @@ func Test_storeTaskSpec_metadata(t *testing.T) {
 		ObjectMeta: &metav1.ObjectMeta{Labels: tasklabels, Annotations: taskannotations},
 	}
 
-	if err := storeTaskSpecAndMergeMeta(context.Background(), tr, &v1.TaskSpec{}, &resolvedMeta); err != nil {
+	if err := storeTaskSpecAndMergeMeta(context.Background(), tr, &internalversion.TaskSpec{}, &resolvedMeta); err != nil {
 		t.Errorf("storeTaskSpecAndMergeMeta error = %v", err)
 	}
 	if d := cmp.Diff(tr.ObjectMeta.Labels, wantedlabels); d != "" {
@@ -4210,16 +4245,16 @@ status:
 func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 	tcs := []struct {
 		name     string
-		taskSpec *v1.TaskSpec
+		taskSpec *internalversion.TaskSpec
 	}{{
 		name: "no requested resources",
-		taskSpec: &v1.TaskSpec{
-			Steps: []v1.Step{
+		taskSpec: &internalversion.TaskSpec{
+			Steps: []internalversion.Step{
 				{
 					Image:   "image",
 					Command: []string{"cmd"},
 				}},
-			StepTemplate: &v1.StepTemplate{
+			StepTemplate: &internalversion.StepTemplate{
 				ComputeResources: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("4"),
@@ -4230,8 +4265,8 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 		},
 	}, {
 		name: "no limit configured",
-		taskSpec: &v1.TaskSpec{
-			Steps: []v1.Step{{
+		taskSpec: &internalversion.TaskSpec{
+			Steps: []internalversion.Step{{
 				Image:   "image",
 				Command: []string{"cmd"},
 				ComputeResources: corev1.ResourceRequirements{
@@ -4244,8 +4279,8 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 		},
 	}, {
 		name: "request less or equal than step limit but larger than steptemplate limit",
-		taskSpec: &v1.TaskSpec{
-			Steps: []v1.Step{{
+		taskSpec: &internalversion.TaskSpec{
+			Steps: []internalversion.Step{{
 				Image:   "image",
 				Command: []string{"cmd"},
 				ComputeResources: corev1.ResourceRequirements{
@@ -4259,7 +4294,7 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 					},
 				},
 			}},
-			StepTemplate: &v1.StepTemplate{
+			StepTemplate: &internalversion.StepTemplate{
 				ComputeResources: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("4"),
@@ -4270,8 +4305,8 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 		},
 	}, {
 		name: "request less or equal than step limit",
-		taskSpec: &v1.TaskSpec{
-			Steps: []v1.Step{{
+		taskSpec: &internalversion.TaskSpec{
+			Steps: []internalversion.Step{{
 				Image:   "image",
 				Command: []string{"cmd"},
 				ComputeResources: corev1.ResourceRequirements{
@@ -4288,8 +4323,8 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 		},
 	}, {
 		name: "request less or equal than steptemplate limit",
-		taskSpec: &v1.TaskSpec{
-			Steps: []v1.Step{{
+		taskSpec: &internalversion.TaskSpec{
+			Steps: []internalversion.Step{{
 				Image:   "image",
 				Command: []string{"cmd"},
 				ComputeResources: corev1.ResourceRequirements{
@@ -4299,7 +4334,7 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 					},
 				},
 			}},
-			StepTemplate: &v1.StepTemplate{
+			StepTemplate: &internalversion.StepTemplate{
 				ComputeResources: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("8"),
@@ -4322,11 +4357,11 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 func Test_validateTaskSpecRequestResources_InvalidResources(t *testing.T) {
 	tcs := []struct {
 		name     string
-		taskSpec *v1.TaskSpec
+		taskSpec *internalversion.TaskSpec
 	}{{
 		name: "step request larger than step limit",
-		taskSpec: &v1.TaskSpec{
-			Steps: []v1.Step{{
+		taskSpec: &internalversion.TaskSpec{
+			Steps: []internalversion.Step{{
 				Image:   "image",
 				Command: []string{"cmd"},
 				ComputeResources: corev1.ResourceRequirements{
@@ -4342,8 +4377,8 @@ func Test_validateTaskSpecRequestResources_InvalidResources(t *testing.T) {
 			}}},
 	}, {
 		name: "step request larger than steptemplate limit",
-		taskSpec: &v1.TaskSpec{
-			Steps: []v1.Step{{
+		taskSpec: &internalversion.TaskSpec{
+			Steps: []internalversion.Step{{
 				Image:   "image",
 				Command: []string{"cmd"},
 				ComputeResources: corev1.ResourceRequirements{
@@ -4353,7 +4388,7 @@ func Test_validateTaskSpecRequestResources_InvalidResources(t *testing.T) {
 					},
 				},
 			}},
-			StepTemplate: &v1.StepTemplate{
+			StepTemplate: &internalversion.StepTemplate{
 				ComputeResources: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("8"),

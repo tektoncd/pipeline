@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internalversion"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
@@ -1306,12 +1307,12 @@ func TestPipelineRunState_CompletedOrSkippedDAGTasks(t *testing.T) {
 
 func buildPipelineStateWithLargeDependencyGraph(t *testing.T) PipelineRunState {
 	t.Helper()
-	var task = &v1.Task{
+	var task = &internalversion.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "task",
 		},
-		Spec: v1.TaskSpec{
-			Steps: []v1.Step{{
+		Spec: internalversion.TaskSpec{
+			Steps: []internalversion.Step{{
 				Name: "step1",
 			}},
 		},
@@ -1365,12 +1366,12 @@ func buildPipelineStateWithLargeDependencyGraph(t *testing.T) PipelineRunState {
 
 func buildPipelineStateWithMultipleTaskResults(t *testing.T, includeWhen bool) PipelineRunState {
 	t.Helper()
-	var task = &v1.Task{
+	var task = &internalversion.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "task",
 		},
-		Spec: v1.TaskSpec{
-			Steps: []v1.Step{{
+		Spec: internalversion.TaskSpec{
+			Steps: []internalversion.Step{{
 				Name: "step1",
 			}},
 		},

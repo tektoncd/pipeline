@@ -27,6 +27,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internalversion"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
@@ -47,7 +48,7 @@ import (
 func nopGetCustomRun(string) (*v1beta1.CustomRun, error) {
 	return nil, errors.New("GetRun should not be called")
 }
-func nopGetTask(context.Context, string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+func nopGetTask(context.Context, string) (*internalversion.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 	return nil, nil, nil, errors.New("GetTask should not be called")
 }
 func nopGetTaskRun(string) (*v1.TaskRun, error) {
@@ -181,12 +182,12 @@ var p = &v1.Pipeline{
 	},
 }
 
-var task = &v1.Task{
+var task = &internalversion.Task{
 	ObjectMeta: metav1.ObjectMeta{
 		Name: "task",
 	},
-	Spec: v1.TaskSpec{
-		Steps: []v1.Step{{
+	Spec: internalversion.TaskSpec{
+		Steps: []internalversion.Step{{
 			Name: "step1",
 		}},
 	},
@@ -2387,7 +2388,7 @@ func TestResolvePipelineRun_PipelineTaskHasNoResources(t *testing.T) {
 		TaskRef: &v1.TaskRef{Name: "task"},
 	}}
 
-	getTask := func(ctx context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+	getTask := func(ctx context.Context, name string) (*internalversion.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return task, nil, nil, nil
 	}
 	getTaskRun := func(name string) (*v1.TaskRun, error) { return &trs[0], nil }
@@ -2437,7 +2438,7 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 		}}}
 
 	// Return an error when the Task is retrieved, as if it didn't exist
-	getTask := func(ctx context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+	getTask := func(ctx context.Context, name string) (*internalversion.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return nil, nil, nil, kerrors.NewNotFound(v1.Resource("task"), name)
 	}
 	getTaskRun := func(name string) (*v1.TaskRun, error) {
@@ -2479,7 +2480,7 @@ func TestResolvePipelineRun_VerificationFailed(t *testing.T) {
 			}},
 		}}}
 	verificationResult := &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationError, Err: trustedresources.ErrResourceVerificationFailed}
-	getTask := func(ctx context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+	getTask := func(ctx context.Context, name string) (*internalversion.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return task, nil, verificationResult, nil
 	}
 	getTaskRun := func(name string) (*v1.TaskRun, error) { return nil, nil } //nolint:nilnil
@@ -2713,7 +2714,7 @@ func TestResolvePipeline_WhenExpressions(t *testing.T) {
 		When:    []v1.WhenExpression{ptwe1},
 	}
 
-	getTask := func(_ context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+	getTask := func(_ context.Context, name string) (*internalversion.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return task, nil, nil, nil
 	}
 	pr := v1.PipelineRun{
@@ -2746,7 +2747,7 @@ func TestIsCustomTask(t *testing.T) {
 			Name: "pipelinerun",
 		},
 	}
-	getTask := func(ctx context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+	getTask := func(ctx context.Context, name string) (*internalversion.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return task, nil, nil, nil
 	}
 	getTaskRun := func(name string) (*v1.TaskRun, error) { return nil, nil }    //nolint:nilnil
@@ -3513,7 +3514,7 @@ func TestIsMatrixed(t *testing.T) {
 			Name: "pipelinerun",
 		},
 	}
-	getTask := func(ctx context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+	getTask := func(ctx context.Context, name string) (*internalversion.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return task, nil, nil, nil
 	}
 	getTaskRun := func(name string) (*v1.TaskRun, error) { return &trs[0], nil }
@@ -3653,7 +3654,7 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 
 	rtr := &resources.ResolvedTask{
 		TaskName: "task",
-		TaskSpec: &v1.TaskSpec{Steps: []v1.Step{{
+		TaskSpec: &internalversion.TaskSpec{Steps: []internalversion.Step{{
 			Name: "step1",
 		}}},
 	}
@@ -3686,7 +3687,7 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 		},
 	}}
 
-	getTask := func(ctx context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+	getTask := func(ctx context.Context, name string) (*internalversion.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return task, nil, nil, nil
 	}
 	getTaskRun := func(name string) (*v1.TaskRun, error) { return taskRunsMap[name], nil }
@@ -3836,7 +3837,7 @@ func TestResolvePipelineRunTask_WithMatrixedCustomTask(t *testing.T) {
 		},
 	}}
 
-	getTask := func(ctx context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+	getTask := func(ctx context.Context, name string) (*internalversion.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return task, nil, nil, nil
 	}
 	getTaskRun := func(name string) (*v1.TaskRun, error) { return &trs[0], nil }

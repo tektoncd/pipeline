@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internalversion"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/pkg/substitution"
@@ -81,7 +82,7 @@ func CreateVolumes(wb []v1.WorkspaceBinding) map[string]corev1.Volume {
 	return v
 }
 
-func getDeclaredWorkspace(name string, w []v1.WorkspaceDeclaration) (*v1.WorkspaceDeclaration, error) {
+func getDeclaredWorkspace(name string, w []internalversion.WorkspaceDeclaration) (*internalversion.WorkspaceDeclaration, error) {
 	for _, workspace := range w {
 		if workspace.Name == name {
 			return &workspace, nil
@@ -94,7 +95,7 @@ func getDeclaredWorkspace(name string, w []v1.WorkspaceDeclaration) (*v1.Workspa
 // Apply will update the StepTemplate, Sidecars and Volumes declaration in ts so that the workspaces
 // specified through wb combined with the declared workspaces in ts will be available for
 // all Step and Sidecar containers in the resulting pod.
-func Apply(ctx context.Context, ts v1.TaskSpec, wb []v1.WorkspaceBinding, v map[string]corev1.Volume) (*v1.TaskSpec, error) {
+func Apply(ctx context.Context, ts internalversion.TaskSpec, wb []v1.WorkspaceBinding, v map[string]corev1.Volume) (*internalversion.TaskSpec, error) {
 	// If there are no bound workspaces, we don't need to do anything
 	if len(wb) == 0 {
 		return &ts, nil
@@ -104,7 +105,7 @@ func Apply(ctx context.Context, ts v1.TaskSpec, wb []v1.WorkspaceBinding, v map[
 
 	// Initialize StepTemplate if it hasn't been already
 	if ts.StepTemplate == nil {
-		ts.StepTemplate = &v1.StepTemplate{}
+		ts.StepTemplate = &internalversion.StepTemplate{}
 	}
 
 	isolatedWorkspaces := sets.NewString()
@@ -130,7 +131,7 @@ func Apply(ctx context.Context, ts v1.TaskSpec, wb []v1.WorkspaceBinding, v map[
 			}
 		}
 		if addWorkspace {
-			ts.Workspaces = append(ts.Workspaces, v1.WorkspaceDeclaration{Name: wb[i].Name})
+			ts.Workspaces = append(ts.Workspaces, internalversion.WorkspaceDeclaration{Name: wb[i].Name})
 		}
 		w, err := getDeclaredWorkspace(wb[i].Name, ts.Workspaces)
 		if err != nil {
@@ -163,7 +164,7 @@ func Apply(ctx context.Context, ts v1.TaskSpec, wb []v1.WorkspaceBinding, v map[
 
 // mountAsSharedWorkspace takes a volumeMount and adds it to all the steps and sidecars in
 // a TaskSpec.
-func mountAsSharedWorkspace(ts v1.TaskSpec, volumeMount corev1.VolumeMount) {
+func mountAsSharedWorkspace(ts internalversion.TaskSpec, volumeMount corev1.VolumeMount) {
 	ts.StepTemplate.VolumeMounts = append(ts.StepTemplate.VolumeMounts, volumeMount)
 
 	for i := range ts.Sidecars {
@@ -173,7 +174,7 @@ func mountAsSharedWorkspace(ts v1.TaskSpec, volumeMount corev1.VolumeMount) {
 
 // mountAsIsolatedWorkspace takes a volumeMount and adds it only to the steps and sidecars
 // that have requested access to it.
-func mountAsIsolatedWorkspace(ts v1.TaskSpec, workspaceName string, volumeMount corev1.VolumeMount) {
+func mountAsIsolatedWorkspace(ts internalversion.TaskSpec, workspaceName string, volumeMount corev1.VolumeMount) {
 	for i := range ts.Steps {
 		step := &ts.Steps[i]
 		for _, workspaceUsage := range step.Workspaces {
@@ -204,7 +205,7 @@ func mountAsIsolatedWorkspace(ts v1.TaskSpec, workspaceName string, volumeMount 
 
 // AddSidecarVolumeMount is a helper to add a volumeMount to the sidecar unless its
 // MountPath would conflict with another of the sidecar's existing volume mounts.
-func AddSidecarVolumeMount(sidecar *v1.Sidecar, volumeMount corev1.VolumeMount) {
+func AddSidecarVolumeMount(sidecar *internalversion.Sidecar, volumeMount corev1.VolumeMount) {
 	for j := range sidecar.VolumeMounts {
 		if sidecar.VolumeMounts[j].MountPath == volumeMount.MountPath {
 			return

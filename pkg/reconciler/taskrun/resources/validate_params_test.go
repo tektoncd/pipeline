@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internalversion"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -25,7 +26,7 @@ func TestValidateParamArrayIndex(t *testing.T) {
 	tcs := []struct {
 		name          string
 		params        v1.Params
-		taskspec      *v1.TaskSpec
+		taskspec      *internalversion.TaskSpec
 		expectedError error
 	}{{
 		name: "steps reference invalid",
@@ -33,12 +34,12 @@ func TestValidateParamArrayIndex(t *testing.T) {
 			Name:  "array-params",
 			Value: *v1.NewStructuredValues("bar", "foo"),
 		}},
-		taskspec: &v1.TaskSpec{
-			Params: []v1.ParamSpec{{
+		taskspec: &internalversion.TaskSpec{
+			Params: []internalversion.ParamSpec{{
 				Name:    "array-params",
-				Default: v1.NewStructuredValues("bar", "foo"),
+				Default: internalversion.NewStructuredValues("bar", "foo"),
 			}},
-			Steps: []v1.Step{{
+			Steps: []internalversion.Step{{
 				Name:    "$(params.array-params[10])",
 				Image:   "$(params.array-params[11])",
 				Command: []string{"$(params.array-params[12])"},
@@ -89,12 +90,12 @@ func TestValidateParamArrayIndex(t *testing.T) {
 			Name:  "array-params",
 			Value: *v1.NewStructuredValues("bar", "foo"),
 		}},
-		taskspec: &v1.TaskSpec{
-			Params: []v1.ParamSpec{{
+		taskspec: &internalversion.TaskSpec{
+			Params: []internalversion.ParamSpec{{
 				Name:    "array-params",
-				Default: v1.NewStructuredValues("bar", "foo"),
+				Default: internalversion.NewStructuredValues("bar", "foo"),
 			}},
-			StepTemplate: &v1.StepTemplate{
+			StepTemplate: &internalversion.StepTemplate{
 				Image: "$(params.array-params[3])",
 			},
 		},
@@ -105,10 +106,10 @@ func TestValidateParamArrayIndex(t *testing.T) {
 			Name:  "array-params",
 			Value: *v1.NewStructuredValues("bar", "foo"),
 		}},
-		taskspec: &v1.TaskSpec{
-			Params: []v1.ParamSpec{{
+		taskspec: &internalversion.TaskSpec{
+			Params: []internalversion.ParamSpec{{
 				Name:    "array-params",
-				Default: v1.NewStructuredValues("bar", "foo"),
+				Default: internalversion.NewStructuredValues("bar", "foo"),
 			}},
 			Volumes: []corev1.Volume{{
 				Name: "$(params.array-params[10])",
@@ -167,12 +168,12 @@ func TestValidateParamArrayIndex(t *testing.T) {
 			Name:  "array-params",
 			Value: *v1.NewStructuredValues("bar", "foo"),
 		}},
-		taskspec: &v1.TaskSpec{
-			Params: []v1.ParamSpec{{
+		taskspec: &internalversion.TaskSpec{
+			Params: []internalversion.ParamSpec{{
 				Name:    "array-params",
-				Default: v1.NewStructuredValues("bar", "foo"),
+				Default: internalversion.NewStructuredValues("bar", "foo"),
 			}},
-			Workspaces: []v1.WorkspaceDeclaration{{
+			Workspaces: []internalversion.WorkspaceDeclaration{{
 				MountPath: "$(params.array-params[3])",
 			}},
 		},
@@ -183,12 +184,12 @@ func TestValidateParamArrayIndex(t *testing.T) {
 			Name:  "array-params",
 			Value: *v1.NewStructuredValues("bar", "foo"),
 		}},
-		taskspec: &v1.TaskSpec{
-			Params: []v1.ParamSpec{{
+		taskspec: &internalversion.TaskSpec{
+			Params: []internalversion.ParamSpec{{
 				Name:    "array-params",
-				Default: v1.NewStructuredValues("bar", "foo"),
+				Default: internalversion.NewStructuredValues("bar", "foo"),
 			}},
-			Sidecars: []v1.Sidecar{{
+			Sidecars: []internalversion.Sidecar{{
 				Script: "$(params.array-params[3])",
 			},
 			},

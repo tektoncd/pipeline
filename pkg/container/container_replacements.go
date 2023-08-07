@@ -17,20 +17,20 @@
 package container
 
 import (
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internalversion"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	corev1 "k8s.io/api/core/v1"
 )
 
 // applyStepReplacements returns a StepContainer with variable interpolation applied.
-func applyStepReplacements(step *v1.Step, stringReplacements map[string]string, arrayReplacements map[string][]string) {
+func applyStepReplacements(step *internalversion.Step, stringReplacements map[string]string, arrayReplacements map[string][]string) {
 	c := step.ToK8sContainer()
 	applyContainerReplacements(c, stringReplacements, arrayReplacements)
 	step.SetContainerFields(*c)
 }
 
 // applySidecarReplacements returns a SidecarContainer with variable interpolation applied.
-func applySidecarReplacements(sidecar *v1.Sidecar, stringReplacements map[string]string, arrayReplacements map[string][]string) {
+func applySidecarReplacements(sidecar *internalversion.Sidecar, stringReplacements map[string]string, arrayReplacements map[string][]string) {
 	c := sidecar.ToK8sContainer()
 	applyContainerReplacements(c, stringReplacements, arrayReplacements)
 	sidecar.SetContainerFields(*c)

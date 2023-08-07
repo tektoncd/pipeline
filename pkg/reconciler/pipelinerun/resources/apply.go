@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internalversion"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
@@ -308,9 +309,19 @@ func propagateParams(t v1.PipelineTask, stringReplacements map[string]string, ar
 				}
 			}
 		}
-		t.TaskSpec.TaskSpec = *resources.ApplyReplacements(&t.TaskSpec.TaskSpec, stringReplacementsDup, arrayReplacementsDup)
+		var internaltaskspec internalversion.TaskSpec
+		v1.Convert_v1_TaskSpec_To_internalversion_TaskSpec(&t.TaskSpec.TaskSpec, &internaltaskspec, nil)
+		internalts := *resources.ApplyReplacements(&internaltaskspec, stringReplacementsDup, arrayReplacementsDup)
+		var v1taskspec v1.TaskSpec
+		v1.Convert_internalversion_TaskSpec_To_v1_TaskSpec(&internalts, &v1taskspec, nil)
+		t.TaskSpec.TaskSpec = v1taskspec
 	} else {
-		t.TaskSpec.TaskSpec = *resources.ApplyReplacements(&t.TaskSpec.TaskSpec, stringReplacements, arrayReplacements)
+		var internaltaskspec internalversion.TaskSpec
+		v1.Convert_v1_TaskSpec_To_internalversion_TaskSpec(&t.TaskSpec.TaskSpec, &internaltaskspec, nil)
+		internalts := *resources.ApplyReplacements(&internaltaskspec, stringReplacements, arrayReplacements)
+		var v1taskspec v1.TaskSpec
+		v1.Convert_internalversion_TaskSpec_To_v1_TaskSpec(&internalts, &v1taskspec, nil)
+		t.TaskSpec.TaskSpec = v1taskspec
 	}
 	return t
 }

@@ -20,6 +20,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internalversion"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	prresources "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
@@ -51,8 +52,8 @@ func TestValidatePipelineTaskResults_ValidStates(t *testing.T) {
 			},
 			ResolvedTask: &resources.ResolvedTask{
 				TaskName: "t",
-				TaskSpec: &v1.TaskSpec{
-					Results: []v1.TaskResult{{
+				TaskSpec: &internalversion.TaskSpec{
+					Results: []internalversion.TaskResult{{
 						Name: "result",
 					}},
 				},
@@ -74,8 +75,8 @@ func TestValidatePipelineTaskResults_ValidStates(t *testing.T) {
 			},
 			ResolvedTask: &resources.ResolvedTask{
 				TaskName: "t",
-				TaskSpec: &v1.TaskSpec{
-					Results: []v1.TaskResult{{
+				TaskSpec: &internalversion.TaskSpec{
+					Results: []internalversion.TaskResult{{
 						Name: "result",
 					}},
 				},
@@ -178,8 +179,8 @@ func TestValidatePipelineTaskResults_IncorrectResultName(t *testing.T) {
 		},
 		ResolvedTask: &resources.ResolvedTask{
 			TaskName: "t",
-			TaskSpec: &v1.TaskSpec{
-				Results: []v1.TaskResult{{
+			TaskSpec: &internalversion.TaskSpec{
+				Results: []internalversion.TaskResult{{
 					Name: "not-the-result-youre-looking-for",
 				}},
 			},
@@ -301,8 +302,8 @@ func TestValidatePipelineResults_ValidStates(t *testing.T) {
 			},
 			ResolvedTask: &resources.ResolvedTask{
 				TaskName: "t",
-				TaskSpec: &v1.TaskSpec{
-					Results: []v1.TaskResult{{
+				TaskSpec: &internalversion.TaskSpec{
+					Results: []internalversion.TaskResult{{
 						Name: "result1",
 					}},
 				},
@@ -348,8 +349,8 @@ func TestValidatePipelineResults_IncorrectResultName(t *testing.T) {
 		},
 		ResolvedTask: &resources.ResolvedTask{
 			TaskName: "t",
-			TaskSpec: &v1.TaskSpec{
-				Results: []v1.TaskResult{{
+			TaskSpec: &internalversion.TaskSpec{
+				Results: []internalversion.TaskResult{{
 					Name: "not-the-result-youre-looking-for",
 				}},
 			},
@@ -377,7 +378,7 @@ func TestValidateOptionalWorkspaces_ValidStates(t *testing.T) {
 				Workspaces: nil,
 			},
 			ResolvedTask: &resources.ResolvedTask{
-				TaskSpec: &v1.TaskSpec{
+				TaskSpec: &internalversion.TaskSpec{
 					Workspaces: nil,
 				},
 			},
@@ -391,8 +392,8 @@ func TestValidateOptionalWorkspaces_ValidStates(t *testing.T) {
 				Workspaces: []v1.WorkspacePipelineTaskBinding{},
 			},
 			ResolvedTask: &resources.ResolvedTask{
-				TaskSpec: &v1.TaskSpec{
-					Workspaces: []v1.WorkspaceDeclaration{{
+				TaskSpec: &internalversion.TaskSpec{
+					Workspaces: []internalversion.WorkspaceDeclaration{{
 						Name:     "foo",
 						Optional: true,
 					}},
@@ -414,8 +415,8 @@ func TestValidateOptionalWorkspaces_ValidStates(t *testing.T) {
 				}},
 			},
 			ResolvedTask: &resources.ResolvedTask{
-				TaskSpec: &v1.TaskSpec{
-					Workspaces: []v1.WorkspaceDeclaration{{
+				TaskSpec: &internalversion.TaskSpec{
+					Workspaces: []internalversion.WorkspaceDeclaration{{
 						Name:     "foo",
 						Optional: true,
 					}},
@@ -447,8 +448,8 @@ func TestValidateOptionalWorkspaces_NonOptionalTaskWorkspace(t *testing.T) {
 			}},
 		},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &v1.TaskSpec{
-				Workspaces: []v1.WorkspaceDeclaration{{
+			TaskSpec: &internalversion.TaskSpec{
+				Workspaces: []internalversion.WorkspaceDeclaration{{
 					Name:     "foo",
 					Optional: false,
 				}},
