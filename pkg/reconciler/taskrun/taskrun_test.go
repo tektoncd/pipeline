@@ -145,14 +145,15 @@ var (
 		ObjectMeta: objectMeta("test-results-task", "foo"),
 		Spec: v1.TaskSpec{
 			Steps: []v1.Step{simpleStep},
-			Results: []v1.TaskResult{{
-				Name: "aResult",
-				Type: v1.ResultsTypeArray,
-			}, {
-				Name:       "objectResult",
-				Type:       v1.ResultsTypeObject,
-				Properties: map[string]v1.PropertySpec{"url": {Type: "string"}, "commit": {Type: "string"}},
-			},
+			Results: []v1.TaskResult{
+				{
+					Name: "aResult",
+					Type: v1.ResultsTypeArray,
+				}, {
+					Name:       "objectResult",
+					Type:       v1.ResultsTypeObject,
+					Properties: map[string]v1.PropertySpec{"url": {Type: "string"}, "commit": {Type: "string"}},
+				},
 			},
 		},
 	}
@@ -1161,7 +1162,7 @@ spec:
 	}
 
 	// Mock a successful resolution
-	var taskBytes = []byte(`
+	taskBytes := []byte(`
           kind: Task
           apiVersion: tekton.dev/v1
           metadata:
@@ -2078,14 +2079,6 @@ status:
 		t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
 	}
 
-	trLabel, ok := newTr.ObjectMeta.Labels[pipeline.TaskLabelKey]
-	if !ok {
-		t.Errorf("Labels were not added to task run")
-	}
-	if ld := cmp.Diff(taskLabel, trLabel); ld != "" {
-		t.Errorf("Did not get expected label %s", diff.PrintWantGot(ld))
-	}
-
 	// update pod status and trigger reconcile : build is completed
 	pod.Status = corev1.PodStatus{
 		Phase: corev1.PodSucceeded,
@@ -2518,7 +2511,8 @@ status:
 			wantEvents: []string{
 				"Warning Failed ",
 			},
-		}}
+		},
+	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -2674,7 +2668,6 @@ spec:
 	}
 
 	pod, err := r.createPod(testAssets.Ctx, taskSpec, taskRun, rtr, workspaceVolumes)
-
 	if err != nil {
 		t.Fatalf("create pod threw error %v", err)
 	}
@@ -2829,47 +2822,48 @@ status:
 		expectedType   apis.ConditionType
 		expectedStatus corev1.ConditionStatus
 		expectedReason string
-	}{{
-		description:    "ResourceQuotaConflictError does not fail taskrun",
-		err:            k8sapierrors.NewConflict(k8sruntimeschema.GroupResource{Group: "v1", Resource: "resourcequotas"}, "dummy", errors.New("operation cannot be fulfilled on resourcequotas dummy the object has been modified please apply your changes to the latest version and try again")),
-		expectedType:   apis.ConditionSucceeded,
-		expectedStatus: corev1.ConditionUnknown,
-		expectedReason: podconvert.ReasonPending,
-	}, {
-		description:    "exceeded quota errors are surfaced in taskrun condition but do not fail taskrun",
-		err:            k8sapierrors.NewForbidden(k8sruntimeschema.GroupResource{Group: "foo", Resource: "bar"}, "baz", errors.New("exceeded quota")),
-		expectedType:   apis.ConditionSucceeded,
-		expectedStatus: corev1.ConditionUnknown,
-		expectedReason: podconvert.ReasonExceededResourceQuota,
-	}, {
-		description:    "taskrun validation failed",
-		err:            errors.New("TaskRun validation failed"),
-		expectedType:   apis.ConditionSucceeded,
-		expectedStatus: corev1.ConditionFalse,
-		expectedReason: podconvert.ReasonFailedValidation,
-	}, {
-		description:    "errors other than exceeded quota fail the taskrun",
-		err:            errors.New("this is a fatal error"),
-		expectedType:   apis.ConditionSucceeded,
-		expectedStatus: corev1.ConditionFalse,
-		expectedReason: podconvert.ReasonPodCreationFailed,
-	}, {
-		description: "errors violating PodSecurity fail the taskrun",
-		err: k8sapierrors.NewForbidden(k8sruntimeschema.GroupResource{Group: "foo", Resource: "bar"}, "baz",
-			errors.New("violates PodSecurity \"restricted:latest\": allowPrivilegeEscalation != false ("+
-				"containers \"prepare\", \"place-scripts\", \"test-task\", \"test-task\" must set securityContext."+
-				"allowPrivilegeEscalation=false)")),
-		expectedType:   apis.ConditionSucceeded,
-		expectedStatus: corev1.ConditionFalse,
-		expectedReason: podconvert.ReasonPodAdmissionFailed,
-	}, {
-		description: "errors validating security context constraint (Openshift) fail the taskrun",
-		err: k8sapierrors.NewForbidden(k8sruntimeschema.GroupResource{Group: "foo", Resource: "bar"}, "baz",
-			errors.New("unable to validate against any security context constraint: [provider restricted: .spec.securityContext.hostNetwork: Invalid value: true: Host network is not allowed to be used provider restricted: .spec.securityContext.hostPID: Invalid value: true: Host PID is not allowed to be used")),
-		expectedType:   apis.ConditionSucceeded,
-		expectedStatus: corev1.ConditionFalse,
-		expectedReason: podconvert.ReasonPodAdmissionFailed,
-	},
+	}{
+		{
+			description:    "ResourceQuotaConflictError does not fail taskrun",
+			err:            k8sapierrors.NewConflict(k8sruntimeschema.GroupResource{Group: "v1", Resource: "resourcequotas"}, "dummy", errors.New("operation cannot be fulfilled on resourcequotas dummy the object has been modified please apply your changes to the latest version and try again")),
+			expectedType:   apis.ConditionSucceeded,
+			expectedStatus: corev1.ConditionUnknown,
+			expectedReason: podconvert.ReasonPending,
+		}, {
+			description:    "exceeded quota errors are surfaced in taskrun condition but do not fail taskrun",
+			err:            k8sapierrors.NewForbidden(k8sruntimeschema.GroupResource{Group: "foo", Resource: "bar"}, "baz", errors.New("exceeded quota")),
+			expectedType:   apis.ConditionSucceeded,
+			expectedStatus: corev1.ConditionUnknown,
+			expectedReason: podconvert.ReasonExceededResourceQuota,
+		}, {
+			description:    "taskrun validation failed",
+			err:            errors.New("TaskRun validation failed"),
+			expectedType:   apis.ConditionSucceeded,
+			expectedStatus: corev1.ConditionFalse,
+			expectedReason: podconvert.ReasonFailedValidation,
+		}, {
+			description:    "errors other than exceeded quota fail the taskrun",
+			err:            errors.New("this is a fatal error"),
+			expectedType:   apis.ConditionSucceeded,
+			expectedStatus: corev1.ConditionFalse,
+			expectedReason: podconvert.ReasonPodCreationFailed,
+		}, {
+			description: "errors violating PodSecurity fail the taskrun",
+			err: k8sapierrors.NewForbidden(k8sruntimeschema.GroupResource{Group: "foo", Resource: "bar"}, "baz",
+				errors.New("violates PodSecurity \"restricted:latest\": allowPrivilegeEscalation != false ("+
+					"containers \"prepare\", \"place-scripts\", \"test-task\", \"test-task\" must set securityContext."+
+					"allowPrivilegeEscalation=false)")),
+			expectedType:   apis.ConditionSucceeded,
+			expectedStatus: corev1.ConditionFalse,
+			expectedReason: podconvert.ReasonPodAdmissionFailed,
+		}, {
+			description: "errors validating security context constraint (Openshift) fail the taskrun",
+			err: k8sapierrors.NewForbidden(k8sruntimeschema.GroupResource{Group: "foo", Resource: "bar"}, "baz",
+				errors.New("unable to validate against any security context constraint: [provider restricted: .spec.securityContext.hostNetwork: Invalid value: true: Host network is not allowed to be used provider restricted: .spec.securityContext.hostPID: Invalid value: true: Host PID is not allowed to be used")),
+			expectedType:   apis.ConditionSucceeded,
+			expectedStatus: corev1.ConditionFalse,
+			expectedReason: podconvert.ReasonPodAdmissionFailed,
+		},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.description, func(t *testing.T) {
@@ -2893,6 +2887,7 @@ status:
 		})
 	}
 }
+
 func TestReconcile_Single_SidecarState(t *testing.T) {
 	runningState := corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: now}}
 	taskRun := parse.MustParseV1TaskRun(t, `
@@ -3830,20 +3825,23 @@ spec:
 	want.Status = v1.TaskRunStatus{
 		TaskRunStatusFields: v1.TaskRunStatusFields{
 			TaskSpec: ts.DeepCopy(),
+			TaskMeta: &v1.TektonObjectMeta{
+				Labels:      map[string]string{"lbl1": "value1", "tekton.dev/task": "foo"},
+				Annotations: map[string]string{"io.annotation": "value"},
+			},
 			Provenance: &v1.Provenance{
 				RefSource:    refSource.DeepCopy(),
 				FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
 			},
 		},
 	}
-	want.ObjectMeta.Labels["tekton.dev/task"] = tr.ObjectMeta.Name
 
 	type args struct {
 		taskSpec           *v1.TaskSpec
 		resolvedObjectMeta *resolutionutil.ResolvedObjectMeta
 	}
 
-	var tests = []struct {
+	tests := []struct {
 		name           string
 		reconcile1Args *args
 		reconcile2Args *args
@@ -3885,18 +3883,18 @@ spec:
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// mock first reconcile
-			if err := storeTaskSpecAndMergeMeta(context.Background(), tr, tc.reconcile1Args.taskSpec, tc.reconcile1Args.resolvedObjectMeta); err != nil {
+			if err := storeTaskSpecAndMeta(context.Background(), tr, tc.reconcile1Args.taskSpec, tc.reconcile1Args.resolvedObjectMeta); err != nil {
 				t.Errorf("storePipelineSpec() error = %v", err)
 			}
-			if d := cmp.Diff(tr, tc.wantTaskRun); d != "" {
+			if d := cmp.Diff(tc.wantTaskRun, tr); d != "" {
 				t.Fatalf(diff.PrintWantGot(d))
 			}
 
 			// mock second reconcile
-			if err := storeTaskSpecAndMergeMeta(context.Background(), tr, tc.reconcile2Args.taskSpec, tc.reconcile2Args.resolvedObjectMeta); err != nil {
+			if err := storeTaskSpecAndMeta(context.Background(), tr, tc.reconcile2Args.taskSpec, tc.reconcile2Args.resolvedObjectMeta); err != nil {
 				t.Errorf("storePipelineSpec() error = %v", err)
 			}
-			if d := cmp.Diff(tr, tc.wantTaskRun); d != "" {
+			if d := cmp.Diff(tc.wantTaskRun, tr); d != "" {
 				t.Fatalf(diff.PrintWantGot(d))
 			}
 		})
@@ -3908,8 +3906,10 @@ func Test_storeTaskSpec_metadata(t *testing.T) {
 	taskrunannotations := map[string]string{"io.annotation.1": "value1", "io.annotation.2": "value2"}
 	tasklabels := map[string]string{"lbl1": "another value", "lbl2": "another value", "lbl3": "value3"}
 	taskannotations := map[string]string{"io.annotation.1": "another value", "io.annotation.2": "another value", "io.annotation.3": "value3", "kubectl.kubernetes.io/last-applied-configuration": "foo-is-bar"}
-	wantedlabels := map[string]string{"lbl1": "value1", "lbl2": "value2", "lbl3": "value3"}
-	wantedannotations := map[string]string{"io.annotation.1": "value1", "io.annotation.2": "value2", "io.annotation.3": "value3"}
+	wantedlabels := map[string]string{"lbl1": "value1", "lbl2": "value2"}
+	wantedannotations := map[string]string{"io.annotation.1": "value1", "io.annotation.2": "value2"}
+	wantedstatuslabels := map[string]string{"lbl1": "another value", "lbl2": "another value", "lbl3": "value3"}
+	wantedstatusannotations := map[string]string{"io.annotation.1": "another value", "io.annotation.2": "another value", "io.annotation.3": "value3"}
 
 	tr := &v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", Labels: taskrunlabels, Annotations: taskrunannotations},
@@ -3918,14 +3918,20 @@ func Test_storeTaskSpec_metadata(t *testing.T) {
 		ObjectMeta: &metav1.ObjectMeta{Labels: tasklabels, Annotations: taskannotations},
 	}
 
-	if err := storeTaskSpecAndMergeMeta(context.Background(), tr, &v1.TaskSpec{}, &resolvedMeta); err != nil {
+	if err := storeTaskSpecAndMeta(context.Background(), tr, &v1.TaskSpec{}, &resolvedMeta); err != nil {
 		t.Errorf("storeTaskSpecAndMergeMeta error = %v", err)
 	}
-	if d := cmp.Diff(tr.ObjectMeta.Labels, wantedlabels); d != "" {
-		t.Fatalf(diff.PrintWantGot(d))
+	if d := cmp.Diff(wantedlabels, tr.ObjectMeta.Labels); d != "" {
+		t.Error(diff.PrintWantGot(d))
 	}
-	if d := cmp.Diff(tr.ObjectMeta.Annotations, wantedannotations); d != "" {
-		t.Fatalf(diff.PrintWantGot(d))
+	if d := cmp.Diff(wantedannotations, tr.ObjectMeta.Annotations); d != "" {
+		t.Error(diff.PrintWantGot(d))
+	}
+	if d := cmp.Diff(wantedstatuslabels, tr.Status.TaskMeta.Labels); d != "" {
+		t.Error(diff.PrintWantGot(d))
+	}
+	if d := cmp.Diff(wantedstatusannotations, tr.Status.TaskMeta.Annotations); d != "" {
+		t.Error(diff.PrintWantGot(d))
 	}
 }
 
@@ -4218,7 +4224,8 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 				{
 					Image:   "image",
 					Command: []string{"cmd"},
-				}},
+				},
+			},
 			StepTemplate: &v1.StepTemplate{
 				ComputeResources: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
@@ -4339,7 +4346,8 @@ func Test_validateTaskSpecRequestResources_InvalidResources(t *testing.T) {
 						corev1.ResourceMemory: resource.MustParse("4Gi"),
 					},
 				},
-			}}},
+			}},
+		},
 	}, {
 		name: "step request larger than steptemplate limit",
 		taskSpec: &v1.TaskSpec{
@@ -4833,7 +4841,8 @@ status:
 				Name:  "objectResult",
 				Type:  "object",
 				Value: *v1.NewObject(map[string]string{"url": "abc"}),
-			}},
+			},
+		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			testAssets, cancel := getTaskRunController(t, d)
@@ -4964,7 +4973,8 @@ spec:
 		},
 		Spec: v1alpha1.VerificationPolicySpec{
 			Resources: []v1alpha1.ResourcePattern{{Pattern: "no-match"}},
-		}}}
+		},
+	}}
 	// warnPolicy doesn't contain keys so it will fail verification but doesn't fail the run
 	warnPolicy := []*v1alpha1.VerificationPolicy{{
 		ObjectMeta: metav1.ObjectMeta{
@@ -4974,7 +4984,8 @@ spec:
 		Spec: v1alpha1.VerificationPolicySpec{
 			Resources: []v1alpha1.ResourcePattern{{Pattern: ".*"}},
 			Mode:      v1alpha1.ModeWarn,
-		}}}
+		},
+	}}
 	tr := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: test-taskrun
@@ -5010,27 +5021,28 @@ status:
 		noMatchPolicy                 string
 		verificationPolicies          []*v1alpha1.VerificationPolicy
 		wantTrustedResourcesCondition *apis.Condition
-	}{{
-		name:                          "ignore no match policy",
-		noMatchPolicy:                 config.IgnoreNoMatchPolicy,
-		verificationPolicies:          noMatchPolicy,
-		wantTrustedResourcesCondition: nil,
-	}, {
-		name:                          "warn no match policy",
-		noMatchPolicy:                 config.WarnNoMatchPolicy,
-		verificationPolicies:          noMatchPolicy,
-		wantTrustedResourcesCondition: failNoMatchCondition,
-	}, {
-		name:                          "pass enforce policy",
-		noMatchPolicy:                 config.FailNoMatchPolicy,
-		verificationPolicies:          vps,
-		wantTrustedResourcesCondition: passCondition,
-	}, {
-		name:                          "only fail warn policy",
-		noMatchPolicy:                 config.FailNoMatchPolicy,
-		verificationPolicies:          warnPolicy,
-		wantTrustedResourcesCondition: failNoKeysCondition,
-	},
+	}{
+		{
+			name:                          "ignore no match policy",
+			noMatchPolicy:                 config.IgnoreNoMatchPolicy,
+			verificationPolicies:          noMatchPolicy,
+			wantTrustedResourcesCondition: nil,
+		}, {
+			name:                          "warn no match policy",
+			noMatchPolicy:                 config.WarnNoMatchPolicy,
+			verificationPolicies:          noMatchPolicy,
+			wantTrustedResourcesCondition: failNoMatchCondition,
+		}, {
+			name:                          "pass enforce policy",
+			noMatchPolicy:                 config.FailNoMatchPolicy,
+			verificationPolicies:          vps,
+			wantTrustedResourcesCondition: passCondition,
+		}, {
+			name:                          "only fail warn policy",
+			noMatchPolicy:                 config.FailNoMatchPolicy,
+			verificationPolicies:          warnPolicy,
+			wantTrustedResourcesCondition: failNoKeysCondition,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -5219,7 +5231,8 @@ spec:
 		},
 		Spec: v1alpha1.VerificationPolicySpec{
 			Resources: []v1alpha1.ResourcePattern{{Pattern: "no-match"}},
-		}}}
+		},
+	}}
 	// warnPolicy doesn't contain keys so it will fail verification but doesn't fail the run
 	warnPolicy := []*v1alpha1.VerificationPolicy{{
 		ObjectMeta: metav1.ObjectMeta{
@@ -5229,7 +5242,8 @@ spec:
 		Spec: v1alpha1.VerificationPolicySpec{
 			Resources: []v1alpha1.ResourcePattern{{Pattern: ".*"}},
 			Mode:      v1alpha1.ModeWarn,
-		}}}
+		},
+	}}
 	tr := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: test-taskrun
@@ -5265,27 +5279,28 @@ status:
 		noMatchPolicy                 string
 		verificationPolicies          []*v1alpha1.VerificationPolicy
 		wantTrustedResourcesCondition *apis.Condition
-	}{{
-		name:                          "ignore no match policy",
-		noMatchPolicy:                 config.IgnoreNoMatchPolicy,
-		verificationPolicies:          noMatchPolicy,
-		wantTrustedResourcesCondition: nil,
-	}, {
-		name:                          "warn no match policy",
-		noMatchPolicy:                 config.WarnNoMatchPolicy,
-		verificationPolicies:          noMatchPolicy,
-		wantTrustedResourcesCondition: failNoMatchCondition,
-	}, {
-		name:                          "pass enforce policy",
-		noMatchPolicy:                 config.FailNoMatchPolicy,
-		verificationPolicies:          vps,
-		wantTrustedResourcesCondition: passCondition,
-	}, {
-		name:                          "only fail warn policy",
-		noMatchPolicy:                 config.FailNoMatchPolicy,
-		verificationPolicies:          warnPolicy,
-		wantTrustedResourcesCondition: failNoKeysCondition,
-	},
+	}{
+		{
+			name:                          "ignore no match policy",
+			noMatchPolicy:                 config.IgnoreNoMatchPolicy,
+			verificationPolicies:          noMatchPolicy,
+			wantTrustedResourcesCondition: nil,
+		}, {
+			name:                          "warn no match policy",
+			noMatchPolicy:                 config.WarnNoMatchPolicy,
+			verificationPolicies:          noMatchPolicy,
+			wantTrustedResourcesCondition: failNoMatchCondition,
+		}, {
+			name:                          "pass enforce policy",
+			noMatchPolicy:                 config.FailNoMatchPolicy,
+			verificationPolicies:          vps,
+			wantTrustedResourcesCondition: passCondition,
+		}, {
+			name:                          "only fail warn policy",
+			noMatchPolicy:                 config.FailNoMatchPolicy,
+			verificationPolicies:          warnPolicy,
+			wantTrustedResourcesCondition: failNoKeysCondition,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

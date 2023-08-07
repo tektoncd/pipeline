@@ -438,8 +438,11 @@ type PipelineRunStatusFields struct {
 	// +listType=atomic
 	Results []PipelineRunResult `json:"results,omitempty"`
 
-	// PipelineRunSpec contains the exact spec used to instantiate the run
+	// PipelineRunSpec contains the Spec from the dereferenced Pipeline definition used to instantiate this PipelineRun.
 	PipelineSpec *PipelineSpec `json:"pipelineSpec,omitempty"`
+
+	// PipelineMeta contains the exact Pipeline metadata to instantiate the PipelineRun
+	PipelineMeta *TektonObjectMeta `json:"pipelineMetadata,omitempty"`
 
 	// list of tasks that were skipped due to when expressions evaluating to false
 	// +optional

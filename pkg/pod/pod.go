@@ -407,7 +407,13 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		priorityClassName = *podTemplate.PriorityClassName
 	}
 
-	podAnnotations := kmeta.CopyMap(taskRun.Annotations)
+	// TaskRun annotations takes precedence over Task annotations
+	taskAnnotations := map[string]string{}
+	if taskRun.Status.TaskMeta != nil {
+		taskAnnotations = taskRun.Status.TaskMeta.Annotations
+	}
+
+	podAnnotations := kmeta.UnionMaps(taskAnnotations, taskRun.Annotations)
 	podAnnotations[ReleaseAnnotation] = changeset.Get()
 
 	if readyImmediately {
@@ -478,18 +484,17 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 
 // makeLabels constructs the labels we will propagate from TaskRuns to Pods.
 func makeLabels(s *v1.TaskRun) map[string]string {
-	labels := make(map[string]string, len(s.ObjectMeta.Labels)+1)
-	// NB: Set this *before* passing through TaskRun labels. If the TaskRun
-	// has a managed-by label, it should override this default.
-
-	// Copy through the TaskRun's labels to the underlying Pod's.
-	for k, v := range s.ObjectMeta.Labels {
-		labels[k] = v
+	// TaskRun labels takes precendenc over Task labels
+	taskLabels := map[string]string{}
+	if s.Status.TaskMeta != nil {
+		taskLabels = s.Status.TaskMeta.Labels
 	}
+	labels := kmeta.UnionMaps(taskLabels, s.ObjectMeta.Labels)
 
 	// NB: Set this *after* passing through TaskRun Labels. If the TaskRun
 	// specifies this label, it should be overridden by this value.
 	labels[pipeline.TaskRunLabelKey] = s.Name
+
 	return labels
 }
 

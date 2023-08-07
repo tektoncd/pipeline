@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 
@@ -53,7 +52,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
-	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -62,7 +60,6 @@ import (
 	corev1Listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/utils/clock"
 	"knative.dev/pkg/apis"
-	"knative.dev/pkg/changeset"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/kmap"
 	"knative.dev/pkg/kmeta"
@@ -288,7 +285,6 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1.TaskRun) error {
 func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1.TaskRun, beforeCondition *apis.Condition, previousError error) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "finishReconcileUpdateEmitEvents")
 	defer span.End()
-	logger := logging.FromContext(ctx)
 
 	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
 	if afterCondition.IsFalse() && !tr.IsCancelled() && tr.IsRetriable() {
@@ -298,13 +294,8 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 	// Send k8s events and cloud events (when configured)
 	events.Emit(ctx, beforeCondition, afterCondition, tr)
 
-	_, err := c.updateLabelsAndAnnotations(ctx, tr)
-	if err != nil {
-		logger.Warn("Failed to update TaskRun labels/annotations", zap.Error(err))
-		events.EmitError(controller.GetEventRecorder(ctx), err, tr)
-	}
-
-	merr := multierror.Append(previousError, err).ErrorOrNil()
+	// Note(vdemeester): This is still there because.. otherwise there is way too many test to rewrite
+	merr := multierror.Append(previousError).ErrorOrNil()
 	if controller.IsPermanentError(previousError) {
 		return controller.NewPermanentError(merr)
 	}
@@ -347,7 +338,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		return nil, nil, controller.NewPermanentError(err)
 	default:
 		// Store the fetched TaskSpec on the TaskRun for auditing
-		if err := storeTaskSpecAndMergeMeta(ctx, tr, taskSpec, taskMeta); err != nil {
+		if err := storeTaskSpecAndMeta(ctx, tr, taskSpec, taskMeta); err != nil {
 			logger.Errorf("Failed to store TaskSpec on TaskRun.Statusfor taskrun %s: %v", tr.Name, err)
 		}
 	}
@@ -482,7 +473,6 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 		// current labels may not be set on a previously created Pod.
 		labelSelector := labels.Set{pipeline.TaskRunLabelKey: tr.Name}
 		pos, err := c.podLister.Pods(tr.Namespace).List(labelSelector.AsSelector())
-
 		if err != nil {
 			logger.Errorf("Error listing pods: %v", err)
 			return err
@@ -599,31 +589,6 @@ func (c *Reconciler) updateTaskRunWithDefaultWorkspaces(ctx context.Context, tr 
 		}
 	}
 	return nil
-}
-
-func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, tr *v1.TaskRun) (*v1.TaskRun, error) {
-	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "updateLabelsAndAnnotations")
-	defer span.End()
-	// Ensure the TaskRun is properly decorated with the version of the Tekton controller processing it.
-	if tr.Annotations == nil {
-		tr.Annotations = make(map[string]string, 1)
-	}
-	tr.Annotations[podconvert.ReleaseAnnotation] = changeset.Get()
-
-	newTr, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
-	if err != nil {
-		return nil, fmt.Errorf("error getting TaskRun %s when updating labels/annotations: %w", tr.Name, err)
-	}
-	if !reflect.DeepEqual(tr.ObjectMeta.Labels, newTr.ObjectMeta.Labels) || !reflect.DeepEqual(tr.ObjectMeta.Annotations, newTr.ObjectMeta.Annotations) {
-		// Note that this uses Update vs. Patch because the former is significantly easier to test.
-		// If we want to switch this to Patch, then we will need to teach the utilities in test/controller.go
-		// to deal with Patch (setting resourceVersion, and optimistic concurrency checks).
-		newTr = newTr.DeepCopy()
-		newTr.Labels = kmap.Union(newTr.Labels, tr.Labels)
-		newTr.Annotations = kmap.Union(kmap.ExcludeKeys(newTr.Annotations, tknreconciler.KubectlLastAppliedAnnotationKey), tr.Annotations)
-		return c.PipelineClientSet.TektonV1().TaskRuns(tr.Namespace).Update(ctx, newTr, metav1.UpdateOptions{})
-	}
-	return newTr, nil
 }
 
 func (c *Reconciler) handlePodCreationError(tr *v1.TaskRun, err error) error {
@@ -903,25 +868,26 @@ func applyVolumeClaimTemplates(workspaceBindings []v1.WorkspaceBinding, owner me
 	return taskRunWorkspaceBindings
 }
 
-func storeTaskSpecAndMergeMeta(ctx context.Context, tr *v1.TaskRun, ts *v1.TaskSpec, meta *resolutionutil.ResolvedObjectMeta) error {
+func storeTaskSpecAndMeta(ctx context.Context, tr *v1.TaskRun, ts *v1.TaskSpec, meta *resolutionutil.ResolvedObjectMeta) error {
 	// Only store the TaskSpec once, if it has never been set before.
 	if tr.Status.TaskSpec == nil {
 		tr.Status.TaskSpec = ts
-		if meta == nil {
-			return nil
+	}
+	// Only store the TaskMeta once, if it has never been set before.
+	if tr.Status.TaskMeta == nil {
+		tr.Status.TaskMeta = &v1.TektonObjectMeta{
+			Labels:      map[string]string{},
+			Annotations: map[string]string{},
 		}
-
-		// Propagate annotations from Task to TaskRun. TaskRun annotations take precedences over Task.
-		tr.ObjectMeta.Annotations = kmap.Union(kmap.ExcludeKeys(meta.Annotations, tknreconciler.KubectlLastAppliedAnnotationKey), tr.ObjectMeta.Annotations)
-		// Propagate labels from Task to TaskRun. TaskRun labels take precedences over Task.
-		tr.ObjectMeta.Labels = kmap.Union(meta.Labels, tr.ObjectMeta.Labels)
+		tr.Status.TaskMeta.Labels = kmeta.CopyMap(meta.Labels)
 		if tr.Spec.TaskRef != nil {
 			if tr.Spec.TaskRef.Kind == "ClusterTask" {
-				tr.ObjectMeta.Labels[pipeline.ClusterTaskLabelKey] = meta.Name
+				tr.Status.TaskMeta.Labels[pipeline.ClusterTaskLabelKey] = meta.Name
 			} else {
-				tr.ObjectMeta.Labels[pipeline.TaskLabelKey] = meta.Name
+				tr.Status.TaskMeta.Labels[pipeline.TaskLabelKey] = meta.Name
 			}
 		}
+		tr.Status.TaskMeta.Annotations = kmap.ExcludeKeys(meta.Annotations, tknreconciler.KubectlLastAppliedAnnotationKey)
 	}
 
 	cfg := config.FromContextOrDefaults(ctx)

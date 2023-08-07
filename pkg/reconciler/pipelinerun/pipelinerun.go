@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"strings"
 
@@ -39,6 +38,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	"github.com/tektoncd/pipeline/pkg/pipelinerunmetrics"
+	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
@@ -67,6 +67,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/clock"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/changeset"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/kmap"
 	"knative.dev/pkg/kmeta"
@@ -299,17 +300,12 @@ func (c *Reconciler) durationAndCountMetrics(ctx context.Context, pr *v1.Pipelin
 func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, pr *v1.PipelineRun, beforeCondition *apis.Condition, previousError error) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "finishReconcileUpdateEmitEvents")
 	defer span.End()
-	logger := logging.FromContext(ctx)
 
 	afterCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
 	events.Emit(ctx, beforeCondition, afterCondition, pr)
-	_, err := c.updateLabelsAndAnnotations(ctx, pr)
-	if err != nil {
-		logger.Warn("Failed to update PipelineRun labels/annotations", zap.Error(err))
-		events.EmitError(controller.GetEventRecorder(ctx), err, pr)
-	}
 
-	merr := multierror.Append(previousError, err).ErrorOrNil()
+	// Note(vdemeester): This is still there because.. otherwise there is way too many test to rewrite
+	merr := multierror.Append(previousError).ErrorOrNil()
 	if controller.IsPermanentError(previousError) {
 		return controller.NewPermanentError(merr)
 	}
@@ -322,7 +318,8 @@ func (c *Reconciler) resolvePipelineState(
 	ctx context.Context,
 	tasks []v1.PipelineTask,
 	pipelineMeta *metav1.ObjectMeta,
-	pr *v1.PipelineRun) (resources.PipelineRunState, error) {
+	pr *v1.PipelineRun,
+) (resources.PipelineRunState, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "resolvePipelineState")
 	defer span.End()
 	pst := resources.PipelineRunState{}
@@ -421,7 +418,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		return controller.NewPermanentError(err)
 	default:
 		// Store the fetched PipelineSpec on the PipelineRun for auditing
-		if err := storePipelineSpecAndMergeMeta(ctx, pr, pipelineSpec, pipelineMeta); err != nil {
+		if err := storePipelineSpecAndMeta(ctx, pr, pipelineSpec, pipelineMeta); err != nil {
 			logger.Errorf("Failed to store PipelineSpec on PipelineRun.Status for pipelinerun %s: %v", pr.Name, err)
 		}
 	}
@@ -1154,6 +1151,9 @@ func getTaskrunAnnotations(pr *v1.PipelineRun) map[string]string {
 	for key, val := range pr.ObjectMeta.Annotations {
 		annotations[key] = val
 	}
+	for key, val := range pr.Status.PipelineMeta.Annotations {
+		annotations[key] = val
+	}
 	return kmap.Filter(annotations, func(s string) bool {
 		return filterReservedAnnotationRegexp.MatchString(s)
 	})
@@ -1181,6 +1181,9 @@ func getTaskrunLabels(pr *v1.PipelineRun, pipelineTaskName string, includePipeli
 	labels := make(map[string]string, len(pr.ObjectMeta.Labels)+1)
 	if includePipelineLabels {
 		for key, val := range pr.ObjectMeta.Labels {
+			labels[key] = val
+		}
+		for key, val := range pr.Status.PipelineMeta.Labels {
 			labels[key] = val
 		}
 	}
@@ -1238,6 +1241,8 @@ func combineTaskRunAndTaskSpecAnnotations(pr *v1.PipelineRun, pipelineTask *v1.P
 		addMetadataByPrecedence(annotations, pipelineTask.TaskSpecMetadata().Annotations)
 	}
 
+	annotations[podconvert.ReleaseAnnotation] = changeset.Get()
+
 	return annotations
 }
 
@@ -1251,40 +1256,20 @@ func addMetadataByPrecedence(metadata map[string]string, addedMetadata map[strin
 	}
 }
 
-func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, pr *v1.PipelineRun) (*v1.PipelineRun, error) {
-	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "updateLabelsAndAnnotations")
-	defer span.End()
-	newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
-	if err != nil {
-		return nil, fmt.Errorf("error getting PipelineRun %s when updating labels/annotations: %w", pr.Name, err)
-	}
-	if !reflect.DeepEqual(pr.ObjectMeta.Labels, newPr.ObjectMeta.Labels) || !reflect.DeepEqual(pr.ObjectMeta.Annotations, newPr.ObjectMeta.Annotations) {
-		// Note that this uses Update vs. Patch because the former is significantly easier to test.
-		// If we want to switch this to Patch, then we will need to teach the utilities in test/controller.go
-		// to deal with Patch (setting resourceVersion, and optimistic concurrency checks).
-		newPr = newPr.DeepCopy()
-		// Properly merge labels and annotations, as the labels *might* have changed during the reconciliation
-		newPr.Labels = kmap.Union(newPr.Labels, pr.Labels)
-		newPr.Annotations = kmap.Union(newPr.Annotations, pr.Annotations)
-		return c.PipelineClientSet.TektonV1().PipelineRuns(pr.Namespace).Update(ctx, newPr, metav1.UpdateOptions{})
-	}
-	return newPr, nil
-}
-
-func storePipelineSpecAndMergeMeta(ctx context.Context, pr *v1.PipelineRun, ps *v1.PipelineSpec, meta *resolutionutil.ResolvedObjectMeta) error {
+func storePipelineSpecAndMeta(ctx context.Context, pr *v1.PipelineRun, ps *v1.PipelineSpec, meta *resolutionutil.ResolvedObjectMeta) error {
 	// Only store the PipelineSpec once, if it has never been set before.
 	if pr.Status.PipelineSpec == nil {
 		pr.Status.PipelineSpec = ps
-		if meta == nil {
-			return nil
+	}
+	// Only store the PipelineMeta once, if it has never been set before.
+	if pr.Status.PipelineMeta == nil {
+		pr.Status.PipelineMeta = &v1.TektonObjectMeta{
+			Labels:      map[string]string{},
+			Annotations: map[string]string{},
 		}
-
-		// Propagate labels from Pipeline to PipelineRun. PipelineRun labels take precedences over Pipeline.
-		pr.ObjectMeta.Labels = kmap.Union(meta.Labels, pr.ObjectMeta.Labels)
-		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = meta.Name
-
-		// Propagate annotations from Pipeline to PipelineRun. PipelineRun annotations take precedences over Pipeline.
-		pr.ObjectMeta.Annotations = kmap.Union(kmap.ExcludeKeys(meta.Annotations, tknreconciler.KubectlLastAppliedAnnotationKey), pr.ObjectMeta.Annotations)
+		pr.Status.PipelineMeta.Labels = meta.Labels
+		pr.Status.PipelineMeta.Labels[pipeline.PipelineLabelKey] = meta.Name
+		pr.Status.PipelineMeta.Annotations = kmap.ExcludeKeys(meta.Annotations, tknreconciler.KubectlLastAppliedAnnotationKey)
 	}
 
 	// Propagate refSource from remote resolution to PipelineRun Status
