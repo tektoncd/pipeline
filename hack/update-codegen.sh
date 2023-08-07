@@ -33,6 +33,13 @@ GOFLAGS="-mod=vendor"
 #                  k8s.io/kubernetes. The output-base is needed for the generators to output into the vendor dir
 #                  instead of the $GOPATH directly. For normal projects this can be dropped.
 
+# This generates conversion between v1 and internalversion
+bash ${REPO_ROOT_DIR}/hack/generate-groups.sh "conversion" \
+  "" \
+  github.com/tektoncd/pipeline/pkg/apis \
+  "pipeline:v1" \
+  --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
+
 # This generates deepcopy,client,informer and lister for the resource package (v1alpha1)
 # This is separate from the pipeline package as resource are staying in v1alpha1 and they
 # need to be separated (at least in terms of go package) from the pipeline's packages to
@@ -54,6 +61,11 @@ bash ${REPO_ROOT_DIR}/hack/generate-groups.sh "deepcopy,client,informer,lister" 
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
 
 # Depends on generate-groups.sh to install bin/deepcopy-gen
+${PREFIX}/deepcopy-gen \
+  -O zz_generated.deepcopy \
+  --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt \
+  -i github.com/tektoncd/pipeline/pkg/apis/pipeline
+
 ${PREFIX}/deepcopy-gen \
   -O zz_generated.deepcopy \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt \

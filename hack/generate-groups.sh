@@ -48,7 +48,7 @@ shift 4
   # To support running this script from anywhere, we have to first cd into this directory
   # so we can install the tools.
   cd "$(dirname "${0}")"
-  go install k8s.io/code-generator/cmd/{defaulter-gen,client-gen,lister-gen,informer-gen,deepcopy-gen}
+  go install k8s.io/code-generator/cmd/{defaulter-gen,client-gen,lister-gen,informer-gen,deepcopy-gen,conversion-gen}
 )
 
 PREFIX=${GOBIN:-${GOPATH}/bin}
@@ -65,6 +65,11 @@ for GVs in ${GROUPS_WITH_VERSIONS}; do
     FQ_APIS+=("${APIS_PKG}/${G}/${V}")
   done
 done
+
+if [ "${GENS}" = "all" ] || grep -qw "conversion" <<<"${GENS}"; then
+  echo "Generating conversion funcs for ${GROUPS_WITH_VERSIONS}"
+  "${PREFIX}/conversion-gen" --input-dirs "$(codegen::join , "${FQ_APIS[@]}")" -O zz_generated.conversion  "$@"
+fi
 
 if [ "${GENS}" = "all" ] || grep -qw "deepcopy" <<<"${GENS}"; then
   echo "Generating deepcopy funcs for ${GROUPS_WITH_VERSIONS}"

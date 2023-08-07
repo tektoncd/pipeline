@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The Tekton Authors
+Copyright 2022 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,11 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package pipeline contains structs internal version of pipeline CRDs
+// +k8s:deepcopy-gen=package
+// +k8s:defaulter-gen=TypeMeta
+// +gencrdrefdocs:unversionedTypes
+// +groupName=tekton.dev
 package pipeline
-
-// Options holds options passed to the Tekton Pipeline controllers
-// typically via command-line flags.
-// +k8s:deepcopy-gen=false
-type Options struct {
-	Images Images
-}
