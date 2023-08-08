@@ -366,6 +366,9 @@ to define when a `Task` should be executed. For more information, see the [`runA
 When a `PersistentVolumeClaim` is used as volume source for a `Workspace` in a `PipelineRun`,
 an Affinity Assistant will be created. For more information, see the [`Affinity Assistants` documentation](affinityassistants.md).
 
+**Note**: When `coschedule` is set to `workspaces` or `disabled`, it is not allowed to bind multiple [`PersistentVolumeClaim` based workspaces](#using-persistentvolumeclaims-as-volumesource) to the same `TaskRun` in a `PipelineRun` due to potential Availability Zone conflicts.
+See more details in [Availability Zones](#availability-zones).
+
 #### Specifying `Workspaces` in `PipelineRuns`
 
 For a `PipelineRun` to execute a `Pipeline` that includes one or more `Workspaces`, it needs to
@@ -577,13 +580,6 @@ only available to Nodes within *one* Availability Zone. There is usually an opti
 but they have trade-offs, e.g. you need to pay for multiple volumes since they are replicated and your volume may have 
 substantially higher latency.
 
-When using a workspace backed by a `PersistentVolumeClaim` (typically only available within a Data Center) and the `TaskRun`
-pods can be scheduled to any Availability Zone in a regional cluster, some techniques must be used to avoid deadlock in the `Pipeline`.
-
-Tekton provides an Affinity Assistant that schedules all `TaskRun` Pods sharing a `PersistentVolumeClaim` to the same
-Node. This avoids deadlocks that can happen when two Pods requiring the same Volume are scheduled to different Availability Zones.
-A volume typically only lives within a single Availability Zone.
-
 ### Access Modes
 
 A `PersistentVolumeClaim` specifies an [Access Mode](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes).
@@ -600,6 +596,13 @@ the storage solution that you are using.
 
 * `ReadWriteMany` is the least commonly available Access Mode. If you use this access mode and these volumes are available
   to all Nodes within your cluster, you may want to disable the Affinity Assistant.
+
+### Availability Zones
+`Persistent Volumes` are "zonal" in some cloud providers like GKE (i.e. they live within a single Availability Zone and cannot be accessed from a `pod` living in another Availability Zone). When using a workspace backed by a `PersistentVolumeClaim` (typically only available within a Data Center), the `TaskRun` `pods` can be scheduled to any Availability Zone in a regional cluster. This results in potential Availability Zone scheduling conflict when two `pods` requiring the same Volume are scheduled to different Availability Zones (see issue [#3480](https://github.com/tektoncd/pipeline/issues/3480) and [#5275](https://github.com/tektoncd/pipeline/issues/5275)).
+
+To avoid such conflict in `PipelineRuns`, Tekton provides [Affinity Assistants](affinityassistants.md) which schedule all `TaskRun` `pods` or all `TaskRun` sharing a `PersistentVolumeClaim` in a `PipelineRun` to the same Node depending on the `coschedule` mode.
+
+Specifically, for users use zonal clusters like GKE or use `PersistentVolumeClaim` in ReadWriteOnce access modes, please set `coschedule: workspaces` to schedule each of the `TaskRun` `pod` to the same zone as the associated `PersistentVolumeClaim`. In addition, for users want to bind multiple `PersistentVolumeClaims` to a single `TaskRun`, please set `coschedule: pipelineruns` to schedule all `TaskRun` `pods` and `PersistentVolumeClaim` in a `PipelineRun` to the same zone.
 
 ## More examples
 
