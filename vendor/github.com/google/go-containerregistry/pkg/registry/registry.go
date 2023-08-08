@@ -136,3 +136,9 @@ func WithWarning(prob float64, msg string) Option {
 		r.warnings[prob] = msg
 	}
 }
+
+func WithBlobHandler(h BlobHandler) Option {
+	return func(r *registry) {
+		r.blobs.blobHandler = h
+	}
+}
