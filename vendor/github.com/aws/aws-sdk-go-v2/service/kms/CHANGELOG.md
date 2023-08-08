@@ -1,3 +1,24 @@
+# v1.24.1 (2023-08-01)
+
+* No change notes available for this release.
+
+# v1.24.0 (2023-07-31)
+
+* **Feature**: Adds support for smithy-modeled endpoint resolution. A new rules-based endpoint resolution will be added to the SDK which will supercede and deprecate existing endpoint resolution. Specifically, EndpointResolver will be deprecated while BaseEndpoint and EndpointResolverV2 will take its place. For more information, please see the Endpoints section in our Developer Guide.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.23.2 (2023-07-28)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.23.1 (2023-07-13)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.23.0 (2023-07-05)
+
+* **Feature**: Added Dry Run Feature to cryptographic and cross-account mutating KMS APIs (14 in all). This feature allows users to test their permissions and parameters before making the actual API call.
+
 # v1.22.2 (2023-06-15)
 
 * No change notes available for this release.
