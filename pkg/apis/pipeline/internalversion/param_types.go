@@ -374,6 +374,8 @@ var AllParamTypes = []ParamType{ParamTypeString, ParamTypeArray, ParamTypeObject
 // ParamValue is a type that can hold a single string, string array, or string map.
 // Used in JSON unmarshalling so that a single JSON field can accept
 // either an individual string or an array of strings.
+//
+//nolint:musttag
 type ParamValue struct {
 	Type      ParamType // Represents the stored type of ParamValues.
 	StringVal string
