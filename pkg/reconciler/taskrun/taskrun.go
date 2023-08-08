@@ -395,7 +395,9 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*internalvers
 	var internalparams []internalversion.Param
 	for i := range tr.Spec.Params {
 		var internalparam internalversion.Param
-		v1.Convert_v1_Param_To_internalversion_Param(&tr.Spec.Params[i], &internalparam, nil)
+		if err := v1.Convert_v1_Param_To_internalversion_Param(&tr.Spec.Params[i], &internalparam, nil); err != nil {
+			return nil, nil, err
+		}
 		internalparams = append(internalparams, internalparam)
 	}
 
@@ -530,7 +532,9 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 		return err
 	}
 	v1spec := &v1.TaskSpec{}
-	v1.Convert_internalversion_TaskSpec_To_v1_TaskSpec(ts, v1spec, nil)
+	if err := v1.Convert_internalversion_TaskSpec_To_v1_TaskSpec(ts, v1spec, nil); err != nil {
+		return err
+	}
 	tr.Status.TaskSpec = v1spec
 
 	if len(tr.Status.TaskSpec.Steps) > 0 {
@@ -917,7 +921,9 @@ func storeTaskSpecAndMergeMeta(ctx context.Context, tr *v1.TaskRun, ts *internal
 	// Only store the TaskSpec once, if it has never been set before.
 	if tr.Status.TaskSpec == nil {
 		v1ts := &v1.TaskSpec{}
-		v1.Convert_internalversion_TaskSpec_To_v1_TaskSpec(ts, v1ts, nil)
+		if err := v1.Convert_internalversion_TaskSpec_To_v1_TaskSpec(ts, v1ts, nil); err != nil {
+			return err
+		}
 		tr.Status.TaskSpec = v1ts
 		if meta == nil {
 			return nil

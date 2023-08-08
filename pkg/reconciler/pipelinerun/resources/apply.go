@@ -313,14 +313,14 @@ func propagateParams(t v1.PipelineTask, stringReplacements map[string]string, ar
 		_ = v1.Convert_v1_TaskSpec_To_internalversion_TaskSpec(&t.TaskSpec.TaskSpec, &internaltaskspec, nil)
 		internalts := *resources.ApplyReplacements(&internaltaskspec, stringReplacementsDup, arrayReplacementsDup)
 		var v1taskspec v1.TaskSpec
-		v1.Convert_internalversion_TaskSpec_To_v1_TaskSpec(&internalts, &v1taskspec, nil)
+		_ = v1.Convert_internalversion_TaskSpec_To_v1_TaskSpec(&internalts, &v1taskspec, nil)
 		t.TaskSpec.TaskSpec = v1taskspec
 	} else {
 		var internaltaskspec internalversion.TaskSpec
 		_ = v1.Convert_v1_TaskSpec_To_internalversion_TaskSpec(&t.TaskSpec.TaskSpec, &internaltaskspec, nil)
 		internalts := *resources.ApplyReplacements(&internaltaskspec, stringReplacements, arrayReplacements)
 		var v1taskspec v1.TaskSpec
-		v1.Convert_internalversion_TaskSpec_To_v1_TaskSpec(&internalts, &v1taskspec, nil)
+		_ = v1.Convert_internalversion_TaskSpec_To_v1_TaskSpec(&internalts, &v1taskspec, nil)
 		t.TaskSpec.TaskSpec = v1taskspec
 	}
 	return t
