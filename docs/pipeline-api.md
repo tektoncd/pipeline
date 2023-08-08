@@ -1,11 +1,3 @@
-<!--
----
-title: Pipeline API
-linkTitle: Pipeline API
-weight: 404
----
--->
-
 <p>Packages:</p>
 <ul>
 <li>

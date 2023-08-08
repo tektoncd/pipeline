@@ -17,5 +17,6 @@ limitations under the License.
 // Package internalversion contains API Schema definitions for the pipeline internal version
 // +k8s:deepcopy-gen=package
 // +k8s:defaulter-gen=TypeMeta
+// +gencrdrefdocs:unversionedTypes
 // +groupName=tekton.dev
 package internalversion
