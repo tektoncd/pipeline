@@ -23,6 +23,7 @@ import (
 
 // Images holds the images reference for a number of container images used
 // across tektoncd pipelines.
+// +k8s:deepcopy-gen=false
 type Images struct {
 	// EntrypointImage is container image containing our entrypoint binary.
 	EntrypointImage string

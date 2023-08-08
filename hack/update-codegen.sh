@@ -57,6 +57,11 @@ bash ${REPO_ROOT_DIR}/hack/generate-groups.sh "deepcopy,client,informer,lister" 
 ${PREFIX}/deepcopy-gen \
   -O zz_generated.deepcopy \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt \
+  -i github.com/tektoncd/pipeline/pkg/apis/pipeline
+
+${PREFIX}/deepcopy-gen \
+  -O zz_generated.deepcopy \
+  --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt \
   -i github.com/tektoncd/pipeline/pkg/apis/config
 
 ${PREFIX}/deepcopy-gen \
