@@ -577,9 +577,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	for _, rpt := range pipelineRunFacts.State {
 		if !rpt.IsCustomTask() {
 			internalParams := []internalversion.Param{}
-			for _, p := range rpt.PipelineTask.Params {
+			for i := range rpt.PipelineTask.Params {
 				internalParam := internalversion.Param{}
-				err := v1.Convert_v1_Param_To_internalversion_Param(&p, &internalParam, nil)
+				err := v1.Convert_v1_Param_To_internalversion_Param(&rpt.PipelineTask.Params[i], &internalParam, nil)
 				if err != nil {
 					logger.Errorf("Failed to convert v1 Param to internal Param for pipelinerun %q with error %v", pr.Name, err)
 					pr.Status.MarkFailed(ReasonFailedValidation, err.Error())

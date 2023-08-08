@@ -14,15 +14,10 @@ limitations under the License.
 package internalversion
 
 import (
-	"context"
-	"fmt"
 	"sort"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"golang.org/x/exp/maps"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/strings/slices"
-	"knative.dev/pkg/apis"
 )
 
 // Matrix is used to fan out Tasks in a Pipeline
@@ -289,62 +284,4 @@ func (m *Matrix) GetAllParams() Params {
 		}
 	}
 	return params
-}
-
-func (m *Matrix) validateCombinationsCount(ctx context.Context) (errs *apis.FieldError) {
-	matrixCombinationsCount := m.CountCombinations()
-	maxMatrixCombinationsCount := config.FromContextOrDefaults(ctx).Defaults.DefaultMaxMatrixCombinationsCount
-	if matrixCombinationsCount > maxMatrixCombinationsCount {
-		errs = errs.Also(apis.ErrOutOfBoundsValue(matrixCombinationsCount, 0, maxMatrixCombinationsCount, "matrix"))
-	}
-	return errs
-}
-
-// validateUniqueParams validates Matrix.Params for a unique list of params
-// and a unique list of params in each Matrix.Include.Params specification
-func (m *Matrix) validateUniqueParams() (errs *apis.FieldError) {
-	if m != nil {
-		if m.HasInclude() {
-			for i, include := range m.Include {
-				errs = errs.Also(include.Params.validateDuplicateParameters().ViaField(fmt.Sprintf("matrix.include[%d].params", i)))
-			}
-		}
-		if m.HasParams() {
-			errs = errs.Also(m.Params.validateDuplicateParameters().ViaField("matrix.params"))
-		}
-	}
-	return errs
-}
-
-// validatePipelineParametersVariablesInMatrixParameters validates all pipeline parameter variables including Matrix.Params and Matrix.Include.Params
-// that may contain the reference(s) to other params to make sure those references are used appropriately.
-func (m *Matrix) validatePipelineParametersVariablesInMatrixParameters(prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
-	if m.HasInclude() {
-		for _, include := range m.Include {
-			for idx, param := range include.Params {
-				stringElement := param.Value.StringVal
-				// Matrix Include Params must be of type string
-				errs = errs.Also(validateStringVariable(stringElement, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaFieldIndex("", idx).ViaField("matrix.include.params", ""))
-			}
-		}
-	}
-	if m.HasParams() {
-		for _, param := range m.Params {
-			for idx, arrayElement := range param.Value.ArrayVal {
-				// Matrix Params must be of type array
-				errs = errs.Also(validateArrayVariable(arrayElement, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaFieldIndex("value", idx).ViaFieldKey("matrix.params", param.Name))
-			}
-		}
-	}
-	return errs
-}
-
-func (m *Matrix) validateParameterInOneOfMatrixOrParams(params []Param) (errs *apis.FieldError) {
-	matrixParamNames := m.GetAllParams().ExtractNames()
-	for _, param := range params {
-		if matrixParamNames.Has(param.Name) {
-			errs = errs.Also(apis.ErrMultipleOneOf("matrix["+param.Name+"]", "params["+param.Name+"]"))
-		}
-	}
-	return errs
 }

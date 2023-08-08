@@ -393,9 +393,9 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*internalvers
 	}
 
 	var internalparams []internalversion.Param
-	for _, p := range tr.Spec.Params {
+	for i := range tr.Spec.Params {
 		var internalparam internalversion.Param
-		v1.Convert_v1_Param_To_internalversion_Param(&p, &internalparam, nil)
+		v1.Convert_v1_Param_To_internalversion_Param(&tr.Spec.Params[i], &internalparam, nil)
 		internalparams = append(internalparams, internalparam)
 	}
 

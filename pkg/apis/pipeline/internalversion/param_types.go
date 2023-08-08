@@ -163,18 +163,6 @@ func (ps Params) ExtractNames() sets.String {
 	return names
 }
 
-func (ps Params) extractValues() []string {
-	pvs := []string{}
-	for i := range ps {
-		pvs = append(pvs, ps[i].Value.StringVal)
-		pvs = append(pvs, ps[i].Value.ArrayVal...)
-		for _, v := range ps[i].Value.ObjectVal {
-			pvs = append(pvs, v)
-		}
-	}
-	return pvs
-}
-
 // extractParamMapArrVals creates a param map with the key: param.Name and
 // val: param.Value.ArrayVal
 func (ps Params) extractParamMapArrVals() map[string][]string {
@@ -201,19 +189,6 @@ func (ps Params) ExtractParamArrayLengths() map[string]int {
 		}
 	}
 	return arrayParamsLengths
-}
-
-// validateDuplicateParameters checks if a parameter with the same name is defined more than once
-func (ps Params) validateDuplicateParameters() (errs *apis.FieldError) {
-	taskParamNames := sets.NewString()
-	for i, param := range ps {
-		if taskParamNames.Has(param.Name) {
-			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("parameter names must be unique,"+
-				" the parameter \"%s\" is also defined at", param.Name), fmt.Sprintf("[%d].name", i)))
-		}
-		taskParamNames.Insert(param.Name)
-	}
-	return errs
 }
 
 // ReplaceVariables applies string, array and object replacements to variables in Params
@@ -547,67 +522,4 @@ func NewObject(pairs map[string]string) *ParamValue {
 // returns arrayParam from $(params.arrayParam[*])
 func ArrayReference(a string) string {
 	return strings.TrimSuffix(strings.TrimPrefix(a, "$("+ParamsPrefix+"."), "[*])")
-}
-
-// validatePipelineParametersVariablesInTaskParameters validates param value that
-// may contain the reference(s) to other params to make sure those references are used appropriately.
-func validatePipelineParametersVariablesInTaskParameters(params Params, prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
-	errs = errs.Also(params.validateDuplicateParameters()).ViaField("params")
-	for _, param := range params {
-		switch param.Value.Type {
-		case ParamTypeArray:
-			for idx, arrayElement := range param.Value.ArrayVal {
-				errs = errs.Also(validateArrayVariable(arrayElement, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaFieldIndex("value", idx).ViaFieldKey("params", param.Name))
-			}
-		case ParamTypeObject:
-			for key, val := range param.Value.ObjectVal {
-				errs = errs.Also(validateStringVariable(val, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaFieldKey("properties", key).ViaFieldKey("params", param.Name))
-			}
-		case ParamTypeString:
-			fallthrough
-		default:
-			errs = errs.Also(validateParamStringValue(param, prefix, paramNames, arrayParamNames, objectParamNameKeys))
-		}
-	}
-	return errs
-}
-
-// validateParamStringValue validates the param value field of string type
-// that may contain references to other isolated array/object params other than string param.
-func validateParamStringValue(param Param, prefix string, paramNames sets.String, arrayVars sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
-	stringValue := param.Value.StringVal
-
-	// if the provided param value is an isolated reference to the whole array/object, we just check if the param name exists.
-	isIsolated, errs := substitution.ValidateWholeArrayOrObjectRefInStringVariable(param.Name, stringValue, prefix, paramNames)
-	if isIsolated {
-		return errs
-	}
-
-	// if the provided param value is string literal and/or contains multiple variables
-	// valid example: "$(params.myString) and another $(params.myObject.key1)"
-	// invalid example: "$(params.myString) and another $(params.myObject[*])"
-	return validateStringVariable(stringValue, prefix, paramNames, arrayVars, objectParamNameKeys).ViaFieldKey("params", param.Name)
-}
-
-// validateStringVariable validates the normal string fields that can only accept references to string param or individual keys of object param
-func validateStringVariable(value, prefix string, stringVars sets.String, arrayVars sets.String, objectParamNameKeys map[string][]string) *apis.FieldError {
-	errs := substitution.ValidateNoReferencesToUnknownVariables(value, prefix, stringVars)
-	errs = errs.Also(validateObjectVariable(value, prefix, objectParamNameKeys))
-	return errs.Also(substitution.ValidateNoReferencesToProhibitedVariables(value, prefix, arrayVars))
-}
-
-func validateArrayVariable(value, prefix string, stringVars sets.String, arrayVars sets.String, objectParamNameKeys map[string][]string) *apis.FieldError {
-	errs := substitution.ValidateNoReferencesToUnknownVariables(value, prefix, stringVars)
-	errs = errs.Also(validateObjectVariable(value, prefix, objectParamNameKeys))
-	return errs.Also(substitution.ValidateVariableReferenceIsIsolated(value, prefix, arrayVars))
-}
-
-func validateObjectVariable(value, prefix string, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
-	objectNames := sets.NewString()
-	for objectParamName, keys := range objectParamNameKeys {
-		objectNames.Insert(objectParamName)
-		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(value, fmt.Sprintf("%s\\.%s", prefix, objectParamName), sets.NewString(keys...)))
-	}
-
-	return errs.Also(substitution.ValidateNoReferencesToEntireProhibitedVariables(value, prefix, objectNames))
 }

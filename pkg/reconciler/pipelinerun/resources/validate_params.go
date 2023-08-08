@@ -79,20 +79,19 @@ func ValidateRequiredParametersProvided(pipelineParameters *v1.ParamSpecs, pipel
 
 // ValidateObjectParamRequiredKeys validates that the required keys of all the object parameters expected by the Pipeline are provided by the PipelineRun.
 func ValidateObjectParamRequiredKeys(pipelineParameters []v1.ParamSpec, pipelineRunParameters []v1.Param) error {
-
 	internalPipelineParams := []internalversion.ParamSpec{}
-	for _, pps := range pipelineParameters {
+	for i := range pipelineParameters {
 		internalPipelineParam := internalversion.ParamSpec{}
-		if err := v1.Convert_v1_ParamSpec_To_internalversion_ParamSpec(&pps, &internalPipelineParam, nil); err != nil {
+		if err := v1.Convert_v1_ParamSpec_To_internalversion_ParamSpec(&pipelineParameters[i], &internalPipelineParam, nil); err != nil {
 			return err
 		}
 		internalPipelineParams = append(internalPipelineParams, internalPipelineParam)
 	}
 
 	internalPipelineRunParams := []internalversion.Param{}
-	for _, prs := range pipelineRunParameters {
+	for i := range pipelineRunParameters {
 		internalPipelineRunParam := internalversion.Param{}
-		if err := v1.Convert_v1_Param_To_internalversion_Param(&prs, &internalPipelineRunParam, nil); err != nil {
+		if err := v1.Convert_v1_Param_To_internalversion_Param(&pipelineRunParameters[i], &internalPipelineRunParam, nil); err != nil {
 			return err
 		}
 		internalPipelineRunParams = append(internalPipelineRunParams, internalPipelineRunParam)
@@ -137,9 +136,9 @@ func ValidateParameterTypesInMatrix(state PipelineRunState) error {
 // e.g. if a param reference of $(params.array-param[2]) and the array param is of length 2.
 func ValidateParamArrayIndex(ps *v1.PipelineSpec, params v1.Params) error {
 	internalPipelineParams := []internalversion.ParamSpec{}
-	for _, pps := range ps.Params {
+	for i := range ps.Params {
 		internalPipelineParam := internalversion.ParamSpec{}
-		if err := v1.Convert_v1_ParamSpec_To_internalversion_ParamSpec(&pps, &internalPipelineParam, nil); err != nil {
+		if err := v1.Convert_v1_ParamSpec_To_internalversion_ParamSpec(&ps.Params[i], &internalPipelineParam, nil); err != nil {
 			return err
 		}
 		internalPipelineParams = append(internalPipelineParams, internalPipelineParam)

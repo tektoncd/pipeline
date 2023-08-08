@@ -239,7 +239,10 @@ func validateTaskRunResults(tr *v1.TaskRun, resolvedTaskSpec *internalversion.Ta
 	specResults := []internalversion.TaskResult{}
 	if tr.Spec.TaskSpec != nil {
 		ts := &internalversion.TaskSpec{}
-		v1.Convert_v1_TaskSpec_To_internalversion_TaskSpec(tr.Spec.TaskSpec, ts, nil)
+		if err := v1.Convert_v1_TaskSpec_To_internalversion_TaskSpec(tr.Spec.TaskSpec, ts, nil); err != nil {
+			return err
+		}
+
 		specResults = append(specResults, ts.Results...)
 	}
 

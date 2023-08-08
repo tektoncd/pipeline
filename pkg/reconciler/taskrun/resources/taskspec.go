@@ -66,7 +66,10 @@ func GetTaskData(ctx context.Context, taskRun *v1.TaskRun, getTask GetTask) (*re
 		verificationResult = vr
 	case taskRun.Spec.TaskSpec != nil:
 		taskMeta = taskRun.ObjectMeta
-		v1.Convert_v1_TaskSpec_To_internalversion_TaskSpec(taskRun.Spec.TaskSpec, &taskSpec, nil)
+		err := v1.Convert_v1_TaskSpec_To_internalversion_TaskSpec(taskRun.Spec.TaskSpec, &taskSpec, nil)
+		if err != nil {
+			return nil, nil, err
+		}
 		// TODO: if we want to set RefSource for embedded taskspec, set it here.
 		// https://github.com/tektoncd/pipeline/issues/5522
 	case taskRun.Spec.TaskRef != nil && taskRun.Spec.TaskRef.Resolver != "":

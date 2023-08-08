@@ -181,9 +181,9 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec inter
 		return nil, err
 	}
 	var steps []v1.Step
-	for _, s := range internalsteps {
+	for i := range internalsteps {
 		var v1step v1.Step
-		v1.Convert_internalversion_Step_To_v1_Step(&s, &v1step, nil)
+		v1.Convert_internalversion_Step_To_v1_Step(&internalsteps[i], &v1step, nil)
 		steps = append(steps, v1step)
 	}
 
@@ -202,9 +202,9 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec inter
 		commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-result_from", config.ResultExtractionMethodSidecarLogs)
 	}
 	var v1sidecars []v1.Sidecar
-	for _, s := range taskSpec.Sidecars {
+	for i := range taskSpec.Sidecars {
 		var v1sidecar v1.Sidecar
-		v1.Convert_internalversion_Sidecar_To_v1_Sidecar(&s, &v1sidecar, nil)
+		v1.Convert_internalversion_Sidecar_To_v1_Sidecar(&taskSpec.Sidecars[i], &v1sidecar, nil)
 		v1sidecars = append(v1sidecars, v1sidecar)
 	}
 

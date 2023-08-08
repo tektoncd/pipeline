@@ -173,13 +173,11 @@ func readRuntimeObjectAsTask(ctx context.Context, obj runtime.Object, k8s kubern
 		if err := obj.ConvertTo(ctx, t); err != nil {
 			return nil, nil, fmt.Errorf("failed to convert obj %s into Pipeline", obj.GetObjectKind().GroupVersionKind().String())
 		}
-		//return t, &vr, nil
 	case *v1beta1.ClusterTask:
 		t, err = convertClusterTaskToTask(ctx, *obj)
 		if err != nil {
 			return nil, nil, err
 		}
-		//return t, nil, err
 	case *v1.Task:
 		vr = trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
 		// Validation of beta fields must happen before the V1 Task is converted into the storage version of the API.
@@ -188,7 +186,6 @@ func readRuntimeObjectAsTask(ctx context.Context, obj runtime.Object, k8s kubern
 			return nil, nil, fmt.Errorf("invalid Task %s: %w", obj.GetName(), err)
 		}
 		t = obj
-		//return obj, &vr, nil
 	}
 
 	internalTask := &internalversion.Task{
@@ -220,6 +217,9 @@ func (l *LocalTaskRefResolver) GetTask(ctx context.Context, name string) (*inter
 			return nil, nil, nil, err
 		}
 		v1task, err := convertClusterTaskToTask(ctx, *task)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		internalTask := &internalversion.Task{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: runtime.APIVersionInternal,

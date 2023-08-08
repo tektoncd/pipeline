@@ -67,16 +67,6 @@ func MergeStepsWithStepTemplate(template *StepTemplate, steps []Step) ([]Step, e
 	return steps, nil
 }
 
-// mergeObjWithTemplate merges obj with template and updates out to reflect the merged result.
-// template, obj, and out should point to the same type. out points to the zero value of that type.
-func mergeObjWithTemplate(template, obj, out interface{}) error {
-	md, err := getMergeData(template, out)
-	if err != nil {
-		return err
-	}
-	return mergeObjWithTemplateBytes(md, obj, out)
-}
-
 // getMergeData serializes the template and empty object to get the intermediate results necessary for
 // merging an object of the same type with this template.
 // This function is provided to avoid repeatedly serializing an identical template.
