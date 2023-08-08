@@ -39,6 +39,10 @@ type WorkspaceDeclaration struct {
 	// Optional marks a Workspace as not being required in TaskRuns. By default
 	// this field is false and so declared workspaces are required.
 	Optional bool `json:"optional,omitempty"`
+	// Artifact marks a Workspace as available for storage of artifacts. By default
+	// this field is false. Only one workspace per Task/Pipeline may have artifact
+	// set to true. Artifact can be defined at authoring time only.
+	Artifact bool `json:"artifact,omitempty"`
 }
 
 // GetMountPath returns the mountPath for w which is the MountPath if provided or the
@@ -104,6 +108,10 @@ type PipelineWorkspaceDeclaration struct {
 	// Optional marks a Workspace as not being required in PipelineRuns. By default
 	// this field is false and so declared workspaces are required.
 	Optional bool `json:"optional,omitempty"`
+	// Artifact marks a Workspace as available for storage of artifacts. By default
+	// this field is false. Only one workspace per Task/Pipeline may have artifact
+	// set to true. Artifact can be defined at authoring time only.
+	Artifact bool `json:"artifact,omitempty"`
 }
 
 // WorkspacePipelineTaskBinding describes how a workspace passed into the pipeline should be

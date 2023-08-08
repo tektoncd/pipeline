@@ -1292,6 +1292,25 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"workspaces[0].mountpath"},
 		},
 	}, {
+		name: "more than one workspace set as artifact",
+		fields: fields{
+			Steps: validSteps,
+			Workspaces: []v1.WorkspaceDeclaration{{
+				Name:     "one-workspace",
+				Artifact: true,
+			}, {
+				Name:     "two-workspace",
+				Artifact: true,
+			}, {
+				Name:     "three-workspace",
+				Artifact: false,
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "only one workspace may be set as \"artifact\", 2 found: map[one-workspace:{} two-workspace:{}]",
+			Paths:   []string{"workspaces.artifact"},
+		},
+	}, {
 		name: "result name not validate",
 		fields: fields{
 			Steps: validSteps,

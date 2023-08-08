@@ -188,7 +188,8 @@ func validateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step,
 		}
 	}
 
-	wsNames := sets.NewString()
+	wsNames := sets.New[string]()
+	wsArtifactsNames := sets.New[string]()
 	for idx, w := range workspaces {
 		// Workspace names must be unique
 		if wsNames.Has(w.Name) {
@@ -202,6 +203,12 @@ func validateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step,
 			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("workspace mount path %q must be unique", mountPath), "mountpath").ViaIndex(idx))
 		}
 		mountPaths[mountPath] = struct{}{}
+		if w.Artifact {
+			wsArtifactsNames.Insert(w.Name)
+		}
+	}
+	if wsArtifactsNames.Len() > 1 {
+		errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("only one workspace may be set as \"artifact\", %d found: %v", wsArtifactsNames.Len(), wsArtifactsNames), "artifact"))
 	}
 	return errs
 }

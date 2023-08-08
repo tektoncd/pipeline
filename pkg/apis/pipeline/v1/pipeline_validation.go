@@ -335,7 +335,12 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 // empty string,
 func validatePipelineWorkspacesDeclarations(wss []PipelineWorkspaceDeclaration) (errs *apis.FieldError) {
 	// Workspace names must be non-empty and unique.
+	// Only one workspace can be set as artifact
+	// TODO(afrittoli) We could reject a pipeline that defines an artifact workspace
+	// if no task or sidecar defines them, however only in case of not inlined
+	// tasks because those could rely on propagated workspaces.
 	wsTable := sets.NewString()
+	wsArtifactsNames := sets.New[string]()
 	for i, ws := range wss {
 		if ws.Name == "" {
 			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("workspace %d has empty name", i),
@@ -346,6 +351,12 @@ func validatePipelineWorkspacesDeclarations(wss []PipelineWorkspaceDeclaration) 
 				"").ViaFieldIndex("workspaces", i))
 		}
 		wsTable.Insert(ws.Name)
+		if ws.Artifact {
+			wsArtifactsNames.Insert(ws.Name)
+		}
+	}
+	if wsArtifactsNames.Len() > 1 {
+		errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("only one workspace may be set as \"artifact\", %d found: %v", wsArtifactsNames.Len(), wsArtifactsNames), "artifact"))
 	}
 	return errs
 }

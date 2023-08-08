@@ -1976,6 +1976,25 @@ func TestValidatePipelineWorkspacesDeclarations_Failure(t *testing.T) {
 			Message: `invalid value: workspace 0 has empty name`,
 			Paths:   []string{"workspaces[0]"},
 		},
+	}, {
+		name: "only one workspace may hold artifacts",
+		workspaces: []PipelineWorkspaceDeclaration{{
+			Name:     "one-workspace",
+			Artifact: true,
+		}, {
+			Name:     "two-workspace",
+			Artifact: true,
+		}, {
+			Name:     "three-workspace",
+			Artifact: false,
+		}},
+		tasks: []PipelineTask{{
+			Name: "foo", TaskRef: &TaskRef{Name: "foo"},
+		}},
+		expectedError: apis.FieldError{
+			Message: `only one workspace may be set as "artifact", 2 found`,
+			Paths:   []string{"map[one-workspace:{} two-workspace:{}]: artifact"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
