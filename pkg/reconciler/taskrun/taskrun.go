@@ -401,7 +401,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*internalvers
 		internalparams = append(internalparams, internalparam)
 	}
 
-	if err := ValidateResolvedTask(ctx, internalparams, &internalversion.Matrix{}, rtr); err != nil {
+	if err := ValidateResolvedTask(ctx, internalparams, &v1.Matrix{}, rtr); err != nil {
 		logger.Errorf("TaskRun %q resources are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)

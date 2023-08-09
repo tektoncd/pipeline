@@ -33,18 +33,27 @@ import (
 
 // validateParams validates that all Pipeline Task, Matrix.Params and Matrix.Include parameters all have values, match the specified
 // type and object params have all the keys required
-func validateParams(ctx context.Context, paramSpecs []internalversion.ParamSpec, params internalversion.Params, matrixParams internalversion.Params) error {
+func validateParams(ctx context.Context, paramSpecs []internalversion.ParamSpec, params internalversion.Params, matrixParams v1.Params) error {
 	if paramSpecs == nil {
 		return nil
 	}
+	var internalParams []internalversion.Param
+	for i := range matrixParams {
+		var internalparam internalversion.Param
+		if err := v1.Convert_v1_Param_To_internalversion_Param(&matrixParams[i], &internalparam, nil); err != nil {
+			return err
+		}
+		internalParams = append(internalParams, internalparam)
+	}
+
 	neededParamsNames, neededParamsTypes := neededParamsNamesAndTypes(paramSpecs)
 	providedParams := params
-	providedParams = append(providedParams, matrixParams...)
+	providedParams = append(providedParams, internalParams...)
 	providedParamsNames := providedParams.ExtractNames()
 	if missingParamsNames := missingParamsNames(neededParamsNames, providedParamsNames, paramSpecs); len(missingParamsNames) != 0 {
 		return fmt.Errorf("missing values for these params which have no default values: %s", missingParamsNames)
 	}
-	if wrongTypeParamNames := wrongTypeParamsNames(params, matrixParams, neededParamsTypes); len(wrongTypeParamNames) != 0 {
+	if wrongTypeParamNames := wrongTypeParamsNames(params, internalParams, neededParamsTypes); len(wrongTypeParamNames) != 0 {
 		return fmt.Errorf("param types don't match the user-specified type: %s", wrongTypeParamNames)
 	}
 	if missingKeysObjectParamNames := MissingKeysObjectParamNames(paramSpecs, params); len(missingKeysObjectParamNames) != 0 {
@@ -164,7 +173,7 @@ func findMissingKeys(neededKeys, providedKeys map[string][]string) map[string][]
 // ValidateResolvedTask validates that all parameters declared in the TaskSpec are present in the taskrun
 // It also validates that all parameters have values, parameter types match the specified type and
 // object params have all the keys required
-func ValidateResolvedTask(ctx context.Context, params []internalversion.Param, matrix *internalversion.Matrix, rtr *resources.ResolvedTask) error {
+func ValidateResolvedTask(ctx context.Context, params []internalversion.Param, matrix *v1.Matrix, rtr *resources.ResolvedTask) error {
 	var paramSpecs internalversion.ParamSpecs
 	if rtr != nil {
 		paramSpecs = rtr.TaskSpec.Params

@@ -587,16 +587,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 				}
 				internalParams = append(internalParams, internalParam)
 			}
-			internalMatrix := &internalversion.Matrix{}
-			if rpt.PipelineTask.Matrix != nil {
-				err := v1.Convert_v1_Matrix_To_internalversion_Matrix(rpt.PipelineTask.Matrix, internalMatrix, nil)
-				if err != nil {
-					logger.Errorf("Failed to convert v1 Matrix to internal Matrix for pipelinerun %q with error %v", pr.Name, err)
-					pr.Status.MarkFailed(ReasonFailedValidation, err.Error())
-					return controller.NewPermanentError(err)
-				}
-			}
-			err := taskrun.ValidateResolvedTask(ctx, internalParams, internalMatrix, rpt.ResolvedTask)
+			err := taskrun.ValidateResolvedTask(ctx, internalParams, rpt.PipelineTask.Matrix, rpt.ResolvedTask)
 			if err != nil {
 				logger.Errorf("Failed to validate pipelinerun %q with error %v", pr.Name, err)
 				pr.Status.MarkFailed(ReasonFailedValidation, err.Error())

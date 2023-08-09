@@ -110,17 +110,17 @@ func TestValidateResolvedTask_ValidParams(t *testing.T) {
 			"key3": "val3",
 		}),
 	}}
-	m := &internalversion.Matrix{
-		Params: internalversion.Params{{
+	m := &v1.Matrix{
+		Params: v1.Params{{
 			Name:  "zoo",
-			Value: *internalversion.NewStructuredValues("a", "b", "c"),
+			Value: *v1.NewStructuredValues("a", "b", "c"),
 		}, {
-			Name: "matrixParam", Value: internalversion.ParamValue{Type: internalversion.ParamTypeArray, ArrayVal: []string{}},
+			Name: "matrixParam", Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{}},
 		}},
-		Include: []internalversion.IncludeParams{{
+		Include: []v1.IncludeParams{{
 			Name: "build-1",
-			Params: internalversion.Params{{
-				Name: "include", Value: internalversion.ParamValue{Type: internalversion.ParamTypeString, StringVal: "string-1"},
+			Params: v1.Params{{
+				Name: "include", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "string-1"},
 			}},
 		}},
 	}
@@ -134,7 +134,7 @@ func TestValidateResolvedTask_ExtraValidParams(t *testing.T) {
 		name   string
 		task   internalversion.Task
 		params internalversion.Params
-		matrix *internalversion.Matrix
+		matrix *v1.Matrix
 	}{{
 		name: "extra-str-param",
 		task: internalversion.Task{
@@ -204,15 +204,15 @@ func TestValidateResolvedTask_ExtraValidParams(t *testing.T) {
 			},
 		},
 		params: internalversion.Params{{}},
-		matrix: &internalversion.Matrix{
-			Params: internalversion.Params{{
+		matrix: &v1.Matrix{
+			Params: v1.Params{{
 				Name:  "extraArr",
-				Value: *internalversion.NewStructuredValues("extra", "arr"),
+				Value: *v1.NewStructuredValues("extra", "arr"),
 			}},
-			Include: []internalversion.IncludeParams{{
+			Include: []v1.IncludeParams{{
 				Name: "build-1",
-				Params: internalversion.Params{{
-					Name: "include", Value: *internalversion.NewStructuredValues("string"),
+				Params: v1.Params{{
+					Name: "include", Value: *v1.NewStructuredValues("string"),
 				}},
 			}},
 		},
@@ -235,7 +235,7 @@ func TestValidateResolvedTask_InvalidParams(t *testing.T) {
 		name    string
 		task    internalversion.Task
 		params  internalversion.Params
-		matrix  *internalversion.Matrix
+		matrix  *v1.Matrix
 		wantErr string
 	}{{
 		name: "missing-params-string",
@@ -252,7 +252,7 @@ func TestValidateResolvedTask_InvalidParams(t *testing.T) {
 			Name:  "missing",
 			Value: *internalversion.NewStructuredValues("somethingfun"),
 		}},
-		matrix:  &internalversion.Matrix{},
+		matrix:  &v1.Matrix{},
 		wantErr: "invalid input params for task : missing values for these params which have no default values: [foo]",
 	}, {
 		name: "missing-params-arr",
@@ -269,7 +269,7 @@ func TestValidateResolvedTask_InvalidParams(t *testing.T) {
 			Name:  "missing",
 			Value: *internalversion.NewStructuredValues("array", "param"),
 		}},
-		matrix:  &internalversion.Matrix{},
+		matrix:  &v1.Matrix{},
 		wantErr: "invalid input params for task : missing values for these params which have no default values: [foo]",
 	}, {
 		name: "invalid-string-param",
@@ -286,7 +286,7 @@ func TestValidateResolvedTask_InvalidParams(t *testing.T) {
 			Name:  "foo",
 			Value: *internalversion.NewStructuredValues("array", "param"),
 		}},
-		matrix:  &internalversion.Matrix{},
+		matrix:  &v1.Matrix{},
 		wantErr: "invalid input params for task : param types don't match the user-specified type: [foo]",
 	}, {
 		name: "invalid-arr-param",
@@ -303,7 +303,7 @@ func TestValidateResolvedTask_InvalidParams(t *testing.T) {
 			Name:  "foo",
 			Value: *internalversion.NewStructuredValues("string"),
 		}},
-		matrix:  &internalversion.Matrix{},
+		matrix:  &v1.Matrix{},
 		wantErr: "invalid input params for task : param types don't match the user-specified type: [foo]",
 	}, {name: "missing-param-in-matrix",
 		task: internalversion.Task{
@@ -316,10 +316,10 @@ func TestValidateResolvedTask_InvalidParams(t *testing.T) {
 			},
 		},
 		params: internalversion.Params{{}},
-		matrix: &internalversion.Matrix{
-			Params: internalversion.Params{{
+		matrix: &v1.Matrix{
+			Params: v1.Params{{
 				Name:  "missing",
-				Value: *internalversion.NewStructuredValues("foo"),
+				Value: *v1.NewStructuredValues("foo"),
 			}}},
 		wantErr: "invalid input params for task : missing values for these params which have no default values: [bar]",
 	}, {
@@ -334,11 +334,11 @@ func TestValidateResolvedTask_InvalidParams(t *testing.T) {
 			},
 		},
 		params: internalversion.Params{{}},
-		matrix: &internalversion.Matrix{
-			Include: []internalversion.IncludeParams{{
+		matrix: &v1.Matrix{
+			Include: []v1.IncludeParams{{
 				Name: "build-1",
-				Params: internalversion.Params{{
-					Name: "missing", Value: internalversion.ParamValue{Type: internalversion.ParamTypeString, StringVal: "string"},
+				Params: v1.Params{{
+					Name: "missing", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "string"},
 				}},
 			}},
 		},
@@ -355,10 +355,10 @@ func TestValidateResolvedTask_InvalidParams(t *testing.T) {
 			},
 		},
 		params: internalversion.Params{{}},
-		matrix: &internalversion.Matrix{
-			Params: internalversion.Params{{
+		matrix: &v1.Matrix{
+			Params: v1.Params{{
 				Name:  "bar",
-				Value: *internalversion.NewStructuredValues("foo"),
+				Value: *v1.NewStructuredValues("foo"),
 			}}},
 		wantErr: "invalid input params for task : param types don't match the user-specified type: [bar]",
 	}, {
@@ -373,11 +373,11 @@ func TestValidateResolvedTask_InvalidParams(t *testing.T) {
 			},
 		},
 		params: internalversion.Params{{}},
-		matrix: &internalversion.Matrix{
-			Include: []internalversion.IncludeParams{{
+		matrix: &v1.Matrix{
+			Include: []v1.IncludeParams{{
 				Name: "build-1",
-				Params: internalversion.Params{{
-					Name: "bar", Value: internalversion.ParamValue{Type: internalversion.ParamTypeString, StringVal: "string"},
+				Params: v1.Params{{
+					Name: "bar", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "string"},
 				}},
 			}},
 		},
@@ -400,7 +400,7 @@ func TestValidateResolvedTask_InvalidParams(t *testing.T) {
 				"misskey": "val2",
 			}),
 		}},
-		matrix:  &internalversion.Matrix{},
+		matrix:  &v1.Matrix{},
 		wantErr: "invalid input params for task : missing values for these params which have no default values: [foo]",
 	}, {
 		name: "missing object param keys",
@@ -424,7 +424,7 @@ func TestValidateResolvedTask_InvalidParams(t *testing.T) {
 				"misskey": "val2",
 			}),
 		}},
-		matrix:  &internalversion.Matrix{},
+		matrix:  &v1.Matrix{},
 		wantErr: "invalid input params for task : missing keys for these params which are required in ParamSpec's properties map[myObjWithoutDefault:[key2]]",
 	}}
 	for _, tc := range tcs {
