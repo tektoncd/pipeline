@@ -168,8 +168,8 @@ type Param struct {
 }
 
 // ExtractNames returns a set of unique names
-func (ps Params) ExtractNames() sets.Set[string] {
-	names := sets.New[string]()
+func (ps Params) ExtractNames() sets.String {
+	names := sets.String{}
 	for _, p := range ps {
 		names.Insert(p.Name)
 	}

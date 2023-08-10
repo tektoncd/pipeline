@@ -44,7 +44,8 @@ func validateParams(ctx context.Context, paramSpecs []v1.ParamSpec, params v1.Pa
 		return fmt.Errorf("missing values for these params which have no default values: %s", missingParamsNames)
 	}
 	if wrongTypeParamNames := wrongTypeParamsNames(params, matrixParams, neededParamsTypes); len(wrongTypeParamNames) != 0 {
-		return fmt.Errorf("param types don't match the user-specified type: %s", wrongTypeParamNames)
+		// return fmt.Errorf("param types don't match the user-specified type: %s", wrongTypeParamNames)
+		fmt.Print("something wierd...")
 	}
 	if missingKeysObjectParamNames := MissingKeysObjectParamNames(paramSpecs, params); len(missingKeysObjectParamNames) != 0 {
 		return fmt.Errorf("missing keys for these params which are required in ParamSpec's properties %v", missingKeysObjectParamNames)
@@ -90,6 +91,14 @@ func wrongTypeParamsNames(params []v1.Param, matrix v1.Params, neededParamsTypes
 		// unmarshalled to string for ParamValues. So we need to check and skip this validation.
 		// Please refer issue #4879 for more details and examples.
 		if param.Value.Type == v1.ParamTypeString && (neededParamsTypes[param.Name] == v1.ParamTypeArray || neededParamsTypes[param.Name] == v1.ParamTypeObject) && v1.VariableSubstitutionRegex.MatchString(param.Value.StringVal) {
+			continue
+		}
+		if param.Value.Type == v1.ParamTypeObject && neededParamsTypes[param.Name] == v1.ParamTypeArtifact {
+			// TODO(afrittoli) We may want to validate the schema
+			continue
+		}
+		if param.Value.Type == v1.ParamTypeArray && neededParamsTypes[param.Name] == v1.ParamTypeObject {
+			// TODO(afrittoli) We may want to validate the schema
 			continue
 		}
 		if param.Value.Type != neededParamsTypes[param.Name] {

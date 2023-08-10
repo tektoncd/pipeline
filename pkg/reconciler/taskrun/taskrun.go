@@ -35,6 +35,7 @@ import (
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1"
 	alphalisters "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
+	"github.com/tektoncd/pipeline/pkg/internal/artifacts"
 	"github.com/tektoncd/pipeline/pkg/internal/computeresources"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
@@ -462,6 +463,9 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 	recorder := controller.GetEventRecorder(ctx)
 	var err error
 
+	// Create a copy of the task spec for further processing
+	ts := rtr.TaskSpec.DeepCopy()
+
 	// Get the TaskRun's Pod if it should have one. Otherwise, create the Pod.
 	var pod *corev1.Pod
 
@@ -516,11 +520,34 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 	// Get the randomized volume names assigned to workspace bindings
 	workspaceVolumes := workspace.CreateVolumes(tr.Spec.Workspaces)
 
-	ts, err := applyParamsContextsResultsAndWorkspaces(ctx, tr, rtr, workspaceVolumes)
-	if err != nil {
-		logger.Errorf("Error updating task spec parameters, contexts, results and workspaces: %s", err)
-		return err
+	// TODO(afrittoli) There is an issue here about where the step is injected:
+	// - the injected step should end-up in the status spec
+	// - the injected step needs variables to be replaced, so it should be before
+	//   the call to applyParamsContextsResultsAndWorkspaces
+	// - the injected step may want to benefit from propagated workspaces, which
+	//   would require it to be after the call to applyParamsContextsResultsAndWorkspaces
+	// A way around could be not to use variables and fetch the values directly
+	// in the injected step. Alternatively we might be able to break down the logic in
+	// applyParamsContextsResultsAndWorkspaces, i.e. first resolve propagated workspaces
+	// and then resolve variables, so we could inject the step in the middle
+	if pod == nil {
+		// Artifact download is injected as "step" and not directly as a container into the Pod
+		// to keep it more visible and easily debuggable for users.
+		// TODO(afrittoli) The injected steps should be added to the task spec copied in the
+		// task status. We should ensure that tools use that to visualise taskruns
+		// TODO(afrittoli) Only supports linux for now
+		artifactStep, err := artifacts.GetArtifactStep(ts.Workspaces, ts.Params)
+		if err != nil {
+			return controller.NewPermanentError(err)
+		}
+
+		// Prepend the artifactStep, if any, so it runs first
+		if artifactStep != nil {
+			ts.Steps = append([]v1.Step{*artifactStep}, ts.Steps...)
+		}
 	}
+
+	ts = applyParamsContextsResultsAndWorkspaces(ctx, tr, ts, rtr.TaskName, workspaceVolumes)
 	tr.Status.TaskSpec = ts
 
 	if len(tr.Status.TaskSpec.Steps) > 0 {
@@ -721,6 +748,8 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1.TaskRun, reason v1.
 // createPod creates a Pod based on the Task's configuration, with pvcName as a volumeMount
 // TODO(dibyom): Refactor resource setup/substitution logic to its own function in the resources package
 func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.TaskRun, rtr *resources.ResolvedTask, workspaceVolumes map[string]corev1.Volume) (*corev1.Pod, error) {
+	var err error
+
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createPod")
 	defer span.End()
 	logger := logging.FromContext(ctx)
@@ -744,7 +773,6 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 		return nil, validateErr
 	}
 
-	var err error
 	ts, err = workspace.Apply(ctx, *ts, tr.Spec.Workspaces, workspaceVolumes)
 
 	if err != nil {
@@ -790,8 +818,7 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 }
 
 // applyParamsContextsResultsAndWorkspaces applies paramater, context, results and workspace substitutions to the TaskSpec.
-func applyParamsContextsResultsAndWorkspaces(ctx context.Context, tr *v1.TaskRun, rtr *resources.ResolvedTask, workspaceVolumes map[string]corev1.Volume) (*v1.TaskSpec, error) {
-	ts := rtr.TaskSpec.DeepCopy()
+func applyParamsContextsResultsAndWorkspaces(ctx context.Context, tr *v1.TaskRun, ts *v1.TaskSpec, taskName string, workspaceVolumes map[string]corev1.Volume) *v1.TaskSpec {
 	var defaults []v1.ParamSpec
 	if len(ts.Params) > 0 {
 		defaults = append(defaults, ts.Params...)
@@ -800,7 +827,7 @@ func applyParamsContextsResultsAndWorkspaces(ctx context.Context, tr *v1.TaskRun
 	ts = resources.ApplyParameters(ctx, ts, tr, defaults...)
 
 	// Apply context substitution from the taskrun
-	ts = resources.ApplyContexts(ts, rtr.TaskName, tr)
+	ts = resources.ApplyContexts(ts, taskName, tr)
 
 	// Apply task result substitution
 	ts = resources.ApplyTaskResults(ts)
@@ -829,7 +856,7 @@ func applyParamsContextsResultsAndWorkspaces(ctx context.Context, tr *v1.TaskRun
 	}
 	ts = resources.ApplyWorkspaces(ctx, ts, ts.Workspaces, tr.Spec.Workspaces, workspaceVolumes)
 
-	return ts, nil
+	return ts
 }
 
 func isExceededResourceQuotaError(err error) bool {

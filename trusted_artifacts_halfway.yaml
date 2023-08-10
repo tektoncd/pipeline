@@ -1,0 +1,153 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: trusted-artifacts-half-
+spec:
+  pipelineSpec:
+    workspaces:
+      - name: artifactStorage  # In this example this is where we store artifacts
+        artifact: true
+    tasks:
+      - name: producer
+        taskSpec:
+          results:
+            - name: aFileArtifact
+              type: object
+              description: An artifact file
+              properties:
+                path:
+                  type: string
+                hash:
+                  type: string
+                type:
+                  type: string
+            - name: aFolderArtifact
+              type: object
+              description: An artifact folder
+              properties:
+                path:
+                  type: string
+                hash:
+                  type: string
+                type:
+                  type: string
+          workspaces:
+            - name: artifactStorage  # In this example this is where we store artifacts
+              artifact: true
+          steps:
+            - name: produce-file
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+
+                # Produce some content locally
+                # The hardcoded path will be replaced with "results.aFileArtifact.data.path"
+                date +%s | tee /tekton/artifacts/afile.txt
+            - name: upload-hash-file
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                set -ex
+
+                # Calculate the hash of the artifact on local disk to
+                # ensure we have a valid hash
+                ARTIFACT_ROOT="/tekton/artifacts"
+                A_FILE_PATH=afile.txt
+                A_FILE_HASH=$(md5sum "${ARTIFACT_ROOT}/${A_FILE_PATH}" | awk '{ print $1 }')
+
+                # Uploads the file somewhere, a PVC in this case.
+                # Note that this PVC could be backed by different types of
+                # storage via CSI volumes, or we could provide support for
+                # direct upload to OCI registries or object storage
+                TARGET_PATH="$(workspaces.artifactStorage.path)/.tekton/artifacts"
+                mkdir -p "$TARGET_PATH"
+                cp "${ARTIFACT_ROOT}/${A_FILE_PATH}" "${TARGET_PATH}/${A_FILE_HASH}"
+
+                # Produces a result which makes the file trustable
+                # This step could be injected by the Tekton controller and be
+                # transparent to users, except for some syntatic sugar, like
+                # a special result kind or an "artifact" API
+
+                cat <<EOF | tee $(results.aFileArtifact.path)
+                {
+                  "path": "${A_FILE_PATH}",
+                  "hash": "${A_FILE_HASH}",
+                  "type": "file"
+                }
+                EOF
+            - name: produce-folder
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                A_FOLDER_PATH=/tekton/artifacts/afolder
+                mkdir "$A_FOLDER_PATH"
+                date +%s | tee "${A_FOLDER_PATH}/a.txt"
+                date +%s | tee "${A_FOLDER_PATH}/b.txt"
+                date +%s | tee "${A_FOLDER_PATH}/c.txt"
+            - name: upload-hash-folder
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                set -ex
+
+                ARTIFACT_ROOT="/tekton/artifacts"
+                A_FOLDER_PATH=afolder
+
+                # Calculate the hash of the artifact on local disk to
+                # ensure we have a valid hash
+                tar zcf "${ARTIFACT_ROOT}/${A_FOLDER_PATH}.tgz" "${ARTIFACT_ROOT}/${A_FOLDER_PATH}"
+                A_FOLDER_HASH=$(md5sum "${ARTIFACT_ROOT}/${A_FOLDER_PATH}.tgz"| awk '{ print $1 }')
+
+                # Uploads the folder to the workspace
+                # Depending on the storage type we could upload each file in the folder
+                # or some compressed form of the folder
+                TARGET_PATH="$(workspaces.artifactStorage.path)/.tekton/artifacts"
+                mkdir -p "$TARGET_PATH"
+                cp "${ARTIFACT_ROOT}/${A_FOLDER_PATH}.tgz" "${TARGET_PATH}/${A_FOLDER_HASH}.tgz"
+
+                cat <<EOF | tee $(results.aFolderArtifact.path)
+                {
+                  "path": "${A_FOLDER_PATH}",
+                  "hash": "${A_FOLDER_HASH}",
+                  "type": "folder"
+                }
+                EOF
+        workspaces:
+          - name: artifactStorage
+            workspace: artifactStorage
+      - name: consumer
+        taskSpec:
+          params:
+            - name: aFileArtifact
+              type: artifact
+            - name: aFolderArtifact
+              type: artifact
+          workspaces:
+            - name: artifactStorage  # In this example this is where we store artifacts
+              artifact: true
+          steps:
+            - name: consume-content
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+
+                # Do something with the verified content
+                # Here I need to use a workspace variable to trigger propagation of the workspace
+                find /tekton/artifacts/ -type f
+        params:
+          - name: aFileArtifact
+            value: $(tasks.producer.results.aFileArtifact)
+          - name: aFolderArtifact
+            value: $(tasks.producer.results.aFolderArtifact)
+        workspaces:
+          - name: artifactStorage
+            workspace: artifactStorage
+  workspaces:
+  - name: artifactStorage
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi

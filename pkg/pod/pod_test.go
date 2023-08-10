@@ -18,6 +18,7 @@ package pod
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -30,6 +31,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/internal/artifacts"
 	"github.com/tektoncd/pipeline/pkg/spire"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
@@ -2075,6 +2077,138 @@ _EOF_
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}, runVolume(0)),
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
+			},
+		}, {
+			desc: "task with artifact parameter",
+			ts: v1.TaskSpec{
+				Steps: []v1.Step{{
+					Name:    "name",
+					Image:   "image",
+					Command: []string{"cmd"}, // avoid entrypoint lookup.
+				}},
+				Params: []v1.ParamSpec{{
+					Name: "artifact1",
+					Type: "artifact",
+				}, {
+					Name: "artifact2",
+					Type: "artifact",
+				}},
+				Workspaces: []v1.WorkspaceDeclaration{{
+					Name:     "artifactStorage",
+					Artifact: true,
+				}},
+			},
+			trs: v1.TaskRunSpec{
+				Workspaces: []v1.WorkspaceBinding{{
+					Name: "artifactStorage",
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "someClaim",
+					},
+				}},
+			},
+			want: &corev1.PodSpec{
+				RestartPolicy: corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{entrypointInitContainer(
+					images.EntrypointImage, []v1.Step{{Name: "tekton-artifact-download"}, {Name: "name"}},
+					false, /* setSecurityContext */
+					false, /* windows */
+				), {
+					Name:         "place-scripts",
+					Image:        "busybox",
+					Command:      []string{"sh"},
+					VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
+					Args: []string{"-c", fmt.Sprintf(`scriptfile="/tekton/scripts/script-0-9l9zj"
+touch ${scriptfile} && chmod +x ${scriptfile}
+cat > ${scriptfile} << '_EOF_'
+%s
+_EOF_
+/tekton/bin/entrypoint decode-script "${scriptfile}"
+`, base64.StdEncoding.EncodeToString([]byte(artifacts.ArtifactDownloadAndVerify)))},
+				}},
+				Containers: []corev1.Container{{
+					Name:    "step-tekton-artifact-download",
+					Image:   "bash:latest",
+					Command: []string{"/tekton/bin/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/run/0/out",
+						"-termination_path",
+						"/tekton/termination",
+						"-step_metadata_dir",
+						"/tekton/run/0/status",
+						"-entrypoint",
+						"/tekton/scripts/script-0-9l9zj",
+						"--",
+					},
+					VolumeMounts: append([]corev1.VolumeMount{
+						binROMount,
+						runMount(0, false),
+						runMount(1, true),
+						downwardMount,
+						scriptsVolumeMount, {
+							Name:      "tekton-creds-init-home-0",
+							MountPath: "/tekton/creds",
+						}}, implicitVolumeMounts...),
+					Env: []corev1.EnvVar{{
+						Name:  "ARTIFACT_NAMES",
+						Value: "artifact1 artifact2",
+					}, {
+						Name:  "ARTIFACT_PATHS",
+						Value: "$(params.artifact1.path) $(params.artifact2.path)",
+					}, {
+						Name:  "ARTIFACT_HASHES",
+						Value: "$(params.artifact1.hash) $(params.artifact2.hash)",
+					}, {
+						Name:  "ARTIFACT_TYPES",
+						Value: "$(params.artifact1.type) $(params.artifact2.type)",
+					}, {
+						Name:  "ARTIFACT_WORKSPACE_PATH",
+						Value: "/workspace/artifactStorage",
+					}, {
+						Name:  "ARTIFACT_LOCAL_PATH",
+						Value: "/tekton/artifacts",
+					}},
+					TerminationMessagePath: "/tekton/termination",
+				}, {
+					Name:    "step-name",
+					Image:   "image",
+					Command: []string{"/tekton/bin/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/run/0/out",
+						"-post_file",
+						"/tekton/run/1/out",
+						"-termination_path",
+						"/tekton/termination",
+						"-step_metadata_dir",
+						"/tekton/run/1/status",
+						"-entrypoint",
+						"cmd",
+						"--",
+					},
+					VolumeMounts: append([]corev1.VolumeMount{{
+						Name:      "tekton-creds-init-home-1",
+						MountPath: "/tekton/creds",
+					}, runMount(0, true), runMount(1, false), binROMount}, implicitVolumeMounts...),
+					TerminationMessagePath: "/tekton/termination",
+				}},
+				Volumes: append(
+					implicitVolumes,
+					binVolume,
+					downwardVolume,
+					scriptsVolume,
+					corev1.Volume{
+						Name:         "tekton-creds-init-home-0",
+						VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+					},
+					corev1.Volume{
+						Name:         "tekton-creds-init-home-1",
+						VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+					}, runVolume(0), runVolume(1)),
 				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 			},
 		}} {
