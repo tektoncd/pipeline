@@ -172,7 +172,6 @@ spec:
     - name: publish-to-bucket
       runAfter: [publish-images]
       taskRef:
-        name: gcs-upload
         resolver: bundles
         params:
           - name: bundle
