@@ -305,6 +305,7 @@ type StepState struct {
 	corev1.ContainerState `json:",inline"`
 	Name                  string `json:"name,omitempty"`
 	Container             string `json:"container,omitempty"`
+	Image                 string `json:"image,omitempty"`
 	ImageID               string `json:"imageID,omitempty"`
 }
 
@@ -313,6 +314,7 @@ type SidecarState struct {
 	corev1.ContainerState `json:",inline"`
 	Name                  string `json:"name,omitempty"`
 	Container             string `json:"container,omitempty"`
+	Image                 string `json:"image,omitempty"`
 	ImageID               string `json:"imageID,omitempty"`
 }
 

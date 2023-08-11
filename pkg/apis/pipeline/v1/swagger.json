@@ -1317,6 +1317,9 @@
         "container": {
           "type": "string"
         },
+        "image": {
+          "type": "string"
+        },
         "imageID": {
           "type": "string"
         },
@@ -1505,6 +1508,9 @@
       "type": "object",
       "properties": {
         "container": {
+          "type": "string"
+        },
+        "image": {
           "type": "string"
         },
         "imageID": {

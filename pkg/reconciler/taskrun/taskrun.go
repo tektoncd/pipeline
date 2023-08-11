@@ -874,6 +874,7 @@ func updateStoppedSidecarStatus(pod *corev1.Pod, tr *v1.TaskRun) error {
 				ContainerState: *sidecarState.DeepCopy(),
 				Name:           podconvert.TrimSidecarPrefix(s.Name),
 				Container:      s.Name,
+				Image:          s.Image,
 				ImageID:        s.ImageID,
 			})
 		}

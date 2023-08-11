@@ -2617,6 +2617,12 @@ func schema_pkg_apis_pipeline_v1_SidecarState(ref common.ReferenceCallback) comm
 							Format: "",
 						},
 					},
+					"image": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
 					"imageID": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
@@ -2965,6 +2971,12 @@ func schema_pkg_apis_pipeline_v1_StepState(ref common.ReferenceCallback) common.
 						},
 					},
 					"container": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"image": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
 							Format: "",

@@ -233,6 +233,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 			ContainerState: *state,
 			Name:           trimStepPrefix(s.Name),
 			Container:      s.Name,
+			Image:          s.Image,
 			ImageID:        s.ImageID,
 		})
 	}
@@ -246,6 +247,7 @@ func setTaskRunStatusBasedOnSidecarStatus(sidecarStatuses []corev1.ContainerStat
 			ContainerState: *s.State.DeepCopy(),
 			Name:           TrimSidecarPrefix(s.Name),
 			Container:      s.Name,
+			Image:          s.Image,
 			ImageID:        s.ImageID,
 		})
 	}

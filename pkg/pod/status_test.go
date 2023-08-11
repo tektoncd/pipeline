@@ -211,6 +211,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 		podStatus: corev1.PodStatus{
 			InitContainerStatuses: []corev1.ContainerStatus{{
 				// creds-init; ignored
+				Image:   "ignored",
 				ImageID: "ignored",
 			}},
 			ContainerStatuses: []corev1.ContainerStatus{{
@@ -242,13 +243,16 @@ func TestMakeTaskRunStatus(t *testing.T) {
 		podStatus: corev1.PodStatus{
 			InitContainerStatuses: []corev1.ContainerStatus{{
 				// creds-init; ignored.
+				Image:   "ignoreme",
 				ImageID: "ignoreme",
 			}, {
 				// git-init; ignored.
+				Image:   "ignoreme",
 				ImageID: "ignoreme",
 			}},
 			ContainerStatuses: []corev1.ContainerStatus{{
 				Name:    "step-state-name",
+				Image:   "image",
 				ImageID: "image-id",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
@@ -267,6 +271,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 						}},
 					Name:      "state-name",
 					Container: "step-state-name",
+					Image:     "image",
 					ImageID:   "image-id",
 				}},
 				Sidecars: []v1.SidecarState{},
@@ -283,6 +288,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 						ExitCode: 0,
 					},
 				},
+				Image:   "image",
 				ImageID: "image-id",
 			}},
 		},
@@ -296,6 +302,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 						}},
 					Name:      "step-push",
 					Container: "step-step-push",
+					Image:     "image",
 					ImageID:   "image-id",
 				}},
 				Sidecars: []v1.SidecarState{},
@@ -333,10 +340,12 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			Phase: corev1.PodFailed,
 			InitContainerStatuses: []corev1.ContainerStatus{{
 				// creds-init status; ignored
+				Image:   "ignore-me",
 				ImageID: "ignore-me",
 			}},
 			ContainerStatuses: []corev1.ContainerStatus{{
 				Name:    "step-failure",
+				Image:   "image",
 				ImageID: "image-id",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
@@ -356,6 +365,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 
 					Name:      "failure",
 					Container: "step-failure",
+					Image:     "image",
 					ImageID:   "image-id",
 				}},
 				Sidecars: []v1.SidecarState{},
@@ -390,6 +400,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 						ExitCode: 0,
 					},
 				},
+				Image:   "image",
 				ImageID: "image-id",
 			}},
 		},
@@ -404,6 +415,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 						}},
 					Name:      "step-push",
 					Container: "step-step-push",
+					Image:     "image",
 					ImageID:   "image-id",
 				}},
 				Sidecars: []v1.SidecarState{},
@@ -540,6 +552,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				},
 			}, {
 				Name:    "sidecar-running",
+				Image:   "image",
 				ImageID: "image-id",
 				State: corev1.ContainerState{
 					Running: &corev1.ContainerStateRunning{},
@@ -562,6 +575,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 						Running: &corev1.ContainerStateRunning{},
 					},
 					Name:      "running",
+					Image:     "image",
 					ImageID:   "image-id",
 					Container: "sidecar-running",
 				}},
@@ -581,6 +595,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				},
 			}, {
 				Name:    "sidecar-waiting",
+				Image:   "image",
 				ImageID: "image-id",
 				State: corev1.ContainerState{
 					Waiting: &corev1.ContainerStateWaiting{
@@ -612,6 +627,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 						},
 					},
 					Name:      "waiting",
+					Image:     "image",
 					ImageID:   "image-id",
 					Container: "sidecar-waiting",
 				}},
@@ -628,6 +644,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				},
 			}, {
 				Name:    "sidecar-error",
+				Image:   "image",
 				ImageID: "image-id",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
@@ -658,6 +675,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 						},
 					},
 					Name:      "error",
+					Image:     "image",
 					ImageID:   "image-id",
 					Container: "sidecar-error",
 				}},
@@ -1162,6 +1180,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Phase: corev1.PodFailed,
 				InitContainerStatuses: []corev1.ContainerStatus{{
 					Name:    "init-A",
+					Image:   "init-image-A",
 					ImageID: "init-image-id-A",
 					State: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
@@ -1170,6 +1189,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				}},
 				ContainerStatuses: []corev1.ContainerStatus{{
 					Name:    "step-A",
+					Image:   "image-A",
 					ImageID: "image-id-A",
 					State: corev1.ContainerState{
 						Waiting: &corev1.ContainerStateWaiting{
@@ -1190,6 +1210,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					},
 					Name:      "A",
 					Container: "step-A",
+					Image:     "image-A",
 					ImageID:   "image-id-A",
 				}},
 				Sidecars:       []v1.SidecarState{},
@@ -1592,19 +1613,22 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 			Phase: corev1.PodFailed,
 			ContainerStatuses: []corev1.ContainerStatus{{
 				Name:    "step-this-step-might-panic",
-				ImageID: "image",
+				Image:   "image",
+				ImageID: "image-id",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{},
 				},
 			}, {
 				Name:    "step-foo",
-				ImageID: "image",
+				Image:   "image",
+				ImageID: "image-id",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{},
 				},
 			}, {
 				Name:    "step-non-json",
-				ImageID: "image",
+				Image:   "image",
+				ImageID: "image-id",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 1,
@@ -1613,7 +1637,8 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 				},
 			}, {
 				Name:    "step-after-non-json",
-				ImageID: "image",
+				Image:   "image",
+				ImageID: "image-id",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{},
 				},
@@ -1621,7 +1646,7 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 		},
 	}
 	wantTr := v1.TaskRunStatus{
-		Status: statusFailure(v1.TaskRunReasonFailed.String(), "\"step-non-json\" exited with code 1 (image: \"image\"); for logs run: kubectl -n foo logs pod -c step-non-json\n"),
+		Status: statusFailure(v1.TaskRunReasonFailed.String(), "\"step-non-json\" exited with code 1 (image: \"image-id\"); for logs run: kubectl -n foo logs pod -c step-non-json\n"),
 		TaskRunStatusFields: v1.TaskRunStatusFields{
 			PodName: "pod",
 			Steps: []v1.StepState{{
@@ -1632,25 +1657,29 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 					}},
 				Name:      "non-json",
 				Container: "step-non-json",
-				ImageID:   "image",
+				Image:     "image",
+				ImageID:   "image-id",
 			}, {
 				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{}},
 				Name:      "after-non-json",
 				Container: "step-after-non-json",
-				ImageID:   "image",
+				Image:     "image",
+				ImageID:   "image-id",
 			}, {
 				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{}},
 				Name:      "this-step-might-panic",
 				Container: "step-this-step-might-panic",
-				ImageID:   "image",
+				Image:     "image",
+				ImageID:   "image-id",
 			}, {
 				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{}},
 				Name:      "foo",
 				Container: "step-foo",
-				ImageID:   "image",
+				Image:     "image",
+				ImageID:   "image-id",
 			}},
 			Sidecars: []v1.SidecarState{},
 			// We don't actually care about the time, just that it's not nil
