@@ -86,8 +86,8 @@ func initExcludedTests() sets.String {
 			"TestGitResolver_API",
 			// examples
 			"TestExamples/v1alpha1/taskruns/gcs-resource",
-			"TestExamples/v1beta1/taskruns/gcs-resource",
-			"TestExamples/v1beta1/taskruns/creds-init-only-mounts-provided-credentials",
+			"Testexamples/v1runs/gcs-resource",
+			"Testexamples/v1/taskruns/creds-init-only-mounts-provided-credentials",
 		)
 	case "ppc64le":
 		return sets.NewString(
@@ -95,7 +95,7 @@ func initExcludedTests() sets.String {
 			"TestGitResolver_API",
 			// examples
 			"TestExamples/v1alpha1/taskruns/gcs-resource",
-			"TestExamples/v1beta1/taskruns/gcs-resource",
+			"Testexamples/v1/taskruns/gcs-resource",
 		)
 	}
 

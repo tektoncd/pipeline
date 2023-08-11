@@ -429,8 +429,8 @@ kubectl get tr taskrun-unit-test-t6qcl -o json | jq .status
   ],
 ```
 
-For an end-to-end example, see [the taskRun ignoring a step error](../examples/v1beta1/taskruns/ignore-step-error.yaml)
-and [the pipelineRun ignoring a step error](../examples/v1beta1/pipelineruns/ignore-step-error.yaml).
+For an end-to-end example, see [the taskRun ignoring a step error](../examples/v1/taskruns/ignore-step-error.yaml)
+and [the pipelineRun ignoring a step error](../examples/v1/pipelineruns/ignore-step-error.yaml).
 
 #### Accessing Step's `exitCode` in subsequent `Steps`
 
@@ -588,13 +588,13 @@ spec:
           type: string
 ```
 
-Refer to the [TaskRun example](../examples/v1beta1/taskruns/alpha/object-param-result.yaml) and the [PipelineRun example](../examples/v1beta1/pipelineruns/alpha/pipeline-object-param-and-result.yaml) in which `object` parameters are demonstrated.
+Refer to the [TaskRun example](../examples/v1/taskruns/alpha/object-param-result.yaml) and the [PipelineRun example](../examples/v1/pipelineruns/alpha/pipeline-object-param-and-result.yaml) in which `object` parameters are demonstrated.
 
   > NOTE:
   > - `object` param is a `beta` feature and gated by the `alpha` or `beta` feature flag.
   > - `object` param must specify the `properties` section to define the schema i.e. what keys are available for this object param. See how to define `properties` section in the following example and the [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md#defaulting-to-string-types-for-values).
-  > - When providing value for an `object` param, one may provide values for just a subset of keys in spec's `default`, and provide values for the rest of keys at runtime ([example](../examples/v1beta1/taskruns/beta/object-param-result.yaml)).
-  > - When using object in variable replacement, users can only access its individual key ("child" member) of the object by its name i.e. `$(params.gitrepo.url)`. Using an entire object as a value is only allowed when the value is also an object like [this example](https://github.com/tektoncd/pipeline/blob/55665765e4de35b3a4fb541549ae8cdef0996641/examples/v1beta1/pipelineruns/beta/pipeline-object-param-and-result.yaml#L64-L65). See more details about using object param from the [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md#using-objects-in-variable-replacement).
+  > - When providing value for an `object` param, one may provide values for just a subset of keys in spec's `default`, and provide values for the rest of keys at runtime ([example](../examples/v1/taskruns/beta/object-param-result.yaml)).
+  > - When using object in variable replacement, users can only access its individual key ("child" member) of the object by its name i.e. `$(params.gitrepo.url)`. Using an entire object as a value is only allowed when the value is also an object like [this example](https://github.com/tektoncd/pipeline/blob/55665765e4de35b3a4fb541549ae8cdef0996641/examples/v1/pipelineruns/beta/pipeline-object-param-and-result.yaml#L64-L65). See more details about using object param from the [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md#using-objects-in-variable-replacement).
 
 ##### `array` type
 
@@ -694,7 +694,7 @@ spec:
 #### Default value
 Parameter declarations (within Tasks and Pipelines) can include default values which will be used if the parameter is
 not specified, for example to specify defaults for both string params and array params
-([full example](../examples/v1beta1/taskruns/array-default.yaml)) :
+([full example](../examples/v1/taskruns/array-default.yaml)) :
 
 ```yaml
 apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
@@ -734,7 +734,7 @@ spec:
 ```
 
 For more information, see [Using `Workspaces` in `Tasks`](workspaces.md#using-workspaces-in-tasks)
-and the [`Workspaces` in a `TaskRun`](../examples/v1beta1/taskruns/workspace.yaml) example YAML file.
+and the [`Workspaces` in a `TaskRun`](../examples/v1/taskruns/workspace.yaml) example YAML file.
 
 ### Propagated `Workspaces`
 
@@ -1542,7 +1542,7 @@ specified at the pod level via the TaskRun `podTemplate`.
 
 More information about Pod and Container Security Contexts can be found via the [Kubernetes website](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod).
 
-The example Task/TaskRun above can be found as a [TaskRun example](../examples/v1beta1/taskruns/run-steps-as-non-root.yaml).
+The example Task/TaskRun above can be found as a [TaskRun example](../examples/v1/taskruns/run-steps-as-non-root.yaml).
 
 ## `Task` Authoring Recommendations
 

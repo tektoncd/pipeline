@@ -137,7 +137,7 @@ The following are considerations for executing `Runs` as a non-root user:
   the non-root user's valid home directory to use SSH authentication for either Git or Docker.
 
 For an example of configuring SSH authentication in a non-root `securityContext`,
-see [`authenticating-git-commands`](../examples/v1beta1/taskruns/authenticating-git-commands.yaml).
+see [`authenticating-git-commands`](../examples/v1/taskruns/authenticating-git-commands.yaml).
 
 ## Limiting `Secret` access to specific `Steps`
 
@@ -336,7 +336,7 @@ to the home directory of its associated user.
 **Note:** This explicit symlinking is not necessary when using the
 [`git-clone` `Task`](https://github.com/tektoncd/catalog/tree/v1beta1/git) from Tekton Catalog.
 
-For example usage, see [`authenticating-git-commands`](../examples/v1beta1/taskruns/authenticating-git-commands.yaml).
+For example usage, see [`authenticating-git-commands`](../examples/v1/taskruns/authenticating-git-commands.yaml).
 
 ## Configuring authentication for Docker
 
