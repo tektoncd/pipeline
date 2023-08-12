@@ -501,7 +501,7 @@ workspaces:
 For more information, see the following topics:
 - For information mapping `Workspaces` to `Volumes`, see [Using `Workspace` variables in `TaskRuns`](workspaces.md#using-workspace-variables-in-taskruns).
 - For a list of supported `Volume` types, see [Specifying `VolumeSources` in `Workspaces`](workspaces.md#specifying-volumesources-in-workspaces).
-- For an end-to-end example, see [`Workspaces` in a `TaskRun`](../examples/v1beta1/taskruns/workspace.yaml).
+- For an end-to-end example, see [`Workspaces` in a `TaskRun`](../examples/v1/taskruns/workspace.yaml).
 
 #### Propagated Workspaces
 
@@ -1091,7 +1091,7 @@ spec:
 
 If a Task step specifies that it is to run as a different user than what is specified in the pod template,
 the step's `securityContext` will be applied instead of what is specified at the pod level. An example of
-this is available as a [TaskRun example](../examples/v1beta1/taskruns/run-steps-as-non-root.yaml).
+this is available as a [TaskRun example](../examples/v1/taskruns/run-steps-as-non-root.yaml).
 
 More information about Pod and Container Security Contexts can be found via the [Kubernetes website](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod).
 

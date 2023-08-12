@@ -104,7 +104,7 @@ spec:
           name: mytask
 ```
 
-The `Pipeline` in the [`pipelineSpec` example](../examples/v1beta1/pipelineruns/pipelinerun-with-pipelinespec.yaml)
+The `Pipeline` in the [`pipelineSpec` example](../examples/v1/pipelineruns/pipelinerun-with-pipelinespec.yaml)
 example displays morning and evening greetings. Once you create and execute it, you can check the logs for its `Pods`:
 
 ```bash
@@ -126,7 +126,7 @@ spec:
           steps: ...
 ```
 
-In the [`taskSpec` in `pipelineSpec` example](../examples/v1beta1/pipelineruns/pipelinerun-with-pipelinespec-and-taskspec.yaml)
+In the [`taskSpec` in `pipelineSpec` example](../examples/v1/pipelineruns/pipelinerun-with-pipelinespec-and-taskspec.yaml)
 it's `Tasks` all the way down!
 
 You can also specify labels and annotations with `taskSpec` which are propagated to each `taskRun` and then to the
@@ -976,7 +976,7 @@ spec:
 For more information, see the following topics:
 - For information on mapping `Workspaces` to `Volumes`, see [Specifying `Workspaces` in `PipelineRuns`](workspaces.md#specifying-workspaces-in-pipelineruns).
 - For a list of supported `Volume` types, see [Specifying `VolumeSources` in `Workspaces`](workspaces.md#specifying-volumesources-in-workspaces).
-- For an end-to-end example, see [`Workspaces` in a `PipelineRun`](../examples/v1beta1/pipelineruns/workspaces.yaml).
+- For an end-to-end example, see [`Workspaces` in a `PipelineRun`](../examples/v1/pipelineruns/workspaces.yaml).
 
 [`Custom tasks`](pipelines.md#using-custom-tasks) may or may not use workspaces.
 Consult the documentation of the custom task that you are using to determine whether it supports workspaces.
