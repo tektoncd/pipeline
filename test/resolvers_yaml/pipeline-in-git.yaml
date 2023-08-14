@@ -1,4 +1,4 @@
-# This Pipeline is intended to be referenced in an example PipelineRun under ../examples/v1beta1/pipelineruns.
+# This Pipeline is intended to be referenced in an example PipelineRun under ../examples/v1/pipelineruns.
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:

@@ -849,6 +849,6 @@ status:
 ```
 
 [cel]: https://github.com/tektoncd/experimental/tree/1609827ea81d05c8d00f8933c5c9d6150cd36989/cel
-[pr-with-matrix]: ../examples/v1beta1/pipelineruns/alpha/pipelinerun-with-matrix.yaml
-[pr-with-matrix-and-results]: ../examples/v1beta1/pipelineruns/alpha/pipelinerun-with-matrix-and-results.yaml
+[pr-with-matrix]: ../examples/v1/pipelineruns/alpha/pipelinerun-with-matrix.yaml
+[pr-with-matrix-and-results]: ../examples/v1/pipelineruns/alpha/pipelinerun-with-matrix-and-results.yaml
 [retries]: pipelines.md#using-the-retries-field

@@ -86,12 +86,12 @@ if err := ts.TestThing(ctx); err != nil {
 
 Writing new YAML examples that require a feature gate to be set is easy. New
 YAML example files typically go in a directory called something like
-`examples/v1beta1/taskruns` in the root of the repo. To create a YAML that
+`examples/v1/taskruns` in the root of the repo. To create a YAML that
 should only be exercised when the `enable-api-fields` flag is `alpha` just put
 it in an `alpha` subdirectory so the structure looks like:
 
 ```
-examples/v1beta1/taskruns/alpha/your-example.yaml
+examples/v1/taskruns/alpha/your-example.yaml
 ```
 
 This should work for both taskruns and pipelineruns.

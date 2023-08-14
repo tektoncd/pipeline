@@ -311,7 +311,7 @@ spec:
                         # but consider using a PersistentVolumeClaim for PipelineRuns
 ```
 For examples of using other types of volume sources, see [Specifying `VolumeSources` in `Workspaces`](#specifying-volumesources-in-workspaces).
-For a more in-depth example, see [`Workspaces` in a `TaskRun`](../examples/v1beta1/taskruns/workspace.yaml).
+For a more in-depth example, see [`Workspaces` in a `TaskRun`](../examples/v1/taskruns/workspace.yaml).
 
 ### Using `Workspaces` in `Pipelines`
 
@@ -353,7 +353,7 @@ spec:
         - use-ws-from-pipeline # important: use-ws-from-pipeline writes to the workspace first
 ```
 
-Include a `subPath` in the `Workspace Binding` to mount different parts of the same volume for different Tasks. See [a full example of this kind of Pipeline](../examples/v1beta1/pipelineruns/pipelinerun-using-different-subpaths-of-workspace.yaml) which writes data to two adjacent directories on the same Volume.
+Include a `subPath` in the `Workspace Binding` to mount different parts of the same volume for different Tasks. See [a full example of this kind of Pipeline](../examples/v1/pipelineruns/pipelinerun-using-different-subpaths-of-workspace.yaml) which writes data to two adjacent directories on the same Volume.
 
 The `subPath` specified in a `Pipeline` will be appended to any `subPath` specified as part of the `PipelineRun` workspace declaration. So a `PipelineRun` declaring a `Workspace` with `subPath` of `/foo` for a `Pipeline` who binds it to a `Task` with `subPath` of `/bar` will end up mounting the `Volume`'s `/foo/bar` directory.
 
@@ -415,7 +415,7 @@ spec:
 ```
 
 For examples of using other types of volume sources, see [Specifying `VolumeSources` in `Workspaces`](#specifying-volumesources-in-workspaces).
-For a more in-depth example, see the [`Workspaces` in `PipelineRun`](../examples/v1beta1/pipelineruns/workspaces.yaml) YAML sample.
+For a more in-depth example, see the [`Workspaces` in `PipelineRun`](../examples/v1/pipelineruns/workspaces.yaml) YAML sample.
 
 ### Specifying `VolumeSources` in `Workspaces`
 
@@ -550,7 +550,7 @@ Example of CSI workspace using Hashicorp Vault:
 - Install the required csi driver. eg. [secrets-store-csi-driver](https://github.com/hashicorp/vault-csi-provider#using-yaml)
 - Install the `vault` Provider onto the kubernetes cluster. [Reference](https://learn.hashicorp.com/tutorials/vault/kubernetes-raft-deployment-guide)
 - Deploy a provider via [example](https://gist.github.com/JeromeJu/cc8e4e758029b6694806604750b8911c)
-- Create a SecretProviderClass Provider using the following [yaml](https://github.com/tektoncd/pipeline/blob/main/examples/v1beta1/pipelineruns/no-ci/csi-workspace.yaml#L1-L19)
+- Create a SecretProviderClass Provider using the following [yaml](https://github.com/tektoncd/pipeline/blob/main/examples/v1/pipelineruns/no-ci/csi-workspace.yaml#L1-L19)
 - Specify the ServiceAccount via vault:
 
 ```
@@ -608,6 +608,6 @@ Specifically, for users use zonal clusters like GKE or use `PersistentVolumeClai
 
 See the following in-depth examples of configuring `Workspaces`:
 
-- [`Workspaces` in a `TaskRun`](../examples/v1beta1/taskruns/workspace.yaml)
-- [`Workspaces` in a `PipelineRun`](../examples/v1beta1/pipelineruns/workspaces.yaml)
-- [`Workspaces` from a volumeClaimTemplate in a `PipelineRun`](../examples/v1beta1/pipelineruns/workspace-from-volumeclaimtemplate.yaml)
+- [`Workspaces` in a `TaskRun`](../examples/v1/taskruns/workspace.yaml)
+- [`Workspaces` in a `PipelineRun`](../examples/v1/pipelineruns/workspaces.yaml)
+- [`Workspaces` from a volumeClaimTemplate in a `PipelineRun`](../examples/v1/pipelineruns/workspace-from-volumeclaimtemplate.yaml)
