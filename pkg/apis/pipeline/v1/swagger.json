@@ -894,6 +894,14 @@
           },
           "x-kubernetes-list-type": "atomic"
         },
+        "pipelineRef": {
+          "description": "PipelineRef is a reference to a pipeline definition Note: PipelineRef is in preview mode and not yet supported",
+          "$ref": "#/definitions/v1.PipelineRef"
+        },
+        "pipelineSpec": {
+          "description": "PipelineSpec is a specification of a pipeline Note: PipelineSpec is in preview mode and not yet supported",
+          "$ref": "#/definitions/v1.PipelineSpec"
+        },
         "retries": {
           "description": "Retries represents how many times this task should be retried in case of task failure: ConditionSucceeded set to False",
           "type": "integer",

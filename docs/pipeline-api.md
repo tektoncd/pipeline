@@ -1797,7 +1797,7 @@ map[string]string
 <h3 id="tekton.dev/v1.PipelineRef">PipelineRef
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRunSpec">PipelineRunSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>)
 </p>
 <div>
 <p>PipelineRef can be used to refer to a specific instance of a Pipeline.</p>
@@ -2453,7 +2453,7 @@ TaskRunStatus
 <h3 id="tekton.dev/v1.PipelineSpec">PipelineSpec
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.Pipeline">Pipeline</a>, <a href="#tekton.dev/v1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1.PipelineRunStatusFields">PipelineRunStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.Pipeline">Pipeline</a>, <a href="#tekton.dev/v1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1.PipelineRunStatusFields">PipelineRunStatusFields</a>, <a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>)
 </p>
 <div>
 <p>PipelineSpec defines the desired state of Pipeline.</p>
@@ -2744,6 +2744,36 @@ Kubernetes meta/v1.Duration
 <em>(Optional)</em>
 <p>Time after which the TaskRun times out. Defaults to 1 hour.
 Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pipelineRef</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineRef">
+PipelineRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PipelineRef is a reference to a pipeline definition
+Note: PipelineRef is in preview mode and not yet supported</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pipelineSpec</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineSpec">
+PipelineSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PipelineSpec is a specification of a pipeline
+Note: PipelineSpec is in preview mode and not yet supported</p>
 </td>
 </tr>
 </tbody>
@@ -9631,7 +9661,7 @@ optional: false - the resource is considered required (default/equivalent of not
 <h3 id="tekton.dev/v1beta1.PipelineRef">PipelineRef
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>)
 </p>
 <div>
 <p>PipelineRef can be used to refer to a specific instance of a Pipeline.</p>
@@ -10445,7 +10475,7 @@ TaskRunStatus
 <h3 id="tekton.dev/v1beta1.PipelineSpec">PipelineSpec
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Pipeline">Pipeline</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineRunStatusFields">PipelineRunStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Pipeline">Pipeline</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineRunStatusFields">PipelineRunStatusFields</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>)
 </p>
 <div>
 <p>PipelineSpec defines the desired state of Pipeline.</p>
@@ -10763,6 +10793,36 @@ Kubernetes meta/v1.Duration
 <em>(Optional)</em>
 <p>Time after which the TaskRun times out. Defaults to 1 hour.
 Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pipelineRef</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.PipelineRef">
+PipelineRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PipelineRef is a reference to a pipeline definition
+Note: PipelineRef is in preview mode and not yet supported</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pipelineSpec</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.PipelineSpec">
+PipelineSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PipelineSpec is a specification of a pipeline
+Note: PipelineSpec is in preview mode and not yet supported</p>
 </td>
 </tr>
 </tbody>

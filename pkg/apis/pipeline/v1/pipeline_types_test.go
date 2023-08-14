@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -77,6 +78,7 @@ func TestPipelineTask_ValidateRefOrSpec(t *testing.T) {
 		name          string
 		p             PipelineTask
 		expectedError *apis.FieldError
+		wc            func(context.Context) context.Context
 	}{{
 		name: "valid pipeline task - with taskRef only",
 		p: PipelineTask{
@@ -90,13 +92,37 @@ func TestPipelineTask_ValidateRefOrSpec(t *testing.T) {
 			TaskSpec: &EmbeddedTask{},
 		},
 	}, {
-		name: "invalid pipeline task missing taskRef and taskSpec",
+		name: "valid pipeline task - with pipelineRef only",
+		wc:   cfgtesting.EnableAlphaAPIFields,
+		p: PipelineTask{
+			Name:        "foo",
+			PipelineRef: &PipelineRef{},
+		},
+	}, {
+		name: "valid pipeline task - with pipelineSpec only",
+		wc:   cfgtesting.EnableAlphaAPIFields,
+		p: PipelineTask{
+			Name:         "foo",
+			PipelineSpec: &PipelineSpec{},
+		},
+	}, {
+		name: "invalid pipeline task missing taskRef or taskSpec",
 		p: PipelineTask{
 			Name: "foo",
 		},
 		expectedError: &apis.FieldError{
 			Message: `expected exactly one, got neither`,
 			Paths:   []string{"taskRef", "taskSpec"},
+		},
+	}, {
+		name: "invalid pipeline task missing taskRef or taskSpec or pipelineRef(alpha api) or pipelineSpec(alpha api)",
+		wc:   cfgtesting.EnableAlphaAPIFields,
+		p: PipelineTask{
+			Name: "foo",
+		},
+		expectedError: &apis.FieldError{
+			Message: `expected exactly one, got neither`,
+			Paths:   []string{"taskRef", "taskSpec", "pipelineRef", "pipelineSpec"},
 		},
 	}, {
 		name: "invalid pipeline task with both taskRef and taskSpec",
@@ -106,13 +132,143 @@ func TestPipelineTask_ValidateRefOrSpec(t *testing.T) {
 			TaskSpec: &EmbeddedTask{TaskSpec: getTaskSpec()},
 		},
 		expectedError: &apis.FieldError{
-			Message: `expected exactly one, got both`,
+			Message: `expected exactly one, got multiple`,
 			Paths:   []string{"taskRef", "taskSpec"},
+		},
+	}, {
+		name: "invalid pipeline task with both taskRef and pipelineRef",
+		wc:   cfgtesting.EnableAlphaAPIFields,
+		p: PipelineTask{
+			Name:        "foo",
+			TaskRef:     &TaskRef{Name: "foo-task"},
+			PipelineRef: &PipelineRef{Name: "foo-pipeline"},
+		},
+		expectedError: &apis.FieldError{
+			Message: `expected exactly one, got multiple`,
+			Paths:   []string{"taskRef", "pipelineRef"},
+		},
+	}, {
+		name: "invalid pipeline task with both taskRef and pipelineSpec",
+		wc:   cfgtesting.EnableAlphaAPIFields,
+		p: PipelineTask{
+			Name:         "foo",
+			TaskRef:      &TaskRef{Name: "foo-task"},
+			PipelineSpec: &PipelineSpec{Description: "description"},
+		},
+		expectedError: &apis.FieldError{
+			Message: `expected exactly one, got multiple`,
+			Paths:   []string{"taskRef", "pipelineSpec"},
+		},
+	}, {
+		name: "invalid pipeline task with both taskSpec and pipelineRef",
+		wc:   cfgtesting.EnableAlphaAPIFields,
+		p: PipelineTask{
+			Name:        "foo",
+			TaskSpec:    &EmbeddedTask{TaskSpec: getTaskSpec()},
+			PipelineRef: &PipelineRef{Name: "foo-pipeline"},
+		},
+		expectedError: &apis.FieldError{
+			Message: `expected exactly one, got multiple`,
+			Paths:   []string{"taskSpec", "pipelineRef"},
+		},
+	}, {
+		name: "invalid pipeline task with both taskSpec and pipelineSpec",
+		wc:   cfgtesting.EnableAlphaAPIFields,
+		p: PipelineTask{
+			Name:         "foo",
+			TaskSpec:     &EmbeddedTask{TaskSpec: getTaskSpec()},
+			PipelineSpec: &PipelineSpec{Description: "description"},
+		},
+		expectedError: &apis.FieldError{
+			Message: `expected exactly one, got multiple`,
+			Paths:   []string{"taskSpec", "pipelineSpec"},
+		},
+	}, {
+		name: "invalid pipeline task with both pipelineRef and pipelineSpec",
+		wc:   cfgtesting.EnableAlphaAPIFields,
+		p: PipelineTask{
+			Name:         "foo",
+			PipelineRef:  &PipelineRef{Name: "foo-pipeline"},
+			PipelineSpec: &PipelineSpec{Description: "description"},
+		},
+		expectedError: &apis.FieldError{
+			Message: `expected exactly one, got multiple`,
+			Paths:   []string{"pipelineRef", "pipelineSpec"},
+		},
+	}, {
+		name: "invalid pipeline task with taskRef and taskSpec and pipelineRef",
+		wc:   cfgtesting.EnableAlphaAPIFields,
+		p: PipelineTask{
+			Name:        "foo",
+			TaskRef:     &TaskRef{Name: "foo-task"},
+			TaskSpec:    &EmbeddedTask{TaskSpec: getTaskSpec()},
+			PipelineRef: &PipelineRef{Name: "foo-pipeline"},
+		},
+		expectedError: &apis.FieldError{
+			Message: `expected exactly one, got multiple`,
+			Paths:   []string{"taskRef", "taskSpec", "pipelineRef"},
+		},
+	}, {
+		name: "invalid pipeline task with taskRef and taskSpec and pipelineSpec",
+		wc:   cfgtesting.EnableAlphaAPIFields,
+		p: PipelineTask{
+			Name:         "foo",
+			TaskRef:      &TaskRef{Name: "foo-task"},
+			TaskSpec:     &EmbeddedTask{TaskSpec: getTaskSpec()},
+			PipelineSpec: &PipelineSpec{Description: "description"},
+		},
+		expectedError: &apis.FieldError{
+			Message: `expected exactly one, got multiple`,
+			Paths:   []string{"taskRef", "taskSpec", "pipelineSpec"},
+		},
+	}, {
+		name: "invalid pipeline task with taskRef and pipelineRef and pipelineSpec",
+		wc:   cfgtesting.EnableAlphaAPIFields,
+		p: PipelineTask{
+			Name:         "foo",
+			TaskRef:      &TaskRef{Name: "foo-task"},
+			PipelineRef:  &PipelineRef{Name: "foo-pipeline"},
+			PipelineSpec: &PipelineSpec{Description: "description"},
+		},
+		expectedError: &apis.FieldError{
+			Message: `expected exactly one, got multiple`,
+			Paths:   []string{"taskRef", "pipelineRef", "pipelineSpec"},
+		},
+	}, {
+		name: "invalid pipeline task with taskSpec and pipelineRef and pipelineSpec",
+		wc:   cfgtesting.EnableAlphaAPIFields,
+		p: PipelineTask{
+			Name:         "foo",
+			TaskSpec:     &EmbeddedTask{TaskSpec: getTaskSpec()},
+			PipelineRef:  &PipelineRef{Name: "foo-pipeline"},
+			PipelineSpec: &PipelineSpec{Description: "description"},
+		},
+		expectedError: &apis.FieldError{
+			Message: `expected exactly one, got multiple`,
+			Paths:   []string{"taskSpec", "pipelineRef", "pipelineSpec"},
+		},
+	}, {
+		name: "invalid pipeline task with taskRef and taskSpec and pipelineRef and pipelineSpec",
+		wc:   cfgtesting.EnableAlphaAPIFields,
+		p: PipelineTask{
+			Name:         "foo",
+			TaskRef:      &TaskRef{Name: "foo-task"},
+			TaskSpec:     &EmbeddedTask{TaskSpec: getTaskSpec()},
+			PipelineRef:  &PipelineRef{Name: "foo-pipeline"},
+			PipelineSpec: &PipelineSpec{Description: "description"},
+		},
+		expectedError: &apis.FieldError{
+			Message: `expected exactly one, got multiple`,
+			Paths:   []string{"taskRef", "taskSpec", "pipelineRef", "pipelineSpec"},
 		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.p.validateRefOrSpec()
+			ctx := context.Background()
+			if tt.wc != nil {
+				ctx = tt.wc(ctx)
+			}
+			err := tt.p.validateRefOrSpec(ctx)
 			if tt.expectedError == nil {
 				if err != nil {
 					t.Error("PipelineTask.validateRefOrSpec() returned error for valid pipeline task")
@@ -123,6 +279,78 @@ func TestPipelineTask_ValidateRefOrSpec(t *testing.T) {
 				}
 				if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 					t.Errorf("PipelineTask.validateRefOrSpec() errors diff %s", diff.PrintWantGot(d))
+				}
+			}
+		})
+	}
+}
+
+// TestPipelineTask_ValidateRefOrSpec_APIVersionsCompatibility validates `pipelineRef` and `pipelineSpec`
+// are guarded behind the appropriate feature flags i.e. alpha for now.
+func TestPipelineTask_ValidateRefOrSpec_APIVersionsCompatibility(t *testing.T) {
+	tests := []struct {
+		name    string
+		pt      PipelineTask
+		wc      func(ctx context.Context) context.Context
+		wantErr *apis.FieldError
+	}{
+		{
+			name: "pipelineRef requires alpha version",
+			pt: PipelineTask{
+				PipelineRef: &PipelineRef{},
+			},
+			wc: cfgtesting.EnableAlphaAPIFields,
+		}, {
+			name: "pipelineSpec requires alpha version",
+			pt: PipelineTask{
+				PipelineSpec: &PipelineSpec{},
+			},
+			wc: cfgtesting.EnableAlphaAPIFields,
+		}, {
+			name: "pipelineRef not allowed with beta version",
+			pt: PipelineTask{
+				PipelineRef: &PipelineRef{},
+			},
+			wc:      cfgtesting.EnableBetaAPIFields,
+			wantErr: apis.ErrGeneric("pipelineRef requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"beta\""),
+		}, {
+			name: "pipelineSpec not allowed with beta version",
+			pt: PipelineTask{
+				PipelineSpec: &PipelineSpec{},
+			},
+			wc:      cfgtesting.EnableBetaAPIFields,
+			wantErr: apis.ErrGeneric("pipelineSpec requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"beta\""),
+		}, {
+			name: "pipelineRef not allowed with stable version",
+			pt: PipelineTask{
+				PipelineRef: &PipelineRef{},
+			},
+			wc:      cfgtesting.EnableStableAPIFields,
+			wantErr: apis.ErrGeneric("pipelineRef requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
+		}, {
+			name: "pipelineSpec not allowed with beta version",
+			pt: PipelineTask{
+				PipelineSpec: &PipelineSpec{},
+			},
+			wc:      cfgtesting.EnableStableAPIFields,
+			wantErr: apis.ErrGeneric("pipelineSpec requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
+			if test.wc != nil {
+				ctx = test.wc(ctx)
+			}
+			err := test.pt.validateRefOrSpec(ctx)
+			if test.wantErr != nil {
+				if d := cmp.Diff(test.wantErr.Error(), err.Error()); d != "" {
+					t.Error(diff.PrintWantGot(d))
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("pipelineTask.validateRefOrSpec() error = %v", err)
 				}
 			}
 		})
