@@ -14,6 +14,7 @@ weight: 203
   - [Specifying `Parameters`](#specifying-parameters)
   - [Adding `Tasks` to the `Pipeline`](#adding-tasks-to-the-pipeline)
     - [Specifying Remote Tasks](#specifying-remote-tasks)
+    - [Specifying `Pipelines` in `PipelineTasks`](#specifying-pipelines-in-pipelinetasks)
     - [Specifying `Parameters` in `PipelineTasks`](#specifying-parameters-in-pipelinetasks)
     - [Specifying `Matrix` in `PipelineTasks`](#specifying-matrix-in-pipelinetasks)
     - [Specifying `Workspaces` in `PipelineTasks`](#specifying-workspaces-in-pipelinetasks)
@@ -316,6 +317,59 @@ tasks:
     - name: pathInRepo
       value: task/golang-build/0.3/golang-build.yaml
 ```
+
+### Specifying `Pipelines` in `PipelineTasks`
+
+> :seedling: **Specifying `pipelines` in `PipelineTasks` is an [alpha](additional-configs.md#alpha-features) feature.**
+> The `enable-api-fields` feature flag must be set to `"alpha"` to specify `PipelineRef` or `PipelineSpec` in a `PipelineTask`.
+> This feature is in **Preview Only** mode and not yet supported/implemented.
+
+Apart from `taskRef` and `taskSpec`, `pipelineRef` and `pipelineSpec` allows you to specify a `pipeline`  in `pipelineTask`.
+This allows you to generate a child `pipelineRun` which is inherited by the parent `pipelineRun`.
+
+```
+kind: Pipeline
+metadata:
+  name: security-scans
+spec:
+  tasks:
+    - name: scorecards
+      taskSpec:
+        steps:
+          - image: alpine
+            name: step-1
+            script: |
+              echo "Generating scorecard report ..."
+    - name: codeql
+      taskSpec:
+        steps:
+          - image: alpine
+            name: step-1
+            script: |
+              echo "Generating codeql report ..."
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: clone-scan-notify
+spec:
+  tasks:
+    - name: git-clone
+      taskSpec:
+        steps:
+          - image: alpine
+            name: step-1
+            script: |
+              echo "Cloning a repo to run security scans ..."
+    - name: security-scans
+      runAfter:
+        - git-clone
+      pipelineRef:
+        name: security-scans
+---
+```
+For further information read [Pipelines in Pipelines](./pipelines-in-pipelines.md)
+
 
 ### Specifying `Parameters` in `PipelineTasks`
 

@@ -777,6 +777,16 @@ func (in *PipelineTask) DeepCopyInto(out *PipelineTask) {
 		*out = new(metav1.Duration)
 		**out = **in
 	}
+	if in.PipelineRef != nil {
+		in, out := &in.PipelineRef, &out.PipelineRef
+		*out = new(PipelineRef)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.PipelineSpec != nil {
+		in, out := &in.PipelineSpec, &out.PipelineSpec
+		*out = new(PipelineSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

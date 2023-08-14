@@ -38,6 +38,13 @@ import (
 var _ apis.Validatable = (*Pipeline)(nil)
 var _ resourcesemantics.VerbLimited = (*Pipeline)(nil)
 
+const (
+	taskRef      = "taskRef"
+	taskSpec     = "taskSpec"
+	pipelineRef  = "pipelineRef"
+	pipelineSpec = "pipelineSpec"
+)
+
 // SupportedVerbs returns the operations that validation should be called for
 func (p *Pipeline) SupportedVerbs() []admissionregistrationv1.OperationType {
 	return []admissionregistrationv1.OperationType{admissionregistrationv1.Create, admissionregistrationv1.Update}
@@ -139,7 +146,7 @@ func (pt PipelineTask) ValidateName() *apis.FieldError {
 // Validate classifies whether a task is a custom task, bundle, or a regular task(dag/final)
 // calls the validation routine based on the type of the task
 func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
-	errs = errs.Also(pt.validateRefOrSpec())
+	errs = errs.Also(pt.validateRefOrSpec(ctx))
 
 	errs = errs.Also(pt.validateEmbeddedOrType())
 
@@ -241,15 +248,39 @@ func (pt *PipelineTask) validateWorkspaces(workspaceNames sets.String) (errs *ap
 	return errs
 }
 
-// validateRefOrSpec validates at least one of taskRef or taskSpec is specified
-func (pt PipelineTask) validateRefOrSpec() (errs *apis.FieldError) {
-	// can't have both taskRef and taskSpec at the same time
-	if pt.TaskRef != nil && pt.TaskSpec != nil {
-		errs = errs.Also(apis.ErrMultipleOneOf("taskRef", "taskSpec"))
+// validateRefOrSpec validates at least one of taskRef or taskSpec or pipelineRef or pipelineSpec is specified
+func (pt PipelineTask) validateRefOrSpec(ctx context.Context) (errs *apis.FieldError) {
+	// collect all the specified specifications
+	nonNilFields := []string{}
+	if pt.TaskRef != nil {
+		nonNilFields = append(nonNilFields, taskRef)
 	}
-	// Check that one of TaskRef and TaskSpec is present
-	if pt.TaskRef == nil && pt.TaskSpec == nil {
-		errs = errs.Also(apis.ErrMissingOneOf("taskRef", "taskSpec"))
+	if pt.TaskSpec != nil {
+		nonNilFields = append(nonNilFields, taskSpec)
+	}
+	if pt.PipelineRef != nil {
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, pipelineRef, config.AlphaAPIFields))
+		nonNilFields = append(nonNilFields, pipelineRef)
+	}
+	if pt.PipelineSpec != nil {
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, pipelineSpec, config.AlphaAPIFields))
+		nonNilFields = append(nonNilFields, pipelineSpec)
+	}
+
+	// check the length of nonNilFields
+	// if one of taskRef or taskSpec or pipelineRef or pipelineSpec is specified,
+	// the length of nonNilFields should exactly be 1
+	if len(nonNilFields) > 1 {
+		errs = errs.Also(apis.ErrGeneric("expected exactly one, got multiple", nonNilFields...))
+	} else if len(nonNilFields) == 0 {
+		cfg := config.FromContextOrDefaults(ctx)
+		// check for TaskRef or TaskSpec or PipelineRef or PipelineSpec with alpha feature flag
+		if cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
+			errs = errs.Also(apis.ErrMissingOneOf(taskRef, taskSpec, pipelineRef, pipelineSpec))
+		} else {
+			// check for taskRef and taskSpec with beta/stable feature flag
+			errs = errs.Also(apis.ErrMissingOneOf(taskRef, taskSpec))
+		}
 	}
 	return errs
 }
