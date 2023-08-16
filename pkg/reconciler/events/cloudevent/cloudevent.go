@@ -121,9 +121,9 @@ func newTektonCloudEventData(ctx context.Context, runObject objectWithCondition)
 	return tektonCloudEventData, nil
 }
 
-// eventForObjectWithCondition creates a new event based for a objectWithCondition,
-// or return an error if not possible.
-func eventForObjectWithCondition(ctx context.Context, runObject objectWithCondition) (*cloudevents.Event, error) {
+// EventForObjectWithCondition creates a new event based for an objectWithCondition,
+// or returns an error if not possible.
+func EventForObjectWithCondition(ctx context.Context, runObject objectWithCondition) (*cloudevents.Event, error) {
 	event := cloudevents.NewEvent()
 	event.SetID(uuid.New().String())
 	event.SetSubject(runObject.GetObjectMeta().GetName())
