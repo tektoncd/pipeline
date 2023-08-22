@@ -44,7 +44,7 @@ var (
 	completionTime = metav1.NewTime(startTime.Time.Add(time.Minute))
 )
 
-func getConfigContext() context.Context {
+func getConfigContext(countWithReason bool) context.Context {
 	ctx := context.Background()
 	cfg := &config.Config{
 		Metrics: &config.Metrics{
@@ -52,6 +52,7 @@ func getConfigContext() context.Context {
 			PipelinerunLevel:        config.PipelinerunLevelAtPipelinerun,
 			DurationTaskrunType:     config.DefaultDurationTaskrunType,
 			DurationPipelinerunType: config.DefaultDurationPipelinerunType,
+			CountWithReason:         countWithReason,
 		},
 	}
 	return config.ToContext(ctx, cfg)
@@ -83,7 +84,7 @@ func TestMetricsOnStore(t *testing.T) {
 	defer log.Sync()
 	logger := log.Sugar()
 
-	ctx := getConfigContext()
+	ctx := getConfigContext(false)
 	metrics, err := NewRecorder(ctx)
 	if err != nil {
 		t.Fatalf("NewRecorder: %v", err)
@@ -135,6 +136,7 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 		expectedDuration     float64
 		expectedCount        int64
 		beforeCondition      *apis.Condition
+		countWithReason      bool
 	}{{
 		name: "for succeeded taskrun",
 		taskRun: &v1.TaskRun{
@@ -168,6 +170,7 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 		expectedDuration: 60,
 		expectedCount:    1,
 		beforeCondition:  nil,
+		countWithReason:  false,
 	}, {
 		name: "for succeeded taskrun with before condition",
 		taskRun: &v1.TaskRun{
@@ -204,6 +207,7 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 			Type:   apis.ConditionReady,
 			Status: corev1.ConditionUnknown,
 		},
+		countWithReason: false,
 	}, {
 		name: "for succeeded taskrun recount",
 		taskRun: &v1.TaskRun{
@@ -233,6 +237,7 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionTrue,
 		},
+		countWithReason: false,
 	}, {
 		name: "for failed taskrun",
 		taskRun: &v1.TaskRun{
@@ -266,6 +271,7 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 		expectedDuration: 60,
 		expectedCount:    1,
 		beforeCondition:  nil,
+		countWithReason:  false,
 	}, {
 		name: "for succeeded taskrun in pipelinerun",
 		taskRun: &v1.TaskRun{
@@ -307,6 +313,7 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 		expectedDuration: 60,
 		expectedCount:    1,
 		beforeCondition:  nil,
+		countWithReason:  false,
 	}, {
 		name: "for failed taskrun in pipelinerun",
 		taskRun: &v1.TaskRun{
@@ -348,11 +355,56 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 		expectedDuration: 60,
 		expectedCount:    1,
 		beforeCondition:  nil,
+		countWithReason:  false,
+	}, {
+		name: "for failed taskrun in pipelinerun with reason",
+		taskRun: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "taskrun-1", Namespace: "ns",
+				Labels: map[string]string{
+					pipeline.PipelineLabelKey:    "pipeline-1",
+					pipeline.PipelineRunLabelKey: "pipelinerun-1",
+				},
+			},
+			Spec: v1.TaskRunSpec{
+				TaskRef: &v1.TaskRef{Name: "task-1"},
+			},
+			Status: v1.TaskRunStatus{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+						Reason: "TaskRunImagePullFailed",
+					}},
+				},
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					StartTime:      &startTime,
+					CompletionTime: &completionTime,
+				},
+			},
+		},
+		metricName: "pipelinerun_taskrun_duration_seconds",
+		expectedDurationTags: map[string]string{
+			"pipeline":    "pipeline-1",
+			"pipelinerun": "pipelinerun-1",
+			"task":        "task-1",
+			"taskrun":     "taskrun-1",
+			"namespace":   "ns",
+			"status":      "failed",
+		},
+		expectedCountTags: map[string]string{
+			"status": "failed",
+			"reason": "TaskRunImagePullFailed",
+		},
+		expectedDuration: 60,
+		expectedCount:    1,
+		beforeCondition:  nil,
+		countWithReason:  true,
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			unregisterMetrics()
 
-			ctx := getConfigContext()
+			ctx := getConfigContext(c.countWithReason)
 			metrics, err := NewRecorder(ctx)
 			if err != nil {
 				t.Fatalf("NewRecorder: %v", err)
@@ -404,7 +456,7 @@ func TestRecordRunningTaskRunsCount(t *testing.T) {
 		}
 	}
 
-	ctx = getConfigContext()
+	ctx = getConfigContext(false)
 	metrics, err := NewRecorder(ctx)
 	if err != nil {
 		t.Fatalf("NewRecorder: %v", err)
@@ -498,7 +550,7 @@ func TestRecordRunningTaskRunsThrottledCounts(t *testing.T) {
 			}
 		}
 
-		ctx = getConfigContext()
+		ctx = getConfigContext(false)
 		metrics, err := NewRecorder(ctx)
 		if err != nil {
 			t.Fatalf("NewRecorder: %v", err)
@@ -565,7 +617,7 @@ func TestRecordPodLatency(t *testing.T) {
 		t.Run(td.name, func(t *testing.T) {
 			unregisterMetrics()
 
-			ctx := getConfigContext()
+			ctx := getConfigContext(false)
 			metrics, err := NewRecorder(ctx)
 			if err != nil {
 				t.Fatalf("NewRecorder: %v", err)

@@ -50,6 +50,7 @@ var (
 	taskTag        = tag.MustNewKey("task")
 	namespaceTag   = tag.MustNewKey("namespace")
 	statusTag      = tag.MustNewKey("status")
+	reasonTag      = tag.MustNewKey("reason")
 	podTag         = tag.MustNewKey("pod")
 
 	trDurationView                             *view.View
@@ -203,11 +204,16 @@ func viewRegister(cfg *config.Metrics) error {
 		Aggregation: distribution,
 		TagKeys:     append([]tag.Key{statusTag, namespaceTag}, append(trunTag, prunTag...)...),
 	}
+
+	trCountViewTags := []tag.Key{statusTag}
+	if cfg.CountWithReason {
+		trCountViewTags = append(trCountViewTags, reasonTag)
+	}
 	trCountView = &view.View{
 		Description: trCount.Description(),
 		Measure:     trCount,
 		Aggregation: view.Count(),
-		TagKeys:     []tag.Key{statusTag},
+		TagKeys:     trCountViewTags,
 	}
 	runningTRsCountView = &view.View{
 		Description: runningTRsCount.Description(),
@@ -328,13 +334,15 @@ func (r *Recorder) DurationAndCount(ctx context.Context, tr *v1.TaskRun, beforeC
 		taskName = tr.Spec.TaskRef.Name
 	}
 
+	cond := tr.Status.GetCondition(apis.ConditionSucceeded)
 	status := "success"
-	if cond := tr.Status.GetCondition(apis.ConditionSucceeded); cond.Status == corev1.ConditionFalse {
+	if cond.Status == corev1.ConditionFalse {
 		status = "failed"
 	}
+	reason := cond.Reason
 
 	durationStat := trDuration
-	tags := []tag.Mutator{tag.Insert(namespaceTag, tr.Namespace), tag.Insert(statusTag, status)}
+	tags := []tag.Mutator{tag.Insert(namespaceTag, tr.Namespace), tag.Insert(statusTag, status), tag.Insert(reasonTag, reason)}
 	if ok, pipeline, pipelinerun := IsPartOfPipeline(tr); ok {
 		durationStat = prTRDuration
 		tags = append(tags, r.insertPipelineTag(pipeline, pipelinerun)...)
