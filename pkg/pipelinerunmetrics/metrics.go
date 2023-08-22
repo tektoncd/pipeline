@@ -43,6 +43,7 @@ var (
 	pipelineTag    = tag.MustNewKey("pipeline")
 	namespaceTag   = tag.MustNewKey("namespace")
 	statusTag      = tag.MustNewKey("status")
+	reasonTag      = tag.MustNewKey("reason")
 
 	prDuration = stats.Float64(
 		"pipelinerun_duration_seconds",
@@ -160,11 +161,15 @@ func viewRegister(cfg *config.Metrics) error {
 		TagKeys:     append([]tag.Key{statusTag, namespaceTag}, prunTag...),
 	}
 
+	prCountViewTags := []tag.Key{statusTag}
+	if cfg.CountWithReason {
+		prCountViewTags = append(prCountViewTags, reasonTag)
+	}
 	prCountView = &view.View{
 		Description: prCount.Description(),
 		Measure:     prCount,
 		Aggregation: view.Count(),
-		TagKeys:     []tag.Key{statusTag},
+		TagKeys:     prCountViewTags,
 	}
 	runningPRsCountView = &view.View{
 		Description: runningPRsCount.Description(),
@@ -253,13 +258,15 @@ func (r *Recorder) DurationAndCount(pr *v1.PipelineRun, beforeCondition *apis.Co
 		}
 	}
 
+	cond := pr.Status.GetCondition(apis.ConditionSucceeded)
 	status := "success"
-	if cond := pr.Status.GetCondition(apis.ConditionSucceeded); cond.Status == corev1.ConditionFalse {
+	if cond.Status == corev1.ConditionFalse {
 		status = "failed"
 		if cond.Reason == v1.PipelineRunReasonCancelled.String() {
 			status = "cancelled"
 		}
 	}
+	reason := cond.Reason
 
 	pipelineName := "anonymous"
 	if pr.Spec.PipelineRef != nil && pr.Spec.PipelineRef.Name != "" {
@@ -268,7 +275,7 @@ func (r *Recorder) DurationAndCount(pr *v1.PipelineRun, beforeCondition *apis.Co
 	ctx, err := tag.New(
 		context.Background(),
 		append([]tag.Mutator{tag.Insert(namespaceTag, pr.Namespace),
-			tag.Insert(statusTag, status)}, r.insertTag(pipelineName, pr.Name)...)...)
+			tag.Insert(statusTag, status), tag.Insert(reasonTag, reason)}, r.insertTag(pipelineName, pr.Name)...)...)
 	if err != nil {
 		return err
 	}

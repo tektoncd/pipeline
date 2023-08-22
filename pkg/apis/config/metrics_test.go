@@ -38,6 +38,7 @@ func TestNewMetricsFromConfigMap(t *testing.T) {
 				PipelinerunLevel:        config.PipelinerunLevelAtPipelinerun,
 				DurationTaskrunType:     config.DurationPipelinerunTypeHistogram,
 				DurationPipelinerunType: config.DurationPipelinerunTypeHistogram,
+				CountWithReason:         false,
 			},
 			fileName: config.GetMetricsConfigName(),
 		},
@@ -47,8 +48,19 @@ func TestNewMetricsFromConfigMap(t *testing.T) {
 				PipelinerunLevel:        config.PipelinerunLevelAtNS,
 				DurationTaskrunType:     config.DurationTaskrunTypeHistogram,
 				DurationPipelinerunType: config.DurationPipelinerunTypeLastValue,
+				CountWithReason:         false,
 			},
 			fileName: "config-observability-namespacelevel",
+		},
+		{
+			expectedConfig: &config.Metrics{
+				TaskrunLevel:            config.TaskrunLevelAtNS,
+				PipelinerunLevel:        config.PipelinerunLevelAtNS,
+				DurationTaskrunType:     config.DurationTaskrunTypeHistogram,
+				DurationPipelinerunType: config.DurationPipelinerunTypeLastValue,
+				CountWithReason:         true,
+			},
+			fileName: "config-observability-reason",
 		},
 	}
 
@@ -64,6 +76,7 @@ func TestNewMetricsFromEmptyConfigMap(t *testing.T) {
 		PipelinerunLevel:        config.PipelinerunLevelAtPipeline,
 		DurationTaskrunType:     config.DurationPipelinerunTypeHistogram,
 		DurationPipelinerunType: config.DurationPipelinerunTypeHistogram,
+		CountWithReason:         false,
 	}
 	verifyConfigFileWithExpectedMetricsConfig(t, MetricsConfigEmptyName, expectedConfig)
 }

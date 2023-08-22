@@ -42,7 +42,7 @@ var (
 	completionTime = metav1.NewTime(startTime.Time.Add(time.Minute))
 )
 
-func getConfigContext() context.Context {
+func getConfigContext(countWithReason bool) context.Context {
 	ctx := context.Background()
 	cfg := &config.Config{
 		Metrics: &config.Metrics{
@@ -50,6 +50,7 @@ func getConfigContext() context.Context {
 			PipelinerunLevel:        config.PipelinerunLevelAtPipelinerun,
 			DurationTaskrunType:     config.DefaultDurationTaskrunType,
 			DurationPipelinerunType: config.DefaultDurationPipelinerunType,
+			CountWithReason:         countWithReason,
 		},
 	}
 	return config.ToContext(ctx, cfg)
@@ -71,7 +72,7 @@ func TestMetricsOnStore(t *testing.T) {
 	defer log.Sync()
 	logger := log.Sugar()
 
-	ctx := getConfigContext()
+	ctx := getConfigContext(false)
 	metrics, err := NewRecorder(ctx)
 	if err != nil {
 		t.Fatalf("NewRecorder: %v", err)
@@ -117,6 +118,7 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 		expectedDuration     float64
 		expectedCount        int64
 		beforeCondition      *apis.Condition
+		countWithReason      bool
 	}{{
 		name: "for succeeded pipeline",
 		pipelineRun: &v1.PipelineRun{
@@ -149,6 +151,7 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 		expectedDuration: 60,
 		expectedCount:    1,
 		beforeCondition:  nil,
+		countWithReason:  false,
 	}, {
 		name: "for succeeded pipeline different condition",
 		pipelineRun: &v1.PipelineRun{
@@ -184,6 +187,7 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 			Type:   apis.ConditionReady,
 			Status: corev1.ConditionUnknown,
 		},
+		countWithReason: false,
 	}, {
 		name: "for succeeded pipeline recount",
 		pipelineRun: &v1.PipelineRun{
@@ -212,6 +216,7 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionTrue,
 		},
+		countWithReason: false,
 	}, {
 		name: "for cancelled pipeline",
 		pipelineRun: &v1.PipelineRun{
@@ -245,6 +250,7 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 		expectedDuration: 60,
 		expectedCount:    1,
 		beforeCondition:  nil,
+		countWithReason:  false,
 	}, {
 		name: "for failed pipeline",
 		pipelineRun: &v1.PipelineRun{
@@ -277,6 +283,7 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 		expectedDuration: 60,
 		expectedCount:    1,
 		beforeCondition:  nil,
+		countWithReason:  false,
 	}, {
 		name: "for pipeline without start or completion time",
 		pipelineRun: &v1.PipelineRun{
@@ -306,11 +313,82 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 		expectedDuration: 0,
 		expectedCount:    1,
 		beforeCondition:  nil,
+		countWithReason:  false,
+	}, {
+		name: "for failed pipeline with reason",
+		pipelineRun: &v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-1", Namespace: "ns"},
+			Spec: v1.PipelineRunSpec{
+				PipelineRef: &v1.PipelineRef{Name: "pipeline-1"},
+			},
+			Status: v1.PipelineRunStatus{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+						Reason: "Failed",
+					}},
+				},
+				PipelineRunStatusFields: v1.PipelineRunStatusFields{
+					StartTime:      &startTime,
+					CompletionTime: &completionTime,
+				},
+			},
+		},
+		expectedDurationTags: map[string]string{
+			"pipeline":    "pipeline-1",
+			"pipelinerun": "pipelinerun-1",
+			"namespace":   "ns",
+			"status":      "failed",
+		},
+		expectedCountTags: map[string]string{
+			"status": "failed",
+			"reason": "Failed",
+		},
+		expectedDuration: 60,
+		expectedCount:    1,
+		beforeCondition:  nil,
+		countWithReason:  true,
+	}, {
+		name: "for cancelled pipeline with reason",
+		pipelineRun: &v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-1", Namespace: "ns"},
+			Spec: v1.PipelineRunSpec{
+				PipelineRef: &v1.PipelineRef{Name: "pipeline-1"},
+			},
+			Status: v1.PipelineRunStatus{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+						Reason: ReasonCancelled.String(),
+					}},
+				},
+				PipelineRunStatusFields: v1.PipelineRunStatusFields{
+					StartTime:      &startTime,
+					CompletionTime: &completionTime,
+				},
+			},
+		},
+		expectedDurationTags: map[string]string{
+			"pipeline":    "pipeline-1",
+			"pipelinerun": "pipelinerun-1",
+			"namespace":   "ns",
+			"status":      "cancelled",
+		},
+		expectedCountTags: map[string]string{
+			"status": "cancelled",
+			"reason": ReasonCancelled.String(),
+		},
+		expectedDuration: 60,
+		expectedCount:    1,
+		beforeCondition:  nil,
+		countWithReason:  true,
 	}} {
 		t.Run(test.name, func(t *testing.T) {
 			unregisterMetrics()
 
-			ctx := getConfigContext()
+			ctx := getConfigContext(test.countWithReason)
 			metrics, err := NewRecorder(ctx)
 			if err != nil {
 				t.Fatalf("NewRecorder: %v", err)
@@ -363,7 +441,7 @@ func TestRecordRunningPipelineRunsCount(t *testing.T) {
 		}
 	}
 
-	ctx = getConfigContext()
+	ctx = getConfigContext(false)
 	metrics, err := NewRecorder(ctx)
 	if err != nil {
 		t.Fatalf("NewRecorder: %v", err)
@@ -443,7 +521,7 @@ func TestRecordRunningPipelineRunsResolutionWaitCounts(t *testing.T) {
 			}
 		}
 
-		ctx = getConfigContext()
+		ctx = getConfigContext(false)
 		metrics, err := NewRecorder(ctx)
 		if err != nil {
 			t.Fatalf("NewRecorder: %v", err)
