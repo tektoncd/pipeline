@@ -159,7 +159,7 @@ func ApplyPipelineTaskContexts(pt *v1.PipelineTask) *v1.PipelineTask {
 	}
 	pt.Params = pt.Params.ReplaceVariables(replacements, map[string][]string{}, map[string]map[string]string{})
 	if pt.IsMatrixed() {
-		pt.Matrix.Params = pt.Params.ReplaceVariables(replacements, map[string][]string{}, map[string]map[string]string{})
+		pt.Matrix.Params = pt.Matrix.Params.ReplaceVariables(replacements, map[string][]string{}, map[string]map[string]string{})
 		for i := range pt.Matrix.Include {
 			pt.Matrix.Include[i].Params = pt.Matrix.Include[i].Params.ReplaceVariables(replacements, map[string][]string{}, map[string]map[string]string{})
 		}

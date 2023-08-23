@@ -355,7 +355,7 @@ func TestValidatePipelineParameterTypes(t *testing.T) {
 					}}},
 			},
 		}},
-		wantErrs: "parameters of type array only are allowed, but param foo has type string",
+		wantErrs: "parameters of type array only are allowed, but param \"foo\" has type \"string\" in pipelineTask \"task\"",
 	}, {
 		desc: "parameters in include matrix are strings",
 		state: resources.PipelineRunState{{
@@ -386,7 +386,7 @@ func TestValidatePipelineParameterTypes(t *testing.T) {
 					}}},
 			},
 		}},
-		wantErrs: "parameters of type string only are allowed, but param foobar has type array",
+		wantErrs: "parameters of type string only are allowed, but param \"foobar\" has type \"array\" in pipelineTask \"task\"",
 	}, {
 		desc: "parameters in include matrix are objects",
 		state: resources.PipelineRunState{{
@@ -409,7 +409,7 @@ func TestValidatePipelineParameterTypes(t *testing.T) {
 					}}},
 			},
 		}},
-		wantErrs: "parameters of type string only are allowed, but param barfoo has type object",
+		wantErrs: "parameters of type string only are allowed, but param \"barfoo\" has type \"object\" in pipelineTask \"task\"",
 	}} {
 		t.Run(tc.desc, func(t *testing.T) {
 			err := resources.ValidateParameterTypesInMatrix(tc.state)
