@@ -64,6 +64,46 @@ spec:
             - name: echo
               image: ubuntu
               script: exit 1
+      - name: matrix-with-task-using-onerror
+        matrix:
+          params:
+            - name: version
+              value:
+                - "1"
+                - "2"
+        taskSpec:
+          params:
+            - name: version
+          steps:
+            - name: echo
+              image: ubuntu
+              onError: continue
+              script: exit 1
+      - name: matrix-with-task-retries
+        retries: 1
+        params:
+          - name: pipelineTask-retries
+            value: $(context.pipelineTask.retries)
+        matrix:
+          params:
+            - name: version
+              value:
+                - "1"
+                - "2"
+        taskSpec:
+          params:
+            - name: version
+            - name: pipelineTask-retries
+          steps:
+            - image: alpine
+              script: |
+                #!/usr/bin/env sh
+                if [ "$(context.task.retry-count)" == "$(params.pipelineTask-retries)" ]; then
+                  echo "This is the last retry."
+                  exit 0;
+                fi
+                echo "The PipelineTask has retried $(context.task.retry-count) times."
+                exit 1
     finally:
       - name: matrix-params-with-empty-array-skipped-in-finally
         matrix:

@@ -121,7 +121,7 @@ const (
 	// all of the running TaskRuns as timed out failed.
 	ReasonCouldntTimeOut = "PipelineRunCouldntTimeOut"
 	// ReasonInvalidMatrixParameterTypes indicates a matrix contains invalid parameter types
-	ReasonInvalidMatrixParameterTypes = "ReasonInvalidMatrixParameterTypes"
+	ReasonInvalidMatrixParameterTypes = "InvalidMatrixParameterTypes"
 	// ReasonInvalidTaskResultReference indicates a task result was declared
 	// but was not initialized by that task
 	ReasonInvalidTaskResultReference = "InvalidTaskResultReference"
