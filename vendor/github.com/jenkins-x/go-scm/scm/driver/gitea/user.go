@@ -83,10 +83,11 @@ func convertUser(src *gitea.User) *scm.User {
 		return nil
 	}
 	return &scm.User{
-		ID:     int(src.ID),
-		Login:  src.UserName,
-		Name:   src.FullName,
-		Email:  src.Email,
-		Avatar: src.AvatarURL,
+		ID:      int(src.ID),
+		Login:   src.UserName,
+		Name:    src.FullName,
+		Email:   src.Email,
+		Avatar:  src.AvatarURL,
+		IsAdmin: src.IsAdmin,
 	}
 }

@@ -622,7 +622,7 @@ github.com/hashicorp/hcl/json/token
 # github.com/hashicorp/vault/api v1.9.2
 ## explicit; go 1.19
 github.com/hashicorp/vault/api
-# github.com/imdario/mergo v0.3.13
+# github.com/imdario/mergo v0.3.15
 ## explicit; go 1.13
 github.com/imdario/mergo
 # github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99
@@ -631,7 +631,7 @@ github.com/jbenet/go-context/io
 # github.com/jellydator/ttlcache/v3 v3.0.1
 ## explicit; go 1.18
 github.com/jellydator/ttlcache/v3
-# github.com/jenkins-x/go-scm v1.13.13
+# github.com/jenkins-x/go-scm v1.14.11
 ## explicit; go 1.19
 github.com/jenkins-x/go-scm/pkg/hmac
 github.com/jenkins-x/go-scm/scm
@@ -806,7 +806,7 @@ github.com/sigstore/sigstore/pkg/signature/kms/gcp
 # github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.7.1
 ## explicit; go 1.19
 github.com/sigstore/sigstore/pkg/signature/kms/hashivault
-# github.com/sirupsen/logrus v1.9.1
+# github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
 # github.com/skeema/knownhosts v1.2.0
@@ -1285,7 +1285,7 @@ k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions/apiextensio
 k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions/internalinterfaces
 k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1
 k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1beta1
-# k8s.io/apimachinery v0.27.1 => k8s.io/apimachinery v0.26.7
+# k8s.io/apimachinery v0.27.3 => k8s.io/apimachinery v0.26.7
 ## explicit; go 1.19
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors
