@@ -136,6 +136,12 @@ rules:
     # The webhook configured the namespace as the OwnerRef on various cluster-scoped resources,
     # which requires we can update the system namespace finalizers.
     resourceNames: ["tekton-pipelines"]
+  - apiGroups: ["authentication.k8s.io"]
+    resources: ["tokenreviews"]
+    verbs: ["create"]
+  - apiGroups: ["authorization.k8s.io"]
+    resources: ["subjectaccessreviews"]
+    verbs: ["create"]
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -149,3 +155,12 @@ rules:
   - apiGroups: ["tekton.dev"]
     resources: ["tasks", "clustertasks", "taskruns", "pipelines", "pipelineruns", "customruns"]
     verbs: ["get", "list", "watch"]
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: setcontext
+rules:
+  - apiGroups: ["tekton.dev"]
+    resources: ["context"]
+    verbs: ["create", "update", "get", "list", "delete"]

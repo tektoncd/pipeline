@@ -82,6 +82,10 @@ type TaskRunSpec struct {
 	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
 }
 
+type Context struct {
+	Params Params `json:"params,omitempty"`
+}
+
 // TaskRunSpecStatus defines the TaskRun spec status the user can provide
 type TaskRunSpecStatus string
 
@@ -334,6 +338,8 @@ type TaskRun struct {
 	Spec TaskRunSpec `json:"spec,omitempty"`
 	// +optional
 	Status TaskRunStatus `json:"status,omitempty"`
+
+	Context *Context `json:"context,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -31,6 +31,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resolution"
 	resolutionv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	tknwebhook "github.com/tektoncd/pipeline/pkg/webhook"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -46,7 +47,6 @@ import (
 	"knative.dev/pkg/webhook/resourcesemantics"
 	"knative.dev/pkg/webhook/resourcesemantics/conversion"
 	"knative.dev/pkg/webhook/resourcesemantics/defaulting"
-	"knative.dev/pkg/webhook/resourcesemantics/validation"
 )
 
 var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
@@ -105,7 +105,7 @@ func newValidationAdmissionController(name string) func(context.Context, configm
 		// Decorate contexts with the current state of the config.
 		store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
 		store.WatchConfigs(cmw)
-		return validation.NewAdmissionController(ctx,
+		return tknwebhook.NewAdmissionController(ctx,
 
 			// Name of the validation webhook, it is based on the value of the environment variable WEBHOOK_ADMISSION_CONTROLLER_NAME
 			// default is "validation.webhook.pipeline.tekton.dev"

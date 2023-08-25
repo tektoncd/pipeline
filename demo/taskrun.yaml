@@ -1,0 +1,16 @@
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: clone-kaniko-build-push-run-fetch-source-
+  namespace: default
+spec:
+  params:
+  - name: url
+    value: https://github.com/lbernick/web-app-demo
+  taskRef:
+    kind: Task
+    name: git-clone
+context:
+  params:
+  - name: foo
+    value: bar
