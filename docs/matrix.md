@@ -39,7 +39,7 @@ Documentation for specifying `Matrix` in a `Pipeline`:
 - [Specifying `Matrix` in `Finally Tasks`](pipelines.md#specifying-matrix-in-finally-tasks)
 - [Specifying `Matrix` in `Custom Tasks`](pipelines.md#specifying-matrix)
 
-> :seedling: **`Matrix` is an [alpha](install.md#alpha-features) feature.**
+> :seedling: **`Matrix` is an [alpha](additional-configs.md#alpha-features) feature.**
 > The `enable-api-fields` feature flag must be set to `"alpha"` to specify `Matrix` in a `PipelineTask`.
 
 ## Configuring a Matrix
