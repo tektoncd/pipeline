@@ -393,7 +393,7 @@ status:
 
 #### Extra Parameters
 
-**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
+**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/additional-configs.md#alpha-features))**
 
 You can pass in extra `Parameters` if needed depending on your use cases. An example use
 case is when your CI system autogenerates `TaskRuns` and it has `Parameters` it wants to
@@ -408,7 +408,7 @@ may be overridden by a TaskRun's StepSpecs and SidecarSpecs.
 
 ### Specifying Task-level `ComputeResources`
 
-**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
+**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/additional-configs.md#alpha-features))**
 
 Task-level compute resources can be configured in `TaskRun.ComputeResources`, or `PipelineRun.TaskRunSpecs.ComputeResources`.
 
@@ -633,7 +633,7 @@ and reasons.
 
 ### Configuring Task Steps and Sidecars in a TaskRun
 
-**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
+**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/additional-configs.md#alpha-features))**
 
 A TaskRun can specify `StepSpecs` or `SidecarSpecs` to configure Step or Sidecar
 specified in a Task. Only named Steps and Sidecars may be configured.

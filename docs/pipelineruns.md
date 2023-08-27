@@ -215,7 +215,7 @@ spec:
 
 ### Specifying Task-level `ComputeResources`
 
-**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
+**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/additional-configs.md#alpha-features))**
 
 Task-level compute resources can be configured in `PipelineRun.TaskRunSpecs.ComputeResources` or `TaskRun.ComputeResources`.
 
