@@ -67,6 +67,11 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 	// Validate PipelineSpec if it's present
 	if ps.PipelineSpec != nil {
 		errs = errs.Also(ps.PipelineSpec.Validate(ctx).ViaField("pipelineSpec"))
+		// Validate beta fields separately for inline Pipeline definitions.
+		// This prevents validation from failing in the reconciler when a Pipeline is converted to a different API version.
+		// See https://github.com/tektoncd/pipeline/issues/6616 for more information.
+		// TODO(#6592): Decouple API versioning from feature versioning
+		errs = errs.Also(ps.PipelineSpec.ValidateBetaFields(ctx).ViaField("pipelineSpec"))
 	}
 
 	// Validate PipelineRun parameters
