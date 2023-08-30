@@ -62,6 +62,10 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	// Validate TaskSpec if it's present.
 	if ts.TaskSpec != nil {
 		errs = errs.Also(ts.TaskSpec.Validate(ctx).ViaField("taskSpec"))
+		// Validate beta fields separately for inline Task definitions.
+		// This prevents validation from failing in the reconciler when a Task is converted to a different API version.
+		// See https://github.com/tektoncd/pipeline/issues/6616 for more information.
+		errs = errs.Also(ts.TaskSpec.ValidateBetaFields(ctx).ViaField("taskSpec"))
 	}
 
 	errs = errs.Also(ValidateParameters(ctx, ts.Params).ViaField("params"))
@@ -239,6 +243,11 @@ func ValidateWorkspaceBindings(ctx context.Context, wb []WorkspaceBinding) (errs
 func ValidateParameters(ctx context.Context, params Params) (errs *apis.FieldError) {
 	var names []string
 	for _, p := range params {
+		if p.Value.Type == ParamTypeObject {
+			// Object type parameter is a beta feature and will fail validation if it's used in a taskrun spec
+			// when the enable-api-fields feature gate is not "alpha" or "beta".
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "object type parameter", config.BetaAPIFields))
+		}
 		names = append(names, p.Name)
 	}
 	return errs.Also(validateNoDuplicateNames(names, false))

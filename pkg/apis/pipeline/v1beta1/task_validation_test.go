@@ -1707,6 +1707,76 @@ func TestIncompatibleAPIVersions(t *testing.T) {
 	}
 }
 
+func TestTaskBetaFields(t *testing.T) {
+	tests := []struct {
+		name string
+		spec v1beta1.TaskSpec
+	}{{
+		name: "array param indexing",
+		spec: v1beta1.TaskSpec{
+			Params: []v1beta1.ParamSpec{{Name: "foo", Type: v1beta1.ParamTypeArray}},
+			Steps: []v1beta1.Step{{
+				Name:  "my-step",
+				Image: "my-image",
+				Script: `
+					#!/usr/bin/env  bash
+					echo $(params.foo[1])`,
+			}},
+		},
+	}, {
+		name: "object params",
+		spec: v1beta1.TaskSpec{
+			Params: []v1beta1.ParamSpec{{Name: "foo", Type: v1beta1.ParamTypeObject, Properties: map[string]v1beta1.PropertySpec{"bar": {Type: v1beta1.ParamTypeString}}}},
+			Steps: []v1beta1.Step{{
+				Name:  "my-step",
+				Image: "my-image",
+				Script: `
+					#!/usr/bin/env  bash
+					echo $(params.foo.bar)`,
+			}},
+		},
+	}, {
+		name: "array results",
+		spec: v1beta1.TaskSpec{
+			Results: []v1beta1.TaskResult{{Name: "array-result", Type: v1beta1.ResultsTypeArray}},
+			Steps: []v1beta1.Step{{
+				Name:  "my-step",
+				Image: "my-image",
+				Script: `
+					#!/usr/bin/env  bash
+					echo -n "[\"hello\",\"world\"]" | tee $(results.array-result.path)`,
+			}},
+		},
+	}, {
+		name: "object results",
+		spec: v1beta1.TaskSpec{
+			Results: []v1beta1.TaskResult{{Name: "object-result", Type: v1beta1.ResultsTypeObject,
+				Properties: map[string]v1beta1.PropertySpec{}}},
+			Steps: []v1beta1.Step{{
+				Name:  "my-step",
+				Image: "my-image",
+				Script: `
+					#!/usr/bin/env  bash
+					echo -n "{\"hello\":\"world\"}" | tee $(results.object-result.path)`,
+			}},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := cfgtesting.EnableStableAPIFields(context.Background())
+			task := v1beta1.Task{ObjectMeta: metav1.ObjectMeta{Name: "foo"}, Spec: tt.spec}
+			if err := task.Validate(ctx); err == nil {
+				t.Errorf("no error when using beta field when `enable-api-fields` is stable")
+			}
+
+			ctx = cfgtesting.EnableBetaAPIFields(context.Background())
+			if err := task.Validate(ctx); err != nil {
+				t.Errorf("unexpected error when using beta field: %s", err)
+			}
+		})
+	}
+}
+
 func TestGetArrayIndexParamRefs(t *testing.T) {
 	tcs := []struct {
 		name     string
