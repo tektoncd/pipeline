@@ -64,7 +64,12 @@ func (t *Task) Validate(ctx context.Context) *apis.FieldError {
 	errs = errs.Also(t.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 	// When a Task is created directly, instead of declared inline in a TaskRun or PipelineRun,
 	// we do not support propagated parameters. Validate that all params it uses are declared.
-	return errs.Also(ValidateUsageOfDeclaredParameters(ctx, t.Spec.Steps, t.Spec.Params).ViaField("spec"))
+	errs = errs.Also(ValidateUsageOfDeclaredParameters(ctx, t.Spec.Steps, t.Spec.Params).ViaField("spec"))
+	// Validate beta fields when a Pipeline is defined, but not as part of validating a Pipeline spec.
+	// This prevents validation from failing when a Pipeline is converted to a different API version.
+	// See https://github.com/tektoncd/pipeline/issues/6616 for more information.
+	errs = errs.Also(t.Spec.ValidateBetaFields(ctx))
+	return errs
 }
 
 // Validate implements apis.Validatable
@@ -94,6 +99,35 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateResults(ctx, ts.Results).ViaField("results"))
 	if ts.Resources != nil {
 		errs = errs.Also(apis.ErrDisallowedFields("resources"))
+	}
+	return errs
+}
+
+// ValidateBetaFields returns an error if the TaskSpec uses beta specifications governed by
+// `enable-api-fields` but does not have "enable-api-fields" set to "alpha" or "beta".
+func (ts *TaskSpec) ValidateBetaFields(ctx context.Context) *apis.FieldError {
+	var errs *apis.FieldError
+	// Object parameters
+	for i, p := range ts.Params {
+		if p.Type == ParamTypeObject {
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "object type parameter", config.BetaAPIFields).ViaFieldIndex("params", i))
+		}
+	}
+	// Indexing into array parameters
+	arrayIndexParamRefs := ts.GetIndexingReferencesToArrayParams()
+	if len(arrayIndexParamRefs) != 0 {
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "indexing into array parameters", config.BetaAPIFields))
+	}
+	// Array and object results
+	for i, result := range ts.Results {
+		switch result.Type {
+		case ResultsTypeObject:
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "object results", config.BetaAPIFields).ViaFieldIndex("results", i))
+		case ResultsTypeArray:
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "array results", config.BetaAPIFields).ViaFieldIndex("results", i))
+		case ResultsTypeString:
+		default:
+		}
 	}
 	return errs
 }
