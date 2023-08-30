@@ -65,16 +65,12 @@ func (t *Task) Validate(ctx context.Context) *apis.FieldError {
 	// When a Task is created directly, instead of declared inline in a TaskRun or PipelineRun,
 	// we do not support propagated parameters. Validate that all params it uses are declared.
 	errs = errs.Also(ValidateUsageOfDeclaredParameters(ctx, t.Spec.Steps, t.Spec.Params).ViaField("spec"))
-	// Validate beta fields when a Task is defined, but not as part of validating a Task spec.
-	// This prevents validation from failing when a Task is converted to a different API version.
-	// See https://github.com/tektoncd/pipeline/issues/6616 for more information.
-	// TODO(#6592): Decouple API versioning from feature versioning
-	errs = errs.Also(t.Spec.ValidateBetaFields(ctx))
 	return errs
 }
 
 // Validate implements apis.Validatable
 func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
+	errs = errs.Also(ts.ValidateBetaFields(ctx))
 	if len(ts.Steps) == 0 {
 		errs = errs.Also(apis.ErrMissingField("steps"))
 	}
