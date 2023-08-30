@@ -158,8 +158,6 @@ func readRuntimeObjectAsTask(ctx context.Context, namespace string, obj runtime.
 		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
 		// Issue a dry-run request to create the remote Task, so that it can undergo validation from validating admission webhooks
 		// without actually creating the Task on the cluster.
-		// Validation must happen before converting the Task into the storage version of the API,
-		// since validation differs between API versions.
 		if err := apiserver.DryRunValidate(ctx, namespace, obj, tekton); err != nil {
 			return nil, nil, err
 		}
