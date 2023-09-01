@@ -847,6 +847,7 @@ func TestPipelineTask_ValidateMatrix(t *testing.T) {
 		name     string
 		pt       *PipelineTask
 		wantErrs *apis.FieldError
+		tasks    []PipelineTask
 	}{{
 		name: "parameter duplicated in matrix.params and pipelinetask.params",
 		pt: &PipelineTask{

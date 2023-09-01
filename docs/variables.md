@@ -28,10 +28,12 @@ For instructions on using variable substitutions see the relevant section of [th
 | `params["<param name>"][i]` | (see above) |
 | `params.<object-param-name>[*]` | Get the value of the whole object param. This is alpha feature, set `enable-api-fields` to `alpha`  to use it.|
 | `params.<object-param-name>.<individual-key-name>` | Get the value of an individual child of an object param. This is alpha feature, set `enable-api-fields` to `alpha`  to use it. |
+| `tasks.<taskName>.matrix.length` | The length of the `Matrix` combination count. |
 | `tasks.<taskName>.results.<resultName>` | The value of the `Task's` result. Can alter `Task` execution order within a `Pipeline`.) |
 | `tasks.<taskName>.results.<resultName>[i]` | The ith value of the `Task's` array result. Can alter `Task` execution order within a `Pipeline`.) |
 | `tasks.<taskName>.results.<resultName>[*]` | The array value of the `Task's` result. Can alter `Task` execution order within a `Pipeline`. Cannot be used in `script`.) |
 | `tasks.<taskName>.results.<resultName>.key` | The `key` value of the `Task's` object result. Can alter `Task` execution order within a `Pipeline`.) |
+| `tasks.<taskName>.matrix.<resultName>.length` | The length of the matrixed `Task's` results. (Can alter `Task` execution order within a `Pipeline`.) |
 | `workspaces.<workspaceName>.bound` | Whether a `Workspace` has been bound or not. "false" if the `Workspace` declaration has `optional: true` and the Workspace binding was omitted by the PipelineRun. |
 | `context.pipelineRun.name` | The name of the `PipelineRun` that this `Pipeline` is running in. |
 | `context.pipelineRun.namespace` | The namespace of the `PipelineRun` that this `Pipeline` is running in. |

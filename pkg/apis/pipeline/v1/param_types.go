@@ -208,6 +208,29 @@ func (ps Params) extractParamMapArrVals() map[string][]string {
 	return paramsMap
 }
 
+// ParseTaskandResultName parses "task name", "result name" from a Matrix Context Variable
+// Valid Example 1:
+// - Input: tasks.myTask.matrix.length
+// - Output: "myTask", ""
+// Valid Example 2:
+// - Input: tasks.myTask.matrix.ResultName.length
+// - Output: "myTask", "ResultName"
+func (p Param) ParseTaskandResultName() (string, string) {
+	if expressions, ok := p.GetVarSubstitutionExpressions(); ok {
+		for _, expression := range expressions {
+			subExpressions := strings.Split(expression, ".")
+			pipelineTaskName := subExpressions[1]
+			if len(subExpressions) == 4 {
+				return pipelineTaskName, ""
+			} else if len(subExpressions) == 5 {
+				resultName := subExpressions[3]
+				return pipelineTaskName, resultName
+			}
+		}
+	}
+	return "", ""
+}
+
 // Params is a list of Param
 type Params []Param
 

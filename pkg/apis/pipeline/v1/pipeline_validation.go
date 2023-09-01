@@ -92,7 +92,6 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateWhenExpressions(ps.Tasks, ps.Finally))
 	errs = errs.Also(validateMatrix(ctx, ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validateMatrix(ctx, ps.Finally).ViaField("finally"))
-	errs = errs.Also(validateResultsFromMatrixedPipelineTasksNotConsumed(ps.Tasks, ps.Finally))
 	return errs
 }
 
@@ -258,15 +257,6 @@ func (pt PipelineTask) validateEmbeddedOrType() (errs *apis.FieldError) {
 		}
 	}
 	return
-}
-
-func (pt *PipelineTask) validateResultsFromMatrixedPipelineTasksNotConsumed(matrixedPipelineTasks sets.String) (errs *apis.FieldError) {
-	for _, ref := range PipelineTaskResultRefs(pt) {
-		if matrixedPipelineTasks.Has(ref.PipelineTask) {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("consuming results from matrixed task %s is not allowed", ref.PipelineTask), ""))
-		}
-	}
-	return errs
 }
 
 func (pt *PipelineTask) validateWorkspaces(workspaceNames sets.String) (errs *apis.FieldError) {
@@ -768,21 +758,102 @@ func validateMatrix(ctx context.Context, tasks []PipelineTask) (errs *apis.Field
 	for idx, task := range tasks {
 		errs = errs.Also(task.validateMatrix(ctx).ViaIndex(idx))
 	}
+	errs = errs.Also(validateTaskResultsFromMatrixedPipelineTasksConsumed(tasks))
 	return errs
 }
 
-func validateResultsFromMatrixedPipelineTasksNotConsumed(tasks []PipelineTask, finally []PipelineTask) (errs *apis.FieldError) {
-	matrixedPipelineTasks := sets.String{}
-	for _, pt := range tasks {
-		if pt.IsMatrixed() {
-			matrixedPipelineTasks.Insert(pt.Name)
+// findAndValidateResultRefsForMatrix checks that any result references to Matrixed PipelineTasks if consumed
+// by another PipelineTask that the entire array of results produced by a matrix is consumed in aggregate
+// since consuming a singular result produced by a matrix is currently not supported
+func findAndValidateResultRefsForMatrix(tasks []PipelineTask, taskMapping map[string]PipelineTask) (resultRefs []*ResultRef, errs *apis.FieldError) {
+	for _, t := range tasks {
+		for _, p := range t.Params {
+			if expressions, ok := p.GetVarSubstitutionExpressions(); ok {
+				if LooksLikeContainsResultRefs(expressions) {
+					resultRefs, errs = validateMatrixedPipelineTaskConsumed(expressions, taskMapping)
+					if errs != nil {
+						return nil, errs
+					}
+				}
+			}
 		}
 	}
-	for idx, pt := range tasks {
-		errs = errs.Also(pt.validateResultsFromMatrixedPipelineTasksNotConsumed(matrixedPipelineTasks).ViaFieldIndex("tasks", idx))
+	return resultRefs, errs
+}
+
+// validateMatrixedPipelineTaskConsumed checks that any Matrixed Pipeline Task that the is being consumed is consumed in
+// aggregate [*] since consuming a singular result produced by a matrix is currently not supported
+func validateMatrixedPipelineTaskConsumed(expressions []string, taskMapping map[string]PipelineTask) (resultRefs []*ResultRef, errs *apis.FieldError) {
+	var filteredExpressions []string
+	for _, expression := range expressions {
+		// ie. "tasks.<pipelineTaskName>.results.<resultName>[*]"
+		subExpressions := strings.Split(expression, ".")
+		pipelineTask := subExpressions[1] // pipelineTaskName
+		taskConsumed := taskMapping[pipelineTask]
+		if taskConsumed.IsMatrixed() {
+			if !strings.HasSuffix(expression, "[*]") {
+				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("A matrixed pipelineTask can only be consumed in aggregate using [*] notation, but is currently set to %s", expression)))
+			}
+			filteredExpressions = append(filteredExpressions, expression)
+		}
 	}
-	for idx, pt := range finally {
-		errs = errs.Also(pt.validateResultsFromMatrixedPipelineTasksNotConsumed(matrixedPipelineTasks).ViaFieldIndex("finally", idx))
+	return NewResultRefs(filteredExpressions), errs
+}
+
+// validateTaskResultsFromMatrixedPipelineTasksConsumed checks that any Matrixed Pipeline Task that the is being consumed
+// is consumed in aggregate [*] since consuming a singular result produced by a matrix is currently not supported.
+// It also validates that a matrix emitting results can only emit results with the underlying type string
+// if those results are being consumed by another PipelineTask.
+func validateTaskResultsFromMatrixedPipelineTasksConsumed(tasks []PipelineTask) (errs *apis.FieldError) {
+	taskMapping := createTaskMapping(tasks)
+	resultRefs, errs := findAndValidateResultRefsForMatrix(tasks, taskMapping)
+	if errs != nil {
+		return errs
+	}
+
+	errs = errs.Also(validateMatrixEmittingStringResults(resultRefs, taskMapping))
+	return errs
+}
+
+// createTaskMapping maps the PipelineTaskName to the PipelineTask to easily access
+// the pipelineTask by Name
+func createTaskMapping(tasks []PipelineTask) (taskMap map[string]PipelineTask) {
+	taskMapping := make(map[string]PipelineTask)
+	for _, task := range tasks {
+		taskMapping[task.Name] = task
+	}
+	return taskMapping
+}
+
+// validateMatrixEmittingStringResults checks a matrix emitting results can only emit results with the underlying type string
+// if those results are being consumed by another PipelineTask. Note: It is not possible to validate remote tasks
+func validateMatrixEmittingStringResults(resultRefs []*ResultRef, taskMapping map[string]PipelineTask) (errs *apis.FieldError) {
+	for _, resultRef := range resultRefs {
+		task := taskMapping[resultRef.PipelineTask]
+		resultName := resultRef.Result
+		if task.TaskRef != nil {
+			referencedTask := taskMapping[task.TaskRef.Name]
+			if referencedTask.TaskSpec != nil {
+				errs = errs.Also(validateStringResults(referencedTask.TaskSpec.Results, resultName))
+			}
+		} else if task.TaskSpec != nil {
+			errs = errs.Also(validateStringResults(task.TaskSpec.Results, resultName))
+		}
+	}
+	return errs
+}
+
+// validateStringResults ensure that the result type is string
+func validateStringResults(results []TaskResult, resultName string) (errs *apis.FieldError) {
+	for _, result := range results {
+		if result.Name == resultName {
+			if result.Type != ResultsTypeString {
+				errs = errs.Also(apis.ErrInvalidValue(
+					fmt.Sprintf("Matrixed PipelineTasks emitting results must have an underlying type string, but result %s has type %s in pipelineTask", resultName, string(result.Type)),
+					"",
+				))
+			}
+		}
 	}
 	return errs
 }

@@ -115,58 +115,74 @@ func removeDup(refs ResolvedResultRefs) ResolvedResultRefs {
 // then a nil list and error is returned instead.
 func convertToResultRefs(pipelineRunState PipelineRunState, target *ResolvedPipelineTask) (ResolvedResultRefs, string, error) {
 	var resolvedResultRefs ResolvedResultRefs
-	for _, ref := range v1.PipelineTaskResultRefs(target.PipelineTask) {
-		resolved, pt, err := resolveResultRef(pipelineRunState, ref)
-		if err != nil {
-			return nil, pt, err
+	for _, resultRef := range v1.PipelineTaskResultRefs(target.PipelineTask) {
+		referencedPipelineTask := pipelineRunState.ToMap()[resultRef.PipelineTask]
+		if referencedPipelineTask == nil {
+			return nil, resultRef.PipelineTask, fmt.Errorf("could not find task %q referenced by result", resultRef.PipelineTask)
 		}
-		resolvedResultRefs = append(resolvedResultRefs, resolved)
+		if !referencedPipelineTask.isSuccessful() && !referencedPipelineTask.isFailure() {
+			return nil, resultRef.PipelineTask, fmt.Errorf("task %q referenced by result was not finished", referencedPipelineTask.PipelineTask.Name)
+		}
+		// Custom Task
+		switch {
+		case referencedPipelineTask.IsCustomTask():
+			resolved, err := resolveCustomResultRef(referencedPipelineTask.CustomRuns, resultRef)
+			if err != nil {
+				return nil, resultRef.PipelineTask, err
+			}
+			resolvedResultRefs = append(resolvedResultRefs, resolved)
+		default:
+			// Matrixed referenced Pipeline Task
+			if len(referencedPipelineTask.TaskRuns) > 1 {
+				arrayValues, err := findResultValuesForMatrix(referencedPipelineTask, resultRef)
+				if err != nil {
+					return nil, resultRef.PipelineTask, err
+				}
+				for _, taskRun := range referencedPipelineTask.TaskRuns {
+					resolved := createMatrixedTaskResultForParam(taskRun.Name, arrayValues, resultRef)
+					resolvedResultRefs = append(resolvedResultRefs, resolved)
+				}
+			} else {
+				// Regular PipelineTask
+				resolved, err := resolveResultRef(referencedPipelineTask.TaskRuns, resultRef)
+				if err != nil {
+					return nil, resultRef.PipelineTask, err
+				}
+				resolvedResultRefs = append(resolvedResultRefs, resolved)
+			}
+		}
 	}
 	return resolvedResultRefs, "", nil
 }
 
-func resolveResultRef(pipelineState PipelineRunState, resultRef *v1.ResultRef) (*ResolvedResultRef, string, error) {
-	referencedPipelineTask := pipelineState.ToMap()[resultRef.PipelineTask]
-	if referencedPipelineTask == nil {
-		return nil, resultRef.PipelineTask, fmt.Errorf("could not find task %q referenced by result", resultRef.PipelineTask)
+func resolveCustomResultRef(customRuns []*v1beta1.CustomRun, resultRef *v1.ResultRef) (*ResolvedResultRef, error) {
+	customRun := customRuns[0]
+	runName := customRun.GetObjectMeta().GetName()
+	runValue, err := findRunResultForParam(customRun, resultRef)
+	if err != nil {
+		return nil, err
 	}
-	if !referencedPipelineTask.isSuccessful() && !referencedPipelineTask.isFailure() {
-		return nil, resultRef.PipelineTask, fmt.Errorf("task %q referenced by result was not finished", referencedPipelineTask.PipelineTask.Name)
-	}
+	return &ResolvedResultRef{
+		Value:           *v1.NewStructuredValues(runValue),
+		FromTaskRun:     "",
+		FromRun:         runName,
+		ResultReference: *resultRef,
+	}, nil
+}
 
-	var runName, runValue, taskRunName string
-	var resultValue v1.ResultValue
-	var err error
-	if referencedPipelineTask.IsCustomTask() {
-		if len(referencedPipelineTask.CustomRuns) != 1 {
-			return nil, resultRef.PipelineTask, fmt.Errorf("referenced tasks can only have length of 1 since a matrixed task does not support producing results, but was length %d", len(referencedPipelineTask.TaskRuns))
-		}
-		customRun := referencedPipelineTask.CustomRuns[0]
-		runName = customRun.GetObjectMeta().GetName()
-		runValue, err = findRunResultForParam(customRun, resultRef)
-		resultValue = *v1.NewStructuredValues(runValue)
-		if err != nil {
-			return nil, resultRef.PipelineTask, err
-		}
-	} else {
-		// Check to make sure the referenced task is not a matrix since a matrix does not support producing results
-		if len(referencedPipelineTask.TaskRuns) != 1 {
-			return nil, resultRef.PipelineTask, fmt.Errorf("referenced tasks can only have length of 1 since a matrixed task does not support producing results, but was length %d", len(referencedPipelineTask.TaskRuns))
-		}
-		taskRun := referencedPipelineTask.TaskRuns[0]
-		taskRunName = taskRun.Name
-		resultValue, err = findTaskResultForParam(taskRun, resultRef)
-		if err != nil {
-			return nil, resultRef.PipelineTask, err
-		}
+func resolveResultRef(taskRuns []*v1.TaskRun, resultRef *v1.ResultRef) (*ResolvedResultRef, error) {
+	taskRun := taskRuns[0]
+	taskRunName := taskRun.Name
+	resultValue, err := findTaskResultForParam(taskRun, resultRef)
+	if err != nil {
+		return nil, err
 	}
-
 	return &ResolvedResultRef{
 		Value:           resultValue,
 		FromTaskRun:     taskRunName,
-		FromRun:         runName,
+		FromRun:         "",
 		ResultReference: *resultRef,
-	}, "", nil
+	}, nil
 }
 
 func findRunResultForParam(customRun *v1beta1.CustomRun, reference *v1.ResultRef) (string, error) {
@@ -178,7 +194,6 @@ func findRunResultForParam(customRun *v1beta1.CustomRun, reference *v1.ResultRef
 	err := fmt.Errorf("%w: Could not find result with name %s for task %s", ErrInvalidTaskResultReference, reference.Result, reference.PipelineTask)
 	return "", err
 }
-
 func findTaskResultForParam(taskRun *v1.TaskRun, reference *v1.ResultRef) (v1.ResultValue, error) {
 	results := taskRun.Status.TaskRunStatusFields.Results
 	for _, result := range results {
@@ -188,6 +203,34 @@ func findTaskResultForParam(taskRun *v1.TaskRun, reference *v1.ResultRef) (v1.Re
 	}
 	err := fmt.Errorf("%w: Could not find result with name %s for task %s", ErrInvalidTaskResultReference, reference.Result, reference.PipelineTask)
 	return v1.ResultValue{}, err
+}
+
+// findResultValuesForMatrix checks the resultsCache of the referenced Matrixed TaskRun to retrieve the resultValues and aggregate them into
+// arrayValues. If the resultCache is empty, it will create the ResultCache so that the results can be accessed in subsequent tasks.
+func findResultValuesForMatrix(referencedPipelineTask *ResolvedPipelineTask, resultRef *v1.ResultRef) (v1.ParamValue, error) {
+	var resultsCache *map[string][]string
+	if len(referencedPipelineTask.ResultsCache) == 0 {
+		cache := createResultsCacheMatrixedTaskRuns(referencedPipelineTask)
+		resultsCache = &cache
+		referencedPipelineTask.ResultsCache = *resultsCache
+	}
+	if arrayValues, ok := referencedPipelineTask.ResultsCache[resultRef.Result]; ok {
+		return v1.ParamValue{
+			Type:     v1.ParamTypeArray,
+			ArrayVal: arrayValues,
+		}, nil
+	}
+	err := fmt.Errorf("%w: Could not find result with name %s for task %s", ErrInvalidTaskResultReference, resultRef.Result, resultRef.PipelineTask)
+	return v1.ParamValue{}, err
+}
+
+func createMatrixedTaskResultForParam(taskRunName string, paramValue v1.ParamValue, resultRef *v1.ResultRef) *ResolvedResultRef {
+	return &ResolvedResultRef{
+		Value:           paramValue,
+		FromTaskRun:     taskRunName,
+		FromRun:         "",
+		ResultReference: *resultRef,
+	}
 }
 
 func (rs ResolvedResultRefs) getStringReplacements() map[string]string {

@@ -410,6 +410,17 @@ func TestValidatePipelineParameterTypes(t *testing.T) {
 			},
 		}},
 		wantErrs: "parameters of type string only are allowed, but param \"barfoo\" has type \"object\" in pipelineTask \"task\"",
+	}, {
+		desc: "parameters in matrix are result references",
+		state: resources.PipelineRunState{{
+			PipelineTask: &v1.PipelineTask{
+				Name: "task",
+				Matrix: &v1.Matrix{
+					Params: v1.Params{{
+						Name: "url", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: `$(tasks.matrix-emitting-results.results.report-url[*])`},
+					}}},
+			},
+		}},
 	}} {
 		t.Run(tc.desc, func(t *testing.T) {
 			err := resources.ValidateParameterTypesInMatrix(tc.state)

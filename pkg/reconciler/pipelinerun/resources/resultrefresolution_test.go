@@ -263,6 +263,82 @@ var pipelineRunState = PipelineRunState{{
 			}},
 		},
 	},
+}, {
+	TaskRunNames: []string{"kTaskRun"},
+	TaskRuns: []*v1.TaskRun{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "kTaskRun-0",
+		},
+		Status: v1.TaskRunStatus{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{successCondition},
+			},
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Results: []v1.TaskRunResult{{
+					Name:  "IMAGE-DIGEST",
+					Value: *v1.NewStructuredValues("123"),
+				}},
+			},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "kTaskRun-1",
+		},
+		Status: v1.TaskRunStatus{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{successCondition},
+			},
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Results: []v1.TaskRunResult{{
+					Name:  "IMAGE-DIGEST",
+					Value: *v1.NewStructuredValues("345"),
+				}},
+			},
+		},
+	}},
+	PipelineTask: &v1.PipelineTask{
+		Name:    "kTask",
+		TaskRef: &v1.TaskRef{Name: "kTask"},
+		Matrix: &v1.Matrix{
+			Include: v1.IncludeParamsList{{
+				Name: "build-1",
+				Params: v1.Params{{
+					Name:  "NAME",
+					Value: *v1.NewStructuredValues("image-1"),
+				}, {
+					Name:  "DOCKERFILE",
+					Value: *v1.NewStructuredValues("path/to/Dockerfile1"),
+				}},
+			}, {
+				Name: "build-2",
+				Params: v1.Params{{
+					Name:  "NAME",
+					Value: *v1.NewStructuredValues("image-2"),
+				}, {
+					Name:  "DOCKERFILE",
+					Value: *v1.NewStructuredValues("path/to/Dockerfile2"),
+				}},
+			}},
+		},
+	},
+}, {
+	PipelineTask: &v1.PipelineTask{
+		Name:    "hTask",
+		TaskRef: &v1.TaskRef{Name: "hTask"},
+		Params: v1.Params{{
+			Name:  "image-digest",
+			Value: *v1.NewStructuredValues("$(tasks.kTask.results.IMAGE-DIGEST)[*]"),
+		}},
+	},
+}, {
+	PipelineTask: &v1.PipelineTask{
+		Name:    "iTask",
+		TaskRef: &v1.TaskRef{Name: "iTask"},
+		Params: v1.Params{{
+			Name:  "image-digest",
+			Value: *v1.NewStructuredValues("$(tasks.kTask.results.I-DO-NOT-EXIST)[*]"),
+		}},
+	},
 }}
 
 func TestResolveResultRefs(t *testing.T) {
@@ -431,6 +507,28 @@ func TestResolveResultRefs(t *testing.T) {
 			},
 			FromTaskRun: "eTaskRun",
 		}},
+	}, {
+		name:             "Test successful result references matrix emitting results",
+		pipelineRunState: pipelineRunState,
+		targets: PipelineRunState{
+			pipelineRunState[16],
+		},
+		want: ResolvedResultRefs{{
+			Value: *v1.NewStructuredValues("123", "345"),
+			ResultReference: v1.ResultRef{
+				PipelineTask: "kTask",
+				Result:       "IMAGE-DIGEST",
+			},
+			FromTaskRun: "kTaskRun-1",
+		}},
+	}, {
+		name:             "Test unsuccessful result references matrix emitting results",
+		pipelineRunState: pipelineRunState,
+		targets: PipelineRunState{
+			pipelineRunState[17],
+		},
+		wantPt:  "kTask",
+		wantErr: true,
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
 			got, pt, err := ResolveResultRefs(tt.pipelineRunState, tt.targets)

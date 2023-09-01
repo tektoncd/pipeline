@@ -1,0 +1,123 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: validate-matrix-result-length
+spec:
+  params:
+    - name: matrixlength
+      type: string
+  steps:
+    - name: validate
+      image: alpine
+      args: ["$(params.matrixlength)"]
+      script: |
+        #!/usr/bin/env sh
+        echo "Validating the length of the matrix context variable"
+        echo "The length of the matrix is 3"
+        if [ "$(params.matrixlength)" != 3 ]; then
+          echo "Error: expected matrix to have the length 3 but has length $(params.matrixlength)"
+          exit 1
+        fi
+        echo "Done validating the length of the matrix context variable"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: validate-matrix-results-length
+spec:
+  params:
+    - name: matrixresultslength-1
+      type: string
+    - name: matrixresultslength-2
+      type: string
+  steps:
+    - name: validate
+      image: alpine
+      script: |
+        #!/usr/bin/env sh
+        echo "Validating the length of the matrix results context variable"
+        echo "The length of the matrix results are $(params.matrixresultslength-1) and $(params.matrixresultslength-2)"
+        if [ "$(params.matrixresultslength-1)" != 3 ]; then
+          echo "Error: expected matrix results to have the length 3 but has length $(params.matrixresultslength-1)"
+          exit 1
+        fi
+        if [ "$(params.matrixresultslength-2)" != 1 ]; then
+          echo "Error: expected matrix results to have the length 1 but has length $(params.matrixresultslength-2)"
+          exit 1
+        fi
+        echo "Done validating the length of the matrix context variable"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: taskwithresults
+spec:
+  params:
+    - name: IMAGE
+    - name: DIGEST
+      default: ""
+  results:
+    - name: IMAGE-DIGEST
+    - name: IMAGE-URL
+  steps:
+    - name: produce-results
+      image: bash:latest
+      script: |
+        #!/usr/bin/env bash
+        echo "Building image for $(params.IMAGE)"
+        echo -n "$(params.DIGEST)" | sha256sum | tee $(results.IMAGE-DIGEST.path)
+        if [ -z $(params.DIGEST) ]; then
+          echo -n "$(params.DIGEST)" | sha256sum | tee $(results.IMAGE-URL.path)
+        fi
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: matrix-context-variables-
+spec:
+  taskRunTemplate:
+    serviceAccountName: "default"
+  pipelineSpec:
+    tasks:
+      - name: matrix-emitting-results
+        matrix:
+          include:
+            - name: build-1
+              params:
+                - name: IMAGE
+                  value: image-1
+                - name: DIGEST
+                  value: path/to/Dockerfile1
+            - name: build-2
+              params:
+                - name: IMAGE
+                  value: image-2
+                - name: DIGEST
+                  value: path/to/Dockerfile2
+            - name: build-3
+              params:
+                - name: IMAGE
+                  value: image-3
+        taskRef:
+          name: taskwithresults
+          kind: Task
+      - name: matrixed-echo-length
+        runAfter:
+          - matrix-emitting-results
+        params:
+          - name: matrixlength
+            value: $(tasks.matrix-emitting-results.matrix.length)
+        taskRef:
+          name: validate-matrix-result-length
+          kind: Task
+      - name: matrixed-echo-results-length
+        runAfter:
+          - matrix-emitting-results
+        params:
+          - name: matrixresultslength-1
+            value: $(tasks.matrix-emitting-results.matrix.IMAGE-DIGEST.length)
+          - name: matrixresultslength-2
+            value: $(tasks.matrix-emitting-results.matrix.IMAGE-URL.length)
+        taskRef:
+          name: validate-matrix-results-length
+          kind: Task

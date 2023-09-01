@@ -228,6 +228,21 @@ var customRuns = []v1beta1.CustomRun{{
 
 var matrixedPipelineTask = &v1.PipelineTask{
 	Name: "task",
+	TaskSpec: &v1.EmbeddedTask{
+		TaskSpec: v1.TaskSpec{
+			Params: []v1.ParamSpec{{
+				Name: "browser",
+				Type: v1.ParamTypeString,
+			}},
+			Results: []v1.TaskResult{{
+				Name: "BROWSER",
+			}},
+			Steps: []v1.Step{{
+				Name:   "produce-results",
+				Image:  "bash:latest",
+				Script: `#!/usr/bin/env bash\necho -n "$(params.browser)" | sha256sum | tee $(results.BROWSER.path)"`,
+			}},
+		}},
 	Matrix: &v1.Matrix{
 		Params: v1.Params{{
 			Name:  "browser",
@@ -4725,6 +4740,74 @@ func TestIsRunning(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := tc.rpt.IsRunning(); got != tc.want {
 				t.Errorf("expected IsRunning: %t but got %t", tc.want, got)
+			}
+		})
+	}
+}
+
+func TestCreateResultsCacheMatrixedTaskRuns(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		rpt  *ResolvedPipelineTask
+		want map[string][]string
+	}{{
+		name: "matrixed taskrun with results",
+		rpt: &ResolvedPipelineTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns: []*v1.TaskRun{{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "namespace",
+					Name:      "matrix-task-with-results",
+				},
+				Spec: v1.TaskRunSpec{},
+				Status: v1.TaskRunStatus{
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						Results: []v1.TaskRunResult{{
+							Name:  "browser",
+							Type:  "string",
+							Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "chrome"},
+						}, {
+							Name:  "browser",
+							Type:  "string",
+							Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "safari"},
+						}, {
+							Name:  "platform",
+							Type:  "string",
+							Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux"},
+						}},
+					},
+				},
+			}},
+		},
+		want: map[string][]string{
+			"browser":  {"chrome", "safari"}, // 1 Child ref
+			"platform": {"linux"},            // 1 Child ref
+		},
+	}, {
+		name: "matrixed taskrun without results",
+		rpt: &ResolvedPipelineTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns: []*v1.TaskRun{{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "namespace",
+					Name:      "matrix-task-with-results",
+				},
+				Spec: v1.TaskRunSpec{},
+				Status: v1.TaskRunStatus{
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						Results: []v1.TaskRunResult{{}},
+					},
+				},
+			}},
+		},
+		want: map[string][]string{
+			"": {""},
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := createResultsCacheMatrixedTaskRuns(tc.rpt)
+			if !cmp.Equal(got, tc.want) {
+				t.Errorf("Did not get the expected ResultsCache for %s", tc.rpt.PipelineTask.Name)
 			}
 		})
 	}

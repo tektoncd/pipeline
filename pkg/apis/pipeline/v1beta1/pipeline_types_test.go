@@ -826,11 +826,12 @@ func TestPipelineTaskList_Validate(t *testing.T) {
 	}
 }
 
-func TestPipelineTask_validateMatrix(t *testing.T) {
+func TestPipelineTask_ValidateMatrix(t *testing.T) {
 	tests := []struct {
 		name     string
 		pt       *PipelineTask
 		wantErrs *apis.FieldError
+		tasks    []PipelineTask
 	}{{
 		name: "parameter duplicated in matrix.params and pipelinetask.params",
 		pt: &PipelineTask{
@@ -956,6 +957,38 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 					Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "firefox"}},
 				}}},
 		},
+	}, {
+		name: "valid matrix emitting string results consumed in aggregate by another pipelineTask",
+		pt: &PipelineTask{
+			Name:    "task-consuming-results",
+			TaskRef: &TaskRef{Name: "echoarrayurl"},
+			Params: Params{{
+				Name: "b-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.matrix-emitting-results-embedded.results.array-result[*])"},
+			}},
+		},
+		tasks: PipelineTaskList{},
+	}, {
+		name: "valid matrix emitting string results consumed in aggregate by another pipelineTask (embedded taskSpec)",
+		pt: &PipelineTask{
+			Name: "task-consuming-results",
+			TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+				Params: ParamSpecs{{
+					Name: "url", Type: "array",
+				}},
+				Steps: []Step{{
+					Name:  "use-environments",
+					Image: "bash:latest",
+					Args:  []string{"$(params.url[*])"},
+					Script: `for arg in "$@"; do
+							echo "URL: $arg"
+								done`,
+				}},
+			}},
+			Params: Params{{
+				Name: "b-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.matrix-emitting-results.results.report-url[*])"},
+			}},
+		},
+		tasks: PipelineTaskList{},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

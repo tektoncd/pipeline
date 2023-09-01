@@ -3241,6 +3241,8 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 	for _, tc := range []struct {
 		description string
 		pt          v1.PipelineTask
+		prstatus    v1.PipelineRunStatus
+		facts       *resources.PipelineRunFacts
 		want        v1.PipelineTask
 	}{{
 		description: "context retries replacement",
@@ -3324,9 +3326,155 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 				}},
 			},
 		},
+	}, {
+		description: "matrix length context variable",
+		pt: v1.PipelineTask{
+			Params: v1.Params{{
+				Name:  "matrixlength",
+				Value: *v1.NewStructuredValues("$(tasks.matrixed-task-run.matrix.length)"),
+			}},
+		},
+		prstatus: v1.PipelineRunStatus{
+			PipelineRunStatusFields: v1.PipelineRunStatusFields{
+				PipelineSpec: &v1.PipelineSpec{
+					Tasks: []v1.PipelineTask{{
+						Name: "matrixed-task-run",
+						Matrix: &v1.Matrix{
+							Params: v1.Params{
+								{Name: "platform", Value: *v1.NewStructuredValues("linux", "mac", "windows")},
+								{Name: "browser", Value: *v1.NewStructuredValues("chrome", "firefox", "safari")},
+							}},
+					}},
+				},
+			}},
+		want: v1.PipelineTask{
+			Params: v1.Params{{
+				Name:  "matrixlength",
+				Value: *v1.NewStructuredValues("9"),
+			}},
+		},
+	}, {
+		description: "matrix length and matrix results length context variables in matrix include params ",
+		pt: v1.PipelineTask{
+			Params: v1.Params{{
+				Name:  "matrixlength",
+				Value: *v1.NewStructuredValues("$(tasks.matrix-emitting-results.matrix.length)"),
+			}, {
+				Name:  "matrixresultslength",
+				Value: *v1.NewStructuredValues("$(tasks.matrix-emitting-results.matrix.IMAGE-DIGEST.length)"),
+			}},
+		},
+		prstatus: v1.PipelineRunStatus{
+			PipelineRunStatusFields: v1.PipelineRunStatusFields{
+				PipelineSpec: &v1.PipelineSpec{
+					Tasks: []v1.PipelineTask{{
+						Name: "matrix-emitting-results",
+						TaskSpec: &v1.EmbeddedTask{
+							TaskSpec: v1.TaskSpec{
+								Params: []v1.ParamSpec{{
+									Name: "IMAGE",
+									Type: v1.ParamTypeString,
+								}, {
+									Name: "DIGEST",
+									Type: v1.ParamTypeString,
+								}},
+								Results: []v1.TaskResult{{
+									Name: "IMAGE-DIGEST",
+								}},
+								Steps: []v1.Step{{
+									Name:   "produce-results",
+									Image:  "bash:latest",
+									Script: `#!/usr/bin/env bash\necho -n "$(params.DIGEST)" | sha256sum | tee $(results.IMAGE-DIGEST.path)"`,
+								}},
+							},
+						},
+						Matrix: &v1.Matrix{
+							Include: []v1.IncludeParams{{
+								Name: "build-1",
+								Params: v1.Params{{
+									Name: "DOCKERFILE", Value: *v1.NewStructuredValues("path/to/Dockerfile1"),
+								}, {
+									Name: "IMAGE", Value: *v1.NewStructuredValues("image-1"),
+								}},
+							}, {
+								Name: "build-2",
+								Params: v1.Params{{
+									Name: "DOCKERFILE", Value: *v1.NewStructuredValues("path/to/Dockerfile2"),
+								}, {
+									Name: "IMAGE", Value: *v1.NewStructuredValues("image-2"),
+								}},
+							}, {
+								Name: "build-3",
+								Params: v1.Params{{
+									Name: "DOCKERFILE", Value: *v1.NewStructuredValues("path/to/Dockerfile3"),
+								}, {
+									Name: "IMAGE", Value: *v1.NewStructuredValues("image-3"),
+								}},
+							}},
+						}},
+					},
+				},
+			},
+		},
+		facts: &resources.PipelineRunFacts{
+			State: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					Name: "matrix-emitting-results",
+				},
+				TaskRunNames: []string{"matrix-emitting-results-0"},
+				TaskRuns: []*v1.TaskRun{{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "matrix-emitting-results-0",
+					},
+					Status: v1.TaskRunStatus{
+						TaskRunStatusFields: v1.TaskRunStatusFields{
+							Results: []v1.TaskRunResult{{
+								Name:  "IMAGE-DIGEST",
+								Value: *v1.NewStructuredValues("123"),
+							}},
+						},
+					},
+				}, {
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "matrix-emitting-results-1",
+					},
+					Status: v1.TaskRunStatus{
+						TaskRunStatusFields: v1.TaskRunStatusFields{
+							Results: []v1.TaskRunResult{{
+								Name:  "IMAGE-DIGEST",
+								Value: *v1.NewStructuredValues("456"),
+							}},
+						},
+					},
+				}, {
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "matrix-emitting-results-2",
+					},
+					Status: v1.TaskRunStatus{
+						TaskRunStatusFields: v1.TaskRunStatusFields{
+							Results: []v1.TaskRunResult{{
+								Name:  "IMAGE-DIGEST",
+								Value: *v1.NewStructuredValues("789"),
+							}},
+						},
+					},
+				},
+				},
+				ResultsCache: map[string][]string{},
+			}},
+		},
+		want: v1.PipelineTask{
+			Params: v1.Params{{
+				Name:  "matrixlength",
+				Value: *v1.NewStructuredValues("3"),
+			}, {
+				Name:  "matrixresultslength",
+				Value: *v1.NewStructuredValues("3"),
+			}},
+		},
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			got := resources.ApplyPipelineTaskContexts(&tc.pt)
+			got := resources.ApplyPipelineTaskContexts(&tc.pt, tc.prstatus, tc.facts)
 			if d := cmp.Diff(&tc.want, got); d != "" {
 				t.Errorf(diff.PrintWantGot(d))
 			}

@@ -1,0 +1,110 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: echostringurl
+spec:
+  params:
+    - name: url
+      type: string
+  steps:
+    - name: echo
+      image: alpine
+      script: |
+        echo "$(params.url)"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: validate-array-url
+spec:
+  params:
+    - name: url
+      type: array
+  steps:
+    - name: validate
+      image: ubuntu
+      args: ["$(params.url[*])"]
+      script: |
+        #!/usr/bin/env bash
+        args=("$@")
+        URLS=( )
+        URLS[0]="https://api.example/get-report/linux-chrome"
+        URLS[1]="https://api.example/get-report/mac-chrome"
+        URLS[2]="https://api.example/get-report/windows-chrome"
+        URLS[3]="https://api.example/get-report/linux-safari"
+        URLS[4]="https://api.example/get-report/mac-safari"
+        URLS[5]="https://api.example/get-report/windows-safari"
+        URLS[6]="https://api.example/get-report/linux-firefox"
+        URLS[7]="https://api.example/get-report/mac-firefox"
+        URLS[8]="https://api.example/get-report/windows-firefox"
+        for i in "${!URLS[@]}"; do
+            if [ "${URLS[$i]}" != ${args[$i]} ]; then
+              echo "Error: expected url to be ${URLS[$i]}, but got ${args[$i]}"
+              exit 1
+            fi
+            echo "Done validating the url: ${args[$i]}"
+        done
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: task-producing-results
+spec:
+  params:
+    - name: platform
+      default: ""
+    - name: browser
+      default: ""
+  results:
+    - name: report-url
+      type: string
+  steps:
+    - name: produce-report-url
+      image: alpine
+      script: |
+        echo "Running tests on $(params.platform)-$(params.browser)"
+        echo -n "https://api.example/get-report/$(params.platform)-$(params.browser)" | tee $(results.report-url.path)
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: platforms-with-results
+spec:
+  taskRunTemplate:
+    serviceAccountName: "default"
+  pipelineSpec:
+    results:
+      - name: pr-result-1
+        value: $(tasks.matrix-emitting-results.results.report-url[*])
+    tasks:
+      - name: matrix-emitting-results
+        matrix:
+          params:
+            - name: platform
+              value:
+                - linux
+                - mac
+                - windows
+            - name: browser
+              value:
+                - chrome
+                - safari
+                - firefox
+        taskRef:
+          name: task-producing-results
+          kind: Task
+      - name: task-consuming-results
+        taskRef:
+          name: validate-array-url
+          kind: Task
+        params:
+          - name: url
+            value: $(tasks.matrix-emitting-results.results.report-url[*])
+      - name: matrix-consuming-results
+        taskRef:
+          name: echostringurl
+          kind: Task
+        matrix:
+          params:
+            - name: url
+              value: $(tasks.matrix-emitting-results.results.report-url[*])

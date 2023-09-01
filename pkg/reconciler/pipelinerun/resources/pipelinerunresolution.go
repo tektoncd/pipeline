@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -64,6 +65,7 @@ type ResolvedPipelineTask struct {
 	CustomRuns     []*v1beta1.CustomRun
 	PipelineTask   *v1.PipelineTask
 	ResolvedTask   *resources.ResolvedTask
+	ResultsCache   map[string][]string
 }
 
 // isDone returns true only if the task is skipped, succeeded or failed
@@ -740,4 +742,23 @@ func CheckMissingResultReferences(pipelineRunState PipelineRunState, targets Pip
 		}
 	}
 	return nil
+}
+
+// createResultsCacheMatrixedTaskRuns creates a cache of results that have been fanned out from a
+// referenced matrixed PipelintTask so that you can easily access these results in subsequent Pipeline Tasks
+func createResultsCacheMatrixedTaskRuns(rpt *ResolvedPipelineTask) (resultsCache map[string][]string) {
+	if len(rpt.ResultsCache) == 0 {
+		resultsCache = make(map[string][]string)
+	}
+	// Sort the taskRuns by name to ensure the order is deterministic
+	sort.Slice(rpt.TaskRuns, func(i, j int) bool {
+		return rpt.TaskRuns[i].Name < rpt.TaskRuns[j].Name
+	})
+	for _, taskRun := range rpt.TaskRuns {
+		results := taskRun.Status.Results
+		for _, result := range results {
+			resultsCache[result.Name] = append(resultsCache[result.Name], result.Value.StringVal)
+		}
+	}
+	return resultsCache
 }
