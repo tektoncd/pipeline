@@ -818,14 +818,14 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 		}
 
 		if rpt.IsCustomTask() {
-			rpt.CustomRuns, err = c.createCustomRuns(ctx, rpt, pr)
+			rpt.CustomRuns, err = c.createCustomRuns(ctx, rpt, pr, pipelineRunFacts)
 			if err != nil {
 				recorder.Eventf(pr, corev1.EventTypeWarning, "RunsCreationFailed", "Failed to create CustomRuns %q: %v", rpt.CustomRunNames, err)
 				err = fmt.Errorf("error creating CustomRuns called %s for PipelineTask %s from PipelineRun %s: %w", rpt.CustomRunNames, rpt.PipelineTask.Name, pr.Name, err)
 				return err
 			}
 		} else {
-			rpt.TaskRuns, err = c.createTaskRuns(ctx, rpt, pr)
+			rpt.TaskRuns, err = c.createTaskRuns(ctx, rpt, pr, pipelineRunFacts)
 			if err != nil {
 				recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunsCreationFailed", "Failed to create TaskRuns %q: %v", rpt.TaskRunNames, err)
 				err = fmt.Errorf("error creating TaskRuns called %s for PipelineTask %s from PipelineRun %s: %w", rpt.TaskRunNames, rpt.PipelineTask.Name, pr.Name, err)
@@ -846,7 +846,7 @@ func (c *Reconciler) setFinallyStartedTimeIfNeeded(pr *v1.PipelineRun, facts *re
 	}
 }
 
-func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.ResolvedPipelineTask, pr *v1.PipelineRun) ([]*v1.TaskRun, error) {
+func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.ResolvedPipelineTask, pr *v1.PipelineRun, facts *resources.PipelineRunFacts) ([]*v1.TaskRun, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createTaskRuns")
 	defer span.End()
 	var taskRuns []*v1.TaskRun
@@ -860,7 +860,7 @@ func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.Resolved
 		if len(matrixCombinations) > i {
 			params = matrixCombinations[i]
 		}
-		taskRun, err := c.createTaskRun(ctx, taskRunName, params, rpt, pr)
+		taskRun, err := c.createTaskRun(ctx, taskRunName, params, rpt, pr, facts)
 		if err != nil {
 			err := c.handleRunCreationError(ctx, pr, err)
 			return nil, err
@@ -870,11 +870,11 @@ func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.Resolved
 	return taskRuns, nil
 }
 
-func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, params v1.Params, rpt *resources.ResolvedPipelineTask, pr *v1.PipelineRun) (*v1.TaskRun, error) {
+func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, params v1.Params, rpt *resources.ResolvedPipelineTask, pr *v1.PipelineRun, facts *resources.PipelineRunFacts) (*v1.TaskRun, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createTaskRun")
 	defer span.End()
 	logger := logging.FromContext(ctx)
-	rpt.PipelineTask = resources.ApplyPipelineTaskContexts(rpt.PipelineTask)
+	rpt.PipelineTask = resources.ApplyPipelineTaskContexts(rpt.PipelineTask, pr.Status, facts)
 	taskRunSpec := pr.GetTaskRunSpec(rpt.PipelineTask.Name)
 	params = append(params, rpt.PipelineTask.Params...)
 	tr := &v1.TaskRun{
@@ -946,7 +946,7 @@ func (c *Reconciler) handleRunCreationError(ctx context.Context, pr *v1.Pipeline
 	return err
 }
 
-func (c *Reconciler) createCustomRuns(ctx context.Context, rpt *resources.ResolvedPipelineTask, pr *v1.PipelineRun) ([]*v1beta1.CustomRun, error) {
+func (c *Reconciler) createCustomRuns(ctx context.Context, rpt *resources.ResolvedPipelineTask, pr *v1.PipelineRun, facts *resources.PipelineRunFacts) ([]*v1beta1.CustomRun, error) {
 	var customRuns []*v1beta1.CustomRun
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createCustomRuns")
 	defer span.End()
@@ -960,7 +960,7 @@ func (c *Reconciler) createCustomRuns(ctx context.Context, rpt *resources.Resolv
 		if len(matrixCombinations) > i {
 			params = matrixCombinations[i]
 		}
-		customRun, err := c.createCustomRun(ctx, customRunName, params, rpt, pr)
+		customRun, err := c.createCustomRun(ctx, customRunName, params, rpt, pr, facts)
 		if err != nil {
 			err := c.handleRunCreationError(ctx, pr, err)
 			return nil, err
@@ -970,11 +970,11 @@ func (c *Reconciler) createCustomRuns(ctx context.Context, rpt *resources.Resolv
 	return customRuns, nil
 }
 
-func (c *Reconciler) createCustomRun(ctx context.Context, runName string, params v1.Params, rpt *resources.ResolvedPipelineTask, pr *v1.PipelineRun) (*v1beta1.CustomRun, error) {
+func (c *Reconciler) createCustomRun(ctx context.Context, runName string, params v1.Params, rpt *resources.ResolvedPipelineTask, pr *v1.PipelineRun, facts *resources.PipelineRunFacts) (*v1beta1.CustomRun, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createCustomRun")
 	defer span.End()
 	logger := logging.FromContext(ctx)
-	rpt.PipelineTask = resources.ApplyPipelineTaskContexts(rpt.PipelineTask)
+	rpt.PipelineTask = resources.ApplyPipelineTaskContexts(rpt.PipelineTask, pr.Status, facts)
 	taskRunSpec := pr.GetTaskRunSpec(rpt.PipelineTask.Name)
 	params = append(params, rpt.PipelineTask.Params...)
 

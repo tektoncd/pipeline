@@ -17,6 +17,8 @@ weight: 406
   - [Parameters in Matrix.Include.Params](#parameters-in-matrixincludeparams)
   - [Specifying both `params` and `matrix` in a `PipelineTask`](#specifying-both-params-and-matrix-in-a-pipelinetask)
 - [Context Variables](#context-variables)
+  - [Access Matrix Combinations Length](#access-matrix-combinations-length)
+  - [Access Aggregated Results Length](#access-aggregated-results-length)
 - [Results](#results)
   - [Specifying Results in a Matrix](#specifying-results-in-a-matrix)
     - [Results in Matrix.Params](#results-in-matrixparams)
@@ -291,6 +293,38 @@ Similarly to the `Parameters` in the `Params` field, the `Parameters` in the `Ma
 * `Pipeline` name
 * `PipelineTask` retries
 
+
+The following `context` variables allow users to access the `matrix` runtime data. Note: In order to create an ordering dependency, use `runAfter` or `taskResult` consumption as part of the same pipelineTask.
+
+#### Access Matrix Combinations Length
+
+The pipeline authors can access the total number of instances created as part of the `matrix` using the syntax: `tasks.<pipelineTaskName>.matrix.length`.
+
+```yaml
+      - name: matrixed-echo-length
+        runAfter:
+          - matrix-emitting-results
+        params:
+          - name: matrixlength
+            value: $(tasks.matrix-emitting-results.matrix.length)
+```
+
+#### Access Aggregated Results Length
+
+The pipeline authors can access the length of the array of aggregated results that were
+actually produced using the syntax: `tasks.<pipelineTaskName>.matrix.<resultName>.length`. This will allow users to loop over the results produced.
+
+```yaml
+      - name: matrixed-echo-results-length
+        runAfter:
+          - matrix-emitting-results
+        params:
+          - name: matrixlength
+            value: $(tasks.matrix-emitting-results.matrix.a-result.length)
+```
+
+See the full example here: [pr-with-matrix-context-variables]
+
 ## Results
 
 ### Specifying Results in a Matrix
@@ -360,8 +394,51 @@ tasks:
 
 ### Results from fanned out Matrixed PipelineTasks
 
-Emitting `Results` from fanned out `PipelineTasks`  is not currently supported.
-We plan to support emitting `Results` from fanned out `PipelineTasks` in the near future.
+Emitting `Results` from fanned out `PipelineTasks` is now supported. Each fanned out
+`TaskRun` that produces `Result` of type `string` will be aggregated into an `array`
+of `Results` during reconciliation, in which the whole `array` of `Results` can be consumed by another `pipelineTask` using the star notion [*].
+Note: A known limitation is not being able to consume a singular result or specific
+combinations of results produced by a previous fanned out `PipelineTask`.
+
+| Result Type in `taskRef` or `taskSpec` | Parameter Type of Consumer | Specification                                         |
+|----------------------------------------|----------------------------|-------------------------------------------------------|
+| string                                 | array                      | `$(tasks.<pipelineTaskName>.results.<resultName>[*])` |
+| array                                  | Not Supported              | Not Supported                                         |
+| object                                 | Not Supported              | Not Supported                                         |
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: platform-browser-tests
+spec:
+  tasks:
+    - name: matrix-emitting-results
+        matrix:
+          params:
+            - name: platform
+              value:
+                - linux
+                - mac
+                - windows
+            - name: browser
+              value:
+                - chrome
+                - safari
+                - firefox
+        taskRef:
+          name: taskwithresults
+          kind: Task
+      - name: task-consuming-results
+        taskRef:
+          name: echoarrayurl
+          kind: Task
+        params:
+          - name: url
+            value: $(tasks.matrix-emitting-results.results.report-url[*])
+  ...
+```
+See the full example [pr-with-matrix-emitting-results]
 
 
 ## Retries
@@ -851,4 +928,7 @@ status:
 [cel]: https://github.com/tektoncd/experimental/tree/1609827ea81d05c8d00f8933c5c9d6150cd36989/cel
 [pr-with-matrix]: ../examples/v1/pipelineruns/alpha/pipelinerun-with-matrix.yaml
 [pr-with-matrix-and-results]: ../examples/v1/pipelineruns/alpha/pipelinerun-with-matrix-and-results.yaml
+[pr-with-matrix-context-variables]: ../examples/v1/pipelineruns/alpha/pipelinerun-with-matrix-context-variables.yaml
+[pr-with-matrix-emitting-results]: ../examples/v1/pipelineruns/alpha/pipelinerun-with-matrix-emitting-results.yaml
+
 [retries]: pipelines.md#using-the-retries-field

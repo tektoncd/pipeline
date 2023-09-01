@@ -3618,6 +3618,7 @@ func Test_validateMatrix(t *testing.T) {
 	tests := []struct {
 		name     string
 		tasks    []PipelineTask
+		finally  []PipelineTask
 		wantErrs *apis.FieldError
 	}{{
 		name: "parameter in both matrix and params",
@@ -3673,6 +3674,420 @@ func Test_validateMatrix(t *testing.T) {
 					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.foo-task.results.a-task-results[*])"}},
 				}}},
 		}},
+	}, {
+		name: "results from matrixed task consumed in tasks through parameters",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Params: Params{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}}},
+		}, {
+			Name:    "b-task",
+			TaskRef: &TaskRef{Name: "b-task"},
+			Params: Params{{
+				Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result[*])"}},
+			}},
+		}},
+	}, {
+		name: "results from matrixed task consumed in finally through parameters",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Params: Params{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}}},
+		}},
+		finally: PipelineTaskList{{
+			Name:    "b-task",
+			TaskRef: &TaskRef{Name: "b-task"},
+			Params: Params{{
+				Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result[*])"}},
+			}},
+		}},
+	}, {
+		name: "results from matrixed task consumed in tasks and finally through parameters",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Params: Params{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}}},
+		}, {
+			Name:    "b-task",
+			TaskRef: &TaskRef{Name: "b-task"},
+			Params: Params{{
+				Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result[*])"}},
+			}},
+		}},
+		finally: PipelineTaskList{{
+			Name:    "c-task",
+			TaskRef: &TaskRef{Name: "c-task"},
+			Params: Params{{
+				Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result[*])"}},
+			}},
+		}},
+	}, {
+		name: "results from matrixed task consumed in tasks through when expressions",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Params: Params{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}}},
+		}, {
+			Name:    "b-task",
+			TaskRef: &TaskRef{Name: "b-task"},
+			WhenExpressions: WhenExpressions{{
+				Input:    "foo",
+				Operator: selection.In,
+				Values:   []string{"$(tasks.a-task.results.a-result[*])"},
+			}},
+		}},
+	}, {
+		name: "results from matrixed task consumed in finally through when expressions",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Params: Params{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}}},
+		}},
+		finally: PipelineTaskList{{
+			Name:    "b-task",
+			TaskRef: &TaskRef{Name: "b-task"},
+			WhenExpressions: WhenExpressions{{
+				Input:    "$(tasks.a-task.results.a-result[*])",
+				Operator: selection.In,
+				Values:   []string{"foo", "bar"},
+			}},
+		}},
+	}, {
+		name: "results from matrixed task consumed in tasks and finally through when expressions",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Params: Params{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}}},
+		}, {
+			Name:    "b-task",
+			TaskRef: &TaskRef{Name: "b-task"},
+			WhenExpressions: WhenExpressions{{
+				Input:    "$(tasks.a-task.results.a-result[*])",
+				Operator: selection.In,
+				Values:   []string{"foo", "bar"},
+			}},
+		}},
+		finally: PipelineTaskList{{
+			Name:    "c-task",
+			TaskRef: &TaskRef{Name: "c-task"},
+			WhenExpressions: WhenExpressions{{
+				Input:    "foo",
+				Operator: selection.In,
+				Values:   []string{"$(tasks.a-task.results.a-result[*])"},
+			}},
+		}},
+	}, {
+		name: "valid matrix emitting string results consumed in aggregate by another pipelineTask",
+		finally: PipelineTaskList{{
+			Name:    "matrix-emitting-results",
+			TaskRef: &TaskRef{Name: "taskwithresult"},
+			Matrix: &Matrix{
+				Params: Params{{
+					Name: "platform", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac"}},
+				}, {
+					Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "safari"}},
+				}}},
+		}, {
+			Name: "echoarrayurl",
+			TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+				Params: ParamSpecs{{
+					Name: "url", Type: "array",
+				}},
+				Steps: []Step{{
+					Name:  "use-environments",
+					Image: "bash:latest",
+					Args:  []string{"$(params.url[*])"},
+					Script: `for arg in "$@"; do
+						echo "URL: $arg"
+							done`,
+				}},
+			}},
+		}, {
+			Name: "taskwithresult",
+			TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+				Params: ParamSpecs{{
+					Name: "platform",
+				}, {
+					Name: "browser"}},
+				Results: []TaskResult{{
+					Name: "report-url",
+					Type: ResultsTypeString,
+				}},
+				Steps: []Step{{
+					Name:  "produce-report-url",
+					Image: "alpine",
+					Script: ` |
+							echo -n "https://api.example/get-report/$(params.platform)-$(params.browser)" | tee $(results.report-url.path)`}},
+			}},
+		}, {
+			Name:    "task-consuming-results",
+			TaskRef: &TaskRef{Name: "echoarrayurl"},
+			Params: Params{{
+				Name: "b-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.matrix-emitting-results.results.report-url[*])"},
+			}},
+		}, {
+			Name: "echoarrayurl",
+			TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+				Params: ParamSpecs{{
+					Name: "url", Type: "array",
+				}},
+				Steps: []Step{{
+					Name:  "use-environments",
+					Image: "bash:latest",
+					Args:  []string{"$(params.url[*])"},
+					Script: `for arg in "$@"; do
+					echo "URL: $arg"
+				done`,
+				}},
+			}},
+		}},
+	}, {
+		name: "valid matrix emitting string results consumed in aggregate by another pipelineTask (embedded taskSpec)",
+		tasks: PipelineTaskList{{
+			Name:    "matrix-emitting-results",
+			TaskRef: &TaskRef{Name: "taskwithresult"},
+			Matrix: &Matrix{
+				Params: Params{{
+					Name: "platform", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac"}},
+				}, {
+					Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "safari"}},
+				}}},
+		}, {
+			Name: "task-consuming-results",
+			TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+				Params: ParamSpecs{{
+					Name: "url", Type: "array",
+				}},
+				Steps: []Step{{
+					Name:  "use-environments",
+					Image: "bash:latest",
+					Args:  []string{"$(params.url[*])"},
+					Script: `for arg in "$@"; do
+						echo "URL: $arg"
+							done`,
+				}},
+			}},
+			Params: Params{{
+				Name: "b-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.matrix-emitting-results.results.report-url[*])"},
+			}},
+		}},
+	}, {
+		name: "invalid matrix emitting stings results consumed using array indexing by another pipelineTask",
+		tasks: PipelineTaskList{{
+			Name:    "matrix-emitting-results",
+			TaskRef: &TaskRef{Name: "taskwithresult"},
+			Matrix: &Matrix{
+				Params: Params{{
+					Name: "platform", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac"}},
+				}, {
+					Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "safari"}},
+				}}},
+		}, {
+			Name: "taskwithresult",
+			TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+				Params: ParamSpecs{{
+					Name: "platform",
+				}, {
+					Name: "browser"}},
+				Results: []TaskResult{{
+					Name: "report-url",
+					Type: ResultsTypeString,
+				}},
+				Steps: []Step{{
+					Name:  "produce-report-url",
+					Image: "alpine",
+					Script: ` |
+						echo -n "https://api.example/get-report/$(params.platform)-$(params.browser)" | tee $(results.report-url.path)`}},
+			}},
+		}, {
+			Name:    "task-consuming-results",
+			TaskRef: &TaskRef{Name: "echoarrayurl"},
+			Params: Params{{
+				Name: "b-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.matrix-emitting-results.results.report-url[0])"},
+			}},
+		}, {
+			Name: "echoarrayurl",
+			TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+				Params: ParamSpecs{{
+					Name: "url", Type: "array",
+				}},
+				Steps: []Step{{
+					Name:  "use-environments",
+					Image: "bash:latest",
+					Args:  []string{"$(params.url[*])"},
+					Script: `for arg in "$@"; do
+					echo "URL: $arg"
+				done`,
+				}},
+			}},
+		}},
+		wantErrs: apis.ErrGeneric("A matrixed pipelineTask can only be consumed in aggregate using [*] notation, but is currently set to tasks.matrix-emitting-results.results.report-url[0]"),
+	}, {
+		name: "invalid matrix emitting array results consumed in aggregate by another pipelineTask (embedded TaskSpec)",
+		tasks: PipelineTaskList{{
+			Name: "matrix-emitting-results-embedded",
+			TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+				Params: ParamSpecs{{
+					Name: "platform",
+				}, {
+					Name: "browser"}},
+				Results: []TaskResult{{
+					Name: "array-result",
+					Type: ResultsTypeArray,
+				}},
+				Steps: []Step{{
+					Name:  "produce-array-result",
+					Image: "alpine",
+					Script: ` |
+						echo -n "[\"${params.platform}\",\"${params.browser}\"]" | tee $(results.array-result.path)`}},
+			}},
+			Matrix: &Matrix{
+				Params: Params{{
+					Name: "platform", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac"}},
+				}, {
+					Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "safari"}},
+				}}},
+		}, {
+			Name: "taskwithresult",
+			TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+				Params: ParamSpecs{{
+					Name: "platform",
+				}, {
+					Name: "browser"}},
+				Results: []TaskResult{{
+					Name: "array-result",
+					Type: ResultsTypeArray,
+				}},
+				Steps: []Step{{
+					Name:  "produce-array-result",
+					Image: "alpine",
+					Script: ` |
+						echo -n "https://api.example/get-report/$(params.platform)-$(params.browser)" | tee $(results.array-result.path)`}},
+			}},
+		}, {
+			Name:    "task-consuming-results",
+			TaskRef: &TaskRef{Name: "echoarrayurl"},
+			Params: Params{{
+				Name: "b-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.matrix-emitting-results-embedded.results.array-result[*])"},
+			}},
+		}, {
+			Name: "echoarrayurl",
+			TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+				Params: ParamSpecs{{
+					Name: "url", Type: "array",
+				}},
+				Steps: []Step{{
+					Name:  "use-environments",
+					Image: "bash:latest",
+					Args:  []string{"$(params.url[*])"},
+					Script: `for arg in "$@"; do
+					echo "URL: $arg"
+				done`,
+				}},
+			}},
+		}},
+		wantErrs: apis.ErrInvalidValue("Matrixed PipelineTasks emitting results must have an underlying type string, but result array-result has type array in pipelineTask", ""),
+	}, {
+		name: "invalid matrix emitting stings results consumed using array indexing by another pipelineTask (embedded TaskSpec)",
+		tasks: PipelineTaskList{{
+			Name: "matrix-emitting-results-embedded",
+			TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+				Params: ParamSpecs{{
+					Name: "platform",
+				}, {
+					Name: "browser"}},
+				Results: []TaskResult{{
+					Name: "array-result",
+					Type: ResultsTypeArray,
+				}},
+				Steps: []Step{{
+					Name:  "produce-array-result",
+					Image: "alpine",
+					Script: ` |
+						echo -n "[\"${params.platform}\",\"${params.browser}\"]" | tee $(results.array-result.path)`}},
+			}},
+			Matrix: &Matrix{
+				Params: Params{{
+					Name: "platform", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac"}},
+				}, {
+					Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "safari"}},
+				}}},
+		}, {
+			Name: "task-consuming-results",
+			TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+				Params: ParamSpecs{{
+					Name: "platform",
+				}, {
+					Name: "browser"}},
+				Results: []TaskResult{{
+					Name: "report-url",
+					Type: ResultsTypeString,
+				}},
+				Steps: []Step{{
+					Name:  "produce-report-url",
+					Image: "alpine",
+					Script: ` |
+							echo -n "https://api.example/get-report/$(params.platform)-$(params.browser)" | tee $(results.report-url.path)`}},
+			}},
+			Params: Params{{
+				Name: "b-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.matrix-emitting-results-embedded.results.report-url[0])"},
+			}},
+		}},
+		wantErrs: apis.ErrGeneric("A matrixed pipelineTask can only be consumed in aggregate using [*] notation, but is currently set to tasks.matrix-emitting-results-embedded.results.report-url[0]"),
+	}, {
+		name: "invalid matrix emitting array results consumed in aggregate by another pipelineTask",
+		tasks: PipelineTaskList{{
+			Name:    "matrix-emitting-results",
+			TaskRef: &TaskRef{Name: "taskwithresult"},
+			Matrix: &Matrix{
+				Params: Params{{
+					Name: "platform", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac"}},
+				}, {
+					Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "safari"}},
+				}}},
+		}, {
+			Name: "taskwithresult",
+			TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+				Params: ParamSpecs{{
+					Name: "platform",
+				}, {
+					Name: "browser"}},
+				Results: []TaskResult{{
+					Name: "array-result",
+					Type: ResultsTypeArray,
+				}},
+				Steps: []Step{{
+					Name:  "produce-array-result",
+					Image: "alpine",
+					Script: ` |
+						echo -n "[\"${params.platform}\",\"${params.browser}\"]" | tee $(results.array-result.path)`}},
+			}},
+		}, {
+			Name:    "task-consuming-results",
+			TaskRef: &TaskRef{Name: "echoarrayurl"},
+			Params: Params{{
+				Name: "b-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.matrix-emitting-results.results.array-result[*])"},
+			}},
+		}},
+		wantErrs: apis.ErrInvalidValue("Matrixed PipelineTasks emitting results must have an underlying type string, but result array-result has type array in pipelineTask", ""),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -3690,166 +4105,6 @@ func Test_validateMatrix(t *testing.T) {
 			ctx := config.ToContext(context.Background(), cfg)
 			if d := cmp.Diff(tt.wantErrs.Error(), validateMatrix(ctx, tt.tasks).Error()); d != "" {
 				t.Errorf("validateMatrix() errors diff %s", diff.PrintWantGot(d))
-			}
-		})
-	}
-}
-
-func Test_validateResultsFromMatrixedPipelineTasksNotConsumed(t *testing.T) {
-	tests := []struct {
-		name     string
-		tasks    []PipelineTask
-		finally  []PipelineTask
-		wantErrs *apis.FieldError
-	}{{
-		name: "results from matrixed task consumed in tasks through parameters",
-		tasks: PipelineTaskList{{
-			Name:    "a-task",
-			TaskRef: &TaskRef{Name: "a-task"},
-			Matrix: &Matrix{
-				Params: Params{{
-					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}}},
-		}, {
-			Name:    "b-task",
-			TaskRef: &TaskRef{Name: "b-task"},
-			Params: Params{{
-				Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result)"}},
-			}},
-		}},
-		wantErrs: &apis.FieldError{
-			Message: "invalid value: consuming results from matrixed task a-task is not allowed",
-			Paths:   []string{"tasks[1]"},
-		},
-	}, {
-		name: "results from matrixed task consumed in finally through parameters",
-		tasks: PipelineTaskList{{
-			Name:    "a-task",
-			TaskRef: &TaskRef{Name: "a-task"},
-			Matrix: &Matrix{
-				Params: Params{{
-					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}}},
-		}},
-		finally: PipelineTaskList{{
-			Name:    "b-task",
-			TaskRef: &TaskRef{Name: "b-task"},
-			Params: Params{{
-				Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result)"}},
-			}},
-		}},
-		wantErrs: &apis.FieldError{
-			Message: "invalid value: consuming results from matrixed task a-task is not allowed",
-			Paths:   []string{"finally[0]"},
-		},
-	}, {
-		name: "results from matrixed task consumed in tasks and finally through parameters",
-		tasks: PipelineTaskList{{
-			Name:    "a-task",
-			TaskRef: &TaskRef{Name: "a-task"},
-			Matrix: &Matrix{
-				Params: Params{{
-					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}}},
-		}, {
-			Name:    "b-task",
-			TaskRef: &TaskRef{Name: "b-task"},
-			Params: Params{{
-				Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result)"}},
-			}},
-		}},
-		finally: PipelineTaskList{{
-			Name:    "c-task",
-			TaskRef: &TaskRef{Name: "c-task"},
-			Params: Params{{
-				Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result)"}},
-			}},
-		}},
-		wantErrs: &apis.FieldError{
-			Message: "invalid value: consuming results from matrixed task a-task is not allowed",
-			Paths:   []string{"tasks[1]", "finally[0]"},
-		},
-	}, {
-		name: "results from matrixed task consumed in tasks through when expressions",
-		tasks: PipelineTaskList{{
-			Name:    "a-task",
-			TaskRef: &TaskRef{Name: "a-task"},
-			Matrix: &Matrix{
-				Params: Params{{
-					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}}},
-		}, {
-			Name:    "b-task",
-			TaskRef: &TaskRef{Name: "b-task"},
-			WhenExpressions: WhenExpressions{{
-				Input:    "foo",
-				Operator: selection.In,
-				Values:   []string{"$(tasks.a-task.results.a-result)"},
-			}},
-		}},
-		wantErrs: &apis.FieldError{
-			Message: "invalid value: consuming results from matrixed task a-task is not allowed",
-			Paths:   []string{"tasks[1]"},
-		},
-	}, {
-		name: "results from matrixed task consumed in finally through when expressions",
-		tasks: PipelineTaskList{{
-			Name:    "a-task",
-			TaskRef: &TaskRef{Name: "a-task"},
-			Matrix: &Matrix{
-				Params: Params{{
-					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}}},
-		}},
-		finally: PipelineTaskList{{
-			Name:    "b-task",
-			TaskRef: &TaskRef{Name: "b-task"},
-			WhenExpressions: WhenExpressions{{
-				Input:    "$(tasks.a-task.results.a-result)",
-				Operator: selection.In,
-				Values:   []string{"foo", "bar"},
-			}},
-		}},
-		wantErrs: &apis.FieldError{
-			Message: "invalid value: consuming results from matrixed task a-task is not allowed",
-			Paths:   []string{"finally[0]"},
-		},
-	}, {
-		name: "results from matrixed task consumed in tasks and finally through when expressions",
-		tasks: PipelineTaskList{{
-			Name:    "a-task",
-			TaskRef: &TaskRef{Name: "a-task"},
-			Matrix: &Matrix{
-				Params: Params{{
-					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}}},
-		}, {
-			Name:    "b-task",
-			TaskRef: &TaskRef{Name: "b-task"},
-			WhenExpressions: WhenExpressions{{
-				Input:    "$(tasks.a-task.results.a-result)",
-				Operator: selection.In,
-				Values:   []string{"foo", "bar"},
-			}},
-		}},
-		finally: PipelineTaskList{{
-			Name:    "c-task",
-			TaskRef: &TaskRef{Name: "c-task"},
-			WhenExpressions: WhenExpressions{{
-				Input:    "foo",
-				Operator: selection.In,
-				Values:   []string{"$(tasks.a-task.results.a-result)"},
-			}},
-		}},
-		wantErrs: &apis.FieldError{
-			Message: "invalid value: consuming results from matrixed task a-task is not allowed",
-			Paths:   []string{"tasks[1]", "finally[0]"},
-		},
-	}}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if d := cmp.Diff(tt.wantErrs.Error(), validateResultsFromMatrixedPipelineTasksNotConsumed(tt.tasks, tt.finally).Error()); d != "" {
-				t.Errorf("validateResultsFromMatrixedPipelineTasksNotConsumed() errors diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}

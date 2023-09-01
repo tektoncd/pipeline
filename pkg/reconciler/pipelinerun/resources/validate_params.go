@@ -105,6 +105,13 @@ func ValidateParameterTypesInMatrix(state PipelineRunState) error {
 		if m.HasParams() {
 			for _, param := range m.Params {
 				if param.Value.Type != v1.ParamTypeArray {
+					// If it's an array type that contains result references because it's consuming results
+					// from a Matrixed PipelineTask continue
+					if ps, ok := param.GetVarSubstitutionExpressions(); ok {
+						if v1.LooksLikeContainsResultRefs(ps) {
+							continue
+						}
+					}
 					return fmt.Errorf("parameters of type array only are allowed, but param \"%s\" has type \"%s\" in pipelineTask \"%s\"",
 						param.Name, string(param.Value.Type), rpt.PipelineTask.Name)
 				}
