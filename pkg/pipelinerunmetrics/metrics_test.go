@@ -375,8 +375,90 @@ func TestRecordRunningPipelineRunsCount(t *testing.T) {
 	metricstest.CheckLastValueData(t, "running_pipelineruns_count", map[string]string{}, 1)
 }
 
+func TestRecordRunningPipelineRunsResolutionWaitCounts(t *testing.T) {
+	multiplier := 3
+	for _, tc := range []struct {
+		status      corev1.ConditionStatus
+		reason      string
+		prWaitCount float64
+		trWaitCount float64
+	}{
+		{
+			status: corev1.ConditionTrue,
+			reason: "",
+		},
+		{
+			status: corev1.ConditionTrue,
+			reason: v1.PipelineRunReasonResolvingPipelineRef.String(),
+		},
+		{
+			status: corev1.ConditionTrue,
+			reason: v1.TaskRunReasonResolvingTaskRef,
+		},
+		{
+			status: corev1.ConditionFalse,
+			reason: "",
+		},
+		{
+			status: corev1.ConditionFalse,
+			reason: v1.PipelineRunReasonResolvingPipelineRef.String(),
+		},
+		{
+			status: corev1.ConditionFalse,
+			reason: v1.TaskRunReasonResolvingTaskRef,
+		},
+		{
+			status: corev1.ConditionUnknown,
+			reason: "",
+		},
+		{
+			status:      corev1.ConditionUnknown,
+			reason:      v1.PipelineRunReasonResolvingPipelineRef.String(),
+			prWaitCount: 3,
+		},
+		{
+			status:      corev1.ConditionUnknown,
+			reason:      v1.TaskRunReasonResolvingTaskRef,
+			trWaitCount: 3,
+		},
+	} {
+		unregisterMetrics()
+		ctx, _ := ttesting.SetupFakeContext(t)
+		informer := fakepipelineruninformer.Get(ctx)
+		for i := 0; i < multiplier; i++ {
+			pr := &v1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Name: names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("pipelinerun-")},
+				Status: v1.PipelineRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{{
+							Type:   apis.ConditionSucceeded,
+							Status: tc.status,
+							Reason: tc.reason,
+						}},
+					},
+				},
+			}
+			if err := informer.Informer().GetIndexer().Add(pr); err != nil {
+				t.Fatalf("Adding TaskRun to informer: %v", err)
+			}
+		}
+
+		ctx = getConfigContext()
+		metrics, err := NewRecorder(ctx)
+		if err != nil {
+			t.Fatalf("NewRecorder: %v", err)
+		}
+
+		if err := metrics.RunningPipelineRuns(informer.Lister()); err != nil {
+			t.Errorf("RunningTaskRuns: %v", err)
+		}
+		metricstest.CheckLastValueData(t, "running_pipelineruns_waiting_on_pipeline_resolution_count", map[string]string{}, tc.prWaitCount)
+		metricstest.CheckLastValueData(t, "running_pipelineruns_waiting_on_task_resolution_count", map[string]string{}, tc.trWaitCount)
+	}
+}
+
 func unregisterMetrics() {
-	metricstest.Unregister("pipelinerun_duration_seconds", "pipelinerun_count", "running_pipelineruns_count")
+	metricstest.Unregister("pipelinerun_duration_seconds", "pipelinerun_count", "running_pipelineruns_waiting_on_pipeline_resolution_count", "running_pipelineruns_waiting_on_task_resolution_count", "running_pipelineruns_count")
 
 	// Allow the recorder singleton to be recreated.
 	once = sync.Once{}

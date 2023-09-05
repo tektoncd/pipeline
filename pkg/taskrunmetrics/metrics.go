@@ -52,13 +52,14 @@ var (
 	statusTag      = tag.MustNewKey("status")
 	podTag         = tag.MustNewKey("pod")
 
-	trDurationView                      *view.View
-	prTRDurationView                    *view.View
-	trCountView                         *view.View
-	runningTRsCountView                 *view.View
-	runningTRsThrottledByQuotaCountView *view.View
-	runningTRsThrottledByNodeCountView  *view.View
-	podLatencyView                      *view.View
+	trDurationView                             *view.View
+	prTRDurationView                           *view.View
+	trCountView                                *view.View
+	runningTRsCountView                        *view.View
+	runningTRsThrottledByQuotaCountView        *view.View
+	runningTRsThrottledByNodeCountView         *view.View
+	runningTRsWaitingOnTaskResolutionCountView *view.View
+	podLatencyView                             *view.View
 
 	trDuration = stats.Float64(
 		"taskrun_duration_seconds",
@@ -84,6 +85,10 @@ var (
 
 	runningTRsThrottledByNodeCount = stats.Float64("running_taskruns_throttled_by_node_count",
 		"Number of taskruns executing currently, but whose underlying Pods or Containers are suspended by k8s because of Node level constraints. Such suspensions can occur as part of initial scheduling of the Pod, or scheduling of any of the subsequent Container(s) in the Pod after the first Container is started",
+		stats.UnitDimensionless)
+
+	runningTRsWaitingOnTaskResolutionCount = stats.Float64("running_taskruns_waiting_on_task_resolution_count",
+		"Number of taskruns executing currently that are waiting on resolution requests for their task references.",
 		stats.UnitDimensionless)
 
 	podLatency = stats.Float64("taskruns_pod_latency_milliseconds",
@@ -219,6 +224,11 @@ func viewRegister(cfg *config.Metrics) error {
 		Measure:     runningTRsThrottledByNodeCount,
 		Aggregation: view.LastValue(),
 	}
+	runningTRsWaitingOnTaskResolutionCountView = &view.View{
+		Description: runningTRsWaitingOnTaskResolutionCount.Description(),
+		Measure:     runningTRsWaitingOnTaskResolutionCount,
+		Aggregation: view.LastValue(),
+	}
 	podLatencyView = &view.View{
 		Description: podLatency.Description(),
 		Measure:     podLatency,
@@ -232,6 +242,7 @@ func viewRegister(cfg *config.Metrics) error {
 		runningTRsCountView,
 		runningTRsThrottledByQuotaCountView,
 		runningTRsThrottledByNodeCountView,
+		runningTRsWaitingOnTaskResolutionCountView,
 		podLatencyView,
 	)
 }
@@ -244,6 +255,7 @@ func viewUnregister() {
 		runningTRsCountView,
 		runningTRsThrottledByQuotaCountView,
 		runningTRsThrottledByNodeCountView,
+		runningTRsWaitingOnTaskResolutionCountView,
 		podLatencyView,
 	)
 }
@@ -358,6 +370,7 @@ func (r *Recorder) RunningTaskRuns(ctx context.Context, lister listers.TaskRunLi
 	var runningTrs int
 	var trsThrottledByQuota int
 	var trsThrottledByNode int
+	var trsWaitResolvingTaskRef int
 	for _, pr := range trs {
 		if pr.IsDone() {
 			continue
@@ -370,6 +383,8 @@ func (r *Recorder) RunningTaskRuns(ctx context.Context, lister listers.TaskRunLi
 				trsThrottledByQuota++
 			case pod.ReasonExceededNodeResources:
 				trsThrottledByNode++
+			case v1.TaskRunReasonResolvingTaskRef:
+				trsWaitResolvingTaskRef++
 			}
 		}
 	}
@@ -381,6 +396,7 @@ func (r *Recorder) RunningTaskRuns(ctx context.Context, lister listers.TaskRunLi
 	metrics.Record(ctx, runningTRsCount.M(float64(runningTrs)))
 	metrics.Record(ctx, runningTRsThrottledByNodeCount.M(float64(trsThrottledByNode)))
 	metrics.Record(ctx, runningTRsThrottledByQuotaCount.M(float64(trsThrottledByQuota)))
+	metrics.Record(ctx, runningTRsWaitingOnTaskResolutionCount.M(float64(trsWaitResolvingTaskRef)))
 
 	return nil
 }
@@ -400,7 +416,8 @@ func (r *Recorder) ReportRunningTaskRuns(ctx context.Context, lister listers.Tas
 			return
 
 		case <-delay.C:
-			// Every 30s surface a metric for the number of running tasks, as well as those running tasks that are currently throttled by k8s.
+			// Every 30s surface a metric for the number of running tasks, as well as those running tasks that are currently throttled by k8s,
+			// and those running tasks waiting on task reference resolution
 			if err := r.RunningTaskRuns(ctx, lister); err != nil {
 				logger.Warnf("Failed to log the metrics : %v", err)
 			}

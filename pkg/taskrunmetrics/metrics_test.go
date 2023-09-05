@@ -417,11 +417,13 @@ func TestRecordRunningTaskRunsCount(t *testing.T) {
 }
 
 func TestRecordRunningTaskRunsThrottledCounts(t *testing.T) {
+	multiplier := 3
 	for _, tc := range []struct {
 		status     corev1.ConditionStatus
 		reason     string
 		nodeCount  float64
 		quotaCount float64
+		waitCount  float64
 	}{
 		{
 			status: corev1.ConditionTrue,
@@ -436,6 +438,10 @@ func TestRecordRunningTaskRunsThrottledCounts(t *testing.T) {
 			reason: pod.ReasonExceededNodeResources,
 		},
 		{
+			status: corev1.ConditionTrue,
+			reason: v1.TaskRunReasonResolvingTaskRef,
+		},
+		{
 			status: corev1.ConditionFalse,
 			reason: "",
 		},
@@ -448,37 +454,48 @@ func TestRecordRunningTaskRunsThrottledCounts(t *testing.T) {
 			reason: pod.ReasonExceededNodeResources,
 		},
 		{
+			status: corev1.ConditionFalse,
+			reason: v1.TaskRunReasonResolvingTaskRef,
+		},
+		{
 			status: corev1.ConditionUnknown,
 			reason: "",
 		},
 		{
 			status:     corev1.ConditionUnknown,
 			reason:     pod.ReasonExceededResourceQuota,
-			quotaCount: 1,
+			quotaCount: 3,
 		},
 		{
 			status:    corev1.ConditionUnknown,
 			reason:    pod.ReasonExceededNodeResources,
-			nodeCount: 1,
+			nodeCount: 3,
+		},
+		{
+			status:    corev1.ConditionUnknown,
+			reason:    v1.TaskRunReasonResolvingTaskRef,
+			waitCount: 3,
 		},
 	} {
 		unregisterMetrics()
-		tr := &v1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{Name: names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("taskrun-")},
-			Status: v1.TaskRunStatus{
-				Status: duckv1.Status{
-					Conditions: duckv1.Conditions{{
-						Type:   apis.ConditionSucceeded,
-						Status: tc.status,
-						Reason: tc.reason,
-					}},
-				},
-			},
-		}
 		ctx, _ := ttesting.SetupFakeContext(t)
 		informer := faketaskruninformer.Get(ctx)
-		if err := informer.Informer().GetIndexer().Add(tr); err != nil {
-			t.Fatalf("Adding TaskRun to informer: %v", err)
+		for i := 0; i < multiplier; i++ {
+			tr := &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Name: names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("taskrun-")},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{{
+							Type:   apis.ConditionSucceeded,
+							Status: tc.status,
+							Reason: tc.reason,
+						}},
+					},
+				},
+			}
+			if err := informer.Informer().GetIndexer().Add(tr); err != nil {
+				t.Fatalf("Adding TaskRun to informer: %v", err)
+			}
 		}
 
 		ctx = getConfigContext()
@@ -492,6 +509,7 @@ func TestRecordRunningTaskRunsThrottledCounts(t *testing.T) {
 		}
 		metricstest.CheckLastValueData(t, "running_taskruns_throttled_by_quota_count", map[string]string{}, tc.quotaCount)
 		metricstest.CheckLastValueData(t, "running_taskruns_throttled_by_node_count", map[string]string{}, tc.nodeCount)
+		metricstest.CheckLastValueData(t, "running_taskruns_waiting_on_task_resolution_count", map[string]string{}, tc.waitCount)
 	}
 }
 
@@ -610,7 +628,7 @@ func TestTaskRunIsOfPipelinerun(t *testing.T) {
 }
 
 func unregisterMetrics() {
-	metricstest.Unregister("taskrun_duration_seconds", "pipelinerun_taskrun_duration_seconds", "taskrun_count", "running_taskruns_count", "running_taskruns_throttled_by_quota_count", "running_taskruns_throttled_by_node_count", "taskruns_pod_latency_milliseconds")
+	metricstest.Unregister("taskrun_duration_seconds", "pipelinerun_taskrun_duration_seconds", "taskrun_count", "running_taskruns_count", "running_taskruns_throttled_by_quota_count", "running_taskruns_throttled_by_node_count", "running_taskruns_waiting_on_task_resolution_count", "taskruns_pod_latency_milliseconds")
 
 	// Allow the recorder singleton to be recreated.
 	once = sync.Once{}
