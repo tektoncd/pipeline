@@ -37,7 +37,7 @@
         },
         "hsmLocation": {
             "type": "string",
-            "defaultValue": "uksouth",
+            "defaultValue": "australiaeast",
             "allowedValues": [
                 "australiacentral",
                 "australiaeast",

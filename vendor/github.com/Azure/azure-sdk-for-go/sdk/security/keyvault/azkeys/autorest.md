@@ -12,7 +12,7 @@ output-folder: ../azkeys
 override-client-name: Client
 security: "AADToken"
 security-scopes: "https://vault.azure.net/.default"
-use: "@autorest/go@4.0.0-preview.46"
+use: "@autorest/go@4.0.0-preview.54"
 version: "^3.0.0"
 
 directive:
@@ -218,6 +218,7 @@ directive:
   - from:
       - client.go
       - models.go
+      - options.go
       - response_types.go
     where: $
     transform: return $.replace(/Client(\w+)((?:Options|Response))/g, "$1$2");
@@ -226,4 +227,18 @@ directive:
   - from: models.go
     where: $
     transform: return $.replace(/(KID \*)string(\s+.*)/g, "$1ID$2")
+
+  # edit doc comments to not contain DeletedKeyBundle
+  - from: 
+      - models.go
+      - response_types.go
+    where: $
+    transform: return $.replace(/DeletedKeyBundle/g, "DeletedKey")
+
+  # remove redundant section of doc comment
+  - from:
+      - models.go
+      - constants.go
+    where: $
+    transform: return $.replace(/(For valid values, (.*)\.)|(For more information .*\.)|(For more information on possible algorithm\n\/\/ types, see JsonWebKeySignatureAlgorithm.)/g, "");
 ```

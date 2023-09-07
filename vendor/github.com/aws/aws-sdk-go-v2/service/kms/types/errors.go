@@ -396,6 +396,32 @@ func (e *DisabledException) ErrorCode() string {
 }
 func (e *DisabledException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
+// The request was rejected because the DryRun parameter was specified.
+type DryRunOperationException struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *DryRunOperationException) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *DryRunOperationException) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *DryRunOperationException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "DryRunOperationException"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *DryRunOperationException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
 // The request was rejected because the specified import token is expired. Use
 // GetParametersForImport to get a new import token and public key, use the new
 // public key to encrypt the key material, and then try the request again.
