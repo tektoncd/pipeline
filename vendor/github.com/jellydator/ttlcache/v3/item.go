@@ -9,8 +9,8 @@ const (
 	// NoTTL indicates that an item should never expire.
 	NoTTL time.Duration = -1
 
-	// DefaultTTL indicates that the default TTL
-	// value should be used.
+	// DefaultTTL indicates that the default TTL value of the cache
+	// instance should be used.
 	DefaultTTL time.Duration = 0
 )
 
@@ -21,8 +21,8 @@ type Item[K comparable, V any] struct {
 	// - data fields are being read inside accessor methods
 	// - data fields are being updated
 	// when data fields are being read in one of the cache's
-	// methods, we can be sure that these fields are not modified in
-	// parallel since the item list is locked by its own mutex as
+	// methods, we can be sure that these fields are not modified
+	// concurrently since the item list is locked by its own mutex as
 	// well, so locking this mutex would be redundant.
 	// In other words, this mutex is only useful when these fields
 	// are being read from the outside (e.g. in event functions).
@@ -32,21 +32,27 @@ type Item[K comparable, V any] struct {
 	ttl        time.Duration
 	expiresAt  time.Time
 	queueIndex int
+	version    int64
 }
 
 // newItem creates a new cache item.
-func newItem[K comparable, V any](key K, value V, ttl time.Duration) *Item[K, V] {
+func newItem[K comparable, V any](key K, value V, ttl time.Duration, enableVersionTracking bool) *Item[K, V] {
 	item := &Item[K, V]{
 		key:   key,
 		value: value,
 		ttl:   ttl,
 	}
+
+	if !enableVersionTracking {
+		item.version = -1
+	}
+
 	item.touch()
 
 	return item
 }
 
-// update modifies the item's value and TTL.
+// update modifies the item's value, TTL, and version.
 func (item *Item[K, V]) update(value V, ttl time.Duration) {
 	item.mu.Lock()
 	defer item.mu.Unlock()
@@ -58,6 +64,11 @@ func (item *Item[K, V]) update(value V, ttl time.Duration) {
 	// 0 or below
 	item.expiresAt = time.Time{}
 	item.touchUnsafe()
+
+	// update version if enabled
+	if item.version > -1 {
+		item.version++
+	}
 }
 
 // touch updates the item's expiration timestamp.
@@ -127,4 +138,14 @@ func (item *Item[K, V]) ExpiresAt() time.Time {
 	defer item.mu.RUnlock()
 
 	return item.expiresAt
+}
+
+// Version returns the version of the item. It shows the total number of
+// changes made to the item.
+// If version tracking is disabled, the return value is always -1.
+func (item *Item[K, V]) Version() int64 {
+	item.mu.RLock()
+	defer item.mu.RUnlock()
+
+	return item.version
 }

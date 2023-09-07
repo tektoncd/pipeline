@@ -76,7 +76,8 @@ func New[K comparable, V any](opts ...Option[K, V]) *Cache[K, V] {
 
 // updateExpirations updates the expiration queue and notifies
 // the cache auto cleaner if needed.
-// Not concurrently safe.
+// Not safe for concurrent use by multiple goroutines without additional
+// locking.
 func (c *Cache[K, V]) updateExpirations(fresh bool, elem *list.Element) {
 	var oldExpiresAt time.Time
 
@@ -125,7 +126,8 @@ func (c *Cache[K, V]) updateExpirations(fresh bool, elem *list.Element) {
 }
 
 // set creates a new item, adds it to the cache and then returns it.
-// Not concurrently safe.
+// Not safe for concurrent use by multiple goroutines without additional
+// locking.
 func (c *Cache[K, V]) set(key K, value V, ttl time.Duration) *Item[K, V] {
 	if ttl == DefaultTTL {
 		ttl = c.options.ttl
@@ -147,7 +149,7 @@ func (c *Cache[K, V]) set(key K, value V, ttl time.Duration) *Item[K, V] {
 	}
 
 	// create a new item
-	item := newItem(key, value, ttl)
+	item := newItem(key, value, ttl, c.options.enableVersionTracking)
 	elem = c.items.lru.PushFront(item)
 	c.items.values[key] = elem
 	c.updateExpirations(true, elem)
@@ -168,7 +170,8 @@ func (c *Cache[K, V]) set(key K, value V, ttl time.Duration) *Item[K, V] {
 // get retrieves an item from the cache and extends its expiration
 // time if 'touch' is set to true.
 // It returns nil if the item is not found or is expired.
-// Not concurrently safe.
+// Not safe for concurrent use by multiple goroutines without additional
+// locking.
 func (c *Cache[K, V]) get(key K, touch bool) *list.Element {
 	elem := c.items.values[key]
 	if elem == nil {
@@ -190,10 +193,57 @@ func (c *Cache[K, V]) get(key K, touch bool) *list.Element {
 	return elem
 }
 
+// getWithOpts wraps the get method, applies the given options, and updates
+// the metrics.
+// It returns nil if the item is not found or is expired.
+// If 'lockAndLoad' is set to true, the mutex is locked before calling the
+// get method and unlocked after it returns. It also indicates that the
+// loader should be used to load external data when the get method returns
+// a nil value and the mutex is unlocked.
+// If 'lockAndLoad' is set to false, neither the mutex nor the loader is
+// used.
+func (c *Cache[K, V]) getWithOpts(key K, lockAndLoad bool, opts ...Option[K, V]) *Item[K, V] {
+	getOpts := options[K, V]{
+		loader:            c.options.loader,
+		disableTouchOnHit: c.options.disableTouchOnHit,
+	}
+
+	applyOptions(&getOpts, opts...)
+
+	if lockAndLoad {
+		c.items.mu.Lock()
+	}
+
+	elem := c.get(key, !getOpts.disableTouchOnHit)
+
+	if lockAndLoad {
+		c.items.mu.Unlock()
+	}
+
+	if elem == nil {
+		c.metricsMu.Lock()
+		c.metrics.Misses++
+		c.metricsMu.Unlock()
+
+		if lockAndLoad && getOpts.loader != nil {
+			return getOpts.loader.Load(c, key)
+		}
+
+		return nil
+	}
+
+	c.metricsMu.Lock()
+	c.metrics.Hits++
+	c.metricsMu.Unlock()
+
+	return elem.Value.(*Item[K, V])
+}
+
 // evict deletes items from the cache.
 // If no items are provided, all currently present cache items
 // are evicted.
-// Not concurrently safe.
+// Not safe for concurrent use by multiple goroutines without additional
+// locking.
 func (c *Cache[K, V]) evict(reason EvictionReason, elems ...*list.Element) {
 	if len(elems) > 0 {
 		c.metricsMu.Lock()
@@ -235,9 +285,27 @@ func (c *Cache[K, V]) evict(reason EvictionReason, elems ...*list.Element) {
 	c.items.expQueue = newExpirationQueue[K, V]()
 }
 
+// delete deletes an item by the provided key.
+// The method is no-op if the item is not found.
+// Not safe for concurrent use by multiple goroutines without additional
+// locking.
+func (c *Cache[K, V]) delete(key K) {
+	elem := c.items.values[key]
+	if elem == nil {
+		return
+	}
+
+	c.evict(EvictionReasonDeleted, elem)
+}
+
 // Set creates a new item from the provided key and value, adds
 // it to the cache and then returns it. If an item associated with the
 // provided key already exists, the new item overwrites the existing one.
+// NoTTL constant or -1 can be used to indicate that the item should never
+// expire.
+// DefaultTTL constant or 0 can be used to indicate that the item should use
+// the default/global TTL that was specified when the cache instance was
+// created.
 func (c *Cache[K, V]) Set(key K, value V, ttl time.Duration) *Item[K, V] {
 	c.items.mu.Lock()
 	defer c.items.mu.Unlock()
@@ -250,34 +318,7 @@ func (c *Cache[K, V]) Set(key K, value V, ttl time.Duration) *Item[K, V] {
 // expiration timestamp on successful retrieval.
 // If the item is not found, a nil value is returned.
 func (c *Cache[K, V]) Get(key K, opts ...Option[K, V]) *Item[K, V] {
-	getOpts := options[K, V]{
-		loader:            c.options.loader,
-		disableTouchOnHit: c.options.disableTouchOnHit,
-	}
-
-	applyOptions(&getOpts, opts...)
-
-	c.items.mu.Lock()
-	elem := c.get(key, !getOpts.disableTouchOnHit)
-	c.items.mu.Unlock()
-
-	if elem == nil {
-		c.metricsMu.Lock()
-		c.metrics.Misses++
-		c.metricsMu.Unlock()
-
-		if getOpts.loader != nil {
-			return getOpts.loader.Load(c, key)
-		}
-
-		return nil
-	}
-
-	c.metricsMu.Lock()
-	c.metrics.Hits++
-	c.metricsMu.Unlock()
-
-	return elem.Value.(*Item[K, V])
+	return c.getWithOpts(key, true, opts...)
 }
 
 // Delete deletes an item from the cache. If the item associated with
@@ -286,12 +327,75 @@ func (c *Cache[K, V]) Delete(key K) {
 	c.items.mu.Lock()
 	defer c.items.mu.Unlock()
 
-	elem := c.items.values[key]
-	if elem == nil {
-		return
+	c.delete(key)
+}
+
+// Has checks whether the key exists in the cache.
+func (c *Cache[K, V]) Has(key K) bool {
+	c.items.mu.RLock()
+	defer c.items.mu.RUnlock()
+
+	_, ok := c.items.values[key]
+	return ok
+}
+
+// GetOrSet retrieves an item from the cache by the provided key.
+// If the item is not found, it is created with the provided options and
+// then returned.
+// The bool return value is true if the item was found, false if created
+// during the execution of the method.
+// If the loader is non-nil (i.e., used as an option or specified when
+// creating the cache instance), its execution is skipped.
+func (c *Cache[K, V]) GetOrSet(key K, value V, opts ...Option[K, V]) (*Item[K, V], bool) {
+	c.items.mu.Lock()
+	defer c.items.mu.Unlock()
+
+	elem := c.getWithOpts(key, false, opts...)
+	if elem != nil {
+		return elem, true
 	}
 
-	c.evict(EvictionReasonDeleted, elem)
+	setOpts := options[K, V]{
+		ttl: c.options.ttl,
+	}
+	applyOptions(&setOpts, opts...) // used only to update the TTL
+
+	item := c.set(key, value, setOpts.ttl)
+
+	return item, false
+}
+
+// GetAndDelete retrieves an item from the cache by the provided key and
+// then deletes it.
+// The bool return value is true if the item was found before
+// its deletion, false if not.
+// If the loader is non-nil (i.e., used as an option or specified when
+// creating the cache instance), it is executed normaly, i.e., only when
+// the item is not found.
+func (c *Cache[K, V]) GetAndDelete(key K, opts ...Option[K, V]) (*Item[K, V], bool) {
+	c.items.mu.Lock()
+
+	elem := c.getWithOpts(key, false, opts...)
+	if elem == nil {
+		c.items.mu.Unlock()
+
+		getOpts := options[K, V]{
+			loader: c.options.loader,
+		}
+		applyOptions(&getOpts, opts...) // used only to update the loader
+
+		if getOpts.loader != nil {
+			item := getOpts.loader.Load(c, key)
+			return item, item != nil
+		}
+
+		return nil, false
+	}
+
+	c.delete(key)
+	c.items.mu.Unlock()
+
+	return elem, true
 }
 
 // DeleteAll deletes all items from the cache.
@@ -332,7 +436,7 @@ func (c *Cache[K, V]) Touch(key K) {
 	c.items.mu.Unlock()
 }
 
-// Len returns the number of items in the cache.
+// Len returns the total number of items in the cache.
 func (c *Cache[K, V]) Len() int {
 	c.items.mu.RLock()
 	defer c.items.mu.RUnlock()
@@ -370,6 +474,24 @@ func (c *Cache[K, V]) Items() map[K]*Item[K, V] {
 	return items
 }
 
+// Range calls fn for each item present in the cache. If fn returns false,
+// Range stops the iteration.
+func (c *Cache[K, V]) Range(fn func(item *Item[K, V]) bool) {
+	c.items.mu.RLock()
+	for item := c.items.lru.Front(); item != c.items.lru.Back().Next(); item = item.Next() {
+		i := item.Value.(*Item[K, V])
+		c.items.mu.RUnlock()
+
+		if !fn(i) {
+			return
+		}
+
+		if item.Next() != nil {
+			c.items.mu.RLock()
+		}
+	}
+}
+
 // Metrics returns the metrics of the cache.
 func (c *Cache[K, V]) Metrics() Metrics {
 	c.metricsMu.RLock()
@@ -378,8 +500,8 @@ func (c *Cache[K, V]) Metrics() Metrics {
 	return c.metrics
 }
 
-// Start starts an automatic cleanup process that
-// periodically deletes expired items.
+// Start starts an automatic cleanup process that periodically deletes
+// expired items.
 // It blocks until Stop is called.
 func (c *Cache[K, V]) Start() {
 	waitDur := func() time.Duration {

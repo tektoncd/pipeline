@@ -3005,6 +3005,11 @@ func awsAwsjson11_serializeOpDocumentCreateGrantInput(v *CreateGrantInput, value
 		}
 	}
 
+	if v.DryRun != nil {
+		ok := object.Key("DryRun")
+		ok.Boolean(*v.DryRun)
+	}
+
 	if v.GranteePrincipal != nil {
 		ok := object.Key("GranteePrincipal")
 		ok.String(*v.GranteePrincipal)
@@ -3113,6 +3118,11 @@ func awsAwsjson11_serializeOpDocumentDecryptInput(v *DecryptInput, value smithyj
 	if v.CiphertextBlob != nil {
 		ok := object.Key("CiphertextBlob")
 		ok.Base64EncodeBytes(v.CiphertextBlob)
+	}
+
+	if v.DryRun != nil {
+		ok := object.Key("DryRun")
+		ok.Boolean(*v.DryRun)
 	}
 
 	if len(v.EncryptionAlgorithm) > 0 {
@@ -3295,6 +3305,11 @@ func awsAwsjson11_serializeOpDocumentEncryptInput(v *EncryptInput, value smithyj
 	object := value.Object()
 	defer object.Close()
 
+	if v.DryRun != nil {
+		ok := object.Key("DryRun")
+		ok.Boolean(*v.DryRun)
+	}
+
 	if len(v.EncryptionAlgorithm) > 0 {
 		ok := object.Key("EncryptionAlgorithm")
 		ok.String(string(v.EncryptionAlgorithm))
@@ -3330,6 +3345,11 @@ func awsAwsjson11_serializeOpDocumentEncryptInput(v *EncryptInput, value smithyj
 func awsAwsjson11_serializeOpDocumentGenerateDataKeyInput(v *GenerateDataKeyInput, value smithyjson.Value) error {
 	object := value.Object()
 	defer object.Close()
+
+	if v.DryRun != nil {
+		ok := object.Key("DryRun")
+		ok.Boolean(*v.DryRun)
+	}
 
 	if v.EncryptionContext != nil {
 		ok := object.Key("EncryptionContext")
@@ -3374,6 +3394,11 @@ func awsAwsjson11_serializeOpDocumentGenerateDataKeyPairInput(v *GenerateDataKey
 	object := value.Object()
 	defer object.Close()
 
+	if v.DryRun != nil {
+		ok := object.Key("DryRun")
+		ok.Boolean(*v.DryRun)
+	}
+
 	if v.EncryptionContext != nil {
 		ok := object.Key("EncryptionContext")
 		if err := awsAwsjson11_serializeDocumentEncryptionContextType(v.EncryptionContext, ok); err != nil {
@@ -3412,6 +3437,11 @@ func awsAwsjson11_serializeOpDocumentGenerateDataKeyPairWithoutPlaintextInput(v 
 	object := value.Object()
 	defer object.Close()
 
+	if v.DryRun != nil {
+		ok := object.Key("DryRun")
+		ok.Boolean(*v.DryRun)
+	}
+
 	if v.EncryptionContext != nil {
 		ok := object.Key("EncryptionContext")
 		if err := awsAwsjson11_serializeDocumentEncryptionContextType(v.EncryptionContext, ok); err != nil {
@@ -3442,6 +3472,11 @@ func awsAwsjson11_serializeOpDocumentGenerateDataKeyPairWithoutPlaintextInput(v 
 func awsAwsjson11_serializeOpDocumentGenerateDataKeyWithoutPlaintextInput(v *GenerateDataKeyWithoutPlaintextInput, value smithyjson.Value) error {
 	object := value.Object()
 	defer object.Close()
+
+	if v.DryRun != nil {
+		ok := object.Key("DryRun")
+		ok.Boolean(*v.DryRun)
+	}
 
 	if v.EncryptionContext != nil {
 		ok := object.Key("EncryptionContext")
@@ -3478,6 +3513,11 @@ func awsAwsjson11_serializeOpDocumentGenerateDataKeyWithoutPlaintextInput(v *Gen
 func awsAwsjson11_serializeOpDocumentGenerateMacInput(v *GenerateMacInput, value smithyjson.Value) error {
 	object := value.Object()
 	defer object.Close()
+
+	if v.DryRun != nil {
+		ok := object.Key("DryRun")
+		ok.Boolean(*v.DryRun)
+	}
 
 	if v.GrantTokens != nil {
 		ok := object.Key("GrantTokens")
@@ -3820,6 +3860,11 @@ func awsAwsjson11_serializeOpDocumentReEncryptInput(v *ReEncryptInput, value smi
 		ok.String(*v.DestinationKeyId)
 	}
 
+	if v.DryRun != nil {
+		ok := object.Key("DryRun")
+		ok.Boolean(*v.DryRun)
+	}
+
 	if v.GrantTokens != nil {
 		ok := object.Key("GrantTokens")
 		if err := awsAwsjson11_serializeDocumentGrantTokenList(v.GrantTokens, ok); err != nil {
@@ -3890,6 +3935,11 @@ func awsAwsjson11_serializeOpDocumentRetireGrantInput(v *RetireGrantInput, value
 	object := value.Object()
 	defer object.Close()
 
+	if v.DryRun != nil {
+		ok := object.Key("DryRun")
+		ok.Boolean(*v.DryRun)
+	}
+
 	if v.GrantId != nil {
 		ok := object.Key("GrantId")
 		ok.String(*v.GrantId)
@@ -3911,6 +3961,11 @@ func awsAwsjson11_serializeOpDocumentRetireGrantInput(v *RetireGrantInput, value
 func awsAwsjson11_serializeOpDocumentRevokeGrantInput(v *RevokeGrantInput, value smithyjson.Value) error {
 	object := value.Object()
 	defer object.Close()
+
+	if v.DryRun != nil {
+		ok := object.Key("DryRun")
+		ok.Boolean(*v.DryRun)
+	}
 
 	if v.GrantId != nil {
 		ok := object.Key("GrantId")
@@ -3945,6 +4000,11 @@ func awsAwsjson11_serializeOpDocumentScheduleKeyDeletionInput(v *ScheduleKeyDele
 func awsAwsjson11_serializeOpDocumentSignInput(v *SignInput, value smithyjson.Value) error {
 	object := value.Object()
 	defer object.Close()
+
+	if v.DryRun != nil {
+		ok := object.Key("DryRun")
+		ok.Boolean(*v.DryRun)
+	}
 
 	if v.GrantTokens != nil {
 		ok := object.Key("GrantTokens")
@@ -4123,6 +4183,11 @@ func awsAwsjson11_serializeOpDocumentVerifyInput(v *VerifyInput, value smithyjso
 	object := value.Object()
 	defer object.Close()
 
+	if v.DryRun != nil {
+		ok := object.Key("DryRun")
+		ok.Boolean(*v.DryRun)
+	}
+
 	if v.GrantTokens != nil {
 		ok := object.Key("GrantTokens")
 		if err := awsAwsjson11_serializeDocumentGrantTokenList(v.GrantTokens, ok); err != nil {
@@ -4161,6 +4226,11 @@ func awsAwsjson11_serializeOpDocumentVerifyInput(v *VerifyInput, value smithyjso
 func awsAwsjson11_serializeOpDocumentVerifyMacInput(v *VerifyMacInput, value smithyjson.Value) error {
 	object := value.Object()
 	defer object.Close()
+
+	if v.DryRun != nil {
+		ok := object.Key("DryRun")
+		ok.Boolean(*v.DryRun)
+	}
 
 	if v.GrantTokens != nil {
 		ok := object.Key("GrantTokens")
