@@ -369,6 +369,30 @@ func propagateParams(t v1.PipelineTask, stringReplacements map[string]string, ar
 	return t
 }
 
+// PropagateResults propagate the result of the completed task to the unfinished task that is not explicitly specify in the params
+func PropagateResults(rpt *ResolvedPipelineTask, runStates PipelineRunState) {
+	if rpt.ResolvedTask == nil || rpt.ResolvedTask.TaskSpec == nil {
+		return
+	}
+	stringReplacements := map[string]string{}
+	arrayReplacements := map[string][]string{}
+	for taskName, taskResults := range runStates.GetTaskRunsResults() {
+		for _, res := range taskResults {
+			switch res.Type {
+			case v1.ResultsTypeString:
+				stringReplacements[fmt.Sprintf("tasks.%s.results.%s", taskName, res.Name)] = res.Value.StringVal
+			case v1.ResultsTypeArray:
+				arrayReplacements[fmt.Sprintf("tasks.%s.results.%s", taskName, res.Name)] = res.Value.ArrayVal
+			case v1.ResultsTypeObject:
+				for k, v := range res.Value.ObjectVal {
+					stringReplacements[fmt.Sprintf("tasks.%s.results.%s.%s", taskName, res.Name, k)] = v
+				}
+			}
+		}
+	}
+	rpt.ResolvedTask.TaskSpec = resources.ApplyReplacements(rpt.ResolvedTask.TaskSpec, stringReplacements, arrayReplacements)
+}
+
 // ApplyTaskResultsToPipelineResults applies the results of completed TasksRuns and Runs to a Pipeline's
 // list of PipelineResults, returning the computed set of PipelineRunResults. References to
 // non-existent TaskResults or failed TaskRuns or Runs result in a PipelineResult being considered invalid

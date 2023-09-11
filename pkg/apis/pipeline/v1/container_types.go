@@ -188,6 +188,36 @@ func (s *Step) SetContainerFields(c corev1.Container) {
 	s.SecurityContext = c.SecurityContext
 }
 
+// GetVarSubstitutionExpressions walks all the places a substitution reference can be used
+func (s *Step) GetVarSubstitutionExpressions() []string {
+	var allExpressions []string
+	allExpressions = append(allExpressions, validateString(s.Name)...)
+	allExpressions = append(allExpressions, validateString(s.Image)...)
+	allExpressions = append(allExpressions, validateString(string(s.ImagePullPolicy))...)
+	allExpressions = append(allExpressions, validateString(s.Script)...)
+	allExpressions = append(allExpressions, validateString(s.WorkingDir)...)
+	for _, cmd := range s.Command {
+		allExpressions = append(allExpressions, validateString(cmd)...)
+	}
+	for _, arg := range s.Args {
+		allExpressions = append(allExpressions, validateString(arg)...)
+	}
+	for _, env := range s.Env {
+		allExpressions = append(allExpressions, validateString(env.Value)...)
+		if env.ValueFrom != nil {
+			if env.ValueFrom.SecretKeyRef != nil {
+				allExpressions = append(allExpressions, validateString(env.ValueFrom.SecretKeyRef.Key)...)
+				allExpressions = append(allExpressions, validateString(env.ValueFrom.SecretKeyRef.LocalObjectReference.Name)...)
+			}
+			if env.ValueFrom.ConfigMapKeyRef != nil {
+				allExpressions = append(allExpressions, validateString(env.ValueFrom.ConfigMapKeyRef.Key)...)
+				allExpressions = append(allExpressions, validateString(env.ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name)...)
+			}
+		}
+	}
+	return allExpressions
+}
+
 // StepTemplate is a template for a Step
 type StepTemplate struct {
 	// Image reference name.
@@ -540,4 +570,34 @@ func (s *Sidecar) SetContainerFields(c corev1.Container) {
 	s.Stdin = c.Stdin
 	s.StdinOnce = c.StdinOnce
 	s.TTY = c.TTY
+}
+
+// GetVarSubstitutionExpressions walks all the places a substitution reference can be used
+func (s *Sidecar) GetVarSubstitutionExpressions() []string {
+	var allExpressions []string
+	allExpressions = append(allExpressions, validateString(s.Name)...)
+	allExpressions = append(allExpressions, validateString(s.Image)...)
+	allExpressions = append(allExpressions, validateString(string(s.ImagePullPolicy))...)
+	allExpressions = append(allExpressions, validateString(s.Script)...)
+	allExpressions = append(allExpressions, validateString(s.WorkingDir)...)
+	for _, cmd := range s.Command {
+		allExpressions = append(allExpressions, validateString(cmd)...)
+	}
+	for _, arg := range s.Args {
+		allExpressions = append(allExpressions, validateString(arg)...)
+	}
+	for _, env := range s.Env {
+		allExpressions = append(allExpressions, validateString(env.Value)...)
+		if env.ValueFrom != nil {
+			if env.ValueFrom.SecretKeyRef != nil {
+				allExpressions = append(allExpressions, validateString(env.ValueFrom.SecretKeyRef.Key)...)
+				allExpressions = append(allExpressions, validateString(env.ValueFrom.SecretKeyRef.LocalObjectReference.Name)...)
+			}
+			if env.ValueFrom.ConfigMapKeyRef != nil {
+				allExpressions = append(allExpressions, validateString(env.ValueFrom.ConfigMapKeyRef.Key)...)
+				allExpressions = append(allExpressions, validateString(env.ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name)...)
+			}
+		}
+	}
+	return allExpressions
 }

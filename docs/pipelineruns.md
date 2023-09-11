@@ -744,6 +744,92 @@ spec:
 
 then `test-task` will execute using the `sa-1` account while `build-task` will execute with `sa-for-build`.
 
+#### Propagated Results
+
+When using an embedded spec, `Results` from the parent `PipelineRun` will be
+propagated to any inlined specs without needing to be explicitly defined. This
+allows authors to simplify specs by automatically propagating top-level
+results down to other inlined resources.
+**`Result` substitutions will only be made for `name`, `commands`, `args`, `env` and `script` fields of `steps`, `sidecars`.**
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: uid-pipeline-run
+spec:
+  pipelineSpec:
+    tasks:
+    - name: add-uid
+      taskSpec:
+        results:
+          - name: uid
+            type: string
+        steps:
+          - name: add-uid
+            image: busybox
+            command: ["/bin/sh", "-c"]
+            args:
+              - echo "1001" | tee $(results.uid.path)
+    - name: show-uid
+      # params: 
+      #   - name: uid
+      #     value: $(tasks.add-uid.results.uid)
+      taskSpec:
+        steps:
+          - name: show-uid
+            image: busybox
+            command: ["/bin/sh", "-c"]
+            args:
+              - echo
+              # - $(params.uid)
+              - $(tasks.add-uid.results.uid)
+```
+
+On executing the `PipelineRun`, the `Results` will be interpolated during resolution.
+
+```yaml
+name:         uid-pipeline-run-show-uid
+apiVersion:  tekton.dev/v1
+kind:         TaskRun
+metadata:
+  ...
+spec:
+  taskSpec:
+    steps:
+      args:
+        echo
+        1001
+      command:
+        - /bin/sh
+        - -c
+      image:  busybox
+      name:   show-uid
+status:
+  completionTime:  2023-09-11T07:34:28Z
+  conditions:
+    lastTransitionTime:  2023-09-11T07:34:28Z
+    message:               All Steps have completed executing
+    reason:                Succeeded
+    status:                True
+    type:                  Succeeded
+  podName:                uid-pipeline-run-show-uid-pod
+  steps:
+    container:  step-show-uid
+    name:       show-uid
+  taskSpec:
+    steps:
+      args:
+        echo
+        1001
+      command:
+        /bin/sh
+        -c
+      computeResources:
+      image:  busybox
+      name:   show-uid
+```
+
 ### Specifying a `Pod` template
 
 You can specify a [`Pod` template](podtemplates.md) configuration that will serve as the configuration starting
