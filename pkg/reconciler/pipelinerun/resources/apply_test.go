@@ -26,9 +26,13 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resources "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
+	taskresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/test/diff"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/selection"
+	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
 func TestApplyParameters(t *testing.T) {
@@ -4249,5 +4253,321 @@ func TestApplyTaskRunContext(t *testing.T) {
 	resources.ApplyPipelineTaskStateContext(state, r)
 	if d := cmp.Diff(expectedState, state); d != "" {
 		t.Fatalf("ApplyTaskRunContext() %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestPropagateResults(t *testing.T) {
+	for _, tt := range []struct {
+		name                 string
+		resolvedTask         *resources.ResolvedPipelineTask
+		runStates            resources.PipelineRunState
+		expectedResolvedTask *resources.ResolvedPipelineTask
+	}{
+		{
+			name: "propagate string result",
+			resolvedTask: &resources.ResolvedPipelineTask{
+				ResolvedTask: &taskresources.ResolvedTask{
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{
+							{
+								Name:    "$(tasks.pt1.results.r1)",
+								Command: []string{"$(tasks.pt1.results.r2)"},
+								Args:    []string{"$(tasks.pt2.results.r1)"},
+							},
+						},
+					},
+				},
+			},
+			runStates: resources.PipelineRunState{
+				{
+					PipelineTask: &v1.PipelineTask{
+						Name: "pt1",
+					},
+					TaskRuns: []*v1.TaskRun{
+						{
+							Status: v1.TaskRunStatus{
+								Status: duckv1.Status{
+									Conditions: duckv1.Conditions{
+										{
+											Type:   apis.ConditionSucceeded,
+											Status: corev1.ConditionTrue,
+										},
+									},
+								},
+								TaskRunStatusFields: v1.TaskRunStatusFields{
+									Results: []v1.TaskRunResult{
+										{
+											Name: "r1",
+											Type: v1.ResultsTypeString,
+											Value: v1.ResultValue{
+												StringVal: "step1",
+											},
+										},
+										{
+											Name: "r2",
+											Type: v1.ResultsTypeString,
+											Value: v1.ResultValue{
+												StringVal: "echo",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				}, {
+					PipelineTask: &v1.PipelineTask{
+						Name: "pt2",
+					},
+					TaskRuns: []*v1.TaskRun{
+						{
+							Status: v1.TaskRunStatus{
+								Status: duckv1.Status{
+									Conditions: duckv1.Conditions{
+										{
+											Type:   apis.ConditionSucceeded,
+											Status: corev1.ConditionTrue,
+										},
+									},
+								},
+								TaskRunStatusFields: v1.TaskRunStatusFields{
+									Results: []v1.TaskRunResult{
+										{
+											Name: "r1",
+											Type: v1.ResultsTypeString,
+											Value: v1.ResultValue{
+												StringVal: "arg1",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResolvedTask: &resources.ResolvedPipelineTask{
+				ResolvedTask: &taskresources.ResolvedTask{
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{
+							{
+								Name:    "step1",
+								Command: []string{"echo"},
+								Args:    []string{"arg1"},
+							},
+						},
+					},
+				},
+			},
+		}, {
+			name: "propagate array result",
+			resolvedTask: &resources.ResolvedPipelineTask{
+				ResolvedTask: &taskresources.ResolvedTask{
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{
+							{
+								Command: []string{"$(tasks.pt1.results.r1[*])"},
+								Args:    []string{"$(tasks.pt2.results.r1[*])"},
+							},
+						},
+					},
+				},
+			},
+			runStates: resources.PipelineRunState{
+				{
+					PipelineTask: &v1.PipelineTask{
+						Name: "pt1",
+					},
+					TaskRuns: []*v1.TaskRun{
+						{
+							Status: v1.TaskRunStatus{
+								Status: duckv1.Status{
+									Conditions: duckv1.Conditions{
+										{
+											Type:   apis.ConditionSucceeded,
+											Status: corev1.ConditionTrue,
+										},
+									},
+								},
+								TaskRunStatusFields: v1.TaskRunStatusFields{
+									Results: []v1.TaskRunResult{
+										{
+											Name: "r1",
+											Type: v1.ResultsTypeArray,
+											Value: v1.ResultValue{
+												ArrayVal: []string{"bash", "-c"},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				}, {
+					PipelineTask: &v1.PipelineTask{
+						Name: "pt2",
+					},
+					TaskRuns: []*v1.TaskRun{
+						{
+							Status: v1.TaskRunStatus{
+								Status: duckv1.Status{
+									Conditions: duckv1.Conditions{
+										{
+											Type:   apis.ConditionSucceeded,
+											Status: corev1.ConditionTrue,
+										},
+									},
+								},
+								TaskRunStatusFields: v1.TaskRunStatusFields{
+									Results: []v1.TaskRunResult{
+										{
+											Name: "r1",
+											Type: v1.ResultsTypeArray,
+											Value: v1.ResultValue{
+												ArrayVal: []string{"echo", "arg1"},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResolvedTask: &resources.ResolvedPipelineTask{
+				ResolvedTask: &taskresources.ResolvedTask{
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{
+							{
+								Command: []string{"bash", "-c"},
+								Args:    []string{"echo", "arg1"},
+							},
+						},
+					},
+				},
+			},
+		}, {
+			name: "propagate object result",
+			resolvedTask: &resources.ResolvedPipelineTask{
+				ResolvedTask: &taskresources.ResolvedTask{
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{
+							{
+								Command: []string{"$(tasks.pt1.results.r1.command1)", "$(tasks.pt1.results.r1.command2)"},
+								Args:    []string{"$(tasks.pt2.results.r1.arg1)", "$(tasks.pt2.results.r1.arg2)"},
+							},
+						},
+					},
+				},
+			},
+			runStates: resources.PipelineRunState{
+				{
+					PipelineTask: &v1.PipelineTask{
+						Name: "pt1",
+					},
+					TaskRuns: []*v1.TaskRun{
+						{
+							Status: v1.TaskRunStatus{
+								Status: duckv1.Status{
+									Conditions: duckv1.Conditions{
+										{
+											Type:   apis.ConditionSucceeded,
+											Status: corev1.ConditionTrue,
+										},
+									},
+								},
+								TaskRunStatusFields: v1.TaskRunStatusFields{
+									Results: []v1.TaskRunResult{
+										{
+											Name: "r1",
+											Type: v1.ResultsTypeObject,
+											Value: v1.ResultValue{
+												ObjectVal: map[string]string{
+													"command1": "bash",
+													"command2": "-c",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				}, {
+					PipelineTask: &v1.PipelineTask{
+						Name: "pt2",
+					},
+					TaskRuns: []*v1.TaskRun{
+						{
+							Status: v1.TaskRunStatus{
+								Status: duckv1.Status{
+									Conditions: duckv1.Conditions{
+										{
+											Type:   apis.ConditionSucceeded,
+											Status: corev1.ConditionTrue,
+										},
+									},
+								},
+								TaskRunStatusFields: v1.TaskRunStatusFields{
+									Results: []v1.TaskRunResult{
+										{
+											Name: "r1",
+											Type: v1.ResultsTypeObject,
+											Value: v1.ResultValue{
+												ObjectVal: map[string]string{
+													"arg1": "echo",
+													"arg2": "arg1",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResolvedTask: &resources.ResolvedPipelineTask{
+				ResolvedTask: &taskresources.ResolvedTask{
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{
+							{
+								Command: []string{"bash", "-c"},
+								Args:    []string{"echo", "arg1"},
+							},
+						},
+					},
+				},
+			},
+		}, {
+			name: "not propagate result when resolved task is nil",
+			resolvedTask: &resources.ResolvedPipelineTask{
+				ResolvedTask: nil,
+			},
+			runStates: resources.PipelineRunState{},
+			expectedResolvedTask: &resources.ResolvedPipelineTask{
+				ResolvedTask: nil,
+			},
+		}, {
+			name: "not propagate result when taskSpec is nil",
+			resolvedTask: &resources.ResolvedPipelineTask{
+				ResolvedTask: &taskresources.ResolvedTask{
+					TaskSpec: nil,
+				},
+			},
+			runStates: resources.PipelineRunState{},
+			expectedResolvedTask: &resources.ResolvedPipelineTask{
+				ResolvedTask: &taskresources.ResolvedTask{
+					TaskSpec: nil,
+				},
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			resources.PropagateResults(tt.resolvedTask, tt.runStates)
+			if d := cmp.Diff(tt.expectedResolvedTask, tt.resolvedTask); d != "" {
+				t.Fatalf("PropagateResults() %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }

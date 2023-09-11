@@ -497,6 +497,22 @@ func (pt *PipelineTask) extractAllParams() Params {
 	return allParams
 }
 
+// GetVarSubstitutionExpressions extract all values between the parameters "$(" and ")" of steps and sidecars
+func (pt *PipelineTask) GetVarSubstitutionExpressions() []string {
+	var allExpressions []string
+	if pt.TaskSpec != nil {
+		for _, step := range pt.TaskSpec.Steps {
+			stepExpressions := step.GetVarSubstitutionExpressions()
+			allExpressions = append(allExpressions, stepExpressions...)
+		}
+		for _, sidecar := range pt.TaskSpec.Sidecars {
+			sidecarExpressions := sidecar.GetVarSubstitutionExpressions()
+			allExpressions = append(allExpressions, sidecarExpressions...)
+		}
+	}
+	return allExpressions
+}
+
 func containsExecutionStatusRef(p string) bool {
 	if strings.HasPrefix(p, "tasks.") && strings.HasSuffix(p, ".status") {
 		return true

@@ -23,6 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/selection"
 )
 
@@ -472,6 +473,224 @@ func TestNewResultReferenceWhenExpressions(t *testing.T) {
 	}
 }
 
+func TestNewResultReferenceTaskSpec(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		pt      *v1.PipelineTask
+		wantRef []*v1.ResultRef
+	}{
+		{
+			name: "Test step expression references",
+			pt: &v1.PipelineTask{
+				TaskSpec: &v1.EmbeddedTask{
+					TaskSpec: v1.TaskSpec{
+						Steps: []v1.Step{
+							{
+								Name:            "$(tasks.task1.results.stepName)",
+								Image:           "$(tasks.task1.results.imageResult)",
+								ImagePullPolicy: corev1.PullPolicy("$(tasks.task1.results.imagePullPolicy)"),
+								Script:          "substitution within string $(tasks.task1.results.scriptResult)",
+								WorkingDir:      "$(tasks.task1.results.workingDir)",
+								Command: []string{
+									"$(tasks.task2.results.command[*])",
+								},
+								Args: []string{
+									"$(tasks.task2.results.args[*])",
+								},
+								Env: []corev1.EnvVar{
+									{
+										Name:  "env1",
+										Value: "$(tasks.task2.results.env1)",
+										ValueFrom: &corev1.EnvVarSource{
+											SecretKeyRef: &corev1.SecretKeySelector{
+												Key: "$(tasks.task2.results.secretKeyRef)",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "$(tasks.task2.results.secretNameRef)",
+												},
+											},
+											ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+												Key: "$(tasks.task2.results.configMapKeyRef)",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "$(tasks.task2.results.configMapNameRef)",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantRef: []*v1.ResultRef{{
+				PipelineTask: "task1",
+				Result:       "stepName",
+			}, {
+				PipelineTask: "task1",
+				Result:       "imageResult",
+			}, {
+				PipelineTask: "task1",
+				Result:       "imagePullPolicy",
+			}, {
+				PipelineTask: "task1",
+				Result:       "scriptResult",
+			}, {
+				PipelineTask: "task1",
+				Result:       "workingDir",
+			}, {
+				PipelineTask: "task2",
+				Result:       "command",
+			}, {
+				PipelineTask: "task2",
+				Result:       "args",
+			}, {
+				PipelineTask: "task2",
+				Result:       "env1",
+			}, {
+				PipelineTask: "task2",
+				Result:       "secretKeyRef",
+			}, {
+				PipelineTask: "task2",
+				Result:       "secretNameRef",
+			}, {
+				PipelineTask: "task2",
+				Result:       "configMapKeyRef",
+			}, {
+				PipelineTask: "task2",
+				Result:       "configMapNameRef",
+			}},
+		}, {
+			name: "Test sidecar expression references",
+			pt: &v1.PipelineTask{
+				TaskSpec: &v1.EmbeddedTask{
+					TaskSpec: v1.TaskSpec{
+						Sidecars: []v1.Sidecar{
+							{
+								Name:            "$(tasks.task1.results.stepName)",
+								Image:           "$(tasks.task1.results.imageResult)",
+								ImagePullPolicy: corev1.PullPolicy("$(tasks.task1.results.imagePullPolicy)"),
+								Script:          "substitution within string $(tasks.task1.results.scriptResult)",
+								WorkingDir:      "$(tasks.task1.results.workingDir)",
+								Command: []string{
+									"$(tasks.task2.results.command[*])",
+								},
+								Args: []string{
+									"$(tasks.task2.results.args[*])",
+								},
+								Env: []corev1.EnvVar{
+									{
+										Name:  "env1",
+										Value: "$(tasks.task2.results.env1)",
+										ValueFrom: &corev1.EnvVarSource{
+											SecretKeyRef: &corev1.SecretKeySelector{
+												Key: "$(tasks.task2.results.secretKeyRef)",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "$(tasks.task2.results.secretNameRef)",
+												},
+											},
+											ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+												Key: "$(tasks.task2.results.configMapKeyRef)",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "$(tasks.task2.results.configMapNameRef)",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantRef: []*v1.ResultRef{{
+				PipelineTask: "task1",
+				Result:       "stepName",
+			}, {
+				PipelineTask: "task1",
+				Result:       "imageResult",
+			}, {
+				PipelineTask: "task1",
+				Result:       "imagePullPolicy",
+			}, {
+				PipelineTask: "task1",
+				Result:       "scriptResult",
+			}, {
+				PipelineTask: "task1",
+				Result:       "workingDir",
+			}, {
+				PipelineTask: "task2",
+				Result:       "command",
+			}, {
+				PipelineTask: "task2",
+				Result:       "args",
+			}, {
+				PipelineTask: "task2",
+				Result:       "env1",
+			}, {
+				PipelineTask: "task2",
+				Result:       "secretKeyRef",
+			}, {
+				PipelineTask: "task2",
+				Result:       "secretNameRef",
+			}, {
+				PipelineTask: "task2",
+				Result:       "configMapKeyRef",
+			}, {
+				PipelineTask: "task2",
+				Result:       "configMapNameRef",
+			}},
+		}, {
+			name: "Test both step and sidecar expression references",
+			pt: &v1.PipelineTask{
+				TaskSpec: &v1.EmbeddedTask{
+					TaskSpec: v1.TaskSpec{
+						Steps: []v1.Step{
+							{
+								Name:            "$(tasks.task1.results.stepName)",
+								Image:           "$(tasks.task1.results.stepImage)",
+								ImagePullPolicy: corev1.PullPolicy("$(tasks.task1.results.stepImagePullPolicy)"),
+							},
+						},
+						Sidecars: []v1.Sidecar{
+							{
+								Name:            "$(tasks.task2.results.sidecarName)",
+								Image:           "$(tasks.task2.results.sidecarImage)",
+								ImagePullPolicy: corev1.PullPolicy("$(tasks.task2.results.sidecarImagePullPolicy)"),
+							},
+						},
+					},
+				},
+			},
+			wantRef: []*v1.ResultRef{{
+				PipelineTask: "task1",
+				Result:       "stepName",
+			}, {
+				PipelineTask: "task1",
+				Result:       "stepImage",
+			}, {
+				PipelineTask: "task1",
+				Result:       "stepImagePullPolicy",
+			}, {
+				PipelineTask: "task2",
+				Result:       "sidecarName",
+			}, {
+				PipelineTask: "task2",
+				Result:       "sidecarImage",
+			}, {
+				PipelineTask: "task2",
+				Result:       "sidecarImagePullPolicy",
+			}},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got := v1.PipelineTaskResultRefs(tt.pt)
+			if d := cmp.Diff(tt.wantRef, got); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestHasResultReferenceWhenExpression(t *testing.T) {
 	for _, tt := range []struct {
 		name    string
@@ -650,6 +869,20 @@ func TestPipelineTaskResultRefs(t *testing.T) {
 			}, {
 				Value: *v1.NewStructuredValues("$(tasks.pt7.results.r7)", "$(tasks.pt8.results.r8)"),
 			}}},
+		TaskSpec: &v1.EmbeddedTask{
+			TaskSpec: v1.TaskSpec{
+				Steps: []v1.Step{
+					{
+						Name:            "$(tasks.pt8.results.r8)",
+						Image:           "$(tasks.pt9.results.r9)",
+						ImagePullPolicy: corev1.PullPolicy("$(tasks.pt10.results.r10)"),
+						Command:         []string{"$(tasks.pt11.results.r11)"},
+						Args:            []string{"$(tasks.pt12.results.r12)", "$(tasks.pt13.results.r13)"},
+						Script:          "$(tasks.pt14.results.r14)",
+					},
+				},
+			},
+		},
 	}
 	refs := v1.PipelineTaskResultRefs(&pt)
 	expectedRefs := []*v1.ResultRef{{
@@ -679,6 +912,27 @@ func TestPipelineTaskResultRefs(t *testing.T) {
 	}, {
 		PipelineTask: "pt9",
 		Result:       "r9",
+	}, {
+		PipelineTask: "pt8",
+		Result:       "r8",
+	}, {
+		PipelineTask: "pt9",
+		Result:       "r9",
+	}, {
+		PipelineTask: "pt10",
+		Result:       "r10",
+	}, {
+		PipelineTask: "pt11",
+		Result:       "r11",
+	}, {
+		PipelineTask: "pt12",
+		Result:       "r12",
+	}, {
+		PipelineTask: "pt13",
+		Result:       "r13",
+	}, {
+		PipelineTask: "pt14",
+		Result:       "r14",
 	}}
 	if d := cmp.Diff(refs, expectedRefs, cmpopts.SortSlices(lessResultRef)); d != "" {
 		t.Errorf("%v", d)
