@@ -63,7 +63,8 @@ var (
 
 const (
 	// ReasonCancelled indicates that a PipelineRun was cancelled.
-	ReasonCancelled = "Cancelled"
+	// Aliased for backwards compatibility; additional reasons should not be added here.
+	ReasonCancelled = v1.PipelineRunReasonCancelled
 )
 
 // Recorder holds keys for Tekton metrics
@@ -233,7 +234,7 @@ func (r *Recorder) DurationAndCount(pr *v1.PipelineRun, beforeCondition *apis.Co
 	status := "success"
 	if cond := pr.Status.GetCondition(apis.ConditionSucceeded); cond.Status == corev1.ConditionFalse {
 		status = "failed"
-		if cond.Reason == ReasonCancelled {
+		if cond.Reason == v1.PipelineRunReasonCancelled.String() {
 			status = "cancelled"
 		}
 	}

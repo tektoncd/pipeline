@@ -800,7 +800,7 @@ spec:
   pipelineRef:
     name: pipeline-not-exist
 `),
-		reason:             ReasonCouldntGetPipeline,
+		reason:             v1.PipelineRunReasonCouldntGetPipeline.String(),
 		hasNoDefaultLabels: true,
 		permanentError:     true,
 		wantEvents: []string{
@@ -817,7 +817,7 @@ spec:
   pipelineRef:
     name: pipeline-missing-tasks
 `),
-		reason:         ReasonCouldntGetTask,
+		reason:         v1.PipelineRunReasonCouldntGetTask.String(),
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
@@ -833,7 +833,7 @@ spec:
   pipelineRef:
     name: a-pipeline-without-params
 `),
-		reason:         ReasonFailedValidation,
+		reason:         v1.PipelineRunReasonFailedValidation.String(),
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
@@ -852,7 +852,7 @@ spec:
     - name: some-param
       value: stringval
 `),
-		reason:         ReasonParameterTypeMismatch,
+		reason:         v1.PipelineRunReasonParameterTypeMismatch.String(),
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
@@ -872,7 +872,7 @@ spec:
       value:
         key1: "a"
 `),
-		reason:         ReasonObjectParameterMissKeys,
+		reason:         v1.PipelineRunReasonObjectParameterMissKeys.String(),
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
@@ -893,7 +893,7 @@ spec:
         - "a"
         - "b"
     `),
-		reason:         ReasonParamArrayIndexingInvalid,
+		reason:         v1.PipelineRunReasonParamArrayIndexingInvalid.String(),
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
@@ -912,7 +912,7 @@ spec:
         taskRef:
           name: b@d-t@$k
 `),
-		reason:         ReasonFailedValidation,
+		reason:         v1.PipelineRunReasonFailedValidation.String(),
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
@@ -937,7 +937,7 @@ spec:
     - name: some-param
       value: stringval
 `, v1.ParamTypeArray)),
-		reason:         ReasonParameterTypeMismatch,
+		reason:         v1.PipelineRunReasonParameterTypeMismatch.String(),
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
@@ -959,7 +959,7 @@ spec:
         taskRef:
           name: a-task-that-needs-params
 `, v1.ParamTypeString)),
-		reason:         ReasonParameterMissing,
+		reason:         v1.PipelineRunReasonParameterMissing.String(),
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
@@ -979,7 +979,7 @@ spec:
           name: dag-task-1
         runAfter: [ dag-task-1 ]
 `),
-		reason:         ReasonInvalidGraph,
+		reason:         v1.PipelineRunReasonInvalidGraph.String(),
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
@@ -1005,7 +1005,7 @@ spec:
         taskRef:
           name: taskName
 `),
-		reason:         ReasonInvalidGraph,
+		reason:         v1.PipelineRunReasonInvalidGraph.String(),
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
@@ -1410,7 +1410,7 @@ func TestReconcileOnCancelledPipelineRun(t *testing.T) {
 		{
 			name:       "cancelled",
 			specStatus: v1.PipelineRunSpecStatusCancelled,
-			reason:     ReasonCancelled,
+			reason:     v1.PipelineRunReasonCancelled.String(),
 		},
 	}
 
@@ -2988,7 +2988,7 @@ spec:
 			}
 
 			// The PipelineRun should not be cancelled b/c we couldn't cancel the TaskRun
-			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, ReasonCouldntCancel)
+			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1.PipelineRunReasonCouldntCancel.String())
 			// The event here is "Normal" because in case we fail to cancel we leave the condition to unknown
 			// Further reconcile might converge then the status of the pipeline.
 			// See https://github.com/tektoncd/pipeline/issues/2647 for further details.
@@ -3106,7 +3106,7 @@ spec:
 	}
 
 	// The PipelineRun should not be timed out b/c we couldn't timeout the TaskRun
-	checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, ReasonCouldntTimeOut)
+	checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1.PipelineRunReasonCouldntTimeOut.String())
 	// The event here is "Normal" because in case we fail to timeout we leave the condition to unknown
 	// Further reconcile might converge then the status of the pipeline.
 	// See https://github.com/tektoncd/pipeline/issues/2647 for further details.
@@ -6833,7 +6833,7 @@ spec:
 			t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
 		}
 
-		if tc.wantFailed && reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != ReasonFailedValidation {
+		if tc.wantFailed && reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != v1.PipelineRunReasonFailedValidation.String() {
 			t.Errorf("Expected PipelineRun to have reason FailedValidation, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
 		}
 		if !tc.wantFailed && reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
@@ -7057,19 +7057,19 @@ spec:
 	}{
 		{
 			name:   "pipelinerun-param-invalid-result-variable",
-			reason: ReasonInvalidTaskResultReference,
+			reason: v1.PipelineRunReasonInvalidTaskResultReference.String(),
 		}, {
 			name:   "pipelinerun-pipeline-result-invalid-result-variable",
-			reason: ReasonInvalidTaskResultReference,
+			reason: v1.PipelineRunReasonInvalidTaskResultReference.String(),
 		}, {
 			name:   "pipelinerun-with-optional-workspace-validation",
-			reason: ReasonRequiredWorkspaceMarkedOptional,
+			reason: v1.PipelineRunReasonRequiredWorkspaceMarkedOptional.String(),
 		}, {
 			name:   "pipelinerun-matrix-param-invalid-type",
-			reason: ReasonInvalidMatrixParameterTypes,
+			reason: v1.PipelineRunReasonInvalidMatrixParameterTypes.String(),
 		}, {
 			name:   "pipelinerun-with-invalid-taskrunspecs",
-			reason: ReasonInvalidTaskRunSpec,
+			reason: v1.PipelineRunReasonInvalidTaskRunSpec.String(),
 		},
 	}
 	for _, tc := range testCases {
@@ -7116,7 +7116,7 @@ spec:
 
 	wantEvents := []string(nil)
 	pipelinerun, _ := prt.reconcileRun(pr.Namespace, pr.Name, wantEvents, false)
-	checkPipelineRunConditionStatusAndReason(t, pipelinerun, corev1.ConditionUnknown, ReasonResolvingPipelineRef)
+	checkPipelineRunConditionStatusAndReason(t, pipelinerun, corev1.ConditionUnknown, v1.PipelineRunReasonResolvingPipelineRef.String())
 
 	client := prt.TestAssets.Clients.ResolutionRequests.ResolutionV1beta1().ResolutionRequests("default")
 	resolutionrequests, err := client.List(prt.TestAssets.Ctx, metav1.ListOptions{})
@@ -7191,7 +7191,7 @@ spec:
 
 	wantEvents := []string(nil)
 	pipelinerun, _ := prt.reconcileRun(pr.Namespace, pr.Name, wantEvents, false)
-	checkPipelineRunConditionStatusAndReason(t, pipelinerun, corev1.ConditionUnknown, ReasonResolvingPipelineRef)
+	checkPipelineRunConditionStatusAndReason(t, pipelinerun, corev1.ConditionUnknown, v1.PipelineRunReasonResolvingPipelineRef.String())
 
 	client := prt.TestAssets.Clients.ResolutionRequests.ResolutionV1beta1().ResolutionRequests("default")
 	resolutionrequests, err := client.List(prt.TestAssets.Ctx, metav1.ListOptions{})
@@ -7217,7 +7217,7 @@ spec:
 
 	// Check that the pipeline fails with the appropriate reason.
 	updatedPipelineRun, _ := prt.reconcileRun("default", "pr", nil, true)
-	checkPipelineRunConditionStatusAndReason(t, updatedPipelineRun, corev1.ConditionFalse, ReasonCouldntGetPipeline)
+	checkPipelineRunConditionStatusAndReason(t, updatedPipelineRun, corev1.ConditionFalse, v1.PipelineRunReasonCouldntGetPipeline.String())
 }
 
 // TestReconcileWithFailingTaskResolver checks that a PipelineRun with a failing Resolver
@@ -7278,7 +7278,7 @@ spec:
 
 	// Check that the pipeline fails.
 	updatedPipelineRun, _ := prt.reconcileRun("default", "pr", nil, true)
-	checkPipelineRunConditionStatusAndReason(t, updatedPipelineRun, corev1.ConditionFalse, ReasonCouldntGetTask)
+	checkPipelineRunConditionStatusAndReason(t, updatedPipelineRun, corev1.ConditionFalse, v1.PipelineRunReasonCouldntGetTask.String())
 }
 
 // TestReconcileWithTaskResolver checks that a PipelineRun with a populated Resolver
@@ -13055,7 +13055,7 @@ spec:
 			defer prt.Cancel()
 
 			reconciledRun, _ := prt.reconcileRun("foo", "test-pipelinerun", []string{}, true)
-			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionFalse, ReasonResourceVerificationFailed)
+			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionFalse, v1.PipelineRunReasonResourceVerificationFailed.String())
 			gotVerificationCondition := reconciledRun.Status.GetCondition(trustedresources.ConditionTrustedResourcesVerified)
 			if gotVerificationCondition == nil || gotVerificationCondition.Status != corev1.ConditionFalse {
 				t.Errorf("Expected to have false condition, but had %v", gotVerificationCondition)
@@ -13390,7 +13390,7 @@ spec:
 			defer prt.Cancel()
 
 			reconciledRun, _ := prt.reconcileRun("foo", "test-pipelinerun", []string{}, true)
-			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionFalse, ReasonResourceVerificationFailed)
+			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionFalse, v1.PipelineRunReasonResourceVerificationFailed.String())
 			gotVerificationCondition := reconciledRun.Status.GetCondition(trustedresources.ConditionTrustedResourcesVerified)
 			if gotVerificationCondition == nil || gotVerificationCondition.Status != corev1.ConditionFalse {
 				t.Errorf("Expected to have false condition, but had %v", gotVerificationCondition)

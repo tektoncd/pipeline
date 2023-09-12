@@ -97,12 +97,12 @@ func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1.Pi
 
 	// If we successfully cancelled all the TaskRuns and Runs, we can consider the PipelineRun cancelled.
 	if len(errs) == 0 {
-		reason := ReasonCancelled
+		reason := v1.PipelineRunReasonCancelled
 
 		pr.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
-			Reason:  reason,
+			Reason:  reason.String(),
 			Message: fmt.Sprintf("PipelineRun %q was cancelled", pr.Name),
 		})
 		// update pr completed time
@@ -113,7 +113,7 @@ func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1.Pi
 		pr.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionUnknown,
-			Reason:  ReasonCouldntCancel,
+			Reason:  v1.PipelineRunReasonCouldntCancel.String(),
 			Message: fmt.Sprintf("PipelineRun %q was cancelled but had errors trying to cancel TaskRuns and/or Runs: %s", pr.Name, e),
 		})
 		return fmt.Errorf("error(s) from cancelling TaskRun(s) from PipelineRun %s: %s", pr.Name, e)
@@ -194,7 +194,7 @@ func gracefullyCancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger,
 		pr.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionUnknown,
-			Reason:  ReasonCouldntCancel,
+			Reason:  v1.PipelineRunReasonCouldntCancel.String(),
 			Message: fmt.Sprintf("PipelineRun %q was cancelled but had errors trying to cancel TaskRuns and/or Runs: %s", pr.Name, e),
 		})
 		return fmt.Errorf("error(s) from cancelling TaskRun(s) from PipelineRun %s: %s", pr.Name, e)

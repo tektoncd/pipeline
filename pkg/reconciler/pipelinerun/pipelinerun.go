@@ -75,67 +75,68 @@ import (
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
 
-const (
+// Aliased for backwards compatibility; do not add additional reasons here
+var (
 	// ReasonCouldntGetPipeline indicates that the reason for the failure status is that the
 	// associated Pipeline couldn't be retrieved
-	ReasonCouldntGetPipeline = "CouldntGetPipeline"
+	ReasonCouldntGetPipeline = v1.PipelineRunReasonCouldntGetPipeline.String()
 	// ReasonInvalidBindings indicates that the reason for the failure status is that the
 	// PipelineResources bound in the PipelineRun didn't match those declared in the Pipeline
-	ReasonInvalidBindings = "InvalidPipelineResourceBindings"
+	ReasonInvalidBindings = v1.PipelineRunReasonInvalidBindings.String()
 	// ReasonInvalidWorkspaceBinding indicates that a Pipeline expects a workspace but a
 	// PipelineRun has provided an invalid binding.
-	ReasonInvalidWorkspaceBinding = "InvalidWorkspaceBindings"
+	ReasonInvalidWorkspaceBinding = v1.PipelineRunReasonInvalidWorkspaceBinding.String()
 	// ReasonInvalidTaskRunSpec indicates that PipelineRun.Spec.TaskRunSpecs[].PipelineTaskName is defined with
 	// a not exist taskName in pipelineSpec.
-	ReasonInvalidTaskRunSpec = "InvalidTaskRunSpecs"
+	ReasonInvalidTaskRunSpec = v1.PipelineRunReasonInvalidTaskRunSpec.String()
 	// ReasonParameterTypeMismatch indicates that the reason for the failure status is that
 	// parameter(s) declared in the PipelineRun do not have the some declared type as the
 	// parameters(s) declared in the Pipeline that they are supposed to override.
-	ReasonParameterTypeMismatch = "ParameterTypeMismatch"
+	ReasonParameterTypeMismatch = v1.PipelineRunReasonParameterTypeMismatch.String()
 	// ReasonObjectParameterMissKeys indicates that the object param value provided from PipelineRun spec
 	// misses some keys required for the object param declared in Pipeline spec.
-	ReasonObjectParameterMissKeys = "ObjectParameterMissKeys"
+	ReasonObjectParameterMissKeys = v1.PipelineRunReasonObjectParameterMissKeys.String()
 	// ReasonParamArrayIndexingInvalid indicates that the use of param array indexing is not under correct api fields feature gate
 	// or the array is out of bound.
-	ReasonParamArrayIndexingInvalid = "ParamArrayIndexingInvalid"
+	ReasonParamArrayIndexingInvalid = v1.PipelineRunReasonParamArrayIndexingInvalid.String()
 	// ReasonCouldntGetTask indicates that the reason for the failure status is that the
 	// associated Pipeline's Tasks couldn't all be retrieved
-	ReasonCouldntGetTask = "CouldntGetTask"
+	ReasonCouldntGetTask = v1.PipelineRunReasonCouldntGetTask.String()
 	// ReasonParameterMissing indicates that the reason for the failure status is that the
 	// associated PipelineRun didn't provide all the required parameters
-	ReasonParameterMissing = "ParameterMissing"
+	ReasonParameterMissing = v1.PipelineRunReasonParameterMissing.String()
 	// ReasonFailedValidation indicates that the reason for failure status is
 	// that pipelinerun failed runtime validation
-	ReasonFailedValidation = "PipelineValidationFailed"
+	ReasonFailedValidation = v1.PipelineRunReasonFailedValidation.String()
 	// ReasonInvalidGraph indicates that the reason for the failure status is that the
 	// associated Pipeline is an invalid graph (a.k.a wrong order, cycle, …)
-	ReasonInvalidGraph = "PipelineInvalidGraph"
+	ReasonInvalidGraph = v1.PipelineRunReasonInvalidGraph.String()
 	// ReasonCancelled indicates that a PipelineRun was cancelled.
-	ReasonCancelled = pipelinerunmetrics.ReasonCancelled
+	ReasonCancelled = v1.PipelineRunReasonCancelled.String()
 	// ReasonPending indicates that a PipelineRun is pending.
-	ReasonPending = "PipelineRunPending"
+	ReasonPending = v1.PipelineRunReasonPending.String()
 	// ReasonCouldntCancel indicates that a PipelineRun was cancelled but attempting to update
 	// all of the running TaskRuns as cancelled failed.
-	ReasonCouldntCancel = "PipelineRunCouldntCancel"
+	ReasonCouldntCancel = v1.PipelineRunReasonCouldntCancel.String()
 	// ReasonCouldntTimeOut indicates that a PipelineRun was timed out but attempting to update
 	// all of the running TaskRuns as timed out failed.
-	ReasonCouldntTimeOut = "PipelineRunCouldntTimeOut"
+	ReasonCouldntTimeOut = v1.PipelineRunReasonCouldntTimeOut.String()
 	// ReasonInvalidMatrixParameterTypes indicates a matrix contains invalid parameter types
-	ReasonInvalidMatrixParameterTypes = "InvalidMatrixParameterTypes"
+	ReasonInvalidMatrixParameterTypes = v1.PipelineRunReasonInvalidMatrixParameterTypes.String()
 	// ReasonInvalidTaskResultReference indicates a task result was declared
 	// but was not initialized by that task
-	ReasonInvalidTaskResultReference = "InvalidTaskResultReference"
+	ReasonInvalidTaskResultReference = v1.PipelineRunReasonInvalidTaskResultReference.String()
 	// ReasonRequiredWorkspaceMarkedOptional indicates an optional workspace
 	// has been passed to a Task that is expecting a non-optional workspace
-	ReasonRequiredWorkspaceMarkedOptional = "RequiredWorkspaceMarkedOptional"
+	ReasonRequiredWorkspaceMarkedOptional = v1.PipelineRunReasonRequiredWorkspaceMarkedOptional.String()
 	// ReasonResolvingPipelineRef indicates that the PipelineRun is waiting for
 	// its pipelineRef to be asynchronously resolved.
-	ReasonResolvingPipelineRef = "ResolvingPipelineRef"
+	ReasonResolvingPipelineRef = v1.PipelineRunReasonResolvingPipelineRef.String()
 	// ReasonResourceVerificationFailed indicates that the pipeline fails the trusted resource verification,
 	// it could be the content has changed, signature is invalid or public key is invalid
-	ReasonResourceVerificationFailed = "ResourceVerificationFailed"
+	ReasonResourceVerificationFailed = v1.PipelineRunReasonResourceVerificationFailed.String()
 	// ReasonCreateRunFailed indicates that the pipeline fails to create the taskrun or other run resources
-	ReasonCreateRunFailed = "CreateRunFailed"
+	ReasonCreateRunFailed = v1.PipelineRunReasonCreateRunFailed.String()
 )
 
 // constants used as kind descriptors for various types of runs; these constants
@@ -368,11 +369,11 @@ func (c *Reconciler) resolvePipelineState(
 			}
 			var nfErr *resources.TaskNotFoundError
 			if errors.As(err, &nfErr) {
-				pr.Status.MarkFailed(ReasonCouldntGetTask,
+				pr.Status.MarkFailed(v1.PipelineRunReasonCouldntGetTask.String(),
 					"Pipeline %s/%s can't be Run; it contains Tasks that don't exist: %s",
 					pipelineMeta.Namespace, pipelineMeta.Name, nfErr)
 			} else {
-				pr.Status.MarkFailed(ReasonFailedValidation,
+				pr.Status.MarkFailed(v1.PipelineRunReasonFailedValidation.String(),
 					"PipelineRun %s/%s can't be Run; couldn't resolve all references: %s",
 					pipelineMeta.Namespace, pr.Name, err)
 			}
@@ -382,7 +383,7 @@ func (c *Reconciler) resolvePipelineState(
 			cond, err := conditionFromVerificationResult(resolvedTask.ResolvedTask.VerificationResult, pr, task.Name)
 			pr.Status.SetCondition(cond)
 			if err != nil {
-				pr.Status.MarkFailed(ReasonResourceVerificationFailed, err.Error())
+				pr.Status.MarkFailed(v1.PipelineRunReasonResourceVerificationFailed.String(), err.Error())
 				return nil, controller.NewPermanentError(err)
 			}
 		}
@@ -400,7 +401,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 
 	// When pipeline run is pending, return to avoid creating the task
 	if pr.IsPending() {
-		pr.Status.MarkRunning(ReasonPending, fmt.Sprintf("PipelineRun %q is pending", pr.Name))
+		pr.Status.MarkRunning(v1.PipelineRunReasonPending.String(), fmt.Sprintf("PipelineRun %q is pending", pr.Name))
 		return nil
 	}
 
@@ -408,16 +409,16 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	switch {
 	case errors.Is(err, remote.ErrRequestInProgress):
 		message := fmt.Sprintf("PipelineRun %s/%s awaiting remote resource", pr.Namespace, pr.Name)
-		pr.Status.MarkRunning(ReasonResolvingPipelineRef, message)
+		pr.Status.MarkRunning(v1.PipelineRunReasonResolvingPipelineRef.String(), message)
 		return nil
 	case errors.Is(err, apiserver.ErrReferencedObjectValidationFailed), errors.Is(err, apiserver.ErrCouldntValidateObjectPermanent):
-		pr.Status.MarkFailed(ReasonFailedValidation, err.Error())
+		pr.Status.MarkFailed(v1.PipelineRunReasonFailedValidation.String(), err.Error())
 		return controller.NewPermanentError(err)
 	case errors.Is(err, apiserver.ErrCouldntValidateObjectRetryable):
 		return err
 	case err != nil:
 		logger.Errorf("Failed to determine Pipeline spec to use for pipelinerun %s: %v", pr.Name, err)
-		pr.Status.MarkFailed(ReasonCouldntGetPipeline,
+		pr.Status.MarkFailed(v1.PipelineRunReasonCouldntGetPipeline.String(),
 			"Error retrieving pipeline for pipelinerun %s/%s: %s",
 			pr.Namespace, pr.Name, err)
 		return controller.NewPermanentError(err)
@@ -432,7 +433,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		cond, err := conditionFromVerificationResult(pipelineMeta.VerificationResult, pr, pipelineMeta.Name)
 		pr.Status.SetCondition(cond)
 		if err != nil {
-			pr.Status.MarkFailed(ReasonResourceVerificationFailed, err.Error())
+			pr.Status.MarkFailed(v1.PipelineRunReasonResourceVerificationFailed.String(), err.Error())
 			return controller.NewPermanentError(err)
 		}
 	}
@@ -440,7 +441,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	d, err := dag.Build(v1.PipelineTaskList(pipelineSpec.Tasks), v1.PipelineTaskList(pipelineSpec.Tasks).Deps())
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
-		pr.Status.MarkFailed(ReasonInvalidGraph,
+		pr.Status.MarkFailed(v1.PipelineRunReasonInvalidGraph.String(),
 			"PipelineRun %s/%s's Pipeline DAG is invalid: %s",
 			pr.Namespace, pr.Name, err)
 		return controller.NewPermanentError(err)
@@ -453,7 +454,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	dfinally, err := dag.Build(v1.PipelineTaskList(pipelineSpec.Finally), map[string][]string{})
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
-		pr.Status.MarkFailed(ReasonInvalidGraph,
+		pr.Status.MarkFailed(v1.PipelineRunReasonInvalidGraph.String(),
 			"PipelineRun %s's Pipeline DAG is invalid for finally clause: %s",
 			pr.Namespace, pr.Name, err)
 		return controller.NewPermanentError(err)
@@ -461,7 +462,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 
 	if err := pipelineSpec.Validate(ctx); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
-		pr.Status.MarkFailed(ReasonFailedValidation,
+		pr.Status.MarkFailed(v1.PipelineRunReasonFailedValidation.String(),
 			"Pipeline %s/%s can't be Run; it has an invalid spec: %s",
 			pipelineMeta.Namespace, pipelineMeta.Name, err)
 		return controller.NewPermanentError(err)
@@ -470,7 +471,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	// Ensure that the PipelineRun provides all the parameters required by the Pipeline
 	if err := resources.ValidateRequiredParametersProvided(&pipelineSpec.Params, &pr.Spec.Params); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
-		pr.Status.MarkFailed(ReasonParameterMissing,
+		pr.Status.MarkFailed(v1.PipelineRunReasonParameterMissing.String(),
 			"PipelineRun %s parameters is missing some parameters required by Pipeline %s's parameters: %s",
 			pr.Namespace, pr.Name, err)
 		return controller.NewPermanentError(err)
@@ -480,7 +481,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	// Weird substitution issues can occur if this is not validated (ApplyParameters() does not verify type).
 	if err = resources.ValidateParamTypesMatching(pipelineSpec, pr); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
-		pr.Status.MarkFailed(ReasonParameterTypeMismatch,
+		pr.Status.MarkFailed(v1.PipelineRunReasonParameterTypeMismatch.String(),
 			"PipelineRun %s/%s parameters have mismatching types with Pipeline %s/%s's parameters: %s",
 			pr.Namespace, pr.Name, pr.Namespace, pipelineMeta.Name, err)
 		return controller.NewPermanentError(err)
@@ -489,7 +490,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	// Ensure that the keys of an object param declared in PipelineSpec are not missed in the PipelineRunSpec
 	if err = resources.ValidateObjectParamRequiredKeys(pipelineSpec.Params, pr.Spec.Params); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
-		pr.Status.MarkFailed(ReasonObjectParameterMissKeys,
+		pr.Status.MarkFailed(v1.PipelineRunReasonObjectParameterMissKeys.String(),
 			"PipelineRun %s/%s parameters is missing object keys required by Pipeline %s/%s's parameters: %s",
 			pr.Namespace, pr.Name, pr.Namespace, pipelineMeta.Name, err)
 		return controller.NewPermanentError(err)
@@ -498,7 +499,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	// Ensure that the array reference is not out of bound
 	if err := resources.ValidateParamArrayIndex(pipelineSpec, pr.Spec.Params); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
-		pr.Status.MarkFailed(ReasonParamArrayIndexingInvalid,
+		pr.Status.MarkFailed(v1.PipelineRunReasonParamArrayIndexingInvalid.String(),
 			"PipelineRun %s/%s failed validation: failed to validate Pipeline %s/%s's parameter which has an invalid index while referring to an array: %s",
 			pr.Namespace, pr.Name, pr.Namespace, pipelineMeta.Name, err)
 		return controller.NewPermanentError(err)
@@ -506,7 +507,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 
 	// Ensure that the workspaces expected by the Pipeline are provided by the PipelineRun.
 	if err := resources.ValidateWorkspaceBindings(pipelineSpec, pr); err != nil {
-		pr.Status.MarkFailed(ReasonInvalidWorkspaceBinding,
+		pr.Status.MarkFailed(v1.PipelineRunReasonInvalidWorkspaceBinding.String(),
 			"PipelineRun %s/%s doesn't bind Pipeline %s/%s's Workspaces correctly: %s",
 			pr.Namespace, pr.Name, pr.Namespace, pipelineMeta.Name, err)
 		return controller.NewPermanentError(err)
@@ -514,7 +515,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 
 	// Ensure that the TaskRunSpecs defined are correct.
 	if err := resources.ValidateTaskRunSpecs(pipelineSpec, pr); err != nil {
-		pr.Status.MarkFailed(ReasonInvalidTaskRunSpec,
+		pr.Status.MarkFailed(v1.PipelineRunReasonInvalidTaskRunSpec.String(),
 			"PipelineRun %s/%s doesn't define taskRunSpecs correctly: %s",
 			pr.Namespace, pr.Name, err)
 		return controller.NewPermanentError(err)
@@ -580,7 +581,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 			err := taskrun.ValidateResolvedTask(ctx, rpt.PipelineTask.Params, rpt.PipelineTask.Matrix, rpt.ResolvedTask)
 			if err != nil {
 				logger.Errorf("Failed to validate pipelinerun %q with error %v", pr.Name, err)
-				pr.Status.MarkFailed(ReasonFailedValidation, err.Error())
+				pr.Status.MarkFailed(v1.PipelineRunReasonFailedValidation.String(), err.Error())
 				return controller.NewPermanentError(err)
 			}
 		}
@@ -599,19 +600,19 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	if pipelineRunFacts.State.IsBeforeFirstTaskRun() {
 		if err := resources.ValidatePipelineTaskResults(pipelineRunFacts.State); err != nil {
 			logger.Errorf("Failed to resolve task result reference for %q with error %v", pr.Name, err)
-			pr.Status.MarkFailed(ReasonInvalidTaskResultReference, err.Error())
+			pr.Status.MarkFailed(v1.PipelineRunReasonInvalidTaskResultReference.String(), err.Error())
 			return controller.NewPermanentError(err)
 		}
 
 		if err := resources.ValidatePipelineResults(pipelineSpec, pipelineRunFacts.State); err != nil {
 			logger.Errorf("Failed to resolve task result reference for %q with error %v", pr.Name, err)
-			pr.Status.MarkFailed(ReasonInvalidTaskResultReference, err.Error())
+			pr.Status.MarkFailed(v1.PipelineRunReasonInvalidTaskResultReference.String(), err.Error())
 			return controller.NewPermanentError(err)
 		}
 
 		if err := resources.ValidateOptionalWorkspaces(pipelineSpec.Workspaces, pipelineRunFacts.State); err != nil {
 			logger.Errorf("Optional workspace not supported by task: %v", err)
-			pr.Status.MarkFailed(ReasonRequiredWorkspaceMarkedOptional, err.Error())
+			pr.Status.MarkFailed(v1.PipelineRunReasonRequiredWorkspaceMarkedOptional.String(), err.Error())
 			return controller.NewPermanentError(err)
 		}
 
@@ -706,7 +707,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		pr.Status.Results, err = resources.ApplyTaskResultsToPipelineResults(ctx, pipelineSpec.Results,
 			pipelineRunFacts.State.GetTaskRunsResults(), pipelineRunFacts.State.GetRunsResults(), pipelineRunFacts.GetPipelineTaskStatus())
 		if err != nil {
-			pr.Status.MarkFailed(ReasonFailedValidation, err.Error())
+			pr.Status.MarkFailed(v1.PipelineRunReasonFailedValidation.String(), err.Error())
 			return err
 		}
 	}
@@ -736,7 +737,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 	err = resources.CheckMissingResultReferences(pipelineRunFacts.State, nextRpts)
 	if err != nil {
 		logger.Infof("Failed to resolve task result reference for %q with error %v", pr.Name, err)
-		pr.Status.MarkFailed(ReasonInvalidTaskResultReference, err.Error())
+		pr.Status.MarkFailed(v1.PipelineRunReasonInvalidTaskResultReference.String(), err.Error())
 		return controller.NewPermanentError(err)
 	}
 
@@ -772,7 +773,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 		if rpt.PipelineTask.IsMatrixed() {
 			if err := resources.ValidateParameterTypesInMatrix(pipelineRunFacts.State); err != nil {
 				logger.Errorf("Failed to validate matrix %q with error %v", pr.Name, err)
-				pr.Status.MarkFailed(ReasonInvalidMatrixParameterTypes, err.Error())
+				pr.Status.MarkFailed(v1.PipelineRunReasonInvalidMatrixParameterTypes.String(), err.Error())
 				return controller.NewPermanentError(err)
 			}
 		}
@@ -895,12 +896,12 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 // handleRunCreationError marks the PipelineRun as failed and returns a permanent error if the run creation error is not retryable
 func (c *Reconciler) handleRunCreationError(ctx context.Context, pr *v1.PipelineRun, err error) error {
 	if controller.IsPermanentError(err) {
-		pr.Status.MarkFailed(ReasonCreateRunFailed, err.Error())
+		pr.Status.MarkFailed(v1.PipelineRunReasonCreateRunFailed.String(), err.Error())
 		return err
 	}
 	// This is not a complete list of permanent errors. Any permanent error with TaskRun/CustomRun creation can be added here.
 	if apierrors.IsInvalid(err) || apierrors.IsBadRequest(err) {
-		pr.Status.MarkFailed(ReasonCreateRunFailed, err.Error())
+		pr.Status.MarkFailed(v1.PipelineRunReasonCreateRunFailed.String(), err.Error())
 		return controller.NewPermanentError(err)
 	}
 	return err

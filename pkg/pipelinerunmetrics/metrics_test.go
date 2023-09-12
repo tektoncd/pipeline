@@ -224,7 +224,7 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionFalse,
-						Reason: ReasonCancelled,
+						Reason: v1.PipelineRunReasonCancelled.String(),
 					}},
 				},
 				PipelineRunStatusFields: v1.PipelineRunStatusFields{
