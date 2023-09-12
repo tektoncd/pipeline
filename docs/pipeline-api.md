@@ -1944,11 +1944,86 @@ and no new Tasks will be scheduled by the controller, but final tasks are now ru
 </tr><tr><td><p>&#34;Completed&#34;</p></td>
 <td><p>PipelineRunReasonCompleted is the reason set when the PipelineRun completed successfully with one or more skipped Tasks</p>
 </td>
+</tr><tr><td><p>&#34;PipelineRunCouldntCancel&#34;</p></td>
+<td><p>ReasonCouldntCancel indicates that a PipelineRun was cancelled but attempting to update
+all of the running TaskRuns as cancelled failed.</p>
+</td>
+</tr><tr><td><p>&#34;CouldntGetPipeline&#34;</p></td>
+<td><p>ReasonCouldntGetPipeline indicates that the reason for the failure status is that the
+associated Pipeline couldn&rsquo;t be retrieved</p>
+</td>
+</tr><tr><td><p>&#34;CouldntGetTask&#34;</p></td>
+<td><p>ReasonCouldntGetTask indicates that the reason for the failure status is that the
+associated Pipeline&rsquo;s Tasks couldn&rsquo;t all be retrieved</p>
+</td>
+</tr><tr><td><p>&#34;PipelineRunCouldntTimeOut&#34;</p></td>
+<td><p>ReasonCouldntTimeOut indicates that a PipelineRun was timed out but attempting to update
+all of the running TaskRuns as timed out failed.</p>
+</td>
+</tr><tr><td><p>&#34;CreateRunFailed&#34;</p></td>
+<td><p>ReasonCreateRunFailed indicates that the pipeline fails to create the taskrun or other run resources</p>
+</td>
 </tr><tr><td><p>&#34;Failed&#34;</p></td>
 <td><p>PipelineRunReasonFailed is the reason set when the PipelineRun completed with a failure</p>
 </td>
+</tr><tr><td><p>&#34;PipelineValidationFailed&#34;</p></td>
+<td><p>ReasonFailedValidation indicates that the reason for failure status is
+that pipelinerun failed runtime validation</p>
+</td>
+</tr><tr><td><p>&#34;InvalidPipelineResourceBindings&#34;</p></td>
+<td><p>ReasonInvalidBindings indicates that the reason for the failure status is that the
+PipelineResources bound in the PipelineRun didn&rsquo;t match those declared in the Pipeline</p>
+</td>
+</tr><tr><td><p>&#34;PipelineInvalidGraph&#34;</p></td>
+<td><p>ReasonInvalidGraph indicates that the reason for the failure status is that the
+associated Pipeline is an invalid graph (a.k.a wrong order, cycle, …)</p>
+</td>
+</tr><tr><td><p>&#34;InvalidMatrixParameterTypes&#34;</p></td>
+<td><p>ReasonInvalidMatrixParameterTypes indicates a matrix contains invalid parameter types</p>
+</td>
+</tr><tr><td><p>&#34;InvalidTaskResultReference&#34;</p></td>
+<td><p>ReasonInvalidTaskResultReference indicates a task result was declared
+but was not initialized by that task</p>
+</td>
+</tr><tr><td><p>&#34;InvalidTaskRunSpecs&#34;</p></td>
+<td><p>ReasonInvalidTaskRunSpec indicates that PipelineRun.Spec.TaskRunSpecs[].PipelineTaskName is defined with
+a not exist taskName in pipelineSpec.</p>
+</td>
+</tr><tr><td><p>&#34;InvalidWorkspaceBindings&#34;</p></td>
+<td><p>ReasonInvalidWorkspaceBinding indicates that a Pipeline expects a workspace but a
+PipelineRun has provided an invalid binding.</p>
+</td>
+</tr><tr><td><p>&#34;ObjectParameterMissKeys&#34;</p></td>
+<td><p>ReasonObjectParameterMissKeys indicates that the object param value provided from PipelineRun spec
+misses some keys required for the object param declared in Pipeline spec.</p>
+</td>
+</tr><tr><td><p>&#34;ParamArrayIndexingInvalid&#34;</p></td>
+<td><p>ReasonParamArrayIndexingInvalid indicates that the use of param array indexing is not under correct api fields feature gate
+or the array is out of bound.</p>
+</td>
+</tr><tr><td><p>&#34;ParameterMissing&#34;</p></td>
+<td><p>ReasonParameterMissing indicates that the reason for the failure status is that the
+associated PipelineRun didn&rsquo;t provide all the required parameters</p>
+</td>
+</tr><tr><td><p>&#34;ParameterTypeMismatch&#34;</p></td>
+<td><p>ReasonParameterTypeMismatch indicates that the reason for the failure status is that
+parameter(s) declared in the PipelineRun do not have the some declared type as the
+parameters(s) declared in the Pipeline that they are supposed to override.</p>
+</td>
 </tr><tr><td><p>&#34;PipelineRunPending&#34;</p></td>
 <td><p>PipelineRunReasonPending is the reason set when the PipelineRun is in the pending state</p>
+</td>
+</tr><tr><td><p>&#34;RequiredWorkspaceMarkedOptional&#34;</p></td>
+<td><p>ReasonRequiredWorkspaceMarkedOptional indicates an optional workspace
+has been passed to a Task that is expecting a non-optional workspace</p>
+</td>
+</tr><tr><td><p>&#34;ResolvingPipelineRef&#34;</p></td>
+<td><p>ReasonResolvingPipelineRef indicates that the PipelineRun is waiting for
+its pipelineRef to be asynchronously resolved.</p>
+</td>
+</tr><tr><td><p>&#34;ResourceVerificationFailed&#34;</p></td>
+<td><p>ReasonResourceVerificationFailed indicates that the pipeline fails the trusted resource verification,
+it could be the content has changed, signature is invalid or public key is invalid</p>
 </td>
 </tr><tr><td><p>&#34;Running&#34;</p></td>
 <td><p>PipelineRunReasonRunning is the reason set when the PipelineRun is running</p>
