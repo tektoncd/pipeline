@@ -536,14 +536,26 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 		// TODO(afrittoli) The injected steps should be added to the task spec copied in the
 		// task status. We should ensure that tools use that to visualise taskruns
 		// TODO(afrittoli) Only supports linux for now
-		artifactStep, err := artifacts.GetArtifactStep(ts.Workspaces, ts.Params)
+		artifactDownloadStep, err := artifacts.GetDownloadArtifactStep(ts.Workspaces, ts.Params)
 		if err != nil {
 			return controller.NewPermanentError(err)
 		}
-
-		// Prepend the artifactStep, if any, so it runs first
-		if artifactStep != nil {
-			ts.Steps = append([]v1.Step{*artifactStep}, ts.Steps...)
+		// Prepend the artifactDownloadStep, if any, so it runs first
+		if artifactDownloadStep != nil {
+			ts.Steps = append([]v1.Step{*artifactDownloadStep}, ts.Steps...)
+		}
+		// Artifact upload is injected as "step" and not directly as a container into the Pod
+		// to keep it more visible and easily debuggable for users.
+		// TODO(afrittoli) The injected steps should be added to the task spec copied in the
+		// task status. We should ensure that tools use that to visualise taskruns
+		// TODO(afrittoli) Only supports linux for now
+		artifactUploadStep, err := artifacts.GetUploadArtifactStep(ts.Workspaces, ts.Results)
+		if err != nil {
+			return controller.NewPermanentError(err)
+		}
+		// Append the artifactUploadStep, if any, so it runs last
+		if artifactUploadStep != nil {
+			ts.Steps = append(ts.Steps, *artifactUploadStep)
 		}
 	}
 

@@ -284,7 +284,7 @@ func mismatchedTypesResults(tr *v1.TaskRun, specResults []v1.TaskResult) map[str
 	// TODO(#6097): Validate if the emitted results are defined in taskspec
 	for _, trr := range tr.Status.Results {
 		needed, ok := neededTypes[trr.Name]
-		if ok && needed != string(trr.Type) {
+		if ok && needed != string(trr.Type) && !(needed == "artifact" && string(trr.Type) == "object") {
 			mismatchedTypes[trr.Name] = fmt.Sprintf("task result is expected to be \"%v\" type but was initialized to a different type \"%v\"", needed, trr.Type)
 		} else {
 			filteredResults = append(filteredResults, trr)
