@@ -341,11 +341,16 @@ Features currently in "beta" are:
 
 ## Enabling larger results using sidecar logs
 
-**Note**: The maximum size of a Task's results is limited by the container termination message feature of Kubernetes, as results are passed back to the controller via this mechanism. At present, the limit is per task is “4096 bytes”. All results produced by the task share this upper limit.
+**Note**: The maximum size of a Task's results is limited by the container termination message feature of Kubernetes,
+as results are passed back to the controller via this mechanism. At present, the limit is per task is “4096 bytes”. All
+results produced by the task share this upper limit.
 
-To exceed this limit of 4096 bytes, you can enable larger results using sidecar logs. By enabling this feature, you will have a configurable limit (with a default of 4096 bytes) per result with no restriction on the number of results. The results are still stored in the taskrun crd so they should not exceed the 1.5MB CRD size limit.
+To exceed this limit of 4096 bytes, you can enable larger results using sidecar logs. By enabling this feature, you will
+have a configurable limit (with a default of 4096 bytes) per result with no restriction on the number of results. The
+results are still stored in the taskRun CRD, so they should not exceed the 1.5MB CRD size limit.
 
-**Note**: to enable this feature, you need to grant `get` access to all `pods/log` to the `Tekton pipeline controller`. This means that the tekton pipeline controller has the ability to access the pod logs.
+**Note**: to enable this feature, you need to grant `get` access to all `pods/log` to the `tekton-pipelines-controller`.
+This means that the tekton pipeline controller has the ability to access the pod logs.
 
 1. Create a cluster role and rolebinding by applying the following spec to provide log access to `tekton-pipelines-controller`.
 
@@ -353,13 +358,16 @@ To exceed this limit of 4096 bytes, you can enable larger results using sidecar 
 kubectl apply -f optional_config/enable-log-access-to-controller/
 ```
 
-2. Set the `results-from` feature flag to use sidecar logs by setting `results-from: sidecar-logs` in the [configMap](#customizing-the-pipelines-controller-behavior).
+2. Set the `results-from` feature flag to use sidecar logs by setting `results-from: sidecar-logs` in the
+[configMap](#customizing-the-pipelines-controller-behavior).
 
 ```
 kubectl patch cm feature-flags -n tekton-pipelines -p '{"data":{"results-from":"sidecar-logs"}}'
 ```
 
-3. If you want the size per result to be something other than 4096 bytes, you can set the `max-result-size` feature flag in bytes by setting `max-result-size: 8192(whatever you need here)`. **Note:** The value you can set here cannot exceed the size of the CRD limit of 1.5 MB.
+3. If you want the size per result to be something other than 4096 bytes, you can set the `max-result-size` feature flag
+in bytes by setting `max-result-size: 8192(whatever you need here)`. **Note:** The value you can set here cannot exceed
+the size of the CRD limit of 1.5 MB.
 
 ```
 kubectl patch cm feature-flags -n tekton-pipelines -p '{"data":{"max-result-size":"<VALUE-IN-BYTES>"}}'
