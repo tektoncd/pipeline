@@ -221,7 +221,7 @@ as follows.
     ```yaml
     kubectl create secret generic ${SECRET_NAME} \
     --from-file=.dockerconfigjson=<path/to/.docker/config.json> \
-    --type=kubernetes.io/dockerconfigjson
+    --type=kubernetes.io/dockerconfigjson \
     --namespace=tekton-pipelines
     ```
    See [Configuring authentication for Docker](./docs/auth.md#configuring-authentication-for-docker)
