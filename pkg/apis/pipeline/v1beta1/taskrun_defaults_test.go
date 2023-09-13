@@ -435,7 +435,7 @@ func TestTaskRunDefaultingOnCreate(t *testing.T) {
 		want: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels:      map[string]string{"app.kubernetes.io/managed-by": "tekton-pipelines"},
-				Annotations: map[string]string{"tekton.dev/foo": "bar", "foo": "bar"},
+				Annotations: map[string]string{"results.tekton.dev/hello": "world", "tekton.dev/foo": "bar", "foo": "bar"},
 			},
 			Spec: v1beta1.TaskRunSpec{
 				TaskRef: &v1beta1.TaskRef{

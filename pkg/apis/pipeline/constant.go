@@ -18,5 +18,5 @@ package pipeline
 
 const (
 	// TektonReservedAnnotationExpr is the expression we use to filter out reserved key in annotation
-	TektonReservedAnnotationExpr = "(results.tekton.dev|chains.tekton.dev)/.*"
+	TektonReservedAnnotationExpr = "(chains.tekton.dev)/.*"
 )
