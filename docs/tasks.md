@@ -944,13 +944,26 @@ As a general rule-of-thumb, if a result needs to be larger than a kilobyte, you 
 
 #### Larger `Results` using sidecar logs
 
-This is an experimental feature. The `results-from` feature flag must be set to `"sidecar-logs"`](./install.md#enabling-larger-results-using-sidecar-logs).
+This is an alpha feature which is guarded behind its own feature flag.  The `results-from` feature flag must be set to
+[`"sidecar-logs"`](./install.md#enabling-larger-results-using-sidecar-logs) to enable larger results using sidecar logs.
 
-Instead of using termination messages to store results, the taskrun controller injects a sidecar container which monitors the results of all the steps. The sidecar mounts the volume where results of all the steps are stored. As soon as it finds a new result, it logs it to std out. The controller has access to the logs of the sidecar container (Caution: we need you to enable access to [kubernetes pod/logs](./install.md#enabling-larger-results-using-sidecar-logs).
+Instead of using termination messages to store results, the taskrun controller injects a sidecar container which monitors
+the results of all the steps. The sidecar mounts the volume where results of all the steps are stored. As soon as it
+finds a new result, it logs it to std out. The controller has access to the logs of the sidecar container.
+**CAUTION**: we need you to enable access to [kubernetes pod/logs](./install.md#enabling-larger-results-using-sidecar-logs).
 
-This feature allows users to store up to 4 KB per result by default. Because we are not limited by the size of the termination messages, users can have as many results as they require (or until the CRD reaches its limit). If the size of a result exceeds this limit, then the TaskRun will be placed into a failed state with the following message: `Result exceeded the maximum allowed limit.`
+This feature allows users to store up to 4 KB per result by default. Because we are not limited by the size of the
+termination messages, users can have as many results as they require (or until the CRD reaches its limit). If the size
+of a result exceeds this limit, then the TaskRun will be placed into a failed state with the following message: `Result
+exceeded the maximum allowed limit.`
 
-**Note**: If you require even larger results, you can specify a different upper limit per result by setting `max-result-size` feature flag to your desired size in bytes ([see instructions](./install.md#enabling-larger-results-using-sidecar-logs)). **CAUTION**: the larger you make the size, more likely will the CRD reach its max limit enforced by the `etcd` server leading to bad user experience.
+**Note**: If you require even larger results, you can specify a different upper limit per result by setting
+`max-result-size` feature flag to your desired size in bytes ([see instructions](./install.md#enabling-larger-results-using-sidecar-logs)).
+**CAUTION**: the larger you make the size, more likely will the CRD reach its max limit enforced by the `etcd` server
+leading to bad user experience.
+
+Refer to the detailed instructions listed in [additional config](additional-configs.md#enabling-larger-results-using-sidecar-logs)
+to learn how to enable this feature.
 
 ### Specifying `Volumes`
 
