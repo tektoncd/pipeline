@@ -420,7 +420,7 @@ func TestPipelineRunDefaultingOnCreate(t *testing.T) {
 		},
 		want: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
-				Annotations: map[string]string{"tekton.dev/foo": "bar", "foo": "bar"},
+				Annotations: map[string]string{"results.tekton.dev/hello": "world", "tekton.dev/foo": "bar", "foo": "bar"},
 			},
 			Spec: v1beta1.PipelineRunSpec{
 				ServiceAccountName: config.DefaultServiceAccountValue,

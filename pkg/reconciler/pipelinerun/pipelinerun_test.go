@@ -12622,7 +12622,6 @@ func TestReconcile_FilterLabels(t *testing.T) {
   namespace: foo
   annotations:
     chains.tekton.dev/signed: "true"
-    results.tekton.dev/foo: "bar"
     tekton.dev/foo: "bar"
     foo: bar
 spec:
