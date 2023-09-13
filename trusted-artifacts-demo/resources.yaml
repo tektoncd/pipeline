@@ -1,0 +1,207 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: producer
+spec:
+  workspaces:
+  - name: output
+  params:
+    - name: targetPath
+      description: Path in the workspace
+  steps:
+  - name: produce
+    image: bash:5.2
+    env:
+    - name: TARGET_PATH
+      value: $(workspaces.output.path)/$(params.targetPath)
+    script: |
+      #!/usr/bin/env bash
+      set -e
+
+      # Make sure the target folder is not already used
+      if [ -d ${TARGET_PATH} ]; then
+        echo "💥 ERROR Folder aready exist"
+      fi
+
+      # Create the new folder and produce content in it
+      mkdir -p ${TARGET_PATH}
+      cat > "${TARGET_PATH}/message.txt" << EOF 
+      オープンソースを愛してます。
+      I ❤️ Open Source
+      EOF
+
+      echo -e "✉️  Sent message @ ${TARGET_PATH}/message.txt:\n"
+      cat "${TARGET_PATH}/message.txt"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: artifact-producer
+spec:
+  workspaces:
+  - name: output
+    artifact: true
+  results:
+  - name: message
+    type: artifact
+    description: An important message to deliver
+  steps:
+  - name: produce
+    image: bash:5.2
+    env:
+    - name: TARGET_PATH
+      value: $(results.message.data.path)
+    script: |
+      #!/usr/bin/env bash
+      set -e
+
+      # Create the new folder and produce content in it
+      mkdir -p ${TARGET_PATH}
+      cat <<EOF > ${TARGET_PATH}/message.txt
+      オープンソースを愛してます。
+      I ❤️ Open Source
+      EOF
+
+      echo -e "✉️  Sent message @ ${TARGET_PATH}/message.txt:\n"
+      cat "${TARGET_PATH}/message.txt"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: consumer
+spec:
+  workspaces:
+  - name: input
+  params:
+  - name: sourcePath
+    description: Path in the workspace
+  steps:
+  - name: consume
+    image: bash:5.2
+    env:
+    - name: SOURCE_PATH
+      value: $(workspaces.input.path)/$(params.sourcePath)
+    script: |
+      #!/usr/bin/env bash
+      set -e
+
+      # Make sure the source folder exists
+      if [ ! -d ${SOURCE_PATH} ]; then
+        echo "💥 ERROR Folder not found"
+      fi
+
+      # Read the message
+      echo -e "✉️  Received a message @ ${SOURCE_PATH}/message.txt:\n"
+      cat ${SOURCE_PATH}/message.txt
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: artifact-consumer
+spec:
+  workspaces:
+  - name: input
+    artifact: true
+  params:
+  - name: message
+    type: artifact
+  steps:
+  - name: consume
+    image: bash:5.2
+    env:
+    - name: SOURCE_PATH
+      value: /tekton/artifacts/message # $(params.message.data.path)
+    script: |
+      #!/usr/bin/env bash
+      set -e
+
+      # Read the message
+      echo -e "✉️  Received a message @ ${SOURCE_PATH}/message.txt:\n"
+      cat ${SOURCE_PATH}/message.txt
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: man-in-the-middle
+spec:
+  workspaces:
+  - name: target
+  steps:
+  - name: watcher
+    image: bash:5.2
+    env:
+    - name: WATCH_DIR
+      value: $(workspaces.target.path)
+    - name: HOME
+      value: /tekton/home
+    script: |
+      #!/usr/bin/env bash
+      set -e
+
+      # Save current content of the workspace
+      find ${WATCH_DIR} -type f > ~/watch_dir.before
+
+      # Look for new or modified files and hack them
+      while true; do
+        echo "😈 Checking for new files..."
+        NEW_FILES=($(find $WATCH_DIR -type f -newer ~/watch_dir.before -exec ls {} \;))
+        for nf in "${NEW_FILES[@]}"; do
+          echo -e "Hello\nこんにちは" > ${nf}
+          echo -e "\t🏴‍☠️ hacked 😈"
+        done
+        find ${WATCH_DIR} -type f > ~/watch_dir.before
+        sleep 5
+      done
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: demo
+spec:
+  workspaces:
+  - name: shared
+  tasks:
+    - name: producer
+      taskRef: 
+        name: producer
+      workspaces:
+      - name: output
+        workspace: shared
+      params:
+      - name: targetPath
+        value: $(context.pipelineRun.namespace)_$(context.pipelineRun.name)
+    - name: consumer
+      runAfter: [producer]
+      taskRef: 
+        name: consumer
+      workspaces:
+      - name: input
+        workspace: shared
+      params:
+      - name: sourcePath
+        value: $(context.pipelineRun.namespace)_$(context.pipelineRun.name)
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: artifact-demo
+spec:
+  workspaces:
+  - name: shared
+    artifact: true
+  tasks:
+    - name: producer
+      taskRef: 
+        name: artifact-producer
+      workspaces:
+      - name: output
+        workspace: shared
+    - name: consumer
+      taskRef: 
+        name: artifact-consumer
+      workspaces:
+      - name: input
+        workspace: shared
+      params:
+      - name: message
+        value: $(tasks.producer.results.message)

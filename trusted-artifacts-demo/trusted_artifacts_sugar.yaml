@@ -1,0 +1,79 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: trusted-artifacts-sugar
+spec:
+  pipelineSpec:
+    workspaces:
+      - name: artifactStorage  # In this example this is where we store artifacts
+        artifacts: true # this will result in failed validation if the workspace is bound to a readonly backend like a secret
+    tasks:
+      - name: producer
+        taskSpec:
+          results:
+            - name: aFileArtifact
+              type: artifact # inbuilt object schema (path, hash, type)
+              description: An artifact file
+            - name: aFolderArtifact
+              type: artifact # inbuilt object schema (path, hash, type)
+              description: An artifact folder
+          steps:
+            - name: produce-file
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+
+                # Produce some content. The result "data.path" will resolve to the workspace marked for artifacs.
+                date +%s | tee "$(results.aFileArtifact.data.path)/afile.txt"
+
+                # The controller appends a step that builds the object result json,
+                # and stores it under $(results.aFileArtifact.path)
+                # The type is detected from the context of $(results.aFileArtifact.data.path)
+                # If it's a single file, it's type, if one or more files and folders it's folder
+                # The hash is calculated and added to into the json.
+            - name: produce-folder
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                A_FOLDER_PATH=$(results.aFolderArtifact.path)/afolder
+                mkdir "$A_FOLDER_PATH"
+                date +%s | tee "${A_FOLDER_PATH}/a.txt"
+                date +%s | tee "${A_FOLDER_PATH}/b.txt"
+                date +%s | tee "${A_FOLDER_PATH}/c.txt"
+      - name: consumer
+        taskSpec:
+          params:
+            - name: aFileArtifact
+              type: artifact # inbuilt object schema (path, hash, type)
+            - name: aFolderArtifact
+              type: artifact # inbuilt object schema (path, hash, type)
+          steps:
+            - name: consume-content
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                # A step is prepended, which will automatically check the hashes
+                # and fail the task with a specific reason if there is no match
+                # this behaviour could be enabled via some Pipeline/PipelineRun flag 
+
+                # Do something with the verified content. 
+                # The path from the object params corresponds to the result's "data.path"
+                # and resolves to a path on the workspace
+                echo "File content"
+                cat $(params.aFileArtifact.path)
+                echo "Folder content"
+                find $(params.aFolderArtifact.path) -type f
+        params:
+          - name: aFileArtifact
+            value: $(tasks.producer.results.aFileArtifact)
+          - name: aFolderArtifact
+            value: $(tasks.producer.results.aFolderArtifact)
+  workspaces:
+  - name: artifactStorage
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi

@@ -1,0 +1,11 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: artifact-demo-
+spec:
+  workspaces:
+    - name: shared
+      persistentVolumeClaim:
+        claimName: storage
+  pipelineRef:
+    name: artifact-demo

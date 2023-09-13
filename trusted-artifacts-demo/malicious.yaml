@@ -1,0 +1,11 @@
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: malicious-
+spec:
+  workspaces:
+    - name: target
+      persistentVolumeClaim:
+        claimName: storage
+  taskRef:
+    name: man-in-the-middle

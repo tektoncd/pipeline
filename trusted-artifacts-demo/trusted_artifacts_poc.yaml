@@ -1,0 +1,100 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: trusted-artifacts-poc-
+spec:
+  pipelineSpec:
+    workspaces:
+      - name: artifactStorage  # In this example this is where we store artifacts
+        artifact: true
+    tasks:
+      - name: producer
+        taskSpec:
+          results:
+            - name: aSimpleProduct
+              type: artifact # inbuilt object schema (path, hash, type)
+              description: An artifact with a single file
+            - name: aComplexProduct
+              type: artifact # inbuilt object schema (path, hash, type)
+              description: An artifact with various files and folders
+          workspaces:
+            - name: artifactStorage  # In this example this is where we store artifacts
+              artifact: true
+          steps:
+            - name: produce-simple
+              image: bash:latest
+              env:
+                - name: A_SIMPLE_PRODUCT_PATH
+                  value: $(results.aSimpleProduct.data.path)
+              script: |
+                #!/usr/bin/env bash
+
+                # TODO: we way want Tekton to create this folder
+                mkdir -p ${A_SIMPLE_PRODUCT_PATH}
+
+                # Produce some content locally
+                echo "${A_SIMPLE_PRODUCT_PATH}/afile.txt:"
+                date +%s | tee ${A_SIMPLE_PRODUCT_PATH}/afile.txt
+            - name: produce-complex
+              image: bash:latest
+              env:
+                - name: A_COMPLEX_PRODUCT_PATH
+                  value: $(results.aComplexProduct.data.path)
+              script: |
+                #!/usr/bin/env bash
+                mkdir -p "${A_COMPLEX_PRODUCT_PATH}/folder"
+
+                # Produce some content locally
+                echo "${A_COMPLEX_PRODUCT_PATH}/a.txt:"
+                date +%s | tee "${A_COMPLEX_PRODUCT_PATH}/a.txt"
+                echo "${A_COMPLEX_PRODUCT_PATH}/.b.txt:"
+                date +%s | tee "${A_COMPLEX_PRODUCT_PATH}/.b.txt"
+                echo "${A_COMPLEX_PRODUCT_PATH}/folder/c.txt:"
+                date +%s | tee "${A_COMPLEX_PRODUCT_PATH}/folder/c.txt"
+        workspaces:
+          - name: artifactStorage
+            workspace: artifactStorage
+      - name: consumer
+        taskSpec:
+          params:
+            - name: aSimpleMaterial
+              type: artifact
+            - name: aComplexMaterial
+              type: artifact
+          workspaces:
+            - name: artifactStorage  # In this example this is where we store artifacts
+              artifact: true
+          steps:
+            - name: consume-content
+              image: bash:latest
+              env:
+                - name: A_SIMPLE_MATERIAL_PATH
+                  value: /tekton/artifacts/aSimpleMaterial # $(params.aSimpleMaterial.data.path)
+                - name: A_COMPLEX_MATERIAL_PATH
+                  value: /tekton/artifacts/aComplexMaterial # $(params.aComplexMaterial.data.path)
+              script: |
+                #!/usr/bin/env bash
+
+                # Do something with the verified content
+                # Here I need to use a workspace variable to trigger propagation of the workspace
+                echo "Simple artifact"
+                find ${A_SIMPLE_MATERIAL_PATH} -type f | while read aa; do echo -e "${aa}:\n$(cat ${aa})"; done
+                echo "Complex artifact"
+                find ${A_SIMPLE_MATERIAL_PATH} -type f | while read aa; do echo -e "${aa}:\n$(cat ${aa})"; done
+        params:
+          - name: aSimpleMaterial
+            value: $(tasks.producer.results.aSimpleProduct)
+          - name: aComplexMaterial
+            value: $(tasks.producer.results.aComplexProduct)
+        workspaces:
+          - name: artifactStorage
+            workspace: artifactStorage
+  workspaces:
+  - name: artifactStorage
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi

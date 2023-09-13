@@ -1,0 +1,162 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: trusted-artifacts
+spec:
+  pipelineSpec:
+    workspaces:
+      - name: artifactStorage  # In this example this is where we store artifacts
+    tasks:
+      - name: producer
+        taskSpec:
+          results:
+            - name: aFileArtifact
+              type: object
+              description: An artifact file
+              properties:
+                path:
+                  type: string
+                hash:
+                  type: string
+                type:
+                  type: string
+            - name: aFolderArtifact
+              type: object
+              description: An artifact folder
+              properties:
+                path:
+                  type: string
+                hash:
+                  type: string
+                type:
+                  type: string
+          steps:
+            - name: produce-file
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+
+                # Produce some content
+                date +%s | tee "$(workspaces.artifactStorage.path)/afile.txt"
+            - name: upload-hash-file
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+
+                # Uploads the file somewhere
+                # This is noop in this case, as the file is passed through
+                # the PVC directly. Note that this PVC could be backed
+                # by different types of storage via CSI volumes, or we
+                # could provide support for direct upload to OCI registries
+                # or object storage
+
+                # Produces a result which makes the file trustable
+                # This step could be injected by the Tekton controller and be
+                # transparent to users, except for some syntatic sugar, like
+                # a special result kind or an "artifact" API
+                A_FILE_PATH=$(workspaces.artifactStorage.path)/afile.txt
+                A_FILE_HASH=$(md5sum "${A_FILE_PATH}" | awk '{ print $1 }')
+                cat <<EOF | tee $(results.aFileArtifact.path)
+                {
+                  "path": "${A_FILE_PATH}",
+                  "hash": "${A_FILE_HASH}",
+                  "type": "file"
+                }
+                EOF
+            - name: produce-folder
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                A_FOLDER_PATH=$(workspaces.artifactStorage.path)/afolder
+                mkdir "$A_FOLDER_PATH"
+                date +%s | tee "${A_FOLDER_PATH}/a.txt"
+                date +%s | tee "${A_FOLDER_PATH}/b.txt"
+                date +%s | tee "${A_FOLDER_PATH}/c.txt"
+            - name: upload-hash-folder
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                A_FOLDER_PATH=$(workspaces.artifactStorage.path)/afolder
+
+                # Uploads the folder somewhere
+                # This is noop in this case, as the folder is passed through
+                # Depending on the storage file we could upload each file in the folder
+                # some compressed form of the folder
+                A_FOLDER_HASH=$(tar zcf - "$A_FOLDER_PATH" | md5sum | awk '{ print $1 }')
+                cat <<EOF | tee $(results.aFolderArtifact.path)
+                {
+                  "path": "${A_FOLDER_PATH}",
+                  "hash": "${A_FOLDER_HASH}",
+                  "type": "folder"
+                }
+                EOF
+      - name: consumer
+        taskSpec:
+          params:
+            - name: aFileArtifact
+              type: object
+              properties:
+                path:
+                  type: string
+                hash:
+                  type: string
+                type:
+                  type: string
+            - name: aFolderArtifact
+              type: object
+              properties:
+                path:
+                  type: string
+                hash:
+                  type: string
+                type:
+                  type: string
+          steps:
+            - name: download-verify-file
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                set -e
+
+                # Check the md5sum
+                if [ "$(params.aFileArtifact.type)" ==  "file" ]; then
+                  echo "$(params.aFileArtifact.hash) $(params.aFileArtifact.path)" | md5sum -c
+                else
+                  tar zcf download.tgz $(params.aFileArtifact.path)
+                  echo "$(params.aFileArtifact.hash) download.tgz" | md5sum -c
+                fi
+            - name: download-verify-folder
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                set -e
+
+                # Check the md5sum
+                if [ "$(params.aFolderArtifact.type)" ==  "file" ]; then
+                  echo "$(params.aFolderArtifact.hash) $(params.aFolderArtifact.path)" | md5sum -c
+                else
+                  tar zcf download.tgz $(params.aFolderArtifact.path)
+                  echo "$(params.aFolderArtifact.hash) download.tgz" | md5sum -c
+                fi
+            - name: consume-content
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+
+                # Do something with the verified content
+                # Here I need to use a workspace variable to trigger propagation of the workspace
+                find $(workspaces.artifactStorage.path) -type f
+        params:
+          - name: aFileArtifact
+            value: $(tasks.producer.results.aFileArtifact)
+          - name: aFolderArtifact
+            value: $(tasks.producer.results.aFolderArtifact)
+  workspaces:
+  - name: artifactStorage
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi

@@ -47,7 +47,8 @@ for i in ${!names[@]}; do
 	cp "$ARTIFACT" "$TARGET_ARTIFACT"
 	echo "${hashes[$i]} ${TARGET_ARTIFACT}" | md5sum -c || ret=$?
 	if [[ $ret -ne 0 ]]; then
-		>&2 echo "md5sum of ${names[$i]} doesn't match. Expected ${hashes[$i]}, found $(md5sum ${TARGET_ARTIFACT})"
+		>&2 echo "💥 md5sum of ${names[$i]} doesn't match! 🙀"
+		>&2 echo -e "\t✅ Expected\t${hashes[$i]}\n\t❌ Found\t$(md5sum ${TARGET_ARTIFACT}| awk '{ print $1 }')"
 		exit 1
 	fi
 	if [ "${types[$i]}" == "folder" ]; then
@@ -128,7 +129,7 @@ func GetDownloadArtifactStep(workspaces []v1.WorkspaceDeclaration, params v1.Par
 		return nil, nil
 	}
 	downloadStep := v1.Step{
-		Name:  "tekton-artifact-download",
+		Name:  "tkn-download",
 		Image: "bash:latest", // TODO(afrittoli) Make this configurable
 		Env: []corev1.EnvVar{{
 			Name:  "ARTIFACT_NAMES",
@@ -182,7 +183,7 @@ func GetUploadArtifactStep(workspaces []v1.WorkspaceDeclaration, results []v1.Ta
 		return nil, nil
 	}
 	uploadStep := v1.Step{
-		Name:  "tekton-artifact-upload",
+		Name:  "tkn-upload",
 		Image: "bash:latest", // TODO(afrittoli) Make this configurable
 		Env: []corev1.EnvVar{{
 			Name:  "ARTIFACT_NAMES",
