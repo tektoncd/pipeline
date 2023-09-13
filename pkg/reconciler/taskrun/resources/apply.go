@@ -44,6 +44,12 @@ var (
 		// FIXME(vdemeester) Remove that with deprecating v1beta1
 		"inputs.params.%s",
 	}
+
+	paramDataPatterns = []string{
+		"params.%s.data.path",
+		"params[%q].data.path",
+		"params['%s'].data.path",
+	}
 )
 
 // ApplyParameters applies the params from a TaskRun.Input.Parameters to a TaskSpec
@@ -69,6 +75,13 @@ func ApplyParameters(ctx context.Context, spec *v1.TaskSpec, tr *v1.TaskRun, def
 			case v1.ParamTypeObject:
 				for k, v := range p.Default.ObjectVal {
 					stringReplacements[fmt.Sprintf(objectIndividualVariablePattern, p.Name, k)] = v
+				}
+			case v1.ParamTypeArtifact:
+				for k, v := range p.Default.ObjectVal {
+					stringReplacements[fmt.Sprintf(objectIndividualVariablePattern, p.Name, k)] = v
+				}
+				for _, dataPattern := range paramDataPatterns {
+					stringReplacements[fmt.Sprintf(dataPattern, p.Name)] = filepath.Join(pipeline.ArtifactsDir, p.Name)
 				}
 			case v1.ParamTypeString:
 				fallthrough
@@ -218,11 +231,21 @@ func ApplyTaskResults(spec *v1.TaskSpec) *v1.TaskSpec {
 		"results['%s'].path",
 	}
 
+	data_patterns := []string{
+		"results.%s.data.path",
+		"results[%q].data.path",
+		"results['%s'].data.path",
+	}
+
 	for _, result := range spec.Results {
 		for _, pattern := range patterns {
 			stringReplacements[fmt.Sprintf(pattern, result.Name)] = filepath.Join(pipeline.DefaultResultPath, result.Name)
 		}
+		for _, data_pattern := range data_patterns {
+			stringReplacements[fmt.Sprintf(data_pattern, result.Name)] = filepath.Join(pipeline.ArtifactsDir, result.Name)
+		}
 	}
+
 	return ApplyReplacements(spec, stringReplacements, map[string][]string{})
 }
 

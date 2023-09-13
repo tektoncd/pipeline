@@ -178,6 +178,14 @@ func TestValidateNoReferencesToUnknownVariables(t *testing.T) {
 			Message: `non-existent variable in "--flag=$(params.objectParam.key3)"`,
 			Paths:   []string{""},
 		},
+	}, {
+		name: "valid variable with data.path",
+		args: args{
+			input:  "--flag=$(params.foo.data.path)",
+			prefix: "params",
+			vars:   sets.NewString("foo"),
+		},
+		expectedError: nil,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := substitution.ValidateNoReferencesToUnknownVariables(tc.args.input, tc.args.prefix, tc.args.vars)
@@ -699,6 +707,13 @@ func TestExtractVariablesFromString(t *testing.T) {
 		want:      []string{""},
 		extracted: true,
 		err:       `Invalid referencing of parameters in "--flag=$(inputs.params.foo.baz.bar)"! Only two dot-separated components after the prefix "inputs.params" are allowed.`,
+	}, {
+		name:      "data path",
+		s:         "--flag=$(params.baz.data.path)",
+		prefix:    "params",
+		want:      []string{"baz"},
+		extracted: true,
+		err:       "",
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
