@@ -132,7 +132,7 @@ applies to both.
           If not specified, the `kind` sub-field defaults to `Task.`
 
 Below is an example of a Pipeline declaration that uses a `ClusterTask`:
-**Note**: 
+**Note**:
 - There is no `v1` API specification for `ClusterTask` but a `v1beta1 clustertask` can still be referenced in a `v1 pipeline`.
 - The cluster resolver syntax below can be used to reference any task, not just a clustertask.
 
@@ -831,6 +831,53 @@ precise string you want returned from your `Task` into the result files that you
 
 The stored results can be used [at the `Task` level](./pipelines.md#passing-one-tasks-results-into-the-parameters-or-when-expressions-of-another)
 or [at the `Pipeline` level](./pipelines.md#emitting-results-from-a-pipeline).
+
+#### Emitting Object `Results`
+Emitting a task result of type `object` is a `beta` feature implemented based on the
+[TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md#emitting-object-results).
+You can initialize `object` results from a `task` using JSON escaped string. For example, to assign the following data to an object result:
+
+```
+{"url":"abc.dev/sampler","digest":"19f02276bf8dbdd62f069b922f10c65262cc34b710eea26ff928129a736be791"}
+```
+
+You will need to use escaped JSON to write to pod termination message:
+
+```
+{\"url\":\"abc.dev/sampler\",\"digest\":\"19f02276bf8dbdd62f069b922f10c65262cc34b710eea26ff928129a736be791\"}
+```
+
+An example of a task definition producing an object result:
+
+```yaml
+kind: Task
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
+metadata:
+  name: write-object
+  annotations:
+    description: |
+      A simple task that writes object
+spec:
+  results:
+    - name: object-results
+      type: object
+      description: The object results
+      properties:
+        url:
+          type: string
+        digest:
+          type: string
+  steps:
+    - name: write-object
+      image: bash:latest
+      script: |
+        #!/usr/bin/env bash
+        echo -n "{\"url\":\"abc.dev/sampler\",\"digest\":\"19f02276bf8dbdd62f069b922f10c65262cc34b710eea26ff928129a736be791\"}" | tee $(results.object-results.path)
+```
+
+> **Note:**
+> -  that the opening and closing braces  are mandatory along with an escaped JSON.
+> - object result must specify the `properties` section to define the schema i.e. what keys are available for this object result. Failing to emit keys from the defined object results will result in validation error at runtime.
 
 #### Emitting Array `Results`
 
