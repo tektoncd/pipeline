@@ -1089,6 +1089,15 @@
         }
       }
     },
+    "v1.Ref": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name of the referenced step",
+          "type": "string"
+        }
+      }
+    },
     "v1.RefSource": {
       "description": "RefSource contains the information that can uniquely identify where a remote built definition came from i.e. Git repositories, Tekton Bundles in OCI registry and hub.",
       "type": "object",
@@ -1440,6 +1449,10 @@
         "onError": {
           "description": "OnError defines the exiting behavior of a container on error can be set to [ continue | stopAndFail ]",
           "type": "string"
+        },
+        "ref": {
+          "description": "Contains the reference to an existing step",
+          "$ref": "#/definitions/v1.Ref"
         },
         "script": {
           "description": "Script is the contents of an executable file to execute.\n\nIf Script is not empty, the Step cannot have an Command and the Args will be passed to the Script.",

@@ -135,6 +135,14 @@ type Step struct {
 	// Stores configuration for the stderr stream of the step.
 	// +optional
 	StderrConfig *StepOutputConfig `json:"stderrConfig,omitempty"`
+	// Contains the reference to an existing step
+	//+optional
+	Ref *Ref `json:"ref,omitempty"`
+}
+
+type Ref struct {
+	// Name of the referenced step
+	Name string `json:"name,omitempty"`
 }
 
 // OnErrorType defines a list of supported exiting behavior of a container on error

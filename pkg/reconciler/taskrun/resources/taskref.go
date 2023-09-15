@@ -224,6 +224,27 @@ func (l *LocalTaskRefResolver) GetTask(ctx context.Context, name string) (*v1.Ta
 	return task, nil, nil, nil
 }
 
+// LocalStepRefResolver uses the current cluster to resolve a step reference.
+type LocalStepRefResolver struct {
+	Namespace    string
+	Tektonclient clientset.Interface
+}
+
+// GetTask will resolve either a Task or ClusterTask from the local cluster using a versioned Tekton client. It will
+// return an error if it can't find an appropriate Task for any reason.
+func (l *LocalStepRefResolver) GetStepAction(ctx context.Context, name string) (v1alpha1.StepActionObject, *v1.RefSource, error) {
+
+	// If we are going to resolve this reference locally, we need a namespace scope.
+	if l.Namespace == "" {
+		return nil, nil, fmt.Errorf("must specify namespace to resolve reference to task %s", name)
+	}
+	stepAction, err := l.Tektonclient.TektonV1alpha1().StepActions(l.Namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, nil, err
+	}
+	return stepAction, nil, nil
+}
+
 // IsGetTaskErrTransient returns true if an error returned by GetTask is retryable.
 func IsGetTaskErrTransient(err error) bool {
 	return strings.Contains(err.Error(), errEtcdLeaderChange)

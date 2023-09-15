@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,7 +48,7 @@ type GetTaskRun func(string) (*v1.TaskRun, error)
 // GetTaskData will retrieve the Task metadata and Spec associated with the
 // provided TaskRun. This can come from a reference Task or from the TaskRun's
 // metadata and embedded TaskSpec.
-func GetTaskData(ctx context.Context, taskRun *v1.TaskRun, getTask GetTask) (*resolutionutil.ResolvedObjectMeta, *v1.TaskSpec, error) {
+func GetTaskData(ctx context.Context, taskRun *v1.TaskRun, getTask GetTask, tekton clientset.Interface) (*resolutionutil.ResolvedObjectMeta, *v1.TaskSpec, error) {
 	taskMeta := metav1.ObjectMeta{}
 	taskSpec := v1.TaskSpec{}
 	var refSource *v1.RefSource
@@ -85,6 +86,48 @@ func GetTaskData(ctx context.Context, taskRun *v1.TaskRun, getTask GetTask) (*re
 		return nil, nil, fmt.Errorf("taskRun %s not providing TaskRef or TaskSpec", taskRun.Name)
 	}
 
+	// TODO: Expand Steps here
+	steps := []v1.Step{}
+	for _, step := range taskSpec.Steps {
+		var s v1.Step
+		if step.Ref != nil {
+			name := step.Name
+			localStep := &LocalStepRefResolver{
+				Namespace:    taskRun.Namespace,
+				Tektonclient: tekton,
+			}
+			stepAction, _, err := localStep.GetStepAction(ctx, step.Ref.Name)
+			if err != nil {
+				return nil, nil, err
+			}
+			stepActionSpec := stepAction.StepActionSpec()
+			s.Name = name
+			s.Image = stepActionSpec.Image
+			if stepActionSpec.Command != nil {
+				s.Command = stepActionSpec.Command
+			}
+			if stepActionSpec.Args != nil {
+				s.Args = stepActionSpec.Args
+			}
+			if stepActionSpec.Script != "" {
+				s.Script = stepActionSpec.Script
+			}
+			if stepActionSpec.WorkingDir != "" {
+				s.WorkingDir = stepActionSpec.WorkingDir
+			}
+			if stepActionSpec.Env != nil {
+				s.Env = stepActionSpec.Env
+			}
+			if stepActionSpec.EnvFrom != nil {
+				s.EnvFrom = stepActionSpec.EnvFrom
+			}
+			steps = append(steps, s)
+		} else {
+			steps = append(steps, step)
+		}
+	}
+	// replacing steps
+	taskSpec.Steps = steps
 	taskSpec.SetDefaults(ctx)
 	return &resolutionutil.ResolvedObjectMeta{
 		ObjectMeta:         &taskMeta,

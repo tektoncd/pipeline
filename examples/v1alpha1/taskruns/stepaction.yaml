@@ -6,3 +6,14 @@ spec:
   image: alpine
   script: |
     echo "I am not github action!!!"
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: step-action-run
+spec:
+  TaskSpec:
+    steps:
+      - name: action-runner
+        ref:
+          name: step-action

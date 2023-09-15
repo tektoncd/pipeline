@@ -269,16 +269,61 @@ func validateSteps(ctx context.Context, steps []Step) (errs *apis.FieldError) {
 }
 
 func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.FieldError) {
-	if s.Image == "" {
-		errs = errs.Also(apis.ErrMissingField("Image"))
-	}
-
-	if s.Script != "" {
-		if len(s.Command) > 0 {
+	if s.Ref != nil {
+		if s.Image != "" {
 			errs = errs.Also(&apis.FieldError{
-				Message: "script cannot be used with command",
+				Message: "image cannot be used with Ref",
 				Paths:   []string{"script"},
 			})
+		}
+		if len(s.Command) > 0 {
+			errs = errs.Also(&apis.FieldError{
+				Message: "command cannot be used with Ref",
+				Paths:   []string{"script"},
+			})
+		}
+		if len(s.Args) > 0 {
+			errs = errs.Also(&apis.FieldError{
+				Message: "args cannot be used with Ref",
+				Paths:   []string{"script"},
+			})
+		}
+		if s.Script != "" {
+			errs = errs.Also(&apis.FieldError{
+				Message: "script cannot be used with Ref",
+				Paths:   []string{"script"},
+			})
+		}
+		if s.WorkingDir != "" {
+			errs = errs.Also(&apis.FieldError{
+				Message: "workingDir cannot be used with Ref",
+				Paths:   []string{"script"},
+			})
+		}
+		if s.Env != nil {
+			errs = errs.Also(&apis.FieldError{
+				Message: "env cannot be used with Ref",
+				Paths:   []string{"script"},
+			})
+		}
+		if s.EnvFrom != nil {
+			errs = errs.Also(&apis.FieldError{
+				Message: "EnvFrom cannot be used with Ref",
+				Paths:   []string{"script"},
+			})
+		}
+	} else {
+		if s.Image == "" {
+			errs = errs.Also(apis.ErrMissingField("Image"))
+		}
+
+		if s.Script != "" {
+			if len(s.Command) > 0 {
+				errs = errs.Also(&apis.FieldError{
+					Message: "script cannot be used with command",
+					Paths:   []string{"script"},
+				})
+			}
 		}
 	}
 
