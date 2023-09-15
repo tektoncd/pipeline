@@ -333,7 +333,7 @@ func ApplyTaskResultsToPipelineResults(
 	arrayReplacements := map[string][]string{}
 	objectReplacements := map[string]map[string]string{}
 	for _, pipelineResult := range results {
-		variablesInPipelineResult, _ := v1.GetVarSubstitutionExpressionsForPipelineResult(pipelineResult)
+		variablesInPipelineResult, _ := pipelineResult.GetVarSubstitutionExpressions()
 		if len(variablesInPipelineResult) == 0 {
 			continue
 		}

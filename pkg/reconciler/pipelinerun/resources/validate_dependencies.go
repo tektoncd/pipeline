@@ -46,7 +46,7 @@ func ValidatePipelineTaskResults(state PipelineRunState) error {
 func ValidatePipelineResults(ps *v1.PipelineSpec, state PipelineRunState) error {
 	ptMap := state.ToMap()
 	for _, result := range ps.Results {
-		expressions, _ := v1.GetVarSubstitutionExpressionsForPipelineResult(result)
+		expressions, _ := result.GetVarSubstitutionExpressions()
 		refs := v1.NewResultRefs(expressions)
 		for _, ref := range refs {
 			if err := validateResultRef(ref, ptMap); err != nil {

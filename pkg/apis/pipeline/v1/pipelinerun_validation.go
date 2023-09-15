@@ -131,7 +131,7 @@ func (ps *PipelineRunSpec) validatePipelineRunParameters(ctx context.Context) (e
 
 	// Validate that task results aren't used in param values
 	for _, param := range ps.Params {
-		expressions, ok := GetVarSubstitutionExpressionsForParam(param)
+		expressions, ok := param.GetVarSubstitutionExpressions()
 		if ok {
 			if LooksLikeContainsResultRefs(expressions) {
 				expressions = filter(expressions, looksLikeResultRef)

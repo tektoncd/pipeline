@@ -697,7 +697,7 @@ func (t *ResolvedPipelineTask) hasResultReferences() bool {
 		matrixParams = t.PipelineTask.Params
 	}
 	for _, param := range append(t.PipelineTask.Params, matrixParams...) {
-		if ps, ok := v1.GetVarSubstitutionExpressionsForParam(param); ok {
+		if ps, ok := param.GetVarSubstitutionExpressions(); ok {
 			if v1.LooksLikeContainsResultRefs(ps) {
 				return true
 			}
