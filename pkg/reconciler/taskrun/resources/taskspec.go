@@ -101,14 +101,15 @@ func GetTaskData(ctx context.Context, taskRun *v1.TaskRun, getTask GetTask, tekt
 	for _, step := range taskSpec.Steps {
 		var s v1.Step
 		if step.Ref != nil {
-			name := step.Name
+			s = step
+			name := s.Name
 			var stepAction v1alpha1.StepActionObject
-			if step.Ref.Name != "" {
+			if s.Ref.Name != "" {
 				localStep := &LocalStepRefResolver{
 					Namespace:    taskRun.Namespace,
 					Tektonclient: tekton,
 				}
-				stepAction, _, err = localStep.GetStepAction(ctx, step.Ref.Name)
+				stepAction, _, err = localStep.GetStepAction(ctx, s.Ref.Name)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -119,21 +120,20 @@ func GetTaskData(ctx context.Context, taskRun *v1.TaskRun, getTask GetTask, tekt
 					for k, v := range getContextReplacements("", ownerAsTR) {
 						stringReplacements[k] = v
 					}
-					for _, p := range step.Ref.Params {
+					for _, p := range s.Ref.Params {
 						p.Value.ApplyReplacements(stringReplacements, arrayReplacements, nil)
 						replacedParams = append(replacedParams, p)
 					}
 				} else {
-					replacedParams = append(replacedParams, step.Ref.Params...)
+					replacedParams = append(replacedParams, s.Ref.Params...)
 				}
-				resolver := resolution.NewResolver(requester, taskRun, string(step.Ref.Resolver), name, taskRun.Namespace, replacedParams)
+				resolver := resolution.NewResolver(requester, taskRun, string(s.Ref.Resolver), name, taskRun.Namespace, replacedParams)
 				stepAction, _, err = resolveStepAction(ctx, resolver, name, taskRun.Namespace, "StepAction", k8s, tekton)
 				if err != nil {
 					return nil, nil, err
 				}
 			}
 			stepActionSpec := stepAction.StepActionSpec()
-			s.Name = name
 			s.Image = stepActionSpec.Image
 			if stepActionSpec.Command != nil {
 				s.Command = stepActionSpec.Command
@@ -153,6 +153,8 @@ func GetTaskData(ctx context.Context, taskRun *v1.TaskRun, getTask GetTask, tekt
 			if stepActionSpec.EnvFrom != nil {
 				s.EnvFrom = stepActionSpec.EnvFrom
 			}
+			s = ApplyStepActionParameters(ctx, s, stepActionSpec.Params...)
+			s.Ref = nil
 			steps = append(steps, s)
 		} else {
 			steps = append(steps, step)

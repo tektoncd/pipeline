@@ -138,6 +138,10 @@ type Step struct {
 	// Contains the reference to an existing step
 	//+optional
 	Ref *Ref `json:"ref,omitempty"`
+	// Parameters declares parameters passed to this step action.
+	// +optional
+	// +listType=atomic
+	Params Params `json:"params,omitempty"`
 }
 
 type Ref struct {

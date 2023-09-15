@@ -24,6 +24,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/container"
 	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/substitution"
@@ -45,6 +46,54 @@ var (
 		"inputs.params.%s",
 	}
 )
+
+// ApplyStepActionParameters applies the params from a TaskRun.Input.Parameters to a TaskSpec
+func ApplyStepActionParameters(ctx context.Context, step v1.Step, defaults ...v1alpha1.ParamSpec) v1.Step {
+	// This assumes that the TaskRun inputs have been validated against what the Task requests.
+
+	// stringReplacements is used for standard single-string stringReplacements, while arrayReplacements contains arrays
+	// that need to be further processed.
+	stringReplacements := map[string]string{}
+	arrayReplacements := map[string][]string{}
+
+	// Set all the default stringReplacements
+	for _, p := range defaults {
+		if p.Default != nil {
+			switch p.Default.Type {
+			case v1alpha1.ParamTypeArray:
+				for _, pattern := range paramPatterns {
+					for i := 0; i < len(p.Default.ArrayVal); i++ {
+						stringReplacements[fmt.Sprintf(pattern+"[%d]", p.Name, i)] = p.Default.ArrayVal[i]
+					}
+					arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.ArrayVal
+				}
+			case v1alpha1.ParamTypeObject:
+				for k, v := range p.Default.ObjectVal {
+					stringReplacements[fmt.Sprintf(objectIndividualVariablePattern, p.Name, k)] = v
+				}
+			case v1alpha1.ParamTypeString:
+				fallthrough
+			default:
+				for _, pattern := range paramPatterns {
+					stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.StringVal
+				}
+			}
+		}
+	}
+
+	// Set and overwrite params with the ones from the Step
+	stepStrings, stepArrays := paramsFromStep(ctx, step)
+	for k, v := range stepStrings {
+		stringReplacements[k] = v
+	}
+	for k, v := range stepArrays {
+		arrayReplacements[k] = v
+	}
+
+	// Apply variable expansion to steps fields.
+	container.ApplyStepReplacements(&step, stringReplacements, arrayReplacements)
+	return step
+}
 
 // ApplyParameters applies the params from a TaskRun.Input.Parameters to a TaskSpec
 func ApplyParameters(ctx context.Context, spec *v1.TaskSpec, tr *v1.TaskRun, defaults ...v1.ParamSpec) *v1.TaskSpec {
@@ -89,6 +138,36 @@ func ApplyParameters(ctx context.Context, spec *v1.TaskSpec, tr *v1.TaskRun, def
 	}
 
 	return ApplyReplacements(spec, stringReplacements, arrayReplacements)
+}
+
+func paramsFromStep(ctx context.Context, step v1.Step) (map[string]string, map[string][]string) {
+	// stringReplacements is used for standard single-string stringReplacements, while arrayReplacements contains arrays
+	// that need to be further processed.
+	stringReplacements := map[string]string{}
+	arrayReplacements := map[string][]string{}
+
+	for _, p := range step.Params {
+		switch p.Value.Type {
+		case v1.ParamTypeArray:
+			for _, pattern := range paramPatterns {
+				for i := 0; i < len(p.Value.ArrayVal); i++ {
+					stringReplacements[fmt.Sprintf(pattern+"[%d]", p.Name, i)] = p.Value.ArrayVal[i]
+				}
+				arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.ArrayVal
+			}
+		case v1.ParamTypeObject:
+			for k, v := range p.Value.ObjectVal {
+				stringReplacements[fmt.Sprintf(objectIndividualVariablePattern, p.Name, k)] = v
+			}
+		case v1.ParamTypeString:
+			fallthrough
+		default:
+			for _, pattern := range paramPatterns {
+				stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.StringVal
+			}
+		}
+	}
+	return stringReplacements, arrayReplacements
 }
 
 func paramsFromTaskRun(ctx context.Context, tr *v1.TaskRun) (map[string]string, map[string][]string) {
