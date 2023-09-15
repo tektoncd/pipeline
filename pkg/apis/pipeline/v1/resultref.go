@@ -105,41 +105,6 @@ func looksLikeResultRef(expression string) bool {
 	return len(subExpressions) >= 4 && (subExpressions[0] == ResultTaskPart || subExpressions[0] == ResultFinallyPart) && subExpressions[2] == ResultResultPart
 }
 
-// GetVarSubstitutionExpressionsForParam extracts all the value between "$(" and ")"" for a parameter
-func GetVarSubstitutionExpressionsForParam(param Param) ([]string, bool) {
-	var allExpressions []string
-	switch param.Value.Type {
-	case ParamTypeArray:
-		// array type
-		for _, value := range param.Value.ArrayVal {
-			allExpressions = append(allExpressions, validateString(value)...)
-		}
-	case ParamTypeString:
-		// string type
-		allExpressions = append(allExpressions, validateString(param.Value.StringVal)...)
-	case ParamTypeObject:
-		// object type
-		for _, value := range param.Value.ObjectVal {
-			allExpressions = append(allExpressions, validateString(value)...)
-		}
-	default:
-		return nil, false
-	}
-	return allExpressions, len(allExpressions) != 0
-}
-
-// GetVarSubstitutionExpressionsForPipelineResult extracts all the value between "$(" and ")"" for a pipeline result
-func GetVarSubstitutionExpressionsForPipelineResult(result PipelineResult) ([]string, bool) {
-	allExpressions := validateString(result.Value.StringVal)
-	for _, v := range result.Value.ArrayVal {
-		allExpressions = append(allExpressions, validateString(v)...)
-	}
-	for _, v := range result.Value.ObjectVal {
-		allExpressions = append(allExpressions, validateString(v)...)
-	}
-	return allExpressions, len(allExpressions) != 0
-}
-
 func validateString(value string) []string {
 	expressions := VariableSubstitutionRegex.FindAllString(value, -1)
 	if expressions == nil {
@@ -208,7 +173,7 @@ func ParseResultName(resultName string) (string, string) {
 func PipelineTaskResultRefs(pt *PipelineTask) []*ResultRef {
 	refs := []*ResultRef{}
 	for _, p := range pt.extractAllParams() {
-		expressions, _ := GetVarSubstitutionExpressionsForParam(p)
+		expressions, _ := p.GetVarSubstitutionExpressions()
 		refs = append(refs, NewResultRefs(expressions)...)
 	}
 	for _, whenExpression := range pt.When {

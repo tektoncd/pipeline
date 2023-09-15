@@ -172,7 +172,7 @@ func TestNewResultReference(t *testing.T) {
 		}},
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
-			expressions, ok := v1.GetVarSubstitutionExpressionsForParam(tt.param)
+			expressions, ok := tt.param.GetVarSubstitutionExpressions()
 			if !ok && tt.want != nil {
 				t.Fatalf("expected to find expressions but didn't find any")
 			} else {
@@ -272,7 +272,7 @@ func TestHasResultReference(t *testing.T) {
 		}},
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
-			expressions, ok := v1.GetVarSubstitutionExpressionsForParam(tt.param)
+			expressions, ok := tt.param.GetVarSubstitutionExpressions()
 			if !ok {
 				t.Fatalf("expected to find expressions but didn't find any")
 			}
@@ -355,7 +355,7 @@ func TestLooksLikeResultRef(t *testing.T) {
 		want: true,
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
-			expressions, ok := v1.GetVarSubstitutionExpressionsForParam(tt.param)
+			expressions, ok := tt.param.GetVarSubstitutionExpressions()
 			if ok {
 				if got := v1.LooksLikeContainsResultRefs(expressions); got != tt.want {
 					t.Errorf("LooksLikeContainsResultRefs() = %v, want %v", got, tt.want)
@@ -755,7 +755,7 @@ func TestGetVarSubstitutionExpressionsForPipelineResult(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			get, _ := v1.GetVarSubstitutionExpressionsForPipelineResult(tt.result)
+			get, _ := tt.result.GetVarSubstitutionExpressions()
 			if d := cmp.Diff(tt.want, get, cmpopts.SortSlices(sortStrings)); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}

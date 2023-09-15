@@ -154,6 +154,29 @@ type Param struct {
 	Value ParamValue `json:"value"`
 }
 
+// GetVarSubstitutionExpressions extracts all the value between "$(" and ")"" for a Parameter
+func (p Param) GetVarSubstitutionExpressions() ([]string, bool) {
+	var allExpressions []string
+	switch p.Value.Type {
+	case ParamTypeArray:
+		// array type
+		for _, value := range p.Value.ArrayVal {
+			allExpressions = append(allExpressions, validateString(value)...)
+		}
+	case ParamTypeString:
+		// string type
+		allExpressions = append(allExpressions, validateString(p.Value.StringVal)...)
+	case ParamTypeObject:
+		// object type
+		for _, value := range p.Value.ObjectVal {
+			allExpressions = append(allExpressions, validateString(value)...)
+		}
+	default:
+		return nil, false
+	}
+	return allExpressions, len(allExpressions) != 0
+}
+
 // ExtractNames returns a set of unique names
 func (ps Params) ExtractNames() sets.String {
 	names := sets.String{}

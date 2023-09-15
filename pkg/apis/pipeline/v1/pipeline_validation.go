@@ -530,7 +530,7 @@ func validateExecutionStatusVariablesInFinally(tasksNames sets.String, finally [
 
 func (pt *PipelineTask) validateExecutionStatusVariablesDisallowed() (errs *apis.FieldError) {
 	for _, param := range pt.Params {
-		if expressions, ok := GetVarSubstitutionExpressionsForParam(param); ok {
+		if expressions, ok := param.GetVarSubstitutionExpressions(); ok {
 			errs = errs.Also(validateContainsExecutionStatusVariablesDisallowed(expressions, "value").
 				ViaFieldKey("params", param.Name))
 		}
@@ -546,7 +546,7 @@ func (pt *PipelineTask) validateExecutionStatusVariablesDisallowed() (errs *apis
 
 func (pt *PipelineTask) validateExecutionStatusVariablesAllowed(ptNames sets.String) (errs *apis.FieldError) {
 	for _, param := range pt.Params {
-		if expressions, ok := GetVarSubstitutionExpressionsForParam(param); ok {
+		if expressions, ok := param.GetVarSubstitutionExpressions(); ok {
 			errs = errs.Also(validateExecutionStatusVariablesExpressions(expressions, ptNames, "value").
 				ViaFieldKey("params", param.Name))
 		}
@@ -625,7 +625,7 @@ func validatePipelineResults(results []PipelineResult, tasks []PipelineTask, fin
 	pipelineTaskNames := getPipelineTasksNames(tasks)
 	pipelineFinallyTaskNames := getPipelineTasksNames(finally)
 	for idx, result := range results {
-		expressions, ok := GetVarSubstitutionExpressionsForPipelineResult(result)
+		expressions, ok := result.GetVarSubstitutionExpressions()
 		if !ok {
 			errs = errs.Also(apis.ErrInvalidValue("expected pipeline results to be task result expressions but no expressions were found",
 				"value").ViaFieldIndex("results", idx))
@@ -713,7 +713,7 @@ func validateFinalTasks(tasks []PipelineTask, finalTasks []PipelineTask) (errs *
 func validateTaskResultReferenceInFinallyTasks(finalTasks []PipelineTask, ts sets.String, fts sets.String) (errs *apis.FieldError) {
 	for idx, t := range finalTasks {
 		for _, p := range t.Params {
-			if expressions, ok := GetVarSubstitutionExpressionsForParam(p); ok {
+			if expressions, ok := p.GetVarSubstitutionExpressions(); ok {
 				errs = errs.Also(validateResultsVariablesExpressionsInFinally(expressions, ts, fts, "value").ViaFieldKey(
 					"params", p.Name).ViaFieldIndex("finally", idx))
 			}

@@ -330,3 +330,15 @@ type PipelineList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Pipeline `json:"items"`
 }
+
+// GetVarSubstitutionExpressions extracts all the value between "$(" and ")"" for a PipelineResult
+func (result PipelineResult) GetVarSubstitutionExpressions() ([]string, bool) {
+	allExpressions := validateString(result.Value.StringVal)
+	for _, v := range result.Value.ArrayVal {
+		allExpressions = append(allExpressions, validateString(v)...)
+	}
+	for _, v := range result.Value.ObjectVal {
+		allExpressions = append(allExpressions, validateString(v)...)
+	}
+	return allExpressions, len(allExpressions) != 0
+}
