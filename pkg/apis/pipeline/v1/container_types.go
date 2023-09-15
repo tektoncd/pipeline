@@ -143,6 +143,17 @@ type Step struct {
 type Ref struct {
 	// Name of the referenced step
 	Name string `json:"name,omitempty"`
+	Kind string `json:"kind,omitempty"`
+	// API version of the referent
+	// Note: A Task with non-empty APIVersion and Kind is considered a Custom Task
+	// +optional
+	APIVersion string `json:"apiVersion,omitempty"`
+
+	// ResolverRef allows referencing a Task in a remote location
+	// like a git repo. This field is only supported when the alpha
+	// feature gate is enabled.
+	// +optional
+	ResolverRef `json:",omitempty"`
 }
 
 // OnErrorType defines a list of supported exiting behavior of a container on error

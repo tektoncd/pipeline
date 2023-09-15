@@ -22,10 +22,15 @@ import (
 	"fmt"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
+	"github.com/tektoncd/pipeline/pkg/remote/resolution"
+	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"knative.dev/pkg/kmeta"
 )
 
 // ResolvedTask contains the data that is needed to execute
@@ -45,10 +50,14 @@ type GetTask func(context.Context, string) (*v1.Task, *v1.RefSource, *trustedres
 // GetTaskRun is a function used to retrieve TaskRuns
 type GetTaskRun func(string) (*v1.TaskRun, error)
 
+// GetStepAction is a function used to retrieve StepActions.
+type GetStepAction func(context.Context, string) (*v1alpha1.StepAction, *v1.RefSource, error)
+
 // GetTaskData will retrieve the Task metadata and Spec associated with the
 // provided TaskRun. This can come from a reference Task or from the TaskRun's
 // metadata and embedded TaskSpec.
-func GetTaskData(ctx context.Context, taskRun *v1.TaskRun, getTask GetTask, tekton clientset.Interface) (*resolutionutil.ResolvedObjectMeta, *v1.TaskSpec, error) {
+func GetTaskData(ctx context.Context, taskRun *v1.TaskRun, getTask GetTask, tekton clientset.Interface, requester remoteresource.Requester, k8s kubernetes.Interface) (*resolutionutil.ResolvedObjectMeta, *v1.TaskSpec, error) {
+	owner := kmeta.OwnerRefable(taskRun)
 	taskMeta := metav1.ObjectMeta{}
 	taskSpec := v1.TaskSpec{}
 	var refSource *v1.RefSource
@@ -87,18 +96,41 @@ func GetTaskData(ctx context.Context, taskRun *v1.TaskRun, getTask GetTask, tekt
 	}
 
 	// TODO: Expand Steps here
+	var err error
 	steps := []v1.Step{}
 	for _, step := range taskSpec.Steps {
 		var s v1.Step
 		if step.Ref != nil {
 			name := step.Name
-			localStep := &LocalStepRefResolver{
-				Namespace:    taskRun.Namespace,
-				Tektonclient: tekton,
-			}
-			stepAction, _, err := localStep.GetStepAction(ctx, step.Ref.Name)
-			if err != nil {
-				return nil, nil, err
+			var stepAction v1alpha1.StepActionObject
+			if step.Ref.Name != "" {
+				localStep := &LocalStepRefResolver{
+					Namespace:    taskRun.Namespace,
+					Tektonclient: tekton,
+				}
+				stepAction, _, err = localStep.GetStepAction(ctx, step.Ref.Name)
+				if err != nil {
+					return nil, nil, err
+				}
+			} else {
+				var replacedParams v1.Params
+				if ownerAsTR, ok := owner.(*v1.TaskRun); ok {
+					stringReplacements, arrayReplacements := paramsFromTaskRun(ctx, ownerAsTR)
+					for k, v := range getContextReplacements("", ownerAsTR) {
+						stringReplacements[k] = v
+					}
+					for _, p := range step.Ref.Params {
+						p.Value.ApplyReplacements(stringReplacements, arrayReplacements, nil)
+						replacedParams = append(replacedParams, p)
+					}
+				} else {
+					replacedParams = append(replacedParams, step.Ref.Params...)
+				}
+				resolver := resolution.NewResolver(requester, taskRun, string(step.Ref.Resolver), name, taskRun.Namespace, replacedParams)
+				stepAction, _, err = resolveStepAction(ctx, resolver, name, taskRun.Namespace, "StepAction", k8s, tekton)
+				if err != nil {
+					return nil, nil, err
+				}
 			}
 			stepActionSpec := stepAction.StepActionSpec()
 			s.Name = name

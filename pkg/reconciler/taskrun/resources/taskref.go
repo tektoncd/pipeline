@@ -123,6 +123,25 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 	}
 }
 
+// resolveStepAction accepts an impl of remote.Resolver and attempts to
+// fetch a task with given name and verify the v1beta1 task if trusted resources is enabled.
+// An error is returned if the remoteresource doesn't work
+// A VerificationResult is returned if trusted resources is enabled, VerificationResult contains the result type and err.
+// or the returned data isn't a valid *v1beta1.Task.
+func resolveStepAction(ctx context.Context, resolver remote.Resolver, name, namespace, kind string, k8s kubernetes.Interface, tekton clientset.Interface) (*v1alpha1.StepAction, *v1.RefSource, error) {
+	// Because the resolver will only return references with the same kind (eg ClusterTask), this will ensure we
+	// don't accidentally return a Task with the same name but different kind.
+	obj, refSource, err := resolver.Get(ctx, strings.TrimSuffix(strings.ToLower(string(kind)), "s"), name)
+	if err != nil {
+		return nil, nil, err
+	}
+	switch obj := obj.(type) {
+	case *v1alpha1.StepAction:
+		return obj, refSource, nil
+	}
+	return nil, nil, errors.New("resource is not a step action")
+}
+
 // resolveTask accepts an impl of remote.Resolver and attempts to
 // fetch a task with given name and verify the v1beta1 task if trusted resources is enabled.
 // An error is returned if the remoteresource doesn't work
