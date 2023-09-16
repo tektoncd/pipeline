@@ -71,6 +71,9 @@ type Entrypointer struct {
 
 	// Results is the set of files that might contain task results
 	Results []string
+	// StepResults is the set of files that might contain task results
+	StepResults map[string]string
+
 	// Timeout is an optional user-specified duration within which the Step must complete
 	Timeout *time.Duration
 	// BreakpointOnFailure helps determine if entrypoint execution needs to adapt debugging requirements
@@ -83,6 +86,8 @@ type Entrypointer struct {
 	StepMetadataDir string
 	// SpireWorkloadAPI connects to spire and does obtains SVID based on taskrun
 	SpireWorkloadAPI spire.EntrypointerAPIClient
+	// StepName is the name of the step
+	StepName string
 	// ResultsDirectory is the directory to find results, defaults to pipeline.DefaultResultPath
 	ResultsDirectory string
 	// ResultExtractionMethod is the method using which the controller extracts the results from the task pod.
@@ -109,6 +114,7 @@ type PostWriter interface {
 // Go optionally waits for a file, runs the command, and writes a
 // post file.
 func (e Entrypointer) Go() error {
+	var err error
 	prod, _ := zap.NewProduction()
 	logger := prod.Sugar()
 
@@ -119,7 +125,10 @@ func (e Entrypointer) Go() error {
 		}
 		_ = logger.Sync()
 	}()
-
+	err = os.MkdirAll(filepath.Join(pipeline.StepsDir, e.StepName, "results"), 0766)
+	if err != nil {
+		log.Fatal(err)
+	}
 	for _, f := range e.WaitFiles {
 		if err := e.Waiter.Wait(f, e.WaitFileContent, e.BreakpointOnFailure); err != nil {
 			// An error happened while waiting, so we bail
@@ -144,7 +153,6 @@ func (e Entrypointer) Go() error {
 	})
 
 	ctx := context.Background()
-	var err error
 
 	if e.Timeout != nil && *e.Timeout < time.Duration(0) {
 		err = fmt.Errorf("negative timeout specified")
@@ -191,7 +199,7 @@ func (e Entrypointer) Go() error {
 
 	// strings.Split(..) with an empty string returns an array that contains one element, an empty string.
 	// This creates an error when trying to open the result folder as a file.
-	if len(e.Results) >= 1 && e.Results[0] != "" {
+	if (len(e.Results) >= 1 && e.Results[0] != "") || len(e.StepResults) >= 1 {
 		resultPath := pipeline.DefaultResultPath
 		if e.ResultsDirectory != "" {
 			resultPath = e.ResultsDirectory
@@ -219,6 +227,20 @@ func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string)
 		// if the file doesn't exist, ignore it
 		output = append(output, result.RunResult{
 			Key:        resultFile,
+			Value:      string(fileContents),
+			ResultType: result.TaskRunResultType,
+		})
+	}
+	for resultName, resultPath := range e.StepResults {
+		fileContents, err := os.ReadFile(resultPath)
+		if os.IsNotExist(err) {
+			continue
+		} else if err != nil {
+			return err
+		}
+		// if the file doesn't exist, ignore it
+		output = append(output, result.RunResult{
+			Key:        resultName,
 			Value:      string(fileContents),
 			ResultType: result.TaskRunResultType,
 		})

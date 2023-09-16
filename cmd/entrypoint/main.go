@@ -58,6 +58,8 @@ var (
 	enableSpire            = flag.Bool("enable_spire", false, "If specified by configmap, this enables spire signing and verification")
 	socketPath             = flag.String("spire_socket_path", "unix:///spiffe-workload-api/spire-agent.sock", "Experimental: The SPIRE agent socket for SPIFFE workload API.")
 	resultExtractionMethod = flag.String("result_from", featureFlags.ResultExtractionMethodTerminationMessage, "The method using which to extract results from tasks. Default is using the termination message.")
+	stepName               = flag.String("step_name", "", "Name of the step")
+	stepResults            = flag.String("step_results", "", "step results if specified")
 )
 
 const (
@@ -145,6 +147,8 @@ func main() {
 		spireWorkloadAPI = spire.NewEntrypointerAPIClient(&spireConfig)
 	}
 
+	stepRes := map[string]string{}
+	json.Unmarshal([]byte(*stepResults), &stepRes)
 	e := entrypoint.Entrypointer{
 		Command:         append(cmd, commandArgs...),
 		WaitFiles:       strings.Split(*waitFiles, ","),
@@ -158,11 +162,13 @@ func main() {
 		},
 		PostWriter:             &realPostWriter{},
 		Results:                strings.Split(*results, ","),
+		StepResults:            stepRes,
 		Timeout:                timeout,
 		BreakpointOnFailure:    *breakpointOnFailure,
 		OnError:                *onError,
 		StepMetadataDir:        *stepMetadataDir,
 		SpireWorkloadAPI:       spireWorkloadAPI,
+		StepName:               *stepName,
 		ResultExtractionMethod: *resultExtractionMethod,
 	}
 

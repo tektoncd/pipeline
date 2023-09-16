@@ -84,7 +84,7 @@ var (
 	}, {
 		Name:      "tekton-internal-steps",
 		MountPath: pipeline.StepsDir,
-		ReadOnly:  true,
+		// ReadOnly:  true,
 	}}
 	implicitVolumes = []corev1.Volume{{
 		Name:         "tekton-internal-workspace",

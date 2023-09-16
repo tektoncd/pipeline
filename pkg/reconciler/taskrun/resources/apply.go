@@ -48,11 +48,9 @@ var (
 )
 
 // ApplyStepActionParameters applies the params from a TaskRun.Input.Parameters to a TaskSpec
-func ApplyStepActionParameters(ctx context.Context, step v1.Step, defaults ...v1alpha1.ParamSpec) v1.Step {
-	// This assumes that the TaskRun inputs have been validated against what the Task requests.
+func ApplyStepActionParameters(ctx context.Context, step v1.Step, stepActionSpec v1alpha1.StepActionSpec) v1.Step {
 
-	// stringReplacements is used for standard single-string stringReplacements, while arrayReplacements contains arrays
-	// that need to be further processed.
+	defaults := stepActionSpec.Params
 	stringReplacements := map[string]string{}
 	arrayReplacements := map[string][]string{}
 
@@ -88,6 +86,12 @@ func ApplyStepActionParameters(ctx context.Context, step v1.Step, defaults ...v1
 	}
 	for k, v := range stepArrays {
 		arrayReplacements[k] = v
+	}
+
+	pattern := "step.results.%s.path"
+
+	for _, result := range stepActionSpec.Results {
+		stringReplacements[fmt.Sprintf(pattern, result.Name)] = filepath.Join(pipeline.StepsDir, step.Name, "results", result.Name)
 	}
 
 	// Apply variable expansion to steps fields.

@@ -32,6 +32,9 @@ type TaskResult struct {
 	// Description is a human-readable description of the result
 	// +optional
 	Description string `json:"description,omitempty"`
+
+	// Value the expression used to retrieve the value
+	Value ResultValue `json:"value"`
 }
 
 // TaskRunResult used to describe the results of a task

@@ -153,7 +153,7 @@ func GetTaskData(ctx context.Context, taskRun *v1.TaskRun, getTask GetTask, tekt
 			if stepActionSpec.EnvFrom != nil {
 				s.EnvFrom = stepActionSpec.EnvFrom
 			}
-			s = ApplyStepActionParameters(ctx, s, stepActionSpec.Params...)
+			s = ApplyStepActionParameters(ctx, s, stepActionSpec)
 			s.Ref = nil
 			steps = append(steps, s)
 		} else {

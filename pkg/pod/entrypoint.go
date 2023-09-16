@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -107,6 +108,12 @@ var (
 	}
 )
 
+func extractStepResultName(value string) (string, string) {
+	re := regexp.MustCompile(`\$\(steps\.(.*?)\.results\.(.*?)\)`)
+	rs := re.FindStringSubmatch(value)
+	return rs[1], rs[2]
+}
+
 // orderContainers returns the specified steps, modified so that they are
 // executed in order by overriding the entrypoint binary.
 //
@@ -138,6 +145,7 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 			"-post_file", filepath.Join(RunDir, idx, "out"),
 			"-termination_path", terminationPath,
 			"-step_metadata_dir", filepath.Join(RunDir, idx, "status"),
+			"-step_name", s.Name,
 		)
 		argsForEntrypoint = append(argsForEntrypoint, commonExtraEntrypointArgs...)
 		if taskSpec != nil {
@@ -160,6 +168,7 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 				}
 			}
 			argsForEntrypoint = append(argsForEntrypoint, resultArgument(steps, taskSpec.Results)...)
+			argsForEntrypoint = append(argsForEntrypoint, stepResultArgument(steps, taskSpec.Results, s.Name)...)
 		}
 
 		if breakpointConfig != nil && len(breakpointConfig.Breakpoint) > 0 {
@@ -194,6 +203,23 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 	return steps, nil
 }
 
+func stepResultArgument(steps []corev1.Container, results []v1.TaskResult, stepName string) []string {
+	if len(results) == 0 {
+		return nil
+	}
+	res := map[string]string{}
+	for _, r := range results {
+		if r.Value.StringVal != "" {
+			sName, resultName := extractStepResultName(r.Value.StringVal)
+			if stepName == sName {
+				res[r.Name] = filepath.Join(pipeline.StepsDir, stepName, "results", resultName)
+			}
+		}
+	}
+	resBytes, _ := json.Marshal(res)
+	return []string{"-step_results", string(resBytes)}
+}
+
 func resultArgument(steps []corev1.Container, results []v1.TaskResult) []string {
 	if len(results) == 0 {
 		return nil
@@ -204,7 +230,9 @@ func resultArgument(steps []corev1.Container, results []v1.TaskResult) []string 
 func collectResultsName(results []v1.TaskResult) string {
 	var resultNames []string
 	for _, r := range results {
-		resultNames = append(resultNames, r.Name)
+		if r.Value.StringVal == "" {
+			resultNames = append(resultNames, r.Name)
+		}
 	}
 	return strings.Join(resultNames, ",")
 }
