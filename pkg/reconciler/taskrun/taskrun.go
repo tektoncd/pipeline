@@ -980,6 +980,7 @@ func retryTaskRun(tr *v1.TaskRun, message string) {
 	tr.Status.StartTime = nil
 	tr.Status.CompletionTime = nil
 	tr.Status.PodName = ""
+	tr.Status.Results = nil
 	taskRunCondSet := apis.NewBatchConditionSet()
 	taskRunCondSet.Manage(&tr.Status).MarkUnknown(apis.ConditionSucceeded, v1.TaskRunReasonToBeRetried.String(), message)
 }

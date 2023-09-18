@@ -739,7 +739,7 @@ Type: Succeeded
 Status: Unknown
 Reason: ToBeRetried
 ```
-- `status.StartTime` and `status.PodName` are unset to trigger another retry attempt.
+- `status.StartTime`, `status.PodName` and `status.Results` are unset to trigger another retry attempt.
 
 ### Configuring the failure timeout
 
