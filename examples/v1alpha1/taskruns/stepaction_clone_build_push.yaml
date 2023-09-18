@@ -1,0 +1,80 @@
+apiVersion: tekton.dev/v1alpha1
+kind: StepAction
+metadata:
+  name: git-clone
+spec:
+  params:
+    - name: url
+    - name: datapath
+  results:
+    - name: url
+    - name: commit
+  image: "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.40.2" 
+  script: |
+    #!/usr/bin/env sh
+    set -eu
+
+    git config --global --add safe.directory $(params.datapath)
+    git config --global init.defaultBranch main
+    git clone $(params.url) $(params.datapath)
+    cd $(params.datapath)
+    RESULT_SHA="$(git rev-parse HEAD)"
+    printf "%s" "${RESULT_SHA}" > "$(step.results.commit.path)"
+    printf "%s" "$(params.url)" > "$(step.results.url.path)"
+---
+apiVersion: tekton.dev/v1alpha1
+kind: StepAction
+metadata:
+  name: kaniko
+spec:
+  params:
+    - name: outputimage
+    - name: datapath
+  results:
+    - name: outputimagedigest
+  workingDir: $(params.datapath)
+  image: "gcr.io/kaniko-project/executor:v1.5.1@sha256:c6166717f7fe0b7da44908c986137ecfeab21f31ec3992f6e128fff8a94be8a5" 
+  args:
+    - --dockerfile=Dockerfile
+    - --context=$(params.datapath)/ # The user does not need to care the workspace and the source.
+    - --destination=$(params.outputimage)
+    - --digest-file=$(step.results.outputimagedigest.path)
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: clone-build-push
+spec:
+  params:
+    - name: url
+      value: https://github.com/chitrangpatel/repo1M
+    - name: outputimage
+      value: us-central1-docker.pkg.dev/chitrang-tekton/chitrang/ci 
+  workspaces:
+    - name: source
+      emptyDir: {}
+  TaskSpec:
+    results:
+      - name: commit
+        value: $(steps.clone.results.commit)
+      - name: url
+        value: $(steps.clone.results.url)
+      - name: image_digest
+        value: $(steps.build-push.results.outputimagedigest)
+    steps:
+      - name: clone
+        ref:
+          name: git-clone
+        params:
+          - name: datapath
+            value: $(workspaces.source.path)
+          - name: url
+            value: $(params.url)
+      - name: build-push
+        ref:
+          name: kaniko
+        params:
+          - name: datapath
+            value: $(workspaces.source.path)
+          - name: outputimage
+            value: $(params.outputimage)

@@ -1,0 +1,194 @@
+apiVersion: tekton.dev/v1alpha1
+kind: StepAction
+metadata:
+  name: upload-artifact-gcs
+spec:
+  params:
+    - name: sourcePath
+    - name: location
+      description: The address (including "gs://") where you'd like to upload files to.
+  results:
+    - name: anArtifact
+      type: object
+      properties:
+        path:
+          type: string
+        url:
+          type: string
+        hash:
+          type: string
+        type:
+          type: string
+  image: gcr.io/google.com/cloudsdktool/cloud-sdk:379.0.0-slim@sha256:d844877c7aaa06a0072979230c68417ddb0f27087277f29747c7169d6ed0d2b9
+  script: |
+    #!/usr/bin/env bash
+    if [ -f $(params.sourcePath) ]; then
+      A_FILE_HASH=$(md5sum "$(params.sourcePath)" | awk '{ print $1 }')
+      gsutil cp $(params.sourcePath) $(params.location)
+      TYPE=file
+    else
+      tar czf $(params.sourcePath).tar.gz $(params.sourcePath)
+      A_FILE_HASH=$(md5sum "$(params.sourcePath).tar.gz" | awk '{ print $1 }')
+      gsutil cp $(params.sourcePath).tar.gz $(params.location)
+      TYPE=folder
+    fi
+    cat <<EOF | tee $(step.results.anArtifact.path)
+    {
+      "path": "$(params.sourcePath)",
+      "url" : "$(params.location)",
+      "hash": "${A_FILE_HASH}",
+      "type": "${TYPE}"
+    }
+    EOF
+---
+apiVersion: tekton.dev/v1alpha1
+kind: StepAction
+metadata:
+  name: download-artifact-gcs
+spec:
+  params:
+    - name: anArtifact
+      type: object
+      properties:
+        path:
+          type: string
+        url:
+          type: string
+        hash:
+          type: string
+        type:
+          type: string
+  image: gcr.io/google.com/cloudsdktool/cloud-sdk:379.0.0-slim@sha256:d844877c7aaa06a0072979230c68417ddb0f27087277f29747c7169d6ed0d2b9
+  script: |
+    #!/usr/bin/env bash
+    set -e
+    # Check the md5sum
+    if [ "$(params.anArtifact.type)" ==  "file" ]; then
+      gsutil cp $(params.anArtifact.url) $(params.anArtifact.path)
+      echo "$(params.anArtifact.hash) $(params.anArtifact.path)" | md5sum -c
+    else
+      gsutil cp $(params.anArtifact.url) download.tgz
+      echo "$(params.anArtifact.hash) download.tgz" | md5sum -c
+      mkdir $(params.anArtifact.path)
+      tar xzf download.tgz
+    fi
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: trusted-artifacts
+spec:
+  taskRunTemplate:
+    serviceaccountname: chitrangksa
+  workspaces:
+  - name: artifact
+    emptyDir: {}
+  params:
+    - name: location
+      value: "gs://chitrang-prow"
+  pipelineSpec:
+    tasks:
+      - name: producer
+        workspaces:
+          - name: artifact
+        params:
+          - name: location
+            value: $(params.location)
+        taskSpec:
+          workspaces:
+            - name: artifact
+          results:
+            - name: aFileArtifact
+              type: object
+              properties:
+                path:
+                  type: string
+                url:
+                  type: string
+                hash:
+                  type: string
+                type:
+                  type: string
+              value: $(steps.upload-hash-file.results.anArtifact)
+            - name: aFolderArtifact
+              type: object
+              properties:
+                path:
+                  type: string
+                url:
+                  type: string
+                hash:
+                  type: string
+                type:
+                  type: string
+              value: $(steps.upload-hash-folder.results.anArtifact)
+          steps:
+            - name: produce-file
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                # Produce some content
+                date +%s | tee "$(workspaces.artifact.path)/afile.txt"
+            - name: upload-hash-file
+              ref:
+                name: upload-artifact-gcs
+              params:
+                - name: sourcePath
+                  value: $(workspaces.artifact.path)/afile.txt
+                - name: location
+                  value: $(params.location)/afile.txt
+            - name: produce-folder
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                A_FOLDER_PATH=$(workspaces.artifact.path)/afolder
+                mkdir "$A_FOLDER_PATH"
+                date +%s | tee "${A_FOLDER_PATH}/a.txt"
+                date +%s | tee "${A_FOLDER_PATH}/b.txt"
+                date +%s | tee "${A_FOLDER_PATH}/c.txt"
+            - name: upload-hash-folder
+              ref:
+                name: upload-artifact-gcs 
+              params:
+                - name: sourcePath
+                  value: $(workspaces.artifact.path)/afolder
+                - name: location
+                  value: $(params.location)/afolder
+      - name: consumer
+        params:
+          - name: aFileArtifact
+            value: $(tasks.producer.results.aFileArtifact)
+          - name: aFolderArtifact
+            value: $(tasks.producer.results.aFolderArtifact)
+        workspaces:
+          - name: artifact
+        taskSpec:
+          params:
+          workspaces:
+            - name: artifact
+          steps:
+            - name: download-verify-file
+              ref:
+                name: download-artifact-gcs
+              params:
+                - name: anArtifact
+                  value:
+                    path: $(params.aFileArtifact.path)
+                    url: $(params.aFileArtifact.url)
+                    hash: $(params.aFileArtifact.hash)
+                    type: $(params.aFileArtifact.type)
+            - name: download-verify-folder
+              ref:
+                name: download-artifact-gcs
+              params:
+                - name: anArtifact
+                  value:
+                    path: $(params.aFolderArtifact.path)
+                    url: $(params.aFolderArtifact.url)
+                    hash: $(params.aFolderArtifact.hash)
+                    type: $(params.aFolderArtifact.type)
+            - name: consume-content
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                find $(workspaces.artifact.path) -type f
