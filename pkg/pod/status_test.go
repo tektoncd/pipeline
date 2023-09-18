@@ -125,7 +125,7 @@ func TestSetTaskRunStatusBasedOnStepStatus_sidecar_logs(t *testing.T) {
 	}, {
 		desc:          "test result with sidecar logs bad format",
 		maxResultSize: 4096,
-		wantErr:       fmt.Errorf("%s", "Invalid result invalid character 'k' in literal false (expecting 'l')"),
+		wantErr:       fmt.Errorf("%s", "invalid result \"\": invalid character 'k' in literal false (expecting 'l')"),
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			tr := v1.TaskRun{

@@ -7,38 +7,146 @@ spec:
     - name: result1
     - name: result2
     - name: result3
+      type: array
+      description: The Array results
     - name: result4
     - name: result5
+      type: object
+      description: The object results
+      properties:
+        url:
+          type: string
+        digest:
+          type: string
   steps:
     - name: step1
       image: alpine
       script: |
-        cat /dev/urandom | head -c 2500 | base64 | tee $(results.result1.path);
-        cat /dev/urandom | head -c 2500 | base64 | tee $(results.result2.path);
-        cat /dev/urandom | head -c 2500 | base64 | tee $(results.result3.path);
-        cat /dev/urandom | head -c 2500 | base64 | tee $(results.result4.path);
-        cat /dev/urandom | head -c 2500 | base64 | tee $(results.result5.path);
+        # produce a result - a random string with 2,500 characters - result1
+        tr -dc A-Za-z0-9 </dev/urandom | head -c 2500 | tee $(results.result1.path);
+
+        # produce a result - a random string with 2,500 characters - result2
+        tr -dc A-Za-z0-9 </dev/urandom | head -c 2500 | tee $(results.result2.path);
+
+        # produce a result - an array with four elements - result3
+        URL1=`tr -dc A-Za-z0-9 </dev/urandom | head -c 600`
+        URL2=`tr -dc A-Za-z0-9 </dev/urandom | head -c 700`
+        URL3=`tr -dc A-Za-z0-9 </dev/urandom | head -c 800`
+        echo -n "[\"$URL1\", \"\", \"$URL2\", \"$URL3\"]" | tee $(results.result3.path)
+
+        # produce a result - a random string with 2,500 characters - result4
+        tr -dc A-Za-z0-9 </dev/urandom | head -c 2500 | tee $(results.result4.path);
+
+        # produce a result - a hash with two objects - result5
+        URL=`tr -dc A-Za-z0-9 </dev/urandom | head -c 2000`
+        DIGEST=`tr -dc A-Za-z0-9 </dev/urandom | head -c 200`
+        echo -n "{\"url\":\"$URL\",\"digest\":\"$DIGEST\"}" | tee $(results.result5.path)
 ---
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: print-large-results
+  name: verify-large-results
 spec:
   params:
     - name: param1
     - name: param2
     - name: param3
+      description: The array param
+      type: array
     - name: param4
     - name: param5
+      description: The object param
+      properties:
+        url:
+          type: string
+        digest:
+          type: string
   steps:
     - name: step1
       image: alpine
+      args: [
+        "$(params.param3[*])"
+      ]
       script: |
-        echo "$(params.param1)";
-        echo "$(params.param2)";
-        echo "$(params.param3)";
-        echo "$(params.param4)";
-        echo "$(params.param5)";
+        #!/usr/bin/env sh
+        echo "Validating the length of the param reading larger result - param1"
+        echo "The string param, param1 must be 2500 characters long"
+        p1=$(params.param1)
+        if [ "${#p1}" != 2500 ]; then
+          echo "Error: expected 2500 characters in param1 but has ${#p1} characters"
+          exit 1
+        fi
+        echo "Done validating the length of the param reading larger result - param1"
+
+        echo "Validating the length of the param reading larger result - param2"
+        echo "The string param, param2 must be 2500 characters long"
+        p2=$(params.param2)
+        if [ "${#p2}" != 2500 ]; then
+          echo "Error: expected 2500 characters in param2 but has ${#p2} characters"
+          exit 1
+        fi
+        echo "Done validating the length of the param reading larger result - param2"
+
+        echo "Validating the length of the array parameter - param3"
+        echo "The array parameter, param3 must have 4 elements"
+        if [[ $# != 4 ]]; then
+          echo "Error: expected 4 elements in param3 but has $# characters"
+          exit 1
+        fi
+        echo "Done validating the length of the array parameter - param3"
+
+        echo "Validating the first element"
+        if [ "${#1}" != 600 ]; then
+          echo "Error: expected 600 characters in the first array element but has ${#1} characters"
+          exit 1
+        fi
+        echo "Done validating the first element"
+
+        echo "Validating the second element"
+        if [ "${#2}" != 0 ]; then
+          echo "Error: expected 0 characters in the second array element but has ${#2} characters"
+          exit 1
+        fi
+        echo "Done validating the second element"
+
+        echo "Validating the third element"
+        if [ "${#3}" != 700 ]; then
+          echo "Error: expected 700 characters in the third array element but has ${#3} characters"
+          exit 1
+        fi
+        echo "Done validating the third element"
+
+        echo "Validating the fourth element"
+        if [ "${#4}" != 800 ]; then
+          echo "Error: expected 800 characters in the fourth array element but has ${#4} characters"
+          exit 1
+        fi
+        echo "Done validating the fourth element"
+
+        echo "Validating the length of the param reading larger result - param4"
+        echo "The string param, param4 must be 2500 characters long"
+        p4=$(params.param4)
+        if [ "${#p4}" != 2500 ]; then
+          echo "Error: expected 2500 characters in param4 but has ${#p4} characters"
+          exit 1
+        fi
+        echo "Done validating the length of the param reading larger result - param4"
+
+        echo "validating param5.url"
+        p51=$(params.param5.url)
+        if [ "${#p51}" != 2000 ]; then
+          echo "Error: expected 2000 characters in the url of the hash param \"param5\" but has ${#p51} characters"
+          exit 1
+        fi
+        echo "Done validating param5.url"
+
+        echo "Validating param5.digest"
+        p52=$(params.param5.digest)
+        if [ "${#p52}" != 200 ]; then
+          echo "Error: expected 200 characters in the digest of the hash param \"param5\" but has ${#p52} characters"
+          exit 1
+        fi
+        echo "Done validating param5.digest"
 ---
 apiVersion: tekton.dev/v1
 kind: Pipeline
@@ -49,20 +157,20 @@ spec:
     - name: large-task
       taskRef:
         name: large-result-task
-    - name: print-results
+    - name: verify-results
       params:
         - name: param1
           value: "$(tasks.large-task.results.result1)"
         - name: param2
           value: "$(tasks.large-task.results.result2)"
         - name: param3
-          value: "$(tasks.large-task.results.result3)"
+          value: "$(tasks.large-task.results.result3[*])"
         - name: param4
           value: "$(tasks.large-task.results.result4)"
         - name: param5
-          value: "$(tasks.large-task.results.result5)"
+          value: "$(tasks.large-task.results.result5[*])"
       taskRef:
-        name: print-large-results
+        name: verify-large-results
   results:
     - name: large-result
       value: $(tasks.large-task.results.result1)
@@ -70,7 +178,7 @@ spec:
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  name: large-result-pipeline-run
+  generateName: large-result-pipeline-run
 spec:
   pipelineRef:
     name: large-result-pipeline

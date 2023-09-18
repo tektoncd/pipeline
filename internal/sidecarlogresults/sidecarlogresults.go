@@ -176,13 +176,12 @@ func extractResultsFromLogs(logs io.Reader, sidecarLogResults []result.RunResult
 
 func parseResults(resultBytes []byte, maxResultLimit int) (result.RunResult, error) {
 	runResult := result.RunResult{}
-	if len(resultBytes) > maxResultLimit {
-		return runResult, ErrSizeExceeded
-	}
-
 	var res SidecarLogResult
 	if err := json.Unmarshal(resultBytes, &res); err != nil {
-		return runResult, fmt.Errorf("Invalid result %w", err)
+		return runResult, fmt.Errorf("invalid result \"%s\": %w", res.Name, err)
+	}
+	if len(resultBytes) > maxResultLimit {
+		return runResult, fmt.Errorf("invalid result \"%s\": %w of %d", res.Name, ErrSizeExceeded, maxResultLimit)
 	}
 	runResult = result.RunResult{
 		Key:        res.Name,
