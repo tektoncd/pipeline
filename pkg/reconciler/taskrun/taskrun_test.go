@@ -1748,6 +1748,50 @@ status:
       MaxResultSize: 4096
       Coschedule: "workspaces"
 `)
+		toBeRetriedWithResultsTaskRun = parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-with-results-to-be-retried
+  namespace: foo
+spec:
+  retries: 1
+  taskRef:
+    name: test-results-task
+status:
+  startTime: "2021-12-31T23:59:59Z"
+  results:
+    - name: aResult
+      type: string
+      value: aResultValue
+  conditions:
+  - reason: Failed
+    status: "False"
+    type: Succeeded
+`)
+		retriedWithResultsTaskRun = parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-with-results-to-be-retried
+  namespace: foo
+spec:
+  retries: 1
+  taskRef:
+    name: test-results-task
+status:
+  podName:   ""
+  conditions:
+  - reason: ToBeRetried
+    status: Unknown
+    type: Succeeded
+  retriesStatus:
+  - conditions:
+    - reason: Failed
+      status: "False"
+      type: Succeeded
+    results:
+    - name: aResult
+      type: string
+      value: aResultValue
+    startTime: "2021-12-31T23:59:59Z"
+`)
 	)
 
 	for _, tc := range []struct {
@@ -1823,6 +1867,15 @@ status:
 		tr:            toBeRetriedTaskRun,
 		wantTr:        retriedTaskRun,
 		wantStartTime: true,
+	}, {
+		name: "TaskRun retry and clear the results",
+		testData: test.Data{
+			TaskRuns: []*v1.TaskRun{toBeRetriedWithResultsTaskRun},
+			Tasks:    []*v1.Task{resultsTask},
+		},
+		tr:            toBeRetriedWithResultsTaskRun,
+		wantTr:        retriedWithResultsTaskRun,
+		wantStartTime: false,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			testAssets, cancel := getTaskRunController(t, tc.testData)
