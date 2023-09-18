@@ -248,6 +248,7 @@ func TestParseResults(t *testing.T) {
 }
 
 func TestParseResults_Failure(t *testing.T) {
+	maxResultLimit := 4096
 	result := SidecarLogResult{
 		Name:  "result2",
 		Value: strings.Repeat("k", 4098),
@@ -256,12 +257,12 @@ func TestParseResults_Failure(t *testing.T) {
 	res2, _ := json.Marshal(&result)
 	podLogs := []string{string(res1), string(res2)}
 	want := []string{
-		"Invalid result json: cannot unmarshal string into Go value of type sidecarlogresults.SidecarLogResult",
-		ErrSizeExceeded.Error(),
+		"invalid result \"\": json: cannot unmarshal string into Go value of type sidecarlogresults.SidecarLogResult",
+		fmt.Sprintf("invalid result \"%s\": %s of %d", result.Name, ErrSizeExceeded.Error(), maxResultLimit),
 	}
 	got := []string{}
 	for _, plog := range podLogs {
-		_, err := parseResults([]byte(plog), 4096)
+		_, err := parseResults([]byte(plog), maxResultLimit)
 		got = append(got, err.Error())
 	}
 	if d := cmp.Diff(want, got); d != "" {
