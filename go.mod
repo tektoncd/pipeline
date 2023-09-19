@@ -6,7 +6,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.1-0.20220720053627-e327d0730470 // Waiting for https://github.com/ahmetb/gen-crd-api-reference-docs/pull/43/files to merge
 	github.com/cloudevents/sdk-go/v2 v2.14.0
-	github.com/containerd/containerd v1.7.3
+	github.com/containerd/containerd v1.7.6
 	github.com/go-git/go-git/v5 v5.8.1
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-containerregistry v0.16.1
@@ -87,6 +87,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys v1.0.1 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal v1.0.0 // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.1.1 // indirect
+	github.com/Microsoft/hcsshim v0.11.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/kms v1.24.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.15.5 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
