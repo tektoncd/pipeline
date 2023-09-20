@@ -144,6 +144,31 @@ func WaitForPodState(ctx context.Context, c *clients, name string, namespace str
 	})
 }
 
+// WaitForPVCIsDeleted polls the number of the PVC in the namespace from client every
+// interval until all the PVCs in the namespace are deleted. It returns an
+// error or timeout. desc will be used to name the metric that is emitted to
+// track how long it took to delete all the PVCs in the namespace.
+func WaitForPVCIsDeleted(ctx context.Context, c *clients, polltimeout time.Duration, name, namespace, desc string) error {
+	metricName := fmt.Sprintf("WaitForPVCIsDeleted/%s/%s", name, desc)
+	_, span := trace.StartSpan(context.Background(), metricName)
+	defer span.End()
+
+	ctx, cancel := context.WithTimeout(ctx, polltimeout)
+	defer cancel()
+
+	return pollImmediateWithContext(ctx, func() (bool, error) {
+		pvcList, err := c.KubeClient.CoreV1().PersistentVolumeClaims(namespace).List(ctx, metav1.ListOptions{})
+		if err != nil {
+			return true, err
+		}
+		if len(pvcList.Items) > 0 {
+			return false, nil
+		}
+
+		return true, nil
+	})
+}
+
 // WaitForPipelineRunState polls the status of the PipelineRun called name from client every
 // interval until inState returns `true` indicating it is done, returns an
 // error or timeout. desc will be used to name the metric that is emitted to
