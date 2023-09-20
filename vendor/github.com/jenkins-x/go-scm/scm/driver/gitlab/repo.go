@@ -252,10 +252,15 @@ func (s *repositoryService) AddCollaborator(ctx context.Context, repo, username,
 		AccessLevel: stringToAccessLevel(permission),
 	}
 	res, err := s.client.do(ctx, "POST", path, in, &out)
+	if res.Status == 409 {
+		// GitLab returns 409 Conflict and message "Member already exists"
+		return false, true, res, err
+	}
 	if err != nil {
 		return false, false, res, err
 	}
-	return true, false, res, nil
+	// Return that user has become a member already (no invite/accept in GitLab)
+	return true, true, res, nil
 }
 
 func (s *repositoryService) IsCollaborator(ctx context.Context, repo, user string) (bool, *scm.Response, error) {
