@@ -781,6 +781,7 @@ func TestThatAffinityAssistantNameIsNoLongerThan53(t *testing.T) {
 		t.Errorf("affinity assistant name can not be longer than 53 chars")
 	}
 }
+
 func TestCleanupAffinityAssistants_Success(t *testing.T) {
 	workspaces := []v1.WorkspaceBinding{
 		{
@@ -866,6 +867,20 @@ func TestCleanupAffinityAssistants_Success(t *testing.T) {
 		_, c, _ := seedTestData(data)
 		ctx := cfgtesting.SetFeatureFlags(context.Background(), t, tc.cfgMap)
 
+		// mocks `kubernetes.io/pvc-protection` finalizer behavior by adding DeletionTimestamp when deleting pvcs with the finalizer
+		// see details in: https://kubernetes.io/docs/concepts/overview/working-with-objects/finalizers/#how-finalizers-work
+		if tc.aaBehavior == aa.AffinityAssistantPerPipelineRun {
+			for _, pvc := range pvcs {
+				pvc.DeletionTimestamp = &metav1.Time{
+					Time: metav1.Now().Time,
+				}
+				c.KubeClientSet.CoreV1().(*fake.FakeCoreV1).PrependReactor("delete", "persistentvolumeclaims",
+					func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
+						return true, pvc, nil
+					})
+			}
+		}
+
 		// call clean up
 		err := c.cleanupAffinityAssistantsAndPVCs(ctx, pr)
 		if err != nil {
@@ -889,9 +904,13 @@ func TestCleanupAffinityAssistants_Success(t *testing.T) {
 					t.Errorf("unexpected err when getting PersistentVolumeClaims, err: %v", err)
 				}
 			} else {
-				_, err = c.KubeClientSet.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(ctx, expectedPVCName, metav1.GetOptions{})
-				if !apierrors.IsNotFound(err) {
-					t.Errorf("failed to clean up PersistentVolumeClaim")
+				pvc, err := c.KubeClientSet.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(ctx, expectedPVCName, metav1.GetOptions{})
+				if err != nil {
+					t.Fatalf("unexpect err when getting PersistentVolumeClaims, err: %v", err)
+				}
+				// validate the finalizer is removed, which mocks the pvc is deleted properly
+				if len(pvc.Finalizers) > 0 {
+					t.Errorf("pvc %s kubernetes.io/pvc-protection finalizer is not removed properly", pvc.Name)
 				}
 			}
 		}

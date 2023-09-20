@@ -205,6 +205,12 @@ spec:
 		t.Errorf("Error waiting for PipelineRun to finish: %s", err)
 	}
 
+	// wait and check PVCs are deleted
+	t.Logf("Waiting for PVC in namespace %s to delete", namespace)
+	if err := WaitForPVCIsDeleted(ctx, c, timeout, prName, namespace, "PVCDeleted"); err != nil {
+		t.Errorf("Error waiting for PVC to be deleted: %s", err)
+	}
+
 	// validate PipelineRun pods sharing the same PVC are scheduled to the same node
 	podNames := []string{fmt.Sprintf("%v-foo-pod", prName), fmt.Sprintf("%v-bar-pod", prName), fmt.Sprintf("%v-double-ws-pod", prName), fmt.Sprintf("%v-no-ws-pod", prName)}
 	validatePodAffinity(t, ctx, podNames, namespace, c.KubeClient)

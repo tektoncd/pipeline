@@ -25,12 +25,12 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/kubernetes/typed/core/v1/fake"
 	client_go_testing "k8s.io/client-go/testing"
 )
 
@@ -263,15 +263,30 @@ func TestPurgeFinalizerAndDeletePVCForWorkspace(t *testing.T) {
 		t.Fatalf("unexpected error when creating PVC: %v", err)
 	}
 
+	// mocks `kubernetes.io/pvc-protection` finalizer behavior by adding DeletionTimestamp when deleting pvcs with the finalizer
+	// see details in: https://kubernetes.io/docs/concepts/overview/working-with-objects/finalizers/#how-finalizers-work
+	pvc.DeletionTimestamp = &metav1.Time{
+		Time: metav1.Now().Time,
+	}
+	kubeClientSet.CoreV1().(*fake.FakeCoreV1).PrependReactor("delete", "persistentvolumeclaims",
+		func(action client_go_testing.Action) (handled bool, ret runtime.Object, err error) {
+			return true, pvc, nil
+		})
+
 	// call PurgeFinalizerAndDeletePVCForWorkspace to delete pvc
+	// note that the pvcs are not actually deleted in the unit test due to the mock limitation of fakek8s.NewSimpleClientset();
+	// full pvc lifecycle is tested in TestAffinityAssistant_PerPipelineRun integration test
 	pvcHandler := defaultPVCHandler{kubeClientSet, zap.NewExample().Sugar()}
 	if err := pvcHandler.PurgeFinalizerAndDeletePVCForWorkspace(ctx, pvcName, namespace); err != nil {
 		t.Fatalf("unexpected error when calling PurgeFinalizerAndDeletePVCForWorkspace: %v", err)
 	}
 
-	// validate pvc is deleted
-	_, err := kubeClientSet.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, pvcName, metav1.GetOptions{})
-	if !apierrors.IsNotFound(err) {
-		t.Errorf("expected a NotFound response of PersistentVolumeClaims, got: %v", err)
+	// validate the `kubernetes.io/pvc-protection` finalizer is removed
+	pvc, err := kubeClientSet.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, pvcName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(pvc.Finalizers) > 0 {
+		t.Errorf("pvc %s kubernetes.io/pvc-protection finalizer is not removed properly", pvcName)
 	}
 }

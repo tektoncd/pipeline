@@ -85,7 +85,7 @@ func (c *defaultPVCHandler) CreatePVCFromVolumeClaimTemplate(ctx context.Context
 	return nil
 }
 
-// PurgeFinalizerAndDeletePVCForWorkspace purges the `kubernetes.io/pvc-protection` finalizer protection of the given pvc and then deletes it.
+// PurgeFinalizerAndDeletePVCForWorkspace deletes pvcs and then purges the `kubernetes.io/pvc-protection` finalizer protection.
 // Purging the `kubernetes.io/pvc-protection` finalizer allows the pvc to be deleted even when it is referenced by a taskrun pod.
 // See mode details in https://kubernetes.io/docs/concepts/storage/persistent-volumes/#storage-object-in-use-protection.
 func (c *defaultPVCHandler) PurgeFinalizerAndDeletePVCForWorkspace(ctx context.Context, pvcName, namespace string) error {
@@ -113,16 +113,16 @@ func (c *defaultPVCHandler) PurgeFinalizerAndDeletePVCForWorkspace(ctx context.C
 		return fmt.Errorf("failed to marshal jsonpatch: %w", err)
 	}
 
-	// patch the existing PVC to update the finalizers
-	_, err = c.clientset.CoreV1().PersistentVolumeClaims(namespace).Patch(ctx, pvcName, types.JSONPatchType, removeFinalizerBytes, metav1.PatchOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to patch the PVC %s: %w", pvcName, err)
-	}
-
 	// delete PVC
 	err = c.clientset.CoreV1().PersistentVolumeClaims(namespace).Delete(ctx, pvcName, metav1.DeleteOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to delete the PVC %s: %w", pvcName, err)
+	}
+
+	// remove finalizer
+	_, err = c.clientset.CoreV1().PersistentVolumeClaims(namespace).Patch(ctx, pvcName, types.JSONPatchType, removeFinalizerBytes, metav1.PatchOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to patch the PVC %s: %w", pvcName, err)
 	}
 
 	return nil
