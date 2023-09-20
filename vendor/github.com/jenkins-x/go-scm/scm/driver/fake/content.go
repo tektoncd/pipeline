@@ -59,7 +59,6 @@ func (c contentService) List(_ context.Context, repo, path, ref string) ([]*scm.
 		if f.IsDir() {
 			t = "dir"
 		}
-		path := filepath.Join(dir, name)
 		info, err := f.Info()
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot get info for file %s: %v", name, err)
@@ -68,11 +67,11 @@ func (c contentService) List(_ context.Context, repo, path, ref string) ([]*scm.
 
 		answer = append(answer, &scm.FileEntry{
 			Name: name,
-			Path: path,
+			Path: fmt.Sprintf("%s/%s", path, name),
 			Type: t,
 			Size: int(fSize),
 			Sha:  ref,
-			Link: "file://" + path,
+			Link: "file://" + filepath.Join(dir, name),
 		})
 	}
 	return answer, nil, nil
