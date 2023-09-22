@@ -45,7 +45,7 @@ Further documentation available:
 
 - **Latest Release**: [v0.52.0][v0.52-0] (2023-09-20) ([docs][v0.52-0-docs], [examples][v0.52-0-examples])
 - **Initial Release**: [v0.52.0][v0.52-0] (2023-09-20)
-- **Estimated End of Life**: 2024-10-20
+- **Estimated End of Life**: 2023-10-20
 - **Patch Releases**: [v0.52.0][v0.52-0]
 
 ### v0.50 (LTS)
