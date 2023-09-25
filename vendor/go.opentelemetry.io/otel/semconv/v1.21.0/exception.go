@@ -12,17 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build linux || dragonfly || freebsd || netbsd || openbsd || solaris
+package semconv // import "go.opentelemetry.io/otel/semconv/v1.21.0"
 
-package resource // import "go.opentelemetry.io/otel/sdk/resource"
-
-import "os"
-
-func readFile(filename string) (string, error) {
-	b, err := os.ReadFile(filename)
-	if err != nil {
-		return "", err
-	}
-
-	return string(b), nil
-}
+const (
+	// ExceptionEventName is the name of the Span event representing an exception.
+	ExceptionEventName = "exception"
+)
