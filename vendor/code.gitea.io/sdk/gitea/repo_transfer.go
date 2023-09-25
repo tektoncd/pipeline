@@ -34,3 +34,29 @@ func (c *Client) TransferRepo(owner, reponame string, opt TransferRepoOption) (*
 	resp, err := c.getParsedResponse("POST", fmt.Sprintf("/repos/%s/%s/transfer", owner, reponame), jsonHeader, bytes.NewReader(body), repo)
 	return repo, resp, err
 }
+
+// AcceptRepoTransfer accepts a repo transfer.
+func (c *Client) AcceptRepoTransfer(owner, reponame string) (*Repository, *Response, error) {
+	if err := escapeValidatePathSegments(&owner, &reponame); err != nil {
+		return nil, nil, err
+	}
+	if err := c.checkServerVersionGreaterThanOrEqual(version1_16_0); err != nil {
+		return nil, nil, err
+	}
+	repo := new(Repository)
+	resp, err := c.getParsedResponse("POST", fmt.Sprintf("/repos/%s/%s/transfer/accept", owner, reponame), jsonHeader, nil, repo)
+	return repo, resp, err
+}
+
+// RejectRepoTransfer rejects a repo transfer.
+func (c *Client) RejectRepoTransfer(owner, reponame string) (*Repository, *Response, error) {
+	if err := escapeValidatePathSegments(&owner, &reponame); err != nil {
+		return nil, nil, err
+	}
+	if err := c.checkServerVersionGreaterThanOrEqual(version1_16_0); err != nil {
+		return nil, nil, err
+	}
+	repo := new(Repository)
+	resp, err := c.getParsedResponse("POST", fmt.Sprintf("/repos/%s/%s/transfer/reject", owner, reponame), jsonHeader, nil, repo)
+	return repo, resp, err
+}

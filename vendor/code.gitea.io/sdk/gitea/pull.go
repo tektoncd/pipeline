@@ -12,8 +12,6 @@ import (
 	"net/url"
 	"strings"
 	"time"
-
-	"github.com/hashicorp/go-version"
 )
 
 // PRBranchInfo information about a branch
@@ -45,11 +43,12 @@ type PullRequest struct {
 	DiffURL  string `json:"diff_url"`
 	PatchURL string `json:"patch_url"`
 
-	Mergeable      bool       `json:"mergeable"`
-	HasMerged      bool       `json:"merged"`
-	Merged         *time.Time `json:"merged_at"`
-	MergedCommitID *string    `json:"merge_commit_sha"`
-	MergedBy       *User      `json:"merged_by"`
+	Mergeable           bool       `json:"mergeable"`
+	HasMerged           bool       `json:"merged"`
+	Merged              *time.Time `json:"merged_at"`
+	MergedCommitID      *string    `json:"merge_commit_sha"`
+	MergedBy            *User      `json:"merged_by"`
+	AllowMaintainerEdit bool       `json:"allow_maintainer_edit"`
 
 	Base      *PRBranchInfo `json:"base"`
 	Head      *PRBranchInfo `json:"head"`
@@ -59,6 +58,19 @@ type PullRequest struct {
 	Created  *time.Time `json:"created_at"`
 	Updated  *time.Time `json:"updated_at"`
 	Closed   *time.Time `json:"closed_at"`
+}
+
+// ChangedFile is a changed file in a diff
+type ChangedFile struct {
+	Filename         string `json:"filename"`
+	PreviousFilename string `json:"previous_filename"`
+	Status           string `json:"status"`
+	Additions        int    `json:"additions"`
+	Deletions        int    `json:"deletions"`
+	Changes          int    `json:"changes"`
+	HTMLURL          string `json:"html_url"`
+	ContentsURL      string `json:"contents_url"`
+	RawURL           string `json:"raw_url"`
 }
 
 // ListPullRequestsOptions options for listing pull requests
@@ -166,15 +178,17 @@ func (c *Client) CreatePullRequest(owner, repo string, opt CreatePullRequestOpti
 
 // EditPullRequestOption options when modify pull request
 type EditPullRequestOption struct {
-	Title     string     `json:"title"`
-	Body      string     `json:"body"`
-	Base      string     `json:"base"`
-	Assignee  string     `json:"assignee"`
-	Assignees []string   `json:"assignees"`
-	Milestone int64      `json:"milestone"`
-	Labels    []int64    `json:"labels"`
-	State     *StateType `json:"state"`
-	Deadline  *time.Time `json:"due_date"`
+	Title               string     `json:"title"`
+	Body                string     `json:"body"`
+	Base                string     `json:"base"`
+	Assignee            string     `json:"assignee"`
+	Assignees           []string   `json:"assignees"`
+	Milestone           int64      `json:"milestone"`
+	Labels              []int64    `json:"labels"`
+	State               *StateType `json:"state"`
+	Deadline            *time.Time `json:"due_date"`
+	RemoveDeadline      *bool      `json:"unset_due_date"`
+	AllowMaintainerEdit *bool      `json:"allow_maintainer_edit"`
 }
 
 // Validate the EditPullRequestOption struct
@@ -211,12 +225,15 @@ func (c *Client) EditPullRequest(owner, repo string, index int64, opt EditPullRe
 
 // MergePullRequestOption options when merging a pull request
 type MergePullRequestOption struct {
-	Style   MergeStyle `json:"Do"`
-	Title   string     `json:"MergeTitleField"`
-	Message string     `json:"MergeMessageField"`
+	Style                  MergeStyle `json:"Do"`
+	MergeCommitID          string     `json:"MergeCommitID"`
+	Title                  string     `json:"MergeTitleField"`
+	Message                string     `json:"MergeMessageField"`
+	DeleteBranchAfterMerge bool       `json:"delete_branch_after_merge"`
+	ForceMerge             bool       `json:"force_merge"`
+	HeadCommitId           string     `json:"head_commit_id"`
+	MergeWhenChecksSucceed bool       `json:"merge_when_checks_succeed"`
 }
-
-var version1_11_5, _ = version.NewVersion("1.11.5")
 
 // Validate the MergePullRequestOption struct
 func (opt MergePullRequestOption) Validate(c *Client) error {
@@ -253,7 +270,6 @@ func (c *Client) IsPullRequestMerged(owner, repo string, index int64) (bool, *Re
 		return false, nil, err
 	}
 	status, resp, err := c.getStatusCode("GET", fmt.Sprintf("/repos/%s/%s/pulls/%d/merge", owner, repo, index), nil, nil)
-
 	if err != nil {
 		return false, resp, err
 	}
@@ -261,9 +277,29 @@ func (c *Client) IsPullRequestMerged(owner, repo string, index int64) (bool, *Re
 	return status == 204, resp, nil
 }
 
+// PullRequestDiffOptions options for GET /repos/<owner>/<repo>/pulls/<idx>.[diff|patch]
+type PullRequestDiffOptions struct {
+	// Include binary file changes when requesting a .diff
+	Binary bool
+}
+
+// QueryEncode converts the options to a query string
+func (o PullRequestDiffOptions) QueryEncode() string {
+	query := make(url.Values)
+	query.Add("binary", fmt.Sprintf("%v", o.Binary))
+	return query.Encode()
+}
+
+type pullRequestDiffType string
+
+const (
+	pullRequestDiffTypeDiff  pullRequestDiffType = "diff"
+	pullRequestDiffTypePatch pullRequestDiffType = "patch"
+)
+
 // getPullRequestDiffOrPatch gets the patch or diff file as bytes for a PR
-func (c *Client) getPullRequestDiffOrPatch(owner, repo, kind string, index int64) ([]byte, *Response, error) {
-	if err := escapeValidatePathSegments(&owner, &repo, &kind); err != nil {
+func (c *Client) getPullRequestDiffOrPatch(owner, repo string, kind pullRequestDiffType, index int64, opts PullRequestDiffOptions) ([]byte, *Response, error) {
+	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
 		return nil, nil, err
 	}
 	if err := c.checkServerVersionGreaterThanOrEqual(version1_13_0); err != nil {
@@ -274,19 +310,20 @@ func (c *Client) getPullRequestDiffOrPatch(owner, repo, kind string, index int64
 		if r.Private {
 			return nil, nil, err
 		}
-		return c.getWebResponse("GET", fmt.Sprintf("/%s/%s/pulls/%d.%s", owner, repo, index, kind), nil)
+		url := fmt.Sprintf("/%s/%s/pulls/%d.%s?%s", owner, repo, index, kind, opts.QueryEncode())
+		return c.getWebResponse("GET", url, nil)
 	}
 	return c.getResponse("GET", fmt.Sprintf("/repos/%s/%s/pulls/%d.%s", owner, repo, index, kind), nil, nil)
 }
 
-// GetPullRequestPatch gets the .patch file as bytes for a PR
+// GetPullRequestPatch gets the git patchset of a PR
 func (c *Client) GetPullRequestPatch(owner, repo string, index int64) ([]byte, *Response, error) {
-	return c.getPullRequestDiffOrPatch(owner, repo, "patch", index)
+	return c.getPullRequestDiffOrPatch(owner, repo, pullRequestDiffTypePatch, index, PullRequestDiffOptions{})
 }
 
-// GetPullRequestDiff gets the .diff file as bytes for a PR
-func (c *Client) GetPullRequestDiff(owner, repo string, index int64) ([]byte, *Response, error) {
-	return c.getPullRequestDiffOrPatch(owner, repo, "diff", index)
+// GetPullRequestDiff gets the diff of a PR. For Gitea >= 1.16, you must set includeBinary to get an applicable diff
+func (c *Client) GetPullRequestDiff(owner, repo string, index int64, opts PullRequestDiffOptions) ([]byte, *Response, error) {
+	return c.getPullRequestDiffOrPatch(owner, repo, pullRequestDiffTypeDiff, index, opts)
 }
 
 // ListPullRequestCommitsOptions options for listing pull requests
@@ -325,4 +362,22 @@ func fixPullHeadSha(client *Client, pr *PullRequest) error {
 		pr.Head.Sha = refs[0].Object.SHA
 	}
 	return nil
+}
+
+// ListPullRequestFilesOptions options for listing pull request files
+type ListPullRequestFilesOptions struct {
+	ListOptions
+}
+
+// ListPullRequestFiles list changed files for a pull request
+func (c *Client) ListPullRequestFiles(owner, repo string, index int64, opt ListPullRequestFilesOptions) ([]*ChangedFile, *Response, error) {
+	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
+		return nil, nil, err
+	}
+	link, _ := url.Parse(fmt.Sprintf("/repos/%s/%s/pulls/%d/files", owner, repo, index))
+	opt.setDefaults()
+	files := make([]*ChangedFile, 0, opt.PageSize)
+	link.RawQuery = opt.getURLQuery().Encode()
+	resp, err := c.getParsedResponse("GET", link.String(), nil, nil, &files)
+	return files, resp, err
 }

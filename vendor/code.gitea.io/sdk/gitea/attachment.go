@@ -43,7 +43,7 @@ func (c *Client) ListReleaseAttachments(user, repo string, release int64, opt Li
 }
 
 // GetReleaseAttachment returns the requested attachment
-func (c *Client) GetReleaseAttachment(user, repo string, release int64, id int64) (*Attachment, *Response, error) {
+func (c *Client) GetReleaseAttachment(user, repo string, release, id int64) (*Attachment, *Response, error) {
 	if err := escapeValidatePathSegments(&user, &repo); err != nil {
 		return nil, nil, err
 	}
@@ -88,7 +88,7 @@ type EditAttachmentOptions struct {
 }
 
 // EditReleaseAttachment updates the given attachment with the given options
-func (c *Client) EditReleaseAttachment(user, repo string, release int64, attachment int64, form EditAttachmentOptions) (*Attachment, *Response, error) {
+func (c *Client) EditReleaseAttachment(user, repo string, release, attachment int64, form EditAttachmentOptions) (*Attachment, *Response, error) {
 	if err := escapeValidatePathSegments(&user, &repo); err != nil {
 		return nil, nil, err
 	}
@@ -102,7 +102,7 @@ func (c *Client) EditReleaseAttachment(user, repo string, release int64, attachm
 }
 
 // DeleteReleaseAttachment deletes the given attachment including the uploaded file
-func (c *Client) DeleteReleaseAttachment(user, repo string, release int64, id int64) (*Response, error) {
+func (c *Client) DeleteReleaseAttachment(user, repo string, release, id int64) (*Response, error) {
 	if err := escapeValidatePathSegments(&user, &repo); err != nil {
 		return nil, err
 	}

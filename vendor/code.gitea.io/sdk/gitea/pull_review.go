@@ -116,7 +116,7 @@ type ListPullReviewsOptions struct {
 
 // Validate the CreatePullReviewOptions struct
 func (opt CreatePullReviewOptions) Validate() error {
-	if opt.State != ReviewStateApproved && len(strings.TrimSpace(opt.Body)) == 0 {
+	if opt.State != ReviewStateApproved && len(opt.Comments) == 0 && len(strings.TrimSpace(opt.Body)) == 0 {
 		return fmt.Errorf("body is empty")
 	}
 	for i := range opt.Comments {

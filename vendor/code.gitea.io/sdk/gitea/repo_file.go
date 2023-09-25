@@ -9,6 +9,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/url"
 	"strings"
 )
@@ -117,17 +119,46 @@ type FileDeleteResponse struct {
 }
 
 // GetFile downloads a file of repository, ref can be branch/tag/commit.
+// it optional can resolve lfs pointers and server the file instead
 // e.g.: ref -> master, filepath -> README.md (no leading slash)
-func (c *Client) GetFile(owner, repo, ref, filepath string) ([]byte, *Response, error) {
+func (c *Client) GetFile(owner, repo, ref, filepath string, resolveLFS ...bool) ([]byte, *Response, error) {
+	reader, resp, err := c.GetFileReader(owner, repo, ref, filepath, resolveLFS...)
+	if reader == nil {
+		return nil, resp, err
+	}
+	defer reader.Close()
+
+	data, err2 := ioutil.ReadAll(reader)
+	if err2 != nil {
+		return nil, resp, err2
+	}
+
+	return data, resp, err
+}
+
+// GetFileReader return reader for download a file of repository, ref can be branch/tag/commit.
+// it optional can resolve lfs pointers and server the file instead
+// e.g.: ref -> master, filepath -> README.md (no leading slash)
+func (c *Client) GetFileReader(owner, repo, ref, filepath string, resolveLFS ...bool) (io.ReadCloser, *Response, error) {
 	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
 		return nil, nil, err
 	}
+
+	// resolve lfs
+	if len(resolveLFS) != 0 && resolveLFS[0] {
+		if err := c.checkServerVersionGreaterThanOrEqual(version1_17_0); err != nil {
+			return nil, nil, err
+		}
+		return c.getResponseReader("GET", fmt.Sprintf("/repos/%s/%s/media/%s?ref=%s", owner, repo, filepath, url.QueryEscape(ref)), nil, nil)
+	}
+
+	// normal get
 	filepath = pathEscapeSegments(filepath)
 	if c.checkServerVersionGreaterThanOrEqual(version1_14_0) != nil {
 		ref = pathEscapeSegments(ref)
-		return c.getResponse("GET", fmt.Sprintf("/repos/%s/%s/raw/%s/%s", owner, repo, ref, filepath), nil, nil)
+		return c.getResponseReader("GET", fmt.Sprintf("/repos/%s/%s/raw/%s/%s", owner, repo, ref, filepath), nil, nil)
 	}
-	return c.getResponse("GET", fmt.Sprintf("/repos/%s/%s/raw/%s?ref=%s", owner, repo, filepath, url.QueryEscape(ref)), nil, nil)
+	return c.getResponseReader("GET", fmt.Sprintf("/repos/%s/%s/raw/%s?ref=%s", owner, repo, filepath, url.QueryEscape(ref)), nil, nil)
 }
 
 // GetContents get the metadata and contents of a file in a repository

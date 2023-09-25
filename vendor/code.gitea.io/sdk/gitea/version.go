@@ -6,13 +6,14 @@ package gitea
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/go-version"
 )
 
 // ServerVersion returns the version of the server
 func (c *Client) ServerVersion() (string, *Response, error) {
-	var v = struct {
+	v := struct {
 		Version string `json:"version"`
 	}{}
 	resp, err := c.getParsedResponse("GET", "/version", nil, nil, &v)
@@ -52,7 +53,6 @@ func SetGiteaVersion(v string) ClientOption {
 	return func(c *Client) (err error) {
 		c.getVersionOnce.Do(func() {
 			c.serverVersion, err = version.NewVersion(v)
-			return
 		})
 		return
 	}
@@ -60,12 +60,32 @@ func SetGiteaVersion(v string) ClientOption {
 
 // predefined versions only have to be parsed by library once
 var (
-	version1_11_0, _ = version.NewVersion("1.11.0")
-	version1_12_0, _ = version.NewVersion("1.12.0")
-	version1_13_0, _ = version.NewVersion("1.13.0")
-	version1_14_0, _ = version.NewVersion("1.14.0")
-	version1_15_0, _ = version.NewVersion("1.15.0")
+	version1_11_0 = version.Must(version.NewVersion("1.11.0"))
+	version1_11_5 = version.Must(version.NewVersion("1.11.5"))
+	version1_12_0 = version.Must(version.NewVersion("1.12.0"))
+	version1_12_3 = version.Must(version.NewVersion("1.12.3"))
+	version1_13_0 = version.Must(version.NewVersion("1.13.0"))
+	version1_14_0 = version.Must(version.NewVersion("1.14.0"))
+	version1_15_0 = version.Must(version.NewVersion("1.15.0"))
+	version1_16_0 = version.Must(version.NewVersion("1.16.0"))
+	version1_17_0 = version.Must(version.NewVersion("1.17.0"))
 )
+
+// ErrUnknownVersion is an unknown version from the API
+type ErrUnknownVersion struct {
+	raw string
+}
+
+// Error fulfills error
+func (e ErrUnknownVersion) Error() string {
+	return fmt.Sprintf("unknown version: %s", e.raw)
+}
+
+func (_ ErrUnknownVersion) Is(target error) bool {
+	_, ok1 := target.(*ErrUnknownVersion)
+	_, ok2 := target.(ErrUnknownVersion)
+	return ok1 || ok2
+}
 
 // checkServerVersionGreaterThanOrEqual is the canonical way in the SDK to check for versions for API compatibility reasons
 func (c *Client) checkServerVersionGreaterThanOrEqual(v *version.Version) error {
@@ -94,6 +114,11 @@ func (c *Client) loadServerVersion() (err error) {
 			return
 		}
 		if c.serverVersion, err = version.NewVersion(raw); err != nil {
+			if strings.TrimSpace(raw) != "" {
+				// Version was something, just not recognized
+				c.serverVersion = version1_11_0
+				err = &ErrUnknownVersion{raw: raw}
+			}
 			return
 		}
 	})

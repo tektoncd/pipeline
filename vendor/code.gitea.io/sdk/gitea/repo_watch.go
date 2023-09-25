@@ -33,7 +33,7 @@ func (c *Client) GetWatchedRepos(user string) ([]*Repository, *Response, error) 
 // GetMyWatchedRepos list repositories watched by the authenticated user
 func (c *Client) GetMyWatchedRepos() ([]*Repository, *Response, error) {
 	repos := make([]*Repository, 0, 10)
-	resp, err := c.getParsedResponse("GET", fmt.Sprintf("/user/subscriptions"), nil, nil, &repos)
+	resp, err := c.getParsedResponse("GET", "/user/subscriptions", nil, nil, &repos)
 	return repos, resp, err
 }
 
