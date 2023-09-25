@@ -221,6 +221,8 @@ spec:
           value: $(params.versionTag)
         - name: serviceAccountPath
           value: $(params.serviceAccountPath)
+        - name: deleteExtraFiles
+          value: "true" # Uses rsync to copy content into latest
     - name: report-bucket
       runAfter: [publish-to-bucket]
       params:
