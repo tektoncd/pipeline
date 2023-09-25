@@ -1346,8 +1346,8 @@ Your `PipelineRun`'s `status` field can contain the following fields:
     - [`apiVersion`][kubernetes-overview] - The API version for the underlying `TaskRun` or `Run`.
     - [`whenExpressions`](pipelines.md#guard-task-execution-using-when-expressions) - The list of when expressions guarding the execution of this task.
   - `provenance` - Metadata about the runtime configuration and the resources used in the PipelineRun. The data in the `provenance` field will be recorded into the build provenance by the provenance generator i.e. (Tekton Chains). Currently, there are 2 subfields:
-    - `RefSource`: the source from where a remote pipeline definition was fetched.
-    - `FeatureFlags`: the configuration data of the `feature-flags` configmap.
+    - `refSource`: the source from where a remote pipeline definition was fetched.
+    - `featureFlags`: the configuration data of the `feature-flags` configmap.
   - `finallyStartTime`- The time at which the PipelineRun's `finally` Tasks, if any, began
   executing, in [RFC3339](https://tools.ietf.org/html/rfc3339) format.
 
