@@ -16,7 +16,7 @@ type GitServiceType string
 const (
 	// GitServicePlain represents a plain git service
 	GitServicePlain GitServiceType = "git"
-	//GitServiceGithub represents github.com
+	// GitServiceGithub represents github.com
 	GitServiceGithub GitServiceType = "github"
 	// GitServiceGitlab represents a gitlab service
 	GitServiceGitlab GitServiceType = "gitlab"

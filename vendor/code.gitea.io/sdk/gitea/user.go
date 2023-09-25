@@ -77,7 +77,6 @@ func (c *Client) GetUserByID(id int64) (*User, *Response, error) {
 	query := make(url.Values)
 	query.Add("uid", strconv.FormatInt(id, 10))
 	users, resp, err := c.searchUsers(query.Encode())
-
 	if err != nil {
 		return nil, resp, err
 	}

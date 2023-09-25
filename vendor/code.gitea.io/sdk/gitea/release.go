@@ -47,7 +47,7 @@ func (opt *ListReleasesOptions) QueryEncode() string {
 		query.Add("draft", fmt.Sprintf("%t", *opt.IsDraft))
 	}
 	if opt.IsPreRelease != nil {
-		query.Add("draft", fmt.Sprintf("%t", *opt.IsPreRelease))
+		query.Add("pre-release", fmt.Sprintf("%t", *opt.IsPreRelease))
 	}
 
 	return query.Encode()
@@ -79,7 +79,7 @@ func (c *Client) GetRelease(owner, repo string, id int64) (*Release, *Response, 
 }
 
 // GetReleaseByTag get a release of a repository by tag
-func (c *Client) GetReleaseByTag(owner, repo string, tag string) (*Release, *Response, error) {
+func (c *Client) GetReleaseByTag(owner, repo, tag string) (*Release, *Response, error) {
 	if c.checkServerVersionGreaterThanOrEqual(version1_13_0) != nil {
 		return c.fallbackGetReleaseByTag(owner, repo, tag)
 	}
@@ -168,7 +168,7 @@ func (c *Client) DeleteRelease(user, repo string, id int64) (*Response, error) {
 }
 
 // DeleteReleaseByTag deletes a release frm a repository by tag
-func (c *Client) DeleteReleaseByTag(user, repo string, tag string) (*Response, error) {
+func (c *Client) DeleteReleaseByTag(user, repo, tag string) (*Response, error) {
 	if err := escapeValidatePathSegments(&user, &repo, &tag); err != nil {
 		return nil, err
 	}
@@ -182,7 +182,7 @@ func (c *Client) DeleteReleaseByTag(user, repo string, tag string) (*Response, e
 }
 
 // fallbackGetReleaseByTag is fallback for old gitea installations ( < 1.13.0 )
-func (c *Client) fallbackGetReleaseByTag(owner, repo string, tag string) (*Release, *Response, error) {
+func (c *Client) fallbackGetReleaseByTag(owner, repo, tag string) (*Release, *Response, error) {
 	for i := 1; ; i++ {
 		rl, resp, err := c.ListReleases(owner, repo, ListReleasesOptions{ListOptions: ListOptions{Page: i}})
 		if err != nil {

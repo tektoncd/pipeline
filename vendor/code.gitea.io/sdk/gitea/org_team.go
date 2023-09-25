@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/url"
 )
 
 // Team represents a team in an organization
@@ -42,6 +43,8 @@ const (
 	RepoUnitReleases RepoUnitType = "repo.releases"
 	// RepoUnitProjects represent projects of a repository
 	RepoUnitProjects RepoUnitType = "repo.projects"
+	// RepoUnitPackages represents packages of a repository
+	RepoUnitPackages RepoUnitType = "repo.packages"
 )
 
 // ListTeamsOptions options for listing teams
@@ -75,6 +78,44 @@ func (c *Client) GetTeam(id int64) (*Team, *Response, error) {
 	return t, resp, err
 }
 
+// SearchTeamsOptions options for searching teams.
+type SearchTeamsOptions struct {
+	ListOptions
+	Query              string
+	IncludeDescription bool
+}
+
+func (o SearchTeamsOptions) getURLQuery() url.Values {
+	query := make(url.Values)
+	query.Add("page", fmt.Sprintf("%d", o.Page))
+	query.Add("limit", fmt.Sprintf("%d", o.PageSize))
+	query.Add("q", o.Query)
+	query.Add("include_desc", fmt.Sprintf("%t", o.IncludeDescription))
+
+	return query
+}
+
+// TeamSearchResults is the JSON struct that is returned from Team search API.
+type TeamSearchResults struct {
+	OK    bool    `json:"ok"`
+	Error string  `json:"error"`
+	Data  []*Team `json:"data"`
+}
+
+// SearchOrgTeams search for teams in a org.
+func (c *Client) SearchOrgTeams(org string, opt *SearchTeamsOptions) ([]*Team, *Response, error) {
+	responseBody := TeamSearchResults{}
+	opt.setDefaults()
+	resp, err := c.getParsedResponse("GET", fmt.Sprintf("/orgs/%s/teams/search?%s", org, opt.getURLQuery().Encode()), nil, nil, &responseBody)
+	if err != nil {
+		return nil, resp, err
+	}
+	if !responseBody.OK {
+		return nil, resp, fmt.Errorf("gitea error: %v", responseBody.Error)
+	}
+	return responseBody.Data, resp, err
+}
+
 // CreateTeamOption options for creating a team
 type CreateTeamOption struct {
 	Name                    string         `json:"name"`
@@ -86,7 +127,7 @@ type CreateTeamOption struct {
 }
 
 // Validate the CreateTeamOption struct
-func (opt CreateTeamOption) Validate() error {
+func (opt *CreateTeamOption) Validate() error {
 	if opt.Permission == AccessModeOwner {
 		opt.Permission = AccessModeAdmin
 	} else if opt.Permission != AccessModeRead && opt.Permission != AccessModeWrite && opt.Permission != AccessModeAdmin {
@@ -109,7 +150,7 @@ func (c *Client) CreateTeam(org string, opt CreateTeamOption) (*Team, *Response,
 	if err := escapeValidatePathSegments(&org); err != nil {
 		return nil, nil, err
 	}
-	if err := opt.Validate(); err != nil {
+	if err := (&opt).Validate(); err != nil {
 		return nil, nil, err
 	}
 	body, err := json.Marshal(&opt)
@@ -132,7 +173,7 @@ type EditTeamOption struct {
 }
 
 // Validate the EditTeamOption struct
-func (opt EditTeamOption) Validate() error {
+func (opt *EditTeamOption) Validate() error {
 	if opt.Permission == AccessModeOwner {
 		opt.Permission = AccessModeAdmin
 	} else if opt.Permission != AccessModeRead && opt.Permission != AccessModeWrite && opt.Permission != AccessModeAdmin {
@@ -152,7 +193,7 @@ func (opt EditTeamOption) Validate() error {
 
 // EditTeam edits a team of an organization
 func (c *Client) EditTeam(id int64, opt EditTeamOption) (*Response, error) {
-	if err := opt.Validate(); err != nil {
+	if err := (&opt).Validate(); err != nil {
 		return nil, err
 	}
 	body, err := json.Marshal(&opt)

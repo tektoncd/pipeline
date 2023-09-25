@@ -13,12 +13,13 @@ import (
 
 // Oauth2 represents an Oauth2 Application
 type Oauth2 struct {
-	ID           int64     `json:"id"`
-	Name         string    `json:"name"`
-	ClientID     string    `json:"client_id"`
-	ClientSecret string    `json:"client_secret"`
-	RedirectURIs []string  `json:"redirect_uris"`
-	Created      time.Time `json:"created"`
+	ID                 int64     `json:"id"`
+	Name               string    `json:"name"`
+	ClientID           string    `json:"client_id"`
+	ClientSecret       string    `json:"client_secret"`
+	RedirectURIs       []string  `json:"redirect_uris"`
+	ConfidentialClient bool      `json:"confidential_client"`
+	Created            time.Time `json:"created"`
 }
 
 // ListOauth2Option for listing Oauth2 Applications
@@ -28,8 +29,9 @@ type ListOauth2Option struct {
 
 // CreateOauth2Option required options for creating an Application
 type CreateOauth2Option struct {
-	Name         string   `json:"name"`
-	RedirectURIs []string `json:"redirect_uris"`
+	Name               string   `json:"name"`
+	ConfidentialClient bool     `json:"confidential_client"`
+	RedirectURIs       []string `json:"redirect_uris"`
 }
 
 // CreateOauth2 create an Oauth2 Application and returns a completed Oauth2 object.

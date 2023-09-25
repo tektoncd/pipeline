@@ -71,6 +71,10 @@ type ListIssueOption struct {
 	AssignedBy string
 	// filter by username mentioned
 	MentionedBy string
+	// filter by owner (only works on ListIssues on User)
+	Owner string
+	// filter by team (requires organization owner parameter to be provided and only works on ListIssues on User)
+	Team string
 }
 
 // StateType issue state type
@@ -134,6 +138,12 @@ func (opt *ListIssueOption) QueryEncode() string {
 	}
 	if len(opt.MentionedBy) > 0 {
 		query.Add("mentioned_by", opt.MentionedBy)
+	}
+	if len(opt.Owner) > 0 {
+		query.Add("owner", opt.Owner)
+	}
+	if len(opt.Team) > 0 {
+		query.Add("team", opt.MentionedBy)
 	}
 
 	return query.Encode()
@@ -277,6 +287,17 @@ func (c *Client) EditIssue(owner, repo string, index int64, opt EditIssueOption)
 		jsonHeader, bytes.NewReader(body), issue)
 	c.issueBackwardsCompatibility(issue)
 	return issue, resp, err
+}
+
+// DeleteIssue delete a issue from a repository
+func (c *Client) DeleteIssue(user, repo string, id int64) (*Response, error) {
+	if err := escapeValidatePathSegments(&user, &repo); err != nil {
+		return nil, err
+	}
+	_, resp, err := c.getResponse("DELETE",
+		fmt.Sprintf("/repos/%s/%s/issues/%d", user, repo, id),
+		nil, nil)
+	return resp, err
 }
 
 func (c *Client) issueBackwardsCompatibility(issue *Issue) {

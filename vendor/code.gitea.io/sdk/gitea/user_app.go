@@ -13,12 +13,64 @@ import (
 	"reflect"
 )
 
+// AccessTokenScope represents the scope for an access token.
+type AccessTokenScope string
+
+const (
+	AccessTokenScopeAll AccessTokenScope = "all"
+
+	AccessTokenScopeRepo       AccessTokenScope = "repo"
+	AccessTokenScopeRepoStatus AccessTokenScope = "repo:status"
+	AccessTokenScopePublicRepo AccessTokenScope = "public_repo"
+
+	AccessTokenScopeAdminOrg AccessTokenScope = "admin:org"
+	AccessTokenScopeWriteOrg AccessTokenScope = "write:org"
+	AccessTokenScopeReadOrg  AccessTokenScope = "read:org"
+
+	AccessTokenScopeAdminPublicKey AccessTokenScope = "admin:public_key"
+	AccessTokenScopeWritePublicKey AccessTokenScope = "write:public_key"
+	AccessTokenScopeReadPublicKey  AccessTokenScope = "read:public_key"
+
+	AccessTokenScopeAdminRepoHook AccessTokenScope = "admin:repo_hook"
+	AccessTokenScopeWriteRepoHook AccessTokenScope = "write:repo_hook"
+	AccessTokenScopeReadRepoHook  AccessTokenScope = "read:repo_hook"
+
+	AccessTokenScopeAdminOrgHook AccessTokenScope = "admin:org_hook"
+
+	AccessTokenScopeAdminUserHook AccessTokenScope = "admin:user_hook"
+
+	AccessTokenScopeNotification AccessTokenScope = "notification"
+
+	AccessTokenScopeUser       AccessTokenScope = "user"
+	AccessTokenScopeReadUser   AccessTokenScope = "read:user"
+	AccessTokenScopeUserEmail  AccessTokenScope = "user:email"
+	AccessTokenScopeUserFollow AccessTokenScope = "user:follow"
+
+	AccessTokenScopeDeleteRepo AccessTokenScope = "delete_repo"
+
+	AccessTokenScopePackage       AccessTokenScope = "package"
+	AccessTokenScopeWritePackage  AccessTokenScope = "write:package"
+	AccessTokenScopeReadPackage   AccessTokenScope = "read:package"
+	AccessTokenScopeDeletePackage AccessTokenScope = "delete:package"
+
+	AccessTokenScopeAdminGPGKey AccessTokenScope = "admin:gpg_key"
+	AccessTokenScopeWriteGPGKey AccessTokenScope = "write:gpg_key"
+	AccessTokenScopeReadGPGKey  AccessTokenScope = "read:gpg_key"
+
+	AccessTokenScopeAdminApplication AccessTokenScope = "admin:application"
+	AccessTokenScopeWriteApplication AccessTokenScope = "write:application"
+	AccessTokenScopeReadApplication  AccessTokenScope = "read:application"
+
+	AccessTokenScopeSudo AccessTokenScope = "sudo"
+)
+
 // AccessToken represents an API access token.
 type AccessToken struct {
-	ID             int64  `json:"id"`
-	Name           string `json:"name"`
-	Token          string `json:"sha1"`
-	TokenLastEight string `json:"token_last_eight"`
+	ID             int64              `json:"id"`
+	Name           string             `json:"name"`
+	Token          string             `json:"sha1"`
+	TokenLastEight string             `json:"token_last_eight"`
+	Scopes         []AccessTokenScope `json:"scopes"`
 }
 
 // ListAccessTokensOptions options for listing a users's access tokens
@@ -42,7 +94,8 @@ func (c *Client) ListAccessTokens(opts ListAccessTokensOptions) ([]*AccessToken,
 
 // CreateAccessTokenOption options when create access token
 type CreateAccessTokenOption struct {
-	Name string `json:"name"`
+	Name   string             `json:"name"`
+	Scopes []AccessTokenScope `json:"scopes"`
 }
 
 // CreateAccessToken create one access token with options
@@ -71,7 +124,7 @@ func (c *Client) DeleteAccessToken(value interface{}) (*Response, error) {
 		return nil, fmt.Errorf("\"username\" not set: only BasicAuth allowed")
 	}
 
-	var token = ""
+	token := ""
 
 	switch reflect.ValueOf(value).Kind() {
 	case reflect.Int64:

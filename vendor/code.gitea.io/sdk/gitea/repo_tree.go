@@ -35,7 +35,7 @@ func (c *Client) GetTrees(user, repo, ref string, recursive bool) (*GitTreeRespo
 		return nil, nil, err
 	}
 	trees := new(GitTreeResponse)
-	var path = fmt.Sprintf("/repos/%s/%s/git/trees/%s", user, repo, ref)
+	path := fmt.Sprintf("/repos/%s/%s/git/trees/%s", user, repo, ref)
 	if recursive {
 		path += "?recursive=1"
 	}
