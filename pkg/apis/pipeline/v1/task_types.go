@@ -83,6 +83,9 @@ type TaskSpec struct {
 	// +listType=atomic
 	Params ParamSpecs `json:"params,omitempty"`
 
+	Inputs InputSpecs `json:"inputs,omitempty"`
+
+	Outputs OutputSpecs `json:"outputs,omitempty"`
 	// DisplayName is a user-facing name of the task that may be
 	// used to populate a UI.
 	// +optional

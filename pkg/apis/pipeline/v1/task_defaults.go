@@ -31,6 +31,19 @@ func (t *Task) SetDefaults(ctx context.Context) {
 
 // SetDefaults set any defaults for the task spec
 func (ts *TaskSpec) SetDefaults(ctx context.Context) {
+	if len(ts.Inputs.ParamSpecs)!=0 && len(ts.Params)==0{
+		for name,value := range ts.Inputs.ParamSpecs{
+			psc:=value
+			psc.Name=name
+			ts.Params = append(ts.Params, psc)
+		}
+	}
+	if len(ts.Outputs.ResultSpecs)!=0 && len(ts.Results)==0{
+		for name,value := range ts.Outputs.ResultSpecs{
+			rs:=TaskResult{Name: name, Type: value.Type, Properties: value.Properties, Description: value.Description}
+			ts.Results = append(ts.Results, rs)
+		}
+	}
 	for i := range ts.Params {
 		ts.Params[i].SetDefaults(ctx)
 	}

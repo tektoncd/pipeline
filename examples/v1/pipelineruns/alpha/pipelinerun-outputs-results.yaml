@@ -1,0 +1,29 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: outputs-results-
+spec:
+  pipelineSpec:
+    outputs:
+      results:
+        commit:
+          value: $(tasks.task1.results.commit)
+          type: string
+        sha:
+          value: $(tasks.task1.results.sha)
+          type: string
+    tasks:
+    - name: task1
+      taskSpec:
+        outputs:
+          results:
+            commit:
+              type: string
+            sha:
+              type: string
+        steps:
+        - name: echo
+          image: bash:latest
+          script: |
+            echo "abc" | tee $(results.commit.path)
+            echo "123" | tee $(results.sha.path)

@@ -72,3 +72,23 @@ var AllResultsTypes = []ResultsType{ResultsTypeString, ResultsTypeArray, Results
 func ResultsArrayReference(a string) string {
 	return strings.TrimSuffix(strings.TrimSuffix(strings.TrimPrefix(a, "$("), ")"), "[*]")
 }
+
+type ResultsSpecsMap map[string]ResultSpec
+
+type ResultsMap map[string]ResultValue
+
+type ResultSpec struct{
+  Name string  `json:"name"`
+  Type ResultsType `json:"type,omitempty"`
+  Description string `json:"description,omitempty"`
+  Properties map[string]PropertySpec `json:"properties,omitempty"`
+  Value *ResultValue  `json:"value,omitempty"`
+}
+
+type OutputSpecs struct{
+  ResultSpecs map[string]ResultSpec `json:"results,omitempty"`
+}
+
+type Outputs struct{
+  ResultsMap map[string]ResultValue `json:"results,omitempty"`
+}

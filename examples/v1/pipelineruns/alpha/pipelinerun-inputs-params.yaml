@@ -1,0 +1,24 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: inputs-params-
+spec:
+  inputs:
+    params:
+      param1: "1"
+      param2: "2"
+  pipelineSpec:
+    inputs:
+      params:
+        param1:
+          type: string
+        param2:
+          type: string
+    tasks:
+    - name: generate-suffix
+      taskSpec:
+        steps:
+        - name: echo
+          image: alpine
+          script: |
+            echo $(params.param1)$(params.param2)

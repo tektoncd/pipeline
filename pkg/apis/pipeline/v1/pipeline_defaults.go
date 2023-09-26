@@ -32,6 +32,19 @@ func (p *Pipeline) SetDefaults(ctx context.Context) {
 
 // SetDefaults sets default values for the PipelineSpec's Params, Tasks, and Finally
 func (ps *PipelineSpec) SetDefaults(ctx context.Context) {
+	if len(ps.Inputs.ParamSpecs)!=0 && len(ps.Params)==0{
+		for name,value := range ps.Inputs.ParamSpecs{
+			value.Name=name
+			psc:=value.DeepCopy()
+			ps.Params = append(ps.Params, *psc)
+		}
+	}
+	if len(ps.Outputs.ResultSpecs)!=0  && len(ps.Results)==0{
+		for name,value := range ps.Outputs.ResultSpecs{
+			rs:=PipelineResult{Name: name, Type: value.Type, Value: *value.Value, Description: value.Description}
+			ps.Results = append(ps.Results, rs)
+		}
+	}
 	for i := range ps.Params {
 		ps.Params[i].SetDefaults(ctx)
 	}

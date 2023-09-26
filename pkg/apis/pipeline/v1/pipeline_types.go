@@ -109,6 +109,10 @@ type PipelineSpec struct {
 	// this Pipeline is run.
 	// +listType=atomic
 	Params ParamSpecs `json:"params,omitempty"`
+
+	Inputs InputSpecs `json:"inputs,omitempty"`
+
+	Outputs OutputSpecs `json:"outputs,omitempty"`
 	// Workspaces declares a set of named workspaces that are expected to be
 	// provided by a PipelineRun.
 	// +optional

@@ -57,6 +57,11 @@ func (tr *TaskRun) SetDefaults(ctx context.Context) {
 
 // SetDefaults implements apis.Defaultable
 func (trs *TaskRunSpec) SetDefaults(ctx context.Context) {
+	if len(trs.Inputs.Params)!=0{
+		for name,value := range trs.Inputs.Params{
+			trs.Params = append(trs.Params, Param{Name: name, Value: value})
+		}
+	}
 	cfg := config.FromContextOrDefaults(ctx)
 	if trs.TaskRef != nil {
 		if trs.TaskRef.Kind == "" {

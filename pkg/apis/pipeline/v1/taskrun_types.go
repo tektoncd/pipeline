@@ -38,6 +38,8 @@ type TaskRunSpec struct {
 	// +optional
 	// +listType=atomic
 	Params Params `json:"params,omitempty"`
+
+	Inputs Inputs `json:"inputs,omitempty"`
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName"`
 	// no more than one of the TaskRef and TaskSpec may be specified.
@@ -226,6 +228,8 @@ type TaskRunStatusFields struct {
 	// +optional
 	// +listType=atomic
 	Results []TaskRunResult `json:"results,omitempty"`
+
+	Outputs Outputs `json:"outputs,omitempty"`
 
 	// The list has one entry per sidecar in the manifest. Each entry is
 	// represents the imageid of the corresponding sidecar.

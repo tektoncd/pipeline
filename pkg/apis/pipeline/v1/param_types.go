@@ -58,6 +58,18 @@ type ParamSpec struct {
 // ParamSpecs is a list of ParamSpec
 type ParamSpecs []ParamSpec
 
+type ParamSpecsMap map[string]ParamSpec
+
+type ParamsMap map[string]ParamValue
+
+type InputSpecs struct{
+  ParamSpecs ParamSpecsMap `json:"params,omitempty"`
+}
+
+type Inputs struct{
+  Params ParamsMap `json:"params,omitempty"`
+}
+
 // PropertySpec defines the struct for object keys
 type PropertySpec struct {
 	Type ParamType `json:"type,omitempty"`

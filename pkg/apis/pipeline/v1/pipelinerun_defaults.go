@@ -48,6 +48,11 @@ func (pr *PipelineRun) SetDefaults(ctx context.Context) {
 
 // SetDefaults implements apis.Defaultable
 func (prs *PipelineRunSpec) SetDefaults(ctx context.Context) {
+	if len(prs.Inputs.Params)!=0{
+		for name,value := range prs.Inputs.Params{
+			prs.Params = append(prs.Params, Param{Name: name, Value: value})
+		}
+	}
 	cfg := config.FromContextOrDefaults(ctx)
 	if prs.PipelineRef != nil && prs.PipelineRef.Name == "" && prs.PipelineRef.Resolver == "" {
 		prs.PipelineRef.Resolver = ResolverName(cfg.Defaults.DefaultResolverType)
