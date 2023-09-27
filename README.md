@@ -62,6 +62,15 @@ deprecated and the earliest date they'll be removed._
 
 ## Migrating
 
+### v1beta1 to v1
+
+Several Tekton CRDs and API spec fields, including ClusterTask CRD and Pipeline
+Resources fields, were updated or deprecated during the migration from `v1beta1`
+to `v1`.
+
+For users migrating their Tasks and Pipelines from `v1beta1` to `v1`, check
+out [the v1beta1 to v1 migration guide](./docs/migrating-v1beta1-to-v1.md).
+
 ### v1alpha1 to v1beta1
 
 In the move from v1alpha1 to v1beta1 several spec fields and Tekton
