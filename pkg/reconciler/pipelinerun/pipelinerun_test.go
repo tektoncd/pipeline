@@ -7039,7 +7039,7 @@ spec:
 `),
 	}
 
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 	d := test.Data{
 		ConfigMaps:   cms,
 		PipelineRuns: prs,
@@ -8215,7 +8215,7 @@ spec:
     kind: Task
  `),
 	}
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
 
 	tests := []struct {
@@ -8591,8 +8591,7 @@ spec:
       script: |
         echo "$(params.platform) and $(params.browser)"
 `)
-
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
 
 	tests := []struct {
@@ -8976,7 +8975,7 @@ spec:
     kind: Task
 `),
 	}
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
 
 	tests := []struct {
@@ -9434,7 +9433,7 @@ spec:
     kind: Task
 `),
 	}
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
 
 	tests := []struct {
@@ -9795,7 +9794,7 @@ spec:
     kind: Task
 `),
 	}
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
 
 	tests := []struct {
@@ -10225,7 +10224,7 @@ spec:
         echo -n "[\"linux\",\"mac\",\"windows\"]" | tee $(results.platforms.path)
 `)
 
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
 	tests := []struct {
 		name                string
@@ -10768,7 +10767,8 @@ spec:
     tekton.dev/pipeline: p-dag
 `),
 	}
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+
+	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
 	tests := []struct {
 		name                string
@@ -10945,7 +10945,7 @@ spec:
         exit 1
 `)
 
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
 
 	tests := []struct {
@@ -11567,7 +11567,7 @@ spec:
     name: mytask
 `),
 	}
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 
 	tests := []struct {
 		name                string
@@ -11929,7 +11929,7 @@ spec:
         echo -n "[\"linux\",\"mac\",\"windows\"]" | tee $(results.platforms.path)
 `)
 
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
 	tests := []struct {
 		name  string
@@ -12092,7 +12092,8 @@ spec:
     kind: Task
 `),
 	}
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+
+	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
 
 	tests := []struct {

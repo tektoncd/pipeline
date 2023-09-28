@@ -18,7 +18,6 @@ package v1
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -3500,74 +3499,60 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 }
 
 // TestMatrixIncompatibleAPIVersions exercises validation of matrix
-// that requires alpha feature gate version in order to work.
+// that requires alpha/beta feature gate version in order to work.
 func TestMatrixIncompatibleAPIVersions(t *testing.T) {
+	task := PipelineTask{
+		Name:    "a-task",
+		TaskRef: &TaskRef{Name: "a-task"},
+		Matrix: &Matrix{
+			Params: Params{{
+				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}}},
+	}
 	tests := []struct {
-		name            string
-		requiredVersion string
-		spec            PipelineSpec
+		name    string
+		pt      PipelineTask
+		version string
+		wantErr *apis.FieldError
 	}{{
-		name:            "matrix requires alpha - check tasks",
-		requiredVersion: "alpha",
-		spec: PipelineSpec{
-			Tasks: PipelineTaskList{{
-				Name:    "a-task",
-				TaskRef: &TaskRef{Name: "a-task"},
-				Matrix: &Matrix{
-					Params: Params{{
-						Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-					}}},
-			}},
-		},
+		name:    "matrix can work with alpha",
+		pt:      task,
+		version: config.AlphaAPIFields,
 	}, {
-		name:            "matrix requires alpha - check finally tasks",
-		requiredVersion: "alpha",
-		spec: PipelineSpec{
-			Tasks: PipelineTaskList{{
-				Name:    "a-task",
-				TaskRef: &TaskRef{Name: "a-task"},
-			}},
-			Finally: PipelineTaskList{{
-				Name:    "b-task",
-				TaskRef: &TaskRef{Name: "b-task"},
-				Matrix: &Matrix{
-					Params: Params{{
-						Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-					}}},
-			}},
-		},
+		name:    "matrix requires beta",
+		pt:      task,
+		version: config.BetaAPIFields,
+	}, {
+		name:    "matrix not allowed with stable version",
+		pt:      task,
+		version: config.StableAPIFields,
+		wantErr: apis.ErrGeneric("matrix requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\""),
 	}}
-	versions := []string{"alpha", "stable"}
-	for _, tt := range tests {
-		for _, version := range versions {
-			testName := fmt.Sprintf("(using %s) %s", version, tt.name)
-			t.Run(testName, func(t *testing.T) {
-				ps := tt.spec
-				featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
-					"enable-api-fields": version,
-				})
-				defaults := &config.Defaults{
-					DefaultMaxMatrixCombinationsCount: 4,
-				}
-				cfg := &config.Config{
-					FeatureFlags: featureFlags,
-					Defaults:     defaults,
-				}
 
-				ctx := config.ToContext(context.Background(), cfg)
-
-				ps.SetDefaults(ctx)
-				err := ps.Validate(ctx)
-
-				if tt.requiredVersion != version && err == nil {
-					t.Fatalf("no error received even though version required is %q while feature gate is %q", tt.requiredVersion, version)
-				}
-
-				if tt.requiredVersion == version && err != nil {
-					t.Fatalf("error received despite required version and feature gate matching %q: %v", version, err)
-				}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			defaults := &config.Defaults{
+				DefaultMaxMatrixCombinationsCount: 4,
+			}
+			featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
+				"enable-api-fields": test.version,
 			})
-		}
+			cfg := &config.Config{
+				Defaults:     defaults,
+				FeatureFlags: featureFlags,
+			}
+			ctx := config.ToContext(context.Background(), cfg)
+			err := test.pt.validateMatrix(ctx)
+			if test.wantErr != nil {
+				if d := cmp.Diff(test.wantErr.Error(), err.Error()); d != "" {
+					t.Error(diff.PrintWantGot(d))
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("PipelineTask.validateMatrix() error = %v", err)
+				}
+			}
+		})
 	}
 }
 
@@ -4049,7 +4034,7 @@ func Test_validateMatrix(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
-				"enable-api-fields": "alpha",
+				"enable-api-fields": "beta",
 			})
 			defaults := &config.Defaults{
 				DefaultMaxMatrixCombinationsCount: 4,

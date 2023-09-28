@@ -41,8 +41,8 @@ Documentation for specifying `Matrix` in a `Pipeline`:
 - [Specifying `Matrix` in `Finally Tasks`](pipelines.md#specifying-matrix-in-finally-tasks)
 - [Specifying `Matrix` in `Custom Tasks`](pipelines.md#specifying-matrix)
 
-> :seedling: **`Matrix` is an [alpha](additional-configs.md#alpha-features) feature.**
-> The `enable-api-fields` feature flag must be set to `"alpha"` to specify `Matrix` in a `PipelineTask`.
+> :seedling: **`Matrix` is an [beta](additional-configs.md#beta-features) feature.**
+> The `enable-api-fields` feature flag can be set to `"beta"` to specify `Matrix` in a `PipelineTask`.
 
 ## Configuring a Matrix
 
@@ -926,9 +926,8 @@ status:
 ```
 
 [cel]: https://github.com/tektoncd/experimental/tree/1609827ea81d05c8d00f8933c5c9d6150cd36989/cel
-[pr-with-matrix]: ../examples/v1/pipelineruns/alpha/pipelinerun-with-matrix.yaml
-[pr-with-matrix-and-results]: ../examples/v1/pipelineruns/alpha/pipelinerun-with-matrix-and-results.yaml
-[pr-with-matrix-context-variables]: ../examples/v1/pipelineruns/alpha/pipelinerun-with-matrix-context-variables.yaml
-[pr-with-matrix-emitting-results]: ../examples/v1/pipelineruns/alpha/pipelinerun-with-matrix-emitting-results.yaml
-
+[pr-with-matrix]: ../examples/v1/pipelineruns/beta/pipelinerun-with-matrix.yaml
+[pr-with-matrix-and-results]: ../examples/v1/pipelineruns/beta/pipelinerun-with-matrix-and-results.yaml
+[pr-with-matrix-context-variables]: ../examples/v1/pipelineruns/beta/pipelinerun-with-matrix-context-variables.yaml
+[pr-with-matrix-emitting-results]: ../examples/v1/pipelineruns/beta/pipelinerun-with-matrix-emitting-results.yaml
 [retries]: pipelines.md#using-the-retries-field

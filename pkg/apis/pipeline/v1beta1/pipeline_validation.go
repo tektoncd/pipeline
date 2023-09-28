@@ -191,9 +191,9 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 
 func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldError) {
 	if pt.IsMatrixed() {
-		// This is an alpha feature and will fail validation if it's used in a pipeline spec
-		// when the enable-api-fields feature gate is anything but "alpha".
-		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "matrix", config.AlphaAPIFields))
+		// This is a beta feature and will fail validation if it's used in a pipeline spec
+		// when the enable-api-fields feature gate is set to "stable".
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "matrix", config.BetaAPIFields))
 		errs = errs.Also(pt.Matrix.validateCombinationsCount(ctx))
 		errs = errs.Also(pt.Matrix.validateUniqueParams())
 	}
