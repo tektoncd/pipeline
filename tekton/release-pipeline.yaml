@@ -169,7 +169,7 @@ spec:
           subpath: bucket
         - name: release-secret
           workspace: release-secret
-      timeout: 1h20m
+      timeout: 2h
     - name: publish-to-bucket
       runAfter: [publish-images]
       taskRef:
