@@ -885,6 +885,10 @@
           "description": "Name is the name of this task within the context of a Pipeline. Name is used as a coordinate with the `from` and `runAfter` fields to establish the execution order of tasks relative to one another.",
           "type": "string"
         },
+        "onError": {
+          "description": "OnError defines the exiting behavior of a PipelineRun on error can be set to [ continue | stopAndFail ] Note: OnError is in preview mode and not yet supported",
+          "type": "string"
+        },
         "params": {
           "description": "Parameters declares parameters passed to this task.",
           "type": "array",
