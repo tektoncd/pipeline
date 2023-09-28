@@ -73,6 +73,98 @@ func TestPipelineTask_ValidateName(t *testing.T) {
 	}
 }
 
+func TestPipelineTask_OnError(t *testing.T) {
+	tests := []struct {
+		name          string
+		p             PipelineTask
+		expectedError *apis.FieldError
+		wc            func(context.Context) context.Context
+	}{{
+		name: "valid PipelineTask with onError:continue",
+		p: PipelineTask{
+			Name:    "foo",
+			OnError: PipelineTaskContinue,
+			TaskRef: &TaskRef{Name: "foo"},
+		},
+		wc: cfgtesting.EnableAlphaAPIFields,
+	}, {
+		name: "valid PipelineTask with onError:stopAndFail",
+		p: PipelineTask{
+			Name:    "foo",
+			OnError: PipelineTaskStopAndFail,
+			TaskRef: &TaskRef{Name: "foo"},
+		},
+		wc: cfgtesting.EnableAlphaAPIFields,
+	}, {
+		name: "invalid OnError value",
+		p: PipelineTask{
+			Name:    "foo",
+			OnError: "invalid-val",
+			TaskRef: &TaskRef{Name: "foo"},
+		},
+		expectedError: apis.ErrInvalidValue("invalid-val", "OnError", "PipelineTask OnError must be either \"continue\" or \"stopAndFail\""),
+		wc:            cfgtesting.EnableAlphaAPIFields,
+	}, {
+		name: "OnError:stopAndFail and retries coexist - success",
+		p: PipelineTask{
+			Name:    "foo",
+			OnError: PipelineTaskStopAndFail,
+			Retries: 1,
+			TaskRef: &TaskRef{Name: "foo"},
+		},
+		wc: cfgtesting.EnableAlphaAPIFields,
+	}, {
+		name: "OnError:continue and retries coexists - failure",
+		p: PipelineTask{
+			Name:    "foo",
+			OnError: PipelineTaskContinue,
+			Retries: 1,
+			TaskRef: &TaskRef{Name: "foo"},
+		},
+		expectedError: apis.ErrGeneric("PipelineTask OnError cannot be set to \"continue\" when Retries is greater than 0"),
+		wc:            cfgtesting.EnableAlphaAPIFields,
+	}, {
+		name: "setting OnError in beta API version - failure",
+		p: PipelineTask{
+			Name:    "foo",
+			OnError: PipelineTaskContinue,
+			TaskRef: &TaskRef{Name: "foo"},
+		},
+		expectedError: apis.ErrGeneric("OnError requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"beta\""),
+		wc:            cfgtesting.EnableBetaAPIFields,
+	}, {
+		name: "setting OnError in stable API version - failure",
+		p: PipelineTask{
+			Name:    "foo",
+			OnError: PipelineTaskContinue,
+			TaskRef: &TaskRef{Name: "foo"},
+		},
+		expectedError: apis.ErrGeneric("OnError requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
+		wc:            cfgtesting.EnableStableAPIFields,
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			if tt.wc != nil {
+				ctx = tt.wc(ctx)
+			}
+			err := tt.p.Validate(ctx)
+			if tt.expectedError == nil {
+				if err != nil {
+					t.Error("PipelineTask.Validate() returned error for valid pipeline task")
+				}
+			} else {
+				if err == nil {
+					t.Error("PipelineTask.Validate() did not return error for invalid pipeline task with OnError")
+				}
+				if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+					t.Errorf("PipelineTask.Validate() errors diff %s", diff.PrintWantGot(d))
+				}
+			}
+		})
+	}
+}
+
 func TestPipelineTask_ValidateRefOrSpec(t *testing.T) {
 	tests := []struct {
 		name          string

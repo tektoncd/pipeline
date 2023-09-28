@@ -211,6 +211,17 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 		NamespacedTaskKind: true,
 		ClusterTaskRefKind: true,
 	}
+
+	if pt.OnError != "" {
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "OnError", config.AlphaAPIFields))
+		if pt.OnError != PipelineTaskContinue && pt.OnError != PipelineTaskStopAndFail {
+			errs = errs.Also(apis.ErrInvalidValue(pt.OnError, "OnError", "PipelineTask OnError must be either \"continue\" or \"stopAndFail\""))
+		}
+		if pt.OnError == PipelineTaskContinue && pt.Retries > 0 {
+			errs = errs.Also(apis.ErrGeneric("PipelineTask OnError cannot be set to \"continue\" when Retries is greater than 0"))
+		}
+	}
+
 	// Pipeline task having taskRef/taskSpec with APIVersion is classified as custom task
 	switch {
 	case pt.TaskRef != nil && !taskKinds[pt.TaskRef.Kind]:
@@ -224,7 +235,7 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	default:
 		errs = errs.Also(pt.validateTask(ctx))
 	}
-	return
+	return errs
 }
 
 func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldError) {

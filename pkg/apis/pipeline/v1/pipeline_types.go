@@ -27,6 +27,9 @@ import (
 	"knative.dev/pkg/kmeta"
 )
 
+// PipelineTaskOnErrorType defines a list of supported failure handling behaviors of a PipelineTask on error
+type PipelineTaskOnErrorType string
+
 const (
 	// PipelineTasksAggregateStatus is a param representing aggregate status of all dag pipelineTasks
 	PipelineTasksAggregateStatus = "tasks.status"
@@ -34,6 +37,10 @@ const (
 	PipelineTasks = "tasks"
 	// PipelineFinallyTasks is a value representing a task is a member of "finally" section of the pipeline
 	PipelineFinallyTasks = "finally"
+	// PipelineTaskStopAndFail indicates to stop and fail the PipelineRun if the PipelineTask fails
+	PipelineTaskStopAndFail PipelineTaskOnErrorType = "stopAndFail"
+	// PipelineTaskContinue indicates to continue executing the rest of the DAG when the PipelineTask fails
+	PipelineTaskContinue PipelineTaskOnErrorType = "continue"
 )
 
 // +genclient
@@ -238,6 +245,13 @@ type PipelineTask struct {
 	// Note: PipelineSpec is in preview mode and not yet supported
 	// +optional
 	PipelineSpec *PipelineSpec `json:"pipelineSpec,omitempty"`
+
+	// OnError defines the exiting behavior of a PipelineRun on error
+	// can be set to [ continue | stopAndFail ]
+	// Note: OnError is in preview mode and not yet supported
+	// TODO(#7165)
+	// +optional
+	OnError PipelineTaskOnErrorType `json:"onError,omitempty"`
 }
 
 // IsCustomTask checks whether an embedded TaskSpec is a Custom Task

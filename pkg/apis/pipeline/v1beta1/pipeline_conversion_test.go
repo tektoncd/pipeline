@@ -60,6 +60,7 @@ func TestPipelineConversion(t *testing.T) {
 				Description: "test",
 				Tasks: []v1beta1.PipelineTask{{
 					Name:    "foo",
+					OnError: v1beta1.PipelineTaskContinue,
 					TaskRef: &v1beta1.TaskRef{Name: "example.com/my-foo-task"},
 				}},
 				Params: []v1beta1.ParamSpec{{
@@ -138,11 +139,13 @@ func TestPipelineConversion(t *testing.T) {
 				DisplayName: "pipeline-display-name",
 				Description: "test",
 				Tasks: []v1beta1.PipelineTask{{
-					Name: "task-1",
+					Name:    "task-1",
+					OnError: v1beta1.PipelineTaskContinue,
 				}, {
 					Name:        "foo",
 					DisplayName: "task-display-name",
 					Description: "task-description",
+					OnError:     v1beta1.PipelineTaskContinue,
 					TaskRef:     &v1beta1.TaskRef{Name: "example.com/my-foo-task"},
 					TaskSpec: &v1beta1.EmbeddedTask{
 						TaskSpec: v1beta1.TaskSpec{

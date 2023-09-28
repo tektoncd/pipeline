@@ -2851,6 +2851,23 @@ PipelineSpec
 Note: PipelineSpec is in preview mode and not yet supported</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>onError</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineTaskOnErrorType">
+PipelineTaskOnErrorType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>OnError defines the exiting behavior of a PipelineRun on error
+can be set to [ continue | stopAndFail ]
+Note: OnError is in preview mode and not yet supported
+TODO(#7165)</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.PipelineTaskMetadata">PipelineTaskMetadata
@@ -2892,6 +2909,29 @@ map[string]string
 </td>
 </tr>
 </tbody>
+</table>
+<h3 id="tekton.dev/v1.PipelineTaskOnErrorType">PipelineTaskOnErrorType
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>)
+</p>
+<div>
+<p>PipelineTaskOnErrorType defines a list of supported failure handling behaviors of a PipelineTask on error</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;continue&#34;</p></td>
+<td><p>PipelineTaskContinue indicates to continue executing the rest of the DAG when the PipelineTask fails</p>
+</td>
+</tr><tr><td><p>&#34;stopAndFail&#34;</p></td>
+<td><p>PipelineTaskStopAndFail indicates to stop and fail the PipelineRun if the PipelineTask fails</p>
+</td>
+</tr></tbody>
 </table>
 <h3 id="tekton.dev/v1.PipelineTaskParam">PipelineTaskParam
 </h3>
@@ -10933,6 +10973,23 @@ PipelineSpec
 Note: PipelineSpec is in preview mode and not yet supported</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>onError</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.PipelineTaskOnErrorType">
+PipelineTaskOnErrorType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>OnError defines the exiting behavior of a PipelineRun on error
+can be set to [ continue | stopAndFail ]
+Note: OnError is in preview mode and not yet supported
+TODO(#7165)</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1beta1.PipelineTaskInputResource">PipelineTaskInputResource
@@ -11031,6 +11088,14 @@ map[string]string
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.PipelineTaskOnErrorType">PipelineTaskOnErrorType
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>)
+</p>
+<div>
+<p>PipelineTaskOnErrorType defines a list of supported failure handling behaviors of a PipelineTask on error</p>
+</div>
 <h3 id="tekton.dev/v1beta1.PipelineTaskOutputResource">PipelineTaskOutputResource
 </h3>
 <p>

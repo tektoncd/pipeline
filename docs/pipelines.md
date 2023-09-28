@@ -21,6 +21,8 @@ weight: 203
     - [Tekton Bundles](#tekton-bundles)
     - [Using the `runAfter` field](#using-the-runafter-field)
     - [Using the `retries` field](#using-the-retries-field)
+    - [Using the `onError` field](#using-the-onerror-field)
+    - [Produce results with `OnError`](#produce-results-with-onerror)
     - [Guard `Task` execution using `when` expressions](#guard-task-execution-using-when-expressions)
       - [Guarding a `Task` and its dependent `Tasks`](#guarding-a-task-and-its-dependent-tasks)
         - [Cascade `when` expressions to the specific dependent `Tasks`](#cascade-when-expressions-to-the-specific-dependent-tasks)
@@ -605,6 +607,106 @@ tasks:
     taskRef:
       name: build-push
 ```
+
+### Using the `onError` field
+
+> :seedling: **Specifying `onError` in `PipelineTasks` is an [alpha](additional-configs.md#alpha-features) feature.** The `enable-api-fields` feature flag must be set to `"alpha"` to specify `onError`  in a `PipelineTask`.
+
+> :seedling: This feature is in **Preview Only** mode and not yet supported/implemented.
+
+When a `PipelineTask` fails, the rest of the `PipelineTasks` are skipped and the `PipelineRun` is declared a failure. If you would like to
+ignore such `PipelineTask` failure and continue executing the rest of the `PipelineTasks`, you can specify `onError` for such a `PipelineTask`.
+
+`OnError` can be set to `stopAndFail` (default) and `continue`. The failure of a `PipelineTask` with `stopAndFail` would stop and fail the whole `PipelineRun`.  A `PipelineTask` fails with `continue` does not fail the whole `PipelineRun`, and the rest of the `PipelineTask` will continue to execute.
+
+To ignore a `PipelineTask` failure, set `onError` to `continue`:
+
+``` yaml
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: demo
+spec:
+  tasks:
+    - name: task1
+      onError: continue
+      taskSpec:
+        steps:
+          - name: step1
+            image: alpine
+            script: |
+              exit 1
+```
+
+At runtime, the failure is ignored to determine the `PipelineRun` status. The `PipelineRun` `message` contains the ignored failure info:
+
+``` yaml
+status:
+  conditions:
+  - lastTransitionTime: "2023-09-28T19:08:30Z"
+    message: 'Tasks Completed: 1 (Failed: 1 (Ignored: 1), Cancelled 0), Skipped: 0'
+    reason: Succeeded
+    status: "True"
+    type: Succeeded
+  ...
+```
+
+Note that the `TaskRun` status remains as it is irrelevant to `OnError`. Failed but ignored `TaskRuns` result in a `failed` status with reason
+`FailureIgnored`.
+
+For example, the `TaskRun` created by the above `PipelineRun` has the following status:
+
+``` bash
+$ kubectl get tr demo-run-task1
+NAME                                SUCCEEDED   REASON           STARTTIME   COMPLETIONTIME
+demo-run-task1                      False       FailureIgnored   12m         12m
+```
+
+To specify `onError` for a `step`, please see [specifying onError for a step](./tasks.md#specifying-onerror-for-a-step).
+
+**Note:** Setting [`Retry`](#specifying-retries) and `OnError:continue` at the same time is **NOT** allowed.
+
+### Produce results with `OnError`
+
+When a `PipelineTask` is set to ignore error and the `PipelineTask` is able to initialize a result before failing, the result is made available to the consumer `PipelineTasks`.
+
+``` yaml
+  tasks:
+    - name: task1
+      onError: continue
+      taskSpec:
+        results:
+          - name: result1
+        steps:
+          - name: step1
+            image: alpine
+            script: |
+              echo -n 123 | tee $(results.result1.path)
+              exit 1
+```
+
+The consumer `PipelineTasks` can access the result by referencing `$(tasks.task1.results.result1)`.
+
+If the result is **NOT** initialized before failing, and there is a `PipelineTask` consuming it:
+
+``` yaml
+  tasks:
+    - name: task1
+      onError: continue
+      taskSpec:
+        results:
+          - name: result1
+        steps:
+          - name: step1
+            image: alpine
+            script: |
+              exit 1
+              echo -n 123 | tee $(results.result1.path)
+```
+
+- If the consuming `PipelineTask` has `OnError:stopAndFail`, the `PipelineRun` will fail with `InvalidTaskResultReference`.
+- If the consuming `PipelineTask` has `OnError:continue`, the consuming `PipelineTask` will be skipped with reason `Results were missing`, 
+and the `PipelineRun` will continue to execute.
 
 ### Guard `Task` execution using `when` expressions
 

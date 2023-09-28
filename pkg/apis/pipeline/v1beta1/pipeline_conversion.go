@@ -167,6 +167,7 @@ func (pt PipelineTask) convertTo(ctx context.Context, sink *v1.PipelineTask, met
 		we.convertTo(ctx, &new)
 		sink.When = append(sink.When, new)
 	}
+	sink.OnError = (v1.PipelineTaskOnErrorType)(pt.OnError)
 	sink.Retries = pt.Retries
 	sink.RunAfter = pt.RunAfter
 	sink.Params = nil
@@ -215,6 +216,7 @@ func (pt *PipelineTask) convertFrom(ctx context.Context, source v1.PipelineTask,
 		new.convertFrom(ctx, we)
 		pt.WhenExpressions = append(pt.WhenExpressions, new)
 	}
+	pt.OnError = (PipelineTaskOnErrorType)(source.OnError)
 	pt.Retries = source.Retries
 	pt.RunAfter = source.RunAfter
 	pt.Params = nil
