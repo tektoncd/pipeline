@@ -12,17 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build linux || dragonfly || freebsd || netbsd || openbsd || solaris
-
-package resource // import "go.opentelemetry.io/otel/sdk/resource"
-
-import "os"
-
-func readFile(filename string) (string, error) {
-	b, err := os.ReadFile(filename)
-	if err != nil {
-		return "", err
-	}
-
-	return string(b), nil
-}
+// Package semconv implements OpenTelemetry semantic conventions.
+//
+// OpenTelemetry semantic conventions are agreed standardized naming
+// patterns for OpenTelemetry things. This package represents the conventions
+// as of the v1.21.0 version of the OpenTelemetry specification.
+package semconv // import "go.opentelemetry.io/otel/semconv/v1.21.0"
