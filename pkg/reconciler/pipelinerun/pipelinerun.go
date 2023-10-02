@@ -322,10 +322,10 @@ func (c *Reconciler) resolvePipelineState(
 	ctx context.Context,
 	tasks []v1.PipelineTask,
 	pipelineMeta *metav1.ObjectMeta,
-	pr *v1.PipelineRun) (resources.PipelineRunState, error) {
+	pr *v1.PipelineRun,
+	pst resources.PipelineRunState) (resources.PipelineRunState, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "resolvePipelineState")
 	defer span.End()
-	pst := resources.PipelineRunState{}
 	// Resolve each task individually because they each could have a different reference context (remote or local).
 	for _, task := range tasks {
 		// We need the TaskRun name to ensure that we don't perform an additional remote resolution request for a PipelineTask
@@ -533,7 +533,46 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	if len(pipelineSpec.Finally) > 0 {
 		tasks = append(tasks, pipelineSpec.Finally...)
 	}
-	pipelineRunState, err := c.resolvePipelineState(ctx, tasks, pipelineMeta.ObjectMeta, pr)
+
+	// We spit tasks in two lists:
+	// - those with a completed (Task|Custom)Run reference (i.e. those that finished running)
+	// - those without a (Task|Custom)Run reference
+	// We resolve the status for the former first, to collect all results available at this stage
+	// We know that tasks in progress or completed have had their fan-out alteady calculated so
+	// they can be safely processed in the first iteration. The underlying assumption is that if
+	// a PipelineTask has at least one TaskRun associated, then all its TaskRuns have been
+	// created already.
+	// The second group takes as input the partial state built in the first iteration and finally
+	// the two results are collated
+	ranOrRunningTaskNames := sets.Set[string]{}
+	ranOrRunningTasks := []v1.PipelineTask{}
+	notStartedTasks := []v1.PipelineTask{}
+
+	for _, child := range pr.Status.ChildReferences {
+		ranOrRunningTaskNames.Insert(child.PipelineTaskName)
+	}
+	for _, task := range tasks {
+		if ranOrRunningTaskNames.Has(task.Name) {
+			ranOrRunningTasks = append(ranOrRunningTasks, task)
+		} else {
+			notStartedTasks = append(notStartedTasks, task)
+		}
+	}
+	// First iteration
+	pst := resources.PipelineRunState{}
+	pipelineRunState, err := c.resolvePipelineState(ctx, ranOrRunningTasks, pipelineMeta.ObjectMeta, pr, pst)
+	switch {
+	case errors.Is(err, remote.ErrRequestInProgress):
+		message := fmt.Sprintf("PipelineRun %s/%s awaiting remote resource", pr.Namespace, pr.Name)
+		pr.Status.MarkRunning(v1.TaskRunReasonResolvingTaskRef, message)
+		return nil
+	case err != nil:
+		return err
+	default:
+	}
+
+	// Second iteration
+	pipelineRunState, err = c.resolvePipelineState(ctx, notStartedTasks, pipelineMeta.ObjectMeta, pr, pipelineRunState)
 	switch {
 	case errors.Is(err, remote.ErrRequestInProgress):
 		message := fmt.Sprintf("PipelineRun %s/%s awaiting remote resource", pr.Namespace, pr.Name)
