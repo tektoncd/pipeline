@@ -16,7 +16,7 @@ require (
 	github.com/hashicorp/golang-lru v1.0.2
 	github.com/jenkins-x/go-scm v1.14.14
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/opencontainers/image-spec v1.1.0-rc4
+	github.com/opencontainers/image-spec v1.1.0-rc5
 	github.com/pkg/errors v0.9.1
 	github.com/sigstore/sigstore v1.7.3
 	github.com/spiffe/go-spiffe/v2 v2.1.5
