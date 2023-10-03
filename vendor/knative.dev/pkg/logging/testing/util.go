@@ -28,8 +28,8 @@ import (
 // TestLogger gets a logger to use in unit and end to end tests
 func TestLogger(t zaptest.TestingT) *zap.SugaredLogger {
 	opts := zaptest.WrapOptions(
-		zap.AddCaller(),
-		zap.Development(),
+	// zap.AddCaller(),
+	// zap.Development(),
 	)
 
 	return zaptest.NewLogger(t, opts).Sugar()

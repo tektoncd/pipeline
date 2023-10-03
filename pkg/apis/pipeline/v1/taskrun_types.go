@@ -235,6 +235,9 @@ type TaskRunStatusFields struct {
 	// TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.
 	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
 
+	// TaskMeta contains the exact Task metadata to instantiate the run
+	TaskMeta *TektonObjectMeta `json:"taskMetadata,omitempty"`
+
 	// Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).
 	// +optional
 	Provenance *Provenance `json:"provenance,omitempty"`
