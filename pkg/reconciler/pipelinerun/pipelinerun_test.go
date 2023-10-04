@@ -9597,6 +9597,196 @@ spec:
 	}
 }
 
+func TestReconciler_PipelineTaskMatrixStrategy(t *testing.T) {
+	names.TestingSeed()
+
+	task := parse.MustParseV1Task(t, `
+metadata:
+  name: mytask
+  namespace: foo
+spec:
+  params:
+    - name: IMAGE
+    - name: DOCKERFILE
+  steps:
+    - name: echo
+      image: alpine
+      script: |
+        echo "$(params.IMAGE) and $(params.DOCKERFILE)"
+`)
+
+	expectedTaskRuns := []*v1.TaskRun{
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-matrix-strategy-0", "foo",
+				"pr", "p", "matrix-strategy", false),
+			`
+spec:
+  params:
+  - name: DOCKERFILE
+    value: path/to/Dockerfile1
+  - name: IMAGE
+    value: image-1
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+    kind: Task
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-matrix-strategy-1", "foo",
+				"pr", "p", "matrix-strategy", false),
+			`
+spec:
+  params:
+  - name: DOCKERFILE
+    value: path/to/Dockerfile2
+  - name: IMAGE
+    value: image-2
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+    kind: Task
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-matrix-strategy-2", "foo",
+				"pr", "p", "matrix-strategy", false),
+			`
+spec:
+  params:
+  - name: DOCKERFILE
+    value: path/to/Dockerfile3
+  - name: IMAGE
+    value: image-3
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+    kind: Task
+`),
+	}
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
+
+	tests := []struct {
+		name                string
+		memberOf            string
+		p                   *v1.Pipeline
+		tr                  *v1.TaskRun
+		expectedPipelineRun *v1.PipelineRun
+	}{{
+		name:     "p-dag",
+		memberOf: "tasks",
+		p: parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: foo
+spec:
+  tasks:
+    - name: matrix-strategy
+      taskRef:
+        name: mytask
+      matrix:
+        strategy: "{\"include\":[{\"IMAGE\":\"image-1\",\"DOCKERFILE\":\"path/to/Dockerfile1\"},{\"IMAGE\":\"image-2\",\"DOCKERFILE\":\"path/to/Dockerfile2\"},{\"IMAGE\":\"image-3\",\"DOCKERFILE\":\"path/to/Dockerfile3\"}]}"
+`, "p-dag")),
+		expectedPipelineRun: parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pr
+  namespace: foo
+  annotations: {}
+  labels:
+    tekton.dev/pipeline: p-dag
+spec:
+  taskRunTemplate:
+    serviceAccountName: test-sa
+  pipelineRef:
+    name: p-dag
+status:
+  pipelineSpec:
+    tasks:
+      - name: matrix-strategy
+        taskRef:
+          name: mytask
+          kind: Task
+        matrix:
+          strategy: "{\"include\":[{\"IMAGE\":\"image-1\",\"DOCKERFILE\":\"path/to/Dockerfile1\"},{\"IMAGE\":\"image-2\",\"DOCKERFILE\":\"path/to/Dockerfile2\"},{\"IMAGE\":\"image-3\",\"DOCKERFILE\":\"path/to/Dockerfile3\"}]}"
+  conditions:
+  - type: Succeeded
+    status: "Unknown"
+    reason: "Running"
+    message: "Tasks Completed: 0 (Failed: 0, Cancelled 0), Incomplete: 1, Skipped: 0"
+  childReferences:
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: pr-matrix-strategy-0
+    pipelineTaskName: matrix-strategy
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: pr-matrix-strategy-1
+    pipelineTaskName: matrix-strategy
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: pr-matrix-strategy-2
+    pipelineTaskName: matrix-strategy
+`),
+	},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: pr
+  namespace: foo
+spec:
+  taskRunTemplate:
+    serviceAccountName: test-sa
+  pipelineRef:
+    name: %s
+`, tt.name))
+			d := test.Data{
+				PipelineRuns: []*v1.PipelineRun{pr},
+				Pipelines:    []*v1.Pipeline{tt.p},
+				Tasks:        []*v1.Task{task},
+				ConfigMaps:   cms,
+			}
+			if tt.tr != nil {
+				d.TaskRuns = []*v1.TaskRun{tt.tr}
+			}
+			prt := newPipelineRunTest(t, d)
+			defer prt.Cancel()
+
+			_, clients := prt.reconcileRun("foo", "pr", []string{}, false)
+			taskRuns, err := clients.Pipeline.TektonV1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
+				LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=pr,tekton.dev/pipeline=%s,tekton.dev/pipelineTask=matrix-strategy", tt.name),
+				Limit:         1,
+			})
+			if err != nil {
+				t.Fatalf("Failure to list TaskRun's %s", err)
+			}
+
+			if len(taskRuns.Items) != 3 {
+				t.Fatalf("Expected 3 TaskRuns got %d", len(taskRuns.Items))
+			}
+
+			for i := range taskRuns.Items {
+				expectedTaskRun := expectedTaskRuns[i]
+				expectedTaskRun.Labels["tekton.dev/pipeline"] = tt.name
+				expectedTaskRun.Labels["tekton.dev/memberOf"] = tt.memberOf
+				if d := cmp.Diff(expectedTaskRun, &taskRuns.Items[i], ignoreResourceVersion, ignoreTypeMeta); d != "" {
+					t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRuns[i].Name, diff.PrintWantGot(d))
+				}
+			}
+
+			pipelineRun, err := clients.Pipeline.TektonV1().PipelineRuns("foo").Get(prt.TestAssets.Ctx, "pr", metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Got an error getting reconciled run out of fake client: %s", err)
+			}
+
+			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime,
+				ignoreStartTime, ignoreFinallyStartTime, ignoreProvenance, cmpopts.EquateEmpty()); d != "" {
+				t.Errorf("expected PipelineRun was not created. Diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestReconciler_PipelineTaskMatrixWithResults(t *testing.T) {
 	names.TestingSeed()
 

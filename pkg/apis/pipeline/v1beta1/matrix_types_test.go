@@ -582,6 +582,40 @@ func TestMatrix_FanOut(t *testing.T) {
 					Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "I-do-not-exist"},
 				},
 			}},
+		}, {
+			name: "Fan out explicit combinations using strategy",
+			matrix: v1beta1.Matrix{
+				Strategy: "{\"include\": [" +
+					"{\"DOCKERFILE\": \"path/to/Dockerfile1\", \"IMAGE\": \"image-1\"}," +
+					"{\"DOCKERFILE\": \"path/to/Dockerfile2\", \"IMAGE\": \"image-2\"}," +
+					"{\"DOCKERFILE\": \"path/to/Dockerfile3\", \"IMAGE\": \"image-3\"}" +
+					"]}",
+			},
+			want: []v1beta1.Params{{
+				{
+					Name:  "DOCKERFILE",
+					Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/Dockerfile1"},
+				}, {
+					Name:  "IMAGE",
+					Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "image-1"},
+				},
+			}, {
+				{
+					Name:  "DOCKERFILE",
+					Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/Dockerfile2"},
+				}, {
+					Name:  "IMAGE",
+					Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "image-2"},
+				},
+			}, {
+				{
+					Name:  "DOCKERFILE",
+					Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/Dockerfile3"},
+				}, {
+					Name:  "IMAGE",
+					Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "image-3"},
+				},
+			}},
 		}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

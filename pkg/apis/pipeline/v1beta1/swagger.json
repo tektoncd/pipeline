@@ -588,6 +588,11 @@
             "$ref": "#/definitions/v1beta1.Param"
           },
           "x-kubernetes-list-type": "atomic"
+        },
+        "strategy": {
+          "description": "Strategy is a JSON payload with a list of combinations Strategy is an extension of Include to support dynamic combinations",
+          "type": "string",
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -2337,6 +2342,21 @@
         "workingDir": {
           "description": "Step's working directory. If not specified, the container runtime's default will be used, which might be configured in the container image. Cannot be updated.",
           "type": "string"
+        }
+      }
+    },
+    "v1beta1.Strategy": {
+      "type": "object",
+      "properties": {
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "default": ""
+            }
+          }
         }
       }
     },

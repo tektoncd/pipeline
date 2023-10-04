@@ -15,6 +15,7 @@ package v1
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 
@@ -38,6 +39,12 @@ type Matrix struct {
 	// +optional
 	// +listType=atomic
 	Include IncludeParamsList `json:"include,omitempty"`
+
+	// Strategy is a JSON payload with a list of combinations
+	// Strategy is an extension of Include to support dynamic combinations
+	// +optional
+	// +listType=atomic
+	Strategy string `json:"strategy,omitempty"`
 }
 
 // IncludeParamsList is a list of IncludeParams which allows passing in specific combinations of Parameters into the Matrix.
@@ -54,14 +61,21 @@ type IncludeParams struct {
 	Params Params `json:"params,omitempty"`
 }
 
+type Strategy struct {
+	Include []map[string]string `json:"include,omitempty"`
+}
+
 // Combination is a map, mainly defined to hold a single combination from a Matrix with key as param.Name and value as param.Value
 type Combination map[string]string
 
 // Combinations is a Combination list
 type Combinations []Combination
 
-// FanOut returns an list of params that represent combinations
+// FanOut returns a list of params that represent combinations
 func (m *Matrix) FanOut() []Params {
+	if m.HasStrategy() {
+		return m.getStrategy().toParams()
+	}
 	var combinations, includeCombinations Combinations
 	includeCombinations = m.getIncludeCombinations()
 	if m.HasInclude() && !m.HasParams() {
@@ -177,6 +191,23 @@ func (m *Matrix) getIncludeCombinations() Combinations {
 	return combinations
 }
 
+// getStrategy generates combinations based on Matrix Strategy section
+// Matrix Strategy allows "include" as a JSON payload
+func (m *Matrix) getStrategy() Combinations {
+	var combinations Combinations
+	var s Strategy
+	if err := json.Unmarshal([]byte(m.Strategy), &s); err == nil {
+		for _, i := range s.Include {
+			newCombination := make(Combination)
+			for k, v := range i {
+				newCombination[k] = v
+			}
+			combinations = append(combinations, newCombination)
+		}
+	}
+	return combinations
+}
+
 // distribute generates a new Combination of Parameters by adding a new Parameter to an existing list of Combinations.
 func (cs Combinations) distribute(param Param) Combinations {
 	var expandedCombinations Combinations
@@ -225,6 +256,9 @@ func (m *Matrix) CountCombinations() int {
 	// Add any additional Combinations generated from Matrix Include Parameters
 	count += m.countNewCombinationsFromInclude()
 
+	// Iterate over Matrix Strategy to count all combinations specified
+	count += m.countCombinationsFromStrategy()
+
 	return count
 }
 
@@ -267,6 +301,11 @@ func (m *Matrix) countNewCombinationsFromInclude() int {
 	return count
 }
 
+// countCombinationsFromStrategy returns the count of Combinations specified in the strategy
+func (m *Matrix) countCombinationsFromStrategy() int {
+	return len(m.getStrategy())
+}
+
 // HasInclude returns true if the Matrix has Include Parameters
 func (m *Matrix) HasInclude() bool {
 	return m != nil && m.Include != nil && len(m.Include) > 0
@@ -275,6 +314,10 @@ func (m *Matrix) HasInclude() bool {
 // HasParams returns true if the Matrix has Parameters
 func (m *Matrix) HasParams() bool {
 	return m != nil && m.Params != nil && len(m.Params) > 0
+}
+
+func (m *Matrix) HasStrategy() bool {
+	return m != nil && len(m.Strategy) > 0
 }
 
 // GetAllParams returns a list of all Matrix Parameters
@@ -286,6 +329,12 @@ func (m *Matrix) GetAllParams() Params {
 	if m.HasInclude() {
 		for _, include := range m.Include {
 			params = append(params, include.Params...)
+		}
+	}
+	if m.HasStrategy() {
+		ps := m.getStrategy().toParams()
+		for _, p := range ps {
+			params = append(params, p...)
 		}
 	}
 	return params
@@ -336,6 +385,18 @@ func (m *Matrix) validatePipelineParametersVariablesInMatrixParameters(prefix st
 			}
 		}
 	}
+	if m.HasStrategy() {
+		var s Strategy
+		if err := json.Unmarshal([]byte(m.Strategy), &s); err != nil {
+			for _, i := range s.Include {
+				for k, v := range i {
+					// Matrix Strategy Params must be of type string
+					errs = errs.Also(validateStringVariable(v, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaField(k).ViaField("matrix.strategy", k))
+
+				}
+			}
+		}
+	}
 	return errs
 }
 
@@ -344,6 +405,24 @@ func (m *Matrix) validateParameterInOneOfMatrixOrParams(params []Param) (errs *a
 	for _, param := range params {
 		if matrixParamNames.Has(param.Name) {
 			errs = errs.Also(apis.ErrMultipleOneOf("matrix["+param.Name+"]", "params["+param.Name+"]"))
+		}
+	}
+	return errs
+}
+
+// validateStrategy validates syntax of Matrix Strategy section
+// Matrix Strategy allows "include" as a JSON payload with a list of combinations
+func (m *Matrix) validateStrategy() (errs *apis.FieldError) {
+	e := "matrix.strategy section does not have a valid JSON payload, " +
+		"matrix.strategy section only allows valid JSON payload in the form of " +
+		"{include: []map[string]string} e.g. {include: [{k1: v1, k2: v2}, {k1: v3, k2: v4}, {k3: v1}]"
+	var s Strategy
+	if m.HasStrategy() {
+		if !json.Valid([]byte(m.Strategy)) {
+			return apis.ErrGeneric(e)
+		}
+		if err := json.Unmarshal([]byte(m.Strategy), &s); err != nil {
+			return apis.ErrGeneric(e + ": " + err.Error())
 		}
 	}
 	return errs

@@ -263,7 +263,7 @@ func (et *EmbeddedTask) IsCustomTask() bool {
 
 // IsMatrixed return whether pipeline task is matrixed
 func (pt *PipelineTask) IsMatrixed() bool {
-	return pt.Matrix.HasParams() || pt.Matrix.HasInclude()
+	return pt.Matrix.HasParams() || pt.Matrix.HasInclude() || pt.Matrix.HasStrategy()
 }
 
 // TaskSpecMetadata returns the metadata of the PipelineTask's EmbeddedTask spec.
