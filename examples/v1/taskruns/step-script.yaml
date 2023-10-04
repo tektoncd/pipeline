@@ -71,7 +71,7 @@ spec:
         print("Hello from Python!")
 
     - name: perl
-      image: perl
+      image: perl:devel-bullseye
       script: |
         #!/usr/bin/perl
         print "Hello from Perl!"
