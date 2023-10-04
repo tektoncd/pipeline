@@ -537,7 +537,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		tasks = append(tasks, pipelineSpec.Finally...)
 	}
 
-	// We spit tasks in two lists:
+	// We split tasks in two lists:
 	// - those with a completed (Task|Custom)Run reference (i.e. those that finished running)
 	// - those without a (Task|Custom)Run reference
 	// We resolve the status for the former first, to collect all results available at this stage
