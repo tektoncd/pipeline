@@ -136,6 +136,21 @@ See the current list of [alpha features](https://github.com/tektoncd/pipeline/bl
 
 - GA/Stable features will not be removed or changed in a backwards incompatible manner without incrementing the API Version.
 
+### Feature Graduation Process
+Features are first released as experimental in alpha, refined in beta, and finalized in stable releases.
+
+#### Introducing an `alpha` feature
+- When a feature is first introduced to Tekton, it will have the `alpha` stability level and be disabled by default. 
+- At this stage, users could choose to experiment with the feature. Feedback will be collected from users and it will help maintainers to determine whether to promote the feature to higher stability level or deprecate it.
+
+#### Promoting a feature to `beta`
+- After feedback of the usage of the alpha features, once the needs and motivations are validated, a feature could be promoted to `beta`. This stage is where features are further tested and refined.
+- The dedicated feature flag for this feature will change the stability level for validation to `beta`. It will continue to be disabled by default.
+
+#### Graduating a feature to `stable`
+- This is the final stage of feature graduation process, where features are considered to be complete and ready to be released for the public.
+- Once a feature has graduated to `stable`, it will be turned on by default.
+
 ## Approving API changes
 
 API changes must be approved by [OWNERS](OWNERS). The policy is slightly different
