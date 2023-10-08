@@ -380,6 +380,22 @@ func (facts *PipelineRunFacts) GetFinalTasks() PipelineRunState {
 	return tasks
 }
 
+// IsFinalTaskStarted returns true if all DAG pipelineTasks is finished and one or more final tasks have been created.
+func (facts *PipelineRunFacts) IsFinalTaskStarted() bool {
+	// check either pipeline has finished executing all DAG pipelineTasks,
+	// where "finished executing" means succeeded, failed, or skipped.
+	if facts.checkDAGTasksDone() {
+		// return list of tasks with all final tasks
+		for _, t := range facts.State {
+			if facts.isFinalTask(t.PipelineTask.Name) && t.isScheduled() {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 // GetPipelineConditionStatus will return the Condition that the PipelineRun prName should be
 // updated with, based on the status of the TaskRuns in state.
 func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, pr *v1.PipelineRun, logger *zap.SugaredLogger, c clock.PassiveClock) *apis.Condition {
