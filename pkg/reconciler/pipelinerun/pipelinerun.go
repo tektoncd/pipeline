@@ -276,7 +276,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 		waitTime := pr.PipelineTimeout(ctx) - elapsed
 		if pr.Status.FinallyStartTime == nil && pr.TasksTimeout() != nil {
 			waitTime = pr.TasksTimeout().Duration - elapsed
-		} else if pr.FinallyTimeout() != nil {
+		} else if pr.Status.FinallyStartTime != nil && pr.FinallyTimeout() != nil {
 			finallyWaitTime := pr.FinallyTimeout().Duration - c.Clock.Since(pr.Status.FinallyStartTime.Time)
 			if finallyWaitTime < waitTime {
 				waitTime = finallyWaitTime
@@ -700,7 +700,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 				errs := timeoutPipelineTasksForTaskNames(ctx, logger, pr, c.PipelineClientSet, tasksToTimeOut)
 				if len(errs) > 0 {
 					errString := strings.Join(errs, "\n")
-					logger.Errorf("Failed to timeout tasks for PipelineRun %s/%s: %s", pr.Name, pr.Name, errString)
+					logger.Errorf("Failed to timeout tasks for PipelineRun %s/%s: %s", pr.Namespace, pr.Name, errString)
 					return fmt.Errorf("error(s) from cancelling TaskRun(s) from PipelineRun %s: %s", pr.Name, errString)
 				}
 			}
@@ -717,7 +717,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 			errs := timeoutPipelineTasksForTaskNames(ctx, logger, pr, c.PipelineClientSet, tasksToTimeOut)
 			if len(errs) > 0 {
 				errString := strings.Join(errs, "\n")
-				logger.Errorf("Failed to timeout finally tasks for PipelineRun %s/%s: %s", pr.Name, pr.Name, errString)
+				logger.Errorf("Failed to timeout finally tasks for PipelineRun %s/%s: %s", pr.Namespace, pr.Name, errString)
 				return fmt.Errorf("error(s) from cancelling TaskRun(s) from PipelineRun %s: %s", pr.Name, errString)
 			}
 		}
