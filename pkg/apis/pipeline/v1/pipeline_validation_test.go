@@ -3857,7 +3857,7 @@ func TestPipelineWithBetaFields(t *testing.T) {
 			}},
 		},
 	}, {
-		name: "pipeline tasks - use of resolver without the feature flag set",
+		name: "pipeline tasks - use of resolver",
 		spec: PipelineSpec{
 			Tasks: []PipelineTask{{
 				Name:    "uses-resolver",
@@ -3865,7 +3865,7 @@ func TestPipelineWithBetaFields(t *testing.T) {
 			}},
 		},
 	}, {
-		name: "pipeline tasks - use of resolver params without the feature flag set",
+		name: "pipeline tasks - use of resolver params",
 		spec: PipelineSpec{
 			Tasks: []PipelineTask{{
 				Name:    "uses-resolver-params",
@@ -3873,7 +3873,7 @@ func TestPipelineWithBetaFields(t *testing.T) {
 			}},
 		},
 	}, {
-		name: "finally tasks - use of resolver without the feature flag set",
+		name: "finally tasks - use of resolver",
 		spec: PipelineSpec{
 			Tasks: []PipelineTask{{
 				Name:    "valid-pipeline-task",
@@ -3885,7 +3885,7 @@ func TestPipelineWithBetaFields(t *testing.T) {
 			}},
 		},
 	}, {
-		name: "finally tasks - use of resolver params without the feature flag set",
+		name: "finally tasks - use of resolver params",
 		spec: PipelineSpec{
 			Tasks: []PipelineTask{{
 				Name:    "valid-pipeline-task",
