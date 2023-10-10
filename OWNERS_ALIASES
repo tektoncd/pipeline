@@ -13,6 +13,16 @@ aliases:
   - yongxuanzhang
   - chitrangpatel
 
+  pipeline-reviewers:
+  - afrittoli
+  - bobcatfish
+  - dibyom
+  - vdemeester
+  - pritidesai
+  - jerop
+  - abayer
+  # - wlynch (feel free to /cc me into PRs as needed)
+
   apis-approvers:
   - afrittoli
   - bobcatfish
@@ -29,10 +39,6 @@ aliases:
   - afrittoli
   - bobcatfish
   - vdemeester
-  productivity-reviewers:
-  - dibyom
-  - dlorenc
-  - ImJasonH
 
 # Alumni ❤️
 # tejal29
