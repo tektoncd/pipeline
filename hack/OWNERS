@@ -1,6 +1,6 @@
 approvers:
 - productivity-approvers
 reviewers:
-- productivity-reviewers
+- productivity-approvers
 labels:
 - area/test-infra
