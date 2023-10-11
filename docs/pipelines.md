@@ -88,7 +88,7 @@ A `Pipeline` definition supports the following fields:
   - [`workspaces`](#specifying-workspaces) - Specifies a set of Workspaces that the `Pipeline` requires.
   - [`tasks`](#adding-tasks-to-the-pipeline):
       - [`name`](#adding-tasks-to-the-pipeline) - the name of this `Task` within the context of this `Pipeline`.
-      - [`displayName`](#adding-tasks-to-the-pipeline) - a user-facing name of this `Task` within the context of this `Pipeline`.
+      - [`displayName`](#specifying-a-display-name) - a user-facing name of this `Task` within the context of this `Pipeline`.
       - [`description`](#adding-tasks-to-the-pipeline) - a description of this `Task` within the context of this `Pipeline`.
       - [`taskRef`](#adding-tasks-to-the-pipeline) - a reference to a `Task` definition.
       - [`taskSpec`](#adding-tasks-to-the-pipeline) - a specification of a `Task`.
@@ -110,7 +110,7 @@ A `Pipeline` definition supports the following fields:
   - [`finally`](#adding-finally-to-the-pipeline) - Specifies one or more `Tasks` to be executed in parallel after
     all other tasks have completed.
     - [`name`](#adding-finally-to-the-pipeline) - the name of this `Task` within the context of this `Pipeline`.
-    - [`displayName`](#adding-finally-to-the-pipeline) - a user-facing name of this `Task` within the context of this `Pipeline`.
+    - [`displayName`](#specifying-a-display-name) - a user-facing name of this `Task` within the context of this `Pipeline`.
     - [`description`](#adding-finally-to-the-pipeline) - a description of this `Task` within the context of this `Pipeline`.
     - [`taskRef`](#adding-finally-to-the-pipeline) - a reference to a `Task` definition.
     - [`taskSpec`](#adding-finally-to-the-pipeline) - a specification of a `Task`.
