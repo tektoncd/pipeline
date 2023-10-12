@@ -20,7 +20,6 @@ import (
 	"context"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/version"
 	"knative.dev/pkg/apis"
 )
 
@@ -33,13 +32,13 @@ func (ref *PipelineRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 
 	if ref.Resolver != "" || ref.Params != nil {
 		if ref.Resolver != "" {
-			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "resolver", config.BetaAPIFields).ViaField("resolver"))
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "resolver", config.BetaAPIFields).ViaField("resolver"))
 			if ref.Name != "" {
 				errs = errs.Also(apis.ErrMultipleOneOf("name", "resolver"))
 			}
 		}
 		if ref.Params != nil {
-			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "resolver params", config.BetaAPIFields).ViaField("params"))
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "resolver params", config.BetaAPIFields).ViaField("params"))
 			if ref.Name != "" {
 				errs = errs.Also(apis.ErrMultipleOneOf("name", "params"))
 			}

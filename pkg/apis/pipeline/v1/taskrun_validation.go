@@ -24,7 +24,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
-	"github.com/tektoncd/pipeline/pkg/apis/version"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -76,19 +75,19 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(ts.validateInlineParameters(ctx))
 	errs = errs.Also(ValidateWorkspaceBindings(ctx, ts.Workspaces).ViaField("workspaces"))
 	if ts.Debug != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "debug", config.AlphaAPIFields).ViaField("debug"))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "debug", config.AlphaAPIFields).ViaField("debug"))
 		errs = errs.Also(validateDebug(ts.Debug).ViaField("debug"))
 	}
 	if ts.StepSpecs != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "stepSpecs", config.AlphaAPIFields).ViaField("stepSpecs"))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "stepSpecs", config.AlphaAPIFields).ViaField("stepSpecs"))
 		errs = errs.Also(validateStepSpecs(ts.StepSpecs).ViaField("stepSpecs"))
 	}
 	if ts.SidecarSpecs != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "sidecarSpecs", config.AlphaAPIFields).ViaField("sidecarSpecs"))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "sidecarSpecs", config.AlphaAPIFields).ViaField("sidecarSpecs"))
 		errs = errs.Also(validateSidecarSpecs(ts.SidecarSpecs).ViaField("sidecarSpecs"))
 	}
 	if ts.ComputeResources != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "computeResources", config.AlphaAPIFields).ViaField("computeResources"))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "computeResources", config.AlphaAPIFields).ViaField("computeResources"))
 		errs = errs.Also(validateTaskRunComputeResources(ts.ComputeResources, ts.StepSpecs))
 	}
 
@@ -246,7 +245,7 @@ func ValidateParameters(ctx context.Context, params Params) (errs *apis.FieldErr
 		if p.Value.Type == ParamTypeObject {
 			// Object type parameter is a beta feature and will fail validation if it's used in a taskrun spec
 			// when the enable-api-fields feature gate is not "alpha" or "beta".
-			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "object type parameter", config.BetaAPIFields))
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "object type parameter", config.BetaAPIFields))
 		}
 		names = append(names, p.Name)
 	}

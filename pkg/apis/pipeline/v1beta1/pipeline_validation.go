@@ -24,7 +24,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
-	"github.com/tektoncd/pipeline/pkg/apis/version"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
@@ -184,7 +183,7 @@ func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldErr
 	if pt.IsMatrixed() {
 		// This is an alpha feature and will fail validation if it's used in a pipeline spec
 		// when the enable-api-fields feature gate is anything but "alpha".
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "matrix", config.AlphaAPIFields))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "matrix", config.AlphaAPIFields))
 		errs = errs.Also(pt.Matrix.validateCombinationsCount(ctx))
 		errs = errs.Also(pt.Matrix.validateUniqueParams())
 	}
@@ -259,11 +258,11 @@ func (pt PipelineTask) validateRefOrSpec(ctx context.Context) (errs *apis.FieldE
 		nonNilFields = append(nonNilFields, taskSpec)
 	}
 	if pt.PipelineRef != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, pipelineRef, config.AlphaAPIFields))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, pipelineRef, config.AlphaAPIFields))
 		nonNilFields = append(nonNilFields, pipelineRef)
 	}
 	if pt.PipelineSpec != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, pipelineSpec, config.AlphaAPIFields))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, pipelineSpec, config.AlphaAPIFields))
 		nonNilFields = append(nonNilFields, pipelineSpec)
 	}
 

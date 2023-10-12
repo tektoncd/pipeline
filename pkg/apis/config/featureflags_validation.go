@@ -14,13 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package version
+package config
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"knative.dev/pkg/apis"
 )
 
@@ -28,26 +27,26 @@ import (
 // to a version at most as stable as wantVersion, if not, returns an error stating which feature
 // is dependent on the version and what the current version actually is.
 func ValidateEnabledAPIFields(ctx context.Context, featureName string, wantVersion string) *apis.FieldError {
-	currentVersion := config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields
+	currentVersion := FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields
 	var errs *apis.FieldError
 	message := `%s requires "enable-api-fields" feature gate to be %s but it is %q`
 	switch wantVersion {
-	case config.StableAPIFields:
+	case StableAPIFields:
 		// If the feature is stable, it doesn't matter what the current version is
-	case config.BetaAPIFields:
+	case BetaAPIFields:
 		// If the feature requires "beta" fields to be enabled, the current version may be "beta" or "alpha"
-		if currentVersion != config.BetaAPIFields && currentVersion != config.AlphaAPIFields {
-			message = fmt.Sprintf(message, featureName, fmt.Sprintf("%q or %q", config.AlphaAPIFields, config.BetaAPIFields), currentVersion)
+		if currentVersion != BetaAPIFields && currentVersion != AlphaAPIFields {
+			message = fmt.Sprintf(message, featureName, fmt.Sprintf("%q or %q", AlphaAPIFields, BetaAPIFields), currentVersion)
 			errs = apis.ErrGeneric(message)
 		}
-	case config.AlphaAPIFields:
+	case AlphaAPIFields:
 		// If the feature requires "alpha" fields to be enabled, the current version must be "alpha"
 		if currentVersion != wantVersion {
-			message = fmt.Sprintf(message, featureName, fmt.Sprintf("%q", config.AlphaAPIFields), currentVersion)
+			message = fmt.Sprintf(message, featureName, fmt.Sprintf("%q", AlphaAPIFields), currentVersion)
 			errs = apis.ErrGeneric(message)
 		}
 	default:
-		errs = apis.ErrGeneric("invalid wantVersion %s, must be one of (%s, %s, %s)", wantVersion, config.AlphaAPIFields, config.BetaAPIFields, config.StableAPIFields)
+		errs = apis.ErrGeneric("invalid wantVersion %s, must be one of (%s, %s, %s)", wantVersion, AlphaAPIFields, BetaAPIFields, StableAPIFields)
 	}
 	return errs
 }
