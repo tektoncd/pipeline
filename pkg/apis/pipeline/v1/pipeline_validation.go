@@ -23,7 +23,6 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
-	"github.com/tektoncd/pipeline/pkg/apis/version"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
@@ -103,21 +102,21 @@ func (ps *PipelineSpec) ValidateBetaFields(ctx context.Context) *apis.FieldError
 	// Object parameters
 	for i, p := range ps.Params {
 		if p.Type == ParamTypeObject {
-			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "object type parameter", config.BetaAPIFields).ViaFieldIndex("params", i))
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "object type parameter", config.BetaAPIFields).ViaFieldIndex("params", i))
 		}
 	}
 	// Indexing into array parameters
 	arrayParamIndexingRefs := ps.GetIndexingReferencesToArrayParams()
 	if len(arrayParamIndexingRefs) != 0 {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "indexing into array parameters", config.BetaAPIFields))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "indexing into array parameters", config.BetaAPIFields))
 	}
 	// array and object results
 	for i, result := range ps.Results {
 		switch result.Type {
 		case ResultsTypeObject:
-			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "object results", config.BetaAPIFields).ViaFieldIndex("results", i))
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "object results", config.BetaAPIFields).ViaFieldIndex("results", i))
 		case ResultsTypeArray:
-			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "array results", config.BetaAPIFields).ViaFieldIndex("results", i))
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "array results", config.BetaAPIFields).ViaFieldIndex("results", i))
 		case ResultsTypeString:
 		default:
 		}
@@ -139,10 +138,10 @@ func (pt *PipelineTask) validateBetaFields(ctx context.Context) *apis.FieldError
 	if pt.TaskRef != nil {
 		// Resolvers
 		if pt.TaskRef.Resolver != "" {
-			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "taskref.resolver", config.BetaAPIFields))
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "taskref.resolver", config.BetaAPIFields))
 		}
 		if len(pt.TaskRef.Params) > 0 {
-			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "taskref.params", config.BetaAPIFields))
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "taskref.params", config.BetaAPIFields))
 		}
 	} else if pt.TaskSpec != nil {
 		errs = errs.Also(pt.TaskSpec.ValidateBetaFields(ctx))
@@ -232,7 +231,7 @@ func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldErr
 	if pt.IsMatrixed() {
 		// This is an alpha feature and will fail validation if it's used in a pipeline spec
 		// when the enable-api-fields feature gate is anything but "alpha".
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "matrix", config.AlphaAPIFields))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "matrix", config.AlphaAPIFields))
 		errs = errs.Also(pt.Matrix.validateCombinationsCount(ctx))
 		errs = errs.Also(pt.Matrix.validateUniqueParams())
 	}
@@ -307,11 +306,11 @@ func (pt PipelineTask) validateRefOrSpec(ctx context.Context) (errs *apis.FieldE
 		nonNilFields = append(nonNilFields, taskSpec)
 	}
 	if pt.PipelineRef != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, pipelineRef, config.AlphaAPIFields))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, pipelineRef, config.AlphaAPIFields))
 		nonNilFields = append(nonNilFields, pipelineRef)
 	}
 	if pt.PipelineSpec != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, pipelineSpec, config.AlphaAPIFields))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, pipelineSpec, config.AlphaAPIFields))
 		nonNilFields = append(nonNilFields, pipelineSpec)
 	}
 
