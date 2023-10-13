@@ -384,7 +384,7 @@ spec:
 
 	actualSkippedTasks := pr.Status.SkippedTasks
 	// Sort tasks based on their names to get similar order as in expected list
-	if d := cmp.Diff(actualSkippedTasks, expectedSkippedTasks, cmpopts.SortSlices(func(i, j v1.SkippedTask) bool {
+	if d := cmp.Diff(expectedSkippedTasks, actualSkippedTasks, cmpopts.SortSlices(func(i, j v1.SkippedTask) bool {
 		return i.Name < j.Name
 	})); d != "" {
 		t.Fatalf("Expected four skipped tasks, dag task with condition failure dagtask3, dag task with when expression,"+

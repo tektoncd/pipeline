@@ -182,7 +182,7 @@ func TestValidateNoReferencesToUnknownVariables(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got := substitution.ValidateNoReferencesToUnknownVariables(tc.args.input, tc.args.prefix, tc.args.vars)
 
-			if d := cmp.Diff(got, tc.expectedError, cmp.AllowUnexported(apis.FieldError{})); d != "" {
+			if d := cmp.Diff(tc.expectedError, got, cmp.AllowUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("ValidateVariableP() error did not match expected error %s", diff.PrintWantGot(d))
 			}
 		})
@@ -312,7 +312,7 @@ func TestValidateValidateNoReferencesToEntireProhibitedVariables(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got := substitution.ValidateNoReferencesToEntireProhibitedVariables(tc.args.input, tc.args.prefix, tc.args.vars)
 
-			if d := cmp.Diff(got, tc.expectedError, cmp.AllowUnexported(apis.FieldError{})); d != "" {
+			if d := cmp.Diff(tc.expectedError, got, cmp.AllowUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("ValidateEntireVariableProhibitedP() error did not match expected error %s", diff.PrintWantGot(d))
 			}
 		})
@@ -457,7 +457,7 @@ func TestApplyReplacements(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			actualOutput := substitution.ApplyReplacements(tt.args.input, tt.args.replacements)
-			if d := cmp.Diff(actualOutput, tt.expectedOutput); d != "" {
+			if d := cmp.Diff(tt.expectedOutput, actualOutput); d != "" {
 				t.Errorf("ApplyReplacements() output did not match expected value %s", diff.PrintWantGot(d))
 			}
 		})
@@ -535,7 +535,7 @@ func TestApplyArrayReplacements(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			actualOutput := substitution.ApplyArrayReplacements(tc.args.input, tc.args.stringReplacements, tc.args.arrayReplacements)
-			if d := cmp.Diff(actualOutput, tc.expectedOutput); d != "" {
+			if d := cmp.Diff(tc.expectedOutput, actualOutput); d != "" {
 				t.Errorf("ApplyArrayReplacements() output did not match expected value %s", diff.PrintWantGot(d))
 			}
 		})

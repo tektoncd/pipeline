@@ -167,7 +167,7 @@ func TestLocalPipelineRef(t *testing.T) {
 				t.Fatalf("Received unexpected error ( %#v )", err)
 			}
 
-			if d := cmp.Diff(resolvedPipeline, tc.expected); tc.expected != nil && d != "" {
+			if d := cmp.Diff(tc.expected, resolvedPipeline); tc.expected != nil && d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
 
@@ -749,7 +749,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 				}
 				return
 			}
-			if d := cmp.Diff(gotVerificationResult, tc.expectedVerificationResult, verificationResultCmp); d != "" {
+			if d := cmp.Diff(tc.expectedVerificationResult, gotVerificationResult, verificationResultCmp); d != "" {
 				t.Errorf("VerificationResult did not match:%s", diff.PrintWantGot(d))
 			}
 		})
@@ -868,7 +868,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyError(t *testing.T) {
 			if err != nil {
 				t.Errorf("want err nil but got %v", err)
 			}
-			if d := cmp.Diff(gotVerificationResult, tc.expectedVerificationResult, verificationResultCmp); d != "" {
+			if d := cmp.Diff(tc.expectedVerificationResult, gotVerificationResult, verificationResultCmp); d != "" {
 				t.Errorf("VerificationResult did not match:%s", diff.PrintWantGot(d))
 			}
 		})
@@ -1079,7 +1079,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 				}
 				return
 			}
-			if d := cmp.Diff(gotVerificationResult, tc.expectedVerificationResult, verificationResultCmp); d != "" {
+			if d := cmp.Diff(tc.expectedVerificationResult, gotVerificationResult, verificationResultCmp); d != "" {
 				t.Errorf("VerificationResult did not match:%s", diff.PrintWantGot(d))
 			}
 		})
@@ -1195,7 +1195,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyError(t *testing.T) {
 			if err != nil {
 				t.Errorf("want err nil but got %v", err)
 			}
-			if d := cmp.Diff(gotVerificationResult, tc.expectedVerificationResult, verificationResultCmp); d != "" {
+			if d := cmp.Diff(tc.expectedVerificationResult, gotVerificationResult, verificationResultCmp); d != "" {
 				t.Errorf("VerificationResult did not match:%s", diff.PrintWantGot(d))
 			}
 		})

@@ -52,7 +52,7 @@ func TestPipelineRunStatusConditions(t *testing.T) {
 	p.Status.SetCondition(foo)
 
 	fooStatus := p.Status.GetCondition(foo.Type)
-	if d := cmp.Diff(fooStatus, foo, ignoreVolatileTime); d != "" {
+	if d := cmp.Diff(foo, fooStatus, ignoreVolatileTime); d != "" {
 		t.Errorf("Unexpected pipeline run condition type; diff %v", diff.PrintWantGot(d))
 	}
 
@@ -61,7 +61,7 @@ func TestPipelineRunStatusConditions(t *testing.T) {
 
 	barStatus := p.Status.GetCondition(bar.Type)
 
-	if d := cmp.Diff(barStatus, bar, ignoreVolatileTime); d != "" {
+	if d := cmp.Diff(bar, barStatus, ignoreVolatileTime); d != "" {
 		t.Fatalf("Unexpected pipeline run condition type; diff %s", diff.PrintWantGot(d))
 	}
 }

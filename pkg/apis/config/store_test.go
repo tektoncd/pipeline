@@ -61,7 +61,7 @@ func TestStoreLoadWithContext(t *testing.T) {
 
 	cfg := config.FromContext(store.ToContext(context.Background()))
 
-	if d := cmp.Diff(cfg, expected); d != "" {
+	if d := cmp.Diff(expected, cfg); d != "" {
 		t.Errorf("Unexpected config %s", diff.PrintWantGot(d))
 	}
 }

@@ -423,7 +423,7 @@ func TestTaskRunDefaulting(t *testing.T) {
 			got := tc.in
 			got.SetDefaults(ctx)
 			if !cmp.Equal(got, tc.want, ignoreUnexportedResources) {
-				d := cmp.Diff(got, tc.want, ignoreUnexportedResources)
+				d := cmp.Diff(tc.want, got, ignoreUnexportedResources)
 				t.Errorf("SetDefaults %s", diff.PrintWantGot(d))
 			}
 		})
@@ -469,7 +469,7 @@ func TestTaskRunDefaultingOnCreate(t *testing.T) {
 			got := tc.in
 			got.SetDefaults(ctx)
 			if !cmp.Equal(got, tc.want, ignoreUnexportedResources) {
-				d := cmp.Diff(got, tc.want, ignoreUnexportedResources)
+				d := cmp.Diff(tc.want, got, ignoreUnexportedResources)
 				t.Errorf("SetDefaults %s", diff.PrintWantGot(d))
 			}
 		})

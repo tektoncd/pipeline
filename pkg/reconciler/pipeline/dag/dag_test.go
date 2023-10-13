@@ -80,7 +80,7 @@ func TestGetSchedulable(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Didn't expect error when getting next tasks for %v but got %v", tc.finished, err)
 			}
-			if d := cmp.Diff(tasks, tc.expectedTasks, cmpopts.IgnoreFields(v1.PipelineTask{}, "RunAfter")); d != "" {
+			if d := cmp.Diff(tc.expectedTasks, tasks, cmpopts.IgnoreFields(v1.PipelineTask{}, "RunAfter")); d != "" {
 				t.Errorf("expected that with %v done, %v would be ready to schedule but was different: %s", tc.finished, tc.expectedTasks, diff.PrintWantGot(d))
 			}
 		})

@@ -342,7 +342,7 @@ func TestRunGetTimeOut(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := tc.run.GetTimeout()
-			if d := cmp.Diff(result, tc.expectedValue); d != "" {
+			if d := cmp.Diff(tc.expectedValue, result); d != "" {
 				t.Fatalf(diff.PrintWantGot(d))
 			}
 		})
@@ -408,7 +408,7 @@ func TestRunHasTimedOut(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := tc.run.HasTimedOut(testClock)
-			if d := cmp.Diff(result, tc.expectedValue); d != "" {
+			if d := cmp.Diff(tc.expectedValue, result); d != "" {
 				t.Fatalf(diff.PrintWantGot(d))
 			}
 		})

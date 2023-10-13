@@ -183,7 +183,7 @@ func TestCustomRun_Invalid(t *testing.T) {
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			err := c.customRun.Validate(context.Background())
-			if d := cmp.Diff(err.Error(), c.want.Error()); d != "" {
+			if d := cmp.Diff(c.want.Error(), err.Error()); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
 		})

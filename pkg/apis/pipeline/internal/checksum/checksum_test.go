@@ -85,7 +85,7 @@ func TestPrepareObjectMeta(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			task := PrepareObjectMeta(tc.objectmeta)
-			if d := cmp.Diff(task, tc.expected); d != "" {
+			if d := cmp.Diff(tc.expected, task); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
 		})
@@ -97,7 +97,7 @@ func TestComputeSha256Checksum(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not marshal hello %v", err)
 	}
-	if d := cmp.Diff(hex.EncodeToString(sha), "5aa762ae383fbb727af3c7a36d4940a5b8c40a989452d2304fc958ff3f354e7a"); d != "" {
+	if d := cmp.Diff("5aa762ae383fbb727af3c7a36d4940a5b8c40a989452d2304fc958ff3f354e7a", hex.EncodeToString(sha)); d != "" {
 		t.Error(diff.PrintWantGot(d))
 	}
 }
