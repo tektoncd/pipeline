@@ -152,7 +152,7 @@ func TestParamSpec_SetDefaults(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 			tc.before.SetDefaults(ctx)
-			if d := cmp.Diff(tc.before, tc.defaultsApplied); d != "" {
+			if d := cmp.Diff(tc.defaultsApplied, tc.before); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
 		})
@@ -481,7 +481,7 @@ func TestArrayOrString(t *testing.T) {
 			expected = v1beta1.NewArrayOrString(tt.inputA, tt.inputB)
 		}
 
-		if d := cmp.Diff(expected, tt.expected); d != "" {
+		if d := cmp.Diff(tt.expected, expected); d != "" {
 			t.Errorf(diff.PrintWantGot(d))
 		}
 	}

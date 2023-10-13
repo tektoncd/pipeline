@@ -284,7 +284,7 @@ func TestLocalTaskRef(t *testing.T) {
 				t.Fatalf("Received unexpected error ( %#v )", err)
 			}
 
-			if d := cmp.Diff(task, tc.expected); tc.expected != nil && d != "" {
+			if d := cmp.Diff(tc.expected, task); tc.expected != nil && d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
 
@@ -1123,7 +1123,7 @@ func TestGetTaskFunc_V1Task_VerifyNoError(t *testing.T) {
 			if d := cmp.Diff(tc.expectedRefSource, gotRefSource); d != "" {
 				t.Errorf("refSources did not match: %s", diff.PrintWantGot(d))
 			}
-			if d := cmp.Diff(gotVerificationResult, tc.expectedVerificationResult, verificationResultCmp); d != "" {
+			if d := cmp.Diff(tc.expectedVerificationResult, gotVerificationResult, verificationResultCmp); d != "" {
 				t.Errorf("VerificationResult did not match:%s", diff.PrintWantGot(d))
 			}
 		})
@@ -1237,7 +1237,7 @@ func TestGetTaskFunc_V1Task_VerifyError(t *testing.T) {
 			fn := resources.GetTaskFunc(ctx, k8sclient, tektonclient, tc.requester, tr, tr.Spec.TaskRef, "", "default", "default", vps)
 
 			_, _, gotVerificationResult, _ := fn(ctx, taskRef.Name)
-			if d := cmp.Diff(gotVerificationResult, tc.expectedVerificationResult, verificationResultCmp); d != "" {
+			if d := cmp.Diff(tc.expectedVerificationResult, gotVerificationResult, verificationResultCmp); d != "" {
 				t.Errorf("VerificationResult did not match:%s", diff.PrintWantGot(d))
 			}
 		})

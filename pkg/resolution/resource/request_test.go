@@ -68,7 +68,7 @@ func TestNewRequest(t *testing.T) {
 			if request.Namespace() != tt.want.namespace {
 				t.Errorf("NewRequest().Namespace() = %v, want %v", request.Namespace(), tt.want.namespace)
 			}
-			if d := cmp.Diff(request.Params(), tt.want.params); d != "" {
+			if d := cmp.Diff(tt.want.params, request.Params()); d != "" {
 				t.Errorf("expected params to match %s", diff.PrintWantGot(d))
 			}
 		})

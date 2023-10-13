@@ -1906,7 +1906,7 @@ status:
 				ignoreStatusTaskSpec,
 				ignoreTaskRunStatusFields,
 			}
-			if d := cmp.Diff(reconciledTaskRun, tc.wantTr, ignoreFields...); d != "" {
+			if d := cmp.Diff(tc.wantTr, reconciledTaskRun, ignoreFields...); d != "" {
 				t.Errorf("Didn't get expected TaskRun: %v", diff.PrintWantGot(d))
 			}
 
@@ -3930,7 +3930,7 @@ status:
 			if err != nil {
 				t.Fatal(err)
 			}
-			if d := cmp.Diff(tc.taskRun.Status.GetCondition(apis.ConditionSucceeded), &tc.expectedStatus, ignoreLastTransitionTime); d != "" {
+			if d := cmp.Diff(&tc.expectedStatus, tc.taskRun.Status.GetCondition(apis.ConditionSucceeded), ignoreLastTransitionTime); d != "" {
 				t.Fatalf(diff.PrintWantGot(d))
 			}
 
@@ -4034,7 +4034,7 @@ spec:
 			if err := storeTaskSpecAndMergeMeta(context.Background(), tr, tc.reconcile1Args.taskSpec, tc.reconcile1Args.resolvedObjectMeta); err != nil {
 				t.Errorf("storePipelineSpec() error = %v", err)
 			}
-			if d := cmp.Diff(tr, tc.wantTaskRun); d != "" {
+			if d := cmp.Diff(tc.wantTaskRun, tr); d != "" {
 				t.Fatalf(diff.PrintWantGot(d))
 			}
 
@@ -4042,7 +4042,7 @@ spec:
 			if err := storeTaskSpecAndMergeMeta(context.Background(), tr, tc.reconcile2Args.taskSpec, tc.reconcile2Args.resolvedObjectMeta); err != nil {
 				t.Errorf("storePipelineSpec() error = %v", err)
 			}
-			if d := cmp.Diff(tr, tc.wantTaskRun); d != "" {
+			if d := cmp.Diff(tc.wantTaskRun, tr); d != "" {
 				t.Fatalf(diff.PrintWantGot(d))
 			}
 		})
@@ -4067,10 +4067,10 @@ func Test_storeTaskSpec_metadata(t *testing.T) {
 	if err := storeTaskSpecAndMergeMeta(context.Background(), tr, &v1.TaskSpec{}, &resolvedMeta); err != nil {
 		t.Errorf("storeTaskSpecAndMergeMeta error = %v", err)
 	}
-	if d := cmp.Diff(tr.ObjectMeta.Labels, wantedlabels); d != "" {
+	if d := cmp.Diff(wantedlabels, tr.ObjectMeta.Labels); d != "" {
 		t.Fatalf(diff.PrintWantGot(d))
 	}
-	if d := cmp.Diff(tr.ObjectMeta.Annotations, wantedannotations); d != "" {
+	if d := cmp.Diff(wantedannotations, tr.ObjectMeta.Annotations); d != "" {
 		t.Fatalf(diff.PrintWantGot(d))
 	}
 }
@@ -4348,7 +4348,7 @@ status:
 	}
 
 	// check that injected sidecar is replaced with nop image
-	if d := cmp.Diff(retrievedPod.Spec.Containers[1].Image, images.NopImage); d != "" {
+	if d := cmp.Diff(images.NopImage, retrievedPod.Spec.Containers[1].Image); d != "" {
 		t.Errorf("expected injected sidecar image to be replaced with nop image %s", diff.PrintWantGot(d))
 	}
 }
@@ -4994,7 +4994,7 @@ status:
 			if err != nil {
 				t.Fatalf("getting updated taskrun: %v", err)
 			}
-			if d := cmp.Diff(tr.Status.Results, tc.expectedResults); d != "" {
+			if d := cmp.Diff(tc.expectedResults, tr.Status.Results); d != "" {
 				t.Errorf("got unexpected results %s", diff.PrintWantGot(d))
 			}
 			condition := tr.Status.GetCondition(apis.ConditionSucceeded)

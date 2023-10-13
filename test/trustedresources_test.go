@@ -81,7 +81,7 @@ func TestSignInterface(t *testing.T) {
 
 			if tc.expected != "" {
 				signature := base64.StdEncoding.EncodeToString(sig)
-				if d := cmp.Diff(signature, tc.expected); d != "" {
+				if d := cmp.Diff(tc.expected, signature); d != "" {
 					t.Fatalf("Diff:\n%s", diff.PrintWantGot(d))
 				}
 				return

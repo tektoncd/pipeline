@@ -2411,10 +2411,10 @@ func TestResolvePipelineRun_PipelineTaskHasNoResources(t *testing.T) {
 		TaskName: task.Name,
 		TaskSpec: &task.Spec,
 	}
-	if d := cmp.Diff(pipelineState[0].ResolvedTask, expectedTask, cmpopts.IgnoreUnexported(v1.TaskRunSpec{})); d != "" {
+	if d := cmp.Diff(expectedTask, pipelineState[0].ResolvedTask, cmpopts.IgnoreUnexported(v1.TaskRunSpec{})); d != "" {
 		t.Fatalf("Expected resources where only Tasks were resolved but actual differed %s", diff.PrintWantGot(d))
 	}
-	if d := cmp.Diff(pipelineState[1].ResolvedTask, expectedTask, cmpopts.IgnoreUnexported(v1.TaskRunSpec{})); d != "" {
+	if d := cmp.Diff(expectedTask, pipelineState[1].ResolvedTask, cmpopts.IgnoreUnexported(v1.TaskRunSpec{})); d != "" {
 		t.Fatalf("Expected resources where only Tasks were resolved but actual differed %s", diff.PrintWantGot(d))
 	}
 }

@@ -85,7 +85,7 @@ func verifyConfigFileWithExpectedMetricsConfig(t *testing.T, fileName string, ex
 	t.Helper()
 	cm := test.ConfigMapFromTestFile(t, fileName)
 	if ab, err := config.NewMetricsFromConfigMap(cm); err == nil {
-		if d := cmp.Diff(ab, expectedConfig); d != "" {
+		if d := cmp.Diff(expectedConfig, ab); d != "" {
 			t.Errorf("Diff:\n%s", diff.PrintWantGot(d))
 		}
 	} else {

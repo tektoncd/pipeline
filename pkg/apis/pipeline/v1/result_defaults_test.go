@@ -87,7 +87,7 @@ func TestTaskResult_SetDefaults(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 			tc.before.SetDefaults(ctx)
-			if d := cmp.Diff(tc.before, tc.after); d != "" {
+			if d := cmp.Diff(tc.after, tc.before); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
 		})

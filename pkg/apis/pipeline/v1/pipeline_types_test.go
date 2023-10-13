@@ -1246,7 +1246,7 @@ func TestPipelineChecksum(t *testing.T) {
 				t.Fatalf("Error computing checksum: %v", err)
 			}
 
-			if d := cmp.Diff(hex.EncodeToString(sha), "98bc732636b8fbc08f3d353932147e4eff4e667f0c1af675656a48efdc8178e3"); d != "" {
+			if d := cmp.Diff("98bc732636b8fbc08f3d353932147e4eff4e667f0c1af675656a48efdc8178e3", hex.EncodeToString(sha)); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
 		})

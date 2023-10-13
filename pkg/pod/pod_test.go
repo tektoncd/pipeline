@@ -2717,7 +2717,7 @@ func TestPodBuildwithSpireEnabled(t *testing.T) {
 			}
 
 			want := kmeta.ChildName(tr.Name, "-pod")
-			if d := cmp.Diff(got.Name, want); d != "" {
+			if d := cmp.Diff(want, got.Name); d != "" {
 				t.Errorf("Unexpected pod name, diff=%s", diff.PrintWantGot(d))
 			}
 
@@ -2766,7 +2766,7 @@ func TestMakeLabels(t *testing.T) {
 			},
 		},
 	})
-	if d := cmp.Diff(got, want); d != "" {
+	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("Diff labels %s", diff.PrintWantGot(d))
 	}
 }

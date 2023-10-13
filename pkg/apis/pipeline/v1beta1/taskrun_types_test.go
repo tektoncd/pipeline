@@ -426,7 +426,7 @@ func TestHasTimedOut(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := tc.taskRun.HasTimedOut(context.Background(), testClock)
-			if d := cmp.Diff(result, tc.expectedStatus); d != "" {
+			if d := cmp.Diff(tc.expectedStatus, result); d != "" {
 				t.Fatalf(diff.PrintWantGot(d))
 			}
 		})
@@ -500,7 +500,7 @@ func TestIsStepNeedDebug(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := tc.args.trd.StepNeedsDebug(tc.args.stepName)
-			if d := cmp.Diff(result, tc.want); d != "" {
+			if d := cmp.Diff(tc.want, result); d != "" {
 				t.Fatalf(diff.PrintWantGot(d))
 			}
 		})
@@ -537,7 +537,7 @@ func TestIsNeedDebug(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := tc.args.trd.NeedsDebug()
-			if d := cmp.Diff(result, tc.want); d != "" {
+			if d := cmp.Diff(tc.want, result); d != "" {
 				t.Fatalf(diff.PrintWantGot(d))
 			}
 		})

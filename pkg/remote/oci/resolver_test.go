@@ -197,7 +197,7 @@ func TestOCIResolver(t *testing.T) {
 
 			// The contents of the image are in a specific order so we can expect this iteration to be consistent.
 			for idx, actual := range listActual {
-				if d := cmp.Diff(actual, tc.listExpected[idx]); d != "" {
+				if d := cmp.Diff(tc.listExpected[idx], actual); d != "" {
 					t.Error(diff.PrintWantGot(d))
 				}
 			}
@@ -208,7 +208,7 @@ func TestOCIResolver(t *testing.T) {
 					t.Fatalf("could not retrieve object from image: %#v", err)
 				}
 
-				if d := cmp.Diff(actual, obj); d != "" {
+				if d := cmp.Diff(obj, actual); d != "" {
 					t.Error(diff.PrintWantGot(d))
 				}
 

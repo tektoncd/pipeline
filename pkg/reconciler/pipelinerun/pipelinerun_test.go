@@ -1210,7 +1210,7 @@ status:
 	}
 
 	// The PipelineRun should be marked as failed due to InvalidTaskResultReference.
-	if d := cmp.Diff(reconciledRun, expectedPipelineRun, ignoreResourceVersion, ignoreLastTransitionTime, ignoreTypeMeta,
+	if d := cmp.Diff(expectedPipelineRun, reconciledRun, ignoreResourceVersion, ignoreLastTransitionTime, ignoreTypeMeta,
 		ignoreStartTime, ignoreCompletionTime, ignoreProvenance); d != "" {
 		t.Errorf("Expected to see PipelineRun run marked as failed with the reason: InvalidTaskResultReference. Diff %s", diff.PrintWantGot(d))
 	}
@@ -1359,7 +1359,7 @@ status:
 		t.Errorf("Expected PipelineRun status to be complete, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
 	}
 
-	if d := cmp.Diff(reconciledRun.Status.ChildReferences, expectedChildReferences); d != "" {
+	if d := cmp.Diff(expectedChildReferences, reconciledRun.Status.ChildReferences); d != "" {
 		t.Fatalf("Expected PipelineRun status to match ChildReference(s) status, but got a mismatch %s", diff.PrintWantGot(d))
 	}
 
@@ -3324,7 +3324,7 @@ spec:
 		if err != nil {
 			t.Fatalf("Expected a TaskRun to be created, but it wasn't: %s", err)
 		}
-		if d := cmp.Diff(actual, expectedTaskRuns[i], ignoreResourceVersion, ignoreTypeMeta); d != "" {
+		if d := cmp.Diff(expectedTaskRuns[i], actual, ignoreResourceVersion, ignoreTypeMeta); d != "" {
 			t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRuns[i], diff.PrintWantGot(d))
 		}
 	}
@@ -3672,7 +3672,7 @@ spec:
 			Values:   []string{"yes"},
 		}},
 	}}
-	if d := cmp.Diff(actualSkippedTasks, expectedSkippedTasks); d != "" {
+	if d := cmp.Diff(expectedSkippedTasks, actualSkippedTasks); d != "" {
 		t.Errorf("expected to find Skipped Tasks %v. Diff %s", expectedSkippedTasks, diff.PrintWantGot(d))
 	}
 
@@ -5086,10 +5086,10 @@ status:
 
 	reconciledRun, _ := prt.reconcileRun("foo", "test-failed-pr-with-task-results", []string{}, false)
 
-	if d := cmp.Diff(reconciledRun.Status.Conditions, wantPrs[0].Status.Conditions, ignoreResourceVersion, ignoreLastTransitionTime); d != "" {
+	if d := cmp.Diff(wantPrs[0].Status.Conditions, reconciledRun.Status.Conditions, ignoreResourceVersion, ignoreLastTransitionTime); d != "" {
 		t.Errorf("expected to see pipeline run marked as failed. Diff %s", diff.PrintWantGot(d))
 	}
-	if d := cmp.Diff(reconciledRun.Status.Results, wantPrs[0].Status.Results, ignoreResourceVersion, ignoreLastTransitionTime); d != "" {
+	if d := cmp.Diff(wantPrs[0].Status.Results, reconciledRun.Status.Results, ignoreResourceVersion, ignoreLastTransitionTime); d != "" {
 		t.Errorf("expected to see pipeline run results created. Diff %s", diff.PrintWantGot(d))
 	}
 }
@@ -5175,7 +5175,7 @@ metadata:
 			if err := storePipelineSpecAndMergeMeta(context.Background(), pr, tc.reconcile1Args.pipelineSpec, tc.reconcile1Args.resolvedObjectMeta); err != nil {
 				t.Errorf("storePipelineSpec() error = %v", err)
 			}
-			if d := cmp.Diff(pr, tc.wantPipelineRun); d != "" {
+			if d := cmp.Diff(tc.wantPipelineRun, pr); d != "" {
 				t.Fatalf(diff.PrintWantGot(d))
 			}
 
@@ -5183,7 +5183,7 @@ metadata:
 			if err := storePipelineSpecAndMergeMeta(context.Background(), pr, tc.reconcile2Args.pipelineSpec, tc.reconcile2Args.resolvedObjectMeta); err != nil {
 				t.Errorf("storePipelineSpec() error = %v", err)
 			}
-			if d := cmp.Diff(pr, tc.wantPipelineRun); d != "" {
+			if d := cmp.Diff(tc.wantPipelineRun, pr); d != "" {
 				t.Fatalf(diff.PrintWantGot(d))
 			}
 		})
@@ -5207,10 +5207,10 @@ func Test_storePipelineSpec_metadata(t *testing.T) {
 	}); err != nil {
 		t.Errorf("storePipelineSpecAndMergeMeta error = %v", err)
 	}
-	if d := cmp.Diff(pr.ObjectMeta.Labels, wantedlabels); d != "" {
+	if d := cmp.Diff(wantedlabels, pr.ObjectMeta.Labels); d != "" {
 		t.Fatalf(diff.PrintWantGot(d))
 	}
-	if d := cmp.Diff(pr.ObjectMeta.Annotations, wantedannotations); d != "" {
+	if d := cmp.Diff(wantedannotations, pr.ObjectMeta.Annotations); d != "" {
 		t.Fatalf(diff.PrintWantGot(d))
 	}
 }
