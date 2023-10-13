@@ -58,7 +58,9 @@ the pipelines repo, a terminal window and a text editor.
       --param=versionTag="${TEKTON_VERSION}" \
       --param=releaseBucket=gs://tekton-releases/pipeline \
       --workspace name=release-secret,secret=release-secret \
-      --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml
+      --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml \
+      --tasks-timeout 2h \
+      --pipeline-timeout 3h
     ```
 
     Accept the default values of the parameters (except for "releaseAsLatest" if backporting).
