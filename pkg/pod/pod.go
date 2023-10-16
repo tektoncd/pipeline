@@ -85,6 +85,9 @@ var (
 		Name:      "tekton-internal-steps",
 		MountPath: pipeline.StepsDir,
 		ReadOnly:  true,
+	}, {
+		Name:      "tekton-internal-artifacts",
+		MountPath: pipeline.ArtifactsDir,
 	}}
 	implicitVolumes = []corev1.Volume{{
 		Name:         "tekton-internal-workspace",
@@ -97,6 +100,9 @@ var (
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}, {
 		Name:         "tekton-internal-steps",
+		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+	}, {
+		Name:         "tekton-internal-artifacts",
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}}
 
@@ -186,6 +192,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	if alphaAPIEnabled && taskRun.Spec.ComputeResources != nil {
 		tasklevel.ApplyTaskLevelComputeResources(steps, taskRun.Spec.ComputeResources)
 	}
+
 	windows := usesWindows(taskRun)
 	if sidecarLogsResultsEnabled && taskSpec.Results != nil {
 		// create a results sidecar

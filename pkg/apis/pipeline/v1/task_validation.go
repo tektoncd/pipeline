@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -186,7 +187,8 @@ func validateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step,
 		}
 	}
 
-	wsNames := sets.NewString()
+	wsNames := sets.New[string]()
+	wsArtifactsNames := sets.New[string]()
 	for idx, w := range workspaces {
 		// Workspace names must be unique
 		if wsNames.Has(w.Name) {
@@ -200,6 +202,12 @@ func validateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step,
 			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("workspace mount path %q must be unique", mountPath), "mountpath").ViaIndex(idx))
 		}
 		mountPaths[mountPath] = struct{}{}
+		if w.Artifact {
+			wsArtifactsNames.Insert(w.Name)
+		}
+	}
+	if wsArtifactsNames.Len() > 1 {
+		errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("only one workspace may be set as \"artifact\", %d found: %v", wsArtifactsNames.Len(), wsArtifactsNames), "artifact"))
 	}
 	return errs
 }
@@ -370,6 +378,20 @@ func (p ParamSpec) ValidateType(ctx context.Context) *apis.FieldError {
 			Paths: []string{
 				fmt.Sprintf("%s.type", p.Name),
 				fmt.Sprintf("%s.default.type", p.Name),
+			},
+		}
+	}
+
+	// If artifact type is used, ensure that the schema is correct
+	// SetDefaults is invoked before validation - this relies on SetDefaults not overriding
+	// the schema if it was already set by the user
+	if (p.Type == ParamTypeArtifact) && (!reflect.DeepEqual(p.Properties, artifactSchema)) {
+		return &apis.FieldError{
+			Message: fmt.Sprintf(
+				"\"%v\" type does not permit a custom schema definition: \"%v\"", p.Type, p.Properties),
+			Paths: []string{
+				fmt.Sprintf("%s.type", p.Type),
+				fmt.Sprintf("%s.properties", p.Properties),
 			},
 		}
 	}

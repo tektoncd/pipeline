@@ -82,6 +82,37 @@ func TestTaskResult_SetDefaults(t *testing.T) {
 			Type:       v1.ResultsTypeObject,
 			Properties: map[string]v1.PropertySpec{"key1": {v1.ParamTypeString}},
 		},
+	}, {
+		name: "artifact type - properties are predefined",
+		before: &v1.TaskResult{
+			Name: "resultname",
+			Type: v1.ResultsTypeArtifact,
+		},
+		after: &v1.TaskResult{
+			Name: "resultname",
+			Type: v1.ResultsTypeArtifact,
+			Properties: map[string]v1.PropertySpec{
+				"Path": {Type: v1.ParamTypeString},
+				"Hash": {Type: v1.ParamTypeString},
+				"Type": {Type: v1.ParamTypeString},
+			},
+		},
+	}, {
+		name: "artifact type - properties by user",
+		before: &v1.TaskResult{
+			Name: "resultname",
+			Type: v1.ResultsTypeArtifact,
+			Properties: map[string]v1.PropertySpec{
+				"mykey": {Type: v1.ParamTypeString},
+			},
+		},
+		after: &v1.TaskResult{
+			Name: "resultname",
+			Type: v1.ResultsTypeArtifact,
+			Properties: map[string]v1.PropertySpec{
+				"mykey": {Type: v1.ParamTypeString},
+			},
+		},
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

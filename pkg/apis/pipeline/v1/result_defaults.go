@@ -20,13 +20,22 @@ func (tr *TaskResult) SetDefaults(context.Context) {
 	if tr == nil {
 		return
 	}
-	if tr.Type == "" {
+	switch tr.Type {
+	case "":
 		if tr.Properties != nil {
 			// Set type to object if `properties` is given
 			tr.Type = ResultsTypeObject
 		} else {
 			// ResultsTypeString is the default value
 			tr.Type = ResultsTypeString
+		}
+	case ResultsTypeArtifact:
+		// SetDefaults is invoked before validation
+		// If custom properties are set, it's up to the validation logic to
+		// decide wheather to fail
+		if tr.Properties == nil {
+			// Artifact type cannot be inferred
+			tr.Properties = artifactSchema
 		}
 	}
 

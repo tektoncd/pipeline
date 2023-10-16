@@ -27,7 +27,7 @@ func (tr TaskResult) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 
 	switch {
-	case tr.Type == ResultsTypeObject:
+	case tr.Type == ResultsTypeObject || tr.Type == ResultsTypeArtifact:
 		errs := validateObjectResult(tr)
 		return errs
 	case tr.Type == ResultsTypeArray:
