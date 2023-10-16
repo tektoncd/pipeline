@@ -2339,8 +2339,8 @@ github.com/syndtr/goleveldb v1.0.0/go.mod h1:ZVVdQEZoIme9iO1Ch2Jdy24qqXrMMOU6lpP
 github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d/go.mod h1:RRCYJbIwD5jmqPI9XoAFR0OcDxqUctll6zUj/+B4S48=
 github.com/tchap/go-patricia v2.2.6+incompatible/go.mod h1:bmLyhP68RS6kStMGxByiQ23RP/odRBOTVjwp2cDyi6I=
 github.com/tchap/go-patricia/v2 v2.3.1/go.mod h1:VZRHKAb53DLaG+nA9EaYYiaEx6YztwDlLElMsnSHD4k=
-github.com/tektoncd/pipeline v0.52.0 h1:R5SLf4wQYc2eCVQh1UyCNbPTDdIUQz5MisyBRngQ068=
-github.com/tektoncd/pipeline v0.52.0/go.mod h1:27wryvb8VIPIZ2u5evUphOPgM8Z7hGgzp00E8/3DCls=
+github.com/tektoncd/pipeline v0.52.1 h1:YN9S/4hRutKQeG5na03V7et8B3hoEUCoWoABU8t8P3c=
+github.com/tektoncd/pipeline v0.52.1/go.mod h1:27wryvb8VIPIZ2u5evUphOPgM8Z7hGgzp00E8/3DCls=
 github.com/tektoncd/plumbing v0.0.0-20220817140952-3da8ce01aeeb/go.mod h1:uJBaI0AL/kjPThiMYZcWRujEz7D401v643d6s/21GAg=
 github.com/theupdateframework/go-tuf v0.5.2/go.mod h1:SyMV5kg5n4uEclsyxXJZI2UxPFJNDc4Y+r7wv+MlvTA=
 github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399/go.mod h1:LdwHTNJT99C5fTAzDz0ud328OgXz+gierycbcIx2fRs=
