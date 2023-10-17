@@ -95,6 +95,11 @@ You must install these tools:
    > **Note** Linter findings are dependent on your installed Go version. Match
    the version in [`go.mod`](go.mod) to match the findings in your PR.
 
+1. (Optional)
+   [`woke`](https://docs.getwoke.tech/installation/) is executed for every pull 
+   request. To ensure your work does not contain offensive language, you may 
+   want to install and run this tool locally.
+
 ### Configure environment
 
 To [build, deploy and run your Tekton Objects with `ko`](#install-pipeline), you'll need to set these environment variables:
