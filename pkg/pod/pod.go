@@ -184,7 +184,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	if err != nil {
 		return nil, err
 	}
-	if alphaAPIEnabled && taskRun.Spec.ComputeResources != nil {
+	if taskRun.Spec.ComputeResources != nil {
 		tasklevel.ApplyTaskLevelComputeResources(steps, taskRun.Spec.ComputeResources)
 	}
 	windows := usesWindows(taskRun)
