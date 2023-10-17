@@ -13,6 +13,7 @@ weight: 203
   - [Specifying `Workspaces`](#specifying-workspaces)
   - [Specifying `Parameters`](#specifying-parameters)
   - [Adding `Tasks` to the `Pipeline`](#adding-tasks-to-the-pipeline)
+    - [Specifying Display Name](#specifying-displayname-in-pipelinetasks)
     - [Specifying Remote Tasks](#specifying-remote-tasks)
     - [Specifying `Pipelines` in `PipelineTasks`](#specifying-pipelines-in-pipelinetasks)
     - [Specifying `Parameters` in `PipelineTasks`](#specifying-parameters-in-pipelinetasks)
@@ -37,6 +38,7 @@ weight: 203
   - [Configuring the `Task` execution order](#configuring-the-task-execution-order)
   - [Adding a description](#adding-a-description)
   - [Adding `Finally` to the `Pipeline`](#adding-finally-to-the-pipeline)
+    - [Specifying Display Name](#specifying-displayname-in-finally-tasks)
     - [Specifying `Workspaces` in `finally` tasks](#specifying-workspaces-in-finally-tasks)
     - [Specifying `Parameters` in `finally` tasks](#specifying-parameters-in-finally-tasks)
     - [Specifying `matrix` in `finally` tasks](#specifying-matrix-in-finally-tasks)
@@ -90,7 +92,7 @@ A `Pipeline` definition supports the following fields:
   - [`workspaces`](#specifying-workspaces) - Specifies a set of Workspaces that the `Pipeline` requires.
   - [`tasks`](#adding-tasks-to-the-pipeline):
       - [`name`](#adding-tasks-to-the-pipeline) - the name of this `Task` within the context of this `Pipeline`.
-      - [`displayName`](#specifying-a-display-name) - a user-facing name of this `Task` within the context of this `Pipeline`.
+      - [`displayName`](#specifying-displayname-in-pipelinetasks) - a user-facing name of this `Task` within the context of this `Pipeline`.
       - [`description`](#adding-tasks-to-the-pipeline) - a description of this `Task` within the context of this `Pipeline`.
       - [`taskRef`](#adding-tasks-to-the-pipeline) - a reference to a `Task` definition.
       - [`taskSpec`](#adding-tasks-to-the-pipeline) - a specification of a `Task`.
@@ -112,7 +114,7 @@ A `Pipeline` definition supports the following fields:
   - [`finally`](#adding-finally-to-the-pipeline) - Specifies one or more `Tasks` to be executed in parallel after
     all other tasks have completed.
     - [`name`](#adding-finally-to-the-pipeline) - the name of this `Task` within the context of this `Pipeline`.
-    - [`displayName`](#specifying-a-display-name) - a user-facing name of this `Task` within the context of this `Pipeline`.
+    - [`displayName`](#specifying-displayname-in-finally-tasks) - a user-facing name of this `Task` within the context of this `Pipeline`.
     - [`description`](#adding-finally-to-the-pipeline) - a description of this `Task` within the context of this `Pipeline`.
     - [`taskRef`](#adding-finally-to-the-pipeline) - a reference to a `Task` definition.
     - [`taskSpec`](#adding-finally-to-the-pipeline) - a specification of a `Task`.
@@ -296,6 +298,43 @@ tasks:
 ```
 
 Note that any `task` specified in `taskSpec` will be the same version as the `Pipeline`.
+
+### Specifying `displayName` in `PipelineTasks`
+
+The `displayName` field is an optional field that allows you to add a user-facing name of the `PipelineTask` that can be
+used to populate and distinguish in the dashboard. For example:
+
+```yaml
+spec:
+  tasks:
+    - name: scan
+      displayName: "Code Scan"
+      taskRef:
+        name: sonar-scan
+```
+
+The `displayName` also allows you to parameterize the human-readable name of your choice based on the
+[params](#specifying-parameters), [the task results](#passing-one-tasks-results-into-the-parameters-or-when-expressions-of-another),
+and [the context variables](#context-variables). For example:
+
+```yaml
+spec:
+  params:
+    - name: application
+  tasks:
+    - name: scan
+      displayName: "Code Scan for $(params.application)"
+      taskRef:
+        name: sonar-scan
+    - name: upload-scan-report
+      displayName: "Upload Scan Report $(tasks.scan.results.report)"
+      taskRef:
+        name: upload
+```
+
+Specifying task results in the `displayName` does not introduce an inherent resource dependency among `tasks`. The
+pipeline author is responsible for specifying dependency explicitly either using [runAfter](#using-the-runafter-field)
+or rely on [whenExpressions](#guard-task-execution-using-when-expressions) or [task results in params](#using-results).
 
 ### Specifying Remote Tasks
 
@@ -1383,6 +1422,29 @@ spec:
       taskRef:
         name: cleanup
 ```
+
+### Specifying `displayName` in `finally` tasks
+
+Similar to [specifying `displayName` in `pipelineTasks`](#specifying-displayname-in-pipelinetasks), `finally` tasks also
+allows to add a user-facing name of the `finally` task that can be used to populate and distinguish in the dashboard.
+For example:
+
+```yaml
+spec:
+  finally:
+    - name: notification
+      displayName: "Notify"
+      taskRef:
+        name: notification
+    - name: notification-using-context-variable
+      displayName: "Notification from $(context.pipeline.name)"
+      taskRef:
+        name: notification
+```
+
+The `displayName` also allows you to parameterize the human-readable name of your choice based on the
+[params](#specifying-parameters), [the task results](#consuming-task-execution-results-in-finally),
+and [the context variables](#context-variables).
 
 ### Specifying `Workspaces` in `finally` tasks
 

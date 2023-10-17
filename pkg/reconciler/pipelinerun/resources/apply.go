@@ -218,6 +218,7 @@ func ApplyPipelineTaskContexts(pt *v1.PipelineTask, pipelineRunStatus v1.Pipelin
 			pt.Matrix.Include[i].Params = pt.Matrix.Include[i].Params.ReplaceVariables(replacements, map[string][]string{}, map[string]map[string]string{})
 		}
 	}
+	pt.DisplayName = substitution.ApplyReplacements(pt.DisplayName, replacements)
 	return pt
 }
 
@@ -244,6 +245,7 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 			if pipelineTask.TaskRef != nil && pipelineTask.TaskRef.Params != nil {
 				pipelineTask.TaskRef.Params = pipelineTask.TaskRef.Params.ReplaceVariables(stringReplacements, arrayReplacements, objectReplacements)
 			}
+			pipelineTask.DisplayName = substitution.ApplyReplacements(pipelineTask.DisplayName, stringReplacements)
 			resolvedPipelineRunTask.PipelineTask = pipelineTask
 		}
 	}
@@ -259,6 +261,7 @@ func ApplyPipelineTaskStateContext(state PipelineRunState, replacements map[stri
 			if pipelineTask.TaskRef != nil && pipelineTask.TaskRef.Params != nil {
 				pipelineTask.TaskRef.Params = pipelineTask.TaskRef.Params.ReplaceVariables(replacements, nil, nil)
 			}
+			pipelineTask.DisplayName = substitution.ApplyReplacements(pipelineTask.DisplayName, replacements)
 			resolvedPipelineRunTask.PipelineTask = pipelineTask
 		}
 	}
@@ -299,6 +302,7 @@ func ApplyReplacements(p *v1.PipelineSpec, replacements map[string]string, array
 		if p.Tasks[i].TaskRef != nil && p.Tasks[i].TaskRef.Params != nil {
 			p.Tasks[i].TaskRef.Params = p.Tasks[i].TaskRef.Params.ReplaceVariables(replacements, arrayReplacements, objectReplacements)
 		}
+		p.Tasks[i].DisplayName = substitution.ApplyReplacements(p.Tasks[i].DisplayName, replacements)
 		p.Tasks[i] = propagateParams(p.Tasks[i], replacements, arrayReplacements, objectReplacements)
 	}
 
@@ -317,6 +321,7 @@ func ApplyReplacements(p *v1.PipelineSpec, replacements map[string]string, array
 		if p.Finally[i].TaskRef != nil && p.Finally[i].TaskRef.Params != nil {
 			p.Finally[i].TaskRef.Params = p.Finally[i].TaskRef.Params.ReplaceVariables(replacements, arrayReplacements, objectReplacements)
 		}
+		p.Finally[i].DisplayName = substitution.ApplyReplacements(p.Finally[i].DisplayName, replacements)
 		p.Finally[i] = propagateParams(p.Finally[i], replacements, arrayReplacements, objectReplacements)
 	}
 
