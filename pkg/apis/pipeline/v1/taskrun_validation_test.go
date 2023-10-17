@@ -773,7 +773,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		),
 		wc: cfgtesting.EnableAlphaAPIFields,
 	}, {
-		name: "computeResources disallowed without alpha feature gate",
+		name: "computeResources disallowed without beta feature gate",
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{
 				Name: "foo",
@@ -785,7 +785,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			},
 		},
 		wc:      cfgtesting.EnableStableAPIFields,
-		wantErr: apis.ErrGeneric("computeResources requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
+		wantErr: apis.ErrGeneric("computeResources requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\""),
 	}}
 
 	for _, ts := range tests {
@@ -864,7 +864,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: cfgtesting.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "valid sidecar and task-level (spec.resources) resource requirements",
 		spec: v1.TaskRunSpec{

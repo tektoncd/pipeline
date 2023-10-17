@@ -1159,7 +1159,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 		),
 		withContext: cfgtesting.EnableAlphaAPIFields,
 	}, {
-		name: "computeResources disallowed without alpha feature gate",
+		name: "computeResources disallowed without beta feature gate",
 		spec: v1beta1.PipelineRunSpec{
 			PipelineRef: &v1beta1.PipelineRef{Name: "foo"},
 			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{
@@ -1172,7 +1172,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			},
 		},
 		withContext: cfgtesting.EnableStableAPIFields,
-		wantErr:     apis.ErrGeneric("computeResources requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
+		wantErr:     apis.ErrGeneric("computeResources requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
 	}}
 
 	for _, ps := range tests {
@@ -1208,6 +1208,18 @@ func TestPipelineRunSpec_Validate(t *testing.T) {
 		},
 	}, {
 		name: "valid task-level (taskRunSpecs.resources) resource requirements configured",
+		spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{Name: "pipeline"},
+			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{{
+				PipelineTaskName: "pipelineTask",
+				ComputeResources: &corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("2Gi")},
+				},
+			}},
+		},
+		withContext: cfgtesting.EnableBetaAPIFields,
+	}, {
+		name: "valid task-level (taskRunSpecs.resources) resource requirements configured with stepOverride",
 		spec: v1beta1.PipelineRunSpec{
 			PipelineRef: &v1beta1.PipelineRef{Name: "pipeline"},
 			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{{
