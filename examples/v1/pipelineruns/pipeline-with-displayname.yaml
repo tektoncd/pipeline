@@ -42,7 +42,7 @@ spec:
       default: "1"
   tasks:
     - name: sum-two-numbers
-      displayName: Calculate the first two numbers
+      displayName: "Calculate the first two numbers $(params.a) + $(params.b)"
       description: Calculate the sum of the first two numbers
       taskRef:
         name: sum
@@ -52,7 +52,7 @@ spec:
         - name: b
           value: "$(params.b)"
     - name: sum-with-third-number
-      displayName: Sum with the third number
+      displayName: "Sum with the third number - $(tasks.sum-two-numbers.results.sum) + $(params.c)"
       description: Calculate the sum of the first two numbers and the third number
       taskRef:
         name: sum
@@ -81,7 +81,7 @@ spec:
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  name: sum
+  generateName: sum-
 spec:
   params:
     - name: a
