@@ -54,17 +54,6 @@ func (rw *realWaiter) Wait(ctx context.Context, file string, expectContent bool,
 		return nil
 	}
 	for {
-		select {
-		case <-ctx.Done():
-			if errors.Is(ctx.Err(), context.Canceled) {
-				return entrypoint.ErrContextCanceled
-			}
-			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-				return entrypoint.ErrContextDeadlineExceeded
-			}
-			return nil
-		case <-time.After(rw.waitPollingInterval):
-		}
 		if info, err := os.Stat(file); err == nil {
 			if !expectContent || info.Size() > 0 {
 				return nil
@@ -83,6 +72,17 @@ func (rw *realWaiter) Wait(ctx context.Context, file string, expectContent bool,
 				return nil
 			}
 			return skipError("error file present, bail and skip the step")
+		}
+		select {
+		case <-ctx.Done():
+			if errors.Is(ctx.Err(), context.Canceled) {
+				return entrypoint.ErrContextCanceled
+			}
+			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+				return entrypoint.ErrContextDeadlineExceeded
+			}
+			return nil
+		case <-time.After(rw.waitPollingInterval):
 		}
 	}
 }
