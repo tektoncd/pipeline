@@ -246,6 +246,9 @@ func (h *hashivaultClient) public() (crypto.PublicKey, error) {
 			return nil
 		},
 	)
+	if lerr != nil {
+		return nil, lerr
+	}
 
 	item := h.keyCache.Get(cacheKey, ttlcache.WithLoader[string, crypto.PublicKey](loader))
 	return item.Value(), lerr
