@@ -164,8 +164,11 @@ The Tekton project requires that you develop (commit) code changes to branches t
 
         ```shell
         git remote add upstream git@github.com:tektoncd/pipeline.git
+        ```
 
-        # Optional: Prevent accidental pushing of commits by changing the upstream URL to `no_push`
+    1. Optional: Prevent accidental pushing of commits by changing the upstream URL to `no_push`
+
+        ```shell
         git remote set-url --push upstream no_push
         ```
 
@@ -271,9 +274,9 @@ The recommended minimum development configuration is:
   - 8 GB of (actual or virtualized) platform memory
 - Node autoscaling, up to 3 nodes
 
-#### Using [KinD](https://kind.sigs.k8s.io/)
+#### Using [Kind](https://kind.sigs.k8s.io/)
 
-[KinD](https://kind.sigs.k8s.io/) is a great tool for working with Kubernetes clusters locally. It is particularly useful to quickly test code against different cluster [configurations](https://kind.sigs.k8s.io/docs/user/quick-start/#advanced).
+[Kind](https://kind.sigs.k8s.io/) is a great tool for working with Kubernetes clusters locally. It is particularly useful to quickly test code against different cluster [configurations](https://kind.sigs.k8s.io/docs/user/quick-start/#advanced).
 
 1. Install [required tools](./DEVELOPMENT.md#install-tools) (note: may require a newer version of Go).
 2. Install [Docker](https://www.docker.com/get-started).
@@ -353,7 +356,7 @@ While iterating on code changes to the project, you may need to:
     - Update your (external) dependencies with: `./hack/update-deps.sh`
     - Update your type definitions with: `./hack/update-codegen.sh`
     -  Update your OpenAPI specs with: `./hack/update-openapigen.sh`
-1. Update or [add new CRD types](#adding-new-types) as needed
+1. Update or [add new CRD types](#adding-new-crd-types) as needed
 1. Update, [add and run tests](./test/README.md#tests)
 
 To make changes to these CRDs, you will probably interact with:
