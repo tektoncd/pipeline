@@ -196,19 +196,15 @@ func TestEntrypointer(t *testing.T) {
 			}
 
 			if len(c.waitFiles) > 0 {
-				fw.Lock()
 				if fw.waited == nil {
 					t.Error("Wanted waited file, got nil")
-				} else if !reflect.DeepEqual(fw.waited, append(c.waitFiles, "/tekton/downward/cancel")) {
+				} else if !reflect.DeepEqual(fw.waited, c.waitFiles) {
 					t.Errorf("Waited for %v, want %v", fw.waited, c.waitFiles)
 				}
-				fw.Unlock()
 			}
-			fw.Lock()
-			if len(c.waitFiles) == 0 && len(fw.waited) != 1 {
+			if len(c.waitFiles) == 0 && fw.waited != nil {
 				t.Errorf("Waited for file when not required")
 			}
-			fw.Unlock()
 
 			wantArgs := append([]string{c.entrypoint}, c.args...)
 			if len(wantArgs) != 0 {
@@ -699,6 +695,8 @@ type fakeWaiter struct {
 func (f *fakeWaiter) Wait(ctx context.Context, file string, _ bool, _ bool) error {
 	if file == pod.DownwardMountCancelFile && f.waitCancelDuration > 0 {
 		time.Sleep(f.waitCancelDuration)
+	} else if file == pod.DownwardMountCancelFile {
+		return nil
 	}
 	f.Lock()
 	f.waited = append(f.waited, file)
