@@ -5693,7 +5693,6 @@ func schema_pkg_apis_pipeline_v1beta1_WhenExpression(ref common.ReferenceCallbac
 					"input": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Input is the string for guard checking which can be a static input or an output from a parent Task",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -5701,7 +5700,6 @@ func schema_pkg_apis_pipeline_v1beta1_WhenExpression(ref common.ReferenceCallbac
 					"operator": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Operator that represents an Input's relationship to the values",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -5726,8 +5724,14 @@ func schema_pkg_apis_pipeline_v1beta1_WhenExpression(ref common.ReferenceCallbac
 							},
 						},
 					},
+					"cel": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CEL is a string of Common Language Expression, which can be used to conditionally execute the task based on the result of the expression evaluation More info about CEL syntax: https://github.com/google/cel-spec/blob/master/doc/langdef.md",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
-				Required: []string{"input", "operator", "values"},
 			},
 		},
 	}

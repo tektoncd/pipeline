@@ -17,8 +17,10 @@ limitations under the License.
 package v1
 
 import (
+	"context"
 	"testing"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"k8s.io/apimachinery/pkg/selection"
 )
 
@@ -54,7 +56,7 @@ func TestWhenExpressions_Valid(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.wes.validate(); err != nil {
+			if err := tt.wes.validate(context.Background()); err != nil {
 				t.Errorf("WhenExpressions.validate() returned an error for valid when expressions: %s", tt.wes)
 			}
 		})
@@ -97,8 +99,67 @@ func TestWhenExpressions_Invalid(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.wes.validate(); err == nil {
+			if err := tt.wes.validate(context.Background()); err == nil {
 				t.Errorf("WhenExpressions.validate() did not return error for invalid when expressions: %s, %s", tt.wes, err)
+			}
+		})
+	}
+}
+
+func TestCELinWhenExpressions_Valid(t *testing.T) {
+	ctx := config.ToContext(context.Background(), &config.Config{
+		FeatureFlags: &config.FeatureFlags{
+			EnableCELInWhenExpression: true,
+		},
+	})
+	tests := []struct {
+		name string
+		wes  WhenExpressions
+	}{{
+		name: "valid cel",
+		wes: []WhenExpression{{
+			CEL: " 'foo' == 'foo' ",
+		}},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.wes.validate(ctx); err != nil {
+				t.Errorf("WhenExpressions.validate() returned an error: %s for valid when expressions: %s", err, tt.wes)
+			}
+		})
+	}
+}
+
+func TestCELWhenExpressions_Invalid(t *testing.T) {
+	tests := []struct {
+		name                      string
+		wes                       WhenExpressions
+		enableCELInWhenExpression bool
+	}{{
+		name: "feature flag not set",
+		wes: []WhenExpression{{
+			CEL: " 'foo' == 'foo' ",
+		}},
+		enableCELInWhenExpression: false,
+	}, {
+		name: "CEL should not coexist with input+operator+values",
+		wes: []WhenExpression{{
+			CEL:      "'foo' != 'foo'",
+			Input:    "foo",
+			Operator: selection.In,
+			Values:   []string{"foo"},
+		}},
+		enableCELInWhenExpression: true,
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := config.ToContext(context.Background(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					EnableCELInWhenExpression: tt.enableCELInWhenExpression,
+				},
+			})
+			if err := tt.wes.validate(ctx); err == nil {
+				t.Errorf("WhenExpressions.validate() did not return error for invalid when expressions: %s", tt.wes)
 			}
 		})
 	}

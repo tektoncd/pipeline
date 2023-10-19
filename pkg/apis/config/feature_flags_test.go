@@ -73,6 +73,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				MaxResultSize:                    4096,
 				SetSecurityContext:               true,
 				Coschedule:                       config.CoscheduleDisabled,
+				EnableCELInWhenExpression:        true,
 			},
 			fileName: "feature-flags-all-flags-set",
 		},
@@ -269,6 +270,9 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 	}, {
 		fileName: "feature-flags-invalid-disable-affinity-assistant",
 		want:     `failed parsing feature flags config "truee": strconv.ParseBool: parsing "truee": invalid syntax`,
+	}, {
+		fileName: "feature-flags-invalid-enable-cel-in-whenexpression",
+		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax`,
 	}} {
 		t.Run(tc.fileName, func(t *testing.T) {
 			cm := test.ConfigMapFromTestFile(t, tc.fileName)
