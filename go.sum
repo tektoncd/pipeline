@@ -1027,8 +1027,8 @@ github.com/shurcooL/githubv4 v0.0.0-20190718010115-4ba037080260/go.mod h1:hAF0iL
 github.com/shurcooL/graphql v0.0.0-20181231061246-d48a9a75455f h1:tygelZueB1EtXkPI6mQ4o9DQ0+FKW41hTbunoXZCTqk=
 github.com/shurcooL/graphql v0.0.0-20181231061246-d48a9a75455f/go.mod h1:AuYgA5Kyo4c7HfUmvRGs/6rGlMMV/6B1bVnB9JxJEEg=
 github.com/shurcooL/sanitized_anchor_name v1.0.0/go.mod h1:1NzhyTcUVG4SuEtjjoZeVRXNmyL/1OwPU0+IJeTBvfc=
-github.com/sigstore/sigstore v1.7.3 h1:HVVTfrMezJeLyl2xhJ8edzkrEGBa4KxjQZB4FlQ4JLU=
-github.com/sigstore/sigstore v1.7.3/go.mod h1:cl0c7Dtg3MM3c13L8pqqrfrmBa0eM3POcdtBepjylmw=
+github.com/sigstore/sigstore v1.7.4 h1:Fyqn6OKOVsYnV0Vs6JhG5t+q0u7Gj6R5dJ52kUVteLs=
+github.com/sigstore/sigstore v1.7.4/go.mod h1:5MxR9PrWYGk5I3sXgdnrMUOLbwFPuAUNtWPm3VwOjkc=
 github.com/sigstore/sigstore/pkg/signature/kms/aws v1.7.4 h1:zIqB/IB8qVJBjazd+fjI6XZlE9f8s5HxnOllHAeTTew=
 github.com/sigstore/sigstore/pkg/signature/kms/aws v1.7.4/go.mod h1:eorFqzSo/RDsBfl97Ui/mKXw0YQ9qLDT1RhMYiuvPf8=
 github.com/sigstore/sigstore/pkg/signature/kms/azure v1.7.4 h1:2xI6GX+tQMF0L+DlQq09U4fH8PlFhuz0wSYkiHY8fgo=
