@@ -44,7 +44,7 @@ func init() {
 // HTTP/1, but unlikely to occur in practice and (2) Upgrading from HTTP/1 to
 // h2c - this works by using the HTTP/1 Upgrade header to request an upgrade to
 // h2c. When either of those situations occur we hijack the HTTP/1 connection,
-// convert it to a HTTP/2 connection and pass the net.Conn to http2.ServeConn.
+// convert it to an HTTP/2 connection and pass the net.Conn to http2.ServeConn.
 type h2cHandler struct {
 	Handler http.Handler
 	s       *http2.Server
@@ -109,6 +109,7 @@ func (s h2cHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if http2VerboseLogs {
 				log.Printf("h2c: error h2c upgrade: %v", err)
 			}
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		defer conn.Close()
@@ -167,7 +168,10 @@ func h2cUpgrade(w http.ResponseWriter, r *http.Request) (_ net.Conn, settings []
 		return nil, nil, errors.New("h2c: connection does not support Hijack")
 	}
 
-	body, _ := io.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, nil, err
+	}
 	r.Body = io.NopCloser(bytes.NewBuffer(body))
 
 	conn, rw, err := hijacker.Hijack()
