@@ -27,4 +27,10 @@ const (
 	pathParam string = "pathInRepo"
 	// revisionParam is the git revision that a file should be fetched from. This is used with both approaches.
 	revisionParam string = "revision"
+	// tokenParam is an optional reference to a secret name for SCM API authentication
+	tokenParam string = "token"
+	// tokenKeyParam is an optional reference to a key in the tokenParam secret for SCM API authentication
+	tokenKeyParam string = "tokenKey"
+	// defaultTokenKeyParam is the default key in the tokenParam secret for SCM API authentication
+	defaultTokenKeyParam string = "token"
 )

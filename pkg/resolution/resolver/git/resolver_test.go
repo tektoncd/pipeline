@@ -192,10 +192,13 @@ type params struct {
 	pathInRepo string
 	org        string
 	repo       string
+	token      string
+	tokenKey   string
+	namespace  string
 }
 
 func TestResolve(t *testing.T) {
-	// lcoal repo set up for anonymous cloning
+	// local repo set up for anonymous cloning
 	// ----
 	commits := []commitForRepo{{
 		Dir:      "foo/",
@@ -327,6 +330,24 @@ func TestResolve(t *testing.T) {
 			url:        anonFakeRepoURL,
 		},
 		expectedErr: createError("revision error: reference not found"),
+	}, {
+		name: "api: successful task from params api information",
+		args: &params{
+			revision:   "main",
+			pathInRepo: "tasks/example-task.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+			token:      "token-secret",
+			tokenKey:   "token",
+			namespace:  "foo",
+		},
+		config: map[string]string{
+			ServerURLKey: "fake",
+			SCMTypeKey:   "fake",
+		},
+		apiToken:          "some-token",
+		expectedCommitSHA: commitSHAsInSCMRepo[0],
+		expectedStatus:    internal.CreateResolutionRequestStatusWithData(mainTaskYAML),
 	}, {
 		name: "api: successful task",
 		args: &params{
@@ -539,21 +560,27 @@ func TestResolve(t *testing.T) {
 			}
 
 			frtesting.RunResolverReconcileTest(ctx, t, d, resolver, request, expectedStatus, tc.expectedErr, func(resolver framework.Resolver, testAssets test.Assets) {
-				if tc.config[APISecretNameKey] == "" || tc.config[APISecretNamespaceKey] == "" || tc.config[APISecretKeyKey] == "" || tc.apiToken == "" {
+				var secretName, secretNameKey, secretNamespace string
+				if tc.config[APISecretNameKey] != "" && tc.config[APISecretNamespaceKey] != "" && tc.config[APISecretKeyKey] != "" && tc.apiToken != "" {
+					secretName, secretNameKey, secretNamespace = tc.config[APISecretNameKey], tc.config[APISecretKeyKey], tc.config[APISecretNamespaceKey]
+				}
+				if tc.args.token != "" && tc.args.namespace != "" && tc.args.tokenKey != "" {
+					secretName, secretNameKey, secretNamespace = tc.args.token, tc.args.tokenKey, tc.args.namespace
+				}
+				if secretName == "" || secretNameKey == "" || secretNamespace == "" {
 					return
 				}
 				tokenSecret := &corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      tc.config[APISecretNameKey],
-						Namespace: tc.config[APISecretNamespaceKey],
+						Name:      secretName,
+						Namespace: secretNamespace,
 					},
 					Data: map[string][]byte{
-						tc.config[APISecretKeyKey]: []byte(base64.StdEncoding.Strict().EncodeToString([]byte(tc.apiToken))),
+						secretNameKey: []byte(base64.StdEncoding.Strict().EncodeToString([]byte(tc.apiToken))),
 					},
 					Type: corev1.SecretTypeOpaque,
 				}
-
-				if _, err := testAssets.Clients.Kube.CoreV1().Secrets(tc.config[APISecretNamespaceKey]).Create(ctx, tokenSecret, metav1.CreateOptions{}); err != nil {
+				if _, err := testAssets.Clients.Kube.CoreV1().Secrets(secretNamespace).Create(ctx, tokenSecret, metav1.CreateOptions{}); err != nil {
 					t.Fatalf("failed to create test token secret: %v", err)
 				}
 			})
@@ -734,6 +761,16 @@ func createRequest(args *params) *v1beta1.ResolutionRequest {
 			Name:  orgParam,
 			Value: *pipelinev1.NewStructuredValues(args.org),
 		})
+		if args.token != "" {
+			rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
+				Name:  tokenParam,
+				Value: *pipelinev1.NewStructuredValues(args.token),
+			})
+			rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
+				Name:  tokenKeyParam,
+				Value: *pipelinev1.NewStructuredValues(args.tokenKey),
+			})
+		}
 	}
 
 	return rr
