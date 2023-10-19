@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"strings"
 
+	// TODO(#7244): Pull the cel-go library for now, the following PR will use the library.
+	_ "github.com/google/cel-go/cel"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/sets"
