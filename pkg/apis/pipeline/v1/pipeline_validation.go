@@ -88,7 +88,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validatePipelineResults(ps.Results, ps.Tasks, ps.Finally))
 	errs = errs.Also(validateTasksAndFinallySection(ps))
 	errs = errs.Also(validateFinalTasks(ps.Tasks, ps.Finally))
-	errs = errs.Also(validateWhenExpressions(ps.Tasks, ps.Finally))
+	errs = errs.Also(validateWhenExpressions(ctx, ps.Tasks, ps.Finally))
 	errs = errs.Also(validateMatrix(ctx, ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validateMatrix(ctx, ps.Finally).ViaField("finally"))
 	return errs
@@ -745,12 +745,12 @@ func validateResultsVariablesExpressionsInFinally(expressions []string, pipeline
 	return errs
 }
 
-func validateWhenExpressions(tasks []PipelineTask, finalTasks []PipelineTask) (errs *apis.FieldError) {
+func validateWhenExpressions(ctx context.Context, tasks []PipelineTask, finalTasks []PipelineTask) (errs *apis.FieldError) {
 	for i, t := range tasks {
-		errs = errs.Also(t.When.validate().ViaFieldIndex("tasks", i))
+		errs = errs.Also(t.When.validate(ctx).ViaFieldIndex("tasks", i))
 	}
 	for i, t := range finalTasks {
-		errs = errs.Also(t.When.validate().ViaFieldIndex("finally", i))
+		errs = errs.Also(t.When.validate(ctx).ViaFieldIndex("finally", i))
 	}
 	return errs
 }

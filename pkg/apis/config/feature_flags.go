@@ -92,6 +92,10 @@ const (
 	KeepPodOnCancel = "keep-pod-on-cancel"
 	// DefaultEnableKeepPodOnCancel is the default value for "keep-pod-on-cancel"
 	DefaultEnableKeepPodOnCancel = false
+	// EnableCELInWhenExpression is the flag to enabled CEL in WhenExpression
+	EnableCELInWhenExpression = "enable-cel-in-whenexpression"
+	// DefaultEnableCELInWhenExpression is the default value for EnableCELInWhenExpression
+	DefaultEnableCELInWhenExpression = false
 
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
@@ -140,6 +144,7 @@ type FeatureFlags struct {
 	MaxResultSize             int
 	SetSecurityContext        bool
 	Coschedule                string
+	EnableCELInWhenExpression bool
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -209,8 +214,10 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if err := setFeature(setSecurityContextKey, DefaultSetSecurityContext, &tc.SetSecurityContext); err != nil {
 		return nil, err
 	}
-
 	if err := setCoschedule(cfgMap, DefaultCoschedule, tc.DisableAffinityAssistant, &tc.Coschedule); err != nil {
+		return nil, err
+	}
+	if err := setFeature(EnableCELInWhenExpression, DefaultEnableCELInWhenExpression, &tc.EnableCELInWhenExpression); err != nil {
 		return nil, err
 	}
 	// Given that they are alpha features, Tekton Bundles and Custom Tasks should be switched on if

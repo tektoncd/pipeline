@@ -17,9 +17,11 @@ limitations under the License.
 package v1beta1
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -31,18 +33,28 @@ var validWhenOperators = []string{
 	string(selection.NotIn),
 }
 
-func (wes WhenExpressions) validate() *apis.FieldError {
-	return wes.validateWhenExpressionsFields().ViaField("when")
+func (wes WhenExpressions) validate(ctx context.Context) *apis.FieldError {
+	return wes.validateWhenExpressionsFields(ctx).ViaField("when")
 }
 
-func (wes WhenExpressions) validateWhenExpressionsFields() (errs *apis.FieldError) {
+func (wes WhenExpressions) validateWhenExpressionsFields(ctx context.Context) (errs *apis.FieldError) {
 	for idx, we := range wes {
-		errs = errs.Also(we.validateWhenExpressionFields().ViaIndex(idx))
+		errs = errs.Also(we.validateWhenExpressionFields(ctx).ViaIndex(idx))
 	}
 	return errs
 }
 
-func (we *WhenExpression) validateWhenExpressionFields() *apis.FieldError {
+func (we *WhenExpression) validateWhenExpressionFields(ctx context.Context) *apis.FieldError {
+	if we.CEL != "" {
+		if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableCELInWhenExpression {
+			return apis.ErrGeneric("feature flag %s should be set to true to use CEL: %s in WhenExpression", config.EnableCELInWhenExpression, we.CEL)
+		}
+		if we.Input != "" || we.Operator != "" || len(we.Values) != 0 {
+			return apis.ErrGeneric(fmt.Sprintf("cel and input+operator+values cannot be set in one WhenExpression: %v", we))
+		}
+		return nil
+	}
+
 	if equality.Semantic.DeepEqual(we, &WhenExpression{}) || we == nil {
 		return apis.ErrMissingField(apis.CurrentField)
 	}

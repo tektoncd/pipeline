@@ -62,6 +62,9 @@ func TestPipelineConversion(t *testing.T) {
 					Name:    "foo",
 					OnError: v1beta1.PipelineTaskContinue,
 					TaskRef: &v1beta1.TaskRef{Name: "example.com/my-foo-task"},
+					WhenExpressions: v1beta1.WhenExpressions{{
+						CEL: "'$(params.param-1)'=='foo'",
+					}},
 				}},
 				Params: []v1beta1.ParamSpec{{
 					Name:        "param-1",

@@ -27,15 +27,21 @@ import (
 // to determine whether the Task should be executed or skipped
 type WhenExpression struct {
 	// Input is the string for guard checking which can be a static input or an output from a parent Task
-	Input string `json:"input"`
+	Input string `json:"input,omitempty"`
 
 	// Operator that represents an Input's relationship to the values
-	Operator selection.Operator `json:"operator"`
+	Operator selection.Operator `json:"operator,omitempty"`
 
 	// Values is an array of strings, which is compared against the input, for guard checking
 	// It must be non-empty
 	// +listType=atomic
-	Values []string `json:"values"`
+	Values []string `json:"values,omitempty"`
+
+	// CEL is a string of Common Language Expression, which can be used to conditionally execute
+	// the task based on the result of the expression evaluation
+	// More info about CEL syntax: https://github.com/google/cel-spec/blob/master/doc/langdef.md
+	// +optional
+	CEL string `json:"cel,omitempty"`
 }
 
 func (we *WhenExpression) isInputInValues() bool {

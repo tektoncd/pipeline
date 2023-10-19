@@ -262,12 +262,14 @@ func (we WhenExpression) convertTo(ctx context.Context, sink *v1.WhenExpression)
 	sink.Input = we.Input
 	sink.Operator = we.Operator
 	sink.Values = we.Values
+	sink.CEL = we.CEL
 }
 
 func (we *WhenExpression) convertFrom(ctx context.Context, source v1.WhenExpression) {
 	we.Input = source.Input
 	we.Operator = source.Operator
 	we.Values = source.Values
+	we.CEL = source.CEL
 }
 
 func (m *Matrix) convertTo(ctx context.Context, sink *v1.Matrix) {

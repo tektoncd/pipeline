@@ -317,6 +317,7 @@ Features currently in "alpha" are:
 | [Configure Default Resolver](./resolution.md#configuring-built-in-resolvers)                        | [TEP-0133](https://github.com/tektoncd/community/blob/main/teps/0133-configure-default-resolver.md)                        | N/A                                 |                                |
 | [Coschedule](./affinityassistants.md)                                                               | [TEP-0135](https://github.com/tektoncd/community/blob/main/teps/0135-coscheduling-pipelinerun-pods.md)                        | N/A                                 |`coschedule`                                |
 | [keep pod on cancel](./taskruns.md#cancelling-a-taskrun)                                            | N/A |  v0.52 | keep-pod-on-cancel |
+| [CEL in WhenExpression](./taskruns.md#cancelling-a-taskrun)                                            | [TEP-0145](https://github.com/tektoncd/community/blob/main/teps/0145-cel-in-whenexpression.md) |  N/A | enable-cel-in-whenexpression |
 
 ### Beta Features
 

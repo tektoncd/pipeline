@@ -5782,6 +5782,20 @@ k8s.io/apimachinery/pkg/selection.Operator
 It must be non-empty</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>cel</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CEL is a string of Common Language Expression, which can be used to conditionally execute
+the task based on the result of the expression evaluation
+More info about CEL syntax: <a href="https://github.com/google/cel-spec/blob/master/doc/langdef.md">https://github.com/google/cel-spec/blob/master/doc/langdef.md</a></p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.WhenExpressions">WhenExpressions
@@ -14547,6 +14561,20 @@ k8s.io/apimachinery/pkg/selection.Operator
 <td>
 <p>Values is an array of strings, which is compared against the input, for guard checking
 It must be non-empty</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cel</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CEL is a string of Common Language Expression, which can be used to conditionally execute
+the task based on the result of the expression evaluation
+More info about CEL syntax: <a href="https://github.com/google/cel-spec/blob/master/doc/langdef.md">https://github.com/google/cel-spec/blob/master/doc/langdef.md</a></p>
 </td>
 </tr>
 </tbody>
