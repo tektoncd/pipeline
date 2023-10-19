@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -991,6 +992,61 @@ func TestIsSidecarStatusRunning(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := IsSidecarStatusRunning(tc.tr); got != tc.want {
 				t.Errorf("expected IsSidecarStatusRunning: %v, but got: %v", tc.want, got)
+			}
+		})
+	}
+}
+
+func TestIsSidecarStatusRunning(t *testing.T) {
+	tests := []struct {
+		name string
+		args *v1beta1.TaskRun
+		want bool
+	}{
+		{
+			name: "sidecar is running",
+			args: &v1beta1.TaskRun{
+				Status: v1beta1.TaskRunStatus{
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						Sidecars: []v1beta1.SidecarState{
+							{
+								ContainerState: corev1.ContainerState{
+									Running: &corev1.ContainerStateRunning{
+										StartedAt: metav1.Time{},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "sidecar is terminated",
+			args: &v1beta1.TaskRun{
+				Status: v1beta1.TaskRunStatus{
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						Sidecars: []v1beta1.SidecarState{
+							{
+								ContainerState: corev1.ContainerState{
+									Terminated: &corev1.ContainerStateTerminated{
+										StartedAt: metav1.Time{},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := IsSidecarStatusRunning(tt.args)
+			if !cmp.Equal(got, tt.want) {
+				t.Errorf("IsSidecarStatusRunning() diff: %v", cmp.Diff(got, tt.want, cmpopts.IgnoreUnexported()))
 			}
 		})
 	}
