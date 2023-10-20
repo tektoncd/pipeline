@@ -1,0 +1,17 @@
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: http-resolver-
+spec:
+  pipelineSpec:
+    tasks:
+      - name: http-resolver
+        taskRef:
+          resolver: http
+          params:
+            - name: url
+              value: https://api.hub.tekton.dev/v1/resource/tekton/task/tkn/0.4/raw
+        params:
+          - name: ARGS
+            value: ["version"]

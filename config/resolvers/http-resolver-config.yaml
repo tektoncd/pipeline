@@ -1,4 +1,4 @@
-# Copyright 2022 The Tekton Authors
+# Copyright 2023 The Tekton Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,11 +15,12 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: resolvers-feature-flags
+  name: http-resolver-config
   namespace: tekton-pipelines-resolvers
+  labels:
+    app.kubernetes.io/component: resolvers
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
 data:
-  enable-git-resolver: "false"
-  enable-hub-resolver: "false"
-  enable-bundles-resolver: "false"
-  enable-cluster-resolver: "false"
-  enable-http-resolver: "false"
+  # The maximum amount of time the http resolver will wait for a response from the server.
+  fetch-timeout: "1m"
