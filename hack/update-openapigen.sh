@@ -34,7 +34,7 @@ mkdir -p "${TMP_DIFFROOT}"
 
 trap cleanup EXIT
 
-for APIVERSION in "v1beta1" "v1"
+for APIVERSION in "v1alpha1" "v1beta1" "v1"
 do
   input_dirs=./pkg/apis/pipeline/${APIVERSION},./pkg/apis/pipeline/pod,knative.dev/pkg/apis,knative.dev/pkg/apis/duck/v1beta1
   if [ ${APIVERSION} = "v1beta1" ]
