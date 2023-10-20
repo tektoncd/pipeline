@@ -38,6 +38,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableHubResolver:     true,
 				EnableBundleResolver:  true,
 				EnableClusterResolver: true,
+				EnableHttpResolver:    true,
 			},
 			fileName: "feature-flags-empty",
 		},
@@ -47,6 +48,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableHubResolver:     false,
 				EnableBundleResolver:  false,
 				EnableClusterResolver: false,
+				EnableHttpResolver:    false,
 			},
 			fileName: "feature-flags-all-flags-set",
 		},
@@ -68,6 +70,7 @@ func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 		EnableHubResolver:     resolver.DefaultEnableHubResolver,
 		EnableBundleResolver:  resolver.DefaultEnableBundlesResolver,
 		EnableClusterResolver: resolver.DefaultEnableClusterResolver,
+		EnableHttpResolver:    resolver.DefaultEnableHttpResolver,
 	}
 	verifyConfigFileWithExpectedFeatureFlagsConfig(t, FeatureFlagsConfigEmptyName, expectedConfig)
 }

@@ -43,6 +43,11 @@ func ContextWithClusterResolverDisabled(ctx context.Context) context.Context {
 	return contextWithResolverDisabled(ctx, "enable-cluster-resolver")
 }
 
+// ContextWithHttpResolverDisabled returns a context containing a Config with the enable-http-resolver feature flag disabled.
+func ContextWithHttpResolverDisabled(ctx context.Context) context.Context {
+	return contextWithResolverDisabled(ctx, "enable-http-resolver")
+}
+
 func contextWithResolverDisabled(ctx context.Context, resolverFlag string) context.Context {
 	featureFlags, _ := resolverconfig.NewFeatureFlagsFromMap(map[string]string{
 		resolverFlag: "false",
