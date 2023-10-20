@@ -35,10 +35,16 @@ import (
 func TestPropagatedResults(t *testing.T) {
 	t.Parallel()
 
+	// Ignore the Results when comparing the Runs directly. Instead, check the results separately.
+	// This is because the order of resutls changes and makes the test very flaky.
+	ignoreTaskRunStatusFields := cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "Results")
+	sortTaskRunResults := cmpopts.SortSlices(func(x, y v1.TaskRunResult) bool { return x.Name < y.Name })
+
 	ignorePipelineRunStatusFields := cmpopts.IgnoreFields(v1.PipelineRunStatusFields{}, "Provenance")
 	ignoreTaskRunStatus := cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "StartTime", "CompletionTime", "Sidecars", "Provenance")
 	requireAlphaFeatureFlag = requireAnyGate(map[string]string{
 		"enable-api-fields": "alpha"})
+
 	type tests struct {
 		name            string
 		pipelineName    string
@@ -89,6 +95,7 @@ func TestPropagatedResults(t *testing.T) {
 				ignoreStepState,
 				ignoreSAPipelineRunSpec,
 				ignorePipelineRunStatusFields,
+				ignoreTaskRunStatusFields,
 			)
 			if d != "" {
 				t.Fatalf(`The resolved spec does not match the expected spec. Here is the diff: %v`, d)
@@ -105,9 +112,14 @@ func TestPropagatedResults(t *testing.T) {
 					ignoreContainerStates,
 					ignoreStepState,
 					ignoreSATaskRunSpec,
+					ignoreTaskRunStatusFields,
 				)
 				if d != "" {
 					t.Fatalf(`The expected taskrun does not match created taskrun. Here is the diff: %v`, d)
+				}
+				d = cmp.Diff(tr.Status.TaskRunStatusFields.Results, taskrun.Status.TaskRunStatusFields.Results, sortTaskRunResults)
+				if d != "" {
+					t.Fatalf(`The expected TaskRunResults does not what was received. Here is the diff: %v`, d)
 				}
 			}
 			t.Logf("Successfully finished test %q", td.name)
