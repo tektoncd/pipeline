@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/cel-go/cel"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/selection"
@@ -51,6 +52,17 @@ func (we *WhenExpression) validateWhenExpressionFields(ctx context.Context) *api
 		}
 		if we.Input != "" || we.Operator != "" || len(we.Values) != 0 {
 			return apis.ErrGeneric(fmt.Sprintf("cel and input+operator+values cannot be set in one WhenExpression: %v", we))
+		}
+		// We need to compile the CEL expression and check if it is a valid expression
+		// note that at the validation webhook, Tekton's variables are not substituted,
+		// so they need to be wrapped with single quotes.
+		// e.g.  This is a valid CEL expression: '$(params.foo)' == 'foo';
+		//       But this is not a valid expression since CEL cannot recognize: $(params.foo) == 'foo';
+		//       This is not valid since we don't pass params to CEL's environment: params.foo == 'foo';
+		env, _ := cel.NewEnv()
+		_, iss := env.Compile(we.CEL)
+		if iss.Err() != nil {
+			return apis.ErrGeneric("invalid cel expression: %s with err: %s", we.CEL, iss.Err().Error())
 		}
 		return nil
 	}

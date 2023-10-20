@@ -116,9 +116,34 @@ func TestCELinWhenExpressions_Valid(t *testing.T) {
 		name string
 		wes  WhenExpressions
 	}{{
-		name: "valid cel",
+		name: "valid operator - Equal",
 		wes: []WhenExpression{{
 			CEL: " 'foo' == 'foo' ",
+		}},
+	}, {
+		name: "valid operator - NotEqual",
+		wes: []WhenExpression{{
+			CEL: " 'foo' != 'foo' ",
+		}},
+	}, {
+		name: "valid operator - In",
+		wes: []WhenExpression{{
+			CEL: "'foo' in ['foo', 'bar']",
+		}},
+	}, {
+		name: "valid operator - NotIn",
+		wes: []WhenExpression{{
+			CEL: "!('foo' in ['foo', 'bar'])",
+		}},
+	}, {
+		name: "valid regex expression",
+		wes: []WhenExpression{{
+			CEL: "'release/v1'.matches('release/.*')",
+		}},
+	}, {
+		name: "valid variable reference syntax",
+		wes: []WhenExpression{{
+			CEL: "'$(params.foo)' in ['foo', 'bar']",
 		}},
 	}}
 	for _, tt := range tests {
@@ -141,6 +166,18 @@ func TestCELWhenExpressions_Invalid(t *testing.T) {
 			CEL: " 'foo' == 'foo' ",
 		}},
 		enableCELInWhenExpression: false,
+	}, {
+		name: "variable reference should be wrapped with single quotes",
+		wes: []WhenExpression{{
+			CEL: " $(params.foo) == 'foo' ",
+		}},
+		enableCELInWhenExpression: true,
+	}, {
+		name: "variables not declared in environment",
+		wes: []WhenExpression{{
+			CEL: " params.foo == 'foo' ",
+		}},
+		enableCELInWhenExpression: true,
 	}, {
 		name: "CEL should not coexist with input+operator+values",
 		wes: []WhenExpression{{
