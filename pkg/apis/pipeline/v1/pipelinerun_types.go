@@ -407,6 +407,8 @@ const (
 	PipelineRunReasonResourceVerificationFailed PipelineRunReason = "ResourceVerificationFailed"
 	// ReasonCreateRunFailed indicates that the pipeline fails to create the taskrun or other run resources
 	PipelineRunReasonCreateRunFailed PipelineRunReason = "CreateRunFailed"
+	// ReasonCELEvaluationFailed indicates the pipeline fails the CEL evaluation
+	PipelineRunReasonCELEvaluationFailed PipelineRunReason = "CELEvaluationFailed"
 )
 
 func (t PipelineRunReason) String() string {

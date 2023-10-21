@@ -1932,7 +1932,10 @@ ParamValue
 <th>Description</th>
 </tr>
 </thead>
-<tbody><tr><td><p>&#34;Cancelled&#34;</p></td>
+<tbody><tr><td><p>&#34;CELEvaluationFailed&#34;</p></td>
+<td><p>ReasonCELEvaluationFailed indicates the pipeline fails the CEL evaluation</p>
+</td>
+</tr><tr><td><p>&#34;Cancelled&#34;</p></td>
 <td><p>PipelineRunReasonCancelled is the reason set when the PipelineRun cancelled by the user
 This reason may be found with a corev1.ConditionFalse status, if the cancellation was processed successfully
 This reason may be found with a corev1.ConditionUnknown status, if the cancellation is being processed or failed</p>

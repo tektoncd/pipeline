@@ -626,6 +626,16 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		}
 	}
 
+	// Evaluate the CEL of PipelineTask after the variable substitutions and validations.
+	for _, rpt := range pipelineRunFacts.State {
+		err := rpt.EvaluateCEL()
+		if err != nil {
+			logger.Errorf("Error evaluating CEL %s: %v", pr.Name, err)
+			pr.Status.MarkFailed(string(v1.PipelineRunReasonCELEvaluationFailed), err.Error())
+			return controller.NewPermanentError(err)
+		}
+	}
+
 	// check if pipeline run is not gracefully cancelled and there are active task runs, which require cancelling
 	if pr.IsGracefullyCancelled() && pipelineRunFacts.IsRunning() {
 		// If the pipelinerun is cancelled, cancel tasks, but run finally

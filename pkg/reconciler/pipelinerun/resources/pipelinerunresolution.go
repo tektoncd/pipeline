@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/google/cel-go/cel"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -66,6 +67,51 @@ type ResolvedPipelineTask struct {
 	PipelineTask   *v1.PipelineTask
 	ResolvedTask   *resources.ResolvedTask
 	ResultsCache   map[string][]string
+	// EvaluatedCEL is used to store the results of evaluated CEL expression
+	EvaluatedCEL map[string]bool
+}
+
+// EvaluateCEL evaluate the CEL expressions, and store the evaluated results in EvaluatedCEL
+func (t *ResolvedPipelineTask) EvaluateCEL() error {
+	if t.PipelineTask != nil {
+		if len(t.EvaluatedCEL) == 0 {
+			t.EvaluatedCEL = make(map[string]bool)
+		}
+		for _, we := range t.PipelineTask.When {
+			if we.CEL == "" {
+				continue
+			}
+			_, ok := t.EvaluatedCEL[we.CEL]
+			if !ok {
+				// Create a program environment configured with the standard library of CEL functions and macros
+				// The error is omitted because not environment declarations are passed in.
+				env, _ := cel.NewEnv()
+				// Parse and Check the CEL to get the Abstract Syntax Tree
+				ast, iss := env.Compile(we.CEL)
+				if iss.Err() != nil {
+					return iss.Err()
+				}
+				// Generate an evaluable instance of the Ast within the environment
+				prg, err := env.Program(ast)
+				if err != nil {
+					return err
+				}
+				// Evaluate the CEL expression
+				out, _, err := prg.Eval(map[string]interface{}{})
+				if err != nil {
+					return err
+				}
+
+				b, ok := out.Value().(bool)
+				if ok {
+					t.EvaluatedCEL[we.CEL] = b
+				} else {
+					return fmt.Errorf("The CEL expression %s is not evaluated to a boolean", we.CEL)
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // isDone returns true only if the task is skipped, succeeded or failed
@@ -309,7 +355,7 @@ func (t *ResolvedPipelineTask) Skip(facts *PipelineRunFacts) TaskSkipStatus {
 // it returns true if any of the when expressions evaluate to false
 func (t *ResolvedPipelineTask) skipBecauseWhenExpressionsEvaluatedToFalse(facts *PipelineRunFacts) bool {
 	if t.checkParentsDone(facts) {
-		if !t.PipelineTask.When.AllowsExecution() {
+		if !t.PipelineTask.When.AllowsExecution(t.EvaluatedCEL) {
 			return true
 		}
 	}
