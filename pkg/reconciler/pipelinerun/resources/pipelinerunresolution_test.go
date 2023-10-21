@@ -4812,3 +4812,190 @@ func TestCreateResultsCacheMatrixedTaskRuns(t *testing.T) {
 		})
 	}
 }
+
+func TestEvaluateCEL_valid(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		rpt  *ResolvedPipelineTask
+		want map[string]bool
+	}{{
+		name: "empty CEL",
+		rpt: &ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{
+				When: v1.WhenExpressions{{
+					CEL: "",
+				}},
+			},
+		},
+		want: map[string]bool{},
+	}, {
+		name: "equal",
+		rpt: &ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{
+				When: v1.WhenExpressions{{
+					CEL: "'foo'=='foo'",
+				}},
+			},
+		},
+		want: map[string]bool{
+			"'foo'=='foo'": true,
+		},
+	}, {
+		name: "not equal",
+		rpt: &ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{
+				When: v1.WhenExpressions{{
+					CEL: "'bar'!='foo'",
+				}},
+			},
+		},
+		want: map[string]bool{
+			"'bar'!='foo'": true,
+		},
+	}, {
+		name: "in",
+		rpt: &ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{
+				When: v1.WhenExpressions{{
+					CEL: "'foo' in ['foo', 'bar']",
+				}},
+			},
+		},
+		want: map[string]bool{
+			"'foo' in ['foo', 'bar']": true,
+		},
+	}, {
+		name: "not in",
+		rpt: &ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{
+				When: v1.WhenExpressions{{
+					CEL: "!('duh' in ['foo', 'bar'])",
+				}},
+			},
+		},
+		want: map[string]bool{
+			"!('duh' in ['foo', 'bar'])": true,
+		},
+	}, {
+		name: "greater than",
+		rpt: &ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{
+				When: v1.WhenExpressions{{
+					CEL: "'0.95'>'0.9'",
+				}},
+			},
+		},
+		want: map[string]bool{
+			"'0.95'>'0.9'": true,
+		},
+	}, {
+		name: "less than",
+		rpt: &ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{
+				When: v1.WhenExpressions{{
+					CEL: "'0.85'<'0.9'",
+				}},
+			},
+		},
+		want: map[string]bool{
+			"'0.85'<'0.9'": true,
+		},
+	}, {
+		name: "or",
+		rpt: &ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{
+				When: v1.WhenExpressions{{
+					CEL: "'foo'=='foo'||false",
+				}},
+			},
+		},
+		want: map[string]bool{
+			"'foo'=='foo'||false": true,
+		},
+	}, {
+		name: "and",
+		rpt: &ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{
+				When: v1.WhenExpressions{{
+					CEL: "'foo'=='foo'&&true",
+				}},
+			},
+		},
+		want: map[string]bool{
+			"'foo'=='foo'&&true": true,
+		},
+	}, {
+		name: "regex",
+		rpt: &ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{
+				When: v1.WhenExpressions{{
+					CEL: "'release/v1'.matches('release/.*')",
+				}},
+			},
+		},
+		want: map[string]bool{
+			"'release/v1'.matches('release/.*')": true,
+		},
+	}, {
+		name: "multiple CEL when expressions",
+		rpt: &ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{
+				When: v1.WhenExpressions{{
+					CEL: "'foo'=='foo'",
+				}, {
+					CEL: "'foo'!='foo'",
+				}, {
+					CEL: "'foo'!='bar'",
+				}},
+			},
+		},
+		want: map[string]bool{
+			"'foo'!='bar'": true,
+			"'foo'!='foo'": false,
+			"'foo'=='foo'": true,
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.rpt.EvaluateCEL()
+			if err != nil {
+				t.Fatalf("Got unexpected err:%v", err)
+			}
+			if !cmp.Equal(tc.want, tc.rpt.EvaluatedCEL) {
+				t.Errorf("Did not get the expected EvaluatedCEL want %v, got: %v", tc.want, tc.rpt.EvaluatedCEL)
+			}
+		})
+	}
+}
+
+func TestEvaluateCEL_invalid(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		rpt  *ResolvedPipelineTask
+	}{{
+		name: "compile error - token unrecogniezd",
+		rpt: &ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{
+				When: v1.WhenExpressions{{
+					CEL: "$(params.foo)=='foo'",
+				}},
+			},
+		},
+	}, {
+		name: "CEL result is not true or false",
+		rpt: &ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{
+				When: v1.WhenExpressions{{
+					CEL: "{'blue': '0x000080', 'red': '0xFF0000'}['red']",
+				}},
+			},
+		},
+	},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.rpt.EvaluateCEL()
+			if err == nil {
+				t.Fatalf("Expected err but got nil")
+			}
+		})
+	}
+}

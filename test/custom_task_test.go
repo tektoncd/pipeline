@@ -729,10 +729,11 @@ func resetConfigMap(ctx context.Context, t *testing.T, c *clients, namespace, co
 func getFeatureFlagsBaseOnAPIFlag(t *testing.T) *config.FeatureFlags {
 	t.Helper()
 	alphaFeatureFlags, err := config.NewFeatureFlagsFromMap(map[string]string{
-		"enable-api-fields":         "alpha",
-		"results-from":              "sidecar-logs",
-		"enable-tekton-oci-bundles": "true",
-		"enable-step-actions":       "true",
+		"enable-api-fields":            "alpha",
+		"results-from":                 "sidecar-logs",
+		"enable-tekton-oci-bundles":    "true",
+		"enable-step-actions":          "true",
+		"enable-cel-in-whenexpression": "true",
 	})
 	if err != nil {
 		t.Fatalf("error creating alpha feature flags configmap: %v", err)
