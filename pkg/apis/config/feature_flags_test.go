@@ -273,6 +273,9 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 	}, {
 		fileName: "feature-flags-invalid-enable-cel-in-whenexpression",
 		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax`,
+	}, {
+		fileName: "feature-flags-invalid-key",
+		want:     `invalid feature flags: "invalid"`,
 	}} {
 		t.Run(tc.fileName, func(t *testing.T) {
 			cm := test.ConfigMapFromTestFile(t, tc.fileName)

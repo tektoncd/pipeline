@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 const (
@@ -114,6 +115,34 @@ const (
 	coscheduleKey                       = "coschedule"
 )
 
+var knownFeatureFlagKeys = sets.NewString(
+	KeepPodOnCancel,
+	EnableCELInWhenExpression,
+
+	disableAffinityAssistantKey,
+	disableCredsInitKey,
+	runningInEnvWithInjectedSidecarsKey,
+	awaitSidecarReadinessKey,
+	requireGitSSHSecretKnownHostsKey,
+	enableTektonOCIBundles,
+	enableAPIFields,
+	sendCloudEventsForRuns,
+	enforceNonfalsifiability,
+	verificationNoMatchPolicy,
+	enableProvenanceInStatus,
+	resultExtractionMethod,
+	maxResultSize,
+	setSecurityContextKey,
+	coscheduleKey,
+
+	// TEP-0114: Remove Feature Flag enable-custom-tasks #5975 (v0.47.0)
+	"enable-custom-tasks",
+	// Used on `pkg/pod/pod.go` #2158
+	"enable-ready-annotation-on-pod-create",
+	// Used on `./testdata/feature-flags-empty.yaml`
+	"_example",
+)
+
 // DefaultFeatureFlags holds all the default configurations for the feature flags configmap.
 var DefaultFeatureFlags, _ = NewFeatureFlagsFromMap(map[string]string{})
 
@@ -158,6 +187,11 @@ func GetFeatureFlagsConfigName() string {
 
 // NewFeatureFlagsFromMap returns a Config given a map corresponding to a ConfigMap
 func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
+	unknownFeatureFlagKeys := sets.StringKeySet(cfgMap).Difference(knownFeatureFlagKeys)
+	if unknownFeatureFlagKeys.Len() != 0 {
+		return nil, fmt.Errorf("invalid feature flags: %q", strings.Join(unknownFeatureFlagKeys.List(), ","))
+	}
+
 	setFeature := func(key string, defaultValue bool, feature *bool) error {
 		if cfg, ok := cfgMap[key]; ok {
 			value, err := strconv.ParseBool(cfg)
