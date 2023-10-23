@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"strings"
 
+	goversion "github.com/hashicorp/go-version"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -121,6 +122,14 @@ func (r *Resolver) Resolve(ctx context.Context, params []pipelinev1.Param) (fram
 		return nil, fmt.Errorf("failed to validate params: %w", err)
 	}
 
+	if constraint, err := goversion.NewConstraint(paramsMap[ParamVersion]); err == nil {
+		chosen, err := r.resolveVersionConstraint(ctx, paramsMap, constraint)
+		if err != nil {
+			return nil, err
+		}
+		paramsMap[ParamVersion] = chosen.String()
+	}
+
 	resVer, err := resolveVersion(paramsMap[ParamVersion], paramsMap[ParamType])
 	if err != nil {
 		return nil, err
@@ -130,7 +139,8 @@ func (r *Resolver) Resolve(ctx context.Context, params []pipelinev1.Param) (fram
 	// call hub API
 	switch paramsMap[ParamType] {
 	case ArtifactHubType:
-		url := fmt.Sprintf(r.ArtifactHubURL, paramsMap[ParamKind], paramsMap[ParamCatalog], paramsMap[ParamName], paramsMap[ParamVersion])
+		url := fmt.Sprintf(fmt.Sprintf("%s/%s", r.ArtifactHubURL, ArtifactHubYamlEndpoint),
+			paramsMap[ParamKind], paramsMap[ParamCatalog], paramsMap[ParamName], paramsMap[ParamVersion])
 		resp := artifactHubResponse{}
 		if err := fetchHubResource(ctx, url, &resp); err != nil {
 			return nil, fmt.Errorf("fail to fetch Artifact Hub resource: %w", err)
@@ -140,7 +150,8 @@ func (r *Resolver) Resolve(ctx context.Context, params []pipelinev1.Param) (fram
 			Content: []byte(resp.Data.YAML),
 		}, nil
 	case TektonHubType:
-		url := fmt.Sprintf(r.TektonHubURL, paramsMap[ParamCatalog], paramsMap[ParamKind], paramsMap[ParamName], paramsMap[ParamVersion])
+		url := fmt.Sprintf(fmt.Sprintf("%s/%s", r.TektonHubURL, TektonHubYamlEndpoint),
+			paramsMap[ParamCatalog], paramsMap[ParamKind], paramsMap[ParamName], paramsMap[ParamVersion])
 		resp := tektonHubResponse{}
 		if err := fetchHubResource(ctx, url, &resp); err != nil {
 			return nil, fmt.Errorf("fail to fetch Tekton Hub resource: %w", err)
@@ -218,7 +229,6 @@ func fetchHubResource(ctx context.Context, apiEndpoint string, v interface{}) er
 	if err != nil {
 		return fmt.Errorf("error unmarshalling json response: %w", err)
 	}
-
 	return nil
 }
 
@@ -254,6 +264,88 @@ func resolveCatalogName(paramsMap, conf map[string]string) (string, error) {
 	}
 
 	return paramsMap[ParamCatalog], nil
+}
+
+type artifactHubavailableVersionsResults struct {
+	Version    string `json:"version"`
+	Prerelease bool   `json:"prerelease"`
+}
+
+type artifactHubListResult struct {
+	AvailableVersions []artifactHubavailableVersionsResults `json:"available_versions"`
+	Version           string                                `json:"version"`
+}
+
+type tektonHubListResultVersion struct {
+	Version string `json:"version"`
+}
+
+type tektonHubListDataResult struct {
+	Versions []tektonHubListResultVersion `json:"versions"`
+}
+
+type tektonHubListResult struct {
+	Data tektonHubListDataResult `json:"data"`
+}
+
+func (r *Resolver) resolveVersionConstraint(ctx context.Context, paramsMap map[string]string, constraint goversion.Constraints) (*goversion.Version, error) {
+	var ret *goversion.Version
+	if paramsMap[ParamType] == ArtifactHubType {
+		allVersionsURL := fmt.Sprintf("%s/%s", r.ArtifactHubURL, fmt.Sprintf(
+			ArtifactHubListTasksEndpoint,
+			paramsMap[ParamKind], paramsMap[ParamCatalog], paramsMap[ParamName]))
+		resp := artifactHubListResult{}
+		if err := fetchHubResource(ctx, allVersionsURL, &resp); err != nil {
+			return nil, fmt.Errorf("fail to fetch Artifact Hub resource: %w", err)
+		}
+		for _, vers := range resp.AvailableVersions {
+			if vers.Prerelease {
+				continue
+			}
+			checkV, err := goversion.NewVersion(vers.Version)
+			if err != nil {
+				return nil, fmt.Errorf("fail to parse version %s from %s: %w", ArtifactHubType, vers.Version, err)
+			}
+			if checkV == nil {
+				continue
+			}
+			if constraint.Check(checkV) {
+				if ret != nil && ret.GreaterThan(checkV) {
+					continue
+				}
+				// TODO(chmouel): log constraint result in controller
+				ret = checkV
+			}
+		}
+	} else if paramsMap[ParamType] == TektonHubType {
+		allVersionsURL := fmt.Sprintf("%s/%s", r.TektonHubURL,
+			fmt.Sprintf(TektonHubListTasksEndpoint,
+				paramsMap[ParamCatalog], paramsMap[ParamKind], paramsMap[ParamName]))
+		resp := tektonHubListResult{}
+		if err := fetchHubResource(ctx, allVersionsURL, &resp); err != nil {
+			return nil, fmt.Errorf("fail to fetch Tekton Hub resource: %w", err)
+		}
+		for _, vers := range resp.Data.Versions {
+			checkV, err := goversion.NewVersion(vers.Version)
+			if err != nil {
+				return nil, fmt.Errorf("fail to parse version %s from %s: %w", TektonHubType, vers, err)
+			}
+			if checkV == nil {
+				continue
+			}
+			if constraint.Check(checkV) {
+				if ret != nil && ret.GreaterThan(checkV) {
+					continue
+				}
+				// TODO(chmouel): log constraint result in controller
+				ret = checkV
+			}
+		}
+	}
+	if ret == nil {
+		return nil, fmt.Errorf("no version found for constraint %s", paramsMap[ParamVersion])
+	}
+	return ret, nil
 }
 
 // the Artifact Hub follows the semVer (i.e. <major-version>.<minor-version>.0)
