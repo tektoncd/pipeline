@@ -102,6 +102,8 @@ spec:
       # Override this env var to set a private hub api endpoint
         - name: ARTIFACT_HUB_API
           value: "https://artifacthub.io/"
+        - name: TEKTON_HUB_API
+          value: "https://api.hub.tekton.dev/"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
