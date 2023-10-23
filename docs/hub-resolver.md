@@ -64,7 +64,10 @@ env
   value: "https://artifacthub.io/"
 ```
 
-When setting the `type` field to `tekton`, you **must** configure your own instance of the Tekton Hub by setting the `TEKTON_HUB_API` environment variable in
+When setting the `type` field to `tekton`, the resolver will hit the public
+tekton catalog api at https://api.hub.tekton.dev by default but you can configure
+your own instance of the Tekton Hub by setting the `TEKTON_HUB_API` environment
+variable in
 [`../config/resolvers/resolvers-deployment.yaml`](../config/resolvers/resolvers-deployment.yaml). Example:
 
 ```yaml
