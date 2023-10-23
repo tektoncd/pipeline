@@ -18,9 +18,12 @@ package hub
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -172,6 +175,200 @@ func TestValidateParamsConflictingKindName(t *testing.T) {
 			err := resolver.ValidateParams(contextWithConfig(), toParams(params))
 			if err == nil {
 				t.Fatalf("expected err due to conflicting param")
+			}
+		})
+	}
+}
+
+func TestResolveConstraint(t *testing.T) {
+	tests := []struct {
+		name                string
+		wantErr             bool
+		kind                string
+		version             string
+		catalog             string
+		taskName            string
+		hubType             string
+		resultTask          any
+		resultList          any
+		expectedRes         string
+		expectedTaskVersion string
+		expectedErr         error
+	}{
+		{
+			name:        "good/tekton hub/versions constraints",
+			kind:        "task",
+			version:     ">= 0.1",
+			catalog:     "Tekton",
+			taskName:    "something",
+			hubType:     TektonHubType,
+			expectedRes: "some content",
+			resultTask: &tektonHubResponse{
+				Data: tektonHubDataResponse{
+					YAML: "some content",
+				},
+			},
+			resultList: &tektonHubListResult{
+				Data: tektonHubListDataResult{
+					Versions: []tektonHubListResultVersion{
+						{
+							Version: "0.1",
+						},
+					},
+				},
+			},
+		}, {
+			name:        "good/tekton hub/only the greatest of the constraint",
+			kind:        "task",
+			version:     ">= 0.1",
+			catalog:     "Tekton",
+			taskName:    "something",
+			hubType:     TektonHubType,
+			expectedRes: "some content",
+			resultTask: &tektonHubResponse{
+				Data: tektonHubDataResponse{
+					YAML: "some content",
+				},
+			},
+			resultList: &tektonHubListResult{
+				Data: tektonHubListDataResult{
+					Versions: []tektonHubListResultVersion{
+						{
+							Version: "0.1",
+						},
+						{
+							Version: "0.2",
+						},
+					},
+				},
+			},
+			expectedTaskVersion: "0.2",
+		}, {
+			name:        "good/artifact hub/only the greatest of the constraint",
+			kind:        "task",
+			version:     ">= 0.1",
+			catalog:     "Tekton",
+			taskName:    "something",
+			hubType:     ArtifactHubType,
+			expectedRes: "some content",
+			resultTask: &artifactHubResponse{
+				Data: artifactHubDataResponse{
+					YAML: "some content",
+				},
+			},
+			resultList: &artifactHubListResult{
+				AvailableVersions: []artifactHubavailableVersionsResults{
+					{
+						Version: "0.1.0",
+					},
+					{
+						Version: "0.2.0",
+					},
+				},
+			},
+			expectedTaskVersion: "0.2.0",
+		}, {
+			name:        "good/artifact hub/versions constraints",
+			kind:        "task",
+			version:     ">= 0.1.0",
+			catalog:     "Tekton",
+			taskName:    "something",
+			hubType:     ArtifactHubType,
+			expectedRes: "some content",
+			resultTask: &artifactHubResponse{
+				Data: artifactHubDataResponse{
+					YAML: "some content",
+				},
+			},
+			resultList: &artifactHubListResult{
+				AvailableVersions: []artifactHubavailableVersionsResults{
+					{
+						Version: "0.1.0",
+					},
+				},
+			},
+		}, {
+			name:     "bad/artifact hub/no matching constraints",
+			kind:     "task",
+			version:  ">= 0.2.0",
+			catalog:  "Tekton",
+			taskName: "something",
+			hubType:  ArtifactHubType,
+			resultList: &artifactHubListResult{
+				AvailableVersions: []artifactHubavailableVersionsResults{
+					{
+						Version: "0.1.0",
+					},
+				},
+			},
+			expectedErr: fmt.Errorf("no version found for constraint >= 0.2.0"),
+		}, {
+			name:     "bad/tekton hub/no matching constraints",
+			kind:     "task",
+			version:  ">= 0.2.0",
+			catalog:  "Tekton",
+			taskName: "something",
+			hubType:  ArtifactHubType,
+			resultList: &tektonHubListResult{
+				Data: tektonHubListDataResult{
+					Versions: []tektonHubListResultVersion{
+						{
+							Version: "0.1",
+						},
+					},
+				},
+			},
+			expectedErr: fmt.Errorf("no version found for constraint >= 0.2.0"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var ret any
+			svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				listURL := fmt.Sprintf(ArtifactHubListTasksEndpoint, tt.kind, tt.catalog, tt.taskName)
+				if tt.hubType == TektonHubType {
+					listURL = fmt.Sprintf(TektonHubListTasksEndpoint, tt.catalog, tt.kind, tt.taskName)
+				}
+				if r.URL.Path == "/"+listURL {
+					// encore result list as json
+					ret = tt.resultList
+				} else {
+					if tt.expectedTaskVersion != "" {
+						version := filepath.Base(r.URL.Path)
+						if tt.hubType == TektonHubType {
+							version = strings.Split(r.URL.Path, "/")[6]
+						}
+						if tt.expectedTaskVersion != version {
+							t.Fatalf("unexpected version: %s wanted: %s", version, tt.expectedTaskVersion)
+						}
+					}
+					ret = tt.resultTask
+				}
+				output, _ := json.Marshal(ret)
+				fmt.Fprintf(w, string(output))
+			}))
+
+			resolver := &Resolver{
+				TektonHubURL:   svr.URL,
+				ArtifactHubURL: svr.URL,
+			}
+			params := map[string]string{
+				ParamKind:    tt.kind,
+				ParamName:    tt.taskName,
+				ParamVersion: tt.version,
+				ParamCatalog: tt.catalog,
+				ParamType:    tt.hubType,
+			}
+			output, err := resolver.Resolve(contextWithConfig(), toParams(params))
+			if tt.expectedErr != nil {
+				checkExpectedErr(t, tt.expectedErr, err)
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error resolving: %v", err)
+				}
+				if d := cmp.Diff(tt.expectedRes, string(output.Data())); d != "" {
+					t.Errorf("unexpected resource from Resolve: %s", diff.PrintWantGot(d))
+				}
 			}
 		})
 	}
@@ -388,8 +585,8 @@ func TestResolve(t *testing.T) {
 			}))
 
 			resolver := &Resolver{
-				TektonHubURL:   svr.URL + "/" + TektonHubYamlEndpoint,
-				ArtifactHubURL: svr.URL + "/" + ArtifactHubYamlEndpoint,
+				TektonHubURL:   svr.URL,
+				ArtifactHubURL: svr.URL,
 			}
 
 			params := map[string]string{
