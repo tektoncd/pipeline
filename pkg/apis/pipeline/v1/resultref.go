@@ -172,6 +172,8 @@ func ParseResultName(resultName string) (string, string) {
 // in a PipelineTask and returns a list of any references that are found.
 func PipelineTaskResultRefs(pt *PipelineTask) []*ResultRef {
 	refs := []*ResultRef{}
+	// TODO move the whenExpression.GetVarSubstitutionExpressions() and GetVarSubstitutionExpressionsForParam(p) as well
+	// separate cleanup, reference https://github.com/tektoncd/pipeline/pull/7121
 	for _, p := range pt.extractAllParams() {
 		expressions, _ := p.GetVarSubstitutionExpressions()
 		refs = append(refs, NewResultRefs(expressions)...)
@@ -180,5 +182,7 @@ func PipelineTaskResultRefs(pt *PipelineTask) []*ResultRef {
 		expressions, _ := whenExpression.GetVarSubstitutionExpressions()
 		refs = append(refs, NewResultRefs(expressions)...)
 	}
+	taskSubExpressions := pt.GetVarSubstitutionExpressions()
+	refs = append(refs, NewResultRefs(taskSubExpressions)...)
 	return refs
 }

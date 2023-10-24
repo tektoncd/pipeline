@@ -2220,21 +2220,18 @@
     "v1.WhenExpression": {
       "description": "WhenExpression allows a PipelineTask to declare expressions to be evaluated before the Task is run to determine whether the Task should be executed or skipped",
       "type": "object",
-      "required": [
-        "input",
-        "operator",
-        "values"
-      ],
       "properties": {
+        "cel": {
+          "description": "CEL is a string of Common Language Expression, which can be used to conditionally execute the task based on the result of the expression evaluation More info about CEL syntax: https://github.com/google/cel-spec/blob/master/doc/langdef.md",
+          "type": "string"
+        },
         "input": {
           "description": "Input is the string for guard checking which can be a static input or an output from a parent Task",
-          "type": "string",
-          "default": ""
+          "type": "string"
         },
         "operator": {
           "description": "Operator that represents an Input's relationship to the values",
-          "type": "string",
-          "default": ""
+          "type": "string"
         },
         "values": {
           "description": "Values is an array of strings, which is compared against the input, for guard checking It must be non-empty",

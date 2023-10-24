@@ -705,7 +705,7 @@ If the result is **NOT** initialized before failing, and there is a `PipelineTas
 ```
 
 - If the consuming `PipelineTask` has `OnError:stopAndFail`, the `PipelineRun` will fail with `InvalidTaskResultReference`.
-- If the consuming `PipelineTask` has `OnError:continue`, the consuming `PipelineTask` will be skipped with reason `Results were missing`, 
+- If the consuming `PipelineTask` has `OnError:continue`, the consuming `PipelineTask` will be skipped with reason `Results were missing`,
 and the `PipelineRun` will continue to execute.
 
 ### Guard `Task` execution using `when` expressions
@@ -774,6 +774,25 @@ There are a lot of scenarios where `when` expressions can be really useful. Some
 - Checking if an image exists in the registry
 - Checking if the name of a CI job matches
 - Checking if an optional Workspace has been provided
+
+#### Use CEL expression in WhenExpression
+
+> :seedling: **`CEL in WhenExpression` is an [alpha](additional-configs.md#alpha-features) feature.**
+> The `enable-cel-in-whenexpression` feature flag must be set to `"true"` to enable the use of `CEL` in `WhenExpression`.
+>
+> :warning: This feature is in a preview mode.
+> It is still in a very early stage of development and is not yet fully functional
+
+`CEL` expression is validated at admission webhook and a validation error will be returned if the expression is invalid.
+
+**Note:** To use Tekton's [variable substitution](variables.md), you need to wrap the reference with single quotes. This also means that if you pass another CEL expression via `params` or `results`, it won't be executed. Therefore CEL injection is disallowed.
+
+For example:
+```
+This is valid: '$(params.foo)' == 'foo'
+This is invalid: $(params.foo) == 'foo'
+CEL's variable substitution is not supported yet and thus invalid: params.foo == 'foo'
+```
 
 #### Guarding a `Task` and its dependent `Tasks`
 

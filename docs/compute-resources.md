@@ -44,7 +44,7 @@ Therefore, the pod will have no effective CPU limit.
 
 ## Task-level Compute Resources Configuration
 
-**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/additional-configs.md#alpha-features))**
+**([beta](https://github.com/tektoncd/pipeline/blob/main/docs/additional-configs.md#beta-features))**
 
 Tekton allows users to specify resource requirements of [`Steps`](./tasks.md#defining-steps),
 which run sequentially. However, the pod's effective resource requirements are still the
