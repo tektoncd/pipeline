@@ -69,6 +69,7 @@ func TestPipelineConversion(t *testing.T) {
 				Params: []v1beta1.ParamSpec{{
 					Name:        "param-1",
 					Type:        v1beta1.ParamTypeString,
+					Enum:        []string{"v1", "v2"},
 					Description: "My first param",
 				}},
 			},

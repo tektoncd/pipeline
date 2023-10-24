@@ -2254,3 +2254,106 @@ func TestGetArrayIndexParamRefs(t *testing.T) {
 		})
 	}
 }
+
+func TestParamEnum_Success(t *testing.T) {
+	tcs := []struct {
+		name      string
+		params    v1.ParamSpecs
+		configMap map[string]string
+	}{{
+		name: "valid param enum - success",
+		params: []v1.ParamSpec{{
+			Name: "param1",
+			Type: v1.ParamTypeString,
+			Enum: []string{"v1", "v2"},
+		}, {
+			Name: "param2",
+			Type: v1.ParamTypeString,
+			Enum: []string{"v1", "v2"},
+		}},
+	}, {
+		name: "valid empty param enum - success",
+		params: []v1.ParamSpec{{
+			Name: "param1",
+			Type: v1.ParamTypeString,
+		}, {
+			Name: "param2",
+			Type: v1.ParamTypeString,
+		}},
+	}}
+
+	for _, tc := range tcs {
+		cfg := map[string]string{"enable-param-enum": "true"}
+		ctx := cfgtesting.SetFeatureFlags(context.Background(), t, cfg)
+
+		err := v1.ValidateParameterVariables(ctx, []v1.Step{{Image: "foo"}}, tc.params)
+		if err != nil {
+			t.Errorf("No error expected from ValidateParameterVariables() but got = %v", err)
+		}
+	}
+}
+
+func TestParamEnum_Failure(t *testing.T) {
+	tcs := []struct {
+		name        string
+		params      v1.ParamSpecs
+		configMap   map[string]string
+		expectedErr error
+	}{{
+		name: "param enum with array type - failure",
+		params: []v1.ParamSpec{{
+			Name: "param1",
+			Type: v1.ParamTypeArray,
+			Enum: []string{"v1", "v2"},
+		}},
+		configMap: map[string]string{
+			"enable-param-enum": "true",
+		},
+		expectedErr: fmt.Errorf("enum can only be set with string type param: params[param1]"),
+	}, {
+		name: "param enum with object type - failure",
+		params: []v1.ParamSpec{{
+			Name: "param1",
+			Type: v1.ParamTypeObject,
+			Enum: []string{"v1", "v2"},
+		}},
+		configMap: map[string]string{
+			"enable-param-enum": "true",
+		},
+		expectedErr: fmt.Errorf("enum can only be set with string type param: params[param1]"),
+	}, {
+		name: "param enum with duplicate values - failure",
+		params: []v1.ParamSpec{{
+			Name: "param1",
+			Type: v1.ParamTypeString,
+			Enum: []string{"v1", "v1", "v2"},
+		}},
+		configMap: map[string]string{
+			"enable-param-enum": "true",
+		},
+		expectedErr: fmt.Errorf("parameter enum value v1 appears more than once: params[param1]"),
+	}, {
+		name: "param enum with feature flag disabled - failure",
+		params: []v1.ParamSpec{{
+			Name: "param1",
+			Type: v1.ParamTypeString,
+			Enum: []string{"v1", "v2"},
+		}},
+		configMap: map[string]string{
+			"enable-param-enum": "false",
+		},
+		expectedErr: fmt.Errorf("feature flag `enable-param-enum` should be set to true to use Enum: params[param1]"),
+	}}
+
+	for _, tc := range tcs {
+		ctx := cfgtesting.SetFeatureFlags(context.Background(), t, tc.configMap)
+
+		err := v1.ValidateParameterVariables(ctx, []v1.Step{{Image: "foo"}}, tc.params)
+
+		if err == nil {
+			t.Errorf("No error expected from ValidateParameterVariables() but got = %v", err)
+		} else if d := cmp.Diff(tc.expectedErr.Error(), err.Error()); d != "" {
+			t.Errorf("Rerturned error from ValidateParameterVariables() does not match with the expected error: %s", diff.PrintWantGot(d))
+		}
+	}
+}

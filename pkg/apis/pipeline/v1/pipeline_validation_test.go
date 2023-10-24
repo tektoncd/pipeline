@@ -1295,9 +1295,10 @@ func TestFinallyTaskResultsToPipelineResults_Failure(t *testing.T) {
 
 func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 	tests := []struct {
-		name   string
-		params []ParamSpec
-		tasks  []PipelineTask
+		name      string
+		params    []ParamSpec
+		tasks     []PipelineTask
+		configMap map[string]string
 	}{{
 		name: "valid string parameter variables",
 		params: []ParamSpec{{
@@ -1312,6 +1313,21 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 				Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.baz) and $(params.foo-is-baz)"},
 			}},
 		}},
+	}, {
+		name: "valid string parameter variables with enum",
+		params: []ParamSpec{{
+			Name: "baz", Type: ParamTypeString, Enum: []string{"v1", "v2"},
+		}, {
+			Name: "foo-is-baz", Type: ParamTypeString,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: Params{{
+				Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.baz) and $(params.foo-is-baz)"},
+			}},
+		}},
+		configMap: map[string]string{"enable-param-enum": "true"},
 	}, {
 		name: "valid string parameter variables in when expression",
 		params: []ParamSpec{{
@@ -1580,6 +1596,9 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
+			if tt.configMap != nil {
+				ctx = cfgtesting.SetFeatureFlags(ctx, t, tt.configMap)
+			}
 			err := ValidatePipelineParameterVariables(ctx, tt.tasks, tt.params)
 			if err != nil {
 				t.Errorf("Pipeline.ValidatePipelineParameterVariables() returned error for valid pipeline parameters: %v", err)
@@ -1921,7 +1940,7 @@ func TestValidatePipelineDeclaredParameterUsage_Failure(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validatePipelineTaskParameterUsage(tt.tasks, tt.params)
 			if err == nil {
-				t.Errorf("Pipeline.ValidatePipelineParameterVariables() did not return error for invalid pipeline parameters")
+				t.Errorf("Pipeline.validatePipelineTaskParameterUsage() did not return error for invalid pipeline parameters")
 			}
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("PipelineSpec.Validate() errors diff %s", diff.PrintWantGot(d))
@@ -1936,7 +1955,69 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 		params        []ParamSpec
 		tasks         []PipelineTask
 		expectedError apis.FieldError
+		configMap     map[string]string
 	}{{
+		name: "param enum with array type - failure",
+		params: []ParamSpec{{
+			Name: "param1",
+			Type: ParamTypeArray,
+			Enum: []string{"v1", "v2"},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+		}},
+		configMap: map[string]string{
+			"enable-param-enum": "true",
+		},
+		expectedError: apis.FieldError{
+			Message: `enum can only be set with string type param`,
+			Paths:   []string{"params[param1]"},
+		},
+	}, {
+		name: "param enum with object type - failure",
+		params: []ParamSpec{{
+			Name: "param1",
+			Type: ParamTypeObject,
+			Enum: []string{"v1", "v2"},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+		}},
+		configMap: map[string]string{
+			"enable-param-enum": "true",
+		},
+		expectedError: apis.FieldError{
+			Message: `enum can only be set with string type param`,
+			Paths:   []string{"params[param1]"},
+		},
+	}, {
+		name: "param enum with duplicate values - failure",
+		params: []ParamSpec{{
+			Name: "param1",
+			Type: ParamTypeString,
+			Enum: []string{"v1", "v1", "v2"},
+		}},
+		configMap: map[string]string{
+			"enable-param-enum": "true",
+		},
+		expectedError: apis.FieldError{
+			Message: `parameter enum value v1 appears more than once`,
+			Paths:   []string{"params[param1]"},
+		},
+	}, {
+		name: "param enum with feature flag disabled - failure",
+		params: []ParamSpec{{
+			Name: "param1",
+			Type: ParamTypeString,
+			Enum: []string{"v1", "v2"},
+		}},
+		expectedError: apis.FieldError{
+			Message: "feature flag `enable-param-enum` should be set to true to use Enum",
+			Paths:   []string{"params[param1]"},
+		},
+	}, {
 		name: "invalid parameter type",
 		params: []ParamSpec{{
 			Name: "foo", Type: "invalidtype",
@@ -2105,6 +2186,10 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
+			if tt.configMap != nil {
+				ctx = cfgtesting.SetFeatureFlags(ctx, t, tt.configMap)
+			}
+
 			err := ValidatePipelineParameterVariables(ctx, tt.tasks, tt.params)
 			if err == nil {
 				t.Errorf("Pipeline.ValidatePipelineParameterVariables() did not return error for invalid pipeline parameters")

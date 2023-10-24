@@ -789,6 +789,21 @@ func schema_pkg_apis_pipeline_v1_ParamSpec(ref common.ReferenceCallback) common.
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue"),
 						},
 					},
+					"enum": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Enum declares a set of allowed param input values for tasks/pipelines that can be validated. If Enum is not set, no input validation is performed for the param.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
 				},
 				Required: []string{"name"},
 			},

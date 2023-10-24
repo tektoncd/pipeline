@@ -515,6 +515,11 @@ func (in *ParamSpec) DeepCopyInto(out *ParamSpec) {
 		*out = new(ParamValue)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.Enum != nil {
+		in, out := &in.Enum, &out.Enum
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

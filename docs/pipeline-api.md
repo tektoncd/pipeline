@@ -1691,6 +1691,19 @@ default is set, a Task may be executed without a supplied value for the
 parameter.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>enum</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Enum declares a set of allowed param input values for tasks/pipelines that can be validated.
+If Enum is not set, no input validation is performed for the param.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.ParamSpecs">ParamSpecs
@@ -9961,6 +9974,19 @@ ParamValue
 <p>Default is the value a parameter takes if no input value is supplied. If
 default is set, a Task may be executed without a supplied value for the
 parameter.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enum</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Enum declares a set of allowed param input values for tasks/pipelines that can be validated.
+If Enum is not set, no input validation is performed for the param.</p>
 </td>
 </tr>
 </tbody>

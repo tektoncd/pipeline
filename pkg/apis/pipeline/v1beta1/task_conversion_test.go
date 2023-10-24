@@ -56,6 +56,7 @@ spec:
   params:
   - name: param-1
     type: string
+    enum: ["v1", "v2"]
     description: my first param
   results:
   - name: result-1
