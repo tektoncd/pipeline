@@ -127,5 +127,4 @@ data:
   # This feature is in preview mode and not implemented yet. Please check #7259 for updates.
   enable-step-actions: "false"
   # Setting this flag to "true" will enable the built-in param input validation via param enum.
-  # NOTE (#7270): this feature is still under development and not yet functional.
   enable-param-enum: "false"

@@ -409,6 +409,8 @@ const (
 	PipelineRunReasonCreateRunFailed PipelineRunReason = "CreateRunFailed"
 	// ReasonCELEvaluationFailed indicates the pipeline fails the CEL evaluation
 	PipelineRunReasonCELEvaluationFailed PipelineRunReason = "CELEvaluationFailed"
+	// PipelineRunReasonInvalidParamValue indicates that the PipelineRun Param input value is not allowed.
+	PipelineRunReasonInvalidParamValue PipelineRunReason = "InvalidParamValue"
 )
 
 func (t PipelineRunReason) String() string {

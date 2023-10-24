@@ -406,8 +406,6 @@ go through the complexity of checking each `Task` and providing only the require
 
 > :seedling: **Specifying `enum` is an [alpha](additional-configs.md#alpha-features) feature.** The `enable-param-enum` feature flag must be set to `"true"` to enable this feature.
 
-> :seedling: This feature is WIP and not yet supported/implemented. Documentation to be completed.
-
 If a `Parameter` is guarded by `Enum` in the `Task`, you can only provide `Parameter` values in the `TaskRun` that are predefined in the `Param.Enum` in the `Task`. The `TaskRun` will fail with reason `InvalidParamValue` otherwise.
 
 You can also specify `Enum` for [`TaskRun` with an embedded `Task`](#example-taskrun-with-an-embedded-task). The same param validation will be executed in this scenario.
