@@ -1997,6 +1997,9 @@ associated Pipeline is an invalid graph (a.k.a wrong order, cycle, …)</p>
 </tr><tr><td><p>&#34;InvalidMatrixParameterTypes&#34;</p></td>
 <td><p>ReasonInvalidMatrixParameterTypes indicates a matrix contains invalid parameter types</p>
 </td>
+</tr><tr><td><p>&#34;InvalidParamValue&#34;</p></td>
+<td><p>PipelineRunReasonInvalidParamValue indicates that the PipelineRun Param input value is not allowed.</p>
+</td>
 </tr><tr><td><p>&#34;InvalidTaskResultReference&#34;</p></td>
 <td><p>ReasonInvalidTaskResultReference indicates a task result was declared
 but was not initialized by that task</p>

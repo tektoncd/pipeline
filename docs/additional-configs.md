@@ -317,6 +317,7 @@ Features currently in "alpha" are:
 | [Coschedule](./affinityassistants.md)                                                               | [TEP-0135](https://github.com/tektoncd/community/blob/main/teps/0135-coscheduling-pipelinerun-pods.md)                        | N/A                                 |`coschedule`                                |
 | [keep pod on cancel](./taskruns.md#cancelling-a-taskrun)                                            | N/A |  v0.52 | keep-pod-on-cancel |
 | [CEL in WhenExpression](./taskruns.md#cancelling-a-taskrun)                                            | [TEP-0145](https://github.com/tektoncd/community/blob/main/teps/0145-cel-in-whenexpression.md) |  N/A | enable-cel-in-whenexpression |
+| [Param Enum](./taskruns.md#parameter-enums)                                            | [TEP-0144](https://github.com/tektoncd/community/blob/main/teps/0144-param-enum.md) |  N/A | `enable-param-enum` |
 
 ### Beta Features
 
