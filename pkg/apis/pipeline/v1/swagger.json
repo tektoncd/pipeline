@@ -343,6 +343,14 @@
           "description": "Description is a user-facing description of the parameter that may be used to populate a UI.",
           "type": "string"
         },
+        "enum": {
+          "description": "Enum declares a set of allowed param input values for tasks/pipelines that can be validated. If Enum is not set, no input validation is performed for the param.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          }
+        },
         "name": {
           "description": "Name declares the name by which a parameter is referenced.",
           "type": "string",

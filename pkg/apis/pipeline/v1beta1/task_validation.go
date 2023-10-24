@@ -441,6 +441,7 @@ func (p ParamSpec) ValidateObjectType(ctx context.Context) *apis.FieldError {
 func ValidateParameterVariables(ctx context.Context, steps []Step, params ParamSpecs) *apis.FieldError {
 	var errs *apis.FieldError
 	errs = errs.Also(params.validateNoDuplicateNames())
+	errs = errs.Also(params.validateParamEnums(ctx).ViaField("params"))
 	stringParams, arrayParams, objectParams := params.sortByType()
 	stringParameterNames := sets.NewString(stringParams.getNames()...)
 	arrayParameterNames := sets.NewString(arrayParams.getNames()...)

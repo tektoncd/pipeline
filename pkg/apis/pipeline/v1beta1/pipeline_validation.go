@@ -452,11 +452,12 @@ func validatePipelineTasksWorkspacesUsage(wss []PipelineWorkspaceDeclaration, pt
 
 // ValidatePipelineParameterVariables validates parameters with those specified by each pipeline task,
 // (1) it validates the type of parameter is either string or array (2) parameter default value matches
-// with the type of that param
+// with the type of that param (3) no duplication, feature flag and allowed param type when using param enum
 func ValidatePipelineParameterVariables(ctx context.Context, tasks []PipelineTask, params ParamSpecs) (errs *apis.FieldError) {
 	// validates all the types within a slice of ParamSpecs
 	errs = errs.Also(ValidateParameterTypes(ctx, params).ViaField("params"))
 	errs = errs.Also(params.validateNoDuplicateNames())
+	errs = errs.Also(params.validateParamEnums(ctx).ViaField("params"))
 	for i, task := range tasks {
 		errs = errs.Also(task.Params.validateDuplicateParameters().ViaField("params").ViaIndex(i))
 	}

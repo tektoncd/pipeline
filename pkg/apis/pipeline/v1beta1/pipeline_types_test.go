@@ -541,58 +541,69 @@ func TestPipelineTask_ValidateBundle_Failure(t *testing.T) {
 
 func TestPipelineTask_ValidateRegularTask_Success(t *testing.T) {
 	tests := []struct {
-		name            string
-		tasks           PipelineTask
-		enableAPIFields string
-		enableBundles   bool
+		name      string
+		tasks     PipelineTask
+		configMap map[string]string
 	}{{
 		name: "pipeline task - valid taskRef name",
 		tasks: PipelineTask{
 			Name:    "foo",
 			TaskRef: &TaskRef{Name: "example.com/my-foo-task"},
 		},
-		enableAPIFields: "stable",
+		configMap: map[string]string{"enable-api-fields": "stable"},
 	}, {
 		name: "pipeline task - valid taskSpec",
 		tasks: PipelineTask{
 			Name:     "foo",
 			TaskSpec: &EmbeddedTask{TaskSpec: getTaskSpec()},
 		},
-		enableAPIFields: "stable",
+		configMap: map[string]string{"enable-api-fields": "stable"},
+	}, {
+		name: "pipeline task - valid taskSpec with param enum",
+		tasks: PipelineTask{
+			Name: "foo",
+			TaskSpec: &EmbeddedTask{
+				TaskSpec: TaskSpec{
+					Steps: []Step{
+						{
+							Name:  "foo",
+							Image: "bar",
+						},
+					},
+					Params: []ParamSpec{
+						{
+							Name: "param1",
+							Type: ParamTypeString,
+							Enum: []string{"v1", "v2"},
+						},
+					},
+				},
+			},
+		},
+		configMap: map[string]string{"enable-param-enum": "true"},
 	}, {
 		name: "pipeline task - use of resolver",
 		tasks: PipelineTask{
 			TaskRef: &TaskRef{ResolverRef: ResolverRef{Resolver: "bar"}},
 		},
-		enableAPIFields: "beta",
+		configMap: map[string]string{"enable-api-fields": "beta"},
 	}, {
 		name: "pipeline task - use of params",
 		tasks: PipelineTask{
 			TaskRef: &TaskRef{ResolverRef: ResolverRef{Resolver: "bar", Params: Params{}}},
 		},
-		enableAPIFields: "beta",
+		configMap: map[string]string{"enable-api-fields": "beta"},
 	}, {
 		name: "pipeline task - use of bundle with the feature flag set",
 		tasks: PipelineTask{
 			Name:    "foo",
 			TaskRef: &TaskRef{Name: "bar", Bundle: "docker.io/foo"},
 		},
-		enableBundles:   true,
-		enableAPIFields: "stable",
+		configMap: map[string]string{"enable-tekton-oci-bundles": "true"},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			cfg := &config.Config{
-				FeatureFlags: &config.FeatureFlags{},
-			}
-			if tt.enableAPIFields != "" {
-				cfg.FeatureFlags.EnableAPIFields = tt.enableAPIFields
-			}
-			if tt.enableBundles {
-				cfg.FeatureFlags.EnableTektonOCIBundles = true
-			}
-			ctx = config.ToContext(ctx, cfg)
+			ctx := cfgtesting.SetFeatureFlags(context.Background(), t, tt.configMap)
 			err := tt.tasks.validateTask(ctx)
 			if err != nil {
 				t.Errorf("PipelineTask.validateTask() returned error for valid pipeline task: %v", err)
