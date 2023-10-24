@@ -106,6 +106,10 @@ const (
 	EnableStepActions = "enable-step-actions"
 	// DefaultEnableStepActions is the default value for EnableStepActions
 	DefaultEnableStepActions = false
+	// EnableParamEnum is the flag to enabled enum in params
+	EnableParamEnum = "enable-param-enum"
+	// DefaultEnableParamEnum is the default value for EnableParamEnum
+	DefaultEnableParamEnum = false
 
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
@@ -156,6 +160,7 @@ type FeatureFlags struct {
 	Coschedule                string
 	EnableCELInWhenExpression bool
 	EnableStepActions         bool
+	EnableParamEnum           bool
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -232,6 +237,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setFeature(EnableStepActions, DefaultEnableStepActions, &tc.EnableStepActions); err != nil {
+		return nil, err
+	}
+	if err := setFeature(EnableParamEnum, DefaultEnableParamEnum, &tc.EnableParamEnum); err != nil {
 		return nil, err
 	}
 	// Given that they are alpha features, Tekton Bundles and Custom Tasks should be switched on if
