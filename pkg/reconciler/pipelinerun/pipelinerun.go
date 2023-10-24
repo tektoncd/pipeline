@@ -387,6 +387,19 @@ func (c *Reconciler) resolvePipelineState(
 				return nil, controller.NewPermanentError(err)
 			}
 		}
+
+		if config.FromContextOrDefaults(ctx).FeatureFlags.EnableParamEnum {
+			for _, tr := range resolvedTask.TaskRuns {
+				if len(tr.Status.Conditions) > 0 {
+					cond := resolvedTask.TaskRuns[0].Status.Conditions[0]
+					if cond.Status == corev1.ConditionFalse && cond.Reason == v1.TaskRunReasonInvalidParamValue {
+						pr.Status.MarkFailed(v1.PipelineRunReasonInvalidParamValue.String(),
+							"Invalid param value in the referenced Task from PipelineTask \"%s\": %s", resolvedTask.PipelineTask.Name, cond.Message)
+						return nil, controller.NewPermanentError(err)
+					}
+				}
+			}
+		}
 		pst = append(pst, resolvedTask)
 	}
 	return pst, nil
@@ -485,6 +498,16 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 			"PipelineRun %s/%s parameters have mismatching types with Pipeline %s/%s's parameters: %s",
 			pr.Namespace, pr.Name, pr.Namespace, pipelineMeta.Name, err)
 		return controller.NewPermanentError(err)
+	}
+
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableParamEnum {
+		if err := taskrun.ValidateEnumParam(ctx, pr.Spec.Params, pipelineSpec.Params); err != nil {
+			logger.Errorf("PipelineRun %q Param Enum validation failed: %v", pr.Name, err)
+			pr.Status.MarkFailed(v1.PipelineRunReasonInvalidParamValue.String(),
+				"PipelineRun %s/%s parameters have invalid value: %s",
+				pr.Namespace, pr.Name, err)
+			return controller.NewPermanentError(err)
+		}
 	}
 
 	// Ensure that the keys of an object param declared in PipelineSpec are not missed in the PipelineRunSpec

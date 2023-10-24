@@ -4278,6 +4278,188 @@ spec:
 	checkPipelineRunConditionStatusAndReason(t, pipelineRun, corev1.ConditionFalse, string(v1.PipelineRunReasonCELEvaluationFailed))
 }
 
+func TestReconcile_Pipeline_Level_Enum_Pass(t *testing.T) {
+	ps := []*v1.Pipeline{parse.MustParseV1Pipeline(t, `
+metadata:
+  name: test-pipeline-level-enum
+  namespace: foo
+spec:
+  params:
+  - name: version
+    type: string
+    enum: ["v1", "v2"]
+  - name: tag
+    type: string
+  tasks:
+  - name: a-task
+    params:
+    - name: version
+      value: $(params.version)
+    - name: tag
+      value: $(params.tag)
+    taskSpec:
+      name: a-task
+      params:
+        - name: version
+        - name: tag
+      steps:
+        - name: s1
+          image: alpine
+          script: | 
+            echo $(params.version) + $(params.tag)
+`)}
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-level-enum-run
+  namespace: foo
+spec:
+  params:
+  - name: version
+    value: "v1"
+  - name: tag
+    value: "t1"
+  pipelineRef:
+    name: test-pipeline-level-enum
+`)}
+	cms := []*corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+			Data: map[string]string{
+				"enable-param-enum": "true",
+			},
+		},
+	}
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		ConfigMaps:   cms,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+	pipelineRun, _ := prt.reconcileRun("foo", "test-pipeline-level-enum-run", []string{}, false)
+	// PipelineRun in running status indicates the param enum has passed validation
+	checkPipelineRunConditionStatusAndReason(t, pipelineRun, corev1.ConditionUnknown, v1.PipelineRunReasonRunning.String())
+}
+
+func TestReconcile_Pipeline_Level_Enum_Failed(t *testing.T) {
+	ps := []*v1.Pipeline{parse.MustParseV1Pipeline(t, `
+metadata:
+  name: test-pipeline-level-enum
+  namespace: foo
+spec:
+  params:
+  - name: version
+    type: string
+    enum: ["v1", "v2"]
+  tasks:
+  - name: a-task
+    taskSpec:
+      name: a-task
+      params:
+        - name: version
+      steps:
+        - name: s1
+          image: alpine
+          script: | 
+            echo $(params.version)
+`)}
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-level-enum-run
+  namespace: foo
+spec:
+  params:
+  - name: version
+    value: "v3"
+  pipelineRef:
+    name: test-pipeline-level-enum
+`)}
+	cms := []*corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+			Data: map[string]string{
+				"enable-param-enum": "true",
+			},
+		},
+	}
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		ConfigMaps:   cms,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+	pipelineRun, _ := prt.reconcileRun("foo", "test-pipeline-level-enum-run", []string{}, true)
+	checkPipelineRunConditionStatusAndReason(t, pipelineRun, corev1.ConditionFalse, string(v1.PipelineRunReasonInvalidParamValue))
+}
+
+func TestReconcile_PipelineTask_Level_Enum_Failed(t *testing.T) {
+	ps := []*v1.Pipeline{parse.MustParseV1Pipeline(t, `
+metadata:
+  name: test-pipelineTask-level-enum
+  namespace: foo
+spec:
+  params:
+  - name: version
+    type: string
+  tasks:
+  - name: a-task
+    params:
+      - name: version
+        value: $(params.version)
+    taskSpec:
+      name: a-task
+      params:
+        - name: version
+          enum: ["v1", "v2"]
+      steps:
+        - name: s1
+          image: alpine
+          script: | 
+            echo $(params.version)
+`)}
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipelineTask-level-enum-run
+  namespace: foo
+spec:
+  params:
+  - name: version
+    value: "v3"
+  pipelineRef:
+    name: test-pipelineTask-level-enum
+`)}
+
+	trs := []*v1.TaskRun{mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipelineTask-level-enum-a-task", "foo",
+			"test-pipelineTask-level-enum-run", "test-pipelineTask-level-enum", "a-task", true),
+		`
+status:
+  conditions:
+  - status: "False"
+    type: Succeeded
+    reason: "InvalidParamValue"
+`)}
+	cms := []*corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+			Data: map[string]string{
+				"enable-param-enum": "true",
+			},
+		},
+	}
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		ConfigMaps:   cms,
+		TaskRuns:     trs,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+	pipelineRun, _ := prt.reconcileRun("foo", "test-pipelineTask-level-enum-run", []string{}, true)
+	checkPipelineRunConditionStatusAndReason(t, pipelineRun, corev1.ConditionFalse, string(v1.PipelineRunReasonInvalidParamValue))
+}
+
 // TestReconcileWithAffinityAssistantStatefulSet tests that given a pipelineRun with workspaces,
 // an Affinity Assistant StatefulSet is created for each PVC workspace and
 // that the Affinity Assistant names is propagated to TaskRuns.
