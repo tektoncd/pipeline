@@ -1,0 +1,25 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: task-param-enum
+spec:
+  params:
+  - name: message
+    enum: ["v1", "v2", "v3"]
+    default: "v1"
+  steps:
+  - name: build
+    image: bash:3.2
+    script: |
+      echo "$(params.message)"
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: taskrun-param-enum
+spec:
+  taskRef:
+    name: task-param-enum
+  params:
+    - name: message
+      value: "v1"

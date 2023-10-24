@@ -145,6 +145,24 @@ var (
 			Steps: []v1.Step{simpleStep},
 		},
 	}
+	simpleTaskWithParamEnum = &v1.Task{
+		ObjectMeta: objectMeta("test-task-param-enum", "foo"),
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1",
+			Kind:       "Task",
+		},
+		Spec: v1.TaskSpec{
+			Params: []v1.ParamSpec{{
+				Name: "param1",
+				Enum: []string{"v1", "v2"},
+			}, {
+				Name:    "param2",
+				Enum:    []string{"v1", "v2"},
+				Default: &v1.ParamValue{Type: v1.ParamTypeString, StringVal: "v1"},
+			}},
+			Steps: []v1.Step{simpleStep},
+		},
+	}
 	resultsTask = &v1.Task{
 		ObjectMeta: objectMeta("test-results-task", "foo"),
 		Spec: v1.TaskSpec{
@@ -4996,6 +5014,96 @@ status:
 				t.Errorf("Expected TaskRun to terminate with %s reason. Final conditions were:\n%#v", tc.reason, tr.Status.Conditions)
 			}
 		})
+	}
+}
+
+func TestReconcile_TaskRunWithParam_Enum_valid(t *testing.T) {
+	taskRunWithParamValid := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-with-param-enum-valid
+  namespace: foo
+spec:
+  params:
+    - name: param1
+      value: v1
+  taskRef:
+    name: test-task-param-enum
+`)
+
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{taskRunWithParamValid},
+		Tasks:    []*v1.Task{simpleTaskWithParamEnum},
+		ConfigMaps: []*corev1.ConfigMap{{
+			ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+			Data: map[string]string{
+				"enable-param-enum": "true",
+			},
+		}},
+	}
+
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	createServiceAccount(t, testAssets, taskRunWithParamValid.Spec.ServiceAccountName, taskRunWithParamValid.Namespace)
+
+	// Reconcile the TaskRun
+	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRunWithParamValid)); err == nil {
+		t.Error("wanted a wrapped requeue error, but got nil.")
+	} else if ok, _ := controller.IsRequeueKey(err); !ok {
+		t.Errorf("expected no error. Got error %v", err)
+	}
+
+	tr, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRunWithParamValid.Namespace).Get(testAssets.Ctx, taskRunWithParamValid.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("getting updated taskrun: %v", err)
+	}
+	condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+	if condition.Type != apis.ConditionSucceeded || condition.Reason == string(corev1.ConditionFalse) {
+		t.Errorf("Expected TaskRun to succeed but it did not. Final conditions were:\n%#v", tr.Status.Conditions)
+	}
+}
+
+func TestReconcile_TaskRunWithParam_Enum_invalid(t *testing.T) {
+	taskRunWithParamInvalid := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-with-param-enum-invalid
+  namespace: foo
+spec:
+  params:
+    - name: param1
+      value: invalid
+  taskRef:
+    name: test-task-param-enum
+`)
+
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{taskRunWithParamInvalid},
+		Tasks:    []*v1.Task{simpleTaskWithParamEnum},
+		ConfigMaps: []*corev1.ConfigMap{{
+			ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+			Data: map[string]string{
+				"enable-param-enum": "true",
+			},
+		}},
+	}
+
+	expectedErr := fmt.Errorf("1 error occurred:\n\t* param `param1` value: invalid is not in the enum list")
+	expectedFailureReason := "InvalidParamValue"
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	createServiceAccount(t, testAssets, taskRunWithParamInvalid.Spec.ServiceAccountName, taskRunWithParamInvalid.Namespace)
+
+	// Reconcile the TaskRun
+	err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRunWithParamInvalid))
+	if d := cmp.Diff(expectedErr.Error(), strings.TrimSuffix(err.Error(), "\n\n")); d != "" {
+		t.Errorf("Expected: %v, but Got: %v", expectedErr, err)
+	}
+	tr, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRunWithParamInvalid.Namespace).Get(testAssets.Ctx, taskRunWithParamInvalid.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Error getting updated taskrun: %v", err)
+	}
+	condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+	if condition.Type != apis.ConditionSucceeded || condition.Status != corev1.ConditionFalse || condition.Reason != expectedFailureReason {
+		t.Errorf("Expected TaskRun to fail with reason \"%s\" but it did not. Final conditions were:\n%#v", expectedFailureReason, tr.Status.Conditions)
 	}
 }
 

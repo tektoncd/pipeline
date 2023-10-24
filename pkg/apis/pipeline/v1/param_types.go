@@ -26,6 +26,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/utils/strings/slices"
 	"knative.dev/pkg/apis"
 )
 
@@ -160,6 +161,11 @@ func (ps ParamSpecs) validateParamEnums(ctx context.Context) *apis.FieldError {
 		}
 		for dup := range findDups(p.Enum) {
 			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("parameter enum value %v appears more than once", dup), "").ViaKey(p.Name))
+		}
+		if p.Default != nil && p.Default.StringVal != "" {
+			if !slices.Contains(p.Enum, p.Default.StringVal) {
+				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("param default value %v not in the enum list", p.Default.StringVal), "").ViaKey(p.Name))
+			}
 		}
 	}
 	return errs
