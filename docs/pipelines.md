@@ -269,6 +269,13 @@ spec:
         - "bar"
 ```
 
+#### Param enum
+> :seedling: **Specifying `enum` is an [alpha](additional-configs.md#alpha-features) feature.** The `enable-param-enum` feature flag must be set to `"true"` to enable this feature.
+
+> :seedling: This feature is WIP and not yet supported/implemented. Documentation to be completed.
+
+Parameter declarations can include `enum` which is a predefine set of valid values that can be accepted by the `Pipeline`.
+
 ## Adding `Tasks` to the `Pipeline`
 
  Your `Pipeline` definition must reference at least one [`Task`](tasks.md).
