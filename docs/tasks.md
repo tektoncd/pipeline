@@ -717,7 +717,28 @@ spec:
 
 > :seedling: This feature is WIP and not yet supported/implemented. Documentation to be completed.
 
-Parameter declarations can include `enum` which is a predefine set of valid values that can be accepted by the `Task`.
+Parameter declarations can include `enum` which is a predefine set of valid values that can be accepted by the `Param`. For example, the valid/allowed values for `Param` "message" is bounded to `v1`, `v2` and `v3`:
+
+``` yaml
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: param-enum-demo
+spec:
+  params:
+  - name: message
+    type: string
+    enum: ["v1", "v2", "v3"]
+  steps:
+  - name: build
+    image: bash:latest
+    script: |
+      echo "$(params.message)"
+```
+
+If the `Param` value passed in by `TaskRuns` is **NOT** in the predefined `enum` list, the `TaskRuns` will fail with reason `InvalidParamValue`.
+
+See usage in this [example](../examples/v1/taskruns/alpha/param-enum.yaml)
 
 ### Specifying `Workspaces`
 

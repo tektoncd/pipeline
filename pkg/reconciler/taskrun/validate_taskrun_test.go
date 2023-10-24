@@ -18,6 +18,7 @@ package taskrun
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -824,5 +825,131 @@ func TestValidateResult(t *testing.T) {
 				t.Errorf("did not expect any err, but got err: %s", err)
 			}
 		})
+	}
+}
+
+func TestEnumValidation_Success(t *testing.T) {
+	tcs := []struct {
+		name       string
+		params     []v1.Param
+		paramSpecs v1.ParamSpecs
+	}{{
+		name: "no enum list - success",
+		params: []v1.Param{
+			{
+				Name: "p1",
+				Value: v1.ParamValue{
+					Type:      v1.ParamTypeString,
+					StringVal: "v1",
+				},
+			},
+		},
+		paramSpecs: v1.ParamSpecs{
+			{
+				Name: "p1",
+			},
+		},
+	}, {
+		name: "optional param validation skipped - success",
+		params: []v1.Param{
+			{
+				Name: "p1",
+				Value: v1.ParamValue{
+					Type: v1.ParamTypeString,
+				},
+			},
+		},
+		paramSpecs: v1.ParamSpecs{
+			{
+				Name:    "p1",
+				Enum:    []string{"v1", "v2", "v3"},
+				Default: &v1.ParamValue{Type: v1.ParamTypeString, StringVal: "v1"},
+			},
+		},
+	}, {
+		name: "non-string param validation skipped - success",
+		params: []v1.Param{
+			{
+				Name: "p1",
+				Value: v1.ParamValue{
+					Type:     v1.ParamTypeArray,
+					ArrayVal: []string{"a1", "a2"},
+				},
+			},
+		},
+		paramSpecs: v1.ParamSpecs{
+			{
+				Name: "p1",
+				Type: v1.ParamTypeArray,
+				Enum: []string{"v1", "v2", "v3"},
+			},
+		},
+	}, {
+		name: "value in the enum list - success",
+		params: []v1.Param{
+			{
+				Name: "p1",
+				Value: v1.ParamValue{
+					StringVal: "v1",
+				},
+			},
+			{
+				Name: "p2",
+				Value: v1.ParamValue{
+					StringVal: "v2",
+				},
+			},
+		},
+		paramSpecs: v1.ParamSpecs{
+			{
+				Name: "p1",
+				Enum: []string{"v1", "v2", "v3"},
+			},
+			{
+				Name: "p2",
+				Enum: []string{"v1", "v2", "v3"},
+			},
+		},
+	}}
+
+	for _, tc := range tcs {
+		if err := ValidateEnumParam(context.Background(), tc.params, tc.paramSpecs); err != nil {
+			t.Errorf("expected err is nil, but got %v", err)
+		}
+	}
+}
+
+func TestEnumValidation_Failure(t *testing.T) {
+	tcs := []struct {
+		name        string
+		params      []v1.Param
+		paramSpecs  v1.ParamSpecs
+		expectedErr error
+	}{{
+		name: "value not in the enum list - failure",
+		params: []v1.Param{
+			{
+				Name: "p1",
+				Value: v1.ParamValue{
+					StringVal: "v4",
+					Type:      v1.ParamTypeString,
+				},
+			},
+		},
+		paramSpecs: v1.ParamSpecs{
+			{
+				Name: "p1",
+				Enum: []string{"v1", "v2", "v3"},
+			},
+		},
+		expectedErr: fmt.Errorf("param `p1` value: v4 is not in the enum list"),
+	}}
+
+	for _, tc := range tcs {
+		if err := ValidateEnumParam(context.Background(), tc.params, tc.paramSpecs); err == nil {
+			t.Errorf("expected error from ValidateEnumParam() = %v, but got none", tc.expectedErr)
+		} else if d := cmp.Diff(tc.expectedErr.Error(), err.Error()); d != "" {
+			t.Errorf("expected error does not match: %s", diff.PrintWantGot(d))
+		}
 	}
 }

@@ -417,6 +417,14 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableParamEnum {
+		if err := ValidateEnumParam(ctx, tr.Spec.Params, rtr.TaskSpec.Params); err != nil {
+			logger.Errorf("TaskRun %q Param Enum validation failed: %v", tr.Name, err)
+			tr.Status.MarkResourceFailed(v1.TaskRunReasonInvalidParamValue, err)
+			return nil, nil, controller.NewPermanentError(err)
+		}
+	}
+
 	if err := resources.ValidateParamArrayIndex(rtr.TaskSpec, tr.Spec.Params); err != nil {
 		logger.Errorf("TaskRun %q Param references are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)

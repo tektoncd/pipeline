@@ -185,6 +185,8 @@ const (
 	TaskRunReasonResultLargerThanAllowedLimit TaskRunReason = "TaskRunResultLargerThanAllowedLimit"
 	// TaskRunReasonStopSidecarFailed indicates that the sidecar is not properly stopped.
 	TaskRunReasonStopSidecarFailed = "TaskRunStopSidecarFailed"
+	// TaskRunReasonInvalidParamValue indicates that the TaskRun Param input value is not allowed.
+	TaskRunReasonInvalidParamValue = "InvalidParamValue"
 )
 
 func (t TaskRunReason) String() string {

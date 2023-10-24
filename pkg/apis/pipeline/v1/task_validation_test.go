@@ -2300,6 +2300,21 @@ func TestParamEnum_Failure(t *testing.T) {
 		configMap   map[string]string
 		expectedErr error
 	}{{
+		name: "param default val not in enum list - failure",
+		params: []v1.ParamSpec{{
+			Name: "param1",
+			Type: v1.ParamTypeString,
+			Default: &v1.ParamValue{
+				Type:      v1.ParamTypeString,
+				StringVal: "v4",
+			},
+			Enum: []string{"v1", "v2"},
+		}},
+		configMap: map[string]string{
+			"enable-param-enum": "true",
+		},
+		expectedErr: fmt.Errorf("param default value v4 not in the enum list: params[param1]"),
+	}, {
 		name: "param enum with array type - failure",
 		params: []v1.ParamSpec{{
 			Name: "param1",
