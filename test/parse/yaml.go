@@ -23,6 +23,17 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+// MustParseV1alpha1StepAction takes YAML and parses it into a *v1alpha1.StepAction
+func MustParseV1alpha1StepAction(t *testing.T, yaml string) *v1alpha1.StepAction {
+	t.Helper()
+	var sa v1alpha1.StepAction
+	yaml = `apiVersion: tekton.dev/v1alpha1
+kind: StepAction
+` + yaml
+	mustParseYAML(t, yaml, &sa)
+	return &sa
+}
+
 // MustParseV1beta1TaskRun takes YAML and parses it into a *v1beta1.TaskRun
 func MustParseV1beta1TaskRun(t *testing.T, yaml string) *v1beta1.TaskRun {
 	t.Helper()

@@ -19,16 +19,34 @@ package resources_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/test/diff"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+func getStepAction(ctx context.Context, n string) (*v1alpha1.StepAction, *v1.RefSource, error) {
+	stepAction := &v1alpha1.StepAction{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "stepAction",
+		},
+		Spec: v1alpha1.StepActionSpec{
+			Image:   "myimage",
+			Command: []string{"ls"},
+			Args:    []string{"-lh"},
+		},
+	}
+	return stepAction, nil, nil
+}
 
 func TestGetTaskSpec_Ref(t *testing.T) {
 	task := &v1.Task{
@@ -55,7 +73,7 @@ func TestGetTaskSpec_Ref(t *testing.T) {
 	gt := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return task, sampleRefSource.DeepCopy(), nil, nil
 	}
-	resolvedObjectMeta, taskSpec, err := resources.GetTaskData(context.Background(), tr, gt)
+	resolvedObjectMeta, taskSpec, err := resources.GetTaskData(context.Background(), tr, gt, getStepAction)
 
 	if err != nil {
 		t.Fatalf("Did not expect error getting task spec but got: %s", err)
@@ -89,7 +107,7 @@ func TestGetTaskSpec_Embedded(t *testing.T) {
 	gt := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return nil, nil, nil, errors.New("shouldn't be called")
 	}
-	resolvedObjectMeta, taskSpec, err := resources.GetTaskData(context.Background(), tr, gt)
+	resolvedObjectMeta, taskSpec, err := resources.GetTaskData(context.Background(), tr, gt, getStepAction)
 
 	if err != nil {
 		t.Fatalf("Did not expect error getting task spec but got: %s", err)
@@ -118,7 +136,7 @@ func TestGetTaskSpec_Invalid(t *testing.T) {
 	gt := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return nil, nil, nil, errors.New("shouldn't be called")
 	}
-	_, _, err := resources.GetTaskData(context.Background(), tr, gt)
+	_, _, err := resources.GetTaskData(context.Background(), tr, gt, getStepAction)
 	if err == nil {
 		t.Fatalf("Expected error resolving spec with no embedded or referenced task spec but didn't get error")
 	}
@@ -138,7 +156,7 @@ func TestGetTaskSpec_Error(t *testing.T) {
 	gt := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return nil, nil, nil, errors.New("something went wrong")
 	}
-	_, _, err := resources.GetTaskData(context.Background(), tr, gt)
+	_, _, err := resources.GetTaskData(context.Background(), tr, gt, getStepAction)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Task but got none")
 	}
@@ -182,7 +200,7 @@ func TestGetTaskData_ResolutionSuccess(t *testing.T) {
 		}, sampleRefSource.DeepCopy(), nil, nil
 	}
 	ctx := context.Background()
-	resolvedMeta, resolvedSpec, err := resources.GetTaskData(ctx, tr, getTask)
+	resolvedMeta, resolvedSpec, err := resources.GetTaskData(ctx, tr, getTask, getStepAction)
 	if err != nil {
 		t.Fatalf("Unexpected error getting mocked data: %v", err)
 	}
@@ -216,7 +234,7 @@ func TestGetPipelineData_ResolutionError(t *testing.T) {
 		return nil, nil, nil, errors.New("something went wrong")
 	}
 	ctx := context.Background()
-	_, _, err := resources.GetTaskData(ctx, tr, getTask)
+	_, _, err := resources.GetTaskData(ctx, tr, getTask, getStepAction)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Task but got none")
 	}
@@ -239,7 +257,7 @@ func TestGetTaskData_ResolvedNilTask(t *testing.T) {
 		return nil, nil, nil, nil
 	}
 	ctx := context.Background()
-	_, _, err := resources.GetTaskData(ctx, tr, getTask)
+	_, _, err := resources.GetTaskData(ctx, tr, getTask, getStepAction)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Task but got none")
 	}
@@ -286,11 +304,177 @@ func TestGetTaskData_VerificationResult(t *testing.T) {
 			Spec:       *sourceSpec.DeepCopy(),
 		}, nil, verificationResult, nil
 	}
-	r, _, err := resources.GetTaskData(context.Background(), tr, getTask)
+	r, _, err := resources.GetTaskData(context.Background(), tr, getTask, getStepAction)
 	if err != nil {
 		t.Fatalf("Did not expect error but got: %s", err)
 	}
 	if d := cmp.Diff(verificationResult, r.VerificationResult, cmpopts.EquateErrors()); d != "" {
 		t.Errorf(diff.PrintWantGot(d))
+	}
+}
+
+func TestGetStepAction(t *testing.T) {
+	tests := []struct {
+		name           string
+		tr             *v1.TaskRun
+		want           *v1.TaskSpec
+		stepActionFunc func(ctx context.Context, n string) (*v1alpha1.StepAction, *v1.RefSource, error)
+	}{{
+		name: "step-action-with-command-args",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "mytaskrun",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							Name: "stepAction",
+						},
+						WorkingDir: "/bar",
+						Timeout:    &metav1.Duration{Duration: time.Hour},
+					}},
+				},
+			},
+		},
+		want: &v1.TaskSpec{
+			Steps: []v1.Step{{
+				Image:      "myimage",
+				Command:    []string{"ls"},
+				Args:       []string{"-lh"},
+				WorkingDir: "/bar",
+				Timeout:    &metav1.Duration{Duration: time.Hour},
+			}},
+		},
+		stepActionFunc: getStepAction,
+	}, {
+		name: "step-action-with-script",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "mytaskrun",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							Name: "stepActionWithScript",
+						},
+					}},
+				},
+			},
+		},
+		want: &v1.TaskSpec{
+			Steps: []v1.Step{{
+				Image:  "myimage",
+				Script: "ls",
+			}},
+		},
+		stepActionFunc: func(ctx context.Context, n string) (*v1alpha1.StepAction, *v1.RefSource, error) {
+			stepAction := &v1alpha1.StepAction{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "stepActionWithScript",
+				},
+				Spec: v1alpha1.StepActionSpec{
+					Image:  "myimage",
+					Script: "ls",
+				},
+			}
+			return stepAction, nil, nil
+		},
+	}, {
+		name: "step-action-with-env",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "mytaskrun",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							Name: "stepActionWithEnv",
+						},
+					}},
+				},
+			},
+		},
+		want: &v1.TaskSpec{
+			Steps: []v1.Step{{
+				Image: "myimage",
+				Env: []corev1.EnvVar{{
+					Name:  "env1",
+					Value: "value1",
+				}},
+			}},
+		},
+		stepActionFunc: func(ctx context.Context, n string) (*v1alpha1.StepAction, *v1.RefSource, error) {
+			stepAction := &v1alpha1.StepAction{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "stepActionWithEnv",
+				},
+				Spec: v1alpha1.StepActionSpec{
+					Image: "myimage",
+					Env: []corev1.EnvVar{{
+						Name:  "env1",
+						Value: "value1",
+					}},
+				},
+			}
+			return stepAction, nil, nil
+		},
+	}}
+	for _, tt := range tests {
+		gt := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+			return nil, nil, nil, nil
+		}
+
+		_, got, err := resources.GetTaskData(context.Background(), tt.tr, gt, tt.stepActionFunc)
+		if err != nil {
+			t.Errorf("Did not expect an error but got : %s", err)
+		}
+		if d := cmp.Diff(tt.want, got); d != "" {
+			t.Errorf("the taskSpec did not match what was expected diff: %s", diff.PrintWantGot(d))
+		}
+	}
+}
+
+func TestGetStepAction_Error(t *testing.T) {
+	tests := []struct {
+		name           string
+		tr             *v1.TaskRun
+		stepActionFunc func(ctx context.Context, n string) (*v1alpha1.StepAction, *v1.RefSource, error)
+		expectedError  error
+	}{{
+		name: "step-action-error",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "mytaskrun",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							Name: "stepActionError",
+						},
+					}},
+				},
+			},
+		},
+		stepActionFunc: func(ctx context.Context, n string) (*v1alpha1.StepAction, *v1.RefSource, error) {
+			return nil, nil, fmt.Errorf("Error fetching Step Action.")
+		},
+		expectedError: fmt.Errorf("Error fetching Step Action."),
+	}}
+	for _, tt := range tests {
+		gt := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+			return nil, nil, nil, nil
+		}
+
+		_, _, err := resources.GetTaskData(context.Background(), tt.tr, gt, tt.stepActionFunc)
+		if err == nil {
+			t.Fatalf("Expected to get an error but did not find any.")
+		}
+		if d := cmp.Diff(tt.expectedError.Error(), err.Error()); d != "" {
+			t.Errorf("the expected error did not match what was received: %s", diff.PrintWantGot(d))
+		}
 	}
 }

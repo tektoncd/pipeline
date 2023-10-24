@@ -123,6 +123,15 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 	}
 }
 
+// GetStepActionFunc is a factory function that will use the given Ref as context to return a valid GetStepAction function.
+func GetStepActionFunc(tekton clientset.Interface, namespace string) GetStepAction {
+	local := &LocalStepActionRefResolver{
+		Namespace:    namespace,
+		Tektonclient: tekton,
+	}
+	return local.GetStepAction
+}
+
 // resolveTask accepts an impl of remote.Resolver and attempts to
 // fetch a task with given name and verify the v1beta1 task if trusted resources is enabled.
 // An error is returned if the remoteresource doesn't work
@@ -220,6 +229,26 @@ func (l *LocalTaskRefResolver) GetTask(ctx context.Context, name string) (*v1.Ta
 		return nil, nil, nil, err
 	}
 	return task, nil, nil, nil
+}
+
+// LocalStepActionRefResolver uses the current cluster to resolve a StepAction reference.
+type LocalStepActionRefResolver struct {
+	Namespace    string
+	Tektonclient clientset.Interface
+}
+
+// GetStepAction will resolve a StepAction from the local cluster using a versioned Tekton client.
+// It will return an error if it can't find an appropriate StepAction for any reason.
+func (l *LocalStepActionRefResolver) GetStepAction(ctx context.Context, name string) (*v1alpha1.StepAction, *v1.RefSource, error) {
+	// If we are going to resolve this reference locally, we need a namespace scope.
+	if l.Namespace == "" {
+		return nil, nil, fmt.Errorf("must specify namespace to resolve reference to step action %s", name)
+	}
+	stepAction, err := l.Tektonclient.TektonV1alpha1().StepActions(l.Namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, nil, err
+	}
+	return stepAction, nil, nil
 }
 
 // IsGetTaskErrTransient returns true if an error returned by GetTask is retryable.
