@@ -51,6 +51,19 @@ import (
 )
 
 var (
+	simpleNamespacedStepAction = &v1alpha1.StepAction{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "simple",
+			Namespace: "default",
+		},
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1alpha1",
+			Kind:       "StepAction",
+		},
+		Spec: v1alpha1.StepActionSpec{
+			Image: "something",
+		},
+	}
 	simpleNamespacedTask = &v1.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "simple",
@@ -296,6 +309,127 @@ func TestLocalTaskRef(t *testing.T) {
 	}
 }
 
+func TestStepActionRef(t *testing.T) {
+	testcases := []struct {
+		name        string
+		namespace   string
+		stepactions []runtime.Object
+		ref         *v1.Ref
+		expected    runtime.Object
+	}{{
+		name:      "local-step-action",
+		namespace: "default",
+		stepactions: []runtime.Object{
+			&v1alpha1.StepAction{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "simple",
+					Namespace: "default",
+				},
+			},
+			&v1alpha1.StepAction{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "dummy",
+					Namespace: "default",
+				},
+			},
+		},
+		ref: &v1.Ref{
+			Name: "simple",
+		},
+		expected: &v1alpha1.StepAction{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "simple",
+				Namespace: "default",
+			},
+		},
+	}}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			tektonclient := fake.NewSimpleClientset(tc.stepactions...)
+
+			lc := &resources.LocalStepActionRefResolver{
+				Namespace:    tc.namespace,
+				Tektonclient: tektonclient,
+			}
+
+			task, refSource, err := lc.GetStepAction(ctx, tc.ref.Name)
+			if err != nil {
+				t.Fatalf("Received unexpected error ( %#v )", err)
+			}
+
+			if d := cmp.Diff(tc.expected, task); tc.expected != nil && d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+
+			// local cluster step actions have empty source for now. This may be changed in future.
+			if refSource != nil {
+				t.Errorf("expected refsource is nil, but got %v", refSource)
+			}
+		})
+	}
+}
+
+func TestStepActionRef_Error(t *testing.T) {
+	testcases := []struct {
+		name        string
+		namespace   string
+		stepactions []runtime.Object
+		ref         *v1.Ref
+		wantErr     error
+	}{
+		{
+			name:        "step-action-not-found",
+			namespace:   "default",
+			stepactions: []runtime.Object{},
+			ref: &v1.Ref{
+				Name: "simple",
+			},
+			wantErr: errors.New(`stepactions.tekton.dev "simple" not found`),
+		}, {
+			name:      "local-step-action-missing-namespace",
+			namespace: "",
+			stepactions: []runtime.Object{
+				&v1alpha1.StepAction{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "simple",
+						Namespace: "default",
+					},
+				},
+			},
+			ref: &v1.Ref{
+				Name: "simple",
+			},
+			wantErr: fmt.Errorf("must specify namespace to resolve reference to step action simple"),
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			tektonclient := fake.NewSimpleClientset(tc.stepactions...)
+
+			lc := &resources.LocalStepActionRefResolver{
+				Namespace:    tc.namespace,
+				Tektonclient: tektonclient,
+			}
+
+			_, _, err := lc.GetStepAction(ctx, tc.ref.Name)
+			if err == nil {
+				t.Fatal("Expected error but found nil instead")
+			}
+			if tc.wantErr.Error() != err.Error() {
+				t.Fatalf("Received different error ( %#v )", err)
+			}
+		})
+	}
+}
+
 func TestGetTaskFunc_Local(t *testing.T) {
 	ctx := context.Background()
 
@@ -405,6 +539,47 @@ func TestGetTaskFunc_Local(t *testing.T) {
 	}
 }
 
+func TestGetStepActionFunc_Local(t *testing.T) {
+	ctx := context.Background()
+
+	testcases := []struct {
+		name             string
+		localStepActions []runtime.Object
+		ref              *v1.Ref
+		expected         runtime.Object
+	}{
+		{
+			name:             "local-step-action",
+			localStepActions: []runtime.Object{simpleNamespacedStepAction},
+			ref: &v1.Ref{
+				Name: "simple",
+			},
+			expected: simpleNamespacedStepAction,
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			tektonclient := fake.NewSimpleClientset(tc.localStepActions...)
+
+			fn := resources.GetStepActionFunc(tektonclient, "default")
+
+			stepAction, refSource, err := fn(ctx, tc.ref.Name)
+			if err != nil {
+				t.Fatalf("failed to call stepActionfn: %s", err.Error())
+			}
+
+			if diff := cmp.Diff(stepAction, tc.expected); tc.expected != nil && diff != "" {
+				t.Error(diff)
+			}
+
+			// local cluster task has empty RefSource for now. This may be changed in future.
+			if refSource != nil {
+				t.Errorf("expected refSource is nil, but got %v", refSource)
+			}
+		})
+	}
+}
 func TestGetTaskFuncFromTaskRunSpecAlreadyFetched(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
