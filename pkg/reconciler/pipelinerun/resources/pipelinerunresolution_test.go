@@ -4999,3 +4999,254 @@ func TestEvaluateCEL_invalid(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateParamEnumSubset_Valid(t *testing.T) {
+	tcs := []struct {
+		name       string
+		params     []v1.Param
+		pipelinePs []v1.ParamSpec
+		rt         *resources.ResolvedTask
+	}{
+		{
+			name: "no enum - pass",
+			params: []v1.Param{
+				{
+					Name: "resolved-task-p1",
+					Value: v1.ParamValue{
+						StringVal: "$(params.p1)",
+					},
+				},
+			},
+			pipelinePs: []v1.ParamSpec{
+				{
+					Name: "p1",
+					Type: v1.ParamTypeString,
+				},
+			},
+			rt: &resources.ResolvedTask{
+				TaskSpec: &v1.TaskSpec{
+					Params: v1.ParamSpecs{
+						{
+							Name: "resolved-task-p1",
+						},
+					},
+				},
+			},
+		}, {
+			name: "no task-level enum - pass",
+			params: []v1.Param{
+				{
+					Name: "resolved-task-p1",
+					Value: v1.ParamValue{
+						StringVal: "$(params.p1)",
+					},
+				},
+			},
+			pipelinePs: []v1.ParamSpec{
+				{
+					Name: "p1",
+					Type: v1.ParamTypeString,
+					Enum: []string{"v1", "v2"},
+				},
+			},
+			rt: &resources.ResolvedTask{
+				TaskSpec: &v1.TaskSpec{
+					Params: v1.ParamSpecs{
+						{
+							Name: "resolved-task-p1",
+						},
+					},
+				},
+			},
+		}, {
+			name: "task and pipeline level enum - pass",
+			params: []v1.Param{
+				{
+					Name: "resolved-task-p1",
+					Value: v1.ParamValue{
+						StringVal: "$(params.p1)",
+					},
+				}, {
+					Name: "resolved-task-p2",
+					Value: v1.ParamValue{
+						StringVal: "$(params.p2)",
+					},
+				},
+			},
+			pipelinePs: []v1.ParamSpec{
+				{
+					Name: "p1",
+					Type: v1.ParamTypeString,
+					Enum: []string{"v1", "v2"},
+				},
+				{
+					Name: "p2",
+					Type: v1.ParamTypeString,
+					Enum: []string{"v3", "v4"},
+				},
+			},
+			rt: &resources.ResolvedTask{
+				TaskSpec: &v1.TaskSpec{
+					Params: v1.ParamSpecs{
+						{
+							Name: "resolved-task-p1",
+							Enum: []string{"v1", "v2", "v3"},
+						},
+						{
+							Name: "resolved-task-p2",
+							Enum: []string{"v3", "v4"},
+						},
+					},
+				},
+			},
+		}, {
+			name: "no referenced param enum - pass",
+			params: []v1.Param{
+				{
+					Name: "resolved-task-p1",
+					Value: v1.ParamValue{
+						StringVal: "v1",
+					},
+				}, {
+					Name: "resolved-task-p2",
+					Value: v1.ParamValue{
+						StringVal: "$(task1.results.r1)",
+					},
+				},
+			},
+		}, {
+			name: "non-string typed param - pass",
+			params: []v1.Param{
+				{
+					Name: "resolved-task-p1",
+					Value: v1.ParamValue{
+						StringVal: "$(params.object1.key)",
+					},
+				}, {
+					Name: "resolved-task-p2",
+					Value: v1.ParamValue{
+						StringVal: "$(params.array1[0])",
+					},
+				},
+			},
+			pipelinePs: []v1.ParamSpec{
+				{
+					Name: "array1",
+					Type: v1.ParamTypeArray,
+				},
+				{
+					Name: "object1",
+					Type: v1.ParamTypeObject,
+				},
+			},
+			rt: &resources.ResolvedTask{
+				TaskSpec: &v1.TaskSpec{
+					Params: v1.ParamSpecs{
+						{
+							Name: "resolved-task-p1",
+							Enum: []string{"v1", "v2"},
+						},
+						{
+							Name: "resolved-task-p2",
+							Enum: []string{"v3", "v4"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tcs {
+		if err := ValidateParamEnumSubset(tc.params, tc.pipelinePs, tc.rt); err != nil {
+			t.Errorf("unexpected error in ValidateParamEnumSubset: %s", err)
+		}
+	}
+}
+
+func TestValidateParamEnumSubset_Invalid(t *testing.T) {
+	tcs := []struct {
+		name       string
+		params     []v1.Param
+		pipelinePs []v1.ParamSpec
+		rt         *resources.ResolvedTask
+		wantErr    error
+	}{{
+		name: "pipeline enum is not a subset - fail",
+		params: []v1.Param{
+			{
+				Name: "resolved-task-p1",
+				Value: v1.ParamValue{
+					StringVal: "$(params.p1)",
+				},
+			},
+		},
+		pipelinePs: []v1.ParamSpec{
+			{
+				Name: "p1",
+				Type: v1.ParamTypeString,
+				Enum: []string{"v1", "v2"},
+			},
+		},
+		rt: &resources.ResolvedTask{
+			TaskName: "ref1",
+			TaskSpec: &v1.TaskSpec{
+				Params: v1.ParamSpecs{
+					{
+						Name: "resolved-task-p1",
+						Enum: []string{"v1", "v3"},
+					},
+				},
+			},
+		},
+		wantErr: fmt.Errorf("pipeline param \"p1\" enum: [v1 v2] is not a subset of the referenced in \"ref1\" task param enum: [v1 v3]"),
+	}, {
+		name: "empty pipeline enum with non-empty task enum - fail",
+		params: []v1.Param{
+			{
+				Name: "resolved-task-p1",
+				Value: v1.ParamValue{
+					StringVal: "$(params.p1)",
+				},
+			},
+		},
+		pipelinePs: []v1.ParamSpec{
+			{
+				Name: "p1",
+				Type: v1.ParamTypeString,
+			},
+		},
+		rt: &resources.ResolvedTask{
+			TaskName: "ref1",
+			TaskSpec: &v1.TaskSpec{
+				Params: v1.ParamSpecs{
+					{
+						Name: "resolved-task-p1",
+						Enum: []string{"v1", "v3"},
+					},
+				},
+			},
+		},
+		wantErr: fmt.Errorf("pipeline param \"p1\" has no enum, but referenced in \"ref1\" task has enums: [v1 v3]"),
+	}, {
+		name: "invalid param syntax - failure",
+		params: []v1.Param{
+			{
+				Name: "resolved-task-p1",
+				Value: v1.ParamValue{
+					StringVal: "$(params.p1.aaa.bbb)",
+				},
+			},
+		},
+		wantErr: fmt.Errorf("unexpected error in ExtractVariablesFromString: Invalid referencing of parameters in \"$(params.p1.aaa.bbb)\"! Only two dot-separated components after the prefix \"params\" are allowed."),
+	}}
+
+	for _, tc := range tcs {
+		err := ValidateParamEnumSubset(tc.params, tc.pipelinePs, tc.rt)
+		if err == nil {
+			t.Errorf("expecting error in ValidateParamEnumSubset: %s, but got nil", err)
+		}
+		if d := cmp.Diff(tc.wantErr.Error(), err.Error()); d != "" {
+			t.Errorf("expecting error does not match in ValidateParamEnumSubset: %s", diff.PrintWantGot(d))
+		}
+	}
+}

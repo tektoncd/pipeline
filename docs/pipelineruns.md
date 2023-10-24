@@ -271,6 +271,18 @@ case is when your CI system autogenerates `PipelineRuns` and it has `Parameters`
 provide to all `PipelineRuns`. Because you can pass in extra `Parameters`, you don't have to
 go through the complexity of checking each `Pipeline` and providing only the required params.
 
+#### Parameter Enums
+
+> :seedling: **`enum` is an [alpha](additional-configs.md#alpha-features) feature.** The `enable-param-enum` feature flag must be set to `"true"` to enable this feature.
+
+If a `Parameter` is guarded by `Enum` in the `Pipeline`, you can only provide `Parameter` values in the `PipelineRun` that are predefined in the `Param.Enum` in the `Pipeline`. The `PipelineRun` will fail with reason `InvalidParamValue` otherwise. 
+
+Tekton will also the validate the `param` values passed to any referenced `Tasks` (via `taskRef`) if `Enum` is specified for the `Task`. The `PipelineRun` will fail with reason `InvalidParamValue` if `Enum` validation is failed for any of the `PipelineTask`. 
+
+You can also specify `Enum` in an embedded `Pipeline` in a `PipelineRun`. The same `Param` validation will be executed in this scenario.
+
+See more details in [Param.Enum](./pipelines.md#param-enum).
+
 #### Propagated Parameters
 
 When using an inlined spec, parameters from the parent `PipelineRun` will be

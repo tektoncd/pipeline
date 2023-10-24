@@ -272,11 +272,77 @@ spec:
 ```
 
 #### Param enum
-> :seedling: **Specifying `enum` is an [alpha](additional-configs.md#alpha-features) feature.** The `enable-param-enum` feature flag must be set to `"true"` to enable this feature.
+> :seedling: **`enum` is an [alpha](additional-configs.md#alpha-features) feature.** The `enable-param-enum` feature flag must be set to `"true"` to enable this feature.
 
-> :seedling: This feature is WIP and not yet supported/implemented. Documentation to be completed.
+Parameter declarations can include `enum` which is a predefine set of valid values that can be accepted by the `Pipeline` `Param`. If a `Param` has both `enum` and default value, the default value must be in the `enum` set. For example, the valid/allowed values for `Param` "message" is bounded to `v1` and `v2`:
 
-Parameter declarations can include `enum` which is a predefine set of valid values that can be accepted by the `Pipeline`.
+``` yaml
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: pipeline-param-enum
+spec:
+  params:
+  - name: message
+    enum: ["v1", "v2"]
+    default: "v1"
+  tasks:
+  - name: task1
+    params:
+      - name: message
+        value: $(params.message)
+    steps:
+    - name: build
+      image: bash:3.2
+      script: |
+        echo "$(params.message)"
+```
+
+If the `Param` value passed in by `PipelineRun` is **NOT** in the predefined `enum` list, the `PipelineRun` will fail with reason `InvalidParamValue`.
+
+If a `PipelineTask` references a `Task` with `enum`, the `enums` specified in the Pipeline `spec.params` (pipeline-level `enum`) must be
+a **subset** of the `enums` specified in the referenced `Task` (task-level `enum`). Note that an empty pipeline-level `enum` is invalid 
+in this scenario since an empty `enum` set indicates a "universal set" which allows all possible values. In the below example, the referenced `Task` accepts `v1` and `v2` as valid values, the `Pipeline` further restricts the valid values to `v1`.
+
+``` yaml
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: param-enum-demo
+spec:
+  params:
+  - name: message
+    type: string
+    enum: ["v1", "v2"]
+  steps:
+  - name: build
+    image: bash:latest
+    script: |
+      echo "$(params.message)"
+```
+
+``` yaml
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: pipeline-param-enum
+spec:
+  params:
+  - name: message
+    enum: ["v1"]  # note that an empty enum set is invalid
+  tasks:
+  - name: task1
+    params:
+      - name: message
+        value: $(params.message)
+    taskRef:
+      name: param-enum-demo
+```
+
+Tekton validates user-provided values in a `PipelineRun` against the `enum` specified in the `PipelineSpec.params`. Tekton also validates
+any resolved `param` value against the `enum` specified in each `PipelineTask` before creating the `TaskRun`.
+
+See usage in this [example](../examples/v1/pipelineruns/alpha/param-enum.yaml)
 
 ## Adding `Tasks` to the `Pipeline`
 

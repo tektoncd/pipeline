@@ -713,11 +713,9 @@ spec:
 ```
 
 #### Param enum
-> :seedling: **Specifying `enum` is an [alpha](additional-configs.md#alpha-features) feature.** The `enable-param-enum` feature flag must be set to `"true"` to enable this feature.
+> :seedling: **`enum` is an [alpha](additional-configs.md#alpha-features) feature.** The `enable-param-enum` feature flag must be set to `"true"` to enable this feature.
 
-> :seedling: This feature is WIP and not yet supported/implemented. Documentation to be completed.
-
-Parameter declarations can include `enum` which is a predefine set of valid values that can be accepted by the `Param`. For example, the valid/allowed values for `Param` "message" is bounded to `v1`, `v2` and `v3`:
+Parameter declarations can include `enum` which is a predefine set of valid values that can be accepted by the `Param`. If a `Param` has both `enum` and default value, the default value must be in the `enum` set. For example, the valid/allowed values for `Param` "message" is bounded to `v1`, `v2` and `v3`:
 
 ``` yaml
 apiVersion: tekton.dev/v1
@@ -729,6 +727,7 @@ spec:
   - name: message
     type: string
     enum: ["v1", "v2", "v3"]
+    default: "v1"
   steps:
   - name: build
     image: bash:latest
