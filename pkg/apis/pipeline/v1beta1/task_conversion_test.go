@@ -74,6 +74,15 @@ spec:
   - image: foo
   - image: bar
 `
+	stepActionTaskYAML := `
+metadata:
+  name: foo
+  namespace: bar
+spec:
+  steps:
+    - ref:
+        name: "step-action"
+`
 	taskWithAllNoDeprecatedFieldsYAML := `
 metadata:
   name: foo
@@ -261,6 +270,9 @@ spec:
 	multiStepTaskV1beta1 := parse.MustParseV1beta1Task(t, multiStepTaskYAML)
 	multiStepTaskV1 := parse.MustParseV1Task(t, multiStepTaskYAML)
 
+	stepActionTaskV1beta1 := parse.MustParseV1beta1Task(t, stepActionTaskYAML)
+	stepActionTaskV1 := parse.MustParseV1Task(t, stepActionTaskYAML)
+
 	taskWithAllNoDeprecatedFieldsV1beta1 := parse.MustParseV1beta1Task(t, taskWithAllNoDeprecatedFieldsYAML)
 	taskWithAllNoDeprecatedFieldsV1 := parse.MustParseV1Task(t, taskWithAllNoDeprecatedFieldsYAML)
 
@@ -293,6 +305,10 @@ spec:
 		name:        "task conversion all non deprecated fields",
 		v1beta1Task: taskWithAllNoDeprecatedFieldsV1beta1,
 		v1Task:      taskWithAllNoDeprecatedFieldsV1,
+	}, {
+		name:        "step action in task",
+		v1beta1Task: stepActionTaskV1beta1,
+		v1Task:      stepActionTaskV1,
 	}, {
 		name:        "task conversion deprecated fields",
 		v1beta1Task: taskWithDeprecatedFieldsV1beta1,
