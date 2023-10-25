@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -515,6 +516,38 @@ func TestTaskSpecValidate(t *testing.T) {
 				Results:      tt.fields.Results,
 			}
 			ctx := context.Background()
+			ts.SetDefaults(ctx)
+			if err := ts.Validate(ctx); err != nil {
+				t.Errorf("TaskSpec.Validate() = %v", err)
+			}
+		})
+	}
+}
+
+func TestTaskSpecStepActionReferenceValidate(t *testing.T) {
+	tests := []struct {
+		name  string
+		Steps []v1beta1.Step
+	}{{
+		name: "valid stepaction ref",
+		Steps: []v1beta1.Step{{
+			Name:       "mystep",
+			WorkingDir: "/foo",
+			Ref: &v1beta1.Ref{
+				Name: "stepAction",
+			},
+		}},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := &v1beta1.TaskSpec{
+				Steps: tt.Steps,
+			}
+			ctx := config.ToContext(context.Background(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					EnableStepActions: true,
+				},
+			})
 			ts.SetDefaults(ctx)
 			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
@@ -1370,6 +1403,116 @@ func TestTaskSpecValidateError(t *testing.T) {
 				Resources:    tt.fields.Resources,
 			}
 			ctx := context.Background()
+			ts.SetDefaults(ctx)
+			err := ts.Validate(ctx)
+			if err == nil {
+				t.Fatalf("Expected an error, got nothing for %v", ts)
+			}
+			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("TaskSpec.Validate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestTaskSpecValidateErrorWithStepActionRef(t *testing.T) {
+	tests := []struct {
+		name              string
+		Steps             []v1beta1.Step
+		enableStepActions bool
+		expectedError     apis.FieldError
+	}{{
+		name: "invalid Task Spec - enableStepActions not on",
+		Steps: []v1beta1.Step{{
+			Image: "image",
+			Ref: &v1beta1.Ref{
+				Name: "stepAction",
+			},
+		}},
+		enableStepActions: false,
+		expectedError: apis.FieldError{
+			Message: "feature flag %s should be set to true to reference StepActions in Steps.",
+			Paths:   []string{"steps[0].enable-step-actions"},
+		},
+	}, {
+		name: "Cannot use image with Ref",
+		Steps: []v1beta1.Step{{
+			Ref: &v1beta1.Ref{
+				Name: "stepAction",
+			},
+			Image: "foo",
+		}},
+		enableStepActions: true,
+		expectedError: apis.FieldError{
+			Message: "image cannot be used with Ref",
+			Paths:   []string{"steps[0].image"},
+		},
+	}, {
+		name: "Cannot use command with Ref",
+		Steps: []v1beta1.Step{{
+			Ref: &v1beta1.Ref{
+				Name: "stepAction",
+			},
+			Command: []string{"foo"},
+		}},
+		enableStepActions: true,
+		expectedError: apis.FieldError{
+			Message: "command cannot be used with Ref",
+			Paths:   []string{"steps[0].command"},
+		},
+	}, {
+		name: "Cannot use args with Ref",
+		Steps: []v1beta1.Step{{
+			Ref: &v1beta1.Ref{
+				Name: "stepAction",
+			},
+			Args: []string{"foo"},
+		}},
+		enableStepActions: true,
+		expectedError: apis.FieldError{
+			Message: "args cannot be used with Ref",
+			Paths:   []string{"steps[0].args"},
+		},
+	}, {
+		name: "Cannot use script with Ref",
+		Steps: []v1beta1.Step{{
+			Ref: &v1beta1.Ref{
+				Name: "stepAction",
+			},
+			Script: "echo hi",
+		}},
+		enableStepActions: true,
+		expectedError: apis.FieldError{
+			Message: "script cannot be used with Ref",
+			Paths:   []string{"steps[0].script"},
+		},
+	}, {
+		name: "Cannot use env with Ref",
+		Steps: []v1beta1.Step{{
+			Ref: &v1beta1.Ref{
+				Name: "stepAction",
+			},
+			Env: []corev1.EnvVar{{
+				Name:  "env1",
+				Value: "value1",
+			}},
+		}},
+		enableStepActions: true,
+		expectedError: apis.FieldError{
+			Message: "env cannot be used with Ref",
+			Paths:   []string{"steps[0].env"},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := v1beta1.TaskSpec{
+				Steps: tt.Steps,
+			}
+			ctx := config.ToContext(context.Background(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					EnableStepActions: tt.enableStepActions,
+				},
+			})
 			ts.SetDefaults(ctx)
 			err := ts.Validate(ctx)
 			if err == nil {

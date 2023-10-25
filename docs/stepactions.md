@@ -52,5 +52,86 @@ spec:
       value: /home
   image: ubuntu 
   command: ["ls"]
-  args:: ["-lh"]
+  args: ["-lh"]
+```
+
+## Referencing a StepAction
+
+`StepActions` can be referenced from the `Step` using the `ref` field, as follows:
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: step-action-run
+spec:
+  TaskSpec:
+    steps:
+      - name: action-runner
+        ref:
+          name: step-action
+```
+
+If a `Step` is referencing a `StepAction`, it cannot contain the fields supported by `StepActions`. This includes:
+- `image`
+- `command`
+- `args`
+- `script`
+- `env`
+
+Using any of the above fields and referencing a `StepAction` in the same `Step` is not allowed and will cause an validation error.
+
+```yaml
+# This is not allowed and will result in a validation error.
+# Because the image is expected to be provided by the StepAction
+# and not inlined.
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: step-action-run
+spec:
+  TaskSpec:
+    steps:
+      - name: action-runner
+        ref:
+          name: step-action
+        image: ubuntu
+```
+Executing the above `TaskRun` will result in an error that looks like:
+
+```
+Error from server (BadRequest): error when creating "STDIN": admission webhook "validation.webhook.pipeline.tekton.dev" denied the request: validation failed: image cannot be used with Ref: spec.taskSpec.steps[0].image
+```
+
+When a `Step` is referencing a `StepAction`, it can contain the following fields:
+- `computeResources`
+- `workspaces` (Isolated workspaces)
+- `volumeDevices`
+- `imagePullPolicy`
+- `onError`
+- `stdoutConfig`
+- `stderrConfig`
+- `securityContext`
+- `envFrom`
+- `timeout`
+
+Using any of the above fields and referencing a `StepAction` is allowed and will not cause an error. For example, the `TaskRun` below will execute without any errors:
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: step-action-run
+spec:
+  TaskSpec:
+    steps:
+      - name: action-runner
+        ref:
+          name: step-action
+        computeResources:
+          requests:
+            memory: 1Gi
+            cpu: 500m
+        timeout: 1h
+        onError: continue
 ```

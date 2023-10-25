@@ -1555,6 +1555,16 @@
         }
       }
     },
+    "v1beta1.Ref": {
+      "description": "Ref can be used to refer to a specific instance of a StepAction.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name of the referenced step",
+          "type": "string"
+        }
+      }
+    },
     "v1beta1.RefSource": {
       "description": "RefSource contains the information that can uniquely identify where a remote built definition came from i.e. Git repositories, Tekton Bundles in OCI registry and hub.",
       "type": "object",
@@ -2070,6 +2080,10 @@
         "readinessProbe": {
           "description": "Periodic probe of container service readiness. Step will be removed from service endpoints if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes\n\nDeprecated: This field will be removed in a future release.",
           "$ref": "#/definitions/v1.Probe"
+        },
+        "ref": {
+          "description": "Contains the reference to an existing StepAction.",
+          "$ref": "#/definitions/v1beta1.Ref"
         },
         "resources": {
           "description": "Compute Resources required by this Step. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
