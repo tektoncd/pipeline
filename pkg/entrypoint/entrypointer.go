@@ -60,6 +60,16 @@ var (
 	ErrContextCanceled = ContextError(context.Canceled.Error())
 )
 
+// IsContextDeadlineError determine whether the error is context deadline
+func IsContextDeadlineError(err error) bool {
+	return errors.Is(err, ErrContextDeadlineExceeded)
+}
+
+// IsContextCanceledError determine whether the error is context canceled
+func IsContextCanceledError(err error) bool {
+	return errors.Is(err, ErrContextCanceled)
+}
+
 // Entrypointer holds fields for running commands with redirected
 // entrypoints.
 type Entrypointer struct {
@@ -174,7 +184,7 @@ func (e Entrypointer) Go() error {
 		defer cancel()
 		// start a goroutine to listen for cancellation file
 		go func() {
-			if err := e.waitingCancellation(ctx, cancel); err != nil {
+			if err := e.waitingCancellation(ctx, cancel); err != nil && (!IsContextCanceledError(err) && !IsContextDeadlineError(err)) {
 				logger.Error("Error while waiting for cancellation", zap.Error(err))
 			}
 		}()
