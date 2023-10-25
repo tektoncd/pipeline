@@ -96,6 +96,10 @@ const (
 	EnableCELInWhenExpression = "enable-cel-in-whenexpression"
 	// DefaultEnableCELInWhenExpression is the default value for EnableCELInWhenExpression
 	DefaultEnableCELInWhenExpression = false
+	// EnableStepActions is the flag to enable the use of StepActions in Steps
+	EnableStepActions = "enable-step-actions"
+	// DefaultEnableStepActions is the default value for EnableStepActions
+	DefaultEnableStepActions = false
 
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
@@ -145,6 +149,7 @@ type FeatureFlags struct {
 	SetSecurityContext        bool
 	Coschedule                string
 	EnableCELInWhenExpression bool
+	EnableStepActions         bool
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -218,6 +223,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setFeature(EnableCELInWhenExpression, DefaultEnableCELInWhenExpression, &tc.EnableCELInWhenExpression); err != nil {
+		return nil, err
+	}
+	if err := setFeature(EnableStepActions, DefaultEnableStepActions, &tc.EnableStepActions); err != nil {
 		return nil, err
 	}
 	// Given that they are alpha features, Tekton Bundles and Custom Tasks should be switched on if
