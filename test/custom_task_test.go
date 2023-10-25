@@ -732,6 +732,7 @@ func getFeatureFlagsBaseOnAPIFlag(t *testing.T) *config.FeatureFlags {
 		"enable-api-fields":         "alpha",
 		"results-from":              "sidecar-logs",
 		"enable-tekton-oci-bundles": "true",
+		"enable-step-actions":       "true",
 	})
 	if err != nil {
 		t.Fatalf("error creating alpha feature flags configmap: %v", err)
