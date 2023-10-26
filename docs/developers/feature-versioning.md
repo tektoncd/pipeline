@@ -1,14 +1,49 @@
 # Feature Versioning
 
-The stability levels of features (feature versioning) are independent of CRD API versions (API versioning).
+The stability levels of features (feature versioning) are independent of CRD [API versioning](./api-versioning.md).
 
 ## Adding feature gates for API-driven features
-API-driven features are features that are enabled via a specific field in pipeline API. They comply to the [feature gates](../../api_compatibility_policy.md#feature-gates) and the [feature graduation process](../../api_compatibility_policy.md#feature-graduation-process) specified in the [API compatibility policy](../../api_compatibility_policy.md). For example, [remote tasks](https://github.com/tektoncd/pipeline/blob/454bfd340d102f16f4f2838cf4487198537e3cfa/docs/taskruns.md#remote-tasks) is an API-driven feature.
+API-driven features are features that are accessed via a specific field in pipeline API. They comply to the [feature gates](../../api_compatibility_policy.md#feature-gates) and the [feature graduation process](../../api_compatibility_policy.md#feature-graduation-process) specified in the [API compatibility policy](../../api_compatibility_policy.md). For example, [remote tasks](https://github.com/tektoncd/pipeline/blob/454bfd340d102f16f4f2838cf4487198537e3cfa/docs/taskruns.md#remote-tasks) is an API-driven feature.
+
+## Adding feature gated API fields for API-driven features
+### Per-feature flag
+
+All new features added after [v0.53.0](https://github.com/tektoncd/pipeline/releases/tag/v0.53.0) will be enabled by their dedicated feature flags. To introduce a new per-feature flag, we will proceed as follows:
+- Add default values to the new per-feature flag for the new API-driven feature following the `PerFeatureFlag` struct in [feature_flags.go](./../../pkg/apis/config/feature_flags.go).
+- Write unit tests to verify the new feature flag and update all test cases that require the configMap setting, such as those related to provenance propagation.
+- To add integration tests:
+    - First, add the tests to `pull-tekton-pipeline-alpha-integration-test` by enabling the newly-introduced per-feature flag at [alpha test Prow environment](./../../test/e2e-tests-kind-prow-alpha.env).
+    - When the flag is promoted to `beta` stability level, change the test to use [beta Prow environment setup](./../../test/e2e-tests-kind-prow-beta.env).
+    - To add additional CI tests for combinations of feature flags, add tests for all alpha feature flags being turned on, with one alpha feature turned off at a time.
+- Add the tested new per-feature flag key value to the [the pipeline configMap](./../../config/config-feature-flags.yaml).
+- Update documentations for the new alpha feature at [alpha-stability-level](./../additional-configs.md#alpha-features).
+
+#### Example of adding a new Per-feature flag
+1. Add the default value following the Per-Feature flag struct
+```golang
+const enableExampleNewFeatureKey = 'example-new-feature'
+
+var DefaultExampleNewFeatre = PerFeatureFlag {
+        Name:      enableExampleNewFeatureKey,
+        Stability: AlphaAPIFields,
+        Enabled:   DefaultAlphaFeatureEnabled,
+}
+```
+2. Add unit tests with the newly-introduced yamls `feature-flags-example-new-feature` and `feature-flags-invalid-example-new-feature` according to the existing testing framework.
+
+3. For integration tests, add `example-new-feature: true` to [alpha test Prow environment](./../../test/e2e-tests-kind-prow-alpha.env).
+
+4. Add `example-new-feature: false` to [the pipeline configMap](./../../config/config-feature-flags.yaml) with a release note.
+
+5. Update documentations for the new alpha feature at [alpha-stability-level](./../additional-configs.md#alpha-features).
+
 ### `enable-api-fields`
 
-We've introduced a feature-flag called `enable-api-fields` to the
+Prior to [v0.53.0](https://github.com/tektoncd/pipeline/tree/release-v0.53.x),  we have had the global feature flag `enable-api-fields` in
 [config-feature-flags.yaml file](../../config/config-feature-flags.yaml)
 deployed as part of our releases.
+
+_Note that the `enable-api-fields` flag will has been deprecated since [v0.53.0](https://github.com/tektoncd/pipeline/tree/release-v0.53.x) and we will transition to use [Per-feature flags](#per-feature-flag) instead._
 
 This field can be configured either to be `alpha`, `beta`, or `stable`. This field is
 documented as part of our
