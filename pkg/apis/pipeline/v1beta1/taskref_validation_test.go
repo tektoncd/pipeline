@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"knative.dev/pkg/apis"
@@ -37,10 +38,15 @@ func TestTaskRef_Valid(t *testing.T) {
 		name:    "simple taskref",
 		taskRef: &v1beta1.TaskRef{Name: "taskrefname"},
 	}, {
-		name:    "valid resolver",
+		name:    "beta feature: valid resolver",
 		taskRef: &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}},
+		wc:      cfgtesting.EnableBetaAPIFields,
 	}, {
-		name: "valid resolver with params",
+		name:    "beta feature: valid resolver with alpha flag",
+		taskRef: &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}},
+		wc:      cfgtesting.EnableAlphaAPIFields,
+	}, {
+		name: "beta feature: valid resolver with params",
 		taskRef: &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git", Params: v1beta1.Params{{
 			Name: "repo",
 			Value: v1beta1.ParamValue{
@@ -171,6 +177,24 @@ func TestTaskRef_Invalid(t *testing.T) {
 			Message: `invalid value: name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`,
 			Paths:   []string{"name"},
 		},
+	}, {
+		name: "taskref param object requires beta",
+		taskRef: &v1beta1.TaskRef{
+			ResolverRef: v1beta1.ResolverRef{
+				Resolver: "some-resolver",
+				Params: v1beta1.Params{{
+					Name: "foo",
+					Value: v1beta1.ParamValue{
+						Type:      v1beta1.ParamTypeObject,
+						ObjectVal: map[string]string{"bar": "baz"},
+					},
+				}},
+			},
+		},
+		wc: cfgtesting.EnableStableAPIFields,
+		wantErr: apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"").Also(
+			apis.ErrGeneric("resolver params requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"")).Also(
+			apis.ErrGeneric("object type parameter requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"")),
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {

@@ -40,7 +40,7 @@ for the name, namespace and defaults that the resolver ships with.
 | `default-kind`       | The default resource kind to fetch if not specified in parameters.                                                                                  | `task`, `pipeline`                 |
 | `default-namespace`  | The default namespace to fetch resources from if not specified in parameters.                                                                       | `default`, `some-namespace`        |
 | `allowed-namespaces` | An optional comma-separated list of namespaces which the resolver is allowed to access. Defaults to empty, meaning all namespaces are allowed.      | `default,some-namespace`, (empty)  |
-| `blocked-namespaces` | An optional comma-separated list of namespaces which the resolver is blocked from accessing. Defaults to empty, meaning all namespaces are allowed. | `default,other-namespace`, (empty) |       
+| `blocked-namespaces` | An optional comma-separated list of namespaces which the resolver is blocked from accessing. If the value is a `*` all namespaces will be disallowed and allowed namespace will need to be explicitely listed in `allowed-namespaces`. Defaults to empty, meaning all namespaces are allowed. | `default,other-namespace`, `*`, (empty) |
 
 ## Usage
 

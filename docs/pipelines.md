@@ -777,11 +777,83 @@ There are a lot of scenarios where `when` expressions can be really useful. Some
 
 #### Use CEL expression in WhenExpression
 
-> :seedling: **`CEL in WhenExpression` is an [alpha](install.md#alpha-features) feature.**
+> :seedling: **`CEL in WhenExpression` is an [alpha](additional-configs.md#alpha-features) feature.**
 > The `enable-cel-in-whenexpression` feature flag must be set to `"true"` to enable the use of `CEL` in `WhenExpression`.
->
-> :warning: This feature is in a preview mode.
-> It is still in a very early stage of development and is not yet fully functional
+
+CEL (Common Expression Language) is a declarative language designed for simplicity, speed, safety, and portability which can be used to express a wide variety of conditions and computations.
+
+You can define a CEL expression in `WhenExpression` to guard the execution of a `Task`.  The CEL expression must evaluate to either `true` or `false`. You can use a single line of CEL string to replace current `WhenExpressions`'s `input`+`operator`+`values`. For example:
+
+```yaml
+# current WhenExpressions
+when:
+  - input: "foo"
+    operator: "in"
+    values: ["foo", "bar"]
+  - input: "duh"
+    operator: "notin"
+    values: ["foo", "bar"]
+
+# with cel
+when:
+  - cel: "'foo' in ['foo', 'bar']"
+  - cel: "!('duh' in ['foo', 'bar'])"
+```
+
+CEL can offer more conditional functions, such as numeric comparisons (e.g. `>`, `<=`, etc), logic operators (e.g. `OR`, `AND`), Regex Pattern Matching. For example:
+
+```yaml
+  when:
+    # test coverage result is larger than 90%
+    - cel: "'$(tasks.unit-test.results.test-coverage)' > 0.9"
+    # params is not empty, or params2 is 8.5 or 8.6
+    - cel: "'$(params.param1)' != '' || '$(params.param2)' == '8.5' || '$(params.param2)' == '8.6'"
+    # param branch matches pattern `release/.*`
+    - cel: "'$(params.branch)'.matches('release/.*')"
+```
+
+##### Variable substitution in CEL
+
+`CEL` supports [string substitutions](https://github.com/tektoncd/pipeline/blob/main/docs/variables.md#variables-available-in-a-pipeline), you can reference string, array indexing or object value of a param/result. For example:
+
+```yaml
+  when:
+    # string result
+    - cel: "$(tasks.unit-test.results.test-coverage) > 0.9"
+    # array indexing result
+    - cel: "$(tasks.unit-test.results.test-coverage[0]) > 0.9"
+    # object result key
+    - cel: "'$(tasks.objectTask.results.repo.url)'.matches('github.com/tektoncd/.*')"
+    # string param
+    - cel: "'$(params.foo)' == 'foo'"
+    # array indexing
+    - cel: "'$(params.branch[0])' == 'foo'"
+    # object param key
+    - cel: "'$(params.repo.url)'.matches('github.com/tektoncd/.*')"
+```
+
+**Note:** the reference needs to be wrapped with single quotes.
+Whole `Array` and `Object` replacements are not supported yet. The following usage is not supported:
+
+```yaml
+  when:
+    - cel: "'foo' in '$(params.array_params[*]']"
+    - cel: "'foo' in '$(params.object_params[*]']"
+```
+
+In addition to the cases listed above, you can craft any valid CEL expression as defined by the [cel-spec language definition](https://github.com/google/cel-spec/blob/master/doc/langdef.md)
+
+
+`CEL` expression is validated at admission webhook and a validation error will be returned if the expression is invalid.
+
+**Note:** To use Tekton's [variable substitution](variables.md), you need to wrap the reference with single quotes. This also means that if you pass another CEL expression via `params` or `results`, it won't be executed. Therefore CEL injection is disallowed.
+
+For example:
+```
+This is valid: '$(params.foo)' == 'foo'
+This is invalid: $(params.foo) == 'foo'
+CEL's variable substitution is not supported yet and thus invalid: params.foo == 'foo'
+```
 
 #### Guarding a `Task` and its dependent `Tasks`
 

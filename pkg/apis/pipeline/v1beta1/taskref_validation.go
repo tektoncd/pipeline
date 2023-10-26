@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
 )
@@ -35,6 +36,7 @@ func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 	switch {
 	case ref.Resolver != "" || ref.Params != nil:
 		if ref.Resolver != "" {
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "resolver", config.BetaAPIFields).ViaField("resolver"))
 			if ref.Name != "" {
 				errs = errs.Also(apis.ErrMultipleOneOf("name", "resolver"))
 			}
@@ -43,6 +45,7 @@ func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 			}
 		}
 		if ref.Params != nil {
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "resolver params", config.BetaAPIFields).ViaField("params"))
 			if ref.Name != "" {
 				errs = errs.Also(apis.ErrMultipleOneOf("name", "params"))
 			}

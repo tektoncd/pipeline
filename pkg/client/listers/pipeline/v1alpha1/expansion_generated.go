@@ -26,6 +26,14 @@ type RunListerExpansion interface{}
 // RunNamespaceLister.
 type RunNamespaceListerExpansion interface{}
 
+// StepActionListerExpansion allows custom methods to be added to
+// StepActionLister.
+type StepActionListerExpansion interface{}
+
+// StepActionNamespaceListerExpansion allows custom methods to be added to
+// StepActionNamespaceLister.
+type StepActionNamespaceListerExpansion interface{}
+
 // VerificationPolicyListerExpansion allows custom methods to be added to
 // VerificationPolicyLister.
 type VerificationPolicyListerExpansion interface{}

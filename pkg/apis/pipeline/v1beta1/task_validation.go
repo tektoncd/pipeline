@@ -69,6 +69,7 @@ func (t *Task) Validate(ctx context.Context) *apis.FieldError {
 
 // Validate implements apis.Validatable
 func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
+	errs = errs.Also(ts.ValidateBetaFields(ctx))
 	if len(ts.Steps) == 0 {
 		errs = errs.Also(apis.ErrMissingField("steps"))
 	}
@@ -94,6 +95,35 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateResults(ctx, ts.Results).ViaField("results"))
 	if ts.Resources != nil {
 		errs = errs.Also(apis.ErrDisallowedFields("resources"))
+	}
+	return errs
+}
+
+// ValidateBetaFields returns an error if the TaskSpec uses beta specifications governed by
+// `enable-api-fields` but does not have "enable-api-fields" set to "alpha" or "beta".
+func (ts *TaskSpec) ValidateBetaFields(ctx context.Context) *apis.FieldError {
+	var errs *apis.FieldError
+	// Object parameters
+	for i, p := range ts.Params {
+		if p.Type == ParamTypeObject {
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "object type parameter", config.BetaAPIFields).ViaFieldIndex("params", i))
+		}
+	}
+	// Indexing into array parameters
+	arrayIndexParamRefs := ts.GetIndexingReferencesToArrayParams()
+	if len(arrayIndexParamRefs) != 0 {
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "indexing into array parameters", config.BetaAPIFields))
+	}
+	// Array and object results
+	for i, result := range ts.Results {
+		switch result.Type {
+		case ResultsTypeObject:
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "object results", config.BetaAPIFields).ViaFieldIndex("results", i))
+		case ResultsTypeArray:
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "array results", config.BetaAPIFields).ViaFieldIndex("results", i))
+		case ResultsTypeString:
+		default:
+		}
 	}
 	return errs
 }

@@ -159,6 +159,30 @@ func TestValidateParamsFailure(t *testing.T) {
 			},
 			expectedErr: "access to specified namespace foo is blocked",
 		},
+		{
+			name: "blocked by star",
+			params: map[string]string{
+				cluster.KindParam:      "task",
+				cluster.NamespaceParam: "foo",
+				cluster.NameParam:      "baz",
+			},
+			conf: map[string]string{
+				cluster.BlockedNamespacesKey: "*",
+			},
+			expectedErr: "only explicit allowed access to namespaces is allowed",
+		},
+		{
+			name: "blocked by star but allowed explicitly",
+			params: map[string]string{
+				cluster.KindParam:      "task",
+				cluster.NamespaceParam: "foo",
+				cluster.NameParam:      "baz",
+			},
+			conf: map[string]string{
+				cluster.BlockedNamespacesKey: "*",
+				cluster.AllowedNamespacesKey: "foo",
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -178,6 +202,12 @@ func TestValidateParamsFailure(t *testing.T) {
 				})
 			}
 			err := resolver.ValidateParams(ctx, asParams)
+			if tc.expectedErr == "" {
+				if err != nil {
+					t.Fatalf("got unexpected error: %v", err)
+				}
+				return
+			}
 			if err == nil {
 				t.Fatalf("got no error, but expected: %s", tc.expectedErr)
 			}

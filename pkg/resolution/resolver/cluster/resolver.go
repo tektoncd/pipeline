@@ -279,6 +279,14 @@ func populateParamsWithDefaults(ctx context.Context, origParams []pipelinev1.Par
 		return nil, fmt.Errorf("access to specified namespace %s is blocked", params[NamespaceParam])
 	}
 
+	if conf[AllowedNamespacesKey] != "" && isInCommaSeparatedList(params[NamespaceParam], conf[AllowedNamespacesKey]) {
+		return params, nil
+	}
+
+	if conf[BlockedNamespacesKey] != "" && conf[BlockedNamespacesKey] == "*" {
+		return nil, fmt.Errorf("only explicit allowed access to namespaces is allowed")
+	}
+
 	if conf[AllowedNamespacesKey] != "" && !isInCommaSeparatedList(params[NamespaceParam], conf[AllowedNamespacesKey]) {
 		return nil, fmt.Errorf("access to specified namespace %s is not allowed", params[NamespaceParam])
 	}

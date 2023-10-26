@@ -543,7 +543,7 @@ func TestPipelineTask_ValidateRegularTask_Success(t *testing.T) {
 	tests := []struct {
 		name            string
 		tasks           PipelineTask
-		enableAPIFields bool
+		enableAPIFields string
 		enableBundles   bool
 	}{{
 		name: "pipeline task - valid taskRef name",
@@ -551,29 +551,34 @@ func TestPipelineTask_ValidateRegularTask_Success(t *testing.T) {
 			Name:    "foo",
 			TaskRef: &TaskRef{Name: "example.com/my-foo-task"},
 		},
+		enableAPIFields: "stable",
 	}, {
 		name: "pipeline task - valid taskSpec",
 		tasks: PipelineTask{
 			Name:     "foo",
 			TaskSpec: &EmbeddedTask{TaskSpec: getTaskSpec()},
 		},
+		enableAPIFields: "stable",
 	}, {
 		name: "pipeline task - use of resolver",
 		tasks: PipelineTask{
 			TaskRef: &TaskRef{ResolverRef: ResolverRef{Resolver: "bar"}},
 		},
+		enableAPIFields: "beta",
 	}, {
 		name: "pipeline task - use of params",
 		tasks: PipelineTask{
 			TaskRef: &TaskRef{ResolverRef: ResolverRef{Resolver: "bar", Params: Params{}}},
 		},
+		enableAPIFields: "beta",
 	}, {
 		name: "pipeline task - use of bundle with the feature flag set",
 		tasks: PipelineTask{
 			Name:    "foo",
 			TaskRef: &TaskRef{Name: "bar", Bundle: "docker.io/foo"},
 		},
-		enableBundles: true,
+		enableBundles:   true,
+		enableAPIFields: "stable",
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -581,8 +586,8 @@ func TestPipelineTask_ValidateRegularTask_Success(t *testing.T) {
 			cfg := &config.Config{
 				FeatureFlags: &config.FeatureFlags{},
 			}
-			if tt.enableAPIFields {
-				cfg.FeatureFlags.EnableAPIFields = config.AlphaAPIFields
+			if tt.enableAPIFields != "" {
+				cfg.FeatureFlags.EnableAPIFields = tt.enableAPIFields
 			}
 			if tt.enableBundles {
 				cfg.FeatureFlags.EnableTektonOCIBundles = true

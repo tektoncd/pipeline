@@ -28,6 +28,7 @@ func TestAllowsExecution(t *testing.T) {
 	tests := []struct {
 		name            string
 		whenExpressions WhenExpressions
+		evaluatedCEL    map[string]bool
 		expected        bool
 	}{{
 		name: "in expression",
@@ -77,10 +78,28 @@ func TestAllowsExecution(t *testing.T) {
 			},
 		},
 		expected: true,
+	}, {
+		name: "CEL is true",
+		whenExpressions: WhenExpressions{
+			{
+				CEL: "'foo'=='foo'",
+			},
+		},
+		evaluatedCEL: map[string]bool{"'foo'=='foo'": true},
+		expected:     true,
+	}, {
+		name: "CEL is false",
+		whenExpressions: WhenExpressions{
+			{
+				CEL: "'foo'!='foo'",
+			},
+		},
+		evaluatedCEL: map[string]bool{"'foo'!='foo'": false},
+		expected:     false,
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := tc.whenExpressions.AllowsExecution()
+			got := tc.whenExpressions.AllowsExecution(tc.evaluatedCEL)
 			if d := cmp.Diff(tc.expected, got); d != "" {
 				t.Errorf("Error evaluating AllowsExecution() for When Expressions in test case %s", diff.PrintWantGot(d))
 			}

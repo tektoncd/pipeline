@@ -122,5 +122,7 @@ data:
   # allowing examination of the logs on the pods from cancelled taskruns
   keep-pod-on-cancel: "false"
   # Setting this flag to "true" will enable the CEL evaluation in WhenExpression
-  # This feature is in preview mode and not implemented yet. Please check #7244 for the updates.
   enable-cel-in-whenexpression: "false"
+  # Setting this flag to "true" will enable the use of StepActions in Steps
+  # This feature is in preview mode and not implemented yet. Please check #7259 for updates.
+  enable-step-actions: "false"

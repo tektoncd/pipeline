@@ -686,6 +686,28 @@ func TestEntrypointerStopOnCancel(t *testing.T) {
 	}
 }
 
+func TestIsContextDeadlineError(t *testing.T) {
+	ctxErr := ContextError(context.DeadlineExceeded.Error())
+	if !IsContextDeadlineError(ctxErr) {
+		t.Errorf("expected context deadline error, got %v", ctxErr)
+	}
+	normalErr := ContextError("normal error")
+	if IsContextDeadlineError(normalErr) {
+		t.Errorf("expected normal error, got %v", normalErr)
+	}
+}
+
+func TestIsContextCanceledError(t *testing.T) {
+	ctxErr := ContextError(context.Canceled.Error())
+	if !IsContextCanceledError(ctxErr) {
+		t.Errorf("expected context canceled error, got %v", ctxErr)
+	}
+	normalErr := ContextError("normal error")
+	if IsContextCanceledError(normalErr) {
+		t.Errorf("expected normal error, got %v", normalErr)
+	}
+}
+
 type fakeWaiter struct {
 	sync.Mutex
 	waited             []string

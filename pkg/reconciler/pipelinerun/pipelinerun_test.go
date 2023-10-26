@@ -4023,6 +4023,210 @@ status:
 	}
 }
 
+func TestReconcileWithCELWhenExpressionsWithTaskResultsAndParams(t *testing.T) {
+	ps := []*v1.Pipeline{parse.MustParseV1Pipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  params:
+  - name: run
+    type: string
+  tasks:
+  - name: a-task
+    taskRef:
+      name: a-task
+  - name: b-task
+    taskRef:
+      name: b-task
+    when:
+    - cel: "'$(tasks.a-task.results.aResult)' == 'aResultValue'"
+  - name: c-task
+    taskRef:
+      name: c-task
+    when:
+    - cel: "'$(tasks.a-task.results.aResult)' == 'missing'"
+    - cel: "'$(params.run)'!='yes'"
+  - name: d-task
+    runAfter:
+    - c-task
+    taskRef:
+      name: d-task
+`)}
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-different-service-accs
+  namespace: foo
+spec:
+  params:
+  - name: run
+    value: "yes"
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa-0
+`)}
+	ts := []*v1.Task{
+		{ObjectMeta: baseObjectMeta("a-task", "foo")},
+		{ObjectMeta: baseObjectMeta("b-task", "foo")},
+		{ObjectMeta: baseObjectMeta("c-task", "foo")},
+		{ObjectMeta: baseObjectMeta("d-task", "foo")},
+	}
+	trs := []*v1.TaskRun{mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipeline-run-different-service-accs-a-task-xxyyy", "foo", "test-pipeline-run-different-service-accs",
+			"test-pipeline", "a-task", true),
+		`
+spec:
+  serviceAccountName: test-sa
+  taskRef:
+    name: hello-world
+  timeout: 1h0m0s
+status:
+  conditions:
+  - status: "True"
+    type: Succeeded
+  results:
+  - name: aResult
+    value: aResultValue
+`)}
+	cms := []*corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+			Data: map[string]string{
+				"enable-cel-in-whenexpression": "true",
+			},
+		},
+	}
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+		ConfigMaps:   cms,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	wantEvents := []string{
+		"Normal Started",
+		"Normal Running Tasks Completed: 1 \\(Failed: 0, Cancelled 0\\), Incomplete: 2, Skipped: 1",
+	}
+	pipelineRun, clients := prt.reconcileRun("foo", "test-pipeline-run-different-service-accs", wantEvents, false)
+
+	expectedTaskRunName := "test-pipeline-run-different-service-accs-b-task"
+	expectedTaskRun := mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta(expectedTaskRunName, "foo", "test-pipeline-run-different-service-accs", "test-pipeline", "b-task", false),
+		`
+spec:
+  serviceAccountName: test-sa-0
+  taskRef:
+    name: b-task
+    kind: Task
+`)
+	// Check that the expected TaskRun was created
+	actual, err := clients.Pipeline.TektonV1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
+		LabelSelector: "tekton.dev/pipelineTask=b-task,tekton.dev/pipelineRun=test-pipeline-run-different-service-accs",
+		Limit:         1,
+	})
+
+	if err != nil {
+		t.Fatalf("Failure to list TaskRun's %s", err)
+	}
+	if len(actual.Items) != 1 {
+		t.Fatalf("Expected 1 TaskRuns got %d", len(actual.Items))
+	}
+	actualTaskRun := actual.Items[0]
+	if d := cmp.Diff(expectedTaskRun, &actualTaskRun, ignoreResourceVersion, ignoreTypeMeta); d != "" {
+		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRunName, diff.PrintWantGot(d))
+	}
+
+	expectedWhenExpressionsInTaskRun := []v1.WhenExpression{{
+		CEL: "'aResultValue' == 'aResultValue'",
+	}}
+	verifyTaskRunStatusesWhenExpressions(t, pipelineRun.Status, expectedTaskRunName, expectedWhenExpressionsInTaskRun)
+
+	actualSkippedTasks := pipelineRun.Status.SkippedTasks
+	expectedSkippedTasks := []v1.SkippedTask{{
+		Name:   "c-task",
+		Reason: v1.WhenExpressionsSkip,
+		WhenExpressions: v1.WhenExpressions{{
+			CEL: "'aResultValue' == 'missing'",
+		}, {
+			CEL: "'yes'!='yes'",
+		}},
+	}}
+	if d := cmp.Diff(expectedSkippedTasks, actualSkippedTasks); d != "" {
+		t.Errorf("expected to find Skipped Tasks %v. Diff %s", expectedSkippedTasks, diff.PrintWantGot(d))
+	}
+
+	skippedTasks := []string{"c-task"}
+	for _, skippedTask := range skippedTasks {
+		labelSelector := fmt.Sprintf("tekton.dev/pipelineTask=%s,tekton.dev/pipelineRun=test-pipeline-run-different-service-accs", skippedTask)
+		actualSkippedTask, err := clients.Pipeline.TektonV1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
+			LabelSelector: labelSelector,
+			Limit:         1,
+		})
+		if err != nil {
+			t.Fatalf("Failure to list TaskRun's %s", err)
+		}
+		if len(actualSkippedTask.Items) != 0 {
+			t.Fatalf("Expected 0 TaskRuns got %d", len(actualSkippedTask.Items))
+		}
+	}
+}
+
+func TestReconcile_InvalidCELWhenExpressions(t *testing.T) {
+	ps := []*v1.Pipeline{parse.MustParseV1Pipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  params:
+  - name: run
+    type: string
+  tasks:
+  - name: a-task
+    taskRef:
+      name: a-task
+    when:
+    - cel: "{'blue': '0x000080', 'red': '0xFF0000'}['red']"
+`)}
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-different-service-accs
+  namespace: foo
+spec:
+  params:
+  - name: run
+    value: "yes"
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa-0
+`)}
+	ts := []*v1.Task{
+		{ObjectMeta: baseObjectMeta("a-task", "foo")},
+	}
+	cms := []*corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+			Data: map[string]string{
+				"enable-cel-in-whenexpression": "true",
+			},
+		},
+	}
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		ConfigMaps:   cms,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+	pipelineRun, _ := prt.reconcileRun("foo", "test-pipeline-run-different-service-accs", []string{}, true)
+	checkPipelineRunConditionStatusAndReason(t, pipelineRun, corev1.ConditionFalse, string(v1.PipelineRunReasonCELEvaluationFailed))
+}
+
 // TestReconcileWithAffinityAssistantStatefulSet tests that given a pipelineRun with workspaces,
 // an Affinity Assistant StatefulSet is created for each PVC workspace and
 // that the Affinity Assistant names is propagated to TaskRuns.

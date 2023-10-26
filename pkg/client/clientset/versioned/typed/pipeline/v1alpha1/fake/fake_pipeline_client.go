@@ -32,6 +32,10 @@ func (c *FakeTektonV1alpha1) Runs(namespace string) v1alpha1.RunInterface {
 	return &FakeRuns{c, namespace}
 }
 
+func (c *FakeTektonV1alpha1) StepActions(namespace string) v1alpha1.StepActionInterface {
+	return &FakeStepActions{c, namespace}
+}
+
 func (c *FakeTektonV1alpha1) VerificationPolicies(namespace string) v1alpha1.VerificationPolicyInterface {
 	return &FakeVerificationPolicies{c, namespace}
 }

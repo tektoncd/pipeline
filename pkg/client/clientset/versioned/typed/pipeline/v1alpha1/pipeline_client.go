@@ -29,6 +29,7 @@ import (
 type TektonV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	RunsGetter
+	StepActionsGetter
 	VerificationPoliciesGetter
 }
 
@@ -39,6 +40,10 @@ type TektonV1alpha1Client struct {
 
 func (c *TektonV1alpha1Client) Runs(namespace string) RunInterface {
 	return newRuns(c, namespace)
+}
+
+func (c *TektonV1alpha1Client) StepActions(namespace string) StepActionInterface {
+	return newStepActions(c, namespace)
 }
 
 func (c *TektonV1alpha1Client) VerificationPolicies(namespace string) VerificationPolicyInterface {

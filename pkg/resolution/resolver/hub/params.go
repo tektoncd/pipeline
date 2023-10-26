@@ -14,13 +14,19 @@ limitations under the License.
 package hub
 
 // DefaultArtifactHubURL is the default url for the Artifact hub api
-const DefaultArtifactHubURL = "https://artifacthub.io/api/v1/packages/tekton-%s/%s/%s/%s"
+const DefaultArtifactHubURL = "https://artifacthub.io"
 
 // TektonHubYamlEndpoint is the suffix for a private custom Tekton hub instance
 const TektonHubYamlEndpoint = "v1/resource/%s/%s/%s/%s/yaml"
 
+// DefaultTektonHubListTasksEndpoint
+const TektonHubListTasksEndpoint = "v1/resource/%s/%s/%s"
+
 // ArtifactHubYamlEndpoint is the suffix for a private custom Artifact hub instance
 const ArtifactHubYamlEndpoint = "api/v1/packages/tekton-%s/%s/%s/%s"
+
+// ArtifactHubListTasksEndpoint
+const ArtifactHubListTasksEndpoint = "api/v1/packages/tekton-%s/%s/%s"
 
 // ParamName is the parameter defining what the layer name in the bundle
 // image is.

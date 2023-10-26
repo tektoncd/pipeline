@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	tektonv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tektonv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"k8s.io/klog"
 	"k8s.io/kube-openapi/pkg/common"
@@ -39,6 +40,10 @@ func main() {
 	}
 	var oAPIDefs map[string]common.OpenAPIDefinition
 	switch *apiVersion {
+	case "v1alpha1":
+		oAPIDefs = tektonv1alpha1.GetOpenAPIDefinitions(func(name string) spec.Ref {
+			return spec.MustCreateRef("#/definitions/" + common.EscapeJsonPointer(swaggify(name)))
+		})
 	case "v1beta1":
 		oAPIDefs = tektonv1beta1.GetOpenAPIDefinitions(func(name string) spec.Ref {
 			return spec.MustCreateRef("#/definitions/" + common.EscapeJsonPointer(swaggify(name)))

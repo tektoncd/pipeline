@@ -140,9 +140,6 @@ func readRuntimeObjectAsPipeline(ctx context.Context, namespace string, obj runt
 		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
 		// Issue a dry-run request to create the remote Pipeline, so that it can undergo validation from validating admission webhooks
 		// without actually creating the Pipeline on the cluster.
-		// Validation must happen before the v1beta1 Pipeline is converted into the storage version of the API,
-		// since validation of beta features differs between v1 and v1beta1
-		// TODO(#6592): Decouple API versioning from feature versioning
 		if err := apiserver.DryRunValidate(ctx, namespace, obj, tekton); err != nil {
 			return nil, nil, err
 		}

@@ -183,7 +183,7 @@ func main() {
 			log.Print(err.Error())
 			os.Exit(1)
 		case entrypoint.ContextError:
-			if errors.Is(err, entrypoint.ErrContextCanceled) {
+			if entrypoint.IsContextCanceledError(err) {
 				log.Print("Step was cancelled")
 				// use the SIGKILL signal to distinguish normal exit programs, just like kill -9 PID
 				os.Exit(int(syscall.SIGKILL))

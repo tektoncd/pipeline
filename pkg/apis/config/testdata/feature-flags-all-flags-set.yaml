@@ -33,3 +33,4 @@ data:
   set-security-context: "true"
   keep-pod-on-cancel: "true"
   enable-cel-in-whenexpression: "true"
+  enable-step-actions: "true"

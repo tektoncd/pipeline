@@ -17,7 +17,7 @@ Use resolver type `hub`.
 | `type`           | The type of Hub from where to pull the resource (Optional). Either `artifact` or `tekton` | Default:  `artifact`                                         |
 | `kind`           | Either `task` or `pipeline` (Optional)                                        | Default: `task`                                                     |
 | `name`           | The name of the task or pipeline to fetch from the hub                        | `golang-build`                                             |
-| `version`        | Version of task or pipeline to pull in from hub. Wrap the number in quotes!   | `"0.5.0"`                                                    |
+| `version`        | Version or a Constraint (see [below](#version-constraint) of a task or a pipeline to pull in from. Wrap the number in quotes!   | `"0.5.0"`, `">= 0.5.0"`                                                    |
 
 The Catalogs in the Artifact Hub follows the semVer (i.e.` <major-version>.<minor-version>.0`) and the Catalogs in the Tekton Hub follows the simplified semVer (i.e. `<major-version>.<minor-version>`). Both full and simplified semantic versioning will be accepted by the `version` parameter. The Hub Resolver will map the version to the format expected by the target Hub `type`.
 
@@ -64,7 +64,10 @@ env
   value: "https://artifacthub.io/"
 ```
 
-When setting the `type` field to `tekton`, you **must** configure your own instance of the Tekton Hub by setting the `TEKTON_HUB_API` environment variable in
+When setting the `type` field to `tekton`, the resolver will hit the public
+tekton catalog api at https://api.hub.tekton.dev by default but you can configure
+your own instance of the Tekton Hub by setting the `TEKTON_HUB_API` environment
+variable in
 [`../config/resolvers/resolvers-deployment.yaml`](../config/resolvers/resolvers-deployment.yaml). Example:
 
 ```yaml
@@ -125,6 +128,38 @@ spec:
   # Resolution of the pipeline will succeed but the PipelineRun
   # overall will not succeed without those parameters.
 ```
+
+### Version constraint
+
+Instead of a version you can specify a constraint to choose from. The constraint is a string as documented in the [go-version](https://github.com/hashicorp/go-version) library.
+
+Some examples:
+
+```yaml
+params:
+  - name: name
+    value: git-clone
+  - name: version
+    value: ">=0.7.0"
+```
+
+Will only choose the git-clone task that is greater than version `0.7.0`
+
+```yaml
+params:
+  - name: name
+    value: git-clone
+  - name: version
+    value: ">=0.7.0, < 2.0.0"
+```
+
+Will select the **latest** git-clone task that is greater than version `0.7.0` and
+less than version `2.0.0`, so if the latest task is the version `0.9.0` it will
+be selected.
+
+Other operators for selection are available for comparisons, see the
+[go-version](https://github.com/hashicorp/go-version/blob/644291d14038339745c2d883a1a114488e30b702/constraint.go#L40C2-L48)
+source code.
 
 ---
 

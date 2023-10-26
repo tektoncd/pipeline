@@ -34,6 +34,7 @@ func (ref *PipelineRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 
 	if ref.Resolver != "" || ref.Params != nil {
 		if ref.Resolver != "" {
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "resolver", config.BetaAPIFields).ViaField("resolver"))
 			if ref.Name != "" {
 				errs = errs.Also(apis.ErrMultipleOneOf("name", "resolver"))
 			}
@@ -42,6 +43,7 @@ func (ref *PipelineRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 			}
 		}
 		if ref.Params != nil {
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "resolver params", config.BetaAPIFields).ViaField("params"))
 			if ref.Name != "" {
 				errs = errs.Also(apis.ErrMultipleOneOf("name", "params"))
 			}

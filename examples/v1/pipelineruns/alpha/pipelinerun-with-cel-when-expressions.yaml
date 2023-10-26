@@ -1,0 +1,154 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: guarded-pr-by-cel-
+spec:
+  pipelineSpec:
+    params:
+      - name: path
+        type: string
+        description: The path of the file to be created
+    workspaces:
+      - name: source
+        description: |
+          This workspace is shared among all the pipeline tasks to read/write common resources
+    tasks:
+      - name: create-file  # when expression using parameter, evaluates to true
+        when:
+          - cel: "'$(params.path)' == 'README.md'"
+        workspaces:
+          - name: source
+            workspace: source
+        taskSpec:
+          workspaces:
+            - name: source
+              description: The workspace to create the readme file in
+          steps:
+            - name: write-new-stuff
+              image: ubuntu
+              script: 'touch $(workspaces.source.path)/README.md'
+      - name: check-file
+        params:
+          - name: path
+            value: "$(params.path)"
+        workspaces:
+          - name: source
+            workspace: source
+        runAfter:
+          - create-file
+        taskSpec:
+          params:
+            - name: path
+          workspaces:
+            - name: source
+              description: The workspace to check for the file
+          results:
+            - name: exists
+              description: indicates whether the file exists or is missing
+          steps:
+            - name: check-file
+              image: alpine
+              script: |
+                if test -f $(workspaces.source.path)/$(params.path); then
+                  printf yes | tee $(results.exists.path)
+                else
+                  printf no | tee $(results.exists.path)
+                fi
+      - name: echo-file-exists  # when expression using task result, evaluates to true
+        when:
+          - cel: "'$(tasks.check-file.results.exists)' == 'yes'"
+        taskSpec:
+          steps:
+            - name: echo
+              image: ubuntu
+              script: 'echo file exists'
+      - name: task-should-be-skipped-1
+        when:
+          - cel: "'$(tasks.check-file.results.exists)'=='missing'" # when expression using task result, evaluates to false
+        taskSpec:
+          steps:
+            - name: echo
+              image: ubuntu
+              script: exit 1
+      - name: task-should-be-skipped-2  # when expression using parameter, evaluates to false
+        when:
+          - cel: "'$(params.path)'!='README.md'"
+        taskSpec:
+          steps:
+            - name: echo
+              image: ubuntu
+              script: exit 1
+      - name: task-should-be-skipped-3  # task with when expression and run after
+        runAfter:
+          - echo-file-exists
+        when:
+          - cel: "'monday'=='friday'"
+        taskSpec:
+          steps:
+            - name: echo
+              image: ubuntu
+              script: exit 1
+    finally:
+      - name: finally-task-should-be-skipped-1  # when expression using execution status, evaluates to false
+        when:
+          - cel: "'$(tasks.echo-file-exists.status)'=='Failure'"
+        taskSpec:
+          steps:
+            - name: echo
+              image: ubuntu
+              script: exit 1
+      - name: finally-task-should-be-skipped-2  # when expression using task result, evaluates to false
+        when:
+          - cel: "'$(tasks.check-file.results.exists)'=='missing'"
+        taskSpec:
+          steps:
+            - name: echo
+              image: ubuntu
+              script: exit 1
+      - name: finally-task-should-be-skipped-3  # when expression using parameter, evaluates to false
+        when:
+          - cel: "'$(params.path)'!='README.md'"
+        taskSpec:
+          steps:
+            - name: echo
+              image: ubuntu
+              script: exit 1
+      - name: finally-task-should-be-skipped-4  # when expression using tasks execution status, evaluates to false
+        when:
+          - cel: "'$(tasks.status)'=='Failure'"
+        taskSpec:
+          steps:
+            - name: echo
+              image: ubuntu
+              script: exit 1
+      - name: finally-task-should-be-skipped-5  # when expression using tasks execution status, evaluates to false
+        when:
+          - cel: "'$(tasks.status)'=='Succeeded'"
+        taskSpec:
+          steps:
+            - name: echo
+              image: ubuntu
+              script: exit 1
+      - name: finally-task-should-be-executed  # when expression using execution status, tasks execution status, param, and results
+        when:
+          - cel: "'$(tasks.echo-file-exists.status)'=='Succeeded'"
+          - cel: "'$(tasks.status)'=='Completed'"
+          - cel: "'$(tasks.check-file.results.exists)'=='yes'"
+          - cel: "'$(params.path)'=='README.md'"
+        taskSpec:
+          steps:
+            - name: echo
+              image: ubuntu
+              script: 'echo finally done'
+  params:
+    - name: path
+      value: README.md
+  workspaces:
+    - name: source
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 16Mi

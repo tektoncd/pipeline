@@ -63,6 +63,7 @@ func (we *WhenExpression) isTrue() bool {
 
 func (we *WhenExpression) applyReplacements(replacements map[string]string, arrayReplacements map[string][]string) WhenExpression {
 	replacedInput := substitution.ApplyReplacements(we.Input, replacements)
+	replacedCEL := substitution.ApplyReplacements(we.CEL, replacements)
 
 	var replacedValues []string
 	for _, val := range we.Values {
@@ -79,13 +80,14 @@ func (we *WhenExpression) applyReplacements(replacements map[string]string, arra
 		}
 	}
 
-	return WhenExpression{Input: replacedInput, Operator: we.Operator, Values: replacedValues}
+	return WhenExpression{Input: replacedInput, Operator: we.Operator, Values: replacedValues, CEL: replacedCEL}
 }
 
 // GetVarSubstitutionExpressions extracts all the values between "$(" and ")" in a When Expression
 func (we *WhenExpression) GetVarSubstitutionExpressions() ([]string, bool) {
 	var allExpressions []string
 	allExpressions = append(allExpressions, validateString(we.Input)...)
+	allExpressions = append(allExpressions, validateString(we.CEL)...)
 	for _, value := range we.Values {
 		allExpressions = append(allExpressions, validateString(value)...)
 	}
@@ -99,8 +101,13 @@ type WhenExpressions []WhenExpression
 // AllowsExecution evaluates an Input's relationship to an array of Values, based on the Operator,
 // to determine whether all the When Expressions are True. If they are all True, the guarded Task is
 // executed, otherwise it is skipped.
-func (wes WhenExpressions) AllowsExecution() bool {
+// If CEL expression exists, AllowsExecution will get the evaluated results from evaluatedCEL and determine
+// if the Task should be skipped.
+func (wes WhenExpressions) AllowsExecution(evaluatedCEL map[string]bool) bool {
 	for _, we := range wes {
+		if we.CEL != "" {
+			return evaluatedCEL[we.CEL]
+		}
 		if !we.isTrue() {
 			return false
 		}
