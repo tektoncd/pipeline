@@ -90,7 +90,22 @@ For more information on support windows, see the [deprecations table](./docs/dep
 
 ## Feature Gates
 
-Stability levels of feature gates are independent from CRD apiVersions. Features enabled by API fields at different levels of stability can be enabled using the flag `enable-api-fields`:
+Stability levels of feature gates are independent from CRD apiVersions. 
+
+[TEP0138](https://github.com/tektoncd/community/blob/main/teps/0138-decouple-api-and-feature-versioning.md) has introduced per-feature flags for new API-driven features and the migration plan for `enable-api-fields`. Please refer to the table below for the API-driven features validation transition:
+
+| Releases               | Global flag `enable-api-fields`    | Per-feature flag                   |
+| ---------------------- | --------------------------------   | ---------------------------------- |
+| Prior to v0.53.0       | All alpha/beta API-driven features |                                    |
+| After v0.53.0        | [Existing alpha/beta API-driven features](https://github.com/tektoncd/community/blob/02418c0d39578a6a42f9d2d30caea8060dd89385/teps/0138-decouple-api-and-feature-versioning.md#sunset-enable-api-fields-after-existing-features-stabilize) prior to v0.53.0 | New alpha/beta API-driven features introduced after v0.53.0 |
+| All [alpha/beta API-driven features in v0.53.0](https://github.com/tektoncd/community/blob/02418c0d39578a6a42f9d2d30caea8060dd89385/teps/0138-decouple-api-and-feature-versioning.md#sunset-enable-api-fields-after-existing-features-stabilize) become stable or are removed | Sunset ~~`enable-api-fields`~~ | All alpha/beta API-driven features |
+
+
+_Note that behavioural(non-API-driven) flags will retain their original usage._
+
+With per-feature flags, cluster operators are able to enable a single new feature with their dedicated feature flags. For instructions on how to add a per-feature flag, please check the [developer feature versioning guide](./docs/developers/feature-versioning.md#per-feature-flag).
+
+Note that the `enable-api-fields` feature flag will continue to validate all features that were[beta](https://github.com/tektoncd/pipeline/blob/release-v0.52.x/docs/additional-configs.md#beta-features) and [alpha](https://github.com/tektoncd/pipeline/blob/release-v0.52.x/docs/additional-configs.md#alpha-features) prior to [v0.53.0](https://github.com/tektoncd/pipeline/tree/release-v0.53.x):
 
 * `stable` - This value indicates that only fields of the highest stability level are enabled; i.e. `alpha` and `beta` fields are not enabled.
 
