@@ -1,3 +1,11 @@
+# v1.19.1 (2023-10-24)
+
+* No change notes available for this release.
+
+# v1.19.0 (2023-10-16)
+
+* **Feature**: Modify logic of retrieving user agent appID from env config
+
 # v1.18.45 (2023-10-12)
 
 * **Bug Fix**: Fail to load config if an explicitly provided profile doesn't exist.
