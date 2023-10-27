@@ -18,7 +18,7 @@ metadata:
   generateName: git-resolver-
 spec:
   pipelineRef:
-    resolver: bundles
+    resolver: git
     params:
       - name: url
         value: https://github.com/tektoncd/catalog.git
