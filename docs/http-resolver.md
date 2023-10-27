@@ -1,5 +1,6 @@
 <!--
 ---
+
 linkTitle: "HTTP Resolver"
 weight: 311
 ---
@@ -11,9 +12,12 @@ This resolver responds to type `http`.
 
 ## Parameters
 
-| Param Name       | Description                                                                   | Example Value                                              |
-|------------------|-------------------------------------------------------------------------------|------------------------------------------------------------|
-| `url`            | The URL to fetch from                                                         | https://raw.githubusercontent.com/tektoncd-catalog/git-clone/main/task/git-clone/git-clone.yaml                                                   |
+| Param Name                 | Description                                                                                                                                                                | Example Value                                                                                   |   |
+|----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------|---|
+| `url`                      | The URL to fetch from                                                                                                                                                      | <https://raw.githubusercontent.com/tektoncd-catalog/git-clone/main/task/git-clone/git-clone.yaml> |   |
+| `http-username`            | An optional username when fetching a task with credentials (need to be used in conjunction with `http-password-secret`)                                                    | `git`                                                                                           |   |
+| `http-password-secret`     | An optional secret in the PipelineRun namespace with a reference to a password when fetching a task with credentials (need to be used in conjunction with `http-username`) | `http-password`                                                                                 |   |
+| `http-password-secret-key` | An optional key in the `http-password-secret` to be used when fetching a task with credentials                                                                             | Default: `password`                                                                             |   |
 
 A valid URL must be provided. Only HTTP or HTTPS URLs are supported.
 
@@ -52,6 +56,27 @@ spec:
     params:
     - name: url
       value: https://raw.githubusercontent.com/tektoncd-catalog/git-clone/main/task/git-clone/git-clone.yaml
+```
+
+### Task Resolution with Basic Auth
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: remote-task-reference
+spec:
+  taskRef:
+    resolver: http
+    params:
+    - name: url
+      value: https://raw.githubusercontent.com/owner/private-repo/main/task/task.yaml
+    - name: http-username
+      value: git
+    - name: http-password-secret
+      value: git-secret
+    - name: http-password-secret-key
+      value: git-token
 ```
 
 ### Pipeline Resolution

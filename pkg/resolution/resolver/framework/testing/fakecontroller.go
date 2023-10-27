@@ -71,14 +71,14 @@ func RunResolverReconcileTest(ctx context.Context, t *testing.T, d test.Data, re
 	err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRequestName(request))
 	if expectedErr != nil {
 		if err == nil {
-			t.Fatalf("expected to get error %v, but got nothing", expectedErr)
+			t.Fatalf("expected to get error: `%v`, but got nothing", expectedErr)
 		}
 		if expectedErr.Error() != err.Error() {
-			t.Fatalf("expected to get error %v, but got %v", expectedErr, err)
+			t.Fatalf("expected to get error `%v`, but got `%v`", expectedErr, err)
 		}
 	} else if err != nil {
 		if ok, _ := controller.IsRequeueKey(err); !ok {
-			t.Fatalf("did not expect an error, but got %v", err)
+			t.Fatalf("did not expect an error, but got `%v`", err)
 		}
 	}
 
