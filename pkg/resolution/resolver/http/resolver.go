@@ -16,6 +16,7 @@ package http
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -29,6 +30,12 @@ import (
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+	"go.uber.org/zap"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
+	"knative.dev/pkg/logging"
 )
 
 const (
@@ -41,17 +48,25 @@ const (
 	// httpResolverName The name of the resolver
 	httpResolverName = "Http"
 
-	// ConfigMapName is the http resolver's config map
+	// configMapName is the http resolver's config map
 	configMapName = "http-resolver-config"
 
 	// default Timeout value when fetching http resources in seconds
 	defaultHttpTimeoutValue = "1m"
+
+	// default key in the HTTP password secret
+	defaultBasicAuthSecretKey = "password"
 )
 
 // Resolver implements a framework.Resolver that can fetch files from an HTTP URL
-type Resolver struct{}
+type Resolver struct {
+	kubeClient kubernetes.Interface
+	logger     *zap.SugaredLogger
+}
 
-func (r *Resolver) Initialize(context.Context) error {
+func (r *Resolver) Initialize(ctx context.Context) error {
+	r.kubeClient = kubeclient.Get(ctx)
+	r.logger = logging.FromContext(ctx)
 	return nil
 }
 
@@ -95,7 +110,7 @@ func (r *Resolver) Resolve(ctx context.Context, oParams []pipelinev1.Param) (fra
 		return nil, err
 	}
 
-	return fetchHttpResource(ctx, params)
+	return r.fetchHttpResource(ctx, params)
 }
 
 func (r *Resolver) isDisabled(ctx context.Context) bool {
@@ -156,6 +171,24 @@ func populateDefaultParams(ctx context.Context, params []pipelinev1.Param) (map[
 		}
 	}
 
+	if username, ok := paramsMap[httpBasicAuthUsername]; ok {
+		if _, ok := paramsMap[httpBasicAuthSecret]; !ok {
+			return nil, fmt.Errorf("missing required param %s when using %s", httpBasicAuthSecret, httpBasicAuthUsername)
+		}
+		if username == "" {
+			return nil, fmt.Errorf("value %s cannot be empty", httpBasicAuthUsername)
+		}
+	}
+
+	if secret, ok := paramsMap[httpBasicAuthSecret]; ok {
+		if _, ok := paramsMap[httpBasicAuthUsername]; !ok {
+			return nil, fmt.Errorf("missing required param %s when using %s", httpBasicAuthUsername, httpBasicAuthSecret)
+		}
+		if secret == "" {
+			return nil, fmt.Errorf("value %s cannot be empty", httpBasicAuthSecret)
+		}
+	}
+
 	if len(missingParams) > 0 {
 		return nil, fmt.Errorf("missing required http resolver params: %s", strings.Join(missingParams, ", "))
 	}
@@ -178,7 +211,7 @@ func makeHttpClient(ctx context.Context) (*http.Client, error) {
 	}, nil
 }
 
-func fetchHttpResource(ctx context.Context, params map[string]string) (framework.ResolvedResource, error) {
+func (r *Resolver) fetchHttpResource(ctx context.Context, params map[string]string) (framework.ResolvedResource, error) {
 	var targetURL string
 	var ok bool
 
@@ -194,6 +227,15 @@ func fetchHttpResource(ctx context.Context, params map[string]string) (framework
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("constructing request: %w", err)
+	}
+
+	// NOTE(chmouel): We already made sure that username and secret was specified by the user
+	if secret, ok := params[httpBasicAuthSecret]; ok && secret != "" {
+		if encodedSecret, err := r.getBasicAuthSecret(ctx, params); err != nil {
+			return nil, err
+		} else {
+			req.Header.Set("Authorization", encodedSecret)
+		}
 	}
 
 	resp, err := httpClient.Do(req)
@@ -215,4 +257,35 @@ func fetchHttpResource(ctx context.Context, params map[string]string) (framework
 		Content: body,
 		URL:     targetURL,
 	}, nil
+}
+
+func (r *Resolver) getBasicAuthSecret(ctx context.Context, params map[string]string) (string, error) {
+	secretName := params[httpBasicAuthSecret]
+	userName := params[httpBasicAuthUsername]
+	tokenSecretKey := defaultBasicAuthSecretKey
+	if v, ok := params[httpBasicAuthSecretKey]; ok {
+		if v != "" {
+			tokenSecretKey = v
+		}
+	}
+	secretNS := common.RequestNamespace(ctx)
+	secret, err := r.kubeClient.CoreV1().Secrets(secretNS).Get(ctx, secretName, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			notFoundErr := fmt.Errorf("cannot get API token, secret %s not found in namespace %s", secretName, secretNS)
+			r.logger.Info(notFoundErr)
+			return "", notFoundErr
+		}
+		wrappedErr := fmt.Errorf("error reading API token from secret %s in namespace %s: %w", secretName, secretNS, err)
+		r.logger.Info(wrappedErr)
+		return "", wrappedErr
+	}
+	secretVal, ok := secret.Data[tokenSecretKey]
+	if !ok {
+		err := fmt.Errorf("cannot get API token, key %s not found in secret %s in namespace %s", tokenSecretKey, secretName, secretNS)
+		r.logger.Info(err)
+		return "", err
+	}
+	return fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString(
+		[]byte(fmt.Sprintf("%s:%s", userName, secretVal)))), nil
 }

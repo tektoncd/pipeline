@@ -112,6 +112,10 @@ Note that not all `go-scm` implementations have been tested with the `git` resol
   * BitBucket Server
   * BitBucket Cloud
 
+Fetching from multiple Git providers with different configuration is not
+supported. You can use the [http resolver](./http-resolver.md) to fetch URL
+from another provider with different credentials.
+
 #### Task Resolution
 
 ```yaml
