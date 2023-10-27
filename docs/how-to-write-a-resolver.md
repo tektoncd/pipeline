@@ -10,7 +10,7 @@ weight: 104
 This how-to will outline the steps a developer needs to take when creating
 a new (very basic) Resolver. Rather than focus on support for a particular version
 control system or cloud platform this Resolver will simply respond with
-with some hard-coded YAML.
+some hard-coded YAML.
 
 If you aren't yet familiar with the meaning of "resolution" when it
 comes to Tekton, a short summary follows. You might also want to read a
