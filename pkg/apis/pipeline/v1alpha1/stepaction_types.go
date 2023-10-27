@@ -14,6 +14,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -111,6 +112,15 @@ type StepActionSpec struct {
 	// If Script is not empty, the Step cannot have an Command and the Args will be passed to the Script.
 	// +optional
 	Script string `json:"script,omitempty"`
+	// Params is a list of input parameters required to run the stepAction.
+	// Params must be supplied as inputs in Steps unless they declare a defaultvalue.
+	// +optional
+	// +listType=atomic
+	Params v1.ParamSpecs `json:"params,omitempty"`
+	// Results are values that this StepAction can output
+	// +optional
+	// +listType=atomic
+	Results []StepActionResult `json:"results,omitempty"`
 }
 
 // StepActionObject is implemented by StepAction

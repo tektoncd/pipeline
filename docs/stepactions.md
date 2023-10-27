@@ -38,6 +38,8 @@ A `StepAction` definition supports the following fields:
   - `script`
     - cannot be used at the same time as using `command`.
   - `env`
+  - [`params`](#declaring-params)
+  - [`results`](#declaring-results)
 
 The non-functional example below demonstrates the use of most of the above-mentioned fields:
 
@@ -53,6 +55,62 @@ spec:
   image: ubuntu 
   command: ["ls"]
   args: ["-lh"]
+```
+
+### Declaring Parameters
+
+Like with `Tasks`, a `StepAction` must declare all the parameters that it used. The same rules for `Parameter` [name](./tasks.md/#parameter-name), [type](./tasks.md/#parameter-type) (including [object](./tasks.md/#object-type), [array](./tasks.md/#array-type) and [string](./tasks.md/#string-type)) apply as when declaring them in `Tasks`. A `StepAction` can also provide [default value](./tasks.md/#default-value) to a `Parameter`. 
+ 
+ `Parameters` are passed to the `StepAction` from its corresponding `Step` referencing it.
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: StepAction
+metadata:
+  name: stepaction-using-params
+spec:
+  params:
+    - name: gitrepo
+      type: object
+      properties:
+        url:
+          type: string
+        commit:
+          type: string
+    - name: flags
+      type: array
+    - name: outputPath
+      type: string
+      default: "/workspace"
+  image: some-git-image
+  args: [
+    "-url=$(params.gitrepo.url)",
+    "-revision=$(params.gitrepo.commit)",
+    "-output=$(params.outputPath)",
+    "$(params.flags[*])",
+  ]
+```
+
+### Declaring Results
+
+A `StepAction` also declares the results that it will emit. 
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: StepAction
+metadata:
+  name: stepaction-declaring-results
+spec:
+  results:
+    - name: current-date-unix-timestamp
+      description: The current date in unix timestamp format
+    - name: current-date-human-readable
+      description: The current date in human readable format
+  image: bash:latest
+  script: |
+    #!/usr/bin/env bash
+    date +%s | tee $(results.current-date-unix-timestamp.path)
+    date | tee $(results.current-date-human-readable.path)
 ```
 
 ## Referencing a StepAction

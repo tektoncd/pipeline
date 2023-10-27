@@ -23,4 +23,15 @@ var _ apis.Defaultable = (*StepAction)(nil)
 
 // SetDefaults implements apis.Defaultable
 func (s *StepAction) SetDefaults(ctx context.Context) {
+	s.Spec.SetDefaults(ctx)
+}
+
+// SetDefaults set any defaults for the StepAction spec
+func (ss *StepActionSpec) SetDefaults(ctx context.Context) {
+	for i := range ss.Params {
+		ss.Params[i].SetDefaults(ctx)
+	}
+	for i := range ss.Results {
+		ss.Results[i].SetDefaults(ctx)
+	}
 }

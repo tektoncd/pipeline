@@ -129,16 +129,16 @@ func (ts *TaskSpec) ValidateBetaFields(ctx context.Context) *apis.FieldError {
 // ValidateUsageOfDeclaredParameters validates that all parameters referenced in the Task are declared by the Task.
 func ValidateUsageOfDeclaredParameters(ctx context.Context, steps []Step, params ParamSpecs) *apis.FieldError {
 	var errs *apis.FieldError
-	_, _, objectParams := params.sortByType()
-	allParameterNames := sets.NewString(params.getNames()...)
+	_, _, objectParams := params.SortByType()
+	allParameterNames := sets.NewString(params.GetNames()...)
 	errs = errs.Also(validateVariables(ctx, steps, "params", allParameterNames))
 	errs = errs.Also(validateObjectUsage(ctx, steps, objectParams))
-	errs = errs.Also(validateObjectParamsHaveProperties(ctx, params))
+	errs = errs.Also(ValidateObjectParamsHaveProperties(ctx, params))
 	return errs
 }
 
-// validateObjectParamsHaveProperties returns an error if any declared object params are missing properties
-func validateObjectParamsHaveProperties(ctx context.Context, params ParamSpecs) *apis.FieldError {
+// ValidateObjectParamsHaveProperties returns an error if any declared object params are missing properties
+func ValidateObjectParamsHaveProperties(ctx context.Context, params ParamSpecs) *apis.FieldError {
 	var errs *apis.FieldError
 	for _, p := range params {
 		if p.Type == ParamTypeObject && p.Properties == nil {
@@ -435,12 +435,12 @@ func (p ParamSpec) ValidateObjectType(ctx context.Context) *apis.FieldError {
 // ValidateParameterVariables validates all variables within a slice of ParamSpecs against a slice of Steps
 func ValidateParameterVariables(ctx context.Context, steps []Step, params ParamSpecs) *apis.FieldError {
 	var errs *apis.FieldError
-	errs = errs.Also(params.validateNoDuplicateNames())
+	errs = errs.Also(params.ValidateNoDuplicateNames())
 	errs = errs.Also(params.validateParamEnums(ctx).ViaField("params"))
-	stringParams, arrayParams, objectParams := params.sortByType()
-	stringParameterNames := sets.NewString(stringParams.getNames()...)
-	arrayParameterNames := sets.NewString(arrayParams.getNames()...)
-	errs = errs.Also(validateNameFormat(stringParameterNames.Insert(arrayParameterNames.List()...), objectParams))
+	stringParams, arrayParams, objectParams := params.SortByType()
+	stringParameterNames := sets.NewString(stringParams.GetNames()...)
+	arrayParameterNames := sets.NewString(arrayParams.GetNames()...)
+	errs = errs.Also(ValidateNameFormat(stringParameterNames.Insert(arrayParameterNames.List()...), objectParams))
 	return errs.Also(validateArrayUsage(steps, "params", arrayParameterNames))
 }
 
@@ -561,8 +561,8 @@ func validateVariables(ctx context.Context, steps []Step, prefix string, vars se
 	return errs
 }
 
-// validateNameFormat validates that the name format of all param types follows the rules
-func validateNameFormat(stringAndArrayParams sets.String, objectParams []ParamSpec) (errs *apis.FieldError) {
+// ValidateNameFormat validates that the name format of all param types follows the rules
+func ValidateNameFormat(stringAndArrayParams sets.String, objectParams []ParamSpec) (errs *apis.FieldError) {
 	// checking string or array name format
 	// ----
 	invalidStringAndArrayNames := []string{}

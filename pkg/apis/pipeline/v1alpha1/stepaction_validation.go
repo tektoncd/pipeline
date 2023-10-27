@@ -15,11 +15,15 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
+	"github.com/tektoncd/pipeline/pkg/substitution"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/webhook/resourcesemantics"
 )
@@ -58,5 +62,119 @@ func (ss *StepActionSpec) Validate(ctx context.Context) (errs *apis.FieldError) 
 			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "windows script support", config.AlphaAPIFields).ViaField("script"))
 		}
 	}
+	errs = errs.Also(validateUsageOfDeclaredParameters(ctx, *ss))
+	errs = errs.Also(v1.ValidateParameterTypes(ctx, ss.Params).ViaField("params"))
+	errs = errs.Also(validateParameterVariables(ctx, *ss, ss.Params))
+	errs = errs.Also(validateStepActionResultsVariables(ctx, *ss))
+	errs = errs.Also(validateResults(ctx, ss.Results).ViaField("results"))
+	return errs
+}
+
+// validateUsageOfDeclaredParameters validates that all parameters referenced in the Task are declared by the Task.
+func validateUsageOfDeclaredParameters(ctx context.Context, sas StepActionSpec) *apis.FieldError {
+	params := sas.Params
+	var errs *apis.FieldError
+	_, _, objectParams := params.SortByType()
+	allParameterNames := sets.NewString(params.GetNames()...)
+	errs = errs.Also(validateStepActionVariables(ctx, sas, "params", allParameterNames))
+	errs = errs.Also(validateObjectUsage(ctx, sas, objectParams))
+	errs = errs.Also(v1.ValidateObjectParamsHaveProperties(ctx, params))
+	return errs
+}
+
+func validateResults(ctx context.Context, results []StepActionResult) (errs *apis.FieldError) {
+	for index, result := range results {
+		errs = errs.Also(result.validate(ctx).ViaIndex(index))
+	}
+	return errs
+}
+
+// validateParameterVariables validates all variables within a slice of ParamSpecs against a StepAction
+func validateParameterVariables(ctx context.Context, sas StepActionSpec, params v1.ParamSpecs) *apis.FieldError {
+	var errs *apis.FieldError
+	errs = errs.Also(params.ValidateNoDuplicateNames())
+	stringParams, arrayParams, objectParams := params.SortByType()
+	stringParameterNames := sets.NewString(stringParams.GetNames()...)
+	arrayParameterNames := sets.NewString(arrayParams.GetNames()...)
+	errs = errs.Also(v1.ValidateNameFormat(stringParameterNames.Insert(arrayParameterNames.List()...), objectParams))
+	return errs.Also(validateStepActionArrayUsage(sas, "params", arrayParameterNames))
+}
+
+// validateObjectUsage validates the usage of individual attributes of an object param and the usage of the entire object
+func validateObjectUsage(ctx context.Context, sas StepActionSpec, params v1.ParamSpecs) (errs *apis.FieldError) {
+	objectParameterNames := sets.NewString()
+	for _, p := range params {
+		// collect all names of object type params
+		objectParameterNames.Insert(p.Name)
+
+		// collect all keys for this object param
+		objectKeys := sets.NewString()
+		for key := range p.Properties {
+			objectKeys.Insert(key)
+		}
+
+		// check if the object's key names are referenced correctly i.e. param.objectParam.key1
+		errs = errs.Also(validateStepActionVariables(ctx, sas, fmt.Sprintf("params\\.%s", p.Name), objectKeys))
+	}
+
+	return errs.Also(validateStepActionObjectUsageAsWhole(sas, "params", objectParameterNames))
+}
+
+// validateStepActionObjectUsageAsWhole returns an error if the StepAction contains references to the entire input object params in fields where these references are prohibited
+func validateStepActionObjectUsageAsWhole(sas StepActionSpec, prefix string, vars sets.String) *apis.FieldError {
+	errs := substitution.ValidateNoReferencesToEntireProhibitedVariables(sas.Image, prefix, vars).ViaField("image")
+	errs = errs.Also(substitution.ValidateNoReferencesToEntireProhibitedVariables(sas.Script, prefix, vars).ViaField("script"))
+	for i, cmd := range sas.Command {
+		errs = errs.Also(substitution.ValidateNoReferencesToEntireProhibitedVariables(cmd, prefix, vars).ViaFieldIndex("command", i))
+	}
+	for i, arg := range sas.Args {
+		errs = errs.Also(substitution.ValidateNoReferencesToEntireProhibitedVariables(arg, prefix, vars).ViaFieldIndex("args", i))
+	}
+	for _, env := range sas.Env {
+		errs = errs.Also(substitution.ValidateNoReferencesToEntireProhibitedVariables(env.Value, prefix, vars).ViaFieldKey("env", env.Name))
+	}
+	return errs
+}
+
+// validateStepActionArrayUsage returns an error if the Step contains references to the input array params in fields where these references are prohibited
+func validateStepActionArrayUsage(sas StepActionSpec, prefix string, arrayParamNames sets.String) *apis.FieldError {
+	errs := substitution.ValidateNoReferencesToProhibitedVariables(sas.Image, prefix, arrayParamNames).ViaField("image")
+	errs = errs.Also(substitution.ValidateNoReferencesToProhibitedVariables(sas.Script, prefix, arrayParamNames).ViaField("script"))
+	for i, cmd := range sas.Command {
+		errs = errs.Also(substitution.ValidateVariableReferenceIsIsolated(cmd, prefix, arrayParamNames).ViaFieldIndex("command", i))
+	}
+	for i, arg := range sas.Args {
+		errs = errs.Also(substitution.ValidateVariableReferenceIsIsolated(arg, prefix, arrayParamNames).ViaFieldIndex("args", i))
+	}
+	for _, env := range sas.Env {
+		errs = errs.Also(substitution.ValidateNoReferencesToProhibitedVariables(env.Value, prefix, arrayParamNames).ViaFieldKey("env", env.Name))
+	}
+	return errs
+}
+
+// validateStepActionVariables returns an error if the StepAction contains references to any unknown variables
+func validateStepActionVariables(ctx context.Context, sas StepActionSpec, prefix string, vars sets.String) *apis.FieldError {
+	errs := substitution.ValidateNoReferencesToUnknownVariables(sas.Image, prefix, vars).ViaField("image")
+	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(sas.Script, prefix, vars).ViaField("script"))
+	for i, cmd := range sas.Command {
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(cmd, prefix, vars).ViaFieldIndex("command", i))
+	}
+	for i, arg := range sas.Args {
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(arg, prefix, vars).ViaFieldIndex("args", i))
+	}
+	for _, env := range sas.Env {
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(env.Value, prefix, vars).ViaFieldKey("env", env.Name))
+	}
+	return errs
+}
+
+// validateStepActionResultsVariables validates if the results referenced in step script are defined in task results
+func validateStepActionResultsVariables(ctx context.Context, sas StepActionSpec) (errs *apis.FieldError) {
+	results := sas.Results
+	resultsNames := sets.NewString()
+	for _, r := range results {
+		resultsNames.Insert(r.Name)
+	}
+	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(sas.Script, "results", resultsNames).ViaField("script"))
 	return errs
 }
