@@ -108,8 +108,8 @@ func (pp *ParamSpec) setDefaultsForProperties() {
 	}
 }
 
-// getNames returns all the names of the declared parameters
-func (ps ParamSpecs) getNames() []string {
+// GetNames returns all the names of the declared parameters
+func (ps ParamSpecs) GetNames() []string {
 	var names []string
 	for _, p := range ps {
 		names = append(names, p.Name)
@@ -117,8 +117,8 @@ func (ps ParamSpecs) getNames() []string {
 	return names
 }
 
-// sortByType splits the input params into string params, array params, and object params, in that order
-func (ps ParamSpecs) sortByType() (ParamSpecs, ParamSpecs, ParamSpecs) {
+// SortByType splits the input params into string params, array params, and object params, in that order
+func (ps ParamSpecs) SortByType() (ParamSpecs, ParamSpecs, ParamSpecs) {
 	var stringParams, arrayParams, objectParams ParamSpecs
 	for _, p := range ps {
 		switch p.Type {
@@ -135,10 +135,10 @@ func (ps ParamSpecs) sortByType() (ParamSpecs, ParamSpecs, ParamSpecs) {
 	return stringParams, arrayParams, objectParams
 }
 
-// validateNoDuplicateNames returns an error if any of the params have the same name
-func (ps ParamSpecs) validateNoDuplicateNames() *apis.FieldError {
+// ValidateNoDuplicateNames returns an error if any of the params have the same name
+func (ps ParamSpecs) ValidateNoDuplicateNames() *apis.FieldError {
 	var errs *apis.FieldError
-	names := ps.getNames()
+	names := ps.GetNames()
 	for dup := range findDups(names) {
 		errs = errs.Also(apis.ErrGeneric("parameter appears more than once", "").ViaFieldKey("params", dup))
 	}
