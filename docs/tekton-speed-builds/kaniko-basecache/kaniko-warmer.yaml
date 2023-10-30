@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kaniko-warmer
+spec:
+  containers:
+  - name: kaniko-warmer
+    image: gcr.io/kaniko-project/warmer:latest
+    args: ["--cache-dir=/cache",
+           "--image=maven",
+           "--image=eclipse-temurin:19-jdk-alpine"]
+    volumeMounts:
+      - name: basecache
+        mountPath: /cache
+  restartPolicy: Never
+  volumes:
+    - name: basecache
+      persistentVolumeClaim:
+              claimName: basecache-pvc

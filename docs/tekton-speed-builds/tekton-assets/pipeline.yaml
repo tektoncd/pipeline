@@ -1,0 +1,33 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: pipeline-clone-and-build
+spec:
+  params:
+    - name: git-url
+    - name: image-name
+  workspaces:
+    - name: source
+  tasks:
+    - name: git-clone
+      taskRef:
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.git-url)
+      workspaces:
+        - name: source
+          workspace: source
+    - name: image-build
+      taskRef:
+        name: image-build
+      runAfter:
+        - git-clone
+      params:
+        - name: IMAGE
+          value: $(params.image-name)
+        - name: commit
+          value: "$(tasks.git-clone.results.commit)"
+      workspaces:
+        - name: source
+          workspace: source

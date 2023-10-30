@@ -1,0 +1,58 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: image-build
+  labels:
+    app.kubernetes.io/version: "0.6"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.17.0"
+    tekton.dev/categories: Image Build
+    tekton.dev/tags: image-build
+    tekton.dev/displayName: "Build and upload container image using Kaniko"
+    tekton.dev/platforms: "linux/amd64"
+spec:
+  description: >-
+    This Task builds a simple Dockerfile with kaniko and pushes to a registry.
+  params:
+    - name: IMAGE
+      description: Name (reference) of the image to build.
+    - name: DOCKERFILE
+      description: Path to the Dockerfile to build.
+      default: $(workspaces.source.path)/sample-app/Dockerfile
+    - name: CONTEXT
+      description: The build context used by Kaniko.
+      default: $(workspaces.source.path)/sample-app/
+    - name: commit
+      description: Short Commit SHA.
+  workspaces:
+    - name: source
+      description: Holds the context and Dockerfile
+    - name: cache
+      description: Holds Kaniko base images cache
+  results:
+    - name: IMAGE_DIGEST
+      description: Digest of the image just built.
+    - name: IMAGE_URL
+      description: URL of the image just built.
+  steps:
+    - name: build-and-push
+      workingDir: $(workspaces.source.path)/sample-app/
+      image: gcr.io/kaniko-project/executor:latest
+      args:
+        - --dockerfile=$(params.DOCKERFILE)
+        - --context=$(params.CONTEXT) # The user does not need to care the workspace and the source.
+        - --destination=$(params.IMAGE):$(params.commit)
+        - --digest-file=$(results.IMAGE_DIGEST.path)
+        - --cache=true
+        - --cache-dir=$(workspaces.cache.path)
+      # kaniko assumes it is running as root, which means this example fails on platforms
+      # that default to run containers as random uid (like OpenShift). Adding this securityContext
+      # makes it explicit that it needs to run as root.
+      securityContext:
+        runAsUser: 0
+    - name: write-url
+      image: docker.io/library/bash:5.1.4@sha256:b208215a4655538be652b2769d82e576bc4d0a2bb132144c060efc5be8c3f5d6
+      script: |
+        set -e
+        image="$(params.IMAGE):$(params.commit)"
+        echo -n "${image}" | tee "$(results.IMAGE_URL.path)"

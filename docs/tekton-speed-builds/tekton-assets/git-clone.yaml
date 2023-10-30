@@ -1,0 +1,84 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: git-clone
+  labels:
+    app.kubernetes.io/version: "0.5"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.21.0"
+    tekton.dev/categories: Git
+    tekton.dev/tags: git
+    tekton.dev/displayName: "git clone"
+    tekton.dev/platforms: "linux/amd64,linux/s390x,linux/ppc64le,linux/arm64"
+spec:
+  description: >-
+    These Tasks are Git tasks to work with repositories used by other tasks
+    in your Pipeline.
+
+    The git-clone Task will clone a repo from the provided url into the
+    output Workspace. By default the repo will be cloned into the root of
+    your Workspace. You can clone into a subdirectory by setting this Task's
+    subdirectory param. This Task also supports sparse checkouts. To perform
+    a sparse checkout, pass a list of comma separated directory patterns to
+    this Task's sparseCheckoutDirectories param.
+  workspaces:
+    - name: source
+      description: The git repo will be cloned onto the volume backing this Workspace.
+  params:
+    - name: url
+      description: Repository URL to clone from.
+      type: string
+  results:
+    - name: commit
+      description: The short commit SHA that was fetched by this Task.
+    - name: url
+      description: The precise URL that was fetched by this Task.
+  steps:
+    - name: clone
+      image: "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.21.0"
+      env:
+      - name: PARAM_URL
+        value: $(params.url)
+      - name: WORKSPACE_OUTPUT_PATH
+        value: $(workspaces.source.path)
+      script: |
+        #!/usr/bin/env sh
+        set -eu
+
+
+        set -x
+
+
+        CHECKOUT_DIR="${WORKSPACE_OUTPUT_PATH}"
+
+        cleandir() {
+          # Delete any existing contents of the repo directory if it exists.
+          #
+          # We don't just "rm -rf ${CHECKOUT_DIR}" because ${CHECKOUT_DIR} might be "/"
+          # or the root of a mounted volume.
+          if [ -d "${CHECKOUT_DIR}" ] ; then
+            # Delete non-hidden files and directories
+            rm -rf "${CHECKOUT_DIR:?}"/*
+            # Delete files and directories starting with . but excluding ..
+            rm -rf "${CHECKOUT_DIR}"/.[!.]*
+            # Delete files and directories starting with .. plus any other character
+            rm -rf "${CHECKOUT_DIR}"/..?*
+          fi
+        }
+
+
+        cleandir
+
+        /ko-app/git-init \
+          -url="${PARAM_URL}" \
+          -path="${CHECKOUT_DIR}" \
+          -submodules="true" \
+          -depth="1"
+        cd "${CHECKOUT_DIR}"
+        RESULT_SHA="$(git rev-parse --short HEAD)"
+        EXIT_CODE="$?"
+        if [ "${EXIT_CODE}" != 0 ] ; then
+          exit "${EXIT_CODE}"
+        fi
+        printf "%s" "${RESULT_SHA}" > "$(results.commit.path)"
+        printf "%s" "${PARAM_URL}" > "$(results.url.path)"
