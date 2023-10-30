@@ -54,26 +54,6 @@ var (
 	read = readPasswordFn
 )
 
-// GetUnsignedTask returns unsigned task with given name
-func GetUnsignedTask(name string) *v1beta1.Task {
-	return &v1beta1.Task{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1beta1",
-			Kind:       "Task"},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        name,
-			Namespace:   namespace,
-			Annotations: map[string]string{"foo": "bar"},
-		},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
-				Image: "ubuntu",
-				Name:  "echo",
-			}},
-		},
-	}
-}
-
 // SetupTrustedResourceConfig configures the trusted-resources-verification-no-match-policy feature flag with the given mode for testing
 func SetupTrustedResourceConfig(ctx context.Context, verificationNoMatchPolicy string) context.Context {
 	store := config.NewStore(logging.FromContext(ctx).Named("config-store"))

@@ -72,6 +72,40 @@ spec:
           name: step-action
 ```
 
+Upon resolution and execution of the `TaskRun`, the `Status` will look something like:
+
+```yaml
+status:
+  completionTime: "2023-10-24T20:28:42Z"
+  conditions:
+  - lastTransitionTime: "2023-10-24T20:28:42Z"
+    message: All Steps have completed executing
+    reason: Succeeded
+    status: "True"
+    type: Succeeded
+  podName: step-action-run-pod
+  provenance:
+    featureFlags:
+      EnableStepActions: true
+      ...
+  startTime: "2023-10-24T20:28:32Z"
+  steps:
+  - container: step-action-runner
+    imageID: docker.io/library/alpine@sha256:eece025e432126ce23f223450a0326fbebde39cdf496a85d8c016293fc851978
+    name: action-runner
+    terminated:
+      containerID: containerd://46a836588967202c05b594696077b147a0eb0621976534765478925bb7ce57f6
+      exitCode: 0
+      finishedAt: "2023-10-24T20:28:42Z"
+      reason: Completed
+      startedAt: "2023-10-24T20:28:42Z"
+  taskSpec:
+    steps:
+    - computeResources: {}
+      image: alpine
+      name: action-runner
+```
+
 If a `Step` is referencing a `StepAction`, it cannot contain the fields supported by `StepActions`. This includes:
 - `image`
 - `command`
