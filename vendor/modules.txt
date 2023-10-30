@@ -820,6 +820,9 @@ github.com/russross/blackfriday/v2
 # github.com/ryanuber/go-glob v1.0.0
 ## explicit
 github.com/ryanuber/go-glob
+# github.com/secure-systems-lab/go-securesystemslib v0.7.0
+## explicit; go 1.20
+github.com/secure-systems-lab/go-securesystemslib/encrypted
 # github.com/sergi/go-diff v1.2.0
 ## explicit; go 1.12
 github.com/sergi/go-diff/diffmatchpatch
@@ -831,7 +834,7 @@ github.com/shurcooL/githubv4
 github.com/shurcooL/graphql
 github.com/shurcooL/graphql/ident
 github.com/shurcooL/graphql/internal/jsonutil
-# github.com/sigstore/sigstore v1.7.4
+# github.com/sigstore/sigstore v1.7.5
 ## explicit; go 1.20
 github.com/sigstore/sigstore/pkg/cryptoutils
 github.com/sigstore/sigstore/pkg/signature
@@ -892,9 +895,6 @@ github.com/stretchr/testify/require
 github.com/tektoncd/plumbing
 github.com/tektoncd/plumbing/cmd/combine
 github.com/tektoncd/plumbing/scripts
-# github.com/theupdateframework/go-tuf v0.5.2
-## explicit; go 1.18
-github.com/theupdateframework/go-tuf/encrypted
 # github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399
 ## explicit
 github.com/titanous/rocacheck
