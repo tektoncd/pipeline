@@ -20,11 +20,8 @@ limitations under the License.
 package test
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"os"
-	"os/exec"
 	"strings"
 	"sync"
 	"testing"
@@ -32,7 +29,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -724,63 +720,4 @@ func resetConfigMap(ctx context.Context, t *testing.T, c *clients, namespace, co
 	if err := updateConfigMap(ctx, c.KubeClient, namespace, configName, values); err != nil {
 		t.Log(err)
 	}
-}
-
-func getFeatureFlagsBaseOnAPIFlag(t *testing.T) *config.FeatureFlags {
-	t.Helper()
-	alphaFeatureFlags, err := config.NewFeatureFlagsFromMap(map[string]string{
-		"enable-api-fields":            "alpha",
-		"results-from":                 "sidecar-logs",
-		"enable-tekton-oci-bundles":    "true",
-		"enable-step-actions":          "true",
-		"enable-cel-in-whenexpression": "true",
-	})
-	if err != nil {
-		t.Fatalf("error creating alpha feature flags configmap: %v", err)
-	}
-	betaFeatureFlags, err := config.NewFeatureFlagsFromMap(map[string]string{
-		"enable-api-fields": "beta",
-	})
-	if err != nil {
-		t.Fatalf("error creating beta feature flags configmap: %v", err)
-	}
-	stableFeatureFlags, err := config.NewFeatureFlagsFromMap(map[string]string{
-		"enable-api-fields": "stable",
-	})
-	if err != nil {
-		t.Fatalf("error creating stable feature flags configmap: %v", err)
-	}
-	enabledFeatureGate, err := getAPIFeatureGate()
-	if err != nil {
-		t.Fatalf("error reading enabled feature gate: %v", err)
-	}
-	switch enabledFeatureGate {
-	case "alpha":
-		return alphaFeatureFlags
-	case "beta":
-		return betaFeatureFlags
-	default:
-		return stableFeatureFlags
-	}
-}
-
-// getAPIFeatureGate queries the tekton pipelines namespace for the
-// current value of the "enable-api-fields" feature gate.
-func getAPIFeatureGate() (string, error) {
-	ns := os.Getenv("SYSTEM_NAMESPACE")
-	if ns == "" {
-		ns = "tekton-pipelines"
-	}
-
-	cmd := exec.Command("kubectl", "get", "configmap", "feature-flags", "-n", ns, "-o", `jsonpath="{.data['enable-api-fields']}"`)
-	output, err := cmd.Output()
-	if err != nil {
-		return "", fmt.Errorf("error getting feature-flags configmap: %w", err)
-	}
-	output = bytes.TrimSpace(output)
-	output = bytes.Trim(output, "\"")
-	if len(output) == 0 {
-		output = []byte("stable")
-	}
-	return string(output), nil
 }
