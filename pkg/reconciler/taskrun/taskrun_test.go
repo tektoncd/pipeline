@@ -77,6 +77,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	clock "k8s.io/utils/clock/testing"
 	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	cminformer "knative.dev/pkg/configmap/informer"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/kmeta"
@@ -2731,6 +2732,127 @@ spec:
 	}}
 	if c := cmp.Diff(want, getTaskRun.Status.TaskSpec.Workspaces); c != "" {
 		t.Errorf("TestPropagatedWorkspaces errored with: %s", diff.PrintWantGot(c))
+	}
+}
+
+func TestStepActionRef(t *testing.T) {
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-referencing-step-action
+  namespace: foo
+spec:
+  taskSpec:
+    steps:
+      - ref:
+          name: stepAction
+        name: step1
+        workingDir: /foo
+      - ref:
+          name: stepAction2
+        name: step2
+      - name: inlined-step
+        image: "inlined-image"
+`)
+	stepAction := parse.MustParseV1alpha1StepAction(t, `
+metadata:
+  name: stepAction
+  namespace: foo
+spec:
+  image: myImage
+  command: ["ls"]
+`)
+	stepAction2 := parse.MustParseV1alpha1StepAction(t, `
+metadata:
+  name: stepAction2
+  namespace: foo
+spec:
+  image: myImage
+  script: "echo hi"
+`)
+	d := test.Data{
+		TaskRuns:    []*v1.TaskRun{taskRun},
+		StepActions: []*v1alpha1.StepAction{stepAction, stepAction2},
+		ConfigMaps: []*corev1.ConfigMap{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+				Data: map[string]string{
+					"enable-step-actions": "true",
+				},
+			},
+		},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	createServiceAccount(t, testAssets, "default", taskRun.Namespace)
+	c := testAssets.Controller
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+		t.Fatalf("Could not reconcile the taskrun: %v", err)
+	}
+	getTaskRun, _ := testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+	got := getTaskRun.Status.TaskSpec.Steps
+	want := []v1.Step{{
+		Image:      "myImage",
+		Command:    []string{"ls"},
+		Name:       "step1",
+		WorkingDir: "/foo",
+	}, {
+		Image:  "myImage",
+		Script: "echo hi",
+		Name:   "step2",
+	}, {
+		Image: "inlined-image",
+		Name:  "inlined-step",
+	}}
+	if c := cmp.Diff(want, got); c != "" {
+		t.Errorf("TestStepActionRef errored with: %s", diff.PrintWantGot(c))
+	}
+}
+
+func TestStepActionRef_Error(t *testing.T) {
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-referencing-step-action
+  namespace: foo
+spec:
+  taskSpec:
+    steps:
+      - name: missing-step-action
+        ref:
+          name: noStepAction
+`)
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{taskRun},
+		ConfigMaps: []*corev1.ConfigMap{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+				Data: map[string]string{
+					"enable-step-actions": "true",
+				},
+			},
+		},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	createServiceAccount(t, testAssets, "default", taskRun.Namespace)
+	c := testAssets.Controller
+	err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun))
+	if err == nil {
+		t.Fatalf("expected error reconciling invalid TaskRun but got none")
+	}
+	if !controller.IsPermanentError(err) {
+		t.Fatalf("Expected to see a permanent error when reconciling invalid TaskRun, got %s instead", err)
+	}
+	getTaskRun, _ := testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+	got := getTaskRun.Status.Conditions
+	want := duckv1.Conditions{{
+		Type:    "Succeeded",
+		Status:  "False",
+		Reason:  "TaskRunResolutionFailed",
+		Message: `stepactions.tekton.dev "noStepAction" not found`,
+	}}
+	ignore := cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime")
+	if c := cmp.Diff(want, got, ignore); c != "" {
+		t.Errorf("TestStepActionRef_Error Conditions did not match: %s", diff.PrintWantGot(c))
 	}
 }
 

@@ -33,6 +33,8 @@ const (
 	DefaultEnableBundlesResolver = true
 	// DefaultEnableClusterResolver is the default value for "enable-cluster-resolver".
 	DefaultEnableClusterResolver = true
+	// DefaultEnableHttpResolver is the default value for "enable-http-resolver".
+	DefaultEnableHttpResolver = true
 
 	// EnableGitResolver is the flag used to enable the git remote resolver
 	EnableGitResolver = "enable-git-resolver"
@@ -42,6 +44,8 @@ const (
 	EnableBundlesResolver = "enable-bundles-resolver"
 	// EnableClusterResolver is the flag used to enable the cluster remote resolver
 	EnableClusterResolver = "enable-cluster-resolver"
+	// EnableHttpResolver is the flag used to enable the http remote resolver
+	EnableHttpResolver = "enable-http-resolver"
 )
 
 // FeatureFlags holds the features configurations
@@ -51,6 +55,7 @@ type FeatureFlags struct {
 	EnableHubResolver     bool
 	EnableBundleResolver  bool
 	EnableClusterResolver bool
+	EnableHttpResolver    bool
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -88,6 +93,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setFeature(EnableClusterResolver, DefaultEnableClusterResolver, &tc.EnableClusterResolver); err != nil {
+		return nil, err
+	}
+	if err := setFeature(EnableHttpResolver, DefaultEnableHttpResolver, &tc.EnableHttpResolver); err != nil {
 		return nil, err
 	}
 	return &tc, nil

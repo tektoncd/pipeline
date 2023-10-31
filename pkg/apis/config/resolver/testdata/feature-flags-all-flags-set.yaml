@@ -22,3 +22,4 @@ data:
   enable-hub-resolver: "false"
   enable-bundles-resolver: "false"
   enable-cluster-resolver: "false"
+  enable-http-resolver: "false"

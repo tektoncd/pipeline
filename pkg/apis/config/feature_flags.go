@@ -28,12 +28,18 @@ import (
 )
 
 const (
-	// StableAPIFields is the value used for "enable-api-fields" when only stable APIs should be usable.
+	// StableAPIFields is the value used for API-driven features of stable stability level.
 	StableAPIFields = "stable"
-	// AlphaAPIFields is the value used for "enable-api-fields" when alpha APIs should be usable as well.
+	// AlphaAPIFields is the value used for API-driven features of alpha stability level.
 	AlphaAPIFields = "alpha"
-	// BetaAPIFields is the value used for "enable-api-fields" when beta APIs should be usable as well.
+	// BetaAPIFields is the value used for API-driven features of beta stability level.
 	BetaAPIFields = "beta"
+	// Features of "alpha" stability level are disabled by default
+	DefaultAlphaFeatureEnabled = false
+	// Features of "beta" stability level are disabled by default
+	DefaultBetaFeatureEnabled = false
+	// Features of "stable" stability level are enabled by default
+	DefaultStableFeatureEnabled = true
 	// FailNoMatchPolicy is the value used for "trusted-resources-verification-no-match-policy" to fail TaskRun or PipelineRun
 	// when no matching policies are found
 	FailNoMatchPolicy = "fail"
@@ -101,6 +107,10 @@ const (
 	EnableStepActions = "enable-step-actions"
 	// DefaultEnableStepActions is the default value for EnableStepActions
 	DefaultEnableStepActions = false
+	// EnableParamEnum is the flag to enabled enum in params
+	EnableParamEnum = "enable-param-enum"
+	// DefaultEnableParamEnum is the default value for EnableParamEnum
+	DefaultEnableParamEnum = false
 
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
@@ -180,6 +190,7 @@ type FeatureFlags struct {
 	Coschedule                string
 	EnableCELInWhenExpression bool
 	EnableStepActions         bool
+	EnableParamEnum           bool
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -261,6 +272,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setFeature(EnableStepActions, DefaultEnableStepActions, &tc.EnableStepActions); err != nil {
+		return nil, err
+	}
+	if err := setFeature(EnableParamEnum, DefaultEnableParamEnum, &tc.EnableParamEnum); err != nil {
 		return nil, err
 	}
 	// Given that they are alpha features, Tekton Bundles and Custom Tasks should be switched on if
@@ -400,4 +414,19 @@ func GetVerificationNoMatchPolicy(ctx context.Context) string {
 // IsSpireEnabled checks if non-falsifiable provenance is enforced through SPIRE
 func IsSpireEnabled(ctx context.Context) bool {
 	return FromContextOrDefaults(ctx).FeatureFlags.EnforceNonfalsifiability == EnforceNonfalsifiabilityWithSpire
+}
+
+// TODO(#7285): Patch the default values of new features that were added after
+// `enable-api-fields` was no longer used.
+type PerFeatureFlag struct {
+	// Name of the feature flag
+	Name string
+	// Stability level of the feature, one of StableAPIFields, BetaAPIFields or AlphaAPIFields
+	Stability string
+	// Enabled is whether the feature is turned on
+	Enabled bool
+	// Deprecated indicates whether the feature is deprecated
+	// +optional
+	//nolint:gocritic
+	Deprecated bool
 }

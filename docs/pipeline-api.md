@@ -3273,6 +3273,35 @@ github.com/tektoncd/pipeline/pkg/apis/config.FeatureFlags
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.Ref">Ref
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.Step">Step</a>)
+</p>
+<div>
+<p>Ref can be used to refer to a specific instance of a StepAction.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the referenced step</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1.RefSource">RefSource
 </h3>
 <p>
@@ -4354,6 +4383,20 @@ StepOutputConfig
 <td>
 <em>(Optional)</em>
 <p>Stores configuration for the stderr stream of the step.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ref</code><br/>
+<em>
+<a href="#tekton.dev/v1.Ref">
+Ref
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Contains the reference to an existing StepAction.</p>
 </td>
 </tr>
 </tbody>
@@ -11761,6 +11804,35 @@ github.com/tektoncd/pipeline/pkg/apis/config.FeatureFlags
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.Ref">Ref
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Step">Step</a>)
+</p>
+<div>
+<p>Ref can be used to refer to a specific instance of a StepAction.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the referenced step</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1beta1.RefSource">RefSource
 </h3>
 <p>
@@ -12955,6 +13027,20 @@ StepOutputConfig
 <td>
 <em>(Optional)</em>
 <p>Stores configuration for the stderr stream of the step.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ref</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.Ref">
+Ref
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Contains the reference to an existing StepAction.</p>
 </td>
 </tr>
 </tbody>

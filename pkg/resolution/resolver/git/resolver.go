@@ -35,6 +35,7 @@ import (
 	"github.com/jenkins-x/go-scm/scm/factory"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/resolution/common"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"go.uber.org/zap"
@@ -147,7 +148,19 @@ func (r *Resolver) resolveAPIGit(ctx context.Context, params map[string]string) 
 	if err != nil {
 		return nil, err
 	}
-	apiToken, err := r.getAPIToken(ctx)
+	secretRef := &secretCacheKey{
+		name: params[tokenParam],
+		key:  params[tokenKeyParam],
+	}
+	if secretRef.name != "" {
+		if secretRef.key == "" {
+			secretRef.key = defaultTokenKeyParam
+		}
+		secretRef.ns = common.RequestNamespace(ctx)
+	} else {
+		secretRef = nil
+	}
+	apiToken, err := r.getAPIToken(ctx, secretRef)
 	if err != nil {
 		return nil, err
 	}
@@ -366,51 +379,66 @@ func (r *Resolver) getSCMTypeAndServerURL(ctx context.Context) (string, string, 
 	return scmType, serverURL, nil
 }
 
-func (r *Resolver) getAPIToken(ctx context.Context) ([]byte, error) {
+func (r *Resolver) getAPIToken(ctx context.Context, apiSecret *secretCacheKey) ([]byte, error) {
 	conf := framework.GetResolverConfigFromContext(ctx)
-
-	cacheKey := secretCacheKey{}
 
 	ok := false
 
-	if cacheKey.name, ok = conf[APISecretNameKey]; !ok || cacheKey.name == "" {
-		err := fmt.Errorf("cannot get API token, required when specifying '%s' param, '%s' not specified in config", repoParam, APISecretNameKey)
-		r.logger.Info(err)
-		return nil, err
-	}
-	if cacheKey.key, ok = conf[APISecretKeyKey]; !ok || cacheKey.key == "" {
-		err := fmt.Errorf("cannot get API token, required when specifying '%s' param, '%s' not specified in config", repoParam, APISecretKeyKey)
-		r.logger.Info(err)
-		return nil, err
-	}
-	if cacheKey.ns, ok = conf[APISecretNamespaceKey]; !ok {
-		cacheKey.ns = os.Getenv("SYSTEM_NAMESPACE")
+	// NOTE(chmouel): only cache secrets when user hasn't passed params in their resolver configuration
+	cacheSecret := false
+	if apiSecret == nil {
+		cacheSecret = true
+		apiSecret = &secretCacheKey{}
 	}
 
-	val, ok := r.cache.Get(cacheKey)
-	if ok {
-		return val.([]byte), nil
+	if apiSecret.name == "" {
+		if apiSecret.name, ok = conf[APISecretNameKey]; !ok || apiSecret.name == "" {
+			err := fmt.Errorf("cannot get API token, required when specifying '%s' param, '%s' not specified in config", repoParam, APISecretNameKey)
+			r.logger.Info(err)
+			return nil, err
+		}
+	}
+	if apiSecret.key == "" {
+		if apiSecret.key, ok = conf[APISecretKeyKey]; !ok || apiSecret.key == "" {
+			err := fmt.Errorf("cannot get API token, required when specifying '%s' param, '%s' not specified in config", repoParam, APISecretKeyKey)
+			r.logger.Info(err)
+			return nil, err
+		}
+	}
+	if apiSecret.ns == "" {
+		if apiSecret.ns, ok = conf[APISecretNamespaceKey]; !ok {
+			apiSecret.ns = os.Getenv("SYSTEM_NAMESPACE")
+		}
 	}
 
-	secret, err := r.kubeClient.CoreV1().Secrets(cacheKey.ns).Get(ctx, cacheKey.name, metav1.GetOptions{})
+	if cacheSecret {
+		val, ok := r.cache.Get(apiSecret)
+		if ok {
+			return val.([]byte), nil
+		}
+	}
+
+	secret, err := r.kubeClient.CoreV1().Secrets(apiSecret.ns).Get(ctx, apiSecret.name, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			notFoundErr := fmt.Errorf("cannot get API token, secret %s not found in namespace %s", cacheKey.name, cacheKey.ns)
+			notFoundErr := fmt.Errorf("cannot get API token, secret %s not found in namespace %s", apiSecret.name, apiSecret.ns)
 			r.logger.Info(notFoundErr)
 			return nil, notFoundErr
 		}
-		wrappedErr := fmt.Errorf("error reading API token from secret %s in namespace %s: %w", cacheKey.name, cacheKey.ns, err)
+		wrappedErr := fmt.Errorf("error reading API token from secret %s in namespace %s: %w", apiSecret.name, apiSecret.ns, err)
 		r.logger.Info(wrappedErr)
 		return nil, wrappedErr
 	}
 
-	secretVal, ok := secret.Data[cacheKey.key]
+	secretVal, ok := secret.Data[apiSecret.key]
 	if !ok {
-		err := fmt.Errorf("cannot get API token, key %s not found in secret %s in namespace %s", cacheKey.key, cacheKey.name, cacheKey.ns)
+		err := fmt.Errorf("cannot get API token, key %s not found in secret %s in namespace %s", apiSecret.key, apiSecret.name, apiSecret.ns)
 		r.logger.Info(err)
 		return nil, err
 	}
-	r.cache.Add(cacheKey, secretVal, r.ttl)
+	if cacheSecret {
+		r.cache.Add(apiSecret, secretVal, r.ttl)
+	}
 	return secretVal, nil
 }
 

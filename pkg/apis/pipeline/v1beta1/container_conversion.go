@@ -22,6 +22,14 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 )
 
+func (r Ref) convertTo(ctx context.Context, sink *v1.Ref) {
+	sink.Name = r.Name
+}
+
+func (r *Ref) convertFrom(ctx context.Context, source v1.Ref) {
+	r.Name = source.Name
+}
+
 func (s Step) convertTo(ctx context.Context, sink *v1.Step) {
 	sink.Name = s.Name
 	sink.Image = s.Image
@@ -47,6 +55,10 @@ func (s Step) convertTo(ctx context.Context, sink *v1.Step) {
 	sink.OnError = (v1.OnErrorType)(s.OnError)
 	sink.StdoutConfig = (*v1.StepOutputConfig)(s.StdoutConfig)
 	sink.StderrConfig = (*v1.StepOutputConfig)(s.StderrConfig)
+	if s.Ref != nil {
+		sink.Ref = &v1.Ref{}
+		s.Ref.convertTo(ctx, sink.Ref)
+	}
 }
 
 func (s *Step) convertFrom(ctx context.Context, source v1.Step) {
@@ -74,6 +86,11 @@ func (s *Step) convertFrom(ctx context.Context, source v1.Step) {
 	s.OnError = (OnErrorType)(source.OnError)
 	s.StdoutConfig = (*StepOutputConfig)(source.StdoutConfig)
 	s.StderrConfig = (*StepOutputConfig)(source.StderrConfig)
+	if source.Ref != nil {
+		newRef := Ref{}
+		newRef.convertFrom(ctx, *source.Ref)
+		s.Ref = &newRef
+	}
 }
 
 func (s StepTemplate) convertTo(ctx context.Context, sink *v1.StepTemplate) {

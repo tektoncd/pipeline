@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/cluster"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/git"
+	"github.com/tektoncd/pipeline/pkg/resolution/resolver/http"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/hub"
 	filteredinformerfactory "knative.dev/pkg/client/injection/kube/informers/factory/filtered"
 	"knative.dev/pkg/injection/sharedmain"
@@ -40,7 +41,8 @@ func main() {
 		framework.NewController(ctx, &git.Resolver{}),
 		framework.NewController(ctx, &hub.Resolver{TektonHubURL: tektonHubURL, ArtifactHubURL: artifactHubURL}),
 		framework.NewController(ctx, &bundle.Resolver{}),
-		framework.NewController(ctx, &cluster.Resolver{}))
+		framework.NewController(ctx, &cluster.Resolver{}),
+		framework.NewController(ctx, &http.Resolver{}))
 }
 
 func buildHubURL(configAPI, defaultURL string) string {

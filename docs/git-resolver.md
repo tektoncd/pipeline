@@ -18,8 +18,10 @@ This Resolver responds to type `git`.
 | `url`        | URL of the repo to fetch and clone anonymously. Either `url`, or `repo` (with `org`) must be specified, but not both.  | `https://github.com/tektoncd/catalog.git`                   |
 | `repo`       | The repository to find the resource in. Either `url`, or `repo` (with `org`) must be specified, but not both.          | `pipeline`, `test-infra`                                    |
 | `org`        | The organization to find the repository in. Default can be set in [configuration](#configuration).                     | `tektoncd`, `kubernetes`                                    |
+| `token`      | An optional secret name in the `PipelineRun` namespace to fetch the token from. Defaults to empty, meaning it will try to use the configuration from the global configmap.      | `secret-name`, (empty)  |
+| `tokenKey`   | An optional key in the token secret name in the `PipelineRun` namespace to fetch the token from. Defaults to `token`.  | `token`                                                     |
 | `revision`   | Git revision to checkout a file from. This can be commit SHA, branch or tag.                                           | `aeb957601cf41c012be462827053a21a420befca` `main` `v0.38.2` |
-| `pathInRepo` | Where to find the file in the repo.                                                                                    | `task/golang-build/0.3/golang-build.yaml`                  |
+| `pathInRepo` | Where to find the file in the repo.                                                                                    | `task/golang-build/0.3/golang-build.yaml`                   |
 
 ## Requirements
 
@@ -131,6 +133,34 @@ spec:
       value: task/git-clone/0.6/git-clone.yaml
 ```
 
+#### Task Resolution with a custom token to the SCM provider
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: git-api-demo-tr
+spec:
+  taskRef:
+    resolver: git
+    params:
+    - name: org
+      value: tektoncd
+    - name: repo
+      value: catalog
+    - name: revision
+      value: main
+    - name: pathInRepo
+      value: task/git-clone/0.6/git-clone.yaml
+    # my-secret-token should be created in the namespace where the
+    # pipelinerun is created and contain a GitHub personal access
+    # token in the token key of the secret.
+    - name: token
+      value: my-secret-token
+    - name: tokenKey
+      value: token
+```
+
 #### Pipeline resolution
 
 ```yaml
@@ -158,8 +188,8 @@ spec:
 ## `ResolutionRequest` Status
 `ResolutionRequest.Status.RefSource` field captures the source where the remote resource came from. It includes the 3 subfields: `url`, `digest` and `entrypoint`.
 - `url`
-  - If users choose to use anonymous cloning, the url is just user-provided value for the `url` param in the [SPDX download format](https://spdx.github.io/spdx-spec/package-information/#77-package-download-location-field). 
-  - If scm api is used, it would be the clone URL of the repo fetched from scm repository service in the [SPDX download format](https://spdx.github.io/spdx-spec/package-information/#77-package-download-location-field). 
+  - If users choose to use anonymous cloning, the url is just user-provided value for the `url` param in the [SPDX download format](https://spdx.github.io/spdx-spec/package-information/#77-package-download-location-field).
+  - If scm api is used, it would be the clone URL of the repo fetched from scm repository service in the [SPDX download format](https://spdx.github.io/spdx-spec/package-information/#77-package-download-location-field).
 - `digest`
   - The algorithm name is fixed "sha1", but subject to be changed to "sha256" once Git eventually uses SHA256 at some point later. See https://git-scm.com/docs/hash-function-transition for more details.
   - The value is the actual commit sha at the moment of resolving the resource even if a user provides a tag/branch name for the param `revision`.
@@ -189,7 +219,7 @@ spec:
 apiVersion: resolution.tekton.dev/v1alpha1
 kind: ResolutionRequest
 metadata:
-  ... 
+  ...
 spec:
   params:
     pathInRepo: pipeline.yaml
