@@ -58,7 +58,7 @@ func EventKey(event *cloudevents.Event) (string, error) {
 		return "", err
 	}
 	if data.CustomRun == nil {
-		return "", fmt.Errorf("Invalid CustomRun data in %v", event)
+		return "", fmt.Errorf("invalid CustomRun data in %v", event)
 	}
 	resourceName = data.CustomRun.Name
 	resourceNamespace = data.CustomRun.Namespace

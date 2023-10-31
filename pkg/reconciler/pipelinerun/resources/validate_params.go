@@ -71,7 +71,7 @@ func ValidateRequiredParametersProvided(pipelineParameters *v1.ParamSpecs, pipel
 
 	// Return an error with the missing parameters' names, or return nil if there are none.
 	if len(missingParams) != 0 {
-		return fmt.Errorf("PipelineRun missing parameters: %s", missingParams)
+		return fmt.Errorf("pipelineRun missing parameters: %s", missingParams)
 	}
 	return nil
 }
@@ -80,7 +80,7 @@ func ValidateRequiredParametersProvided(pipelineParameters *v1.ParamSpecs, pipel
 func ValidateObjectParamRequiredKeys(pipelineParameters []v1.ParamSpec, pipelineRunParameters []v1.Param) error {
 	missings := taskrun.MissingKeysObjectParamNames(pipelineParameters, pipelineRunParameters)
 	if len(missings) != 0 {
-		return fmt.Errorf("PipelineRun missing object keys for parameters: %v", missings)
+		return fmt.Errorf("pipelineRun missing object keys for parameters: %v", missings)
 	}
 
 	return nil

@@ -879,7 +879,7 @@ spec:
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed PipelineRun foo/pipeline-missing-object-param-keys parameters is missing object keys required by Pipeline foo/a-pipeline-with-object-params's parameters: PipelineRun missing object keys for parameters",
+			"Warning Failed PipelineRun foo/pipeline-missing-object-param-keys parameters is missing object keys required by Pipeline foo/a-pipeline-with-object-params's parameters: pipelineRun missing object keys for parameters",
 		},
 	}, {
 		name: "invalid-pipeline-array-index-out-of-bound",
@@ -12264,7 +12264,7 @@ spec:
 			wantEvents :=
 				[]string{
 					"Normal Started",
-					"Warning Failed PipelineRun foo/pr can't be Run; couldn't resolve all references: Array Result Index 3 for Task pt-with-result Result platforms is out of bound of size 3",
+					"Warning Failed PipelineRun foo/pr can't be Run; couldn't resolve all references: array Result Index 3 for Task pt-with-result Result platforms is out of bound of size 3",
 					"Warning InternalError 1 error occurred:",
 				}
 			prt := newPipelineRunTest(t, d)
