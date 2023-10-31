@@ -133,6 +133,7 @@ var knownFeatureFlagKeys = sets.NewString(
 	KeepPodOnCancel,
 	EnableCELInWhenExpression,
 	EnableStepActions,
+	EnableParamEnum,
 
 	disableAffinityAssistantKey,
 	disableCredsInitKey,
