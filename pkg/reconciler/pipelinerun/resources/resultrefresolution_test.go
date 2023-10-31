@@ -757,7 +757,7 @@ func TestValidateArrayResultsIndex(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		wantErr: "Array Result Index 1 for Task aTask Result aResult is out of bound of size 0",
+		wantErr: "array Result Index 1 for Task aTask Result aResult is out of bound of size 0",
 	}, {
 		name: "In Bounds Array",
 		refs: ResolvedResultRefs{{
@@ -787,7 +787,7 @@ func TestValidateArrayResultsIndex(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		wantErr: "Array Result Index 3 for Task aTask Result aResult is out of bound of size 3",
+		wantErr: "array Result Index 3 for Task aTask Result aResult is out of bound of size 3",
 	}, {
 		name: "In Bounds and Out of Bounds Array",
 		refs: ResolvedResultRefs{{
@@ -813,7 +813,7 @@ func TestValidateArrayResultsIndex(t *testing.T) {
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		wantErr: "Array Result Index 3 for Task aTask Result aResult is out of bound of size 3",
+		wantErr: "array Result Index 3 for Task aTask Result aResult is out of bound of size 3",
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateArrayResultsIndex(tt.refs)

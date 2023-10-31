@@ -71,7 +71,7 @@ func validateArrayResultsIndex(allResolvedResultRefs ResolvedResultRefs) error {
 	for _, r := range allResolvedResultRefs {
 		if r.Value.Type == v1.ParamTypeArray {
 			if r.ResultReference.ResultsIndex >= len(r.Value.ArrayVal) {
-				return fmt.Errorf("Array Result Index %d for Task %s Result %s is out of bound of size %d", r.ResultReference.ResultsIndex, r.ResultReference.PipelineTask, r.ResultReference.Result, len(r.Value.ArrayVal))
+				return fmt.Errorf("array Result Index %d for Task %s Result %s is out of bound of size %d", r.ResultReference.ResultsIndex, r.ResultReference.PipelineTask, r.ResultReference.Result, len(r.Value.ArrayVal))
 			}
 		}
 	}

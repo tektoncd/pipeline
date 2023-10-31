@@ -75,7 +75,7 @@ func eventsFromChannel(c chan string, wantEvents []string) error {
 	for {
 		select {
 		case event := <-c:
-			return fmt.Errorf("Unexpected event: %q", event)
+			return fmt.Errorf("unexpected event: %q", event)
 		default:
 			return nil
 		}

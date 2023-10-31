@@ -97,7 +97,7 @@ type LocalPipelineRefResolver struct {
 func (l *LocalPipelineRefResolver) GetPipeline(ctx context.Context, name string) (*v1.Pipeline, *v1.RefSource, *trustedresources.VerificationResult, error) {
 	// If we are going to resolve this reference locally, we need a namespace scope.
 	if l.Namespace == "" {
-		return nil, nil, nil, fmt.Errorf("Must specify namespace to resolve reference to pipeline %s", name)
+		return nil, nil, nil, fmt.Errorf("must specify namespace to resolve reference to pipeline %s", name)
 	}
 
 	pipeline, err := l.Tektonclient.TektonV1().Pipelines(l.Namespace).Get(ctx, name, metav1.GetOptions{})

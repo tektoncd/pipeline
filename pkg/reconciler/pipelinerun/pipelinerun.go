@@ -1371,13 +1371,13 @@ func (c *Reconciler) updatePipelineRunStatusFromInformer(ctx context.Context, pr
 	pipelineRunLabels := getTaskrunLabels(pr, "", false)
 	taskRuns, err := c.taskRunLister.TaskRuns(pr.Namespace).List(k8slabels.SelectorFromSet(pipelineRunLabels))
 	if err != nil {
-		logger.Errorf("could not list TaskRuns %#v", err)
+		logger.Errorf("Could not list TaskRuns %#v", err)
 		return err
 	}
 
 	customRuns, err := c.customRunLister.CustomRuns(pr.Namespace).List(k8slabels.SelectorFromSet(pipelineRunLabels))
 	if err != nil {
-		logger.Errorf("could not list CustomRuns %#v", err)
+		logger.Errorf("Could not list CustomRuns %#v", err)
 		return err
 	}
 	return updatePipelineRunStatusFromChildObjects(ctx, logger, pr, taskRuns, customRuns)
@@ -1525,7 +1525,7 @@ func conditionFromVerificationResult(verificationResult *trustedresources.Verifi
 	var err error
 	switch verificationResult.VerificationResultType {
 	case trustedresources.VerificationError:
-		err = fmt.Errorf("PipelineRun %s/%s referred resource %s failed signature verification: %w", pr.Namespace, pr.Name, resourceName, verificationResult.Err)
+		err = fmt.Errorf("pipelineRun %s/%s referred resource %s failed signature verification: %w", pr.Namespace, pr.Name, resourceName, verificationResult.Err)
 		condition = &apis.Condition{
 			Type:    trustedresources.ConditionTrustedResourcesVerified,
 			Status:  corev1.ConditionFalse,

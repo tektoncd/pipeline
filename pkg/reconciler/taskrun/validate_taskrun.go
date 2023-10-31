@@ -181,13 +181,13 @@ func validateTaskSpecRequestResources(taskSpec *v1.TaskSpec) error {
 				// First validate the limit in step
 				if limit, ok := step.ComputeResources.Limits[k]; ok {
 					if (&limit).Cmp(request) == -1 {
-						return fmt.Errorf("Invalid request resource value: %v must be less or equal to limit %v", request.String(), limit.String())
+						return fmt.Errorf("invalid request resource value: %v must be less or equal to limit %v", request.String(), limit.String())
 					}
 				} else if taskSpec.StepTemplate != nil {
 					// If step doesn't configure the limit, validate the limit in stepTemplate
 					if limit, ok := taskSpec.StepTemplate.ComputeResources.Limits[k]; ok {
 						if (&limit).Cmp(request) == -1 {
-							return fmt.Errorf("Invalid request resource value: %v must be less or equal to limit %v", request.String(), limit.String())
+							return fmt.Errorf("invalid request resource value: %v must be less or equal to limit %v", request.String(), limit.String())
 						}
 					}
 				}
