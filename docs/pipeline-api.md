@@ -3313,6 +3313,21 @@ string
 <p>Name of the referenced step</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>ResolverRef</code><br/>
+<em>
+<a href="#tekton.dev/v1.ResolverRef">
+ResolverRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ResolverRef allows referencing a StepAction in a remote location
+like a git repo.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.RefSource">RefSource
@@ -3384,7 +3399,7 @@ requested.</p>
 <h3 id="tekton.dev/v1.ResolverRef">ResolverRef
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRef">PipelineRef</a>, <a href="#tekton.dev/v1.TaskRef">TaskRef</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRef">PipelineRef</a>, <a href="#tekton.dev/v1.Ref">Ref</a>, <a href="#tekton.dev/v1.TaskRef">TaskRef</a>)
 </p>
 <div>
 <p>ResolverRef can be used to refer to a Pipeline or Task in a remote
@@ -11857,6 +11872,21 @@ string
 <p>Name of the referenced step</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>ResolverRef</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.ResolverRef">
+ResolverRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ResolverRef allows referencing a StepAction in a remote location
+like a git repo.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1beta1.RefSource">RefSource
@@ -11928,7 +11958,7 @@ requested.</p>
 <h3 id="tekton.dev/v1beta1.ResolverRef">ResolverRef
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineRef">PipelineRef</a>, <a href="#tekton.dev/v1beta1.TaskRef">TaskRef</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineRef">PipelineRef</a>, <a href="#tekton.dev/v1beta1.Ref">Ref</a>, <a href="#tekton.dev/v1beta1.TaskRef">TaskRef</a>)
 </p>
 <div>
 <p>ResolverRef can be used to refer to a Pipeline or Task in a remote
