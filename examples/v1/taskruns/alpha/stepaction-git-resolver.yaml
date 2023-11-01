@@ -1,0 +1,18 @@
+# TODO(#7325): use StepAction from Catalog
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: step-action-run-
+spec:
+  TaskSpec:
+    steps:
+      - name: action-runner
+        ref:
+          resolver: git
+          params:
+            - name: url
+              value: https://github.com/chitrangpatel/repo1M.git
+            - name: revision
+              value: main
+            - name: pathInRepo
+              value: basic_step.yaml

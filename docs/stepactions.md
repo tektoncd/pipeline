@@ -17,7 +17,7 @@ A `StepAction` is the reusable and scriptable unit of work that is performed by 
 
 A `Step` is not reusable, the work it performs is reusable and referenceable. `Steps` are in-lined in the `Task` definition and either perform work directly or perform a `StepAction`. A `StepAction` cannot be run stand-alone (unlike a `TaskRun` or a `PipelineRun`). It has to be referenced by a `Step`. Another way to ehink about this is that a `Step` is not composed of `StepActions` (unlike a `Task` being composed of `Steps` and `Sidecars`). Instead, a `Step` is an actionable component, meaning that it has the ability to refer to a `StepAction`. The author of the `StepAction` must be able to compose a `Step` using a `StepAction` and provide all the necessary context (or orchestration) to it.
 
- 
+
 ## Configuring a `StepAction`
 
 A `StepAction` definition supports the following fields:
@@ -29,7 +29,7 @@ A `StepAction` definition supports the following fields:
   - [`metadata`][kubernetes-overview] - Specifies metadata that uniquely identifies the
     `StepAction` resource object. For example, a `name`.
   - [`spec`][kubernetes-overview] - Specifies the configuration information for this `StepAction` resource object.
-  - `image` - Specifies the image to use for the `Step`. 
+  - `image` - Specifies the image to use for the `Step`.
     - The container image must abide by the [container contract](./container-contract.md).
 - Optional
   - `command`
@@ -52,15 +52,15 @@ spec:
   env:
     - name: HOME
       value: /home
-  image: ubuntu 
+  image: ubuntu
   command: ["ls"]
   args: ["-lh"]
 ```
 
 ### Declaring Parameters
 
-Like with `Tasks`, a `StepAction` must declare all the parameters that it used. The same rules for `Parameter` [name](./tasks.md/#parameter-name), [type](./tasks.md/#parameter-type) (including [object](./tasks.md/#object-type), [array](./tasks.md/#array-type) and [string](./tasks.md/#string-type)) apply as when declaring them in `Tasks`. A `StepAction` can also provide [default value](./tasks.md/#default-value) to a `Parameter`. 
- 
+Like with `Tasks`, a `StepAction` must declare all the parameters that it used. The same rules for `Parameter` [name](./tasks.md/#parameter-name), [type](./tasks.md/#parameter-type) (including [object](./tasks.md/#object-type), [array](./tasks.md/#array-type) and [string](./tasks.md/#string-type)) apply as when declaring them in `Tasks`. A `StepAction` can also provide [default value](./tasks.md/#default-value) to a `Parameter`.
+
  `Parameters` are passed to the `StepAction` from its corresponding `Step` referencing it.
 
 ```yaml
@@ -93,7 +93,7 @@ spec:
 
 ### Declaring Results
 
-A `StepAction` also declares the results that it will emit. 
+A `StepAction` also declares the results that it will emit.
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
@@ -233,7 +233,7 @@ spec:
         onError: continue
 ```
 
-### Passing Params to StepAction 
+### Passing Params to StepAction
 
 A `StepAction` may require [params](#(declaring-parameters)). In this case, a `Task` needs to ensure that the `StepAction` has access to all the required `params`.
 When referencing a `StepAction`, a `Step` can also provide it with `params`, just like how a `TaskRun` provides params to the underlying `Task`.
@@ -258,3 +258,29 @@ spec:
 ```
 
 **Note:** If a `Step` declares `params` for an `inlined Step`, it will also lead to a validation error. This is because an `inlined Step` gets it's `params` from the `TaskRun`.
+
+### Specifying Remote StepActions
+
+A `ref` field may specify a `StepAction` in a remote location such as git.
+Support for specific types of remote will depend on the `Resolvers` your
+cluster's operator has installed. For more information including a tutorial, please check [resolution docs](resolution.md). The below example demonstrates referencing a `StepAction` in git:
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: step-action-run-
+spec:
+  TaskSpec:
+    steps:
+      - name: action-runner
+        ref:
+          resolver: git
+          params:
+            - name: url
+              value: https://github.com/repo/repo.git
+            - name: revision
+              value: main
+            - name: pathInRepo
+              value: remote_step.yaml
+```

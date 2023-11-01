@@ -52,8 +52,8 @@ func GetTaskKind(taskrun *v1.TaskRun) v1.TaskKind {
 	return kind
 }
 
-// GetTaskFuncFromTaskRun is a factory function that will use the given TaskRef as context to return a valid GetTask function. It
-// also requires a kubeclient, tektonclient, namespace, and service account in case it needs to find that task in
+// GetTaskFuncFromTaskRun is a factory function that will use the given TaskRef as context to return a valid GetTask function.
+// It also requires a kubeclient, tektonclient, namespace, and service account in case it needs to find that task in
 // cluster or authorize against an external repositroy. It will figure out whether it needs to look in the cluster or in
 // a remote image to fetch the  reference. It will also return the "kind" of the task being referenced.
 // OCI bundle and remote resolution tasks will be verified by trusted resources if the feature is enabled
@@ -78,8 +78,8 @@ func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekto
 	return GetTaskFunc(ctx, k8s, tekton, requester, taskrun, taskrun.Spec.TaskRef, taskrun.Name, taskrun.Namespace, taskrun.Spec.ServiceAccountName, verificationPolicies)
 }
 
-// GetTaskFunc is a factory function that will use the given TaskRef as context to return a valid GetTask function. It
-// also requires a kubeclient, tektonclient, namespace, and service account in case it needs to find that task in
+// GetTaskFunc is a factory function that will use the given TaskRef as context to return a valid GetTask function.
+// It also requires a kubeclient, tektonclient, namespace, and service account in case it needs to find that task in
 // cluster or authorize against an external repositroy. It will figure out whether it needs to look in the cluster or in
 // a remote image to fetch the  reference. It will also return the "kind" of the task being referenced.
 // OCI bundle and remote resolution tasks will be verified by trusted resources if the feature is enabled
@@ -124,7 +124,21 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 }
 
 // GetStepActionFunc is a factory function that will use the given Ref as context to return a valid GetStepAction function.
-func GetStepActionFunc(tekton clientset.Interface, namespace string) GetStepAction {
+// It also requires a kubeclient, tektonclient, requester in case it needs to find that task in
+// cluster or authorize against an external repository. It will figure out whether it needs to look in the cluster or in
+// a remote location to fetch the reference.
+func GetStepActionFunc(tekton clientset.Interface, k8s kubernetes.Interface, requester remoteresource.Requester, tr *v1.TaskRun, step *v1.Step) GetStepAction {
+	trName := tr.Name
+	namespace := tr.Namespace
+	if step.Ref != nil && step.Ref.Resolver != "" && requester != nil {
+		// Return an inline function that implements GetStepAction by calling Resolver.Get with the specified StepAction type and
+		// casting it to a StepAction.
+		return func(ctx context.Context, name string) (*v1alpha1.StepAction, *v1.RefSource, error) {
+			// TODO(#7259): support params replacements for resolver params
+			resolver := resolution.NewResolver(requester, tr, string(step.Ref.Resolver), trName, namespace, step.Ref.Params)
+			return resolveStepAction(ctx, resolver, name, namespace, k8s, tekton)
+		}
+	}
 	local := &LocalStepActionRefResolver{
 		Namespace:    namespace,
 		Tektonclient: tekton,
@@ -149,6 +163,21 @@ func resolveTask(ctx context.Context, resolver remote.Resolver, name, namespace 
 		return nil, nil, nil, err
 	}
 	return taskObj, refSource, vr, nil
+}
+
+func resolveStepAction(ctx context.Context, resolver remote.Resolver, name, namespace string, k8s kubernetes.Interface, tekton clientset.Interface) (*v1alpha1.StepAction, *v1.RefSource, error) {
+	obj, refSource, err := resolver.Get(ctx, "StepAction", name)
+	if err != nil {
+		return nil, nil, err
+	}
+	switch obj := obj.(type) { //nolint:gocritic
+	case *v1alpha1.StepAction:
+		if err := apiserver.DryRunValidate(ctx, namespace, obj, tekton); err != nil {
+			return nil, nil, err
+		}
+		return obj, refSource, nil
+	}
+	return nil, nil, errors.New("resource is not a StepAction")
 }
 
 // readRuntimeObjectAsTask tries to convert a generic runtime.Object
