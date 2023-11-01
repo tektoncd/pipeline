@@ -358,8 +358,17 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		}
 	}
 
-	steps, err := resources.GetStepActionsData(ctx, *taskSpec, tr, c.PipelineClientSet)
+	steps, err := resources.GetStepActionsData(ctx, *taskSpec, tr, c.PipelineClientSet, c.KubeClientSet, c.resolutionRequester)
 	switch {
+	case errors.Is(err, remote.ErrRequestInProgress):
+		message := fmt.Sprintf("TaskRun %s/%s awaiting remote StepAction", tr.Namespace, tr.Name)
+		tr.Status.MarkResourceOngoing(v1.TaskRunReasonResolvingStepActionRef, message)
+		return nil, nil, err
+	case errors.Is(err, apiserver.ErrReferencedObjectValidationFailed), errors.Is(err, apiserver.ErrCouldntValidateObjectPermanent):
+		tr.Status.MarkResourceFailed(podconvert.ReasonTaskFailedValidation, err)
+		return nil, nil, controller.NewPermanentError(err)
+	case errors.Is(err, apiserver.ErrCouldntValidateObjectRetryable):
+		return nil, nil, err
 	case err != nil:
 		logger.Errorf("Failed to determine StepAction to use for TaskRun %s: %v", tr.Name, err)
 		if resources.IsErrTransient(err) {
@@ -368,8 +377,11 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
 		return nil, nil, controller.NewPermanentError(err)
 	default:
-		// Store the fetched StepActions to TaskSpec
+		// Store the fetched StepActions to TaskSpec, and update the stored TaskSpec again
 		taskSpec.Steps = steps
+		if err := storeTaskSpecAndMergeMeta(ctx, tr, taskSpec, taskMeta); err != nil {
+			logger.Errorf("Failed to store TaskSpec on TaskRun.Statusfor taskrun %s: %v", tr.Name, err)
+		}
 	}
 
 	if taskMeta.VerificationResult != nil {

@@ -459,7 +459,7 @@ func TestGetStepActionsData(t *testing.T) {
 		ctx := context.Background()
 		tektonclient := fake.NewSimpleClientset(tt.stepAction)
 
-		got, err := resources.GetStepActionsData(ctx, *tt.tr.Spec.TaskSpec, tt.tr, tektonclient)
+		got, err := resources.GetStepActionsData(ctx, *tt.tr.Spec.TaskSpec, tt.tr, tektonclient, nil, nil)
 		if err != nil {
 			t.Errorf("Did not expect an error but got : %s", err)
 		}
@@ -494,7 +494,7 @@ func TestGetStepActionsData_Error(t *testing.T) {
 		expectedError: fmt.Errorf("must specify namespace to resolve reference to step action stepActionError"),
 	}}
 	for _, tt := range tests {
-		_, err := resources.GetStepActionsData(context.Background(), *tt.tr.Spec.TaskSpec, tt.tr, nil)
+		_, err := resources.GetStepActionsData(context.Background(), *tt.tr.Spec.TaskSpec, tt.tr, nil, nil, nil)
 		if err == nil {
 			t.Fatalf("Expected to get an error but did not find any.")
 		}
