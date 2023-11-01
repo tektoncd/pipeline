@@ -24,10 +24,16 @@ import (
 
 func (r Ref) convertTo(ctx context.Context, sink *v1.Ref) {
 	sink.Name = r.Name
+	new := v1.ResolverRef{}
+	r.ResolverRef.convertTo(ctx, &new)
+	sink.ResolverRef = new
 }
 
 func (r *Ref) convertFrom(ctx context.Context, source v1.Ref) {
 	r.Name = source.Name
+	new := ResolverRef{}
+	new.convertFrom(ctx, source.ResolverRef)
+	r.ResolverRef = new
 }
 
 func (s Step) convertTo(ctx context.Context, sink *v1.Step) {

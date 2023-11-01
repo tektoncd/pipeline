@@ -238,6 +238,10 @@ type Step struct {
 type Ref struct {
 	// Name of the referenced step
 	Name string `json:"name,omitempty"`
+	// ResolverRef allows referencing a StepAction in a remote location
+	// like a git repo.
+	// +optional
+	ResolverRef `json:",omitempty"`
 }
 
 // OnErrorType defines a list of supported exiting behavior of a container on error

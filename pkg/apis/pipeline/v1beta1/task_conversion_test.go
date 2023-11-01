@@ -83,6 +83,24 @@ spec:
     - ref:
         name: "step-action"
 `
+
+	remoteStepActionTaskYAML := `
+metadata:
+  name: foo
+  namespace: bar
+spec:
+  steps:
+    - ref:
+        resolver: "git"
+        params:
+          - name: url
+            value: https://github.com/tektoncd/catalog.git
+          - name: pathInRepo
+            value: /stepaction/sample/sample.yaml
+          - name: revision
+            value: main
+`
+
 	taskWithAllNoDeprecatedFieldsYAML := `
 metadata:
   name: foo
@@ -106,7 +124,7 @@ spec:
     volumeMounts:
     volumeDevices:
     imagePullPolicy: IfNotPresent
-    securityContext: 
+    securityContext:
       privileged: true
     script: "echo 'hello world'"
     timeout: 1h
@@ -131,7 +149,7 @@ spec:
     volumeMounts:
     volumeDevices:
     imagePullPolicy: IfNotPresent
-    securityContext: 
+    securityContext:
       privileged: true
   sidecars:
   - name: sidecar
@@ -148,7 +166,7 @@ spec:
     volumeMounts:
     volumeDevices:
     imagePullPolicy: IfNotPresent
-    securityContext: 
+    securityContext:
       privileged: true
     script: "echo 'hello world'"
     timeout: 1h
@@ -273,6 +291,9 @@ spec:
 	stepActionTaskV1beta1 := parse.MustParseV1beta1Task(t, stepActionTaskYAML)
 	stepActionTaskV1 := parse.MustParseV1Task(t, stepActionTaskYAML)
 
+	remoteStepActionTaskV1beta1 := parse.MustParseV1beta1Task(t, remoteStepActionTaskYAML)
+	remoteStepActionTaskV1 := parse.MustParseV1Task(t, remoteStepActionTaskYAML)
+
 	taskWithAllNoDeprecatedFieldsV1beta1 := parse.MustParseV1beta1Task(t, taskWithAllNoDeprecatedFieldsYAML)
 	taskWithAllNoDeprecatedFieldsV1 := parse.MustParseV1Task(t, taskWithAllNoDeprecatedFieldsYAML)
 
@@ -309,6 +330,10 @@ spec:
 		name:        "step action in task",
 		v1beta1Task: stepActionTaskV1beta1,
 		v1Task:      stepActionTaskV1,
+	}, {
+		name:        "remote step action in task",
+		v1beta1Task: remoteStepActionTaskV1beta1,
+		v1Task:      remoteStepActionTaskV1,
 	}, {
 		name:        "task conversion deprecated fields",
 		v1beta1Task: taskWithDeprecatedFieldsV1beta1,
