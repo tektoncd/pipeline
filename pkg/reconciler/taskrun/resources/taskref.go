@@ -251,8 +251,8 @@ func (l *LocalStepActionRefResolver) GetStepAction(ctx context.Context, name str
 	return stepAction, nil, nil
 }
 
-// IsGetTaskErrTransient returns true if an error returned by GetTask is retryable.
-func IsGetTaskErrTransient(err error) bool {
+// IsErrTransient returns true if an error returned by GetTask/GetStepAction is retryable.
+func IsErrTransient(err error) bool {
 	return strings.Contains(err.Error(), errEtcdLeaderChange)
 }
 
