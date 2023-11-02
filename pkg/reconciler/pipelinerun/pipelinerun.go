@@ -361,7 +361,7 @@ func (c *Reconciler) resolvePipelineState(
 			pst,
 		)
 		if err != nil {
-			if tresources.IsGetTaskErrTransient(err) {
+			if tresources.IsErrTransient(err) {
 				return nil, err
 			}
 			if errors.Is(err, remote.ErrRequestInProgress) {
