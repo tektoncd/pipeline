@@ -22,7 +22,5 @@ metadata:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 data:
-  # the default service account name to use for bundle requests.
-  default-service-account: "default"
   # The default layer kind in the bundle image.
   default-kind: "task"
