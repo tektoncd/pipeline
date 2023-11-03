@@ -22,9 +22,9 @@ import (
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 )
 
-// ParamServiceAccount is the parameter defining what service
-// account name to use for bundle requests.
-const ParamServiceAccount = "serviceAccount"
+// ParamImagePullSecret is the parameter defining what secret
+// name to use for bundle requests.
+const ParamImagePullSecret = "secret"
 
 // ParamBundle is the parameter defining what the bundle image url is.
 const ParamBundle = "bundle"
@@ -46,18 +46,6 @@ func OptionsFromParams(ctx context.Context, params []pipelinev1.Param) (RequestO
 	paramsMap := make(map[string]pipelinev1.ParamValue)
 	for _, p := range params {
 		paramsMap[p.Name] = p.Value
-	}
-
-	saVal, ok := paramsMap[ParamServiceAccount]
-	sa := ""
-	if !ok || saVal.StringVal == "" {
-		if saString, ok := conf[ConfigServiceAccount]; ok {
-			sa = saString
-		} else {
-			return opts, fmt.Errorf("default Service Account was not set during installation of the bundle resolver")
-		}
-	} else {
-		sa = saVal.StringVal
 	}
 
 	bundleVal, ok := paramsMap[ParamBundle]
@@ -85,7 +73,7 @@ func OptionsFromParams(ctx context.Context, params []pipelinev1.Param) (RequestO
 		kind = kindVal.StringVal
 	}
 
-	opts.ServiceAccount = sa
+	opts.ImagePullSecret = paramsMap[ParamImagePullSecret].StringVal
 	opts.Bundle = bundleVal.StringVal
 	opts.EntryName = nameVal.StringVal
 	opts.Kind = kind
