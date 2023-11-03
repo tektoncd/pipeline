@@ -1463,6 +1463,15 @@
           "description": "OnError defines the exiting behavior of a container on error can be set to [ continue | stopAndFail ]",
           "type": "string"
         },
+        "params": {
+          "description": "Params declares parameters passed to this step action.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Param"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
         "ref": {
           "description": "Contains the reference to an existing StepAction.",
           "$ref": "#/definitions/v1.Ref"

@@ -83,6 +83,9 @@ spec:
   steps:
     - ref:
         name: "step-action"
+      params:
+        - name: param1
+          value: hello
 `
 
 	remoteStepActionTaskYAML := `

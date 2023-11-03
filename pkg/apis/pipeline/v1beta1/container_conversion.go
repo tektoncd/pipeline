@@ -65,6 +65,12 @@ func (s Step) convertTo(ctx context.Context, sink *v1.Step) {
 		sink.Ref = &v1.Ref{}
 		s.Ref.convertTo(ctx, sink.Ref)
 	}
+	sink.Params = nil
+	for _, p := range s.Params {
+		new := v1.Param{}
+		p.convertTo(ctx, &new)
+		sink.Params = append(sink.Params, new)
+	}
 }
 
 func (s *Step) convertFrom(ctx context.Context, source v1.Step) {
@@ -96,6 +102,12 @@ func (s *Step) convertFrom(ctx context.Context, source v1.Step) {
 		newRef := Ref{}
 		newRef.convertFrom(ctx, *source.Ref)
 		s.Ref = &newRef
+	}
+	s.Params = nil
+	for _, p := range source.Params {
+		new := Param{}
+		new.ConvertFrom(ctx, p)
+		s.Params = append(s.Params, new)
 	}
 }
 

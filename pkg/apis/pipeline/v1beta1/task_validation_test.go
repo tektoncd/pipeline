@@ -538,6 +538,16 @@ func TestTaskSpecStepActionReferenceValidate(t *testing.T) {
 				Name: "stepAction",
 			},
 		}},
+	}, {
+		name: "valid use of params with Ref",
+		Steps: []v1beta1.Step{{
+			Ref: &v1beta1.Ref{
+				Name: "stepAction",
+			},
+			Params: v1beta1.Params{{
+				Name: "param",
+			}},
+		}},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1502,6 +1512,19 @@ func TestTaskSpecValidateErrorWithStepActionRef(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: "env cannot be used with Ref",
 			Paths:   []string{"steps[0].env"},
+		},
+	}, {
+		name: "Cannot use params without Ref",
+		Steps: []v1beta1.Step{{
+			Image: "my-image",
+			Params: v1beta1.Params{{
+				Name: "param",
+			}},
+		}},
+		enableStepActions: true,
+		expectedError: apis.FieldError{
+			Message: "params cannot be used without Ref",
+			Paths:   []string{"steps[0].params"},
 		},
 	}}
 	for _, tt := range tests {
