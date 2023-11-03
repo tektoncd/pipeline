@@ -492,6 +492,292 @@ func TestGetStepActionsData(t *testing.T) {
 			Args:            []string{"-lh"},
 			SecurityContext: &corev1.SecurityContext{RunAsUser: &stepActionUser},
 		}},
+	}, {
+		name: "params propagated from taskrun",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				Params: v1.Params{{
+					Name: "stringparam",
+					Value: v1.ParamValue{
+						Type:      v1.ParamTypeString,
+						StringVal: "taskrun string param",
+					},
+				}, {
+					Name: "arrayparam",
+					Value: v1.ParamValue{
+						Type:     v1.ParamTypeArray,
+						ArrayVal: []string{"taskrun", "array", "param"},
+					},
+				}, {
+					Name: "objectparam",
+					Value: v1.ParamValue{
+						Type:      v1.ParamTypeObject,
+						ObjectVal: map[string]string{"key": "taskrun object param"},
+					},
+				}},
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							Name: "stepAction",
+						},
+						Params: v1.Params{{
+							Name:  "string-param",
+							Value: *v1.NewStructuredValues("$(params.stringparam)"),
+						}, {
+							Name:  "array-param",
+							Value: *v1.NewStructuredValues("$(params.arrayparam[*])"),
+						}, {
+							Name:  "object-param",
+							Value: *v1.NewStructuredValues("$(params.objectparam[*])"),
+						}},
+					}},
+				},
+			},
+		},
+		stepAction: &v1alpha1.StepAction{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "stepAction",
+				Namespace: "default",
+			},
+			Spec: v1alpha1.StepActionSpec{
+				Image: "myimage",
+				Args:  []string{"$(params.string-param)", "$(params.array-param[0])", "$(params.array-param[1])", "$(params.array-param[*])", "$(params.object-param.key)"},
+				Params: v1.ParamSpecs{{
+					Name: "string-param",
+					Type: v1.ParamTypeString,
+				}, {
+					Name: "array-param",
+					Type: v1.ParamTypeArray,
+				}, {
+					Name:       "object-param",
+					Type:       v1.ParamTypeObject,
+					Properties: map[string]v1.PropertySpec{"key": {Type: "string"}},
+				}},
+			},
+		},
+		want: []v1.Step{{
+			Image: "myimage",
+			Args:  []string{"taskrun string param", "taskrun", "array", "taskrun", "array", "param", "taskrun object param"},
+		}},
+	}, {
+		name: "params propagated from taskspec",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Params: v1.ParamSpecs{{
+						Name: "stringparam",
+						Default: &v1.ParamValue{
+							Type:      v1.ParamTypeString,
+							StringVal: "taskspec string param",
+						},
+					}, {
+						Name: "arrayparam",
+						Default: &v1.ParamValue{
+							Type:     v1.ParamTypeArray,
+							ArrayVal: []string{"taskspec", "array", "param"},
+						},
+					}, {
+						Name: "objectparam",
+						Default: &v1.ParamValue{
+							Type:      v1.ParamTypeObject,
+							ObjectVal: map[string]string{"key": "taskspec object param"},
+						},
+					}},
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							Name: "stepAction",
+						},
+						Params: v1.Params{{
+							Name:  "string-param",
+							Value: *v1.NewStructuredValues("$(params.stringparam)"),
+						}, {
+							Name:  "array-param",
+							Value: *v1.NewStructuredValues("$(params.arrayparam[*])"),
+						}, {
+							Name:  "object-param",
+							Value: *v1.NewStructuredValues("$(params.objectparam[*])"),
+						}},
+					}},
+				},
+			},
+		},
+		stepAction: &v1alpha1.StepAction{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "stepAction",
+				Namespace: "default",
+			},
+			Spec: v1alpha1.StepActionSpec{
+				Image: "myimage",
+				Args:  []string{"$(params.string-param)", "$(params.array-param[0])", "$(params.array-param[1])", "$(params.array-param[*])", "$(params.object-param.key)"},
+				Params: v1.ParamSpecs{{
+					Name: "string-param",
+					Type: v1.ParamTypeString,
+				}, {
+					Name: "array-param",
+					Type: v1.ParamTypeArray,
+				}, {
+					Name:       "object-param",
+					Type:       v1.ParamTypeObject,
+					Properties: map[string]v1.PropertySpec{"key": {Type: "string"}},
+				}},
+			},
+		},
+		want: []v1.Step{{
+			Image: "myimage",
+			Args:  []string{"taskspec string param", "taskspec", "array", "taskspec", "array", "param", "taskspec object param"},
+		}},
+	}, {
+		name: "params from step action defaults",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							Name: "stepAction",
+						},
+					}},
+				},
+			},
+		},
+		stepAction: &v1alpha1.StepAction{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "stepAction",
+				Namespace: "default",
+			},
+			Spec: v1alpha1.StepActionSpec{
+				Image: "myimage",
+				Args:  []string{"$(params.string-param)", "$(params.array-param[0])", "$(params.array-param[1])", "$(params.array-param[*])", "$(params.object-param.key)"},
+				Params: v1.ParamSpecs{{
+					Name: "string-param",
+					Type: v1.ParamTypeString,
+					Default: &v1.ParamValue{
+						Type:      v1.ParamTypeString,
+						StringVal: "step action string param",
+					},
+				}, {
+					Name: "array-param",
+					Type: v1.ParamTypeArray,
+					Default: &v1.ParamValue{
+						Type:     v1.ParamTypeArray,
+						ArrayVal: []string{"step action", "array", "param"},
+					},
+				}, {
+					Name:       "object-param",
+					Type:       v1.ParamTypeObject,
+					Properties: map[string]v1.PropertySpec{"key": {Type: "string"}},
+					Default: &v1.ParamValue{
+						Type:      v1.ParamTypeObject,
+						ObjectVal: map[string]string{"key": "step action object param"},
+					},
+				}},
+			},
+		},
+		want: []v1.Step{{
+			Image: "myimage",
+			Args:  []string{"step action string param", "step action", "array", "step action", "array", "param", "step action object param"},
+		}},
+	}, {
+		name: "params propagated partially from taskrun taskspec and stepaction",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				Params: v1.Params{{
+					Name: "stringparam",
+					Value: v1.ParamValue{
+						Type:      v1.ParamTypeString,
+						StringVal: "taskrun string param",
+					},
+				}, {
+					Name: "objectparam",
+					Value: v1.ParamValue{
+						Type:      v1.ParamTypeObject,
+						ObjectVal: map[string]string{"key": "taskrun key"},
+					},
+				}},
+				TaskSpec: &v1.TaskSpec{
+					Params: v1.ParamSpecs{{
+						Name: "arrayparam",
+						Default: &v1.ParamValue{
+							Type:     v1.ParamTypeArray,
+							ArrayVal: []string{"taskspec", "array", "param"},
+						},
+					}, {
+						Name: "objectparam",
+						Default: &v1.ParamValue{
+							Type:      v1.ParamTypeObject,
+							ObjectVal: map[string]string{"key": "key1", "key2": "taskspec key2"},
+						},
+					}},
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							Name: "stepAction",
+						},
+						Params: v1.Params{{
+							Name:  "string-param",
+							Value: *v1.NewStructuredValues("$(params.stringparam)"),
+						}, {
+							Name:  "array-param",
+							Value: *v1.NewStructuredValues("$(params.arrayparam[*])"),
+						}, {
+							Name:  "object-param",
+							Value: *v1.NewStructuredValues("$(params.objectparam[*])"),
+						}},
+					}},
+				},
+			},
+		},
+		stepAction: &v1alpha1.StepAction{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "stepAction",
+				Namespace: "default",
+			},
+			Spec: v1alpha1.StepActionSpec{
+				Image: "myimage",
+				Args:  []string{"$(params.string-param)", "$(params.array-param[0])", "$(params.array-param[1])", "$(params.array-param[*])", "$(params.object-param.key)", "$(params.object-param.key2)", "$(params.object-param.key3)"},
+				Params: v1.ParamSpecs{{
+					Name: "string-param",
+					Type: v1.ParamTypeString,
+					Default: &v1.ParamValue{
+						Type:      v1.ParamTypeString,
+						StringVal: "step action string param",
+					},
+				}, {
+					Name: "array-param",
+					Type: v1.ParamTypeArray,
+					Default: &v1.ParamValue{
+						Type:     v1.ParamTypeArray,
+						ArrayVal: []string{"step action", "array", "param"},
+					},
+				}, {
+					Name:       "object-param",
+					Type:       v1.ParamTypeObject,
+					Properties: map[string]v1.PropertySpec{"key": {Type: "string"}},
+					Default: &v1.ParamValue{
+						Type:      v1.ParamTypeObject,
+						ObjectVal: map[string]string{"key": "step action key1", "key2": "step action key2", "key3": "step action key3"},
+					},
+				}},
+			},
+		},
+		want: []v1.Step{{
+			Image: "myimage",
+			Args:  []string{"taskrun string param", "taskspec", "array", "taskspec", "array", "param", "taskrun key", "taskspec key2", "step action key3"},
+		}},
 	}}
 	for _, tt := range tests {
 		ctx := context.Background()
@@ -499,7 +785,7 @@ func TestGetStepActionsData(t *testing.T) {
 
 		got, err := resources.GetStepActionsData(ctx, *tt.tr.Spec.TaskSpec, tt.tr, tektonclient, nil, nil)
 		if err != nil {
-			t.Errorf("Did not expect an error but got : %s", err)
+			t.Fatalf("Did not expect an error but got : %s", err)
 		}
 		if d := cmp.Diff(tt.want, got); d != "" {
 			t.Errorf("the taskSpec did not match what was expected diff: %s", diff.PrintWantGot(d))
@@ -509,10 +795,10 @@ func TestGetStepActionsData(t *testing.T) {
 
 func TestGetStepActionsData_Error(t *testing.T) {
 	tests := []struct {
-		name           string
-		tr             *v1.TaskRun
-		stepActionFunc func(ctx context.Context, ref *v1.Ref) (*v1alpha1.StepAction, *v1.RefSource, error)
-		expectedError  error
+		name          string
+		tr            *v1.TaskRun
+		stepAction    *v1alpha1.StepAction
+		expectedError error
 	}{{
 		name: "namespace missing error",
 		tr: &v1.TaskRun{
@@ -529,10 +815,76 @@ func TestGetStepActionsData_Error(t *testing.T) {
 				},
 			},
 		},
+		stepAction:    &v1alpha1.StepAction{},
 		expectedError: fmt.Errorf("must specify namespace to resolve reference to step action stepActionError"),
+	}, {
+		name: "params missing",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							Name: "stepaction",
+						},
+					}},
+				},
+			},
+		},
+		stepAction: &v1alpha1.StepAction{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "stepaction",
+				Namespace: "default",
+			},
+			Spec: v1alpha1.StepActionSpec{
+				Image: "myimage",
+				Params: v1.ParamSpecs{{
+					Name: "string-param",
+					Type: v1.ParamTypeString,
+				}},
+			},
+		},
+		expectedError: fmt.Errorf("non-existent params in Step: [string-param]"),
+	}, {
+		name: "params extra",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							Name: "stepaction",
+						},
+						Params: v1.Params{{
+							Name:  "string-param",
+							Value: *v1.NewStructuredValues("$(params.stringparam)"),
+						}},
+					}},
+				},
+			},
+		},
+		stepAction: &v1alpha1.StepAction{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "stepaction",
+				Namespace: "default",
+			},
+			Spec: v1alpha1.StepActionSpec{
+				Image: "myimage",
+			},
+		},
+		expectedError: fmt.Errorf("extra params passed by Step to StepAction: [string-param]"),
 	}}
 	for _, tt := range tests {
-		_, err := resources.GetStepActionsData(context.Background(), *tt.tr.Spec.TaskSpec, tt.tr, nil, nil, nil)
+		ctx := context.Background()
+		tektonclient := fake.NewSimpleClientset(tt.stepAction)
+
+		_, err := resources.GetStepActionsData(ctx, *tt.tr.Spec.TaskSpec, tt.tr, tektonclient, nil, nil)
 		if err == nil {
 			t.Fatalf("Expected to get an error but did not find any.")
 		}

@@ -3056,6 +3056,197 @@ spec:
 	}
 }
 
+func TestStepActionRefParams(t *testing.T) {
+	tests := []struct {
+		name       string
+		taskRun    *v1.TaskRun
+		stepAction *v1alpha1.StepAction
+		want       []v1.Step
+	}{{
+		name: "params propagated from taskrun",
+		taskRun: parse.MustParseV1TaskRun(t, `
+metadata:
+  name: taskrun-with-string-params
+  namespace: foo
+spec:
+  params:
+    - name: stringparam
+      value: "taskrun string param"
+    - name: arrayparam
+      value: ["taskrun", "array", "param"]
+    - name: objectparam
+      value:
+        key: taskrun object param	
+  taskSpec:
+    steps:
+      - ref:
+          name: stepAction
+        name: step1
+        params:
+          - name: string-param
+            value: $(params.stringparam)
+          - name: array-param
+            value: $(params.arrayparam[*])
+          - name: object-param
+            value: $(params.objectparam[*])
+`),
+		stepAction: parse.MustParseV1alpha1StepAction(t, `
+metadata:
+  name: stepAction
+  namespace: foo
+spec:
+  params:
+    - name: string-param
+    - name: array-param
+      type: array
+    - name: object-param
+      type: object
+      properties:
+        key:
+          type: string
+  image: myImage
+  command: ["echo"]
+  args: ["$(params.string-param)", "$(params.array-param[0])", "$(params.array-param[1])", "$(params.array-param[*])", "$(params.object-param.key)"]
+`),
+		want: []v1.Step{{
+			Image:   "myImage",
+			Command: []string{"echo"},
+			Args:    []string{"taskrun string param", "taskrun", "array", "taskrun", "array", "param", "taskrun object param"},
+			Name:    "step1",
+		}},
+	}, {
+		name: "params from taskspec",
+		taskRun: parse.MustParseV1TaskRun(t, `
+metadata:
+  name: taskrun-with-string-params
+  namespace: foo
+spec:
+  taskSpec:
+    params:
+      - name: stringparam
+        default: "taskspec string param"
+      - name: arrayparam
+        default: ["taskspec", "array", "param"]
+      - name: objectparam
+        properties:
+          key:
+            type: string
+        default:
+          key: taskspec object param	
+    steps:
+      - ref:
+          name: stepAction
+        name: step1
+        params:
+          - name: string-param
+            value: $(params.stringparam)
+          - name: array-param
+            value: $(params.arrayparam[*])
+          - name: object-param
+            value: $(params.objectparam[*])
+`),
+		stepAction: parse.MustParseV1alpha1StepAction(t, `
+metadata:
+  name: stepAction
+  namespace: foo
+spec:
+  params:
+    - name: string-param
+    - name: array-param
+      type: array
+    - name: object-param
+      type: object
+      properties:
+        key:
+          type: string
+  image: myImage
+  command: ["echo"]
+  args: ["$(params.string-param)", "$(params.array-param[0])", "$(params.array-param[1])", "$(params.array-param[*])", "$(params.object-param.key)"]
+`),
+		want: []v1.Step{{
+			Image:   "myImage",
+			Command: []string{"echo"},
+			Args:    []string{"taskspec string param", "taskspec", "array", "taskspec", "array", "param", "taskspec object param"},
+			Name:    "step1",
+		}},
+	}, {
+		name: "params from step action defaults",
+		taskRun: parse.MustParseV1TaskRun(t, `
+metadata:
+  name: taskrun-with-string-params
+  namespace: foo
+spec:
+  taskSpec:
+    steps:
+      - ref:
+          name: stepAction
+        name: step1
+`),
+		stepAction: parse.MustParseV1alpha1StepAction(t, `
+metadata:
+  name: stepAction
+  namespace: foo
+spec:
+  params:
+    - name: string-param
+      type: string
+      default: "stepaction string param" 
+    - name: array-param
+      type: array
+      default:
+        - stepaction
+        - array
+        - param
+    - name: object-param
+      type: object
+      properties:
+        key:
+          type: string
+      default:
+        key: "stepaction object param"
+  results:
+    - name: result
+  image: myImage
+  command: ["echo"]
+  args: ["$(params.string-param)", "$(params.array-param[0])", "$(params.array-param[1])", "$(params.array-param[*])", "$(params.object-param.key)"]
+`),
+		want: []v1.Step{{
+			Image:   "myImage",
+			Command: []string{"echo"},
+			Args:    []string{"stepaction string param", "stepaction", "array", "stepaction", "array", "param", "stepaction object param"},
+			Name:    "step1",
+		}},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := test.Data{
+				TaskRuns:    []*v1.TaskRun{tt.taskRun},
+				StepActions: []*v1alpha1.StepAction{tt.stepAction},
+				ConfigMaps: []*corev1.ConfigMap{
+					{
+						ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+						Data: map[string]string{
+							"enable-step-actions": "true",
+						},
+					},
+				},
+			}
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			createServiceAccount(t, testAssets, "default", tt.taskRun.Namespace)
+			c := testAssets.Controller
+			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tt.taskRun)); err == nil {
+				t.Fatalf("Could not reconcile the taskrun: %v", err)
+			}
+			getTaskRun, _ := testAssets.Clients.Pipeline.TektonV1().TaskRuns(tt.taskRun.Namespace).Get(testAssets.Ctx, tt.taskRun.Name, metav1.GetOptions{})
+			got := getTaskRun.Status.TaskSpec.Steps
+			if c := cmp.Diff(tt.want, got); c != "" {
+				t.Errorf("TestStepActionRefParams errored with: %s", diff.PrintWantGot(c))
+			}
+		})
+	}
+}
+
 func TestExpandMountPath(t *testing.T) {
 	expectedMountPath := "/temppath/replaced"
 	expectedReplacedArgs := fmt.Sprintf("replacedArgs - %s", expectedMountPath)
