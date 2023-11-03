@@ -1290,6 +1290,13 @@ func (in *Step) DeepCopyInto(out *Step) {
 		*out = new(Ref)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.Params != nil {
+		in, out := &in.Params, &out.Params
+		*out = make(Params, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 

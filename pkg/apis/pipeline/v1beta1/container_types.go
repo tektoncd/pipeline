@@ -232,6 +232,10 @@ type Step struct {
 	// Contains the reference to an existing StepAction.
 	//+optional
 	Ref *Ref `json:"ref,omitempty"`
+	// Params declares parameters passed to this step action.
+	// +optional
+	// +listType=atomic
+	Params Params `json:"params,omitempty"`
 }
 
 // Ref can be used to refer to a specific instance of a StepAction.

@@ -1802,7 +1802,7 @@ map[string]string
 <h3 id="tekton.dev/v1.Params">Params
 (<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param</code> alias)</h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.IncludeParams">IncludeParams</a>, <a href="#tekton.dev/v1.Matrix">Matrix</a>, <a href="#tekton.dev/v1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.IncludeParams">IncludeParams</a>, <a href="#tekton.dev/v1.Matrix">Matrix</a>, <a href="#tekton.dev/v1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1.Step">Step</a>, <a href="#tekton.dev/v1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
 <p>Params is a list of Param</p>
@@ -4425,6 +4425,20 @@ Ref
 <td>
 <em>(Optional)</em>
 <p>Contains the reference to an existing StepAction.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1.Params">
+Params
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Params declares parameters passed to this step action.</p>
 </td>
 </tr>
 </tbody>
@@ -10215,7 +10229,7 @@ map[string]string
 <h3 id="tekton.dev/v1beta1.Params">Params
 (<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param</code> alias)</h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec</a>, <a href="#tekton.dev/v1beta1.IncludeParams">IncludeParams</a>, <a href="#tekton.dev/v1beta1.Matrix">Matrix</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec</a>, <a href="#tekton.dev/v1beta1.IncludeParams">IncludeParams</a>, <a href="#tekton.dev/v1beta1.Matrix">Matrix</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1beta1.Step">Step</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
 <p>Params is a list of Param</p>
@@ -13225,6 +13239,20 @@ Ref
 <td>
 <em>(Optional)</em>
 <p>Contains the reference to an existing StepAction.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.Params">
+Params
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Params declares parameters passed to this step action.</p>
 </td>
 </tr>
 </tbody>

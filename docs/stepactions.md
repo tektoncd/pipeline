@@ -206,6 +206,8 @@ When a `Step` is referencing a `StepAction`, it can contain the following fields
 - `securityContext`
 - `envFrom`
 - `timeout`
+- `ref`
+- `params`
 
 Using any of the above fields and referencing a `StepAction` is allowed and will not cause an error. For example, the `TaskRun` below will execute without any errors:
 
@@ -220,6 +222,9 @@ spec:
       - name: action-runner
         ref:
           name: step-action
+        params:
+          - name: step-action-param
+            value: hello
         computeResources:
           requests:
             memory: 1Gi
@@ -227,3 +232,29 @@ spec:
         timeout: 1h
         onError: continue
 ```
+
+### Passing Params to StepAction 
+
+A `StepAction` may require [params](#(declaring-parameters)). In this case, a `Task` needs to ensure that the `StepAction` has access to all the required `params`.
+When referencing a `StepAction`, a `Step` can also provide it with `params`, just like how a `TaskRun` provides params to the underlying `Task`.
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: step-action
+spec:
+  TaskSpec:
+    params:
+      - name: param-for-step-action
+        description: "this is a param that the step action needs."
+    steps:
+      - name: action-runner
+        ref:
+          name: step-action
+        params:
+          - name: step-action-param
+            value: $(params.param-for-step-action)
+```
+
+**Note:** If a `Step` declares `params` for an `inlined Step`, it will also lead to a validation error. This is because an `inlined Step` gets it's `params` from the `TaskRun`.

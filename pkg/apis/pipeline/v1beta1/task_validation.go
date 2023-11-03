@@ -306,6 +306,12 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 			})
 		}
 	} else {
+		if len(s.Params) > 0 {
+			errs = errs.Also(&apis.FieldError{
+				Message: "params cannot be used without Ref",
+				Paths:   []string{"params"},
+			})
+		}
 		if s.Image == "" {
 			errs = errs.Also(apis.ErrMissingField("Image"))
 		}
