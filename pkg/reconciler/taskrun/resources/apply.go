@@ -46,14 +46,66 @@ var (
 	}
 )
 
-// ApplyParameters applies the params from a TaskRun.Input.Parameters to a TaskSpec
-func ApplyParameters(ctx context.Context, spec *v1.TaskSpec, tr *v1.TaskRun, defaults ...v1.ParamSpec) *v1.TaskSpec {
-	// This assumes that the TaskRun inputs have been validated against what the Task requests.
+// applyStepActionParameters applies the params from the Task and the underlying Step to the referenced StepAction.
+func applyStepActionParameters(step *v1.Step, spec *v1.TaskSpec, tr *v1.TaskRun, stepParams v1.Params, defaults []v1.ParamSpec) *v1.Step {
+	if stepParams != nil {
+		stringR, arrayR, objectR := getTaskParameters(spec, tr, spec.Params...)
+		stepParams = stepParams.ReplaceVariables(stringR, arrayR, objectR)
+	}
+	// Set params from StepAction defaults
+	stringReplacements, arrayReplacements, _ := replacementsFromDefaultParams(defaults)
 
-	// stringReplacements is used for standard single-string stringReplacements, while arrayReplacements contains arrays
-	// that need to be further processed.
+	// Set and overwrite params with the ones from the Step
+	stepStrings, stepArrays, _ := replacementsFromParams(stepParams)
+	for k, v := range stepStrings {
+		stringReplacements[k] = v
+	}
+	for k, v := range stepArrays {
+		arrayReplacements[k] = v
+	}
+
+	container.ApplyStepReplacements(step, stringReplacements, arrayReplacements)
+	return step
+}
+
+// getTaskParameters gets the string, array and object parameter variable replacements needed in the Task
+func getTaskParameters(spec *v1.TaskSpec, tr *v1.TaskRun, defaults ...v1.ParamSpec) (map[string]string, map[string][]string, map[string]map[string]string) {
+	// This assumes that the TaskRun inputs have been validated against what the Task requests.
+	// Set params from Task defaults
+	stringReplacements, arrayReplacements, objectReplacements := replacementsFromDefaultParams(defaults)
+
+	// Set and overwrite params with the ones from the TaskRun
+	trStrings, trArrays, trObjects := replacementsFromParams(tr.Spec.Params)
+	for k, v := range trStrings {
+		stringReplacements[k] = v
+	}
+	for k, v := range trArrays {
+		arrayReplacements[k] = v
+	}
+	for k, v := range trObjects {
+		for key, val := range v {
+			if objectReplacements != nil {
+				if objectReplacements[k] != nil {
+					objectReplacements[k][key] = val
+				} else {
+					objectReplacements[k] = v
+				}
+			}
+		}
+	}
+	return stringReplacements, arrayReplacements, objectReplacements
+}
+
+// ApplyParameters applies the params from a TaskRun.Parameters to a TaskSpec
+func ApplyParameters(spec *v1.TaskSpec, tr *v1.TaskRun, defaults ...v1.ParamSpec) *v1.TaskSpec {
+	stringReplacements, arrayReplacements, objectReplacements := getTaskParameters(spec, tr, defaults...)
+	return ApplyReplacements(spec, stringReplacements, arrayReplacements, objectReplacements)
+}
+
+func replacementsFromDefaultParams(defaults v1.ParamSpecs) (map[string]string, map[string][]string, map[string]map[string]string) {
 	stringReplacements := map[string]string{}
 	arrayReplacements := map[string][]string{}
+	objectReplacements := map[string]map[string]string{}
 
 	// Set all the default stringReplacements
 	for _, p := range defaults {
@@ -67,6 +119,9 @@ func ApplyParameters(ctx context.Context, spec *v1.TaskSpec, tr *v1.TaskRun, def
 					arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.ArrayVal
 				}
 			case v1.ParamTypeObject:
+				for _, pattern := range paramPatterns {
+					objectReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.ObjectVal
+				}
 				for k, v := range p.Default.ObjectVal {
 					stringReplacements[fmt.Sprintf(objectIndividualVariablePattern, p.Name, k)] = v
 				}
@@ -79,25 +134,17 @@ func ApplyParameters(ctx context.Context, spec *v1.TaskSpec, tr *v1.TaskRun, def
 			}
 		}
 	}
-	// Set and overwrite params with the ones from the TaskRun
-	trStrings, trArrays := paramsFromTaskRun(ctx, tr)
-	for k, v := range trStrings {
-		stringReplacements[k] = v
-	}
-	for k, v := range trArrays {
-		arrayReplacements[k] = v
-	}
-
-	return ApplyReplacements(spec, stringReplacements, arrayReplacements)
+	return stringReplacements, arrayReplacements, objectReplacements
 }
 
-func paramsFromTaskRun(ctx context.Context, tr *v1.TaskRun) (map[string]string, map[string][]string) {
+func replacementsFromParams(params v1.Params) (map[string]string, map[string][]string, map[string]map[string]string) {
 	// stringReplacements is used for standard single-string stringReplacements, while arrayReplacements contains arrays
-	// that need to be further processed.
+	// and objectReplacements contains objects that need to be further processed.
 	stringReplacements := map[string]string{}
 	arrayReplacements := map[string][]string{}
+	objectReplacements := map[string]map[string]string{}
 
-	for _, p := range tr.Spec.Params {
+	for _, p := range params {
 		switch p.Value.Type {
 		case v1.ParamTypeArray:
 			for _, pattern := range paramPatterns {
@@ -107,6 +154,9 @@ func paramsFromTaskRun(ctx context.Context, tr *v1.TaskRun) (map[string]string, 
 				arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.ArrayVal
 			}
 		case v1.ParamTypeObject:
+			for _, pattern := range paramPatterns {
+				objectReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.ObjectVal
+			}
 			for k, v := range p.Value.ObjectVal {
 				stringReplacements[fmt.Sprintf(objectIndividualVariablePattern, p.Name, k)] = v
 			}
@@ -119,7 +169,7 @@ func paramsFromTaskRun(ctx context.Context, tr *v1.TaskRun) (map[string]string, 
 		}
 	}
 
-	return stringReplacements, arrayReplacements
+	return stringReplacements, arrayReplacements, objectReplacements
 }
 
 func getContextReplacements(taskName string, tr *v1.TaskRun) map[string]string {
@@ -135,7 +185,7 @@ func getContextReplacements(taskName string, tr *v1.TaskRun) map[string]string {
 // ApplyContexts applies the substitution from $(context.(taskRun|task).*) with the specified values.
 // Uses "" as a default if a value is not available.
 func ApplyContexts(spec *v1.TaskSpec, taskName string, tr *v1.TaskRun) *v1.TaskSpec {
-	return ApplyReplacements(spec, getContextReplacements(taskName, tr), map[string][]string{})
+	return ApplyReplacements(spec, getContextReplacements(taskName, tr), map[string][]string{}, map[string]map[string]string{})
 }
 
 // ApplyWorkspaces applies the substitution from paths that the workspaces in declarations mounted to, the
@@ -170,7 +220,7 @@ func ApplyWorkspaces(ctx context.Context, spec *v1.TaskSpec, declarations []v1.W
 			stringReplacements[fmt.Sprintf("workspaces.%s.claim", binding.Name)] = ""
 		}
 	}
-	return ApplyReplacements(spec, stringReplacements, map[string][]string{})
+	return ApplyReplacements(spec, stringReplacements, map[string][]string{}, map[string]map[string]string{})
 }
 
 // applyWorkspaceMountPath accepts a workspace path variable of the form $(workspaces.foo.path) and replaces
@@ -204,7 +254,7 @@ func applyWorkspaceMountPath(variable string, spec *v1.TaskSpec, declaration v1.
 	// Replace any remaining instances of the workspace path variable, which should fall
 	// back to the mount path specified in the declaration.
 	stringReplacements[variable] = defaultMountPath
-	return ApplyReplacements(spec, stringReplacements, emptyArrayReplacements)
+	return ApplyReplacements(spec, stringReplacements, emptyArrayReplacements, map[string]map[string]string{})
 }
 
 // ApplyTaskResults applies the substitution from values in results which are referenced in spec as subitems
@@ -223,7 +273,7 @@ func ApplyTaskResults(spec *v1.TaskSpec) *v1.TaskSpec {
 			stringReplacements[fmt.Sprintf(pattern, result.Name)] = filepath.Join(pipeline.DefaultResultPath, result.Name)
 		}
 	}
-	return ApplyReplacements(spec, stringReplacements, map[string][]string{})
+	return ApplyReplacements(spec, stringReplacements, map[string][]string{}, map[string]map[string]string{})
 }
 
 // ApplyStepExitCodePath replaces the occurrences of exitCode path with the absolute tekton internal path
@@ -235,7 +285,7 @@ func ApplyStepExitCodePath(spec *v1.TaskSpec) *v1.TaskSpec {
 		stringReplacements[fmt.Sprintf("steps.%s.exitCode.path", pod.StepName(step.Name, i))] =
 			filepath.Join(pipeline.StepsDir, pod.StepName(step.Name, i), "exitCode")
 	}
-	return ApplyReplacements(spec, stringReplacements, map[string][]string{})
+	return ApplyReplacements(spec, stringReplacements, map[string][]string{}, map[string]map[string]string{})
 }
 
 // ApplyCredentialsPath applies a substitution of the key $(credentials.path) with the path that credentials
@@ -244,16 +294,19 @@ func ApplyCredentialsPath(spec *v1.TaskSpec, path string) *v1.TaskSpec {
 	stringReplacements := map[string]string{
 		"credentials.path": path,
 	}
-	return ApplyReplacements(spec, stringReplacements, map[string][]string{})
+	return ApplyReplacements(spec, stringReplacements, map[string][]string{}, map[string]map[string]string{})
 }
 
 // ApplyReplacements replaces placeholders for declared parameters with the specified replacements.
-func ApplyReplacements(spec *v1.TaskSpec, stringReplacements map[string]string, arrayReplacements map[string][]string) *v1.TaskSpec {
+func ApplyReplacements(spec *v1.TaskSpec, stringReplacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) *v1.TaskSpec {
 	spec = spec.DeepCopy()
 
 	// Apply variable expansion to steps fields.
 	steps := spec.Steps
 	for i := range steps {
+		if steps[i].Params != nil {
+			steps[i].Params = steps[i].Params.ReplaceVariables(stringReplacements, arrayReplacements, objectReplacements)
+		}
 		container.ApplyStepReplacements(&steps[i], stringReplacements, arrayReplacements)
 	}
 

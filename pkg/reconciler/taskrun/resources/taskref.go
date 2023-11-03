@@ -97,7 +97,7 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 		return func(ctx context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 			var replacedParams v1.Params
 			if ownerAsTR, ok := owner.(*v1.TaskRun); ok {
-				stringReplacements, arrayReplacements := paramsFromTaskRun(ctx, ownerAsTR)
+				stringReplacements, arrayReplacements, _ := replacementsFromParams(ownerAsTR.Spec.Params)
 				for k, v := range getContextReplacements("", ownerAsTR) {
 					stringReplacements[k] = v
 				}

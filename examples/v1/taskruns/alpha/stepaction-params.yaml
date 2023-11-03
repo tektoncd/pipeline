@@ -1,0 +1,82 @@
+apiVersion: tekton.dev/v1alpha1
+kind: StepAction
+metadata:
+  name: step-action
+spec:
+  params:
+    - name: string-param
+      default: "a string param"
+    - name: array-param
+      type: array
+      default:
+        - an
+        - array
+        - param
+    - name: object-param
+      type: object
+      properties:
+        key1:
+          type: string
+        key2:
+          type: string
+        key3:
+          type: string
+      default:
+        key1: "step-action default key1"
+        key2: "step-action default key2"
+        key3: "step-action default key3"
+  image: ubuntu
+  script: |
+    #!/bin/bash
+    ARRAYVALUE=("$(params.array-param[0])" "$(params.array-param[1])" "$(params.array-param[2])" "$(params.string-param)" "$(params.object-param.key1)" "$(params.object-param.key2)" "$(params.object-param.key3)")
+    ARRAYEXPECTED=("taskrun" "array" "param" "taskrun stringparam" "taskspec default key1" "taskrun key2" "step-action default key3")
+    for i in "${!ARRAYVALUE[@]}"; do
+        VALUE="${ARRAYVALUE[i]}"
+        EXPECTED="${ARRAYEXPECTED[i]}"
+        diff=$(diff <(printf "%s\n" "${VALUE[@]}") <(printf "%s\n" "${EXPECTED[@]}"))
+        if [[ -z "$diff" ]]; then
+            echo "Got expected: ${VALUE}"
+        else
+            echo "Want: ${EXPECTED} Got: ${VALUE}"
+            exit 1
+        fi
+    done
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: step-action-run
+spec:
+  params:
+    - name: stringparam
+      value: "taskrun stringparam"
+    - name: arrayparam
+      value:
+        - "taskrun"
+        - "array"
+        - "param"
+    - name: objectparam
+      value:
+        key2: "taskrun key2"
+  TaskSpec:
+    params:
+      - name: objectparam
+        properties:
+          key1:
+            type: string
+          key2:
+            type: string
+        default:
+          key1: "taskspec default key1"
+          key2: "taskspec default key2"
+    steps:
+      - name: action-runner
+        ref:
+          name: step-action
+        params:
+          - name: string-param
+            value: $(params.stringparam)
+          - name: array-param
+            value: $(params.arrayparam[*])
+          - name: object-param
+            value: $(params.objectparam[*])
