@@ -112,6 +112,7 @@ func GetStepActionsData(ctx context.Context, taskSpec v1.TaskSpec, tr *v1.TaskRu
 			}
 			stepActionSpec := stepAction.StepActionSpec()
 			s.Image = stepActionSpec.Image
+			s.SecurityContext = stepActionSpec.SecurityContext
 			if len(stepActionSpec.Command) > 0 {
 				s.Command = stepActionSpec.Command
 			}
