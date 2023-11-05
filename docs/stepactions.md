@@ -40,6 +40,7 @@ A `StepAction` definition supports the following fields:
   - `env`
   - [`params`](#declaring-params)
   - [`results`](#declaring-results)
+  - [`securityContext`](#declaring-securitycontext)
 
 The non-functional example below demonstrates the use of most of the above-mentioned fields:
 
@@ -112,6 +113,26 @@ spec:
     date +%s | tee $(results.current-date-unix-timestamp.path)
     date | tee $(results.current-date-human-readable.path)
 ```
+
+### Declaring SecurityContext
+
+You can declare `securityContext` in a `StepAction`:
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: StepAction
+metadata:
+  name: example-stepaction-name
+spec:
+  image:  gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:latest
+  securityContext:
+      runAsUser: 0
+  script: |
+    # clone the repo
+    ...
+```
+
+Note that the `securityContext` from `StepAction` will overwrite the `securityContext` from [`TaskRun`](./taskruns.md/#example-of-running-step-containers-as-a-non-root-user).
 
 ## Referencing a StepAction
 

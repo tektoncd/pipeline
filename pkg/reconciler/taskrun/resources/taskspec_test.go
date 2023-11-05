@@ -301,6 +301,8 @@ func TestGetTaskData_VerificationResult(t *testing.T) {
 }
 
 func TestGetStepActionsData(t *testing.T) {
+	taskRunUser := int64(1001)
+	stepActionUser := int64(1000)
 	tests := []struct {
 		name       string
 		tr         *v1.TaskRun
@@ -453,6 +455,42 @@ func TestGetStepActionsData(t *testing.T) {
 		}, {
 			Image:   "foo",
 			Command: []string{"ls"},
+		}},
+	}, {
+		name: "step-action-with-security-context-overwritten",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							Name: "stepAction",
+						},
+						SecurityContext: &corev1.SecurityContext{RunAsUser: &taskRunUser},
+					}},
+				},
+			},
+		},
+		stepAction: &v1alpha1.StepAction{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "stepAction",
+				Namespace: "default",
+			},
+			Spec: v1alpha1.StepActionSpec{
+				Image:           "myimage",
+				Command:         []string{"ls"},
+				Args:            []string{"-lh"},
+				SecurityContext: &corev1.SecurityContext{RunAsUser: &stepActionUser},
+			},
+		},
+		want: []v1.Step{{
+			Image:           "myimage",
+			Command:         []string{"ls"},
+			Args:            []string{"-lh"},
+			SecurityContext: &corev1.SecurityContext{RunAsUser: &stepActionUser},
 		}},
 	}}
 	for _, tt := range tests {

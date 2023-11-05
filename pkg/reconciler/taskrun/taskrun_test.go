@@ -2956,6 +2956,8 @@ metadata:
 spec:
   image: myImage
   command: ["ls"]
+  securityContext:
+    privileged: true
 `)
 	stepAction2 := parse.MustParseV1alpha1StepAction(t, `
 metadata:
@@ -2986,11 +2988,13 @@ spec:
 	}
 	getTaskRun, _ := testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
 	got := getTaskRun.Status.TaskSpec.Steps
+	securityContextPrivileged := true
 	want := []v1.Step{{
-		Image:      "myImage",
-		Command:    []string{"ls"},
-		Name:       "step1",
-		WorkingDir: "/foo",
+		Image:           "myImage",
+		Command:         []string{"ls"},
+		Name:            "step1",
+		WorkingDir:      "/foo",
+		SecurityContext: &corev1.SecurityContext{Privileged: &securityContextPrivileged},
 	}, {
 		Image:  "myImage",
 		Script: "echo hi",

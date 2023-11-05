@@ -6612,6 +6612,23 @@ Params must be supplied as inputs in Steps unless they declare a defaultvalue.</
 <p>Results are values that this StepAction can output</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>securityContext</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#securitycontext-v1-core">
+Kubernetes core/v1.SecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SecurityContext defines the security options the Step should be run with.
+If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
+More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">https://kubernetes.io/docs/tasks/configure-pod-container/security-context/</a>
+The value set in StepAction will take precedence over the value from Task.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -7469,6 +7486,23 @@ Params must be supplied as inputs in Steps unless they declare a defaultvalue.</
 <td>
 <em>(Optional)</em>
 <p>Results are values that this StepAction can output</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>securityContext</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#securitycontext-v1-core">
+Kubernetes core/v1.SecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SecurityContext defines the security options the Step should be run with.
+If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
+More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">https://kubernetes.io/docs/tasks/configure-pod-container/security-context/</a>
+The value set in StepAction will take precedence over the value from Task.</p>
 </td>
 </tr>
 </tbody>
