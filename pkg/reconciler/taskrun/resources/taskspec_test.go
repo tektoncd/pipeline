@@ -336,6 +336,10 @@ func TestGetStepActionsData(t *testing.T) {
 				Image:   "myimage",
 				Command: []string{"ls"},
 				Args:    []string{"-lh"},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "$(params.foo)",
+					MountPath: "/path",
+				}},
 			},
 		},
 		want: []v1.Step{{
@@ -344,6 +348,10 @@ func TestGetStepActionsData(t *testing.T) {
 			Args:       []string{"-lh"},
 			WorkingDir: "/bar",
 			Timeout:    &metav1.Duration{Duration: time.Hour},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "$(params.foo)",
+				MountPath: "/path",
+			}},
 		}},
 	}, {
 		name: "step-action-with-script",

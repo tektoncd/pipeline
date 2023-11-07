@@ -334,9 +334,23 @@ func TrimArrayIndex(s string) string {
 	return arrayIndexingRegex.ReplaceAllString(s, "")
 }
 
-// ExtractParamsExpressions will find all  `$(params.paramName[int])` expressions
-func ExtractParamsExpressions(s string) []string {
+// ExtractArrayIndexingParamsExpressions will find all  `$(params.paramName[int])` expressions
+func ExtractArrayIndexingParamsExpressions(s string) []string {
 	return paramIndexingRegex.FindAllString(s, -1)
+}
+
+func ExtractVariableExpressions(s, prefix string) ([]string, error) {
+	pattern := fmt.Sprintf(braceMatchingRegex, prefix, parameterSubstitution, parameterSubstitution, parameterSubstitution)
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse regex pattern: %w", err)
+	}
+
+	matches := re.FindAllString(s, -1)
+	if len(matches) == 0 {
+		return []string{}, nil
+	}
+	return matches, nil
 }
 
 // ExtractIndexString will find the leftmost match of `[int]`

@@ -61,13 +61,14 @@ func TestStepActionValidate(t *testing.T) {
 
 func TestStepActionSpecValidate(t *testing.T) {
 	type fields struct {
-		Image   string
-		Command []string
-		Args    []string
-		Script  string
-		Env     []corev1.EnvVar
-		Params  []v1.ParamSpec
-		Results []v1alpha1.StepActionResult
+		Image        string
+		Command      []string
+		Args         []string
+		Script       string
+		Env          []corev1.EnvVar
+		Params       []v1.ParamSpec
+		Results      []v1alpha1.StepActionResult
+		VolumeMounts []corev1.VolumeMount
 	}
 	tests := []struct {
 		name   string
@@ -250,17 +251,47 @@ func TestStepActionSpecValidate(t *testing.T) {
 				},
 			}},
 		},
+	}, {
+		name: "valid volumeMounts",
+		fields: fields{
+			Image: "my-image",
+			Args:  []string{"arg"},
+			Params: []v1.ParamSpec{{
+				Name: "foo",
+			}, {
+				Name: "array-params",
+				Type: v1.ParamTypeArray,
+			}, {
+				Name: "object-params",
+				Type: v1.ParamTypeObject,
+				Properties: map[string]v1.PropertySpec{
+					"key": {Type: "string"},
+				},
+			},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "$(params.foo)",
+				MountPath: "/config",
+			}, {
+				Name:      "$(params.array-params[0])",
+				MountPath: "/config",
+			}, {
+				Name:      "$(params.object-params.key)",
+				MountPath: "/config",
+			}},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sa := &v1alpha1.StepActionSpec{
-				Image:   tt.fields.Image,
-				Command: tt.fields.Command,
-				Args:    tt.fields.Args,
-				Script:  tt.fields.Script,
-				Env:     tt.fields.Env,
-				Params:  tt.fields.Params,
-				Results: tt.fields.Results,
+				Image:        tt.fields.Image,
+				Command:      tt.fields.Command,
+				Args:         tt.fields.Args,
+				Script:       tt.fields.Script,
+				Env:          tt.fields.Env,
+				Params:       tt.fields.Params,
+				Results:      tt.fields.Results,
+				VolumeMounts: tt.fields.VolumeMounts,
 			}
 			ctx := context.Background()
 			sa.SetDefaults(ctx)
@@ -273,13 +304,14 @@ func TestStepActionSpecValidate(t *testing.T) {
 
 func TestStepActionValidateError(t *testing.T) {
 	type fields struct {
-		Image   string
-		Command []string
-		Args    []string
-		Script  string
-		Env     []corev1.EnvVar
-		Params  []v1.ParamSpec
-		Results []v1alpha1.StepActionResult
+		Image        string
+		Command      []string
+		Args         []string
+		Script       string
+		Env          []corev1.EnvVar
+		Params       []v1.ParamSpec
+		Results      []v1alpha1.StepActionResult
+		VolumeMounts []corev1.VolumeMount
 	}
 	tests := []struct {
 		name          string
@@ -399,19 +431,142 @@ func TestStepActionValidateError(t *testing.T) {
 			Message: `non-existent variable in "$(params.foo) && $(params.inexistent)"`,
 			Paths:   []string{"spec.args[0]"},
 		},
+	}, {
+		name: "invalid param reference in volumeMount.Name - not a param reference",
+		fields: fields{
+			Image: "myimage",
+			Params: []v1.ParamSpec{{
+				Name: "foo",
+			}},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "params.foo",
+				MountPath: "/path",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: params.foo`,
+			Paths:   []string{"spec.volumeMounts[0].name"},
+			Details: `expect the Name to be a single param reference`,
+		},
+	}, {
+		name: "invalid param reference in volumeMount.Name - nested reference",
+		fields: fields{
+			Image: "myimage",
+			Params: []v1.ParamSpec{{
+				Name: "foo",
+			}},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "$(params.foo)-foo",
+				MountPath: "/path",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: $(params.foo)-foo`,
+			Paths:   []string{"spec.volumeMounts[0].name"},
+			Details: `expect the Name to be a single param reference`,
+		},
+	}, {
+		name: "invalid param reference in volumeMount.Name - multiple params references",
+		fields: fields{
+			Image: "myimage",
+			Params: []v1.ParamSpec{{
+				Name: "foo",
+			}, {
+				Name: "bar",
+			}},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "$(params.foo)$(params.bar)",
+				MountPath: "/path",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: $(params.foo)$(params.bar)`,
+			Paths:   []string{"spec.volumeMounts[0].name"},
+			Details: `expect the Name to be a single param reference`,
+		},
+	}, {
+		name: "invalid param reference in volumeMount.Name - not defined in params",
+		fields: fields{
+			Image: "myimage",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "$(params.foo)",
+				MountPath: "/path",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.foo)"`,
+			Paths:   []string{"spec.volumeMounts[0]"},
+		},
+	}, {
+		name: "invalid param reference in volumeMount.Name - array used in a volumeMounts name field",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name: "gitrepo",
+				Type: v1.ParamTypeArray,
+			}},
+			Image: "image",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name: "$(params.gitrepo)",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.gitrepo)"`,
+			Paths:   []string{"spec.volumeMounts[0]"},
+		},
+	}, {
+		name: "invalid param reference in volumeMount.Name - object used in a volumeMounts name field",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name: "gitrepo",
+				Type: v1.ParamTypeObject,
+				Properties: map[string]v1.PropertySpec{
+					"url":    {},
+					"commit": {},
+				},
+			}},
+			Image: "image",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name: "$(params.gitrepo)",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.gitrepo)"`,
+			Paths:   []string{"spec.volumeMounts[0]"},
+		},
+	}, {
+		name: "invalid param reference in volumeMount.Name - object key not existent in params",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name: "gitrepo",
+				Type: v1.ParamTypeObject,
+				Properties: map[string]v1.PropertySpec{
+					"url":    {},
+					"commit": {},
+				},
+			}},
+			Image: "image",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name: "$(params.gitrepo.foo)",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.gitrepo.foo)"`,
+			Paths:   []string{"spec.volumeMounts[0]"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sa := &v1alpha1.StepAction{
 				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
 				Spec: v1alpha1.StepActionSpec{
-					Image:   tt.fields.Image,
-					Command: tt.fields.Command,
-					Args:    tt.fields.Args,
-					Script:  tt.fields.Script,
-					Env:     tt.fields.Env,
-					Params:  tt.fields.Params,
-					Results: tt.fields.Results,
+					Image:        tt.fields.Image,
+					Command:      tt.fields.Command,
+					Args:         tt.fields.Args,
+					Script:       tt.fields.Script,
+					Env:          tt.fields.Env,
+					Params:       tt.fields.Params,
+					Results:      tt.fields.Results,
+					VolumeMounts: tt.fields.VolumeMounts,
 				},
 			}
 			ctx := context.Background()

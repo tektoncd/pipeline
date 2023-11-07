@@ -283,7 +283,7 @@ func (ps ParamSpecs) ExtractDefaultParamArrayLengths() map[string]int {
 // it would return ["$(params.array-param[1])", "$(params.other-array-param[2])"].
 func extractArrayIndexingParamRefs(paramReference string) []string {
 	l := []string{}
-	list := substitution.ExtractParamsExpressions(paramReference)
+	list := substitution.ExtractArrayIndexingParamsExpressions(paramReference)
 	for _, val := range list {
 		indexString := substitution.ExtractIndexString(val)
 		if indexString != "" {

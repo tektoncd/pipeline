@@ -41,6 +41,7 @@ A `StepAction` definition supports the following fields:
   - [`params`](#declaring-params)
   - [`results`](#declaring-results)
   - [`securityContext`](#declaring-securitycontext)
+  - [`volumeMounts`](#declaring-volumemounts)
 
 The non-functional example below demonstrates the use of most of the above-mentioned fields:
 
@@ -134,6 +135,30 @@ spec:
 
 Note that the `securityContext` from `StepAction` will overwrite the `securityContext` from [`TaskRun`](./taskruns.md/#example-of-running-step-containers-as-a-non-root-user).
 
+### Declaring VolumeMounts
+
+You can define `VolumeMounts` in `StepActions`. The `name` of the `VolumeMount` MUST be a single reference to a string `Parameter`. For example, `$(params.registryConfig)` is valid while `$(params.registryConfig)-foo` and `"unparametrized-name"` are invalid. This is to ensure reusability of `StepActions` such that `Task` authors have control of which `Volumes` they bind to the `VolumeMounts`.
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: StepAction
+metadata:
+  name: myStep
+spec:
+  params:
+    - name: registryConfig
+    - name: otherConfig
+  volumeMounts:
+    - name: $(params.registryConfig)
+      mountPath: /registry-config
+  volumeMounts:
+    - name: $(params.otherConfig)
+      mountPath: /other-config
+  image: ...
+  script: ...
+```
+
+
 ## Referencing a StepAction
 
 `StepActions` can be referenced from the `Step` using the `ref` field, as follows:
@@ -191,6 +216,7 @@ If a `Step` is referencing a `StepAction`, it cannot contain the fields supporte
 - `args`
 - `script`
 - `env`
+- `volumeMounts`
 
 Using any of the above fields and referencing a `StepAction` in the same `Step` is not allowed and will cause an validation error.
 
