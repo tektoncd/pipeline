@@ -542,7 +542,7 @@ func TestApplyArrayReplacements(t *testing.T) {
 	}
 }
 
-func TestExtractParamsExpressions(t *testing.T) {
+func TestExtractArrayParamsExpressionsExpressions(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
@@ -567,7 +567,45 @@ func TestExtractParamsExpressions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := substitution.ExtractParamsExpressions(tt.input)
+			got := substitution.ExtractArrayIndexingParamsExpressions(tt.input)
+			if d := cmp.Diff(tt.want, got); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestExtractVariableExpressions(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  string
+		prefix string
+		want   []string
+	}{{
+		name:   "normal string",
+		input:  "hello world",
+		prefix: "params",
+		want:   []string{},
+	}, {
+		name:   "param reference",
+		input:  "$(params.paramName)",
+		prefix: "params",
+		want:   []string{"$(params.paramName)"},
+	}, {
+		name:   "param star reference",
+		input:  "$(params.paramName[*])",
+		prefix: "params",
+		want:   []string{"$(params.paramName[*])"},
+	}, {
+		name:   "param index reference",
+		input:  "$(params.paramName[1])",
+		prefix: "params",
+		want:   []string{"$(params.paramName[1])"},
+	},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, _ := substitution.ExtractVariableExpressions(tt.input, tt.prefix)
 			if d := cmp.Diff(tt.want, got); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}

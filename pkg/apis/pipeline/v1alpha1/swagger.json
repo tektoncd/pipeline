@@ -476,6 +476,17 @@
         "securityContext": {
           "description": "SecurityContext defines the security options the Step should be run with. If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext. More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/ The value set in StepAction will take precedence over the value from Task.",
           "$ref": "#/definitions/v1.SecurityContext"
+        },
+        "volumeMounts": {
+          "description": "Volumes to mount into the Step's filesystem. Cannot be updated.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.VolumeMount"
+          },
+          "x-kubernetes-list-type": "atomic",
+          "x-kubernetes-patch-merge-key": "mountPath",
+          "x-kubernetes-patch-strategy": "merge"
         }
       }
     },

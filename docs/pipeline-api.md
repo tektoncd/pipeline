@@ -6629,6 +6629,21 @@ More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/sec
 The value set in StepAction will take precedence over the value from Task.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>volumeMounts</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volumemount-v1-core">
+[]Kubernetes core/v1.VolumeMount
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Volumes to mount into the Step&rsquo;s filesystem.
+Cannot be updated.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -7503,6 +7518,21 @@ Kubernetes core/v1.SecurityContext
 If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
 More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">https://kubernetes.io/docs/tasks/configure-pod-container/security-context/</a>
 The value set in StepAction will take precedence over the value from Task.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeMounts</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volumemount-v1-core">
+[]Kubernetes core/v1.VolumeMount
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Volumes to mount into the Step&rsquo;s filesystem.
+Cannot be updated.</p>
 </td>
 </tr>
 </tbody>

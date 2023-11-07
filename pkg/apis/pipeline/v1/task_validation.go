@@ -299,6 +299,12 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 				Paths:   []string{"env"},
 			})
 		}
+		if len(s.VolumeMounts) > 0 {
+			errs = errs.Also(&apis.FieldError{
+				Message: "volumeMounts cannot be used with Ref",
+				Paths:   []string{"volumeMounts"},
+			})
+		}
 	} else {
 		if len(s.Params) > 0 {
 			errs = errs.Also(&apis.FieldError{

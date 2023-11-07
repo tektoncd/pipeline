@@ -23,6 +23,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/webhook/resourcesemantics"
@@ -67,6 +68,7 @@ func (ss *StepActionSpec) Validate(ctx context.Context) (errs *apis.FieldError) 
 	errs = errs.Also(validateParameterVariables(ctx, *ss, ss.Params))
 	errs = errs.Also(validateStepActionResultsVariables(ctx, *ss))
 	errs = errs.Also(validateResults(ctx, ss.Results).ViaField("results"))
+	errs = errs.Also(validateVolumeMounts(ss.VolumeMounts, ss.Params).ViaField("volumeMounts"))
 	return errs
 }
 
@@ -85,6 +87,28 @@ func validateUsageOfDeclaredParameters(ctx context.Context, sas StepActionSpec) 
 func validateResults(ctx context.Context, results []StepActionResult) (errs *apis.FieldError) {
 	for index, result := range results {
 		errs = errs.Also(result.validate(ctx).ViaIndex(index))
+	}
+	return errs
+}
+
+func validateVolumeMounts(volumeMounts []corev1.VolumeMount, params v1.ParamSpecs) (errs *apis.FieldError) {
+	if len(volumeMounts) == 0 {
+		return
+	}
+	paramNames := sets.String{}
+	for _, p := range params {
+		paramNames.Insert(p.Name)
+	}
+	for idx, v := range volumeMounts {
+		matches, _ := substitution.ExtractVariableExpressions(v.Name, "params")
+		if len(matches) != 1 {
+			errs = errs.Also(apis.ErrInvalidValue(v.Name, "name", "expect the Name to be a single param reference").ViaIndex(idx))
+			return errs
+		} else if matches[0] != v.Name {
+			errs = errs.Also(apis.ErrInvalidValue(v.Name, "name", "expect the Name to be a single param reference").ViaIndex(idx))
+			return errs
+		}
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(v.Name, "params", paramNames).ViaIndex(idx))
 	}
 	return errs
 }
@@ -133,6 +157,9 @@ func validateStepActionObjectUsageAsWhole(sas StepActionSpec, prefix string, var
 	for _, env := range sas.Env {
 		errs = errs.Also(substitution.ValidateNoReferencesToEntireProhibitedVariables(env.Value, prefix, vars).ViaFieldKey("env", env.Name))
 	}
+	for i, vm := range sas.VolumeMounts {
+		errs = errs.Also(substitution.ValidateNoReferencesToEntireProhibitedVariables(vm.Name, prefix, vars).ViaFieldIndex("volumeMounts", i))
+	}
 	return errs
 }
 
@@ -149,6 +176,9 @@ func validateStepActionArrayUsage(sas StepActionSpec, prefix string, arrayParamN
 	for _, env := range sas.Env {
 		errs = errs.Also(substitution.ValidateNoReferencesToProhibitedVariables(env.Value, prefix, arrayParamNames).ViaFieldKey("env", env.Name))
 	}
+	for i, vm := range sas.VolumeMounts {
+		errs = errs.Also(substitution.ValidateNoReferencesToProhibitedVariables(vm.Name, prefix, arrayParamNames).ViaFieldIndex("volumeMounts", i))
+	}
 	return errs
 }
 
@@ -164,6 +194,9 @@ func validateStepActionVariables(ctx context.Context, sas StepActionSpec, prefix
 	}
 	for _, env := range sas.Env {
 		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(env.Value, prefix, vars).ViaFieldKey("env", env.Name))
+	}
+	for i, vm := range sas.VolumeMounts {
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(vm.Name, prefix, vars).ViaFieldIndex("volumeMounts", i))
 	}
 	return errs
 }

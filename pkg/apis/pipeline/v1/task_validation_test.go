@@ -1513,7 +1513,24 @@ func TestTaskSpecValidateErrorWithStepActionRef(t *testing.T) {
 			Message: "params cannot be used without Ref",
 			Paths:   []string{"steps[0].params"},
 		},
-	}}
+	}, {
+		name: "Cannot use volumeMounts with Ref",
+		Steps: []v1.Step{{
+			Ref: &v1.Ref{
+				Name: "stepAction",
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "$(params.foo)",
+				MountPath: "/registry-config",
+			}},
+		}},
+		enableStepActions: true,
+		expectedError: apis.FieldError{
+			Message: "volumeMounts cannot be used with Ref",
+			Paths:   []string{"steps[0].volumeMounts"},
+		},
+	},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := v1.TaskSpec{
