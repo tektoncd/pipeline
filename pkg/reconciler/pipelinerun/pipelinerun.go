@@ -391,7 +391,7 @@ func (c *Reconciler) resolvePipelineState(
 		if config.FromContextOrDefaults(ctx).FeatureFlags.EnableParamEnum {
 			for _, tr := range resolvedTask.TaskRuns {
 				if len(tr.Status.Conditions) > 0 {
-					cond := resolvedTask.TaskRuns[0].Status.Conditions[0]
+					cond := tr.Status.Conditions[0]
 					if cond.Status == corev1.ConditionFalse && cond.Reason == v1.TaskRunReasonInvalidParamValue {
 						pr.Status.MarkFailed(v1.PipelineRunReasonInvalidParamValue.String(),
 							"Invalid param value in the referenced Task from PipelineTask \"%s\": %s", resolvedTask.PipelineTask.Name, cond.Message)
