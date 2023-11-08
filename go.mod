@@ -20,7 +20,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sigstore/sigstore v1.7.5
 	github.com/spiffe/go-spiffe/v2 v2.1.5
-	github.com/spiffe/spire-api-sdk v1.8.1
+	github.com/spiffe/spire-api-sdk v1.8.4
 	github.com/tektoncd/plumbing v0.0.0-20220817140952-3da8ce01aeeb
 	go.opencensus.io v0.24.0
 	go.uber.org/zap v1.26.0
@@ -51,6 +51,7 @@ require (
 	github.com/goccy/kpoward v0.1.0
 	github.com/google/cel-go v0.18.1
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20230625233257-b8504803389b
+	github.com/google/go-containerregistry/pkg/authn/kubernetes v0.0.0-20230516205744-dbecb1de8cfa
 	github.com/sigstore/sigstore/pkg/signature/kms/aws v1.7.5
 	github.com/sigstore/sigstore/pkg/signature/kms/azure v1.7.5
 	github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.7.5
@@ -102,7 +103,6 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.0.0 // indirect
 	github.com/google/gnostic v0.6.9 // indirect
-	github.com/google/go-containerregistry/pkg/authn/kubernetes v0.0.0-20230516205744-dbecb1de8cfa // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.1 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
