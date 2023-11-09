@@ -23,13 +23,46 @@ const (
 	boxNonceSize = 24
 )
 
+// KDFParameterStrength defines the KDF parameter strength level to be used for
+// encryption key derivation.
+type KDFParameterStrength uint8
+
 const (
-	// N parameter was chosen to be ~100ms of work using the default implementation
-	// on the 2.3GHz Core i7 Haswell processor in a late-2013 Apple Retina Macbook
-	// Pro (it takes ~113ms).
-	scryptN = 32768
-	scryptR = 8
-	scryptP = 1
+	// Legacy defines legacy scrypt parameters (N:2^15, r:8, p:1)
+	Legacy KDFParameterStrength = iota + 1
+	// Standard defines standard scrypt parameters which is focusing 100ms of computation (N:2^16, r:8, p:1)
+	Standard
+	// OWASP defines OWASP recommended scrypt parameters (N:2^17, r:8, p:1)
+	OWASP
+)
+
+var (
+	// legacyParams represents old scrypt derivation parameters for backward
+	// compatibility.
+	legacyParams = scryptParams{
+		N: 32768, // 2^15
+		R: 8,
+		P: 1,
+	}
+
+	// standardParams defines scrypt parameters based on the scrypt creator
+	// recommendation to limit key derivation in time boxed to 100ms.
+	standardParams = scryptParams{
+		N: 65536, // 2^16
+		R: 8,
+		P: 1,
+	}
+
+	// owaspParams defines scrypt parameters recommended by OWASP
+	owaspParams = scryptParams{
+		N: 131072, // 2^17
+		R: 8,
+		P: 1,
+	}
+
+	// defaultParams defines scrypt parameters which will be used to generate a
+	// new key.
+	defaultParams = standardParams
 )
 
 const (
@@ -49,19 +82,33 @@ type scryptParams struct {
 	P int `json:"p"`
 }
 
-func newScryptKDF() (scryptKDF, error) {
+func (sp *scryptParams) Equal(in *scryptParams) bool {
+	return in != nil && sp.N == in.N && sp.P == in.P && sp.R == in.R
+}
+
+func newScryptKDF(level KDFParameterStrength) (scryptKDF, error) {
 	salt := make([]byte, saltSize)
 	if err := fillRandom(salt); err != nil {
-		return scryptKDF{}, err
+		return scryptKDF{}, fmt.Errorf("unable to generate a random salt: %w", err)
 	}
+
+	var params scryptParams
+	switch level {
+	case Legacy:
+		params = legacyParams
+	case Standard:
+		params = standardParams
+	case OWASP:
+		params = owaspParams
+	default:
+		// Fallback to default parameters
+		params = defaultParams
+	}
+
 	return scryptKDF{
-		Name: nameScrypt,
-		Params: scryptParams{
-			N: scryptN,
-			R: scryptR,
-			P: scryptP,
-		},
-		Salt: salt,
+		Name:   nameScrypt,
+		Params: params,
+		Salt:   salt,
 	}, nil
 }
 
@@ -79,9 +126,14 @@ func (s *scryptKDF) Key(passphrase []byte) ([]byte, error) {
 // be. If we do not do this, an attacker could cause a DoS by tampering with
 // them.
 func (s *scryptKDF) CheckParams() error {
-	if s.Params.N != scryptN || s.Params.R != scryptR || s.Params.P != scryptP {
-		return errors.New("encrypted: unexpected kdf parameters")
+	switch {
+	case legacyParams.Equal(&s.Params):
+	case standardParams.Equal(&s.Params):
+	case owaspParams.Equal(&s.Params):
+	default:
+		return errors.New("unsupported scrypt parameters")
 	}
+
 	return nil
 }
 
@@ -151,7 +203,14 @@ func (s *secretBoxCipher) Decrypt(ciphertext, key []byte) ([]byte, error) {
 // Encrypt takes a passphrase and plaintext, and returns a JSON object
 // containing ciphertext and the details necessary to decrypt it.
 func Encrypt(plaintext, passphrase []byte) ([]byte, error) {
-	k, err := newScryptKDF()
+	return EncryptWithCustomKDFParameters(plaintext, passphrase, Standard)
+}
+
+// EncryptWithCustomKDFParameters takes a passphrase, the plaintext and a KDF
+// parameter level (Legacy, Standard, or OWASP), and returns a JSON object
+// containing ciphertext and the details necessary to decrypt it.
+func EncryptWithCustomKDFParameters(plaintext, passphrase []byte, kdfLevel KDFParameterStrength) ([]byte, error) {
+	k, err := newScryptKDF(kdfLevel)
 	if err != nil {
 		return nil, err
 	}
@@ -176,11 +235,16 @@ func Encrypt(plaintext, passphrase []byte) ([]byte, error) {
 
 // Marshal encrypts the JSON encoding of v using passphrase.
 func Marshal(v interface{}, passphrase []byte) ([]byte, error) {
+	return MarshalWithCustomKDFParameters(v, passphrase, Standard)
+}
+
+// MarshalWithCustomKDFParameters encrypts the JSON encoding of v using passphrase.
+func MarshalWithCustomKDFParameters(v interface{}, passphrase []byte, kdfLevel KDFParameterStrength) ([]byte, error) {
 	data, err := json.MarshalIndent(v, "", "\t")
 	if err != nil {
 		return nil, err
 	}
-	return Encrypt(data, passphrase)
+	return EncryptWithCustomKDFParameters(data, passphrase, kdfLevel)
 }
 
 // Decrypt takes a JSON-encoded ciphertext object encrypted using Encrypt and

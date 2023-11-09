@@ -45,3 +45,40 @@ func ValidateOutOfBoundArrayParams(declarations v1.ParamSpecs, params v1.Params,
 	}
 	return nil
 }
+
+func validateStepHasStepActionParameters(stepParams v1.Params, stepActionDefaults []v1.ParamSpec) error {
+	stepActionParams := sets.String{}
+	requiredStepActionParams := []string{}
+	for _, sa := range stepActionDefaults {
+		stepActionParams.Insert(sa.Name)
+		if sa.Default == nil {
+			requiredStepActionParams = append(requiredStepActionParams, sa.Name)
+		}
+	}
+
+	stepProvidedParams := sets.String{}
+	extra := []string{}
+	for _, sp := range stepParams {
+		stepProvidedParams.Insert(sp.Name)
+		if !stepActionParams.Has(sp.Name) {
+			// Extra parameter that is not needed
+			extra = append(extra, sp.Name)
+		}
+	}
+	if len(extra) > 0 {
+		return fmt.Errorf("extra params passed by Step to StepAction: %v", extra)
+	}
+
+	missing := []string{}
+
+	for _, requiredParam := range requiredStepActionParams {
+		if !stepProvidedParams.Has(requiredParam) {
+			// Missing required param
+			missing = append(missing, requiredParam)
+		}
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("non-existent params in Step: %v", missing)
+	}
+	return nil
+}

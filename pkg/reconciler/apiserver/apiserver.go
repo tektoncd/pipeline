@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -54,6 +55,13 @@ func DryRunValidate(ctx context.Context, namespace string, obj runtime.Object, t
 		dryRunObj.Name = dryRunObjName
 		dryRunObj.Namespace = namespace // Make sure the namespace is the same as the TaskRun
 		if _, err := tekton.TektonV1beta1().Tasks(namespace).Create(ctx, dryRunObj, metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}}); err != nil {
+			return handleDryRunCreateErr(err, obj.Name)
+		}
+	case *v1alpha1.StepAction:
+		dryRunObj := obj.DeepCopy()
+		dryRunObj.Name = dryRunObjName
+		dryRunObj.Namespace = namespace // Make sure the namespace is the same as the StepAction
+		if _, err := tekton.TektonV1alpha1().StepActions(namespace).Create(ctx, dryRunObj, metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}}); err != nil {
 			return handleDryRunCreateErr(err, obj.Name)
 		}
 	default:

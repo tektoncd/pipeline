@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
+	kauth "github.com/google/go-containerregistry/pkg/authn/kubernetes"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -93,11 +94,19 @@ func (r *Resolver) Resolve(ctx context.Context, params []pipelinev1.Param) (fram
 	if err != nil {
 		return nil, err
 	}
+	var imagePullSecrets []string
+	if opts.ImagePullSecret != "" {
+		imagePullSecrets = append(imagePullSecrets, opts.ImagePullSecret)
+	}
 	namespace := common.RequestNamespace(ctx)
-	kc, _ := k8schain.New(ctx, r.kubeClientSet, k8schain.Options{
+	kc, err := k8schain.New(ctx, r.kubeClientSet, k8schain.Options{
 		Namespace:          namespace,
-		ServiceAccountName: opts.ServiceAccount,
+		ImagePullSecrets:   imagePullSecrets,
+		ServiceAccountName: kauth.NoServiceAccount,
 	})
+	if err != nil {
+		return nil, err
+	}
 	ctx, cancelFn := context.WithTimeout(ctx, timeoutDuration)
 	defer cancelFn()
 	return GetEntry(ctx, kc, opts)

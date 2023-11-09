@@ -23,9 +23,12 @@ import (
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
+	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 // ResolvedTask contains the data that is needed to execute
@@ -51,7 +54,7 @@ type GetTaskRun func(string) (*v1.TaskRun, error)
 // GetTaskData will retrieve the Task metadata and Spec associated with the
 // provided TaskRun. This can come from a reference Task or from the TaskRun's
 // metadata and embedded TaskSpec.
-func GetTaskData(ctx context.Context, taskRun *v1.TaskRun, getTask GetTask, getStepAction GetStepAction) (*resolutionutil.ResolvedObjectMeta, *v1.TaskSpec, error) {
+func GetTaskData(ctx context.Context, taskRun *v1.TaskRun, getTask GetTask) (*resolutionutil.ResolvedObjectMeta, *v1.TaskSpec, error) {
 	taskMeta := metav1.ObjectMeta{}
 	taskSpec := v1.TaskSpec{}
 	var refSource *v1.RefSource
@@ -89,13 +92,6 @@ func GetTaskData(ctx context.Context, taskRun *v1.TaskRun, getTask GetTask, getS
 		return nil, nil, fmt.Errorf("taskRun %s not providing TaskRef or TaskSpec", taskRun.Name)
 	}
 
-	steps, err := extractStepActions(ctx, taskSpec, getStepAction)
-	if err != nil {
-		return nil, nil, err
-	} else {
-		taskSpec.Steps = steps
-	}
-
 	taskSpec.SetDefaults(ctx)
 	return &resolutionutil.ResolvedObjectMeta{
 		ObjectMeta:         &taskMeta,
@@ -104,19 +100,22 @@ func GetTaskData(ctx context.Context, taskRun *v1.TaskRun, getTask GetTask, getS
 	}, &taskSpec, nil
 }
 
-// extractStepActions extracts the StepActions and merges them with the inlined Step specification.
-func extractStepActions(ctx context.Context, taskSpec v1.TaskSpec, getStepAction GetStepAction) ([]v1.Step, error) {
+// GetStepActionsData extracts the StepActions and merges them with the inlined Step specification.
+func GetStepActionsData(ctx context.Context, taskSpec v1.TaskSpec, taskRun *v1.TaskRun, tekton clientset.Interface, k8s kubernetes.Interface, requester remoteresource.Requester) ([]v1.Step, error) {
 	steps := []v1.Step{}
 	for _, step := range taskSpec.Steps {
 		s := step.DeepCopy()
 		if step.Ref != nil {
-			s.Ref = nil
-			stepAction, _, err := getStepAction(ctx, step.Ref.Name)
+			getStepAction := GetStepActionFunc(tekton, k8s, requester, taskRun, s)
+			stepAction, _, err := getStepAction(ctx, s.Ref.Name)
 			if err != nil {
 				return nil, err
 			}
 			stepActionSpec := stepAction.StepActionSpec()
+			stepActionSpec.SetDefaults(ctx)
+
 			s.Image = stepActionSpec.Image
+			s.SecurityContext = stepActionSpec.SecurityContext
 			if len(stepActionSpec.Command) > 0 {
 				s.Command = stepActionSpec.Command
 			}
@@ -129,6 +128,12 @@ func extractStepActions(ctx context.Context, taskSpec v1.TaskSpec, getStepAction
 			if stepActionSpec.Env != nil {
 				s.Env = stepActionSpec.Env
 			}
+			if err := validateStepHasStepActionParameters(s.Params, stepActionSpec.Params); err != nil {
+				return nil, err
+			}
+			s = applyStepActionParameters(s, &taskSpec, taskRun, s.Params, stepActionSpec.Params)
+			s.Params = nil
+			s.Ref = nil
 			steps = append(steps, *s)
 		} else {
 			steps = append(steps, step)

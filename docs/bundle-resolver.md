@@ -15,7 +15,7 @@ This Resolver responds to type `bundles`.
 
 | Param Name       | Description                                                                   | Example Value                                              |
 |------------------|-------------------------------------------------------------------------------|------------------------------------------------------------|
-| `serviceAccount` | The name of the service account to use when constructing registry credentials | `default`                                                  |
+| `secret` | The name of the secret to use when constructing registry credentials | `default`                                                  |
 | `bundle`         | The bundle url pointing at the image to fetch                                 | `gcr.io/tekton-releases/catalog/upstream/golang-build:0.1` |
 | `name`           | The name of the resource to pull out of the bundle                            | `golang-build`                                             |
 | `kind`           | The resource kind to pull out of the bundle                                   | `task`                                                     |
@@ -24,7 +24,7 @@ This Resolver responds to type `bundles`.
 
 - A cluster running Tekton Pipeline v0.41.0 or later.
 - The [built-in remote resolvers installed](./install.md#installing-and-configuring-remote-task-and-pipeline-resolution).
-- The `enable-bundles-resolver` feature flag in the `resolvers-feature-flags` ConfigMap 
+- The `enable-bundles-resolver` feature flag in the `resolvers-feature-flags` ConfigMap
   in the `tekton-pipelines-resolvers` namespace set to `true`.
 - [Beta features](./additional-configs.md#beta-features) enabled.
 
@@ -38,7 +38,6 @@ for the name, namespace and defaults that the resolver ships with.
 
 | Option Name               | Description                                                  | Example Values        |
 |---------------------------|--------------------------------------------------------------|-----------------------|
-| `default-service-account` | The default service account name to use for bundle requests. | `default`, `someuser` |
 | `default-kind`            | The default layer kind in the bundle image.                  | `task`, `pipeline`    |
 
 ## Usage

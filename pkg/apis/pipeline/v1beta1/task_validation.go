@@ -274,6 +274,7 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 		if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions {
 			return apis.ErrGeneric("feature flag %s should be set to true to reference StepActions in Steps.", config.EnableStepActions)
 		}
+		errs = errs.Also(s.Ref.Validate(ctx))
 		if s.Image != "" {
 			errs = errs.Also(&apis.FieldError{
 				Message: "image cannot be used with Ref",
@@ -305,6 +306,12 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 			})
 		}
 	} else {
+		if len(s.Params) > 0 {
+			errs = errs.Also(&apis.FieldError{
+				Message: "params cannot be used without Ref",
+				Paths:   []string{"params"},
+			})
+		}
 		if s.Image == "" {
 			errs = errs.Also(apis.ErrMissingField("Image"))
 		}
@@ -441,6 +448,7 @@ func (p ParamSpec) ValidateObjectType(ctx context.Context) *apis.FieldError {
 func ValidateParameterVariables(ctx context.Context, steps []Step, params ParamSpecs) *apis.FieldError {
 	var errs *apis.FieldError
 	errs = errs.Also(params.validateNoDuplicateNames())
+	errs = errs.Also(params.validateParamEnums(ctx).ViaField("params"))
 	stringParams, arrayParams, objectParams := params.sortByType()
 	stringParameterNames := sets.NewString(stringParams.getNames()...)
 	arrayParameterNames := sets.NewString(arrayParams.getNames()...)

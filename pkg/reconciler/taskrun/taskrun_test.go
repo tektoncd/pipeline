@@ -145,6 +145,24 @@ var (
 			Steps: []v1.Step{simpleStep},
 		},
 	}
+	simpleTaskWithParamEnum = &v1.Task{
+		ObjectMeta: objectMeta("test-task-param-enum", "foo"),
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1",
+			Kind:       "Task",
+		},
+		Spec: v1.TaskSpec{
+			Params: []v1.ParamSpec{{
+				Name: "param1",
+				Enum: []string{"v1", "v2"},
+			}, {
+				Name:    "param2",
+				Enum:    []string{"v1", "v2"},
+				Default: &v1.ParamValue{Type: v1.ParamTypeString, StringVal: "v1"},
+			}},
+			Steps: []v1.Step{simpleStep},
+		},
+	}
 	resultsTask = &v1.Task{
 		ObjectMeta: objectMeta("test-results-task", "foo"),
 		Spec: v1.TaskSpec{
@@ -2063,6 +2081,184 @@ spec:
 	}
 }
 
+func TestReconcile_RemoteStepAction_Success(t *testing.T) {
+	tr := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-task-run-success
+  namespace: foo
+spec:
+  taskSpec:
+    steps:
+      - ref:
+          resolver: bar
+`)
+
+	stepAction := parse.MustParseV1alpha1StepAction(t, `
+metadata:
+  name: stepAction
+  namespace: foo
+spec:
+  image: myImage
+  command: ["ls"]
+`)
+
+	stepActionBytes, err := yaml.Marshal(stepAction)
+	if err != nil {
+		t.Fatal("failed to marshal StepAction", err)
+	}
+	stepActionReq := getResolvedResolutionRequest(t, "bar", stepActionBytes, tr.Namespace, tr.Name)
+
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{tr},
+		ConfigMaps: []*corev1.ConfigMap{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+				Data: map[string]string{
+					"enable-step-actions": "true",
+				},
+			},
+		},
+		ResolutionRequests: []*resolutionv1beta1.ResolutionRequest{&stepActionReq},
+	}
+
+	testAssets, cancel := getTaskRunController(t, d)
+	createServiceAccount(t, testAssets, "default", tr.Namespace)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+	err = c.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", tr.Namespace, tr.Name))
+	if controller.IsPermanentError(err) {
+		t.Errorf("Not expected permanent error but got %t", err)
+	}
+	reconciledRun, err := clients.Pipeline.TektonV1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
+		t.Errorf("Expected TaskRun to not be failed but has condition status false")
+	}
+}
+
+func TestReconcile_RemoteStepAction_Error(t *testing.T) {
+	namespace := "foo"
+	trName := "test-task-run-success"
+	trs := []*v1.TaskRun{parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-task-run-success
+  namespace: foo
+spec:
+  taskSpec:
+    steps:
+      - ref:
+          resolver: bar
+`)}
+
+	stepAction := parse.MustParseV1alpha1StepAction(t, `
+metadata:
+  name: stepAction
+  namespace: foo
+spec:
+  image: myImage
+  command: ["ls"]
+`)
+
+	stepActionBytes, err := yaml.Marshal(stepAction)
+	if err != nil {
+		t.Fatal("failed to marshal StepAction", err)
+	}
+	stepActionReq := getResolvedResolutionRequest(t, "bar", stepActionBytes, namespace, trName)
+
+	task := parse.MustParseV1Task(t, `
+metadata:
+  name: test-task
+  namespace: foo
+spec:
+  steps:
+  - image: busybox
+    script: echo hello
+`)
+	taskBytes, err := yaml.Marshal(task)
+	if err != nil {
+		t.Fatal("failed to marshal task", err)
+	}
+	taskReq := getResolvedResolutionRequest(t, "bar", taskBytes, namespace, trName)
+
+	tcs := []struct {
+		name              string
+		webhookErr        error
+		resolutionRequest *resolutionv1beta1.ResolutionRequest
+		wantPermanentErr  bool
+		wantFailed        bool
+	}{{
+		name:              "resource not a StepAction",
+		resolutionRequest: &taskReq,
+		wantPermanentErr:  true,
+		wantFailed:        true,
+	}, {
+		name:             "resolution in progress",
+		wantPermanentErr: false,
+		wantFailed:       false,
+	}, {
+		name:              "webhook validation fails: invalid object",
+		webhookErr:        apierrors.NewBadRequest("bad request"),
+		resolutionRequest: &stepActionReq,
+		wantPermanentErr:  true,
+		wantFailed:        true,
+	}, {
+		name:              "webhook validation fails with permanent error",
+		webhookErr:        apierrors.NewInvalid(schema.GroupKind{Group: "tekton.dev/v1", Kind: "TaskRun"}, "taskrun", field.ErrorList{}),
+		resolutionRequest: &stepActionReq,
+		wantPermanentErr:  true,
+		wantFailed:        true,
+	}, {
+		name:              "webhook validation fails: retryable",
+		webhookErr:        apierrors.NewTimeoutError("timeout", 5),
+		resolutionRequest: &stepActionReq,
+		wantPermanentErr:  false,
+		wantFailed:        false,
+	}, {
+		name:              "resolution in progress",
+		resolutionRequest: nil,
+		wantPermanentErr:  false,
+		wantFailed:        false,
+	}}
+	for _, tc := range tcs {
+		d := test.Data{
+			TaskRuns: trs,
+			ConfigMaps: []*corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+					Data: map[string]string{
+						"enable-step-actions": "true",
+					},
+				},
+			},
+		}
+		if tc.resolutionRequest != nil {
+			d.ResolutionRequests = append(d.ResolutionRequests, tc.resolutionRequest)
+		}
+		testAssets, cancel := getTaskRunController(t, d)
+		defer cancel()
+		c := testAssets.Controller
+		clients := testAssets.Clients
+		// Create an error when the Pipeline client attempts to create StepActions
+		clients.Pipeline.PrependReactor("create", "stepactions", func(action ktesting.Action) (bool, runtime.Object, error) {
+			return true, nil, tc.webhookErr
+		})
+		err = c.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", namespace, trName))
+		if tc.wantPermanentErr != controller.IsPermanentError(err) {
+			t.Errorf("expected permanent error: %t but got %s", tc.wantPermanentErr, err)
+		}
+		reconciledRun, err := clients.Pipeline.TektonV1().TaskRuns(namespace).Get(testAssets.Ctx, trName, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+		}
+		if !tc.wantFailed && reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
+			t.Errorf("Expected TaskRun to not be failed but has condition status false")
+		}
+	}
+}
+
 func TestReconcileTaskRunWithPermanentError(t *testing.T) {
 	noTaskRun := parse.MustParseV1TaskRun(t, `
 metadata:
@@ -2760,6 +2956,8 @@ metadata:
 spec:
   image: myImage
   command: ["ls"]
+  securityContext:
+    privileged: true
 `)
 	stepAction2 := parse.MustParseV1alpha1StepAction(t, `
 metadata:
@@ -2790,11 +2988,13 @@ spec:
 	}
 	getTaskRun, _ := testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
 	got := getTaskRun.Status.TaskSpec.Steps
+	securityContextPrivileged := true
 	want := []v1.Step{{
-		Image:      "myImage",
-		Command:    []string{"ls"},
-		Name:       "step1",
-		WorkingDir: "/foo",
+		Image:           "myImage",
+		Command:         []string{"ls"},
+		Name:            "step1",
+		WorkingDir:      "/foo",
+		SecurityContext: &corev1.SecurityContext{Privileged: &securityContextPrivileged},
 	}, {
 		Image:  "myImage",
 		Script: "echo hi",
@@ -2853,6 +3053,197 @@ spec:
 	ignore := cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime")
 	if c := cmp.Diff(want, got, ignore); c != "" {
 		t.Errorf("TestStepActionRef_Error Conditions did not match: %s", diff.PrintWantGot(c))
+	}
+}
+
+func TestStepActionRefParams(t *testing.T) {
+	tests := []struct {
+		name       string
+		taskRun    *v1.TaskRun
+		stepAction *v1alpha1.StepAction
+		want       []v1.Step
+	}{{
+		name: "params propagated from taskrun",
+		taskRun: parse.MustParseV1TaskRun(t, `
+metadata:
+  name: taskrun-with-string-params
+  namespace: foo
+spec:
+  params:
+    - name: stringparam
+      value: "taskrun string param"
+    - name: arrayparam
+      value: ["taskrun", "array", "param"]
+    - name: objectparam
+      value:
+        key: taskrun object param	
+  taskSpec:
+    steps:
+      - ref:
+          name: stepAction
+        name: step1
+        params:
+          - name: string-param
+            value: $(params.stringparam)
+          - name: array-param
+            value: $(params.arrayparam[*])
+          - name: object-param
+            value: $(params.objectparam[*])
+`),
+		stepAction: parse.MustParseV1alpha1StepAction(t, `
+metadata:
+  name: stepAction
+  namespace: foo
+spec:
+  params:
+    - name: string-param
+    - name: array-param
+      type: array
+    - name: object-param
+      type: object
+      properties:
+        key:
+          type: string
+  image: myImage
+  command: ["echo"]
+  args: ["$(params.string-param)", "$(params.array-param[0])", "$(params.array-param[1])", "$(params.array-param[*])", "$(params.object-param.key)"]
+`),
+		want: []v1.Step{{
+			Image:   "myImage",
+			Command: []string{"echo"},
+			Args:    []string{"taskrun string param", "taskrun", "array", "taskrun", "array", "param", "taskrun object param"},
+			Name:    "step1",
+		}},
+	}, {
+		name: "params from taskspec",
+		taskRun: parse.MustParseV1TaskRun(t, `
+metadata:
+  name: taskrun-with-string-params
+  namespace: foo
+spec:
+  taskSpec:
+    params:
+      - name: stringparam
+        default: "taskspec string param"
+      - name: arrayparam
+        default: ["taskspec", "array", "param"]
+      - name: objectparam
+        properties:
+          key:
+            type: string
+        default:
+          key: taskspec object param	
+    steps:
+      - ref:
+          name: stepAction
+        name: step1
+        params:
+          - name: string-param
+            value: $(params.stringparam)
+          - name: array-param
+            value: $(params.arrayparam[*])
+          - name: object-param
+            value: $(params.objectparam[*])
+`),
+		stepAction: parse.MustParseV1alpha1StepAction(t, `
+metadata:
+  name: stepAction
+  namespace: foo
+spec:
+  params:
+    - name: string-param
+    - name: array-param
+      type: array
+    - name: object-param
+      type: object
+      properties:
+        key:
+          type: string
+  image: myImage
+  command: ["echo"]
+  args: ["$(params.string-param)", "$(params.array-param[0])", "$(params.array-param[1])", "$(params.array-param[*])", "$(params.object-param.key)"]
+`),
+		want: []v1.Step{{
+			Image:   "myImage",
+			Command: []string{"echo"},
+			Args:    []string{"taskspec string param", "taskspec", "array", "taskspec", "array", "param", "taskspec object param"},
+			Name:    "step1",
+		}},
+	}, {
+		name: "params from step action defaults",
+		taskRun: parse.MustParseV1TaskRun(t, `
+metadata:
+  name: taskrun-with-string-params
+  namespace: foo
+spec:
+  taskSpec:
+    steps:
+      - ref:
+          name: stepAction
+        name: step1
+`),
+		stepAction: parse.MustParseV1alpha1StepAction(t, `
+metadata:
+  name: stepAction
+  namespace: foo
+spec:
+  params:
+    - name: string-param
+      type: string
+      default: "stepaction string param" 
+    - name: array-param
+      type: array
+      default:
+        - stepaction
+        - array
+        - param
+    - name: object-param
+      type: object
+      properties:
+        key:
+          type: string
+      default:
+        key: "stepaction object param"
+  results:
+    - name: result
+  image: myImage
+  command: ["echo"]
+  args: ["$(params.string-param)", "$(params.array-param[0])", "$(params.array-param[1])", "$(params.array-param[*])", "$(params.object-param.key)"]
+`),
+		want: []v1.Step{{
+			Image:   "myImage",
+			Command: []string{"echo"},
+			Args:    []string{"stepaction string param", "stepaction", "array", "stepaction", "array", "param", "stepaction object param"},
+			Name:    "step1",
+		}},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := test.Data{
+				TaskRuns:    []*v1.TaskRun{tt.taskRun},
+				StepActions: []*v1alpha1.StepAction{tt.stepAction},
+				ConfigMaps: []*corev1.ConfigMap{
+					{
+						ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+						Data: map[string]string{
+							"enable-step-actions": "true",
+						},
+					},
+				},
+			}
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			createServiceAccount(t, testAssets, "default", tt.taskRun.Namespace)
+			c := testAssets.Controller
+			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tt.taskRun)); err == nil {
+				t.Fatalf("Could not reconcile the taskrun: %v", err)
+			}
+			getTaskRun, _ := testAssets.Clients.Pipeline.TektonV1().TaskRuns(tt.taskRun.Namespace).Get(testAssets.Ctx, tt.taskRun.Name, metav1.GetOptions{})
+			got := getTaskRun.Status.TaskSpec.Steps
+			if c := cmp.Diff(tt.want, got); c != "" {
+				t.Errorf("TestStepActionRefParams errored with: %s", diff.PrintWantGot(c))
+			}
+		})
 	}
 }
 
@@ -4996,6 +5387,96 @@ status:
 				t.Errorf("Expected TaskRun to terminate with %s reason. Final conditions were:\n%#v", tc.reason, tr.Status.Conditions)
 			}
 		})
+	}
+}
+
+func TestReconcile_TaskRunWithParam_Enum_valid(t *testing.T) {
+	taskRunWithParamValid := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-with-param-enum-valid
+  namespace: foo
+spec:
+  params:
+    - name: param1
+      value: v1
+  taskRef:
+    name: test-task-param-enum
+`)
+
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{taskRunWithParamValid},
+		Tasks:    []*v1.Task{simpleTaskWithParamEnum},
+		ConfigMaps: []*corev1.ConfigMap{{
+			ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+			Data: map[string]string{
+				"enable-param-enum": "true",
+			},
+		}},
+	}
+
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	createServiceAccount(t, testAssets, taskRunWithParamValid.Spec.ServiceAccountName, taskRunWithParamValid.Namespace)
+
+	// Reconcile the TaskRun
+	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRunWithParamValid)); err == nil {
+		t.Error("wanted a wrapped requeue error, but got nil.")
+	} else if ok, _ := controller.IsRequeueKey(err); !ok {
+		t.Errorf("expected no error. Got error %v", err)
+	}
+
+	tr, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRunWithParamValid.Namespace).Get(testAssets.Ctx, taskRunWithParamValid.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("getting updated taskrun: %v", err)
+	}
+	condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+	if condition.Type != apis.ConditionSucceeded || condition.Reason == string(corev1.ConditionFalse) {
+		t.Errorf("Expected TaskRun to succeed but it did not. Final conditions were:\n%#v", tr.Status.Conditions)
+	}
+}
+
+func TestReconcile_TaskRunWithParam_Enum_invalid(t *testing.T) {
+	taskRunWithParamInvalid := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-with-param-enum-invalid
+  namespace: foo
+spec:
+  params:
+    - name: param1
+      value: invalid
+  taskRef:
+    name: test-task-param-enum
+`)
+
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{taskRunWithParamInvalid},
+		Tasks:    []*v1.Task{simpleTaskWithParamEnum},
+		ConfigMaps: []*corev1.ConfigMap{{
+			ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+			Data: map[string]string{
+				"enable-param-enum": "true",
+			},
+		}},
+	}
+
+	expectedErr := fmt.Errorf("1 error occurred:\n\t* param `param1` value: invalid is not in the enum list")
+	expectedFailureReason := "InvalidParamValue"
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	createServiceAccount(t, testAssets, taskRunWithParamInvalid.Spec.ServiceAccountName, taskRunWithParamInvalid.Namespace)
+
+	// Reconcile the TaskRun
+	err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRunWithParamInvalid))
+	if d := cmp.Diff(expectedErr.Error(), strings.TrimSuffix(err.Error(), "\n\n")); d != "" {
+		t.Errorf("Expected: %v, but Got: %v", expectedErr, err)
+	}
+	tr, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRunWithParamInvalid.Namespace).Get(testAssets.Ctx, taskRunWithParamInvalid.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Error getting updated taskrun: %v", err)
+	}
+	condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+	if condition.Type != apis.ConditionSucceeded || condition.Status != corev1.ConditionFalse || condition.Reason != expectedFailureReason {
+		t.Errorf("Expected TaskRun to fail with reason \"%s\" but it did not. Final conditions were:\n%#v", expectedFailureReason, tr.Status.Conditions)
 	}
 }
 

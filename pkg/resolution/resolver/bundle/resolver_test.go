@@ -18,6 +18,7 @@ package bundle_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http/httptest"
 	"net/url"
@@ -39,8 +40,10 @@ import (
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	ktesting "k8s.io/client-go/testing"
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 	"sigs.k8s.io/yaml"
@@ -73,7 +76,7 @@ func TestValidateParams(t *testing.T) {
 		Name:  bundle.ParamBundle,
 		Value: *pipelinev1.NewStructuredValues("bar"),
 	}, {
-		Name:  bundle.ParamServiceAccount,
+		Name:  bundle.ParamImagePullSecret,
 		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 
@@ -91,7 +94,7 @@ func TestValidateParams(t *testing.T) {
 		Name:  bundle.ParamBundle,
 		Value: *pipelinev1.NewStructuredValues("bar"),
 	}, {
-		Name:  bundle.ParamServiceAccount,
+		Name:  bundle.ParamImagePullSecret,
 		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 	if err := resolver.ValidateParams(context.Background(), paramsWithPipeline); err != nil {
@@ -114,7 +117,7 @@ func TestValidateParamsDisabled(t *testing.T) {
 		Name:  bundle.ParamBundle,
 		Value: *pipelinev1.NewStructuredValues("bar"),
 	}, {
-		Name:  bundle.ParamServiceAccount,
+		Name:  bundle.ParamImagePullSecret,
 		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 	err = resolver.ValidateParams(resolverDisabledContext(), params)
@@ -139,7 +142,7 @@ func TestValidateParamsMissing(t *testing.T) {
 		Name:  bundle.ParamName,
 		Value: *pipelinev1.NewStructuredValues("foo"),
 	}, {
-		Name:  bundle.ParamServiceAccount,
+		Name:  bundle.ParamImagePullSecret,
 		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 	err = resolver.ValidateParams(context.Background(), paramsMissingBundle)
@@ -154,7 +157,7 @@ func TestValidateParamsMissing(t *testing.T) {
 		Name:  bundle.ParamBundle,
 		Value: *pipelinev1.NewStructuredValues("bar"),
 	}, {
-		Name:  bundle.ParamServiceAccount,
+		Name:  bundle.ParamImagePullSecret,
 		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 	err = resolver.ValidateParams(context.Background(), paramsMissingName)
@@ -178,7 +181,7 @@ func TestResolveDisabled(t *testing.T) {
 		Name:  bundle.ParamBundle,
 		Value: *pipelinev1.NewStructuredValues("bar"),
 	}, {
-		Name:  bundle.ParamServiceAccount,
+		Name:  bundle.ParamImagePullSecret,
 		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 	_, err = resolver.Resolve(resolverDisabledContext(), params)
@@ -191,11 +194,55 @@ func TestResolveDisabled(t *testing.T) {
 	}
 }
 
+func TestResolve_KeyChainError(t *testing.T) {
+	resolver := &bundle.Resolver{}
+	params := &params{
+		bundle: "foo",
+		name:   "example-task",
+		kind:   "task",
+		secret: "bar",
+	}
+
+	ctx, _ := ttesting.SetupFakeContext(t)
+	request := createRequest(params)
+
+	d := test.Data{
+		ResolutionRequests: []*v1beta1.ResolutionRequest{request},
+		ConfigMaps: []*corev1.ConfigMap{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      bundle.ConfigMapName,
+				Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
+			},
+			Data: map[string]string{
+				bundle.ConfigKind: "task",
+			},
+		}},
+	}
+
+	testAssets, cancel := frtesting.GetResolverFrameworkController(ctx, t, d, resolver)
+	defer cancel()
+
+	expectedErr := apierrors.NewBadRequest("bad request")
+	// return error when getting secrets from kube client
+	testAssets.Clients.Kube.Fake.PrependReactor("get", "secrets", func(action ktesting.Action) (bool, runtime.Object, error) {
+		return true, nil, expectedErr
+	})
+
+	err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, strings.Join([]string{request.Namespace, request.Name}, "/"))
+	if err == nil {
+		t.Fatalf("expected to get error but got nothing")
+	}
+
+	if !errors.Is(err, expectedErr) {
+		t.Fatalf("expected to get error %v, but got %v", expectedErr, err)
+	}
+}
+
 type params struct {
-	serviceAccount string
-	bundle         string
-	name           string
-	kind           string
+	secret string
+	bundle string
+	name   string
+	kind   string
 }
 
 func TestResolve(t *testing.T) {
@@ -397,9 +444,6 @@ func TestResolve(t *testing.T) {
 	resolver := &bundle.Resolver{}
 	confMap := map[string]string{
 		bundle.ConfigKind: "task",
-		// service account is not used in testing, but we have to set this since
-		// param validation will check if the service account is set either from param or from configmap.
-		bundle.ConfigServiceAccount: "placeholder",
 	}
 
 	for _, tc := range testcases {
@@ -491,8 +535,8 @@ func createRequest(p *params) *v1beta1.ResolutionRequest {
 				Name:  bundle.ParamKind,
 				Value: *pipelinev1.NewStructuredValues(p.kind),
 			}, {
-				Name:  bundle.ParamServiceAccount,
-				Value: *pipelinev1.NewStructuredValues(p.serviceAccount),
+				Name:  bundle.ParamImagePullSecret,
+				Value: *pipelinev1.NewStructuredValues(p.secret),
 			}},
 		},
 	}

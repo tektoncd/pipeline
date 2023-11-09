@@ -138,12 +138,20 @@ type Step struct {
 	// Contains the reference to an existing StepAction.
 	//+optional
 	Ref *Ref `json:"ref,omitempty"`
+	// Params declares parameters passed to this step action.
+	// +optional
+	// +listType=atomic
+	Params Params `json:"params,omitempty"`
 }
 
 // Ref can be used to refer to a specific instance of a StepAction.
 type Ref struct {
 	// Name of the referenced step
 	Name string `json:"name,omitempty"`
+	// ResolverRef allows referencing a StepAction in a remote location
+	// like a git repo.
+	// +optional
+	ResolverRef `json:",omitempty"`
 }
 
 // OnErrorType defines a list of supported exiting behavior of a container on error

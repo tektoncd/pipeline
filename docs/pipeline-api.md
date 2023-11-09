@@ -1691,12 +1691,25 @@ default is set, a Task may be executed without a supplied value for the
 parameter.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>enum</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Enum declares a set of allowed param input values for tasks/pipelines that can be validated.
+If Enum is not set, no input validation is performed for the param.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.ParamSpecs">ParamSpecs
 (<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamSpec</code> alias)</h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineSpec">PipelineSpec</a>, <a href="#tekton.dev/v1.TaskSpec">TaskSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineSpec">PipelineSpec</a>, <a href="#tekton.dev/v1.TaskSpec">TaskSpec</a>, <a href="#tekton.dev/v1alpha1.StepActionSpec">StepActionSpec</a>)
 </p>
 <div>
 <p>ParamSpecs is a list of ParamSpec</p>
@@ -1789,7 +1802,7 @@ map[string]string
 <h3 id="tekton.dev/v1.Params">Params
 (<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param</code> alias)</h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.IncludeParams">IncludeParams</a>, <a href="#tekton.dev/v1.Matrix">Matrix</a>, <a href="#tekton.dev/v1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.IncludeParams">IncludeParams</a>, <a href="#tekton.dev/v1.Matrix">Matrix</a>, <a href="#tekton.dev/v1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1.Step">Step</a>, <a href="#tekton.dev/v1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
 <p>Params is a list of Param</p>
@@ -3201,7 +3214,7 @@ this field is false and so declared workspaces are required.</p>
 <h3 id="tekton.dev/v1.PropertySpec">PropertySpec
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1.TaskResult">TaskResult</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1.TaskResult">TaskResult</a>, <a href="#tekton.dev/v1alpha1.StepActionResult">StepActionResult</a>)
 </p>
 <div>
 <p>PropertySpec defines the struct for object keys</p>
@@ -3300,6 +3313,21 @@ string
 <p>Name of the referenced step</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>ResolverRef</code><br/>
+<em>
+<a href="#tekton.dev/v1.ResolverRef">
+ResolverRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ResolverRef allows referencing a StepAction in a remote location
+like a git repo.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.RefSource">RefSource
@@ -3371,7 +3399,7 @@ requested.</p>
 <h3 id="tekton.dev/v1.ResolverRef">ResolverRef
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRef">PipelineRef</a>, <a href="#tekton.dev/v1.TaskRef">TaskRef</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRef">PipelineRef</a>, <a href="#tekton.dev/v1.Ref">Ref</a>, <a href="#tekton.dev/v1.TaskRef">TaskRef</a>)
 </p>
 <div>
 <p>ResolverRef can be used to refer to a Pipeline or Task in a remote
@@ -3478,7 +3506,7 @@ string
 <h3 id="tekton.dev/v1.ResultsType">ResultsType
 (<code>string</code> alias)</h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineResult">PipelineResult</a>, <a href="#tekton.dev/v1.TaskResult">TaskResult</a>, <a href="#tekton.dev/v1.TaskRunResult">TaskRunResult</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineResult">PipelineResult</a>, <a href="#tekton.dev/v1.TaskResult">TaskResult</a>, <a href="#tekton.dev/v1.TaskRunResult">TaskRunResult</a>, <a href="#tekton.dev/v1alpha1.StepActionResult">StepActionResult</a>)
 </p>
 <div>
 <p>ResultsType indicates the type of a result;
@@ -4397,6 +4425,20 @@ Ref
 <td>
 <em>(Optional)</em>
 <p>Contains the reference to an existing StepAction.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1.Params">
+Params
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Params declares parameters passed to this step action.</p>
 </td>
 </tr>
 </tbody>
@@ -6541,6 +6583,52 @@ string
 <p>If Script is not empty, the Step cannot have an Command and the Args will be passed to the Script.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1.ParamSpecs">
+ParamSpecs
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Params is a list of input parameters required to run the stepAction.
+Params must be supplied as inputs in Steps unless they declare a defaultvalue.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>results</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.StepActionResult">
+[]StepActionResult
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Results are values that this StepAction can output</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>securityContext</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#securitycontext-v1-core">
+Kubernetes core/v1.SecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SecurityContext defines the security options the Step should be run with.
+If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
+More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">https://kubernetes.io/docs/tasks/configure-pod-container/security-context/</a>
+The value set in StepAction will take precedence over the value from Task.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -7206,6 +7294,76 @@ Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https
 <div>
 <p>StepActionObject is implemented by StepAction</p>
 </div>
+<h3 id="tekton.dev/v1alpha1.StepActionResult">StepActionResult
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.StepActionSpec">StepActionSpec</a>)
+</p>
+<div>
+<p>StepActionResult used to describe the results of a task</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name the given name</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>type</code><br/>
+<em>
+<a href="#tekton.dev/v1.ResultsType">
+ResultsType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Type is the user-specified type of the result. The possible type
+is currently &ldquo;string&rdquo; and will support &ldquo;array&rdquo; in following work.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>properties</code><br/>
+<em>
+<a href="#tekton.dev/v1.PropertySpec">
+map[string]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Properties is the JSON Schema properties to support key-value pairs results.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>description</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Description is a human-readable description of the result</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1alpha1.StepActionSpec">StepActionSpec
 </h3>
 <p>
@@ -7299,6 +7457,52 @@ string
 <em>(Optional)</em>
 <p>Script is the contents of an executable file to execute.</p>
 <p>If Script is not empty, the Step cannot have an Command and the Args will be passed to the Script.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1.ParamSpecs">
+ParamSpecs
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Params is a list of input parameters required to run the stepAction.
+Params must be supplied as inputs in Steps unless they declare a defaultvalue.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>results</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.StepActionResult">
+[]StepActionResult
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Results are values that this StepAction can output</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>securityContext</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#securitycontext-v1-core">
+Kubernetes core/v1.SecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SecurityContext defines the security options the Step should be run with.
+If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
+More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">https://kubernetes.io/docs/tasks/configure-pod-container/security-context/</a>
+The value set in StepAction will take precedence over the value from Task.</p>
 </td>
 </tr>
 </tbody>
@@ -9963,6 +10167,19 @@ default is set, a Task may be executed without a supplied value for the
 parameter.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>enum</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Enum declares a set of allowed param input values for tasks/pipelines that can be validated.
+If Enum is not set, no input validation is performed for the param.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1beta1.ParamSpecs">ParamSpecs
@@ -10046,7 +10263,7 @@ map[string]string
 <h3 id="tekton.dev/v1beta1.Params">Params
 (<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param</code> alias)</h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec</a>, <a href="#tekton.dev/v1beta1.IncludeParams">IncludeParams</a>, <a href="#tekton.dev/v1beta1.Matrix">Matrix</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec</a>, <a href="#tekton.dev/v1beta1.IncludeParams">IncludeParams</a>, <a href="#tekton.dev/v1beta1.Matrix">Matrix</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1beta1.Step">Step</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
 <p>Params is a list of Param</p>
@@ -11831,6 +12048,21 @@ string
 <p>Name of the referenced step</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>ResolverRef</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.ResolverRef">
+ResolverRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ResolverRef allows referencing a StepAction in a remote location
+like a git repo.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1beta1.RefSource">RefSource
@@ -11902,7 +12134,7 @@ requested.</p>
 <h3 id="tekton.dev/v1beta1.ResolverRef">ResolverRef
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineRef">PipelineRef</a>, <a href="#tekton.dev/v1beta1.TaskRef">TaskRef</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineRef">PipelineRef</a>, <a href="#tekton.dev/v1beta1.Ref">Ref</a>, <a href="#tekton.dev/v1beta1.TaskRef">TaskRef</a>)
 </p>
 <div>
 <p>ResolverRef can be used to refer to a Pipeline or Task in a remote
@@ -13041,6 +13273,20 @@ Ref
 <td>
 <em>(Optional)</em>
 <p>Contains the reference to an existing StepAction.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.Params">
+Params
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Params declares parameters passed to this step action.</p>
 </td>
 </tr>
 </tbody>

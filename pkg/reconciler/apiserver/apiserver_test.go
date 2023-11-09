@@ -7,6 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/pipeline/pkg/reconciler/apiserver"
@@ -34,6 +35,9 @@ func TestDryRunCreate_Valid_DifferentGVKs(t *testing.T) {
 	}, {
 		name: "v1beta1 pipeline",
 		obj:  &v1beta1.Pipeline{},
+	}, {
+		name: "v1alpha1 stepaction",
+		obj:  &v1alpha1.StepAction{},
 	}, {
 		name:    "unsupported gvk",
 		obj:     &v1beta1.ClusterTask{},
@@ -72,6 +76,10 @@ func TestDryRunCreate_Invalid_DifferentGVKs(t *testing.T) {
 		obj:     &v1beta1.Pipeline{},
 		wantErr: apiserver.ErrReferencedObjectValidationFailed,
 	}, {
+		name:    "v1alpha1 stepaction",
+		obj:     &v1alpha1.StepAction{},
+		wantErr: apiserver.ErrReferencedObjectValidationFailed,
+	}, {
 		name:    "unsupported gvk",
 		obj:     &v1beta1.ClusterTask{},
 		wantErr: cmpopts.AnyError,
@@ -83,6 +91,9 @@ func TestDryRunCreate_Invalid_DifferentGVKs(t *testing.T) {
 				return true, nil, apierrors.NewBadRequest("bad request")
 			})
 			tektonclient.PrependReactor("create", "pipelines", func(action ktesting.Action) (bool, runtime.Object, error) {
+				return true, nil, apierrors.NewBadRequest("bad request")
+			})
+			tektonclient.PrependReactor("create", "stepactions", func(action ktesting.Action) (bool, runtime.Object, error) {
 				return true, nil, apierrors.NewBadRequest("bad request")
 			})
 			err := apiserver.DryRunValidate(context.Background(), "default", tc.obj, tektonclient)

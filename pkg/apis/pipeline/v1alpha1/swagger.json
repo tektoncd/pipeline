@@ -384,6 +384,36 @@
         }
       }
     },
+    "v1alpha1.StepActionResult": {
+      "description": "StepActionResult used to describe the results of a task",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "description": {
+          "description": "Description is a human-readable description of the result",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name the given name",
+          "type": "string",
+          "default": ""
+        },
+        "properties": {
+          "description": "Properties is the JSON Schema properties to support key-value pairs results.",
+          "type": "object",
+          "additionalProperties": {
+            "default": {},
+            "$ref": "#/definitions/v1.PropertySpec"
+          }
+        },
+        "type": {
+          "description": "Type is the user-specified type of the result. The possible type is currently \"string\" and will support \"array\" in following work.",
+          "type": "string"
+        }
+      }
+    },
     "v1alpha1.StepActionSpec": {
       "description": "StepActionSpec contains the actionable components of a step.",
       "type": "object",
@@ -421,9 +451,31 @@
           "description": "Image reference name to run for this StepAction. More info: https://kubernetes.io/docs/concepts/containers/images",
           "type": "string"
         },
+        "params": {
+          "description": "Params is a list of input parameters required to run the stepAction. Params must be supplied as inputs in Steps unless they declare a defaultvalue.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.ParamSpec"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "results": {
+          "description": "Results are values that this StepAction can output",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.StepActionResult"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
         "script": {
           "description": "Script is the contents of an executable file to execute.\n\nIf Script is not empty, the Step cannot have an Command and the Args will be passed to the Script.",
           "type": "string"
+        },
+        "securityContext": {
+          "description": "SecurityContext defines the security options the Step should be run with. If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext. More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/ The value set in StepAction will take precedence over the value from Task.",
+          "$ref": "#/definitions/v1.SecurityContext"
         }
       }
     },

@@ -37,10 +37,10 @@ const (
 // RequestOptions are the options used to request a resource from
 // a remote bundle.
 type RequestOptions struct {
-	ServiceAccount string
-	Bundle         string
-	EntryName      string
-	Kind           string
+	ImagePullSecret string
+	Bundle          string
+	EntryName       string
+	Kind            string
 }
 
 // ResolvedResource wraps the content of a matched entry in a bundle.

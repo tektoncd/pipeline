@@ -175,6 +175,44 @@ var (
 		}},
 	}
 
+	stepParamTaskSpec = &v1.TaskSpec{
+		Params: v1.ParamSpecs{{
+			Name: "myObject",
+			Default: &v1.ParamValue{
+				Type:      v1.ParamTypeObject,
+				ObjectVal: map[string]string{"key1": "key1"},
+			},
+		}, {
+			Name: "myString",
+			Default: &v1.ParamValue{
+				Type:      v1.ParamTypeString,
+				StringVal: "string-value",
+			},
+		}, {
+			Name: "myArray",
+			Default: &v1.ParamValue{
+				Type:     v1.ParamTypeArray,
+				ArrayVal: []string{"array", "value"},
+			},
+		}},
+		Steps: []v1.Step{{
+			Name: "foo",
+			Ref: &v1.Ref{
+				Name: "stepAction",
+			},
+			Params: v1.Params{{
+				Name:  "myObject",
+				Value: *v1.NewStructuredValues("$(params.myObject[*])"),
+			}, {
+				Name:  "myString",
+				Value: *v1.NewStructuredValues("$(params.myString)"),
+			}, {
+				Name:  "myArray",
+				Value: *v1.NewStructuredValues("$(params.myArray[*])"),
+			}},
+		}},
+	}
+
 	// a taskspec for testing object var in all places i.e. Sidecars, StepTemplate, Steps and Volumns
 	objectParamTaskSpec = &v1.TaskSpec{
 		Sidecars: []v1.Sidecar{{
@@ -726,7 +764,7 @@ func TestApplyArrayParameters(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := resources.ApplyParameters(context.Background(), tt.args.ts, tt.args.tr, tt.args.dp...)
+			got := resources.ApplyParameters(tt.args.ts, tt.args.tr, tt.args.dp...)
 			if d := cmp.Diff(tt.want, got); d != "" {
 				t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 			}
@@ -795,7 +833,7 @@ func TestApplyParameters(t *testing.T) {
 		spec.Sidecars[0].Image = "bar"
 		spec.Sidecars[0].Env[0].Value = "world"
 	})
-	got := resources.ApplyParameters(context.Background(), simpleTaskSpec, tr, dp...)
+	got := resources.ApplyParameters(simpleTaskSpec, tr, dp...)
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 	}
@@ -861,7 +899,7 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 		spec.Sidecars[0].Image = "bar"
 		spec.Sidecars[0].Env[0].Value = "world"
 	})
-	got := resources.ApplyParameters(context.Background(), simpleTaskSpecArrayIndexing, tr, dp...)
+	got := resources.ApplyParameters(simpleTaskSpecArrayIndexing, tr, dp...)
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 	}
@@ -927,7 +965,79 @@ func TestApplyObjectParameters(t *testing.T) {
 		spec.Volumes[3].VolumeSource.CSI.VolumeAttributes["secretProviderClass"] = "taskrun-value-for-key1"
 		spec.Volumes[3].VolumeSource.CSI.NodePublishSecretRef.Name = "taskrun-value-for-key1"
 	})
-	got := resources.ApplyParameters(context.Background(), objectParamTaskSpec, tr, dp...)
+	got := resources.ApplyParameters(objectParamTaskSpec, tr, dp...)
+	if d := cmp.Diff(want, got); d != "" {
+		t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestApplyStepParameters(t *testing.T) {
+	// define the taskrun to test values provided by taskrun can overwrite the values provided in spec's default
+	tr := &v1.TaskRun{
+		Spec: v1.TaskRunSpec{
+			Params: []v1.Param{{
+				Name: "myObject",
+				Value: *v1.NewObject(map[string]string{
+					"key1": "taskrun-value-for-key1",
+				}),
+			}, {
+				Name: "myString",
+				Value: v1.ParamValue{
+					Type:      v1.ParamTypeString,
+					StringVal: "taskrun-string-value",
+				},
+			}, {
+				Name: "myArray",
+				Value: v1.ParamValue{
+					Type:     v1.ParamTypeArray,
+					ArrayVal: []string{"taskrun", "array", "value"},
+				},
+			}},
+			TaskSpec: stepParamTaskSpec,
+		},
+	}
+	dp := []v1.ParamSpec{{
+		Name: "myObject",
+		Default: &v1.ParamValue{
+			Type:      v1.ParamTypeObject,
+			ObjectVal: map[string]string{"key1": "key1"},
+		},
+	}, {
+		Name: "myString",
+		Default: &v1.ParamValue{
+			Type:      v1.ParamTypeString,
+			StringVal: "default-string-value",
+		},
+	}, {
+		Name: "myArray",
+		Default: &v1.ParamValue{
+			Type:     v1.ParamTypeArray,
+			ArrayVal: []string{"default", "array", "value"},
+		},
+	}}
+
+	want := applyMutation(stepParamTaskSpec, func(spec *v1.TaskSpec) {
+		spec.Steps[0].Params = []v1.Param{{
+			Name: "myObject",
+			Value: v1.ParamValue{
+				Type:      v1.ParamTypeObject,
+				ObjectVal: map[string]string{"key1": "taskrun-value-for-key1"},
+			},
+		}, {
+			Name: "myString",
+			Value: v1.ParamValue{
+				Type:      v1.ParamTypeString,
+				StringVal: "taskrun-string-value",
+			},
+		}, {
+			Name: "myArray",
+			Value: v1.ParamValue{
+				Type:     v1.ParamTypeArray,
+				ArrayVal: []string{"taskrun", "array", "value"},
+			},
+		}}
+	})
+	got := resources.ApplyParameters(stepParamTaskSpec, tr, dp...)
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 	}

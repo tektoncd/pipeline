@@ -561,14 +561,26 @@ func TestGetStepActionFunc_Local(t *testing.T) {
 	testcases := []struct {
 		name             string
 		localStepActions []runtime.Object
-		ref              *v1.Ref
+		taskRun          *v1.TaskRun
 		expected         runtime.Object
 	}{
 		{
 			name:             "local-step-action",
 			localStepActions: []runtime.Object{simpleNamespacedStepAction},
-			ref: &v1.Ref{
-				Name: "simple",
+			taskRun: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "some-tr",
+					Namespace: "default",
+				},
+				Spec: v1.TaskRunSpec{
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{{
+							Ref: &v1.Ref{
+								Name: "simple",
+							},
+						}},
+					},
+				},
 			},
 			expected: simpleNamespacedStepAction,
 		},
@@ -577,10 +589,9 @@ func TestGetStepActionFunc_Local(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			tektonclient := fake.NewSimpleClientset(tc.localStepActions...)
+			fn := resources.GetStepActionFunc(tektonclient, nil, nil, tc.taskRun, &tc.taskRun.Spec.TaskSpec.Steps[0])
 
-			fn := resources.GetStepActionFunc(tektonclient, "default")
-
-			stepAction, refSource, err := fn(ctx, tc.ref.Name)
+			stepAction, refSource, err := fn(ctx, tc.taskRun.Spec.TaskSpec.Steps[0].Ref.Name)
 			if err != nil {
 				t.Fatalf("failed to call stepActionfn: %s", err.Error())
 			}
@@ -596,6 +607,109 @@ func TestGetStepActionFunc_Local(t *testing.T) {
 		})
 	}
 }
+
+func TestGetStepActionFunc_RemoteResolution_Success(t *testing.T) {
+	ctx := context.Background()
+	stepRef := &v1.Ref{ResolverRef: v1.ResolverRef{Resolver: "git"}}
+
+	testcases := []struct {
+		name           string
+		stepActionYAML string
+		wantStepAction *v1alpha1.StepAction
+		wantErr        bool
+	}{{
+		name: "remote StepAction",
+		stepActionYAML: strings.Join([]string{
+			"kind: StepAction",
+			"apiVersion: tekton.dev/v1alpha1",
+			stepActionYAMLString,
+		}, "\n"),
+		wantStepAction: parse.MustParseV1alpha1StepAction(t, stepActionYAMLString),
+	}}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			resolved := test.NewResolvedResource([]byte(tc.stepActionYAML), nil /* annotations */, sampleRefSource.DeepCopy(), nil /* data error */)
+			requester := test.NewRequester(resolved, nil)
+			tr := &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+				Spec: v1.TaskRunSpec{
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{{
+							Ref: stepRef,
+						}},
+					},
+					ServiceAccountName: "default",
+				},
+			}
+			tektonclient := fake.NewSimpleClientset()
+			fn := resources.GetStepActionFunc(tektonclient, nil, requester, tr, &tr.Spec.TaskSpec.Steps[0])
+
+			resolvedStepAction, resolvedRefSource, err := fn(ctx, tr.Spec.TaskSpec.Steps[0].Ref.Name)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected an error when calling GetStepActionFunc but got none")
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("failed to call fn: %s", err.Error())
+				}
+
+				if d := cmp.Diff(sampleRefSource, resolvedRefSource); d != "" {
+					t.Errorf("refSources did not match: %s", diff.PrintWantGot(d))
+				}
+
+				if d := cmp.Diff(tc.wantStepAction, resolvedStepAction); d != "" {
+					t.Errorf("resolvedStepActions did not match: %s", diff.PrintWantGot(d))
+				}
+			}
+		})
+	}
+}
+
+func TestGetStepActionFunc_RemoteResolution_Error(t *testing.T) {
+	ctx := context.Background()
+	stepRef := &v1.Ref{ResolverRef: v1.ResolverRef{Resolver: "git"}}
+
+	testcases := []struct {
+		name       string
+		resolvesTo []byte
+	}{{
+		name:       "invalid data",
+		resolvesTo: []byte("INVALID YAML"),
+	}, {
+		name: "resolved not StepAction",
+		resolvesTo: []byte(strings.Join([]string{
+			"kind: Task",
+			"apiVersion: tekton.dev/v1beta1",
+			taskYAMLString,
+		}, "\n")),
+	},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			resource := test.NewResolvedResource(tc.resolvesTo, nil, nil, nil)
+			requester := test.NewRequester(resource, nil)
+			tr := &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+				Spec: v1.TaskRunSpec{
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{{
+							Ref: stepRef,
+						}},
+					},
+					ServiceAccountName: "default",
+				},
+			}
+			tektonclient := fake.NewSimpleClientset()
+			fn := resources.GetStepActionFunc(tektonclient, nil, requester, tr, &tr.Spec.TaskSpec.Steps[0])
+			if _, _, err := fn(ctx, tr.Spec.TaskSpec.Steps[0].Ref.Name); err == nil {
+				t.Fatalf("expected error due to invalid pipeline data but saw none")
+			}
+		})
+	}
+}
+
 func TestGetTaskFuncFromTaskRunSpecAlreadyFetched(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -1513,6 +1627,15 @@ spec:
     image: ubuntu
     script: |
       echo "hello world!"
+`
+
+var stepActionYAMLString = `
+metadata:
+  name: foo
+  namespace: default
+spec:
+  image: myImage
+  command: ["ls"]
 `
 
 var remoteTaskYamlWithoutDefaults = `
