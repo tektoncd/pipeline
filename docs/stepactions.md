@@ -331,3 +331,5 @@ spec:
             - name: pathInRepo
               value: remote_step.yaml
 ```
+
+The default resolver type can be configured by the `default-resolver-type` field in the `config-defaults` ConfigMap (`alpha` feature). See [additional-configs.md](./additional-configs.md) for details.
