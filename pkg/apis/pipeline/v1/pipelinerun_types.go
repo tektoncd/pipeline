@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	runv1beta1 "github.com/tektoncd/pipeline/pkg/apis/run/v1beta1"
@@ -117,7 +116,7 @@ func (pr *PipelineRun) TasksTimeout() *metav1.Duration {
 		return t.Tasks
 	}
 	if t.Pipeline != nil && t.Finally != nil {
-		if t.Pipeline.Duration == apisconfig.NoTimeoutDuration || t.Finally.Duration == apisconfig.NoTimeoutDuration {
+		if t.Pipeline.Duration == config.NoTimeoutDuration || t.Finally.Duration == config.NoTimeoutDuration {
 			return nil
 		}
 		return &metav1.Duration{Duration: (t.Pipeline.Duration - t.Finally.Duration)}
@@ -136,7 +135,7 @@ func (pr *PipelineRun) FinallyTimeout() *metav1.Duration {
 		return t.Finally
 	}
 	if t.Pipeline != nil && t.Tasks != nil {
-		if t.Pipeline.Duration == apisconfig.NoTimeoutDuration || t.Tasks.Duration == apisconfig.NoTimeoutDuration {
+		if t.Pipeline.Duration == config.NoTimeoutDuration || t.Tasks.Duration == config.NoTimeoutDuration {
 			return nil
 		}
 		return &metav1.Duration{Duration: (t.Pipeline.Duration - t.Tasks.Duration)}
