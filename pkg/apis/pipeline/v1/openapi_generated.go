@@ -3425,12 +3425,18 @@ func schema_pkg_apis_pipeline_v1_TaskResult(ref common.ReferenceCallback) common
 							Format:      "",
 						},
 					},
+					"value": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Value the expression used to retrieve the value of the result from an underlying Step.",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue"),
+						},
+					},
 				},
 				Required: []string{"name"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec"},
 	}
 }
 
