@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 )
 
@@ -81,7 +80,7 @@ func MergeStepsWithSpecs(steps []Step, overrides []TaskRunStepSpec) ([]Step, err
 		if !found {
 			continue
 		}
-		merged := v1.ResourceRequirements{}
+		merged := corev1.ResourceRequirements{}
 		err := mergeObjWithTemplate(&s.ComputeResources, &o.ComputeResources, &merged)
 		if err != nil {
 			return nil, err
@@ -107,7 +106,7 @@ func MergeSidecarsWithSpecs(sidecars []Sidecar, overrides []TaskRunSidecarSpec) 
 		if !found {
 			continue
 		}
-		merged := v1.ResourceRequirements{}
+		merged := corev1.ResourceRequirements{}
 		err := mergeObjWithTemplate(&s.ComputeResources, &o.ComputeResources, &merged)
 		if err != nil {
 			return nil, err
