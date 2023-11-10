@@ -257,9 +257,38 @@ func applyWorkspaceMountPath(variable string, spec *v1.TaskSpec, declaration v1.
 	return ApplyReplacements(spec, stringReplacements, emptyArrayReplacements, map[string]map[string]string{})
 }
 
-// ApplyTaskResults applies the substitution from values in results which are referenced in spec as subitems
+// ApplyResults applies the substitution from values in results and step results which are referenced in spec as subitems
 // of the replacementStr.
-func ApplyTaskResults(spec *v1.TaskSpec) *v1.TaskSpec {
+func ApplyResults(spec *v1.TaskSpec) *v1.TaskSpec {
+	// Apply all the Step Result replacements
+	for i := range spec.Steps {
+		stringReplacements := getStepResultReplacements(spec.Steps[i], i)
+		container.ApplyStepReplacements(&spec.Steps[i], stringReplacements, map[string][]string{})
+	}
+	stringReplacements := getTaskResultReplacements(spec)
+	return ApplyReplacements(spec, stringReplacements, map[string][]string{}, map[string]map[string]string{})
+}
+
+// getStepResultReplacements creates all combinations of string replacements from Step Results.
+func getStepResultReplacements(step v1.Step, idx int) map[string]string {
+	stringReplacements := map[string]string{}
+
+	patterns := []string{
+		"step.results.%s.path",
+		"step.results[%q].path",
+		"step.results['%s'].path",
+	}
+	stepName := pod.StepName(step.Name, idx)
+	for _, result := range step.Results {
+		for _, pattern := range patterns {
+			stringReplacements[fmt.Sprintf(pattern, result.Name)] = filepath.Join(pipeline.StepsDir, stepName, "results", result.Name)
+		}
+	}
+	return stringReplacements
+}
+
+// getTaskResultReplacements creates all combinations of string replacements from TaskResults.
+func getTaskResultReplacements(spec *v1.TaskSpec) map[string]string {
 	stringReplacements := map[string]string{}
 
 	patterns := []string{
@@ -273,7 +302,7 @@ func ApplyTaskResults(spec *v1.TaskSpec) *v1.TaskSpec {
 			stringReplacements[fmt.Sprintf(pattern, result.Name)] = filepath.Join(pipeline.DefaultResultPath, result.Name)
 		}
 	}
-	return ApplyReplacements(spec, stringReplacements, map[string][]string{}, map[string]map[string]string{})
+	return stringReplacements
 }
 
 // ApplyStepExitCodePath replaces the occurrences of exitCode path with the absolute tekton internal path

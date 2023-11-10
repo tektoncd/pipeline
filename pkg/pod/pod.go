@@ -239,9 +239,9 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	readyImmediately := isPodReadyImmediately(*featureFlags, taskSpec.Sidecars)
 
 	if alphaAPIEnabled {
-		stepContainers, err = orderContainers(commonExtraEntrypointArgs, stepContainers, &taskSpec, taskRun.Spec.Debug, !readyImmediately, enableKeepPodOnCancel)
+		stepContainers, err = orderContainers(ctx, commonExtraEntrypointArgs, stepContainers, &taskSpec, taskRun.Spec.Debug, !readyImmediately, enableKeepPodOnCancel)
 	} else {
-		stepContainers, err = orderContainers(commonExtraEntrypointArgs, stepContainers, &taskSpec, nil, !readyImmediately, enableKeepPodOnCancel)
+		stepContainers, err = orderContainers(ctx, commonExtraEntrypointArgs, stepContainers, &taskSpec, nil, !readyImmediately, enableKeepPodOnCancel)
 	}
 	if err != nil {
 		return nil, err

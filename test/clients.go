@@ -68,6 +68,7 @@ type clients struct {
 	V1TaskClient                     v1.TaskInterface
 	V1TaskRunClient                  v1.TaskRunInterface
 	V1PipelineRunClient              v1.PipelineRunInterface
+	V1alpha1StepActionClient         v1alpha1.StepActionInterface
 }
 
 // newClients instantiates and returns several clientsets required for making requests to the
@@ -109,5 +110,6 @@ func newClients(t *testing.T, configPath, clusterName, namespace string) *client
 	c.V1TaskClient = cs.TektonV1().Tasks(namespace)
 	c.V1TaskRunClient = cs.TektonV1().TaskRuns(namespace)
 	c.V1PipelineRunClient = cs.TektonV1().PipelineRuns(namespace)
+	c.V1alpha1StepActionClient = cs.TektonV1alpha1().StepActions(namespace)
 	return c
 }

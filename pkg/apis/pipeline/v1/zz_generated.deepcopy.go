@@ -1360,6 +1360,13 @@ func (in *StepResult) DeepCopy() *StepResult {
 func (in *StepState) DeepCopyInto(out *StepState) {
 	*out = *in
 	in.ContainerState.DeepCopyInto(&out.ContainerState)
+	if in.Results != nil {
+		in, out := &in.Results, &out.Results
+		*out = make([]TaskRunResult, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 

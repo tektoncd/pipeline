@@ -124,7 +124,7 @@ var (
 // command, we must have fetched the image's ENTRYPOINT before calling this
 // method, using entrypoint_lookup.go.
 // Additionally, Step timeouts are added as entrypoint flag.
-func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1.TaskSpec, breakpointConfig *v1.TaskRunDebug, waitForReadyAnnotation, enableKeepPodOnCancel bool) ([]corev1.Container, error) {
+func orderContainers(ctx context.Context, commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1.TaskSpec, breakpointConfig *v1.TaskRunDebug, waitForReadyAnnotation, enableKeepPodOnCancel bool) ([]corev1.Container, error) {
 	if len(steps) == 0 {
 		return nil, errors.New("No steps specified")
 	}
@@ -149,6 +149,7 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 			"-termination_path", terminationPath,
 			"-step_metadata_dir", filepath.Join(RunDir, idx, "status"),
 		)
+
 		argsForEntrypoint = append(argsForEntrypoint, commonExtraEntrypointArgs...)
 		if taskSpec != nil {
 			if taskSpec.Steps != nil && len(taskSpec.Steps) >= i+1 {
@@ -168,6 +169,9 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 				if taskSpec.Steps[i].StderrConfig != nil {
 					argsForEntrypoint = append(argsForEntrypoint, "-stderr_path", taskSpec.Steps[i].StderrConfig.Path)
 				}
+				// add step results
+				stepResultArgs := stepResultArgument(taskSpec.Steps[i].Results)
+				argsForEntrypoint = append(argsForEntrypoint, stepResultArgs...)
 			}
 			argsForEntrypoint = append(argsForEntrypoint, resultArgument(steps, taskSpec.Results)...)
 		}
@@ -199,6 +203,18 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 	return steps, nil
 }
 
+// stepResultArgument creates the cli arguments for step results to the entrypointer.
+func stepResultArgument(stepResults []v1.StepResult) []string {
+	if len(stepResults) == 0 {
+		return nil
+	}
+	stepResultNames := []string{}
+	for _, r := range stepResults {
+		stepResultNames = append(stepResultNames, r.Name)
+	}
+	return []string{"-step_results", strings.Join(stepResultNames, ",")}
+}
+
 func resultArgument(steps []corev1.Container, results []v1.TaskResult) []string {
 	if len(results) == 0 {
 		return nil
@@ -209,7 +225,9 @@ func resultArgument(steps []corev1.Container, results []v1.TaskResult) []string 
 func collectResultsName(results []v1.TaskResult) string {
 	var resultNames []string
 	for _, r := range results {
-		resultNames = append(resultNames, r.Name)
+		if r.Value == nil {
+			resultNames = append(resultNames, r.Name)
+		}
 	}
 	return strings.Join(resultNames, ",")
 }
@@ -335,7 +353,11 @@ func TrimSidecarPrefix(name string) string { return strings.TrimPrefix(name, sid
 // returns "step-unnamed-<step-index>" if not specified
 func StepName(name string, i int) string {
 	if name != "" {
-		return fmt.Sprintf("%s%s", stepPrefix, name)
+		return getContainerName(name)
 	}
 	return fmt.Sprintf("%sunnamed-%d", stepPrefix, i)
+}
+
+func getContainerName(name string) string {
+	return fmt.Sprintf("%s%s", stepPrefix, name)
 }

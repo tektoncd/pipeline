@@ -4625,6 +4625,18 @@ string
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>results</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRunResult">
+[]TaskRunResult
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.StepTemplate">StepTemplate
@@ -5143,10 +5155,10 @@ reasons that emerge from underlying resources are not included here</p>
 <h3 id="tekton.dev/v1.TaskRunResult">TaskRunResult
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRunStatusFields">TaskRunStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.StepState">StepState</a>, <a href="#tekton.dev/v1.TaskRunStatusFields">TaskRunStatusFields</a>)
 </p>
 <div>
-<p>TaskRunResult used to describe the results of a task</p>
+<p>TaskRunStepResult is a type alias of TaskRunResult</p>
 </div>
 <table>
 <thead>
@@ -13465,6 +13477,18 @@ string
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>results</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.TaskRunResult">
+[]TaskRunResult
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1beta1.StepTemplate">StepTemplate
@@ -14367,10 +14391,10 @@ reasons that emerge from underlying resources are not included here</p>
 <h3 id="tekton.dev/v1beta1.TaskRunResult">TaskRunResult
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskRunStatusFields">TaskRunStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.StepState">StepState</a>, <a href="#tekton.dev/v1beta1.TaskRunStatusFields">TaskRunStatusFields</a>)
 </p>
 <div>
-<p>TaskRunResult used to describe the results of a task</p>
+<p>TaskRunStepResult is a type alias of TaskRunResult</p>
 </div>
 <table>
 <thead>

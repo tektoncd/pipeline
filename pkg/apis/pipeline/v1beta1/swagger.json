@@ -2220,6 +2220,13 @@
         "name": {
           "type": "string"
         },
+        "results": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.TaskRunResult"
+          }
+        },
         "running": {
           "description": "Details about a running container",
           "$ref": "#/definitions/v1.ContainerStateRunning"
@@ -2704,7 +2711,7 @@
       }
     },
     "v1beta1.TaskRunResult": {
-      "description": "TaskRunResult used to describe the results of a task",
+      "description": "TaskRunStepResult is a type alias of TaskRunResult",
       "type": "object",
       "required": [
         "name",

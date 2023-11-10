@@ -52,6 +52,9 @@ type TaskRunResult struct {
 	Value ResultValue `json:"value"`
 }
 
+// TaskRunStepResult is a type alias of TaskRunResult
+type TaskRunStepResult = TaskRunResult
+
 // ResultValue is a type alias of ParamValue
 type ResultValue = ParamValue
 

@@ -4030,11 +4030,24 @@ func schema_pkg_apis_pipeline_v1beta1_StepState(ref common.ReferenceCallback) co
 							Format: "",
 						},
 					},
+					"results": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunResult"),
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/api/core/v1.ContainerStateRunning", "k8s.io/api/core/v1.ContainerStateTerminated", "k8s.io/api/core/v1.ContainerStateWaiting"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunResult", "k8s.io/api/core/v1.ContainerStateRunning", "k8s.io/api/core/v1.ContainerStateTerminated", "k8s.io/api/core/v1.ContainerStateWaiting"},
 	}
 }
 
@@ -4928,7 +4941,7 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunResult(ref common.ReferenceCallback
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "TaskRunResult used to describe the results of a task",
+				Description: "TaskRunStepResult is a type alias of TaskRunResult",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"name": {

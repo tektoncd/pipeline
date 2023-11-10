@@ -96,6 +96,8 @@ type Entrypointer struct {
 	// PostWriter encapsulates writing files when complete.
 	PostWriter PostWriter
 
+	// StepResults is the set of files that might contain step results
+	StepResults []string
 	// Results is the set of files that might contain task results
 	Results []string
 	// Timeout is an optional user-specified duration within which the Step must complete
@@ -147,6 +149,9 @@ func (e Entrypointer) Go() error {
 		_ = logger.Sync()
 	}()
 
+	if err := os.MkdirAll(filepath.Join(e.StepMetadataDir, "results"), os.ModePerm); err != nil {
+		return err
+	}
 	for _, f := range e.WaitFiles {
 		if err := e.Waiter.Wait(context.Background(), f, e.WaitFileContent, e.BreakpointOnFailure); err != nil {
 			// An error happened while waiting, so we bail
@@ -237,17 +242,30 @@ func (e Entrypointer) Go() error {
 		if e.ResultsDirectory != "" {
 			resultPath = e.ResultsDirectory
 		}
-		if err := e.readResultsFromDisk(ctx, resultPath); err != nil {
+		if err := e.readResultsFromDisk(ctx, resultPath, result.TaskRunResultType); err != nil {
 			logger.Fatalf("Error while handling results: %s", err)
+		}
+	}
+	if len(e.StepResults) >= 1 && e.StepResults[0] != "" {
+		stepResultPath := filepath.Join(e.StepMetadataDir, "results")
+		if e.ResultsDirectory != "" {
+			stepResultPath = e.ResultsDirectory
+		}
+		if err := e.readResultsFromDisk(ctx, stepResultPath, result.StepResultType); err != nil {
+			logger.Fatalf("Error while handling step results: %s", err)
 		}
 	}
 
 	return err
 }
 
-func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string) error {
+func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string, resultType result.ResultType) error {
 	output := []result.RunResult{}
-	for _, resultFile := range e.Results {
+	results := e.Results
+	if resultType == result.StepResultType {
+		results = e.StepResults
+	}
+	for _, resultFile := range results {
 		if resultFile == "" {
 			continue
 		}
@@ -261,9 +279,10 @@ func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string)
 		output = append(output, result.RunResult{
 			Key:        resultFile,
 			Value:      string(fileContents),
-			ResultType: result.TaskRunResultType,
+			ResultType: resultType,
 		})
 	}
+
 	if e.SpireWorkloadAPI != nil {
 		signed, err := e.SpireWorkloadAPI.Sign(ctx, output)
 		if err != nil {

@@ -49,3 +49,5 @@ API rule violation: list_type_missing,github.com/tektoncd/pipeline/pkg/apis/pipe
 API rule violation: list_type_missing,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1,VerificationPolicySpec,Resources
 API rule violation: list_type_missing,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,ParamSpec,Enum
 API rule violation: list_type_missing,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1,ParamSpec,Enum
+API rule violation: list_type_missing,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1,StepState,Results
+API rule violation: list_type_missing,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,StepState,Results

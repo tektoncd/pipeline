@@ -8,6 +8,18 @@ weight: 201
 # StepActions
 
 - [Overview](#overview)
+- [Configuring a StepAction](#configuring-a-stepaction)
+  - [Declaring Parameters](#declaring-parameters)
+    - [Passing Params to StepAction](#passing-params-to-stepaction)
+  - [Emitting Results](#emitting-results)
+    - [Fetching Emitted Results from StepActions](#fetching-emitted-results-from-stepactions)
+  - [Declaring SecurityContext](#declaring-securitycontext)
+  - [Declaring VolumeMounts](#declaring-volumemounts)
+  - [Referencing a StepAction](#referencing-a-stepaction)
+    - [Specifying Remote StepActions](#specifying-remote-stepactions)
+- [Known Limitations](#known-limitations)
+  - [Cannot pass Step Results between Steps](#cannot-pass-step-results-between-steps)
+  - [Cannot extract Step Results via Sidecar logs](#cannot-extract-step-results-via-sidecar-logs)
 
 ## Overview
 :warning: This feature is in a preview mode.
@@ -39,7 +51,7 @@ A `StepAction` definition supports the following fields:
     - cannot be used at the same time as using `command`.
   - `env`
   - [`params`](#declaring-params)
-  - [`results`](#declaring-results)
+  - [`results`](#emitting-results)
   - [`securityContext`](#declaring-securitycontext)
   - [`volumeMounts`](#declaring-volumemounts)
 
@@ -93,7 +105,33 @@ spec:
   ]
 ```
 
-### Declaring Results
+#### Passing Params to StepAction
+
+A `StepAction` may require [params](#(declaring-parameters)). In this case, a `Task` needs to ensure that the `StepAction` has access to all the required `params`.
+When referencing a `StepAction`, a `Step` can also provide it with `params`, just like how a `TaskRun` provides params to the underlying `Task`.
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: step-action
+spec:
+  TaskSpec:
+    params:
+      - name: param-for-step-action
+        description: "this is a param that the step action needs."
+    steps:
+      - name: action-runner
+        ref:
+          name: step-action
+        params:
+          - name: step-action-param
+            value: $(params.param-for-step-action)
+```
+
+**Note:** If a `Step` declares `params` for an `inlined Step`, it will also lead to a validation error. This is because an `inlined Step` gets it's `params` from the `TaskRun`.
+
+### Emitting Results
 
 A `StepAction` also declares the results that it will emit.
 
@@ -113,6 +151,85 @@ spec:
     #!/usr/bin/env bash
     date +%s | tee $(results.current-date-unix-timestamp.path)
     date | tee $(results.current-date-human-readable.path)
+```
+
+It is possible that a `StepAction` with `Results` is used multiple times in the same `Task` or multiple `StepActions` in the same `Task` produce `Results` with the same name. Resolving the `Result` names becomes critical otherwise there could be unexpected outcomes. The `Task` needs to be able to resolve these `Result` names clashes by mapping it to a different `Result` name. For this reason, we introduce the capability to store results on a `Step` level. 
+
+`StepActions` can also emit `Results` to `$(step.results.<resultName>.path)`.
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: StepAction
+metadata:
+  name: stepaction-declaring-results
+spec:
+  results:
+    - name: current-date-unix-timestamp
+      description: The current date in unix timestamp format
+    - name: current-date-human-readable
+      description: The current date in human readable format
+  image: bash:latest
+  script: |
+    #!/usr/bin/env bash
+    date +%s | tee $(step.results.current-date-unix-timestamp.path)
+    date | tee $(step.results.current-date-human-readable.path)
+```
+
+`Results` from the above `StepAction` can be [fetched by the `Task`](#fetching-emitted-results-from-step-actions) in another `StepAction` via `$(steps.<stepName>.results.<resultName>)`.
+
+#### Fetching Emitted Results from StepActions
+
+A `Task` can fetch `Results` produced by the `StepActions` (i.e. only `Results` emitted to `$(step.results.<resultName>.path)`, `NOT` $(results.<resultName>.path)) using variable replacement syntax. We introduce a field to [`Task Results`](./tasks.md#emitting-results) called `Value` whose value can be set to the variable `$(steps.<stepName>.results.<resultName>)`.
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: task-fetching-results
+spec:
+  results:
+    - name: git-url
+      description: "url of git repo"
+      value: $(steps.git-clone.results.url)
+    - name: registry-url
+      description: "url of docker registry"
+      value: $(steps.kaniko.results.url)
+  steps:
+    - name: git-clone
+      ref:
+        name: clone-step-action
+    - name: kaniko
+      ref:
+        name: kaniko-step-action
+```
+
+`Results` emitted to `$(step.results.<resultName>.path)` are not automatically available as `TaskRun Results`. The `Task` must explicitly fetch it from the underlying `Step` referencing `StepActions`.
+
+For example, lets assume that in the previous example, the "kaniko" `StepAction` also produced a `Result` named "digest". In that case, the `Task` should also fetch the "digest" from "kaniko" `Step`.
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: task-fetching-results
+spec:
+  results:
+    - name: git-url
+      description: "url of git repo"
+      value: $(steps.git-clone.results.url)
+    - name: registry-url
+      description: "url of docker registry"
+      value: $(steps.kaniko.results.url)
+    - name: digest
+      description: "digest of the image"
+      value: $(steps.kaniko.results.digest)
+  steps:
+    - name: git-clone
+      ref:
+        name: clone-step-action
+    - name: kaniko
+      ref:
+        name: kaniko-step-action
 ```
 
 ### Declaring SecurityContext
@@ -159,7 +276,7 @@ spec:
 ```
 
 
-## Referencing a StepAction
+### Referencing a StepAction
 
 `StepActions` can be referenced from the `Step` using the `ref` field, as follows:
 
@@ -280,33 +397,7 @@ spec:
         onError: continue
 ```
 
-### Passing Params to StepAction
-
-A `StepAction` may require [params](#(declaring-parameters)). In this case, a `Task` needs to ensure that the `StepAction` has access to all the required `params`.
-When referencing a `StepAction`, a `Step` can also provide it with `params`, just like how a `TaskRun` provides params to the underlying `Task`.
-
-```yaml
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: step-action
-spec:
-  TaskSpec:
-    params:
-      - name: param-for-step-action
-        description: "this is a param that the step action needs."
-    steps:
-      - name: action-runner
-        ref:
-          name: step-action
-        params:
-          - name: step-action-param
-            value: $(params.param-for-step-action)
-```
-
-**Note:** If a `Step` declares `params` for an `inlined Step`, it will also lead to a validation error. This is because an `inlined Step` gets it's `params` from the `TaskRun`.
-
-### Specifying Remote StepActions
+#### Specifying Remote StepActions
 
 A `ref` field may specify a `StepAction` in a remote location such as git.
 Support for specific types of remote will depend on the `Resolvers` your
@@ -333,3 +424,13 @@ spec:
 ```
 
 The default resolver type can be configured by the `default-resolver-type` field in the `config-defaults` ConfigMap (`alpha` feature). See [additional-configs.md](./additional-configs.md) for details.
+
+## Known Limitations
+
+### Cannot pass Step Results between Steps
+
+It's not currently possible to pass results produced by a `Step` into following `Steps`. We are working on this feature and will be made available soon.
+
+### Cannot extract Step Results via Sidecar logs
+
+Currently, we only support Step Results via `Termination Message` (the default method of result extraction). The ability to extract `Step` results from `sidecar-logs` is not yet available. We are working on enabling this soon.

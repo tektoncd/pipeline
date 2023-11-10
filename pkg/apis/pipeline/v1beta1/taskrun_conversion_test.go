@@ -103,6 +103,29 @@ func TestTaskRunConversion(t *testing.T) {
 			},
 		},
 	}, {
+		name: "taskrun with step Results in step state",
+		in: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.TaskRunSpec{},
+			Status: v1beta1.TaskRunStatus{
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					Steps: []v1beta1.StepState{{
+						Results: []v1beta1.TaskRunStepResult{{
+							Name: "foo",
+							Type: v1beta1.ResultsTypeString,
+							Value: v1beta1.ResultValue{
+								Type:      v1beta1.ParamTypeString,
+								StringVal: "bar",
+							},
+						}},
+					}},
+				},
+			},
+		},
+	}, {
 		name: "taskrun conversion all non deprecated fields",
 		in: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
