@@ -1741,7 +1741,7 @@ Used to distinguish between a single string and an array of strings.</p>
 <h3 id="tekton.dev/v1.ParamValue">ParamValue
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.Param">Param</a>, <a href="#tekton.dev/v1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1.PipelineResult">PipelineResult</a>, <a href="#tekton.dev/v1.PipelineRunResult">PipelineRunResult</a>, <a href="#tekton.dev/v1.TaskRunResult">TaskRunResult</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.Param">Param</a>, <a href="#tekton.dev/v1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1.PipelineResult">PipelineResult</a>, <a href="#tekton.dev/v1.PipelineRunResult">PipelineRunResult</a>, <a href="#tekton.dev/v1.TaskResult">TaskResult</a>, <a href="#tekton.dev/v1.TaskRunResult">TaskRunResult</a>)
 </p>
 <div>
 <p>ResultValue is a type alias of ParamValue</p>
@@ -4929,6 +4929,20 @@ string
 <td>
 <em>(Optional)</em>
 <p>Description is a human-readable description of the result</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>value</code><br/>
+<em>
+<a href="#tekton.dev/v1.ParamValue">
+ParamValue
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Value the expression used to retrieve the value of the result from an underlying Step.</p>
 </td>
 </tr>
 </tbody>
@@ -10232,7 +10246,7 @@ Used to distinguish between a single string and an array of strings.</p>
 <h3 id="tekton.dev/v1beta1.ParamValue">ParamValue
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Param">Param</a>, <a href="#tekton.dev/v1beta1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1beta1.PipelineResult">PipelineResult</a>, <a href="#tekton.dev/v1beta1.PipelineRunResult">PipelineRunResult</a>, <a href="#tekton.dev/v1beta1.TaskRunResult">TaskRunResult</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Param">Param</a>, <a href="#tekton.dev/v1beta1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1beta1.PipelineResult">PipelineResult</a>, <a href="#tekton.dev/v1beta1.PipelineRunResult">PipelineRunResult</a>, <a href="#tekton.dev/v1beta1.TaskResult">TaskResult</a>, <a href="#tekton.dev/v1beta1.TaskRunResult">TaskRunResult</a>)
 </p>
 <div>
 <p>ResultValue is a type alias of ParamValue</p>
@@ -14133,6 +14147,20 @@ string
 <td>
 <em>(Optional)</em>
 <p>Description is a human-readable description of the result</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>value</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.ParamValue">
+ParamValue
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Value the expression used to retrieve the value of the result from an underlying Step.</p>
 </td>
 </tr>
 </tbody>

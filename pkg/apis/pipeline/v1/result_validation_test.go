@@ -18,10 +18,12 @@ package v1_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"knative.dev/pkg/apis"
@@ -119,6 +121,212 @@ func TestResultsValidateError(t *testing.T) {
 			}
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("TaskSpec.Validate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestResultsValidateValue(t *testing.T) {
+	tests := []struct {
+		name   string
+		Result v1.TaskResult
+	}{{
+		name: "valid result value",
+		Result: v1.TaskResult{
+			Name:        "MY-RESULT",
+			Description: "my great result",
+			Type:        v1.ResultsTypeString,
+			Value: &v1.ParamValue{
+				Type:      v1.ParamTypeString,
+				StringVal: "$(steps.step-name.results.resultName)",
+			},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := config.ToContext(context.Background(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					EnableStepActions: true,
+				},
+			})
+			if err := tt.Result.Validate(ctx); err != nil {
+				t.Errorf("TaskSpec.Validate() = %v", err)
+			}
+		})
+	}
+}
+
+func TestResultsValidateValueError(t *testing.T) {
+	tests := []struct {
+		name              string
+		Result            v1.TaskResult
+		enableStepActions bool
+		expectedError     apis.FieldError
+	}{{
+		name: "enable-step-actions-not-enabled",
+		Result: v1.TaskResult{
+			Name:        "MY-RESULT",
+			Description: "my great result",
+			Type:        v1.ResultsTypeString,
+			Value: &v1.ParamValue{
+				Type:      v1.ParamTypeString,
+				StringVal: "$(steps.stepName.results.resultName)",
+			},
+		},
+		enableStepActions: false,
+		expectedError: apis.FieldError{
+			Message: "feature flag %s should be set to true to fetch Results from Steps using StepActions.",
+			Paths:   []string{"enable-step-actions"},
+		},
+	}, {
+		name: "invalid result value type array",
+		Result: v1.TaskResult{
+			Name:        "MY-RESULT",
+			Description: "my great result",
+			Type:        v1.ResultsTypeArray,
+			Value: &v1.ParamValue{
+				Type: v1.ParamTypeArray,
+			},
+		},
+		enableStepActions: true,
+		expectedError: apis.FieldError{
+			Message: `Invalid Type. Wanted string but got: "array"`,
+			Paths:   []string{"MY-RESULT.type"},
+		},
+	}, {
+		name: "invalid result value type object",
+		Result: v1.TaskResult{
+			Name:        "MY-RESULT",
+			Description: "my great result",
+			Type:        v1.ResultsTypeObject,
+			Properties:  map[string]v1.PropertySpec{"hello": {Type: v1.ParamTypeString}},
+			Value: &v1.ParamValue{
+				Type: v1.ParamTypeObject,
+			},
+		},
+		enableStepActions: true,
+		expectedError: apis.FieldError{
+			Message: `Invalid Type. Wanted string but got: "object"`,
+			Paths:   []string{"MY-RESULT.type"},
+		},
+	}, {
+		name: "invalid result value format",
+		Result: v1.TaskResult{
+			Name:        "MY-RESULT",
+			Description: "my great result",
+			Type:        v1.ResultsTypeString,
+			Value: &v1.ParamValue{
+				Type:      v1.ParamTypeString,
+				StringVal: "not a valid format",
+			},
+		},
+		enableStepActions: true,
+		expectedError: apis.FieldError{
+			Message: `Could not extract step name and result name. Expected value to look like $(steps.<stepName>.results.<resultName>) but got "not a valid format"`,
+			Paths:   []string{"MY-RESULT.value"},
+		},
+	}, {
+		name: "invalid string format invalid step name",
+		Result: v1.TaskResult{
+			Name:        "MY-RESULT",
+			Description: "my great result",
+			Type:        v1.ResultsTypeString,
+			Value: &v1.ParamValue{
+				Type:      v1.ParamTypeString,
+				StringVal: "$(steps.foo.foo.results.Bar)",
+			},
+		},
+		enableStepActions: true,
+		expectedError: apis.FieldError{
+			Message: "invalid extracted step name \"foo.foo\"",
+			Paths:   []string{"MY-RESULT.value"},
+			Details: "stepName in $(steps.<stepName>.results.<resultName>) must be a valid DNS Label, For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+		},
+	}, {
+		name: "invalid string format invalid result name",
+		Result: v1.TaskResult{
+			Name:        "MY-RESULT",
+			Description: "my great result",
+			Type:        v1.ResultsTypeString,
+			Value: &v1.ParamValue{
+				Type:      v1.ParamTypeString,
+				StringVal: "$(steps.foo.results.-bar)",
+			},
+		},
+		enableStepActions: true,
+		expectedError: apis.FieldError{
+			Message: "invalid extracted result name \"-bar\"",
+			Paths:   []string{"MY-RESULT.value"},
+			Details: fmt.Sprintf("resultName in $(steps.<stepName>.results.<resultName>) must consist of alphanumeric characters, '-', '_', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my-name',  or 'my_name', regex used for validation is '%s')", v1.ResultNameFormat),
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := config.ToContext(context.Background(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					EnableStepActions: tt.enableStepActions,
+				},
+			})
+			err := tt.Result.Validate(ctx)
+			if err == nil {
+				t.Fatalf("Expected an error, got nothing for %v", tt.Result)
+			}
+			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("TaskSpec.Validate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestExtractStepResultName(t *testing.T) {
+	tests := []struct {
+		name       string
+		value      string
+		wantStep   string
+		wantResult string
+	}{{
+		name:       "valid string format",
+		value:      "$(steps.Foo.results.Bar)",
+		wantStep:   "Foo",
+		wantResult: "Bar",
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotStep, gotResult, err := v1.ExtractStepResultName(tt.value)
+			if err != nil {
+				t.Errorf("Did not expect an error but got: %v", err)
+			}
+			if d := cmp.Diff(tt.wantStep, gotStep); d != "" {
+				t.Errorf(diff.PrintWantGot(d))
+			}
+			if d := cmp.Diff(tt.wantResult, gotResult); d != "" {
+				t.Errorf(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestExtractStepResultNameError(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   string
+		wantErr error
+	}{{
+		name:    "invalid string format",
+		value:   "not valid",
+		wantErr: fmt.Errorf(`Could not extract step name and result name. Expected value to look like $(steps.<stepName>.results.<resultName>) but got "not valid"`),
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotStep, gotResult, err := v1.ExtractStepResultName(tt.value)
+			if d := cmp.Diff(tt.wantErr.Error(), err.Error()); d != "" {
+				t.Errorf(diff.PrintWantGot(d))
+			}
+			if gotStep != "" {
+				t.Errorf("Expected an empty string but got: %v", gotStep)
+			}
+			if gotResult != "" {
+				t.Errorf("Expected an empty string but got: %v", gotResult)
 			}
 		})
 	}

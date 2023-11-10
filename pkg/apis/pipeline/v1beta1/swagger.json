@@ -2564,6 +2564,10 @@
         "type": {
           "description": "Type is the user-specified type of the result. The possible type is currently \"string\" and will support \"array\" in following work.",
           "type": "string"
+        },
+        "value": {
+          "description": "Value the expression used to retrieve the value of the result from an underlying Step.",
+          "$ref": "#/definitions/v1beta1.ParamValue"
         }
       }
     },

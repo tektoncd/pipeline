@@ -88,6 +88,20 @@ spec:
           value: hello
 `
 
+	stepActionTaskResultYAML := `
+metadata:
+  name: foo
+  namespace: bar
+spec:
+  results:
+    - name: stepActionResult
+      type: string
+      value: "$(steps.stepName.results.resultName)"
+  steps:
+    - name: stepName
+      ref:
+        name: "step-action"
+`
 	remoteStepActionTaskYAML := `
 metadata:
   name: foo
@@ -295,6 +309,9 @@ spec:
 	stepActionTaskV1beta1 := parse.MustParseV1beta1Task(t, stepActionTaskYAML)
 	stepActionTaskV1 := parse.MustParseV1Task(t, stepActionTaskYAML)
 
+	stepActionTaskResultV1beta1 := parse.MustParseV1beta1Task(t, stepActionTaskResultYAML)
+	stepActionTaskResultV1 := parse.MustParseV1Task(t, stepActionTaskResultYAML)
+
 	remoteStepActionTaskV1beta1 := parse.MustParseV1beta1Task(t, remoteStepActionTaskYAML)
 	remoteStepActionTaskV1 := parse.MustParseV1Task(t, remoteStepActionTaskYAML)
 
@@ -334,6 +351,10 @@ spec:
 		name:        "step action in task",
 		v1beta1Task: stepActionTaskV1beta1,
 		v1Task:      stepActionTaskV1,
+	}, {
+		name:        "value in task result",
+		v1beta1Task: stepActionTaskResultV1beta1,
+		v1Task:      stepActionTaskResultV1,
 	}, {
 		name:        "remote step action in task",
 		v1beta1Task: remoteStepActionTaskV1beta1,
