@@ -422,6 +422,41 @@ func TestGetStepActionsData(t *testing.T) {
 			}},
 		}},
 	}, {
+		name: "step-action-with-step-result",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							Name: "stepActionWithScript",
+						},
+					}},
+				},
+			},
+		},
+		stepAction: &v1alpha1.StepAction{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "stepActionWithScript",
+				Namespace: "default",
+			},
+			Spec: v1alpha1.StepActionSpec{
+				Image:  "myimage",
+				Script: "ls",
+				Results: []v1.StepResult{{
+					Name: "foo",
+				}},
+			},
+		},
+		want: []v1.Step{{
+			Image:   "myimage",
+			Script:  "ls",
+			Results: []v1.StepResult{{Name: "foo", Type: "string"}},
+		}},
+	}, {
 		name: "inline and ref StepAction",
 		tr: &v1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{

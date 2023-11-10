@@ -330,6 +330,12 @@ func (ss StepState) convertTo(ctx context.Context, sink *v1.StepState) {
 	sink.Name = ss.Name
 	sink.Container = ss.ContainerName
 	sink.ImageID = ss.ImageID
+	sink.Results = nil
+	for _, r := range ss.Results {
+		new := v1.TaskRunStepResult{}
+		r.convertTo(ctx, &new)
+		sink.Results = append(sink.Results, new)
+	}
 }
 
 func (ss *StepState) convertFrom(ctx context.Context, source v1.StepState) {
@@ -337,6 +343,12 @@ func (ss *StepState) convertFrom(ctx context.Context, source v1.StepState) {
 	ss.Name = source.Name
 	ss.ContainerName = source.Container
 	ss.ImageID = source.ImageID
+	ss.Results = nil
+	for _, r := range source.Results {
+		new := TaskRunStepResult{}
+		new.convertFrom(ctx, r)
+		ss.Results = append(ss.Results, new)
+	}
 }
 
 func (trr TaskRunResult) convertTo(ctx context.Context, sink *v1.TaskRunResult) {

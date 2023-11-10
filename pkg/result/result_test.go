@@ -33,6 +33,10 @@ func TestRunResult_UnmarshalJSON(t *testing.T) {
 		name: "type defined as string - TaskRunResult",
 		data: "{\"key\":\"resultName\",\"value\":\"resultValue\", \"type\": \"TaskRunResult\"}",
 		pr:   RunResult{Key: "resultName", Value: "resultValue", ResultType: TaskRunResultType},
+	}, {
+		name: "type defined as string - StepResult",
+		data: "{\"key\":\"resultName\",\"value\":\"resultValue\", \"type\": \"StepResult\"}",
+		pr:   RunResult{Key: "resultName", Value: "resultValue", ResultType: StepResultType},
 	},
 		{
 			name: "type defined as string - InternalTektonResult",

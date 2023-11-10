@@ -184,9 +184,9 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 		if err != nil {
 			merr = multierror.Append(merr, err)
 		}
-
 		// populate task run CRD with results from sidecar logs
-		taskResults, _ := filterResults(sidecarLogResults, specResults)
+		// since sidecar logs does not support step results yet, it is empty for now.
+		taskResults, _, _ := filterResults(sidecarLogResults, specResults, []v1.StepResult{})
 		if tr.IsDone() {
 			trs.Results = append(trs.Results, taskResults...)
 		}
@@ -195,6 +195,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 	for _, s := range stepStatuses {
 		// Avoid changing the original value by modifying the pointer value.
 		state := s.State.DeepCopy()
+		taskRunStepResults := []v1.TaskRunStepResult{}
 		if state.Terminated != nil && len(state.Terminated.Message) != 0 {
 			msg := state.Terminated.Message
 
@@ -214,8 +215,35 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 					merr = multierror.Append(merr, err)
 				}
 
-				taskResults, filteredResults := filterResults(results, specResults)
+				// Identify Step Results
+				stepResults := []v1.StepResult{}
+				if ts != nil {
+					for _, step := range ts.Steps {
+						if getContainerName(step.Name) == s.Name {
+							stepResults = append(stepResults, step.Results...)
+						}
+					}
+				}
+				taskResults, stepRunRes, filteredResults := filterResults(results, specResults, stepResults)
 				if tr.IsDone() {
+					taskRunStepResults = append(taskRunStepResults, stepRunRes...)
+					// Identify StepResults needed by the Task Results
+					neededStepResults, err := findStepResultsFetchedByTask(s.Name, specResults)
+					if err != nil {
+						merr = multierror.Append(merr, err)
+					}
+					// Set TaskResults from StepResults
+					for _, r := range stepRunRes {
+						// this result was requested by the Task
+						if _, ok := neededStepResults[r.Name]; ok {
+							taskRunResult := v1.TaskRunResult{
+								Name:  neededStepResults[r.Name],
+								Type:  r.Type,
+								Value: r.Value,
+							}
+							taskResults = append(taskResults, taskRunResult)
+						}
+					}
 					trs.Results = append(trs.Results, taskResults...)
 				}
 				msg, err = createMessageFromResults(filteredResults)
@@ -238,6 +266,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 			Name:           trimStepPrefix(s.Name),
 			Container:      s.Name,
 			ImageID:        s.ImageID,
+			Results:        taskRunStepResults,
 		})
 	}
 
@@ -266,15 +295,42 @@ func createMessageFromResults(results []result.RunResult) (string, error) {
 	return string(bytes), nil
 }
 
+// findStepResultsFetchedByTask fetches step results that the Task needs.
+// It accepts a container name and the TaskResults as input and outputs
+// a map with the name of the step result as the key and the name of the task result that is fetching it as value.
+func findStepResultsFetchedByTask(containerName string, specResults []v1.TaskResult) (map[string]string, error) {
+	neededStepResults := map[string]string{}
+	for _, r := range specResults {
+		if r.Value != nil {
+			if r.Value.StringVal != "" {
+				sName, resultName, err := v1.ExtractStepResultName(r.Value.StringVal)
+				if err != nil {
+					return nil, err
+				}
+				// Only look at named results - referencing unnamed steps is unsupported.
+				if getContainerName(sName) == containerName {
+					neededStepResults[resultName] = r.Name
+				}
+			}
+		}
+	}
+	return neededStepResults, nil
+}
+
 // filterResults filters the RunResults and TaskResults based on the results declared in the task spec.
 // It returns a slice of any of the input results that are defined in the task spec, converted to TaskRunResults,
 // and a slice of any of the RunResults that don't represent internal values (i.e. those that should not be displayed in the TaskRun status.
-func filterResults(results []result.RunResult, specResults []v1.TaskResult) ([]v1.TaskRunResult, []result.RunResult) {
+func filterResults(results []result.RunResult, specResults []v1.TaskResult, stepResults []v1.StepResult) ([]v1.TaskRunResult, []v1.TaskRunStepResult, []result.RunResult) {
 	var taskResults []v1.TaskRunResult
+	var taskRunStepResults []v1.TaskRunStepResult
 	var filteredResults []result.RunResult
 	neededTypes := make(map[string]v1.ResultsType)
+	neededStepTypes := make(map[string]v1.ResultsType)
 	for _, r := range specResults {
 		neededTypes[r.Name] = r.Type
+	}
+	for _, r := range stepResults {
+		neededStepTypes[r.Name] = r.Type
 	}
 	for _, r := range results {
 		switch r.ResultType {
@@ -300,6 +356,28 @@ func filterResults(results []result.RunResult, specResults []v1.TaskResult) ([]v
 			}
 			taskResults = append(taskResults, taskRunResult)
 			filteredResults = append(filteredResults, r)
+		case result.StepResultType:
+			var taskRunStepResult v1.TaskRunStepResult
+			if neededStepTypes[r.Key] == v1.ResultsTypeString {
+				taskRunStepResult = v1.TaskRunStepResult{
+					Name:  r.Key,
+					Type:  v1.ResultsTypeString,
+					Value: *v1.NewStructuredValues(r.Value),
+				}
+			} else {
+				v := v1.ResultValue{}
+				err := v.UnmarshalJSON([]byte(r.Value))
+				if err != nil {
+					continue
+				}
+				taskRunStepResult = v1.TaskRunStepResult{
+					Name:  r.Key,
+					Type:  v1.ResultsType(v.Type),
+					Value: v,
+				}
+			}
+			taskRunStepResults = append(taskRunStepResults, taskRunStepResult)
+			filteredResults = append(filteredResults, r)
 		case result.InternalTektonResultType:
 			// Internal messages are ignored because they're not used as external result
 			continue
@@ -307,8 +385,7 @@ func filterResults(results []result.RunResult, specResults []v1.TaskResult) ([]v
 			filteredResults = append(filteredResults, r)
 		}
 	}
-
-	return taskResults, filteredResults
+	return taskResults, taskRunStepResults, filteredResults
 }
 
 func removeDuplicateResults(taskRunResult []v1.TaskRunResult) []v1.TaskRunResult {

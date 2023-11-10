@@ -1516,7 +1516,51 @@ func TestTaskResults(t *testing.T) {
 		spec.Steps[1].Script = "#!/usr/bin/env bash\ndate | tee /tekton/results/current-date-human-readable"
 		spec.Steps[2].Script = "#!/usr/bin/env bash\ndate | tee /tekton/results/current-date-human-readable"
 	})
-	got := resources.ApplyTaskResults(ts)
+	got := resources.ApplyResults(ts)
+	if d := cmp.Diff(want, got); d != "" {
+		t.Errorf("ApplyTaskResults() got diff %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestStepResults(t *testing.T) {
+	names.TestingSeed()
+	ts := &v1.TaskSpec{
+		Steps: []v1.Step{{
+			Name: "print-date-unix-timestamp",
+			Results: []v1.StepResult{{
+				Name:        "current.date.unix.timestamp",
+				Description: "The current date in unix timestamp format",
+			}},
+			Image: "bash:latest",
+			Args: []string{
+				"$(step.results[\"current.date.unix.timestamp\"].path)",
+			},
+			Script: "#!/usr/bin/env bash\ndate +%s | tee $(step.results[\"current.date.unix.timestamp\"].path)",
+		}, {
+			Name: "print-date-human-readable",
+			Results: []v1.StepResult{{
+				Name:        "current-date-human-readable",
+				Description: "The current date in humand readable format",
+			}},
+			Image:  "bash:latest",
+			Script: "#!/usr/bin/env bash\ndate | tee $(step.results.current-date-human-readable.path)",
+		}, {
+			Name:  "print-date-human-readable-again",
+			Image: "bash:latest",
+			Results: []v1.StepResult{{
+				Name:        "current-date-human-readable",
+				Description: "The current date in humand readable format",
+			}},
+			Script: "#!/usr/bin/env bash\ndate | tee $(step.results['current-date-human-readable'].path)",
+		}},
+	}
+	want := applyMutation(ts, func(spec *v1.TaskSpec) {
+		spec.Steps[0].Script = "#!/usr/bin/env bash\ndate +%s | tee /tekton/steps/step-print-date-unix-timestamp/results/current.date.unix.timestamp"
+		spec.Steps[0].Args[0] = "/tekton/steps/step-print-date-unix-timestamp/results/current.date.unix.timestamp"
+		spec.Steps[1].Script = "#!/usr/bin/env bash\ndate | tee /tekton/steps/step-print-date-human-readable/results/current-date-human-readable"
+		spec.Steps[2].Script = "#!/usr/bin/env bash\ndate | tee /tekton/steps/step-print-date-human-readable-again/results/current-date-human-readable"
+	})
+	got := resources.ApplyResults(ts)
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("ApplyTaskResults() got diff %s", diff.PrintWantGot(d))
 	}

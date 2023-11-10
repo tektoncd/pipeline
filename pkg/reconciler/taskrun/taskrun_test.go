@@ -3115,6 +3115,37 @@ spec:
 			Name:    "step1",
 		}},
 	}, {
+		name: "step results",
+		taskRun: parse.MustParseV1TaskRun(t, `
+metadata:
+  name: taskrun-with-step-results
+  namespace: foo
+spec:
+  taskSpec:
+    steps:
+      - ref:
+          name: stepAction
+        name: step1
+`),
+		stepAction: parse.MustParseV1alpha1StepAction(t, `
+metadata:
+  name: stepAction
+  namespace: foo
+spec:
+  results:
+    - name: result
+  image: myImage
+  command: ["echo"]
+  args: ["hi", ">>", "$(step.results.result.path)"]
+`),
+		want: []v1.Step{{
+			Image:   "myImage",
+			Command: []string{"echo"},
+			Args:    []string{"hi", ">>", "/tekton/steps/step-step1/results/result"},
+			Name:    "step1",
+			Results: []v1.StepResult{{Name: "result", Type: "string"}},
+		}},
+	}, {
 		name: "params from taskspec",
 		taskRun: parse.MustParseV1TaskRun(t, `
 metadata:
@@ -3204,8 +3235,6 @@ spec:
           type: string
       default:
         key: "stepaction object param"
-  results:
-    - name: result
   image: myImage
   command: ["echo"]
   args: ["$(params.string-param)", "$(params.array-param[0])", "$(params.array-param[1])", "$(params.array-param[*])", "$(params.object-param.key)"]

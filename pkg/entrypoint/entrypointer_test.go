@@ -262,11 +262,13 @@ func TestReadResultsFromDisk(t *testing.T) {
 		desc          string
 		results       []string
 		resultContent []v1beta1.ResultValue
+		resultType    result.ResultType
 		want          []result.RunResult
 	}{{
 		desc:          "read string result file",
 		results:       []string{"results"},
 		resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello world")},
+		resultType:    result.TaskRunResultType,
 		want: []result.RunResult{
 			{Value: `"hello world"`,
 				ResultType: 1}},
@@ -274,6 +276,7 @@ func TestReadResultsFromDisk(t *testing.T) {
 		desc:          "read array result file",
 		results:       []string{"results"},
 		resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello", "world")},
+		resultType:    result.TaskRunResultType,
 		want: []result.RunResult{
 			{Value: `["hello","world"]`,
 				ResultType: 1}},
@@ -281,11 +284,39 @@ func TestReadResultsFromDisk(t *testing.T) {
 		desc:          "read string and array result files",
 		results:       []string{"resultsArray", "resultsString"},
 		resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello", "world"), *v1beta1.NewStructuredValues("hello world")},
+		resultType:    result.TaskRunResultType,
 		want: []result.RunResult{
 			{Value: `["hello","world"]`,
 				ResultType: 1},
 			{Value: `"hello world"`,
 				ResultType: 1},
+		},
+	}, {
+		desc:          "read string step result file",
+		results:       []string{"results"},
+		resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello world")},
+		resultType:    result.StepResultType,
+		want: []result.RunResult{
+			{Value: `"hello world"`,
+				ResultType: 4}},
+	}, {
+		desc:          "read array step result file",
+		results:       []string{"results"},
+		resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello", "world")},
+		resultType:    result.StepResultType,
+		want: []result.RunResult{
+			{Value: `["hello","world"]`,
+				ResultType: 4}},
+	}, {
+		desc:          "read string and array step result files",
+		results:       []string{"resultsArray", "resultsString"},
+		resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello", "world"), *v1beta1.NewStructuredValues("hello world")},
+		resultType:    result.StepResultType,
+		want: []result.RunResult{
+			{Value: `["hello","world"]`,
+				ResultType: 4},
+			{Value: `"hello world"`,
+				ResultType: 4},
 		},
 	},
 	} {
@@ -319,10 +350,11 @@ func TestReadResultsFromDisk(t *testing.T) {
 
 			e := Entrypointer{
 				Results:                resultsFilePath,
+				StepResults:            resultsFilePath,
 				TerminationPath:        terminationPath,
 				ResultExtractionMethod: config.ResultExtractionMethodTerminationMessage,
 			}
-			if err := e.readResultsFromDisk(ctx, ""); err != nil {
+			if err := e.readResultsFromDisk(ctx, "", c.resultType); err != nil {
 				t.Fatal(err)
 			}
 			msg, err := os.ReadFile(terminationPath)
@@ -463,6 +495,12 @@ func TestEntrypointerResults(t *testing.T) {
 			"foo": "abc",
 		},
 	}, {
+		desc:       "write single step result",
+		entrypoint: "echo",
+		resultsToWrite: map[string]string{
+			"foo": "abc",
+		},
+	}, {
 		desc:       "write multiple result",
 		entrypoint: "echo",
 		resultsToWrite: map[string]string{
@@ -555,6 +593,7 @@ func TestEntrypointerResults(t *testing.T) {
 				Runner:                 fr,
 				PostWriter:             fpw,
 				Results:                results,
+				StepResults:            results,
 				ResultsDirectory:       resultsDir,
 				ResultExtractionMethod: config.ResultExtractionMethodTerminationMessage,
 				TerminationPath:        terminationPath,
