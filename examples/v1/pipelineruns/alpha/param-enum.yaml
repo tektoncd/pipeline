@@ -1,25 +1,34 @@
 apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: task-param-enum
+spec:
+  params:
+  - name: message
+    type: string
+    enum: ["v1", "v2", "v3"]
+  steps:
+  - name: build
+    image: bash:latest
+    script: |
+      echo "$(params.message)"
+---
+apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: pipeline-param-enum
 spec:
   params:
   - name: message
-    enum: ["v1", "v2", "v3"]
+    enum: ["v1", "v2"]
     default: "v1"
   tasks:
   - name: task1
     params:
       - name: message
         value: $(params.message)
-    taskSpec:
-      params:
-      - name: message
-      steps:
-      - name: build
-        image: bash:3.2
-        script: |
-          echo "$(params.message)"
+    taskRef:
+      name: task-param-enum
 ---
 apiVersion: tekton.dev/v1
 kind: PipelineRun
@@ -30,4 +39,4 @@ spec:
     name: pipeline-param-enum
   params:
     - name: message
-      value: "v2"
+      value: "v1"

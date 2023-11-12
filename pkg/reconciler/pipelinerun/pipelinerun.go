@@ -387,18 +387,6 @@ func (c *Reconciler) resolvePipelineState(
 				return nil, controller.NewPermanentError(err)
 			}
 		}
-
-		if config.FromContextOrDefaults(ctx).FeatureFlags.EnableParamEnum {
-			for _, tr := range resolvedTask.TaskRuns {
-				for _, cond := range tr.Status.Conditions {
-					if cond.Type == apis.ConditionSucceeded && cond.Status == corev1.ConditionFalse && cond.Reason == v1.TaskRunReasonInvalidParamValue {
-						err = fmt.Errorf("invalid param value in the referenced Task from PipelineTask \"%s\": %s", resolvedTask.PipelineTask.Name, cond.Message)
-						pr.Status.MarkFailed(v1.PipelineRunReasonInvalidParamValue.String(), err.Error())
-						return nil, controller.NewPermanentError(err)
-					}
-				}
-			}
-		}
 		pst = append(pst, resolvedTask)
 	}
 	return pst, nil
@@ -543,6 +531,12 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		return controller.NewPermanentError(err)
 	}
 
+	// Make a deep copy of the Pipeline and its Tasks before value substution.
+	// This is used to find referenced pipeline-level params at each PipelineTask when validate param enum subset requirement
+	originalPipeline := pipelineSpec.DeepCopy()
+	originalTasks := originalPipeline.Tasks
+	originalTasks = append(originalTasks, originalPipeline.Finally...)
+
 	// Apply parameter substitution from the PipelineRun
 	pipelineSpec = resources.ApplyParameters(ctx, pipelineSpec, pr)
 	pipelineSpec = resources.ApplyContexts(pipelineSpec, pipelineMeta.Name, pr)
@@ -637,13 +631,21 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		pipelineRunFacts.TimeoutsState.PipelineTimeout = &pipelineTimeout
 	}
 
-	for _, rpt := range pipelineRunFacts.State {
+	for i, rpt := range pipelineRunFacts.State {
 		if !rpt.IsCustomTask() {
 			err := taskrun.ValidateResolvedTask(ctx, rpt.PipelineTask.Params, rpt.PipelineTask.Matrix, rpt.ResolvedTask)
 			if err != nil {
 				logger.Errorf("Failed to validate pipelinerun %q with error %v", pr.Name, err)
 				pr.Status.MarkFailed(v1.PipelineRunReasonFailedValidation.String(), err.Error())
 				return controller.NewPermanentError(err)
+			}
+
+			if config.FromContextOrDefaults(ctx).FeatureFlags.EnableParamEnum {
+				if err := resources.ValidateParamEnumSubset(originalTasks[i].Params, pipelineSpec.Params, rpt.ResolvedTask); err != nil {
+					logger.Errorf("Failed to validate pipelinerun %q with error %v", pr.Name, err)
+					pr.Status.MarkFailed(v1.PipelineRunReasonFailedValidation.String(), err.Error())
+					return controller.NewPermanentError(err)
+				}
 			}
 		}
 	}
@@ -886,9 +888,23 @@ func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.Resolved
 	defer span.End()
 	var taskRuns []*v1.TaskRun
 	var matrixCombinations []v1.Params
-
 	if rpt.PipelineTask.IsMatrixed() {
 		matrixCombinations = rpt.PipelineTask.Matrix.FanOut()
+	}
+	// validate the param values meet resolved Task Param Enum requirements before creating TaskRuns
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableParamEnum {
+		for i := range rpt.TaskRunNames {
+			var params v1.Params
+			if len(matrixCombinations) > i {
+				params = matrixCombinations[i]
+			}
+			params = append(params, rpt.PipelineTask.Params...)
+			if err := taskrun.ValidateEnumParam(ctx, params, rpt.ResolvedTask.TaskSpec.Params); err != nil {
+				err = fmt.Errorf("Invalid param value from PipelineTask \"%s\": %w", rpt.PipelineTask.Name, err)
+				pr.Status.MarkFailed(v1.PipelineRunReasonInvalidParamValue.String(), err.Error())
+				return nil, controller.NewPermanentError(err)
+			}
+		}
 	}
 	for i, taskRunName := range rpt.TaskRunNames {
 		var params v1.Params
