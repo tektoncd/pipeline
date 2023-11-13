@@ -32,6 +32,7 @@ weight: 204
   - [<code>PipelineRun</code> status](#pipelinerun-status)
     - [The <code>status</code> field](#the-status-field)
     - [Monitoring execution status](#monitoring-execution-status)
+    - [Marking off user errors](#marking-off-user-errors)
   - [Cancelling a <code>PipelineRun</code>](#cancelling-a-pipelinerun)
   - [Gracefully cancelling a <code>PipelineRun</code>](#gracefully-cancelling-a-pipelinerun)
   - [Gracefully stopping a <code>PipelineRun</code>](#gracefully-stopping-a-pipelinerun)
@@ -1525,6 +1526,27 @@ Some examples:
 | pipeline-run-0123456789-0123456789-0123456789-0123456789 | task3                                                        | pipeline-run-0123456789-0123456789-0123456789-0123456789-task3                         |
 | pipeline-run-0123456789-0123456789-0123456789-0123456789 | task2-0123456789-0123456789-0123456789-0123456789-0123456789 | pipeline-run-0123456789-012345607ad8c7aac5873cdfabe472a68996b5c                        |
 | pipeline-run                                             | task4 (with 2x2 `Matrix`)                                    | pipeline-run-task1-0, pipeline-run-task1-2, pipeline-run-task1-3, pipeline-run-task1-4 |
+
+### Marking off user errors
+
+A user error in Tekton is any mistake made by user, such as a syntax error when specifying pipelines, tasks. User errors can occur in various stages of the Tekton pipeline, from authoring the pipeline configuration to executing the pipelines. They are currently explicitly labeled in the Run's conditions message, for example:
+```yaml
+# Failed PipelineRun with User Error labeled
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  ...
+spec:
+  ...
+status:
+  ...
+  conditions:
+  - lastTransitionTime: "2022-06-02T19:02:58Z"
+    message: "User Error: PipelineRun default/foo's Pipeline DAG is invalid"
+    reason: Failed
+    status: "False"
+    type: Succeeded
+```
 
 ## Cancelling a `PipelineRun`
 

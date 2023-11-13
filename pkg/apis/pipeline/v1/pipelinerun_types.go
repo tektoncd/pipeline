@@ -455,7 +455,10 @@ func (pr *PipelineRunStatus) MarkSucceeded(reason, messageFormat string, message
 }
 
 // MarkFailed changes the Succeeded condition to False with the provided reason and message.
-func (pr *PipelineRunStatus) MarkFailed(reason, messageFormat string, messageA ...interface{}) {
+func (pr *PipelineRunStatus) MarkFailed(isUserError bool, reason, messageFormat string, messageA ...interface{}) {
+	if isUserError {
+		messageFormat = "User Error: " + messageFormat
+	}
 	pipelineRunCondSet.Manage(pr).MarkFalse(apis.ConditionSucceeded, reason, messageFormat, messageA...)
 	succeeded := pr.GetCondition(apis.ConditionSucceeded)
 	pr.CompletionTime = &succeeded.LastTransitionTime.Inner

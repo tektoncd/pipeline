@@ -840,7 +840,7 @@ spec:
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed invalid input params for task a-task-that-needs-params: missing values",
+			"Warning Failed User Error: invalid input params for task a-task-that-needs-params: missing values",
 		},
 	}, {
 		name: "invalid-pipeline-mismatching-parameter-types",
@@ -859,7 +859,7 @@ spec:
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed PipelineRun foo/pipeline-mismatching-param-type parameters have mismatching types",
+			"Warning Failed User Error: PipelineRun foo/pipeline-mismatching-param-type parameters have mismatching types",
 		},
 	}, {
 		name: "invalid-pipeline-missing-object-keys",
@@ -879,7 +879,7 @@ spec:
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed PipelineRun foo/pipeline-missing-object-param-keys parameters is missing object keys required by Pipeline foo/a-pipeline-with-object-params's parameters: pipelineRun missing object keys for parameters",
+			"Warning Failed User Error: PipelineRun foo/pipeline-missing-object-param-keys parameters is missing object keys required by Pipeline foo/a-pipeline-with-object-params's parameters: pipelineRun missing object keys for parameters: map[some-param:[key2]]",
 		},
 	}, {
 		name: "invalid-pipeline-array-index-out-of-bound",
@@ -900,7 +900,7 @@ spec:
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed PipelineRun foo/pipeline-param-array-out-of-bound failed validation: failed to validate Pipeline foo/a-pipeline-with-array-indexing-params's parameter which has an invalid index while referring to an array: non-existent param references:[$(params.some-param[2]",
+			"Warning Failed User Error: PipelineRun foo/pipeline-param-array-out-of-bound failed validation: failed to validate Pipeline foo/a-pipeline-with-array-indexing-params's parameter which has an invalid index while referring to an array: non-existent param references:[$(params.some-param[2]",
 		},
 	}, {
 		name: "invalid-embedded-pipeline-bad-name-shd-stop-reconciling",
@@ -919,7 +919,7 @@ spec:
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed Pipeline foo/embedded-pipeline-invalid can't be Run; it has an invalid spec",
+			"Warning Failed User Error: Pipeline foo/embedded-pipeline-invalid can't be Run; it has an invalid spec",
 		},
 	}, {
 		name: "invalid-embedded-pipeline-mismatching-parameter-types",
@@ -944,7 +944,7 @@ spec:
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed PipelineRun foo/embedded-pipeline-mismatching-param-type parameters have mismatching types",
+			"Warning Failed User Error: PipelineRun foo/embedded-pipeline-mismatching-param-type parameters have mismatching types",
 		},
 	}, {
 		name: "invalid-pipeline-run-missing-params-shd-stop-reconciling",
@@ -966,7 +966,7 @@ spec:
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed PipelineRun foo parameters is missing some parameters required by Pipeline pipelinerun-missing-params",
+			"Warning Failed User Error: PipelineRun foo parameters is missing some parameters required by Pipeline pipelinerun-missing-params",
 		},
 	}, {
 		name: "invalid-pipeline-with-invalid-dag-graph",
@@ -986,7 +986,7 @@ spec:
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed PipelineRun foo/pipeline-invalid-dag-graph's Pipeline DAG is invalid",
+			"Warning Failed User Error: PipelineRun foo/pipeline-invalid-dag-graph's Pipeline DAG is invalid",
 		},
 	}, {
 		name: "invalid-pipeline-with-invalid-final-tasks-graph",
@@ -1012,7 +1012,7 @@ spec:
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed PipelineRun foo's Pipeline DAG is invalid for finally clause",
+			"Warning Failed User Error: PipelineRun foo's Pipeline DAG is invalid for finally clause",
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1190,7 +1190,7 @@ status:
           image: busybox
           script: 'exit 0'
   conditions:
-  - message: "Invalid task result reference: Could not find result with name result2 for task task1"
+  - message: "User Error: Invalid task result reference: Could not find result with name result2 for task task1"
     reason: InvalidTaskResultReference
     status: "False"
     type: Succeeded
@@ -12264,7 +12264,7 @@ spec:
 			wantEvents :=
 				[]string{
 					"Normal Started",
-					"Warning Failed PipelineRun foo/pr can't be Run; couldn't resolve all references: array Result Index 3 for Task pt-with-result Result platforms is out of bound of size 3",
+					"Warning Failed User Error: PipelineRun foo/pr can't be Run; couldn't resolve all references: array Result Index 3 for Task pt-with-result Result platforms is out of bound of size 3",
 					"Warning InternalError 1 error occurred:",
 				}
 			prt := newPipelineRunTest(t, d)

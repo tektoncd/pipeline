@@ -699,3 +699,68 @@ func TestPipelineRun_GetTaskRunSpec(t *testing.T) {
 		}
 	}
 }
+
+func TestPipelineRunMarkCondition(t *testing.T) {
+	failedRunReason := v1.PipelineRunReasonFailed
+	messageFormat := "Pipeline bar/foo can't be Run: error bar occurred"
+	tcs := []struct {
+		name               string
+		prStatus           v1.PipelineRunStatus
+		isUserError        bool
+		expectedConditions duckv1.Conditions
+	}{{
+		name: "mark pipelinerun status failed with user error",
+		prStatus: v1.PipelineRunStatus{
+			PipelineRunStatusFields: v1.PipelineRunStatusFields{
+				StartTime: &metav1.Time{Time: now},
+			},
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{},
+			},
+		},
+		isUserError: true,
+		expectedConditions: duckv1.Conditions{
+			apis.Condition{
+				Type:    "Succeeded",
+				Status:  "False",
+				Reason:  "Failed",
+				Message: "User Error: Pipeline bar/foo can't be Run: error bar occurred",
+			},
+		},
+	}, {
+		name: "mark pipelinerun status failed not user error",
+		prStatus: v1.PipelineRunStatus{
+			PipelineRunStatusFields: v1.PipelineRunStatusFields{
+				StartTime: &metav1.Time{Time: now},
+			},
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{},
+			},
+		},
+		expectedConditions: duckv1.Conditions{
+			apis.Condition{
+				Type:    "Succeeded",
+				Status:  "False",
+				Reason:  "Failed",
+				Message: "Pipeline bar/foo can't be Run: error bar occurred",
+			},
+		},
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			pr := &v1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "bar",
+				},
+				Status: tc.prStatus,
+			}
+			pr.Status.MarkFailed(tc.isUserError, failedRunReason.String(), messageFormat)
+			updatedCondition := pr.Status.Status.Conditions
+
+			if d := cmp.Diff(tc.expectedConditions, updatedCondition, cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime")); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
