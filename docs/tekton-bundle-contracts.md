@@ -17,7 +17,7 @@ bundle reference.
 
 Each layer of the image must map 1:1 with a single Tekton resource (eg Task).
 
-*No more than 10* individual layers (Pipelines and/or Tasks) maybe placed in a single image.
+*No more than 20* individual layers (Pipelines and/or Tasks) maybe placed in a single image.
 
 Each layer must contain all of the following annotations:
 
