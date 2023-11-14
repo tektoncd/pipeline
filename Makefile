@@ -7,10 +7,8 @@ TESTPKGS = $(shell env GO111MODULE=on $(GO) list -f \
 			'{{ if or .TestGoFiles .XTestGoFiles }}{{ .ImportPath }}{{ end }}' \
 			$(PKGS))
 BIN      = $(CURDIR)/.bin
-WOKE 	?= go run -modfile go.mod github.com/get-woke/woke
 
 GOLANGCI_VERSION = v1.52.2
-WOKE_VERSION     = v0.19.0
 
 GO           = go
 TIMEOUT_UNIT = 5m
@@ -186,14 +184,6 @@ goimports: | $(GOIMPORTS) ; $(info $(M) running goimports…) ## Run goimports
 .PHONY: fmt
 fmt: ; $(info $(M) running gofmt…) @ ## Run gofmt on all source files
 	$Q $(GO) fmt $(PKGS)
-
-WOKE = $(BIN)/woke
-$(BIN)/woke: ; $(info $(M) getting woke $(WOKE_VERSION))
-	cd tools; GOBIN=$(BIN) go install github.com/get-woke/woke@$(WOKE_VERSION)
-
-.PHONY: woke 
-woke: | $(WOKE) ; $(info $(M) running woke...) @ ## Run woke
-	$Q $(WOKE) -c https://github.com/canonical/Inclusive-naming/raw/main/config.yml
 
 # Misc
 
