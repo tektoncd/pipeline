@@ -21,13 +21,13 @@ import (
 var (
 	prependStep = v1beta1.Step{
 		Name:    "prepend-step",
-		Image:   "dummy",
+		Image:   "sample",
 		Command: []string{"doit"},
 		Args:    []string{"stuff", "things"},
 	}
 	appendStep = v1beta1.Step{
 		Name:    "append-step",
-		Image:   "dummy",
+		Image:   "sample",
 		Command: []string{"doit"},
 		Args:    []string{"other stuff", "other things"},
 	}
