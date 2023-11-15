@@ -1,0 +1,32 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+default_install_hook_types: ["pre-push"]
+exclude: '(^vendor|.*golden$)'
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.2.0
+  hooks:
+  - id: check-added-large-files
+  - id: check-yaml
+    args: ["--allow-multiple-documents"]
+    exclude: '(test\/gohelloworld\/gohelloworld-chart\/templates\/.*yaml$)' # Ignore yaml files with {{ }} cause they're not a valid
+  - id: check-shebang-scripts-are-executable
+  - id: check-json
+  - id: detect-private-key
+    exclude: "(.*_test.go|^examples\/v1\/pipelineruns\/beta\/isolated-workspaces.yaml$)"
+- repo: local
+  hooks:
+  - id: lint-go
+    name: "Run make golangci-lint"
+    entry: make
+    args: ["golangci-lint"]
+    language: system
+    types: [go]
+    pass_filenames: false
+  - id: test-unit
+    name: "Unit testing"
+    entry: make
+    args: ["test-unit"]
+    language: system
+    types: [go]
+    pass_filenames: false
