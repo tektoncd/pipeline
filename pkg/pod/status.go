@@ -248,7 +248,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 		stepResults := []v1.StepResult{}
 		if ts != nil {
 			for _, step := range ts.Steps {
-				if getContainerName(step.Name) == s.Name {
+				if GetContainerName(step.Name) == s.Name {
 					stepResults = append(stepResults, step.Results...)
 				}
 			}
@@ -360,7 +360,7 @@ func findStepResultsFetchedByTask(containerName string, specResults []v1.TaskRes
 					return nil, err
 				}
 				// Only look at named results - referencing unnamed steps is unsupported.
-				if getContainerName(sName) == containerName {
+				if GetContainerName(sName) == containerName {
 					neededStepResults[resultName] = r.Name
 				}
 			}

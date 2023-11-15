@@ -31,6 +31,8 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/internal/resultref"
 	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/result"
 	"github.com/tektoncd/pipeline/pkg/spire"
@@ -182,6 +184,9 @@ func (e Entrypointer) Go() error {
 	ctx := context.Background()
 	var cancel context.CancelFunc
 	if err == nil {
+		if err := e.applyStepResultSubstitutions(pipeline.StepsDir); err != nil {
+			logger.Error("Error while substituting step results: ", err)
+		}
 		ctx, cancel = context.WithCancel(ctx)
 		if e.Timeout != nil && *e.Timeout > time.Duration(0) {
 			ctx, cancel = context.WithTimeout(ctx, *e.Timeout)
@@ -334,5 +339,117 @@ func (e Entrypointer) waitingCancellation(ctx context.Context, cancel context.Ca
 		return err
 	}
 	cancel()
+	return nil
+}
+
+// loadStepResult reads the step result file and returns the string, array or object result value.
+func loadStepResult(stepDir string, stepName string, resultName string) (v1.ResultValue, error) {
+	v := v1.ResultValue{}
+	fp := getStepResultPath(stepDir, pod.GetContainerName(stepName), resultName)
+	fileContents, err := os.ReadFile(fp)
+	if err != nil {
+		return v, err
+	}
+	err = v.UnmarshalJSON(fileContents)
+	if err != nil {
+		return v, err
+	}
+	return v, nil
+}
+
+// getStepResultPath gets the path to the step result
+func getStepResultPath(stepDir string, stepName string, resultName string) string {
+	return filepath.Join(stepDir, stepName, "results", resultName)
+}
+
+// findReplacement looks for any usage of step results in an input string.
+// If found, it loads the results from the previous steps and provides the replacement value.
+func findReplacement(stepDir string, s string) (string, []string, error) {
+	value := strings.TrimSuffix(strings.TrimPrefix(s, "$("), ")")
+	pr, err := resultref.ParseStepExpression(value)
+	if err != nil {
+		return "", nil, err
+	}
+	result, err := loadStepResult(stepDir, pr.ResourceName, pr.ResultName)
+	if err != nil {
+		return "", nil, err
+	}
+	replaceWithArray := []string{}
+	replaceWithString := ""
+
+	switch pr.ResultType {
+	case "object":
+		if pr.ObjectKey != "" {
+			replaceWithString = result.ObjectVal[pr.ObjectKey]
+		}
+	case "array":
+		if pr.ArrayIdx != nil {
+			replaceWithString = result.ArrayVal[*pr.ArrayIdx]
+		} else {
+			replaceWithArray = append(replaceWithArray, result.ArrayVal...)
+		}
+	// "string"
+	default:
+		replaceWithString = result.StringVal
+	}
+	return replaceWithString, replaceWithArray, nil
+}
+
+// replaceCommandAndArgs performs replacements for step results in environment variables.
+func replaceEnv(stepDir string) error {
+	for _, e := range os.Environ() {
+		pair := strings.SplitN(e, "=", 2)
+		matches := resultref.StepResultRegex.FindAllStringSubmatch(pair[1], -1)
+		for _, m := range matches {
+			replaceWith, _, err := findReplacement(stepDir, m[0])
+			if err != nil {
+				return err
+			}
+			os.Setenv(pair[0], strings.ReplaceAll(pair[1], m[0], replaceWith))
+		}
+	}
+	return nil
+}
+
+// replaceCommandAndArgs performs replacements for step results in e.Command
+func replaceCommandAndArgs(command []string, stepDir string) ([]string, error) {
+	newCommand := []string{}
+	for _, c := range command {
+		matches := resultref.StepResultRegex.FindAllStringSubmatch(c, -1)
+		if len(matches) > 0 {
+			for _, m := range matches {
+				replaceWithString, replaceWithArray, err := findReplacement(stepDir, m[0])
+				if err != nil {
+					return nil, err
+				}
+				// if replacing with an array
+				if len(replaceWithArray) > 1 {
+					// append with the array items
+					newCommand = append(newCommand, replaceWithArray...)
+				} else {
+					// append with replaced string
+					c = strings.ReplaceAll(c, m[0], replaceWithString)
+					newCommand = append(newCommand, c)
+				}
+			}
+		} else {
+			newCommand = append(newCommand, c)
+		}
+	}
+	return newCommand, nil
+}
+
+// applyStepResultSubstitutions applies the runtime step result substitutions in env, args and command.
+func (e *Entrypointer) applyStepResultSubstitutions(stepDir string) error {
+	// env
+	if err := replaceEnv(stepDir); err != nil {
+		return err
+	}
+	// command + args
+	newCommand, err := replaceCommandAndArgs(e.Command, stepDir)
+	if err != nil {
+		return err
+	}
+	e.Command = newCommand
 	return nil
 }

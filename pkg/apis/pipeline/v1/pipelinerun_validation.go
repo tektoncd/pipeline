@@ -23,6 +23,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
+	"github.com/tektoncd/pipeline/pkg/internal/resultref"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -128,7 +129,7 @@ func (ps *PipelineRunSpec) validatePipelineRunParameters(ctx context.Context) (e
 		expressions, ok := param.GetVarSubstitutionExpressions()
 		if ok {
 			if LooksLikeContainsResultRefs(expressions) {
-				expressions = filter(expressions, looksLikeResultRef)
+				expressions = filter(expressions, resultref.LooksLikeResultRef)
 				resultRefs := NewResultRefs(expressions)
 				if len(resultRefs) > 0 {
 					errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("cannot use result expressions in %v as PipelineRun parameter values", expressions),

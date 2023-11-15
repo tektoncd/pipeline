@@ -20,11 +20,14 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/container"
+	"github.com/tektoncd/pipeline/pkg/internal/resultref"
 	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	corev1 "k8s.io/api/core/v1"
@@ -43,6 +46,12 @@ var (
 		"params['%s']",
 		// FIXME(vdemeester) Remove that with deprecating v1beta1
 		"inputs.params.%s",
+	}
+
+	paramIndexRegexPatterns = []string{
+		`\$\(params.%s\[([0-9]*)*\*?\]\)`,
+		`\$\(params\[%q\]\[([0-9]*)*\*?\]\)`,
+		`\$\(params\['%s'\]\[([0-9]*)*\*?\]\)`,
 	}
 )
 
@@ -64,8 +73,84 @@ func applyStepActionParameters(step *v1.Step, spec *v1.TaskSpec, tr *v1.TaskRun,
 		arrayReplacements[k] = v
 	}
 
+	stepResultReplacements, _ := replacementsFromStepResults(step, stepParams, defaults)
+	for k, v := range stepResultReplacements {
+		stringReplacements[k] = v
+	}
 	container.ApplyStepReplacements(step, stringReplacements, arrayReplacements)
 	return step
+}
+
+// findArrayIndexParamUsage finds the array index in a string using array param substitution
+func findArrayIndexParamUsage(s string, paramName string, stepName string, resultName string, stringReplacements map[string]string) map[string]string {
+	for _, pattern := range paramIndexRegexPatterns {
+		arrayIndexingRegex := regexp.MustCompile(fmt.Sprintf(pattern, paramName))
+		matches := arrayIndexingRegex.FindAllStringSubmatch(s, -1)
+		for _, match := range matches {
+			if len(match) == 2 {
+				key := strings.TrimSuffix(strings.TrimPrefix(match[0], "$("), ")")
+				if match[1] != "" {
+					stringReplacements[key] = fmt.Sprintf("$(steps.%s.results.%s[%s])", stepName, resultName, match[1])
+				}
+			}
+		}
+	}
+	return stringReplacements
+}
+
+// replacementsArrayIdxStepResults looks for Step Result array usage with index in the Step's command, args, env and script.
+func replacementsArrayIdxStepResults(step *v1.Step, paramName string, stepName string, resultName string) map[string]string {
+	stringReplacements := map[string]string{}
+	for _, c := range step.Command {
+		stringReplacements = findArrayIndexParamUsage(c, paramName, stepName, resultName, stringReplacements)
+	}
+	for _, a := range step.Args {
+		stringReplacements = findArrayIndexParamUsage(a, paramName, stepName, resultName, stringReplacements)
+	}
+	for _, e := range step.Env {
+		stringReplacements = findArrayIndexParamUsage(e.Value, paramName, stepName, resultName, stringReplacements)
+	}
+	return stringReplacements
+}
+
+// replacementsFromStepResults generates string replacements for params whose values is a variable substitution of a step result.
+func replacementsFromStepResults(step *v1.Step, stepParams v1.Params, defaults []v1.ParamSpec) (map[string]string, error) {
+	stringReplacements := map[string]string{}
+	for _, sp := range stepParams {
+		if sp.Value.StringVal != "" {
+			//  $(params.p1) --> $(steps.step1.results.foo) (normal substitution)
+			value := strings.TrimSuffix(strings.TrimPrefix(sp.Value.StringVal, "$("), ")")
+			pr, err := resultref.ParseStepExpression(value)
+			if err != nil {
+				return nil, err
+			}
+			for _, d := range defaults {
+				if d.Name == sp.Name {
+					switch d.Type {
+					case v1.ParamTypeObject:
+						for k := range d.Properties {
+							stringReplacements[fmt.Sprintf("params.%s.%s", d.Name, k)] = fmt.Sprintf("$(steps.%s.results.%s.%s)", pr.ResourceName, pr.ResultName, k)
+						}
+					case v1.ParamTypeArray:
+						//  $(params.p1[*]) --> $(steps.step1.results.foo)
+						for _, pattern := range paramPatterns {
+							stringReplacements[fmt.Sprintf(pattern+"[*]", d.Name)] = fmt.Sprintf("$(steps.%s.results.%s[*])", pr.ResourceName, pr.ResultName)
+						}
+						//  $(params.p1[idx]) --> $(steps.step1.results.foo[idx])
+						for k, v := range replacementsArrayIdxStepResults(step, d.Name, pr.ResourceName, pr.ResultName) {
+							stringReplacements[k] = v
+						}
+					// This is handled by normal param substitution.
+					// $(params.p1.key) --> $(steps.step1.results.foo)
+					case v1.ParamTypeString:
+					// Since String is the default, This is handled by normal param substitution.
+					default:
+					}
+				}
+			}
+		}
+	}
+	return stringReplacements, nil
 }
 
 // getTaskParameters gets the string, array and object parameter variable replacements needed in the Task

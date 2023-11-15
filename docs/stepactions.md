@@ -181,7 +181,7 @@ spec:
     date | tee $(step.results.current-date-human-readable.path)
 ```
 
-`Results` from the above `StepAction` can be [fetched by the `Task`](#fetching-emitted-results-from-stepactions) in another `StepAction` via `$(steps.<stepName>.results.<resultName>)`.
+`Results` from the above `StepAction` can be [fetched by the `Task`](#fetching-emitted-results-from-stepactions) or in [another `Step/StepAction`](#passing-step-results-between-steps) via `$(steps.<stepName>.results.<resultName>)`.
 
 #### Fetching Emitted Results from StepActions
 
@@ -237,6 +237,64 @@ spec:
       ref:
         name: kaniko-step-action
 ```
+
+#### Passing Results between Steps
+
+`StepResults` (i.e. results written to `$(step.results.<result-name>.path)`, NOT `$(results.<result-name>.path)`) can be shared with following steps via replacement variable `$(steps.<step-name>.results.<result-name>)`.
+
+Pipeline supports two new types of results and parameters: array `[]string` and object `map[string]string`.
+Array and Object result is a beta feature and can be enabled by setting `enable-api-fields` to `alpha` or `beta`.
+
+| Result Type | Parameter Type | Specification                                    | `enable-api-fields` |
+|-------------|----------------|--------------------------------------------------|---------------------|
+| string      | string         | `$(steps.<step-name>.results.<result-name>)`     | stable              |
+| array       | array          | `$(steps.<step-name>.results.<result-name>[*])`  | alpha or beta       |
+| array       | string         | `$(steps.<step-name>.results.<result-name>[i])`  | alpha or beta       |
+| object      | string         | `$(tasks.<task-name>.results.<result-name>.key)` | alpha or beta       |
+
+**Note:** Whole Array `Results` (using star notation) cannot be referred in `script` and `env`.
+
+The example below shows how you could pass `step results` from a `step` into following steps, in this case, into a `StepAction`.
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: step-action-run
+spec:
+  TaskSpec:
+    steps:
+      - name: inline-step
+        results:
+          - name: result1
+            type: array
+          - name: result2
+            type: string
+          - name: result3
+            type: object
+            properties:
+              IMAGE_URL:
+                type: string
+              IMAGE_DIGEST:
+                type: string 
+        image: alpine
+        script: |
+          echo -n "[\"image1\", \"image2\", \"image3\"]" | tee $(step.results.result1.path)
+          echo -n "foo" | tee $(step.results.result2.path)
+          echo -n "{\"IMAGE_URL\":\"ar.com\", \"IMAGE_DIGEST\":\"sha234\"}" | tee $(step.results.result3.path) 
+      - name: action-runner
+        ref:
+          name: step-action
+        params:
+          - name: param1
+            value: $(steps.inline-step.results.result1[*])
+          - name: param2
+            value: $(steps.inline-step.results.result2)
+          - name: param3
+            value: $(steps.inline-step.results.result3[*])
+```
+
+**Note:** `Step Results` can only be referenced in a `Step's/StepAction's` `env`, `command` and `args`. Referencing in any other field will throw an error.
 
 ### Declaring WorkingDir
 
@@ -463,9 +521,3 @@ spec:
 ```
 
 The default resolver type can be configured by the `default-resolver-type` field in the `config-defaults` ConfigMap (`alpha` feature). See [additional-configs.md](./additional-configs.md) for details.
-
-## Known Limitations
-
-### Cannot pass Step Results between Steps
-
-It's not currently possible to pass results produced by a `Step` into following `Steps`. We are working on this feature and it will be made available soon.

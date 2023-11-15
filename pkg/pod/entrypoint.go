@@ -353,11 +353,12 @@ func TrimSidecarPrefix(name string) string { return strings.TrimPrefix(name, sid
 // returns "step-unnamed-<step-index>" if not specified
 func StepName(name string, i int) string {
 	if name != "" {
-		return getContainerName(name)
+		return GetContainerName(name)
 	}
 	return fmt.Sprintf("%sunnamed-%d", stepPrefix, i)
 }
 
-func getContainerName(name string) string {
+// GetContainerName prefixes the input name with "step-"
+func GetContainerName(name string) string {
 	return fmt.Sprintf("%s%s", stepPrefix, name)
 }
