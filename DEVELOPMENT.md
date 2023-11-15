@@ -56,6 +56,8 @@ You must install these tools:
 
 1. [`git`](https://help.github.com/articles/set-up-git/): For source control
 
+1. [`pre-commit`](https://pre-commit.com/#install): Git hook scripts
+
 1. [`go`](https://golang.org/doc/install): The language Tekton Pipelines is
     built in.
     > **Note** Golang [version v1.15](https://golang.org/dl/) or higher is recommended.
