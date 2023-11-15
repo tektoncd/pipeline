@@ -17,10 +17,10 @@ limitations under the License.
 package v1
 
 import (
-	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
+
+	"github.com/tektoncd/pipeline/pkg/internal/resultref"
 )
 
 // ResultRef is a type that represents a reference to a task run result
@@ -32,25 +32,21 @@ type ResultRef struct {
 }
 
 const (
-	resultExpressionFormat = "tasks.<taskName>.results.<resultName>"
-	// Result expressions of the form <resultName>.<attribute> will be treated as object results.
-	// If a string result name contains a dot, brackets should be used to differentiate it from an object result.
-	// https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md#collisions-with-builtin-variable-replacement
-	objectResultExpressionFormat = "tasks.<taskName>.results.<objectResultName>.<individualAttribute>"
 	// ResultTaskPart Constant used to define the "tasks" part of a pipeline result reference
-	ResultTaskPart = "tasks"
+	// retained because of backwards compatibility
+	ResultTaskPart = resultref.ResultTaskPart
 	// ResultFinallyPart Constant used to define the "finally" part of a pipeline result reference
-	ResultFinallyPart = "finally"
+	// retained because of backwards compatibility
+	ResultFinallyPart = resultref.ResultFinallyPart
 	// ResultResultPart Constant used to define the "results" part of a pipeline result reference
-	ResultResultPart = "results"
+	// retained because of backwards compatibility
+	ResultResultPart = resultref.ResultResultPart
 	// TODO(#2462) use one regex across all substitutions
 	// variableSubstitutionFormat matches format like $result.resultname, $result.resultname[int] and $result.resultname[*]
 	variableSubstitutionFormat = `\$\([_a-zA-Z0-9.-]+(\.[_a-zA-Z0-9.-]+)*(\[([0-9]+|\*)\])?\)`
 	// exactVariableSubstitutionFormat matches strings that only contain a single reference to result or param variables, but nothing else
 	// i.e. `$(result.resultname)` is a match, but `foo $(result.resultname)` is not.
 	exactVariableSubstitutionFormat = `^\$\([_a-zA-Z0-9.-]+(\.[_a-zA-Z0-9.-]+)*(\[([0-9]+|\*)\])?\)$`
-	// arrayIndexing will match all `[int]` and `[*]` for parseExpression
-	arrayIndexing = `\[([0-9])*\*?\]`
 	// ResultNameFormat Constant used to define the regex Result.Name should follow
 	ResultNameFormat = `^([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]$`
 )
@@ -60,25 +56,22 @@ var VariableSubstitutionRegex = regexp.MustCompile(variableSubstitutionFormat)
 var exactVariableSubstitutionRegex = regexp.MustCompile(exactVariableSubstitutionFormat)
 var resultNameFormatRegex = regexp.MustCompile(ResultNameFormat)
 
-// arrayIndexingRegex is used to match `[int]` and `[*]`
-var arrayIndexingRegex = regexp.MustCompile(arrayIndexing)
-
 // NewResultRefs extracts all ResultReferences from a param or a pipeline result.
 // If the ResultReference can be extracted, they are returned. Expressions which are not
 // results are ignored.
 func NewResultRefs(expressions []string) []*ResultRef {
 	var resultRefs []*ResultRef
 	for _, expression := range expressions {
-		pipelineTask, result, index, property, err := parseExpression(expression)
+		pr, err := resultref.ParseTaskExpression(expression)
 		// If the expression isn't a result but is some other expression,
-		// parseExpression will return an error, in which case we just skip that expression,
+		// parseTaskExpression will return an error, in which case we just skip that expression,
 		// since although it's not a result ref, it might be some other kind of reference
 		if err == nil {
 			resultRefs = append(resultRefs, &ResultRef{
-				PipelineTask: pipelineTask,
-				Result:       result,
-				ResultsIndex: index,
-				Property:     property,
+				PipelineTask: pr.ResourceName,
+				Result:       pr.ResultName,
+				ResultsIndex: pr.ArrayIdx,
+				Property:     pr.ObjectKey,
 			})
 		}
 	}
@@ -91,18 +84,11 @@ func NewResultRefs(expressions []string) []*ResultRef {
 // performing strict validation
 func LooksLikeContainsResultRefs(expressions []string) bool {
 	for _, expression := range expressions {
-		if looksLikeResultRef(expression) {
+		if resultref.LooksLikeResultRef(expression) {
 			return true
 		}
 	}
 	return false
-}
-
-// looksLikeResultRef attempts to check if the given string looks like it contains any
-// result references. Returns true if it does, false otherwise
-func looksLikeResultRef(expression string) bool {
-	subExpressions := strings.Split(expression, ".")
-	return len(subExpressions) >= 4 && (subExpressions[0] == ResultTaskPart || subExpressions[0] == ResultFinallyPart) && subExpressions[2] == ResultResultPart
 }
 
 func validateString(value string) []string {
@@ -121,43 +107,6 @@ func stripVarSubExpression(expression string) string {
 	return strings.TrimSuffix(strings.TrimPrefix(expression, "$("), ")")
 }
 
-// parseExpression parses "task name", "result name", "array index" (iff it's an array result) and "object key name" (iff it's an object result)
-// 1. Reference string result
-// - Input: tasks.myTask.results.aStringResult
-// - Output: "myTask", "aStringResult", nil, "", nil
-// 2. Reference Object value with key:
-// - Input: tasks.myTask.results.anObjectResult.key1
-// - Output: "myTask", "anObjectResult", nil, "key1", nil
-// 3. Reference array elements with array indexing :
-// - Input: tasks.myTask.results.anArrayResult[1]
-// - Output: "myTask", "anArrayResult", 1, "", nil
-// 4. Referencing whole array or object result:
-// - Input: tasks.myTask.results.Result[*]
-// - Output: "myTask", "Result", nil, "", nil
-// Invalid Case:
-// - Input: tasks.myTask.results.resultName.foo.bar
-// - Output: "", "", nil, "", error
-// TODO: may use regex for each type to handle possible reference formats
-func parseExpression(substitutionExpression string) (string, string, *int, string, error) {
-	if looksLikeResultRef(substitutionExpression) {
-		subExpressions := strings.Split(substitutionExpression, ".")
-		// For string result: tasks.<taskName>.results.<stringResultName>
-		// For array result: tasks.<taskName>.results.<arrayResultName>[index]
-		if len(subExpressions) == 4 {
-			resultName, stringIdx := ParseResultName(subExpressions[3])
-			if stringIdx != "" && stringIdx != "*" {
-				intIdx, _ := strconv.Atoi(stringIdx)
-				return subExpressions[1], resultName, &intIdx, "", nil
-			}
-			return subExpressions[1], resultName, nil, "", nil
-		} else if len(subExpressions) == 5 {
-			// For object type result: tasks.<taskName>.results.<objectResultName>.<individualAttribute>
-			return subExpressions[1], subExpressions[3], nil, subExpressions[4], nil
-		}
-	}
-	return "", "", nil, "", fmt.Errorf("must be one of the form 1). %q; 2). %q", resultExpressionFormat, objectResultExpressionFormat)
-}
-
 // ParseResultName parse the input string to extract resultName and result index.
 // Array indexing:
 // Input:  anArrayResult[1]
@@ -165,10 +114,9 @@ func parseExpression(substitutionExpression string) (string, string, *int, strin
 // Array star reference:
 // Input:  anArrayResult[*]
 // Output: anArrayResult, "*"
+// retained for backwards compatibility
 func ParseResultName(resultName string) (string, string) {
-	stringIdx := strings.TrimSuffix(strings.TrimPrefix(arrayIndexingRegex.FindString(resultName), "["), "]")
-	resultName = arrayIndexingRegex.ReplaceAllString(resultName, "")
-	return resultName, stringIdx
+	return resultref.ParseResultName(resultName)
 }
 
 // PipelineTaskResultRefs walks all the places a result reference can be used

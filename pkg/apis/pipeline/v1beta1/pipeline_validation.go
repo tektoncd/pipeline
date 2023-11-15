@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
+	"github.com/tektoncd/pipeline/pkg/internal/resultref"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
@@ -654,7 +655,7 @@ func validatePipelineResults(results []PipelineResult, tasks []PipelineTask, fin
 				"value").ViaFieldIndex("results", idx))
 		}
 
-		expressions = filter(expressions, looksLikeResultRef)
+		expressions = filter(expressions, resultref.LooksLikeResultRef)
 		resultRefs := NewResultRefs(expressions)
 		if len(expressions) != len(resultRefs) {
 			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("expected all of the expressions %v to be result expressions but only %v were", expressions, resultRefs),
@@ -689,16 +690,15 @@ func taskContainsResult(resultExpression string, pipelineTaskNames sets.String, 
 	for _, expression := range split {
 		if expression != "" {
 			value := stripVarSubExpression("$" + expression)
-			pipelineTaskName, _, _, _, err := parseExpression(value)
-
+			pr, err := resultref.ParseTaskExpression(value)
 			if err != nil {
 				return false
 			}
 
-			if strings.HasPrefix(value, "tasks") && !pipelineTaskNames.Has(pipelineTaskName) {
+			if strings.HasPrefix(value, "tasks") && !pipelineTaskNames.Has(pr.ResourceName) {
 				return false
 			}
-			if strings.HasPrefix(value, "finally") && !pipelineFinallyTaskNames.Has(pipelineTaskName) {
+			if strings.HasPrefix(value, "finally") && !pipelineFinallyTaskNames.Has(pr.ResourceName) {
 				return false
 			}
 		}

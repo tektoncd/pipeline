@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path"
@@ -720,6 +721,159 @@ func TestEntrypointerStopOnCancel(t *testing.T) {
 			}.Go()
 			if !errors.Is(err, tc.expectError) {
 				t.Errorf("expected error %v, got %v", tc.expectError, err)
+			}
+		})
+	}
+}
+
+func TestApplyStepResultSubstitutions_Env(t *testing.T) {
+	testCases := []struct {
+		name       string
+		stepName   string
+		resultName string
+		result     string
+		envValue   string
+		want       string
+		wantErr    bool
+	}{{
+		name:       "string param",
+		stepName:   "foo",
+		resultName: "res",
+		result:     "Hello",
+		envValue:   "$(steps.foo.results.res)",
+		want:       "Hello",
+		wantErr:    false,
+	}, {
+		name:       "array param",
+		stepName:   "foo",
+		resultName: "res",
+		result:     "[\"Hello\",\"World\"]",
+		envValue:   "$(steps.foo.results.res[1])",
+		want:       "World",
+		wantErr:    false,
+	}, {
+		name:       "object param",
+		stepName:   "foo",
+		resultName: "res",
+		result:     "{\"hello\":\"World\"}",
+		envValue:   "$(steps.foo.results.res.hello)",
+		want:       "World",
+		wantErr:    false,
+	}, {
+		name:       "bad-result-format",
+		stepName:   "foo",
+		resultName: "res",
+		result:     "{\"hello\":\"World\"}",
+		envValue:   "echo $(steps.foo.results.res.hello.bar)",
+		want:       "echo $(steps.foo.results.res.hello.bar)",
+		wantErr:    true,
+	}}
+	stepDir := createTmpDir(t, "env-steps")
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			resultPath := filepath.Join(stepDir, pod.GetContainerName(tc.stepName), "results")
+			err := os.MkdirAll(resultPath, 0750)
+			if err != nil {
+				log.Fatal(err)
+			}
+			resultFile := filepath.Join(resultPath, tc.resultName)
+			err = os.WriteFile(resultFile, []byte(tc.result), 0666)
+			if err != nil {
+				log.Fatal(err)
+			}
+			t.Setenv("FOO", tc.envValue)
+			e := Entrypointer{
+				Command: []string{},
+			}
+			err = e.applyStepResultSubstitutions(stepDir)
+			if tc.wantErr == false && err != nil {
+				t.Fatalf("Did not expect and error but got: %v", err)
+			} else if tc.wantErr == true && err == nil {
+				t.Fatalf("Expected and error but did not get any.")
+			}
+			got := os.Getenv("FOO")
+			if got != tc.want {
+				t.Errorf("applyStepResultSubstitutions(): got %v; want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestApplyStepResultSubstitutions_Command(t *testing.T) {
+	testCases := []struct {
+		name       string
+		stepName   string
+		resultName string
+		result     string
+		command    []string
+		want       []string
+		wantErr    bool
+	}{{
+		name:       "string param",
+		stepName:   "foo",
+		resultName: "res1",
+		result:     "Hello",
+		command:    []string{"$(steps.foo.results.res1)"},
+		want:       []string{"Hello"},
+		wantErr:    false,
+	}, {
+		name:       "array param",
+		stepName:   "foo",
+		resultName: "res",
+		result:     "[\"Hello\",\"World\"]",
+		command:    []string{"$(steps.foo.results.res[1])"},
+		want:       []string{"World"},
+		wantErr:    false,
+	}, {
+		name:       "array param no index",
+		stepName:   "foo",
+		resultName: "res",
+		result:     "[\"Hello\",\"World\"]",
+		command:    []string{"start", "$(steps.foo.results.res[*])", "stop"},
+		want:       []string{"start", "Hello", "World", "stop"},
+		wantErr:    false,
+	}, {
+		name:       "object param",
+		stepName:   "foo",
+		resultName: "res",
+		result:     "{\"hello\":\"World\"}",
+		command:    []string{"$(steps.foo.results.res.hello)"},
+		want:       []string{"World"},
+		wantErr:    false,
+	}, {
+		name:       "bad-result-format",
+		stepName:   "foo",
+		resultName: "res",
+		result:     "{\"hello\":\"World\"}",
+		command:    []string{"echo $(steps.foo.results.res.hello.bar)"},
+		want:       []string{"echo $(steps.foo.results.res.hello.bar)"},
+		wantErr:    true,
+	}}
+	stepDir := createTmpDir(t, "command-steps")
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			resultPath := filepath.Join(stepDir, pod.GetContainerName(tc.stepName), "results")
+			err := os.MkdirAll(resultPath, 0750)
+			if err != nil {
+				log.Fatal(err)
+			}
+			resultFile := filepath.Join(resultPath, tc.resultName)
+			err = os.WriteFile(resultFile, []byte(tc.result), 0666)
+			if err != nil {
+				log.Fatal(err)
+			}
+			e := Entrypointer{
+				Command: tc.command,
+			}
+			err = e.applyStepResultSubstitutions(stepDir)
+			if tc.wantErr == false && err != nil {
+				t.Fatalf("Did not expect and error but got: %v", err)
+			} else if tc.wantErr == true && err == nil {
+				t.Fatalf("Expected and error but did not get any.")
+			}
+			got := e.Command
+			if d := cmp.Diff(tc.want, got); d != "" {
+				t.Errorf("Entrypointer error diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}

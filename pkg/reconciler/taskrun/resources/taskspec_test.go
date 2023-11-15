@@ -817,6 +817,98 @@ func TestGetStepActionsData(t *testing.T) {
 			Image: "myimage",
 			Args:  []string{"taskrun string param", "taskspec", "array", "taskspec", "array", "param", "taskrun key", "taskspec key2", "step action key3"},
 		}},
+	}, {
+		name: "propagating step result substitution strings into step actions",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Name:  "inlined-step",
+						Image: "ubuntu",
+						Results: []v1.StepResult{{
+							Name: "result1",
+						}, {
+							Name: "result2",
+							Type: v1.ResultsTypeArray,
+						}, {
+							Name: "result3",
+							Type: v1.ResultsTypeObject,
+						}},
+					}, {
+						Ref: &v1.Ref{
+							Name: "stepAction",
+						},
+						Params: v1.Params{{
+							Name:  "string-param",
+							Value: *v1.NewStructuredValues("$(steps.inlined-step.results.result1)"),
+						}, {
+							Name:  "array-param",
+							Value: *v1.NewStructuredValues("$(steps.inlined-step.results.result2[*])"),
+						}, {
+							Name:  "object-param",
+							Value: *v1.NewStructuredValues("$(steps.inlined-step.results.result3[*])"),
+						}},
+					}},
+				},
+			},
+		},
+		stepAction: &v1alpha1.StepAction{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "stepAction",
+				Namespace: "default",
+			},
+			Spec: v1alpha1.StepActionSpec{
+				Image:   "myimage",
+				Args:    []string{"$(params.string-param)", "$(params.array-param[0])", "$(params.array-param[1])", "$(params.array-param[*])", "$(params.object-param.key)"},
+				Command: []string{"$(params[\"string-param\"])", "$(params[\"array-param\"][0])"},
+				Env: []corev1.EnvVar{{
+					Name:  "env1",
+					Value: "$(params['array-param'][0])",
+				}, {
+					Name:  "env2",
+					Value: "$(params['string-param'])",
+				}},
+				Params: v1.ParamSpecs{{
+					Name: "string-param",
+					Type: v1.ParamTypeString,
+				}, {
+					Name: "array-param",
+					Type: v1.ParamTypeArray,
+				}, {
+					Name:       "object-param",
+					Type:       v1.ParamTypeObject,
+					Properties: map[string]v1.PropertySpec{"key": {Type: "string"}},
+				}},
+			},
+		},
+		want: []v1.Step{{
+			Name:  "inlined-step",
+			Image: "ubuntu",
+			Results: []v1.StepResult{{
+				Name: "result1",
+			}, {
+				Name: "result2",
+				Type: v1.ResultsTypeArray,
+			}, {
+				Name: "result3",
+				Type: v1.ResultsTypeObject,
+			}},
+		}, {
+			Image:   "myimage",
+			Args:    []string{"$(steps.inlined-step.results.result1)", "$(steps.inlined-step.results.result2[0])", "$(steps.inlined-step.results.result2[1])", "$(steps.inlined-step.results.result2[*])", "$(steps.inlined-step.results.result3.key)"},
+			Command: []string{"$(steps.inlined-step.results.result1)", "$(steps.inlined-step.results.result2[0])"},
+			Env: []corev1.EnvVar{{
+				Name:  "env1",
+				Value: "$(steps.inlined-step.results.result2[0])",
+			}, {
+				Name:  "env2",
+				Value: "$(steps.inlined-step.results.result1)",
+			}},
+		}},
 	}}
 	for _, tt := range tests {
 		ctx := context.Background()
