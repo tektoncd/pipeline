@@ -53,9 +53,9 @@ import (
 )
 
 var (
-	dummyPipeline = &v1.Pipeline{
+	samplePipeline = &v1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dummy",
+			Name:      "sample",
 			Namespace: "default",
 		},
 		TypeMeta: metav1.TypeMeta{
@@ -130,7 +130,7 @@ func TestLocalPipelineRef(t *testing.T) {
 	}{
 		{
 			name:      "local-pipeline",
-			pipelines: []runtime.Object{simplePipeline(), dummyPipeline},
+			pipelines: []runtime.Object{simplePipeline(), samplePipeline},
 			ref: &v1.PipelineRef{
 				Name: "simple",
 			},
@@ -191,9 +191,9 @@ func TestGetPipelineFunc_Local(t *testing.T) {
 		name: "local-pipeline",
 		localPipelines: []runtime.Object{
 			simplePipelineWithBaseSpec(),
-			dummyPipeline,
+			samplePipeline,
 		},
-		remotePipelines: []runtime.Object{simplePipeline(), dummyPipeline},
+		remotePipelines: []runtime.Object{simplePipeline(), samplePipeline},
 		ref: &v1.PipelineRef{
 			Name: "simple",
 		},
@@ -240,7 +240,7 @@ func TestGetPipelineFuncSpecAlreadyFetched(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	tektonclient := fake.NewSimpleClientset(simplePipeline(), dummyPipeline)
+	tektonclient := fake.NewSimpleClientset(simplePipeline(), samplePipeline)
 	kubeclient := fakek8s.NewSimpleClientset(&corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "default",
