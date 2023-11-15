@@ -2977,7 +2977,7 @@ status:
 		expectedReason string
 	}{{
 		description:    "ResourceQuotaConflictError does not fail taskrun",
-		err:            k8sapierrors.NewConflict(k8sruntimeschema.GroupResource{Group: "v1", Resource: "resourcequotas"}, "dummy", errors.New("operation cannot be fulfilled on resourcequotas dummy the object has been modified please apply your changes to the latest version and try again")),
+		err:            k8sapierrors.NewConflict(k8sruntimeschema.GroupResource{Group: "v1", Resource: "resourcequotas"}, "sample", errors.New("operation cannot be fulfilled on resourcequotas sample the object has been modified please apply your changes to the latest version and try again")),
 		expectedType:   apis.ConditionSucceeded,
 		expectedStatus: corev1.ConditionUnknown,
 		expectedReason: podconvert.ReasonPending,
@@ -3432,7 +3432,7 @@ spec:
 	taskRun := parse.MustParseV1TaskRun(t, `
 metadata:
   annotations:
-    pipeline.tekton.dev/affinity-assistant: dummy-affinity-assistant
+    pipeline.tekton.dev/affinity-assistant: sample-affinity-assistant
   name: taskrun-with-two-workspaces
   namespace: foo
 spec:

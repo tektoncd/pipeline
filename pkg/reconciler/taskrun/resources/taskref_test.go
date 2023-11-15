@@ -90,7 +90,8 @@ var (
 	unsignedV1Task = v1.Task{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1",
-			Kind:       "Task"},
+			Kind:       "Task",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "task",
 			Annotations: map[string]string{"foo": "bar"},
@@ -174,7 +175,7 @@ func TestLocalTaskRef(t *testing.T) {
 				},
 				&v1.Task{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "dummy",
+						Name:      "sample",
 						Namespace: "default",
 					},
 				},
@@ -201,7 +202,7 @@ func TestLocalTaskRef(t *testing.T) {
 				},
 				&v1beta1.ClusterTask{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "dummy-task",
+						Name: "sample-task",
 					},
 				},
 			},
@@ -322,7 +323,7 @@ func TestGetTaskFunc_Local(t *testing.T) {
 				},
 				&v1.Task{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "dummy",
+						Name: "sample",
 					},
 					TypeMeta: metav1.TypeMeta{
 						APIVersion: "tekton.dev/v1",
@@ -345,7 +346,7 @@ func TestGetTaskFunc_Local(t *testing.T) {
 				},
 				&v1beta1.ClusterTask{
 					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1alpha1", Kind: "ClusterTask"},
-					ObjectMeta: metav1.ObjectMeta{Name: "dummy"},
+					ObjectMeta: metav1.ObjectMeta{Name: "sample"},
 				},
 			},
 			ref: &v1.TaskRef{
@@ -785,55 +786,56 @@ func TestGetTaskFunc_V1beta1Task_VerifyNoError(t *testing.T) {
 		expected                   runtime.Object
 		expectedRefSource          *v1.RefSource
 		expectedVerificationResult *trustedresources.VerificationResult
-	}{{
-		name:                       "signed task with matching policy pass verification with enforce no match policy",
-		requester:                  requesterMatched,
-		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
-		policies:                   vps,
-		expected:                   signedV1Task,
-		expectedRefSource:          matchPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
-	}, {
-		name:                       "signed task with matching policy pass verification with warn no match policy",
-		requester:                  requesterMatched,
-		verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
-		policies:                   vps,
-		expected:                   signedV1Task,
-		expectedRefSource:          matchPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
-	}, {
-		name:                       "signed task with matching policy pass verification with ignore no match policy",
-		requester:                  requesterMatched,
-		verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
-		policies:                   vps,
-		expected:                   signedV1Task,
-		expectedRefSource:          matchPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
-	}, {
-		name:                       "warn unsigned task without matching policies",
-		requester:                  requesterUnmatched,
-		verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
-		policies:                   vps,
-		expected:                   unsignedV1Task,
-		expectedRefSource:          noMatchPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationWarn, Err: trustedresources.ErrNoMatchedPolicies},
-	}, {
-		name:                       "task fails warn mode policy return warn VerificationResult",
-		requester:                  requesterUnsignedMatched,
-		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
-		policies:                   vps,
-		expected:                   unsignedV1Task,
-		expectedRefSource:          warnPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationWarn, Err: trustedresources.ErrResourceVerificationFailed},
-	}, {
-		name:                       "ignore unsigned task without matching policies",
-		requester:                  requesterUnmatched,
-		verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
-		policies:                   vps,
-		expected:                   unsignedV1Task,
-		expectedRefSource:          noMatchPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationSkip},
-	},
+	}{
+		{
+			name:                       "signed task with matching policy pass verification with enforce no match policy",
+			requester:                  requesterMatched,
+			verificationNoMatchPolicy:  config.FailNoMatchPolicy,
+			policies:                   vps,
+			expected:                   signedV1Task,
+			expectedRefSource:          matchPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
+		}, {
+			name:                       "signed task with matching policy pass verification with warn no match policy",
+			requester:                  requesterMatched,
+			verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
+			policies:                   vps,
+			expected:                   signedV1Task,
+			expectedRefSource:          matchPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
+		}, {
+			name:                       "signed task with matching policy pass verification with ignore no match policy",
+			requester:                  requesterMatched,
+			verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
+			policies:                   vps,
+			expected:                   signedV1Task,
+			expectedRefSource:          matchPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
+		}, {
+			name:                       "warn unsigned task without matching policies",
+			requester:                  requesterUnmatched,
+			verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
+			policies:                   vps,
+			expected:                   unsignedV1Task,
+			expectedRefSource:          noMatchPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationWarn, Err: trustedresources.ErrNoMatchedPolicies},
+		}, {
+			name:                       "task fails warn mode policy return warn VerificationResult",
+			requester:                  requesterUnsignedMatched,
+			verificationNoMatchPolicy:  config.FailNoMatchPolicy,
+			policies:                   vps,
+			expected:                   unsignedV1Task,
+			expectedRefSource:          warnPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationWarn, Err: trustedresources.ErrResourceVerificationFailed},
+		}, {
+			name:                       "ignore unsigned task without matching policies",
+			requester:                  requesterUnmatched,
+			verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
+			policies:                   vps,
+			expected:                   unsignedV1Task,
+			expectedRefSource:          noMatchPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationSkip},
+		},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -848,7 +850,6 @@ func TestGetTaskFunc_V1beta1Task_VerifyNoError(t *testing.T) {
 			fn := resources.GetTaskFunc(ctx, k8sclient, tektonclient, tc.requester, tr, tr.Spec.TaskRef, "", "trusted-resources", "default", tc.policies)
 
 			resolvedTask, refSource, vr, err := fn(ctx, taskRef.Name)
-
 			if err != nil {
 				t.Fatalf("Received unexpected error ( %#v )", err)
 			}
@@ -912,56 +913,57 @@ func TestGetTaskFunc_V1beta1Task_VerifyError(t *testing.T) {
 		expected                       *v1.Task
 		expectedErr                    error
 		expectedVerificationResultType trustedresources.VerificationResultType
-	}{{
-		name:                           "unsigned task fails verification with fail no match policy",
-		requester:                      requesterUnsigned,
-		verificationNoMatchPolicy:      config.FailNoMatchPolicy,
-		expected:                       nil,
-		expectedErr:                    trustedresources.ErrResourceVerificationFailed,
-		expectedVerificationResultType: trustedresources.VerificationError,
-	}, {
-		name:                           "unsigned task fails verification with warn no match policy",
-		requester:                      requesterUnsigned,
-		verificationNoMatchPolicy:      config.WarnNoMatchPolicy,
-		expected:                       nil,
-		expectedErr:                    trustedresources.ErrResourceVerificationFailed,
-		expectedVerificationResultType: trustedresources.VerificationError,
-	}, {
-		name:                           "unsigned task fails verification with ignore no match policy",
-		requester:                      requesterUnsigned,
-		verificationNoMatchPolicy:      config.IgnoreNoMatchPolicy,
-		expected:                       nil,
-		expectedErr:                    trustedresources.ErrResourceVerificationFailed,
-		expectedVerificationResultType: trustedresources.VerificationError,
-	}, {
-		name:                           "modified task fails verification with fail no match policy",
-		requester:                      requesterModified,
-		verificationNoMatchPolicy:      config.FailNoMatchPolicy,
-		expected:                       nil,
-		expectedErr:                    trustedresources.ErrResourceVerificationFailed,
-		expectedVerificationResultType: trustedresources.VerificationError,
-	}, {
-		name:                           "modified task fails verification with warn no match policy",
-		requester:                      requesterModified,
-		verificationNoMatchPolicy:      config.WarnNoMatchPolicy,
-		expected:                       nil,
-		expectedErr:                    trustedresources.ErrResourceVerificationFailed,
-		expectedVerificationResultType: trustedresources.VerificationError,
-	}, {
-		name:                           "modified task fails verification with ignore no match policy",
-		requester:                      requesterModified,
-		verificationNoMatchPolicy:      config.IgnoreNoMatchPolicy,
-		expected:                       nil,
-		expectedErr:                    trustedresources.ErrResourceVerificationFailed,
-		expectedVerificationResultType: trustedresources.VerificationError,
-	}, {
-		name:                           "unmatched task fails with verification fail no match policy",
-		requester:                      requesterUnmatched,
-		verificationNoMatchPolicy:      config.FailNoMatchPolicy,
-		expected:                       nil,
-		expectedErr:                    trustedresources.ErrNoMatchedPolicies,
-		expectedVerificationResultType: trustedresources.VerificationError,
-	},
+	}{
+		{
+			name:                           "unsigned task fails verification with fail no match policy",
+			requester:                      requesterUnsigned,
+			verificationNoMatchPolicy:      config.FailNoMatchPolicy,
+			expected:                       nil,
+			expectedErr:                    trustedresources.ErrResourceVerificationFailed,
+			expectedVerificationResultType: trustedresources.VerificationError,
+		}, {
+			name:                           "unsigned task fails verification with warn no match policy",
+			requester:                      requesterUnsigned,
+			verificationNoMatchPolicy:      config.WarnNoMatchPolicy,
+			expected:                       nil,
+			expectedErr:                    trustedresources.ErrResourceVerificationFailed,
+			expectedVerificationResultType: trustedresources.VerificationError,
+		}, {
+			name:                           "unsigned task fails verification with ignore no match policy",
+			requester:                      requesterUnsigned,
+			verificationNoMatchPolicy:      config.IgnoreNoMatchPolicy,
+			expected:                       nil,
+			expectedErr:                    trustedresources.ErrResourceVerificationFailed,
+			expectedVerificationResultType: trustedresources.VerificationError,
+		}, {
+			name:                           "modified task fails verification with fail no match policy",
+			requester:                      requesterModified,
+			verificationNoMatchPolicy:      config.FailNoMatchPolicy,
+			expected:                       nil,
+			expectedErr:                    trustedresources.ErrResourceVerificationFailed,
+			expectedVerificationResultType: trustedresources.VerificationError,
+		}, {
+			name:                           "modified task fails verification with warn no match policy",
+			requester:                      requesterModified,
+			verificationNoMatchPolicy:      config.WarnNoMatchPolicy,
+			expected:                       nil,
+			expectedErr:                    trustedresources.ErrResourceVerificationFailed,
+			expectedVerificationResultType: trustedresources.VerificationError,
+		}, {
+			name:                           "modified task fails verification with ignore no match policy",
+			requester:                      requesterModified,
+			verificationNoMatchPolicy:      config.IgnoreNoMatchPolicy,
+			expected:                       nil,
+			expectedErr:                    trustedresources.ErrResourceVerificationFailed,
+			expectedVerificationResultType: trustedresources.VerificationError,
+		}, {
+			name:                           "unmatched task fails with verification fail no match policy",
+			requester:                      requesterUnmatched,
+			verificationNoMatchPolicy:      config.FailNoMatchPolicy,
+			expected:                       nil,
+			expectedErr:                    trustedresources.ErrNoMatchedPolicies,
+			expectedVerificationResultType: trustedresources.VerificationError,
+		},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1048,55 +1050,56 @@ func TestGetTaskFunc_V1Task_VerifyNoError(t *testing.T) {
 		expected                   runtime.Object
 		expectedRefSource          *v1.RefSource
 		expectedVerificationResult *trustedresources.VerificationResult
-	}{{
-		name:                       "signed task with matching policy pass verification with enforce no match policy",
-		requester:                  requesterMatched,
-		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
-		policies:                   vps,
-		expected:                   signedV1Task,
-		expectedRefSource:          matchPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
-	}, {
-		name:                       "signed task with matching policy pass verification with warn no match policy",
-		requester:                  requesterMatched,
-		verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
-		policies:                   vps,
-		expected:                   signedV1Task,
-		expectedRefSource:          matchPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
-	}, {
-		name:                       "signed task with matching policy pass verification with ignore no match policy",
-		requester:                  requesterMatched,
-		verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
-		policies:                   vps,
-		expected:                   signedV1Task,
-		expectedRefSource:          matchPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
-	}, {
-		name:                       "warn unsigned task without matching policies",
-		requester:                  requesterUnmatched,
-		verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
-		policies:                   vps,
-		expected:                   &unsignedV1Task,
-		expectedRefSource:          noMatchPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationWarn, Err: trustedresources.ErrNoMatchedPolicies},
-	}, {
-		name:                       "task fails warn mode policy return warn VerificationResult",
-		requester:                  requesterUnsignedMatched,
-		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
-		policies:                   vps,
-		expected:                   &unsignedV1Task,
-		expectedRefSource:          warnPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationWarn, Err: trustedresources.ErrResourceVerificationFailed},
-	}, {
-		name:                       "ignore unsigned task without matching policies",
-		requester:                  requesterUnmatched,
-		verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
-		policies:                   vps,
-		expected:                   &unsignedV1Task,
-		expectedRefSource:          noMatchPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationSkip},
-	},
+	}{
+		{
+			name:                       "signed task with matching policy pass verification with enforce no match policy",
+			requester:                  requesterMatched,
+			verificationNoMatchPolicy:  config.FailNoMatchPolicy,
+			policies:                   vps,
+			expected:                   signedV1Task,
+			expectedRefSource:          matchPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
+		}, {
+			name:                       "signed task with matching policy pass verification with warn no match policy",
+			requester:                  requesterMatched,
+			verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
+			policies:                   vps,
+			expected:                   signedV1Task,
+			expectedRefSource:          matchPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
+		}, {
+			name:                       "signed task with matching policy pass verification with ignore no match policy",
+			requester:                  requesterMatched,
+			verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
+			policies:                   vps,
+			expected:                   signedV1Task,
+			expectedRefSource:          matchPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
+		}, {
+			name:                       "warn unsigned task without matching policies",
+			requester:                  requesterUnmatched,
+			verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
+			policies:                   vps,
+			expected:                   &unsignedV1Task,
+			expectedRefSource:          noMatchPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationWarn, Err: trustedresources.ErrNoMatchedPolicies},
+		}, {
+			name:                       "task fails warn mode policy return warn VerificationResult",
+			requester:                  requesterUnsignedMatched,
+			verificationNoMatchPolicy:  config.FailNoMatchPolicy,
+			policies:                   vps,
+			expected:                   &unsignedV1Task,
+			expectedRefSource:          warnPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationWarn, Err: trustedresources.ErrResourceVerificationFailed},
+		}, {
+			name:                       "ignore unsigned task without matching policies",
+			requester:                  requesterUnmatched,
+			verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
+			policies:                   vps,
+			expected:                   &unsignedV1Task,
+			expectedRefSource:          noMatchPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationSkip},
+		},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1111,7 +1114,6 @@ func TestGetTaskFunc_V1Task_VerifyNoError(t *testing.T) {
 			fn := resources.GetTaskFunc(ctx, k8sclient, tektonclient, tc.requester, tr, tr.Spec.TaskRef, "", "default", "default", tc.policies)
 
 			gotResolvedTask, gotRefSource, gotVerificationResult, err := fn(ctx, taskRef.Name)
-
 			if err != nil {
 				t.Fatalf("Received unexpected error ( %#v )", err)
 			}
@@ -1175,54 +1177,55 @@ func TestGetTaskFunc_V1Task_VerifyError(t *testing.T) {
 		expected                   *v1.Task
 		expectedErr                error
 		expectedVerificationResult *trustedresources.VerificationResult
-	}{{
-		name:                       "unsigned task fails verification with fail no match policy",
-		requester:                  requesterUnsigned,
-		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
-		expected:                   nil,
-		expectedErr:                trustedresources.ErrResourceVerificationFailed,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationError, Err: trustedresources.ErrResourceVerificationFailed},
-	}, {
-		name:                       "unsigned task fails verification with warn no match policy",
-		requester:                  requesterUnsigned,
-		verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
-		expected:                   nil,
-		expectedErr:                trustedresources.ErrResourceVerificationFailed,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationError, Err: trustedresources.ErrResourceVerificationFailed},
-	}, {
-		name:                       "unsigned task fails verification with ignore no match policy",
-		requester:                  requesterUnsigned,
-		verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
-		expected:                   nil,
-		expectedErr:                trustedresources.ErrResourceVerificationFailed,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationError, Err: trustedresources.ErrResourceVerificationFailed},
-	}, {
-		name:                       "modified task fails verification with fail no match policy",
-		requester:                  requesterModified,
-		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
-		expected:                   nil,
-		expectedErr:                trustedresources.ErrResourceVerificationFailed,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationError, Err: trustedresources.ErrResourceVerificationFailed},
-	}, {
-		name:                       "modified task fails verification with warn no match policy",
-		requester:                  requesterModified,
-		verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
-		expected:                   nil,
-		expectedErr:                trustedresources.ErrResourceVerificationFailed,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationError, Err: trustedresources.ErrResourceVerificationFailed},
-	}, {
-		name:                       "modified task fails verification with ignore no match policy",
-		requester:                  requesterModified,
-		verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
-		expected:                   nil,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationError, Err: trustedresources.ErrResourceVerificationFailed},
-	}, {
-		name:                       "unmatched task fails with verification fail no match policy",
-		requester:                  requesterUnmatched,
-		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
-		expected:                   nil,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationError, Err: trustedresources.ErrNoMatchedPolicies},
-	},
+	}{
+		{
+			name:                       "unsigned task fails verification with fail no match policy",
+			requester:                  requesterUnsigned,
+			verificationNoMatchPolicy:  config.FailNoMatchPolicy,
+			expected:                   nil,
+			expectedErr:                trustedresources.ErrResourceVerificationFailed,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationError, Err: trustedresources.ErrResourceVerificationFailed},
+		}, {
+			name:                       "unsigned task fails verification with warn no match policy",
+			requester:                  requesterUnsigned,
+			verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
+			expected:                   nil,
+			expectedErr:                trustedresources.ErrResourceVerificationFailed,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationError, Err: trustedresources.ErrResourceVerificationFailed},
+		}, {
+			name:                       "unsigned task fails verification with ignore no match policy",
+			requester:                  requesterUnsigned,
+			verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
+			expected:                   nil,
+			expectedErr:                trustedresources.ErrResourceVerificationFailed,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationError, Err: trustedresources.ErrResourceVerificationFailed},
+		}, {
+			name:                       "modified task fails verification with fail no match policy",
+			requester:                  requesterModified,
+			verificationNoMatchPolicy:  config.FailNoMatchPolicy,
+			expected:                   nil,
+			expectedErr:                trustedresources.ErrResourceVerificationFailed,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationError, Err: trustedresources.ErrResourceVerificationFailed},
+		}, {
+			name:                       "modified task fails verification with warn no match policy",
+			requester:                  requesterModified,
+			verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
+			expected:                   nil,
+			expectedErr:                trustedresources.ErrResourceVerificationFailed,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationError, Err: trustedresources.ErrResourceVerificationFailed},
+		}, {
+			name:                       "modified task fails verification with ignore no match policy",
+			requester:                  requesterModified,
+			verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
+			expected:                   nil,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationError, Err: trustedresources.ErrResourceVerificationFailed},
+		}, {
+			name:                       "unmatched task fails with verification fail no match policy",
+			requester:                  requesterUnmatched,
+			verificationNoMatchPolicy:  config.FailNoMatchPolicy,
+			expected:                   nil,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationError, Err: trustedresources.ErrNoMatchedPolicies},
+		},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
