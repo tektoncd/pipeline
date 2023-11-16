@@ -56,7 +56,14 @@ You must install these tools:
 
 1. [`git`](https://help.github.com/articles/set-up-git/): For source control
 
-1. [`pre-commit`](https://pre-commit.com/#install): Git hook scripts
+1. [`pre-commit`](https://pre-commit.com/#install): pre-commit generates and runs locally a few checks (as [git-hooks](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks)) to ensure the pushed code is valid. All checks are performed prior to `git push` command.
+
+   ```shell
+   # After install step run pre-commit binary at the root directory in order to install git hooks.
+   pre-commit install
+   # Run the hooks against all of the files
+   pre-commit run --all-files
+   ```
 
 1. [`go`](https://golang.org/doc/install): The language Tekton Pipelines is
     built in.
