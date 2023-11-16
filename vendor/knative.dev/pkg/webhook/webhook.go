@@ -74,6 +74,17 @@ type Options struct {
 	// ControllerOptions encapsulates options for creating a new controller,
 	// including throttling and stats behavior.
 	ControllerOptions *controller.ControllerOptions
+
+	// EnableHTTP2 enables HTTP2 for webhooks.
+	// Mitigate CVE-2023-44487 by disabling HTTP2 by default until the Go
+	// standard library and golang.org/x/net are fully fixed.
+	// Right now, it is possible for authenticated and unauthenticated users to
+	// hold open HTTP2 connections and consume huge amounts of memory.
+	// See:
+	// * https://github.com/kubernetes/kubernetes/pull/121120
+	// * https://github.com/kubernetes/kubernetes/issues/121197
+	// * https://github.com/golang/go/issues/63417#issuecomment-1758858612
+	EnableHTTP2 bool
 }
 
 // Operation is the verb being operated on
@@ -237,12 +248,19 @@ func (wh *Webhook) Run(stop <-chan struct{}) error {
 		QuietPeriod: wh.Options.GracePeriod,
 	}
 
+	// If TLSNextProto is not nil, HTTP/2 support is not enabled automatically.
+	nextProto := map[string]func(*http.Server, *tls.Conn, http.Handler){}
+	if wh.Options.EnableHTTP2 {
+		nextProto = nil
+	}
+
 	server := &http.Server{
 		ErrorLog:          log.New(&zapWrapper{logger}, "", 0),
 		Handler:           drainer,
 		Addr:              fmt.Sprint(":", wh.Options.Port),
 		TLSConfig:         wh.tlsConfig,
 		ReadHeaderTimeout: time.Minute, //https://medium.com/a-journey-with-go/go-understand-and-mitigate-slowloris-attack-711c1b1403f6
+		TLSNextProto:      nextProto,
 	}
 
 	var serve = server.ListenAndServe
