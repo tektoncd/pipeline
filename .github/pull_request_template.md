@@ -10,6 +10,7 @@ As the author of this PR, please check off the items in this checklist:
 
 - [ ] Has [Docs](https://github.com/tektoncd/community/blob/main/standards.md#docs) if any changes are user facing, including updates to minimum requirements e.g. Kubernetes version bumps
 - [ ] Has [Tests](https://github.com/tektoncd/community/blob/main/standards.md#tests) included if any functionality added or changed
+- [ ] [pre-commit](https://github.com/tektoncd/pipeline/blob/main/DEVELOPMENT.md#install-tools) Passed
 - [ ] Follows the [commit message standard](https://github.com/tektoncd/community/blob/main/standards.md#commits)
 - [ ] Meets the [Tekton contributor standards](https://github.com/tektoncd/community/blob/main/standards.md) (including functionality, content, code)
 - [ ] Has a kind label. You can add one by adding a comment on this PR that contains `/kind <type>`. Valid types are bug, cleanup, design, documentation, feature, flake, misc, question, tep
