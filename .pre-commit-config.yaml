@@ -9,10 +9,12 @@ repos:
   - id: check-added-large-files
   - id: check-yaml
     args: ["--allow-multiple-documents"]
-    exclude: '(test\/gohelloworld\/gohelloworld-chart\/templates\/.*yaml$)' # Ignore yaml files with {{ }} cause they're not a valid
+    # Ignore yaml files with {{ }} cause they're not valid.
+    exclude: '(test\/gohelloworld\/gohelloworld-chart\/templates\/.*yaml$)' 
   - id: check-shebang-scripts-are-executable
   - id: check-json
   - id: detect-private-key
+    # Ignore test yaml files with private key.
     exclude: "(.*_test.go|^examples\/v1\/pipelineruns\/beta\/isolated-workspaces.yaml$)"
 - repo: local
   hooks:
@@ -24,7 +26,7 @@ repos:
     types: [go]
     pass_filenames: false
   - id: test-unit
-    name: "Unit testing"
+    name: "Run make test-unit"
     entry: make
     args: ["test-unit"]
     language: system
