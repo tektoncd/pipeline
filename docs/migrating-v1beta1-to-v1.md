@@ -11,7 +11,8 @@ weight: 4000
 - [Upgrading `PipelineRun.Timeout` to `PipelineRun.Timeouts`](#upgrading-pipelinerun.timeout-to-pipelinerun.timeouts)
 - [Replacing Resources from Task, TaskRun, Pipeline and PipelineRun](#replacing-resources-from-task,-taskrun,-pipeline-and-pipelinerun)
 - [Replacing `taskRef.bundle` and `pipelineRef.bundle` with Bundle Resolver](#replacing-taskRef.bundle-and-pipelineRef.bundle-with-bundle-resolver)
-- [Adding `TaskRunTemplate` in `PipelineRun.Spec`](#adding-taskruntemplate-to-pipelinerun.spec)
+- [Replacing ClusterTask with Remote Resolution](#replacing-clustertask-with-remote-resolution)
+- [Adding ServiceAccountName and PodTemplate under `TaskRunTemplate` in `PipelineRun.Spec`](#adding-serviceaccountname-and-podtemplate-under-taskruntemplate-in-pipelinerun.spec)
 
 
 This document describes the differences between `v1beta1` Tekton entities and their
@@ -35,8 +36,8 @@ In Tekton `v1`, the following fields have been changed:
 | `taskRun.status.resourcesResult` | removed from `TaskRun` |
 | `pipeline.spec.resources` | removed from `Pipeline` |
 | `pipelineRun.spec.resources` | removed from `PipelineRun` |
-| `pipelineRun.spec.serviceAccountName` | [`pipelineRun.spec.taskRunTemplate.serviceAccountName`](#adding-taskruntemplate-to-pipelinerun.spec) |
-| `pipelineRun.spec.podTemplate` | [`pipelineRun.spec.taskRunTemplate.podTemplate`](#adding-taskruntemplate-to-pipelinerun.spec) |
+| `pipelineRun.spec.serviceAccountName` | [`pipelineRun.spec.taskRunTemplate.serviceAccountName`](#adding-serviceaccountname-and-podtemplate-under-taskruntemplate-in-pipelinerun.spec) |
+| `pipelineRun.spec.podTemplate` | [`pipelineRun.spec.taskRunTemplate.podTemplate`](#adding-serviceaccountname-and-podtemplate-under-taskruntemplate-in-pipelinerun.spec) |
 | `task.spec.steps[].resources` | `task.spec.steps[].computeResources` |
 | `task.spec.stepTemplate.resources` | `task.spec.stepTemplate.computeResources` |
 | `task.spec.sidecars[].resources` | `task.spec.sidecars[].computeResources` |
@@ -45,10 +46,10 @@ In Tekton `v1`, the following fields have been changed:
 | `taskRun.spec.sidecarSpecs[].resources` | `taskRun.spec.sidecarSpecs[].computeResources` |
 | `taskRun.spec.stepSpecs[].resources` | `taskRun.spec.stepSpecs[].computeResources` |
 
-## Replacing `resources` from Task, TaskRun, Pipeline and PipelineRun
+## Replacing `resources` from Task, TaskRun, Pipeline and PipelineRun <a id='replacing-resources-from-task,-taskrun,-pipeline-and-pipelinerun'> </a>
 `PipelineResources` and the `resources` fields of Task, TaskRun, Pipeline and PipelineRun have been removed. Please use `Tasks` instead. For more information, see [Replacing PipelineResources](https://github.com/tektoncd/pipeline/blob/main/docs/pipelineresources.md)
 
-## Replacing `taskRef.bundle` and `pipelineRef.bundle` with Bundle Resolver
+## Replacing `taskRef.bundle` and `pipelineRef.bundle` with Bundle Resolver <a id='replacing-taskRef.bundle-and-pipelineRef.bundle-with-bundle-resolver'> </a>
 Bundle resolver in remote resolution should be used instead of `taskRun.spec.taskRef.bundle` and `pipelineRun.spec.pipelineRef.bundle`.
 
 The [`enable-bundles-resolver`](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#customizing-the-pipelines-controller-behavior) feature flag must be enabled to use this feature.
@@ -115,7 +116,7 @@ spec:
 
 For more information, see [Remote resolution](https://github.com/tektoncd/community/blob/main/teps/0060-remote-resource-resolution.md).
 
-## Adding TaskRunTemplate to PipelineRun.Spec
+## Adding `ServiceAccountName` and `PodTemplate` under TaskRunTemplate in PipelineRun.Spec <a id='adding-serviceaccountname-and-podtemplate-under-taskruntemplate-in-pipelinerun.spec'></a>
 `ServiceAccountName` and `PodTemplate` are moved to `TaskRunTemplate` as `TaskRunTemplate.ServiceAccountName` and `TaskRunTemplate.PodTemplate` so that users can specify common configuration in `TaskRunTemplate` which will apply to all the TaskRuns.
 
 ```yaml
