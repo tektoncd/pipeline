@@ -747,29 +747,203 @@ func TestIsContextCanceledError(t *testing.T) {
 	}
 }
 
+func TestTerminationReason(t *testing.T) {
+	tests := []struct {
+		desc              string
+		waitFiles         []string
+		onError           string
+		runError          error
+		expectedRunErr    error
+		expectedExitCode  *string
+		expectedWrotefile *string
+		expectedStatus    []result.RunResult
+	}{
+		{
+			desc:              "reason completed",
+			expectedExitCode:  ptr("0"),
+			expectedWrotefile: ptr("postfile"),
+			expectedStatus: []result.RunResult{
+				{
+					Key:        "StartedAt",
+					ResultType: result.InternalTektonResultType,
+				},
+			},
+		},
+		{
+			desc:              "reason continued",
+			onError:           ContinueOnError,
+			runError:          ptr(exec.ExitError{}),
+			expectedRunErr:    ptr(exec.ExitError{}),
+			expectedExitCode:  ptr("-1"),
+			expectedWrotefile: ptr("postfile"),
+			expectedStatus: []result.RunResult{
+				{
+					Key:        "ExitCode",
+					Value:      "-1",
+					ResultType: result.InternalTektonResultType,
+				},
+				{
+					Key:        "StartedAt",
+					ResultType: result.InternalTektonResultType,
+				},
+			},
+		},
+		{
+			desc:              "reason errored",
+			runError:          ptr(exec.Error{}),
+			expectedRunErr:    ptr(exec.Error{}),
+			expectedWrotefile: ptr("postfile.err"),
+			expectedStatus: []result.RunResult{
+				{
+					Key:        "StartedAt",
+					ResultType: result.InternalTektonResultType,
+				},
+			},
+		},
+		{
+			desc:              "reason timedout",
+			runError:          ErrContextDeadlineExceeded,
+			expectedRunErr:    ErrContextDeadlineExceeded,
+			expectedWrotefile: ptr("postfile.err"),
+			expectedStatus: []result.RunResult{
+				{
+					Key:        "Reason",
+					Value:      pod.TerminationReasonTimeoutExceeded,
+					ResultType: result.InternalTektonResultType,
+				},
+				{
+					Key:        "StartedAt",
+					ResultType: result.InternalTektonResultType,
+				},
+			},
+		},
+		{
+			desc:              "reason skipped",
+			waitFiles:         []string{"file"},
+			expectedRunErr:    ErrSkipPreviousStepFailed,
+			expectedWrotefile: ptr("postfile.err"),
+			expectedStatus: []result.RunResult{
+				{
+					Key:        "Reason",
+					Value:      pod.TerminationReasonSkipped,
+					ResultType: result.InternalTektonResultType,
+				},
+				{
+					Key:        "StartedAt",
+					ResultType: result.InternalTektonResultType,
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			fw, fr, fpw := &fakeWaiter{skipStep: true}, &fakeRunner{runError: test.runError}, &fakePostWriter{}
+
+			tmpFolder, err := os.MkdirTemp("", "")
+			if err != nil {
+				t.Fatalf("unexpected error creating temporary folder: %v", err)
+			} else {
+				defer os.RemoveAll(tmpFolder)
+			}
+
+			terminationFile, err := os.CreateTemp(tmpFolder, "termination")
+			if err != nil {
+				t.Fatalf("unexpected error creating termination file: %v", err)
+			}
+
+			e := Entrypointer{
+				Command:             append([]string{}, []string{}...),
+				WaitFiles:           test.waitFiles,
+				PostFile:            "postfile",
+				Waiter:              fw,
+				Runner:              fr,
+				PostWriter:          fpw,
+				TerminationPath:     terminationFile.Name(),
+				BreakpointOnFailure: false,
+				StepMetadataDir:     tmpFolder,
+				OnError:             test.onError,
+			}
+
+			err = e.Go()
+
+			if d := cmp.Diff(test.expectedRunErr, err); d != "" {
+				t.Fatalf("entrypoint error doesn't match %s", diff.PrintWantGot(d))
+			}
+
+			if d := cmp.Diff(test.expectedExitCode, fpw.exitCode); d != "" {
+				t.Fatalf("exitCode doesn't match %s", diff.PrintWantGot(d))
+			}
+
+			if d := cmp.Diff(test.expectedWrotefile, fpw.wrote); d != "" {
+				t.Fatalf("wrote file doesn't match %s", diff.PrintWantGot(d))
+			}
+
+			termination, err := getTermination(t, terminationFile.Name())
+			if err != nil {
+				t.Fatalf("error getting termination output: %v", err)
+			}
+
+			if d := cmp.Diff(test.expectedStatus, termination); d != "" {
+				t.Fatalf("termination status doesn't match %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func getTermination(t *testing.T, terminationFile string) ([]result.RunResult, error) {
+	t.Helper()
+	fileContents, err := os.ReadFile(terminationFile)
+	if err != nil {
+		return nil, err
+	}
+
+	logger, _ := logging.NewLogger("", "status")
+	terminationStatus, err := termination.ParseMessage(logger, string(fileContents))
+	if err != nil {
+		return nil, err
+	}
+
+	for i, termination := range terminationStatus {
+		if termination.Key == "StartedAt" {
+			terminationStatus[i].Value = ""
+		}
+	}
+
+	return terminationStatus, nil
+}
+
 type fakeWaiter struct {
 	sync.Mutex
 	waited             []string
 	waitCancelDuration time.Duration
+	skipStep           bool
 }
 
 func (f *fakeWaiter) Wait(ctx context.Context, file string, _ bool, _ bool) error {
-	if file == pod.DownwardMountCancelFile && f.waitCancelDuration > 0 {
+	switch {
+	case file == pod.DownwardMountCancelFile && f.waitCancelDuration > 0:
 		time.Sleep(f.waitCancelDuration)
-	} else if file == pod.DownwardMountCancelFile {
+	case file == pod.DownwardMountCancelFile:
 		return nil
+	case f.skipStep:
+		return ErrSkipPreviousStepFailed
 	}
+
 	f.Lock()
 	f.waited = append(f.waited, file)
 	f.Unlock()
 	return nil
 }
 
-type fakeRunner struct{ args *[]string }
+type fakeRunner struct {
+	args     *[]string
+	runError error
+}
 
 func (f *fakeRunner) Run(ctx context.Context, args ...string) error {
 	f.args = &args
-	return nil
+	return f.runError
 }
 
 type fakePostWriter struct {
@@ -902,4 +1076,8 @@ func getMockSpireClient(ctx context.Context) (spire.EntrypointerAPIClient, spire
 	}
 
 	return sc, sc, tr
+}
+
+func ptr[T any](value T) *T {
+	return &value
 }

@@ -21,6 +21,7 @@ package test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -31,8 +32,10 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/test/parse"
+	jsonpatch "gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
 )
@@ -114,7 +117,7 @@ spec:
 		ContainerState: corev1.ContainerState{
 			Terminated: &corev1.ContainerStateTerminated{
 				ExitCode: 1,
-				Reason:   "Error",
+				Reason:   "Skipped",
 			},
 		},
 		Name:      "unnamed-2",
@@ -208,4 +211,271 @@ spec:
 	if d := cmp.Diff(taskrun.Status.TaskSpec, &task.Spec); d != "" {
 		t.Fatalf("-got, +want: %v", d)
 	}
+}
+
+func TestTaskRunStepsTerminationReasons(t *testing.T) {
+	ctx := context.Background()
+	c, namespace := setup(ctx, t)
+	defer tearDown(ctx, t, c, namespace)
+	fqImageName := getTestImage(busyboxImage)
+
+	tests := []struct {
+		description        string
+		shouldSucceed      bool
+		taskRun            string
+		shouldCancel       bool
+		expectedStepStatus []v1.StepState
+	}{
+		{
+			description:   "termination completed",
+			shouldSucceed: true,
+			taskRun: `
+metadata:
+  name: %v
+  namespace: %v
+spec:
+  taskSpec:
+    steps:
+    - image: %v
+      name: first
+      command: ['/bin/sh']
+      args: ['-c', 'echo hello']`,
+			expectedStepStatus: []v1.StepState{
+				{
+					Container: "step-first",
+					Name:      "first",
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 0,
+							Reason:   "Completed",
+						},
+					},
+				},
+			},
+		},
+		{
+			description:   "termination continued",
+			shouldSucceed: true,
+			taskRun: `
+metadata:
+  name: %v
+  namespace: %v
+spec:
+  taskSpec:
+    steps:
+    - image: %v
+      onError: continue
+      name: first
+      command: ['/bin/sh']
+      args: ['-c', 'echo hello; exit 1']`,
+			expectedStepStatus: []v1.StepState{
+				{
+					Container: "step-first",
+					Name:      "first",
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 1,
+							Reason:   "Continued",
+						},
+					},
+				},
+			},
+		},
+		{
+			description:   "termination errored",
+			shouldSucceed: false,
+			taskRun: `
+metadata:
+  name: %v
+  namespace: %v
+spec:
+  taskSpec:
+    steps:
+    - image: %v
+      name: first
+      command: ['/bin/sh']
+      args: ['-c', 'echo hello; exit 1']`,
+			expectedStepStatus: []v1.StepState{
+				{
+					Container: "step-first",
+					Name:      "first",
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 1,
+							Reason:   "Error",
+						},
+					},
+				},
+			},
+		},
+		{
+			description:   "termination timedout",
+			shouldSucceed: false,
+			taskRun: `
+metadata:
+  name: %v
+  namespace: %v
+spec:
+  taskSpec:
+    steps:
+    - image: %v
+      name: first
+      timeout: 1s
+      command: ['/bin/sh']
+      args: ['-c', 'echo hello; sleep 5s']`,
+			expectedStepStatus: []v1.StepState{
+				{
+					Container: "step-first",
+					Name:      "first",
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 1,
+							Reason:   "TimeoutExceeded",
+						},
+					},
+				},
+			},
+		},
+		{
+			description:   "termination skipped",
+			shouldSucceed: false,
+			taskRun: `
+metadata:
+  name: %v
+  namespace: %v
+spec:
+  taskSpec:
+    steps:
+    - image: %v
+      name: first
+      command: ['/bin/sh']
+      args: ['-c', 'echo hello; exit 1']
+    - image: %v
+      name: second
+      command: ['/bin/sh']
+      args: ['-c', 'echo hello']`,
+			expectedStepStatus: []v1.StepState{
+				{
+					Container: "step-first",
+					Name:      "first",
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 1,
+							Reason:   "Error",
+						},
+					},
+				},
+				{
+					Container: "step-second",
+					Name:      "second",
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 1,
+							Reason:   "Skipped",
+						},
+					},
+				},
+			},
+		},
+		{
+			description:   "termination cancelled",
+			shouldSucceed: false,
+			shouldCancel:  true,
+			taskRun: `
+metadata:
+  name: %v
+  namespace: %v
+spec:
+  taskSpec:
+    steps:
+    - image: %v
+      name: first
+      command: ['/bin/sh']
+      args: ['-c', 'sleep infinity; echo hello']`,
+			expectedStepStatus: []v1.StepState{
+				{
+					Container: "step-first",
+					Name:      "first",
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 1,
+							Reason:   "TaskRunCancelled",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.description, func(t *testing.T) {
+			taskRunName := helpers.ObjectNameForTest(t)
+			values := []interface{}{taskRunName, namespace}
+			for range test.expectedStepStatus {
+				values = append(values, fqImageName)
+			}
+			taskRunYaml := fmt.Sprintf(test.taskRun, values...)
+			taskRun := parse.MustParseV1TaskRun(t, taskRunYaml)
+
+			if _, err := c.V1TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
+				t.Fatalf("Failed to create TaskRun: %s", err)
+			}
+
+			expectedTaskRunState := TaskRunFailed(taskRunName)
+			finalStatus := "Failed"
+			if test.shouldSucceed {
+				expectedTaskRunState = TaskRunSucceed(taskRunName)
+				finalStatus = "Succeeded"
+			}
+
+			if test.shouldCancel {
+				expectedTaskRunState = FailedWithReason("TaskRunCancelled", taskRunName)
+				if err := cancelTaskRun(t, ctx, taskRunName, c); err != nil {
+					t.Fatalf("Error cancelling taskrun: %s", err)
+				}
+			}
+
+			err := WaitForTaskRunState(ctx, c, taskRunName, expectedTaskRunState, finalStatus, v1Version)
+			if err != nil {
+				t.Fatalf("Error waiting for TaskRun to finish: %s", err)
+			}
+
+			taskRunState, err := c.V1TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Couldn't get expected TaskRun %s: %s", taskRunName, err)
+			}
+
+			ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID", "Message")
+			ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID")
+			if d := cmp.Diff(taskRunState.Status.Steps, test.expectedStepStatus, ignoreTerminatedFields, ignoreStepFields); d != "" {
+				t.Fatalf("-got, +want: %v", d)
+			}
+		})
+	}
+}
+
+func cancelTaskRun(t *testing.T, ctx context.Context, taskRunName string, c *clients) error {
+	t.Helper()
+
+	err := WaitForTaskRunState(ctx, c, taskRunName, Running(taskRunName), "Running", v1Version)
+	if err != nil {
+		t.Fatalf("Error waiting for TaskRun to start running before cancelling: %s", err)
+	}
+
+	patches := []jsonpatch.JsonPatchOperation{{
+		Operation: "add",
+		Path:      "/spec/status",
+		Value:     "TaskRunCancelled",
+	}}
+
+	patchBytes, err := json.Marshal(patches)
+	if err != nil {
+		return err
+	}
+
+	if _, err := c.V1TaskRunClient.Patch(ctx, taskRunName, types.JSONPatchType, patchBytes, metav1.PatchOptions{}, ""); err != nil {
+		return err
+	}
+
+	return nil
 }

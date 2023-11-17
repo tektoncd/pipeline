@@ -53,11 +53,19 @@ func (e ContextError) Error() string {
 	return string(e)
 }
 
+type SkipError string
+
+func (e SkipError) Error() string {
+	return string(e)
+}
+
 var (
 	// ErrContextDeadlineExceeded is the error returned when the context deadline is exceeded
 	ErrContextDeadlineExceeded = ContextError(context.DeadlineExceeded.Error())
 	// ErrContextCanceled is the error returned when the context is canceled
 	ErrContextCanceled = ContextError(context.Canceled.Error())
+	// ErrSkipPreviousStepFailed is the error returned when the step is skipped due to previous step error
+	ErrSkipPreviousStepFailed = SkipError("error file present, bail and skip the step")
 )
 
 // IsContextDeadlineError determine whether the error is context deadline
@@ -165,6 +173,11 @@ func (e Entrypointer) Go() error {
 				Value:      time.Now().Format(timeFormat),
 				ResultType: result.InternalTektonResultType,
 			})
+
+			if errors.Is(err, ErrSkipPreviousStepFailed) {
+				output = append(output, e.outputRunResult(pod.TerminationReasonSkipped))
+			}
+
 			return err
 		}
 	}
@@ -194,26 +207,18 @@ func (e Entrypointer) Go() error {
 			}
 		}()
 		err = e.Runner.Run(ctx, e.Command...)
-		if errors.Is(err, ErrContextDeadlineExceeded) {
-			output = append(output, result.RunResult{
-				Key:        "Reason",
-				Value:      "TimeoutExceeded",
-				ResultType: result.InternalTektonResultType,
-			})
-		}
 	}
 
 	var ee *exec.ExitError
 	switch {
 	case err != nil && errors.Is(err, ErrContextCanceled):
 		logger.Info("Step was canceling")
-		output = append(output, result.RunResult{
-			Key:        "Reason",
-			Value:      "Cancelled",
-			ResultType: result.InternalTektonResultType,
-		})
+		output = append(output, e.outputRunResult(pod.TerminationReasonCancelled))
 		e.WritePostFile(e.PostFile, ErrContextCanceled)
 		e.WriteExitCodeFile(e.StepMetadataDir, syscall.SIGKILL.String())
+	case errors.Is(err, ErrContextDeadlineExceeded):
+		e.WritePostFile(e.PostFile, err)
+		output = append(output, e.outputRunResult(pod.TerminationReasonTimeoutExceeded))
 	case err != nil && e.BreakpointOnFailure:
 		logger.Info("Skipping writing to PostFile")
 	case e.OnError == ContinueOnError && errors.As(err, &ee):
@@ -335,4 +340,13 @@ func (e Entrypointer) waitingCancellation(ctx context.Context, cancel context.Ca
 	}
 	cancel()
 	return nil
+}
+
+// outputRunResult returns the run reason for a termination
+func (e Entrypointer) outputRunResult(terminationReason string) result.RunResult {
+	return result.RunResult{
+		Key:        "Reason",
+		Value:      terminationReason,
+		ResultType: result.InternalTektonResultType,
+	}
 }

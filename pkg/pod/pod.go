@@ -61,6 +61,18 @@ const (
 
 	// osSelectorLabel is the label Kubernetes uses for OS-specific workloads (https://kubernetes.io/docs/reference/labels-annotations-taints/#kubernetes-io-os)
 	osSelectorLabel = "kubernetes.io/os"
+
+	// TerminationReasonTimeoutExceeded indicates a step execution timed out.
+	TerminationReasonTimeoutExceeded = "TimeoutExceeded"
+
+	// TerminationReasonSkipped indicates a step execution was skipped due to previous step failed.
+	TerminationReasonSkipped = "Skipped"
+
+	// TerminationReasonContinued indicates a step errored but was ignored since onError was set to continue.
+	TerminationReasonContinued = "Continued"
+
+	// TerminationReasonCancelled indicates a step was cancelled.
+	TerminationReasonCancelled = "Cancelled"
 )
 
 // These are effectively const, but Go doesn't have such an annotation.

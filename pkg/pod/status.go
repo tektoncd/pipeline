@@ -311,6 +311,9 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 				if exitCode != nil {
 					state.Terminated.ExitCode = *exitCode
 				}
+
+				terminationFromResults := extractTerminationReasonFromResults(results)
+				state.Terminated.Reason = getTerminationReason(state.Terminated.Reason, terminationFromResults, exitCode)
 			}
 		}
 		trs.Steps = append(trs.Steps, v1.StepState{
@@ -488,6 +491,27 @@ func extractExitCodeFromResults(results []result.RunResult) (*int32, error) {
 	return nil, nil //nolint:nilnil // would be more ergonomic to return a sentinel error
 }
 
+func extractTerminationReasonFromResults(results []result.RunResult) string {
+	for _, r := range results {
+		if r.ResultType == result.InternalTektonResultType && r.Key == "Reason" {
+			return r.Value
+		}
+	}
+	return ""
+}
+
+func getTerminationReason(terminatedStateReason string, terminationFromResults string, exitCodeFromResults *int32) string {
+	if terminationFromResults != "" {
+		return terminationFromResults
+	}
+
+	if exitCodeFromResults != nil {
+		return TerminationReasonContinued
+	}
+
+	return terminatedStateReason
+}
+
 func updateCompletedTaskRunStatus(logger *zap.SugaredLogger, trs *v1.TaskRunStatus, pod *corev1.Pod, onError v1.PipelineTaskOnErrorType) {
 	if DidTaskRunFail(pod) {
 		msg := getFailureMessage(logger, pod)
@@ -612,7 +636,7 @@ func extractContainerFailureMessage(logger *zap.SugaredLogger, status corev1.Con
 		msg := status.State.Terminated.Message
 		r, _ := termination.ParseMessage(logger, msg)
 		for _, runResult := range r {
-			if runResult.ResultType == result.InternalTektonResultType && runResult.Key == "Reason" && runResult.Value == "TimeoutExceeded" {
+			if runResult.ResultType == result.InternalTektonResultType && runResult.Key == "Reason" && runResult.Value == TerminationReasonTimeoutExceeded {
 				return fmt.Sprintf("%q exited because the step exceeded the specified timeout limit", status.Name)
 			}
 		}
