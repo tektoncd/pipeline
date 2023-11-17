@@ -20,10 +20,8 @@ limitations under the License.
 package test
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 	"sync"
