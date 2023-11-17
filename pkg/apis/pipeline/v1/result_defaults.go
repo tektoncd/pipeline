@@ -37,3 +37,26 @@ func (tr *TaskResult) SetDefaults(context.Context) {
 		}
 	}
 }
+
+// SetDefaults set the default type for StepResult
+func (sr *StepResult) SetDefaults(context.Context) {
+	if sr == nil {
+		return
+	}
+	if sr.Type == "" {
+		if sr.Properties != nil {
+			// Set type to object if `properties` is given
+			sr.Type = ResultsTypeObject
+		} else {
+			// ResultsTypeString is the default value
+			sr.Type = ResultsTypeString
+		}
+	}
+
+	// Set default type of object values to string
+	for key, propertySpec := range sr.Properties {
+		if propertySpec.Type == "" {
+			sr.Properties[key] = PropertySpec{Type: ParamType(ResultsTypeString)}
+		}
+	}
+}

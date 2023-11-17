@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -259,16 +260,56 @@ func validateSteps(ctx context.Context, steps []Step) (errs *apis.FieldError) {
 	names := sets.NewString()
 	for idx, s := range steps {
 		errs = errs.Also(validateStep(ctx, s, names).ViaIndex(idx))
+		if s.Results != nil {
+			errs = errs.Also(ValidateStepResultsVariables(ctx, s.Results, s.Script).ViaIndex(idx))
+			errs = errs.Also(ValidateStepResults(ctx, s.Results).ViaIndex(idx).ViaField("results"))
+		}
 	}
 	return errs
 }
 
+// isCreateOrUpdateAndDiverged checks if the webhook event was create or update
+// if create, it returns true.
+// if update, it checks if the step results have diverged and returns if diverged.
+// if neither, it returns false.
+func isCreateOrUpdateAndDiverged(ctx context.Context, s Step) bool {
+	if apis.IsInCreate(ctx) {
+		return true
+	}
+	if apis.IsInUpdate(ctx) {
+		baseline := apis.GetBaseline(ctx)
+		var baselineStep Step
+		switch o := baseline.(type) {
+		case *TaskRun:
+			if o.Spec.TaskSpec != nil {
+				for _, step := range o.Spec.TaskSpec.Steps {
+					if s.Name == step.Name {
+						baselineStep = step
+						break
+					}
+				}
+			}
+		default:
+			// the baseline is not a taskrun.
+			// return true so that the validation can happen
+			return true
+		}
+		// If an update event, check if the results have diverged from the baseline
+		// this way, the feature flag check wont happen.
+		// This will avoid issues like https://github.com/tektoncd/pipeline/issues/5203
+		// when the feature is turned off mid-run.
+		diverged := !reflect.DeepEqual(s.Results, baselineStep.Results)
+		return diverged
+	}
+	return false
+}
+
 func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.FieldError) {
 	if s.Ref != nil {
-		if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions {
+		if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions && isCreateOrUpdateAndDiverged(ctx, s) {
 			return apis.ErrGeneric("feature flag %s should be set to true to reference StepActions in Steps.", config.EnableStepActions)
 		}
-		errs = s.Ref.Validate(ctx)
+		errs = errs.Also(s.Ref.Validate(ctx))
 		if s.Image != "" {
 			errs = errs.Also(&apis.FieldError{
 				Message: "image cannot be used with Ref",
@@ -305,12 +346,23 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 				Paths:   []string{"volumeMounts"},
 			})
 		}
+		if len(s.Results) > 0 {
+			errs = errs.Also(&apis.FieldError{
+				Message: "results cannot be used with Ref",
+				Paths:   []string{"results"},
+			})
+		}
 	} else {
 		if len(s.Params) > 0 {
 			errs = errs.Also(&apis.FieldError{
 				Message: "params cannot be used without Ref",
 				Paths:   []string{"params"},
 			})
+		}
+		if len(s.Results) > 0 {
+			if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions && isCreateOrUpdateAndDiverged(ctx, s) {
+				return apis.ErrGeneric("feature flag %s should be set to true in order to use Results in Steps.", config.EnableStepActions)
+			}
 		}
 		if s.Image == "" {
 			errs = errs.Also(apis.ErrMissingField("Image"))
@@ -672,4 +724,23 @@ func (ts *TaskSpec) GetIndexingReferencesToArrayParams() sets.String {
 		arrayIndexParamRefs = append(arrayIndexParamRefs, extractArrayIndexingParamRefs(p)...)
 	}
 	return sets.NewString(arrayIndexParamRefs...)
+}
+
+// ValidateStepResults validates that all of the declared StepResults are valid.
+func ValidateStepResults(ctx context.Context, results []StepResult) (errs *apis.FieldError) {
+	for index, result := range results {
+		errs = errs.Also(result.Validate(ctx).ViaIndex(index))
+	}
+	return errs
+}
+
+// ValidateStepResultsVariables validates if the StepResults referenced in step script are defined in step's results.
+func ValidateStepResultsVariables(ctx context.Context, results []StepResult, script string) (errs *apis.FieldError) {
+	resultsNames := sets.NewString()
+	for _, r := range results {
+		resultsNames.Insert(r.Name)
+	}
+	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(script, "step.results", resultsNames).ViaField("script"))
+	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(script, "results", resultsNames).ViaField("script"))
+	return errs
 }

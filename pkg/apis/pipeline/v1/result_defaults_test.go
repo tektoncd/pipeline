@@ -93,3 +93,75 @@ func TestTaskResult_SetDefaults(t *testing.T) {
 		})
 	}
 }
+
+func TestStepResult_SetDefaults(t *testing.T) {
+	tests := []struct {
+		name   string
+		before *v1.StepResult
+		after  *v1.StepResult
+	}{{
+		name:   "empty taskresult",
+		before: nil,
+		after:  nil,
+	}, {
+		name: "inferred string type",
+		before: &v1.StepResult{
+			Name: "resultname",
+		},
+		after: &v1.StepResult{
+			Name: "resultname",
+			Type: v1.ResultsTypeString,
+		},
+	}, {
+		name: "string type specified not changed",
+		before: &v1.StepResult{
+			Name: "resultname",
+			Type: v1.ResultsTypeString,
+		},
+		after: &v1.StepResult{
+			Name: "resultname",
+			Type: v1.ResultsTypeString,
+		},
+	}, {
+		name: "array type specified not changed",
+		before: &v1.StepResult{
+			Name: "resultname",
+			Type: v1.ResultsTypeArray,
+		},
+		after: &v1.StepResult{
+			Name: "resultname",
+			Type: v1.ResultsTypeArray,
+		},
+	}, {
+		name: "inferred object type from properties - PropertySpec type is provided",
+		before: &v1.StepResult{
+			Name:       "resultname",
+			Properties: map[string]v1.PropertySpec{"key1": {Type: v1.ParamTypeString}},
+		},
+		after: &v1.StepResult{
+			Name:       "resultname",
+			Type:       v1.ResultsTypeObject,
+			Properties: map[string]v1.PropertySpec{"key1": {Type: v1.ParamTypeString}},
+		},
+	}, {
+		name: "inferred type from properties - PropertySpec type is not provided",
+		before: &v1.StepResult{
+			Name:       "resultname",
+			Properties: map[string]v1.PropertySpec{"key1": {}},
+		},
+		after: &v1.StepResult{
+			Name:       "resultname",
+			Type:       v1.ResultsTypeObject,
+			Properties: map[string]v1.PropertySpec{"key1": {Type: v1.ParamTypeString}},
+		},
+	}}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			tc.before.SetDefaults(ctx)
+			if d := cmp.Diff(tc.after, tc.before); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}

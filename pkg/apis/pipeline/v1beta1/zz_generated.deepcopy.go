@@ -24,6 +24,7 @@ package v1beta1
 import (
 	config "github.com/tektoncd/pipeline/pkg/apis/config"
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	runv1beta1 "github.com/tektoncd/pipeline/pkg/apis/run/v1beta1"
 	result "github.com/tektoncd/pipeline/pkg/result"
@@ -1765,6 +1766,13 @@ func (in *Step) DeepCopyInto(out *Step) {
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
 		*out = make(Params, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.Results != nil {
+		in, out := &in.Results, &out.Results
+		*out = make([]pipelinev1.StepResult, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

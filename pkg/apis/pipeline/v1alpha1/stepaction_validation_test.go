@@ -67,7 +67,7 @@ func TestStepActionSpecValidate(t *testing.T) {
 		Script       string
 		Env          []corev1.EnvVar
 		Params       []v1.ParamSpec
-		Results      []v1alpha1.StepActionResult
+		Results      []v1.StepResult
 		VolumeMounts []corev1.VolumeMount
 	}
 	tests := []struct {
@@ -209,7 +209,7 @@ func TestStepActionSpecValidate(t *testing.T) {
 		fields: fields{
 			Image: "my-image",
 			Args:  []string{"arg"},
-			Results: []v1alpha1.StepActionResult{{
+			Results: []v1.StepResult{{
 				Name:        "MY-RESULT",
 				Description: "my great result",
 			}},
@@ -219,7 +219,7 @@ func TestStepActionSpecValidate(t *testing.T) {
 		fields: fields{
 			Image: "my-image",
 			Args:  []string{"arg"},
-			Results: []v1alpha1.StepActionResult{{
+			Results: []v1.StepResult{{
 				Name:        "MY-RESULT",
 				Type:        "string",
 				Description: "my great result",
@@ -230,7 +230,7 @@ func TestStepActionSpecValidate(t *testing.T) {
 		fields: fields{
 			Image: "my-image",
 			Args:  []string{"arg"},
-			Results: []v1alpha1.StepActionResult{{
+			Results: []v1.StepResult{{
 				Name:        "MY-RESULT",
 				Type:        v1.ResultsTypeArray,
 				Description: "my great result",
@@ -241,7 +241,7 @@ func TestStepActionSpecValidate(t *testing.T) {
 		fields: fields{
 			Image: "my-image",
 			Args:  []string{"arg"},
-			Results: []v1alpha1.StepActionResult{{
+			Results: []v1.StepResult{{
 				Name:        "MY-RESULT",
 				Type:        v1.ResultsTypeObject,
 				Description: "my great result",
@@ -310,7 +310,7 @@ func TestStepActionValidateError(t *testing.T) {
 		Script       string
 		Env          []corev1.EnvVar
 		Params       []v1.ParamSpec
-		Results      []v1alpha1.StepActionResult
+		Results      []v1.StepResult
 		VolumeMounts []corev1.VolumeMount
 	}
 	tests := []struct {
@@ -590,7 +590,7 @@ func TestStepActionSpecValidateError(t *testing.T) {
 		Script  string
 		Env     []corev1.EnvVar
 		Params  []v1.ParamSpec
-		Results []v1alpha1.StepActionResult
+		Results []v1.StepResult
 	}
 	tests := []struct {
 		name          string
@@ -633,10 +633,23 @@ func TestStepActionSpecValidateError(t *testing.T) {
 			Script: `
 			#!/usr/bin/env bash
 			date | tee $(results.non-exist.path)`,
-			Results: []v1alpha1.StepActionResult{{Name: "a-result"}},
+			Results: []v1.StepResult{{Name: "a-result"}},
 		},
 		expectedError: apis.FieldError{
 			Message: `non-existent variable in "\n\t\t\t#!/usr/bin/env bash\n\t\t\tdate | tee $(results.non-exist.path)"`,
+			Paths:   []string{"script"},
+		},
+	}, {
+		name: "step script refers to nonexistent stepresult",
+		fields: fields{
+			Image: "my-image",
+			Script: `
+			#!/usr/bin/env bash
+			date | tee $(step.results.non-exist.path)`,
+			Results: []v1.StepResult{{Name: "a-result"}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "\n\t\t\t#!/usr/bin/env bash\n\t\t\tdate | tee $(step.results.non-exist.path)"`,
 			Paths:   []string{"script"},
 		},
 	}, {

@@ -66,8 +66,8 @@ func (ss *StepActionSpec) Validate(ctx context.Context) (errs *apis.FieldError) 
 	errs = errs.Also(validateUsageOfDeclaredParameters(ctx, *ss))
 	errs = errs.Also(v1.ValidateParameterTypes(ctx, ss.Params).ViaField("params"))
 	errs = errs.Also(validateParameterVariables(ctx, *ss, ss.Params))
-	errs = errs.Also(validateStepActionResultsVariables(ctx, *ss))
-	errs = errs.Also(validateResults(ctx, ss.Results).ViaField("results"))
+	errs = errs.Also(v1.ValidateStepResultsVariables(ctx, ss.Results, ss.Script))
+	errs = errs.Also(v1.ValidateStepResults(ctx, ss.Results).ViaField("results"))
 	errs = errs.Also(validateVolumeMounts(ss.VolumeMounts, ss.Params).ViaField("volumeMounts"))
 	return errs
 }
@@ -81,13 +81,6 @@ func validateUsageOfDeclaredParameters(ctx context.Context, sas StepActionSpec) 
 	errs = errs.Also(validateStepActionVariables(ctx, sas, "params", allParameterNames))
 	errs = errs.Also(validateObjectUsage(ctx, sas, objectParams))
 	errs = errs.Also(v1.ValidateObjectParamsHaveProperties(ctx, params))
-	return errs
-}
-
-func validateResults(ctx context.Context, results []StepActionResult) (errs *apis.FieldError) {
-	for index, result := range results {
-		errs = errs.Also(result.validate(ctx).ViaIndex(index))
-	}
 	return errs
 }
 
@@ -198,16 +191,5 @@ func validateStepActionVariables(ctx context.Context, sas StepActionSpec, prefix
 	for i, vm := range sas.VolumeMounts {
 		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(vm.Name, prefix, vars).ViaFieldIndex("volumeMounts", i))
 	}
-	return errs
-}
-
-// validateStepActionResultsVariables validates if the results referenced in step script are defined in task results
-func validateStepActionResultsVariables(ctx context.Context, sas StepActionSpec) (errs *apis.FieldError) {
-	results := sas.Results
-	resultsNames := sets.NewString()
-	for _, r := range results {
-		resultsNames.Insert(r.Name)
-	}
-	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(sas.Script, "results", resultsNames).ViaField("script"))
 	return errs
 }
