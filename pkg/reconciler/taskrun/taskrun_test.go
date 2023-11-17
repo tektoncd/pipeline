@@ -4218,6 +4218,7 @@ status:
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 1,
 						Reason:   v1.TaskRunReasonCancelled.String(),
+						Message:  "Step  terminated as pod foo-is-bar is terminated",
 					},
 				},
 			},
@@ -4263,6 +4264,7 @@ status:
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 1,
 						Reason:   v1.TaskRunReasonCancelled.String(),
+						Message:  "Step  terminated as pod foo-is-bar is terminated",
 					},
 				},
 			},
@@ -4304,6 +4306,7 @@ status:
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 1,
 						Reason:   v1.TaskRunReasonTimedOut.String(),
+						Message:  "Step  terminated as pod foo-is-bar is terminated",
 					},
 				},
 			},
@@ -4360,6 +4363,7 @@ status:
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 1,
 						Reason:   v1.TaskRunReasonTimedOut.String(),
+						Message:  "Step  terminated as pod foo-is-bar is terminated",
 					},
 				},
 			},
@@ -4368,6 +4372,7 @@ status:
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 1,
 						Reason:   v1.TaskRunReasonTimedOut.String(),
+						Message:  "Step  terminated as pod foo-is-bar is terminated",
 					},
 				},
 			},
@@ -4413,6 +4418,7 @@ status:
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 1,
 						Reason:   v1.TaskRunReasonTimedOut.String(),
+						Message:  "Step  terminated as pod foo-is-bar is terminated",
 					},
 				},
 			},
@@ -4421,6 +4427,7 @@ status:
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 1,
 						Reason:   v1.TaskRunReasonTimedOut.String(),
+						Message:  "Step  terminated as pod foo-is-bar is terminated",
 					},
 				},
 			},
@@ -4429,6 +4436,7 @@ status:
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 1,
 						Reason:   v1.TaskRunReasonTimedOut.String(),
+						Message:  "Step  terminated as pod foo-is-bar is terminated",
 					},
 				},
 			},
@@ -4482,6 +4490,7 @@ status:
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 1,
 						Reason:   v1.TaskRunReasonTimedOut.String(),
+						Message:  "Step  terminated as pod foo-is-bar is terminated",
 					},
 				},
 			},

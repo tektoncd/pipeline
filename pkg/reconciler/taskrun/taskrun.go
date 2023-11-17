@@ -724,25 +724,32 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1.TaskRun, reason v1.
 	var err error
 	if reason == v1.TaskRunReasonCancelled &&
 		(config.FromContextOrDefaults(ctx).FeatureFlags.EnableKeepPodOnCancel && config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == config.AlphaAPIFields) {
-		logger.Infof("canceling task run %q by entrypoint", tr.Name)
+		logger.Infof("Canceling task run %q by entrypoint", tr.Name)
 		err = podconvert.CancelPod(ctx, c.KubeClientSet, tr.Namespace, tr.Status.PodName)
 	} else {
 		err = c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete(ctx, tr.Status.PodName, metav1.DeleteOptions{})
 	}
 	if err != nil && !k8serrors.IsNotFound(err) {
-		logger.Infof("Failed to terminate pod: %v", err)
+		logger.Errorf("Failed to terminate pod %s: %v", tr.Status.PodName, err)
 		return err
 	}
 
-	// Update step states for TaskRun on TaskRun object since pod has been deleted for cancel or timeout
+	terminateStepsInPod(tr, reason)
+	return nil
+}
+
+// terminateStepsInPod updates step states for TaskRun on TaskRun object since pod has been deleted for cancel or timeout
+func terminateStepsInPod(tr *v1.TaskRun, taskRunReason v1.TaskRunReason) {
 	for i, step := range tr.Status.Steps {
 		// If running, include StartedAt for when step began running
 		if step.Running != nil {
 			step.Terminated = &corev1.ContainerStateTerminated{
 				ExitCode:   1,
 				StartedAt:  step.Running.StartedAt,
-				FinishedAt: completionTime,
-				Reason:     reason.String(),
+				FinishedAt: *tr.Status.CompletionTime,
+				// TODO(#7385): replace with more pod/container termination reason instead of overloading taskRunReason
+				Reason:  taskRunReason.String(),
+				Message: fmt.Sprintf("Step %s terminated as pod %s is terminated", step.Name, tr.Status.PodName),
 			}
 			step.Running = nil
 			tr.Status.Steps[i] = step
@@ -751,15 +758,15 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1.TaskRun, reason v1.
 		if step.Waiting != nil {
 			step.Terminated = &corev1.ContainerStateTerminated{
 				ExitCode:   1,
-				FinishedAt: completionTime,
-				Reason:     reason.String(),
+				FinishedAt: *tr.Status.CompletionTime,
+				// TODO(#7385): replace with more pod/container termination reason instead of overloading taskRunReason
+				Reason:  taskRunReason.String(),
+				Message: fmt.Sprintf("Step %s terminated as pod %s is terminated", step.Name, tr.Status.PodName),
 			}
 			step.Waiting = nil
 			tr.Status.Steps[i] = step
 		}
 	}
-
-	return nil
 }
 
 // createPod creates a Pod based on the Task's configuration, with pvcName as a volumeMount
