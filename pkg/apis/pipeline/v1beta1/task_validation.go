@@ -20,12 +20,14 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
@@ -265,13 +267,53 @@ func validateSteps(ctx context.Context, steps []Step) (errs *apis.FieldError) {
 	names := sets.NewString()
 	for idx, s := range steps {
 		errs = errs.Also(validateStep(ctx, s, names).ViaIndex(idx))
+		if s.Results != nil {
+			errs = errs.Also(v1.ValidateStepResultsVariables(ctx, s.Results, s.Script).ViaIndex(idx))
+			errs = errs.Also(v1.ValidateStepResults(ctx, s.Results).ViaIndex(idx).ViaField("results"))
+		}
 	}
 	return errs
 }
 
+// isCreateOrUpdateAndDiverged checks if the webhook event was create or update
+// if create, it returns true.
+// if update, it checks if the step results have diverged and returns if diverged.
+// if neither, it returns false.
+func isCreateOrUpdateAndDiverged(ctx context.Context, s Step) bool {
+	if apis.IsInCreate(ctx) {
+		return true
+	}
+	if apis.IsInUpdate(ctx) {
+		baseline := apis.GetBaseline(ctx)
+		var baselineStep Step
+		switch o := baseline.(type) {
+		case *TaskRun:
+			if o.Spec.TaskSpec != nil {
+				for _, step := range o.Spec.TaskSpec.Steps {
+					if s.Name == step.Name {
+						baselineStep = step
+						break
+					}
+				}
+			}
+		default:
+			// the baseline is not a taskrun.
+			// return true so that the validation can happen
+			return true
+		}
+		// If an update event, check if the results have diverged from the baseline
+		// this way, the feature flag check wont happen.
+		// This will avoid issues like https://github.com/tektoncd/pipeline/issues/5203
+		// when the feature is turned off mid-run.
+		diverged := !reflect.DeepEqual(s.Results, baselineStep.Results)
+		return diverged
+	}
+	return false
+}
+
 func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.FieldError) {
 	if s.Ref != nil {
-		if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions {
+		if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions && isCreateOrUpdateAndDiverged(ctx, s) {
 			return apis.ErrGeneric("feature flag %s should be set to true to reference StepActions in Steps.", config.EnableStepActions)
 		}
 		errs = errs.Also(s.Ref.Validate(ctx))
@@ -311,12 +353,23 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 				Paths:   []string{"volumeMounts"},
 			})
 		}
+		if len(s.Results) > 0 {
+			errs = errs.Also(&apis.FieldError{
+				Message: "results cannot be used with Ref",
+				Paths:   []string{"results"},
+			})
+		}
 	} else {
 		if len(s.Params) > 0 {
 			errs = errs.Also(&apis.FieldError{
 				Message: "params cannot be used without Ref",
 				Paths:   []string{"params"},
 			})
+		}
+		if len(s.Results) > 0 {
+			if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions && isCreateOrUpdateAndDiverged(ctx, s) {
+				return apis.ErrGeneric("feature flag %s should be set to true in order to use Results in Steps.", config.EnableStepActions)
+			}
 		}
 		if s.Image == "" {
 			errs = errs.Also(apis.ErrMissingField("Image"))

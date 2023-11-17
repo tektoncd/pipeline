@@ -142,6 +142,16 @@ type Step struct {
 	// +optional
 	// +listType=atomic
 	Params Params `json:"params,omitempty"`
+	// Results declares StepResults produced by the Step.
+	//
+	// This is field is at an ALPHA stability level and gated by "enable-step-actions" feature flag.
+	//
+	// It can be used in an inlined Step when used to store Results to $(step.results.resultName.path).
+	// It cannot be used when referencing StepActions using [v1.Step.Ref].
+	// The Results declared by the StepActions will be stored here instead.
+	// +optional
+	// +listType=atomic
+	Results []StepResult `json:"results,omitempty"`
 }
 
 // Ref can be used to refer to a specific instance of a StepAction.

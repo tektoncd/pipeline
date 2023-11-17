@@ -120,7 +120,7 @@ type StepActionSpec struct {
 	// Results are values that this StepAction can output
 	// +optional
 	// +listType=atomic
-	Results []StepActionResult `json:"results,omitempty"`
+	Results []v1.StepResult `json:"results,omitempty"`
 	// SecurityContext defines the security options the Step should be run with.
 	// If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
 	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/

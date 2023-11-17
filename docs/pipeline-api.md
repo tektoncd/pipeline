@@ -3214,7 +3214,7 @@ this field is false and so declared workspaces are required.</p>
 <h3 id="tekton.dev/v1.PropertySpec">PropertySpec
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1.TaskResult">TaskResult</a>, <a href="#tekton.dev/v1alpha1.StepActionResult">StepActionResult</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1.StepResult">StepResult</a>, <a href="#tekton.dev/v1.TaskResult">TaskResult</a>)
 </p>
 <div>
 <p>PropertySpec defines the struct for object keys</p>
@@ -3506,7 +3506,7 @@ string
 <h3 id="tekton.dev/v1.ResultsType">ResultsType
 (<code>string</code> alias)</h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineResult">PipelineResult</a>, <a href="#tekton.dev/v1.TaskResult">TaskResult</a>, <a href="#tekton.dev/v1.TaskRunResult">TaskRunResult</a>, <a href="#tekton.dev/v1alpha1.StepActionResult">StepActionResult</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineResult">PipelineResult</a>, <a href="#tekton.dev/v1.StepResult">StepResult</a>, <a href="#tekton.dev/v1.TaskResult">TaskResult</a>, <a href="#tekton.dev/v1.TaskRunResult">TaskRunResult</a>)
 </p>
 <div>
 <p>ResultsType indicates the type of a result;
@@ -4441,6 +4441,24 @@ Params
 <p>Params declares parameters passed to this step action.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>results</code><br/>
+<em>
+<a href="#tekton.dev/v1.StepResult">
+[]StepResult
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Results declares StepResults produced by the Step.</p>
+<p>This is field is at an ALPHA stability level and gated by &ldquo;enable-step-actions&rdquo; feature flag.</p>
+<p>It can be used in an inlined Step when used to store Results to $(step.results.resultName.path).
+It cannot be used when referencing StepActions using [v1.Step.Ref].
+The Results declared by the StepActions will be stored here instead.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.StepOutputConfig">StepOutputConfig
@@ -4469,6 +4487,76 @@ string
 <td>
 <em>(Optional)</em>
 <p>Path to duplicate stdout stream to on container&rsquo;s local filesystem.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.StepResult">StepResult
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.Step">Step</a>, <a href="#tekton.dev/v1alpha1.StepActionSpec">StepActionSpec</a>, <a href="#tekton.dev/v1beta1.Step">Step</a>)
+</p>
+<div>
+<p>StepResult used to describe the Results of a Step.</p>
+<p>This is field is at an ALPHA stability level and gated by &ldquo;enable-step-actions&rdquo; feature flag.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name the given name</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>type</code><br/>
+<em>
+<a href="#tekton.dev/v1.ResultsType">
+ResultsType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The possible types are &lsquo;string&rsquo;, &lsquo;array&rsquo;, and &lsquo;object&rsquo;, with &lsquo;string&rsquo; as the default.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>properties</code><br/>
+<em>
+<a href="#tekton.dev/v1.PropertySpec">
+map[string]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Properties is the JSON Schema properties to support key-value pairs results.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>description</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Description is a human-readable description of the result</p>
 </td>
 </tr>
 </tbody>
@@ -6616,8 +6704,8 @@ Params must be supplied as inputs in Steps unless they declare a defaultvalue.</
 <td>
 <code>results</code><br/>
 <em>
-<a href="#tekton.dev/v1alpha1.StepActionResult">
-[]StepActionResult
+<a href="#tekton.dev/v1.StepResult">
+[]StepResult
 </a>
 </em>
 </td>
@@ -7323,76 +7411,6 @@ Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https
 <div>
 <p>StepActionObject is implemented by StepAction</p>
 </div>
-<h3 id="tekton.dev/v1alpha1.StepActionResult">StepActionResult
-</h3>
-<p>
-(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.StepActionSpec">StepActionSpec</a>)
-</p>
-<div>
-<p>StepActionResult used to describe the results of a task</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>name</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Name the given name</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>type</code><br/>
-<em>
-<a href="#tekton.dev/v1.ResultsType">
-ResultsType
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Type is the user-specified type of the result. The possible type
-is currently &ldquo;string&rdquo; and will support &ldquo;array&rdquo; in following work.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>properties</code><br/>
-<em>
-<a href="#tekton.dev/v1.PropertySpec">
-map[string]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Properties is the JSON Schema properties to support key-value pairs results.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>description</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Description is a human-readable description of the result</p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="tekton.dev/v1alpha1.StepActionSpec">StepActionSpec
 </h3>
 <p>
@@ -7507,8 +7525,8 @@ Params must be supplied as inputs in Steps unless they declare a defaultvalue.</
 <td>
 <code>results</code><br/>
 <em>
-<a href="#tekton.dev/v1alpha1.StepActionResult">
-[]StepActionResult
+<a href="#tekton.dev/v1.StepResult">
+[]StepResult
 </a>
 </em>
 </td>
@@ -13331,6 +13349,24 @@ Params
 <td>
 <em>(Optional)</em>
 <p>Params declares parameters passed to this step action.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>results</code><br/>
+<em>
+<a href="#tekton.dev/v1.StepResult">
+[]StepResult
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Results declares StepResults produced by the Step.</p>
+<p>This is field is at an ALPHA stability level and gated by &ldquo;enable-step-actions&rdquo; feature flag.</p>
+<p>It can be used in an inlined Step when used to store Results to $(step.results.resultName.path).
+It cannot be used when referencing StepActions using [v1beta1.Step.Ref].
+The Results declared by the StepActions will be stored here instead.</p>
 </td>
 </tr>
 </tbody>

@@ -38,6 +38,26 @@ type TaskResult struct {
 	Value *ResultValue `json:"value,omitempty"`
 }
 
+// StepResult used to describe the Results of a Step.
+//
+// This is field is at an ALPHA stability level and gated by "enable-step-actions" feature flag.
+type StepResult struct {
+	// Name the given name
+	Name string `json:"name"`
+
+	// The possible types are 'string', 'array', and 'object', with 'string' as the default.
+	// +optional
+	Type ResultsType `json:"type,omitempty"`
+
+	// Properties is the JSON Schema properties to support key-value pairs results.
+	// +optional
+	Properties map[string]PropertySpec `json:"properties,omitempty"`
+
+	// Description is a human-readable description of the result
+	// +optional
+	Description string `json:"description,omitempty"`
+}
+
 // TaskRunResult used to describe the results of a task
 type TaskRunResult struct {
 	// Name the given name

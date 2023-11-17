@@ -71,6 +71,7 @@ func (s Step) convertTo(ctx context.Context, sink *v1.Step) {
 		p.convertTo(ctx, &new)
 		sink.Params = append(sink.Params, new)
 	}
+	sink.Results = s.Results
 }
 
 func (s *Step) convertFrom(ctx context.Context, source v1.Step) {
@@ -109,6 +110,7 @@ func (s *Step) convertFrom(ctx context.Context, source v1.Step) {
 		new.ConvertFrom(ctx, p)
 		s.Params = append(s.Params, new)
 	}
+	s.Results = source.Results
 }
 
 func (s StepTemplate) convertTo(ctx context.Context, sink *v1.StepTemplate) {

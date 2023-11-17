@@ -384,36 +384,6 @@
         }
       }
     },
-    "v1alpha1.StepActionResult": {
-      "description": "StepActionResult used to describe the results of a task",
-      "type": "object",
-      "required": [
-        "name"
-      ],
-      "properties": {
-        "description": {
-          "description": "Description is a human-readable description of the result",
-          "type": "string"
-        },
-        "name": {
-          "description": "Name the given name",
-          "type": "string",
-          "default": ""
-        },
-        "properties": {
-          "description": "Properties is the JSON Schema properties to support key-value pairs results.",
-          "type": "object",
-          "additionalProperties": {
-            "default": {},
-            "$ref": "#/definitions/v1.PropertySpec"
-          }
-        },
-        "type": {
-          "description": "Type is the user-specified type of the result. The possible type is currently \"string\" and will support \"array\" in following work.",
-          "type": "string"
-        }
-      }
-    },
     "v1alpha1.StepActionSpec": {
       "description": "StepActionSpec contains the actionable components of a step.",
       "type": "object",
@@ -465,7 +435,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1alpha1.StepActionResult"
+            "$ref": "#/definitions/v1.StepResult"
           },
           "x-kubernetes-list-type": "atomic"
         },

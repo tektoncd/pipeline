@@ -41,7 +41,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.RunSpec":                schema_pkg_apis_pipeline_v1alpha1_RunSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepAction":             schema_pkg_apis_pipeline_v1alpha1_StepAction(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepActionList":         schema_pkg_apis_pipeline_v1alpha1_StepActionList(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepActionResult":       schema_pkg_apis_pipeline_v1alpha1_StepActionResult(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepActionSpec":         schema_pkg_apis_pipeline_v1alpha1_StepActionSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.VerificationPolicy":     schema_pkg_apis_pipeline_v1alpha1_VerificationPolicy(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.VerificationPolicyList": schema_pkg_apis_pipeline_v1alpha1_VerificationPolicyList(ref),
@@ -748,59 +747,6 @@ func schema_pkg_apis_pipeline_v1alpha1_StepActionList(ref common.ReferenceCallba
 	}
 }
 
-func schema_pkg_apis_pipeline_v1alpha1_StepActionResult(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "StepActionResult used to describe the results of a task",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"name": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Name the given name",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"type": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Type is the user-specified type of the result. The possible type is currently \"string\" and will support \"array\" in following work.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"properties": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Properties is the JSON Schema properties to support key-value pairs results.",
-							Type:        []string{"object"},
-							AdditionalProperties: &spec.SchemaOrBool{
-								Allows: true,
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec"),
-									},
-								},
-							},
-						},
-					},
-					"description": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Description is a human-readable description of the result",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-				},
-				Required: []string{"name"},
-			},
-		},
-		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec"},
-	}
-}
-
 func schema_pkg_apis_pipeline_v1alpha1_StepActionSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -915,7 +861,7 @@ func schema_pkg_apis_pipeline_v1alpha1_StepActionSpec(ref common.ReferenceCallba
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepActionResult"),
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepResult"),
 									},
 								},
 							},
@@ -952,7 +898,7 @@ func schema_pkg_apis_pipeline_v1alpha1_StepActionSpec(ref common.ReferenceCallba
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepActionResult", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.SecurityContext", "k8s.io/api/core/v1.VolumeMount"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepResult", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.SecurityContext", "k8s.io/api/core/v1.VolumeMount"},
 	}
 }
 

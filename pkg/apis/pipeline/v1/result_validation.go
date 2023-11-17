@@ -111,6 +111,51 @@ func (tr TaskResult) validateValue(ctx context.Context) (errs *apis.FieldError) 
 	return errs
 }
 
+// Validate implements apis.Validatable
+func (sr StepResult) Validate(ctx context.Context) (errs *apis.FieldError) {
+	if !resultNameFormatRegex.MatchString(sr.Name) {
+		return apis.ErrInvalidKeyName(sr.Name, "name", fmt.Sprintf("Name must consist of alphanumeric characters, '-', '_', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my-name',  or 'my_name', regex used for validation is '%s')", ResultNameFormat))
+	}
+
+	switch {
+	case sr.Type == ResultsTypeObject:
+		return validateObjectStepResult(sr)
+	case sr.Type == ResultsTypeArray:
+		return nil
+	// The Type is string by default if it is empty.
+	case sr.Type == "":
+		return nil
+	case sr.Type == ResultsTypeString:
+		return nil
+	default:
+		return apis.ErrInvalidValue(sr.Type, "type", fmt.Sprintf("invalid type %s", sr.Type))
+	}
+}
+
+// validateObjectStepResult validates the object result and check if the Properties is missing
+// for Properties values it will check if the type is string.
+func validateObjectStepResult(sr StepResult) (errs *apis.FieldError) {
+	if ParamType(sr.Type) == ParamTypeObject && sr.Properties == nil {
+		return apis.ErrMissingField(fmt.Sprintf("%s.properties", sr.Name))
+	}
+
+	invalidKeys := []string{}
+	for key, propertySpec := range sr.Properties {
+		// In case we need to support other types in the future like the nested objects #7069
+		if propertySpec.Type != ParamTypeString {
+			invalidKeys = append(invalidKeys, key)
+		}
+	}
+
+	if len(invalidKeys) != 0 {
+		return &apis.FieldError{
+			Message: fmt.Sprintf("the value type specified for these keys %v is invalid, the type must be string", invalidKeys),
+			Paths:   []string{fmt.Sprintf("%s.properties", sr.Name)},
+		}
+	}
+	return nil
+}
+
 // ExtractStepResultName extracts the step name and result name from a string matching
 // formtat $(steps.<stepName>.results.<resultName>).
 // If a match is not found, an error is retured.

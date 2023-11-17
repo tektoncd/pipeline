@@ -1476,6 +1476,15 @@
           "description": "Contains the reference to an existing StepAction.",
           "$ref": "#/definitions/v1.Ref"
         },
+        "results": {
+          "description": "Results declares StepResults produced by the Step.\n\nThis is field is at an ALPHA stability level and gated by \"enable-step-actions\" feature flag.\n\nIt can be used in an inlined Step when used to store Results to $(step.results.resultName.path). It cannot be used when referencing StepActions using [v1.Step.Ref]. The Results declared by the StepActions will be stored here instead.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.StepResult"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
         "script": {
           "description": "Script is the contents of an executable file to execute.\n\nIf Script is not empty, the Step cannot have an Command and the Args will be passed to the Script.",
           "type": "string"
@@ -1539,6 +1548,36 @@
       "properties": {
         "path": {
           "description": "Path to duplicate stdout stream to on container's local filesystem.",
+          "type": "string"
+        }
+      }
+    },
+    "v1.StepResult": {
+      "description": "StepResult used to describe the Results of a Step.\n\nThis is field is at an ALPHA stability level and gated by \"enable-step-actions\" feature flag.",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "description": {
+          "description": "Description is a human-readable description of the result",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name the given name",
+          "type": "string",
+          "default": ""
+        },
+        "properties": {
+          "description": "Properties is the JSON Schema properties to support key-value pairs results.",
+          "type": "object",
+          "additionalProperties": {
+            "default": {},
+            "$ref": "#/definitions/v1.PropertySpec"
+          }
+        },
+        "type": {
+          "description": "The possible types are 'string', 'array', and 'object', with 'string' as the default.",
           "type": "string"
         }
       }

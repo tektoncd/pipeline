@@ -2107,6 +2107,15 @@
           "default": {},
           "$ref": "#/definitions/v1.ResourceRequirements"
         },
+        "results": {
+          "description": "Results declares StepResults produced by the Step.\n\nThis is field is at an ALPHA stability level and gated by \"enable-step-actions\" feature flag.\n\nIt can be used in an inlined Step when used to store Results to $(step.results.resultName.path). It cannot be used when referencing StepActions using [v1beta1.Step.Ref]. The Results declared by the StepActions will be stored here instead.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.StepResult"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
         "script": {
           "description": "Script is the contents of an executable file to execute.\n\nIf Script is not empty, the Step cannot have an Command and the Args will be passed to the Script.",
           "type": "string"
