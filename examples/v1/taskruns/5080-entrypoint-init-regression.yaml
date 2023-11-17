@@ -20,7 +20,7 @@ spec:
       - "--help"
     steps:
       - name: echo-cli
-        image: registry.access.redhat.com/ubi9/ubi-minimal:9.0.0-1580
+        image: cgr.dev/chainguard/busybox
         workingDir: /tekton/home
         args:
         - "$(params.ARGS)"

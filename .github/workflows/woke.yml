@@ -7,16 +7,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout'
-        uses: actions/checkout@v2
-
-      - uses: jitterbit/get-changed-files@v1
-        id: files
+        uses: actions/checkout@v4
+        
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v40
+        with:
+          write_output_files: true
+          files: |
+            **
 
       - name: 'woke'
+        if: steps.changed-files.outputs.any_changed == 'true'
         uses: get-woke/woke-action@v0
         with:
           # Cause the check to fail on any broke rules
           fail-on-error: true
-          # See https://github.com/marketplace/actions/get-all-changed-files
-          # for more options
-          woke-args: ${{ steps.files.outputs.added_modified }}
+          woke-args: ${{ steps.changed_files.outputs.all_changed_files }}

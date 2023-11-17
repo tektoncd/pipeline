@@ -809,6 +809,12 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 		}
 	}
 
+	// If FinallyStartTime is not set, and one or more final tasks has been created
+	// Try to set the FinallyStartTime of this PipelineRun
+	if pr.Status.FinallyStartTime == nil && pipelineRunFacts.IsFinalTaskStarted() {
+		c.setFinallyStartedTimeIfNeeded(pr, pipelineRunFacts)
+	}
+
 	for _, rpt := range nextRpts {
 		if rpt.IsFinalTask(pipelineRunFacts) {
 			c.setFinallyStartedTimeIfNeeded(pr, pipelineRunFacts)

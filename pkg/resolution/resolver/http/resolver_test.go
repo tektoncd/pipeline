@@ -19,20 +19,51 @@ package http
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
+	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	frtesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
+	"github.com/tektoncd/pipeline/pkg/resolution/resolver/internal"
+	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/system"
+	_ "knative.dev/pkg/system/testing"
 )
+
+type params struct {
+	url               string
+	authUsername      string
+	authSecret        string
+	authSecretKey     string
+	authSecretContent string
+}
+
+const sampleTask = `---
+kind: Task
+apiVersion: tekton.dev/v1
+metadata:
+  name: foo
+spec:
+  steps:
+  - name: step1
+    image: scratch`
+const emptyStr = "empty"
 
 func TestGetSelector(t *testing.T) {
 	resolver := Resolver{}
@@ -211,11 +242,240 @@ func TestResolveNotEnabled(t *testing.T) {
 	}
 }
 
-func TestInitialize(t *testing.T) {
-	resolver := Resolver{}
-	err := resolver.Initialize(context.Background())
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+func createRequest(params *params) *v1beta1.ResolutionRequest {
+	rr := &v1beta1.ResolutionRequest{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "resolution.tekton.dev/v1beta1",
+			Kind:       "ResolutionRequest",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "rr",
+			Namespace:         "foo",
+			CreationTimestamp: metav1.Time{Time: time.Now()},
+			Labels: map[string]string{
+				resolutioncommon.LabelKeyResolverType: LabelValueHttpResolverType,
+			},
+		},
+		Spec: v1beta1.ResolutionRequestSpec{
+			Params: []pipelinev1.Param{{
+				Name:  urlParam,
+				Value: *pipelinev1.NewStructuredValues(params.url),
+			}},
+		},
+	}
+	if params.authSecret != "" {
+		s := params.authSecret
+		if s == emptyStr {
+			s = ""
+		}
+		rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
+			Name:  httpBasicAuthSecret,
+			Value: *pipelinev1.NewStructuredValues(s),
+		})
+	}
+
+	if params.authUsername != "" {
+		s := params.authUsername
+		if s == emptyStr {
+			s = ""
+		}
+		rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
+			Name:  httpBasicAuthUsername,
+			Value: *pipelinev1.NewStructuredValues(s),
+		})
+	}
+
+	if params.authSecretKey != "" {
+		rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
+			Name:  httpBasicAuthSecretKey,
+			Value: *pipelinev1.NewStructuredValues(params.authSecretKey),
+		})
+	}
+
+	return rr
+}
+
+func TestResolverReconcileBasicAuth(t *testing.T) {
+	var doNotCreate string = "notcreate"
+	var wrongSecretKey string = "wrongsecretk"
+
+	tests := []struct {
+		name           string
+		params         *params
+		taskContent    string
+		expectedStatus *v1beta1.ResolutionRequestStatus
+		expectedErr    error
+	}{
+		{
+			name:           "good/URL Resolution",
+			taskContent:    sampleTask,
+			expectedStatus: internal.CreateResolutionRequestStatusWithData([]byte(sampleTask)),
+		},
+		{
+			name:           "good/URL Resolution with custom basic auth, and custom secret key",
+			taskContent:    sampleTask,
+			expectedStatus: internal.CreateResolutionRequestStatusWithData([]byte(sampleTask)),
+			params: &params{
+				authSecret:        "auth-secret",
+				authUsername:      "auth",
+				authSecretKey:     "token",
+				authSecretContent: "untoken",
+			},
+		},
+		{
+			name:           "good/URL Resolution with custom basic auth no custom secret key",
+			taskContent:    sampleTask,
+			expectedStatus: internal.CreateResolutionRequestStatusWithData([]byte(sampleTask)),
+			params: &params{
+				authSecret:        "auth-secret",
+				authUsername:      "auth",
+				authSecretContent: "untoken",
+			},
+		},
+		{
+			name:        "bad/no url found",
+			params:      &params{},
+			expectedErr: errors.New(`invalid resource request "foo/rr": cannot parse url : parse "": empty url`),
+		},
+		{
+			name: "bad/no secret found",
+			params: &params{
+				authSecret:   doNotCreate,
+				authUsername: "user",
+				url:          "https://blah/blah.com",
+			},
+			expectedErr: errors.New(`error getting "Http" "foo/rr": cannot get API token, secret notcreate not found in namespace foo`),
+		},
+		{
+			name: "bad/no valid secret key",
+			params: &params{
+				authSecret:    "shhhhh",
+				authUsername:  "user",
+				authSecretKey: wrongSecretKey,
+				url:           "https://blah/blah",
+			},
+			expectedErr: errors.New(`error getting "Http" "foo/rr": cannot get API token, key wrongsecretk not found in secret shhhhh in namespace foo`),
+		},
+		{
+			name: "bad/missing username params for secret with params",
+			params: &params{
+				authSecret: "shhhhh",
+				url:        "https://blah/blah",
+			},
+			expectedErr: errors.New(`invalid resource request "foo/rr": missing required param http-username when using http-password-secret`),
+		},
+		{
+			name: "bad/missing password params for secret with username",
+			params: &params{
+				authUsername: "failure",
+				url:          "https://blah/blah",
+			},
+			expectedErr: errors.New(`invalid resource request "foo/rr": missing required param http-password-secret when using http-username`),
+		},
+		{
+			name: "bad/empty auth username",
+			params: &params{
+				authUsername: emptyStr,
+				authSecret:   "asecret",
+				url:          "https://blah/blah",
+			},
+			expectedErr: errors.New(`invalid resource request "foo/rr": value http-username cannot be empty`),
+		},
+		{
+			name: "bad/empty auth password",
+			params: &params{
+				authUsername: "auser",
+				authSecret:   emptyStr,
+				url:          "https://blah/blah",
+			},
+			expectedErr: errors.New(`invalid resource request "foo/rr": value http-password-secret cannot be empty`),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resolver := &Resolver{}
+			ctx, _ := ttesting.SetupFakeContext(t)
+			svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprintf(w, tt.taskContent)
+			}))
+			p := tt.params
+			if p == nil {
+				p = &params{}
+			}
+			if p.url == "" && tt.taskContent != "" {
+				p.url = svr.URL
+			}
+			request := createRequest(p)
+			cfg := make(map[string]string)
+			d := test.Data{
+				ConfigMaps: []*corev1.ConfigMap{{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      configMapName,
+						Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
+					},
+					Data: cfg,
+				}, {
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
+						Name:      resolverconfig.GetFeatureFlagsConfigName(),
+					},
+					Data: map[string]string{
+						"enable-http-resolver": "true",
+					},
+				}},
+				ResolutionRequests: []*v1beta1.ResolutionRequest{request},
+			}
+			var expectedStatus *v1beta1.ResolutionRequestStatus
+			if tt.expectedStatus != nil {
+				expectedStatus = tt.expectedStatus.DeepCopy()
+				if tt.expectedErr == nil {
+					if tt.taskContent != "" {
+						h := sha256.New()
+						h.Write([]byte(tt.taskContent))
+						sha256CheckSum := hex.EncodeToString(h.Sum(nil))
+						refsrc := &pipelinev1.RefSource{
+							URI: svr.URL,
+							Digest: map[string]string{
+								"sha256": sha256CheckSum,
+							},
+						}
+						expectedStatus.RefSource = refsrc
+						expectedStatus.Source = refsrc
+					}
+				} else {
+					expectedStatus.Status.Conditions[0].Message = tt.expectedErr.Error()
+				}
+			}
+			frtesting.RunResolverReconcileTest(ctx, t, d, resolver, request, expectedStatus, tt.expectedErr, func(resolver framework.Resolver, testAssets test.Assets) {
+				if err := resolver.Initialize(ctx); err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+				if tt.params == nil {
+					return
+				}
+				if tt.params.authSecret != "" && tt.params.authSecret != doNotCreate {
+					secretKey := tt.params.authSecretKey
+					if secretKey == wrongSecretKey {
+						secretKey = "randomNotOund"
+					}
+					if secretKey == "" {
+						secretKey = defaultBasicAuthSecretKey
+					}
+					tokenSecret := &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      tt.params.authSecret,
+							Namespace: request.GetNamespace(),
+						},
+						Data: map[string][]byte{
+							secretKey: []byte(base64.StdEncoding.Strict().EncodeToString([]byte(tt.params.authSecretContent))),
+						},
+					}
+					if _, err := testAssets.Clients.Kube.CoreV1().Secrets(request.GetNamespace()).Create(ctx, tokenSecret, metav1.CreateOptions{}); err != nil {
+						t.Fatalf("failed to create test token secret: %v", err)
+					}
+				}
+			})
+		})
 	}
 }
 

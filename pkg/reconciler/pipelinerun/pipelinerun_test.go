@@ -2881,6 +2881,257 @@ status:
 	}
 }
 
+func TestReconcileWithFinallyStartTime(t *testing.T) {
+	// TestReconcileWithFinallyStartTime runs "Reconcile" on a PipelineRun with tasks is completed and one or more finally tasks
+	// may need to be executed.
+	// It verifies that reconcile is successful, the finallyStartTime can be set correctly.
+	pipelineFinalTask := parse.MustParseV1Pipeline(t, `
+metadata:
+  name: test-pipeline-with-finally
+  namespace: foo
+spec:
+  finally:
+  - name: finaltask-1
+    taskRef:
+      name: hello-world
+  tasks:
+  - name: task1
+    taskRef:
+      name: hello-world
+`)
+	pipelineNotFinalTask := parse.MustParseV1Pipeline(t, `
+metadata:
+  name: test-pipeline-with-finally
+  namespace: foo
+spec:
+  tasks:
+  - name: task1
+    taskRef:
+      name: hello-world
+`)
+	pipelineSkippedFinalTask := parse.MustParseV1Pipeline(t, `
+metadata:
+  name: test-pipeline-with-finally
+  namespace: foo
+spec:
+  finally:
+  - name: finaltask-1
+    when:
+    - input: "$(tasks.task1.status)"
+      operator: in
+      values: ["Failure"]
+    taskRef:
+      name: hello-world
+  tasks:
+  - name: task1
+    taskRef:
+      name: hello-world
+`)
+
+	prName := "test-pipeline-run-with-set-finally-start-time"
+	ts := []*v1.Task{simpleHelloWorldTask}
+
+	tcs := []struct {
+		name                 string
+		trs                  []*v1.TaskRun
+		ps                   []*v1.Pipeline
+		pr                   *v1.PipelineRun
+		wantEvents           []string
+		wantFinallyStartTime bool
+	}{{
+		name: "new final task created",
+		trs: []*v1.TaskRun{
+			getTaskRun(
+				t,
+				"test-pipeline-run-with-set-finally-start-time-hello-world",
+				prName,
+				"test-pipeline-with-finally",
+				"hello-world",
+				corev1.ConditionTrue,
+			),
+		},
+		ps: []*v1.Pipeline{pipelineFinalTask},
+		pr: parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline-with-finally
+status:
+  startTime: "2021-12-31T23:40:00Z"
+  childReferences:
+  - name: test-pipeline-run-with-set-finally-start-time-hello-world
+    apiVersion: tekton.dev/v1
+    kind: TaskRun
+    pipelineTaskName: task1
+    status:
+      conditions:
+      - lastTransitionTime: null
+        status: "True"
+        type: Succeeded
+`, prName)),
+		wantEvents: []string{
+			"Normal Started",
+		},
+		wantFinallyStartTime: true,
+	}, {
+		name: "final task started and the pr not final start time",
+		trs: []*v1.TaskRun{
+			getTaskRun(
+				t,
+				"test-pipeline-run-with-set-finally-start-time-hello-world",
+				prName,
+				"test-pipeline-with-finally",
+				"hello-world",
+				corev1.ConditionTrue,
+			),
+			mustParseTaskRunWithObjectMeta(t, taskRunObjectMeta("test-pipeline-run-with-finally-start-time-finaltask-1", "foo", prName,
+				"test-pipeline-with-finally", "finaltask-1", false), `
+spec:
+  serviceAccountName: test-sa
+  taskRef:
+    name: hello-world
+    kind: Task
+`)},
+		ps: []*v1.Pipeline{pipelineFinalTask},
+		pr: parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline-with-finally
+  timeouts:
+    tasks: 5m
+    pipeline: 20m
+status:
+  startTime: "2021-12-31T23:40:00Z"
+  childReferences:
+  - name: test-pipeline-run-with-set-finally-start-time-hello-world
+    apiVersion: tekton.dev/v1
+    kind: TaskRun
+    pipelineTaskName: task1
+    status:
+      conditions:
+      - lastTransitionTime: null
+        status: "True"
+        type: Succeeded
+  - name: test-pipeline-run-with-set-finally-start-time-finaltask-1
+    apiVersion: tekton.dev/v1
+    kind: TaskRun
+    pipelineTaskName: finaltask-1
+    status:
+      conditions:
+      - lastTransitionTime: null
+        status: "Unknown"
+        type: Succeeded
+`, prName)),
+		wantEvents: []string{
+			"Normal Started",
+		},
+		wantFinallyStartTime: true,
+	}, {
+		name: "final task not exist",
+		trs: []*v1.TaskRun{
+			getTaskRun(
+				t,
+				"test-pipeline-run-with-set-finally-start-time-hello-world",
+				prName,
+				"test-pipeline-with-finally",
+				"hello-world",
+				corev1.ConditionTrue,
+			),
+		},
+		ps: []*v1.Pipeline{pipelineNotFinalTask},
+		pr: parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline-with-finally
+  timeouts:
+    tasks: 5m
+    pipeline: 20m
+status:
+  startTime: "2021-12-31T23:40:00Z"
+  childReferences:
+  - name: test-pipeline-run-with-set-finally-start-time-hello-world
+    apiVersion: tekton.dev/v1
+    kind: TaskRun
+    pipelineTaskName: task1
+    status:
+      conditions:
+      - lastTransitionTime: null
+        status: "True"
+        type: Succeeded
+`, prName)),
+		wantEvents: []string{
+			"Normal Succeeded Tasks Completed: 1 (Failed: 0, Cancelled 0), Skipped: 0",
+		},
+		wantFinallyStartTime: false,
+	}, {
+		name: "final task skipped",
+		trs: []*v1.TaskRun{
+			getTaskRun(
+				t,
+				"test-pipeline-run-with-set-finally-start-time-hello-world",
+				prName,
+				"test-pipeline-with-finally",
+				"hello-world",
+				corev1.ConditionTrue,
+			),
+		},
+		ps: []*v1.Pipeline{pipelineSkippedFinalTask},
+		pr: parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline-with-finally
+  timeouts:
+    tasks: 5m
+    pipeline: 20m
+status:
+  startTime: "2021-12-31T23:40:00Z"
+  childReferences:
+  - name: test-pipeline-run-with-set-finally-start-time-hello-world
+    apiVersion: tekton.dev/v1
+    kind: TaskRun
+    pipelineTaskName: task1
+    status:
+      conditions:
+      - lastTransitionTime: null
+        status: "True"
+        type: Succeeded
+`, prName)),
+		wantEvents: []string{
+			"Normal Succeeded Tasks Completed: 1 (Failed: 0, Cancelled 0), Skipped: 1",
+		},
+		wantFinallyStartTime: true,
+	}}
+	for _, tc := range tcs {
+		withOwnerReference(tc.trs, prName)
+
+		d := test.Data{
+			PipelineRuns: []*v1.PipelineRun{tc.pr},
+			Pipelines:    tc.ps,
+			Tasks:        ts,
+			TaskRuns:     tc.trs,
+		}
+		prt := newPipelineRunTest(t, d)
+		defer prt.Cancel()
+
+		reconciledRun, _ := prt.reconcileRun("foo", prName, tc.wantEvents, false)
+
+		if tc.wantFinallyStartTime != (reconciledRun.Status.FinallyStartTime != nil) {
+			t.Errorf("Expected FinallyStartTime != nil to be %t, but was %t", tc.wantFinallyStartTime, reconciledRun.Status.FinallyStartTime != nil)
+		}
+	}
+}
+
 func TestReconcileWithoutPVC(t *testing.T) {
 	// TestReconcileWithoutPVC runs "Reconcile" on a PipelineRun that has two unrelated tasks.
 	// It verifies that reconcile is successful and that no PVC is created
@@ -5070,7 +5321,7 @@ status:
 	expectedPr := expectedPrStatus
 
 	if d := cmp.Diff(expectedPr, reconciledRun, ignoreResourceVersion, ignoreLastTransitionTime, ignoreCompletionTime, ignoreStartTime,
-		ignoreProvenance, cmpopts.EquateEmpty()); d != "" {
+		ignoreProvenance, ignoreFinallyStartTime, cmpopts.EquateEmpty()); d != "" {
 		t.Errorf("expected to see pipeline run results created. Diff %s", diff.PrintWantGot(d))
 	}
 }

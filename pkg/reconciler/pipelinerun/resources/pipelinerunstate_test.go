@@ -1545,6 +1545,77 @@ func TestPipelineRunState_GetFinalTasksAndNames(t *testing.T) {
 	}
 }
 
+func TestPipelineRunState_IsFinalTaskStarted(t *testing.T) {
+	tcs := []struct {
+		name                     string
+		desc                     string
+		state                    PipelineRunState
+		DAGTasks                 []v1.PipelineTask
+		finalTasks               []v1.PipelineTask
+		expectedFinalTaskStarted bool
+	}{{
+		// tasks: [ mytask1(started)]
+		// finally: [mytask2(not created)]
+		name:                     "01 - DAG task started, final task not created",
+		desc:                     "DAG tasks (mytask1) started yet - do not schedule final tasks (mytask2)",
+		state:                    oneStartedState,
+		DAGTasks:                 []v1.PipelineTask{pts[0]},
+		finalTasks:               []v1.PipelineTask{pts[1]},
+		expectedFinalTaskStarted: false,
+	}, {
+		// tasks: [ mytask1(done)]
+		// finally: [mytask2(not created)]
+		name:                     "02 - DAG task succeeded, final task not created",
+		desc:                     "DAG tasks (mytask1) finished successfully - do not schedule final tasks (mytask2)",
+		state:                    oneFinishedState,
+		DAGTasks:                 []v1.PipelineTask{pts[0]},
+		finalTasks:               []v1.PipelineTask{pts[1]},
+		expectedFinalTaskStarted: false,
+	}, {
+		// tasks: [ mytask1(done)]
+		// none finally
+		name:                     "03 - DAG task succeeded, no final tasks",
+		desc:                     "DAG tasks (mytask1) finished successfully - no final tasks",
+		state:                    oneStartedState,
+		DAGTasks:                 []v1.PipelineTask{pts[0]},
+		finalTasks:               []v1.PipelineTask{},
+		expectedFinalTaskStarted: false,
+	}, {
+		// tasks: [ mytask1(done)]
+		// finally: [mytask2(done)]
+		name:                     "04 - DAG task succeeded, final tasks (mytask2) succeeded",
+		desc:                     "DAG tasks (mytask1) finished successfully - final tasks (mytask2) finished successfully",
+		state:                    allFinishedState,
+		DAGTasks:                 []v1.PipelineTask{pts[0]},
+		finalTasks:               []v1.PipelineTask{pts[1]},
+		expectedFinalTaskStarted: true,
+	}}
+	for _, tc := range tcs {
+		dagGraph, err := dag.Build(v1.PipelineTaskList(tc.DAGTasks), v1.PipelineTaskList(tc.DAGTasks).Deps())
+		if err != nil {
+			t.Fatalf("Unexpected error while building DAG for pipelineTasks %v: %v", tc.DAGTasks, err)
+		}
+		finalGraph, err := dag.Build(v1.PipelineTaskList(tc.finalTasks), map[string][]string{})
+		if err != nil {
+			t.Fatalf("Unexpected error while building DAG for final pipelineTasks %v: %v", tc.finalTasks, err)
+		}
+		t.Run(tc.name, func(t *testing.T) {
+			facts := PipelineRunFacts{
+				State:           tc.state,
+				TasksGraph:      dagGraph,
+				FinalTasksGraph: finalGraph,
+				TimeoutsState: PipelineRunTimeoutsState{
+					Clock: testClock,
+				},
+			}
+			started := facts.IsFinalTaskStarted()
+			if d := cmp.Diff(tc.expectedFinalTaskStarted, started); d != "" {
+				t.Errorf("Didn't get expected (IsFinalTaskStarted) started for %s (%s):%s", tc.name, tc.desc, diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestGetPipelineConditionStatus(t *testing.T) {
 	var taskRetriedState = PipelineRunState{{
 		PipelineTask: &pts[3], // 1 retry needed
