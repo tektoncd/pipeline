@@ -39,7 +39,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	knativetest "knative.dev/pkg/test"
@@ -694,26 +693,6 @@ func TestWaitCustomTask_V1_PipelineRun(t *testing.T) {
 			}
 		})
 	}
-}
-
-// updateConfigMap updates the config map for specified @name with values. We can't use the one from knativetest because
-// it assumes that Data is already a non-nil map, and by default, it isn't!
-func updateConfigMap(ctx context.Context, client kubernetes.Interface, name string, configName string, values map[string]string) error {
-	configMap, err := client.CoreV1().ConfigMaps(name).Get(ctx, configName, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	if configMap.Data == nil {
-		configMap.Data = make(map[string]string)
-	}
-
-	for key, value := range values {
-		configMap.Data[key] = value
-	}
-
-	_, err = client.CoreV1().ConfigMaps(name).Update(ctx, configMap, metav1.UpdateOptions{})
-	return err
 }
 
 func resetConfigMap(ctx context.Context, t *testing.T, c *clients, namespace, configName string, values map[string]string) {

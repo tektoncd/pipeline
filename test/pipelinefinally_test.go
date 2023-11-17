@@ -30,11 +30,8 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/parse"
 	jsonpatch "gomodules.xyz/jsonpatch/v2"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"knative.dev/pkg/apis"
-	duckv1 "knative.dev/pkg/apis/duck/v1"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
 )
@@ -689,31 +686,6 @@ spec:
 			t.Fatalf("TaskRuns were not found for both final and dag tasks")
 		}
 	}
-}
-
-func isSuccessful(t *testing.T, taskRunName string, conds duckv1.Conditions) bool {
-	t.Helper()
-	for _, c := range conds {
-		if c.Type == apis.ConditionSucceeded {
-			if c.Status != corev1.ConditionTrue {
-				t.Errorf("TaskRun status %q is not succeeded, got %q", taskRunName, c.Status)
-			}
-			return true
-		}
-	}
-	t.Errorf("TaskRun status %q had no Succeeded condition", taskRunName)
-	return false
-}
-
-func isCancelled(t *testing.T, taskRunName string, conds duckv1.Conditions) bool {
-	t.Helper()
-	for _, c := range conds {
-		if c.Type == apis.ConditionSucceeded {
-			return true
-		}
-	}
-	t.Errorf("TaskRun status %q had no Succeeded condition", taskRunName)
-	return false
 }
 
 func getSuccessTask(t *testing.T, namespace string) *v1.Task {
