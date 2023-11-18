@@ -1542,6 +1542,75 @@ func TestMakeTaskRunStatus(t *testing.T) {
 	}
 }
 
+func TestMakeRunStatus_OnError(t *testing.T) {
+	for _, c := range []struct {
+		name      string
+		podStatus corev1.PodStatus
+		onError   v1.PipelineTaskOnErrorType
+		want      v1.TaskRunStatus
+	}{{
+		name: "onError: continue",
+		podStatus: corev1.PodStatus{
+			Phase:   corev1.PodFailed,
+			Message: "boom",
+		},
+		onError: v1.PipelineTaskContinue,
+		want: v1.TaskRunStatus{
+			Status: statusFailure(string(v1.TaskRunReasonFailureIgnored), "boom"),
+		},
+	}, {
+		name: "onError: stopAndFail",
+		podStatus: corev1.PodStatus{
+			Phase:   corev1.PodFailed,
+			Message: "boom",
+		},
+		onError: v1.PipelineTaskStopAndFail,
+		want: v1.TaskRunStatus{
+			Status: statusFailure(string(v1.TaskRunReasonFailed), "boom"),
+		},
+	}, {
+		name: "stand alone TaskRun",
+		podStatus: corev1.PodStatus{
+			Phase:   corev1.PodFailed,
+			Message: "boom",
+		},
+		want: v1.TaskRunStatus{
+			Status: statusFailure(string(v1.TaskRunReasonFailed), "boom"),
+		},
+	}} {
+		t.Run(c.name, func(t *testing.T) {
+			pod := corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod",
+					Namespace: "foo",
+				},
+				Status: c.podStatus,
+			}
+			tr := v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "task-run",
+					Namespace: "foo",
+				},
+			}
+			if c.onError != "" {
+				tr.Annotations = map[string]string{}
+				tr.Annotations[v1.PipelineTaskOnErrorAnnotation] = string(c.onError)
+			}
+
+			logger, _ := logging.NewLogger("", "status")
+			kubeclient := fakek8s.NewSimpleClientset()
+			got, err := MakeTaskRunStatus(context.Background(), logger, tr, &pod, kubeclient, &v1.TaskSpec{})
+			if err != nil {
+				t.Errorf("Unexpected err in MakeTaskRunResult: %s", err)
+			}
+
+			if d := cmp.Diff(c.want.Status, got.Status, ignoreVolatileTime); d != "" {
+				t.Errorf("Diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestMakeTaskRunStatusAlpha(t *testing.T) {
 	for _, c := range []struct {
 		desc      string

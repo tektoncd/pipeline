@@ -1,0 +1,25 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: pipelinerun-with-failing-task-
+spec:
+  pipelineSpec:
+    tasks:
+      - name: echo-continue
+        onError: continue
+        taskSpec:
+          steps:
+            - name: write
+              image: alpine
+              script: |
+                echo "this is a failing task"
+                exit 1
+      - name: echo
+        runAfter:
+          - echo-continue
+        taskSpec:
+          steps:
+            - name: write
+              image: alpine
+              script: |
+                echo "this is a success task"

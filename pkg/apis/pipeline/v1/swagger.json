@@ -894,7 +894,7 @@
           "type": "string"
         },
         "onError": {
-          "description": "OnError defines the exiting behavior of a PipelineRun on error can be set to [ continue | stopAndFail ] Note: OnError is in preview mode and not yet supported",
+          "description": "OnError defines the exiting behavior of a PipelineRun on error can be set to [ continue | stopAndFail ]",
           "type": "string"
         },
         "params": {

@@ -2141,6 +2141,51 @@ func TestGetPipelineConditionStatus_PipelineTimeouts(t *testing.T) {
 	}
 }
 
+func TestGetPipelineConditionStatus_OnError(t *testing.T) {
+	var oneFailedStateOnError = PipelineRunState{{
+		PipelineTask: &v1.PipelineTask{
+			Name:    "failed task ignored",
+			TaskRef: &v1.TaskRef{Name: "task"},
+			OnError: v1.PipelineTaskContinue,
+		},
+		TaskRunNames: []string{"pipelinerun-mytask1"},
+		TaskRuns:     []*v1.TaskRun{makeFailed(trs[0])},
+		ResolvedTask: &resources.ResolvedTask{
+			TaskSpec: &task.Spec,
+		},
+	}, {
+		PipelineTask: &pts[0],
+		TaskRunNames: []string{"pipelinerun-mytask2"},
+		TaskRuns:     []*v1.TaskRun{makeSucceeded(trs[0])},
+		ResolvedTask: &resources.ResolvedTask{
+			TaskSpec: &task.Spec,
+		},
+	}}
+	d, err := dagFromState(oneFailedStateOnError)
+	if err != nil {
+		t.Fatalf("Unexpected error while building DAG for state %v: %v", oneFinishedState, err)
+	}
+	pr := &v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-onError-continue"},
+		Spec:       v1.PipelineRunSpec{},
+	}
+	facts := PipelineRunFacts{
+		State:           oneFailedStateOnError,
+		TasksGraph:      d,
+		FinalTasksGraph: &dag.Graph{},
+		TimeoutsState: PipelineRunTimeoutsState{
+			Clock: testClock,
+		},
+	}
+	c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock)
+	if c.Status != corev1.ConditionTrue {
+		t.Fatalf("Expected to get status %s but got %s", corev1.ConditionTrue, c.Status)
+	}
+	if c.Message != "Tasks Completed: 2 (Failed: 1 (Ignored: 1), Cancelled 0), Skipped: 0" {
+		t.Errorf("Unexpected Error Msg: %s", c.Message)
+	}
+}
+
 func TestAdjustStartTime(t *testing.T) {
 	baseline := metav1.Time{Time: now}
 
