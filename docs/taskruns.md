@@ -909,6 +909,18 @@ spec:
       onFailure: "enabled"
 ```
 
+### Breakpoint before step
+
+If you want to set a breakpoint before the step is executed, you can add the step name to the `beforeSteps` field in the following way:
+
+```yaml
+spec:
+  debug:
+    breakpoints:
+      beforeSteps: 
+        - {{ stepName }}
+```
+
 Upon failure of a step, the TaskRun Pod execution is halted. If this TaskRun Pod continues to run without any lifecycle
 change done by the user (running the debug-continue or debug-fail-continue script) the TaskRun would be subject to
 [TaskRunTimeout](#configuring-the-failure-timeout).
@@ -930,6 +942,10 @@ perform :-
 `debug-continue`: Mark the step as a success and exit the breakpoint.
 
 `debug-fail-continue`: Mark the step as a failure and exit the breakpoint.
+
+`debug-beforestep-continue`: Mark the step continue to execute
+
+`debug-beforestep-fail-continue`: Mark the step not continue to execute
 
 *More information on the inner workings of debug can be found in the [Debug documentation](debug.md)*
 

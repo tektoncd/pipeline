@@ -146,9 +146,7 @@ func convertListOfSteps(steps []v1.Step, initContainer *corev1.Container, debugC
 		}
 		containers = append(containers, *c)
 	}
-	if debugConfig != nil && debugConfig.NeedsDebugOnFailure() {
-		placeDebugScriptInContainers(containers, initContainer)
-	}
+	placeDebugScriptInContainers(containers, initContainer, debugConfig)
 	return containers
 }
 
@@ -214,26 +212,48 @@ func encodeScript(script string) string {
 
 // placeDebugScriptInContainers inserts debug scripts into containers. It capsules those scripts to files in initContainer,
 // then executes those scripts in target containers.
-func placeDebugScriptInContainers(containers []corev1.Container, initContainer *corev1.Container) {
-	for i := range len(containers) {
+func placeDebugScriptInContainers(containers []corev1.Container, initContainer *corev1.Container, debugConfig *v1.TaskRunDebug) {
+	if debugConfig == nil || !debugConfig.NeedsDebug() {
+		return
+	}
+
+	isDebugOnFailure := debugConfig != nil && debugConfig.NeedsDebugOnFailure()
+	var needDebugBeforeStep bool
+
+	for i := range containers {
 		debugInfoVolumeMount := corev1.VolumeMount{
 			Name:      debugInfoVolumeName,
 			MountPath: filepath.Join(debugInfoDir, strconv.Itoa(i)),
 		}
 		(&containers[i]).VolumeMounts = append((&containers[i]).VolumeMounts, debugScriptsVolumeMount, debugInfoVolumeMount)
+		if debugConfig != nil && debugConfig.NeedsDebugBeforeStep(containers[i].Name) {
+			needDebugBeforeStep = true
+		}
 	}
 
 	type script struct {
 		name    string
 		content string
 	}
-	debugScripts := []script{{
-		name:    "continue",
-		content: defaultScriptPreamble + fmt.Sprintf(debugContinueScriptTemplate, len(containers), debugInfoDir, RunDir),
-	}, {
-		name:    "fail-continue",
-		content: defaultScriptPreamble + fmt.Sprintf(debugFailScriptTemplate, len(containers), debugInfoDir, RunDir),
-	}}
+	debugScripts := make([]script, 0)
+	if isDebugOnFailure {
+		debugScripts = append(debugScripts, []script{{
+			name:    "continue",
+			content: defaultScriptPreamble + fmt.Sprintf(debugContinueScriptTemplate, len(containers), debugInfoDir, RunDir),
+		}, {
+			name:    "fail-continue",
+			content: defaultScriptPreamble + fmt.Sprintf(debugFailScriptTemplate, len(containers), debugInfoDir, RunDir),
+		}}...)
+	}
+	if needDebugBeforeStep {
+		debugScripts = append(debugScripts, []script{{
+			name:    "beforestep-continue",
+			content: defaultScriptPreamble + fmt.Sprintf(debugBeforeStepContinueScriptTemplate, len(containers), debugInfoDir, RunDir),
+		}, {
+			name:    "beforestep-fail-continue",
+			content: defaultScriptPreamble + fmt.Sprintf(debugBeforeStepFailScriptTemplate, len(containers), debugInfoDir, RunDir),
+		}}...)
+	}
 
 	// Add debug or breakpoint related scripts to /tekton/debug/scripts
 	// Iterate through the debugScripts and add routine for each of them in the initContainer for their creation
