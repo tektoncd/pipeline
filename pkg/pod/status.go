@@ -128,7 +128,12 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.Tas
 	complete := areStepsComplete(pod) || pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed
 
 	if complete {
-		updateCompletedTaskRunStatus(logger, trs, pod)
+		onError, ok := tr.Annotations[v1.PipelineTaskOnErrorAnnotation]
+		if ok {
+			updateCompletedTaskRunStatus(logger, trs, pod, v1.PipelineTaskOnErrorType(onError))
+		} else {
+			updateCompletedTaskRunStatus(logger, trs, pod, "")
+		}
 	} else {
 		updateIncompleteTaskRunStatus(trs, pod)
 	}
@@ -483,10 +488,14 @@ func extractExitCodeFromResults(results []result.RunResult) (*int32, error) {
 	return nil, nil //nolint:nilnil // would be more ergonomic to return a sentinel error
 }
 
-func updateCompletedTaskRunStatus(logger *zap.SugaredLogger, trs *v1.TaskRunStatus, pod *corev1.Pod) {
+func updateCompletedTaskRunStatus(logger *zap.SugaredLogger, trs *v1.TaskRunStatus, pod *corev1.Pod, onError v1.PipelineTaskOnErrorType) {
 	if DidTaskRunFail(pod) {
 		msg := getFailureMessage(logger, pod)
-		markStatusFailure(trs, v1.TaskRunReasonFailed.String(), msg)
+		if onError == v1.PipelineTaskContinue {
+			markStatusFailure(trs, v1.TaskRunReasonFailureIgnored.String(), msg)
+		} else {
+			markStatusFailure(trs, v1.TaskRunReasonFailed.String(), msg)
+		}
 	} else {
 		markStatusSuccess(trs)
 	}

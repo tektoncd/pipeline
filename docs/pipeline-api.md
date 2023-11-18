@@ -2887,9 +2887,7 @@ PipelineTaskOnErrorType
 <td>
 <em>(Optional)</em>
 <p>OnError defines the exiting behavior of a PipelineRun on error
-can be set to [ continue | stopAndFail ]
-Note: OnError is in preview mode and not yet supported
-TODO(#7165)</p>
+can be set to [ continue | stopAndFail ]</p>
 </td>
 </tr>
 </tbody>
@@ -5137,6 +5135,10 @@ that references within the TaskRun could not be resolved</p>
 </tr><tr><td><p>&#34;TaskRunValidationFailed&#34;</p></td>
 <td><p>TaskRunReasonFailedValidation indicated that the reason for failure status is
 that taskrun failed runtime validation</p>
+</td>
+</tr><tr><td><p>&#34;FailureIgnored&#34;</p></td>
+<td><p>TaskRunReasonFailureIgnored is the reason set when the Taskrun has failed due to pod execution error and the failure is ignored for the owning PipelineRun.
+TaskRuns failed due to reconciler/validation error should not use this reason.</p>
 </td>
 </tr><tr><td><p>&#34;TaskRunImagePullFailed&#34;</p></td>
 <td><p>TaskRunReasonImagePullFailed is the reason set when the step of a task fails due to image not being pulled</p>
@@ -11611,9 +11613,7 @@ PipelineTaskOnErrorType
 <td>
 <em>(Optional)</em>
 <p>OnError defines the exiting behavior of a PipelineRun on error
-can be set to [ continue | stopAndFail ]
-Note: OnError is in preview mode and not yet supported
-TODO(#7165)</p>
+can be set to [ continue | stopAndFail ]</p>
 </td>
 </tr>
 </tbody>

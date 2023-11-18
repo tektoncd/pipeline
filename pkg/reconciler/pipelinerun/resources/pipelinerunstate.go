@@ -88,6 +88,8 @@ type pipelineRunStatusCount struct {
 	Succeeded int
 	// failed tasks count
 	Failed int
+	// failed but ignored tasks count
+	IgnoredFailed int
 	// cancelled tasks count
 	Cancelled int
 	// number of tasks which are still pending, have not executed
@@ -278,11 +280,11 @@ func (state PipelineRunState) getNextTasks(candidateTasks sets.String) []*Resolv
 }
 
 // IsStopping returns true if the PipelineRun won't be scheduling any new Task because
-// at least one task already failed or was cancelled in the specified dag
+// at least one task already failed (with onError: stopAndFail) or was cancelled in the specified dag
 func (facts *PipelineRunFacts) IsStopping() bool {
 	for _, t := range facts.State {
 		if facts.isDAGTask(t.PipelineTask.Name) {
-			if t.isFailure() {
+			if t.isFailure() && t.PipelineTask.OnError != v1.PipelineTaskContinue {
 				return true
 			}
 		}
@@ -417,7 +419,8 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 	// get the count of successful tasks, failed tasks, cancelled tasks, skipped task, and incomplete tasks
 	s := facts.getPipelineTasksCount()
 	// completed task is a collection of successful, failed, cancelled tasks (skipped tasks are reported separately)
-	cmTasks := s.Succeeded + s.Failed + s.Cancelled
+	cmTasks := s.Succeeded + s.Failed + s.Cancelled + s.IgnoredFailed
+	totalFailedTasks := s.Failed + s.IgnoredFailed
 
 	// The completion reason is set from the TaskRun completion reason
 	// by default, set it to ReasonRunning
@@ -427,8 +430,14 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 	if s.Incomplete == 0 {
 		status := corev1.ConditionTrue
 		reason := v1.PipelineRunReasonSuccessful.String()
-		message := fmt.Sprintf("Tasks Completed: %d (Failed: %d, Cancelled %d), Skipped: %d",
-			cmTasks, s.Failed, s.Cancelled, s.Skipped)
+		var message string
+		if s.IgnoredFailed > 0 {
+			message = fmt.Sprintf("Tasks Completed: %d (Failed: %d (Ignored: %d), Cancelled %d), Skipped: %d",
+				cmTasks, totalFailedTasks, s.IgnoredFailed, s.Cancelled, s.Skipped)
+		} else {
+			message = fmt.Sprintf("Tasks Completed: %d (Failed: %d, Cancelled %d), Skipped: %d",
+				cmTasks, totalFailedTasks, s.Cancelled, s.Skipped)
+		}
 		// Set reason to ReasonCompleted - At least one is skipped
 		if s.Skipped > 0 {
 			reason = v1.PipelineRunReasonCompleted.String()
@@ -604,6 +613,7 @@ func (facts *PipelineRunFacts) getPipelineTasksCount() pipelineRunStatusCount {
 		Cancelled:           0,
 		Incomplete:          0,
 		SkippedDueToTimeout: 0,
+		IgnoredFailed:       0,
 	}
 	for _, t := range facts.State {
 		switch {
@@ -616,9 +626,13 @@ func (facts *PipelineRunFacts) getPipelineTasksCount() pipelineRunStatusCount {
 		// increment cancelled counter since the task is cancelled
 		case t.isCancelled():
 			s.Cancelled++
-		// increment failure counter since the task has failed
+		// increment failure counter based on Task OnError type since the task has failed
 		case t.isFailure():
-			s.Failed++
+			if t.PipelineTask.OnError == v1.PipelineTaskContinue {
+				s.IgnoredFailed++
+			} else {
+				s.Failed++
+			}
 		// increment skipped and skipped due to timeout counters since the task was skipped due to the pipeline, tasks, or finally timeout being reached before the task was launched
 		case t.Skip(facts).SkippingReason == v1.PipelineTimedOutSkip ||
 			t.Skip(facts).SkippingReason == v1.TasksTimedOutSkip ||

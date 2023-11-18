@@ -958,6 +958,9 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 	if spanContext, err := getMarshalledSpanFromContext(ctx); err == nil {
 		tr.Annotations[TaskRunSpanContextAnnotation] = spanContext
 	}
+	if rpt.PipelineTask.OnError == v1.PipelineTaskContinue {
+		tr.Annotations[v1.PipelineTaskOnErrorAnnotation] = string(v1.PipelineTaskContinue)
+	}
 
 	if rpt.PipelineTask.Timeout != nil {
 		tr.Spec.Timeout = rpt.PipelineTask.Timeout

@@ -416,6 +416,9 @@ const (
 	PipelineRunReasonInvalidParamValue PipelineRunReason = "InvalidParamValue"
 )
 
+// PipelineTaskOnErrorAnnotation is used to pass the failure strategy to TaskRun pods from PipelineTask OnError field
+const PipelineTaskOnErrorAnnotation = "pipeline.tekton.dev/pipeline-task-on-error"
+
 func (t PipelineRunReason) String() string {
 	return string(t)
 }

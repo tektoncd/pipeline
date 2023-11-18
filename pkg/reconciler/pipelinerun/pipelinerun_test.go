@@ -1060,6 +1060,76 @@ spec:
 	}
 }
 
+// TestPipelineTaskErrorIsIgnored tests that a resource dependent PipelineTask with onError:continue is skipped
+// if the parent PipelineTask fails to produce the result
+func TestPipelineTaskErrorIsIgnored(t *testing.T) {
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-missing-results
+  namespace: foo
+spec:
+  serviceAccountName: test-sa-0
+  pipelineSpec:
+    tasks:
+    - name: task1
+      taskSpec:
+        results:
+        - name: result1
+          type: string
+        steps:
+        - name: failing-step
+          onError: continue
+          image: busybox
+          script: exit 1; echo -n 123 | tee $(results.result1.path)'
+    - name: task2
+      onError: continue
+      params:
+      - name: param1
+        value: $(tasks.task1.results.result1)
+      taskSpec:
+        params:
+        - name: param1
+          type: string
+        steps:
+        - name: foo
+          image: busybox
+          script: 'echo $(params.param1)'
+`)}
+	trs := []*v1.TaskRun{mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipeline-missing-results-task1", "foo",
+			"test-pipeline-missing-results", "test-pipeline", "task1", true),
+		`
+spec:
+  serviceAccountName: test-sa
+  timeout: 1h0m0s
+status:
+  conditions:
+  - status: "True"
+    type: Succeeded
+`)}
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		TaskRuns:     trs,
+		ConfigMaps:   cms,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-missing-results", []string{}, false)
+	cond := reconciledRun.Status.Conditions[0]
+	if cond.Status != corev1.ConditionTrue {
+		t.Fatalf("expected PipelineRun status to be True but got: %s", cond.Status)
+	}
+	if len(reconciledRun.Status.SkippedTasks) != 1 {
+		t.Fatalf("expected 1 skipped Task but got %v", len(reconciledRun.Status.SkippedTasks))
+	}
+	if reconciledRun.Status.SkippedTasks[0].Reason != v1.MissingResultsSkip {
+		t.Fatalf("expected 1 skipped Task with reason %s, but got %v", v1.MissingResultsSkip, reconciledRun.Status.SkippedTasks[0].Reason)
+	}
+}
+
 func TestMissingResultWhenStepErrorIsIgnored(t *testing.T) {
 	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
 metadata:
