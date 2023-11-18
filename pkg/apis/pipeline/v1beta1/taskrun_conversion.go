@@ -214,10 +214,18 @@ func (trd *TaskRunDebug) convertFrom(ctx context.Context, source v1.TaskRunDebug
 
 func (tbp TaskBreakpoints) convertTo(ctx context.Context, sink *v1.TaskBreakpoints) {
 	sink.OnFailure = tbp.OnFailure
+	if len(tbp.BeforeSteps) > 0 {
+		sink.BeforeSteps = make([]string, 0)
+		sink.BeforeSteps = append(sink.BeforeSteps, tbp.BeforeSteps...)
+	}
 }
 
 func (tbp *TaskBreakpoints) convertFrom(ctx context.Context, source v1.TaskBreakpoints) {
 	tbp.OnFailure = source.OnFailure
+	if len(source.BeforeSteps) > 0 {
+		tbp.BeforeSteps = make([]string, 0)
+		tbp.BeforeSteps = append(tbp.BeforeSteps, source.BeforeSteps...)
+	}
 }
 
 func (trso TaskRunStepOverride) convertTo(ctx context.Context, sink *v1.TaskRunStepSpec) {
