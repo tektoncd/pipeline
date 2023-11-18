@@ -706,6 +706,21 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		wantErr: apis.ErrInvalidValue("turnOn is not a valid onFailure breakpoint value, onFailure breakpoint is only allowed to be set as enabled", "debug.breakpoints.onFailure"),
 		wc:      cfgtesting.EnableAlphaAPIFields,
 	}, {
+		name: "invalid breakpoint duplicate before steps",
+		spec: v1.TaskRunSpec{
+			TaskRef: &v1.TaskRef{
+				Name: "my-task",
+			},
+			Debug: &v1.TaskRunDebug{
+				Breakpoints: &v1.TaskBreakpoints{
+					BeforeSteps: []string{"step-1", "step-1"},
+					OnFailure:   "enabled",
+				},
+			},
+		},
+		wantErr: apis.ErrGeneric("before step must be unique, the same step: step-1 is defined multiple times at", "debug.breakpoints.beforeSteps[1]"),
+		wc:      cfgtesting.EnableAlphaAPIFields,
+	}, {
 		name: "empty onFailure breakpoint",
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{
