@@ -527,7 +527,7 @@ func (facts *PipelineRunFacts) GetPipelineTaskStatus() map[string]string {
 			if facts.isDAGTask(t.PipelineTask.Name) {
 				// if any of the dag task failed, change the aggregate status to failed and return
 				if !t.IsCustomTask() && t.haveAnyTaskRunsFailed() || t.IsCustomTask() && t.haveAnyCustomRunsFailed() {
-					aggregateStatus = v1beta1.PipelineRunReasonFailed.String()
+					aggregateStatus = v1.PipelineRunReasonFailed.String()
 					break
 				}
 				// if any of the dag task skipped, change the aggregate status to completed
