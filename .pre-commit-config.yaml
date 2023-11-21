@@ -10,7 +10,7 @@ repos:
   - id: check-yaml
     args: ["--allow-multiple-documents"]
     # Ignore yaml files with {{ }} cause they're not valid.
-    exclude: '(test\/gohelloworld\/gohelloworld-chart\/templates\/.*yaml$)' 
+    exclude: '(test\/gohelloworld\/gohelloworld-chart\/templates\/.*yaml$)'
   - id: check-shebang-scripts-are-executable
   - id: check-json
   - id: detect-private-key
