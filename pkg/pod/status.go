@@ -39,10 +39,6 @@ import (
 )
 
 const (
-	// ReasonCouldntGetTask indicates that the reason for the failure status is that the
-	// Task couldn't be found
-	ReasonCouldntGetTask = "CouldntGetTask"
-
 	// ReasonFailedResolution indicated that the reason for failure status is
 	// that references within the TaskRun could not be resolved
 	ReasonFailedResolution = "TaskRunResolutionFailed"

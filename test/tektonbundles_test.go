@@ -36,8 +36,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
@@ -300,7 +300,7 @@ spec:
 	t.Logf("Waiting for PipelineRun in namespace %s to finish", namespace)
 	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, timeout,
 		Chain(
-			FailedWithReason(pod.ReasonCouldntGetTask, pipelineRunName),
+			FailedWithReason(pipelinev1.PipelineRunReasonCouldntGetTask.String(), pipelineRunName),
 			FailedWithMessage("does not contain a dev.tekton.image.apiVersion annotation", pipelineRunName),
 		), "PipelineRunFailed", v1beta1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun to finish with expected error: %s", err)
