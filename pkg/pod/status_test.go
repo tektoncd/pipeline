@@ -590,7 +590,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			}},
 		},
 		want: v1.TaskRunStatus{
-			Status: statusFailure(v1.TaskRunReasonFailed.String(), "\"step-failure\" exited with code 123 (image: \"image-id\"); for logs run: kubectl -n foo logs pod -c step-failure\n"),
+			Status: statusFailure(v1.TaskRunReasonFailed.String(), "\"step-failure\" exited with code 123"),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
 				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
@@ -1424,7 +1424,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			},
 		},
 		want: v1.TaskRunStatus{
-			Status: statusFailure(v1.TaskRunReasonFailed.String(), "init container failed, \"init-A\" exited with code 1 (image: \"init-image-id-A\"); for logs run: kubectl -n foo logs pod -c init-A\n"),
+			Status: statusFailure(v1.TaskRunReasonFailed.String(), "init container failed, \"init-A\" exited with code 1"),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
 				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
@@ -1875,7 +1875,7 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 		},
 	}
 	wantTr := v1.TaskRunStatus{
-		Status: statusFailure(v1.TaskRunReasonFailed.String(), "\"step-non-json\" exited with code 1 (image: \"image\"); for logs run: kubectl -n foo logs pod -c step-non-json\n"),
+		Status: statusFailure(v1.TaskRunReasonFailed.String(), "\"step-non-json\" exited with code 1"),
 		TaskRunStatusFields: v1.TaskRunStatusFields{
 			PodName: "pod",
 			Steps: []v1.StepState{{

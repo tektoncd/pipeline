@@ -608,17 +608,11 @@ func extractContainerFailureMessage(logger *zap.SugaredLogger, status corev1.Con
 		r, _ := termination.ParseMessage(logger, msg)
 		for _, runResult := range r {
 			if runResult.ResultType == result.InternalTektonResultType && runResult.Key == "Reason" && runResult.Value == "TimeoutExceeded" {
-				// Newline required at end to prevent yaml parser from breaking the log help text at 80 chars
-				return fmt.Sprintf("%q exited because the step exceeded the specified timeout limit; for logs run: kubectl -n %s logs %s -c %s\n",
-					status.Name,
-					podMetaData.Namespace, podMetaData.Name, status.Name)
+				return fmt.Sprintf("%q exited because the step exceeded the specified timeout limit", status.Name)
 			}
 		}
 		if term.ExitCode != 0 {
-			// Newline required at end to prevent yaml parser from breaking the log help text at 80 chars
-			return fmt.Sprintf("%q exited with code %d (image: %q); for logs run: kubectl -n %s logs %s -c %s\n",
-				status.Name, term.ExitCode, status.ImageID,
-				podMetaData.Namespace, podMetaData.Name, status.Name)
+			return fmt.Sprintf("%q exited with code %d", status.Name, term.ExitCode)
 		}
 	}
 
