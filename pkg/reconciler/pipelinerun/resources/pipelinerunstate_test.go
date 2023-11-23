@@ -2303,6 +2303,149 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 	}
 }
 
+func TestPipelineRunFacts_GetPipelineFinalTaskStatus(t *testing.T) {
+	tcs := []struct {
+		name           string
+		state          PipelineRunState
+		finalTasks     []v1.PipelineTask
+		expectedStatus map[string]string
+	}{{
+		name:       "no-tasks-started",
+		state:      noneStartedState,
+		finalTasks: []v1.PipelineTask{pts[0], pts[1]},
+		expectedStatus: map[string]string{
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+		},
+	}, {
+		name:       "one-task-started",
+		state:      oneStartedState,
+		finalTasks: []v1.PipelineTask{pts[0], pts[1]},
+		expectedStatus: map[string]string{
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+		},
+	}, {
+		name:       "one-task-finished",
+		state:      oneFinishedState,
+		finalTasks: []v1.PipelineTask{pts[0], pts[1]},
+		expectedStatus: map[string]string{
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: v1.TaskRunReasonSuccessful.String(),
+			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+		},
+	}, {
+		name:       "one-task-failed",
+		state:      oneFailedState,
+		finalTasks: []v1.PipelineTask{pts[0], pts[1]},
+		expectedStatus: map[string]string{
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: v1.TaskRunReasonFailed.String(),
+			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+		},
+	}, {
+		name:       "all-finished",
+		state:      allFinishedState,
+		finalTasks: []v1.PipelineTask{pts[0], pts[1]},
+		expectedStatus: map[string]string{
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: v1.TaskRunReasonSuccessful.String(),
+			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: v1.TaskRunReasonSuccessful.String(),
+		},
+	}, {
+		name: "task-with-when-expressions-passed",
+		state: PipelineRunState{{
+			PipelineTask: &pts[9],
+			TaskRunNames: []string{"pr-guard-succeeded-task-not-started"},
+			TaskRuns:     nil,
+			ResolvedTask: &resources.ResolvedTask{
+				TaskSpec: &task.Spec,
+			},
+		}},
+		finalTasks: []v1.PipelineTask{pts[9]},
+		expectedStatus: map[string]string{
+			PipelineTaskStatusPrefix + pts[9].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+		},
+	}, {
+		name: "tasks-when-expression-failed-and-task-skipped",
+		state: PipelineRunState{{
+			PipelineTask: &pts[10],
+			TaskRunNames: []string{"pr-guardedtask-skipped"},
+			ResolvedTask: &resources.ResolvedTask{
+				TaskSpec: &task.Spec,
+			},
+		}},
+		finalTasks: []v1.PipelineTask{pts[10]},
+		expectedStatus: map[string]string{
+			PipelineTaskStatusPrefix + pts[10].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+		},
+	}, {
+		name: "when-expression-task-with-parent-started",
+		state: PipelineRunState{{
+			PipelineTask: &pts[0],
+			TaskRuns:     []*v1.TaskRun{makeStarted(trs[0])},
+			ResolvedTask: &resources.ResolvedTask{
+				TaskSpec: &task.Spec,
+			},
+		}, {
+			PipelineTask: &pts[11],
+			TaskRuns:     nil,
+			ResolvedTask: &resources.ResolvedTask{
+				TaskSpec: &task.Spec,
+			},
+		}},
+		finalTasks: []v1.PipelineTask{pts[0], pts[11]},
+		expectedStatus: map[string]string{
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix:  PipelineTaskStateNone,
+			PipelineTaskStatusPrefix + pts[11].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+		},
+	}, {
+		name:       "task-cancelled",
+		state:      taskCancelled,
+		finalTasks: []v1.PipelineTask{pts[4]},
+		expectedStatus: map[string]string{
+			PipelineTaskStatusPrefix + pts[4].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+		},
+	}, {
+		name: "one-skipped-one-failed-aggregate-status-must-be-failed",
+		state: PipelineRunState{{
+			PipelineTask: &pts[10],
+			TaskRunNames: []string{"pr-guardedtask-skipped"},
+			ResolvedTask: &resources.ResolvedTask{
+				TaskSpec: &task.Spec,
+			},
+		}, {
+			PipelineTask: &pts[0],
+			TaskRunNames: []string{"pipelinerun-mytask1"},
+			TaskRuns:     []*v1.TaskRun{makeFailed(trs[0])},
+			ResolvedTask: &resources.ResolvedTask{
+				TaskSpec: &task.Spec,
+			},
+		}},
+		finalTasks: []v1.PipelineTask{pts[0], pts[10]},
+		expectedStatus: map[string]string{
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix:  v1.PipelineRunReasonFailed.String(),
+			PipelineTaskStatusPrefix + pts[10].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+		},
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			d, err := dag.Build(v1.PipelineTaskList(tc.finalTasks), v1.PipelineTaskList(tc.finalTasks).Deps())
+			if err != nil {
+				t.Fatalf("Unexpected error while building graph for DAG tasks %v: %v", tc.finalTasks, err)
+			}
+			facts := PipelineRunFacts{
+				State:           tc.state,
+				FinalTasksGraph: d,
+				TimeoutsState: PipelineRunTimeoutsState{
+					Clock: testClock,
+				},
+			}
+			s := facts.GetPipelineFinalTaskStatus()
+			if d := cmp.Diff(tc.expectedStatus, s); d != "" {
+				t.Fatalf("Test failed: %s Mismatch in pipelineFinalTask execution state %s", tc.name, diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestPipelineRunFacts_GetSkippedTasks(t *testing.T) {
 	for _, tc := range []struct {
 		name                 string

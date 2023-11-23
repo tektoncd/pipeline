@@ -157,10 +157,8 @@ type Reconciler struct {
 	tracerProvider           trace.TracerProvider
 }
 
-var (
-	// Check that our Reconciler implements pipelinerunreconciler.Interface
-	_ pipelinerunreconciler.Interface = (*Reconciler)(nil)
-)
+// Check that our Reconciler implements pipelinerunreconciler.Interface
+var _ pipelinerunreconciler.Interface = (*Reconciler)(nil)
 
 // ReconcileKind compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the Pipeline Run
@@ -314,7 +312,8 @@ func (c *Reconciler) resolvePipelineState(
 	ctx context.Context,
 	tasks []v1beta1.PipelineTask,
 	pipelineMeta *metav1.ObjectMeta,
-	pr *v1beta1.PipelineRun) (resources.PipelineRunState, error) {
+	pr *v1beta1.PipelineRun,
+) (resources.PipelineRunState, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "resolvePipelineState")
 	defer span.End()
 	pst := resources.PipelineRunState{}
@@ -689,9 +688,14 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	pr.Status.ChildReferences = pipelineRunFacts.State.GetChildReferences()
 
 	pr.Status.SkippedTasks = pipelineRunFacts.GetSkippedTasks()
+
+	taskStatus := pipelineRunFacts.GetPipelineTaskStatus()
+	finalTaskStatus := pipelineRunFacts.GetPipelineFinalTaskStatus()
+	taskStatus = kmap.Union(taskStatus, finalTaskStatus)
+
 	if after.Status == corev1.ConditionTrue || after.Status == corev1.ConditionFalse {
 		pr.Status.PipelineResults, err = resources.ApplyTaskResultsToPipelineResults(ctx, pipelineSpec.Results,
-			pipelineRunFacts.State.GetTaskRunsResults(), pipelineRunFacts.State.GetRunsResults(), pipelineRunFacts.GetPipelineTaskStatus())
+			pipelineRunFacts.State.GetTaskRunsResults(), pipelineRunFacts.State.GetRunsResults(), taskStatus)
 		if err != nil {
 			pr.Status.MarkFailed(ReasonFailedValidation, err.Error())
 			return err
@@ -849,7 +853,8 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 			StepOverrides:      taskRunSpec.StepOverrides,
 			SidecarOverrides:   taskRunSpec.SidecarOverrides,
 			ComputeResources:   taskRunSpec.ComputeResources,
-		}}
+		},
+	}
 
 	// Add current spanContext as annotations to TaskRun
 	// so that tracing can be continued under the same traceId
