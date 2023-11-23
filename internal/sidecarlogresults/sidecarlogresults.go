@@ -25,6 +25,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/result"
@@ -36,10 +37,19 @@ import (
 // ErrSizeExceeded indicates that the result exceeded its maximum allowed size
 var ErrSizeExceeded = errors.New("results size exceeds configured limit")
 
+type SidecarLogResultType string
+
+const (
+	taskResultType             SidecarLogResultType = "task"
+	stepResultType             SidecarLogResultType = "step"
+	sidecarResultNameSeparator string               = "."
+)
+
 // SidecarLogResult holds fields for storing extracted results
 type SidecarLogResult struct {
 	Name  string
 	Value string
+	Type  SidecarLogResultType
 }
 
 func fileExists(filename string) (bool, error) {
@@ -89,10 +99,42 @@ func waitForStepsToFinish(runDir string) error {
 	return nil
 }
 
+func createSidecarResultName(stepName, resultName string) string {
+	return fmt.Sprintf("%s%s%s", stepName, sidecarResultNameSeparator, resultName)
+}
+
+// ExtractStepAndResultFromSidecarResultName splits the result name to extract the step
+// and result name from it. It only works if the format is <stepName>.<resultName>
+func ExtractStepAndResultFromSidecarResultName(sidecarResultName string) (string, string, error) {
+	splitString := strings.SplitN(sidecarResultName, sidecarResultNameSeparator, 2)
+	if len(splitString) != 2 {
+		return "", "", fmt.Errorf("invalid string %s : expected somtthing that looks like <stepName>.<resultName>", sidecarResultName)
+	}
+	return splitString[0], splitString[1], nil
+}
+
+func readResults(resultsDir, resultFile, stepName string, resultType SidecarLogResultType) (SidecarLogResult, error) {
+	value, err := os.ReadFile(filepath.Join(resultsDir, resultFile))
+	if os.IsNotExist(err) {
+		return SidecarLogResult{}, nil
+	} else if err != nil {
+		return SidecarLogResult{}, fmt.Errorf("error reading the results file %w", err)
+	}
+	resultName := resultFile
+	if resultType == stepResultType {
+		resultName = createSidecarResultName(stepName, resultFile)
+	}
+	return SidecarLogResult{
+		Name:  resultName,
+		Value: string(value),
+		Type:  resultType,
+	}, nil
+}
+
 // LookForResults waits for results to be written out by the steps
 // in their results path and prints them in a structured way to its
 // stdout so that the reconciler can parse those logs.
-func LookForResults(w io.Writer, runDir string, resultsDir string, resultNames []string) error {
+func LookForResults(w io.Writer, runDir string, resultsDir string, resultNames []string, stepResultsDir string, stepResults map[string][]string) error {
 	if err := waitForStepsToFinish(runDir); err != nil {
 		return fmt.Errorf("error while waiting for the steps to finish  %w", err)
 	}
@@ -102,20 +144,39 @@ func LookForResults(w io.Writer, runDir string, resultsDir string, resultNames [
 		resultFile := resultFile
 
 		g.Go(func() error {
-			value, err := os.ReadFile(filepath.Join(resultsDir, resultFile))
-			if os.IsNotExist(err) {
-				return nil
-			} else if err != nil {
-				return fmt.Errorf("error reading the results file %w", err)
+			newResult, err := readResults(resultsDir, resultFile, "", taskResultType)
+			if err != nil {
+				return err
 			}
-			newResult := SidecarLogResult{
-				Name:  resultFile,
-				Value: string(value),
+			if newResult.Name == "" {
+				return nil
 			}
 			results <- newResult
 			return nil
 		})
 	}
+
+	for sName, sresults := range stepResults {
+		sresults := sresults
+		sName := sName
+		for _, resultName := range sresults {
+			resultName := resultName
+			stepResultsDir := filepath.Join(stepResultsDir, sName, "results")
+
+			g.Go(func() error {
+				newResult, err := readResults(stepResultsDir, resultName, sName, stepResultType)
+				if err != nil {
+					return err
+				}
+				if newResult.Name == "" {
+					return nil
+				}
+				results <- newResult
+				return nil
+			})
+		}
+	}
+
 	channelGroup := new(errgroup.Group)
 	channelGroup.Go(func() error {
 		if err := g.Wait(); err != nil {
@@ -183,10 +244,19 @@ func parseResults(resultBytes []byte, maxResultLimit int) (result.RunResult, err
 	if len(resultBytes) > maxResultLimit {
 		return runResult, fmt.Errorf("invalid result \"%s\": %w of %d", res.Name, ErrSizeExceeded, maxResultLimit)
 	}
+	var resultType result.ResultType
+	switch res.Type {
+	case taskResultType:
+		resultType = result.TaskRunResultType
+	case stepResultType:
+		resultType = result.StepResultType
+	default:
+		return result.RunResult{}, fmt.Errorf("invalid sidecar result type %v. Must be %v or %v", res.Type, taskResultType, stepResultType)
+	}
 	runResult = result.RunResult{
 		Key:        res.Name,
 		Value:      res.Value,
-		ResultType: result.TaskRunResultType,
+		ResultType: resultType,
 	}
 	return runResult, nil
 }
