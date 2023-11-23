@@ -542,6 +542,30 @@ func (facts *PipelineRunFacts) GetPipelineTaskStatus() map[string]string {
 	return tStatus
 }
 
+// GetPipelineTaskStatus returns the status of a PipelineFinalTask depending on its taskRun
+func (facts *PipelineRunFacts) GetPipelineFinalTaskStatus() map[string]string {
+	// construct a map of tasks.<pipelineTask>.status and its state
+	tStatus := make(map[string]string)
+	for _, t := range facts.State {
+		if facts.isFinalTask(t.PipelineTask.Name) {
+			var s string
+			switch {
+			// execution status is Succeeded when a task has succeeded condition with status set to true
+			case t.isSuccessful():
+				s = v1.TaskRunReasonSuccessful.String()
+			// execution status is Failed when a task has succeeded condition with status set to false
+			case t.haveAnyRunsFailed():
+				s = v1.TaskRunReasonFailed.String()
+			default:
+				// None includes skipped as well
+				s = PipelineTaskStateNone
+			}
+			tStatus[PipelineTaskStatusPrefix+t.PipelineTask.Name+PipelineTaskStatusSuffix] = s
+		}
+	}
+	return tStatus
+}
+
 // completedOrSkippedTasks returns a list of the names of all of the PipelineTasks in state
 // which have completed or skipped
 func (facts *PipelineRunFacts) completedOrSkippedDAGTasks() []string {
