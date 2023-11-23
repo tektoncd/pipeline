@@ -7,6 +7,8 @@ spec:
     params:
       - name: say-hello
         default: 'false'
+      - name: do-shutdown
+        default: 'false'
     tasks:
       - name: hello
         taskSpec:
@@ -35,7 +37,21 @@ spec:
           - input: $(params.say-hello)
             operator: in
             values: ["true"]
-
+    finally:
+      - name: shutdown
+        taskSpec:
+          results:
+            - name: result-three
+          steps:
+          - image: alpine
+            script: |
+              #!/bin/sh
+              echo "Shutdown world!"
+              echo -n "RES3" > $(results.result-three.path)
+        when:
+          - input: $(params.do-shutdown)
+            operator: in
+            values: ["true"]
     results:
       - name: result-hello
         description: Result one
@@ -43,3 +59,6 @@ spec:
       - name: result-goodbye
         description: Result two
         value: '$(tasks.goodbye.results.result-two)'
+      - name: result-shutdown
+        description: Result shutdown
+        value: '$(finally.shutdown.results.result-three)'
