@@ -1950,6 +1950,86 @@ _EOF_
 						"/tekton/results",
 						"-result-names",
 						"foo",
+						"-step-results",
+						"{}",
+					},
+					Resources: corev1.ResourceRequirements{
+						Requests: nil,
+					},
+					VolumeMounts: append([]corev1.VolumeMount{
+						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
+						{Name: "tekton-internal-run-0", ReadOnly: true, MountPath: "/tekton/run/0"},
+					}, implicitVolumeMounts...),
+				}},
+				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+					Name:         "tekton-creds-init-home-0",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}),
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
+			},
+		}, {
+			desc:         "sidecar logs enabled with step results",
+			featureFlags: map[string]string{"results-from": "sidecar-logs"},
+			ts: v1.TaskSpec{
+				Results: []v1.TaskResult{{
+					Name: "foo",
+					Type: v1.ResultsTypeString,
+				}},
+				Steps: []v1.Step{{
+					Name: "name",
+					Results: []v1.StepResult{{
+						Name: "step-foo",
+						Type: v1.ResultsTypeString,
+					}},
+					Image:   "image",
+					Command: []string{"cmd"}, // avoid entrypoint lookup.
+				}},
+			},
+			want: &corev1.PodSpec{
+				RestartPolicy: corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{
+					entrypointInitContainer(images.EntrypointImage, []v1.Step{{Name: "name"}}, false /* setSecurityContext */, false /* windows */),
+				},
+				Containers: []corev1.Container{{
+					Name:    "step-name",
+					Image:   "image",
+					Command: []string{"/tekton/bin/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/run/0/out",
+						"-termination_path",
+						"/tekton/termination",
+						"-step_metadata_dir",
+						"/tekton/run/0/status",
+						"-result_from",
+						"sidecar-logs",
+						"-step_results",
+						"step-foo",
+						"-results",
+						"foo",
+						"-entrypoint",
+						"cmd",
+						"--",
+					},
+					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
+						Name:      "tekton-creds-init-home-0",
+						MountPath: "/tekton/creds",
+					}}, implicitVolumeMounts...),
+					TerminationMessagePath: "/tekton/termination",
+				}, {
+					Name:  pipeline.ReservedResultsSidecarContainerName,
+					Image: "",
+					Command: []string{
+						"/ko-app/sidecarlogresults",
+						"-results-dir",
+						"/tekton/results",
+						"-result-names",
+						"foo",
+						"-step-results",
+						"{\"step-name\":[\"step-foo\"]}",
 					},
 					Resources: corev1.ResourceRequirements{
 						Requests: nil,
@@ -2020,6 +2100,8 @@ _EOF_
 						"/tekton/results",
 						"-result-names",
 						"foo",
+						"-step-results",
+						"{}",
 					},
 					Resources: corev1.ResourceRequirements{
 						Requests: nil,

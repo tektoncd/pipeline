@@ -163,6 +163,49 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.Tas
 	return *trs, merr.ErrorOrNil()
 }
 
+func createTaskResultsFromStepResults(stepRunRes []v1.TaskRunStepResult, neededStepResults map[string]string) []v1.TaskRunResult {
+	taskResults := []v1.TaskRunResult{}
+	for _, r := range stepRunRes {
+		// this result was requested by the Task
+		if _, ok := neededStepResults[r.Name]; ok {
+			taskRunResult := v1.TaskRunResult{
+				Name:  neededStepResults[r.Name],
+				Type:  r.Type,
+				Value: r.Value,
+			}
+			taskResults = append(taskResults, taskRunResult)
+		}
+	}
+	return taskResults
+}
+
+func getTaskResultsFromSidecarLogs(sidecarLogResults []result.RunResult) []result.RunResult {
+	taskResultsFromSidecarLogs := []result.RunResult{}
+	for _, slr := range sidecarLogResults {
+		if slr.ResultType == result.TaskRunResultType {
+			taskResultsFromSidecarLogs = append(taskResultsFromSidecarLogs, slr)
+		}
+	}
+	return taskResultsFromSidecarLogs
+}
+
+func getStepResultsFromSidecarLogs(sidecarLogResults []result.RunResult, containerName string) ([]result.RunResult, error) {
+	stepResultsFromSidecarLogs := []result.RunResult{}
+	for _, slr := range sidecarLogResults {
+		if slr.ResultType == result.StepResultType {
+			stepName, resultName, err := sidecarlogresults.ExtractStepAndResultFromSidecarResultName(slr.Key)
+			if err != nil {
+				return []result.RunResult{}, err
+			}
+			if stepName == containerName {
+				slr.Key = resultName
+				stepResultsFromSidecarLogs = append(stepResultsFromSidecarLogs, slr)
+			}
+		}
+	}
+	return stepResultsFromSidecarLogs, nil
+}
+
 func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredLogger, stepStatuses []corev1.ContainerStatus, tr *v1.TaskRun, podPhase corev1.PodPhase, kubeclient kubernetes.Interface, ts *v1.TaskSpec) *multierror.Error {
 	trs := &tr.Status
 	var merr *multierror.Error
@@ -178,24 +221,56 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 
 	// Extract results from sidecar logs
 	sidecarLogsResultsEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.ResultExtractionMethod == config.ResultExtractionMethodSidecarLogs
+	sidecarLogResults := []result.RunResult{}
 	if sidecarLogsResultsEnabled && tr.Status.TaskSpec.Results != nil {
 		// extraction of results from sidecar logs
-		sidecarLogResults, err := sidecarlogresults.GetResultsFromSidecarLogs(ctx, kubeclient, tr.Namespace, tr.Status.PodName, pipeline.ReservedResultsSidecarContainerName, podPhase)
+		slr, err := sidecarlogresults.GetResultsFromSidecarLogs(ctx, kubeclient, tr.Namespace, tr.Status.PodName, pipeline.ReservedResultsSidecarContainerName, podPhase)
 		if err != nil {
 			merr = multierror.Append(merr, err)
 		}
-		// populate task run CRD with results from sidecar logs
-		// since sidecar logs does not support step results yet, it is empty for now.
-		taskResults, _, _ := filterResults(sidecarLogResults, specResults, []v1.StepResult{})
-		if tr.IsDone() {
-			trs.Results = append(trs.Results, taskResults...)
-		}
+		sidecarLogResults = append(sidecarLogResults, slr...)
 	}
+	// Populate Task results from sidecar logs
+	taskResultsFromSidecarLogs := getTaskResultsFromSidecarLogs(sidecarLogResults)
+	taskResults, _, _ := filterResults(taskResultsFromSidecarLogs, specResults, nil)
+	if tr.IsDone() {
+		trs.Results = append(trs.Results, taskResults...)
+	}
+
 	// Continue with extraction of termination messages
 	for _, s := range stepStatuses {
 		// Avoid changing the original value by modifying the pointer value.
 		state := s.State.DeepCopy()
 		taskRunStepResults := []v1.TaskRunStepResult{}
+
+		// Identify Step Results
+		stepResults := []v1.StepResult{}
+		if ts != nil {
+			for _, step := range ts.Steps {
+				if getContainerName(step.Name) == s.Name {
+					stepResults = append(stepResults, step.Results...)
+				}
+			}
+		}
+		// Identify StepResults needed by the Task Results
+		neededStepResults, err := findStepResultsFetchedByTask(s.Name, specResults)
+		if err != nil {
+			merr = multierror.Append(merr, err)
+		}
+
+		// populate step results from sidecar logs
+		stepResultsFromSidecarLogs, err := getStepResultsFromSidecarLogs(sidecarLogResults, s.Name)
+		if err != nil {
+			merr = multierror.Append(merr, err)
+		}
+		_, stepRunRes, _ := filterResults(stepResultsFromSidecarLogs, specResults, stepResults)
+		if tr.IsDone() {
+			taskRunStepResults = append(taskRunStepResults, stepRunRes...)
+			// Set TaskResults from StepResults
+			trs.Results = append(trs.Results, createTaskResultsFromStepResults(stepRunRes, neededStepResults)...)
+		}
+
+		// Parse termination messages
 		if state.Terminated != nil && len(state.Terminated.Message) != 0 {
 			msg := state.Terminated.Message
 
@@ -215,35 +290,11 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 					merr = multierror.Append(merr, err)
 				}
 
-				// Identify Step Results
-				stepResults := []v1.StepResult{}
-				if ts != nil {
-					for _, step := range ts.Steps {
-						if getContainerName(step.Name) == s.Name {
-							stepResults = append(stepResults, step.Results...)
-						}
-					}
-				}
 				taskResults, stepRunRes, filteredResults := filterResults(results, specResults, stepResults)
 				if tr.IsDone() {
 					taskRunStepResults = append(taskRunStepResults, stepRunRes...)
-					// Identify StepResults needed by the Task Results
-					neededStepResults, err := findStepResultsFetchedByTask(s.Name, specResults)
-					if err != nil {
-						merr = multierror.Append(merr, err)
-					}
 					// Set TaskResults from StepResults
-					for _, r := range stepRunRes {
-						// this result was requested by the Task
-						if _, ok := neededStepResults[r.Name]; ok {
-							taskRunResult := v1.TaskRunResult{
-								Name:  neededStepResults[r.Name],
-								Type:  r.Type,
-								Value: r.Value,
-							}
-							taskResults = append(taskResults, taskRunResult)
-						}
-					}
+					taskResults = append(taskResults, createTaskResultsFromStepResults(stepRunRes, neededStepResults)...)
 					trs.Results = append(trs.Results, taskResults...)
 				}
 				msg, err = createMessageFromResults(filteredResults)

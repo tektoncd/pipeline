@@ -6,8 +6,10 @@ spec:
   image: alpine
   results:
     - name: result1
+    - name: result2
   script: |
     echo "I am a Step Action!!!" >> $(step.results.result1.path)
+    echo "I am a hidden step action!!!" >> $(step.results.result2.path)
 ---
 apiVersion: tekton.dev/v1
 kind: TaskRun

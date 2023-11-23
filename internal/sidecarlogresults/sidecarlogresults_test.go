@@ -46,9 +46,11 @@ func TestLookForResults_FanOutAndWait(t *testing.T) {
 		results: []SidecarLogResult{{
 			Name:  "foo",
 			Value: "bar",
+			Type:  "task",
 		}, {
 			Name:  "foo2",
 			Value: "bar2",
+			Type:  "task",
 		}},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
@@ -70,7 +72,7 @@ func TestLookForResults_FanOutAndWait(t *testing.T) {
 			dir2 := t.TempDir()
 			createRun(t, dir2, false)
 			got := new(bytes.Buffer)
-			err := LookForResults(got, dir2, dir, resultNames)
+			err := LookForResults(got, dir2, dir, resultNames, "", map[string][]string{})
 			if err != nil {
 				t.Fatalf("Did not expect any error but got: %v", err)
 			}
@@ -124,6 +126,7 @@ func TestLookForResults(t *testing.T) {
 				result := SidecarLogResult{
 					Name:  c.resultName,
 					Value: c.resultValue,
+					Type:  "task",
 				}
 				encodedResult, err := json.Marshal(result)
 				if err != nil {
@@ -135,7 +138,77 @@ func TestLookForResults(t *testing.T) {
 				want = encodedResult
 			}
 			got := new(bytes.Buffer)
-			err := LookForResults(got, dir2, dir, []string{c.resultName})
+			err := LookForResults(got, dir2, dir, []string{c.resultName}, "", map[string][]string{})
+			if err != nil {
+				t.Fatalf("Did not expect any error but got: %v", err)
+			}
+			if d := cmp.Diff(want, got.Bytes()); d != "" {
+				t.Errorf(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestLookForStepResults(t *testing.T) {
+	for _, c := range []struct {
+		desc         string
+		stepName     string
+		resultName   string
+		resultValue  string
+		createResult bool
+		stepError    bool
+	}{{
+		desc:         "good result",
+		stepName:     "step-foo",
+		resultName:   "foo",
+		resultValue:  "bar",
+		createResult: true,
+		stepError:    false,
+	}, {
+		desc:         "empty result",
+		stepName:     "step-foo",
+		resultName:   "foo",
+		resultValue:  "",
+		createResult: true,
+		stepError:    true,
+	}, {
+		desc:         "missing result",
+		stepName:     "step-foo",
+		resultName:   "missing",
+		resultValue:  "",
+		createResult: false,
+		stepError:    false,
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			dir := t.TempDir()
+			if c.createResult == true {
+				createStepResult(t, dir, c.stepName, c.resultName, c.resultValue)
+			}
+			dir2 := t.TempDir()
+			createRun(t, dir2, c.stepError)
+
+			var want []byte
+			if c.createResult == true {
+				// This is the expected result
+				result := SidecarLogResult{
+					Name:  fmt.Sprintf("%s.%s", c.stepName, c.resultName),
+					Value: c.resultValue,
+					Type:  "step",
+				}
+				encodedResult, err := json.Marshal(result)
+				if err != nil {
+					t.Error(err)
+				}
+				// encode adds a newline character at the end.
+				// We need to do the same before comparing
+				encodedResult = append(encodedResult, '\n')
+				want = encodedResult
+			}
+			got := new(bytes.Buffer)
+			stepResults := map[string][]string{
+				c.stepName: {c.resultName},
+			}
+			err := LookForResults(got, dir2, "", []string{}, dir, stepResults)
 			if err != nil {
 				t.Fatalf("Did not expect any error but got: %v", err)
 			}
@@ -151,9 +224,11 @@ func TestExtractResultsFromLogs(t *testing.T) {
 		{
 			Name:  "result1",
 			Value: "foo",
+			Type:  "task",
 		}, {
 			Name:  "result2",
 			Value: "bar",
+			Type:  "task",
 		},
 	}
 	podLogs := ""
@@ -188,6 +263,7 @@ func TestExtractResultsFromLogs_Failure(t *testing.T) {
 		{
 			Name:  "result1",
 			Value: strings.Repeat("v", 4098),
+			Type:  "task",
 		},
 	}
 	podLogs := ""
@@ -208,12 +284,27 @@ func TestParseResults(t *testing.T) {
 		{
 			Name:  "result1",
 			Value: "foo",
+			Type:  "task",
 		}, {
 			Name:  "result2",
 			Value: `{"IMAGE_URL":"ar.com", "IMAGE_DIGEST":"sha234"}`,
+			Type:  "task",
 		}, {
 			Name:  "result3",
 			Value: `["hello","world"]`,
+			Type:  "task",
+		}, {
+			Name:  "step-foo.result1",
+			Value: "foo",
+			Type:  "step",
+		}, {
+			Name:  "step-foo.result2",
+			Value: `{"IMAGE_URL":"ar.com", "IMAGE_DIGEST":"sha234"}`,
+			Type:  "step",
+		}, {
+			Name:  "step-foo.result3",
+			Value: `["hello","world"]`,
+			Type:  "step",
 		},
 	}
 	podLogs := []string{}
@@ -233,6 +324,18 @@ func TestParseResults(t *testing.T) {
 		Key:        "result3",
 		Value:      `["hello","world"]`,
 		ResultType: result.TaskRunResultType,
+	}, {
+		Key:        "step-foo.result1",
+		Value:      "foo",
+		ResultType: result.StepResultType,
+	}, {
+		Key:        "step-foo.result2",
+		Value:      `{"IMAGE_URL":"ar.com", "IMAGE_DIGEST":"sha234"}`,
+		ResultType: result.StepResultType,
+	}, {
+		Key:        "step-foo.result3",
+		Value:      `["hello","world"]`,
+		ResultType: result.StepResultType,
 	}}
 	stepResults := []result.RunResult{}
 	for _, plog := range podLogs {
@@ -247,11 +350,32 @@ func TestParseResults(t *testing.T) {
 	}
 }
 
+func TestParseResults_InvalidType(t *testing.T) {
+	results := []SidecarLogResult{{
+		Name:  "result1",
+		Value: "foo",
+		Type:  "not task or step",
+	}}
+	podLogs := []string{}
+	for _, r := range results {
+		res, _ := json.Marshal(&r)
+		podLogs = append(podLogs, string(res))
+	}
+	for _, plog := range podLogs {
+		_, err := parseResults([]byte(plog), 4096)
+		wantErr := fmt.Errorf("invalid sidecar result type not task or step. Must be task or step")
+		if d := cmp.Diff(wantErr.Error(), err.Error()); d != "" {
+			t.Fatal(diff.PrintWantGot(d))
+		}
+	}
+}
+
 func TestParseResults_Failure(t *testing.T) {
 	maxResultLimit := 4096
 	result := SidecarLogResult{
 		Name:  "result2",
 		Value: strings.Repeat("k", 4098),
+		Type:  "task",
 	}
 	res1, _ := json.Marshal("result1 v1")
 	res2, _ := json.Marshal(&result)
@@ -322,6 +446,42 @@ func TestGetResultsFromSidecarLogs(t *testing.T) {
 				t.Fatal("expected to get an error but did not")
 			}
 		})
+	}
+}
+
+func TestExtractStepAndResultFromSidecarResultName(t *testing.T) {
+	sidecarResultName := "step-foo.resultName"
+	wantResult := "resultName"
+	wantStep := "step-foo"
+	gotStep, gotResult, err := ExtractStepAndResultFromSidecarResultName(sidecarResultName)
+	if err != nil {
+		t.Fatalf("did not expect an error but got: %v", err)
+	}
+	if gotStep != wantStep {
+		t.Fatalf("failed to extract step name from string %s. Expexted %s but got %s", sidecarResultName, wantStep, gotStep)
+	}
+	if gotResult != wantResult {
+		t.Fatalf("failed to extract result name from string %s. Expexted %s but got %s", sidecarResultName, wantResult, gotResult)
+	}
+}
+
+func TestExtractStepAndResultFromSidecarResultName_Error(t *testing.T) {
+	sidecarResultName := "step-foo-resultName"
+	_, _, err := ExtractStepAndResultFromSidecarResultName(sidecarResultName)
+	wantErr := fmt.Errorf("invalid string step-foo-resultName : expected somtthing that looks like <stepName>.<resultName>")
+	if d := cmp.Diff(wantErr.Error(), err.Error()); d != "" {
+		t.Fatal(diff.PrintWantGot(d))
+	}
+}
+
+func createStepResult(t *testing.T, dir, stepName, resultName, resultValue string) {
+	t.Helper()
+	resultDir := filepath.Join(dir, stepName, "results")
+	_ = os.MkdirAll(resultDir, 0755)
+	resultFile := filepath.Join(resultDir, resultName)
+	err := os.WriteFile(resultFile, []byte(resultValue), 0644)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 

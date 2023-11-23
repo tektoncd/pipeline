@@ -18,6 +18,7 @@ package pod
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -190,7 +191,10 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	windows := usesWindows(taskRun)
 	if sidecarLogsResultsEnabled && taskSpec.Results != nil {
 		// create a results sidecar
-		resultsSidecar := createResultsSidecar(taskSpec, b.Images.SidecarLogResultsImage, setSecurityContext, windows)
+		resultsSidecar, err := createResultsSidecar(taskSpec, b.Images.SidecarLogResultsImage, setSecurityContext, windows)
+		if err != nil {
+			return nil, err
+		}
 		taskSpec.Sidecars = append(taskSpec.Sidecars, resultsSidecar)
 		commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-result_from", config.ResultExtractionMethodSidecarLogs)
 	}
@@ -568,26 +572,47 @@ func entrypointInitContainer(image string, steps []v1.Step, setSecurityContext, 
 // based on the spec of the Task, the image that should run in the results sidecar,
 // whether it will run on a windows node, and whether the sidecar should include a security context
 // that will allow it to run in namespaces with "restricted" pod security admission.
-func createResultsSidecar(taskSpec v1.TaskSpec, image string, setSecurityContext, windows bool) v1.Sidecar {
+// It will also provide arguments to the binary that allow it to surface the step results.
+func createResultsSidecar(taskSpec v1.TaskSpec, image string, setSecurityContext, windows bool) (v1.Sidecar, error) {
 	names := make([]string, 0, len(taskSpec.Results))
 	for _, r := range taskSpec.Results {
 		names = append(names, r.Name)
 	}
-	securityContext := linuxSecurityContext
-	if windows {
-		securityContext = windowsSecurityContext
-	}
 	resultsStr := strings.Join(names, ",")
 	command := []string{"/ko-app/sidecarlogresults", "-results-dir", pipeline.DefaultResultPath, "-result-names", resultsStr}
+
+	// create a map of container Name to step results
+	stepResults := map[string][]string{}
+	for i, s := range taskSpec.Steps {
+		if len(s.Results) > 0 {
+			stepName := StepName(s.Name, i)
+			stepResults[stepName] = make([]string, 0, len(s.Results))
+			for _, r := range s.Results {
+				stepResults[stepName] = append(stepResults[stepName], r.Name)
+			}
+		}
+	}
+
+	stepResultsBytes, err := json.Marshal(stepResults)
+	if err != nil {
+		return v1.Sidecar{}, err
+	}
+	if len(stepResultsBytes) > 0 {
+		command = append(command, "-step-results", string(stepResultsBytes))
+	}
 	sidecar := v1.Sidecar{
 		Name:    pipeline.ReservedResultsSidecarName,
 		Image:   image,
 		Command: command,
 	}
+	securityContext := linuxSecurityContext
+	if windows {
+		securityContext = windowsSecurityContext
+	}
 	if setSecurityContext {
 		sidecar.SecurityContext = securityContext
 	}
-	return sidecar
+	return sidecar, nil
 }
 
 // usesWindows returns true if the TaskRun will run on a windows node,

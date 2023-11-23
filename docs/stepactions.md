@@ -19,7 +19,6 @@ weight: 201
     - [Specifying Remote StepActions](#specifying-remote-stepactions)
 - [Known Limitations](#known-limitations)
   - [Cannot pass Step Results between Steps](#cannot-pass-step-results-between-steps)
-  - [Cannot extract Step Results via Sidecar logs](#cannot-extract-step-results-via-sidecar-logs)
 
 ## Overview
 :warning: This feature is in a preview mode.
@@ -430,7 +429,3 @@ The default resolver type can be configured by the `default-resolver-type` field
 ### Cannot pass Step Results between Steps
 
 It's not currently possible to pass results produced by a `Step` into following `Steps`. We are working on this feature and will be made available soon.
-
-### Cannot extract Step Results via Sidecar logs
-
-Currently, we only support Step Results via `Termination Message` (the default method of result extraction). The ability to extract `Step` results from `sidecar-logs` is not yet available. We are working on enabling this soon.
