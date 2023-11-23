@@ -776,9 +776,14 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	pr.Status.ChildReferences = pipelineRunFacts.GetChildReferences()
 
 	pr.Status.SkippedTasks = pipelineRunFacts.GetSkippedTasks()
+
+	taskStatus := pipelineRunFacts.GetPipelineTaskStatus()
+	finalTaskStatus := pipelineRunFacts.GetPipelineFinalTaskStatus()
+	taskStatus = kmap.Union(taskStatus, finalTaskStatus)
+
 	if after.Status == corev1.ConditionTrue || after.Status == corev1.ConditionFalse {
 		pr.Status.Results, err = resources.ApplyTaskResultsToPipelineResults(ctx, pipelineSpec.Results,
-			pipelineRunFacts.State.GetTaskRunsResults(), pipelineRunFacts.State.GetRunsResults(), pipelineRunFacts.GetPipelineTaskStatus())
+			pipelineRunFacts.State.GetTaskRunsResults(), pipelineRunFacts.State.GetRunsResults(), taskStatus)
 		if err != nil {
 			pr.Status.MarkFailed(v1.PipelineRunReasonFailedValidation.String(), err.Error())
 			return err
