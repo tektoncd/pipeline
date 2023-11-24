@@ -433,7 +433,7 @@ func ApplyTaskResultsToPipelineResults(
 			}
 			variableParts := strings.Split(variable, ".")
 
-			if (variableParts[0] != v1beta1.ResultTaskPart && variableParts[0] != v1beta1.ResultFinallyPart) || variableParts[2] != v1beta1.ResultResultPart {
+			if (variableParts[0] != v1.ResultTaskPart && variableParts[0] != v1.ResultFinallyPart) || variableParts[2] != v1beta1.ResultResultPart {
 				validPipelineResult = false
 				invalidPipelineResults = append(invalidPipelineResults, pipelineResult.Name)
 				continue
@@ -470,7 +470,7 @@ func ApplyTaskResultsToPipelineResults(
 				} else {
 					// if the task is not successful (e.g. skipped or failed) and the results is missing, don't return error
 					if status, ok := taskstatus[PipelineTaskStatusPrefix+taskName+PipelineTaskStatusSuffix]; ok {
-						if status != v1beta1.TaskRunReasonSuccessful.String() {
+						if status != v1.TaskRunReasonSuccessful.String() {
 							validPipelineResult = false
 							continue
 						}
@@ -494,7 +494,7 @@ func ApplyTaskResultsToPipelineResults(
 				} else {
 					// if the task is not successful (e.g. skipped or failed) and the results is missing, don't return error
 					if status, ok := taskstatus[PipelineTaskStatusPrefix+taskName+PipelineTaskStatusSuffix]; ok {
-						if status != v1beta1.TaskRunReasonSuccessful.String() {
+						if status != v1.TaskRunReasonSuccessful.String() {
 							validPipelineResult = false
 							continue
 						}
