@@ -10,9 +10,7 @@ the pipelines repo, a terminal window and a text editor.
 
 1. `cd` to root of Pipelines git checkout.
 
-1. Select the commit you would like to build the release from (NOTE: the commit is full (40-digit) hash.)
-    - Select the most recent commit on the ***main branch*** if you are cutting a major or minor release i.e. `x.0.0` or `0.x.0`
-    - Select the most recent commit on the ***`release-<version number>x` branch***, e.g. [`release-v0.47.x`](https://github.com/tektoncd/pipeline/tree/release-v0.47.x) if you are patching a release i.e. `v0.47.2`.
+1. [Install kustomize](https://kubectl.docs.kubernetes.io/installation/kustomize) if you haven't already.
 
 1. Ensure the correct version of the release pipeline is installed on the cluster:
 
@@ -24,6 +22,13 @@ the pipelines repo, a terminal window and a text editor.
 
     ```bash
     TEKTON_VERSION=# Example: v0.21.0
+    ```
+
+    - Select the commit you would like to build the release from (NOTE: the commit is full (40-digit) hash.)
+        - Select the most recent commit on the ***main branch*** if you are cutting a major or minor release i.e. `x.0.0` or `0.x.0`
+        - Select the most recent commit on the ***`release-<version number>x` branch***, e.g. [`release-v0.47.x`](https://github.com/tektoncd/pipeline/tree/release-v0.47.x) if you are patching a release i.e. `v0.47.2`.
+
+    ```bash
     TEKTON_RELEASE_GIT_SHA=# SHA of the release to be released
     ```
 
@@ -47,6 +52,8 @@ the pipelines repo, a terminal window and a text editor.
    ```
 
 1. Execute the release pipeline (takes ~45 mins).
+    
+    **The minimum required tkn version is v0.30.0 or later**
 
     **If you are back-porting include this flag: `--param=releaseAsLatest="false"`**
 
