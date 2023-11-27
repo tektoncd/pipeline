@@ -229,6 +229,8 @@ spec:
 apiVersion: resolution.tekton.dev/v1alpha1
 kind: ResolutionRequest
 metadata:
+  labels:
+    resolution.tekton.dev/type: git
   ...
 spec:
   params:
