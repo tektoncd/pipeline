@@ -152,7 +152,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	defaultForbiddenEnv := config.FromContextOrDefaults(ctx).Defaults.DefaultForbiddenEnv
 	alphaAPIEnabled := featureFlags.EnableAPIFields == config.AlphaAPIFields
 	sidecarLogsResultsEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.ResultExtractionMethod == config.ResultExtractionMethodSidecarLogs
-	enableKeepPodOnCancel := alphaAPIEnabled && featureFlags.EnableKeepPodOnCancel
+	enableKeepPodOnCancel := featureFlags.EnableKeepPodOnCancel
 	setSecurityContext := config.FromContextOrDefaults(ctx).FeatureFlags.SetSecurityContext
 
 	// Add our implicit volumes first, so they can be overridden by the user if they prefer.
