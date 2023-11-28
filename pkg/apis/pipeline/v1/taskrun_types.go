@@ -187,9 +187,21 @@ const (
 	// TaskRunReasonResultLargerThanAllowedLimit is the reason set when one of the results exceeds its maximum allowed limit of 1 KB
 	TaskRunReasonResultLargerThanAllowedLimit TaskRunReason = "TaskRunResultLargerThanAllowedLimit"
 	// TaskRunReasonStopSidecarFailed indicates that the sidecar is not properly stopped.
-	TaskRunReasonStopSidecarFailed = "TaskRunStopSidecarFailed"
+	TaskRunReasonStopSidecarFailed TaskRunReason = "TaskRunStopSidecarFailed"
 	// TaskRunReasonInvalidParamValue indicates that the TaskRun Param input value is not allowed.
-	TaskRunReasonInvalidParamValue = "InvalidParamValue"
+	TaskRunReasonInvalidParamValue TaskRunReason = "InvalidParamValue"
+	// TaskRunReasonFailedResolution indicated that the reason for failure status is
+	// that references within the TaskRun could not be resolved
+	TaskRunReasonFailedResolution TaskRunReason = "TaskRunResolutionFailed"
+	// TaskRunReasonFailedValidation indicated that the reason for failure status is
+	// that taskrun failed runtime validation
+	TaskRunReasonFailedValidation TaskRunReason = "TaskRunValidationFailed"
+	// TaskRunReasonTaskFailedValidation indicated that the reason for failure status is
+	// that task failed runtime validation
+	TaskRunReasonTaskFailedValidation TaskRunReason = "TaskValidationFailed"
+	// TaskRunReasonResourceVerificationFailed indicates that the task fails the trusted resource verification,
+	// it could be the content has changed, signature is invalid or public key is invalid
+	TaskRunReasonResourceVerificationFailed TaskRunReason = "ResourceVerificationFailed"
 )
 
 func (t TaskRunReason) String() string {

@@ -2072,7 +2072,7 @@ spec:
 			t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
 		}
 
-		if tc.wantFailed && reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != podconvert.ReasonTaskFailedValidation {
+		if tc.wantFailed && reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != v1.TaskRunReasonTaskFailedValidation.String() {
 			t.Errorf("Expected TaskRun to have reason FailedValidation, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
 		}
 		if !tc.wantFailed && reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
@@ -3493,7 +3493,7 @@ status:
 		err:            k8sapierrors.NewConflict(k8sruntimeschema.GroupResource{Group: "v1", Resource: "resourcequotas"}, "sample", errors.New("operation cannot be fulfilled on resourcequotas sample the object has been modified please apply your changes to the latest version and try again")),
 		expectedType:   apis.ConditionSucceeded,
 		expectedStatus: corev1.ConditionUnknown,
-		expectedReason: podconvert.ReasonPending,
+		expectedReason: podconvert.ReasonPodPending,
 	}, {
 		description:    "exceeded quota errors are surfaced in taskrun condition but do not fail taskrun",
 		err:            k8sapierrors.NewForbidden(k8sruntimeschema.GroupResource{Group: "foo", Resource: "bar"}, "baz", errors.New("exceeded quota")),
@@ -3505,7 +3505,7 @@ status:
 		err:            errors.New("TaskRun validation failed"),
 		expectedType:   apis.ConditionSucceeded,
 		expectedStatus: corev1.ConditionFalse,
-		expectedReason: podconvert.ReasonFailedValidation,
+		expectedReason: v1.TaskRunReasonFailedValidation.String(),
 	}, {
 		description:    "errors other than exceeded quota fail the taskrun",
 		err:            errors.New("this is a fatal error"),
@@ -3714,7 +3714,7 @@ spec:
 
 	failedCorrectly := false
 	for _, c := range tr.Status.Conditions {
-		if c.Type == apis.ConditionSucceeded && c.Status == corev1.ConditionFalse && c.Reason == podconvert.ReasonFailedValidation {
+		if c.Type == apis.ConditionSucceeded && c.Status == corev1.ConditionFalse && c.Reason == v1.TaskRunReasonFailedValidation.String() {
 			failedCorrectly = true
 		}
 	}
@@ -3780,7 +3780,7 @@ spec:
 	}
 
 	for _, c := range tr.Status.Conditions {
-		if c.Type == apis.ConditionSucceeded && c.Status == corev1.ConditionFalse && c.Reason == podconvert.ReasonFailedValidation {
+		if c.Type == apis.ConditionSucceeded && c.Status == corev1.ConditionFalse && c.Reason == v1.TaskRunReasonFailedValidation.String() {
 			t.Errorf("Expected TaskRun to pass Validation by using the default workspace but it did not. Final conditions were:\n%#v", tr.Status.Conditions)
 		}
 	}
@@ -3972,7 +3972,7 @@ spec:
 			"disable-affinity-assistant": "false",
 			"coschedule":                 "workspaces",
 		},
-		expectFailureReason: podconvert.ReasonFailedValidation,
+		expectFailureReason: v1.TaskRunReasonFailedValidation.String(),
 	}, {
 		name: "multiple PVC based Workspaces in per pipelinerun coschedule mode - success",
 		cfgMap: map[string]string{
@@ -5620,13 +5620,13 @@ status:
 	}{{
 		name:             "taskrun results type mismatched",
 		taskRun:          taskRunResultsTypeMismatched,
-		wantFailedReason: podconvert.ReasonFailedValidation,
+		wantFailedReason: v1.TaskRunReasonFailedValidation.String(),
 		expectedError:    fmt.Errorf("1 error occurred:\n\t* Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\", \"objectResult\": task result is expected to be \"object\" type but was initialized to a different type \"string\""),
 		expectedResults:  nil,
 	}, {
 		name:             "taskrun results object miss key",
 		taskRun:          taskRunResultsObjectMissKey,
-		wantFailedReason: podconvert.ReasonFailedValidation,
+		wantFailedReason: v1.TaskRunReasonFailedValidation.String(),
 		expectedError:    fmt.Errorf("1 error occurred:\n\t* missing keys for these results which are required in TaskResult's properties map[objectResult:[commit]]"),
 		expectedResults: []v1.TaskRunResult{
 			{
@@ -5978,7 +5978,7 @@ status:
 				t.Fatalf("getting updated taskrun: %v", err)
 			}
 			condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-			if condition.Type != apis.ConditionSucceeded || condition.Status != corev1.ConditionFalse || condition.Reason != podconvert.ReasonResourceVerificationFailed {
+			if condition.Type != apis.ConditionSucceeded || condition.Status != corev1.ConditionFalse || condition.Reason != v1.TaskRunReasonResourceVerificationFailed.String() {
 				t.Errorf("Expected TaskRun to fail with reason \"%s\" but it did not. Final conditions were:\n%#v", podconvert.ReasonResourceVerificationFailed, tr.Status.Conditions)
 			}
 			gotVerificationCondition := reconciledRun.Status.GetCondition(trustedresources.ConditionTrustedResourcesVerified)
@@ -6233,7 +6233,7 @@ status:
 				t.Fatalf("getting updated taskrun: %v", err)
 			}
 			condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-			if condition.Type != apis.ConditionSucceeded || condition.Status != corev1.ConditionFalse || condition.Reason != podconvert.ReasonResourceVerificationFailed {
+			if condition.Type != apis.ConditionSucceeded || condition.Status != corev1.ConditionFalse || condition.Reason != v1.TaskRunReasonResourceVerificationFailed.String() {
 				t.Errorf("Expected TaskRun to fail with reason \"%s\" but it did not. Final conditions were:\n%#v", podconvert.ReasonResourceVerificationFailed, tr.Status.Conditions)
 			}
 			gotVerificationCondition := reconciledRun.Status.GetCondition(trustedresources.ConditionTrustedResourcesVerified)

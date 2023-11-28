@@ -5026,8 +5026,23 @@ reasons that emerge from underlying resources are not included here</p>
 </tr><tr><td><p>&#34;Failed&#34;</p></td>
 <td><p>TaskRunReasonFailed is the reason set when the TaskRun completed with a failure</p>
 </td>
+</tr><tr><td><p>&#34;TaskRunResolutionFailed&#34;</p></td>
+<td><p>TaskRunReasonFailedResolution indicated that the reason for failure status is
+that references within the TaskRun could not be resolved</p>
+</td>
+</tr><tr><td><p>&#34;TaskRunValidationFailed&#34;</p></td>
+<td><p>TaskRunReasonFailedValidation indicated that the reason for failure status is
+that taskrun failed runtime validation</p>
+</td>
 </tr><tr><td><p>&#34;TaskRunImagePullFailed&#34;</p></td>
 <td><p>TaskRunReasonImagePullFailed is the reason set when the step of a task fails due to image not being pulled</p>
+</td>
+</tr><tr><td><p>&#34;InvalidParamValue&#34;</p></td>
+<td><p>TaskRunReasonInvalidParamValue indicates that the TaskRun Param input value is not allowed.</p>
+</td>
+</tr><tr><td><p>&#34;ResourceVerificationFailed&#34;</p></td>
+<td><p>TaskRunReasonResourceVerificationFailed indicates that the task fails the trusted resource verification,
+it could be the content has changed, signature is invalid or public key is invalid</p>
 </td>
 </tr><tr><td><p>&#34;TaskRunResultLargerThanAllowedLimit&#34;</p></td>
 <td><p>TaskRunReasonResultLargerThanAllowedLimit is the reason set when one of the results exceeds its maximum allowed limit of 1 KB</p>
@@ -5038,8 +5053,15 @@ reasons that emerge from underlying resources are not included here</p>
 </tr><tr><td><p>&#34;Started&#34;</p></td>
 <td><p>TaskRunReasonStarted is the reason set when the TaskRun has just started</p>
 </td>
+</tr><tr><td><p>&#34;TaskRunStopSidecarFailed&#34;</p></td>
+<td><p>TaskRunReasonStopSidecarFailed indicates that the sidecar is not properly stopped.</p>
+</td>
 </tr><tr><td><p>&#34;Succeeded&#34;</p></td>
 <td><p>TaskRunReasonSuccessful is the reason set when the TaskRun completed successfully</p>
+</td>
+</tr><tr><td><p>&#34;TaskValidationFailed&#34;</p></td>
+<td><p>TaskRunReasonTaskFailedValidation indicated that the reason for failure status is
+that task failed runtime validation</p>
 </td>
 </tr><tr><td><p>&#34;TaskRunTimeout&#34;</p></td>
 <td><p>TaskRunReasonTimedOut is the reason set when one TaskRun execution has timed out</p>

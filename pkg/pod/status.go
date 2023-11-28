@@ -38,19 +38,23 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-const (
+// Aliased for backwards compatibility; do not add additional TaskRun reasons here
+var (
 	// ReasonFailedResolution indicated that the reason for failure status is
 	// that references within the TaskRun could not be resolved
-	ReasonFailedResolution = "TaskRunResolutionFailed"
-
+	ReasonFailedResolution = v1.TaskRunReasonFailedResolution.String()
 	// ReasonFailedValidation indicated that the reason for failure status is
 	// that taskrun failed runtime validation
-	ReasonFailedValidation = "TaskRunValidationFailed"
-
+	ReasonFailedValidation = v1.TaskRunReasonFailedValidation.String()
 	// ReasonTaskFailedValidation indicated that the reason for failure status is
 	// that task failed runtime validation
-	ReasonTaskFailedValidation = "TaskValidationFailed"
+	ReasonTaskFailedValidation = v1.TaskRunReasonTaskFailedValidation.String()
+	// ReasonResourceVerificationFailed indicates that the task fails the trusted resource verification,
+	// it could be the content has changed, signature is invalid or public key is invalid
+	ReasonResourceVerificationFailed = v1.TaskRunReasonResourceVerificationFailed.String()
+)
 
+const (
 	// ReasonExceededResourceQuota indicates that the TaskRun failed to create a pod due to
 	// a ResourceQuota in the namespace
 	ReasonExceededResourceQuota = "ExceededResourceQuota"
@@ -75,11 +79,7 @@ const (
 
 	// ReasonPending indicates that the pod is in corev1.Pending, and the reason is not
 	// ReasonExceededNodeResources or isPodHitConfigError
-	ReasonPending = "Pending"
-
-	// ReasonResourceVerificationFailed indicates that the task fails the trusted resource verification,
-	// it could be the content has changed, signature is invalid or public key is invalid
-	ReasonResourceVerificationFailed = "ResourceVerificationFailed"
+	ReasonPodPending = "Pending"
 
 	// timeFormat is RFC3339 with millisecond
 	timeFormat = "2006-01-02T15:04:05.000Z07:00"
@@ -380,7 +380,7 @@ func updateIncompleteTaskRunStatus(trs *v1.TaskRunStatus, pod *corev1.Pod) {
 		case isPullImageError(pod):
 			markStatusRunning(trs, ReasonPullImageFailed, getWaitingMessage(pod))
 		default:
-			markStatusRunning(trs, ReasonPending, getWaitingMessage(pod))
+			markStatusRunning(trs, ReasonPodPending, getWaitingMessage(pod))
 		}
 	case corev1.PodSucceeded, corev1.PodFailed, corev1.PodUnknown:
 		// Do nothing; pod has completed or is in an unknown state.

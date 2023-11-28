@@ -29,7 +29,7 @@ import (
 
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/pod"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/parse"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -283,8 +283,8 @@ spec:
 	if pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue() {
 		t.Errorf("Expected PipelineRun to fail but found condition: %s", pr.Status.GetCondition(apis.ConditionSucceeded))
 	}
-	if pr.Status.Conditions[0].Reason != pod.ReasonResourceVerificationFailed {
-		t.Errorf("Expected PipelineRun fail condition is: %s but got: %s", pod.ReasonResourceVerificationFailed, pr.Status.Conditions[0].Reason)
+	if pr.Status.Conditions[0].Reason != pipelinev1.TaskRunReasonResourceVerificationFailed.String() {
+		t.Errorf("Expected PipelineRun fail condition is: %s but got: %s", pipelinev1.TaskRunReasonResourceVerificationFailed, pr.Status.Conditions[0].Reason)
 	}
 }
 
