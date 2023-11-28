@@ -54,6 +54,9 @@ A `StepAction` definition supports the following fields:
   - [`securityContext`](#declaring-securitycontext)
   - [`volumeMounts`](#declaring-volumemounts)
 
+[kubernetes-overview]:
+  https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
+
 The non-functional example below demonstrates the use of most of the above-mentioned fields:
 
 ```yaml
@@ -72,7 +75,7 @@ spec:
 
 ### Declaring Parameters
 
-Like with `Tasks`, a `StepAction` must declare all the parameters that it used. The same rules for `Parameter` [name](./tasks.md/#parameter-name), [type](./tasks.md/#parameter-type) (including [object](./tasks.md/#object-type), [array](./tasks.md/#array-type) and [string](./tasks.md/#string-type)) apply as when declaring them in `Tasks`. A `StepAction` can also provide [default value](./tasks.md/#default-value) to a `Parameter`.
+Like with `Tasks`, a `StepAction` must declare all the parameters that it uses. The same rules for `Parameter` [name](./tasks.md/#parameter-name), [type](./tasks.md/#parameter-type) (including [object](./tasks.md/#object-type), [array](./tasks.md/#array-type) and [string](./tasks.md/#string-type)) apply as when declaring them in `Tasks`. A `StepAction` can also provide [default value](./tasks.md/#default-value) to a `Parameter`.
 
  `Parameters` are passed to the `StepAction` from its corresponding `Step` referencing it.
 
@@ -106,7 +109,7 @@ spec:
 
 #### Passing Params to StepAction
 
-A `StepAction` may require [params](#(declaring-parameters)). In this case, a `Task` needs to ensure that the `StepAction` has access to all the required `params`.
+A `StepAction` may require [params](#declaring-parameters). In this case, a `Task` needs to ensure that the `StepAction` has access to all the required `params`.
 When referencing a `StepAction`, a `Step` can also provide it with `params`, just like how a `TaskRun` provides params to the underlying `Task`.
 
 ```yaml
@@ -115,7 +118,7 @@ kind: Task
 metadata:
   name: step-action
 spec:
-  TaskSpec:
+  taskSpec:
     params:
       - name: param-for-step-action
         description: "this is a param that the step action needs."
@@ -128,7 +131,7 @@ spec:
             value: $(params.param-for-step-action)
 ```
 
-**Note:** If a `Step` declares `params` for an `inlined Step`, it will also lead to a validation error. This is because an `inlined Step` gets it's `params` from the `TaskRun`.
+**Note:** If a `Step` declares `params` for an `inlined Step`, it will also lead to a validation error. This is because an `inlined Step` gets its `params` from the `TaskRun`.
 
 ### Emitting Results
 
@@ -174,11 +177,11 @@ spec:
     date | tee $(step.results.current-date-human-readable.path)
 ```
 
-`Results` from the above `StepAction` can be [fetched by the `Task`](#fetching-emitted-results-from-step-actions) in another `StepAction` via `$(steps.<stepName>.results.<resultName>)`.
+`Results` from the above `StepAction` can be [fetched by the `Task`](#fetching-emitted-results-from-stepactions) in another `StepAction` via `$(steps.<stepName>.results.<resultName>)`.
 
 #### Fetching Emitted Results from StepActions
 
-A `Task` can fetch `Results` produced by the `StepActions` (i.e. only `Results` emitted to `$(step.results.<resultName>.path)`, `NOT` $(results.<resultName>.path)) using variable replacement syntax. We introduce a field to [`Task Results`](./tasks.md#emitting-results) called `Value` whose value can be set to the variable `$(steps.<stepName>.results.<resultName>)`.
+A `Task` can fetch `Results` produced by the `StepActions` (i.e. only `Results` emitted to `$(step.results.<resultName>.path)`, NOT `$(results.<resultName>.path)`) using variable replacement syntax. We introduce a field to [`Task Results`](./tasks.md#emitting-results) called `Value` whose value can be set to the variable `$(steps.<stepName>.results.<resultName>)`.
 
 ```yaml
 apiVersion: tekton.dev/v1
@@ -285,7 +288,7 @@ kind: TaskRun
 metadata:
   name: step-action-run
 spec:
-  TaskSpec:
+  taskSpec:
     steps:
       - name: action-runner
         ref:
@@ -334,18 +337,18 @@ If a `Step` is referencing a `StepAction`, it cannot contain the fields supporte
 - `env`
 - `volumeMounts`
 
-Using any of the above fields and referencing a `StepAction` in the same `Step` is not allowed and will cause an validation error.
+Using any of the above fields and referencing a `StepAction` in the same `Step` is not allowed and will cause a validation error.
 
 ```yaml
-# This is not allowed and will result in a validation error.
-# Because the image is expected to be provided by the StepAction
+# This is not allowed and will result in a validation error
+# because the image is expected to be provided by the StepAction
 # and not inlined.
 apiVersion: tekton.dev/v1
 kind: TaskRun
 metadata:
   name: step-action-run
 spec:
-  TaskSpec:
+  taskSpec:
     steps:
       - name: action-runner
         ref:
@@ -380,7 +383,7 @@ kind: TaskRun
 metadata:
   name: step-action-run
 spec:
-  TaskSpec:
+  taskSpec:
     steps:
       - name: action-runner
         ref:
@@ -408,7 +411,7 @@ kind: TaskRun
 metadata:
   generateName: step-action-run-
 spec:
-  TaskSpec:
+  taskSpec:
     steps:
       - name: action-runner
         ref:
@@ -428,4 +431,4 @@ The default resolver type can be configured by the `default-resolver-type` field
 
 ### Cannot pass Step Results between Steps
 
-It's not currently possible to pass results produced by a `Step` into following `Steps`. We are working on this feature and will be made available soon.
+It's not currently possible to pass results produced by a `Step` into following `Steps`. We are working on this feature and it will be made available soon.
