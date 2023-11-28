@@ -26,7 +26,7 @@ It is still in a very early stage of development and is not yet fully functional
 
 A `StepAction` is the reusable and scriptable unit of work that is performed by a `Step`.
 
-A `Step` is not reusable, the work it performs is reusable and referenceable. `Steps` are in-lined in the `Task` definition and either perform work directly or perform a `StepAction`. A `StepAction` cannot be run stand-alone (unlike a `TaskRun` or a `PipelineRun`). It has to be referenced by a `Step`. Another way to ehink about this is that a `Step` is not composed of `StepActions` (unlike a `Task` being composed of `Steps` and `Sidecars`). Instead, a `Step` is an actionable component, meaning that it has the ability to refer to a `StepAction`. The author of the `StepAction` must be able to compose a `Step` using a `StepAction` and provide all the necessary context (or orchestration) to it.
+A `Step` is not reusable, the work it performs is reusable and referenceable. `Steps` are in-lined in the `Task` definition and either perform work directly or perform a `StepAction`. A `StepAction` cannot be run stand-alone (unlike a `TaskRun` or a `PipelineRun`). It has to be referenced by a `Step`. Another way to think about this is that a `Step` is not composed of `StepActions` (unlike a `Task` being composed of `Steps` and `Sidecars`). Instead, a `Step` is an actionable component, meaning that it has the ability to refer to a `StepAction`. The author of the `StepAction` must be able to compose a `Step` using a `StepAction` and provide all the necessary context (or orchestration) to it.
 
 
 ## Configuring a `StepAction`
