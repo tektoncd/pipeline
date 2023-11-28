@@ -340,7 +340,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		tr.Status.MarkResourceOngoing(v1.TaskRunReasonResolvingTaskRef, message)
 		return nil, nil, err
 	case errors.Is(err, apiserver.ErrReferencedObjectValidationFailed), errors.Is(err, apiserver.ErrCouldntValidateObjectPermanent):
-		tr.Status.MarkResourceFailed(podconvert.ReasonTaskFailedValidation, err)
+		tr.Status.MarkResourceFailed(v1.TaskRunReasonTaskFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
 	case errors.Is(err, apiserver.ErrCouldntValidateObjectRetryable):
 		return nil, nil, err
@@ -349,7 +349,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		if resources.IsErrTransient(err) {
 			return nil, nil, err
 		}
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
+		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedResolution, err)
 		return nil, nil, controller.NewPermanentError(err)
 	default:
 		// Store the fetched TaskSpec on the TaskRun for auditing
@@ -365,7 +365,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		tr.Status.MarkResourceOngoing(v1.TaskRunReasonResolvingStepActionRef, message)
 		return nil, nil, err
 	case errors.Is(err, apiserver.ErrReferencedObjectValidationFailed), errors.Is(err, apiserver.ErrCouldntValidateObjectPermanent):
-		tr.Status.MarkResourceFailed(podconvert.ReasonTaskFailedValidation, err)
+		tr.Status.MarkResourceFailed(v1.TaskRunReasonTaskFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
 	case errors.Is(err, apiserver.ErrCouldntValidateObjectRetryable):
 		return nil, nil, err
@@ -374,7 +374,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		if resources.IsErrTransient(err) {
 			return nil, nil, err
 		}
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
+		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedResolution, err)
 		return nil, nil, controller.NewPermanentError(err)
 	default:
 		// Store the fetched StepActions to TaskSpec, and update the stored TaskSpec again
@@ -388,7 +388,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		switch taskMeta.VerificationResult.VerificationResultType {
 		case trustedresources.VerificationError:
 			logger.Errorf("TaskRun %s/%s referred task failed signature verification", tr.Namespace, tr.Name)
-			tr.Status.MarkResourceFailed(podconvert.ReasonResourceVerificationFailed, taskMeta.VerificationResult.Err)
+			tr.Status.MarkResourceFailed(v1.TaskRunReasonResourceVerificationFailed, taskMeta.VerificationResult.Err)
 			tr.Status.SetCondition(&apis.Condition{
 				Type:    trustedresources.ConditionTrustedResourcesVerified,
 				Status:  corev1.ConditionFalse,
@@ -419,13 +419,13 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 
 	if err := validateTaskSpecRequestResources(taskSpec); err != nil {
 		logger.Errorf("TaskRun %s taskSpec request resources are invalid: %v", tr.Name, err)
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
 	if err := ValidateResolvedTask(ctx, tr.Spec.Params, &v1.Matrix{}, rtr); err != nil {
 		logger.Errorf("TaskRun %q resources are invalid: %v", tr.Name, err)
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
@@ -439,13 +439,13 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 
 	if err := resources.ValidateParamArrayIndex(rtr.TaskSpec, tr.Spec.Params); err != nil {
 		logger.Errorf("TaskRun %q Param references are invalid: %v", tr.Name, err)
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
 	if err := c.updateTaskRunWithDefaultWorkspaces(ctx, tr, taskSpec); err != nil {
 		logger.Errorf("Failed to update taskrun %s with default workspace: %v", tr.Name, err)
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
+		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedResolution, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
@@ -464,7 +464,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	}
 	if err := workspace.ValidateBindings(ctx, workspaceDeclarations, tr.Spec.Workspaces); err != nil {
 		logger.Errorf("TaskRun %q workspaces are invalid: %v", tr.Name, err)
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
@@ -475,14 +475,14 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	if aaBehavior == affinityassistant.AffinityAssistantPerWorkspace {
 		if err := workspace.ValidateOnlyOnePVCIsUsed(tr.Spec.Workspaces); err != nil {
 			logger.Errorf("TaskRun %q workspaces incompatible with Affinity Assistant: %v", tr.Name, err)
-			tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+			tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 			return nil, nil, controller.NewPermanentError(err)
 		}
 	}
 
 	if err := validateOverrides(taskSpec, &tr.Spec); err != nil {
 		logger.Errorf("TaskRun %q step or sidecar overrides are invalid: %v", tr.Name, err)
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
@@ -596,7 +596,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 	}
 
 	if err := validateTaskRunResults(tr, rtr.TaskSpec); err != nil {
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return err
 	}
 
@@ -671,7 +671,7 @@ func (c *Reconciler) handlePodCreationError(tr *v1.TaskRun, err error) error {
 	case isResourceQuotaConflictError(err):
 		// Requeue if it runs into ResourceQuotaConflictError Error i.e https://github.com/kubernetes/kubernetes/issues/67761
 		tr.Status.StartTime = nil
-		tr.Status.MarkResourceOngoing(podconvert.ReasonPending, "tried to create pod, but it failed with ResourceQuotaConflictError")
+		tr.Status.MarkResourceOngoing(podconvert.ReasonPodPending, "tried to create pod, but it failed with ResourceQuotaConflictError")
 		return controller.NewRequeueAfter(time.Second)
 	case isExceededResourceQuotaError(err):
 		// If we are struggling to create the pod, then it hasn't started.
@@ -679,9 +679,9 @@ func (c *Reconciler) handlePodCreationError(tr *v1.TaskRun, err error) error {
 		tr.Status.MarkResourceOngoing(podconvert.ReasonExceededResourceQuota, fmt.Sprint("TaskRun Pod exceeded available resources: ", err))
 		return controller.NewRequeueAfter(time.Minute)
 	case isTaskRunValidationFailed(err):
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 	case k8serrors.IsAlreadyExists(err):
-		tr.Status.MarkResourceOngoing(podconvert.ReasonPending, "tried to create pod, but it already exists")
+		tr.Status.MarkResourceOngoing(podconvert.ReasonPodPending, "tried to create pod, but it already exists")
 	case isPodAdmissionFailed(err):
 		tr.Status.MarkResourceFailed(podconvert.ReasonPodAdmissionFailed, err)
 	default:
