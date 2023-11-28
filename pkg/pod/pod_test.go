@@ -2266,7 +2266,7 @@ _EOF_
 								FieldRef: &corev1.ObjectFieldSelector{
 									FieldPath: fmt.Sprintf("metadata.annotations['%s']", readyAnnotation),
 								},
-							}},
+							}, downwardCancelVolumeItem},
 						},
 					},
 				}, corev1.Volume{
