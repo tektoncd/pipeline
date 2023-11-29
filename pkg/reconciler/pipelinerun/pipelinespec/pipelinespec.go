@@ -44,7 +44,7 @@ func GetPipelineData(ctx context.Context, pipelineRun *v1.PipelineRun, getPipeli
 		// Get related pipeline for pipelinerun
 		p, source, vr, err := getPipeline(ctx, pipelineRun.Spec.PipelineRef.Name)
 		if err != nil {
-			return nil, nil, fmt.Errorf("error when listing pipelines for pipelineRun %s: %w", pipelineRun.Name, err)
+			return nil, nil, fmt.Errorf("error when getting Pipeline for PipelineRun %s: %w", pipelineRun.Name, err)
 		}
 		pipelineMeta = p.PipelineMetadata()
 		pipelineSpec = p.PipelineSpec()
