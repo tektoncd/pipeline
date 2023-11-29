@@ -102,7 +102,7 @@ func (l *LocalPipelineRefResolver) GetPipeline(ctx context.Context, name string)
 
 	pipeline, err := l.Tektonclient.TektonV1().Pipelines(l.Namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, fmt.Errorf("tekton client cannot get pipeline %s from local cluster: %w", name, err)
 	}
 	return pipeline, nil, nil, nil
 }
@@ -115,11 +115,11 @@ func (l *LocalPipelineRefResolver) GetPipeline(ctx context.Context, name string)
 func resolvePipeline(ctx context.Context, resolver remote.Resolver, name string, namespace string, k8s kubernetes.Interface, tekton clientset.Interface, verificationPolicies []*v1alpha1.VerificationPolicy) (*v1.Pipeline, *v1.RefSource, *trustedresources.VerificationResult, error) {
 	obj, refSource, err := resolver.Get(ctx, "pipeline", name)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, fmt.Errorf("resolver failed to get Pipeline %s: %w", name, err)
 	}
 	pipelineObj, vr, err := readRuntimeObjectAsPipeline(ctx, namespace, obj, k8s, tekton, refSource, verificationPolicies)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, fmt.Errorf("failed to read runtime object as Pipeline: %w", err)
 	}
 	return pipelineObj, refSource, vr, nil
 }
@@ -150,7 +150,7 @@ func readRuntimeObjectAsPipeline(ctx context.Context, namespace string, obj runt
 			},
 		}
 		if err := obj.ConvertTo(ctx, p); err != nil {
-			return nil, nil, fmt.Errorf("failed to convert obj %s into Pipeline", obj.GetObjectKind().GroupVersionKind().String())
+			return nil, nil, fmt.Errorf("failed to convert v1beta1 obj %s into v1 Pipeline", obj.GetObjectKind().GroupVersionKind().String())
 		}
 		return p, &vr, nil
 	case *v1.Pipeline:
