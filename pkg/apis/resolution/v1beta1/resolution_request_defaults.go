@@ -28,6 +28,6 @@ func (rr *ResolutionRequest) SetDefaults(ctx context.Context) {
 		rr.TypeMeta.Kind = "ResolutionRequest"
 	}
 	if rr.TypeMeta.APIVersion == "" {
-		rr.TypeMeta.APIVersion = "resolution.tekton.dev/v1alpha1"
+		rr.TypeMeta.APIVersion = "resolution.tekton.dev/v1beta1"
 	}
 }
