@@ -192,8 +192,6 @@ func (s *Step) SetContainerFields(c corev1.Container) {
 type StepTemplate struct {
 	// Image reference name.
 	// More info: https://kubernetes.io/docs/concepts/containers/images
-	// This field is optional to allow higher level config management to default or override
-	// container images in workload controllers like Deployments and StatefulSets.
 	// +optional
 	Image string `json:"image,omitempty" protobuf:"bytes,2,opt,name=image"`
 	// Entrypoint array. Not executed within a shell.
@@ -312,8 +310,6 @@ type Sidecar struct {
 	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
 	// Image reference name.
 	// More info: https://kubernetes.io/docs/concepts/containers/images
-	// This field is optional to allow higher level config management to default or override
-	// container images in workload controllers like Deployments and StatefulSets.
 	// +optional
 	Image string `json:"image,omitempty" protobuf:"bytes,2,opt,name=image"`
 	// Entrypoint array. Not executed within a shell.

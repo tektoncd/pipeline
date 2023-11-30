@@ -1370,6 +1370,55 @@ func TestTaskSpecValidateError(t *testing.T) {
 	}
 }
 
+func TestTaskSpecValidateErrorSidecars(t *testing.T) {
+	tests := []struct {
+		name          string
+		sidecars      []v1.Sidecar
+		expectedError apis.FieldError
+	}{{
+		name: "missing image",
+		sidecars: []v1.Sidecar{{
+			Name: "tekton-invalid-side-car",
+		}},
+		expectedError: apis.FieldError{
+			Message: "missing field(s)",
+			Paths:   []string{"sidecars.image"},
+		},
+	}, {
+		name: "invalid command with script",
+		sidecars: []v1.Sidecar{{
+			Name:    "tekton-invalid-side-car",
+			Image:   "ubuntu",
+			Command: []string{"command foo"},
+			Script: `
+				#!/usr/bin/env  bash
+				echo foo`,
+		}},
+		expectedError: apis.FieldError{
+			Message: "script cannot be used with command",
+			Paths:   []string{"sidecars.script"},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := &v1.TaskSpec{
+				Steps: []v1.Step{{
+					Name:  "does-not-matter",
+					Image: "does-not-matter",
+				}},
+				Sidecars: tt.sidecars,
+			}
+			err := ts.Validate(context.Background())
+			if err == nil {
+				t.Fatalf("Expected an error, got nothing for %v", ts)
+			}
+			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("TaskSpec.Validate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestTaskSpecValidateErrorSidecarName(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -1383,7 +1432,7 @@ func TestTaskSpecValidateErrorSidecarName(t *testing.T) {
 		}},
 		expectedError: apis.FieldError{
 			Message: fmt.Sprintf("Invalid: cannot use reserved sidecar name %v ", pipeline.ReservedResultsSidecarName),
-			Paths:   []string{"sidecars"},
+			Paths:   []string{"sidecars.name"},
 		},
 	}}
 	for _, tt := range tests {
