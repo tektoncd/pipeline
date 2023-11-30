@@ -21,8 +21,8 @@ weight: 201
   - [Cannot pass Step Results between Steps](#cannot-pass-step-results-between-steps)
 
 ## Overview
-:warning: This feature is in a preview mode.
-It is still in a very early stage of development and is not yet fully functional.
+> :seedling: **`StepActions` is an [alpha](additional-configs.md#alpha-features) feature.**
+> The `enable-step-actions` feature flag must be set to `"true"` to specify a `StepAction` in a `Step`.
 
 A `StepAction` is the reusable and scriptable unit of work that is performed by a `Step`.
 
@@ -49,7 +49,7 @@ A `StepAction` definition supports the following fields:
   - `script`
     - cannot be used at the same time as using `command`.
   - `env`
-  - [`params`](#declaring-params)
+  - [`params`](#declaring-parameters)
   - [`results`](#emitting-results)
   - [`securityContext`](#declaring-securitycontext)
   - [`volumeMounts`](#declaring-volumemounts)
@@ -57,7 +57,7 @@ A `StepAction` definition supports the following fields:
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
 
-The non-functional example below demonstrates the use of most of the above-mentioned fields:
+The example below demonstrates the use of most of the above-mentioned fields:
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
@@ -270,7 +270,6 @@ spec:
   volumeMounts:
     - name: $(params.registryConfig)
       mountPath: /registry-config
-  volumeMounts:
     - name: $(params.otherConfig)
       mountPath: /other-config
   image: ...
