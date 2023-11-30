@@ -89,7 +89,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 
 	errs = errs.Also(validateSteps(ctx, mergedSteps).ViaField("steps"))
-	errs = errs.Also(validateSidecarNames(ts.Sidecars))
+	errs = errs.Also(validateSidecars(ts.Sidecars).ViaField("sidecars"))
 	errs = errs.Also(ValidateParameterTypes(ctx, ts.Params).ViaField("params"))
 	errs = errs.Also(ValidateParameterVariables(ctx, ts.Steps, ts.Params))
 	errs = errs.Also(validateTaskContextVariables(ctx, ts.Steps))
@@ -149,14 +149,32 @@ func ValidateObjectParamsHaveProperties(ctx context.Context, params ParamSpecs) 
 	return errs
 }
 
-func validateSidecarNames(sidecars []Sidecar) (errs *apis.FieldError) {
+func validateSidecars(sidecars []Sidecar) (errs *apis.FieldError) {
 	for _, sc := range sidecars {
-		if sc.Name == pipeline.ReservedResultsSidecarName {
-			errs = errs.Also(&apis.FieldError{
-				Message: fmt.Sprintf("Invalid: cannot use reserved sidecar name %v ", sc.Name),
-				Paths:   []string{"sidecars"},
-			})
+		errs = errs.Also(validateSidecarName(sc))
+
+		if sc.Image == "" {
+			errs = errs.Also(apis.ErrMissingField("image"))
 		}
+
+		if sc.Script != "" {
+			if len(sc.Command) > 0 {
+				errs = errs.Also(&apis.FieldError{
+					Message: "script cannot be used with command",
+					Paths:   []string{"script"},
+				})
+			}
+		}
+	}
+	return errs
+}
+
+func validateSidecarName(sc Sidecar) (errs *apis.FieldError) {
+	if sc.Name == pipeline.ReservedResultsSidecarName {
+		errs = errs.Also(&apis.FieldError{
+			Message: fmt.Sprintf("Invalid: cannot use reserved sidecar name %v ", sc.Name),
+			Paths:   []string{"name"},
+		})
 	}
 	return errs
 }
