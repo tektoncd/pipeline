@@ -115,7 +115,6 @@ spec:
     volumeMounts:
     - name: messages
       mountPath: /messages
-    script: echo test
   volumes:
   - name: messages
     emptyDir: {}
@@ -189,7 +188,6 @@ spec:
       mountPath: /messages
     securityContext:
       runAsNonRoot: true
-    script: echo test
   volumes:
     - name: messages
       emptyDir: {}
