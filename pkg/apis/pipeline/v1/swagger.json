@@ -1202,7 +1202,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "image": {
-          "description": "Image reference name. More info: https://kubernetes.io/docs/concepts/containers/images This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets.",
+          "description": "Image reference name. More info: https://kubernetes.io/docs/concepts/containers/images",
           "type": "string"
         },
         "imagePullPolicy": {
@@ -1575,7 +1575,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "image": {
-          "description": "Image reference name. More info: https://kubernetes.io/docs/concepts/containers/images This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets.",
+          "description": "Image reference name. More info: https://kubernetes.io/docs/concepts/containers/images",
           "type": "string"
         },
         "imagePullPolicy": {

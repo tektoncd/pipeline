@@ -3364,9 +3364,7 @@ string
 <td>
 <em>(Optional)</em>
 <p>Image reference name.
-More info: <a href="https://kubernetes.io/docs/concepts/containers/images">https://kubernetes.io/docs/concepts/containers/images</a>
-This field is optional to allow higher level config management to default or override
-container images in workload controllers like Deployments and StatefulSets.</p>
+More info: <a href="https://kubernetes.io/docs/concepts/containers/images">https://kubernetes.io/docs/concepts/containers/images</a></p>
 </td>
 </tr>
 <tr>
@@ -4329,9 +4327,7 @@ string
 <td>
 <em>(Optional)</em>
 <p>Image reference name.
-More info: <a href="https://kubernetes.io/docs/concepts/containers/images">https://kubernetes.io/docs/concepts/containers/images</a>
-This field is optional to allow higher level config management to default or override
-container images in workload controllers like Deployments and StatefulSets.</p>
+More info: <a href="https://kubernetes.io/docs/concepts/containers/images">https://kubernetes.io/docs/concepts/containers/images</a></p>
 </td>
 </tr>
 <tr>
