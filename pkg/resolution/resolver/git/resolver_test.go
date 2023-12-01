@@ -195,6 +195,8 @@ type params struct {
 	token      string
 	tokenKey   string
 	namespace  string
+	serverURL  string
+	scmType    string
 }
 
 func TestResolve(t *testing.T) {
@@ -403,6 +405,27 @@ func TestResolve(t *testing.T) {
 		expectedCommitSHA: commitSHAsInSCMRepo[1],
 		expectedStatus:    internal.CreateResolutionRequestStatusWithData(otherPipelineYAML),
 	}, {
+		name: "api: successful override scm type and server URL from user params",
+
+		args: &params{
+			revision:   "main",
+			pathInRepo: "tasks/example-task.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+			token:      "token-secret",
+			tokenKey:   "token",
+			namespace:  "foo",
+			scmType:    "fake",
+			serverURL:  "fake",
+		},
+		config: map[string]string{
+			ServerURLKey: "notsofake",
+			SCMTypeKey:   "definitivelynotafake",
+		},
+		apiToken:          "some-token",
+		expectedCommitSHA: commitSHAsInSCMRepo[0],
+		expectedStatus:    internal.CreateResolutionRequestStatusWithData(mainTaskYAML),
+	}, {
 		name: "api: file does not exist",
 		args: &params{
 			revision:   "main",
@@ -487,8 +510,7 @@ func TestResolve(t *testing.T) {
 		apiToken:       "some-token",
 		expectedStatus: internal.CreateResolutionRequestFailureStatus(),
 		expectedErr:    createError("missing or empty scm-type value in configmap"),
-	},
-	}
+	}}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -744,6 +766,19 @@ func createRequest(args *params) *v1beta1.ResolutionRequest {
 		rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
 			Name:  revisionParam,
 			Value: *pipelinev1.NewStructuredValues(args.revision),
+		})
+	}
+
+	if args.serverURL != "" {
+		rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
+			Name:  serverURLParam,
+			Value: *pipelinev1.NewStructuredValues(args.serverURL),
+		})
+	}
+	if args.scmType != "" {
+		rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
+			Name:  scmTypeParam,
+			Value: *pipelinev1.NewStructuredValues(args.scmType),
 		})
 	}
 

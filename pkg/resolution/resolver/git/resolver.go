@@ -144,7 +144,7 @@ func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1.Param) (
 
 func (r *Resolver) resolveAPIGit(ctx context.Context, params map[string]string) (framework.ResolvedResource, error) {
 	// If we got here, the "repo" param was specified, so use the API approach
-	scmType, serverURL, err := r.getSCMTypeAndServerURL(ctx)
+	scmType, serverURL, err := r.getSCMTypeAndServerURL(ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -366,16 +366,30 @@ type secretCacheKey struct {
 	key  string
 }
 
-func (r *Resolver) getSCMTypeAndServerURL(ctx context.Context) (string, string, error) {
+func (r *Resolver) getSCMTypeAndServerURL(ctx context.Context, params map[string]string) (string, string, error) {
 	conf := framework.GetResolverConfigFromContext(ctx)
 
-	scmType, ok := conf[SCMTypeKey]
-	if !ok || scmType == "" {
-		return "", "", fmt.Errorf("missing or empty %s value in configmap", SCMTypeKey)
+	var scmType, serverURL string
+	if key, ok := params[scmTypeParam]; ok {
+		scmType = key
 	}
-
-	serverURL := conf[ServerURLKey]
-
+	if scmType == "" {
+		if key, ok := conf[SCMTypeKey]; ok && scmType == "" {
+			scmType = key
+		} else {
+			return "", "", fmt.Errorf("missing or empty %s value in configmap", SCMTypeKey)
+		}
+	}
+	if key, ok := params[serverURLParam]; ok {
+		serverURL = key
+	}
+	if serverURL == "" {
+		if key, ok := conf[ServerURLKey]; ok && serverURL == "" {
+			serverURL = key
+		} else {
+			return "", "", fmt.Errorf("missing or empty %s value in configmap", ServerURLKey)
+		}
+	}
 	return scmType, serverURL, nil
 }
 

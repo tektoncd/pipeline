@@ -13,15 +13,17 @@ This Resolver responds to type `git`.
 
 ## Parameters
 
-| Param Name   | Description                                                                                                            | Example Value                                               |
-|--------------|------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------|
-| `url`        | URL of the repo to fetch and clone anonymously. Either `url`, or `repo` (with `org`) must be specified, but not both.  | `https://github.com/tektoncd/catalog.git`                   |
-| `repo`       | The repository to find the resource in. Either `url`, or `repo` (with `org`) must be specified, but not both.          | `pipeline`, `test-infra`                                    |
-| `org`        | The organization to find the repository in. Default can be set in [configuration](#configuration).                     | `tektoncd`, `kubernetes`                                    |
-| `token`      | An optional secret name in the `PipelineRun` namespace to fetch the token from. Defaults to empty, meaning it will try to use the configuration from the global configmap.      | `secret-name`, (empty)  |
-| `tokenKey`   | An optional key in the token secret name in the `PipelineRun` namespace to fetch the token from. Defaults to `token`.  | `token`                                                     |
-| `revision`   | Git revision to checkout a file from. This can be commit SHA, branch or tag.                                           | `aeb957601cf41c012be462827053a21a420befca` `main` `v0.38.2` |
-| `pathInRepo` | Where to find the file in the repo.                                                                                    | `task/golang-build/0.3/golang-build.yaml`                   |
+| Param Name   | Description                                                                                                                                                                | Example Value                                               |
+|--------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------|
+| `url`        | URL of the repo to fetch and clone anonymously. Either `url`, or `repo` (with `org`) must be specified, but not both.                                                      | `https://github.com/tektoncd/catalog.git`                   |
+| `repo`       | The repository to find the resource in. Either `url`, or `repo` (with `org`) must be specified, but not both.                                                              | `pipeline`, `test-infra`                                    |
+| `org`        | The organization to find the repository in. Default can be set in [configuration](#configuration).                                                                         | `tektoncd`, `kubernetes`                                    |
+| `token`      | An optional secret name in the `PipelineRun` namespace to fetch the token from. Defaults to empty, meaning it will try to use the configuration from the global configmap. | `secret-name`, (empty)                                      |
+| `tokenKey`   | An optional key in the token secret name in the `PipelineRun` namespace to fetch the token from. Defaults to `token`.                                                      | `token`                                                     |
+| `revision`   | Git revision to checkout a file from. This can be commit SHA, branch or tag.                                                                                               | `aeb957601cf41c012be462827053a21a420befca` `main` `v0.38.2` |
+| `pathInRepo` | Where to find the file in the repo.                                                                                                                                        | `task/golang-build/0.3/golang-build.yaml`                   |
+| `serverURL`  | An optional server URL (that includes the https:// prefix) to connect for API operations                                                                                   | `https:/github.mycompany.com`                               |
+| `scmType`    | An optional SCM type to use for API operations                                                                                                                             | `github`, `gitlab`, `gitea`                                 |
 
 ## Requirements
 
@@ -137,7 +139,7 @@ spec:
       value: task/git-clone/0.6/git-clone.yaml
 ```
 
-#### Task Resolution with a custom token to the SCM provider
+#### Task Resolution with a custom token to a custom SCM provider
 
 ```yaml
 apiVersion: tekton.dev/v1beta1
@@ -163,6 +165,10 @@ spec:
       value: my-secret-token
     - name: tokenKey
       value: token
+    - name: scmType
+      value: github
+    - name: serverURL
+      value: https://ghe.mycompany.com
 ```
 
 #### Pipeline resolution
