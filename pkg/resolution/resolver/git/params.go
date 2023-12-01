@@ -33,4 +33,8 @@ const (
 	tokenKeyParam string = "tokenKey"
 	// defaultTokenKeyParam is the default key in the tokenParam secret for SCM API authentication
 	defaultTokenKeyParam string = "token"
+	// scmTypeParams is an optional string overriding the scm-type configuration (ie: github, gitea, gitlab etc..)
+	scmTypeParam string = "scmType"
+	// serverURLParams is an optional string to the server URL for the SCM API to connect to
+	serverURLParam string = "serverURL"
 )
