@@ -488,7 +488,6 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 		// current labels may not be set on a previously created Pod.
 		labelSelector := labels.Set{pipeline.TaskRunLabelKey: tr.Name}
 		pos, err := c.podLister.Pods(tr.Namespace).List(labelSelector.AsSelector())
-
 		if err != nil {
 			logger.Errorf("Error listing pods: %v", err)
 			return err
@@ -688,8 +687,7 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1.TaskRun, reason v1.
 	}
 
 	var err error
-	if reason == v1.TaskRunReasonCancelled &&
-		(config.FromContextOrDefaults(ctx).FeatureFlags.EnableKeepPodOnCancel && config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == config.AlphaAPIFields) {
+	if reason == v1.TaskRunReasonCancelled && (config.FromContextOrDefaults(ctx).FeatureFlags.EnableKeepPodOnCancel) {
 		logger.Infof("canceling task run %q by entrypoint", tr.Name)
 		err = podconvert.CancelPod(ctx, c.KubeClientSet, tr.Namespace, tr.Status.PodName)
 	} else {
