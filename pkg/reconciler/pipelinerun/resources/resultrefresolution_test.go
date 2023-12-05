@@ -41,6 +41,8 @@ var (
 		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionFalse,
 	}
+	idx1 = 1
+	idx2 = 2
 )
 
 var pipelineRunState = PipelineRunState{{
@@ -375,7 +377,7 @@ func TestResolveResultRefs(t *testing.T) {
 			ResultReference: v1.ResultRef{
 				PipelineTask: "cTask",
 				Result:       "cResult",
-				ResultsIndex: 1,
+				ResultsIndex: &idx1,
 			},
 			FromTaskRun: "cTaskRun",
 		}},
@@ -391,7 +393,6 @@ func TestResolveResultRefs(t *testing.T) {
 			ResultReference: v1.ResultRef{
 				PipelineTask: "cTask",
 				Result:       "cResult",
-				ResultsIndex: 0,
 			},
 			FromTaskRun: "cTaskRun",
 		}, {
@@ -399,7 +400,6 @@ func TestResolveResultRefs(t *testing.T) {
 			ResultReference: v1.ResultRef{
 				PipelineTask: "dTask",
 				Result:       "dResult",
-				ResultsIndex: 0,
 			},
 			FromTaskRun: "dTaskRun",
 		}},
@@ -753,7 +753,21 @@ func TestValidateArrayResultsIndex(t *testing.T) {
 			ResultReference: v1.ResultRef{
 				PipelineTask: "aTask",
 				Result:       "aResult",
-				ResultsIndex: 1,
+				ResultsIndex: nil,
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+	}, {
+		name: "Reference an Empty Array",
+		refs: ResolvedResultRefs{{
+			Value: v1.ResultValue{
+				Type:     "array",
+				ArrayVal: []string{},
+			},
+			ResultReference: v1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "aResult",
+				ResultsIndex: &idx1,
 			},
 			FromTaskRun: "aTaskRun",
 		}},
@@ -768,7 +782,7 @@ func TestValidateArrayResultsIndex(t *testing.T) {
 			ResultReference: v1.ResultRef{
 				PipelineTask: "aTask",
 				Result:       "aResult",
-				ResultsIndex: 1,
+				ResultsIndex: &idx1,
 			},
 			FromTaskRun: "aTaskRun",
 		}},
@@ -778,16 +792,16 @@ func TestValidateArrayResultsIndex(t *testing.T) {
 		refs: ResolvedResultRefs{{
 			Value: v1.ResultValue{
 				Type:     "array",
-				ArrayVal: []string{"a", "b", "c"},
+				ArrayVal: []string{"a", "b"},
 			},
 			ResultReference: v1.ResultRef{
 				PipelineTask: "aTask",
 				Result:       "aResult",
-				ResultsIndex: 3,
+				ResultsIndex: &idx2,
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		wantErr: "array Result Index 3 for Task aTask Result aResult is out of bound of size 3",
+		wantErr: "array Result Index 2 for Task aTask Result aResult is out of bound of size 2",
 	}, {
 		name: "In Bounds and Out of Bounds Array",
 		refs: ResolvedResultRefs{{
@@ -798,22 +812,22 @@ func TestValidateArrayResultsIndex(t *testing.T) {
 			ResultReference: v1.ResultRef{
 				PipelineTask: "aTask",
 				Result:       "aResult",
-				ResultsIndex: 1,
+				ResultsIndex: &idx1,
 			},
 			FromTaskRun: "aTaskRun",
 		}, {
 			Value: v1.ResultValue{
 				Type:     "array",
-				ArrayVal: []string{"a", "b", "c"},
+				ArrayVal: []string{"a", "b"},
 			},
 			ResultReference: v1.ResultRef{
 				PipelineTask: "aTask",
 				Result:       "aResult",
-				ResultsIndex: 3,
+				ResultsIndex: &idx2,
 			},
 			FromTaskRun: "aTaskRun",
 		}},
-		wantErr: "array Result Index 3 for Task aTask Result aResult is out of bound of size 3",
+		wantErr: "array Result Index 2 for Task aTask Result aResult is out of bound of size 2",
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateArrayResultsIndex(tt.refs)
