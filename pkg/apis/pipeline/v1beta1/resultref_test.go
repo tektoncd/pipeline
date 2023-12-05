@@ -27,6 +27,7 @@ import (
 )
 
 func TestNewResultReference(t *testing.T) {
+	idx1 := 1
 	for _, tt := range []struct {
 		name  string
 		param v1beta1.Param
@@ -42,7 +43,7 @@ func TestNewResultReference(t *testing.T) {
 			Result:       "sumResult",
 		}},
 	}, {
-		name: "refer whole array result",
+		name: "reference whole array/object result",
 		param: v1beta1.Param{
 			Name:  "param",
 			Value: *v1beta1.NewStructuredValues("$(tasks.sumTask.results.sumResult[*])"),
@@ -50,6 +51,7 @@ func TestNewResultReference(t *testing.T) {
 		want: []*v1beta1.ResultRef{{
 			PipelineTask: "sumTask",
 			Result:       "sumResult",
+			ResultsIndex: nil,
 		}},
 	}, {
 		name: "Test valid expression with single object result property",
@@ -71,7 +73,7 @@ func TestNewResultReference(t *testing.T) {
 		want: []*v1beta1.ResultRef{{
 			PipelineTask: "sumTask",
 			Result:       "sumResult",
-			ResultsIndex: 1,
+			ResultsIndex: &idx1,
 		}},
 	}, {
 		name: "Test valid expression with multiple object result properties",

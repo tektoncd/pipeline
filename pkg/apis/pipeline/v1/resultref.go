@@ -27,7 +27,7 @@ import (
 type ResultRef struct {
 	PipelineTask string `json:"pipelineTask"`
 	Result       string `json:"result"`
-	ResultsIndex int    `json:"resultsIndex"`
+	ResultsIndex *int   `json:"resultsIndex"`
 	Property     string `json:"property"`
 }
 
@@ -122,37 +122,40 @@ func stripVarSubExpression(expression string) string {
 }
 
 // parseExpression parses "task name", "result name", "array index" (iff it's an array result) and "object key name" (iff it's an object result)
-// Valid Example 1:
+// 1. Reference string result
 // - Input: tasks.myTask.results.aStringResult
-// - Output: "myTask", "aStringResult", -1, "", nil
-// Valid Example 2:
+// - Output: "myTask", "aStringResult", nil, "", nil
+// 2. Reference Object value with key:
 // - Input: tasks.myTask.results.anObjectResult.key1
-// - Output: "myTask", "anObjectResult", 0, "key1", nil
-// Valid Example 3:
+// - Output: "myTask", "anObjectResult", nil, "key1", nil
+// 3. Reference array elements with array indexing :
 // - Input: tasks.myTask.results.anArrayResult[1]
 // - Output: "myTask", "anArrayResult", 1, "", nil
-// Invalid Example 1:
+// 4. Referencing whole array or object result:
+// - Input: tasks.myTask.results.Result[*]
+// - Output: "myTask", "Result", nil, "", nil
+// Invalid Case:
 // - Input: tasks.myTask.results.resultName.foo.bar
-// - Output: "", "", 0, "", error
+// - Output: "", "", nil, "", error
 // TODO: may use regex for each type to handle possible reference formats
-func parseExpression(substitutionExpression string) (string, string, int, string, error) {
+func parseExpression(substitutionExpression string) (string, string, *int, string, error) {
 	if looksLikeResultRef(substitutionExpression) {
 		subExpressions := strings.Split(substitutionExpression, ".")
 		// For string result: tasks.<taskName>.results.<stringResultName>
 		// For array result: tasks.<taskName>.results.<arrayResultName>[index]
 		if len(subExpressions) == 4 {
 			resultName, stringIdx := ParseResultName(subExpressions[3])
-			if stringIdx != "" {
+			if stringIdx != "" && stringIdx != "*" {
 				intIdx, _ := strconv.Atoi(stringIdx)
-				return subExpressions[1], resultName, intIdx, "", nil
+				return subExpressions[1], resultName, &intIdx, "", nil
 			}
-			return subExpressions[1], resultName, 0, "", nil
+			return subExpressions[1], resultName, nil, "", nil
 		} else if len(subExpressions) == 5 {
 			// For object type result: tasks.<taskName>.results.<objectResultName>.<individualAttribute>
-			return subExpressions[1], subExpressions[3], 0, subExpressions[4], nil
+			return subExpressions[1], subExpressions[3], nil, subExpressions[4], nil
 		}
 	}
-	return "", "", 0, "", fmt.Errorf("must be one of the form 1). %q; 2). %q", resultExpressionFormat, objectResultExpressionFormat)
+	return "", "", nil, "", fmt.Errorf("must be one of the form 1). %q; 2). %q", resultExpressionFormat, objectResultExpressionFormat)
 }
 
 // ParseResultName parse the input string to extract resultName and result index.
