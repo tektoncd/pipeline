@@ -4083,7 +4083,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			},
 		},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [pipeline-result-1], the referred results don't exist"),
+		expectedError:   fmt.Errorf("invalid pipelineresults [pipeline-result-1], the referenced results don't exist"),
 	}, {
 		description: "object-reference-key-not-exist",
 		results: []v1.PipelineResult{{
@@ -4102,7 +4102,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			},
 		},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [pipeline-result-1], the referred results don't exist"),
+		expectedError:   fmt.Errorf("invalid pipelineresults [pipeline-result-1], the referenced results don't exist"),
 	}, {
 		description: "object-results-resultname-not-exist",
 		results: []v1.PipelineResult{{
@@ -4121,7 +4121,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			},
 		},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [pipeline-result-1], the referred results don't exist"),
+		expectedError:   fmt.Errorf("invalid pipelineresults [pipeline-result-1], the referenced results don't exist"),
 	}, {
 		description: "invalid-result-variable-no-returned-result",
 		results: []v1.PipelineResult{{
@@ -4135,7 +4135,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			}},
 		},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referenced results don't exist"),
 	}, {
 		description: "no-taskrun-results-no-returned-results",
 		results: []v1.PipelineResult{{
@@ -4146,7 +4146,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			"pt1": {},
 		},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referenced results don't exist"),
 	}, {
 		description: "invalid-taskrun-name-no-returned-result",
 		results: []v1.PipelineResult{{
@@ -4160,7 +4160,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			}},
 		},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referenced results don't exist"),
 	}, {
 		description: "invalid-result-name-no-returned-result",
 		results: []v1.PipelineResult{{
@@ -4174,7 +4174,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			}},
 		},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referenced results don't exist"),
 	}, {
 		description: "unsuccessful-taskrun-no-returned-result",
 		results: []v1.PipelineResult{{
@@ -4183,7 +4183,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 		}},
 		taskResults:     map[string][]v1.TaskRunResult{},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referenced results don't exist"),
 	}, {
 		description: "mixed-success-tasks-some-returned-results",
 		results: []v1.PipelineResult{{
@@ -4203,7 +4203,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			Name:  "bar",
 			Value: *v1.NewStructuredValues("rae"),
 		}},
-		expectedError: fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+		expectedError: fmt.Errorf("invalid pipelineresults [foo], the referenced results don't exist"),
 	}, {
 		description: "no-run-results-no-returned-results",
 		results: []v1.PipelineResult{{
@@ -4212,7 +4212,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 		}},
 		runResults:      map[string][]v1beta1.CustomRunResult{},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referenced results don't exist"),
 	}, {
 		description: "wrong-customtask-name-no-returned-result",
 		results: []v1.PipelineResult{{
@@ -4226,7 +4226,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			}},
 		},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referenced results don't exist"),
 	}, {
 		description: "right-customtask-name-wrong-result-name-no-returned-result",
 		results: []v1.PipelineResult{{
@@ -4240,7 +4240,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			}},
 		},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referenced results don't exist"),
 	}, {
 		description: "unsuccessful-run-no-returned-result",
 		results: []v1.PipelineResult{{
@@ -4251,7 +4251,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			"customtask": {},
 		},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referenced results don't exist"),
 	}, {
 		description: "wrong-result-reference-expression",
 		results: []v1.PipelineResult{{
@@ -4262,7 +4262,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			"customtask": {},
 		},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referenced results don't exist"),
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
 			received, err := resources.ApplyTaskResultsToPipelineResults(context.Background(), tc.results, tc.taskResults, tc.runResults, nil /*skipped tasks*/)

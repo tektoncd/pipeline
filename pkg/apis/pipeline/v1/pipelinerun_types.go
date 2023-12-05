@@ -381,6 +381,10 @@ const (
 	// ReasonFailedValidation indicates that the reason for failure status is
 	// that pipelinerun failed runtime validation
 	PipelineRunReasonFailedValidation PipelineRunReason = "PipelineValidationFailed"
+	// PipelineRunReasonCouldntGetPipelineResult indicates that the pipeline fails to retrieve the
+	// referenced result. This could be due to failed TaskRuns or Runs that were supposed to produce
+	// the results
+	PipelineRunReasonCouldntGetPipelineResult PipelineRunReason = "CouldntGetPipelineResult"
 	// ReasonInvalidGraph indicates that the reason for the failure status is that the
 	// associated Pipeline is an invalid graph (a.k.a wrong order, cycle, …)
 	PipelineRunReasonInvalidGraph PipelineRunReason = "PipelineInvalidGraph"
