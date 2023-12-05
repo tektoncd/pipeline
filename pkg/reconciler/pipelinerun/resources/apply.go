@@ -519,7 +519,7 @@ func ApplyTaskResultsToPipelineResults(
 	}
 
 	if len(invalidPipelineResults) > 0 {
-		return runResults, fmt.Errorf("invalid pipelineresults %v, the referred results don't exist", invalidPipelineResults)
+		return runResults, fmt.Errorf("invalid pipelineresults %v, the referenced results don't exist", invalidPipelineResults)
 	}
 
 	return runResults, nil

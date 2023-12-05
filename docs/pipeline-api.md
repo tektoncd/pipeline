@@ -1968,6 +1968,11 @@ all of the running TaskRuns as cancelled failed.</p>
 <td><p>ReasonCouldntGetPipeline indicates that the reason for the failure status is that the
 associated Pipeline couldn&rsquo;t be retrieved</p>
 </td>
+</tr><tr><td><p>&#34;CouldntGetPipelineResult&#34;</p></td>
+<td><p>PipelineRunReasonCouldntGetPipelineResult indicates that the pipeline fails to retrieve the
+referenced result. This could be due to failed TaskRuns or Runs that were supposed to produce
+the results</p>
+</td>
 </tr><tr><td><p>&#34;CouldntGetTask&#34;</p></td>
 <td><p>ReasonCouldntGetTask indicates that the reason for the failure status is that the
 associated Pipeline&rsquo;s Tasks couldn&rsquo;t all be retrieved</p>

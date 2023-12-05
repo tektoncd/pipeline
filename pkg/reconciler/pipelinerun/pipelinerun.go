@@ -756,7 +756,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		pr.Status.Results, err = resources.ApplyTaskResultsToPipelineResults(ctx, pipelineSpec.Results,
 			pipelineRunFacts.State.GetTaskRunsResults(), pipelineRunFacts.State.GetRunsResults(), pipelineRunFacts.GetPipelineTaskStatus())
 		if err != nil {
-			pr.Status.MarkFailed(v1.PipelineRunReasonFailedValidation.String(), err.Error())
+			pr.Status.MarkFailed(v1.PipelineRunReasonCouldntGetPipelineResult.String(), err.Error())
 			return err
 		}
 	}
