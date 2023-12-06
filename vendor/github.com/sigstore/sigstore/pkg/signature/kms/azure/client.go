@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"regexp"
 	"strings"
@@ -319,11 +320,32 @@ func (a *azureVaultClient) public(ctx context.Context) (crypto.PublicKey, error)
 }
 
 func (a *azureVaultClient) createKey(ctx context.Context) (crypto.PublicKey, error) {
+	// check if the key already exists by attempting to fetch it
 	_, err := a.getKey(ctx)
+	// if the error is nil, this means the key already exists
+	// and we can return the public key
 	if err == nil {
 		return a.public(ctx)
 	}
 
+	// If the returned error is not nil, set the error to the
+	// custom azcore.ResponseError error implementation
+	// this custom error allows us to check the status code
+	// returned by the GetKey operation. If the operation
+	// returned a 404, we know that the key does not exist
+	// and we can create it.
+	var respErr *azcore.ResponseError
+	if ok := errors.As(err, &respErr); !ok {
+		return nil, fmt.Errorf("unexpected error returned by get key operation: %w", err)
+	}
+
+	// if a non-404 status code is returned, return the error
+	// since this is an unexpected error response
+	if respErr.StatusCode != http.StatusNotFound {
+		return nil, fmt.Errorf("unexpected status code returned by get key operation: %w", err)
+	}
+
+	// if a 404 was returned, then we can create the key
 	_, err = a.client.CreateKey(
 		ctx,
 		a.keyName,
