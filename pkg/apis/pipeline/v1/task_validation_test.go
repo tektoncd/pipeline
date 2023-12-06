@@ -528,8 +528,7 @@ func TestTaskSpecStepActionReferenceValidate(t *testing.T) {
 	}{{
 		name: "valid stepaction ref",
 		Steps: []v1.Step{{
-			Name:       "mystep",
-			WorkingDir: "/foo",
+			Name: "mystep",
 			Ref: &v1.Ref{
 				Name: "stepAction",
 			},
@@ -1535,6 +1534,18 @@ func TestTaskSpecValidateErrorWithStepActionRef(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: "script cannot be used with Ref",
 			Paths:   []string{"steps[0].script"},
+		},
+	}, {
+		name: "Cannot use workingDir with Ref",
+		Steps: []v1.Step{{
+			Ref: &v1.Ref{
+				Name: "stepAction",
+			},
+			WorkingDir: "/workspace",
+		}},
+		expectedError: apis.FieldError{
+			Message: "working dir cannot be used with Ref",
+			Paths:   []string{"steps[0].workingDir"},
 		},
 	}, {
 		name: "Cannot use env with Ref",

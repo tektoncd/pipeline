@@ -2943,7 +2943,6 @@ spec:
       - ref:
           name: stepAction
         name: step1
-        workingDir: /foo
       - ref:
           name: stepAction2
         name: step2
@@ -2994,7 +2993,6 @@ spec:
 		Image:           "myImage",
 		Command:         []string{"ls"},
 		Name:            "step1",
-		WorkingDir:      "/foo",
 		SecurityContext: &corev1.SecurityContext{Privileged: &securityContextPrivileged},
 	}, {
 		Image:  "myImage",

@@ -829,6 +829,13 @@ func schema_pkg_apis_pipeline_v1alpha1_StepActionSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
+					"workingDir": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Step's working directory. If not specified, the container runtime's default will be used, which might be configured in the container image. Cannot be updated.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"params": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
