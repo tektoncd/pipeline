@@ -112,6 +112,12 @@ type StepActionSpec struct {
 	// If Script is not empty, the Step cannot have an Command and the Args will be passed to the Script.
 	// +optional
 	Script string `json:"script,omitempty"`
+	// Step's working directory.
+	// If not specified, the container runtime's default will be used, which
+	// might be configured in the container image.
+	// Cannot be updated.
+	// +optional
+	WorkingDir string `json:"workingDir,omitempty" protobuf:"bytes,5,opt,name=workingDir"`
 	// Params is a list of input parameters required to run the stepAction.
 	// Params must be supplied as inputs in Steps unless they declare a defaultvalue.
 	// +optional

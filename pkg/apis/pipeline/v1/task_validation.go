@@ -352,6 +352,12 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 				Paths:   []string{"script"},
 			})
 		}
+		if s.WorkingDir != "" {
+			errs = errs.Also(&apis.FieldError{
+				Message: "working dir cannot be used with Ref",
+				Paths:   []string{"workingDir"},
+			})
+		}
 		if s.Env != nil {
 			errs = errs.Also(&apis.FieldError{
 				Message: "env cannot be used with Ref",

@@ -321,8 +321,7 @@ func TestGetStepActionsData(t *testing.T) {
 						Ref: &v1.Ref{
 							Name: "stepAction",
 						},
-						WorkingDir: "/bar",
-						Timeout:    &metav1.Duration{Duration: time.Hour},
+						Timeout: &metav1.Duration{Duration: time.Hour},
 					}},
 				},
 			},
@@ -343,11 +342,10 @@ func TestGetStepActionsData(t *testing.T) {
 			},
 		},
 		want: []v1.Step{{
-			Image:      "myimage",
-			Command:    []string{"ls"},
-			Args:       []string{"-lh"},
-			WorkingDir: "/bar",
-			Timeout:    &metav1.Duration{Duration: time.Hour},
+			Image:   "myimage",
+			Command: []string{"ls"},
+			Args:    []string{"-lh"},
+			Timeout: &metav1.Duration{Duration: time.Hour},
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "$(params.foo)",
 				MountPath: "/path",
@@ -469,8 +467,7 @@ func TestGetStepActionsData(t *testing.T) {
 						Ref: &v1.Ref{
 							Name: "stepAction",
 						},
-						WorkingDir: "/bar",
-						Timeout:    &metav1.Duration{Duration: time.Hour},
+						Timeout: &metav1.Duration{Duration: time.Hour},
 					}, {
 						Image:   "foo",
 						Command: []string{"ls"},
@@ -490,11 +487,10 @@ func TestGetStepActionsData(t *testing.T) {
 			},
 		},
 		want: []v1.Step{{
-			Image:      "myimage",
-			Command:    []string{"ls"},
-			Args:       []string{"-lh"},
-			WorkingDir: "/bar",
-			Timeout:    &metav1.Duration{Duration: time.Hour},
+			Image:   "myimage",
+			Command: []string{"ls"},
+			Args:    []string{"-lh"},
+			Timeout: &metav1.Duration{Duration: time.Hour},
 		}, {
 			Image:   "foo",
 			Command: []string{"ls"},

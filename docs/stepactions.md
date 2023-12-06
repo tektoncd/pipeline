@@ -13,6 +13,7 @@ weight: 201
     - [Passing Params to StepAction](#passing-params-to-stepaction)
   - [Emitting Results](#emitting-results)
     - [Fetching Emitted Results from StepActions](#fetching-emitted-results-from-stepactions)
+  - [Declaring WorkingDir](#declaring-workingdir)
   - [Declaring SecurityContext](#declaring-securitycontext)
   - [Declaring VolumeMounts](#declaring-volumemounts)
   - [Referencing a StepAction](#referencing-a-stepaction)
@@ -51,6 +52,7 @@ A `StepAction` definition supports the following fields:
   - `env`
   - [`params`](#declaring-parameters)
   - [`results`](#emitting-results)
+  - [`workingDir`](#declaring-workingdir)
   - [`securityContext`](#declaring-securitycontext)
   - [`volumeMounts`](#declaring-volumemounts)
 
@@ -233,6 +235,40 @@ spec:
       ref:
         name: kaniko-step-action
 ```
+
+### Declaring WorkingDir
+
+You can declare `workingDir` in a `StepAction`:
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: StepAction
+metadata:
+  name: example-stepaction-name
+spec:
+  image:  gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:latest
+  workingDir: /workspace
+  script: |
+    # clone the repo
+    ...
+```
+
+The `Task` using the `StepAction` has more context about how the `Steps` have been orchestrated. As such, the `Task` should be able to update the `workingDir` of the `StepAction` so that the `StepAction` is executed from the correct location.
+The `StepAction` can parametrize the `workingDir` and work relative to it. This way, the `Task` does not really need control over the workingDir, it just needs to pass the path as a parameter. 
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: StepAction
+metadata:
+  name: example-stepaction-name
+spec:
+  image: ubuntu
+  params:
+    - name: source
+      description: "The path to the source code."
+  workingDir: $(params.source)
+```
+
 
 ### Declaring SecurityContext
 

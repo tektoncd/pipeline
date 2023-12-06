@@ -6720,6 +6720,21 @@ string
 </tr>
 <tr>
 <td>
+<code>workingDir</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Step&rsquo;s working directory.
+If not specified, the container runtime&rsquo;s default will be used, which
+might be configured in the container image.
+Cannot be updated.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>params</code><br/>
 <em>
 <a href="#tekton.dev/v1.ParamSpecs">
@@ -7537,6 +7552,21 @@ string
 <em>(Optional)</em>
 <p>Script is the contents of an executable file to execute.</p>
 <p>If Script is not empty, the Step cannot have an Command and the Args will be passed to the Script.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>workingDir</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Step&rsquo;s working directory.
+If not specified, the container runtime&rsquo;s default will be used, which
+might be configured in the container image.
+Cannot be updated.</p>
 </td>
 </tr>
 <tr>
