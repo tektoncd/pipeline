@@ -27,6 +27,7 @@ import (
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	listerv1 "k8s.io/client-go/listers/core/v1"
@@ -50,7 +51,7 @@ func init() {
 func New(service string, logger *zap.SugaredLogger) *tracerProvider {
 	return &tracerProvider{
 		service:  service,
-		provider: trace.NewNoopTracerProvider(),
+		provider: noop.NewTracerProvider(),
 		logger:   logger,
 	}
 }
@@ -144,7 +145,7 @@ func (t *tracerProvider) reinitialize() {
 
 func createTracerProvider(service string, cfg *config.Tracing, user, pass string) (trace.TracerProvider, error) {
 	if !cfg.Enabled {
-		return trace.NewNoopTracerProvider(), nil
+		return noop.NewTracerProvider(), nil
 	}
 
 	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(
