@@ -7858,7 +7858,7 @@ spec:
 			reason: v1.PipelineRunReasonInvalidTaskResultReference.String(),
 		}, {
 			name:   "pipelinerun-pipeline-result-invalid-result-variable",
-			reason: v1.PipelineRunReasonInvalidTaskResultReference.String(),
+			reason: v1.PipelineRunReasonInvalidPipelineResultReference.String(),
 		}, {
 			name:   "pipelinerun-with-optional-workspace-validation",
 			reason: v1.PipelineRunReasonRequiredWorkspaceMarkedOptional.String(),
