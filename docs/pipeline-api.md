@@ -2005,6 +2005,10 @@ associated Pipeline is an invalid graph (a.k.a wrong order, cycle, …)</p>
 </tr><tr><td><p>&#34;InvalidParamValue&#34;</p></td>
 <td><p>PipelineRunReasonInvalidParamValue indicates that the PipelineRun Param input value is not allowed.</p>
 </td>
+</tr><tr><td><p>&#34;InvalidPipelineResultReference&#34;</p></td>
+<td><p>PipelineRunReasonInvalidPipelineResultReference indicates a pipeline result was declared
+by the pipeline but not initialized in the pipelineTask</p>
+</td>
 </tr><tr><td><p>&#34;InvalidTaskResultReference&#34;</p></td>
 <td><p>ReasonInvalidTaskResultReference indicates a task result was declared
 but was not initialized by that task</p>

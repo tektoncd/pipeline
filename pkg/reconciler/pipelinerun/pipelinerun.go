@@ -678,8 +678,10 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		}
 
 		if err := resources.ValidatePipelineResults(pipelineSpec, pipelineRunFacts.State); err != nil {
-			logger.Errorf("Failed to resolve task result reference for %q with error %v", pr.Name, err)
-			pr.Status.MarkFailed(v1.PipelineRunReasonInvalidTaskResultReference.String(), err.Error())
+			logger.Errorf("Failed to resolve pipeline result reference for %q with error %w", pr.Name, err)
+			pr.Status.MarkFailed(v1.PipelineRunReasonInvalidPipelineResultReference.String(),
+				"Failed to resolve pipeline result reference for %q with error %w",
+				pr.Name, err)
 			return controller.NewPermanentError(err)
 		}
 

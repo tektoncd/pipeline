@@ -399,6 +399,9 @@ const (
 	// ReasonInvalidTaskResultReference indicates a task result was declared
 	// but was not initialized by that task
 	PipelineRunReasonInvalidTaskResultReference PipelineRunReason = "InvalidTaskResultReference"
+	// PipelineRunReasonInvalidPipelineResultReference indicates a pipeline result was declared
+	// by the pipeline but not initialized in the pipelineTask
+	PipelineRunReasonInvalidPipelineResultReference PipelineRunReason = "InvalidPipelineResultReference"
 	// ReasonRequiredWorkspaceMarkedOptional indicates an optional workspace
 	// has been passed to a Task that is expecting a non-optional workspace
 	PipelineRunReasonRequiredWorkspaceMarkedOptional PipelineRunReason = "RequiredWorkspaceMarkedOptional"
