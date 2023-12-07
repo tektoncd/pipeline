@@ -65,6 +65,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	k8sapierrors "k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -5636,6 +5637,33 @@ status:
 			gotVerificationCondition := reconciledRun.Status.GetCondition(trustedresources.ConditionTrustedResourcesVerified)
 			if gotVerificationCondition == nil || gotVerificationCondition.Status != corev1.ConditionFalse {
 				t.Errorf("Expected to have false condition, but had %v", gotVerificationCondition)
+			}
+		})
+	}
+}
+
+func TestIsConcurrentModificationError(t *testing.T) {
+	tcs := []struct {
+		description string
+		err         error
+		want        bool
+	}{{
+		description: "conflict error not concurrent modification",
+		err:         k8serrors.NewConflict(schema.ParseGroupResource("foo"), "bar", errors.New("not concurrent modification")),
+		want:        false,
+	}, {
+		description: "concurrent modification error",
+		err:         k8serrors.NewConflict(schema.ParseGroupResource("foo"), "bar", errors.New(optimisticLockErrorMsg)),
+		want:        true,
+	}, {
+		description: "not conflict error",
+		err:         k8serrors.NewNotFound(schema.ParseGroupResource("foo"), "bar"),
+		want:        false,
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.description, func(t *testing.T) {
+			if isConcurrentModificationError(tc.err) != tc.want {
+				t.Errorf("Unexpected concurrent modification error state")
 			}
 		})
 	}
