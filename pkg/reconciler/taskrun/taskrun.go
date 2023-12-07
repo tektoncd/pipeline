@@ -280,6 +280,12 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1.TaskRun) error {
 		// it has probably evicted. We can return the error, but we consider it a permanent one.
 		return controller.NewPermanentError(err)
 	} else if err != nil {
+		// It is admissible for Pods to fail with concurrentModification errors
+		// when stopping sideCars. Instead of failing the TaskRun, we shall just
+		// let the reconciler requeue.
+		if isConcurrentModificationError(err) {
+			return controller.NewRequeueAfter(time.Second)
+		}
 		logger.Errorf("Error stopping sidecars for TaskRun %q: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonStopSidecarFailed, err)
 	}
@@ -1012,6 +1018,28 @@ func isResourceQuotaConflictError(err error) bool {
 		return false
 	}
 	return k8ErrStatus.Details != nil && k8ErrStatus.Details.Kind == "resourcequotas"
+}
+
+const (
+	// TODO(#7466) Currently this appears as a local constant due to upstream dependencies bump blocker.
+	// This shall reference to k8s.io/apiserver/pkg/registry/generic/registry.OptimisticLockErrorMsg
+	// once #7464 is unblocked.
+	optimisticLockErrorMsg = "the object has been modified; please apply your changes to the latest version and try again"
+)
+
+// isConcurrentModificationError determines whether it is a concurrent
+// modification  error depending on its error type and error message.
+func isConcurrentModificationError(err error) bool {
+	if !k8serrors.IsConflict(err) {
+		return false
+	}
+
+	var se *k8serrors.StatusError
+	if !errors.As(err, &se) {
+		return false
+	}
+
+	return strings.Contains(err.Error(), optimisticLockErrorMsg)
 }
 
 // retryTaskRun archives taskRun.Status to taskRun.Status.RetriesStatus, and set
