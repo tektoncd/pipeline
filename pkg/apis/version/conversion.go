@@ -39,21 +39,16 @@ func SerializeToMetadata(meta *metav1.ObjectMeta, field interface{}, key string)
 	// The data coming from TaskRun and PipelineRun workloads can be really huge
 	// and can result in inflated annotations which exceed the maximum allowed size
 	// for annotations of 256 kB, so we will be compressing and encoding the data.
-	var b bytes.Buffer
-	gz := gzip.NewWriter(&b)
-	if _, err := gz.Write(data); err != nil {
-		return err
-	}
-	if err := gz.Close(); err != nil {
+	encodedData, err := CompressAndEncode(data)
+	if err != nil {
 		return err
 	}
 
 	// Encoding to normalize the data for annotations
-	compressedAndEncoded := base64.StdEncoding.EncodeToString(b.Bytes())
 	if meta.Annotations == nil {
 		meta.Annotations = make(map[string]string)
 	}
-	meta.Annotations[key] = compressedAndEncoded
+	meta.Annotations[key] = encodedData
 
 	// While we have compressed the payload, we can still not guarantee that the
 	// maximum allowed annotation size (256 kB) is not exceeded :(
@@ -72,21 +67,11 @@ func DeserializeFromMetadata(meta *metav1.ObjectMeta, to interface{}, key string
 	}
 	if str, ok := meta.Annotations[key]; ok {
 		// This data needs to be first decoded and then decompressed.
-		decoded, err := base64.StdEncoding.DecodeString(str)
+		data, err := DecodeAndDecompress(str)
 		if err != nil {
 			return err
 		}
-		gz, err := gzip.NewReader(bytes.NewReader(decoded))
-		if err != nil {
-			return fmt.Errorf("error decoding string from encoded marshalled bytes %w", err)
-		}
-		data, err := io.ReadAll(gz)
-		if err != nil {
-			return err
-		}
-		if err := gz.Close(); err != nil {
-			return err
-		}
+
 		if err := json.Unmarshal(data, to); err != nil {
 			return fmt.Errorf("error deserializing key %s from metadata: %w", key, err)
 		}
@@ -96,4 +81,38 @@ func DeserializeFromMetadata(meta *metav1.ObjectMeta, to interface{}, key string
 		}
 	}
 	return nil
+}
+
+func CompressAndEncode(data []byte) (string, error) {
+	// Compressing input data
+	var compressed bytes.Buffer
+	gz := gzip.NewWriter(&compressed)
+	if _, err := gz.Write(data); err != nil {
+		return "", err
+	}
+	if err := gz.Close(); err != nil {
+		return "", err
+	}
+
+	// Encoding compressed data
+	return base64.StdEncoding.EncodeToString(compressed.Bytes()), nil
+}
+
+func DecodeAndDecompress(data string) ([]byte, error) {
+	decoded, err := base64.StdEncoding.DecodeString(data)
+	if err != nil {
+		return nil, err
+	}
+	gz, err := gzip.NewReader(bytes.NewReader(decoded))
+	if err != nil {
+		return nil, fmt.Errorf("error decoding string from encoded marshalled bytes %w", err)
+	}
+	decompressedData, err := io.ReadAll(gz)
+	if err != nil {
+		return nil, err
+	}
+	if err := gz.Close(); err != nil {
+		return nil, err
+	}
+	return decompressedData, nil
 }

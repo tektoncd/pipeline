@@ -18,6 +18,7 @@ package v1beta1_test
 
 import (
 	"context"
+	"github.com/tektoncd/pipeline/pkg/apis/version"
 	"testing"
 	"time"
 
@@ -656,9 +657,19 @@ func TestPipelineRunConversionEmbeddedStatusConvertFrom(t *testing.T) {
 		PipelineTaskName: "ptn-0",
 		WhenExpressions:  []v1.WhenExpression{{Input: "default-value-0", Operator: "in", Values: []string{"val-0", "val-1"}}},
 	}}
+
+	v1beta1RunsAnnotation, err := version.CompressAndEncode([]byte(`{"r-0":{"pipelineTaskName":"ptn-0","status":{"results":[{"name":"foo","value":"bar"}],"extraFields":null},"whenExpressions":[{"input":"default-value-0","operator":"in","values":["val-0","val-1"]}]}}`))
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	v1beta1TaskRunsAnnotation, err := version.CompressAndEncode([]byte(`{"tr-0":{"pipelineTaskName":"ptn","status":{"podName":"pod-name","steps":[{"running":{"startedAt":null},"name":"running-step","container":"step-running-step"}],"cloudEvents":[{"target":"http//sink1","status":{"condition":"Unknown","message":"","retryCount":0}},{"target":"http//sink2","status":{"condition":"Unknown","message":"","retryCount":0}}],"retriesStatus":[{"conditions":[{"type":"Succeeded","status":"False","lastTransitionTime":null}],"podName":""}],"resourcesResult":[{"key":"digest","value":"sha256:1234","resourceName":"source-image"}],"sidecars":[{"terminated":{"exitCode":1,"reason":"Error","message":"Error","startedAt":null,"finishedAt":null},"name":"error","container":"sidecar-error","imageID":"image-id"}]},"whenExpressions":[{"input":"default-value","operator":"in","values":["val"]}]}}`))
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
 	annotations := map[string]string{
-		"tekton.dev/v1beta1Runs":     `{"r-0":{"pipelineTaskName":"ptn-0","status":{"results":[{"name":"foo","value":"bar"}],"extraFields":null},"whenExpressions":[{"input":"default-value-0","operator":"in","values":["val-0","val-1"]}]}}`,
-		"tekton.dev/v1beta1TaskRuns": `{"tr-0":{"pipelineTaskName":"ptn","status":{"podName":"pod-name","steps":[{"running":{"startedAt":null},"name":"running-step","container":"step-running-step"}],"cloudEvents":[{"target":"http//sink1","status":{"condition":"Unknown","message":"","retryCount":0}},{"target":"http//sink2","status":{"condition":"Unknown","message":"","retryCount":0}}],"retriesStatus":[{"conditions":[{"type":"Succeeded","status":"False","lastTransitionTime":null}],"podName":""}],"resourcesResult":[{"key":"digest","value":"sha256:1234","resourceName":"source-image"}],"sidecars":[{"terminated":{"exitCode":1,"reason":"Error","message":"Error","startedAt":null,"finishedAt":null},"name":"error","container":"sidecar-error","imageID":"image-id"}]},"whenExpressions":[{"input":"default-value","operator":"in","values":["val"]}]}}`,
+		"tekton.dev/v1beta1Runs":     v1beta1RunsAnnotation,
+		"tekton.dev/v1beta1TaskRuns": v1beta1TaskRunsAnnotation,
 	}
 
 	tests := []struct {
