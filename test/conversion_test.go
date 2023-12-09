@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/tektoncd/pipeline/pkg/apis/version"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -720,13 +721,17 @@ spec:
   }
 `
 
+	v1PipelineResourcesAnnotation = `[{"name":"pipeline-git","resourceSpec":{"type":"git","params":[{"name":"revision","value":"main"},{"name":"url","value":"https://github.com/tektoncd/pipeline"}]}}]`
+
+	v1PipelineTaskRunsAnnotation = `{"%s-fetch-secure-data":{"pipelineTaskName":"fetch-secure-data","status":{"conditions":[{"type":"Succeeded","status":"True","reason":"Succeeded","message":"All Steps have completed executing"}],"podName":"%s-fetch-secure-data-pod","steps":[{"terminated":{"exitCode":0,"reason":"Completed","containerID":"containerd://978666d35ed0e20f370227a0a4c3048ef6ec59a3ad5a2f5d83a3210099a9108f"},"name":"fetch-and-write-secure","container":"step-fetch-and-write-secure","imageID":"docker.io/library/ubuntu@sha256:4b1d0c4a2d2aaf63b37111f34eb9fa89fa1bf53dd6e4ca954d47caebca4005c2"}],"taskSpec":{"steps":[{"name":"fetch-and-write-secure","image":"ubuntu","resources":{},"script":"echo hello"}]}}}}'`
+
 	v1PipelineRunExpectedYaml = `
 metadata:
   name: %s
   namespace: %s
   annotations: {
-    tekton.dev/v1beta1Resources: '[{"name":"pipeline-git","resourceSpec":{"type":"git","params":[{"name":"revision","value":"main"},{"name":"url","value":"https://github.com/tektoncd/pipeline"}]}}]',
-    tekton.dev/v1beta1TaskRuns: '{"%s-fetch-secure-data":{"pipelineTaskName":"fetch-secure-data","status":{"conditions":[{"type":"Succeeded","status":"True","reason":"Succeeded","message":"All Steps have completed executing"}],"podName":"%s-fetch-secure-data-pod","steps":[{"terminated":{"exitCode":0,"reason":"Completed","containerID":"containerd://978666d35ed0e20f370227a0a4c3048ef6ec59a3ad5a2f5d83a3210099a9108f"},"name":"fetch-and-write-secure","container":"step-fetch-and-write-secure","imageID":"docker.io/library/ubuntu@sha256:4b1d0c4a2d2aaf63b37111f34eb9fa89fa1bf53dd6e4ca954d47caebca4005c2"}],"taskSpec":{"steps":[{"name":"fetch-and-write-secure","image":"ubuntu","resources":{},"script":"echo hello"}]}}}}',
+    tekton.dev/v1beta1Resources: %s,
+    tekton.dev/v1beta1TaskRuns: %s,
   }
 spec:
   params:
@@ -1173,7 +1178,15 @@ func TestPipelineRunCRDConversion(t *testing.T) {
 
 	v1beta1ToV1PipelineRunName := helpers.ObjectNameForTest(t)
 	v1beta1PipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(v1beta1PipelineRunYaml, v1beta1ToV1PipelineRunName, namespace))
-	v1PipelineRunExpected := parse.MustParseV1PipelineRun(t, fmt.Sprintf(v1PipelineRunExpectedYaml, v1beta1ToV1PipelineRunName, namespace, v1beta1ToV1PipelineRunName, v1beta1ToV1PipelineRunName, v1beta1ToV1PipelineRunName))
+	v1EncodedResourcesAnnotation, err := version.CompressAndEncode([]byte(v1PipelineResourcesAnnotation))
+	if err != nil {
+		t.Fatalf("Failed compressing annotation: %s", err)
+	}
+	v1EncodedTaskRunsAnnotation, err := version.CompressAndEncode([]byte(fmt.Sprintf(v1PipelineTaskRunsAnnotation, v1beta1ToV1PipelineRunName)))
+	if err != nil {
+		t.Fatalf("Failed compressing annotation: %s", err)
+	}
+	v1PipelineRunExpected := parse.MustParseV1PipelineRun(t, fmt.Sprintf(v1PipelineRunExpectedYaml, v1beta1ToV1PipelineRunName, namespace, v1EncodedResourcesAnnotation, v1EncodedTaskRunsAnnotation, v1beta1ToV1PipelineRunName))
 
 	if _, err := c.V1beta1PipelineRunClient.Create(ctx, v1beta1PipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create v1beta1 PipelineRun: %s", err)
