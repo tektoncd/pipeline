@@ -83,6 +83,10 @@ func DeserializeFromMetadata(meta *metav1.ObjectMeta, to interface{}, key string
 	return nil
 }
 
+// CompressAndEncode takes in a byte array, compresses it (gzip) and then encodes
+// (base64) it and returns the resulting string.
+// This is mainly used when large data needs to be compressed and stored in fields
+// such as annotations to mitigate annotations getting too large to store.
 func CompressAndEncode(data []byte) (string, error) {
 	// Compressing input data
 	var compressed bytes.Buffer
@@ -98,6 +102,10 @@ func CompressAndEncode(data []byte) (string, error) {
 	return base64.StdEncoding.EncodeToString(compressed.Bytes()), nil
 }
 
+// DecodeAndDecompress takes in a string and then decodes (base64) and then
+// decompresses (gzip) it and returns the raw byte array.
+// This is mainly used while converting Tekton resources to an older version
+// for fields such as annotations.
 func DecodeAndDecompress(data string) ([]byte, error) {
 	decoded, err := base64.StdEncoding.DecodeString(data)
 	if err != nil {
