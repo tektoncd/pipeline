@@ -641,7 +641,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 			if err != nil {
 				logger.Errorf("Failed to validate pipelinerun %s with error %w", pr.Name, err)
 				pr.Status.MarkFailed(v1.PipelineRunReasonFailedValidation.String(),
-					"Failed to validate pipelinerun %s with error %s",
+					"Validation failed for pipelinerun %s with error %s",
 					pr.Name, pipelineErrors.WrapUserError(err))
 				return controller.NewPermanentError(err)
 			}
@@ -650,7 +650,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 				if err := resources.ValidateParamEnumSubset(originalTasks[i].Params, pipelineSpec.Params, rpt.ResolvedTask); err != nil {
 					logger.Errorf("Failed to validate pipelinerun %q with error %w", pr.Name, err)
 					pr.Status.MarkFailed(v1.PipelineRunReasonFailedValidation.String(),
-						"Failed to validate pipelinerun with error %s",
+						"Validation failed for pipelinerun with error %s",
 						pipelineErrors.WrapUserError(err))
 					return controller.NewPermanentError(err)
 				}
