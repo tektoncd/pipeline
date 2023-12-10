@@ -85,10 +85,9 @@ func makeMessages(hasUserError bool) []interface{} {
 	msgs := []string{"foo error message", "bar error format"}
 	original := errors.New("orignal error")
 
-	var messages []interface{}
-	messages = make([]interface{}, len(msgs)+1)
-	for i, v := range msgs {
-		messages[i] = v
+	messages := make([]interface{}, 0)
+	for _, msg := range msgs {
+		messages = append(messages, msg)
 	}
 
 	if hasUserError {
