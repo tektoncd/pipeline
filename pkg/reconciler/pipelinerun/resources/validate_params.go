@@ -19,6 +19,7 @@ package resources
 import (
 	"fmt"
 
+	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
@@ -45,7 +46,7 @@ func ValidateParamTypesMatching(p *v1.PipelineSpec, pr *v1.PipelineRun) error {
 
 	// Return an error with the misconfigured parameters' names, or return nil if there are none.
 	if len(wrongTypeParamNames) != 0 {
-		return fmt.Errorf("parameters have inconsistent types : %s", wrongTypeParamNames)
+		return pipelineErrors.WrapUserError(fmt.Errorf("parameters have inconsistent types : %s", wrongTypeParamNames))
 	}
 	return nil
 }
@@ -71,7 +72,7 @@ func ValidateRequiredParametersProvided(pipelineParameters *v1.ParamSpecs, pipel
 
 	// Return an error with the missing parameters' names, or return nil if there are none.
 	if len(missingParams) != 0 {
-		return fmt.Errorf("pipelineRun missing parameters: %s", missingParams)
+		return pipelineErrors.WrapUserError(fmt.Errorf("pipelineRun missing parameters: %s", missingParams))
 	}
 	return nil
 }
@@ -80,7 +81,7 @@ func ValidateRequiredParametersProvided(pipelineParameters *v1.ParamSpecs, pipel
 func ValidateObjectParamRequiredKeys(pipelineParameters []v1.ParamSpec, pipelineRunParameters []v1.Param) error {
 	missings := taskrun.MissingKeysObjectParamNames(pipelineParameters, pipelineRunParameters)
 	if len(missings) != 0 {
-		return fmt.Errorf("pipelineRun missing object keys for parameters: %v", missings)
+		return pipelineErrors.WrapUserError(fmt.Errorf("pipelineRun missing object keys for parameters: %v", missings))
 	}
 
 	return nil

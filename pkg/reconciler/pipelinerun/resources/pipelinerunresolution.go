@@ -25,6 +25,7 @@ import (
 	"github.com/google/cel-go/cel"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
@@ -507,7 +508,7 @@ func ValidateWorkspaceBindings(p *v1.PipelineSpec, pr *v1.PipelineRun) error {
 			continue
 		}
 		if _, ok := pipelineRunWorkspaces[ws.Name]; !ok {
-			return fmt.Errorf("pipeline requires workspace with name %q be provided by pipelinerun", ws.Name)
+			return pipelineErrors.WrapUserError(fmt.Errorf("pipeline requires workspace with name %q be provided by pipelinerun", ws.Name))
 		}
 	}
 	return nil
@@ -526,7 +527,7 @@ func ValidateTaskRunSpecs(p *v1.PipelineSpec, pr *v1.PipelineRun) error {
 
 	for _, taskrunSpec := range pr.Spec.TaskRunSpecs {
 		if _, ok := pipelineTasks[taskrunSpec.PipelineTaskName]; !ok {
-			return fmt.Errorf("pipelineRun's taskrunSpecs defined wrong taskName: %q, does not exist in Pipeline", taskrunSpec.PipelineTaskName)
+			return pipelineErrors.WrapUserError(fmt.Errorf("pipelineRun's taskrunSpecs defined wrong taskName: %q, does not exist in Pipeline", taskrunSpec.PipelineTaskName))
 		}
 	}
 	return nil

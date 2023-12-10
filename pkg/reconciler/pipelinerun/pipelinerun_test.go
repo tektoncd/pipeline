@@ -836,11 +836,11 @@ spec:
   pipelineRef:
     name: a-pipeline-without-params
 `),
-		reason:         v1.PipelineRunReasonFailedValidation.String(),
+		reason:         "[User error] " + v1.PipelineRunReasonFailedValidation.String(),
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed invalid input params for task a-task-that-needs-params: missing values",
+			"Warning Failed Failed to validate pipelinerun pipeline-params-dont-exist with error invalid input params for task a-task-that-needs-params: missing values",
 		},
 	}, {
 		name: "invalid-pipeline-mismatching-parameter-types",
@@ -855,7 +855,7 @@ spec:
     - name: some-param
       value: stringval
 `),
-		reason:         v1.PipelineRunReasonParameterTypeMismatch.String(),
+		reason:         "[User error] " + v1.PipelineRunReasonParameterTypeMismatch.String(),
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
@@ -875,11 +875,11 @@ spec:
       value:
         key1: "a"
 `),
-		reason:         v1.PipelineRunReasonObjectParameterMissKeys.String(),
+		reason:         "[User error] " + v1.PipelineRunReasonObjectParameterMissKeys.String(),
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed PipelineRun foo/pipeline-missing-object-param-keys parameters is missing object keys required by Pipeline foo/a-pipeline-with-object-params's parameters: pipelineRun missing object keys for parameters",
+			"Warning Failed PipelineRun foo/pipeline-missing-object-param-keys parameters is missing object keys required by Pipeline foo/a-pipeline-with-object-params's parameters: pipelineRun missing object keys for parameters: map[some-param:[key2]]",
 		},
 	}, {
 		name: "invalid-pipeline-array-index-out-of-bound",
@@ -896,7 +896,7 @@ spec:
         - "a"
         - "b"
     `),
-		reason:         v1.PipelineRunReasonParamArrayIndexingInvalid.String(),
+		reason:         "[User error] " + v1.PipelineRunReasonParamArrayIndexingInvalid.String(),
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
@@ -915,7 +915,7 @@ spec:
         taskRef:
           name: b@d-t@$k
 `),
-		reason:         v1.PipelineRunReasonFailedValidation.String(),
+		reason:         "[User error] " + v1.PipelineRunReasonFailedValidation.String(),
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
@@ -940,7 +940,7 @@ spec:
     - name: some-param
       value: stringval
 `, v1.ParamTypeArray)),
-		reason:         v1.PipelineRunReasonParameterTypeMismatch.String(),
+		reason:         "[User error] " + v1.PipelineRunReasonParameterTypeMismatch.String(),
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
@@ -962,7 +962,7 @@ spec:
         taskRef:
           name: a-task-that-needs-params
 `, v1.ParamTypeString)),
-		reason:         v1.PipelineRunReasonParameterMissing.String(),
+		reason:         "[User error] " + v1.PipelineRunReasonParameterMissing.String(),
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
@@ -982,7 +982,7 @@ spec:
           name: dag-task-1
         runAfter: [ dag-task-1 ]
 `),
-		reason:         v1.PipelineRunReasonInvalidGraph.String(),
+		reason:         "[User error] " + v1.PipelineRunReasonInvalidGraph.String(),
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
@@ -1008,7 +1008,7 @@ spec:
         taskRef:
           name: taskName
 `),
-		reason:         v1.PipelineRunReasonInvalidGraph.String(),
+		reason:         "[User error] " + v1.PipelineRunReasonInvalidGraph.String(),
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
@@ -4526,7 +4526,7 @@ spec:
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 	pipelineRun, _ := prt.reconcileRun("foo", "test-pipeline-run-different-service-accs", []string{}, true)
-	checkPipelineRunConditionStatusAndReason(t, pipelineRun, corev1.ConditionFalse, string(v1.PipelineRunReasonCELEvaluationFailed))
+	checkPipelineRunConditionStatusAndReason(t, pipelineRun, corev1.ConditionFalse, "[User error] "+v1.PipelineRunReasonCELEvaluationFailed.String())
 }
 
 func TestReconcile_Enum_With_Matrix_Pass(t *testing.T) {
@@ -4677,7 +4677,7 @@ spec:
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 	pipelineRun, _ := prt.reconcileRun("foo", "test-pipeline-level-enum-run", []string{}, true)
-	checkPipelineRunConditionStatusAndReason(t, pipelineRun, corev1.ConditionFalse, string(v1.PipelineRunReasonFailedValidation))
+	checkPipelineRunConditionStatusAndReason(t, pipelineRun, corev1.ConditionFalse, "[User error] "+v1.PipelineRunReasonFailedValidation.String())
 }
 
 func TestReconcile_PipelineTask_Level_Enum_Failed(t *testing.T) {
@@ -4741,7 +4741,7 @@ spec:
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 	pipelineRun, _ := prt.reconcileRun("foo", "test-pipelineTask-level-enum-run", []string{}, true)
-	checkPipelineRunConditionStatusAndReason(t, pipelineRun, corev1.ConditionFalse, string(v1.PipelineRunReasonInvalidParamValue))
+	checkPipelineRunConditionStatusAndReason(t, pipelineRun, corev1.ConditionFalse, "[User error] "+v1.PipelineRunReasonInvalidParamValue.String())
 }
 
 // TestReconcileWithAffinityAssistantStatefulSet tests that given a pipelineRun with workspaces,
@@ -7557,7 +7557,7 @@ spec:
 			t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
 		}
 
-		if tc.wantFailed && reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != v1.PipelineRunReasonFailedValidation.String() {
+		if tc.wantFailed && reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "[User error] "+v1.PipelineRunReasonFailedValidation.String() {
 			t.Errorf("Expected PipelineRun to have reason FailedValidation, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
 		}
 		if !tc.wantFailed && reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
@@ -7787,13 +7787,13 @@ spec:
 			reason: v1.PipelineRunReasonInvalidTaskResultReference.String(),
 		}, {
 			name:   "pipelinerun-with-optional-workspace-validation",
-			reason: v1.PipelineRunReasonRequiredWorkspaceMarkedOptional.String(),
+			reason: "[User error] " + v1.PipelineRunReasonRequiredWorkspaceMarkedOptional.String(),
 		}, {
 			name:   "pipelinerun-matrix-param-invalid-type",
-			reason: v1.PipelineRunReasonInvalidMatrixParameterTypes.String(),
+			reason: "[User error] " + v1.PipelineRunReasonInvalidMatrixParameterTypes.String(),
 		}, {
 			name:   "pipelinerun-with-invalid-taskrunspecs",
-			reason: v1.PipelineRunReasonInvalidTaskRunSpec.String(),
+			reason: "[User error] " + v1.PipelineRunReasonInvalidTaskRunSpec.String(),
 		},
 	}
 	for _, tc := range testCases {
@@ -12737,7 +12737,7 @@ spec:
 			defer prt.Cancel()
 			pipelineRun, clients := prt.reconcileRun(pr.Namespace, pr.Name, wantEvents /* wantEvents*/, true /* permanentError*/)
 			// Validate the PR failed due to out of bounds array index reference
-			checkPipelineRunConditionStatusAndReason(t, pipelineRun, corev1.ConditionFalse, "PipelineValidationFailed")
+			checkPipelineRunConditionStatusAndReason(t, pipelineRun, corev1.ConditionFalse, "[User error] PipelineValidationFailed")
 			taskRuns := getTaskRunsForPipelineTask(prt.TestAssets.Ctx, t, clients, pr.Namespace, pr.Name, "echo-platforms")
 			// Validate no TaskRuns were created
 			validateTaskRunsCount(t, taskRuns, 0)
