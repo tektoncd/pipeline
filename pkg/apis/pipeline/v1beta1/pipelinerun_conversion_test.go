@@ -18,9 +18,10 @@ package v1beta1_test
 
 import (
 	"context"
-	"github.com/tektoncd/pipeline/pkg/apis/version"
 	"testing"
 	"time"
+
+	"github.com/tektoncd/pipeline/pkg/apis/version"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
