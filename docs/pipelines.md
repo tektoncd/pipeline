@@ -301,8 +301,10 @@ spec:
 If the `Param` value passed in by `PipelineRun` is **NOT** in the predefined `enum` list, the `PipelineRun` will fail with reason `InvalidParamValue`.
 
 If a `PipelineTask` references a `Task` with `enum`, the `enums` specified in the Pipeline `spec.params` (pipeline-level `enum`) must be
-a **subset** of the `enums` specified in the referenced `Task` (task-level `enum`). Note that an empty pipeline-level `enum` is invalid 
-in this scenario since an empty `enum` set indicates a "universal set" which allows all possible values. In the below example, the referenced `Task` accepts `v1` and `v2` as valid values, the `Pipeline` further restricts the valid values to `v1`.
+a **subset** of the `enums` specified in the referenced `Task` (task-level `enum`). An empty pipeline-level `enum` is invalid 
+in this scenario since an empty `enum` set indicates a "universal set" which allows all possible values. The same rules apply to `Pipelines` with embbeded `Tasks`. 
+
+In the below example, the referenced `Task` accepts `v1` and `v2` as valid values, the `Pipeline` further restricts the valid value to `v1`.
 
 ``` yaml
 apiVersion: tekton.dev/v1
@@ -337,6 +339,29 @@ spec:
         value: $(params.message)
     taskRef:
       name: param-enum-demo
+```
+
+Note that this subset restriction only applies to the task-level `params` with a **direct single** reference to pipeline-level `params`. If a task-level `param` references multiple pipeline-level `params`, the subset validation is not applied.
+
+``` yaml
+apiVersion: tekton.dev/v1
+kind: Pipeline
+...
+spec:
+  params:
+  - name: message1
+    enum: ["v1"]
+  - name: message2
+    enum: ["v2"]
+  tasks:
+  - name: task1
+    params:
+      - name: message
+        value: "$(params.message1) and $(params.message2)"
+    taskSpec:
+      params: message
+      enum: [...] # the message enum is not required to be a subset of message1 or message2
+    ...
 ```
 
 Tekton validates user-provided values in a `PipelineRun` against the `enum` specified in the `PipelineSpec.params`. Tekton also validates

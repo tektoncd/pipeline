@@ -818,14 +818,13 @@ func ValidateParamEnumSubset(pipelineTaskParams []v1.Param, pipelineParamSpecs [
 	for _, p := range pipelineTaskParams {
 		// calculate referenced param enums
 		res, present, errString := substitution.ExtractVariablesFromString(p.Value.StringVal, "params")
-		if !present {
-			continue
-		}
 		if errString != "" {
 			return fmt.Errorf("unexpected error in ExtractVariablesFromString: %s", errString)
 		}
-		if len(res) != 1 {
-			return fmt.Errorf("unexpected resolved param in ExtractVariablesFromString, expect 1 but got %v", len(res))
+
+		// if multiple params are extracted, that means the task-level param is a compounded value, skip subset validation
+		if !present || len(res) > 1 {
+			continue
 		}
 
 		// resolve pipeline-level and pipelineTask-level enums
