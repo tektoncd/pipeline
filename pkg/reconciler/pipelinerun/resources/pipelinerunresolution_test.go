@@ -5153,6 +5153,38 @@ func TestValidateParamEnumSubset_Valid(t *testing.T) {
 					},
 				},
 			},
+		}, {
+			name: "compound task param with enum - pass",
+			params: []v1.Param{
+				{
+					Name: "resolved-task-p1",
+					Value: v1.ParamValue{
+						StringVal: "$(params.p1) and $(params.p2)",
+					},
+				},
+			},
+			pipelinePs: []v1.ParamSpec{
+				{
+					Name: "p1",
+					Type: v1.ParamTypeString,
+					Enum: []string{"v1", "v2"},
+				},
+				{
+					Name: "p2",
+					Type: v1.ParamTypeString,
+					Enum: []string{"v3", "v4"},
+				},
+			},
+			rt: &resources.ResolvedTask{
+				TaskSpec: &v1.TaskSpec{
+					Params: v1.ParamSpecs{
+						{
+							Name: "resolved-task-p1",
+							Enum: []string{"e1", "e2"},
+						},
+					},
+				},
+			},
 		},
 	}
 
