@@ -721,9 +721,9 @@ spec:
   }
 `
 
-	v1PipelineResourcesAnnotation = `[{"name":"pipeline-git","resourceSpec":{"type":"git","params":[{"name":"revision","value":"main"},{"name":"url","value":"https://github.com/tektoncd/pipeline"}]}}]`
+	v1PipelineExpectedResourcesAnnotation = `[{"name":"pipeline-git","resourceSpec":{"type":"git","params":[{"name":"revision","value":"main"},{"name":"url","value":"https://github.com/tektoncd/pipeline"}]}}]`
 
-	v1PipelineTaskRunsAnnotation = `{"%s-fetch-secure-data":{"pipelineTaskName":"fetch-secure-data","status":{"conditions":[{"type":"Succeeded","status":"True","reason":"Succeeded","message":"All Steps have completed executing"}],"podName":"%s-fetch-secure-data-pod","steps":[{"terminated":{"exitCode":0,"reason":"Completed","containerID":"containerd://978666d35ed0e20f370227a0a4c3048ef6ec59a3ad5a2f5d83a3210099a9108f"},"name":"fetch-and-write-secure","container":"step-fetch-and-write-secure","imageID":"docker.io/library/ubuntu@sha256:4b1d0c4a2d2aaf63b37111f34eb9fa89fa1bf53dd6e4ca954d47caebca4005c2"}],"taskSpec":{"steps":[{"name":"fetch-and-write-secure","image":"ubuntu","resources":{},"script":"echo hello"}]}}}}'`
+	v1PipelineExpectedTaskRunsAnnotation = `{"%s-fetch-secure-data":{"pipelineTaskName":"fetch-secure-data","status":{"conditions":[{"type":"Succeeded","status":"True","reason":"Succeeded","message":"All Steps have completed executing"}],"podName":"%s-fetch-secure-data-pod","steps":[{"terminated":{"exitCode":0,"reason":"Completed","containerID":"containerd://978666d35ed0e20f370227a0a4c3048ef6ec59a3ad5a2f5d83a3210099a9108f"},"name":"fetch-and-write-secure","container":"step-fetch-and-write-secure","imageID":"docker.io/library/ubuntu@sha256:4b1d0c4a2d2aaf63b37111f34eb9fa89fa1bf53dd6e4ca954d47caebca4005c2"}],"taskSpec":{"steps":[{"name":"fetch-and-write-secure","image":"ubuntu","resources":{},"script":"echo hello"}]}}}}'`
 
 	v1PipelineRunExpectedYaml = `
 metadata:
@@ -1178,11 +1178,11 @@ func TestPipelineRunCRDConversion(t *testing.T) {
 
 	v1beta1ToV1PipelineRunName := helpers.ObjectNameForTest(t)
 	v1beta1PipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(v1beta1PipelineRunYaml, v1beta1ToV1PipelineRunName, namespace))
-	v1EncodedResourcesAnnotation, err := version.CompressAndEncode([]byte(v1PipelineResourcesAnnotation))
+	v1EncodedResourcesAnnotation, err := version.CompressAndEncode([]byte(v1PipelineExpectedResourcesAnnotation))
 	if err != nil {
 		t.Fatalf("Failed compressing annotation: %s", err)
 	}
-	v1EncodedTaskRunsAnnotation, err := version.CompressAndEncode([]byte(fmt.Sprintf(v1PipelineTaskRunsAnnotation, v1beta1ToV1PipelineRunName)))
+	v1EncodedTaskRunsAnnotation, err := version.CompressAndEncode([]byte(fmt.Sprintf(v1PipelineExpectedTaskRunsAnnotation, v1beta1ToV1PipelineRunName)))
 	if err != nil {
 		t.Fatalf("Failed compressing annotation: %s", err)
 	}
@@ -1245,8 +1245,12 @@ func withFullEmbeddedStatus(ctx context.Context) context.Context {
 // the json string into a struct and compare the valid status fields
 func validatePipelineRunTaskRunStatusAnnotations(pipelineRunName string, annotations map[string]string) error {
 	taskRuns := make(map[string]*v1beta1.PipelineRunTaskRunStatus)
-	if taskRunStr, ok := annotations[TaskRunsAnnotationKey]; ok {
-		if err := json.Unmarshal([]byte(taskRunStr), &taskRuns); err != nil {
+	if encodedTaskRun, ok := annotations[TaskRunsAnnotationKey]; ok {
+		taskRunStr, err := version.DecodeAndDecompress(encodedTaskRun)
+		if err != nil {
+			return err
+		}
+		if err := json.Unmarshal(taskRunStr, &taskRuns); err != nil {
 			return fmt.Errorf("Error deserializing key %s from Annotations for PipelineRunTaskRunStatus: %s", TaskRunsAnnotationKey, err)
 		}
 	}
