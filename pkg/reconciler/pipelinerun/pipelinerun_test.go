@@ -840,7 +840,7 @@ spec:
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed invalid input params for task a-task-that-needs-params: missing values",
+			"Warning Failed Validation failed for pipelinerun pipeline-params-dont-exist with error invalid input params for task a-task-that-needs-params: missing values",
 		},
 	}, {
 		name: "invalid-pipeline-mismatching-parameter-types",
