@@ -17,23 +17,44 @@ limitations under the License.
 package version
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 
+	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // SerializeToMetadata serializes the input field and adds it as an annotation to
 // the metadata under the input key.
 func SerializeToMetadata(meta *metav1.ObjectMeta, field interface{}, key string) error {
-	bytes, err := json.Marshal(field)
+	data, err := json.Marshal(field)
 	if err != nil {
 		return fmt.Errorf("error serializing field: %s", err)
 	}
+
+	// The data coming from TaskRun and PipelineRun workloads can be really huge
+	// and can result in inflated annotations which exceed the maximum allowed size
+	// for annotations of 256 kB, so we will be compressing and encoding the data.
+	encodedData, err := CompressAndEncode(data)
+	if err != nil {
+		return err
+	}
+
+	// Encoding to normalize the data for annotations
 	if meta.Annotations == nil {
 		meta.Annotations = make(map[string]string)
 	}
-	meta.Annotations[key] = string(bytes)
+	meta.Annotations[key] = encodedData
+
+	// While we have compressed the payload, we can still not guarantee that the
+	// maximum allowed annotation size (256 kB) is not exceeded :(
+	if err := validation.ValidateAnnotationsSize(meta.Annotations); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -45,8 +66,14 @@ func DeserializeFromMetadata(meta *metav1.ObjectMeta, to interface{}, key string
 		return nil
 	}
 	if str, ok := meta.Annotations[key]; ok {
-		if err := json.Unmarshal([]byte(str), to); err != nil {
-			return fmt.Errorf("error deserializing key %s from metadata: %s", key, err)
+		// This data needs to be first decoded and then decompressed.
+		data, err := DecodeAndDecompress(str)
+		if err != nil {
+			return err
+		}
+
+		if err := json.Unmarshal(data, to); err != nil {
+			return fmt.Errorf("error deserializing key %s from metadata: %w", key, err)
 		}
 		delete(meta.Annotations, key)
 		if len(meta.Annotations) == 0 {
@@ -54,4 +81,46 @@ func DeserializeFromMetadata(meta *metav1.ObjectMeta, to interface{}, key string
 		}
 	}
 	return nil
+}
+
+// CompressAndEncode takes in a byte array, compresses it (gzip) and then encodes
+// (base64) it and returns the resulting string.
+// This is mainly used when large data needs to be compressed and stored in fields
+// such as annotations to mitigate annotations getting too large to store.
+func CompressAndEncode(data []byte) (string, error) {
+	// Compressing input data
+	var compressed bytes.Buffer
+	gz := gzip.NewWriter(&compressed)
+	if _, err := gz.Write(data); err != nil {
+		return "", err
+	}
+	if err := gz.Close(); err != nil {
+		return "", err
+	}
+
+	// Encoding compressed data
+	return base64.StdEncoding.EncodeToString(compressed.Bytes()), nil
+}
+
+// DecodeAndDecompress takes in a string and then decodes (base64) and then
+// decompresses (gzip) it and returns the raw byte array.
+// This is mainly used while converting Tekton resources to an older version
+// for fields such as annotations.
+func DecodeAndDecompress(data string) ([]byte, error) {
+	decoded, err := base64.StdEncoding.DecodeString(data)
+	if err != nil {
+		return nil, err
+	}
+	gz, err := gzip.NewReader(bytes.NewReader(decoded))
+	if err != nil {
+		return nil, fmt.Errorf("error decoding string from encoded marshalled bytes %w", err)
+	}
+	decompressedData, err := io.ReadAll(gz)
+	if err != nil {
+		return nil, err
+	}
+	if err := gz.Close(); err != nil {
+		return nil, err
+	}
+	return decompressedData, nil
 }
