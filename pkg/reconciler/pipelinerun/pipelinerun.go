@@ -680,6 +680,20 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	}
 
 	if pipelineRunFacts.State.IsBeforeFirstTaskRun() {
+		// check if the object's key names are referenced correctly i.e. param.objectParam.key1
+		for _, prs := range pipelineRunState {
+			if prs.ResolvedTask == nil {
+				continue
+			}
+			if validateErr := v1.ValidateReservedParamReferenceMissingKeys(ctx, prs.ResolvedTask.TaskSpec.Steps, pr.Spec.Params); validateErr != nil {
+				logger.Errorf("PipelineRun %s params references error %v", pr.Name, validateErr)
+				pr.Status.MarkFailed(v1.PipelineRunReasonParamKeyNotExistent.String(),
+					"PipelineRun %s/%s doesn't has the references key: %v",
+					pr.Namespace, pr.Name, validateErr)
+				return controller.NewPermanentError(validateErr)
+			}
+		}
+
 		if err := resources.ValidatePipelineTaskResults(pipelineRunFacts.State); err != nil {
 			logger.Errorf("Failed to resolve task result reference for %q with error %v", pr.Name, err)
 			pr.Status.MarkFailed(v1.PipelineRunReasonInvalidTaskResultReference.String(), err.Error())

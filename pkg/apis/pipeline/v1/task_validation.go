@@ -126,6 +126,7 @@ func ValidateUsageOfDeclaredParameters(ctx context.Context, steps []Step, params
 	var errs *apis.FieldError
 	_, _, objectParams := params.SortByType()
 	allParameterNames := sets.NewString(params.GetNames()...)
+	allParameterNames.Insert(ReservedParamName)
 	errs = errs.Also(validateVariables(ctx, steps, "params", allParameterNames))
 	errs = errs.Also(validateObjectUsage(ctx, steps, objectParams))
 	errs = errs.Also(ValidateObjectParamsHaveProperties(ctx, params))
@@ -761,4 +762,27 @@ func ValidateStepResultsVariables(ctx context.Context, results []StepResult, scr
 	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(script, "step.results", resultsNames).ViaField("script"))
 	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(script, "results", resultsNames).ViaField("script"))
 	return errs
+}
+
+// Reserved Param doesn't have properties, so we need to check all the references if they are using a non-existent key from the param
+func ValidateReservedParamReferenceMissingKeys(ctx context.Context, steps []Step, params Params) error {
+	objectKeys := sets.NewString()
+	// collect all the existent keys from the object reserved param.
+	for _, p := range params {
+		if p.Name == ReservedParamName && p.Value.Type == ParamTypeObject {
+			for key := range p.Value.ObjectVal {
+				objectKeys.Insert(key)
+			}
+		}
+	}
+
+	// check if the object's key names are referenced correctly i.e. param.objectParam.key1
+	if len(objectKeys) > 0 {
+		err := validateVariables(ctx, steps, fmt.Sprintf("params\\.%s", ReservedParamName), objectKeys)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

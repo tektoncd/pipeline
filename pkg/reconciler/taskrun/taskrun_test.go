@@ -3480,7 +3480,7 @@ spec:
       value: ["taskrun", "array", "param"]
     - name: objectparam
       value:
-        key: taskrun object param	
+        key: taskrun object param
   taskSpec:
     steps:
       - ref:
@@ -3567,7 +3567,7 @@ spec:
           key:
             type: string
         default:
-          key: taskspec object param	
+          key: taskspec object param
     steps:
       - ref:
           name: stepAction
@@ -3625,7 +3625,7 @@ spec:
   params:
     - name: string-param
       type: string
-      default: "stepaction string param" 
+      default: "stepaction string param"
     - name: array-param
       type: array
       default:
@@ -6710,6 +6710,49 @@ func TestIsConcurrentModificationError(t *testing.T) {
 				t.Errorf("Unexpected concurrent modification error state")
 			}
 		})
+	}
+}
+
+func TestReconcileReservedParamsMissingKeys(t *testing.T) {
+	ts := []*v1.Task{parse.MustParseV1Task(t, `
+metadata:
+  name: echo-message-task
+  namespace: foo
+spec:
+  steps:
+    - image: ubuntu
+      name: echo
+      script: |
+        echo -n $(params.provider.wrongKey)
+`)}
+	trs := []*v1.TaskRun{parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-task-run-with-missing-preserved-param-key
+  namespace: foo
+spec:
+  params:
+    - name: provider
+      value:
+        project_id: foo
+  taskRef:
+    name: echo-message-task
+`)}
+
+	d := test.Data{
+		TaskRuns: trs,
+		Tasks:    ts,
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	createServiceAccount(t, testAssets, "default", trs[0].Namespace)
+	_ = testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(trs[0]))
+	reconciledRun, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(trs[0].Namespace).Get(testAssets.Ctx, trs[0].Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("getting updated taskrun: %v", err)
+	}
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if condition.Type != apis.ConditionSucceeded || condition.Status != corev1.ConditionFalse || condition.Reason != v1.TaskRunReasonParamKeyNotExistent.String() {
+		t.Errorf("Expected TaskRun to fail with reason \"%s\" but it did not. Final conditions were:\n%#v", podconvert.ReasonResourceVerificationFailed, trs[0].Status.Conditions)
 	}
 }
 

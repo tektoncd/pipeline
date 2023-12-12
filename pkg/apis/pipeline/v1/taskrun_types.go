@@ -205,6 +205,8 @@ const (
 	// TaskRunReasonFailureIgnored is the reason set when the Taskrun has failed due to pod execution error and the failure is ignored for the owning PipelineRun.
 	// TaskRuns failed due to reconciler/validation error should not use this reason.
 	TaskRunReasonFailureIgnored TaskRunReason = "FailureIgnored"
+	// TaskRunReasonParamKeyNotExistent indicates that the default object param doesn't have the key which the param reference requires
+	TaskRunReasonParamKeyNotExistent TaskRunReason = "ParamKeyNotExistent"
 )
 
 func (t TaskRunReason) String() string {

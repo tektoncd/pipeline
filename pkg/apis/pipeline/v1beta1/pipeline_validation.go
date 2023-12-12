@@ -38,10 +38,11 @@ var _ apis.Validatable = (*Pipeline)(nil)
 var _ resourcesemantics.VerbLimited = (*Pipeline)(nil)
 
 const (
-	taskRef      = "taskRef"
-	taskSpec     = "taskSpec"
-	pipelineRef  = "pipelineRef"
-	pipelineSpec = "pipelineSpec"
+	taskRef           = "taskRef"
+	taskSpec          = "taskSpec"
+	pipelineRef       = "pipelineRef"
+	pipelineSpec      = "pipelineSpec"
+	ReservedParamName = "provider"
 )
 
 // SupportedVerbs returns the operations that validation should be called for
@@ -408,6 +409,7 @@ func (ps *PipelineSpec) validatePipelineParameterUsage(ctx context.Context) (err
 // validatePipelineTaskParameterUsage validates that parameters referenced in the Pipeline Tasks are declared by the Pipeline
 func validatePipelineTaskParameterUsage(tasks []PipelineTask, params ParamSpecs) (errs *apis.FieldError) {
 	allParamNames := sets.NewString(params.getNames()...)
+	allParamNames.Insert(ReservedParamName)
 	_, arrayParams, objectParams := params.sortByType()
 	arrayParamNames := sets.NewString(arrayParams.getNames()...)
 	objectParameterNameKeys := map[string][]string{}

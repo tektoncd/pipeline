@@ -65,6 +65,19 @@ func TestTaskValidate(t *testing.T) {
 				}},
 			},
 		},
+	}, {
+		name: "valid reserved param",
+		wc:   cfgtesting.EnableAlphaAPIFields,
+		t: &v1beta1.Task{
+			ObjectMeta: metav1.ObjectMeta{Name: "task"},
+			Spec: v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Name:   "some-step",
+					Image:  "some-image",
+					Script: fmt.Sprintf("echo $(params.%s.foo)", v1.ReservedParamName),
+				}},
+			},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

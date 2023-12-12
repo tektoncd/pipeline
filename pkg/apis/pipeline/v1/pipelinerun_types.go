@@ -417,6 +417,8 @@ const (
 	PipelineRunReasonCELEvaluationFailed PipelineRunReason = "CELEvaluationFailed"
 	// PipelineRunReasonInvalidParamValue indicates that the PipelineRun Param input value is not allowed.
 	PipelineRunReasonInvalidParamValue PipelineRunReason = "InvalidParamValue"
+	// PipelineRunReasonParamKeyNotExistent indicates that the default object param doesn't have the key which the param reference requires
+	PipelineRunReasonParamKeyNotExistent PipelineRunReason = "ParamKeyNotExistent"
 )
 
 // PipelineTaskOnErrorAnnotation is used to pass the failure strategy to TaskRun pods from PipelineTask OnError field

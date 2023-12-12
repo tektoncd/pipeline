@@ -61,6 +61,19 @@ func TestTaskValidate(t *testing.T) {
 				}},
 			},
 		},
+	}, {
+		name: "valid reserved param",
+		wc:   cfgtesting.EnableAlphaAPIFields,
+		t: &v1.Task{
+			ObjectMeta: metav1.ObjectMeta{Name: "task"},
+			Spec: v1.TaskSpec{
+				Steps: []v1.Step{{
+					Name:   "some-step",
+					Image:  "some-image",
+					Script: fmt.Sprintf("echo $(params.%s.foo)", v1.ReservedParamName),
+				}},
+			},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -2722,6 +2735,139 @@ func TestTaskSpecValidate_StepResults_Error(t *testing.T) {
 			err := ts.Validate(ctx)
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("StepActionSpec.Validate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestValidateReservedParamReferenceMissingKeys_Success(t *testing.T) {
+	tests := []struct {
+		name   string
+		steps  []v1.Step
+		params []v1.Param
+	}{{
+		name: "reference default param in all step fields",
+		steps: []v1.Step{{
+			Name:       fmt.Sprintf("echo $(params.%s.foo)", v1.ReservedParamName),
+			Image:      fmt.Sprintf("$(params.%s.foo)", v1.ReservedParamName),
+			Args:       []string{fmt.Sprintf("echo $(params.%s.foo)", v1.ReservedParamName)},
+			Command:    []string{fmt.Sprintf("echo $(params.%s.foo)", v1.ReservedParamName)},
+			WorkingDir: fmt.Sprintf("echo $(params.%s.foo)", v1.ReservedParamName),
+			VolumeMounts: []corev1.VolumeMount{{
+				Name: fmt.Sprintf("echo $(params.%s.foo)", v1.ReservedParamName),
+			}},
+			Script: fmt.Sprintf("echo $(params.%s.foo)", v1.ReservedParamName),
+		}},
+		params: []v1.Param{{
+			Name:  v1.ReservedParamName,
+			Value: *v1.NewObject(map[string]string{"foo": "bar"}),
+		}},
+	}, {
+		name: "don't check non-reserved param",
+		steps: []v1.Step{{
+			Name:       fmt.Sprintf("echo $(params.%s.foo)", "non-reserved"),
+			Image:      fmt.Sprintf("$(params.%s.foo)", "non-reserved"),
+			Args:       []string{fmt.Sprintf("echo $(params.%s.foo)", "non-reserved")},
+			Command:    []string{fmt.Sprintf("echo $(params.%s.foo)", "non-reserved")},
+			WorkingDir: fmt.Sprintf("echo $(params.%s.foo)", "non-reserved"),
+			VolumeMounts: []corev1.VolumeMount{{
+				Name: fmt.Sprintf("echo $(params.%s.foo)", "non-reserved"),
+			}},
+			Script: fmt.Sprintf("echo $(params.%s.foo)", "non-reserved"),
+		}},
+		params: []v1.Param{{
+			Name:  v1.ReservedParamName,
+			Value: *v1.NewObject(map[string]string{"foo": "bar"}),
+		}},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			err := v1.ValidateReservedParamReferenceMissingKeys(ctx, tt.steps, tt.params)
+			if err != nil {
+				t.Errorf("ValidateReservedParamReferenceMissingKeys() = %v", err)
+			}
+		})
+	}
+}
+
+func TestValidateReservedParamReferenceMissingKeys_Error(t *testing.T) {
+	tests := []struct {
+		name   string
+		steps  []v1.Step
+		params []v1.Param
+	}{{
+		name: "reference non-existent key in name",
+		steps: []v1.Step{{
+			Name: fmt.Sprintf("echo $(params.%s.%s)", v1.ReservedParamName, "non-existent"),
+		}},
+		params: []v1.Param{{
+			Name:  v1.ReservedParamName,
+			Value: *v1.NewObject(map[string]string{"foo": "bar"}),
+		}},
+	}, {
+		name: "reference non-existent key in image",
+		steps: []v1.Step{{
+			Image: fmt.Sprintf("$(params.%s.%s)", v1.ReservedParamName, "non-existent"),
+		}},
+		params: []v1.Param{{
+			Name:  v1.ReservedParamName,
+			Value: *v1.NewObject(map[string]string{"foo": "bar"}),
+		}},
+	}, {
+		name: "reference non-existent key in args",
+		steps: []v1.Step{{
+			Args: []string{fmt.Sprintf("echo $(params.%s.%s)", v1.ReservedParamName, "non-existent")},
+		}},
+		params: []v1.Param{{
+			Name:  v1.ReservedParamName,
+			Value: *v1.NewObject(map[string]string{"foo": "bar"}),
+		}},
+	}, {
+		name: "reference non-existent key in command",
+		steps: []v1.Step{{
+			Command: []string{fmt.Sprintf("echo $(params.%s.%s)", v1.ReservedParamName, "non-existent")},
+		}},
+		params: []v1.Param{{
+			Name:  v1.ReservedParamName,
+			Value: *v1.NewObject(map[string]string{"foo": "bar"}),
+		}},
+	}, {
+		name: "reference non-existent key in workingdir",
+		steps: []v1.Step{{
+			WorkingDir: fmt.Sprintf("echo $(params.%s.%s)", v1.ReservedParamName, "non-existent"),
+		}},
+		params: []v1.Param{{
+			Name:  v1.ReservedParamName,
+			Value: *v1.NewObject(map[string]string{"foo": "bar"}),
+		}},
+	}, {
+		name: "reference non-existent key in volume",
+		steps: []v1.Step{{
+			VolumeMounts: []corev1.VolumeMount{{
+				Name: fmt.Sprintf("echo $(params.%s.%s)", v1.ReservedParamName, "non-existent"),
+			}},
+		}},
+		params: []v1.Param{{
+			Name:  v1.ReservedParamName,
+			Value: *v1.NewObject(map[string]string{"foo": "bar"}),
+		}},
+	}, {
+		name: "reference non-existent key in script",
+		steps: []v1.Step{{
+			Script: fmt.Sprintf("echo $(params.%s.%s)", v1.ReservedParamName, "non-existent"),
+		}},
+		params: []v1.Param{{
+			Name:  v1.ReservedParamName,
+			Value: *v1.NewObject(map[string]string{"foo": "bar"}),
+		}},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			err := v1.ValidateReservedParamReferenceMissingKeys(ctx, tt.steps, tt.params)
+			if err == nil {
+				t.Errorf("expected error but got nil")
 			}
 		})
 	}

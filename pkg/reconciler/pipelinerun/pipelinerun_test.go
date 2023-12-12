@@ -4631,10 +4631,10 @@ spec:
       steps:
         - name: s1
           image: alpine
-          script: | 
+          script: |
             echo $(params.version) + $(params.tag)
   - name: b-task
-    params: 
+    params:
     - name: ref-p1
       value: $(params.version)
     - name: ref-p2
@@ -4642,7 +4642,7 @@ spec:
     taskRef:
       name: ref-task
   - name: c-task-matrixed
-    matrix: 
+    matrix:
       params:
       - name: ref-p1
         value: [v1, v2]
@@ -4721,7 +4721,7 @@ spec:
       steps:
         - name: s1
           image: alpine
-          script: | 
+          script: |
             echo $(params.version)
 `)}
 	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
@@ -5707,7 +5707,7 @@ spec:
     serviceAccountName: test-sa-0
   workspaces:
     - name: ws-1
-      secret: 
+      secret:
         secretName: $(tasks.a-task.results.aResult)
 `)},
 			expectedTr: mustParseTaskRunWithObjectMeta(t,
@@ -5737,7 +5737,7 @@ spec:
     serviceAccountName: test-sa-0
   workspaces:
     - name: ws-1
-      projected: 
+      projected:
         sources:
          - configMap:
              name: $(tasks.a-task.results.aResult)
@@ -5752,10 +5752,10 @@ spec:
     kind: Task
   workspaces:
     - name: s1
-      projected: 
+      projected:
         sources:
          - configMap:
-             name: aResultValue 
+             name: aResultValue
 `),
 		},
 		{
@@ -5771,7 +5771,7 @@ spec:
     serviceAccountName: test-sa-0
   workspaces:
     - name: ws-1
-      projected: 
+      projected:
         sources:
          - secret:
              name: $(tasks.a-task.results.aResult)
@@ -5786,10 +5786,10 @@ spec:
     kind: Task
   workspaces:
     - name: s1
-      projected: 
+      projected:
         sources:
          - secret:
-             name: aResultValue 
+             name: aResultValue
 `),
 		},
 		{
@@ -5819,7 +5819,7 @@ spec:
   workspaces:
     - name: s1
       csi:
-        driver: aResultValue 
+        driver: aResultValue
 `),
 		},
 		{
@@ -5850,7 +5850,7 @@ spec:
   workspaces:
     - name: s1
       csi:
-        nodePublishSecretRef: 
+        nodePublishSecretRef:
           name: aResultValue
 `),
 		},
@@ -17368,6 +17368,47 @@ func Test_runNextSchedulableTask(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestReconcileReservedParamsMissingKeys(t *testing.T) {
+	ps := []*v1.Pipeline{parse.MustParseV1Pipeline(t, `
+metadata:
+  name: echo-message-pipeline
+  namespace: foo
+spec:
+  tasks:
+    - name: task1
+      taskSpec:
+        steps:
+          - name: echo
+            image: ubuntu
+            script: |
+              #!/bin/bash
+              echo $(params.provider.wrongKey)
+`)}
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-with-missing-preserved-param-key
+  namespace: foo
+spec:
+  params:
+    - name: provider
+      value:
+        project_id: foo
+  pipelineRef:
+    name: echo-message-pipeline
+`)}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	wantEvents := []string{}
+	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-with-missing-preserved-param-key", wantEvents, true)
+	checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionFalse, v1.PipelineRunReasonParamKeyNotExistent.String())
 }
 
 func getSignedV1Pipeline(unsigned *pipelinev1.Pipeline, signer signature.Signer, name string) (*pipelinev1.Pipeline, error) {

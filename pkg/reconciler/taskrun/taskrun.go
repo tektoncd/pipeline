@@ -422,37 +422,50 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		TaskSpec: taskSpec,
 		Kind:     resources.GetTaskKind(tr),
 	}
+	if err := c.validateTaskRun(ctx, tr, taskSpec, rtr); err != nil {
+		return nil, nil, err
+	}
+	return taskSpec, rtr, nil
+}
+
+func (c *Reconciler) validateTaskRun(ctx context.Context, tr *v1.TaskRun, taskSpec *v1.TaskSpec, rtr *resources.ResolvedTask) error {
+	logger := logging.FromContext(ctx)
+	if validateErr := v1.ValidateReservedParamReferenceMissingKeys(ctx, taskSpec.Steps, tr.Spec.Params); validateErr != nil {
+		logger.Errorf("TaskRun %s params references error %v", tr.Name, validateErr)
+		tr.Status.MarkResourceFailed(v1.TaskRunReasonParamKeyNotExistent, validateErr)
+		return controller.NewPermanentError(validateErr)
+	}
 
 	if err := validateTaskSpecRequestResources(taskSpec); err != nil {
 		logger.Errorf("TaskRun %s taskSpec request resources are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
-		return nil, nil, controller.NewPermanentError(err)
+		return controller.NewPermanentError(err)
 	}
 
 	if err := ValidateResolvedTask(ctx, tr.Spec.Params, &v1.Matrix{}, rtr); err != nil {
 		logger.Errorf("TaskRun %q resources are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
-		return nil, nil, controller.NewPermanentError(err)
+		return controller.NewPermanentError(err)
 	}
 
 	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableParamEnum {
 		if err := ValidateEnumParam(ctx, tr.Spec.Params, rtr.TaskSpec.Params); err != nil {
 			logger.Errorf("TaskRun %q Param Enum validation failed: %v", tr.Name, err)
 			tr.Status.MarkResourceFailed(v1.TaskRunReasonInvalidParamValue, err)
-			return nil, nil, controller.NewPermanentError(err)
+			return controller.NewPermanentError(err)
 		}
 	}
 
 	if err := resources.ValidateParamArrayIndex(rtr.TaskSpec, tr.Spec.Params); err != nil {
 		logger.Errorf("TaskRun %q Param references are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
-		return nil, nil, controller.NewPermanentError(err)
+		return controller.NewPermanentError(err)
 	}
 
 	if err := c.updateTaskRunWithDefaultWorkspaces(ctx, tr, taskSpec); err != nil {
 		logger.Errorf("Failed to update taskrun %s with default workspace: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedResolution, err)
-		return nil, nil, controller.NewPermanentError(err)
+		return controller.NewPermanentError(err)
 	}
 
 	var workspaceDeclarations []v1.WorkspaceDeclaration
@@ -471,28 +484,27 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	if err := workspace.ValidateBindings(ctx, workspaceDeclarations, tr.Spec.Workspaces); err != nil {
 		logger.Errorf("TaskRun %q workspaces are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
-		return nil, nil, controller.NewPermanentError(err)
+		return controller.NewPermanentError(err)
 	}
 
 	aaBehavior, err := affinityassistant.GetAffinityAssistantBehavior(ctx)
 	if err != nil {
-		return nil, nil, controller.NewPermanentError(err)
+		return controller.NewPermanentError(err)
 	}
 	if aaBehavior == affinityassistant.AffinityAssistantPerWorkspace {
 		if err := workspace.ValidateOnlyOnePVCIsUsed(tr.Spec.Workspaces); err != nil {
 			logger.Errorf("TaskRun %q workspaces incompatible with Affinity Assistant: %v", tr.Name, err)
 			tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
-			return nil, nil, controller.NewPermanentError(err)
+			return controller.NewPermanentError(err)
 		}
 	}
 
 	if err := validateOverrides(taskSpec, &tr.Spec); err != nil {
 		logger.Errorf("TaskRun %q step or sidecar overrides are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
-		return nil, nil, controller.NewPermanentError(err)
+		return controller.NewPermanentError(err)
 	}
-
-	return taskSpec, rtr, nil
+	return nil
 }
 
 // `reconcile` creates the Pod associated to the TaskRun, and it pulls back status

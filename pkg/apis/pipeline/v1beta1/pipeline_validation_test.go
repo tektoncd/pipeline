@@ -18,6 +18,7 @@ package v1beta1
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -114,6 +115,24 @@ func TestPipeline_Validate_Success(t *testing.T) {
 						PipelineSpec: &PipelineSpec{Description: "foo-pipeline-description"},
 					},
 				},
+			},
+		},
+	}, {
+		name: "valid reserved param",
+		wc:   cfgtesting.EnableAlphaAPIFields,
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name: "pipeline-task-use-reserved-param",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Steps: []Step{{
+							Name:   "some-step",
+							Image:  "some-image",
+							Script: fmt.Sprintf("echo $(params.%s.foo)", ReservedParamName),
+						}},
+					}},
+				}},
 			},
 		},
 	}}

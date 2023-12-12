@@ -129,6 +129,7 @@ func ValidateUsageOfDeclaredParameters(ctx context.Context, steps []Step, params
 	var errs *apis.FieldError
 	_, _, objectParams := params.sortByType()
 	allParameterNames := sets.NewString(params.getNames()...)
+	allParameterNames.Insert(ReservedParamName)
 	errs = errs.Also(validateVariables(ctx, steps, "params", allParameterNames))
 	errs = errs.Also(validateObjectUsage(ctx, steps, objectParams))
 	errs = errs.Also(validateObjectParamsHaveProperties(ctx, params))

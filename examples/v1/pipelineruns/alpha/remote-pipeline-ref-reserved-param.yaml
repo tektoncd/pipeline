@@ -1,0 +1,46 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: echo-message-pipeline
+spec:
+  params:
+    - name: hello
+      properties:
+        project_id:
+          type: string
+      type: object
+  tasks:
+    - name: task1
+      params:
+      - name: foo
+        value:
+          project_id: $(params.hello.project_id)
+      taskSpec:
+        params:
+          - name: foo
+            type: object
+            properties:
+              project_id:
+                type: string
+        steps:
+          - name: echo
+            image: ubuntu
+            script: |
+              #!/bin/bash
+              echo $(params.provider.project_id)
+              echo $(params.foo.project_id)
+---
+kind: PipelineRun
+apiVersion: tekton.dev/v1
+metadata:
+  name: test-pipelinerun
+spec:
+  params:
+    - name: provider
+      value:
+        project_id: foo
+    - name: hello
+      value:
+        project_id: foo
+  pipelineRef:
+    name: echo-message-pipeline

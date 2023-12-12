@@ -1,0 +1,37 @@
+kind: Task
+apiVersion: tekton.dev/v1
+metadata:
+  name: example-task
+spec:
+  params:
+    - name: foo
+      type: object
+      properties:
+        project_id:
+          type: string
+        digest:
+          type: string
+  steps:
+    - image: ubuntu
+      name: echo
+      script: |
+        echo -n $(params.foo.project_id)
+        echo -n $(params.provider.project_id)
+---
+kind: TaskRun
+apiVersion: tekton.dev/v1
+metadata:
+  name: example-tr
+spec:
+  params:
+    - name: foo
+      value:
+        project_id: foo
+        digest: bar
+    - name: provider
+      value:
+        project_id: foo
+        digest: bar
+  taskRef:
+    name: example-task
+    kind: task

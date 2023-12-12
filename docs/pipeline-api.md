@@ -2029,6 +2029,9 @@ misses some keys required for the object param declared in Pipeline spec.</p>
 <td><p>ReasonParamArrayIndexingInvalid indicates that the use of param array indexing is not under correct api fields feature gate
 or the array is out of bound.</p>
 </td>
+</tr><tr><td><p>&#34;ParamKeyNotExistent&#34;</p></td>
+<td><p>PipelineRunReasonParamKeyNotExistent indicates that the default object param doesn&rsquo;t have the key which the param reference requires</p>
+</td>
 </tr><tr><td><p>&#34;ParameterMissing&#34;</p></td>
 <td><p>ReasonParameterMissing indicates that the reason for the failure status is that the
 associated PipelineRun didn&rsquo;t provide all the required parameters</p>
@@ -5149,6 +5152,9 @@ TaskRuns failed due to reconciler/validation error should not use this reason.</
 </td>
 </tr><tr><td><p>&#34;InvalidParamValue&#34;</p></td>
 <td><p>TaskRunReasonInvalidParamValue indicates that the TaskRun Param input value is not allowed.</p>
+</td>
+</tr><tr><td><p>&#34;ParamKeyNotExistent&#34;</p></td>
+<td><p>TaskRunReasonParamKeyNotExistent indicates that the default object param doesn&rsquo;t have the key which the param reference requires</p>
 </td>
 </tr><tr><td><p>&#34;ResourceVerificationFailed&#34;</p></td>
 <td><p>TaskRunReasonResourceVerificationFailed indicates that the task fails the trusted resource verification,
