@@ -60,16 +60,84 @@ func TestGetSelector(t *testing.T) {
 }
 
 func TestValidateParams(t *testing.T) {
-	resolver := Resolver{}
-
-	paramsWithRevision := map[string]string{
-		urlParam:      "http://foo",
-		pathParam:     "bar",
-		revisionParam: "baz",
+	tests := []struct {
+		name    string
+		wantErr string
+		params  map[string]string
+	}{
+		{
+			name: "params with revision",
+			params: map[string]string{
+				urlParam:      "http://foo/bar/hello/moto",
+				pathParam:     "bar",
+				revisionParam: "baz",
+			},
+		},
+		{
+			name: "https url",
+			params: map[string]string{
+				urlParam:      "https://foo/bar/hello/moto",
+				pathParam:     "bar",
+				revisionParam: "baz",
+			},
+		},
+		{
+			name: "https url with username password",
+			params: map[string]string{
+				urlParam:      "https://user:pass@foo/bar/hello/moto",
+				pathParam:     "bar",
+				revisionParam: "baz",
+			},
+		},
+		{
+			name: "git server url",
+			params: map[string]string{
+				urlParam:      "git://repo/hello/moto",
+				pathParam:     "bar",
+				revisionParam: "baz",
+			},
+		},
+		{
+			name: "git url from a local repository",
+			params: map[string]string{
+				urlParam:      "/tmp/repo",
+				pathParam:     "bar",
+				revisionParam: "baz",
+			},
+		},
+		{
+			name: "git url from a git ssh repository",
+			params: map[string]string{
+				urlParam:      "git@host.com:foo/bar",
+				pathParam:     "bar",
+				revisionParam: "baz",
+			},
+		},
+		{
+			name: "bad url",
+			params: map[string]string{
+				urlParam:      "foo://bar",
+				pathParam:     "path",
+				revisionParam: "revision",
+			},
+			wantErr: "invalid git repository url: foo://bar",
+		},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resolver := Resolver{}
+			err := resolver.ValidateParams(context.Background(), toParams(tt.params))
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Fatalf("unexpected error validating params: %v", err)
+				}
+				return
+			}
 
-	if err := resolver.ValidateParams(context.Background(), toParams(paramsWithRevision)); err != nil {
-		t.Fatalf("unexpected error validating params: %v", err)
+			if d := cmp.Diff(tt.wantErr, err.Error()); d != "" {
+				t.Errorf("unexpected error: %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 

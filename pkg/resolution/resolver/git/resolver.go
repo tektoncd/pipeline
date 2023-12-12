@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -140,6 +141,15 @@ func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1.Param) (
 	}
 
 	return r.resolveAPIGit(ctx, params)
+}
+
+// validateRepoURL validates if the given URL is a valid git, http, https URL or
+// starting with a / (a local repository).
+func validateRepoURL(url string) bool {
+	// Explanation:
+	pattern := `^(/|[^@]+@[^:]+|(git|https?)://)`
+	re := regexp.MustCompile(pattern)
+	return re.MatchString(url)
 }
 
 func (r *Resolver) resolveAPIGit(ctx context.Context, params map[string]string) (framework.ResolvedResource, error) {
@@ -502,7 +512,11 @@ func populateDefaultParams(ctx context.Context, params []pipelinev1.Param) (map[
 		return nil, fmt.Errorf("missing required git resolver params: %s", strings.Join(missingParams, ", "))
 	}
 
-	// TODO(sbwsg): validate repo url is well-formed, git:// or https://
+	// validate the url params if we are not using the SCM API
+	if paramsMap[repoParam] == "" && paramsMap[orgParam] == "" && !validateRepoURL(paramsMap[urlParam]) {
+		return nil, fmt.Errorf("invalid git repository url: %s", paramsMap[urlParam])
+	}
+
 	// TODO(sbwsg): validate pathInRepo is valid relative pathInRepo
 	return paramsMap, nil
 }
