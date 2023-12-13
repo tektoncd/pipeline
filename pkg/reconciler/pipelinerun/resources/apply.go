@@ -160,7 +160,7 @@ func filterMatrixContextVar(params v1.Params) v1.Params {
 				// tasks.<pipelineTaskName>.matrix.length
 				// tasks.<pipelineTaskName>.matrix.<resultName>.length
 				subExpressions := strings.Split(expression, ".")
-				if subExpressions[2] == "matrix" && subExpressions[len(subExpressions)-1] == "length" {
+				if len(subExpressions) >= 4 && subExpressions[2] == "matrix" && subExpressions[len(subExpressions)-1] == "length" {
 					filteredParams = append(filteredParams, param)
 				}
 			}

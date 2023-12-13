@@ -296,6 +296,8 @@ spec:
       value: $(context.pipeline.name)
     - name: contextRetriesParam
       value: $(context.pipelineTask.retries)
+    - name: param-not-found
+      value: $(params.notfound)
     retries: 5
     taskRef:
       name: unit-test-task
@@ -385,6 +387,8 @@ spec:
     value: test-pipeline
   - name: contextRetriesParam
     value: "5"
+  - name: param-not-found
+    value: $(params.notfound)
   retries: 5
   serviceAccountName: test-sa
   taskRef:
