@@ -246,6 +246,9 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 				pipelineTask.TaskRef.Params = pipelineTask.TaskRef.Params.ReplaceVariables(stringReplacements, arrayReplacements, objectReplacements)
 			}
 			pipelineTask.DisplayName = substitution.ApplyReplacements(pipelineTask.DisplayName, stringReplacements)
+			for _, workspace := range pipelineTask.Workspaces {
+				workspace.SubPath = substitution.ApplyReplacements(workspace.SubPath, stringReplacements)
+			}
 			resolvedPipelineRunTask.PipelineTask = pipelineTask
 		}
 	}

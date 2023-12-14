@@ -198,6 +198,7 @@ func findTaskResultForParam(taskRun *v1.TaskRun, reference *v1.ResultRef) (v1.Re
 	results := taskRun.Status.TaskRunStatusFields.Results
 	for _, result := range results {
 		if result.Name == reference.Result {
+			fmt.Println("result name is : " + result.Name)
 			return result.Value, nil
 		}
 	}

@@ -49,7 +49,7 @@ var (
 // applyStepActionParameters applies the params from the Task and the underlying Step to the referenced StepAction.
 func applyStepActionParameters(step *v1.Step, spec *v1.TaskSpec, tr *v1.TaskRun, stepParams v1.Params, defaults []v1.ParamSpec) *v1.Step {
 	if stepParams != nil {
-		stringR, arrayR, objectR := getTaskParameters(spec, tr, spec.Params...)
+		stringR, arrayR, objectR := GetTaskParameters(spec, tr, spec.Params...)
 		stepParams = stepParams.ReplaceVariables(stringR, arrayR, objectR)
 	}
 	// Set params from StepAction defaults
@@ -68,8 +68,8 @@ func applyStepActionParameters(step *v1.Step, spec *v1.TaskSpec, tr *v1.TaskRun,
 	return step
 }
 
-// getTaskParameters gets the string, array and object parameter variable replacements needed in the Task
-func getTaskParameters(spec *v1.TaskSpec, tr *v1.TaskRun, defaults ...v1.ParamSpec) (map[string]string, map[string][]string, map[string]map[string]string) {
+// GetTaskParameters gets the string, array and object parameter variable replacements needed in the Task
+func GetTaskParameters(spec *v1.TaskSpec, tr *v1.TaskRun, defaults ...v1.ParamSpec) (map[string]string, map[string][]string, map[string]map[string]string) {
 	// This assumes that the TaskRun inputs have been validated against what the Task requests.
 	// Set params from Task defaults
 	stringReplacements, arrayReplacements, objectReplacements := replacementsFromDefaultParams(defaults)
@@ -98,7 +98,7 @@ func getTaskParameters(spec *v1.TaskSpec, tr *v1.TaskRun, defaults ...v1.ParamSp
 
 // ApplyParameters applies the params from a TaskRun.Parameters to a TaskSpec
 func ApplyParameters(spec *v1.TaskSpec, tr *v1.TaskRun, defaults ...v1.ParamSpec) *v1.TaskSpec {
-	stringReplacements, arrayReplacements, objectReplacements := getTaskParameters(spec, tr, defaults...)
+	stringReplacements, arrayReplacements, objectReplacements := GetTaskParameters(spec, tr, defaults...)
 	return ApplyReplacements(spec, stringReplacements, arrayReplacements, objectReplacements)
 }
 
@@ -273,6 +273,8 @@ func ApplyTaskResults(spec *v1.TaskSpec) *v1.TaskSpec {
 			stringReplacements[fmt.Sprintf(pattern, result.Name)] = filepath.Join(pipeline.DefaultResultPath, result.Name)
 		}
 	}
+	fmt.Println("task results: ")
+	fmt.Println(stringReplacements)
 	return ApplyReplacements(spec, stringReplacements, map[string][]string{}, map[string]map[string]string{})
 }
 

@@ -21,7 +21,7 @@ spec:
           value: $(params.second)
       command: ["/bin/sh", "-c"]
       args:
-        - echo -n $((${OP1}+${OP2})) | tee $(results.sum.path);
+        - echo "my-pvc-3" | tee $(results.sum.path);
 ---
 apiVersion: tekton.dev/v1
 kind: Pipeline
@@ -44,14 +44,17 @@ spec:
           value: $(params.first)
         - name: second
           value: $(params.second)
-    - name: second-add
-      taskRef:
-        name: add-task
-      params:
-        - name: first
-          value: $(tasks.first-add.results.sum)
-        - name: second
-          value: $(params.third)
+    - name: use-workspace-from-results
+      runAfter:
+        - first-add
+      taskSpec:
+        steps:
+          - name: write-allowed
+            image: ubuntu
+            script: echo "hello" > $(workspaces.ss.path)/foo
+          - name: read-allowed
+            image: ubuntu
+            script: cat $(workspaces.ss.path)/foo | grep "hello"
   results:
     - name: sum
       description: the sum of all three operands
@@ -59,9 +62,6 @@ spec:
     - name: partial-sum
       description: the sum of first two operands
       value: $(tasks.first-add.results.sum)
-    - name: all-sum
-      description: the sum of everything
-      value: $(tasks.second-add.results.sum)-$(tasks.first-add.results.sum)
 ---
 apiVersion: tekton.dev/v1
 kind: PipelineRun
@@ -77,3 +77,7 @@ spec:
       value: "10"
     - name: third
       value: "10"
+  workspaces:
+    - name: "ss"
+      persistentVolumeClaim:
+        claimName: $(tasks.first-add.results.sum)

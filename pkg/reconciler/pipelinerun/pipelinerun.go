@@ -521,6 +521,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		return controller.NewPermanentError(err)
 	}
 
+	//pr.Spec.Workspaces
 	// Apply parameter substitution from the PipelineRun
 	pipelineSpec = resources.ApplyParameters(ctx, pipelineSpec, pr)
 	pipelineSpec = resources.ApplyContexts(pipelineSpec, pipelineMeta.Name, pr)
@@ -813,6 +814,46 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 	// Try to set the FinallyStartTime of this PipelineRun
 	if pr.Status.FinallyStartTime == nil && pipelineRunFacts.IsFinalTaskStarted() {
 		c.setFinallyStartedTimeIfNeeded(pr, pipelineRunFacts)
+	}
+
+	stringReplacements := map[string]string{}
+	arrayReplacements := map[string][]string{}
+	for taskName, taskResults := range pipelineRunFacts.State.GetTaskRunsResults() {
+		for _, res := range taskResults {
+			switch res.Type {
+			case v1.ResultsTypeString:
+				stringReplacements[fmt.Sprintf("tasks.%s.results.%s", taskName, res.Name)] = res.Value.StringVal
+			case v1.ResultsTypeArray:
+				arrayReplacements[fmt.Sprintf("tasks.%s.results.%s", taskName, res.Name)] = res.Value.ArrayVal
+			case v1.ResultsTypeObject:
+				for k, v := range res.Value.ObjectVal {
+					stringReplacements[fmt.Sprintf("tasks.%s.results.%s.%s", taskName, res.Name, k)] = v
+				}
+			}
+		}
+	}
+
+	for _, binding := range pr.Spec.Workspaces {
+		if binding.PersistentVolumeClaim != nil {
+			binding.PersistentVolumeClaim.ClaimName = substitution.ApplyReplacements(binding.PersistentVolumeClaim.ClaimName, stringReplacements)
+		}
+		binding.SubPath = substitution.ApplyReplacements(binding.SubPath, stringReplacements)
+		if binding.ConfigMap != nil {
+			binding.ConfigMap.Name = substitution.ApplyReplacements(binding.ConfigMap.Name, stringReplacements)
+		}
+		if binding.Secret != nil {
+			binding.Secret.SecretName = substitution.ApplyReplacements(binding.Secret.SecretName, stringReplacements)
+		}
+		if binding.Projected != nil {
+			for _, source := range binding.Projected.Sources {
+				if source.ConfigMap != nil {
+					source.ConfigMap.Name = substitution.ApplyReplacements(source.ConfigMap.Name, stringReplacements)
+				}
+				if source.Secret != nil {
+					source.Secret.Name = substitution.ApplyReplacements(source.Secret.Name, stringReplacements)
+				}
+			}
+		}
 	}
 
 	for _, rpt := range nextRpts {

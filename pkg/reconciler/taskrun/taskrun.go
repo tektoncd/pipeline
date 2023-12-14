@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/tektoncd/pipeline/pkg/substitution"
 	"reflect"
 	"strings"
 	"time"
@@ -553,6 +554,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 		tr.Spec.Workspaces = taskRunWorkspaces
 	}
 
+	applyParametersToWorkspaceBindings(rtr, tr)
 	// Get the randomized volume names assigned to workspace bindings
 	workspaceVolumes := workspace.CreateVolumes(tr.Spec.Workspaces)
 
@@ -602,6 +604,37 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 
 	logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace, tr.Status.GetCondition(apis.ConditionSucceeded))
 	return nil
+}
+
+func applyParametersToWorkspaceBindings(rtr *resources.ResolvedTask, tr *v1.TaskRun) {
+	tsCopy := rtr.TaskSpec.DeepCopy()
+	var defaults []v1.ParamSpec
+	if len(tsCopy.Params) > 0 {
+		defaults = append(defaults, tsCopy.Params...)
+	}
+	parameters, _, _ := resources.GetTaskParameters(tsCopy, tr, tsCopy.Params...)
+	for _, binding := range tr.Spec.Workspaces {
+		if binding.PersistentVolumeClaim != nil {
+			binding.PersistentVolumeClaim.ClaimName = substitution.ApplyReplacements(binding.PersistentVolumeClaim.ClaimName, parameters)
+		}
+		binding.SubPath = substitution.ApplyReplacements(binding.SubPath, parameters)
+		if binding.ConfigMap != nil {
+			binding.ConfigMap.Name = substitution.ApplyReplacements(binding.ConfigMap.Name, parameters)
+		}
+		if binding.Secret != nil {
+			binding.Secret.SecretName = substitution.ApplyReplacements(binding.Secret.SecretName, parameters)
+		}
+		if binding.Projected != nil {
+			for _, source := range binding.Projected.Sources {
+				if source.ConfigMap != nil {
+					source.ConfigMap.Name = substitution.ApplyReplacements(source.ConfigMap.Name, parameters)
+				}
+				if source.Secret != nil {
+					source.Secret.Name = substitution.ApplyReplacements(source.Secret.Name, parameters)
+				}
+			}
+		}
+	}
 }
 
 func (c *Reconciler) updateTaskRunWithDefaultWorkspaces(ctx context.Context, tr *v1.TaskRun, taskSpec *v1.TaskSpec) error {
