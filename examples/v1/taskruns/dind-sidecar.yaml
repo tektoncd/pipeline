@@ -40,7 +40,7 @@ spec:
         name: dind-certs
 
     sidecars:
-    - image: docker:dind
+    - image: docker@sha256:74e78208fc18da48ddf8b569abe21563730845c312130bd0f0b059746a7e10f5
       name: server
       args:
         - --storage-driver=vfs
