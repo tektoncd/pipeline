@@ -120,17 +120,16 @@ kind: Task
 metadata:
   name: step-action
 spec:
-  taskSpec:
-    params:
-      - name: param-for-step-action
-        description: "this is a param that the step action needs."
-    steps:
-      - name: action-runner
-        ref:
-          name: step-action
-        params:
-          - name: step-action-param
-            value: $(params.param-for-step-action)
+  params:
+    - name: param-for-step-action
+      description: "this is a param that the step action needs."
+  steps:
+    - name: action-runner
+      ref:
+        name: step-action
+      params:
+        - name: step-action-param
+          value: $(params.param-for-step-action)
 ```
 
 **Note:** If a `Step` declares `params` for an `inlined Step`, it will also lead to a validation error. This is because an `inlined Step` gets its `params` from the `TaskRun`.
