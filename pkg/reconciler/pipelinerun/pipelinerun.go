@@ -521,8 +521,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		return controller.NewPermanentError(err)
 	}
 
-	//pr.Spec.Workspaces
 	// Apply parameter substitution from the PipelineRun
+	applyParametersToWorkspaceBindings(ctx, pipelineSpec, pr)
 	pipelineSpec = resources.ApplyParameters(ctx, pipelineSpec, pr)
 	pipelineSpec = resources.ApplyContexts(pipelineSpec, pipelineMeta.Name, pr)
 	pipelineSpec = resources.ApplyWorkspaces(pipelineSpec, pr)
@@ -832,6 +832,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 			}
 		}
 	}
+	fmt.Printf("replacement .........%v\n", stringReplacements)
 
 	for _, binding := range pr.Spec.Workspaces {
 		if binding.PersistentVolumeClaim != nil {
@@ -1593,4 +1594,35 @@ func conditionFromVerificationResult(verificationResult *trustedresources.Verifi
 		// do nothing
 	}
 	return condition, err
+}
+
+func applyParametersToWorkspaceBindings(ctx context.Context, ps *v1.PipelineSpec, pr *v1.PipelineRun) {
+	psCopy := ps.DeepCopy()
+	var defaults []v1.ParamSpec
+	if len(psCopy.Params) > 0 {
+		defaults = append(defaults, psCopy.Params...)
+	}
+	parameters, _, _ := resources.ParamsFromPipelineRun(ctx, pr)
+	for _, binding := range pr.Spec.Workspaces {
+		if binding.PersistentVolumeClaim != nil {
+			binding.PersistentVolumeClaim.ClaimName = substitution.ApplyReplacements(binding.PersistentVolumeClaim.ClaimName, parameters)
+		}
+		binding.SubPath = substitution.ApplyReplacements(binding.SubPath, parameters)
+		if binding.ConfigMap != nil {
+			binding.ConfigMap.Name = substitution.ApplyReplacements(binding.ConfigMap.Name, parameters)
+		}
+		if binding.Secret != nil {
+			binding.Secret.SecretName = substitution.ApplyReplacements(binding.Secret.SecretName, parameters)
+		}
+		if binding.Projected != nil {
+			for _, source := range binding.Projected.Sources {
+				if source.ConfigMap != nil {
+					source.ConfigMap.Name = substitution.ApplyReplacements(source.ConfigMap.Name, parameters)
+				}
+				if source.Secret != nil {
+					source.Secret.Name = substitution.ApplyReplacements(source.Secret.Name, parameters)
+				}
+			}
+		}
+	}
 }

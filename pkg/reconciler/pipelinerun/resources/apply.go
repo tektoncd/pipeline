@@ -84,7 +84,7 @@ func ApplyParameters(ctx context.Context, p *v1.PipelineSpec, pr *v1.PipelineRun
 		}
 	}
 	// Set and overwrite params with the ones from the PipelineRun
-	prStrings, prArrays, prObjects := paramsFromPipelineRun(ctx, pr)
+	prStrings, prArrays, prObjects := ParamsFromPipelineRun(ctx, pr)
 
 	for k, v := range prStrings {
 		stringReplacements[k] = v
@@ -99,7 +99,7 @@ func ApplyParameters(ctx context.Context, p *v1.PipelineSpec, pr *v1.PipelineRun
 	return ApplyReplacements(p, stringReplacements, arrayReplacements, objectReplacements)
 }
 
-func paramsFromPipelineRun(ctx context.Context, pr *v1.PipelineRun) (map[string]string, map[string][]string, map[string]map[string]string) {
+func ParamsFromPipelineRun(ctx context.Context, pr *v1.PipelineRun) (map[string]string, map[string][]string, map[string]map[string]string) {
 	// stringReplacements is used for standard single-string stringReplacements,
 	// while arrayReplacements/objectReplacements contains arrays/objects that need to be further processed.
 	stringReplacements := map[string]string{}

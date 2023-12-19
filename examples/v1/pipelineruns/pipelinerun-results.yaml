@@ -21,13 +21,15 @@ spec:
           value: $(params.second)
       command: ["/bin/sh", "-c"]
       args:
-        - echo "my-pvc-3" | tee $(results.sum.path);
+        - echo -n "my-pvc-4" | tee $(results.sum.path);
 ---
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: sum-three-pipeline
 spec:
+  workspaces:
+    - name: ss
   params:
     - name: first
       description: the first operand
@@ -45,20 +47,20 @@ spec:
         - name: second
           value: $(params.second)
     - name: use-workspace-from-results
+      workspaces:
+        - name: aa
+          workspace: ss
       runAfter:
         - first-add
       taskSpec:
         steps:
           - name: write-allowed
             image: ubuntu
-            script: echo "hello" > $(workspaces.ss.path)/foo
+            script: echo "hello" > $(workspaces.aa.path)/foo
           - name: read-allowed
             image: ubuntu
-            script: cat $(workspaces.ss.path)/foo | grep "hello"
+            script: cat $(workspaces.aa.path)/foo | grep "hello"
   results:
-    - name: sum
-      description: the sum of all three operands
-      value: $(tasks.second-add.results.sum)
     - name: partial-sum
       description: the sum of first two operands
       value: $(tasks.first-add.results.sum)
@@ -77,6 +79,8 @@ spec:
       value: "10"
     - name: third
       value: "10"
+    - name: four
+      value: "my-pvc-3"
   workspaces:
     - name: "ss"
       persistentVolumeClaim:

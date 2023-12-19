@@ -31,7 +31,7 @@ data:
   # or https://github.com/tektoncd/pipeline/pull/2630 for more info.
   #
   # Note: This feature flag is deprecated and will be removed in release v0.60. Consider using `coschedule` feature flag to configure Affinity Assistant behavior.
-  disable-affinity-assistant: "false"
+  disable-affinity-assistant: "true"
   # Setting this flag will determine how PipelineRun Pods are scheduled with Affinity Assistant.
   # Acceptable values are "workspaces" (default), "pipelineruns", "isolate-pipelinerun", or "disabled".
   #
