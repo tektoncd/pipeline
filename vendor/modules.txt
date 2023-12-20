@@ -683,7 +683,7 @@ github.com/jbenet/go-context/io
 # github.com/jellydator/ttlcache/v3 v3.1.0
 ## explicit; go 1.18
 github.com/jellydator/ttlcache/v3
-# github.com/jenkins-x/go-scm v1.14.20
+# github.com/jenkins-x/go-scm v1.14.24
 ## explicit; go 1.19
 github.com/jenkins-x/go-scm/pkg/hmac
 github.com/jenkins-x/go-scm/scm
@@ -995,7 +995,7 @@ go.uber.org/zap/internal/stacktrace
 go.uber.org/zap/internal/ztest
 go.uber.org/zap/zapcore
 go.uber.org/zap/zaptest
-# golang.org/x/crypto v0.16.0
+# golang.org/x/crypto v0.17.0
 ## explicit; go 1.18
 golang.org/x/crypto/argon2
 golang.org/x/crypto/blake2b
@@ -1352,7 +1352,7 @@ k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions/apiextensio
 k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions/internalinterfaces
 k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1
 k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1beta1
-# k8s.io/apimachinery v0.28.3 => k8s.io/apimachinery v0.26.7
+# k8s.io/apimachinery v0.29.0 => k8s.io/apimachinery v0.26.7
 ## explicit; go 1.19
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors
