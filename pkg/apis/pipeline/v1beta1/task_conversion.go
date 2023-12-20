@@ -55,7 +55,7 @@ import (
 //	}`
 const (
 	TaskDeprecationsAnnotationKey = "tekton.dev/v1beta1.task-deprecations"
-	resourcesAnnotationKey        = "tekton.dev/v1beta1Resources"
+	ResourcesAnnotationKey        = "tekton.dev/v1beta1Resources"
 )
 
 var _ apis.Convertible = (*Task)(nil)
@@ -327,12 +327,12 @@ func serializeResources(meta *metav1.ObjectMeta, spec *TaskSpec) error {
 	if spec.Resources == nil {
 		return nil
 	}
-	return version.SerializeToMetadata(meta, spec.Resources, resourcesAnnotationKey)
+	return version.SerializeToMetadata(meta, spec.Resources, ResourcesAnnotationKey)
 }
 
 func deserializeResources(meta *metav1.ObjectMeta, spec *TaskSpec) error {
 	resources := &TaskResources{}
-	err := version.DeserializeFromMetadata(meta, resources, resourcesAnnotationKey)
+	err := version.DeserializeFromMetadata(meta, resources, ResourcesAnnotationKey)
 	if err != nil {
 		return err
 	}

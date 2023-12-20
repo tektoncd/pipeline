@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	cloudEventsAnnotationKey     = "tekton.dev/v1beta1CloudEvents"
-	resourcesResultAnnotationKey = "tekton.dev/v1beta1ResourcesResult"
+	CloudEventsAnnotationKey     = "tekton.dev/v1beta1CloudEvents"
+	ResourcesResultAnnotationKey = "tekton.dev/v1beta1ResourcesResult"
 )
 
 var _ apis.Convertible = (*TaskRun)(nil)
@@ -385,12 +385,12 @@ func serializeTaskRunCloudEvents(meta *metav1.ObjectMeta, status *TaskRunStatus)
 	if status.CloudEvents == nil {
 		return nil
 	}
-	return version.SerializeToMetadata(meta, status.CloudEvents, cloudEventsAnnotationKey)
+	return version.SerializeToMetadata(meta, status.CloudEvents, CloudEventsAnnotationKey)
 }
 
 func deserializeTaskRunCloudEvents(meta *metav1.ObjectMeta, status *TaskRunStatus) error {
 	cloudEvents := []CloudEventDelivery{}
-	err := version.DeserializeFromMetadata(meta, &cloudEvents, cloudEventsAnnotationKey)
+	err := version.DeserializeFromMetadata(meta, &cloudEvents, CloudEventsAnnotationKey)
 	if err != nil {
 		return err
 	}
@@ -404,12 +404,12 @@ func serializeTaskRunResourcesResult(meta *metav1.ObjectMeta, status *TaskRunSta
 	if status.ResourcesResult == nil {
 		return nil
 	}
-	return version.SerializeToMetadata(meta, status.ResourcesResult, resourcesResultAnnotationKey)
+	return version.SerializeToMetadata(meta, status.ResourcesResult, ResourcesResultAnnotationKey)
 }
 
 func deserializeTaskRunResourcesResult(meta *metav1.ObjectMeta, status *TaskRunStatus) error {
 	resourcesResult := []RunResult{}
-	err := version.DeserializeFromMetadata(meta, &resourcesResult, resourcesResultAnnotationKey)
+	err := version.DeserializeFromMetadata(meta, &resourcesResult, ResourcesResultAnnotationKey)
 	if err != nil {
 		return err
 	}

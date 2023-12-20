@@ -337,12 +337,12 @@ func serializePipelineResources(meta *metav1.ObjectMeta, spec *PipelineSpec) err
 	if spec.Resources == nil {
 		return nil
 	}
-	return version.SerializeToMetadata(meta, spec.Resources, resourcesAnnotationKey)
+	return version.SerializeToMetadata(meta, spec.Resources, ResourcesAnnotationKey)
 }
 
 func deserializePipelineResources(meta *metav1.ObjectMeta, spec *PipelineSpec) error {
 	resources := &[]PipelineDeclaredResource{}
-	err := version.DeserializeFromMetadata(meta, resources, resourcesAnnotationKey)
+	err := version.DeserializeFromMetadata(meta, resources, ResourcesAnnotationKey)
 	if err != nil {
 		return err
 	}
