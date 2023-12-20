@@ -74,7 +74,7 @@ func (tr TaskResult) validateValue(ctx context.Context) (errs *apis.FieldError) 
 		return nil
 	}
 	if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions {
-		return apis.ErrGeneric("feature flag %s should be set to true to fetch Results from Steps using StepActions.", config.EnableStepActions)
+		return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to fetch Results from Steps using StepActions.", config.EnableStepActions))
 	}
 	if tr.Value.Type != ParamTypeString {
 		return &apis.FieldError{

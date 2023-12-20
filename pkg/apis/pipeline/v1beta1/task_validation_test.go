@@ -1442,8 +1442,8 @@ func TestTaskSpecValidateErrorWithStepActionRef_CreateUpdateEvent(t *testing.T) 
 		isCreate: true,
 		isUpdate: false,
 		expectedError: apis.FieldError{
-			Message: "feature flag %s should be set to true to reference StepActions in Steps.",
-			Paths:   []string{"steps[0].enable-step-actions"},
+			Message: "feature flag enable-step-actions should be set to true to reference StepActions in Steps.",
+			Paths:   []string{"steps[0]"},
 		},
 	}, {
 		name: "is update ctx",
@@ -1455,8 +1455,8 @@ func TestTaskSpecValidateErrorWithStepActionRef_CreateUpdateEvent(t *testing.T) 
 		isCreate: false,
 		isUpdate: true,
 		expectedError: apis.FieldError{
-			Message: "feature flag %s should be set to true to reference StepActions in Steps.",
-			Paths:   []string{"steps[0].enable-step-actions"},
+			Message: "feature flag enable-step-actions should be set to true to reference StepActions in Steps.",
+			Paths:   []string{"steps[0]"},
 		},
 	}, {
 		name: "ctx is not create or update",
@@ -2428,8 +2428,8 @@ func TestTaskSpecValidate_StepResults_Error(t *testing.T) {
 		enableStepActions: false,
 		isCreate:          true,
 		expectedError: apis.FieldError{
-			Message: "feature flag %s should be set to true in order to use Results in Steps.",
-			Paths:   []string{"steps[0].enable-step-actions"},
+			Message: "feature flag enable-step-actions should be set to true in order to use Results in Steps.",
+			Paths:   []string{"steps[0]"},
 		},
 	}, {
 		name: "step result not allowed without enable step actions - update and diverged event",
@@ -2450,8 +2450,8 @@ func TestTaskSpecValidate_StepResults_Error(t *testing.T) {
 			},
 		},
 		expectedError: apis.FieldError{
-			Message: "feature flag %s should be set to true in order to use Results in Steps.",
-			Paths:   []string{"steps[0].enable-step-actions"},
+			Message: "feature flag enable-step-actions should be set to true in order to use Results in Steps.",
+			Paths:   []string{"steps[0]"},
 		},
 	}, {
 		name: "step result allowed without enable step actions - update but not diverged",

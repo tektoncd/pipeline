@@ -176,8 +176,7 @@ func TestResultsValidateValueError(t *testing.T) {
 		},
 		enableStepActions: false,
 		expectedError: apis.FieldError{
-			Message: "feature flag %s should be set to true to fetch Results from Steps using StepActions.",
-			Paths:   []string{"enable-step-actions"},
+			Message: "feature flag enable-step-actions should be set to true to fetch Results from Steps using StepActions.",
 		},
 	}, {
 		name: "invalid result value type array",
