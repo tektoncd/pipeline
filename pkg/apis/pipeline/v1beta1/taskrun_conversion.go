@@ -29,6 +29,7 @@ import (
 const (
 	cloudEventsAnnotationKey     = "tekton.dev/v1beta1CloudEvents"
 	resourcesResultAnnotationKey = "tekton.dev/v1beta1ResourcesResult"
+	resourcesStatusAnnotationKey = "tekton.dev/v1beta1ResourcesStatus"
 )
 
 var _ apis.Convertible = (*TaskRun)(nil)
@@ -41,10 +42,16 @@ func (tr *TaskRun) ConvertTo(ctx context.Context, to apis.Convertible) error {
 	switch sink := to.(type) {
 	case *v1.TaskRun:
 		sink.ObjectMeta = tr.ObjectMeta
+		if err := serializeTaskRunResources(&sink.ObjectMeta, &tr.Spec); err != nil {
+			return err
+		}
 		if err := serializeTaskRunCloudEvents(&sink.ObjectMeta, &tr.Status); err != nil {
 			return err
 		}
 		if err := serializeTaskRunResourcesResult(&sink.ObjectMeta, &tr.Status); err != nil {
+			return err
+		}
+		if err := serializeTaskRunResourcesStatus(&sink.ObjectMeta, &tr.Status); err != nil {
 			return err
 		}
 		if err := tr.Status.ConvertTo(ctx, &sink.Status, &sink.ObjectMeta); err != nil {
@@ -115,6 +122,9 @@ func (tr *TaskRun) ConvertFrom(ctx context.Context, from apis.Convertible) error
 	switch source := from.(type) {
 	case *v1.TaskRun:
 		tr.ObjectMeta = source.ObjectMeta
+		if err := deserializeTaskRunResources(&tr.ObjectMeta, &tr.Spec); err != nil {
+			return err
+		}
 		if err := deserializeTaskRunCloudEvents(&tr.ObjectMeta, &tr.Status); err != nil {
 			return err
 		}
@@ -122,6 +132,9 @@ func (tr *TaskRun) ConvertFrom(ctx context.Context, from apis.Convertible) error
 			return err
 		}
 		if err := tr.Status.ConvertFrom(ctx, source.Status, &tr.ObjectMeta); err != nil {
+			return err
+		}
+		if err := deserializeTaskRunResourcesStatus(&tr.ObjectMeta, &tr.Status); err != nil {
 			return err
 		}
 		return tr.Spec.ConvertFrom(ctx, &source.Spec, &tr.ObjectMeta)
@@ -381,6 +394,25 @@ func (ss *SidecarState) convertFrom(ctx context.Context, source v1.SidecarState)
 	ss.ImageID = source.ImageID
 }
 
+func serializeTaskRunResources(meta *metav1.ObjectMeta, spec *TaskRunSpec) error {
+	if spec.Resources == nil {
+		return nil
+	}
+	return version.SerializeToMetadata(meta, spec.Resources, resourcesAnnotationKey)
+}
+
+func deserializeTaskRunResources(meta *metav1.ObjectMeta, spec *TaskRunSpec) error {
+	resources := &TaskRunResources{}
+	err := version.DeserializeFromMetadata(meta, resources, resourcesAnnotationKey)
+	if err != nil {
+		return err
+	}
+	if resources.Inputs != nil || resources.Outputs != nil {
+		spec.Resources = resources
+	}
+	return nil
+}
+
 func serializeTaskRunCloudEvents(meta *metav1.ObjectMeta, status *TaskRunStatus) error {
 	if status.CloudEvents == nil {
 		return nil
@@ -415,6 +447,31 @@ func deserializeTaskRunResourcesResult(meta *metav1.ObjectMeta, status *TaskRunS
 	}
 	if len(resourcesResult) != 0 {
 		status.ResourcesResult = resourcesResult
+	}
+	return nil
+}
+
+func serializeTaskRunResourcesStatus(meta *metav1.ObjectMeta, status *TaskRunStatus) error {
+	if status.TaskSpec == nil {
+		return nil
+	}
+	if status.TaskSpec.Resources == nil {
+		return nil
+	}
+	return version.SerializeToMetadata(meta, status.TaskSpec.Resources, resourcesStatusAnnotationKey)
+}
+
+func deserializeTaskRunResourcesStatus(meta *metav1.ObjectMeta, status *TaskRunStatus) error {
+	resourcesStatus := &TaskResources{}
+	err := version.DeserializeFromMetadata(meta, resourcesStatus, resourcesStatusAnnotationKey)
+	if err != nil {
+		return err
+	}
+	if resourcesStatus.Inputs != nil || resourcesStatus.Outputs != nil {
+		if status.TaskRunStatusFields.TaskSpec == nil {
+			status.TaskSpec = &TaskSpec{}
+		}
+		status.TaskSpec.Resources = resourcesStatus
 	}
 	return nil
 }
