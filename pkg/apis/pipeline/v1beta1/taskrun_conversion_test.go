@@ -334,6 +334,147 @@ func TestTaskRunConversionFromDeprecated(t *testing.T) {
 		in   *v1beta1.TaskRun
 		want *v1beta1.TaskRun
 	}{{
+		name: "input resources",
+		in: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.TaskRunSpec{
+				Resources: &v1beta1.TaskRunResources{
+					Inputs: []v1beta1.TaskResourceBinding{{
+						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+							ResourceRef: &v1beta1.PipelineResourceRef{
+								Name: "the-git-with-branch",
+							},
+							Name: "gitspace",
+						},
+						Paths: []string{"test-path"},
+					}},
+				},
+			},
+		},
+		want: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.TaskRunSpec{
+				Resources: &v1beta1.TaskRunResources{
+					Inputs: []v1beta1.TaskResourceBinding{{
+						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+							ResourceRef: &v1beta1.PipelineResourceRef{
+								Name: "the-git-with-branch",
+							},
+							Name: "gitspace",
+						},
+						Paths: []string{"test-path"},
+					}},
+				},
+			},
+		},
+	}, {
+		name: "output resources",
+		in: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.TaskRunSpec{
+				Resources: &v1beta1.TaskRunResources{
+					Outputs: []v1beta1.TaskResourceBinding{{
+						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+							ResourceRef: &v1beta1.PipelineResourceRef{
+								Name: "the-git-with-branch",
+							},
+							Name: "gitspace",
+						},
+						Paths: []string{"test-path"},
+					}},
+				},
+			},
+		},
+		want: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.TaskRunSpec{
+				Resources: &v1beta1.TaskRunResources{
+					Outputs: []v1beta1.TaskResourceBinding{{
+						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+							ResourceRef: &v1beta1.PipelineResourceRef{
+								Name: "the-git-with-branch",
+							},
+							Name: "gitspace",
+						},
+						Paths: []string{"test-path"},
+					}},
+				},
+			},
+		},
+	}, {
+		name: "taskrun status task resources",
+		in: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: "test-resources-status",
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					TaskSpec: &v1beta1.TaskSpec{
+						Resources: &v1beta1.TaskResources{
+							Inputs: []v1beta1.TaskResource{{
+								v1beta1.ResourceDeclaration{
+									Name: "input-resource",
+								},
+							}},
+							Outputs: []v1beta1.TaskResource{{
+								v1beta1.ResourceDeclaration{
+									Name: "input-resource",
+									Type: "image",
+								},
+							}},
+						},
+					},
+				},
+			},
+		},
+		want: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: "test-resources-status",
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					TaskSpec: &v1beta1.TaskSpec{
+						Resources: &v1beta1.TaskResources{
+							Inputs: []v1beta1.TaskResource{{
+								v1beta1.ResourceDeclaration{
+									Name: "input-resource",
+								},
+							}},
+							Outputs: []v1beta1.TaskResource{{
+								v1beta1.ResourceDeclaration{
+									Name: "input-resource",
+									Type: "image",
+								},
+							}},
+						},
+					},
+				},
+			}},
+	}, {
 		name: "bundle",
 		in: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
