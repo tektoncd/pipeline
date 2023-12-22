@@ -51,7 +51,10 @@ import (
 // perform this operation with a KMS key in a different Amazon Web Services
 // account, specify the key ARN or alias ARN in the value of the KeyId parameter.
 // Required permissions: kms:GetPublicKey (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
-// (key policy) Related operations: CreateKey
+// (key policy) Related operations: CreateKey Eventual consistency: The KMS API
+// follows an eventual consistency model. For more information, see KMS eventual
+// consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
+// .
 func (c *Client) GetPublicKey(ctx context.Context, params *GetPublicKeyInput, optFns ...func(*Options)) (*GetPublicKeyOutput, error) {
 	if params == nil {
 		params = &GetPublicKeyInput{}
