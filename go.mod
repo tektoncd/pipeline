@@ -6,7 +6,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.1-0.20220720053627-e327d0730470 // Waiting for https://github.com/ahmetb/gen-crd-api-reference-docs/pull/43/files to merge
 	github.com/cloudevents/sdk-go/v2 v2.14.0
-	github.com/containerd/containerd v1.7.8
+	github.com/containerd/containerd v1.7.11
 	github.com/go-git/go-git/v5 v5.10.0
 	github.com/google/go-cmp v0.6.0
 	github.com/google/go-containerregistry v0.17.0
@@ -87,7 +87,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys v1.0.1 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal v1.0.0 // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.1.1 // indirect
-	github.com/Microsoft/hcsshim v0.11.1 // indirect
+	github.com/Microsoft/hcsshim v0.11.4 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20230305170008-8188dc5388df // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.10.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/kms v1.27.2 // indirect
@@ -107,7 +107,7 @@ require (
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.3 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.2 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
