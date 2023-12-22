@@ -11,11 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout'
-        uses: actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         
       - name: Get changed files
         id: changed-files
-        uses: tj-actions/changed-files@v40
+        uses: tj-actions/changed-files@56284d80811fb5963a972b438f2870f175e5b7c8 # v40.2.3
         with:
           write_output_files: true
           files: |
@@ -23,7 +23,7 @@ jobs:
 
       - name: 'woke'
         if: steps.changed-files.outputs.any_changed == 'true'
-        uses: get-woke/woke-action@v0
+        uses: get-woke/woke-action@b2ec032c4a2c912142b38a6a453ad62017813ed0 # v0
         with:
           # Cause the check to fail on any broke rules
           fail-on-error: true
