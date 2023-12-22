@@ -21,7 +21,10 @@ import (
 // in the Key Management Service Developer Guide. Cross-account use: No. You cannot
 // perform this operation on a KMS key in a different Amazon Web Services account.
 // Required permissions: kms:DisableKey (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
-// (key policy) Related operations: EnableKey
+// (key policy) Related operations: EnableKey Eventual consistency: The KMS API
+// follows an eventual consistency model. For more information, see KMS eventual
+// consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
+// .
 func (c *Client) DisableKey(ctx context.Context, params *DisableKeyInput, optFns ...func(*Options)) (*DisableKeyOutput, error) {
 	if params == nil {
 		params = &DisableKeyInput{}

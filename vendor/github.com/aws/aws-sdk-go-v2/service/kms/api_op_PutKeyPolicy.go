@@ -20,7 +20,10 @@ import (
 // in the Key Management Service Developer Guide. Cross-account use: No. You cannot
 // perform this operation on a KMS key in a different Amazon Web Services account.
 // Required permissions: kms:PutKeyPolicy (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
-// (key policy) Related operations: GetKeyPolicy
+// (key policy) Related operations: GetKeyPolicy Eventual consistency: The KMS API
+// follows an eventual consistency model. For more information, see KMS eventual
+// consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
+// .
 func (c *Client) PutKeyPolicy(ctx context.Context, params *PutKeyPolicyInput, optFns ...func(*Options)) (*PutKeyPolicyOutput, error) {
 	if params == nil {
 		params = &PutKeyPolicyInput{}
@@ -88,7 +91,8 @@ type PutKeyPolicyInput struct {
 	// information, see Default key policy (https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-default.html#prevent-unmanageable-key)
 	// in the Key Management Service Developer Guide. Use this parameter only when you
 	// intend to prevent the principal that is making the request from making a
-	// subsequent PutKeyPolicy request on the KMS key.
+	// subsequent PutKeyPolicy (https://docs.aws.amazon.com/kms/latest/APIReference/API_PutKeyPolicy.html)
+	// request on the KMS key.
 	BypassPolicyLockoutSafetyCheck bool
 
 	noSmithyDocumentSerde
