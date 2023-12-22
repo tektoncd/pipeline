@@ -55,21 +55,25 @@ import (
 // or any Amazon Web Services SDK. Use the Recipient parameter to provide the
 // attestation document for the enclave. Instead of the plaintext data, the
 // response includes the plaintext data encrypted with the public key from the
-// attestation document ( CiphertextForRecipient ).For information about the
+// attestation document ( CiphertextForRecipient ). For information about the
 // interaction between KMS and Amazon Web Services Nitro Enclaves, see How Amazon
 // Web Services Nitro Enclaves uses KMS (https://docs.aws.amazon.com/kms/latest/developerguide/services-nitro-enclaves.html)
-// in the Key Management Service Developer Guide.. The KMS key that you use for
-// this operation must be in a compatible key state. For details, see Key states
-// of KMS keys (https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html)
-// in the Key Management Service Developer Guide. Cross-account use: Yes. If you
-// use the KeyId parameter to identify a KMS key in a different Amazon Web
-// Services account, specify the key ARN or the alias ARN of the KMS key. Required
+// in the Key Management Service Developer Guide. The KMS key that you use for this
+// operation must be in a compatible key state. For details, see Key states of KMS
+// keys (https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html) in
+// the Key Management Service Developer Guide. Cross-account use: Yes. If you use
+// the KeyId parameter to identify a KMS key in a different Amazon Web Services
+// account, specify the key ARN or the alias ARN of the KMS key. Required
 // permissions: kms:Decrypt (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
 // (key policy) Related operations:
 //   - Encrypt
 //   - GenerateDataKey
 //   - GenerateDataKeyPair
 //   - ReEncrypt
+//
+// Eventual consistency: The KMS API follows an eventual consistency model. For
+// more information, see KMS eventual consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
+// .
 func (c *Client) Decrypt(ctx context.Context, params *DecryptInput, optFns ...func(*Options)) (*DecryptOutput, error) {
 	if params == nil {
 		params = &DecryptInput{}
@@ -146,7 +150,7 @@ type DecryptInput struct {
 	// get the alias name and alias ARN, use ListAliases .
 	KeyId *string
 
-	// A signed attestation document (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/nitro-enclave-how.html#term-attestdoc)
+	// A signed attestation document (https://docs.aws.amazon.com/enclaves/latest/user/nitro-enclave-concepts.html#term-attestdoc)
 	// from an Amazon Web Services Nitro enclave and the encryption algorithm to use
 	// with the enclave's public key. The only valid encryption algorithm is
 	// RSAES_OAEP_SHA_256 . This parameter only supports attestation documents for
