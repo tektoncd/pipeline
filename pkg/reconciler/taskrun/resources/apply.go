@@ -223,6 +223,39 @@ func ApplyWorkspaces(ctx context.Context, spec *v1.TaskSpec, declarations []v1.W
 	return ApplyReplacements(spec, stringReplacements, map[string][]string{}, map[string]map[string]string{})
 }
 
+// ApplyParametersToWorkspaceBindings applies parameters to the WorkspaceBindings of a TaskRun. It takes a TaskSpec and a TaskRun as input and returns the modified TaskRun.
+func ApplyParametersToWorkspaceBindings(ts *v1.TaskSpec, tr *v1.TaskRun) *v1.TaskRun {
+	tsCopy := ts.DeepCopy()
+	var defaults []v1.ParamSpec
+	if len(tsCopy.Params) > 0 {
+		defaults = append(defaults, tsCopy.Params...)
+	}
+	parameters, _, _ := getTaskParameters(tsCopy, tr, tsCopy.Params...)
+	for i, binding := range tr.Spec.Workspaces {
+		if tr.Spec.Workspaces[i].PersistentVolumeClaim != nil {
+			binding.PersistentVolumeClaim.ClaimName = substitution.ApplyReplacements(binding.PersistentVolumeClaim.ClaimName, parameters)
+		}
+		tr.Spec.Workspaces[i].SubPath = substitution.ApplyReplacements(binding.SubPath, parameters)
+		if tr.Spec.Workspaces[i].ConfigMap != nil {
+			binding.ConfigMap.Name = substitution.ApplyReplacements(binding.ConfigMap.Name, parameters)
+		}
+		if tr.Spec.Workspaces[i].Secret != nil {
+			tr.Spec.Workspaces[i].Secret.SecretName = substitution.ApplyReplacements(binding.Secret.SecretName, parameters)
+		}
+		if binding.Projected != nil {
+			for j, source := range binding.Projected.Sources {
+				if source.ConfigMap != nil {
+					tr.Spec.Workspaces[i].Projected.Sources[j].ConfigMap.Name = substitution.ApplyReplacements(source.ConfigMap.Name, parameters)
+				}
+				if source.Secret != nil {
+					tr.Spec.Workspaces[i].Projected.Sources[j].Secret.Name = substitution.ApplyReplacements(source.Secret.Name, parameters)
+				}
+			}
+		}
+	}
+	return tr
+}
+
 // applyWorkspaceMountPath accepts a workspace path variable of the form $(workspaces.foo.path) and replaces
 // it in the fields of the TaskSpec. A new updated TaskSpec is returned. Steps or Sidecars in the TaskSpec
 // that override the mountPath will receive that mountPath in place of the variable's value. Other Steps and
