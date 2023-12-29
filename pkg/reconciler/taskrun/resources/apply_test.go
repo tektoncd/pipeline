@@ -1635,3 +1635,298 @@ func TestApplyCredentialsPath(t *testing.T) {
 		})
 	}
 }
+
+func TestApplyParametersToWorkspaceBindings(t *testing.T) {
+	tests := []struct {
+		name string
+		ts   *v1.TaskSpec
+		tr   *v1.TaskRun
+		want *v1.TaskRun
+	}{
+		{
+			name: "pvc",
+			ts: &v1.TaskSpec{
+				Params: []v1.ParamSpec{
+					{Name: "claim-name", Type: v1.ParamTypeString},
+				},
+			},
+			tr: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "$(params.claim-name)",
+							},
+						},
+					},
+					Params: v1.Params{{Name: "claim-name", Value: v1.ParamValue{
+						Type:      v1.ParamTypeString,
+						StringVal: "claim-value",
+					}}},
+				},
+			},
+			want: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "claim-value",
+							},
+						},
+					},
+					Params: v1.Params{{Name: "claim-name", Value: v1.ParamValue{
+						Type:      v1.ParamTypeString,
+						StringVal: "claim-value",
+					}}},
+				},
+			},
+		},
+		{
+			name: "subPath",
+			ts: &v1.TaskSpec{
+				Params: []v1.ParamSpec{
+					{Name: "subPath-name", Type: v1.ParamTypeString},
+				},
+			},
+			tr: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							SubPath: "$(params.subPath-name)",
+						},
+					},
+					Params: v1.Params{{Name: "subPath-name", Value: v1.ParamValue{
+						Type:      v1.ParamTypeString,
+						StringVal: "subPath-value",
+					}}},
+				},
+			},
+			want: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							SubPath: "subPath-value",
+						},
+					},
+					Params: v1.Params{{Name: "subPath-name", Value: v1.ParamValue{
+						Type:      v1.ParamTypeString,
+						StringVal: "subPath-value",
+					}}},
+				},
+			},
+		},
+		{
+			name: "configMap",
+			ts: &v1.TaskSpec{
+				Params: []v1.ParamSpec{
+					{Name: "configMap-name", Type: v1.ParamTypeString},
+				},
+			},
+			tr: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "$(params.configMap-name)",
+								},
+							},
+						},
+					},
+					Params: v1.Params{{Name: "configMap-name", Value: v1.ParamValue{
+						Type:      v1.ParamTypeString,
+						StringVal: "configMap-value",
+					}}},
+				},
+			},
+			want: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "configMap-value",
+								},
+							},
+						},
+					},
+					Params: v1.Params{{Name: "configMap-name", Value: v1.ParamValue{
+						Type:      v1.ParamTypeString,
+						StringVal: "configMap-value",
+					}}},
+				},
+			},
+		},
+		{
+			name: "secret",
+			ts: &v1.TaskSpec{
+				Params: []v1.ParamSpec{
+					{Name: "secret-name", Type: v1.ParamTypeString},
+				},
+			},
+			tr: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName: "$(params.secret-name)",
+							},
+						},
+					},
+					Params: v1.Params{{Name: "secret-name", Value: v1.ParamValue{
+						Type:      v1.ParamTypeString,
+						StringVal: "secret-value",
+					}}},
+				},
+			},
+			want: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName: "secret-value",
+							},
+						},
+					},
+					Params: v1.Params{{Name: "secret-name", Value: v1.ParamValue{
+						Type:      v1.ParamTypeString,
+						StringVal: "secret-value",
+					}},
+					},
+				},
+			},
+		},
+		{
+			name: "projected-sources-configMap",
+			ts: &v1.TaskSpec{
+				Params: []v1.ParamSpec{
+					{Name: "proj-configMap-name", Type: v1.ParamTypeString},
+				},
+			},
+			tr: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							Projected: &corev1.ProjectedVolumeSource{
+								Sources: []corev1.VolumeProjection{
+									{
+										ConfigMap: &corev1.ConfigMapProjection{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "$(params.proj-configMap-name)",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					Params: v1.Params{
+						{
+							Name: "proj-configMap-name", Value: v1.ParamValue{
+								Type:      v1.ParamTypeString,
+								StringVal: "proj-configMap-value",
+							},
+						},
+					},
+				},
+			},
+			want: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							Projected: &corev1.ProjectedVolumeSource{
+								Sources: []corev1.VolumeProjection{
+									{
+										ConfigMap: &corev1.ConfigMapProjection{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "proj-configMap-value",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					Params: v1.Params{
+						{
+							Name: "proj-configMap-name", Value: v1.ParamValue{
+								Type:      v1.ParamTypeString,
+								StringVal: "proj-configMap-value",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "projected-sources-secret",
+			ts: &v1.TaskSpec{
+				Params: []v1.ParamSpec{
+					{Name: "proj-secret-name", Type: v1.ParamTypeString},
+				},
+			},
+			tr: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							Projected: &corev1.ProjectedVolumeSource{
+								Sources: []corev1.VolumeProjection{
+									{
+										Secret: &corev1.SecretProjection{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "$(params.proj-secret-name)",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					Params: v1.Params{
+						{
+							Name: "proj-secret-name", Value: v1.ParamValue{
+								Type:      v1.ParamTypeString,
+								StringVal: "proj-secret-value",
+							},
+						},
+					},
+				},
+			},
+			want: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							Projected: &corev1.ProjectedVolumeSource{
+								Sources: []corev1.VolumeProjection{
+									{
+										Secret: &corev1.SecretProjection{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "proj-secret-value",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					Params: v1.Params{
+						{
+							Name: "proj-secret-name", Value: v1.ParamValue{
+								Type:      v1.ParamTypeString,
+								StringVal: "proj-secret-value",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := resources.ApplyParametersToWorkspaceBindings(tt.ts, tt.tr)
+			if d := cmp.Diff(got, tt.want); d != "" {
+				t.Errorf("ApplyParametersToWorkspaceBindings() %v, diff %v", tt.name, d)
+			}
+		})
+	}
+}
