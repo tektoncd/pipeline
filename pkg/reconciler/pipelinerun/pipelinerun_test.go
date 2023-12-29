@@ -5238,6 +5238,183 @@ spec:
 	}
 }
 
+func TestReconcileAndPopulateParamsToWorkspaceBindings(t *testing.T) {
+	names.TestingSeed()
+
+	cPipeline := simpleHelloWorldPipeline.DeepCopy()
+	cPipeline.Spec.Workspaces = []v1.PipelineWorkspaceDeclaration{{Name: "ws-1"}}
+	cPipeline.Spec.Tasks[0].Workspaces = []v1.WorkspacePipelineTaskBinding{{Name: "s1", Workspace: "ws-1"}}
+
+	cTask := simpleHelloWorldTask.DeepCopy()
+	cTask.Spec.Workspaces = []v1.WorkspaceDeclaration{{Name: "s1"}}
+
+	tests := []struct {
+		name     string
+		pr       *v1.PipelineRun
+		expected v1.WorkspaceBinding
+	}{
+		{
+			name: "populate params to pipelineRun workspaceBindings - secret.secretName",
+			pr: parse.MustParseV1PipelineRun(t, `
+metadata:
+  annotations:
+    PipelineRunAnnotation: PipelineRunValue
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  params:
+    - name: mySecret
+      value: secret-1
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa
+  taskRunSpecs:
+  - pipelineTaskName: hello-world-1
+  workspaces:
+    - name: ws-1
+      secret:
+        secretName: $(params.mySecret)
+`),
+			expected: v1.WorkspaceBinding{Secret: &corev1.SecretVolumeSource{SecretName: "secret-1"}},
+		},
+		{
+			name: "populate params to pipelineRun workspaceBindings persistentVolumeClaim.claimName",
+			pr: parse.MustParseV1PipelineRun(t, `
+metadata:
+  annotations:
+    PipelineRunAnnotation: PipelineRunValue
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  params:
+    - name: myClaim
+      value: claim-1
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa
+  taskRunSpecs:
+  - pipelineTaskName: hello-world-1
+  workspaces:
+    - name: ws-1
+      persistentVolumeClaim:
+        claimName: $(params.myClaim)
+`),
+			expected: v1.WorkspaceBinding{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "claim-1"}},
+		},
+		{
+			name: "populate params to pipelineRun workspaceBindings subPath",
+			pr: parse.MustParseV1PipelineRun(t, `
+metadata:
+  annotations:
+    PipelineRunAnnotation: PipelineRunValue
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  params:
+    - name: mySubPath
+      value: sub-1
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa
+  taskRunSpecs:
+  - pipelineTaskName: hello-world-1
+  workspaces:
+    - name: ws-1
+      subPath: $(params.mySubPath)
+`),
+			expected: v1.WorkspaceBinding{SubPath: "sub-1"},
+		},
+		{
+			name: "populate params to pipelineRun workspaceBindings projected.sources.configMap.name",
+			pr: parse.MustParseV1PipelineRun(t, `
+metadata:
+  annotations:
+    PipelineRunAnnotation: PipelineRunValue
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  params:
+    - name: myConfigMapName
+      value: name-1
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa
+  taskRunSpecs:
+  - pipelineTaskName: hello-world-1
+  workspaces:
+    - name: ws-1
+      projected:
+        sources:
+          - configMap:
+              name: $(params.myConfigMapName)
+`),
+			expected: v1.WorkspaceBinding{Projected: &corev1.ProjectedVolumeSource{Sources: []corev1.VolumeProjection{{ConfigMap: &corev1.ConfigMapProjection{LocalObjectReference: corev1.LocalObjectReference{
+				"name-1",
+			}}}}}},
+		},
+		{
+			name: "populate params to pipelineRun workspaceBindings projected.sources.secret.name",
+			pr: parse.MustParseV1PipelineRun(t, `
+metadata:
+  annotations:
+    PipelineRunAnnotation: PipelineRunValue
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  params:
+    - name: mySecretName
+      value: name-1
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa
+  taskRunSpecs:
+  - pipelineTaskName: hello-world-1
+  workspaces:
+    - name: ws-1
+      projected:
+        sources:
+          - secret:
+              name: $(params.mySecretName)
+`),
+			expected: v1.WorkspaceBinding{Projected: &corev1.ProjectedVolumeSource{Sources: []corev1.VolumeProjection{{Secret: &corev1.SecretProjection{LocalObjectReference: corev1.LocalObjectReference{
+				"name-1",
+			}}}}}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			namespace := "foo"
+			prName := "test-pipeline-run"
+
+			ps := []*v1.Pipeline{cPipeline}
+
+			prs := []*v1.PipelineRun{tt.pr}
+
+			ts := []*v1.Task{cTask}
+
+			d := test.Data{
+				PipelineRuns: prs,
+				Pipelines:    ps,
+				Tasks:        ts,
+			}
+			prt := newPipelineRunTest(t, d)
+			defer prt.Cancel()
+
+			_, clients := prt.reconcileRun("foo", prName, []string{}, false)
+			trs, _ := clients.Pipeline.TektonV1().TaskRuns(namespace).List(context.TODO(), metav1.ListOptions{})
+
+			if d := cmp.Diff(tt.expected, trs.Items[0].Spec.Workspaces[0], cmpopts.IgnoreFields(v1.WorkspaceBinding{}, "Name")); d != "" {
+				t.Errorf("expected to see Workspace %v created. Diff %s", tt.expected, diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestReconcileWithTaskResults(t *testing.T) {
 	names.TestingSeed()
 	ps := []*v1.Pipeline{parse.MustParseV1Pipeline(t, `
@@ -5342,6 +5519,264 @@ spec:
 	actualTaskRun := actual.Items[0]
 	if d := cmp.Diff(expectedTaskRun, &actualTaskRun, ignoreResourceVersion, ignoreTypeMeta); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRunName, diff.PrintWantGot(d))
+	}
+}
+
+func TestReconcileAndPopulateTaskResultsToWorkspaceBindings(t *testing.T) {
+	names.TestingSeed()
+	ps := []*v1.Pipeline{parse.MustParseV1Pipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+  - name: a-task
+    taskRef:
+      name: a-task
+  - name: b-task
+    taskRef:
+      name: b-task
+    workspaces:
+      - name: s1
+        workspace: ws-1
+  workspaces:
+    - name: ws-1
+`)}
+	ts := []*v1.Task{
+		parse.MustParseV1Task(t, `
+metadata:
+  name: a-task
+  namespace: foo
+spec: {}
+`),
+		parse.MustParseV1Task(t, `
+metadata:
+  name: b-task
+  namespace: foo
+spec:
+  workspaces:
+  - name: s1
+`),
+	}
+	trs := []*v1.TaskRun{mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipeline-run-different-service-accs-a-task-xxyyy", "foo",
+			"test-pipeline-run-different-service-accs", "test-pipeline", "a-task", true),
+		`
+spec:
+  serviceAccountName: test-sa
+  taskRef:
+    name: hello-world
+  timeout: 1h0m0s
+status:
+  conditions:
+  - lastTransitionTime: null
+    status: "True"
+    type: Succeeded
+  results:
+  - name: aResult
+    value: aResultValue
+    type: string
+`)}
+
+	tests := []struct {
+		name       string
+		prs        []*v1.PipelineRun
+		expectedTr *v1.TaskRun
+		disableAA  bool
+	}{
+		{
+			name: "pcv success",
+			prs: []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-different-service-accs
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa-0
+  workspaces:
+    - name: ws-1
+      persistentVolumeClaim:
+        claimName: $(tasks.a-task.results.aResult)
+`)},
+			disableAA: true,
+			expectedTr: mustParseTaskRunWithObjectMeta(t,
+				taskRunObjectMeta("test-pipeline-run-different-service-accs-b-task", "foo",
+					"test-pipeline-run-different-service-accs", "test-pipeline", "b-task", false),
+				`spec:
+  serviceAccountName: test-sa-0
+  taskRef:
+    name: b-task
+    kind: Task
+  workspaces:
+    - name: s1
+      persistentVolumeClaim:
+        claimName: aResultValue
+`),
+		},
+		{
+			name: "subPath success",
+			prs: []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-different-service-accs
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa-0
+  workspaces:
+    - name: ws-1
+      subPath: $(tasks.a-task.results.aResult)
+`)},
+			expectedTr: mustParseTaskRunWithObjectMeta(t,
+				taskRunObjectMeta("test-pipeline-run-different-service-accs-b-task", "foo",
+					"test-pipeline-run-different-service-accs", "test-pipeline", "b-task", false),
+				`spec:
+  serviceAccountName: test-sa-0
+  taskRef:
+    name: b-task
+    kind: Task
+  workspaces:
+    - name: s1
+      subPath: aResultValue
+`),
+		},
+		{
+			name: "secret.secretName success",
+			prs: []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-different-service-accs
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa-0
+  workspaces:
+    - name: ws-1
+      secret: 
+        secretName: $(tasks.a-task.results.aResult)
+`)},
+			expectedTr: mustParseTaskRunWithObjectMeta(t,
+				taskRunObjectMeta("test-pipeline-run-different-service-accs-b-task", "foo",
+					"test-pipeline-run-different-service-accs", "test-pipeline", "b-task", false),
+				`spec:
+  serviceAccountName: test-sa-0
+  taskRef:
+    name: b-task
+    kind: Task
+  workspaces:
+    - name: s1
+      secret:
+        secretName: aResultValue
+`),
+		},
+		{
+			name: "projected.sources.configMap.name success",
+			prs: []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-different-service-accs
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa-0
+  workspaces:
+    - name: ws-1
+      projected: 
+        sources:
+         - configMap:
+             name: $(tasks.a-task.results.aResult)
+`)},
+			expectedTr: mustParseTaskRunWithObjectMeta(t,
+				taskRunObjectMeta("test-pipeline-run-different-service-accs-b-task", "foo",
+					"test-pipeline-run-different-service-accs", "test-pipeline", "b-task", false),
+				`spec:
+  serviceAccountName: test-sa-0
+  taskRef:
+    name: b-task
+    kind: Task
+  workspaces:
+    - name: s1
+      projected: 
+        sources:
+         - configMap:
+             name: aResultValue 
+`),
+		},
+		{
+			name: "projected.sources.secret.name success",
+			prs: []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-different-service-accs
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa-0
+  workspaces:
+    - name: ws-1
+      projected: 
+        sources:
+         - secret:
+             name: $(tasks.a-task.results.aResult)
+`)},
+			expectedTr: mustParseTaskRunWithObjectMeta(t,
+				taskRunObjectMeta("test-pipeline-run-different-service-accs-b-task", "foo",
+					"test-pipeline-run-different-service-accs", "test-pipeline", "b-task", false),
+				`spec:
+  serviceAccountName: test-sa-0
+  taskRef:
+    name: b-task
+    kind: Task
+  workspaces:
+    - name: s1
+      projected: 
+        sources:
+         - secret:
+             name: aResultValue 
+`),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := test.Data{
+				PipelineRuns: tt.prs,
+				Pipelines:    ps,
+				Tasks:        ts,
+				TaskRuns:     trs,
+			}
+			if tt.disableAA {
+				configMap := newFeatureFlagsConfigMap()
+				configMap.Data["disable-affinity-assistant"] = "true"
+				d.ConfigMaps = []*corev1.ConfigMap{configMap}
+			}
+
+			prt := newPipelineRunTest(t, d)
+			defer prt.Cancel()
+
+			_, clients := prt.reconcileRun("foo", "test-pipeline-run-different-service-accs", []string{}, false)
+			// Check that the expected TaskRun was created
+			actual, err := clients.Pipeline.TektonV1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
+				LabelSelector: "tekton.dev/pipelineTask=b-task,tekton.dev/pipelineRun=test-pipeline-run-different-service-accs",
+				Limit:         1,
+			})
+
+			if err != nil {
+				t.Fatalf("Failure to list TaskRun's %s", err)
+			}
+			if len(actual.Items) != 1 {
+				t.Fatalf("Expected 1 TaskRuns got %d", len(actual.Items))
+			}
+			actualTaskRun := actual.Items[0]
+			if d := cmp.Diff(tt.expectedTr, &actualTaskRun, ignoreResourceVersion, ignoreTypeMeta); d != "" {
+				t.Errorf("expected to see TaskRun %v. Diff %s", tt.expectedTr, diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 
