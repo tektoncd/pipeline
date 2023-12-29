@@ -2932,6 +2932,308 @@ spec:
 	}
 }
 
+func TestPopulateParamsToWorkspaceBindingsClaimName(t *testing.T) {
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-propagating-params-to-workspace-bindings
+  namespace: foo
+spec:
+  params:
+    - name: myClaim
+      value: pvc-1
+  taskSpec:
+    steps:
+      - args:
+        - ""
+        command:
+          - echo
+        image: foo
+        name: simple-step
+  workspaces:
+    - name: ws-1
+      persistentVolumeClaim:
+        claimName: $(params.myClaim)
+`)
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{taskRun},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	createServiceAccount(t, testAssets, "default", taskRun.Namespace)
+	c := testAssets.Controller
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+		t.Fatalf("Could not reconcile the taskrun: %v", err)
+	}
+
+	pod, _ := testAssets.Clients.Kube.CoreV1().Pods(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name+"-pod", metav1.GetOptions{})
+
+	want := "pvc-1"
+	got := ""
+	for _, v := range pod.Spec.Volumes {
+		if v.PersistentVolumeClaim != nil {
+			got = v.PersistentVolumeClaim.ClaimName
+			break
+		}
+	}
+	if c := cmp.Diff(want, got); c != "" {
+		t.Errorf("TestPopulateParamsToWorkspaceBindings errored with: %s", diff.PrintWantGot(c))
+	}
+}
+
+func TestPopulateParamsToWorkspaceBindingsSubPath(t *testing.T) {
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-propagating-params-to-workspace-bindings
+  namespace: foo
+spec:
+  params:
+    - name: myClaim
+      value: pvc-1
+    - name: mySubPath
+      value: sub-1
+  taskSpec:
+    steps:
+      - args:
+        - "$(workspaces.ws-1.volume)/foo"
+        command:
+          - echo
+        image: foo
+        name: simple-step
+  workspaces:
+    - name: ws-1
+      persistentVolumeClaim:
+        claimName: $(params.myClaim)
+      subPath: $(params.mySubPath)
+`)
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{taskRun},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	createServiceAccount(t, testAssets, "default", taskRun.Namespace)
+	c := testAssets.Controller
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+		t.Fatalf("Could not reconcile the taskrun: %v", err)
+	}
+
+	pod, _ := testAssets.Clients.Kube.CoreV1().Pods(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name+"-pod", metav1.GetOptions{})
+
+	want := "sub-1"
+	got := ""
+	for _, container := range pod.Spec.Containers {
+		for _, mount := range container.VolumeMounts {
+			if mount.SubPath != "" {
+				got = mount.SubPath
+				break
+			}
+		}
+	}
+
+	if c := cmp.Diff(want, got); c != "" {
+		t.Errorf("TestPopulateParamsToWorkspaceBindingsSubPath errored with: %s", diff.PrintWantGot(c))
+	}
+}
+
+func TestPopulateParamsToWorkspaceBindingsConfigMapName(t *testing.T) {
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-propagating-params-to-workspace-bindings
+  namespace: foo
+spec:
+  params:
+    - name: myConfig
+      value: config-1
+  taskSpec:
+    steps:
+      - args:
+        - ""
+        command:
+          - echo
+        image: foo
+        name: simple-step
+  workspaces:
+    - name: ws-1
+      configMap:
+        name: $(params.myConfig)
+`)
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{taskRun},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	createServiceAccount(t, testAssets, "default", taskRun.Namespace)
+	c := testAssets.Controller
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+		t.Fatalf("Could not reconcile the taskrun: %v", err)
+	}
+
+	pod, _ := testAssets.Clients.Kube.CoreV1().Pods(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name+"-pod", metav1.GetOptions{})
+
+	want := "config-1"
+	got := ""
+
+	for _, v := range pod.Spec.Volumes {
+		if v.ConfigMap != nil {
+			got = v.ConfigMap.Name
+			break
+		}
+	}
+
+	if c := cmp.Diff(want, got); c != "" {
+		t.Errorf("TestPopulateParamsToWorkspaceBindingsConfigMapName errored with: %s", diff.PrintWantGot(c))
+	}
+}
+
+func TestPopulateParamsToWorkspaceBindingsSecretName(t *testing.T) {
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-propagating-params-to-workspace-bindings
+  namespace: foo
+spec:
+  params:
+    - name: mySecret
+      value: secret-1
+  taskSpec:
+    steps:
+      - args:
+        - ""
+        command:
+          - echo
+        image: foo
+        name: simple-step
+  workspaces:
+    - name: ws-1
+      secret:
+        secretName: $(params.mySecret)
+`)
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{taskRun},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	createServiceAccount(t, testAssets, "default", taskRun.Namespace)
+	c := testAssets.Controller
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+		t.Fatalf("Could not reconcile the taskrun: %v", err)
+	}
+
+	pod, _ := testAssets.Clients.Kube.CoreV1().Pods(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name+"-pod", metav1.GetOptions{})
+
+	want := "secret-1"
+	got := ""
+
+	for _, v := range pod.Spec.Volumes {
+		if v.Secret != nil {
+			got = v.Secret.SecretName
+			break
+		}
+	}
+
+	if c := cmp.Diff(want, got); c != "" {
+		t.Errorf("TestPopulateParamsToWorkspaceBindingsSecretName errored with: %s", diff.PrintWantGot(c))
+	}
+}
+func TestPopulateParamsToWorkspaceBindingsProjectedSources(t *testing.T) {
+	tests := []struct {
+		description string
+		taskRun     *v1.TaskRun
+		want        []corev1.VolumeProjection
+	}{
+		{
+			description: "taskrun propagating params to workspace bindings projected secret",
+			taskRun: parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-propagating-params-to-workspace-bindings-projected-secret
+  namespace: foo
+spec:
+  params:
+    - name: mySecret
+      value: secret-1
+  taskSpec:
+    steps:
+      - args:
+        - ""
+        command:
+          - echo
+        image: foo
+        name: simple-step
+  workspaces:
+    - name: ws-1
+      projected:
+        sources:
+          - secret:
+              name: $(params.mySecret)
+`),
+			want: []corev1.VolumeProjection{
+				{Secret: &corev1.SecretProjection{LocalObjectReference: corev1.LocalObjectReference{Name: "secret-1"}}},
+			},
+		},
+		{
+			description: "taskrun propagating params to workspace bindings projected configMap",
+			taskRun: parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-propagating-params-to-workspace-bindings-projected-configMap
+  namespace: foo
+spec:
+  params:
+    - name: myConfig
+      value: config-1
+  taskSpec:
+    steps:
+      - args:
+        - ""
+        command:
+          - echo
+        image: foo
+        name: simple-step
+  workspaces:
+    - name: ws-1
+      projected:
+        sources:
+          - configMap:
+              name: $(params.myConfig)
+`),
+			want: []corev1.VolumeProjection{
+				{ConfigMap: &corev1.ConfigMapProjection{LocalObjectReference: corev1.LocalObjectReference{
+					Name: "config-1",
+				}}},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.description, func(t *testing.T) {
+			d := test.Data{
+				TaskRuns: []*v1.TaskRun{tt.taskRun},
+			}
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			createServiceAccount(t, testAssets, "default", tt.taskRun.Namespace)
+			c := testAssets.Controller
+			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tt.taskRun)); err == nil {
+				t.Fatalf("Could not reconcile the taskrun: %v", err)
+			}
+
+			list, _ := testAssets.Clients.Kube.CoreV1().Pods(tt.taskRun.Namespace).List(testAssets.Ctx, metav1.ListOptions{})
+			if len(list.Items) != 1 {
+				t.Fatalf("the result of list query shoud only contain 1 item.")
+			}
+
+			var got []corev1.VolumeProjection
+
+			for _, v := range list.Items[0].Spec.Volumes {
+				if v.Projected != nil {
+					got = v.Projected.Sources
+					break
+				}
+			}
+
+			if c := cmp.Diff(tt.want, got); c != "" {
+				t.Errorf("TestPopulateParamsToWorkspaceBindingsProjectedSources errored with: %s", diff.PrintWantGot(c))
+			}
+		})
+	}
+}
+
 func TestStepActionRef(t *testing.T) {
 	taskRun := parse.MustParseV1TaskRun(t, `
 metadata:
