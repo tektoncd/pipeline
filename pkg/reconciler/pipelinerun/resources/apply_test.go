@@ -19,13 +19,13 @@ package resources_test
 import (
 	"context"
 	"fmt"
+	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	resources "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	taskresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -4642,6 +4642,526 @@ func TestPropagateResults(t *testing.T) {
 			resources.PropagateResults(tt.resolvedTask, tt.runStates)
 			if d := cmp.Diff(tt.expectedResolvedTask, tt.resolvedTask); d != "" {
 				t.Fatalf("PropagateResults() %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+func TestApplyParametersToWorkspaceBindings(t *testing.T) {
+	testCases := []struct {
+		name       string
+		ps         *v1.PipelineSpec
+		pr         *v1.PipelineRun
+		expectedPr *v1.PipelineRun
+	}{
+		{
+			name: "pvc",
+			ps: &v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "pvc-name", Type: v1.ParamTypeString},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: []v1.Param{
+						{Name: "pvc-name", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "claim-value"}},
+					},
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "$(params.pvc-name)",
+							},
+						},
+					},
+				},
+			},
+			expectedPr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: []v1.Param{
+						{Name: "pvc-name", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "claim-value"}},
+					},
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "claim-value",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "subpath",
+			ps: &v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "subpath-value", Type: v1.ParamTypeString},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: []v1.Param{
+						{Name: "subpath-value", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "sub/path"}},
+					},
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+							SubPath:  "$(params.subpath-value)",
+						},
+					},
+				},
+			},
+			expectedPr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: []v1.Param{
+						{Name: "subpath-value", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "sub/path"}},
+					},
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+							SubPath:  "sub/path",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "configmap",
+			ps: &v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "configmap-name", Type: v1.ParamTypeString},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: []v1.Param{
+						{Name: "configmap-name", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "config-map-value"}},
+					},
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "$(params.configmap-name)",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedPr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: []v1.Param{
+						{Name: "configmap-name", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "config-map-value"}},
+					},
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "config-map-value",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "secret",
+			ps: &v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "secret-name", Type: v1.ParamTypeString},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: []v1.Param{
+						{Name: "secret-name", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "secret-value"}},
+					},
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName: "$(params.secret-name)",
+							},
+						},
+					},
+				},
+			},
+			expectedPr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: []v1.Param{
+						{Name: "secret-name", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "secret-value"}},
+					},
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName: "secret-value",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "projected-secret",
+			ps: &v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "projected-secret-name", Type: v1.ParamTypeString},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: []v1.Param{
+						{Name: "projected-secret-name", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "projected-secret-value"}},
+					},
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							Projected: &corev1.ProjectedVolumeSource{
+								Sources: []corev1.VolumeProjection{
+									{
+										Secret: &corev1.SecretProjection{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "$(params.projected-secret-name)",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedPr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: []v1.Param{
+						{Name: "projected-secret-name", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "projected-secret-value"}},
+					},
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							Projected: &corev1.ProjectedVolumeSource{
+								Sources: []corev1.VolumeProjection{
+									{
+										Secret: &corev1.SecretProjection{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "projected-secret-value",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "projected-configmap",
+			ps: &v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "projected-configmap-name", Type: v1.ParamTypeString},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: []v1.Param{
+						{Name: "projected-configmap-name", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "projected-config-value"}},
+					},
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							Projected: &corev1.ProjectedVolumeSource{
+								Sources: []corev1.VolumeProjection{
+									{
+										ConfigMap: &corev1.ConfigMapProjection{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "$(params.projected-configmap-name)",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedPr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: []v1.Param{
+						{Name: "projected-configmap-name", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "projected-config-value"}},
+					},
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							Projected: &corev1.ProjectedVolumeSource{
+								Sources: []corev1.VolumeProjection{
+									{
+										ConfigMap: &corev1.ConfigMapProjection{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "projected-config-value",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			resources.ApplyParametersToWorkspaceBindings(context.TODO(), tt.ps, tt.pr)
+			if d := cmp.Diff(tt.expectedPr, tt.pr); d != "" {
+				t.Fatalf("TestApplyParametersToWorkspaceBindings() %s, got: %v", tt.name, diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+func TestApplyResultsToWorkspaceBindings(t *testing.T) {
+	testCases := []struct {
+		name       string
+		trResults  map[string][]v1.TaskRunResult
+		pr         *v1.PipelineRun
+		expectedPr *v1.PipelineRun
+	}{
+		{
+			name: "pvc",
+			trResults: map[string][]v1.TaskRunResult{
+				"task1": {
+					{
+						Name:  "pvc-name",
+						Type:  v1.ResultsTypeString,
+						Value: v1.ResultValue{StringVal: "claim-value"},
+					},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "$(tasks.task1.results.pvc-name)",
+							},
+						},
+					},
+				},
+			},
+			expectedPr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "claim-value",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "subPath",
+			trResults: map[string][]v1.TaskRunResult{
+				"task2": {
+					{
+						Name:  "subpath-value",
+						Type:  v1.ResultsTypeString,
+						Value: v1.ResultValue{StringVal: "sub/path"},
+					},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+							SubPath:  "$(tasks.task2.results.subpath-value)",
+						},
+					},
+				},
+			},
+			expectedPr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+							SubPath:  "sub/path",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "configmap name",
+			trResults: map[string][]v1.TaskRunResult{
+				"task3": {
+					{
+						Name:  "configmap-name",
+						Type:  v1.ResultsTypeString,
+						Value: v1.ResultValue{StringVal: "config-map-value"},
+					},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "$(tasks.task3.results.configmap-name)"},
+							},
+						},
+					},
+				},
+			},
+			expectedPr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "config-map-value"},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "secret.secretName",
+			trResults: map[string][]v1.TaskRunResult{
+				"task4": {
+					{
+						Name:  "secret-name",
+						Type:  v1.ResultsTypeString,
+						Value: v1.ResultValue{StringVal: "secret-value"},
+					},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName: "$(tasks.task4.results.secret-name)",
+							},
+						},
+					},
+				},
+			},
+			expectedPr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName: "secret-value",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "projected-configmap",
+			trResults: map[string][]v1.TaskRunResult{
+				"task5": {
+					{
+						Name:  "projected-configmap-name",
+						Type:  v1.ResultsTypeString,
+						Value: v1.ResultValue{StringVal: "projected-config-map-value"},
+					},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							Projected: &corev1.ProjectedVolumeSource{
+								Sources: []corev1.VolumeProjection{
+									{
+										ConfigMap: &corev1.ConfigMapProjection{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "$(tasks.task5.results.projected-configmap-name)",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedPr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							Projected: &corev1.ProjectedVolumeSource{
+								Sources: []corev1.VolumeProjection{
+									{
+										ConfigMap: &corev1.ConfigMapProjection{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "projected-config-map-value",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "projected-secret",
+			trResults: map[string][]v1.TaskRunResult{
+				"task6": {
+					{
+						Name:  "projected-secret-name",
+						Type:  v1.ResultsTypeString,
+						Value: v1.ResultValue{StringVal: "projected-secret-value"},
+					},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							Projected: &corev1.ProjectedVolumeSource{
+								Sources: []corev1.VolumeProjection{
+									{
+										Secret: &corev1.SecretProjection{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "$(tasks.task6.results.projected-secret-name)",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedPr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							Projected: &corev1.ProjectedVolumeSource{
+								Sources: []corev1.VolumeProjection{
+									{
+										Secret: &corev1.SecretProjection{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "projected-secret-value",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			resources.ApplyResultsToWorkspaceBindings(tc.trResults, tc.pr)
+			if d := cmp.Diff(tc.pr, tc.expectedPr); d != "" {
+				t.Fatalf("TestApplyResultsToWorkspaceBindings() %s, %v", tc.name, diff.PrintWantGot(d))
 			}
 		})
 	}
