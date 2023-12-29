@@ -246,6 +246,9 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 				pipelineTask.TaskRef.Params = pipelineTask.TaskRef.Params.ReplaceVariables(stringReplacements, arrayReplacements, objectReplacements)
 			}
 			pipelineTask.DisplayName = substitution.ApplyReplacements(pipelineTask.DisplayName, stringReplacements)
+			for _, workspace := range pipelineTask.Workspaces {
+				workspace.SubPath = substitution.ApplyReplacements(workspace.SubPath, stringReplacements)
+			}
 			resolvedPipelineRunTask.PipelineTask = pipelineTask
 		}
 	}
@@ -372,6 +375,50 @@ func propagateParams(t v1.PipelineTask, stringReplacements map[string]string, ar
 		t.TaskSpec.TaskSpec = *resources.ApplyReplacements(&t.TaskSpec.TaskSpec, stringReplacements, arrayReplacements, objectReplacements)
 	}
 	return t
+}
+
+// ApplyResultsToWorkspaceBindings applies results from TaskRuns to  WorkspaceBindings in a PipelineRun. It replaces placeholders in
+// various binding types with values from TaskRun results.
+func ApplyResultsToWorkspaceBindings(trResults map[string][]v1.TaskRunResult, pr *v1.PipelineRun) {
+	stringReplacements := map[string]string{}
+	arrayReplacements := map[string][]string{}
+	for taskName, taskResults := range trResults {
+		for _, res := range taskResults {
+			switch res.Type {
+			case v1.ResultsTypeString:
+				stringReplacements[fmt.Sprintf("tasks.%s.results.%s", taskName, res.Name)] = res.Value.StringVal
+			case v1.ResultsTypeArray:
+				arrayReplacements[fmt.Sprintf("tasks.%s.results.%s", taskName, res.Name)] = res.Value.ArrayVal
+			case v1.ResultsTypeObject:
+				for k, v := range res.Value.ObjectVal {
+					stringReplacements[fmt.Sprintf("tasks.%s.results.%s.%s", taskName, res.Name, k)] = v
+				}
+			}
+		}
+	}
+
+	for i, binding := range pr.Spec.Workspaces {
+		if pr.Spec.Workspaces[i].PersistentVolumeClaim != nil {
+			pr.Spec.Workspaces[i].PersistentVolumeClaim.ClaimName = substitution.ApplyReplacements(binding.PersistentVolumeClaim.ClaimName, stringReplacements)
+		}
+		pr.Spec.Workspaces[i].SubPath = substitution.ApplyReplacements(binding.SubPath, stringReplacements)
+		if pr.Spec.Workspaces[i].ConfigMap != nil {
+			pr.Spec.Workspaces[i].ConfigMap.Name = substitution.ApplyReplacements(binding.ConfigMap.Name, stringReplacements)
+		}
+		if pr.Spec.Workspaces[i].Secret != nil {
+			pr.Spec.Workspaces[i].Secret.SecretName = substitution.ApplyReplacements(binding.Secret.SecretName, stringReplacements)
+		}
+		if pr.Spec.Workspaces[i].Projected != nil {
+			for j, source := range binding.Projected.Sources {
+				if pr.Spec.Workspaces[i].Projected.Sources[j].ConfigMap != nil {
+					pr.Spec.Workspaces[i].Projected.Sources[j].ConfigMap.Name = substitution.ApplyReplacements(source.ConfigMap.Name, stringReplacements)
+				}
+				if pr.Spec.Workspaces[i].Projected.Sources[j].Secret != nil {
+					pr.Spec.Workspaces[i].Projected.Sources[j].Secret.Name = substitution.ApplyReplacements(source.Secret.Name, stringReplacements)
+				}
+			}
+		}
+	}
 }
 
 // PropagateResults propagate the result of the completed task to the unfinished task that is not explicitly specify in the params
@@ -547,4 +594,37 @@ func runResultValue(taskName string, resultName string, runResults map[string][]
 		}
 	}
 	return nil
+}
+
+// ApplyParametersToWorkspaceBindings applies parameters from PipelineSpec and  PipelineRun to the WorkspaceBindings in a PipelineRun. It replaces
+// placeholders in various binding types with values from provided parameters.
+func ApplyParametersToWorkspaceBindings(ctx context.Context, ps *v1.PipelineSpec, pr *v1.PipelineRun) {
+	psCopy := ps.DeepCopy()
+	var defaults []v1.ParamSpec
+	if len(psCopy.Params) > 0 {
+		defaults = append(defaults, psCopy.Params...)
+	}
+	parameters, _, _ := paramsFromPipelineRun(ctx, pr)
+	for i, binding := range pr.Spec.Workspaces {
+		if pr.Spec.Workspaces[i].PersistentVolumeClaim != nil {
+			pr.Spec.Workspaces[i].PersistentVolumeClaim.ClaimName = substitution.ApplyReplacements(binding.PersistentVolumeClaim.ClaimName, parameters)
+		}
+		pr.Spec.Workspaces[i].SubPath = substitution.ApplyReplacements(binding.SubPath, parameters)
+		if pr.Spec.Workspaces[i].ConfigMap != nil {
+			pr.Spec.Workspaces[i].ConfigMap.Name = substitution.ApplyReplacements(binding.ConfigMap.Name, parameters)
+		}
+		if pr.Spec.Workspaces[i].Secret != nil {
+			pr.Spec.Workspaces[i].Secret.SecretName = substitution.ApplyReplacements(binding.Secret.SecretName, parameters)
+		}
+		if pr.Spec.Workspaces[i].Projected != nil {
+			for j, source := range binding.Projected.Sources {
+				if pr.Spec.Workspaces[i].Projected.Sources[j].ConfigMap != nil {
+					pr.Spec.Workspaces[i].Projected.Sources[j].ConfigMap.Name = substitution.ApplyReplacements(source.ConfigMap.Name, parameters)
+				}
+				if pr.Spec.Workspaces[i].Projected.Sources[j].Secret != nil {
+					pr.Spec.Workspaces[i].Projected.Sources[j].Secret.Name = substitution.ApplyReplacements(source.Secret.Name, parameters)
+				}
+			}
+		}
+	}
 }
