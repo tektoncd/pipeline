@@ -531,6 +531,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		return controller.NewPermanentError(err)
 	}
 
+	resources.ApplyParametersToWorkspaceBindings(ctx, pipelineSpec, pr)
 	// Make a deep copy of the Pipeline and its Tasks before value substution.
 	// This is used to find referenced pipeline-level params at each PipelineTask when validate param enum subset requirement
 	originalPipeline := pipelineSpec.DeepCopy()
@@ -843,6 +844,8 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 	if pr.Status.FinallyStartTime == nil && pipelineRunFacts.IsFinalTaskStarted() {
 		c.setFinallyStartedTimeIfNeeded(pr, pipelineRunFacts)
 	}
+
+	resources.ApplyResultsToWorkspaceBindings(pipelineRunFacts.State.GetTaskRunsResults(), pr)
 
 	for _, rpt := range nextRpts {
 		if rpt.IsFinalTask(pipelineRunFacts) {
