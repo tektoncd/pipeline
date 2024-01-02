@@ -4907,7 +4907,7 @@ func TestApplyParametersToWorkspaceBindings(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			resources.ApplyParametersToWorkspaceBindings(context.TODO(), tt.ps, tt.pr)
+			resources.ApplyParametersToWorkspaceBindings(context.TODO(), tt.pr)
 			if d := cmp.Diff(tt.expectedPr, tt.pr); d != "" {
 				t.Fatalf("TestApplyParametersToWorkspaceBindings() %s, got: %v", tt.name, diff.PrintWantGot(d))
 			}

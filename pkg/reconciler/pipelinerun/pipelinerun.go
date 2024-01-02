@@ -534,7 +534,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		return controller.NewPermanentError(err)
 	}
 
-	resources.ApplyParametersToWorkspaceBindings(ctx, pipelineSpec, pr)
+	resources.ApplyParametersToWorkspaceBindings(ctx, pr)
 	// Make a deep copy of the Pipeline and its Tasks before value substution.
 	// This is used to find referenced pipeline-level params at each PipelineTask when validate param enum subset requirement
 	originalPipeline := pipelineSpec.DeepCopy()
