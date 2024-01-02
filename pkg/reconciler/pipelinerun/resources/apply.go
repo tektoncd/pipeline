@@ -381,14 +381,11 @@ func propagateParams(t v1.PipelineTask, stringReplacements map[string]string, ar
 // various binding types with values from TaskRun results.
 func ApplyResultsToWorkspaceBindings(trResults map[string][]v1.TaskRunResult, pr *v1.PipelineRun) {
 	stringReplacements := map[string]string{}
-	arrayReplacements := map[string][]string{}
 	for taskName, taskResults := range trResults {
 		for _, res := range taskResults {
 			switch res.Type {
 			case v1.ResultsTypeString:
 				stringReplacements[fmt.Sprintf("tasks.%s.results.%s", taskName, res.Name)] = res.Value.StringVal
-			case v1.ResultsTypeArray:
-				arrayReplacements[fmt.Sprintf("tasks.%s.results.%s", taskName, res.Name)] = res.Value.ArrayVal
 			case v1.ResultsTypeObject:
 				for k, v := range res.Value.ObjectVal {
 					stringReplacements[fmt.Sprintf("tasks.%s.results.%s.%s", taskName, res.Name, k)] = v
@@ -598,8 +595,7 @@ func runResultValue(taskName string, resultName string, runResults map[string][]
 
 // ApplyParametersToWorkspaceBindings applies parameters from PipelineSpec and  PipelineRun to the WorkspaceBindings in a PipelineRun. It replaces
 // placeholders in various binding types with values from provided parameters.
-func ApplyParametersToWorkspaceBindings(ctx context.Context, ps *v1.PipelineSpec, pr *v1.PipelineRun) {
-	psCopy := ps.DeepCopy()
+func ApplyParametersToWorkspaceBindings(ctx context.Context, pr *v1.PipelineRun) {
 	parameters, _, _ := paramsFromPipelineRun(ctx, pr)
 	for i, binding := range pr.Spec.Workspaces {
 		if pr.Spec.Workspaces[i].PersistentVolumeClaim != nil {
