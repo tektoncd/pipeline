@@ -386,6 +386,8 @@ func ApplyResultsToWorkspaceBindings(trResults map[string][]v1.TaskRunResult, pr
 			switch res.Type {
 			case v1.ResultsTypeString:
 				stringReplacements[fmt.Sprintf("tasks.%s.results.%s", taskName, res.Name)] = res.Value.StringVal
+			case v1.ResultsTypeArray:
+				continue
 			case v1.ResultsTypeObject:
 				for k, v := range res.Value.ObjectVal {
 					stringReplacements[fmt.Sprintf("tasks.%s.results.%s.%s", taskName, res.Name, k)] = v
