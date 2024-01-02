@@ -226,10 +226,6 @@ func ApplyWorkspaces(ctx context.Context, spec *v1.TaskSpec, declarations []v1.W
 // ApplyParametersToWorkspaceBindings applies parameters to the WorkspaceBindings of a TaskRun. It takes a TaskSpec and a TaskRun as input and returns the modified TaskRun.
 func ApplyParametersToWorkspaceBindings(ts *v1.TaskSpec, tr *v1.TaskRun) *v1.TaskRun {
 	tsCopy := ts.DeepCopy()
-	var defaults []v1.ParamSpec
-	if len(tsCopy.Params) > 0 {
-		defaults = append(defaults, tsCopy.Params...)
-	}
 	parameters, _, _ := getTaskParameters(tsCopy, tr, tsCopy.Params...)
 	for i, binding := range tr.Spec.Workspaces {
 		if tr.Spec.Workspaces[i].PersistentVolumeClaim != nil {
