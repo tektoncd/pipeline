@@ -600,10 +600,6 @@ func runResultValue(taskName string, resultName string, runResults map[string][]
 // placeholders in various binding types with values from provided parameters.
 func ApplyParametersToWorkspaceBindings(ctx context.Context, ps *v1.PipelineSpec, pr *v1.PipelineRun) {
 	psCopy := ps.DeepCopy()
-	var defaults []v1.ParamSpec
-	if len(psCopy.Params) > 0 {
-		defaults = append(defaults, psCopy.Params...)
-	}
 	parameters, _, _ := paramsFromPipelineRun(ctx, pr)
 	for i, binding := range pr.Spec.Workspaces {
 		if pr.Spec.Workspaces[i].PersistentVolumeClaim != nil {

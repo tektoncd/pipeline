@@ -5353,7 +5353,7 @@ spec:
               name: $(params.myConfigMapName)
 `),
 			expected: v1.WorkspaceBinding{Projected: &corev1.ProjectedVolumeSource{Sources: []corev1.VolumeProjection{{ConfigMap: &corev1.ConfigMapProjection{LocalObjectReference: corev1.LocalObjectReference{
-				"name-1",
+				Name: "name-1",
 			}}}}}},
 		},
 		{
@@ -5382,7 +5382,7 @@ spec:
               name: $(params.mySecretName)
 `),
 			expected: v1.WorkspaceBinding{Projected: &corev1.ProjectedVolumeSource{Sources: []corev1.VolumeProjection{{Secret: &corev1.SecretProjection{LocalObjectReference: corev1.LocalObjectReference{
-				"name-1",
+				Name: "name-1",
 			}}}}}},
 		},
 	}

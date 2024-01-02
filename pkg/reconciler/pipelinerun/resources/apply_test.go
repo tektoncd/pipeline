@@ -19,13 +19,13 @@ package resources_test
 import (
 	"context"
 	"fmt"
-	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	taskresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
