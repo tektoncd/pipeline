@@ -528,10 +528,10 @@ func (facts *PipelineRunFacts) GetPipelineFinalTaskStatus() map[string]string {
 			switch {
 			// execution status is Succeeded when a task has succeeded condition with status set to true
 			case t.isSuccessful():
-				s = v1.TaskRunReasonSuccessful.String()
+				s = v1beta1.TaskRunReasonSuccessful.String()
 			// execution status is Failed when a task has succeeded condition with status set to false
 			case t.haveAnyRunsFailed():
-				s = v1.TaskRunReasonFailed.String()
+				s = v1beta1.TaskRunReasonFailed.String()
 			default:
 				// None includes skipped as well
 				s = PipelineTaskStateNone

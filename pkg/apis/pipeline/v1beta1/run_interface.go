@@ -38,6 +38,7 @@ type RunObject interface {
 	IsCancelled() bool
 	HasStarted() bool
 	IsDone() bool
+	IsFailure() bool
 
 	GetRetryCount() int
 }

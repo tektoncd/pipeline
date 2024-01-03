@@ -44,7 +44,7 @@ var now = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
 var testClock = clock.NewFakePassiveClock(now)
 
 func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
-	var taskCancelledByStatusState = PipelineRunState{{
+	taskCancelledByStatusState := PipelineRunState{{
 		PipelineTask: &pts[4], // 2 retries needed
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      withCancelled(makeRetried(trs[0])),
@@ -53,7 +53,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		},
 	}}
 
-	var taskCancelledBySpecState = PipelineRunState{{
+	taskCancelledBySpecState := PipelineRunState{{
 		PipelineTask: &pts[4],
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      withCancelledBySpec(makeRetried(trs[0])),
@@ -62,7 +62,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		},
 	}}
 
-	var taskRunningState = PipelineRunState{{
+	taskRunningState := PipelineRunState{{
 		PipelineTask: &pts[4],
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      makeStarted(trs[0]),
@@ -71,7 +71,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		},
 	}}
 
-	var taskSucceededState = PipelineRunState{{
+	taskSucceededState := PipelineRunState{{
 		PipelineTask: &pts[4],
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      makeSucceeded(trs[0]),
@@ -80,7 +80,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		},
 	}}
 
-	var taskRetriedState = PipelineRunState{{
+	taskRetriedState := PipelineRunState{{
 		PipelineTask: &pts[3], // 1 retry needed
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      withCancelled(makeRetried(trs[0])),
@@ -89,7 +89,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		},
 	}}
 
-	var taskExpectedState = PipelineRunState{{
+	taskExpectedState := PipelineRunState{{
 		PipelineTask: &pts[4], // 2 retries needed
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      withRetries(makeToBeRetried(trs[0])),
@@ -98,7 +98,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		},
 	}}
 
-	var noTaskRunState = PipelineRunState{{
+	noTaskRunState := PipelineRunState{{
 		PipelineTask: &pts[4], // 2 retries needed
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      nil,
@@ -107,28 +107,28 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		},
 	}}
 
-	var customRunRunningState = PipelineRunState{{
+	customRunRunningState := PipelineRunState{{
 		PipelineTask:  &pts[12],
 		CustomTask:    true,
 		RunObjectName: "pipelinerun-mytask13",
 		RunObject:     makeCustomRunStarted(customRuns[0]),
 	}}
 
-	var customRunSucceededState = PipelineRunState{{
+	customRunSucceededState := PipelineRunState{{
 		PipelineTask:  &pts[12],
 		CustomTask:    true,
 		RunObjectName: "pipelinerun-mytask13",
 		RunObject:     makeCustomRunSucceeded(customRuns[0]),
 	}}
 
-	var customRunFailedState = PipelineRunState{{
+	customRunFailedState := PipelineRunState{{
 		PipelineTask:  &pts[12],
 		CustomTask:    true,
 		RunObjectName: "pipelinerun-mytask13",
 		RunObject:     makeCustomRunFailed(customRuns[0]),
 	}}
 
-	var taskCancelledFailedWithRetries = PipelineRunState{{
+	taskCancelledFailedWithRetries := PipelineRunState{{
 		PipelineTask: &pts[4], // 2 retries needed
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      withCancelled(makeFailed(trs[0])),
@@ -251,6 +251,7 @@ func TestIsBeforeFirstTaskRun_WithStartedRun(t *testing.T) {
 		t.Fatalf("Expected state to be after first taskrun (Run test)")
 	}
 }
+
 func TestIsBeforeFirstTaskRun_WithSucceededTask(t *testing.T) {
 	if finalScheduledState.IsBeforeFirstTaskRun() {
 		t.Fatalf("Expected state to be after first taskrun")
@@ -555,7 +556,7 @@ func TestGetNextTasks(t *testing.T) {
 }
 
 func TestGetNextTaskWithRetries(t *testing.T) {
-	var taskCancelledByStatusState = PipelineRunState{{
+	taskCancelledByStatusState := PipelineRunState{{
 		PipelineTask: &pts[4], // 2 retries needed
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      withCancelled(makeRetried(trs[0])),
@@ -564,7 +565,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		},
 	}}
 
-	var taskCancelledBySpecState = PipelineRunState{{
+	taskCancelledBySpecState := PipelineRunState{{
 		PipelineTask: &pts[4],
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      withCancelledBySpec(makeRetried(trs[0])),
@@ -573,7 +574,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		},
 	}}
 
-	var taskRunningState = PipelineRunState{{
+	taskRunningState := PipelineRunState{{
 		PipelineTask: &pts[4],
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      makeStarted(trs[0]),
@@ -582,7 +583,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		},
 	}}
 
-	var taskSucceededState = PipelineRunState{{
+	taskSucceededState := PipelineRunState{{
 		PipelineTask: &pts[4],
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      makeSucceeded(trs[0]),
@@ -591,7 +592,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		},
 	}}
 
-	var taskRetriedState = PipelineRunState{{
+	taskRetriedState := PipelineRunState{{
 		PipelineTask: &pts[3], // 1 retry needed
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      withCancelled(makeRetried(trs[0])),
@@ -600,7 +601,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		},
 	}}
 
-	var customRunCancelledByStatusState = PipelineRunState{{
+	customRunCancelledByStatusState := PipelineRunState{{
 		PipelineTask:  &pts[4], // 2 retries needed
 		RunObjectName: "pipelinerun-mytask1",
 		RunObject:     withCustomRunCancelled(withCustomRunRetries(newCustomRun(customRuns[0]))),
@@ -610,7 +611,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		},
 	}}
 
-	var customRunCancelledBySpecState = PipelineRunState{{
+	customRunCancelledBySpecState := PipelineRunState{{
 		PipelineTask:  &pts[4],
 		RunObjectName: "pipelinerun-mytask1",
 		RunObject:     withCustomRunCancelledBySpec(withCustomRunRetries(newCustomRun(customRuns[0]))),
@@ -620,7 +621,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		},
 	}}
 
-	var customRunRunningState = PipelineRunState{{
+	customRunRunningState := PipelineRunState{{
 		PipelineTask:  &pts[4],
 		RunObjectName: "pipelinerun-mytask1",
 		RunObject:     makeCustomRunStarted(customRuns[0]),
@@ -630,7 +631,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		},
 	}}
 
-	var customRunSucceededState = PipelineRunState{{
+	customRunSucceededState := PipelineRunState{{
 		PipelineTask:  &pts[4],
 		RunObjectName: "pipelinerun-mytask1",
 		RunObject:     makeCustomRunSucceeded(customRuns[0]),
@@ -640,7 +641,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		},
 	}}
 
-	var taskCancelledByStatusStateMatrix = PipelineRunState{{
+	taskCancelledByStatusStateMatrix := PipelineRunState{{
 		PipelineTask: &pts[20], // 2 retries needed
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeRetried(trs[0]))},
@@ -649,7 +650,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		},
 	}}
 
-	var taskCancelledBySpecStateMatrix = PipelineRunState{{
+	taskCancelledBySpecStateMatrix := PipelineRunState{{
 		PipelineTask: &pts[20], // 2 retries needed
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1beta1.TaskRun{withCancelledBySpec(makeRetried(trs[0]))},
@@ -658,7 +659,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		},
 	}}
 
-	var taskRunningStateMatrix = PipelineRunState{{
+	taskRunningStateMatrix := PipelineRunState{{
 		PipelineTask: &pts[20], // 2 retries needed
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1beta1.TaskRun{makeStarted(trs[0])},
@@ -667,7 +668,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		},
 	}}
 
-	var taskSucceededStateMatrix = PipelineRunState{{
+	taskSucceededStateMatrix := PipelineRunState{{
 		PipelineTask: &pts[20], // 2 retries needed
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1beta1.TaskRun{makeSucceeded(trs[0])},
@@ -676,7 +677,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		},
 	}}
 
-	var taskRetriedStateMatrix = PipelineRunState{{
+	taskRetriedStateMatrix := PipelineRunState{{
 		PipelineTask: &pts[17], // 1 retry needed
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeRetried(trs[0]))},
@@ -685,7 +686,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		},
 	}}
 
-	var runCancelledByStatusStateMatrix = PipelineRunState{{
+	runCancelledByStatusStateMatrix := PipelineRunState{{
 		PipelineTask:   &pts[20], // 2 retries needed
 		RunObjectNames: []string{"pipelinerun-mytask1"},
 		RunObjects:     []v1beta1.RunObject{withCustomRunCancelled(withCustomRunRetries(newCustomRun(customRuns[0])))},
@@ -695,7 +696,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		},
 	}}
 
-	var runCancelledBySpecStateMatrix = PipelineRunState{{
+	runCancelledBySpecStateMatrix := PipelineRunState{{
 		PipelineTask:   &pts[20], // 2 retries needed
 		RunObjectNames: []string{"pipelinerun-mytask1"},
 		RunObjects:     []v1beta1.RunObject{withCustomRunCancelledBySpec(withCustomRunRetries(newCustomRun(customRuns[0])))},
@@ -705,7 +706,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		},
 	}}
 
-	var runRunningStateMatrix = PipelineRunState{{
+	runRunningStateMatrix := PipelineRunState{{
 		PipelineTask:   &pts[20], // 2 retries needed
 		RunObjectNames: []string{"pipelinerun-mytask1"},
 		RunObjects:     []v1beta1.RunObject{makeCustomRunStarted(customRuns[0])},
@@ -715,7 +716,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		},
 	}}
 
-	var customRunSucceededStateMatrix = PipelineRunState{{
+	customRunSucceededStateMatrix := PipelineRunState{{
 		PipelineTask:   &pts[20], // 2 retries needed
 		RunObjectNames: []string{"pipelinerun-mytask1"},
 		RunObjects:     []v1beta1.RunObject{makeCustomRunSucceeded(customRuns[0])},
@@ -725,7 +726,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		},
 	}}
 
-	var customRunRetriedStateMatrix = PipelineRunState{{
+	customRunRetriedStateMatrix := PipelineRunState{{
 		PipelineTask:   &pts[17], // 1 retry needed
 		RunObjectNames: []string{"pipelinerun-mytask1"},
 		RunObjects:     []v1beta1.RunObject{withCustomRunCancelled(withCustomRunRetries(newCustomRun(customRuns[0])))},
@@ -1283,7 +1284,7 @@ func TestPipelineRunState_CompletedOrSkippedDAGTasks(t *testing.T) {
 
 func buildPipelineStateWithLargeDependencyGraph(t *testing.T) PipelineRunState {
 	t.Helper()
-	var task = &v1beta1.Task{
+	task := &v1beta1.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "task",
 		},
@@ -1342,7 +1343,7 @@ func buildPipelineStateWithLargeDependencyGraph(t *testing.T) PipelineRunState {
 
 func buildPipelineStateWithMultipleTaskResults(t *testing.T, includeWhen bool) PipelineRunState {
 	t.Helper()
-	var task = &v1beta1.Task{
+	task := &v1beta1.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "task",
 		},
@@ -1523,7 +1524,7 @@ func TestPipelineRunState_GetFinalTasksAndNames(t *testing.T) {
 }
 
 func TestGetPipelineConditionStatus(t *testing.T) {
-	var taskRetriedState = PipelineRunState{{
+	taskRetriedState := PipelineRunState{{
 		PipelineTask: &pts[3], // 1 retry needed
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      withCancelled(makeRetried(trs[0])),
@@ -1532,19 +1533,19 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		},
 	}}
 
-	var taskCancelledFailed = PipelineRunState{{
+	taskCancelledFailed := PipelineRunState{{
 		PipelineTask: &pts[4],
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      withCancelled(makeFailed(trs[0])),
 	}}
 
-	var taskCancelledFailedTimedOut = PipelineRunState{{
+	taskCancelledFailedTimedOut := PipelineRunState{{
 		PipelineTask: &pts[4],
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      withCancelledForTimeout(makeFailed(trs[0])),
 	}}
 
-	var cancelledTask = PipelineRunState{{
+	cancelledTask := PipelineRunState{{
 		PipelineTask: &pts[3], // 1 retry needed
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun: &v1beta1.TaskRun{
@@ -1561,7 +1562,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		},
 	}}
 
-	var cancelledRun = PipelineRunState{{
+	cancelledRun := PipelineRunState{{
 		PipelineTask:  &pts[12],
 		CustomTask:    true,
 		RunObjectName: "pipelinerun-mytask13",
@@ -1576,7 +1577,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		},
 	}}
 
-	var timedOutRun = PipelineRunState{{
+	timedOutRun := PipelineRunState{{
 		PipelineTask:  &pts[12],
 		CustomTask:    true,
 		RunObjectName: "pipelinerun-mytask14",
@@ -1594,7 +1595,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		},
 	}}
 
-	var notRunningRun = PipelineRunState{{
+	notRunningRun := PipelineRunState{{
 		PipelineTask:  &pts[12],
 		CustomTask:    true,
 		RunObjectName: "pipelinerun-mytask14",
@@ -1604,7 +1605,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 	// Of the 4, 1 passed, 1 cancelled, 2 failed
 	// 1 runAfter the passed one, currently running
 	// 1 runAfter the failed one, which is marked as incomplete
-	var taskMultipleFailuresSkipRunning = PipelineRunState{{
+	taskMultipleFailuresSkipRunning := PipelineRunState{{
 		TaskRunName:  "task0taskrun",
 		PipelineTask: &pts[5],
 		TaskRun:      makeSucceeded(trs[0]),
@@ -1618,10 +1619,10 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		TaskRun:      makeFailed(trs[0]),
 	}}
 
-	var taskMultipleFailuresOneCancel = taskMultipleFailuresSkipRunning
+	taskMultipleFailuresOneCancel := taskMultipleFailuresSkipRunning
 	taskMultipleFailuresOneCancel = append(taskMultipleFailuresOneCancel, cancelledTask[0])
 
-	var taskNotRunningWithSuccesfulParentsOneFailed = PipelineRunState{{
+	taskNotRunningWithSuccesfulParentsOneFailed := PipelineRunState{{
 		TaskRunName:  "task0taskrun",
 		PipelineTask: &pts[5],
 		TaskRun:      makeSucceeded(trs[0]),
@@ -2307,12 +2308,12 @@ func TestPipelineRunFacts_GetPipelineFinalTaskStatus(t *testing.T) {
 	tcs := []struct {
 		name           string
 		state          PipelineRunState
-		finalTasks     []v1.PipelineTask
+		finalTasks     []v1beta1.PipelineTask
 		expectedStatus map[string]string
 	}{{
 		name:       "no-tasks-started",
 		state:      noneStartedState,
-		finalTasks: []v1.PipelineTask{pts[0], pts[1]},
+		finalTasks: []v1beta1.PipelineTask{pts[0], pts[1]},
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
 			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
@@ -2320,7 +2321,7 @@ func TestPipelineRunFacts_GetPipelineFinalTaskStatus(t *testing.T) {
 	}, {
 		name:       "one-task-started",
 		state:      oneStartedState,
-		finalTasks: []v1.PipelineTask{pts[0], pts[1]},
+		finalTasks: []v1beta1.PipelineTask{pts[0], pts[1]},
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
 			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
@@ -2328,26 +2329,26 @@ func TestPipelineRunFacts_GetPipelineFinalTaskStatus(t *testing.T) {
 	}, {
 		name:       "one-task-finished",
 		state:      oneFinishedState,
-		finalTasks: []v1.PipelineTask{pts[0], pts[1]},
+		finalTasks: []v1beta1.PipelineTask{pts[0], pts[1]},
 		expectedStatus: map[string]string{
-			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: v1.TaskRunReasonSuccessful.String(),
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: v1beta1.TaskRunReasonSuccessful.String(),
 			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
 		},
 	}, {
 		name:       "one-task-failed",
 		state:      oneFailedState,
-		finalTasks: []v1.PipelineTask{pts[0], pts[1]},
+		finalTasks: []v1beta1.PipelineTask{pts[0], pts[1]},
 		expectedStatus: map[string]string{
-			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: v1.TaskRunReasonFailed.String(),
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: v1beta1.TaskRunReasonFailed.String(),
 			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
 		},
 	}, {
 		name:       "all-finished",
 		state:      allFinishedState,
-		finalTasks: []v1.PipelineTask{pts[0], pts[1]},
+		finalTasks: []v1beta1.PipelineTask{pts[0], pts[1]},
 		expectedStatus: map[string]string{
-			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: v1.TaskRunReasonSuccessful.String(),
-			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: v1.TaskRunReasonSuccessful.String(),
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: v1beta1.TaskRunReasonSuccessful.String(),
+			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: v1beta1.TaskRunReasonSuccessful.String(),
 		},
 	}, {
 		name: "task-with-when-expressions-passed",
@@ -2359,7 +2360,7 @@ func TestPipelineRunFacts_GetPipelineFinalTaskStatus(t *testing.T) {
 				TaskSpec: &task.Spec,
 			},
 		}},
-		finalTasks: []v1.PipelineTask{pts[9]},
+		finalTasks: []v1beta1.PipelineTask{pts[9]},
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[9].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
 		},
@@ -2372,7 +2373,7 @@ func TestPipelineRunFacts_GetPipelineFinalTaskStatus(t *testing.T) {
 				TaskSpec: &task.Spec,
 			},
 		}},
-		finalTasks: []v1.PipelineTask{pts[10]},
+		finalTasks: []v1beta1.PipelineTask{pts[10]},
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[10].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
 		},
@@ -2380,7 +2381,7 @@ func TestPipelineRunFacts_GetPipelineFinalTaskStatus(t *testing.T) {
 		name: "when-expression-task-with-parent-started",
 		state: PipelineRunState{{
 			PipelineTask: &pts[0],
-			TaskRuns:     []*v1.TaskRun{makeStarted(trs[0])},
+			TaskRuns:     []*v1beta1.TaskRun{makeStarted(trs[0])},
 			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &task.Spec,
 			},
@@ -2391,7 +2392,7 @@ func TestPipelineRunFacts_GetPipelineFinalTaskStatus(t *testing.T) {
 				TaskSpec: &task.Spec,
 			},
 		}},
-		finalTasks: []v1.PipelineTask{pts[0], pts[11]},
+		finalTasks: []v1beta1.PipelineTask{pts[0], pts[11]},
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix:  PipelineTaskStateNone,
 			PipelineTaskStatusPrefix + pts[11].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
@@ -2399,7 +2400,7 @@ func TestPipelineRunFacts_GetPipelineFinalTaskStatus(t *testing.T) {
 	}, {
 		name:       "task-cancelled",
 		state:      taskCancelled,
-		finalTasks: []v1.PipelineTask{pts[4]},
+		finalTasks: []v1beta1.PipelineTask{pts[4]},
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[4].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
 		},
@@ -2414,20 +2415,20 @@ func TestPipelineRunFacts_GetPipelineFinalTaskStatus(t *testing.T) {
 		}, {
 			PipelineTask: &pts[0],
 			TaskRunNames: []string{"pipelinerun-mytask1"},
-			TaskRuns:     []*v1.TaskRun{makeFailed(trs[0])},
+			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0])},
 			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &task.Spec,
 			},
 		}},
-		finalTasks: []v1.PipelineTask{pts[0], pts[10]},
+		finalTasks: []v1beta1.PipelineTask{pts[0], pts[10]},
 		expectedStatus: map[string]string{
-			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix:  v1.PipelineRunReasonFailed.String(),
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix:  v1beta1.PipelineRunReasonFailed.String(),
 			PipelineTaskStatusPrefix + pts[10].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
 		},
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			d, err := dag.Build(v1.PipelineTaskList(tc.finalTasks), v1.PipelineTaskList(tc.finalTasks).Deps())
+			d, err := dag.Build(v1beta1.PipelineTaskList(tc.finalTasks), v1beta1.PipelineTaskList(tc.finalTasks).Deps())
 			if err != nil {
 				t.Fatalf("Unexpected error while building graph for DAG tasks %v: %v", tc.finalTasks, err)
 			}
@@ -2759,7 +2760,8 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 				}, {
 					Name:  "quxbaz",
 					Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
-				}}},
+				}},
+			},
 		},
 		TaskRuns: []*v1beta1.TaskRun{{
 			TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1"},
@@ -2822,7 +2824,8 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 				}, {
 					Name:  "quxbaz",
 					Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
-				}}},
+				}},
+			},
 		},
 		RunObjects: []v1beta1.RunObject{
 			&v1beta1.CustomRun{
@@ -3119,7 +3122,8 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 						}, {
 							Name:  "quxbaz",
 							Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
-						}}},
+						}},
+					},
 				},
 				TaskRuns: []*v1beta1.TaskRun{nil, nil, nil, nil},
 			}},
@@ -3148,7 +3152,8 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 						}, {
 							Name:  "quxbaz",
 							Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
-						}}},
+						}},
+					},
 				},
 				TaskRuns: []*v1beta1.TaskRun{{
 					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1"},
@@ -3235,7 +3240,8 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 						}, {
 							Name:  "quxbaz",
 							Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
-						}}},
+						}},
+					},
 				},
 				CustomTask: true,
 			}},
@@ -3262,7 +3268,8 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 						}, {
 							Name:  "quxbaz",
 							Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
-						}}},
+						}},
+					},
 				},
 				CustomTask: true,
 				RunObjects: []v1beta1.RunObject{
