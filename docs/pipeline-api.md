@@ -2026,8 +2026,7 @@ PipelineRun has provided an invalid binding.</p>
 misses some keys required for the object param declared in Pipeline spec.</p>
 </td>
 </tr><tr><td><p>&#34;ParamArrayIndexingInvalid&#34;</p></td>
-<td><p>ReasonParamArrayIndexingInvalid indicates that the use of param array indexing is not under correct api fields feature gate
-or the array is out of bound.</p>
+<td><p>ReasonParamArrayIndexingInvalid indicates that the use of param array indexing is out of bound.</p>
 </td>
 </tr><tr><td><p>&#34;ParameterMissing&#34;</p></td>
 <td><p>ReasonParameterMissing indicates that the reason for the failure status is that the

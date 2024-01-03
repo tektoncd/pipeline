@@ -1415,38 +1415,6 @@ func TestPipelineRunSpecBetaFeatures(t *testing.T) {
 		name string
 		spec v1.PipelineSpec
 	}{{
-		name: "array indexing in Tasks",
-		spec: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
-			},
-			Tasks: []v1.PipelineTask{{
-				Name: "foo",
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param[0])")},
-				},
-				TaskRef: &v1.TaskRef{Name: "foo"},
-			}},
-		},
-	}, {
-		name: "array indexing in Finally",
-		spec: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
-			},
-			Tasks: []v1.PipelineTask{{
-				Name:    "foo",
-				TaskRef: &v1.TaskRef{Name: "foo"},
-			}},
-			Finally: []v1.PipelineTask{{
-				Name: "bar",
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param[0])")},
-				},
-				TaskRef: &v1.TaskRef{Name: "bar"},
-			}},
-		},
-	}, {
 		name: "pipeline tasks - use of resolver",
 		spec: v1.PipelineSpec{
 			Tasks: []v1.PipelineTask{{
@@ -1484,41 +1452,6 @@ func TestPipelineRunSpecBetaFeatures(t *testing.T) {
 			Finally: []v1.PipelineTask{{
 				Name:    "uses-resolver-params",
 				TaskRef: &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "bar", Params: v1.Params{{}}}},
-			}},
-		},
-	}, {
-		name: "array results",
-		spec: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				Name:    "valid-pipeline-task",
-				TaskRef: &v1.TaskRef{Name: "foo-task"},
-			}},
-			Results: []v1.PipelineResult{{Name: "my-array-result", Type: v1.ResultsTypeArray, Value: *v1.NewStructuredValues("$(tasks.valid-pipeline-task.results.foo[*])")}},
-		},
-	}, {
-		name: "array results in Tasks",
-		spec: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				Name: "valid-pipeline-task",
-				TaskSpec: &v1.EmbeddedTask{TaskSpec: v1.TaskSpec{
-					Steps:   []v1.Step{{Image: "busybox", Script: "echo hello"}},
-					Results: []v1.TaskResult{{Name: "my-array-result", Type: v1.ResultsTypeArray}},
-				}},
-			}},
-		},
-	}, {
-		name: "array results in Finally",
-		spec: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				Name:    "valid-pipeline-task",
-				TaskRef: &v1.TaskRef{Name: "foo-task"},
-			}},
-			Finally: []v1.PipelineTask{{
-				Name: "valid-finally-task",
-				TaskSpec: &v1.EmbeddedTask{TaskSpec: v1.TaskSpec{
-					Steps:   []v1.Step{{Image: "busybox", Script: "echo hello"}},
-					Results: []v1.TaskResult{{Name: "my-array-result", Type: v1.ResultsTypeArray}},
-				}},
 			}},
 		},
 	}}

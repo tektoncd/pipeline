@@ -570,7 +570,7 @@ For example, `foo.Is-Bar_` is a valid parameter name for string or array type, b
 > 2. If a parameter name contains dots (.), it must be referenced by using the [bracket notation](#substituting-parameters-and-resources) with either single or double quotes i.e. `$(params['foo.bar'])`, `$(params["foo.bar"])`. See the following example for more information.
 
 #### Parameter type
-Each declared parameter has a `type` field, which can be set to `string`, `array` (beta feature) or `object` (beta feature).
+Each declared parameter has a `type` field, which can be set to `string`, `array` or `object`.
 
 ##### `object` type
 
@@ -588,13 +588,12 @@ spec:
           type: string
 ```
 
-Refer to the [TaskRun example](../examples/v1/taskruns/beta/object-param-result.yaml) and the [PipelineRun example](../examples/v1/pipelineruns/beta/pipeline-object-param-and-result.yaml) in which `object` parameters are demonstrated.
+Refer to the [TaskRun example](../examples/v1/taskruns/object-param-result.yaml) and the [PipelineRun example](../examples/v1/pipelineruns/pipeline-object-param-and-result.yaml) in which `object` parameters are demonstrated.
 
   > NOTE:
-  > - `object` param is a `beta` feature and gated by the `alpha` or `beta` feature flag.
   > - `object` param must specify the `properties` section to define the schema i.e. what keys are available for this object param. See how to define `properties` section in the following example and the [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md#defaulting-to-string-types-for-values).
-  > - When providing value for an `object` param, one may provide values for just a subset of keys in spec's `default`, and provide values for the rest of keys at runtime ([example](../examples/v1/taskruns/beta/object-param-result.yaml)).
-  > - When using object in variable replacement, users can only access its individual key ("child" member) of the object by its name i.e. `$(params.gitrepo.url)`. Using an entire object as a value is only allowed when the value is also an object like [this example](https://github.com/tektoncd/pipeline/blob/55665765e4de35b3a4fb541549ae8cdef0996641/examples/v1/pipelineruns/beta/pipeline-object-param-and-result.yaml#L64-L65). See more details about using object param from the [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md#using-objects-in-variable-replacement).
+  > - When providing value for an `object` param, one may provide values for just a subset of keys in spec's `default`, and provide values for the rest of keys at runtime ([example](../examples/v1/taskruns/object-param-result.yaml)).
+  > - When using object in variable replacement, users can only access its individual key ("child" member) of the object by its name i.e. `$(params.gitrepo.url)`. Using an entire object as a value is only allowed when the value is also an object like [this example](../examples/v1/pipelineruns/pipeline-object-param-and-result.yaml). See more details about using object param from the [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md#using-objects-in-variable-replacement).
 
 ##### `array` type
 

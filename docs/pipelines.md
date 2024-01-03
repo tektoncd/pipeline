@@ -1375,8 +1375,7 @@ results:
 
 For an end-to-end example, see [`Results` in a `PipelineRun`](../examples/v1/pipelineruns/pipelinerun-results.yaml).
 
-Array result is a beta feature,
-see [`Array and Object Results` in a `PipelineRun`](../examples/v1/pipelineruns/beta/pipeline-emitting-results.yaml).
+In the example below, the `Pipeline` collects array and object results from `Tasks`.
 
 ```yaml
     results:
@@ -1398,6 +1397,7 @@ see [`Array and Object Results` in a `PipelineRun`](../examples/v1/pipelineruns/
         value: $(tasks.task2.results.object-results.foo)
 ```
 
+For an end-to-end example see [`Array and Object Results` in a `PipelineRun`](../examples/v1/pipelineruns/pipeline-emitting-results.yaml).
 
 A `Pipeline Result` is not emitted if any of the following are true:
 - A `PipelineTask` referenced by the `Pipeline Result` failed. The `PipelineRun` will also
