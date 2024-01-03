@@ -228,6 +228,11 @@ func (r *CustomRun) IsSuccessful() bool {
 	return r != nil && r.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 }
 
+// IsFailure returns true if the TaskRun's status indicates that it has failed.
+func (tr *CustomRun) IsFailure() bool {
+	return tr != nil && tr.Status.GetCondition(apis.ConditionSucceeded).IsFalse()
+}
+
 // GetCustomRunKey return the customrun's key for timeout handler map
 func (r *CustomRun) GetCustomRunKey() string {
 	// The address of the pointer is a threadsafe unique identifier for the customrun

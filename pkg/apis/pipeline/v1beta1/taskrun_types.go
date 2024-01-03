@@ -460,6 +460,11 @@ func (tr *TaskRun) IsCancelled() bool {
 	return tr.Spec.Status == TaskRunSpecStatusCancelled
 }
 
+// IsFailure returns true if the TaskRun's status indicates that it has failed.
+func (tr *TaskRun) IsFailure() bool {
+	return tr != nil && tr.Status.GetCondition(apis.ConditionSucceeded).IsFalse()
+}
+
 // IsTaskRunResultVerified returns true if the TaskRun's results have been validated by spire.
 func (tr *TaskRun) IsTaskRunResultVerified() bool {
 	return tr.Status.GetCondition(apis.ConditionType(TaskRunConditionResultsVerified.String())).IsTrue()

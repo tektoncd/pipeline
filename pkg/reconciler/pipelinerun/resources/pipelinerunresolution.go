@@ -319,6 +319,38 @@ func (t ResolvedPipelineTask) isConditionStatusFalse() bool {
 	return false
 }
 
+// haveAnyRunsFailed returns true when any of the taskRuns/customRuns have succeeded condition with status set to false
+func (t ResolvedPipelineTask) haveAnyRunsFailed() bool {
+	if t.IsCustomTask() {
+		return t.haveAnyCustomRunsFailed()
+	}
+	return t.haveAnyTaskRunsFailed()
+}
+
+// haveAnyTaskRunsFailed returns true when any of the taskRuns have succeeded condition with status set to false
+func (t ResolvedPipelineTask) haveAnyTaskRunsFailed() bool {
+	if len(t.TaskRuns) > 0 || t.PipelineTask.IsMatrixed() {
+		for _, taskRun := range t.TaskRuns {
+			if taskRun.IsFailure() {
+				return true
+			}
+		}
+	}
+	return t.TaskRun.IsFailure()
+}
+
+// haveAnyCustomRunsFailed returns true when a CustomRun has succeeded condition with status set to false
+func (t ResolvedPipelineTask) haveAnyCustomRunsFailed() bool {
+	if len(t.RunObjects) > 0 || t.PipelineTask.IsMatrixed() {
+		for _, customRun := range t.RunObjects {
+			if customRun.IsFailure() {
+				return true
+			}
+		}
+	}
+	return t.RunObject != nil && t.RunObject.IsFailure()
+}
+
 func (t *ResolvedPipelineTask) checkParentsDone(facts *PipelineRunFacts) bool {
 	if facts.isFinalTask(t.PipelineTask.Name) {
 		return true
