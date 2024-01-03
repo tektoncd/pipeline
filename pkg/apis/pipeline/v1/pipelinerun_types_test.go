@@ -18,12 +18,14 @@ package v1_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -697,5 +699,86 @@ func TestPipelineRun_GetTaskRunSpec(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestPipelineRunMarkFailedCondition(t *testing.T) {
+	failedRunReason := v1.PipelineRunReasonFailed
+	messageFormat := "error bar occurred %s"
+
+	makeMessages := func(hasUserError bool) []interface{} {
+		errorMsg := "baz error message"
+		original := errors.New("orignal error")
+
+		messages := make([]interface{}, 0)
+		if hasUserError {
+			messages = append(messages, pipelineErrors.WrapUserError(original))
+		} else {
+			messages = append(messages, errorMsg)
+		}
+
+		return messages
+	}
+
+	tcs := []struct {
+		name               string
+		hasUserError       bool
+		prStatus           v1.PipelineRunStatus
+		expectedConditions duckv1.Conditions
+	}{{
+		name:         "mark pipelinerun status failed with user error",
+		hasUserError: true,
+		prStatus: v1.PipelineRunStatus{
+			PipelineRunStatusFields: v1.PipelineRunStatusFields{
+				StartTime: &metav1.Time{Time: now},
+			},
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{},
+			},
+		},
+		expectedConditions: duckv1.Conditions{
+			apis.Condition{
+				Type:    "Succeeded",
+				Status:  "False",
+				Reason:  "Failed",
+				Message: "[User error] error bar occurred orignal error",
+			},
+		},
+	}, {
+		name:         "mark pipelinerun status failed non user error",
+		hasUserError: false,
+		prStatus: v1.PipelineRunStatus{
+			PipelineRunStatusFields: v1.PipelineRunStatusFields{
+				StartTime: &metav1.Time{Time: now},
+			},
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{},
+			},
+		},
+		expectedConditions: duckv1.Conditions{
+			apis.Condition{
+				Type:    "Succeeded",
+				Status:  "False",
+				Reason:  "Failed",
+				Message: "error bar occurred baz error message",
+			},
+		},
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			pr := &v1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "bar",
+				},
+				Status: tc.prStatus,
+			}
+			pr.Status.MarkFailed(failedRunReason.String(), messageFormat, makeMessages(tc.hasUserError)...)
+			updatedCondition := pr.Status.Status.Conditions
+
+			if d := cmp.Diff(tc.expectedConditions, updatedCondition, cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime")); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -76,7 +77,7 @@ func handleDryRunCreateErr(err error, objectName string) error {
 	case apierrors.IsBadRequest(err): // Object rejected by validating webhook
 		errType = ErrReferencedObjectValidationFailed
 	case apierrors.IsInvalid(err), apierrors.IsMethodNotSupported(err):
-		errType = ErrCouldntValidateObjectPermanent
+		errType = pipelineErrors.WrapUserError(ErrCouldntValidateObjectPermanent)
 	case apierrors.IsTimeout(err), apierrors.IsServerTimeout(err), apierrors.IsTooManyRequests(err):
 		errType = ErrCouldntValidateObjectRetryable
 	default:

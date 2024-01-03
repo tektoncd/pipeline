@@ -844,7 +844,7 @@ spec:
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed Validation failed for pipelinerun pipeline-params-dont-exist with error invalid input params for task a-task-that-needs-params: missing values",
+			"Warning Failed [User error] Validation failed for pipelinerun pipeline-params-dont-exist with error invalid input params for task a-task-that-needs-params: missing values for these params which have no default values: [some-param]",
 		},
 	}, {
 		name: "invalid-pipeline-mismatching-parameter-types",
@@ -863,7 +863,7 @@ spec:
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed PipelineRun foo/pipeline-mismatching-param-type parameters have mismatching types",
+			"Warning Failed [User error] PipelineRun foo/pipeline-mismatching-param-type parameters have mismatching types with Pipeline foo/a-pipeline-with-array-params's parameters: parameters have inconsistent types : [some-param]",
 		},
 	}, {
 		name: "invalid-pipeline-missing-object-keys",
@@ -883,7 +883,7 @@ spec:
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed PipelineRun foo/pipeline-missing-object-param-keys parameters is missing object keys required by Pipeline foo/a-pipeline-with-object-params's parameters: pipelineRun missing object keys for parameters",
+			"Warning Failed [User error] PipelineRun foo/pipeline-missing-object-param-keys parameters is missing object keys required by Pipeline foo/a-pipeline-with-object-params's parameters: pipelineRun missing object keys for parameters: map[some-param:[key2]]",
 		},
 	}, {
 		name: "invalid-pipeline-array-index-out-of-bound",
@@ -904,7 +904,7 @@ spec:
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed PipelineRun foo/pipeline-param-array-out-of-bound failed validation: failed to validate Pipeline foo/a-pipeline-with-array-indexing-params's parameter which has an invalid index while referring to an array: non-existent param references:[$(params.some-param[2]",
+			"Warning Failed [User error] PipelineRun foo/pipeline-param-array-out-of-bound failed validation: failed to validate Pipeline foo/a-pipeline-with-array-indexing-params's parameter which has an invalid index while referring to an array: non-existent param references:[$(params.some-param[2])]",
 		},
 	}, {
 		name: "invalid-embedded-pipeline-bad-name-shd-stop-reconciling",
@@ -923,7 +923,9 @@ spec:
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed Pipeline foo/embedded-pipeline-invalid can't be Run; it has an invalid spec",
+			`Warning Failed [User error] Pipeline foo/embedded-pipeline-invalid can't be Run; it has an invalid spec: invalid value "bad-t@$k": tasks[0].name
+Pipeline Task name must be a valid DNS Label.For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+invalid value: name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]'): tasks[0].taskRef.name`,
 		},
 	}, {
 		name: "invalid-embedded-pipeline-mismatching-parameter-types",
@@ -948,7 +950,7 @@ spec:
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed PipelineRun foo/embedded-pipeline-mismatching-param-type parameters have mismatching types",
+			"Warning Failed [User error] PipelineRun foo/embedded-pipeline-mismatching-param-type parameters have mismatching types with Pipeline foo/embedded-pipeline-mismatching-param-type's parameters: parameters have inconsistent types : [some-param]",
 		},
 	}, {
 		name: "invalid-pipeline-run-missing-params-shd-stop-reconciling",
@@ -970,7 +972,7 @@ spec:
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed PipelineRun foo parameters is missing some parameters required by Pipeline pipelinerun-missing-params",
+			"Warning Failed [User error] PipelineRun foo parameters is missing some parameters required by Pipeline pipelinerun-missing-params's parameters: pipelineRun missing parameters: [some-param]",
 		},
 	}, {
 		name: "invalid-pipeline-with-invalid-dag-graph",
@@ -990,7 +992,7 @@ spec:
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed PipelineRun foo/pipeline-invalid-dag-graph's Pipeline DAG is invalid",
+			`Warning Failed [User error] PipelineRun foo/pipeline-invalid-dag-graph's Pipeline DAG is invalid: cycle detected; task "dag-task-1" depends on "dag-task-1"`,
 		},
 	}, {
 		name: "invalid-pipeline-with-invalid-final-tasks-graph",
@@ -1016,7 +1018,7 @@ spec:
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed PipelineRun foo's Pipeline DAG is invalid for finally clause",
+			"Warning Failed [User error] PipelineRun foo/pipeline-invalid-final-graph's Pipeline DAG is invalid for finally clause: task final-task-1 is already present in Graph, can't add it again: duplicate pipeline task",
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -4600,7 +4602,7 @@ spec:
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 	pipelineRun, _ := prt.reconcileRun("foo", "test-pipeline-run-different-service-accs", []string{}, true)
-	checkPipelineRunConditionStatusAndReason(t, pipelineRun, corev1.ConditionFalse, string(v1.PipelineRunReasonCELEvaluationFailed))
+	checkPipelineRunConditionStatusAndReason(t, pipelineRun, corev1.ConditionFalse, v1.PipelineRunReasonCELEvaluationFailed.String())
 }
 
 func TestReconcile_Enum_With_Matrix_Pass(t *testing.T) {
@@ -4751,7 +4753,7 @@ spec:
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 	pipelineRun, _ := prt.reconcileRun("foo", "test-pipeline-level-enum-run", []string{}, true)
-	checkPipelineRunConditionStatusAndReason(t, pipelineRun, corev1.ConditionFalse, string(v1.PipelineRunReasonFailedValidation))
+	checkPipelineRunConditionStatusAndReason(t, pipelineRun, corev1.ConditionFalse, v1.PipelineRunReasonFailedValidation.String())
 }
 
 func TestReconcile_PipelineTask_Level_Enum_Failed(t *testing.T) {
@@ -4815,7 +4817,7 @@ spec:
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 	pipelineRun, _ := prt.reconcileRun("foo", "test-pipelineTask-level-enum-run", []string{}, true)
-	checkPipelineRunConditionStatusAndReason(t, pipelineRun, corev1.ConditionFalse, string(v1.PipelineRunReasonInvalidParamValue))
+	checkPipelineRunConditionStatusAndReason(t, pipelineRun, corev1.ConditionFalse, v1.PipelineRunReasonInvalidParamValue.String())
 }
 
 // TestReconcileWithAffinityAssistantStatefulSet tests that given a pipelineRun with workspaces,
@@ -12804,7 +12806,7 @@ spec:
 			wantEvents :=
 				[]string{
 					"Normal Started",
-					"Warning Failed PipelineRun foo/pr can't be Run; couldn't resolve all references: array Result Index 3 for Task pt-with-result Result platforms is out of bound of size 3",
+					"Warning Failed [User error] PipelineRun foo/pr can't be Run; couldn't resolve all references: array Result Index 3 for Task pt-with-result Result platforms is out of bound of size 3",
 					"Warning InternalError 1 error occurred:",
 				}
 			prt := newPipelineRunTest(t, d)

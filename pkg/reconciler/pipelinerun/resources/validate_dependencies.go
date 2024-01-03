@@ -19,6 +19,7 @@ package resources
 import (
 	"fmt"
 
+	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -32,7 +33,7 @@ func ValidatePipelineTaskResults(state PipelineRunState) error {
 	for _, rpt := range state {
 		for _, ref := range v1.PipelineTaskResultRefs(rpt.PipelineTask) {
 			if err := validateResultRef(ref, ptMap); err != nil {
-				return fmt.Errorf("invalid result reference in pipeline task %q: %w", rpt.PipelineTask.Name, err)
+				return pipelineErrors.WrapUserError(fmt.Errorf("invalid result reference in pipeline task %q: %w", rpt.PipelineTask.Name, err))
 			}
 		}
 	}

@@ -3,6 +3,7 @@ package resources
 import (
 	"fmt"
 
+	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -41,7 +42,7 @@ func ValidateOutOfBoundArrayParams(declarations v1.ParamSpecs, params v1.Params,
 		}
 	}
 	if outofBoundParams.Len() > 0 {
-		return fmt.Errorf("non-existent param references:%v", outofBoundParams.List())
+		return pipelineErrors.WrapUserError(fmt.Errorf("non-existent param references:%v", outofBoundParams.List()))
 	}
 	return nil
 }
