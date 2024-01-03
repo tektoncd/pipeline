@@ -4222,43 +4222,6 @@ func TestPipelineWithBetaFields(t *testing.T) {
 			}},
 		},
 	}, {
-		name: "object params",
-		spec: PipelineSpec{
-			Params: []ParamSpec{
-				{Name: "first-param", Type: ParamTypeObject, Properties: map[string]PropertySpec{}},
-			},
-			Tasks: []PipelineTask{{
-				Name:    "foo",
-				TaskRef: &TaskRef{Name: "foo"},
-			}},
-		},
-	}, {
-		name: "object params in Tasks",
-		spec: PipelineSpec{
-			Tasks: []PipelineTask{{
-				Name: "valid-pipeline-task",
-				TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
-					Steps:  []Step{{Image: "busybox", Script: "echo hello"}},
-					Params: []ParamSpec{{Name: "my-object-param", Type: ParamTypeObject, Properties: map[string]PropertySpec{}}},
-				}},
-			}},
-		},
-	}, {
-		name: "object params in Finally",
-		spec: PipelineSpec{
-			Tasks: []PipelineTask{{
-				Name:    "foo",
-				TaskRef: &TaskRef{Name: "foo"},
-			}},
-			Finally: []PipelineTask{{
-				Name: "valid-finally-task",
-				TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
-					Steps:  []Step{{Image: "busybox", Script: "echo hello"}},
-					Params: []ParamSpec{{Name: "my-object-param", Type: ParamTypeObject, Properties: map[string]PropertySpec{}}},
-				}},
-			}},
-		},
-	}, {
 		name: "array results",
 		spec: PipelineSpec{
 			Tasks: []PipelineTask{{
@@ -4290,41 +4253,6 @@ func TestPipelineWithBetaFields(t *testing.T) {
 				TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
 					Steps:   []Step{{Image: "busybox", Script: "echo hello"}},
 					Results: []TaskResult{{Name: "my-array-result", Type: ResultsTypeArray}},
-				}},
-			}},
-		},
-	}, {
-		name: "object results",
-		spec: PipelineSpec{
-			Tasks: []PipelineTask{{
-				Name:    "valid-pipeline-task",
-				TaskRef: &TaskRef{Name: "foo-task"},
-			}},
-			Results: []PipelineResult{{Name: "my-object-result", Type: ResultsTypeObject, Value: *NewStructuredValues("$(tasks.valid-pipeline-task.results.foo[*])")}},
-		},
-	}, {
-		name: "object results in Tasks",
-		spec: PipelineSpec{
-			Tasks: []PipelineTask{{
-				Name: "valid-pipeline-task",
-				TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
-					Steps:   []Step{{Image: "busybox", Script: "echo hello"}},
-					Results: []TaskResult{{Name: "my-object-result", Type: ResultsTypeObject, Properties: map[string]PropertySpec{}}},
-				}},
-			}},
-		},
-	}, {
-		name: "object results in Finally",
-		spec: PipelineSpec{
-			Tasks: []PipelineTask{{
-				Name:    "valid-pipeline-task",
-				TaskRef: &TaskRef{Name: "foo-task"},
-			}},
-			Finally: []PipelineTask{{
-				Name: "valid-finally-task",
-				TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
-					Steps:   []Step{{Image: "busybox", Script: "echo hello"}},
-					Results: []TaskResult{{Name: "my-object-result", Type: ResultsTypeObject, Properties: map[string]PropertySpec{}}},
 				}},
 			}},
 		},

@@ -301,8 +301,8 @@ spec:
 If the `Param` value passed in by `PipelineRun` is **NOT** in the predefined `enum` list, the `PipelineRun` will fail with reason `InvalidParamValue`.
 
 If a `PipelineTask` references a `Task` with `enum`, the `enums` specified in the Pipeline `spec.params` (pipeline-level `enum`) must be
-a **subset** of the `enums` specified in the referenced `Task` (task-level `enum`). An empty pipeline-level `enum` is invalid 
-in this scenario since an empty `enum` set indicates a "universal set" which allows all possible values. The same rules apply to `Pipelines` with embbeded `Tasks`. 
+a **subset** of the `enums` specified in the referenced `Task` (task-level `enum`). An empty pipeline-level `enum` is invalid
+in this scenario since an empty `enum` set indicates a "universal set" which allows all possible values. The same rules apply to `Pipelines` with embbeded `Tasks`.
 
 In the below example, the referenced `Task` accepts `v1` and `v2` as valid values, the `Pipeline` further restricts the valid value to `v1`.
 
@@ -1280,7 +1280,7 @@ Sharing `Results` between `Tasks` in a `Pipeline` happens via
 a `Result` and another receives it as a `Parameter` with a variable such as
 `$(tasks.<task-name>.results.<result-name>)`. Pipeline support two new types of
 results and parameters: array `[]string` and object `map[string]string`.
-Array and Object result is a beta feature and can be enabled by setting `enable-api-fields` to `alpha` or `beta`.
+Array result is a beta feature and can be enabled by setting `enable-api-fields` to `alpha` or `beta`.
 
 | Result Type | Parameter Type | Specification                                    | `enable-api-fields` |
 |-------------|----------------|--------------------------------------------------|---------------------|
@@ -1375,7 +1375,7 @@ results:
 
 For an end-to-end example, see [`Results` in a `PipelineRun`](../examples/v1/pipelineruns/pipelinerun-results.yaml).
 
-Object result and array result are beta features,
+Array result is a beta feature,
 see [`Array and Object Results` in a `PipelineRun`](../examples/v1/pipelineruns/beta/pipeline-emitting-results.yaml).
 
 ```yaml

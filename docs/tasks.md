@@ -860,7 +860,7 @@ The stored results can be used [at the `Task` level](./pipelines.md#passing-one-
 or [at the `Pipeline` level](./pipelines.md#emitting-results-from-a-pipeline).
 
 #### Emitting Object `Results`
-Emitting a task result of type `object` is a `beta` feature implemented based on the
+Emitting a task result of type `object` is implemented based on the
 [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md#emitting-object-results).
 You can initialize `object` results from a `task` using JSON escaped string. For example, to assign the following data to an object result:
 

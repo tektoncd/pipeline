@@ -239,11 +239,6 @@ func ValidateWorkspaceBindings(ctx context.Context, wb []WorkspaceBinding) (errs
 func ValidateParameters(ctx context.Context, params Params) (errs *apis.FieldError) {
 	var names []string
 	for _, p := range params {
-		if p.Value.Type == ParamTypeObject {
-			// Object type parameter is a beta feature and will fail validation if it's used in a taskrun spec
-			// when the enable-api-fields feature gate is not "alpha" or "beta".
-			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "object type parameter", config.BetaAPIFields))
-		}
 		names = append(names, p.Name)
 	}
 	return errs.Also(validateNoDuplicateNames(names, false))

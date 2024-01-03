@@ -1638,43 +1638,6 @@ func TestPipelineRunSpecBetaFeatures(t *testing.T) {
 			}},
 		},
 	}, {
-		name: "object params",
-		spec: v1beta1.PipelineSpec{
-			Params: []v1beta1.ParamSpec{
-				{Name: "first-param", Type: v1beta1.ParamTypeObject, Properties: map[string]v1beta1.PropertySpec{}},
-			},
-			Tasks: []v1beta1.PipelineTask{{
-				Name:    "foo",
-				TaskRef: &v1beta1.TaskRef{Name: "foo"},
-			}},
-		},
-	}, {
-		name: "object params in Tasks",
-		spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name: "valid-pipeline-task",
-				TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-					Steps:  []v1beta1.Step{{Image: "busybox", Script: "echo hello"}},
-					Params: []v1beta1.ParamSpec{{Name: "my-object-param", Type: v1beta1.ParamTypeObject, Properties: map[string]v1beta1.PropertySpec{}}},
-				}},
-			}},
-		},
-	}, {
-		name: "object params in Finally",
-		spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name:    "foo",
-				TaskRef: &v1beta1.TaskRef{Name: "foo"},
-			}},
-			Finally: []v1beta1.PipelineTask{{
-				Name: "valid-finally-task",
-				TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-					Steps:  []v1beta1.Step{{Image: "busybox", Script: "echo hello"}},
-					Params: []v1beta1.ParamSpec{{Name: "my-object-param", Type: v1beta1.ParamTypeObject, Properties: map[string]v1beta1.PropertySpec{}}},
-				}},
-			}},
-		},
-	}, {
 		name: "array results",
 		spec: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
@@ -1706,41 +1669,6 @@ func TestPipelineRunSpecBetaFeatures(t *testing.T) {
 				TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
 					Steps:   []v1beta1.Step{{Image: "busybox", Script: "echo hello"}},
 					Results: []v1beta1.TaskResult{{Name: "my-array-result", Type: v1beta1.ResultsTypeArray}},
-				}},
-			}},
-		},
-	}, {
-		name: "object results",
-		spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name:    "valid-pipeline-task",
-				TaskRef: &v1beta1.TaskRef{Name: "foo-task"},
-			}},
-			Results: []v1beta1.PipelineResult{{Name: "my-object-result", Type: v1beta1.ResultsTypeObject, Value: *v1beta1.NewStructuredValues("$(tasks.valid-pipeline-task.results.foo[*])")}},
-		},
-	}, {
-		name: "object results in Tasks",
-		spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name: "valid-pipeline-task",
-				TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-					Steps:   []v1beta1.Step{{Image: "busybox", Script: "echo hello"}},
-					Results: []v1beta1.TaskResult{{Name: "my-object-result", Type: v1beta1.ResultsTypeObject, Properties: map[string]v1beta1.PropertySpec{}}},
-				}},
-			}},
-		},
-	}, {
-		name: "object results in Finally",
-		spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name:    "valid-pipeline-task",
-				TaskRef: &v1beta1.TaskRef{Name: "foo-task"},
-			}},
-			Finally: []v1beta1.PipelineTask{{
-				Name: "valid-finally-task",
-				TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-					Steps:   []v1beta1.Step{{Image: "busybox", Script: "echo hello"}},
-					Results: []v1beta1.TaskResult{{Name: "my-object-result", Type: v1beta1.ResultsTypeObject, Properties: map[string]v1beta1.PropertySpec{}}},
 				}},
 			}},
 		},

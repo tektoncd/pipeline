@@ -304,10 +304,10 @@ status:
     reason: Succeeded
     status: "True"
     type: Succeeded
-  ... 
+  ...
   steps:
   - container: step-default
-    ...  
+    ...
   taskSpec:
     steps:
     - image: ubuntu
@@ -317,8 +317,6 @@ status:
 ```
 
 #### Propagated Object Parameters
-Object params is a [beta feature](./additional-configs.md#beta-features).
-
 When using an inlined `taskSpec`, object parameters from the parent `TaskRun` will be
 available to the `Task` without needing to be explicitly defined.
 
@@ -438,13 +436,13 @@ spec:
 apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: TaskRun
 metadata:
-  name: taskrun 
+  name: taskrun
 spec:
   taskRef:
     name: task
   computeResources:
     requests:
-      cpu: 1 
+      cpu: 1
     limits:
       cpu: 2
 ```
@@ -524,21 +522,21 @@ workspaces down to other inlined resources.
 **Workspace substutions will only be made for `commands`, `args` and `script` fields of `steps`, `stepTemplates`, and `sidecars`.**
 
 ```yaml
-apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1 
-kind: TaskRun                  
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
+kind: TaskRun
 metadata:
   generateName: propagating-workspaces-
 spec:
-  taskSpec:                    
-    steps:                     
-      - name: simple-step      
-        image: ubuntu          
-        command:               
-          - echo               
-        args:                  
+  taskSpec:
+    steps:
+      - name: simple-step
+        image: ubuntu
+        command:
+          - echo
+        args:
           - $(workspaces.tr-workspace.path)
-  workspaces:                  
-  - emptyDir: {}               
+  workspaces:
+  - emptyDir: {}
     name: tr-workspace
 ```
 
@@ -564,32 +562,32 @@ status:
 
 ##### Propagating Workspaces to Referenced Tasks
 
-Workspaces can only be propagated to `embedded` task specs, not `referenced` Tasks. 
+Workspaces can only be propagated to `embedded` task specs, not `referenced` Tasks.
 
 ```yaml
-apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1 
-kind: Task                     
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
+kind: Task
 metadata:
   name: workspace-propagation
 spec:
   steps:
-    - name: simple-step        
-      image: ubuntu            
-      command:                 
-        - echo                 
-      args:                    
+    - name: simple-step
+      image: ubuntu
+      command:
+        - echo
+      args:
         - $(workspaces.tr-workspace.path)
 ---
-apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1 
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: TaskRun
 metadata:
   generateName: propagating-workspaces-
 spec:
-  taskRef:                     
+  taskRef:
     name: workspace-propagation
-  workspaces:                  
-  - emptyDir: {}               
-    name: tr-workspace 
+  workspaces:
+  - emptyDir: {}
+    name: tr-workspace
 ```
 
 Upon execution, the above `TaskRun` will fail because the `Task` is referenced and workspace is not propagated. It must be explicitly defined in the `spec` of the defined `Task`.
@@ -788,7 +786,7 @@ The `status` field defines the observed state of `TaskRun`
 ### The `status` field
 - Required:
   - `status` - The most relevant information about the TaskRun's state. This field includes:
-    - `status.conditions`, which contains the latest observations of the `TaskRun`'s state. [See here](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties) for information on typical status properties. 
+    - `status.conditions`, which contains the latest observations of the `TaskRun`'s state. [See here](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties) for information on typical status properties.
   - `podName` - Name of the pod containing the containers responsible for executing this `task`'s `step`s.
   - `startTime` - The time at which the `TaskRun` began executing, conforms to [RFC3339](https://tools.ietf.org/html/rfc3339) format.
   - `completionTime` - The time at which the `TaskRun` finished executing, conforms to [RFC3339](https://tools.ietf.org/html/rfc3339) format.
@@ -802,11 +800,11 @@ The `status` field defines the observed state of `TaskRun`
     - `featureFlags`: Identifies the feature flags used during the `TaskRun`.
   - `steps` - Contains the `state` of each `step` container.
   - `retriesStatus` - Contains the history of `TaskRun`'s `status` in case of a retry in order to keep record of failures. No `status` stored within `retriesStatus` will have any `date` within as it is redundant.
-  
+
   - [`sidecars`](tasks.md#using-a-sidecar-in-a-task) - This field is a list. The list has one entry per `sidecar` in the manifest. Each entry represents the imageid of the corresponding sidecar.
   - `spanContext` - Contains tracing span context fields.
-  
-  
+
+
 
 ## Monitoring execution status
 
@@ -860,7 +858,7 @@ False    | TaskRunImagePullFailed | n/a                                         
 
 When a `TaskRun` changes status, [events](events.md#taskruns) are triggered accordingly.
 
-The name of the `Pod` owned by a `TaskRun`  is univocally associated to the owning resource. 
+The name of the `Pod` owned by a `TaskRun`  is univocally associated to the owning resource.
 If a `TaskRun` resource is deleted and created with the same name, the child `Pod` will be created with the same name
 as before. The base format of the name is `<taskrun-name>-pod`. The name may vary according to the logic of
 [`kmeta.ChildName`](https://pkg.go.dev/github.com/knative/pkg/kmeta#ChildName). In case of retries of a `TaskRun`

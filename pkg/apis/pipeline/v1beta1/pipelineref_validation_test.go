@@ -142,24 +142,6 @@ func TestPipelineRef_Invalid(t *testing.T) {
 		},
 		wantErr:     apis.ErrMultipleOneOf("bundle", "params").Also(apis.ErrMissingField("resolver")),
 		withContext: enableTektonOCIBundles(t),
-	}, {
-		name: "pipelineref param object not allowed in stable",
-		ref: &v1beta1.PipelineRef{
-			ResolverRef: v1beta1.ResolverRef{
-				Resolver: "some-resolver",
-				Params: v1beta1.Params{{
-					Name: "foo",
-					Value: v1beta1.ParamValue{
-						Type:      v1beta1.ParamTypeObject,
-						ObjectVal: map[string]string{"bar": "baz"},
-					},
-				}},
-			},
-		},
-		wantErr: apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"").Also(
-			apis.ErrGeneric("resolver params requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"")).Also(
-			apis.ErrGeneric("object type parameter requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"")),
-		withContext: cfgtesting.EnableStableAPIFields,
 	}}
 
 	for _, tc := range tests {
