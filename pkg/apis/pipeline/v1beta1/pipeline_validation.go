@@ -97,12 +97,6 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 // `enable-api-fields` but does not have "enable-api-fields" set to "alpha" or "beta".
 func (ps *PipelineSpec) ValidateBetaFields(ctx context.Context) *apis.FieldError {
 	var errs *apis.FieldError
-	// Object parameters
-	for i, p := range ps.Params {
-		if p.Type == ParamTypeObject {
-			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "object type parameter", config.BetaAPIFields).ViaFieldIndex("params", i))
-		}
-	}
 	// Indexing into array parameters
 	arrayParamIndexingRefs := ps.GetIndexingReferencesToArrayParams()
 	if len(arrayParamIndexingRefs) != 0 {
@@ -112,7 +106,7 @@ func (ps *PipelineSpec) ValidateBetaFields(ctx context.Context) *apis.FieldError
 	for i, result := range ps.Results {
 		switch result.Type {
 		case ResultsTypeObject:
-			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "object results", config.BetaAPIFields).ViaFieldIndex("results", i))
+			// stable feature
 		case ResultsTypeArray:
 			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "array results", config.BetaAPIFields).ViaFieldIndex("results", i))
 		case ResultsTypeString:

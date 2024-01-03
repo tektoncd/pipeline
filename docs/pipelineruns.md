@@ -19,7 +19,7 @@ weight: 204
       - [Propagated Parameters](#propagated-parameters)
         - [Scope and Precedence](#scope-and-precedence)
         - [Default Values](#default-values)
-        - [Object Parameters](#object-parameters) 
+        - [Object Parameters](#object-parameters)
     - [Specifying custom <code>ServiceAccount</code> credentials](#specifying-custom-serviceaccount-credentials)
     - [Mapping <code>ServiceAccount</code> credentials to <code>Tasks</code>](#mapping-serviceaccount-credentials-to-tasks)
     - [Specifying a <code>Pod</code> template](#specifying-a-pod-template)
@@ -71,12 +71,12 @@ A `PipelineRun` definition supports the following fields:
   - [`params`](#specifying-parameters) - Specifies the desired execution parameters for the `Pipeline`.
   - [`serviceAccountName`](#specifying-custom-serviceaccount-credentials) - Specifies a `ServiceAccount`
     object that supplies specific execution credentials for the `Pipeline`.
-  - [`status`](#cancelling-a-pipelinerun) - Specifies options for cancelling a `PipelineRun`. 
+  - [`status`](#cancelling-a-pipelinerun) - Specifies options for cancelling a `PipelineRun`.
   - [`taskRunSpecs`](#specifying-taskrunspecs) - Specifies a list of `PipelineRunTaskSpec` which allows for setting `ServiceAccountName`, [`Pod` template](./podtemplates.md), and `Metadata` for each task. This overrides the `Pod` template set for the entire `Pipeline`.
   - [`timeout`](#configuring-a-failure-timeout) - Specifies the timeout before the `PipelineRun` fails. `timeout` is deprecated and will eventually be removed, so consider using `timeouts` instead.
   - [`timeouts`](#configuring-a-failure-timeout) - Specifies the timeout before the `PipelineRun` fails. `timeouts` allows more granular timeout configuration, at the pipeline, tasks, and finally levels
   - [`podTemplate`](#specifying-a-pod-template) - Specifies a [`Pod` template](./podtemplates.md) to use as the basis for the configuration of the `Pod` that executes each `Task`.
-  - [`workspaces`](#specifying-workspaces) - Specifies a set of workspace bindings which must match the names of workspaces declared in the pipeline being used. 
+  - [`workspaces`](#specifying-workspaces) - Specifies a set of workspace bindings which must match the names of workspaces declared in the pipeline being used.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -233,7 +233,7 @@ spec:
 apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
-  name: pipelinerun 
+  name: pipelinerun
 spec:
   pipelineRef:
     name: pipeline
@@ -275,9 +275,9 @@ go through the complexity of checking each `Pipeline` and providing only the req
 
 > :seedling: **`enum` is an [alpha](additional-configs.md#alpha-features) feature.** The `enable-param-enum` feature flag must be set to `"true"` to enable this feature.
 
-If a `Parameter` is guarded by `Enum` in the `Pipeline`, you can only provide `Parameter` values in the `PipelineRun` that are predefined in the `Param.Enum` in the `Pipeline`. The `PipelineRun` will fail with reason `InvalidParamValue` otherwise. 
+If a `Parameter` is guarded by `Enum` in the `Pipeline`, you can only provide `Parameter` values in the `PipelineRun` that are predefined in the `Param.Enum` in the `Pipeline`. The `PipelineRun` will fail with reason `InvalidParamValue` otherwise.
 
-Tekton will also the validate the `param` values passed to any referenced `Tasks` (via `taskRef`) if `Enum` is specified for the `Task`. The `PipelineRun` will fail with reason `InvalidParamValue` if `Enum` validation is failed for any of the `PipelineTask`. 
+Tekton will also the validate the `param` values passed to any referenced `Tasks` (via `taskRef`) if `Enum` is specified for the `Task`. The `PipelineRun` will fail with reason `InvalidParamValue` if `Enum` validation is failed for any of the `PipelineTask`.
 
 You can also specify `Enum` in an embedded `Pipeline` in a `PipelineRun`. The same `Param` validation will be executed in this scenario.
 
@@ -579,43 +579,41 @@ status:
 
 ##### Object Parameters
 
-Object params is a [beta feature](./additional-configs.md#beta-features).
-
 When using an inlined spec, object parameters from the parent `PipelineRun` will also be
 propagated to any inlined specs without needing to be explicitly defined. This
 allows authors to simplify specs by automatically propagating top-level
 parameters down to other inlined resources.
 When propagating object parameters, scope and precedence also holds as shown below.
- 
+
 ```yaml
-apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1 
-kind: PipelineRun              
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
+kind: PipelineRun
 metadata:
-  generateName: pipelinerun-object-param-result 
+  generateName: pipelinerun-object-param-result
 spec:
   params:
-    - name: gitrepo            
-      value:                   
-        url: abc.com           
-        commit: sha123         
-  pipelineSpec:                
-    tasks:                     
-      - name: task1            
-        params:                
-          - name: gitrepo      
+    - name: gitrepo
+      value:
+        url: abc.com
+        commit: sha123
+  pipelineSpec:
+    tasks:
+      - name: task1
+        params:
+          - name: gitrepo
             value:
-              branch: main     
-              url: xyz.com     
+              branch: main
+              url: xyz.com
         taskSpec:
           steps:
-            - name: write-result            
-              image: bash      
-              args: [          
-                "echo",        
-                "--url=$(params.gitrepo.url)",  
+            - name: write-result
+              image: bash
+              args: [
+                "echo",
+                "--url=$(params.gitrepo.url)",
                 "--commit=$(params.gitrepo.commit)",
                 "--branch=$(params.gitrepo.branch)",
-              ]      
+              ]
 ```
 
 resolves to
@@ -650,7 +648,7 @@ spec:
           - --commit=$(params.gitrepo.commit)
           - --branch=$(params.gitrepo.branch)
           image: bash
-          name: write-result   
+          name: write-result
 status:
   completionTime: "2022-09-08T17:22:01Z"
   conditions:
@@ -784,7 +782,7 @@ spec:
             args:
               - echo "1001" | tee $(results.uid.path)
     - name: show-uid
-      # params: 
+      # params:
       #   - name: uid
       #     value: $(tasks.add-uid.results.uid)
       taskSpec:
@@ -885,7 +883,7 @@ metadata:
 spec:
   pipelineRef:
     name: mypipeline
-  taskRunTemplate: 
+  taskRunTemplate:
     podTemplate:
       securityContext:
         runAsNonRoot: true
@@ -1006,7 +1004,7 @@ spec:
     name: pipeline-name
   taskRunSpecs:
     - pipelineTaskName: task-name
-      metadata: 
+      metadata:
         annotations:
           vault.hashicorp.com/agent-inject-secret-foo: "/path/to/foo"
           vault.hashicorp.com/role: role-name
@@ -1020,7 +1018,7 @@ spec:
     name: pipeline-name
   taskRunSpecs:
     - pipelineTaskName: task-name
-      metadata: 
+      metadata:
         labels:
           app: cloudevent
 ```
@@ -1110,10 +1108,10 @@ spec:
     tasks:
     - name: fetch-secure-data
       # workspaces:
-      #   - name: shared-data 
+      #   - name: shared-data
       taskSpec:
         # workspaces:
-        #   - name: shared-data 
+        #   - name: shared-data
         steps:
         - name: fetch-and-write-secure
           image: ubuntu
@@ -1121,12 +1119,12 @@ spec:
             echo hi >> $(workspaces.shared-data.path)/recipe.txt
     - name: print-the-recipe
       # workspaces:
-      #   - name: shared-data 
+      #   - name: shared-data
       runAfter:
         - fetch-secure-data
       taskSpec:
         # workspaces:
-        #   - name: shared-data 
+        #   - name: shared-data
         steps:
         - name: print-secrets
           image: ubuntu
@@ -1259,7 +1257,7 @@ spec:
   - name: fetch-and-write
     image: ubuntu
     script: |
-      echo $(workspaces.shared-data.path)      
+      echo $(workspaces.shared-data.path)
 ---
 apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
@@ -1432,7 +1430,7 @@ If you set the timeout to 0, the `PipelineRun` fails immediately upon encounteri
 Your `PipelineRun`'s `status` field can contain the following fields:
 
 - Required:
-  - `status` - Most relevant, `status.conditions`, which contains the latest observations of the `PipelineRun`'s state. [See here](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties) for information on typical status properties. 
+  - `status` - Most relevant, `status.conditions`, which contains the latest observations of the `PipelineRun`'s state. [See here](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties) for information on typical status properties.
   - `startTime` - The time at which the `PipelineRun` began executing, in [RFC3339](https://tools.ietf.org/html/rfc3339) format.
   - `completionTime` - The time at which the `PipelineRun` finished executing, in [RFC3339](https://tools.ietf.org/html/rfc3339) format.
   - [`pipelineSpec`](pipelines.md#configuring-a-pipeline) - The exact `PipelineSpec` used when starting the `PipelineRun`.

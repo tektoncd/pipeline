@@ -90,24 +90,6 @@ func TestPipelineRef_Invalid(t *testing.T) {
 		},
 		wantErr:     apis.ErrMultipleOneOf("name", "params").Also(apis.ErrMissingField("resolver")),
 		withContext: cfgtesting.EnableBetaAPIFields,
-	}, {
-		name: "pipelineref param object not allowed in stable",
-		ref: &v1.PipelineRef{
-			ResolverRef: v1.ResolverRef{
-				Resolver: "some-resolver",
-				Params: v1.Params{{
-					Name: "foo",
-					Value: v1.ParamValue{
-						Type:      v1.ParamTypeObject,
-						ObjectVal: map[string]string{"bar": "baz"},
-					},
-				}},
-			},
-		},
-		wantErr: apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"").Also(
-			apis.ErrGeneric("resolver params requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"")).Also(
-			apis.ErrGeneric("object type parameter requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"")),
-		withContext: cfgtesting.EnableStableAPIFields,
 	}}
 
 	for _, tc := range tests {
