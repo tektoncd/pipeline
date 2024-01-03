@@ -97,8 +97,7 @@ var (
 	// ReasonObjectParameterMissKeys indicates that the object param value provided from PipelineRun spec
 	// misses some keys required for the object param declared in Pipeline spec.
 	ReasonObjectParameterMissKeys = v1.PipelineRunReasonObjectParameterMissKeys.String()
-	// ReasonParamArrayIndexingInvalid indicates that the use of param array indexing is not under correct api fields feature gate
-	// or the array is out of bound.
+	// ReasonParamArrayIndexingInvalid indicates that the use of param array indexing is out of bound.
 	ReasonParamArrayIndexingInvalid = v1.PipelineRunReasonParamArrayIndexingInvalid.String()
 	// ReasonCouldntGetTask indicates that the reason for the failure status is that the
 	// associated Pipeline's Tasks couldn't all be retrieved

@@ -110,7 +110,7 @@ spec:
 ```
 
 > :seedling: **`params` cannot be directly used in a `script` in `StepActions`.**
-> Directly substituting `params` in `scripts` makes the workload prone to shell attacks. Therefore, we do not allow direct usage of `params` in `scripts` in `StepActions`. Instead, rely on passing `params` to `env` variables and reference them in `scripts`. We cannot do the same for `inlined-steps` because it breaks `v1 API` compatibility for existing users. 
+> Directly substituting `params` in `scripts` makes the workload prone to shell attacks. Therefore, we do not allow direct usage of `params` in `scripts` in `StepActions`. Instead, rely on passing `params` to `env` variables and reference them in `scripts`. We cannot do the same for `inlined-steps` because it breaks `v1 API` compatibility for existing users.
 
 #### Passing Params to StepAction
 
@@ -159,7 +159,7 @@ spec:
     date | tee $(results.current-date-human-readable.path)
 ```
 
-It is possible that a `StepAction` with `Results` is used multiple times in the same `Task` or multiple `StepActions` in the same `Task` produce `Results` with the same name. Resolving the `Result` names becomes critical otherwise there could be unexpected outcomes. The `Task` needs to be able to resolve these `Result` names clashes by mapping it to a different `Result` name. For this reason, we introduce the capability to store results on a `Step` level. 
+It is possible that a `StepAction` with `Results` is used multiple times in the same `Task` or multiple `StepActions` in the same `Task` produce `Results` with the same name. Resolving the `Result` names becomes critical otherwise there could be unexpected outcomes. The `Task` needs to be able to resolve these `Result` names clashes by mapping it to a different `Result` name. For this reason, we introduce the capability to store results on a `Step` level.
 
 `StepActions` can also emit `Results` to `$(step.results.<resultName>.path)`.
 
@@ -243,7 +243,6 @@ spec:
 `StepResults` (i.e. results written to `$(step.results.<result-name>.path)`, NOT `$(results.<result-name>.path)`) can be shared with following steps via replacement variable `$(steps.<step-name>.results.<result-name>)`.
 
 Pipeline supports two new types of results and parameters: array `[]string` and object `map[string]string`.
-Array and Object result is a beta feature and can be enabled by setting `enable-api-fields` to `alpha` or `beta`.
 
 | Result Type | Parameter Type | Specification                                    | `enable-api-fields` |
 |-------------|----------------|--------------------------------------------------|---------------------|
@@ -276,12 +275,12 @@ spec:
               IMAGE_URL:
                 type: string
               IMAGE_DIGEST:
-                type: string 
+                type: string
         image: alpine
         script: |
           echo -n "[\"image1\", \"image2\", \"image3\"]" | tee $(step.results.result1.path)
           echo -n "foo" | tee $(step.results.result2.path)
-          echo -n "{\"IMAGE_URL\":\"ar.com\", \"IMAGE_DIGEST\":\"sha234\"}" | tee $(step.results.result3.path) 
+          echo -n "{\"IMAGE_URL\":\"ar.com\", \"IMAGE_DIGEST\":\"sha234\"}" | tee $(step.results.result3.path)
       - name: action-runner
         ref:
           name: step-action
@@ -314,7 +313,7 @@ spec:
 ```
 
 The `Task` using the `StepAction` has more context about how the `Steps` have been orchestrated. As such, the `Task` should be able to update the `workingDir` of the `StepAction` so that the `StepAction` is executed from the correct location.
-The `StepAction` can parametrize the `workingDir` and work relative to it. This way, the `Task` does not really need control over the workingDir, it just needs to pass the path as a parameter. 
+The `StepAction` can parametrize the `workingDir` and work relative to it. This way, the `Task` does not really need control over the workingDir, it just needs to pass the path as a parameter.
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1

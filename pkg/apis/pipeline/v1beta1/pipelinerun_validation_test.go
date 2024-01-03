@@ -1566,38 +1566,6 @@ func TestPipelineRunSpecBetaFeatures(t *testing.T) {
 		name string
 		spec v1beta1.PipelineSpec
 	}{{
-		name: "array indexing in Tasks",
-		spec: v1beta1.PipelineSpec{
-			Params: []v1beta1.ParamSpec{
-				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewStructuredValues("default-value", "default-value-again")},
-			},
-			Tasks: []v1beta1.PipelineTask{{
-				Name: "foo",
-				Params: v1beta1.Params{
-					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("$(params.first-param[0])")},
-				},
-				TaskRef: &v1beta1.TaskRef{Name: "foo"},
-			}},
-		},
-	}, {
-		name: "array indexing in Finally",
-		spec: v1beta1.PipelineSpec{
-			Params: []v1beta1.ParamSpec{
-				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewStructuredValues("default-value", "default-value-again")},
-			},
-			Tasks: []v1beta1.PipelineTask{{
-				Name:    "foo",
-				TaskRef: &v1beta1.TaskRef{Name: "foo"},
-			}},
-			Finally: []v1beta1.PipelineTask{{
-				Name: "bar",
-				Params: v1beta1.Params{
-					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("$(params.first-param[0])")},
-				},
-				TaskRef: &v1beta1.TaskRef{Name: "bar"},
-			}},
-		},
-	}, {
 		name: "pipeline tasks - use of resolver",
 		spec: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
@@ -1635,41 +1603,6 @@ func TestPipelineRunSpecBetaFeatures(t *testing.T) {
 			Finally: []v1beta1.PipelineTask{{
 				Name:    "uses-resolver-params",
 				TaskRef: &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "bar", Params: v1beta1.Params{{}}}},
-			}},
-		},
-	}, {
-		name: "array results",
-		spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name:    "valid-pipeline-task",
-				TaskRef: &v1beta1.TaskRef{Name: "foo-task"},
-			}},
-			Results: []v1beta1.PipelineResult{{Name: "my-array-result", Type: v1beta1.ResultsTypeArray, Value: *v1beta1.NewStructuredValues("$(tasks.valid-pipeline-task.results.foo[*])")}},
-		},
-	}, {
-		name: "array results in Tasks",
-		spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name: "valid-pipeline-task",
-				TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-					Steps:   []v1beta1.Step{{Image: "busybox", Script: "echo hello"}},
-					Results: []v1beta1.TaskResult{{Name: "my-array-result", Type: v1beta1.ResultsTypeArray}},
-				}},
-			}},
-		},
-	}, {
-		name: "array results in Finally",
-		spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name:    "valid-pipeline-task",
-				TaskRef: &v1beta1.TaskRef{Name: "foo-task"},
-			}},
-			Finally: []v1beta1.PipelineTask{{
-				Name: "valid-finally-task",
-				TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-					Steps:   []v1beta1.Step{{Image: "busybox", Script: "echo hello"}},
-					Results: []v1beta1.TaskResult{{Name: "my-array-result", Type: v1beta1.ResultsTypeArray}},
-				}},
 			}},
 		},
 	}}
