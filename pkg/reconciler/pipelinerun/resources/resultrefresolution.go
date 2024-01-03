@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"sort"
 
+	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
@@ -28,7 +29,7 @@ import (
 var (
 	// ErrInvalidTaskResultReference indicates that the reason for the failure status is that there
 	// is an invalid task result reference
-	ErrInvalidTaskResultReference = errors.New("Invalid task result reference")
+	ErrInvalidTaskResultReference = pipelineErrors.WrapUserError(errors.New("Invalid task result reference"))
 )
 
 // ResolvedResultRefs represents all of the ResolvedResultRef for a pipeline task

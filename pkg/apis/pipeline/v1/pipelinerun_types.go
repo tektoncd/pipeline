@@ -23,6 +23,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	runv1beta1 "github.com/tektoncd/pipeline/pkg/apis/run/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -468,6 +469,7 @@ func (pr *PipelineRunStatus) MarkSucceeded(reason, messageFormat string, message
 
 // MarkFailed changes the Succeeded condition to False with the provided reason and message.
 func (pr *PipelineRunStatus) MarkFailed(reason, messageFormat string, messageA ...interface{}) {
+	messageFormat = pipelineErrors.LabelUserError(messageFormat, messageA)
 	pipelineRunCondSet.Manage(pr).MarkFalse(apis.ConditionSucceeded, reason, messageFormat, messageA...)
 	succeeded := pr.GetCondition(apis.ConditionSucceeded)
 	pr.CompletionTime = &succeeded.LastTransitionTime.Inner
