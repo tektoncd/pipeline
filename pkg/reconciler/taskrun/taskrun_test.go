@@ -3133,6 +3133,109 @@ spec:
 		t.Errorf("TestPopulateParamsToWorkspaceBindingsSecretName errored with: %s", diff.PrintWantGot(c))
 	}
 }
+
+func TestPopulateParamsToWorkspaceBindingsCSIDriver(t *testing.T) {
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-propagating-params-to-workspace-bindings
+  namespace: foo
+spec:
+  params:
+    - name: myDriver
+      value: driver-1
+  taskSpec:
+    steps:
+      - args:
+        - ""
+        command:
+          - echo
+        image: foo
+        name: simple-step
+  workspaces:
+    - name: ws-1
+      csi:
+        driver: $(params.myDriver)
+`)
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{taskRun},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	createServiceAccount(t, testAssets, "default", taskRun.Namespace)
+	c := testAssets.Controller
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+		t.Fatalf("Could not reconcile the taskrun: %v", err)
+	}
+
+	pod, _ := testAssets.Clients.Kube.CoreV1().Pods(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name+"-pod", metav1.GetOptions{})
+
+	want := "driver-1"
+	got := ""
+
+	for _, v := range pod.Spec.Volumes {
+		if v.CSI != nil {
+			got = v.CSI.Driver
+			break
+		}
+	}
+
+	if c := cmp.Diff(want, got); c != "" {
+		t.Errorf("TestPopulateParamsToWorkspaceBindingsCSIDriver errored with: %s", diff.PrintWantGot(c))
+	}
+}
+
+func TestPopulateParamsToWorkspaceBindingsCSINodePublishSecretRefName(t *testing.T) {
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-propagating-params-to-workspace-bindings
+  namespace: foo
+spec:
+  params:
+    - name: myRefName
+      value: ref-1
+  taskSpec:
+    steps:
+      - args:
+        - ""
+        command:
+          - echo
+        image: foo
+        name: simple-step
+  workspaces:
+    - name: ws-1
+      csi:
+        driver: driver-1
+        nodePublishSecretRef:
+          name: $(params.myRefName)
+`)
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{taskRun},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	createServiceAccount(t, testAssets, "default", taskRun.Namespace)
+	c := testAssets.Controller
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+		t.Fatalf("Could not reconcile the taskrun: %v", err)
+	}
+
+	pod, _ := testAssets.Clients.Kube.CoreV1().Pods(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name+"-pod", metav1.GetOptions{})
+
+	want := "ref-1"
+	got := ""
+
+	for _, v := range pod.Spec.Volumes {
+		if v.CSI != nil {
+			got = v.CSI.NodePublishSecretRef.Name
+			break
+		}
+	}
+
+	if c := cmp.Diff(want, got); c != "" {
+		t.Errorf("TestPopulateParamsToWorkspaceBindingsCSINodePublishSecretRefName errored with: %s", diff.PrintWantGot(c))
+	}
+}
+
 func TestPopulateParamsToWorkspaceBindingsProjectedSources(t *testing.T) {
 	tests := []struct {
 		description string

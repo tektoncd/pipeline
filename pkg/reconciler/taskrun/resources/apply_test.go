@@ -1920,6 +1920,94 @@ func TestApplyParametersToWorkspaceBindings(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "csi-driver",
+			ts: &v1.TaskSpec{
+				Params: []v1.ParamSpec{
+					{Name: "csi-driver-name", Type: v1.ParamTypeString},
+				},
+			},
+			tr: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							CSI: &corev1.CSIVolumeSource{Driver: "$(params.csi-driver-name)"},
+						},
+					},
+					Params: v1.Params{
+						{
+							Name: "csi-driver-name", Value: v1.ParamValue{
+								Type:      v1.ParamTypeString,
+								StringVal: "csi-driver-value",
+							},
+						},
+					},
+				},
+			},
+			want: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							CSI: &corev1.CSIVolumeSource{Driver: "csi-driver-value"},
+						},
+					},
+					Params: v1.Params{
+						{
+							Name: "csi-driver-name", Value: v1.ParamValue{
+								Type:      v1.ParamTypeString,
+								StringVal: "csi-driver-value",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "csi-nodePublishSecretRef-name",
+			ts: &v1.TaskSpec{
+				Params: []v1.ParamSpec{
+					{Name: "csi-nodePublishSecretRef-name", Type: v1.ParamTypeString},
+				},
+			},
+			tr: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							CSI: &corev1.CSIVolumeSource{NodePublishSecretRef: &corev1.LocalObjectReference{
+								Name: "$(params.csi-nodePublishSecretRef-name)",
+							}},
+						},
+					},
+					Params: v1.Params{
+						{
+							Name: "csi-nodePublishSecretRef-name", Value: v1.ParamValue{
+								Type:      v1.ParamTypeString,
+								StringVal: "csi-nodePublishSecretRef-value",
+							},
+						},
+					},
+				},
+			},
+			want: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							CSI: &corev1.CSIVolumeSource{NodePublishSecretRef: &corev1.LocalObjectReference{
+								Name: "csi-nodePublishSecretRef-value",
+							}},
+						},
+					},
+					Params: v1.Params{
+						{
+							Name: "csi-nodePublishSecretRef-name", Value: v1.ParamValue{
+								Type:      v1.ParamTypeString,
+								StringVal: "csi-nodePublishSecretRef-value",
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

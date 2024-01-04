@@ -5385,6 +5385,57 @@ spec:
 				Name: "name-1",
 			}}}}}},
 		},
+		{
+			name: "populate params to pipelineRun workspaceBindings csi.driver",
+			pr: parse.MustParseV1PipelineRun(t, `
+metadata:
+  annotations:
+    PipelineRunAnnotation: PipelineRunValue
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  params:
+    - name: myCSIDriver
+      value: driver-1
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa
+  taskRunSpecs:
+  - pipelineTaskName: hello-world-1
+  workspaces:
+    - name: ws-1
+      csi:
+        driver: $(params.myCSIDriver)
+`),
+			expected: v1.WorkspaceBinding{CSI: &corev1.CSIVolumeSource{Driver: "driver-1"}},
+		},
+		{
+			name: "populate params to pipelineRun workspaceBindings csi.nodePublishSecretRef.name",
+			pr: parse.MustParseV1PipelineRun(t, `
+metadata:
+  annotations:
+    PipelineRunAnnotation: PipelineRunValue
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  params:
+    - name: myNodePublishSecretRef
+      value: ref-1
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa
+  taskRunSpecs:
+  - pipelineTaskName: hello-world-1
+  workspaces:
+    - name: ws-1
+      csi:
+        nodePublishSecretRef:
+          name: $(params.myNodePublishSecretRef)
+`),
+			expected: v1.WorkspaceBinding{CSI: &corev1.CSIVolumeSource{NodePublishSecretRef: &corev1.LocalObjectReference{Name: "ref-1"}}},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -5739,6 +5790,68 @@ spec:
         sources:
          - secret:
              name: aResultValue 
+`),
+		},
+		{
+			name: "csi.driver success",
+			prs: []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-different-service-accs
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa-0
+  workspaces:
+    - name: ws-1
+      csi:
+        driver: $(tasks.a-task.results.aResult)
+`)},
+			expectedTr: mustParseTaskRunWithObjectMeta(t,
+				taskRunObjectMeta("test-pipeline-run-different-service-accs-b-task", "foo",
+					"test-pipeline-run-different-service-accs", "test-pipeline", "b-task", false),
+				`spec:
+  serviceAccountName: test-sa-0
+  taskRef:
+    name: b-task
+    kind: Task
+  workspaces:
+    - name: s1
+      csi:
+        driver: aResultValue 
+`),
+		},
+		{
+			name: "nodePublishSecretRef.name success",
+			prs: []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-different-service-accs
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa-0
+  workspaces:
+    - name: ws-1
+      csi:
+        nodePublishSecretRef:
+          name: $(tasks.a-task.results.aResult)
+`)},
+			expectedTr: mustParseTaskRunWithObjectMeta(t,
+				taskRunObjectMeta("test-pipeline-run-different-service-accs-b-task", "foo",
+					"test-pipeline-run-different-service-accs", "test-pipeline", "b-task", false),
+				`spec:
+  serviceAccountName: test-sa-0
+  taskRef:
+    name: b-task
+    kind: Task
+  workspaces:
+    - name: s1
+      csi:
+        nodePublishSecretRef: 
+          name: aResultValue
 `),
 		},
 	}
