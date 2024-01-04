@@ -404,6 +404,12 @@ func ApplyResultsToWorkspaceBindings(trResults map[string][]v1.TaskRunResult, pr
 		if pr.Spec.Workspaces[i].ConfigMap != nil {
 			pr.Spec.Workspaces[i].ConfigMap.Name = substitution.ApplyReplacements(binding.ConfigMap.Name, stringReplacements)
 		}
+		if pr.Spec.Workspaces[i].CSI != nil {
+			pr.Spec.Workspaces[i].CSI.Driver = substitution.ApplyReplacements(binding.CSI.Driver, stringReplacements)
+			if pr.Spec.Workspaces[i].CSI.NodePublishSecretRef != nil {
+				pr.Spec.Workspaces[i].CSI.NodePublishSecretRef.Name = substitution.ApplyReplacements(binding.CSI.NodePublishSecretRef.Name, stringReplacements)
+			}
+		}
 		if pr.Spec.Workspaces[i].Secret != nil {
 			pr.Spec.Workspaces[i].Secret.SecretName = substitution.ApplyReplacements(binding.Secret.SecretName, stringReplacements)
 		}
@@ -609,6 +615,12 @@ func ApplyParametersToWorkspaceBindings(ctx context.Context, pr *v1.PipelineRun)
 		}
 		if pr.Spec.Workspaces[i].Secret != nil {
 			pr.Spec.Workspaces[i].Secret.SecretName = substitution.ApplyReplacements(binding.Secret.SecretName, parameters)
+		}
+		if pr.Spec.Workspaces[i].CSI != nil {
+			pr.Spec.Workspaces[i].CSI.Driver = substitution.ApplyReplacements(binding.CSI.Driver, parameters)
+			if pr.Spec.Workspaces[i].CSI.NodePublishSecretRef != nil {
+				pr.Spec.Workspaces[i].CSI.NodePublishSecretRef.Name = substitution.ApplyReplacements(binding.CSI.NodePublishSecretRef.Name, parameters)
+			}
 		}
 		if pr.Spec.Workspaces[i].Projected != nil {
 			for j, source := range binding.Projected.Sources {

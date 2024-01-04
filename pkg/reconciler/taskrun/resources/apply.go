@@ -229,14 +229,20 @@ func ApplyParametersToWorkspaceBindings(ts *v1.TaskSpec, tr *v1.TaskRun) *v1.Tas
 	parameters, _, _ := getTaskParameters(tsCopy, tr, tsCopy.Params...)
 	for i, binding := range tr.Spec.Workspaces {
 		if tr.Spec.Workspaces[i].PersistentVolumeClaim != nil {
-			binding.PersistentVolumeClaim.ClaimName = substitution.ApplyReplacements(binding.PersistentVolumeClaim.ClaimName, parameters)
+			tr.Spec.Workspaces[i].PersistentVolumeClaim.ClaimName = substitution.ApplyReplacements(binding.PersistentVolumeClaim.ClaimName, parameters)
 		}
 		tr.Spec.Workspaces[i].SubPath = substitution.ApplyReplacements(binding.SubPath, parameters)
 		if tr.Spec.Workspaces[i].ConfigMap != nil {
-			binding.ConfigMap.Name = substitution.ApplyReplacements(binding.ConfigMap.Name, parameters)
+			tr.Spec.Workspaces[i].ConfigMap.Name = substitution.ApplyReplacements(binding.ConfigMap.Name, parameters)
 		}
 		if tr.Spec.Workspaces[i].Secret != nil {
 			tr.Spec.Workspaces[i].Secret.SecretName = substitution.ApplyReplacements(binding.Secret.SecretName, parameters)
+		}
+		if tr.Spec.Workspaces[i].CSI != nil {
+			tr.Spec.Workspaces[i].CSI.Driver = substitution.ApplyReplacements(binding.CSI.Driver, parameters)
+			if tr.Spec.Workspaces[i].CSI.NodePublishSecretRef != nil {
+				tr.Spec.Workspaces[i].CSI.NodePublishSecretRef.Name = substitution.ApplyReplacements(binding.CSI.NodePublishSecretRef.Name, parameters)
+			}
 		}
 		if binding.Projected != nil {
 			for j, source := range binding.Projected.Sources {

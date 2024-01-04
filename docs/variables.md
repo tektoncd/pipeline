@@ -125,6 +125,8 @@ For instructions on using variable substitutions see the relevant section of [th
 | `TaskRun`     | `spec.workspaces[].secret.secretName`                           |
 | `TaskRun`     | `spec.workspaces[].projected.sources[].configMap.name`          |
 | `TaskRun`     | `spec.workspaces[].projected.sources[].secret.name`             |
+| `TaskRun`     | `spec.workspaces[].csi.driver`                                  |
+| `TaskRun`     | `spec.workspaces[].csi.nodePublishSecretRef.name`               |
 | `Pipeline`    | `spec.tasks[].params[].value`                                   |
 | `Pipeline`    | `spec.tasks[].conditions[].params[].value`                      |
 | `Pipeline`    | `spec.results[].value`                                          |
@@ -137,3 +139,5 @@ For instructions on using variable substitutions see the relevant section of [th
 | `PipelineRun` | `spec.workspaces[].secret.secretName`                           |
 | `PipelineRun` | `spec.workspaces[].projected.sources[].configMap.name`          |
 | `PipelineRun` | `spec.workspaces[].projected.sources[].secret.name`             |
+| `PipelineRun` | `spec.workspaces[].csi.driver`                                  |
+| `PipelineRun` | `spec.workspaces[].csi.nodePublishSecretRef.name`               |

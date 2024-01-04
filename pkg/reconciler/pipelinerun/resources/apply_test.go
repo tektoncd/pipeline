@@ -4903,6 +4903,70 @@ func TestApplyParametersToWorkspaceBindings(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "csi-driver",
+			ps: &v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "csi-driver", Type: v1.ParamTypeString},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: []v1.Param{
+						{Name: "csi-driver", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "csi-driver-value"}},
+					},
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							CSI: &corev1.CSIVolumeSource{Driver: "$(params.csi-driver)"},
+						},
+					},
+				},
+			},
+			expectedPr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: []v1.Param{
+						{Name: "csi-driver", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "csi-driver-value"}},
+					},
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							CSI: &corev1.CSIVolumeSource{Driver: "csi-driver-value"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "csi-nodePublishSecretRef-name",
+			ps: &v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "csi-nodePublishSecretRef-name", Type: v1.ParamTypeString},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: []v1.Param{
+						{Name: "csi-nodePublishSecretRef-name", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "csi-nodePublishSecretRef-value"}},
+					},
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							CSI: &corev1.CSIVolumeSource{NodePublishSecretRef: &corev1.LocalObjectReference{Name: "$(params.csi-nodePublishSecretRef-name)"}},
+						},
+					},
+				},
+			},
+			expectedPr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: []v1.Param{
+						{Name: "csi-nodePublishSecretRef-name", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "csi-nodePublishSecretRef-value"}},
+					},
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							CSI: &corev1.CSIVolumeSource{NodePublishSecretRef: &corev1.LocalObjectReference{Name: "csi-nodePublishSecretRef-value"}},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range testCases {
