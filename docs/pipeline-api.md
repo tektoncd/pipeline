@@ -2493,6 +2493,19 @@ map[string]string
 <p>SpanContext contains tracing span context fields</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>failureReason</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>FailureReason stands for the granular PipelineRun failure reason.
+It is the provisional status field for making breaking changes to the existing PipelineRunReasons. It will replace
+the existing apis.Condition.Reason with the next major version bump.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.PipelineRunTaskRunStatus">PipelineRunTaskRunStatus
@@ -5716,6 +5729,19 @@ map[string]string
 </td>
 <td>
 <p>SpanContext contains tracing span context fields</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>failureReason</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>FailureReason stands for the granular TaskRun failure reason.
+It is the provisional status field for making breaking changes to the existing PipelineRunReasons. It will replace
+the existing apis.Condition.Reason with the next major version bump.</p>
 </td>
 </tr>
 </tbody>

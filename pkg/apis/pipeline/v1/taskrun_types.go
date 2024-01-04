@@ -248,6 +248,12 @@ func (trs *TaskRunStatus) MarkResourceFailed(reason TaskRunReason, err error) {
 	trs.CompletionTime = &succeeded.LastTransitionTime.Inner
 }
 
+// SetFailureReason sets TaskRun failure reason that is more granular and precise
+// to the existing TaskRunReason
+func (trs *TaskRunStatus) SetFailureReason(reason TaskRunReason) {
+	trs.FailureReason = reason.String()
+}
+
 // TaskRunStatusFields holds the fields of TaskRun's status.  This is defined
 // separately and inlined so that other types can readily consume these fields
 // via duck typing.
@@ -291,6 +297,11 @@ type TaskRunStatusFields struct {
 
 	// SpanContext contains tracing span context fields
 	SpanContext map[string]string `json:"spanContext,omitempty"`
+
+	// FailureReason stands for the granular TaskRun failure reason.
+	// It is the provisional status field for making breaking changes to the existing PipelineRunReasons. It will replace
+	// the existing apis.Condition.Reason with the next major version bump.
+	FailureReason string `json:"failureReason,omitempty"`
 }
 
 // TaskRunStepSpec is used to override the values of a Step in the corresponding Task.

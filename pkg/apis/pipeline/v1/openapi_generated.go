@@ -1469,6 +1469,13 @@ func schema_pkg_apis_pipeline_v1_PipelineRunStatus(ref common.ReferenceCallback)
 							},
 						},
 					},
+					"failureReason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FailureReason stands for the granular PipelineRun failure reason. It is the provisional status field for making breaking changes to the existing PipelineRunReasons. It will replace the existing apis.Condition.Reason with the next major version bump.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
@@ -1585,6 +1592,13 @@ func schema_pkg_apis_pipeline_v1_PipelineRunStatusFields(ref common.ReferenceCal
 									},
 								},
 							},
+						},
+					},
+					"failureReason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FailureReason stands for the granular PipelineRun failure reason. It is the provisional status field for making breaking changes to the existing PipelineRunReasons. It will replace the existing apis.Condition.Reason with the next major version bump.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
@@ -4069,6 +4083,13 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatus(ref common.ReferenceCallback) com
 							},
 						},
 					},
+					"failureReason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FailureReason stands for the granular TaskRun failure reason. It is the provisional status field for making breaking changes to the existing PipelineRunReasons. It will replace the existing apis.Condition.Reason with the next major version bump.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"podName"},
 			},
@@ -4207,6 +4228,13 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatusFields(ref common.ReferenceCallbac
 									},
 								},
 							},
+						},
+					},
+					"failureReason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FailureReason stands for the granular TaskRun failure reason. It is the provisional status field for making breaking changes to the existing PipelineRunReasons. It will replace the existing apis.Condition.Reason with the next major version bump.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},

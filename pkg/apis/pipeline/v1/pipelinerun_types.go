@@ -470,6 +470,11 @@ func (pr *PipelineRunStatus) MarkFailed(reason, messageFormat string, messageA .
 	pr.CompletionTime = &succeeded.LastTransitionTime.Inner
 }
 
+// SetFailureReason sets PipelineRun failure reason that is more granular and precise
+func (prs *PipelineRunStatus) SetFailureReason(reason TaskRunReason) {
+	prs.FailureReason = reason.String()
+}
+
 // MarkRunning changes the Succeeded condition to Unknown with the provided reason and message.
 func (pr *PipelineRunStatus) MarkRunning(reason, messageFormat string, messageA ...interface{}) {
 	pipelineRunCondSet.Manage(pr).MarkUnknown(apis.ConditionSucceeded, reason, messageFormat, messageA...)
@@ -527,6 +532,11 @@ type PipelineRunStatusFields struct {
 
 	// SpanContext contains tracing span context fields
 	SpanContext map[string]string `json:"spanContext,omitempty"`
+
+	// FailureReason stands for the granular PipelineRun failure reason.
+	// It is the provisional status field for making breaking changes to the existing PipelineRunReasons. It will replace
+	// the existing apis.Condition.Reason with the next major version bump.
+	FailureReason string `json:"failureReason,omitempty"`
 }
 
 // SkippedTask is used to describe the Tasks that were skipped due to their When Expressions

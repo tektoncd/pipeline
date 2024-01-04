@@ -681,6 +681,10 @@
           "x-kubernetes-patch-merge-key": "type",
           "x-kubernetes-patch-strategy": "merge"
         },
+        "failureReason": {
+          "description": "FailureReason stands for the granular PipelineRun failure reason. It is the provisional status field for making breaking changes to the existing PipelineRunReasons. It will replace the existing apis.Condition.Reason with the next major version bump.",
+          "type": "string"
+        },
         "finallyStartTime": {
           "description": "FinallyStartTime is when all non-finally tasks have been completed and only finally tasks are being executed.",
           "$ref": "#/definitions/v1.Time"
@@ -746,6 +750,10 @@
         "completionTime": {
           "description": "CompletionTime is the time the PipelineRun completed.",
           "$ref": "#/definitions/v1.Time"
+        },
+        "failureReason": {
+          "description": "FailureReason stands for the granular PipelineRun failure reason. It is the provisional status field for making breaking changes to the existing PipelineRunReasons. It will replace the existing apis.Condition.Reason with the next major version bump.",
+          "type": "string"
         },
         "finallyStartTime": {
           "description": "FinallyStartTime is when all non-finally tasks have been completed and only finally tasks are being executed.",
@@ -2045,6 +2053,10 @@
           "x-kubernetes-patch-merge-key": "type",
           "x-kubernetes-patch-strategy": "merge"
         },
+        "failureReason": {
+          "description": "FailureReason stands for the granular TaskRun failure reason. It is the provisional status field for making breaking changes to the existing PipelineRunReasons. It will replace the existing apis.Condition.Reason with the next major version bump.",
+          "type": "string"
+        },
         "observedGeneration": {
           "description": "ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.",
           "type": "integer",
@@ -2123,6 +2135,10 @@
         "completionTime": {
           "description": "CompletionTime is the time the build completed.",
           "$ref": "#/definitions/v1.Time"
+        },
+        "failureReason": {
+          "description": "FailureReason stands for the granular TaskRun failure reason. It is the provisional status field for making breaking changes to the existing PipelineRunReasons. It will replace the existing apis.Condition.Reason with the next major version bump.",
+          "type": "string"
         },
         "podName": {
           "description": "PodName is the name of the pod responsible for executing this task's steps.",
