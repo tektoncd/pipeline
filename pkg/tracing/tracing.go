@@ -41,6 +41,9 @@ type tracerProvider struct {
 	username string
 	password string
 	logger   *zap.SugaredLogger
+	// (#7464)noop.TracerProvider is added to implement embedded.TracerProvider
+	// for bumping to go.opentelemetry.io/otel/trace/v1.21.0.TracerProvider
+	noop.TracerProvider
 }
 
 func init() {
