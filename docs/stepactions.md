@@ -109,6 +109,9 @@ spec:
   ]
 ```
 
+> :seedling: **`params` cannot be directly used in a `script` in `StepActions`.**
+> Directly substituting `params` in `scripts` makes the workload prone to shell attacks. Therefore, we do not allow direct usage of `params` in `scripts` in `StepActions`. Instead, rely on passing `params` to `env` variables and reference them in `scripts`. We cannot do the same for `inlined-steps` because it breaks `v1 API` compatibility for existing users. 
+
 #### Passing Params to StepAction
 
 A `StepAction` may require [params](#declaring-parameters). In this case, a `Task` needs to ensure that the `StepAction` has access to all the required `params`.
