@@ -192,19 +192,6 @@ func TestStepActionSpecValidate(t *testing.T) {
 			Args:    []string{"$(params.baz[*])", "middle string", "$(params.foo-is-baz[*])"},
 		},
 	}, {
-		name: "valid step with parameterized script",
-		fields: fields{
-			Params: []v1.ParamSpec{{
-				Name: "baz",
-			}, {
-				Name: "foo-is-baz",
-			}},
-			Image: "my-image",
-			Script: `
-				#!/usr/bin/env bash
-				hello $(params.baz)`,
-		},
-	}, {
 		name: "valid result",
 		fields: fields{
 			Image: "my-image",
@@ -874,23 +861,6 @@ func TestStepActionSpecValidateError(t *testing.T) {
 			Paths:   []string{"image"},
 		},
 	}, {
-		name: "array star used illegaly in script field",
-		fields: fields{
-			Params: []v1.ParamSpec{{
-				Name: "baz",
-				Type: v1.ParamTypeArray,
-			}, {
-				Name: "foo-is-baz",
-				Type: v1.ParamTypeArray,
-			}},
-			Script: "$(params.baz[*])",
-			Image:  "my-image",
-		},
-		expectedError: apis.FieldError{
-			Message: `variable type invalid in "$(params.baz[*])"`,
-			Paths:   []string{"script"},
-		},
-	}, {
 		name: "array not properly isolated",
 		fields: fields{
 			Params: []v1.ParamSpec{{
@@ -961,6 +931,23 @@ func TestStepActionSpecValidateError(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: `variable is not properly isolated in "not isolated: $(params.baz[*])"`,
 			Paths:   []string{"args[0]"},
+		},
+	}, {
+		name: "params used in script field",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name: "baz",
+				Type: v1.ParamTypeArray,
+			}, {
+				Name: "foo-is-baz",
+				Type: v1.ParamTypeString,
+			}},
+			Script: "$(params.baz[0]), $(params.foo-is-baz)",
+			Image:  "my-image",
+		},
+		expectedError: apis.FieldError{
+			Message: `param substitution in scripts is not allowed.`,
+			Paths:   []string{"script"},
 		},
 	}}
 	for _, tt := range tests {

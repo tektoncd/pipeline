@@ -62,6 +62,7 @@ func (ss *StepActionSpec) Validate(ctx context.Context) (errs *apis.FieldError) 
 		if strings.HasPrefix(cleaned, "#!win") {
 			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "windows script support", config.AlphaAPIFields).ViaField("script"))
 		}
+		errs = errs.Also(validateNoParamSubstitutionsInScript(ss.Script))
 	}
 	errs = errs.Also(validateUsageOfDeclaredParameters(ctx, *ss))
 	errs = errs.Also(v1.ValidateParameterTypes(ctx, ss.Params).ViaField("params"))
@@ -70,6 +71,18 @@ func (ss *StepActionSpec) Validate(ctx context.Context) (errs *apis.FieldError) 
 	errs = errs.Also(v1.ValidateStepResults(ctx, ss.Results).ViaField("results"))
 	errs = errs.Also(validateVolumeMounts(ss.VolumeMounts, ss.Params).ViaField("volumeMounts"))
 	return errs
+}
+
+// validateNoParamSubstitutionsInScript validates that param substitutions are not invoked in the script
+func validateNoParamSubstitutionsInScript(script string) *apis.FieldError {
+	_, present, errString := substitution.ExtractVariablesFromString(script, "params")
+	if errString != "" || present {
+		return &apis.FieldError{
+			Message: "param substitution in scripts is not allowed.",
+			Paths:   []string{"script"},
+		}
+	}
+	return nil
 }
 
 // validateUsageOfDeclaredParameters validates that all parameters referenced in the Task are declared by the Task.
