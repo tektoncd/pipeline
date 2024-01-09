@@ -13,11 +13,11 @@ configuration that Tekton can use as "boilerplate" for a Pod that runs your `Tas
 You can specify a Pod template for `TaskRuns` and `PipelineRuns`. In the template, you can specify custom values for fields governing
 the execution of individual `Tasks` or for all `Tasks` executed by a given `PipelineRun`.
 
-You also have the option to define a global Pod template [in your Tekton config](./install.md#customizing-basic-execution-parameters) using the key `default-pod-template`.
-However, this global template is going to be merged with any templates
-you specify in your `TaskRuns` and `PipelineRuns`. Any field that is
-present in both the global template and the `TaskRun`'s or
+You also have the option to define a global Pod template [in your Tekton config](./additional-configs.md#customizing-basic-execution-parameters) using the key `default-pod-template`.
+However, this global template is going to be merged with any templates you specify in your `TaskRuns` and `PipelineRuns`.<br>
+Except for the `env` and `volumes` fields, other fields that exist in both the global template and the `TaskRun`'s or
 `PipelineRun`'s template will be taken from the `TaskRun` or `PipelineRun`.
+The `env` and `volumes` fields are merged by the `name` value in the array elements. If the item's `name` is the same, the item from `TaskRun` or `PipelineRun` will be used.
 
 See the following for examples of specifying a Pod template:
 - [Specifying a Pod template for a `TaskRun`](./taskruns.md#specifying-a-pod-template)
@@ -33,7 +33,7 @@ The supported fields are: `tolerations`, `nodeSelector`, and
 `imagePullSecrets` (see the table below for more details).
 
 Similarily to Pod templates, you have the option to define a global affinity
-assistant Pod template [in your Tekton config](./install.md#customizing-basic-execution-parameters)
+assistant Pod template [in your Tekton config](./additional-configs.md#customizing-basic-execution-parameters)
 using the key `default-affinity-assistant-pod-template`. The merge strategy is
 the same as the one described above.
 

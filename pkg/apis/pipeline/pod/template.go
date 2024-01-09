@@ -172,12 +172,10 @@ func MergePodTemplateWithDefault(tpl, defaultTpl *PodTemplate) *PodTemplate {
 		return defaultTpl
 	default:
 		// Otherwise, merge fields
-		if tpl.Env == nil {
-			tpl.Env = defaultTpl.Env
-		}
 		if tpl.NodeSelector == nil {
 			tpl.NodeSelector = defaultTpl.NodeSelector
 		}
+		tpl.Env = mergeByName(defaultTpl.Env, tpl.Env)
 		if tpl.Tolerations == nil {
 			tpl.Tolerations = defaultTpl.Tolerations
 		}
@@ -187,9 +185,7 @@ func MergePodTemplateWithDefault(tpl, defaultTpl *PodTemplate) *PodTemplate {
 		if tpl.SecurityContext == nil {
 			tpl.SecurityContext = defaultTpl.SecurityContext
 		}
-		if tpl.Volumes == nil {
-			tpl.Volumes = defaultTpl.Volumes
-		}
+		tpl.Volumes = mergeByName(defaultTpl.Volumes, tpl.Volumes)
 		if tpl.RuntimeClassName == nil {
 			tpl.RuntimeClassName = defaultTpl.RuntimeClassName
 		}
@@ -252,5 +248,51 @@ func MergeAAPodTemplateWithDefault(tpl, defaultTpl *AAPodTemplate) *AAPodTemplat
 			tpl.ImagePullSecrets = defaultTpl.ImagePullSecrets
 		}
 		return tpl
+	}
+}
+
+// mergeByName merges two slices of items with names based on the getName
+// function, giving priority to the items in the override slice.
+func mergeByName[T any](base, overrides []T) []T {
+	if len(overrides) == 0 {
+		return base
+	}
+
+	// create a map to store the exist names in the override slice
+	exists := make(map[string]struct{})
+	merged := make([]T, 0, len(base)+len(overrides))
+
+	// append the items in the override slice
+	for _, item := range overrides {
+		name := getName(item)
+		if name != "" { // name should not be empty, if empty, ignore
+			merged = append(merged, item)
+			exists[name] = struct{}{}
+		}
+	}
+
+	// append the items in the base slice if they have a different name
+	for _, item := range base {
+		name := getName(item)
+		if name != "" { // name should not be empty, if empty, ignore
+			if _, found := exists[name]; !found {
+				merged = append(merged, item)
+			}
+		}
+	}
+
+	return merged
+}
+
+// getName returns the name of the given item, or an empty string if the item
+// is not a supported type.
+func getName(item interface{}) string {
+	switch item := item.(type) {
+	case corev1.EnvVar:
+		return item.Name
+	case corev1.Volume:
+		return item.Name
+	default:
+		return ""
 	}
 }

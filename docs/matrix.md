@@ -176,7 +176,7 @@ data:
   ...
 ```
 
-For more information, see [installation customizations](install.md#customizing-basic-execution-parameters).
+For more information, see [installation customizations](./additional-configs.md#customizing-basic-execution-parameters).
 
 ## Parameters
 

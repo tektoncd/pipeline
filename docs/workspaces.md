@@ -255,7 +255,7 @@ a `Task` requires but which are not provided by the `TaskRun` will be bound with
 
 The configuration for the default `Workspace Binding` is added to the `config-defaults` `ConfigMap`, under
 the `default-task-run-workspace-binding` key. For an example, see the [Customizing basic execution
-parameters](./install.md#customizing-basic-execution-parameters) section of the install doc.
+parameters](./additional-configs.md#customizing-basic-execution-parameters) section of the install doc.
 
 **Note:** the default configuration is used for any _required_ `Workspace` declared by a `Task`. Optional
 `Workspaces` are not populated with the default binding. This is because a `Task's` behaviour will typically
