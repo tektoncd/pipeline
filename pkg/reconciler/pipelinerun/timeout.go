@@ -27,6 +27,7 @@ import (
 	"go.uber.org/zap"
 	"gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -92,6 +93,17 @@ func timeoutPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1.P
 
 func timeoutCustomRun(ctx context.Context, customRunName string, namespace string, clientSet clientset.Interface) error {
 	_, err := clientSet.TektonV1beta1().CustomRuns(namespace).Patch(ctx, customRunName, types.JSONPatchType, timeoutCustomRunPatchBytes, metav1.PatchOptions{}, "")
+	if errors.IsNotFound(err) {
+		return nil
+	}
+	return err
+}
+
+func timeoutTaskRun(ctx context.Context, taskRunName string, namespace string, clientSet clientset.Interface) error {
+	_, err := clientSet.TektonV1().TaskRuns(namespace).Patch(ctx, taskRunName, types.JSONPatchType, timeoutTaskRunPatchBytes, metav1.PatchOptions{}, "")
+	if errors.IsNotFound(err) {
+		return nil
+	}
 	return err
 }
 
@@ -112,7 +124,7 @@ func timeoutPipelineTasksForTaskNames(ctx context.Context, logger *zap.SugaredLo
 	for _, taskRunName := range trNames {
 		logger.Infof("patching TaskRun %s for timeout", taskRunName)
 
-		if _, err := clientSet.TektonV1().TaskRuns(pr.Namespace).Patch(ctx, taskRunName, types.JSONPatchType, timeoutTaskRunPatchBytes, metav1.PatchOptions{}, ""); err != nil {
+		if err := timeoutTaskRun(ctx, taskRunName, pr.Namespace, clientSet); err != nil {
 			errs = append(errs, fmt.Errorf("failed to patch TaskRun `%s` with timeout: %w", taskRunName, err).Error())
 			continue
 		}
