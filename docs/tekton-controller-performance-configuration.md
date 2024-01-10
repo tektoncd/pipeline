@@ -18,7 +18,7 @@ Configure ThreadsPerController, QPS and Burst
 This document will show us how to configure [tekton-pipeline-controller](./../config/controller.yaml)'s performance. In general, there are mainly have three parameters will impact the performance of tekton controller, they are `ThreadsPerController`, `QPS` and `Burst`.
 
 - `ThreadsPerController`: Threads (goroutines) to create per controller. It's the number of threads to use when processing the controller's work queue.
-
+<!-- wokeignore:rule=master -->
 - `QPS`: Queries per Second. Maximum QPS to the master from this client.
 
 - `Burst`: Maximum burst for throttle.
@@ -50,4 +50,5 @@ spec:
 Now, the ThreadsPerController, QPS and Burst have been changed to be `32`, `50` and `50`.
 
 **Note**:
+<!-- wokeignore:rule=master -->
 Although in above example, you set QPS and Burst to be `50` and `50`. However, the actual values of them are [multiplied by `2`](https://github.com/pierretasci/pipeline/blob/master/cmd/controller/main.go#L83-L84), so the actual QPS and Burst is `100` and `100`.

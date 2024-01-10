@@ -37,6 +37,8 @@ type WhenExpression struct {
 	// +listType=atomic
 	Values []string `json:"values,omitempty"`
 
+	// wokeignore:rule=master
+
 	// CEL is a string of Common Language Expression, which can be used to conditionally execute
 	// the task based on the result of the expression evaluation
 	// More info about CEL syntax: https://github.com/google/cel-spec/blob/master/doc/langdef.md

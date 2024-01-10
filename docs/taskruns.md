@@ -786,6 +786,7 @@ The `status` field defines the observed state of `TaskRun`
 ### The `status` field
 - Required:
   - `status` - The most relevant information about the TaskRun's state. This field includes:
+  <!-- wokeignore:rule=master -->
     - `status.conditions`, which contains the latest observations of the `TaskRun`'s state. [See here](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties) for information on typical status properties.
   - `podName` - Name of the pod containing the containers responsible for executing this `task`'s `step`s.
   - `startTime` - The time at which the `TaskRun` began executing, conforms to [RFC3339](https://tools.ietf.org/html/rfc3339) format.

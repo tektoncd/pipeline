@@ -1,5 +1,13 @@
 go.mod
 go.sum
-vendor
 config/dummy.go
+examples/**/**/*.yaml
+pkg/apis/pipeline/**/*.go
+pkg/apis/pipeline/**/openapi_generated.go
+pkg/apis/pipeline/**/swagger.json
+pkg/resolution/resolver/git/*.go
+test/custom-task-ctrls/wait-task-beta/config/controller.yaml
+test/markdown-lint-config.rc
+vendor
 .wokeignore
+
