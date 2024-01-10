@@ -30,5 +30,4 @@ spec:
               image: busybox
               command: ["/bin/sh", "-c"]
               args:
-                - echo
-                - $(tasks.add-uid.results.uid)
+                - echo $(tasks.add-uid.results.uid)

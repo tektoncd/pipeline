@@ -792,9 +792,8 @@ spec:
             image: busybox
             command: ["/bin/sh", "-c"]
             args:
-              - echo
-              # - $(params.uid)
-              - $(tasks.add-uid.results.uid)
+              - echo $(tasks.add-uid.results.uid)
+              # - echo $(params.uid)
 ```
 
 On executing the `PipelineRun`, the `Results` will be interpolated during resolution.
@@ -809,8 +808,7 @@ spec:
   taskSpec:
     steps:
       args:
-        echo
-        1001
+        echo 1001
       command:
         - /bin/sh
         - -c
@@ -831,8 +829,7 @@ status:
   taskSpec:
     steps:
       args:
-        echo
-        1001
+        echo 1001
       command:
         /bin/sh
         -c
