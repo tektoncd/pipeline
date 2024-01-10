@@ -499,7 +499,7 @@ A `ParamValue` may be a string, a list of string, or a map of string to string.
 **NB:** All other [EnvVar](https://godoc.org/k8s.io/api/core/v1#EnvVar) types inherited from [core.v1/EnvVar](https://godoc.org/k8s.io/api/core/v1#EnvVar) and supported by the Kubernetes implementation (e.g., `valueFrom`) are **OPTIONAL** for the purposes of this spec.
 
 ## Status Signalling
-
+ <!-- wokeignore:rule=master --> 
 The Tekton Pipelines API uses the [Kubernetes Conditions convention](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties) to communicate status and errors to the user.
 
 `TaskRun`'s `status` field MUST have a `conditions` field, which must be a list of `Condition` objects of the following form:

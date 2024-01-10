@@ -532,7 +532,7 @@ workspaces:
 The `csi` field references a [`csi` volume](https://kubernetes.io/docs/concepts/storage/volumes/#csi).
 `csi` workspaces are a [beta feature](./additional-configs.md#beta-features).
 Using a `csi` volume has the following limitations:
-
+<!-- wokeignore:rule=master --> 
 - `csi` volume sources require a volume driver to use, which must correspond to the value by the CSI driver as defined in the [CSI spec](https://github.com/container-storage-interface/spec/blob/master/spec.md#getplugininfo).
 
 ```yaml

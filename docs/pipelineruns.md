@@ -1428,8 +1428,8 @@ If you set the timeout to 0, the `PipelineRun` fails immediately upon encounteri
 ### The `status` field
 
 Your `PipelineRun`'s `status` field can contain the following fields:
-
 - Required:
+  <!-- wokeignore:rule=master -->
   - `status` - Most relevant, `status.conditions`, which contains the latest observations of the `PipelineRun`'s state. [See here](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties) for information on typical status properties.
   - `startTime` - The time at which the `PipelineRun` began executing, in [RFC3339](https://tools.ietf.org/html/rfc3339) format.
   - `completionTime` - The time at which the `PipelineRun` finished executing, in [RFC3339](https://tools.ietf.org/html/rfc3339) format.

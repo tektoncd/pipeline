@@ -6036,6 +6036,7 @@ string
 <em>(Optional)</em>
 <p>CEL is a string of Common Language Expression, which can be used to conditionally execute
 the task based on the result of the expression evaluation
+<!-- wokeignore:rule=master -->
 More info about CEL syntax: <a href="https://github.com/google/cel-spec/blob/master/doc/langdef.md">https://github.com/google/cel-spec/blob/master/doc/langdef.md</a></p>
 </td>
 </tr>
@@ -15345,6 +15346,7 @@ string
 <em>(Optional)</em>
 <p>CEL is a string of Common Language Expression, which can be used to conditionally execute
 the task based on the result of the expression evaluation
+<!-- wokeignore:rule=master --> 
 More info about CEL syntax: <a href="https://github.com/google/cel-spec/blob/master/doc/langdef.md">https://github.com/google/cel-spec/blob/master/doc/langdef.md</a></p>
 </td>
 </tr>

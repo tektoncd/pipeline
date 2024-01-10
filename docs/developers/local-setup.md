@@ -47,6 +47,7 @@ Complete these prerequisites to run Tekton locally using Minikube:
 minikube start --memory 6144 --cpus 2
 ```
 - Point your shell to minikube's docker-daemon by running `eval $(minikube -p minikube docker-env)`
+<!-- wokeignore:rule=master -->
 - Set up a [registry on minikube](https://github.com/kubernetes/minikube/tree/master/deploy/addons/registry-aliases) by running `minikube addons enable registry` and `minikube addons enable registry-aliases`
 
 ### Reconfigure logging
@@ -118,8 +119,8 @@ EOF
 # connect the registry to the cluster network
 # (the network may already be connected)
 docker network connect "kind" "${reg_name}" || true
-
 # Document the local registry
+# <!-- wokeignore:rule=master --> 
 # https://github.com/kubernetes/enhancements/tree/master/keps/sig-cluster-lifecycle/generic/1755-communicating-a-local-registry
 cat <<EOF | kubectl apply -f -
 apiVersion: v1

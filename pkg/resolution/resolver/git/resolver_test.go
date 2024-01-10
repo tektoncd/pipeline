@@ -589,6 +589,7 @@ func TestResolve(t *testing.T) {
 				cfg = make(map[string]string)
 			}
 			cfg[defaultTimeoutKey] = "1m"
+			// wokeignore:rule=master
 			if cfg[defaultRevisionKey] == "" {
 				cfg[defaultRevisionKey] = plumbing.Master.Short()
 			}
@@ -711,7 +712,6 @@ func createTestRepo(t *testing.T, commits []commitForRepo) (string, []string) {
 		coOpts := &git.CheckoutOptions{
 			Branch: plumbing.NewBranchReferenceName(branch),
 		}
-
 		if _, ok := hashesByBranch[branch]; !ok && branch != plumbing.Master.Short() {
 			coOpts.Hash = plumbing.NewHash(startingHash.String())
 			coOpts.Create = true

@@ -3,6 +3,7 @@
 Before learning about how Tekton works, it's useful to take some time to understand what a Kubernetes object is.
 Please see [Understanding Kubernetes objects](https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/)
 for an overview of working with objects.
+<!-- wokeignore:rule=master -->
 Kubernetes [API conventions docs](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#types-kinds)
 are another useful resource for understanding object terminology.
 

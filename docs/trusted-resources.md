@@ -74,6 +74,7 @@ kubectl patch configmap feature-flags -n tekton-pipelines -p='{"data":{"trusted-
 ```
 
  #### TaskRun and PipelineRun status update
+ <!-- wokeignore:rule=master -->
 Trusted resources will update the taskrun's [condition](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties) to indicate if it passes verification or not.
 
 The following tables illustrate how the conditions are impacted by feature flag and verification result. Note that if not `true` or `false` means this case doesn't update the corresponding condition.
