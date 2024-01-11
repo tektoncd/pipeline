@@ -5288,6 +5288,76 @@ func TestApplyResultsToWorkspaceBindings(t *testing.T) {
 			},
 		},
 		{
+			name: "csi-driver",
+			trResults: map[string][]v1.TaskRunResult{
+				"task6": {
+					{
+						Name:  "driver-name",
+						Type:  v1.ResultsTypeString,
+						Value: v1.ResultValue{StringVal: "driver-value"},
+					},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							CSI: &corev1.CSIVolumeSource{
+								Driver: "$(tasks.task6.results.driver-name)",
+							},
+						},
+					},
+				},
+			},
+			expectedPr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							CSI: &corev1.CSIVolumeSource{
+								Driver: "driver-value",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "csi-NodePublishSecretRef-name",
+			trResults: map[string][]v1.TaskRunResult{
+				"task6": {
+					{
+						Name:  "ref-name",
+						Type:  v1.ResultsTypeString,
+						Value: v1.ResultValue{StringVal: "ref-value"},
+					},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							CSI: &corev1.CSIVolumeSource{
+								Driver:               "driver",
+								NodePublishSecretRef: &corev1.LocalObjectReference{Name: "$(tasks.task6.results.ref-name)"},
+							},
+						},
+					},
+				},
+			},
+			expectedPr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							CSI: &corev1.CSIVolumeSource{
+								Driver:               "driver",
+								NodePublishSecretRef: &corev1.LocalObjectReference{Name: "ref-value"},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "pvc object-result",
 			trResults: map[string][]v1.TaskRunResult{
 				"task1": {
