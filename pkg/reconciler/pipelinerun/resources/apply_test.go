@@ -3204,7 +3204,33 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 				DisplayName: "Result value --> aResultValue",
 			},
 		}},
-	}} {
+	},
+		{
+			name: "Test result substitution on embedded variable substitution expression - workspace.subPath",
+			resolvedResultRefs: resources.ResolvedResultRefs{{
+				Value: *v1.NewStructuredValues("aResultValue"),
+				ResultReference: v1.ResultRef{
+					PipelineTask: "aTask",
+					Result:       "aResult",
+				},
+				FromTaskRun: "aTaskRun",
+			}},
+			targets: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					Name:       "bTask",
+					TaskRef:    &v1.TaskRef{Name: "bTask"},
+					Workspaces: []v1.WorkspacePipelineTaskBinding{{Name: "ws-1", Workspace: "ws-1", SubPath: "$(tasks.aTask.results.aResult)"}},
+				},
+			}},
+			want: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					Name:       "bTask",
+					TaskRef:    &v1.TaskRef{Name: "bTask"},
+					Workspaces: []v1.WorkspacePipelineTaskBinding{{Name: "ws-1", Workspace: "ws-1", SubPath: "aResultValue"}},
+				},
+			}},
+		},
+	} {
 		t.Run(tt.name, func(t *testing.T) {
 			resources.ApplyTaskResults(tt.targets, tt.resolvedResultRefs)
 			if d := cmp.Diff(tt.want, tt.targets); d != "" {
@@ -4967,6 +4993,48 @@ func TestApplyParametersToWorkspaceBindings(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "pvc object params",
+			ps: &v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "pvc-object", Type: v1.ParamTypeObject, Properties: map[string]v1.PropertySpec{
+						"name": {Type: v1.ParamTypeString},
+					}},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: []v1.Param{
+						{Name: "pvc-object", Value: v1.ParamValue{Type: v1.ParamTypeObject, ObjectVal: map[string]string{
+							"name": "pvc-object-value",
+						}}},
+					},
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "$(params.pvc-object.name)",
+							},
+						},
+					},
+				},
+			},
+			expectedPr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: []v1.Param{
+						{Name: "pvc-object", Value: v1.ParamValue{Type: v1.ParamTypeObject, ObjectVal: map[string]string{
+							"name": "pvc-object-value",
+						}}},
+					},
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "pvc-object-value",
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range testCases {
@@ -5213,6 +5281,83 @@ func TestApplyResultsToWorkspaceBindings(t *testing.T) {
 										},
 									},
 								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "pvc object-result",
+			trResults: map[string][]v1.TaskRunResult{
+				"task1": {
+					{
+						Name: "pvc-object",
+						Type: v1.ResultsTypeObject,
+						Value: v1.ResultValue{Type: v1.ParamTypeObject, ObjectVal: map[string]string{
+							"name": "pvc-object-value",
+						}},
+					},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "$(tasks.task1.results.pvc-object.name)",
+							},
+						},
+					},
+				},
+			},
+			expectedPr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "pvc-object-value",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "pvc object-result - along with array-result (no effect)",
+			trResults: map[string][]v1.TaskRunResult{
+				"task1": {
+					{
+						Name: "pvc-object",
+						Type: v1.ResultsTypeObject,
+						Value: v1.ResultValue{Type: v1.ParamTypeObject, ObjectVal: map[string]string{
+							"name": "pvc-object-value",
+						}},
+					},
+					{
+						Name:  "pvc-array",
+						Type:  v1.ResultsTypeArray,
+						Value: v1.ResultValue{Type: v1.ParamTypeArray, ArrayVal: []string{"name-1", "name-2"}},
+					},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "$(tasks.task1.results.pvc-object.name)",
+							},
+						},
+					},
+				},
+			},
+			expectedPr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Workspaces: []v1.WorkspaceBinding{
+						{
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "pvc-object-value",
 							},
 						},
 					},
