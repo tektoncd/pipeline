@@ -148,6 +148,12 @@ func GetContextReplacements(pipelineName string, pr *v1.PipelineRun) map[string]
 // ApplyContexts applies the substitution from $(context.(pipelineRun|pipeline).*) with the specified values.
 // Currently supports only name substitution. Uses "" as a default if name is not specified.
 func ApplyContexts(spec *v1.PipelineSpec, pipelineName string, pr *v1.PipelineRun) *v1.PipelineSpec {
+	for i := range spec.Tasks {
+		spec.Tasks[i].DisplayName = substitution.ApplyReplacements(spec.Tasks[i].DisplayName, GetContextReplacements(pipelineName, pr))
+	}
+	for i := range spec.Finally {
+		spec.Finally[i].DisplayName = substitution.ApplyReplacements(spec.Finally[i].DisplayName, GetContextReplacements(pipelineName, pr))
+	}
 	return ApplyReplacements(spec, GetContextReplacements(pipelineName, pr), map[string][]string{}, map[string]map[string]string{})
 }
 
@@ -298,6 +304,8 @@ func ApplyReplacements(p *v1.PipelineSpec, replacements map[string]string, array
 			for j := range p.Tasks[i].Matrix.Include {
 				p.Tasks[i].Matrix.Include[j].Params = p.Tasks[i].Matrix.Include[j].Params.ReplaceVariables(replacements, nil, nil)
 			}
+		} else {
+			p.Tasks[i].DisplayName = substitution.ApplyReplacements(p.Tasks[i].DisplayName, replacements)
 		}
 		for j := range p.Tasks[i].Workspaces {
 			p.Tasks[i].Workspaces[j].SubPath = substitution.ApplyReplacements(p.Tasks[i].Workspaces[j].SubPath, replacements)
@@ -306,7 +314,6 @@ func ApplyReplacements(p *v1.PipelineSpec, replacements map[string]string, array
 		if p.Tasks[i].TaskRef != nil && p.Tasks[i].TaskRef.Params != nil {
 			p.Tasks[i].TaskRef.Params = p.Tasks[i].TaskRef.Params.ReplaceVariables(replacements, arrayReplacements, objectReplacements)
 		}
-		p.Tasks[i].DisplayName = substitution.ApplyReplacements(p.Tasks[i].DisplayName, replacements)
 		p.Tasks[i] = propagateParams(p.Tasks[i], replacements, arrayReplacements, objectReplacements)
 	}
 
@@ -317,6 +324,8 @@ func ApplyReplacements(p *v1.PipelineSpec, replacements map[string]string, array
 			for j := range p.Finally[i].Matrix.Include {
 				p.Finally[i].Matrix.Include[j].Params = p.Finally[i].Matrix.Include[j].Params.ReplaceVariables(replacements, nil, nil)
 			}
+		} else {
+			p.Finally[i].DisplayName = substitution.ApplyReplacements(p.Finally[i].DisplayName, replacements)
 		}
 		for j := range p.Finally[i].Workspaces {
 			p.Finally[i].Workspaces[j].SubPath = substitution.ApplyReplacements(p.Finally[i].Workspaces[j].SubPath, replacements)
@@ -325,7 +334,6 @@ func ApplyReplacements(p *v1.PipelineSpec, replacements map[string]string, array
 		if p.Finally[i].TaskRef != nil && p.Finally[i].TaskRef.Params != nil {
 			p.Finally[i].TaskRef.Params = p.Finally[i].TaskRef.Params.ReplaceVariables(replacements, arrayReplacements, objectReplacements)
 		}
-		p.Finally[i].DisplayName = substitution.ApplyReplacements(p.Finally[i].DisplayName, replacements)
 		p.Finally[i] = propagateParams(p.Finally[i], replacements, arrayReplacements, objectReplacements)
 	}
 

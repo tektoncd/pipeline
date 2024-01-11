@@ -505,6 +505,13 @@ func schema_pkg_apis_pipeline_v1beta1_ChildStatusReference(ref common.ReferenceC
 							Format:      "",
 						},
 					},
+					"displayName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DisplayName is a user-facing name of the pipelineTask that may be used to populate a UI.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"pipelineTaskName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PipelineTaskName is the name of the PipelineTask this is referencing.",

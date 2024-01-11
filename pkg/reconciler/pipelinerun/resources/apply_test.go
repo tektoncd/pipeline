@@ -1739,12 +1739,12 @@ func TestApplyParameters(t *testing.T) {
 		},
 	} {
 		tt := tt // capture range variable
-		ctx := context.Background()
-		if tt.wc != nil {
-			ctx = tt.wc(ctx)
-		}
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+			ctx := context.Background()
+			if tt.wc != nil {
+				ctx = tt.wc(ctx)
+			}
 			run := &v1.PipelineRun{
 				Spec: v1.PipelineRunSpec{
 					Params: tt.params,
@@ -3321,17 +3321,28 @@ func TestContext(t *testing.T) {
 						Params:      v1.Params{tc.original},
 						Matrix: &v1.Matrix{
 							Params: v1.Params{tc.original},
-						}}},
+						}},
+					},
+					Finally: []v1.PipelineTask{{
+						DisplayName: tc.displayName,
+						Params:      v1.Params{tc.original},
+					}},
 				},
 			}
 			got := resources.ApplyContexts(&orig.Spec, orig.Name, tc.pr)
 			if d := cmp.Diff(tc.expected, got.Tasks[0].Params[0]); d != "" {
 				t.Errorf(diff.PrintWantGot(d))
 			}
+			if d := cmp.Diff(tc.expected, got.Finally[0].Params[0]); d != "" {
+				t.Errorf(diff.PrintWantGot(d))
+			}
 			if d := cmp.Diff(tc.expected, got.Tasks[0].Matrix.Params[0]); d != "" {
 				t.Errorf(diff.PrintWantGot(d))
 			}
 			if d := cmp.Diff(tc.expectedDisplayName, got.Tasks[0].DisplayName); d != "" {
+				t.Errorf(diff.PrintWantGot(d))
+			}
+			if d := cmp.Diff(tc.expectedDisplayName, got.Finally[0].DisplayName); d != "" {
 				t.Errorf(diff.PrintWantGot(d))
 			}
 		})

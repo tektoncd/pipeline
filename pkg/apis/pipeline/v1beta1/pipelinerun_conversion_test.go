@@ -43,12 +43,14 @@ var (
 	childRefTaskRuns = []v1beta1.ChildStatusReference{{
 		TypeMeta:         runtime.TypeMeta{Kind: "TaskRun", APIVersion: "tekton.dev/v1beta1"},
 		Name:             "tr-0",
+		DisplayName:      "TR 0",
 		PipelineTaskName: "ptn",
 		WhenExpressions:  []v1beta1.WhenExpression{{Input: "default-value", Operator: "in", Values: []string{"val"}}},
 	}}
 	childRefRuns = []v1beta1.ChildStatusReference{{
 		TypeMeta:         runtime.TypeMeta{Kind: "Run", APIVersion: "tekton.dev/v1alpha1"},
 		Name:             "r-0",
+		DisplayName:      "R 0",
 		PipelineTaskName: "ptn-0",
 		WhenExpressions:  []v1beta1.WhenExpression{{Input: "default-value-0", Operator: "in", Values: []string{"val-0", "val-1"}}},
 	}}

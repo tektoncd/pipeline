@@ -10735,30 +10735,37 @@ status:
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-include-0
+    displayName: common-package go117-context
     pipelineTaskName: matrix-include
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-include-1
+    displayName: common-package go117-context
     pipelineTaskName: matrix-include
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-include-2
+    displayName: common-package s390x-no-race go117-context
     pipelineTaskName: matrix-include
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-include-3
+    displayName: common-package
     pipelineTaskName: matrix-include
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-include-4
+    displayName: common-package
     pipelineTaskName: matrix-include
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-include-5
+    displayName: common-package s390x-no-race
     pipelineTaskName: matrix-include
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-include-6
+    displayName: non-existent-arch
     pipelineTaskName: matrix-include
 `),
 	}, {
@@ -10928,30 +10935,37 @@ status:
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-include-0
+    displayName: common-package go117-context
     pipelineTaskName: matrix-include
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-include-1
+    displayName: common-package go117-context
     pipelineTaskName: matrix-include
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-include-2
+    displayName: common-package s390x-no-race go117-context
     pipelineTaskName: matrix-include
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-include-3
+    displayName: common-package
     pipelineTaskName: matrix-include
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-include-4
+    displayName: common-package
     pipelineTaskName: matrix-include
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-include-5
+    displayName: common-package s390x-no-race
     pipelineTaskName: matrix-include
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-include-6
+    displayName: non-existent-arch
     pipelineTaskName: matrix-include
 `),
 	}}
@@ -11169,14 +11183,17 @@ status:
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-include-0
+    displayName: build-1
     pipelineTaskName: matrix-include
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-include-1
+    displayName: build-2
     pipelineTaskName: matrix-include
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-include-2
+    displayName: build-3
     pipelineTaskName: matrix-include
 `),
 	},
@@ -14332,14 +14349,17 @@ status:
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-emitting-results-0
+    displayName: build-1
     pipelineTaskName: matrix-emitting-results
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-emitting-results-1
+    displayName: build-2
     pipelineTaskName: matrix-emitting-results
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-emitting-results-2
+    displayName: build-3
     pipelineTaskName: matrix-emitting-results
   - apiVersion: tekton.dev/v1
     kind: TaskRun
@@ -14496,14 +14516,17 @@ status:
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-emitting-results-0
+    displayName: build-1
     pipelineTaskName: matrix-emitting-results
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-emitting-results-1
+    displayName: build-2
     pipelineTaskName: matrix-emitting-results
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-emitting-results-2
+    displayName: build-3
     pipelineTaskName: matrix-emitting-results
   - apiVersion: tekton.dev/v1
     kind: TaskRun
@@ -14655,14 +14678,17 @@ status:
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-emitting-results-0
+    displayName: build-1
     pipelineTaskName: matrix-emitting-results
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-emitting-results-1
+    displayName: build-2
     pipelineTaskName: matrix-emitting-results
   - apiVersion: tekton.dev/v1
     kind: TaskRun
     name: pr-matrix-emitting-results-2
+    displayName: build-3
     pipelineTaskName: matrix-emitting-results
   - apiVersion: tekton.dev/v1
     kind: TaskRun
