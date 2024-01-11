@@ -1,6 +1,7 @@
 go.mod
 go.sum
 config/dummy.go
+docs/pipeline-api.md
 examples/**/**/*.yaml
 pkg/apis/pipeline/**/*.go
 pkg/apis/pipeline/**/openapi_generated.go
