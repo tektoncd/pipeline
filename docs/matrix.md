@@ -155,6 +155,84 @@ Combinations generated
 { "IMAGE": "image-3", "DOCKERFILE": "path/to/Dockerfile3}
 ```
 
+## DisplayName
+
+Matrix creates multiple `taskRuns` with the same `pipelineTask`. Each `taskRun` has its unique combination `params` based
+on the `matrix` specifications. These `params` can now be surfaced and used to configure unique name of each `matrix`
+instance such that it is easier to distinguish all the instances based on their inputs.
+
+```yaml
+pipelineSpec:
+  tasks:
+    - name: platforms-and-browsers
+      displayName: "Platforms and Browsers: $(params.platform) and $(params.browser)"
+      matrix:
+        params:
+          - name: platform
+            value:
+              - linux
+              - mac
+              - windows
+          - name: browser
+            value:
+              - chrome
+              - safari
+              - firefox
+      taskRef:
+        name: platform-browsers
+```
+
+The `displayName` is available as part of `pipelineRun.status.childReferences` with each `taskRun`.
+This allows the clients to consume `displayName` wherever needed:
+
+```json
+[
+  {
+    "apiVersion": "tekton.dev/v1",
+    "displayName": "Platforms and Browsers: linux and chrome",
+    "kind": "TaskRun",
+    "name": "matrixed-pr-vcx79-platforms-and-browsers-0",
+    "pipelineTaskName": "platforms-and-browsers"
+  },
+  {
+    "apiVersion": "tekton.dev/v1",
+    "displayName": "Platforms and Browsers: mac and safari",
+    "kind": "TaskRun",
+    "name": "matrixed-pr-vcx79-platforms-and-browsers-1",
+    "pipelineTaskName": "platforms-and-browsers"
+  }
+]
+```
+
+### `matrix.include[].name`
+
+`matrix.include[]` section allows specifying a `name` along with a list of `params`. This `name` field is available as
+part of the `pipelineRun.status.childReferences[].displayName` if specified.
+
+`displayName` and `matrix.include[].name` can co-exist but `matrix.include[].name` takes higher precedence. It is also
+possible for the pipeline author to specify `params` in `matrix.include[].name` which are resolved in the `childReferences`.
+
+```yaml
+- name: platforms-and-browsers-with-include
+  matrix:
+    include:
+      - name: "Platform: $(params.platform)"
+        params:
+          - name: platform
+            value: linux111
+  params:
+    - name: browser
+      value: chrome
+```
+
+### Precedence Order
+
+| specification                                             | precedence                      | `childReferences[].displayName` |
+|-----------------------------------------------------------|---------------------------------|---------------------------------|
+| `tasks[].displayName`                                     | `tasks[].displayName`           | `tasks[].displayName`           |
+| `tasks[].matrix.include[].name`                           | `tasks[].matrix.include[].name` | `tasks[].matrix.include[].name` |
+| `tasks[].displayName` and `tasks[].matrix.include[].name` | `tasks[].matrix.include[].name` | `tasks[].matrix.include[].name` |
+
 ## Concurrency Control
 
 The default maximum count of `TaskRuns` or `Runs` from a given `Matrix` is **256**. To customize the maximum count of

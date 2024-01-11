@@ -1419,6 +1419,18 @@ string
 </tr>
 <tr>
 <td>
+<code>displayName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>DisplayName is a user-facing name of the pipelineTask that may be
+used to populate a UI.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>pipelineTaskName</code><br/>
 <em>
 string
@@ -9705,6 +9717,18 @@ string
 </td>
 <td>
 <p>Name is the name of the TaskRun or Run this is referencing.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>displayName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>DisplayName is a user-facing name of the pipelineTask that may be
+used to populate a UI.</p>
 </td>
 </tr>
 <tr>

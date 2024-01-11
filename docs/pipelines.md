@@ -434,6 +434,10 @@ Specifying task results in the `displayName` does not introduce an inherent reso
 pipeline author is responsible for specifying dependency explicitly either using [runAfter](#using-the-runafter-field)
 or rely on [whenExpressions](#guard-task-execution-using-when-expressions) or [task results in params](#using-results).
 
+Fully resolved `displayName` is also available in the status as part of the `pipelineRun.status.childReferences`. The
+clients such as the dashboard, CLI, etc. can retrieve the `displayName` from the `childReferences`. The `displayName` mainly
+drives a better user experience and at the same time it is not validated for the content or length by the controller.
+
 ### Specifying Remote Tasks
 
 **([beta feature](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#beta-features))**
@@ -1541,6 +1545,10 @@ spec:
 The `displayName` also allows you to parameterize the human-readable name of your choice based on the
 [params](#specifying-parameters), [the task results](#consuming-task-execution-results-in-finally),
 and [the context variables](#context-variables).
+
+Fully resolved `displayName` is also available in the status as part of the `pipelineRun.status.childReferences`. The
+clients such as the dashboard, CLI, etc. can retrieve the `displayName` from the `childReferences`. The `displayName` mainly
+drives a better user experience and at the same time it is not validated for the content or length by the controller.
 
 ### Specifying `Workspaces` in `finally` tasks
 

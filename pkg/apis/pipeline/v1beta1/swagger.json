@@ -192,6 +192,10 @@
         "apiVersion": {
           "type": "string"
         },
+        "displayName": {
+          "description": "DisplayName is a user-facing name of the pipelineTask that may be used to populate a UI.",
+          "type": "string"
+        },
         "kind": {
           "type": "string"
         },

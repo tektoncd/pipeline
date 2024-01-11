@@ -25,6 +25,7 @@ spec:
   pipelineSpec:
     tasks:
       - name: platforms-and-browsers
+        displayName: "Platform: $(params.platform) with Browser: $(params.browser)"
         matrix:
           params:
             - name: platform
@@ -47,6 +48,18 @@ spec:
                 - linux
                 - mac
                 - windows
+        params:
+          - name: browser
+            value: chrome
+        taskRef:
+          name: platform-browsers
+      - name: matrix-and-params-include
+        matrix:
+          include:
+            - name: "Platform: $(params.platform) with Browser: $(params.browser)"
+              params:
+                - name: platform
+                  value: linux
         params:
           - name: browser
             value: chrome
