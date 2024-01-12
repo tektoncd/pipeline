@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/google/cel-go/cel"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -702,6 +703,15 @@ func getNewRunNames(ptName, prName string, numberOfRuns int) []string {
 	// For a matrix we append i to then end of the fanned out TaskRuns "matrixed-pr-taskrun-0"
 	for i := 0; i < numberOfRuns; i++ {
 		taskRunName := kmeta.ChildName(prName, fmt.Sprintf("-%s-%d", ptName, i))
+		// check if the taskRun name ends with a matrix instance count
+		if !strings.HasSuffix(taskRunName, fmt.Sprintf("-%d", i)) {
+			taskRunName = kmeta.ChildName(prName, fmt.Sprintf("-%s", ptName))
+			// kmeta.ChildName limits the size of a name to max of 63 characters based on k8s guidelines
+			// truncate the name such that "-<matrix-id>" can be appended to the taskRun name
+			longest := 63 - len(fmt.Sprintf("-%d", numberOfRuns))
+			taskRunName = taskRunName[0:longest]
+			taskRunName = fmt.Sprintf("%s-%d", taskRunName, i)
+		}
 		taskRunNames = append(taskRunNames, taskRunName)
 	}
 	return taskRunNames
