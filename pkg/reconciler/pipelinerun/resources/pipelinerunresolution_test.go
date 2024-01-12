@@ -3372,8 +3372,8 @@ func TestGetNamesOfTaskRuns(t *testing.T) {
 		name:   "new pipelinetask with long names",
 		ptName: "longtask-0123456789-0123456789-0123456789-0123456789-0123456789",
 		wantTrNames: []string{
-			"mypipelinerun09c563f6b29a3a2c16b98e6dc95979c5-longtask-01234567",
-			"mypipelinerunab643c1924b632f050e5a07fe482fc25-longtask-01234567",
+			"mypipelineruna56c4ee0aab148ee219d40b21dfe935a-longtask-012345-0",
+			"mypipelineruna56c4ee0aab148ee219d40b21dfe935a-longtask-012345-1",
 		},
 	}, {
 		name:   "new taskruns, pipelinerun with long name",
@@ -3388,8 +3388,8 @@ func TestGetNamesOfTaskRuns(t *testing.T) {
 		ptName: "task2-0123456789-0123456789-0123456789-0123456789-0123456789",
 		prName: "pipeline-run-0123456789-0123456789-0123456789-0123456789",
 		wantTrNames: []string{
-			"pipeline-run-0123456789-01234563c0313c59d28c85a2c2b3fd3b17a9514",
-			"pipeline-run-0123456789-01234569d54677e88e96776942290e00b578ca5",
+			"pipeline-run-0123456789-012345607ad8c7aac5873cdfabe472a68996b-0",
+			"pipeline-run-0123456789-012345607ad8c7aac5873cdfabe472a68996b-1",
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -3435,8 +3435,8 @@ func TestGetNamesOfRuns(t *testing.T) {
 		name:   "new pipelinetask with long names",
 		ptName: "longtask-0123456789-0123456789-0123456789-0123456789-0123456789",
 		wantRunNames: []string{
-			"mypipelinerun09c563f6b29a3a2c16b98e6dc95979c5-longtask-01234567",
-			"mypipelinerunab643c1924b632f050e5a07fe482fc25-longtask-01234567",
+			"mypipelineruna56c4ee0aab148ee219d40b21dfe935a-longtask-012345-0",
+			"mypipelineruna56c4ee0aab148ee219d40b21dfe935a-longtask-012345-1",
 		},
 	}, {
 		name:   "new runs, pipelinerun with long name",
@@ -3451,8 +3451,8 @@ func TestGetNamesOfRuns(t *testing.T) {
 		ptName: "task2-0123456789-0123456789-0123456789-0123456789-0123456789",
 		prName: "pipeline-run-0123456789-0123456789-0123456789-0123456789",
 		wantRunNames: []string{
-			"pipeline-run-0123456789-01234563c0313c59d28c85a2c2b3fd3b17a9514",
-			"pipeline-run-0123456789-01234569d54677e88e96776942290e00b578ca5",
+			"pipeline-run-0123456789-012345607ad8c7aac5873cdfabe472a68996b-0",
+			"pipeline-run-0123456789-012345607ad8c7aac5873cdfabe472a68996b-1",
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
