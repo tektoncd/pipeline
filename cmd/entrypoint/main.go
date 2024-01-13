@@ -178,7 +178,7 @@ func main() {
 	if err := e.Go(); err != nil {
 		breakpointExitPostFile := e.PostFile + breakpointExitSuffix
 		switch t := err.(type) { //nolint:errorlint // checking for multiple types with errors.As is ugly.
-		case skipError:
+		case entrypoint.SkipError:
 			log.Print("Skipping step because a previous step failed")
 			os.Exit(1)
 		case termination.MessageLengthError:

@@ -799,6 +799,7 @@ The `status` field defines the observed state of `TaskRun`
     - `refSource`: the source from where a remote `Task` definition was fetched.
     - `featureFlags`: Identifies the feature flags used during the `TaskRun`.
   - `steps` - Contains the `state` of each `step` container.
+    - `steps[].terminationReason` - When the step is terminated, it stores the step's final state.
   - `retriesStatus` - Contains the history of `TaskRun`'s `status` in case of a retry in order to keep record of failures. No `status` stored within `retriesStatus` will have any `date` within as it is redundant.
 
   - [`sidecars`](tasks.md#using-a-sidecar-in-a-task) - This field is a list. The list has one entry per `sidecar` in the manifest. Each entry represents the imageid of the corresponding sidecar.
@@ -831,6 +832,7 @@ steps:
   - container: step-hello
     imageID: docker-pullable://busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649
     name: hello
+    terminationReason: Completed
     terminated:
       containerID: docker://d5a54f5bbb8e7a6fd3bc7761b78410403244cf4c9c5822087fb0209bf59e3621
       exitCode: 0

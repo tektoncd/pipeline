@@ -147,10 +147,12 @@ status:
   steps:
   - container: step-echo
     name: step-echo
+    terminationReason: Completed
     terminated:
       reason: Completed
   - container: check-workspace
     name: check-workspace
+    terminationReason: Completed
     terminated:
       reason: Completed
 `

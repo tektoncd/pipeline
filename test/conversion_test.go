@@ -468,6 +468,7 @@ status:
   steps:
   - container: step-echo
     name: step-echo
+    terminationReason: Completed
     terminated:
       reason: Completed
 `
@@ -734,6 +735,7 @@ status:
   - image: alpine
     name: hello
     script: 'echo Hello'
+    terminationReason: Completed
     terminated:
       reason: Completed
 `

@@ -358,6 +358,7 @@ type StepState struct {
 	Container             string              `json:"container,omitempty"`
 	ImageID               string              `json:"imageID,omitempty"`
 	Results               []TaskRunStepResult `json:"results,omitempty"`
+	TerminationReason     string              `json:"terminationReason,omitempty"`
 }
 
 // SidecarState reports the results of running a sidecar in a Task.
