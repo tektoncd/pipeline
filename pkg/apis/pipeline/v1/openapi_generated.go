@@ -3142,6 +3142,12 @@ func schema_pkg_apis_pipeline_v1_StepState(ref common.ReferenceCallback) common.
 							},
 						},
 					},
+					"terminationReason": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
 				},
 			},
 		},

@@ -1332,8 +1332,9 @@ func TestMakeTaskRunStatus(t *testing.T) {
 							ExitCode: 11,
 						},
 					},
-					Name:      "first",
-					Container: "step-first",
+					TerminationReason: "Continued",
+					Name:              "first",
+					Container:         "step-first",
 				}, {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
@@ -2338,6 +2339,209 @@ func TestGetStepResultsFromSidecarLogs_Error(t *testing.T) {
 	wantErr := fmt.Errorf("invalid string %s-%s : expected somtthing that looks like <stepName>.<resultName>", stepName, resultName)
 	if d := cmp.Diff(wantErr.Error(), err.Error()); d != "" {
 		t.Errorf(diff.PrintWantGot(d))
+	}
+}
+
+func TestGetStepTerminationReasonFromContainerStatus(t *testing.T) {
+	tests := []struct {
+		desc                      string
+		pod                       corev1.Pod
+		expectedTerminationReason map[string]string
+	}{
+		{
+			desc: "Step skipped",
+			expectedTerminationReason: map[string]string{
+				"step-1": "Skipped",
+			},
+			pod: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pod",
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: "step-1"},
+					},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodFailed,
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:    "step-1",
+							ImageID: "image-id-1",
+							State: corev1.ContainerState{
+								Terminated: &corev1.ContainerStateTerminated{
+									Message:  `[{"key":"StartedAt","value":"2023-11-26T19:53:29.452Z","type":3},{"key":"Reason","value":"Skipped","type":3}]`,
+									ExitCode: 1,
+									Reason:   "Error",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc: "Step continued",
+			expectedTerminationReason: map[string]string{
+				"step-1": "Continued",
+			},
+			pod: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pod",
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: "step-1"},
+					},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodFailed,
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:    "step-1",
+							ImageID: "image-id-1",
+							State: corev1.ContainerState{
+								Terminated: &corev1.ContainerStateTerminated{
+									Message:  `[{"key":"StartedAt","value":"2023-11-26T19:53:29.452Z","type":3},{"key":"ExitCode","value":"1","type":3}]`,
+									ExitCode: 0,
+									Reason:   "Completed",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc: "Step timedout",
+			expectedTerminationReason: map[string]string{
+				"step-1": "TimeoutExceeded",
+			},
+			pod: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pod",
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: "step-1"},
+					},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodFailed,
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:    "step-1",
+							ImageID: "image-id-1",
+							State: corev1.ContainerState{
+								Terminated: &corev1.ContainerStateTerminated{
+									Message:  `[{"key":"StartedAt","value":"2023-11-26T19:53:29.452Z","type":3},{"key":"Reason","value":"TimeoutExceeded","type":3}]`,
+									ExitCode: 1,
+									Reason:   "Error",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc: "Step completed",
+			expectedTerminationReason: map[string]string{
+				"step-1": "Completed",
+			},
+			pod: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pod",
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: "step-1"},
+					},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodFailed,
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:    "step-1",
+							ImageID: "image-id-1",
+							State: corev1.ContainerState{
+								Terminated: &corev1.ContainerStateTerminated{
+									Message:  `[{"key":"StartedAt","value":"2023-11-26T19:53:29.452Z","type":3}]`,
+									ExitCode: 0,
+									Reason:   "Completed",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc: "Step error",
+			expectedTerminationReason: map[string]string{
+				"step-1": "Error",
+			},
+			pod: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pod",
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: "step-1"},
+					},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodFailed,
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:    "step-1",
+							ImageID: "image-id-1",
+							State: corev1.ContainerState{
+								Terminated: &corev1.ContainerStateTerminated{
+									Message:  `[{"key":"StartedAt","value":"2023-11-26T19:53:29.452Z","type":3}]`,
+									ExitCode: 1,
+									Reason:   "Error",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			startTime := time.Date(2010, 1, 1, 1, 1, 1, 1, time.UTC)
+			tr := v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "task-run",
+				},
+				Status: v1.TaskRunStatus{
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						StartTime: &metav1.Time{Time: startTime},
+					},
+				},
+			}
+			logger, _ := logging.NewLogger("", "status")
+			kubeclient := fakek8s.NewSimpleClientset()
+
+			trs, err := MakeTaskRunStatus(context.Background(), logger, tr, &test.pod, kubeclient, &v1.TaskSpec{})
+			if err != nil {
+				t.Errorf("MakeTaskRunResult: %s", err)
+			}
+
+			for _, step := range trs.Steps {
+				if step.TerminationReason == "" {
+					t.Errorf("Terminated status not found for %s", step.Name)
+				}
+				want := test.expectedTerminationReason[step.Container]
+				got := step.TerminationReason
+				if d := cmp.Diff(want, got, ignoreVolatileTime); d != "" {
+					t.Errorf("Diff %s", diff.PrintWantGot(d))
+				}
+			}
+		})
 	}
 }
 

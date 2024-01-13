@@ -1609,6 +1609,9 @@
           "description": "Details about a terminated container",
           "$ref": "#/definitions/v1.ContainerStateTerminated"
         },
+        "terminationReason": {
+          "type": "string"
+        },
         "waiting": {
           "description": "Details about a waiting container",
           "$ref": "#/definitions/v1.ContainerStateWaiting"

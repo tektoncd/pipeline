@@ -410,6 +410,7 @@ status:
   - container: step-action-runner
     imageID: docker.io/library/alpine@sha256:eece025e432126ce23f223450a0326fbebde39cdf496a85d8c016293fc851978
     name: action-runner
+    terminationReason: Completed
     terminated:
       containerID: containerd://46a836588967202c05b594696077b147a0eb0621976534765478925bb7ce57f6
       exitCode: 0

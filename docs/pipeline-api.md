@@ -4641,6 +4641,16 @@ string
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>terminationReason</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.StepTemplate">StepTemplate

@@ -71,7 +71,7 @@ func (rw *realWaiter) Wait(ctx context.Context, file string, expectContent bool,
 			if breakpointOnFailure {
 				return nil
 			}
-			return skipError("error file present, bail and skip the step")
+			return entrypoint.ErrSkipPreviousStepFailed
 		}
 		select {
 		case <-ctx.Done():
@@ -85,10 +85,4 @@ func (rw *realWaiter) Wait(ctx context.Context, file string, expectContent bool,
 		case <-time.After(rw.waitPollingInterval):
 		}
 	}
-}
-
-type skipError string
-
-func (e skipError) Error() string {
-	return string(e)
 }

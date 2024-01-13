@@ -153,7 +153,7 @@ func TestRealWaiterWaitWithErrorWaitfile(t *testing.T) {
 		if err == nil {
 			t.Errorf("expected skipError upon encounter error waitfile")
 		}
-		var skipErr skipError
+		var skipErr entrypoint.SkipError
 		if errors.As(err, &skipErr) {
 			close(doneCh)
 		} else {
@@ -292,7 +292,7 @@ func TestRealWaiterWaitContextWithErrorWaitfile(t *testing.T) {
 		if err == nil {
 			t.Errorf("expected skipError upon encounter error waitfile")
 		}
-		var skipErr skipError
+		var skipErr entrypoint.SkipError
 		if errors.As(err, &skipErr) {
 			close(doneCh)
 		} else {

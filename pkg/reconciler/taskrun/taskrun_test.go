@@ -4704,6 +4704,7 @@ status:
 		},
 		expectedStepStates: []v1.StepState{
 			{
+				TerminationReason: v1.TaskRunReasonCancelled.String(),
 				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 1,
@@ -4750,6 +4751,7 @@ status:
 		},
 		expectedStepStates: []v1.StepState{
 			{
+				TerminationReason: v1.TaskRunReasonCancelled.String(),
 				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 1,
@@ -4792,6 +4794,7 @@ status:
 		},
 		expectedStepStates: []v1.StepState{
 			{
+				TerminationReason: v1.TaskRunReasonTimedOut.String(),
 				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 1,
@@ -4849,6 +4852,7 @@ status:
 				},
 			},
 			{
+				TerminationReason: v1.TaskRunReasonTimedOut.String(),
 				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 1,
@@ -4858,6 +4862,7 @@ status:
 				},
 			},
 			{
+				TerminationReason: v1.TaskRunReasonTimedOut.String(),
 				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 1,
@@ -4904,6 +4909,7 @@ status:
 		},
 		expectedStepStates: []v1.StepState{
 			{
+				TerminationReason: v1.TaskRunReasonTimedOut.String(),
 				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 1,
@@ -4913,6 +4919,7 @@ status:
 				},
 			},
 			{
+				TerminationReason: v1.TaskRunReasonTimedOut.String(),
 				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 1,
@@ -4922,6 +4929,7 @@ status:
 				},
 			},
 			{
+				TerminationReason: v1.TaskRunReasonTimedOut.String(),
 				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 1,
@@ -4951,6 +4959,7 @@ status:
       finishedAt: "2022-01-01T00:00:00Z"
       reason: Completed
       startedAt: "2022-01-01T00:00:00Z"
+    terminationReason: Completed
   - running:
       startedAt: "2022-01-01T00:00:00Z"
 `),
@@ -4968,6 +4977,7 @@ status:
 		},
 		expectedStepStates: []v1.StepState{
 			{
+				TerminationReason: "Completed",
 				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 12,
@@ -4976,6 +4986,7 @@ status:
 				},
 			},
 			{
+				TerminationReason: v1.TaskRunReasonTimedOut.String(),
 				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 1,

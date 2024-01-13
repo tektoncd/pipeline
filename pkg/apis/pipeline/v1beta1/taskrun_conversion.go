@@ -344,6 +344,11 @@ func (ss StepState) convertTo(ctx context.Context, sink *v1.StepState) {
 	sink.Container = ss.ContainerName
 	sink.ImageID = ss.ImageID
 	sink.Results = nil
+
+	if ss.ContainerState.Terminated != nil {
+		sink.TerminationReason = ss.ContainerState.Terminated.Reason
+	}
+
 	for _, r := range ss.Results {
 		new := v1.TaskRunStepResult{}
 		r.convertTo(ctx, &new)

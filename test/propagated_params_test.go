@@ -43,7 +43,7 @@ var (
 	ignoreTaskRunStatus     = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "StartTime", "CompletionTime")
 	ignoreConditions        = cmpopts.IgnoreFields(duckv1.Status{}, "Conditions")
 	ignoreContainerStates   = cmpopts.IgnoreFields(corev1.ContainerState{}, "Terminated")
-	ignoreStepState         = cmpopts.IgnoreFields(v1.StepState{}, "ImageID")
+	ignoreStepState         = cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "TerminationReason")
 	// ignoreSATaskRunSpec ignores the service account in the TaskRunSpec as it may differ across platforms
 	ignoreSATaskRunSpec = cmpopts.IgnoreFields(v1.TaskRunSpec{}, "ServiceAccountName")
 	// ignoreSAPipelineRunSpec ignores the service account in the PipelineRunSpec as it may differ across platforms
