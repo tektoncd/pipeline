@@ -24,10 +24,12 @@ import (
 // EXTERNAL to create a KMS key with no key material. You can import key material
 // for a symmetric encryption KMS key, HMAC KMS key, asymmetric encryption KMS key,
 // or asymmetric signing KMS key. You can also import key material into a
-// multi-Region key of any supported type. However, you can't import key material
-// into a KMS key in a custom key store . You can also use GetParametersForImport
-// to get a public key and import token to reimport the original key material into
-// a KMS key whose key material expired or was deleted. GetParametersForImport
+// multi-Region key (https://docs.aws.amazon.com/kms/latest/developerguide/multi-region-keys-overview.html)
+// of any supported type. However, you can't import key material into a KMS key in
+// a custom key store (https://docs.aws.amazon.com/kms/latest/developerguide/custom-key-store-overview.html)
+// . You can also use GetParametersForImport to get a public key and import token
+// to reimport the original key material (https://docs.aws.amazon.com/kms/latest/developerguide/importing-keys.html#reimport-key-material)
+// into a KMS key whose key material expired or was deleted. GetParametersForImport
 // returns the items that you need to import your key material.
 //   - The public key (or "wrapping key") of an RSA key pair that KMS generates.
 //     You will use this public key to encrypt ("wrap") your key material while it's in
@@ -58,6 +60,10 @@ import (
 // (key policy) Related operations:
 //   - ImportKeyMaterial
 //   - DeleteImportedKeyMaterial
+//
+// Eventual consistency: The KMS API follows an eventual consistency model. For
+// more information, see KMS eventual consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
+// .
 func (c *Client) GetParametersForImport(ctx context.Context, params *GetParametersForImportInput, optFns ...func(*Options)) (*GetParametersForImportOutput, error) {
 	if params == nil {
 		params = &GetParametersForImportInput{}
@@ -106,8 +112,8 @@ type GetParametersForImportInput struct {
 	//   - RSAES_OAEP_SHA_1 — Supported for all types of key material, except RSA key
 	//   material (private key). You cannot use the RSAES_OAEP_SHA_1 wrapping algorithm
 	//   with the RSA_2048 wrapping key spec to wrap ECC_NIST_P521 key material.
-	//   - RSAES_PKCS1_V1_5 (Deprecated) — Supported only for symmetric encryption key
-	//   material (and only in legacy mode).
+	//   - RSAES_PKCS1_V1_5 (Deprecated) — As of October 10, 2023, KMS does not
+	//   support the RSAES_PKCS1_V1_5 wrapping algorithm.
 	//
 	// This member is required.
 	WrappingAlgorithm types.AlgorithmSpec

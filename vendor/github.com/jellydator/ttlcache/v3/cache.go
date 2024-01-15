@@ -478,6 +478,13 @@ func (c *Cache[K, V]) Items() map[K]*Item[K, V] {
 // Range stops the iteration.
 func (c *Cache[K, V]) Range(fn func(item *Item[K, V]) bool) {
 	c.items.mu.RLock()
+
+	// Check if cache is empty
+	if c.items.lru.Len() == 0 {
+		c.items.mu.RUnlock()
+		return
+	}
+
 	for item := c.items.lru.Front(); item != c.items.lru.Back().Next(); item = item.Next() {
 		i := item.Value.(*Item[K, V])
 		c.items.mu.RUnlock()
