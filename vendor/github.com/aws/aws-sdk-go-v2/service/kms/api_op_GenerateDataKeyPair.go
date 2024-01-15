@@ -17,7 +17,7 @@ import (
 // the private key that is encrypted under the symmetric encryption KMS key you
 // specify. You can use the data key pair to perform asymmetric cryptography and
 // implement digital signatures outside of KMS. The bytes in the keys are random;
-// they not related to the caller or to the KMS key that is used to encrypt the
+// they are not related to the caller or to the KMS key that is used to encrypt the
 // private key. You can use the public key that GenerateDataKeyPair returns to
 // encrypt data or verify a signature outside of KMS. Then, store the encrypted
 // private key with the data. When you are ready to decrypt data or sign a message,
@@ -75,6 +75,10 @@ import (
 //   - GenerateDataKey
 //   - GenerateDataKeyPairWithoutPlaintext
 //   - GenerateDataKeyWithoutPlaintext
+//
+// Eventual consistency: The KMS API follows an eventual consistency model. For
+// more information, see KMS eventual consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
+// .
 func (c *Client) GenerateDataKeyPair(ctx context.Context, params *GenerateDataKeyPairInput, optFns ...func(*Options)) (*GenerateDataKeyPairOutput, error) {
 	if params == nil {
 		params = &GenerateDataKeyPairInput{}

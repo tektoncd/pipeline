@@ -33,7 +33,9 @@ import (
 // Cross-account use: Not applicable. GenerateRandom does not use any
 // account-specific resources, such as KMS keys. Required permissions:
 // kms:GenerateRandom (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
-// (IAM policy)
+// (IAM policy) Eventual consistency: The KMS API follows an eventual consistency
+// model. For more information, see KMS eventual consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
+// .
 func (c *Client) GenerateRandom(ctx context.Context, params *GenerateRandomInput, optFns ...func(*Options)) (*GenerateRandomOutput, error) {
 	if params == nil {
 		params = &GenerateRandomInput{}
