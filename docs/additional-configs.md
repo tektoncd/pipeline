@@ -163,6 +163,69 @@ spec:
 _In the above example the environment variable `TEST_TEKTON` will not be overriden by value specified in podTemplate, because the `config-default` option `default-forbidden-env` is configured with value `TEST_TEKTON`._
 
 
+## Configuring default resources requirements
+
+Resource requirements of containers created by the controller can be assigned default values. This allows to fully control the resources requirement of `TaskRun`.
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-defaults
+  namespace: tekton-pipelines
+data:
+  default-container-resource-requirements: |
+    place-scripts: # updates resource requirements of a 'place-scripts' container
+      requests:
+        memory: "64Mi"
+        cpu: "250m"
+      limits:
+        memory: "128Mi"
+        cpu: "500m"
+  
+    prepare: # updates resource requirements of a 'prepare' container
+      requests:
+        memory: "64Mi"
+        cpu: "250m"
+      limits:
+        memory: "256Mi"
+        cpu: "500m"
+  
+    working-dir-initializer: # updates resource requirements of a 'working-dir-initializer' container
+      requests:
+        memory: "64Mi"
+        cpu: "250m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+  
+    prefix-scripts: # updates resource requirements of containers which starts with 'scripts-'
+      requests:
+        memory: "64Mi"
+        cpu: "250m"
+      limits:
+        memory: "128Mi"
+        cpu: "500m"
+  
+    prefix-sidecar-scripts: # updates resource requirements of containers which starts with 'sidecar-scripts-'
+      requests:
+        memory: "64Mi"
+        cpu: "250m"
+      limits:
+        memory: "128Mi"
+        cpu: "500m"
+  
+    default: # updates resource requirements of init-containers and containers which has empty resource resource requirements
+      requests:
+        memory: "64Mi"
+        cpu: "250m"
+      limits:
+        memory: "256Mi"
+        cpu: "500m"
+```
+
+Any resource requirements set at the `Task` and `TaskRun` levels will overidde the default one specified in the `config-defaults` configmap.
+
 ## Customizing basic execution parameters
 
 You can specify your own values that replace the default service account (`ServiceAccount`), timeout (`Timeout`), resolver (`Resolver`), and Pod template (`PodTemplate`) values used by Tekton Pipelines in `TaskRun` and `PipelineRun` definitions. To do so, modify the ConfigMap `config-defaults` with your desired values.
