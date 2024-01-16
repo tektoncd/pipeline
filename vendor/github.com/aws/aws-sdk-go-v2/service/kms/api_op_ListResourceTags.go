@@ -24,6 +24,10 @@ import (
 //   - ReplicateKey
 //   - TagResource
 //   - UntagResource
+//
+// Eventual consistency: The KMS API follows an eventual consistency model. For
+// more information, see KMS eventual consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
+// .
 func (c *Client) ListResourceTags(ctx context.Context, params *ListResourceTagsInput, optFns ...func(*Options)) (*ListResourceTagsOutput, error) {
 	if params == nil {
 		params = &ListResourceTagsInput{}

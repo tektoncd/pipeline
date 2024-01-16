@@ -14,7 +14,10 @@ import (
 // Gets a key policy attached to the specified KMS key. Cross-account use: No. You
 // cannot perform this operation on a KMS key in a different Amazon Web Services
 // account. Required permissions: kms:GetKeyPolicy (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
-// (key policy) Related operations: PutKeyPolicy
+// (key policy) Related operations: PutKeyPolicy (https://docs.aws.amazon.com/kms/latest/APIReference/API_PutKeyPolicy.html)
+// Eventual consistency: The KMS API follows an eventual consistency model. For
+// more information, see KMS eventual consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
+// .
 func (c *Client) GetKeyPolicy(ctx context.Context, params *GetKeyPolicyInput, optFns ...func(*Options)) (*GetKeyPolicyOutput, error) {
 	if params == nil {
 		params = &GetKeyPolicyInput{}

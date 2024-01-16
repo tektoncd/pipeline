@@ -2,7 +2,6 @@ package core
 
 import (
 	"crypto"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -12,7 +11,7 @@ import (
 	"time"
 
 	"golang.org/x/crypto/ocsp"
-	"gopkg.in/square/go-jose.v2"
+	"gopkg.in/go-jose/go-jose.v2"
 
 	"github.com/letsencrypt/boulder/identifier"
 	"github.com/letsencrypt/boulder/probs"
@@ -53,7 +52,6 @@ const (
 type AcmeChallenge string
 
 // These types are the available challenges
-// TODO(#5009): Make this a custom type as well.
 const (
 	ChallengeTypeHTTP01    = AcmeChallenge("http-01")
 	ChallengeTypeDNS01     = AcmeChallenge("dns-01")
@@ -77,52 +75,23 @@ type OCSPStatus string
 const (
 	OCSPStatusGood    = OCSPStatus("good")
 	OCSPStatusRevoked = OCSPStatus("revoked")
+	// Not a real OCSP status. This is a placeholder we write before the
+	// actual precertificate is issued, to ensure we never return "good" before
+	// issuance succeeds, for BR compliance reasons.
+	OCSPStatusNotReady = OCSPStatus("wait")
 )
 
 var OCSPStatusToInt = map[OCSPStatus]int{
-	OCSPStatusGood:    ocsp.Good,
-	OCSPStatusRevoked: ocsp.Revoked,
+	OCSPStatusGood:     ocsp.Good,
+	OCSPStatusRevoked:  ocsp.Revoked,
+	OCSPStatusNotReady: -1,
 }
 
 // DNSPrefix is attached to DNS names in DNS challenges
 const DNSPrefix = "_acme-challenge"
 
-// CertificateRequest is just a CSR
-//
-// This data is unmarshalled from JSON by way of RawCertificateRequest, which
-// represents the actual structure received from the client.
-type CertificateRequest struct {
-	CSR   *x509.CertificateRequest // The CSR
-	Bytes []byte                   // The original bytes of the CSR, for logging.
-}
-
 type RawCertificateRequest struct {
 	CSR JSONBuffer `json:"csr"` // The encoded CSR
-}
-
-// UnmarshalJSON provides an implementation for decoding CertificateRequest objects.
-func (cr *CertificateRequest) UnmarshalJSON(data []byte) error {
-	var raw RawCertificateRequest
-	err := json.Unmarshal(data, &raw)
-	if err != nil {
-		return err
-	}
-
-	csr, err := x509.ParseCertificateRequest(raw.CSR)
-	if err != nil {
-		return err
-	}
-
-	cr.CSR = csr
-	cr.Bytes = raw.CSR
-	return nil
-}
-
-// MarshalJSON provides an implementation for encoding CertificateRequest objects.
-func (cr CertificateRequest) MarshalJSON() ([]byte, error) {
-	return json.Marshal(RawCertificateRequest{
-		CSR: cr.CSR.Raw,
-	})
 }
 
 // Registration objects represent non-public metadata attached
@@ -156,7 +125,7 @@ type ValidationRecord struct {
 	URL string `json:"url,omitempty"`
 
 	// Shared
-	Hostname          string   `json:"hostname"`
+	Hostname          string   `json:"hostname,omitempty"`
 	Port              string   `json:"port,omitempty"`
 	AddressesResolved []net.IP `json:"addressesResolved,omitempty"`
 	AddressUsed       net.IP   `json:"addressUsed,omitempty"`
@@ -373,14 +342,18 @@ type Authorization struct {
 	// slice and the order of these challenges may not be predictable.
 	Challenges []Challenge `json:"challenges,omitempty" db:"-"`
 
-	// This field is deprecated. It's filled in by WFE for the ACMEv1 API.
-	Combinations [][]int `json:"combinations,omitempty" db:"combinations"`
-
-	// Wildcard is a Boulder-specific Authorization field that indicates the
-	// authorization was created as a result of an order containing a name with
-	// a `*.`wildcard prefix. This will help convey to users that an
-	// Authorization with the identifier `example.com` and one DNS-01 challenge
-	// corresponds to a name `*.example.com` from an associated order.
+	// https://datatracker.ietf.org/doc/html/rfc8555#page-29
+	//
+	// wildcard (optional, boolean):  This field MUST be present and true
+	//   for authorizations created as a result of a newOrder request
+	//   containing a DNS identifier with a value that was a wildcard
+	//   domain name.  For other authorizations, it MUST be absent.
+	//   Wildcard domain names are described in Section 7.1.3.
+	//
+	// This is not represented in the database because we calculate it from
+	// the identifier stored in the database. Unlike the identifier returned
+	// as part of the authorization, the identifier we store in the database
+	// can contain an asterisk.
 	Wildcard bool `json:"wildcard,omitempty" db:"-"`
 }
 
@@ -399,38 +372,25 @@ func (authz *Authorization) FindChallengeByStringID(id string) int {
 // SolvedBy will look through the Authorizations challenges, returning the type
 // of the *first* challenge it finds with Status: valid, or an error if no
 // challenge is valid.
-func (authz *Authorization) SolvedBy() (*AcmeChallenge, error) {
+func (authz *Authorization) SolvedBy() (AcmeChallenge, error) {
 	if len(authz.Challenges) == 0 {
-		return nil, fmt.Errorf("Authorization has no challenges")
+		return "", fmt.Errorf("Authorization has no challenges")
 	}
 	for _, chal := range authz.Challenges {
 		if chal.Status == StatusValid {
-			return &chal.Type, nil
+			return chal.Type, nil
 		}
 	}
-	return nil, fmt.Errorf("Authorization not solved by any challenge")
+	return "", fmt.Errorf("Authorization not solved by any challenge")
 }
 
 // JSONBuffer fields get encoded and decoded JOSE-style, in base64url encoding
 // with stripped padding.
 type JSONBuffer []byte
 
-// URL-safe base64 encode that strips padding
-func base64URLEncode(data []byte) string {
-	var result = base64.URLEncoding.EncodeToString(data)
-	return strings.TrimRight(result, "=")
-}
-
-// URL-safe base64 decoder that adds padding
-func base64URLDecode(data string) ([]byte, error) {
-	var missing = (4 - len(data)%4) % 4
-	data += strings.Repeat("=", missing)
-	return base64.URLEncoding.DecodeString(data)
-}
-
 // MarshalJSON encodes a JSONBuffer for transmission.
 func (jb JSONBuffer) MarshalJSON() (result []byte, err error) {
-	return json.Marshal(base64URLEncode(jb))
+	return json.Marshal(base64.RawURLEncoding.EncodeToString(jb))
 }
 
 // UnmarshalJSON decodes a JSONBuffer to an object.
@@ -440,7 +400,7 @@ func (jb *JSONBuffer) UnmarshalJSON(data []byte) (err error) {
 	if err != nil {
 		return err
 	}
-	*jb, err = base64URLDecode(str)
+	*jb, err = base64.RawURLEncoding.DecodeString(strings.TrimRight(str, "="))
 	return
 }
 
@@ -458,53 +418,46 @@ type Certificate struct {
 }
 
 // CertificateStatus structs are internal to the server. They represent the
-// latest data about the status of the certificate, required for OCSP updating
-// and for validating that the subscriber has accepted the certificate.
+// latest data about the status of the certificate, required for generating new
+// OCSP responses and determining if a certificate has been revoked.
 type CertificateStatus struct {
 	ID int64 `db:"id"`
 
 	Serial string `db:"serial"`
 
 	// status: 'good' or 'revoked'. Note that good, expired certificates remain
-	//   with status 'good' but don't necessarily get fresh OCSP responses.
+	// with status 'good' but don't necessarily get fresh OCSP responses.
 	Status OCSPStatus `db:"status"`
 
 	// ocspLastUpdated: The date and time of the last time we generated an OCSP
-	//   response. If we have never generated one, this has the zero value of
-	//   time.Time, i.e. Jan 1 1970.
+	// response. If we have never generated one, this has the zero value of
+	// time.Time, i.e. Jan 1 1970.
 	OCSPLastUpdated time.Time `db:"ocspLastUpdated"`
 
 	// revokedDate: If status is 'revoked', this is the date and time it was
-	//   revoked. Otherwise it has the zero value of time.Time, i.e. Jan 1 1970.
+	// revoked. Otherwise it has the zero value of time.Time, i.e. Jan 1 1970.
 	RevokedDate time.Time `db:"revokedDate"`
 
 	// revokedReason: If status is 'revoked', this is the reason code for the
-	//   revocation. Otherwise it is zero (which happens to be the reason
-	//   code for 'unspecified').
+	// revocation. Otherwise it is zero (which happens to be the reason
+	// code for 'unspecified').
 	RevokedReason revocation.Reason `db:"revokedReason"`
 
 	LastExpirationNagSent time.Time `db:"lastExpirationNagSent"`
 
-	// The encoded and signed OCSP response.
-	OCSPResponse []byte `db:"ocspResponse"`
-
-	// For performance reasons[0] we duplicate the `Expires` field of the
-	// `Certificates` object/table in `CertificateStatus` to avoid a costly `JOIN`
-	// later on just to retrieve this `Time` value. This helps both the OCSP
-	// updater and the expiration-mailer stay performant.
-	//
-	// Similarly, we add an explicit `IsExpired` boolean to `CertificateStatus`
-	// table that the OCSP updater so that the database can create a meaningful
-	// index on `(isExpired, ocspLastUpdated)` without a `JOIN` on `certificates`.
-	// For more detail see Boulder #1864[0].
-	//
-	// [0]: https://github.com/letsencrypt/boulder/issues/1864
+	// NotAfter and IsExpired are convenience columns which allow expensive
+	// queries to quickly filter out certificates that we don't need to care about
+	// anymore. These are particularly useful for the expiration mailer and CRL
+	// updater. See https://github.com/letsencrypt/boulder/issues/1864.
 	NotAfter  time.Time `db:"notAfter"`
 	IsExpired bool      `db:"isExpired"`
 
-	// TODO(#5152): Change this to an issuance.Issuer(Name)ID after it no longer
-	// has to support both IssuerNameIDs and IssuerIDs.
-	IssuerID int64
+	// Note: this is not an issuance.IssuerNameID because that would create an
+	// import cycle between core and issuance.
+	// Note2: This field used to be called `issuerID`. We keep the old name in
+	// the DB, but update the Go field name to be clear which type of ID this
+	// is.
+	IssuerNameID int64 `db:"issuerID"`
 }
 
 // FQDNSet contains the SHA256 hash of the lowercased, comma joined dNSNames
@@ -553,7 +506,7 @@ func RenewalInfoSimple(issued time.Time, expires time.Time) RenewalInfo {
 }
 
 // RenewalInfoImmediate constructs a `RenewalInfo` object with a suggested
-// window in the past. Per the draft-ietf-acme-ari-00 spec, clients should
+// window in the past. Per the draft-ietf-acme-ari-01 spec, clients should
 // attempt to renew immediately if the suggested window is in the past. The
 // passed `now` is assumed to be a timestamp representing the current moment in
 // time.

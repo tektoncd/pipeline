@@ -18,7 +18,11 @@ import (
 // Services account. Required permissions: kms:ListKeyPolicies (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
 // (key policy) Related operations:
 //   - GetKeyPolicy
-//   - PutKeyPolicy
+//   - PutKeyPolicy (https://docs.aws.amazon.com/kms/latest/APIReference/API_PutKeyPolicy.html)
+//
+// Eventual consistency: The KMS API follows an eventual consistency model. For
+// more information, see KMS eventual consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
+// .
 func (c *Client) ListKeyPolicies(ctx context.Context, params *ListKeyPoliciesInput, optFns ...func(*Options)) (*ListKeyPoliciesOutput, error) {
 	if params == nil {
 		params = &ListKeyPoliciesInput{}

@@ -22,15 +22,27 @@ import (
 // in the Key Management Service Developer Guide . For examples of working with
 // grants in several programming languages, see Programming grants (https://docs.aws.amazon.com/kms/latest/developerguide/programming-grants.html)
 // . Cross-account use: You must specify a principal in your Amazon Web Services
-// account. However, this operation can return grants in any Amazon Web Services
-// account. You do not need kms:ListRetirableGrants permission (or any other
-// additional permission) in any Amazon Web Services account other than your own.
-// Required permissions: kms:ListRetirableGrants (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
-// (IAM policy) in your Amazon Web Services account. Related operations:
+// account. This operation returns a list of grants where the retiring principal
+// specified in the ListRetirableGrants request is the same retiring principal on
+// the grant. This can include grants on KMS keys owned by other Amazon Web
+// Services accounts, but you do not need kms:ListRetirableGrants permission (or
+// any other additional permission) in any Amazon Web Services account other than
+// your own. Required permissions: kms:ListRetirableGrants (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
+// (IAM policy) in your Amazon Web Services account. KMS authorizes
+// ListRetirableGrants requests by evaluating the caller account's
+// kms:ListRetirableGrants permissions. The authorized resource in
+// ListRetirableGrants calls is the retiring principal specified in the request.
+// KMS does not evaluate the caller's permissions to verify their access to any KMS
+// keys or grants that might be returned by the ListRetirableGrants call. Related
+// operations:
 //   - CreateGrant
 //   - ListGrants
 //   - RetireGrant
 //   - RevokeGrant
+//
+// Eventual consistency: The KMS API follows an eventual consistency model. For
+// more information, see KMS eventual consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
+// .
 func (c *Client) ListRetirableGrants(ctx context.Context, params *ListRetirableGrantsInput, optFns ...func(*Options)) (*ListRetirableGrantsOutput, error) {
 	if params == nil {
 		params = &ListRetirableGrantsInput{}

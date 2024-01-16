@@ -44,6 +44,10 @@ import (
 //   - CreateAlias
 //   - DeleteAlias
 //   - ListAliases
+//
+// Eventual consistency: The KMS API follows an eventual consistency model. For
+// more information, see KMS eventual consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
+// .
 func (c *Client) UpdateAlias(ctx context.Context, params *UpdateAliasInput, optFns ...func(*Options)) (*UpdateAliasOutput, error) {
 	if params == nil {
 		params = &UpdateAliasInput{}

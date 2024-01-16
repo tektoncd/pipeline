@@ -82,6 +82,10 @@ import (
 //   - GenerateDataKeyPair
 //   - GenerateDataKeyPairWithoutPlaintext
 //   - GenerateDataKeyWithoutPlaintext
+//
+// Eventual consistency: The KMS API follows an eventual consistency model. For
+// more information, see KMS eventual consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
+// .
 func (c *Client) GenerateDataKey(ctx context.Context, params *GenerateDataKeyInput, optFns ...func(*Options)) (*GenerateDataKeyOutput, error) {
 	if params == nil {
 		params = &GenerateDataKeyInput{}

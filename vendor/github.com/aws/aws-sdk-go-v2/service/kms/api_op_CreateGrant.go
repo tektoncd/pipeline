@@ -47,6 +47,10 @@ import (
 //   - ListRetirableGrants
 //   - RetireGrant
 //   - RevokeGrant
+//
+// Eventual consistency: The KMS API follows an eventual consistency model. For
+// more information, see KMS eventual consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
+// .
 func (c *Client) CreateGrant(ctx context.Context, params *CreateGrantInput, optFns ...func(*Options)) (*CreateGrantOutput, error) {
 	if params == nil {
 		params = &CreateGrantInput{}

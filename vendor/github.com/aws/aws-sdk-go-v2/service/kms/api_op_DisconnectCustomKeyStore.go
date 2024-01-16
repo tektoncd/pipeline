@@ -37,6 +37,10 @@ import (
 //   - DeleteCustomKeyStore
 //   - DescribeCustomKeyStores
 //   - UpdateCustomKeyStore
+//
+// Eventual consistency: The KMS API follows an eventual consistency model. For
+// more information, see KMS eventual consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
+// .
 func (c *Client) DisconnectCustomKeyStore(ctx context.Context, params *DisconnectCustomKeyStoreInput, optFns ...func(*Options)) (*DisconnectCustomKeyStoreOutput, error) {
 	if params == nil {
 		params = &DisconnectCustomKeyStoreInput{}
