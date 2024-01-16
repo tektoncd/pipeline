@@ -96,7 +96,36 @@ func TestAllowsExecution(t *testing.T) {
 		},
 		evaluatedCEL: map[string]bool{"'foo'!='foo'": false},
 		expected:     false,
-	}}
+	},
+		{
+			name: "multiple expressions - 1. CEL is true 2. In Op is false, expect false",
+			whenExpressions: WhenExpressions{
+				{
+					CEL: "'foo'=='foo'",
+				},
+				{
+					Input:    "foo",
+					Operator: selection.In,
+					Values:   []string{"bar"},
+				},
+			},
+			evaluatedCEL: map[string]bool{"'foo'=='foo'": true},
+			expected:     false,
+		},
+		{
+			name: "multiple expressions - 1. CEL is true 2. CEL is false, expect false",
+			whenExpressions: WhenExpressions{
+				{
+					CEL: "'foo'!='foo'",
+				},
+				{
+					CEL: "'xxx'!='xxx'",
+				},
+			},
+			evaluatedCEL: map[string]bool{"'foo'=='foo'": true, "'xxx'!='xxx'": false},
+			expected:     false,
+		},
+	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got := tc.whenExpressions.AllowsExecution(tc.evaluatedCEL)
