@@ -34,6 +34,10 @@ import (
 // (key policy) Related operations:
 //   - EnableKeyRotation
 //   - GetKeyRotationStatus
+//
+// Eventual consistency: The KMS API follows an eventual consistency model. For
+// more information, see KMS eventual consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
+// .
 func (c *Client) DisableKeyRotation(ctx context.Context, params *DisableKeyRotationInput, optFns ...func(*Options)) (*DisableKeyRotationOutput, error) {
 	if params == nil {
 		params = &DisableKeyRotationInput{}
