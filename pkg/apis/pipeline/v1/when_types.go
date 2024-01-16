@@ -105,10 +105,7 @@ type WhenExpressions []WhenExpression
 // if the Task should be skipped.
 func (wes WhenExpressions) AllowsExecution(evaluatedCEL map[string]bool) bool {
 	for _, we := range wes {
-		if we.CEL != "" {
-			return evaluatedCEL[we.CEL]
-		}
-		if !we.isTrue() {
+		if !we.isTrue() || (we.CEL != "" && !evaluatedCEL[we.CEL]) {
 			return false
 		}
 	}
