@@ -481,7 +481,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	return newPod, nil
 }
 
-// updates init containers and containers resource requirements of a pod
+// updates init containers and containers resource requirements of a pod base of config_defaults configmap.
 func updateResourceRequirements(resourceRequirementsMap map[string]corev1.ResourceRequirements, pod *corev1.Pod) {
 	if len(resourceRequirementsMap) == 0 {
 		return
@@ -505,7 +505,7 @@ func updateResourceRequirements(resourceRequirementsMap map[string]corev1.Resour
 		}
 	}
 
-	// update the containers name which does not have resource requirements
+	// update the containers resource requirements which does not have resource requirements
 	for _, containerName := range containerNames {
 		resourceRequirements := resourceRequirementsMap[containerName]
 		if resourceRequirements.Size() == 0 {
@@ -528,7 +528,7 @@ func updateResourceRequirements(resourceRequirementsMap map[string]corev1.Resour
 		}
 	}
 
-	// update the containers name which does not have resource requirements with the mentioned prefix
+	// update the containers resource requirements which does not have resource requirements with the mentioned prefix
 	for _, containerPrefix := range containerNamesWithPrefix {
 		resourceRequirements := resourceRequirementsMap[containerPrefix]
 		if resourceRequirements.Size() == 0 {
@@ -556,7 +556,7 @@ func updateResourceRequirements(resourceRequirementsMap map[string]corev1.Resour
 		}
 	}
 
-	// update reset of the containers resource requirements which has empty resource requirements
+	// reset of the containers resource requirements which has empty resource requirements
 	if resourceRequirements, found := resourceRequirementsMap[config.ResourceRequirementDefaultContainerKey]; found && resourceRequirements.Size() != 0 {
 		// update init containers
 		for index := range pod.Spec.InitContainers {
