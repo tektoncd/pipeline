@@ -99,7 +99,7 @@ data:
     #     limits:
     #       memory: "128Mi"
     #       cpu: "500m"
-    # 
+    #
     #   prepare: # updates resource requirements of a 'prepare' container
     #     requests:
     #       memory: "64Mi"
@@ -107,7 +107,7 @@ data:
     #     limits:
     #       memory: "256Mi"
     #       cpu: "500m"
-    # 
+    #
     #   working-dir-initializer: # updates resource requirements of a 'working-dir-initializer' container
     #     requests:
     #       memory: "64Mi"
@@ -115,7 +115,7 @@ data:
     #     limits:
     #       memory: "512Mi"
     #       cpu: "500m"
-    # 
+    #
     #   prefix-scripts: # updates resource requirements of containers which starts with 'scripts-'
     #     requests:
     #       memory: "64Mi"
@@ -123,7 +123,7 @@ data:
     #     limits:
     #       memory: "128Mi"
     #       cpu: "500m"
-    # 
+    #
     #   prefix-sidecar-scripts: # updates resource requirements of containers which starts with 'sidecar-scripts-'
     #     requests:
     #       memory: "64Mi"
@@ -131,7 +131,7 @@ data:
     #     limits:
     #       memory: "128Mi"
     #       cpu: "500m"
-    # 
+    #
     #   default: # updates resource requirements of init-containers and containers which has empty resource resource requirements
     #     requests:
     #       memory: "64Mi"
