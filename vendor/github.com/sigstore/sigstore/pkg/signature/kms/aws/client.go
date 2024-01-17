@@ -74,7 +74,7 @@ var (
 	// Alias ARN: awskms:///arn:aws:kms:us-east-2:111122223333:alias/ExampleAlias
 	// Alias ARN with endpoint: awskms://localhost:4566/arn:aws:kms:us-east-2:111122223333:alias/ExampleAlias
 	uuidRE      = `m?r?k?-?[A-Fa-f0-9]{8}-?[A-Fa-f0-9]{4}-?[A-Fa-f0-9]{4}-?[A-Fa-f0-9]{4}-?[A-Fa-f0-9]{12}`
-	arnRE       = `arn:(?:aws|aws-us-gov):kms:[a-z0-9-]+:\d{12}:`
+	arnRE       = `arn:(?:aws|aws-us-gov|aws-cn):kms:[a-z0-9-]+:\d{12}:`
 	hostRE      = `([^/]*)/`
 	keyIDRE     = regexp.MustCompile(`^awskms://` + hostRE + `(` + uuidRE + `)$`)
 	keyARNRE    = regexp.MustCompile(`^awskms://` + hostRE + `(` + arnRE + `key/` + uuidRE + `)$`)
