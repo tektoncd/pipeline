@@ -2778,6 +2778,91 @@ status:
 	}
 }
 
+func TestReconcileWithTimeoutDisabled(t *testing.T) {
+	type testCase struct {
+		name    string
+		taskRun *v1.TaskRun
+	}
+
+	testcases := []testCase{
+		{
+			name: "taskrun with timeout",
+			taskRun: parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-timeout
+  namespace: foo
+spec:
+  taskRef:
+    name: test-task
+  timeout: 10m
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+`),
+		}, {
+			name: "taskrun with default timeout",
+			taskRun: parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-default-timeout-60-minutes
+  namespace: foo
+spec:
+  taskRef:
+    name: test-task
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+`),
+		}, {
+			name: "task run with timeout set to 0 to disable",
+			taskRun: parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-timeout-disabled
+  namespace: foo
+spec:
+  taskRef:
+    name: test-task
+  timeout: 0s
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+`),
+		}}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			start := metav1.NewTime(time.Now())
+			tc.taskRun.Status.StartTime = &start
+			pod, err := makePod(tc.taskRun, simpleTask)
+			d := test.Data{
+				TaskRuns: []*v1.TaskRun{tc.taskRun},
+				Tasks:    []*v1.Task{simpleTask},
+				Pods:     []*corev1.Pod{pod},
+			}
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			c := testAssets.Controller
+			clients := testAssets.Clients
+
+			err = c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun))
+			if err == nil {
+				t.Errorf("expected error when reconciling completed TaskRun : %v", err)
+			}
+			if isRequeueError, requeueDuration := controller.IsRequeueKey(err); !isRequeueError {
+				t.Errorf("Expected requeue error, but got: %s", err.Error())
+			} else if requeueDuration < 0 {
+				t.Errorf("Expected a positive requeue duration but got %s", requeueDuration.String())
+			}
+			_, err = clients.Pipeline.TektonV1().TaskRuns(tc.taskRun.Namespace).Get(testAssets.Ctx, tc.taskRun.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Errorf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", tc.taskRun.Name, err)
+			}
+		})
+	}
+}
+
 func TestReconcileTimeouts(t *testing.T) {
 	type testCase struct {
 		name           string

@@ -212,7 +212,12 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 		// Compute the time since the task started.
 		elapsed := c.Clock.Since(tr.Status.StartTime.Time)
 		// Snooze this resource until the timeout has elapsed.
-		return controller.NewRequeueAfter(tr.GetTimeout(ctx) - elapsed)
+		timeout := tr.GetTimeout(ctx)
+		waitTime := timeout - elapsed
+		if timeout == config.NoTimeoutDuration {
+			waitTime = time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes) * time.Minute
+		}
+		return controller.NewRequeueAfter(waitTime)
 	}
 	return nil
 }
