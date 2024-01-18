@@ -2486,6 +2486,96 @@ spec:
 	}
 }
 
+func TestReconcileWithTimeoutDisabled(t *testing.T) {
+	testCases := []struct {
+		name    string
+		timeout time.Duration
+	}{
+		{
+			name:    "pipeline timeout is 24h",
+			timeout: 24 * time.Hour,
+		},
+		{
+			name:    "pipeline timeout is way longer than 24h",
+			timeout: 360 * time.Hour,
+		},
+	}
+
+	for _, tc := range testCases {
+		startTime := time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC).Add(-3 * tc.timeout)
+		t.Run(tc.name, func(t *testing.T) {
+			ps := []*v1.Pipeline{parse.MustParseV1Pipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+  - name: hello-world-1
+    taskRef:
+      name: hello-world
+  - name: hello-world-2
+    taskRef:
+      name: hello-world
+`)}
+			prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-with-timeout-disabled
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa
+  timeouts:
+    pipeline: 0h0m0s
+status:
+  startTime: "2021-12-30T00:00:00Z"
+`)}
+			ts := []*v1.Task{simpleHelloWorldTask}
+
+			trs := []*v1.TaskRun{mustParseTaskRunWithObjectMeta(t, taskRunObjectMeta("test-pipeline-run-with-timeout-hello-world-1", "foo", "test-pipeline-run-with-timeout-disabled",
+				"test-pipeline", "hello-world-1", false), `
+spec:
+  serviceAccountName: test-sa
+  taskRef:
+    name: hello-world
+    kind: Task
+`)}
+			start := metav1.NewTime(startTime)
+			prs[0].Status.StartTime = &start
+
+			d := test.Data{
+				PipelineRuns: prs,
+				Pipelines:    ps,
+				Tasks:        ts,
+				TaskRuns:     trs,
+			}
+			prt := newPipelineRunTest(t, d)
+			defer prt.Cancel()
+
+			c := prt.TestAssets.Controller
+			clients := prt.TestAssets.Clients
+			reconcileError := c.Reconciler.Reconcile(prt.TestAssets.Ctx, "foo/test-pipeline-run-with-timeout-disabled")
+			if reconcileError == nil {
+				t.Errorf("expected error, but got nil")
+			}
+			if isRequeueError, requeueDuration := controller.IsRequeueKey(reconcileError); !isRequeueError {
+				t.Errorf("Expected requeue error, but got: %s", reconcileError.Error())
+			} else if requeueDuration < 0 {
+				t.Errorf("Expected a positive requeue duration but got %s", requeueDuration.String())
+			}
+			prt.Test.Logf("Getting reconciled run")
+			reconciledRun, err := clients.Pipeline.TektonV1().PipelineRuns("foo").Get(prt.TestAssets.Ctx, "test-pipeline-run-with-timeout-disabled", metav1.GetOptions{})
+			if err != nil {
+				prt.Test.Errorf("Somehow had error getting reconciled run out of fake client: %s", err)
+			}
+			if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason == "PipelineRunTimeout" {
+				t.Errorf("Expected PipelineRun to not be timed out, but it is timed out")
+			}
+		})
+	}
+}
+
 func TestReconcileWithTimeoutForALongTimeAndEtcdLimit_Pipeline(t *testing.T) {
 	timeout := 12 * time.Hour
 	testCases := []struct {

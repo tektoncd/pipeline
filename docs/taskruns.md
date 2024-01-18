@@ -771,6 +771,8 @@ a different global default timeout value using the `default-timeout-minutes` fie
 all `TaskRuns` that do not have a timeout set will have no timeout and will run until it completes successfully
 or fails from an error.
 
+> :note: An internal detail of the `PipelineRun` and `TaskRun` reconcilers in the Tekton controller is that it will requeue a `PipelineRun` or `TaskRun` for re-evaluation, versus waiting for the next update, under certain conditions.  The wait time for that re-queueing is the elapsed time subtracted from the timeout; however, if the timeout is set to '0', that calculation produces a negative number, and the new reconciliation event will fire immediately, which can impact overall performance, which is counter to the intent of wait time calculation.  So instead, the reconcilers will use the configured global timeout as the wait time when the associated timeout has been set to '0'.
+
 ### Specifying `ServiceAccount` credentials
 
 You can execute the `Task` in your `TaskRun` with a specific set of credentials by
