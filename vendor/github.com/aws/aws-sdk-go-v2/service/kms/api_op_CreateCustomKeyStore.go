@@ -181,7 +181,7 @@ type CreateCustomKeyStoreInput struct {
 	//   in the Amazon Web Services account and Region.
 	//   - An external key store with PUBLIC_ENDPOINT connectivity cannot use the same
 	//   XksProxyUriEndpoint value as an external key store with VPC_ENDPOINT_SERVICE
-	//   connectivity in the same Amazon Web Services Region.
+	//   connectivity in this Amazon Web Services Region.
 	//   - Each external key store with VPC_ENDPOINT_SERVICE connectivity must have its
 	//   own private DNS name. The XksProxyUriEndpoint value for external key stores
 	//   with VPC_ENDPOINT_SERVICE connectivity (private DNS name) must be unique in
