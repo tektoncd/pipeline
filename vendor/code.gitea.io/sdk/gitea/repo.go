@@ -85,6 +85,9 @@ type Repository struct {
 	ExternalWiki              *ExternalWiki    `json:"external_wiki,omitempty"`
 	HasPullRequests           bool             `json:"has_pull_requests"`
 	HasProjects               bool             `json:"has_projects"`
+	HasReleases               bool             `json:"has_releases,omitempty"`
+	HasPackages               bool             `json:"has_packages,omitempty"`
+	HasActions                bool             `json:"has_actions,omitempty"`
 	IgnoreWhitespaceConflicts bool             `json:"ignore_whitespace_conflicts"`
 	AllowMerge                bool             `json:"allow_merge_commits"`
 	AllowRebase               bool             `json:"allow_rebase"`
@@ -331,8 +334,8 @@ func (opt CreateRepoOption) Validate(c *Client) error {
 	if len(opt.Name) > 100 {
 		return fmt.Errorf("name has more than 100 chars")
 	}
-	if len(opt.Description) > 255 {
-		return fmt.Errorf("description has more than 255 chars")
+	if len(opt.Description) > 2048 {
+		return fmt.Errorf("description has more than 2048 chars")
 	}
 	if len(opt.DefaultBranch) > 100 {
 		return fmt.Errorf("default branch name has more than 100 chars")
@@ -423,6 +426,12 @@ type EditRepoOption struct {
 	HasPullRequests *bool `json:"has_pull_requests,omitempty"`
 	// either `true` to enable project unit, or `false` to disable them.
 	HasProjects *bool `json:"has_projects,omitempty"`
+	// either `true` to enable release, or `false` to disable them.
+	HasReleases *bool `json:"has_releases,omitempty"`
+	// either `true` to enable packages, or `false` to disable them.
+	HasPackages *bool `json:"has_packages,omitempty"`
+	// either `true` to enable actions, or `false` to disable them.
+	HasActions *bool `json:"has_actions,omitempty"`
 	// either `true` to ignore whitespace for conflicts, or `false` to not ignore whitespace. `has_pull_requests` must be `true`.
 	IgnoreWhitespaceConflicts *bool `json:"ignore_whitespace_conflicts,omitempty"`
 	// either `true` to allow merging pull requests with a merge commit, or `false` to prevent merging pull requests with merge commits. `has_pull_requests` must be `true`.

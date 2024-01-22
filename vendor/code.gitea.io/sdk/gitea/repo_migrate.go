@@ -62,7 +62,7 @@ func (opt *MigrateRepoOption) Validate(c *Client) error {
 	} else if len(opt.RepoName) > 100 {
 		return fmt.Errorf("RepoName to long")
 	}
-	if len(opt.Description) > 255 {
+	if len(opt.Description) > 2048 {
 		return fmt.Errorf("Description to long")
 	}
 	switch opt.Service {
