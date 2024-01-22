@@ -151,6 +151,12 @@ func Copy(a *AST) *AST {
 func MaxID(a *AST) int64 {
 	visitor := &maxIDVisitor{maxID: 1}
 	PostOrderVisit(a.Expr(), visitor)
+	for id, call := range a.SourceInfo().MacroCalls() {
+		PostOrderVisit(call, visitor)
+		if id > visitor.maxID {
+			visitor.maxID = id + 1
+		}
+	}
 	return visitor.maxID + 1
 }
 
@@ -200,6 +206,8 @@ func CopySourceInfo(info *SourceInfo) *SourceInfo {
 		syntax:       info.syntax,
 		desc:         info.desc,
 		lines:        info.lines,
+		baseLine:     info.baseLine,
+		baseCol:      info.baseCol,
 		offsetRanges: rangesCopy,
 		macroCalls:   callsCopy,
 	}

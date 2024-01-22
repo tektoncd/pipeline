@@ -12,6 +12,7 @@ go_library(
         "env.go",
         "folding.go",
         "io.go",
+        "inlining.go",
         "library.go",
         "macro.go",
         "optimizer.go",
@@ -60,6 +61,8 @@ go_test(
         "env_test.go",
         "folding_test.go",
         "io_test.go",
+        "inlining_test.go",
+        "optimizer_test.go",
         "validator_test.go",
     ],
     data = [

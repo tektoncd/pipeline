@@ -276,7 +276,7 @@ func (p *Registry) NewValue(structType string, fields map[string]ref.Val) ref.Va
 		}
 		err := msgSetField(msg, field, value)
 		if err != nil {
-			return &Err{err}
+			return &Err{error: err}
 		}
 	}
 	return p.NativeToValue(msg.Interface())

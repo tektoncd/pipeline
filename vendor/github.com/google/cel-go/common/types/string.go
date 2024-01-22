@@ -158,7 +158,7 @@ func (s String) Match(pattern ref.Val) ref.Val {
 	}
 	matched, err := regexp.MatchString(pat.Value().(string), s.Value().(string))
 	if err != nil {
-		return &Err{err}
+		return &Err{error: err}
 	}
 	return Bool(matched)
 }
