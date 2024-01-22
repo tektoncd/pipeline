@@ -72,6 +72,9 @@ To install Tekton Pipelines on a Kubernetes cluster:
      kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.notags.yaml
      ```
 
+Multi-tenant installation is only partially supported today, read the [guide](./developers/multi-tenant-support.md)
+for reference.
+
 1. Monitor the installation:
 
    ```bash
