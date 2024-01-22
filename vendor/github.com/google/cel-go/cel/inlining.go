@@ -85,57 +85,76 @@ func (opt *inliningOptimizer) Optimize(ctx *OptimizerContext, a *ast.AST) *ast.A
 		}
 
 		// For a single match, do a direct replacement of the expression sub-graph.
-		if len(matches) == 1 {
-			opt.inlineExpr(ctx, matches[0], ctx.CopyExpr(inlineVar.Expr()), inlineVar.Type())
-			continue
-		}
-
-		if !isBindable(matches, inlineVar.Expr(), inlineVar.Type()) {
+		if len(matches) == 1 || !isBindable(matches, inlineVar.Expr(), inlineVar.Type()) {
 			for _, match := range matches {
-				opt.inlineExpr(ctx, match, ctx.CopyExpr(inlineVar.Expr()), inlineVar.Type())
+				// Copy the inlined AST expr and source info.
+				copyExpr := copyASTAndMetadata(ctx, inlineVar.def)
+				opt.inlineExpr(ctx, match, copyExpr, inlineVar.Type())
 			}
 			continue
 		}
+
 		// For multiple matches, find the least common ancestor (lca) and insert the
 		// variable as a cel.bind() macro.
-		var lca ast.NavigableExpr = nil
-		ancestors := map[int64]bool{}
+		var lca ast.NavigableExpr = root
+		lcaAncestorCount := 0
+		ancestors := map[int64]int{}
 		for _, match := range matches {
 			// Update the identifier matches with the provided alias.
-			aliasExpr := ctx.NewIdent(inlineVar.Alias())
-			opt.inlineExpr(ctx, match, aliasExpr, inlineVar.Type())
 			parent, found := match, true
 			for found {
-				_, hasAncestor := ancestors[parent.ID()]
-				if hasAncestor && (lca == nil || lca.Depth() < parent.Depth()) {
-					lca = parent
+				ancestorCount, hasAncestor := ancestors[parent.ID()]
+				if !hasAncestor {
+					ancestors[parent.ID()] = 1
+					parent, found = parent.Parent()
+					continue
 				}
-				ancestors[parent.ID()] = true
+				if lcaAncestorCount < ancestorCount || (lcaAncestorCount == ancestorCount && lca.Depth() < parent.Depth()) {
+					lca = parent
+					lcaAncestorCount = ancestorCount
+				}
+				ancestors[parent.ID()] = ancestorCount + 1
 				parent, found = parent.Parent()
 			}
+			aliasExpr := ctx.NewIdent(inlineVar.Alias())
+			opt.inlineExpr(ctx, match, aliasExpr, inlineVar.Type())
 		}
 
+		// Copy the inlined AST expr and source info.
+		copyExpr := copyASTAndMetadata(ctx, inlineVar.def)
 		// Update the least common ancestor by inserting a cel.bind() call to the alias.
-		inlined := ctx.NewBindMacro(lca.ID(), inlineVar.Alias(), inlineVar.Expr(), lca)
+		inlined, bindMacro := ctx.NewBindMacro(lca.ID(), inlineVar.Alias(), copyExpr, lca)
 		opt.inlineExpr(ctx, lca, inlined, inlineVar.Type())
+		ctx.sourceInfo.SetMacroCall(lca.ID(), bindMacro)
 	}
 	return a
+}
+
+// copyASTAndMetadata copies the input AST and propagates the macro metadata into the AST being
+// optimized.
+func copyASTAndMetadata(ctx *OptimizerContext, a *ast.AST) ast.Expr {
+	copyExpr, copyInfo := ctx.CopyAST(a)
+	// Add in the macro calls from the inlined AST
+	for id, call := range copyInfo.MacroCalls() {
+		ctx.sourceInfo.SetMacroCall(id, call)
+	}
+	return copyExpr
 }
 
 // inlineExpr replaces the current expression with the inlined one, unless the location of the inlining
 // happens within a presence test, e.g. has(a.b.c) -> inline alpha for a.b.c in which case an attempt is
 // made to determine whether the inlined value can be presence or existence tested.
-func (opt *inliningOptimizer) inlineExpr(ctx *OptimizerContext, prev, inlined ast.Expr, inlinedType *Type) {
+func (opt *inliningOptimizer) inlineExpr(ctx *OptimizerContext, prev ast.NavigableExpr, inlined ast.Expr, inlinedType *Type) {
 	switch prev.Kind() {
 	case ast.SelectKind:
 		sel := prev.AsSelect()
 		if !sel.IsTestOnly() {
-			prev.SetKindCase(inlined)
+			ctx.UpdateExpr(prev, inlined)
 			return
 		}
 		opt.rewritePresenceExpr(ctx, prev, inlined, inlinedType)
 	default:
-		prev.SetKindCase(inlined)
+		ctx.UpdateExpr(prev, inlined)
 	}
 }
 
@@ -146,15 +165,16 @@ func (opt *inliningOptimizer) inlineExpr(ctx *OptimizerContext, prev, inlined as
 func (opt *inliningOptimizer) rewritePresenceExpr(ctx *OptimizerContext, prev, inlined ast.Expr, inlinedType *Type) {
 	// If the input inlined expression is not a select expression it won't work with the has()
 	// macro. Attempt to rewrite the presence test in terms of the typed input, otherwise error.
-	ctx.sourceInfo.ClearMacroCall(prev.ID())
 	if inlined.Kind() == ast.SelectKind {
-		inlinedSel := inlined.AsSelect()
-		prev.SetKindCase(
-			ctx.NewPresenceTest(prev.ID(), inlinedSel.Operand(), inlinedSel.FieldName()))
+		presenceTest, hasMacro := ctx.NewHasMacro(prev.ID(), inlined)
+		ctx.UpdateExpr(prev, presenceTest)
+		ctx.sourceInfo.SetMacroCall(prev.ID(), hasMacro)
 		return
 	}
+
+	ctx.sourceInfo.ClearMacroCall(prev.ID())
 	if inlinedType.IsAssignableType(NullType) {
-		prev.SetKindCase(
+		ctx.UpdateExpr(prev,
 			ctx.NewCall(operators.NotEquals,
 				inlined,
 				ctx.NewLiteral(types.NullValue),
@@ -162,7 +182,7 @@ func (opt *inliningOptimizer) rewritePresenceExpr(ctx *OptimizerContext, prev, i
 		return
 	}
 	if inlinedType.HasTrait(traits.SizerType) {
-		prev.SetKindCase(
+		ctx.UpdateExpr(prev,
 			ctx.NewCall(operators.NotEquals,
 				ctx.NewMemberCall(overloads.Size, inlined),
 				ctx.NewLiteral(types.IntZero),

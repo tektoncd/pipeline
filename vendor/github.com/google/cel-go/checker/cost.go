@@ -226,7 +226,7 @@ func addUint64NoOverflow(x, y uint64) uint64 {
 // multiplyUint64NoOverflow multiplies non-negative ints. If the result is exceeds math.MaxUint64, math.MaxUint64
 // is returned.
 func multiplyUint64NoOverflow(x, y uint64) uint64 {
-	if x > 0 && y > 0 && x > math.MaxUint64/y {
+	if y != 0 && x > math.MaxUint64/y {
 		return math.MaxUint64
 	}
 	return x * y
@@ -238,7 +238,11 @@ func multiplyByCostFactor(x uint64, y float64) uint64 {
 	if xFloat > 0 && y > 0 && xFloat > math.MaxUint64/y {
 		return math.MaxUint64
 	}
-	return uint64(math.Ceil(xFloat * y))
+	ceil := math.Ceil(xFloat * y)
+	if ceil >= doubleTwoTo64 {
+		return math.MaxUint64
+	}
+	return uint64(ceil)
 }
 
 var (
@@ -256,9 +260,10 @@ type coster struct {
 	// iterRanges tracks the iterRange of each iterVar.
 	iterRanges iterRangeScopes
 	// computedSizes tracks the computed sizes of call results.
-	computedSizes map[int64]SizeEstimate
-	checkedAST    *ast.AST
-	estimator     CostEstimator
+	computedSizes      map[int64]SizeEstimate
+	checkedAST         *ast.AST
+	estimator          CostEstimator
+	overloadEstimators map[string]FunctionEstimator
 	// presenceTestCost will either be a zero or one based on whether has() macros count against cost computations.
 	presenceTestCost CostEstimate
 }
@@ -287,6 +292,7 @@ func (vs iterRangeScopes) peek(varName string) (int64, bool) {
 type CostOption func(*coster) error
 
 // PresenceTestHasCost determines whether presence testing has a cost of one or zero.
+//
 // Defaults to presence test has a cost of one.
 func PresenceTestHasCost(hasCost bool) CostOption {
 	return func(c *coster) error {
@@ -299,15 +305,30 @@ func PresenceTestHasCost(hasCost bool) CostOption {
 	}
 }
 
+// FunctionEstimator provides a CallEstimate given the target and arguments for a specific function, overload pair.
+type FunctionEstimator func(estimator CostEstimator, target *AstNode, args []AstNode) *CallEstimate
+
+// OverloadCostEstimate binds a FunctionCoster to a specific function overload ID.
+//
+// When a OverloadCostEstimate is provided, it will override the cost calculation of the CostEstimator provided to
+// the Cost() call.
+func OverloadCostEstimate(overloadID string, functionCoster FunctionEstimator) CostOption {
+	return func(c *coster) error {
+		c.overloadEstimators[overloadID] = functionCoster
+		return nil
+	}
+}
+
 // Cost estimates the cost of the parsed and type checked CEL expression.
 func Cost(checked *ast.AST, estimator CostEstimator, opts ...CostOption) (CostEstimate, error) {
 	c := &coster{
-		checkedAST:       checked,
-		estimator:        estimator,
-		exprPath:         map[int64][]string{},
-		iterRanges:       map[string][]int64{},
-		computedSizes:    map[int64]SizeEstimate{},
-		presenceTestCost: CostEstimate{Min: 1, Max: 1},
+		checkedAST:         checked,
+		estimator:          estimator,
+		overloadEstimators: map[string]FunctionEstimator{},
+		exprPath:           map[int64][]string{},
+		iterRanges:         map[string][]int64{},
+		computedSizes:      map[int64]SizeEstimate{},
+		presenceTestCost:   CostEstimate{Min: 1, Max: 1},
 	}
 	for _, opt := range opts {
 		err := opt(c)
@@ -518,7 +539,14 @@ func (c *coster) functionCost(function, overloadID string, target *AstNode, args
 		}
 		return sum
 	}
-
+	if len(c.overloadEstimators) != 0 {
+		if estimator, found := c.overloadEstimators[overloadID]; found {
+			if est := estimator(c.estimator, target, args); est != nil {
+				callEst := *est
+				return CallEstimate{CostEstimate: callEst.Add(argCostSum()), ResultSize: est.ResultSize}
+			}
+		}
+	}
 	if est := c.estimator.EstimateCallCost(function, overloadID, target, args); est != nil {
 		callEst := *est
 		return CallEstimate{CostEstimate: callEst.Add(argCostSum()), ResultSize: est.ResultSize}
@@ -668,3 +696,7 @@ func isScalar(t *types.Type) bool {
 	}
 	return false
 }
+
+var (
+	doubleTwoTo64 = math.Ldexp(1.0, 64)
+)
