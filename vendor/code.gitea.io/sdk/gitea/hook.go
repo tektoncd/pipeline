@@ -95,11 +95,12 @@ func (c *Client) GetRepoHook(user, repo string, id int64) (*Hook, *Response, err
 
 // CreateHookOption options when create a hook
 type CreateHookOption struct {
-	Type         HookType          `json:"type"`
-	Config       map[string]string `json:"config"`
-	Events       []string          `json:"events"`
-	BranchFilter string            `json:"branch_filter"`
-	Active       bool              `json:"active"`
+	Type                HookType          `json:"type"`
+	Config              map[string]string `json:"config"`
+	Events              []string          `json:"events"`
+	BranchFilter        string            `json:"branch_filter"`
+	Active              bool              `json:"active"`
+	AuthorizationHeader string            `json:"authorization_header"`
 }
 
 // Validate the CreateHookOption struct
@@ -143,10 +144,11 @@ func (c *Client) CreateRepoHook(user, repo string, opt CreateHookOption) (*Hook,
 
 // EditHookOption options when modify one hook
 type EditHookOption struct {
-	Config       map[string]string `json:"config"`
-	Events       []string          `json:"events"`
-	BranchFilter string            `json:"branch_filter"`
-	Active       *bool             `json:"active"`
+	Config              map[string]string `json:"config"`
+	Events              []string          `json:"events"`
+	BranchFilter        string            `json:"branch_filter"`
+	Active              *bool             `json:"active"`
+	AuthorizationHeader string            `json:"authorization_header"`
 }
 
 // EditOrgHook modify one hook of an organization, with hook id and options
