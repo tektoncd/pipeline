@@ -424,7 +424,7 @@ metadata:
   namespace: foo
 spec:
   taskRef:
-    apiVersion: a1
+    apiVersion: v1
     name: test-task
 `)
 	taskRunWithSaSuccess := parse.MustParseV1TaskRun(t, `
@@ -434,7 +434,7 @@ metadata:
 spec:
   serviceAccountName: test-sa
   taskRef:
-    apiVersion: a1
+    apiVersion: v1
     name: test-with-sa
 `)
 	taskruns := []*v1.TaskRun{taskRunSuccess, taskRunWithSaSuccess}
@@ -636,7 +636,7 @@ metadata:
   namespace: foo
 spec:
   taskRef:
-    apiVersion: a1
+    apiVersion: v1
     name: test-task
 `)
 	taskRunWithSaSuccess := parse.MustParseV1TaskRun(t, `
@@ -646,7 +646,7 @@ metadata:
 spec:
   serviceAccountName: test-sa
   taskRef:
-    apiVersion: a1
+    apiVersion: v1
     name: test-with-sa
 `)
 	taskRunSubstitution := parse.MustParseV1TaskRun(t, `
@@ -662,7 +662,7 @@ spec:
   - name: configmapname
     value: configbar
   taskRef:
-    apiVersion: a1
+    apiVersion: v1
     name: test-task-with-substitution
 `)
 	taskRunWithTaskSpec := parse.MustParseV1TaskRun(t, `
@@ -4206,7 +4206,7 @@ metadata:
   namespace: foo
 spec:
   taskRef:
-    apiVersion: a1
+    apiVersion: v1
     name: test-task-with-workspace
 `)
 	d := test.Data{
@@ -4266,7 +4266,7 @@ metadata:
   namespace: foo
 spec:
   taskRef:
-    apiVersion: a1
+    apiVersion: v1
     name: test-task-with-workspace
 `)
 	d := test.Data{
@@ -4330,7 +4330,7 @@ metadata:
   namespace: foo
 spec:
   taskRef:
-    apiVersion: a1
+    apiVersion: v1
     name: test-task-with-workspace
 `)
 	d := test.Data{
@@ -4469,7 +4469,7 @@ metadata:
   namespace: foo
 spec:
   taskRef:
-    apiVersion: a1
+    apiVersion: v1
     name: test-task-two-workspaces
   workspaces:
   - name: ws1
@@ -4566,7 +4566,7 @@ metadata:
   namespace: foo
 spec:
   taskRef:
-    apiVersion: a1
+    apiVersion: v1
     name: test-task-with-workspace
   workspaces:
   - name: ws1
@@ -6898,4 +6898,87 @@ func signInterface(signer signature.Signer, i interface{}) ([]byte, error) {
 	}
 
 	return sig, nil
+}
+
+func TestReconcile_TaskRun_UpdateLabelsAndAnnotations(t *testing.T) {
+	taskRunCompleted := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-completed
+  namespace: foo
+  annotations:
+    pipeline.tekton.dev/release: release-sha
+spec:
+  taskRef:
+    name: test-task
+status:
+  completionTime: "2024-01-23T09:55:17Z"
+  conditions:
+  - lastTransitionTime: "2024-01-23T09:55:17Z"
+    message: All Steps have completed executing
+    reason: Succeeded
+    status: "True"
+    type: Succeeded
+`)
+	taskRunCancelled := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-cancelled
+  namespace: foo
+  annotations:
+    pipeline.tekton.dev/release: release-sha
+spec:
+  status: TaskRunCancelled
+  taskRef:
+    name: test-task
+status:
+  conditions:
+  - lastTransitionTime: "2024-01-23T11:19:24Z"
+    reason: Pending
+    status: Unknown
+    type: Succeeded
+`)
+	taskruns := []*v1.TaskRun{taskRunCompleted, taskRunCancelled}
+	d := test.Data{
+		TaskRuns: taskruns,
+		Tasks:    []*v1.Task{simpleTask},
+	}
+	for _, tc := range []struct {
+		name            string
+		taskRun         *v1.TaskRun
+		wantAnnotations map[string]string
+	}{{
+		name:    "completed",
+		taskRun: taskRunCompleted,
+		wantAnnotations: map[string]string{
+			// annotation not updated
+			"pipeline.tekton.dev/release": "release-sha",
+		},
+	}, {
+		name:    "cancelled",
+		taskRun: taskRunCancelled,
+		wantAnnotations: map[string]string{
+			// annotation updated
+			"pipeline.tekton.dev/release": "unknown",
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			c := testAssets.Controller
+			clients := testAssets.Clients
+
+			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err != nil {
+				t.Errorf("expected no error. Got error %v", err)
+			}
+
+			tr, err := clients.Pipeline.TektonV1().TaskRuns(tc.taskRun.Namespace).Get(testAssets.Ctx, tc.taskRun.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("getting updated taskrun: %v", err)
+			}
+
+			annotations := tr.GetAnnotations()
+			if d := cmp.Diff(tc.wantAnnotations, annotations); d != "" {
+				t.Errorf("TaskRun annotations doesn't match %s", diff.PrintWantGot(d))
+			}
+		})
+	}
 }
