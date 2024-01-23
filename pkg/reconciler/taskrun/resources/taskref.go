@@ -237,10 +237,12 @@ func convertClusterTaskToTask(ctx context.Context, ct v1beta1.ClusterTask) (*v1.
 			Kind:       "Task",
 			APIVersion: "tekton.dev/v1beta1",
 		},
+		// We need to keep ObjectMeta to keep consistent with the existing Task logic.
+		// TaskRun will inherit the original Annotations and Labels information.
+		ObjectMeta: ct.ObjectMeta,
 	}
 
 	t.Spec = ct.Spec
-	t.ObjectMeta.Name = ct.ObjectMeta.Name
 
 	v1Task := &v1.Task{
 		TypeMeta: metav1.TypeMeta{

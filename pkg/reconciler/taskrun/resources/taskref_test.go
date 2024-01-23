@@ -198,6 +198,12 @@ func TestLocalTaskRef(t *testing.T) {
 				&v1beta1.ClusterTask{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "cluster-task",
+						Annotations: map[string]string{
+							"foo": "bar",
+						},
+						Labels: map[string]string{
+							"foo": "bar",
+						},
 					},
 				},
 				&v1beta1.ClusterTask{
@@ -217,6 +223,12 @@ func TestLocalTaskRef(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "cluster-task",
+					Annotations: map[string]string{
+						"foo": "bar",
+					},
+					Labels: map[string]string{
+						"foo": "bar",
+					},
 				},
 			},
 			wantErr: nil,
