@@ -13,6 +13,7 @@ import (
 
 	"github.com/jenkins-x/go-scm/pkg/hmac"
 	"github.com/jenkins-x/go-scm/scm"
+	"k8s.io/utils/strings/slices"
 )
 
 // TODO(bradrydzewski) push hook does not include commit message
@@ -90,7 +91,7 @@ func (s *webhookService) parsePushHook(data []byte, guid string) (scm.Webhook, e
 	}
 	change := dst.Changes[0]
 	switch {
-	case change.Ref.Type == "BRANCH" && change.Type != "UPDATE":
+	case change.Ref.Type == "BRANCH" && !(slices.Contains([]string{"UPDATE", "ADD"}, change.Type)):
 		return convertBranchHook(dst), nil
 	case change.Ref.Type == "TAG":
 		return convertTagHook(dst), nil
