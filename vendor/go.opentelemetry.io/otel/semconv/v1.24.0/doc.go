@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sdk // import "go.opentelemetry.io/otel/sdk"
-
-// Version is the current release version of the OpenTelemetry SDK in use.
-func Version() string {
-	return "1.22.0"
-}
+// Package semconv implements OpenTelemetry semantic conventions.
+//
+// OpenTelemetry semantic conventions are agreed standardized naming
+// patterns for OpenTelemetry things. This package represents the v1.24.0
+// version of the OpenTelemetry semantic conventions.
+package semconv // import "go.opentelemetry.io/otel/semconv/v1.24.0"

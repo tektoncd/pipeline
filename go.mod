@@ -58,7 +58,7 @@ require (
 	github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.8.1
 	go.opentelemetry.io/otel v1.22.0
 	go.opentelemetry.io/otel/exporters/jaeger v1.17.0
-	go.opentelemetry.io/otel/sdk v1.21.0
+	go.opentelemetry.io/otel/sdk v1.22.0
 	go.opentelemetry.io/otel/trace v1.22.0
 	k8s.io/utils v0.0.0-20230505201702-9f6742963106
 )
