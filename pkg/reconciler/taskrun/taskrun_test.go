@@ -40,6 +40,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -1666,7 +1667,7 @@ status:
       type: string
       value: aResultValue
 `)
-		failedOnReconcileFailureTaskRun = parse.MustParseV1TaskRun(t, `
+		failedOnReconcileFailureTaskRun = parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: test-taskrun-results-type-mismatched
   namespace: foo
@@ -1679,14 +1680,14 @@ status:
   - reason: ToBeRetried
     status: Unknown
     type: Succeeded
-    message: "Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\""
+    message: "%sProvided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\""
   sideCars:
   retriesStatus:
   - conditions:
     - reason: TaskRunValidationFailed
       status: "False"
       type: "Succeeded"
-      message: "Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\""
+      message: "%sProvided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\""
     startTime: "2021-12-31T23:59:59Z"
     completionTime: "2022-01-01T00:00:00Z"
     podName: "test-taskrun-results-type-mismatched-pod"
@@ -1714,7 +1715,7 @@ status:
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
       Coschedule: "workspaces"
-`)
+`, pipelineErrors.UserErrorLabel, pipelineErrors.UserErrorLabel))
 		reconciliatonError = fmt.Errorf("1 error occurred:\n\t* Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\"")
 		toBeRetriedTaskRun = parse.MustParseV1TaskRun(t, `
 metadata:

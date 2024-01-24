@@ -96,3 +96,29 @@ func TestLabelsUserError(t *testing.T) {
 		}
 	}
 }
+
+func TestGetErrorMess(t *testing.T) {
+	original := errors.New("orignal error")
+	tcs := []struct {
+		description string
+		err         error
+		expected    string
+	}{{
+		description: "error messages with user error",
+		err:         pipelineErrors.WrapUserError(original),
+		expected:    "[User error] " + original.Error(),
+	}, {
+		description: "error messages without user error",
+		err:         original,
+		expected:    original.Error(),
+	}}
+	for _, tc := range tcs {
+		{
+			msg := pipelineErrors.GetErrorMessage(tc.err)
+
+			if msg != tc.expected {
+				t.Errorf("failure messageFormat expected: %s; but got %s", tc.expected, msg)
+			}
+		}
+	}
+}
