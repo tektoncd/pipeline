@@ -1,4 +1,4 @@
-//go:build !windows && !darwin && !freebsd
+//go:build !windows
 
 /*
    Copyright The containerd Authors.
@@ -19,22 +19,16 @@
 package platforms
 
 import (
-	"runtime"
-
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// DefaultSpec returns the current platform's default platform specification.
-func DefaultSpec() specs.Platform {
-	return specs.Platform{
-		OS:           runtime.GOOS,
-		Architecture: runtime.GOARCH,
-		// The Variant field will be empty if arch != ARM.
-		Variant: cpuVariant(),
+// NewMatcher returns the default Matcher for containerd
+func newDefaultMatcher(platform specs.Platform) Matcher {
+	return &matcher{
+		Platform: Normalize(platform),
 	}
 }
 
-// Default returns the default matcher for the platform.
-func Default() MatchComparer {
-	return Only(DefaultSpec())
+func GetWindowsOsVersion() string {
+	return ""
 }

@@ -1,5 +1,3 @@
-//go:build !windows && !darwin && !freebsd
-
 /*
    Copyright The containerd Authors.
 
@@ -19,22 +17,26 @@
 package platforms
 
 import (
-	"runtime"
+	"fmt"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"golang.org/x/sys/windows"
 )
 
-// DefaultSpec returns the current platform's default platform specification.
-func DefaultSpec() specs.Platform {
-	return specs.Platform{
-		OS:           runtime.GOOS,
-		Architecture: runtime.GOARCH,
-		// The Variant field will be empty if arch != ARM.
-		Variant: cpuVariant(),
+// NewMatcher returns a Windows matcher that will match on osVersionPrefix if
+// the platform is Windows otherwise use the default matcher
+func newDefaultMatcher(platform specs.Platform) Matcher {
+	prefix := prefix(platform.OSVersion)
+	return windowsmatcher{
+		Platform:        platform,
+		osVersionPrefix: prefix,
+		defaultMatcher: &matcher{
+			Platform: Normalize(platform),
+		},
 	}
 }
 
-// Default returns the default matcher for the platform.
-func Default() MatchComparer {
-	return Only(DefaultSpec())
+func GetWindowsOsVersion() string {
+	major, minor, build := windows.RtlGetNtVersionNumbers()
+	return fmt.Sprintf("%d.%d.%d", major, minor, build)
 }
