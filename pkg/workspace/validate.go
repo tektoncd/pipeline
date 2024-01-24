@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -31,7 +32,7 @@ func ValidateBindings(ctx context.Context, decls []v1.WorkspaceDeclaration, bind
 	// reason we'll invoke the same validation here.
 	for _, b := range binds {
 		if err := b.Validate(ctx); err != nil {
-			return fmt.Errorf("binding %q is invalid: %w", b.Name, err)
+			return pipelineErrors.WrapUserError(fmt.Errorf("binding %q is invalid: %w", b.Name, err))
 		}
 	}
 
@@ -49,12 +50,12 @@ func ValidateBindings(ctx context.Context, decls []v1.WorkspaceDeclaration, bind
 			continue
 		}
 		if !bindNames.Has(decl.Name) {
-			return fmt.Errorf("declared workspace %q is required but has not been bound", decl.Name)
+			return pipelineErrors.WrapUserError(fmt.Errorf("declared workspace %q is required but has not been bound", decl.Name))
 		}
 	}
 	for _, bind := range binds {
 		if !declNames.Has(bind.Name) {
-			return fmt.Errorf("workspace binding %q does not match any declared workspace", bind.Name)
+			return pipelineErrors.WrapUserError(fmt.Errorf("workspace binding %q does not match any declared workspace", bind.Name))
 		}
 	}
 
@@ -78,7 +79,7 @@ func ValidateOnlyOnePVCIsUsed(wb []v1.WorkspaceBinding) error {
 	}
 
 	if len(workspaceVolumes) > 1 {
-		return fmt.Errorf("more than one PersistentVolumeClaim is bound")
+		return pipelineErrors.WrapUserError(fmt.Errorf("more than one PersistentVolumeClaim is bound"))
 	}
 	return nil
 }

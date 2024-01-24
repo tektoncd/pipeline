@@ -13,7 +13,9 @@ limitations under the License.
 
 package errors
 
-const userErrorLabel = "[User error] "
+import "errors"
+
+const UserErrorLabel = "[User error] "
 
 type UserError struct {
 	Reason   string
@@ -44,7 +46,7 @@ func newUserError(reason string, err error) *UserError {
 
 // WrapUserError wraps the original error with the user error label
 func WrapUserError(err error) error {
-	return newUserError(userErrorLabel, err)
+	return newUserError(UserErrorLabel, err)
 }
 
 // LabelUserError labels the failure RunStatus message if any of its error messages has been
@@ -58,4 +60,14 @@ func LabelUserError(messageFormat string, messageA []interface{}) string {
 		}
 	}
 	return messageFormat
+}
+
+// GetErrorMessage returns the error message with the user error label if it is of type user
+// error
+func GetErrorMessage(err error) string {
+	var ue *UserError
+	if errors.As(err, &ue) {
+		return ue.Reason + err.Error()
+	}
+	return err.Error()
 }

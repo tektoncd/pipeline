@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
+	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
@@ -170,7 +171,7 @@ func ValidateResolvedTask(ctx context.Context, params []v1.Param, matrix *v1.Mat
 		paramSpecs = rtr.TaskSpec.Params
 	}
 	if err := validateParams(ctx, paramSpecs, params, matrix.GetAllParams()); err != nil {
-		return fmt.Errorf("invalid input params for task %s: %w", rtr.TaskName, err)
+		return pipelineErrors.WrapUserError(fmt.Errorf("invalid input params for task %s: %w", rtr.TaskName, err))
 	}
 	return nil
 }
@@ -198,7 +199,7 @@ func ValidateEnumParam(ctx context.Context, params []v1.Param, paramSpecs v1.Par
 		}
 
 		if !slices.Contains(paramSpecNameToEnum[p.Name], p.Value.StringVal) {
-			return fmt.Errorf("param `%s` value: %s is not in the enum list", p.Name, p.Value.StringVal)
+			return pipelineErrors.WrapUserError(fmt.Errorf("param `%s` value: %s is not in the enum list", p.Name, p.Value.StringVal))
 		}
 	}
 	return nil
@@ -211,13 +212,13 @@ func validateTaskSpecRequestResources(taskSpec *v1.TaskSpec) error {
 				// First validate the limit in step
 				if limit, ok := step.ComputeResources.Limits[k]; ok {
 					if (&limit).Cmp(request) == -1 {
-						return fmt.Errorf("invalid request resource value: %v must be less or equal to limit %v", request.String(), limit.String())
+						return pipelineErrors.WrapUserError(fmt.Errorf("invalid request resource value: %v must be less or equal to limit %v", request.String(), limit.String()))
 					}
 				} else if taskSpec.StepTemplate != nil {
 					// If step doesn't configure the limit, validate the limit in stepTemplate
 					if limit, ok := taskSpec.StepTemplate.ComputeResources.Limits[k]; ok {
 						if (&limit).Cmp(request) == -1 {
-							return fmt.Errorf("invalid request resource value: %v must be less or equal to limit %v", request.String(), limit.String())
+							return pipelineErrors.WrapUserError(fmt.Errorf("invalid request resource value: %v must be less or equal to limit %v", request.String(), limit.String()))
 						}
 					}
 				}
@@ -243,7 +244,7 @@ func validateStepOverrides(ts *v1.TaskSpec, trs *v1.TaskRunSpec) error {
 	}
 	for _, stepOverride := range trs.StepSpecs {
 		if !stepNames.Has(stepOverride.Name) {
-			err = multierror.Append(err, fmt.Errorf("invalid StepOverride: No Step named %s", stepOverride.Name))
+			err = multierror.Append(err, pipelineErrors.WrapUserError(fmt.Errorf("invalid StepOverride: No Step named %s", stepOverride.Name)))
 		}
 	}
 	return err
@@ -257,7 +258,7 @@ func validateSidecarOverrides(ts *v1.TaskSpec, trs *v1.TaskRunSpec) error {
 	}
 	for _, sidecarOverride := range trs.SidecarSpecs {
 		if !sidecarNames.Has(sidecarOverride.Name) {
-			err = multierror.Append(err, fmt.Errorf("invalid SidecarOverride: No Sidecar named %s", sidecarOverride.Name))
+			err = multierror.Append(err, pipelineErrors.WrapUserError(fmt.Errorf("invalid SidecarOverride: No Sidecar named %s", sidecarOverride.Name)))
 		}
 	}
 	return err
@@ -281,12 +282,12 @@ func validateTaskRunResults(tr *v1.TaskRun, resolvedTaskSpec *v1.TaskSpec) error
 			s = append(s, fmt.Sprintf(" \"%v\": %v", k, v))
 		}
 		sort.Strings(s)
-		return fmt.Errorf("Provided results don't match declared results; may be invalid JSON or missing result declaration: %v", strings.Join(s, ","))
+		return pipelineErrors.WrapUserError(fmt.Errorf("Provided results don't match declared results; may be invalid JSON or missing result declaration: %v", strings.Join(s, ",")))
 	}
 
 	// When get the results, for object value need to check if they have missing keys.
 	if missingKeysObjectNames := missingKeysofObjectResults(tr, specResults); len(missingKeysObjectNames) != 0 {
-		return fmt.Errorf("missing keys for these results which are required in TaskResult's properties %v", missingKeysObjectNames)
+		return pipelineErrors.WrapUserError(fmt.Errorf("missing keys for these results which are required in TaskResult's properties %v", missingKeysObjectNames))
 	}
 	return nil
 }
