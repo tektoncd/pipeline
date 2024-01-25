@@ -68,13 +68,6 @@ Further documentation available:
 - **Estimated End of Life**: 2024-03-17
 - **Patch Releases**: [v0.47.0][v0-47-0], [v0.47.1][v0-47-1], [v0.47.2][v0-47-2], [v0.47.3][v0-47-3]
 
-### v0.44 (LTS)
-
-- **Latest Release**: [v0.44.4][v0-44-4] (2023-07-03) ([docs][v0-44-4-docs], [examples][v0-44-4-examples])
-- **Initial Release**: [v0.44.0][v0-44-0] (2023-01-24)
-- **Estimated End of Life**: 2024-01-24
-- **Patch Releases**: [v0.44.0][v0-44-0], [v0.44.1][v0-44-1], [v0.44.2][v0-44-2], [v0.44.3][v0-44-3], [v0.44.4][v0-44-4]
-
 
 ## End of Life Releases
 
@@ -126,6 +119,13 @@ Further documentation available:
 - **Initial Release**: [v0.45.0][v0-45-0] (2023-02-17)
 - **End of Life**: 2023-03-17
 - **Patch Releases**: [v0.45.0][v0-45-0]
+
+### v0.44 (LTS)
+
+- **Latest Release**: [v0.44.4][v0-44-4] (2023-07-03) ([docs][v0-44-4-docs], [examples][v0-44-4-examples])
+- **Initial Release**: [v0.44.0][v0-44-0] (2023-01-24)
+- **End of Life**: 2024-01-25
+- **Patch Releases**: [v0.44.0][v0-44-0], [v0.44.1][v0-44-1], [v0.44.2][v0-44-2], [v0.44.3][v0-44-3], [v0.44.4][v0-44-4]
 
 ### v0.43
 
