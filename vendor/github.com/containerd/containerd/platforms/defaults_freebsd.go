@@ -1,5 +1,3 @@
-//go:build !windows && !darwin && !freebsd
-
 /*
    Copyright The containerd Authors.
 
@@ -36,5 +34,10 @@ func DefaultSpec() specs.Platform {
 
 // Default returns the default matcher for the platform.
 func Default() MatchComparer {
-	return Only(DefaultSpec())
+	return Ordered(DefaultSpec(), specs.Platform{
+		OS:           "linux",
+		Architecture: runtime.GOARCH,
+		// The Variant field will be empty if arch != ARM.
+		Variant: cpuVariant(),
+	})
 }
