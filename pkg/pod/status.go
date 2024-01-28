@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/tektoncd/pipeline/internal/sidecarlogartifacts"
 	"strconv"
 	"strings"
 	"time"
@@ -237,6 +238,10 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 	if tr.IsDone() {
 		trs.Results = append(trs.Results, taskResults...)
 	}
+	sidecarArtifacts, err := sidecarlogartifacts.GetArtifactsFromSidecarLogs(ctx, kubeclient, tr.Namespace, tr.Status.PodName, pipeline.ReservedArtifactsSidecarContainerName, podPhase)
+	if err != nil {
+		return nil
+	}
 
 	// Continue with extraction of termination messages
 	for _, s := range stepStatuses {
@@ -313,13 +318,21 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 				}
 			}
 		}
-		trs.Steps = append(trs.Steps, v1.StepState{
+
+		//todo append TaskArtifacts With StepArtifacts
+		stepState := v1.StepState{
 			ContainerState: *state,
 			Name:           trimStepPrefix(s.Name),
 			Container:      s.Name,
 			ImageID:        s.ImageID,
 			Results:        taskRunStepResults,
-		})
+		}
+
+		if v, ok := sidecarArtifacts[s.Name]; ok {
+			stepState.Inputs = v.Inputs
+			stepState.Outputs = v.Outputs
+		}
+		trs.Steps = append(trs.Steps, stepState)
 	}
 
 	return merr

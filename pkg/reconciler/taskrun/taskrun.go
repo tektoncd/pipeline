@@ -861,6 +861,8 @@ func applyParamsContextsResultsAndWorkspaces(ctx context.Context, tr *v1.TaskRun
 	// Apply task result substitution
 	ts = resources.ApplyResults(ts)
 
+	ts = resources.ApplyArtifacts(ts)
+
 	// Apply step exitCode path substitution
 	ts = resources.ApplyStepExitCodePath(ts)
 
@@ -985,6 +987,7 @@ func storeTaskSpecAndMergeMeta(ctx context.Context, tr *v1.TaskRun, ts *v1.TaskS
 		if tr.Status.Provenance == nil {
 			tr.Status.Provenance = &v1.Provenance{}
 		}
+		tr.Status.Artifacts = []v1.Artifact{{Name: "aaaa", Values: []v1.ArtifactValue{{Digest: "aafsd", Uri: "111"}}}}
 		// Store FeatureFlags in the Provenance.
 		tr.Status.Provenance.FeatureFlags = cfg.FeatureFlags
 		// Propagate RefSource from remote resolution to TaskRun Status

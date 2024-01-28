@@ -1,0 +1,38 @@
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: step-artifacts-
+spec:
+  taskSpec:
+    description: |
+      A simple task that populates artifacts to TaskRun stepState
+    steps:
+      - name: save-artifacts-to-step-state
+        image: bash:latest
+        script: |
+          cat > $(step.artifacts.path) << EOF
+          {
+            "inputs": [
+              {
+                "name": "input-artifacts",
+                "values": [
+                  {
+                    "uri": "git:jjjsss",
+                    "digest": "sha256:33333"
+                  }
+                ]
+              }
+            ],
+            "outputs": [
+              {
+                "name": "build-result",
+                "values": [
+                  {
+                    "uri": "pkg:balba",
+                    "digest": "sha256:a1ebe34234212312321"
+                  }
+                ]
+              }
+            ]
+          }
+          EOF

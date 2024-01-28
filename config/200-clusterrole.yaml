@@ -24,7 +24,10 @@ rules:
   - apiGroups: [""]
     # Controller needs to watch Pods created by TaskRuns to see them progress.
     resources: ["pods"]
-    verbs: ["list", "watch"]
+    verbs: ["list", "watch" ]
+  - apiGroups: [ "" ]
+    resources: [ "pods/log" ]
+    verbs: [ "get", "list" ]
   - apiGroups: [""]
     # Controller needs to get the list of cordoned nodes over the course of a single run
     resources: ["nodes"]

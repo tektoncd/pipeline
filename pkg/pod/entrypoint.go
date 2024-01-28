@@ -300,6 +300,9 @@ func StopSidecars(ctx context.Context, nopImage string, kubeclient kubernetes.In
 			if config.FromContextOrDefaults(ctx).FeatureFlags.ResultExtractionMethod == config.ResultExtractionMethodSidecarLogs && s.Name == pipeline.ReservedResultsSidecarContainerName {
 				continue
 			}
+			if s.Name == pipeline.ReservedArtifactsSidecarContainerName {
+				continue
+			}
 			// Stop any running container that isn't a step.
 			// An injected sidecar container might not have the
 			// "sidecar-" prefix, so we can't just look for that

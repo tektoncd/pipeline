@@ -198,6 +198,13 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		taskSpec.Sidecars = append(taskSpec.Sidecars, resultsSidecar)
 		commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-result_from", config.ResultExtractionMethodSidecarLogs)
 	}
+	if true {
+		sidecar, err := createArtifactsSidecar(taskSpec, b.Images.SidecarLogArtifactsImage, setSecurityContext, windows)
+		if err != nil {
+			return nil, err
+		}
+		taskSpec.Sidecars = append(taskSpec.Sidecars, sidecar)
+	}
 	sidecars, err := v1.MergeSidecarsWithSpecs(taskSpec.Sidecars, taskRun.Spec.SidecarSpecs)
 	if err != nil {
 		return nil, err
@@ -331,6 +338,9 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		// Mount implicit volumes onto sidecarContainers
 		// so that they can access /tekton/results and /tekton/run.
 		for i, s := range sidecarContainers {
+			if s.Image != b.Images.SidecarLogResultsImage {
+				continue
+			}
 			for j := 0; j < len(stepContainers); j++ {
 				s.VolumeMounts = append(s.VolumeMounts, runMount(j, true))
 			}
@@ -347,6 +357,31 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 			vms := append(s.VolumeMounts, toAdd...) //nolint:gocritic
 			sidecarContainers[i].VolumeMounts = vms
 		}
+	}
+
+	for i, s := range sidecarContainers {
+		fmt.Println(s.Image + "----")
+		fmt.Println(b.Images.SidecarLogArtifactsImage)
+		if s.Image != b.Images.SidecarLogArtifactsImage {
+			continue
+		}
+
+		for j := 0; j < len(stepContainers); j++ {
+			s.VolumeMounts = append(s.VolumeMounts, runMount(j, true))
+		}
+		requestedVolumeMounts := map[string]bool{}
+		for _, vm := range s.VolumeMounts {
+			requestedVolumeMounts[filepath.Clean(vm.MountPath)] = true
+		}
+		var toAdd []corev1.VolumeMount
+		for _, imp := range volumeMounts {
+			if !requestedVolumeMounts[filepath.Clean(imp.MountPath)] {
+				toAdd = append(toAdd, imp)
+			}
+		}
+		vms := append(s.VolumeMounts, toAdd...) //nolint:gocritic
+		sidecarContainers[i].VolumeMounts = vms
+
 	}
 
 	// This loop:
@@ -699,6 +734,40 @@ func createResultsSidecar(taskSpec v1.TaskSpec, image string, setSecurityContext
 	}
 	sidecar := v1.Sidecar{
 		Name:    pipeline.ReservedResultsSidecarName,
+		Image:   image,
+		Command: command,
+	}
+	securityContext := linuxSecurityContext
+	if windows {
+		securityContext = windowsSecurityContext
+	}
+	if setSecurityContext {
+		sidecar.SecurityContext = securityContext
+	}
+	return sidecar, nil
+}
+
+// createArtifactsSidecar creates a sidecar that will run the sidecarlogartifacts binary,
+// based on the spec of the Task, the image that should run in the artifacts sidecar,
+// whether it will run on a windows node, and whether the sidecar should include a security context
+// that will allow it to run in namespaces with "restricted" pod security admission.
+// It will also provide arguments to the binary that allow it to surface the step artifacts.
+func createArtifactsSidecar(taskSpec v1.TaskSpec, image string, setSecurityContext, windows bool) (v1.Sidecar, error) {
+
+	var stepNames []string
+
+	for i, s := range taskSpec.Steps {
+		// todo something to indicate that the step is going to output artifacts, output artifacts declaration
+		stepName := StepName(s.Name, i)
+		stepNames = append(stepNames, stepName)
+	}
+	fmt.Println("bla step name")
+	fmt.Println(stepNames)
+
+	command := []string{"/ko-app/sidecarlogartifacts", "-step-names", strings.Join(stepNames, ",")}
+
+	sidecar := v1.Sidecar{
+		Name:    pipeline.ReservedArtifactsSidecarName,
 		Image:   image,
 		Command: command,
 	}

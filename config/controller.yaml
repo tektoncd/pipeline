@@ -68,6 +68,7 @@ spec:
           "-entrypoint-image", "ko://github.com/tektoncd/pipeline/cmd/entrypoint",
           "-nop-image", "ko://github.com/tektoncd/pipeline/cmd/nop",
           "-sidecarlogresults-image", "ko://github.com/tektoncd/pipeline/cmd/sidecarlogresults",
+          "-sidecarlogartifacts-image", "ko://github.com/tektoncd/pipeline/cmd/sidecarlogartifacts",
           "-workingdirinit-image", "ko://github.com/tektoncd/pipeline/cmd/workingdirinit",
 
           # The shell image must allow root in order to create directories and copy files to PVCs.

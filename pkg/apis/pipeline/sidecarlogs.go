@@ -21,7 +21,11 @@ const (
 	// when the results-from feature-flag is set to "sidecar-logs".
 	ReservedResultsSidecarName = "tekton-log-results"
 
+	ReservedArtifactsSidecarName = "tekton-log-artifacts"
+
 	// ReservedResultsSidecarContainerName is the name of the results sidecar container that is injected
 	// by the reconciler.
 	ReservedResultsSidecarContainerName = "sidecar-tekton-log-results"
+
+	ReservedArtifactsSidecarContainerName = "sidecar-tekton-log-artifacts"
 )

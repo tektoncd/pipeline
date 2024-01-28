@@ -52,6 +52,7 @@ func main() {
 	opts := &pipeline.Options{}
 	flag.StringVar(&opts.Images.EntrypointImage, "entrypoint-image", "", "The container image containing our entrypoint binary.")
 	flag.StringVar(&opts.Images.SidecarLogResultsImage, "sidecarlogresults-image", "", "The container image containing the binary for accessing results.")
+	flag.StringVar(&opts.Images.SidecarLogArtifactsImage, "sidecarlogartifacts-image", "", "The container image containing the binary for accessing artifacts.")
 	flag.StringVar(&opts.Images.NopImage, "nop-image", "", "The container image used to stop sidecars")
 	flag.StringVar(&opts.Images.ShellImage, "shell-image", "", "The container image containing a shell")
 	flag.StringVar(&opts.Images.ShellImageWin, "shell-image-win", "", "The container image containing a windows shell")
