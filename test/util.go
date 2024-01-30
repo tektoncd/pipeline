@@ -1,5 +1,5 @@
-//go:build conformance || e2e || examples
-// +build conformance e2e examples
+//go:build conformance || e2e || examples || featureflags
+// +build conformance e2e examples featureflags
 
 /*
 Copyright 2023 The Tekton Authors
@@ -28,7 +28,9 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -46,7 +48,19 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-var initMetrics sync.Once
+var (
+	initMetrics           sync.Once
+	ignoreTypeMeta        = cmpopts.IgnoreFields(metav1.TypeMeta{}, "Kind", "APIVersion")
+	ignoreObjectMeta      = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion", "UID", "CreationTimestamp", "Generation", "ManagedFields", "Labels", "Annotations", "OwnerReferences")
+	ignoreCondition       = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time", "Message")
+	ignoreConditions      = cmpopts.IgnoreFields(duckv1.Status{}, "Conditions")
+	ignoreStepState       = cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "TerminationReason")
+	ignoreContainerStates = cmpopts.IgnoreFields(corev1.ContainerState{}, "Terminated")
+	// ignoreSATaskRunSpec ignores the service account in the TaskRunSpec as it may differ across platforms
+	ignoreSATaskRunSpec = cmpopts.IgnoreFields(v1.TaskRunSpec{}, "ServiceAccountName")
+	// ignoreSAPipelineRunSpec ignores the service account in the PipelineRunSpec as it may differ across platforms
+	ignoreSAPipelineRunSpec = cmpopts.IgnoreFields(v1.PipelineTaskRunTemplate{}, "ServiceAccountName")
+)
 
 func setup(ctx context.Context, t *testing.T, fn ...func(context.Context, *testing.T, *clients, string)) (*clients, string) {
 	t.Helper()
