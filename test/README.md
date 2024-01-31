@@ -438,3 +438,23 @@ setup a cluster for you:
 export PROJECT_ID=my_gcp_project
 test/presubmit-tests.sh --integration-tests
 ```
+
+## Per Feature flag tests
+
+Per-feature flag tests verify that the combinations of feature flags work together
+correctly, ensuring that individual flags don't interfere with each other's 
+functionality and that overall outcomes remain consistent.
+Per [TEP0138](https://github.com/tektoncd/community/blob/main/teps/0138-decouple-api-and-feature-versioning.md#additional-ci-tests),
+minimum end-to-end tests for stable features are utilized, mocking stable, beta,
+and alpha stability levels within different test environments.
+
+To run these tests, you must provide `go` with `-tags=featureflags`. By default, the tests
+run against your current kubeconfig context, but you can change that and other settings with the flags like
+the end to end tests:
+
+```shell
+go test -v -count=1 -tags=featureflags -timeout=60m ./test -run ^TestPerFeatureFlag
+```
+
+Flags that could be set in featureflags tests are exactly the same as [flags in end to end tests](#flags).
+Just note that the build tags should be `-tags=featureflags`.
