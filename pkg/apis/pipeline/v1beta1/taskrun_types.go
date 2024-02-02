@@ -367,10 +367,12 @@ func (trs *TaskRunStatus) SetCondition(newCond *apis.Condition) {
 // StepState reports the results of running a step in a Task.
 type StepState struct {
 	corev1.ContainerState `json:",inline"`
-	Name                  string              `json:"name,omitempty"`
-	ContainerName         string              `json:"container,omitempty"`
-	ImageID               string              `json:"imageID,omitempty"`
-	Results               []TaskRunStepResult `json:"results,omitempty"`
+	Name                  string                `json:"name,omitempty"`
+	ContainerName         string                `json:"container,omitempty"`
+	ImageID               string                `json:"imageID,omitempty"`
+	Results               []TaskRunStepResult   `json:"results,omitempty"`
+	Inputs                []TaskRunStepArtifact `json:"inputs,omitempty"`
+	Outputs               []TaskRunStepArtifact `json:"outputs,omitempty"`
 }
 
 // SidecarState reports the results of running a sidecar in a Task.
