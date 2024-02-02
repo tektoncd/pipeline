@@ -19,6 +19,7 @@ package v1beta1
 import (
 	"context"
 	"fmt"
+	"k8s.io/utils/strings/slices"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -125,6 +126,10 @@ type TaskBreakpoints struct {
 	// failed step will not exit
 	// +optional
 	OnFailure string `json:"onFailure,omitempty"`
+	// +optional
+	BeforeSteps []string `json:"beforeSteps,omitempty"`
+	// +optional
+	AfterSteps []string `json:"afterSteps,omitempty"`
 }
 
 // NeedsDebugOnFailure return true if the TaskRun is configured to debug on failure
@@ -137,12 +142,12 @@ func (trd *TaskRunDebug) NeedsDebugOnFailure() bool {
 
 // StepNeedsDebug return true if the step is configured to debug
 func (trd *TaskRunDebug) StepNeedsDebug(stepName string) bool {
-	return trd.NeedsDebugOnFailure()
+	return trd.NeedsDebugOnFailure() || slices.Contains(trd.Breakpoints.BeforeSteps, stepName) || slices.Contains(trd.Breakpoints.AfterSteps, stepName)
 }
 
 // NeedsDebug return true if defined onfailure or have any before, after steps
 func (trd *TaskRunDebug) NeedsDebug() bool {
-	return trd.NeedsDebugOnFailure()
+	return trd.NeedsDebugOnFailure() || len(trd.Breakpoints.BeforeSteps) > 0 || len(trd.Breakpoints.AfterSteps) > 0
 }
 
 var taskRunCondSet = apis.NewBatchConditionSet()

@@ -16,6 +16,7 @@ package v1
 import (
 	"context"
 	"fmt"
+	"k8s.io/utils/strings/slices"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -119,7 +120,9 @@ type TaskBreakpoints struct {
 	// if enabled, pause TaskRun on failure of a step
 	// failed step will not exit
 	// +optional
-	OnFailure string `json:"onFailure,omitempty"`
+	OnFailure         string   `json:"onFailure,omitempty"`
+	AfterBreakpoints  []string `json:"afterBreakpoints,omitempty"`
+	BeforeBreakpoints []string `json:"beforeBreakpoints,omitempty"`
 }
 
 // NeedsDebugOnFailure return true if the TaskRun is configured to debug on failure
@@ -130,14 +133,19 @@ func (trd *TaskRunDebug) NeedsDebugOnFailure() bool {
 	return trd.Breakpoints.OnFailure == EnabledOnFailureBreakpoint
 }
 
-// StepNeedsDebug return true if the step is configured to debug
-func (trd *TaskRunDebug) StepNeedsDebug(stepName string) bool {
-	return trd.NeedsDebugOnFailure()
+// StepNeedsDebugAfter return true if the step is configured to have a breakpoint after it's execution
+func (trd *TaskRunDebug) StepNeedsDebugAfter(stepName string) bool {
+	return slices.Contains(trd.Breakpoints.AfterBreakpoints, stepName)
+}
+
+// StepNeedsDebugBefore return true if the step is configured to have a breakpoint before it's execution
+func (trd *TaskRunDebug) StepNeedsDebugBefore(stepName string) bool {
+	return slices.Contains(trd.Breakpoints.BeforeBreakpoints, stepName)
 }
 
 // NeedsDebug return true if defined onfailure or have any before, after steps
 func (trd *TaskRunDebug) NeedsDebug() bool {
-	return trd.NeedsDebugOnFailure()
+	return trd.NeedsDebugOnFailure() || len(trd.Breakpoints.AfterBreakpoints) > 0 || len(trd.Breakpoints.BeforeBreakpoints) > 0
 }
 
 // TaskRunInputs holds the input values that this task was invoked with.

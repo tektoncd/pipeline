@@ -1729,6 +1729,20 @@
       "description": "TaskBreakpoints defines the breakpoint config for a particular Task",
       "type": "object",
       "properties": {
+        "afterBreakpoints": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "beforeBreakpoints": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          }
+        },
         "onFailure": {
           "description": "if enabled, pause TaskRun on failure of a step failed step will not exit",
           "type": "string"

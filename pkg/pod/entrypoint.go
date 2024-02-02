@@ -179,6 +179,12 @@ func orderContainers(ctx context.Context, commonExtraEntrypointArgs []string, st
 		if breakpointConfig != nil && breakpointConfig.NeedsDebugOnFailure() {
 			argsForEntrypoint = append(argsForEntrypoint, "-breakpoint_on_failure")
 		}
+		if breakpointConfig != nil && breakpointConfig.StepNeedsDebugAfter(s.Name) {
+			argsForEntrypoint = append(argsForEntrypoint, "-breakpoint_after")
+		}
+		if breakpointConfig != nil && breakpointConfig.StepNeedsDebugBefore(s.Name) {
+			argsForEntrypoint = append(argsForEntrypoint, "-breakpoint_before")
+		}
 
 		cmd, args := s.Command, s.Args
 		if len(cmd) > 0 {

@@ -145,7 +145,7 @@ func convertListOfSteps(steps []v1.Step, initContainer *corev1.Container, debugC
 		}
 		containers = append(containers, *c)
 	}
-	if debugConfig != nil && debugConfig.NeedsDebugOnFailure() {
+	if debugConfig != nil && debugConfig.NeedsDebug() {
 		placeDebugScriptInContainers(containers, initContainer)
 	}
 	return containers

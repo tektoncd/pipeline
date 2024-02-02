@@ -106,6 +106,10 @@ type Entrypointer struct {
 	Timeout *time.Duration
 	// BreakpointOnFailure helps determine if entrypoint execution needs to adapt debugging requirements
 	BreakpointOnFailure bool
+	// BreakpointAfter helps determine if entrypoint execution needs to halt after for debugging
+	BreakpointAfter bool
+	// BreakpointBefore helps determine if entrypoint execution needs to halt before for debugging
+	BreakpointBefore bool
 	// OnError defines exiting behavior of the entrypoint
 	// set it to "stopAndFail" to indicate the entrypoint to exit the taskRun if the container exits with non zero exit code
 	// set it to "continue" to indicate the entrypoint to continue executing the rest of the steps irrespective of the container exit code
