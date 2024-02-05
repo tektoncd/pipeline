@@ -96,20 +96,13 @@ const (
 	DefaultCoschedule = CoscheduleWorkspaces
 	// KeepPodOnCancel is the flag used to enable cancelling a pod using the entrypoint, and keep pod on cancel
 	KeepPodOnCancel = "keep-pod-on-cancel"
-	// DefaultEnableKeepPodOnCancel is the default value for "keep-pod-on-cancel"
-	DefaultEnableKeepPodOnCancel = false
 	// EnableCELInWhenExpression is the flag to enabled CEL in WhenExpression
 	EnableCELInWhenExpression = "enable-cel-in-whenexpression"
-	// DefaultEnableCELInWhenExpression is the default value for EnableCELInWhenExpression
-	DefaultEnableCELInWhenExpression = false
 	// EnableStepActions is the flag to enable the use of StepActions in Steps
 	EnableStepActions = "enable-step-actions"
 	// DefaultEnableStepActions is the default value for EnableStepActions
-	DefaultEnableStepActions = false
 	// EnableParamEnum is the flag to enabled enum in params
 	EnableParamEnum = "enable-param-enum"
-	// DefaultEnableParamEnum is the default value for EnableParamEnum
-	DefaultEnableParamEnum = false
 
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
@@ -129,7 +122,36 @@ const (
 )
 
 // DefaultFeatureFlags holds all the default configurations for the feature flags configmap.
-var DefaultFeatureFlags, _ = NewFeatureFlagsFromMap(map[string]string{})
+var (
+	DefaultFeatureFlags, _ = NewFeatureFlagsFromMap(map[string]string{})
+
+	// DefaultEnableKeepPodOnCancel is the default PerFeatureFlag value for "keep-pod-on-cancel"
+	DefaultEnableKeepPodOnCancel = PerFeatureFlag{
+		Name:      KeepPodOnCancel,
+		Stability: AlphaAPIFields,
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
+
+	// DefaultEnableCELInWhenExpression is the default PerFeatureFlag value for EnableCELInWhenExpression
+	DefaultEnableCELInWhenExpression = PerFeatureFlag{
+		Name:      EnableCELInWhenExpression,
+		Stability: AlphaAPIFields,
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
+
+	// DefaultEnableStepActions is the default PerFeatureFlag value for EnableStepActions
+	DefaultEnableStepActions = PerFeatureFlag{
+		Name:      EnableStepActions,
+		Stability: AlphaAPIFields,
+		Enabled:   DefaultAlphaFeatureEnabled}
+
+	// DefaultEnableParamEnum is the default PerFeatureFlag value for EnableParamEnum
+	DefaultEnableParamEnum = PerFeatureFlag{
+		Name:      EnableParamEnum,
+		Stability: AlphaAPIFields,
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
+)
 
 // FeatureFlags holds the features configurations
 // +k8s:deepcopy-gen=true
@@ -174,6 +196,19 @@ func GetFeatureFlagsConfigName() string {
 
 // NewFeatureFlagsFromMap returns a Config given a map corresponding to a ConfigMap
 func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
+	setPerFeatureFlag := func(key string, defaultValue PerFeatureFlag, feature *bool) error {
+		if cfg, ok := cfgMap[key]; ok {
+			value, err := strconv.ParseBool(cfg)
+			if err != nil {
+				return fmt.Errorf("failed parsing feature flags config %q: %w for feature %s", cfg, err, key)
+			}
+			*feature = value
+			return nil
+		}
+		*feature = defaultValue.Enabled
+		return nil
+	}
+
 	setFeature := func(key string, defaultValue bool, feature *bool) error {
 		if cfg, ok := cfgMap[key]; ok {
 			value, err := strconv.ParseBool(cfg)
@@ -221,7 +256,7 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if err := setMaxResultSize(cfgMap, DefaultMaxResultSize, &tc.MaxResultSize); err != nil {
 		return nil, err
 	}
-	if err := setFeature(KeepPodOnCancel, DefaultEnableKeepPodOnCancel, &tc.EnableKeepPodOnCancel); err != nil {
+	if err := setPerFeatureFlag(KeepPodOnCancel, DefaultEnableKeepPodOnCancel, &tc.EnableKeepPodOnCancel); err != nil {
 		return nil, err
 	}
 	if err := setEnforceNonFalsifiability(cfgMap, &tc.EnforceNonfalsifiability); err != nil {
@@ -233,13 +268,13 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if err := setCoschedule(cfgMap, DefaultCoschedule, tc.DisableAffinityAssistant, &tc.Coschedule); err != nil {
 		return nil, err
 	}
-	if err := setFeature(EnableCELInWhenExpression, DefaultEnableCELInWhenExpression, &tc.EnableCELInWhenExpression); err != nil {
+	if err := setPerFeatureFlag(EnableCELInWhenExpression, DefaultEnableCELInWhenExpression, &tc.EnableCELInWhenExpression); err != nil {
 		return nil, err
 	}
-	if err := setFeature(EnableStepActions, DefaultEnableStepActions, &tc.EnableStepActions); err != nil {
+	if err := setPerFeatureFlag(EnableStepActions, DefaultEnableStepActions, &tc.EnableStepActions); err != nil {
 		return nil, err
 	}
-	if err := setFeature(EnableParamEnum, DefaultEnableParamEnum, &tc.EnableParamEnum); err != nil {
+	if err := setPerFeatureFlag(EnableParamEnum, DefaultEnableParamEnum, &tc.EnableParamEnum); err != nil {
 		return nil, err
 	}
 	// Given that they are alpha features, Tekton Bundles and Custom Tasks should be switched on if
@@ -381,8 +416,6 @@ func IsSpireEnabled(ctx context.Context) bool {
 	return FromContextOrDefaults(ctx).FeatureFlags.EnforceNonfalsifiability == EnforceNonfalsifiabilityWithSpire
 }
 
-// TODO(#7285): Patch the default values of new features that were added after
-// `enable-api-fields` was no longer used.
 type PerFeatureFlag struct {
 	// Name of the feature flag
 	Name string
