@@ -53,6 +53,10 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				SetSecurityContext:               config.DefaultSetSecurityContext,
 				Coschedule:                       config.DefaultCoschedule,
 				EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
+				EnableKeepPodOnCancel:            config.DefaultEnableKeepPodOnCancel.Enabled,
+				EnableCELInWhenExpression:        config.DefaultEnableCELInWhenExpression.Enabled,
+				EnableStepActions:                config.DefaultEnableStepActions.Enabled,
+				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 			},
 			fileName: config.GetFeatureFlagsConfigName(),
 		},
@@ -98,6 +102,10 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				MaxResultSize:                    config.DefaultMaxResultSize,
 				SetSecurityContext:               config.DefaultSetSecurityContext,
 				Coschedule:                       config.DefaultCoschedule,
+				EnableKeepPodOnCancel:            config.DefaultEnableKeepPodOnCancel.Enabled,
+				EnableCELInWhenExpression:        config.DefaultEnableCELInWhenExpression.Enabled,
+				EnableStepActions:                config.DefaultEnableStepActions.Enabled,
+				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 			},
 			fileName: "feature-flags-enable-api-fields-overrides-bundles-and-custom-tasks",
 		},
@@ -118,6 +126,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				MaxResultSize:                    config.DefaultMaxResultSize,
 				SetSecurityContext:               config.DefaultSetSecurityContext,
 				Coschedule:                       config.DefaultCoschedule,
+				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 			},
 			fileName: "feature-flags-bundles-and-custom-tasks",
 		},
@@ -138,6 +147,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				MaxResultSize:                    config.DefaultMaxResultSize,
 				SetSecurityContext:               config.DefaultSetSecurityContext,
 				Coschedule:                       config.DefaultCoschedule,
+				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 			},
 			fileName: "feature-flags-beta-api-fields",
 		},
@@ -154,6 +164,10 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				MaxResultSize:                    config.DefaultMaxResultSize,
 				SetSecurityContext:               config.DefaultSetSecurityContext,
 				Coschedule:                       config.DefaultCoschedule,
+				EnableKeepPodOnCancel:            config.DefaultEnableKeepPodOnCancel.Enabled,
+				EnableCELInWhenExpression:        config.DefaultEnableCELInWhenExpression.Enabled,
+				EnableStepActions:                config.DefaultEnableStepActions.Enabled,
+				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 			},
 			fileName: "feature-flags-enforce-nonfalsifiability-spire",
 		},
@@ -169,6 +183,10 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				MaxResultSize:                    8192,
 				SetSecurityContext:               config.DefaultSetSecurityContext,
 				Coschedule:                       config.DefaultCoschedule,
+				EnableKeepPodOnCancel:            config.DefaultEnableKeepPodOnCancel.Enabled,
+				EnableCELInWhenExpression:        config.DefaultEnableCELInWhenExpression.Enabled,
+				EnableStepActions:                config.DefaultEnableStepActions.Enabled,
+				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 			},
 			fileName: "feature-flags-results-via-sidecar-logs",
 		},
@@ -201,6 +219,10 @@ func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 		MaxResultSize:                    config.DefaultMaxResultSize,
 		SetSecurityContext:               config.DefaultSetSecurityContext,
 		Coschedule:                       config.DefaultCoschedule,
+		EnableKeepPodOnCancel:            config.DefaultEnableKeepPodOnCancel.Enabled,
+		EnableCELInWhenExpression:        config.DefaultEnableCELInWhenExpression.Enabled,
+		EnableStepActions:                config.DefaultEnableStepActions.Enabled,
+		EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 	}
 	verifyConfigFileWithExpectedFeatureFlagsConfig(t, FeatureFlagsConfigEmptyName, expectedConfig)
 }
@@ -265,7 +287,7 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 		want:     `invalid value for feature flag "coschedule": "invalid"`,
 	}, {
 		fileName: "feature-flags-invalid-keep-pod-on-cancel",
-		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax`,
+		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature keep-pod-on-cancel`,
 	}, {
 		fileName: "feature-flags-invalid-running-in-environment-with-injected-sidecars",
 		want:     `failed parsing feature flags config "invalid-boolean": strconv.ParseBool: parsing "invalid-boolean": invalid syntax`,
@@ -274,13 +296,13 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 		want:     `failed parsing feature flags config "truee": strconv.ParseBool: parsing "truee": invalid syntax`,
 	}, {
 		fileName: "feature-flags-invalid-enable-cel-in-whenexpression",
-		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax`,
+		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature enable-cel-in-whenexpression`,
 	}, {
 		fileName: "feature-flags-invalid-enable-step-actions",
-		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax`,
+		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature enable-step-actions`,
 	}, {
 		fileName: "feature-flags-invalid-enable-param-enum",
-		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax`,
+		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature enable-param-enum`,
 	}} {
 		t.Run(tc.fileName, func(t *testing.T) {
 			cm := test.ConfigMapFromTestFile(t, tc.fileName)
