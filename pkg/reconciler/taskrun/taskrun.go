@@ -911,7 +911,7 @@ func isPodAdmissionFailed(err error) bool {
 func updateStoppedSidecarStatus(pod *corev1.Pod, tr *v1.TaskRun) error {
 	tr.Status.Sidecars = []v1.SidecarState{}
 	for _, s := range pod.Status.ContainerStatuses {
-		if !podconvert.IsContainerStep(s.Name) {
+		if podconvert.IsContainerSidecar(s.Name) {
 			var sidecarState corev1.ContainerState
 			if s.LastTerminationState.Terminated != nil {
 				// Sidecar has successfully by terminated by nop image
