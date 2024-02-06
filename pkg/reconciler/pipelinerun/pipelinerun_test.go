@@ -4553,6 +4553,174 @@ spec:
 	}
 }
 
+func TestReconcileWithFinalTasksCELWhenExpressions(t *testing.T) {
+	ps := []*v1.Pipeline{parse.MustParseV1Pipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  params:
+  - name: run
+    type: string
+  tasks:
+  - name: a-task
+    taskRef:
+      name: a-task
+  - name: b-task
+    taskRef:
+      name: b-task
+  finally:
+  - name: f-c-task
+    taskRef:
+      name: f-c-task
+    when:
+    - cel: "'$(tasks.a-task.results.aResult)' == 'aResultValue'"
+    - cel: "'$(params.run)'=='yes'"
+    - cel: "'$(tasks.a-task.status)' == 'Succeeded'"
+  - name: f-d-task
+    taskRef:
+      name: f-d-task
+    when:
+    - cel: "'$(tasks.b-task.status)' == 'Succeeded'"
+`)}
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-different-final-task-when
+  namespace: foo
+spec:
+  params:
+  - name: run
+    value: "yes"
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa-0
+`)}
+	ts := []*v1.Task{
+		{ObjectMeta: baseObjectMeta("a-task", "foo")},
+		{ObjectMeta: baseObjectMeta("b-task", "foo")},
+		{ObjectMeta: baseObjectMeta("f-c-task", "foo")},
+		{ObjectMeta: baseObjectMeta("f-d-task", "foo")},
+	}
+	trs := []*v1.TaskRun{mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipeline-run-different-final-task-when-a-task-xxyyy", "foo", "test-pipeline-run-different-final-task-when",
+			"test-pipeline", "a-task", true),
+		`
+spec:
+  serviceAccountName: test-sa
+  taskRef:
+    name: hello-world
+  timeout: 1h0m0s
+status:
+  conditions:
+  - status: "True"
+    type: Succeeded
+  results:
+  - name: aResult
+    value: aResultValue
+`), mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipeline-run-different-final-task-when-b-task-xxyyy", "foo", "test-pipeline-run-different-final-task-when",
+			"test-pipeline", "b-task", true),
+		`
+spec:
+  serviceAccountName: test-sa
+  taskRef:
+    name: hello-world
+  timeout: 1h0m0s
+status:
+  conditions:
+  - status: "False"
+    type: Succeeded
+`)}
+	cms := []*corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+			Data: map[string]string{
+				"enable-cel-in-whenexpression": "true",
+			},
+		},
+	}
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+		ConfigMaps:   cms,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	wantEvents := []string{
+		"Normal Started",
+		"Normal Running Tasks Completed: 2 \\(Failed: 1, Cancelled 0\\), Incomplete: 1, Skipped: 1",
+	}
+	pipelineRun, clients := prt.reconcileRun("foo", "test-pipeline-run-different-final-task-when", wantEvents, false)
+
+	expectedTaskRunName := "test-pipeline-run-different-final-task-when-f-c-task"
+	expectedTaskRun := mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta(expectedTaskRunName, "foo", "test-pipeline-run-different-final-task-when", "test-pipeline", "f-c-task", true),
+		`
+spec:
+  serviceAccountName: test-sa-0
+  taskRef:
+    name: f-c-task
+    kind: Task
+`)
+	expectedTaskRun.Labels[pipeline.MemberOfLabelKey] = v1.PipelineFinallyTasks
+	// Check that the expected TaskRun was created
+	actual, err := clients.Pipeline.TektonV1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
+		LabelSelector: "tekton.dev/pipelineTask=f-c-task,tekton.dev/pipelineRun=test-pipeline-run-different-final-task-when",
+		Limit:         1,
+	})
+
+	if err != nil {
+		t.Fatalf("Failure to list TaskRun's %s", err)
+	}
+	if len(actual.Items) != 1 {
+		t.Fatalf("Expected 1 TaskRuns got %d", len(actual.Items))
+	}
+	actualTaskRun := actual.Items[0]
+	if d := cmp.Diff(expectedTaskRun, &actualTaskRun, ignoreResourceVersion, ignoreTypeMeta); d != "" {
+		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRunName, diff.PrintWantGot(d))
+	}
+
+	expectedWhenExpressionsInTaskRun := []v1.WhenExpression{{
+		CEL: "'aResultValue' == 'aResultValue'",
+	}, {
+		CEL: "'yes'=='yes'",
+	}, {
+		CEL: "'Succeeded' == 'Succeeded'",
+	}}
+	verifyTaskRunStatusesWhenExpressions(t, pipelineRun.Status, expectedTaskRunName, expectedWhenExpressionsInTaskRun)
+
+	actualSkippedTasks := pipelineRun.Status.SkippedTasks
+	expectedSkippedTasks := []v1.SkippedTask{{
+		Name:   "f-d-task",
+		Reason: v1.WhenExpressionsSkip,
+		WhenExpressions: v1.WhenExpressions{{
+			CEL: "'Failed' == 'Succeeded'",
+		}},
+	}}
+	if d := cmp.Diff(expectedSkippedTasks, actualSkippedTasks); d != "" {
+		t.Errorf("expected to find Skipped Tasks %v. Diff %s", expectedSkippedTasks, diff.PrintWantGot(d))
+	}
+
+	skippedTasks := []string{"f-d-task"}
+	for _, skippedTask := range skippedTasks {
+		labelSelector := fmt.Sprintf("tekton.dev/pipelineTask=%s,tekton.dev/pipelineRun=test-pipeline-run-different-final-task-when", skippedTask)
+		actualSkippedTask, err := clients.Pipeline.TektonV1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
+			LabelSelector: labelSelector,
+			Limit:         1,
+		})
+		if err != nil {
+			t.Fatalf("Failure to list TaskRun's %s", err)
+		}
+		if len(actualSkippedTask.Items) != 0 {
+			t.Fatalf("Expected 0 TaskRuns got %d", len(actualSkippedTask.Items))
+		}
+	}
+}
+
 func TestReconcile_InvalidCELWhenExpressions(t *testing.T) {
 	ps := []*v1.Pipeline{parse.MustParseV1Pipeline(t, `
 metadata:

@@ -77,9 +77,8 @@ type ResolvedPipelineTask struct {
 // EvaluateCEL evaluate the CEL expressions, and store the evaluated results in EvaluatedCEL
 func (t *ResolvedPipelineTask) EvaluateCEL() error {
 	if t.PipelineTask != nil {
-		if len(t.EvaluatedCEL) == 0 {
-			t.EvaluatedCEL = make(map[string]bool)
-		}
+		// Each call to this function will reset this field to prevent additional CELs.
+		t.EvaluatedCEL = make(map[string]bool)
 		for _, we := range t.PipelineTask.When {
 			if we.CEL == "" {
 				continue
