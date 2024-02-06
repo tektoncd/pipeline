@@ -5368,13 +5368,24 @@ status:
 }
 
 func TestStopSidecars_WithInjectedSidecarsNoTaskSpecSidecars(t *testing.T) {
+	sidecarTask := &v1.Task{
+		ObjectMeta: objectMeta("test-task-injected-sidecar", "foo"),
+		Spec: v1.TaskSpec{
+			Steps: []v1.Step{simpleStep},
+			Sidecars: []v1.Sidecar{{
+				Name:  "sidecar1",
+				Image: "image-id",
+			}},
+		},
+	}
+
 	taskRun := parse.MustParseV1TaskRun(t, `
 metadata:
   name: test-taskrun-injected-sidecars
   namespace: foo
 spec:
   taskRef:
-    name: test-task
+    name: test-task-injected-sidecar
 status:
   podName: test-taskrun-injected-sidecars-pod
   conditions:
@@ -5382,6 +5393,11 @@ status:
     reason: Build succeeded
     status: "True"
     type: Succeeded
+  sidecars:
+  - name: sidecar1
+    container: sidecar-sidecar1
+    running:
+      startedAt: "2000-01-01T01:01:01Z"
 `)
 
 	pod := &corev1.Pod{
@@ -5394,6 +5410,10 @@ status:
 				{
 					Name:  "step-do-something",
 					Image: "my-step-image",
+				},
+				{
+					Name:  "sidecar1",
+					Image: "image-id",
 				},
 				{
 					Name:  "injected-sidecar",
@@ -5409,6 +5429,10 @@ status:
 					State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{}},
 				},
 				{
+					Name:  "sidecar-sidecar1",
+					State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{}},
+				},
+				{
 					Name:  "injected-sidecar",
 					State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{}},
 				},
@@ -5419,7 +5443,7 @@ status:
 	d := test.Data{
 		Pods:     []*corev1.Pod{pod},
 		TaskRuns: []*v1.TaskRun{taskRun},
-		Tasks:    []*v1.Task{simpleTask},
+		Tasks:    []*v1.Task{sidecarTask},
 	}
 
 	testAssets, cancel := getTaskRunController(t, d)
@@ -5439,13 +5463,26 @@ status:
 		t.Fatalf("error retrieving pod: %s", err)
 	}
 
-	if len(retrievedPod.Spec.Containers) != 2 {
+	if len(retrievedPod.Spec.Containers) != 3 {
 		t.Fatalf("expected pod with two containers")
 	}
 
 	// check that injected sidecar is replaced with nop image
-	if d := cmp.Diff(images.NopImage, retrievedPod.Spec.Containers[1].Image); d != "" {
+	if d := cmp.Diff(images.NopImage, retrievedPod.Spec.Containers[2].Image); d != "" {
 		t.Errorf("expected injected sidecar image to be replaced with nop image %s", diff.PrintWantGot(d))
+	}
+
+	// Get the updated TaskRun.
+	reconciledRun, err := clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Error getting updated TaskRun after reconcile: %v", err)
+	}
+
+	// Verify that the injected sidecar isn't present in the TaskRun's status.
+	for _, sc := range reconciledRun.Status.Sidecars {
+		if sc.Container == "injected-sidecar" {
+			t.Errorf("expected not to find injected-sidecar in TaskRun status, but found %v", sc)
+		}
 	}
 }
 
