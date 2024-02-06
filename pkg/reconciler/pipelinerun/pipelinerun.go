@@ -860,6 +860,14 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 				continue
 			}
 			resources.ApplyTaskResults(resources.PipelineRunState{rpt}, resolvedResultRefs)
+
+			if err := rpt.EvaluateCEL(); err != nil {
+				logger.Errorf("Final task %q is not executed, due to error evaluating CEL %s: %v", rpt.PipelineTask.Name, pr.Name, err)
+				pr.Status.MarkFailed(string(v1.PipelineRunReasonCELEvaluationFailed),
+					"Error evaluating CEL %s: %w", pr.Name, pipelineErrors.WrapUserError(err))
+				return controller.NewPermanentError(err)
+			}
+
 			nextRpts = append(nextRpts, rpt)
 		}
 	}
