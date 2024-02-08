@@ -198,13 +198,11 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		taskSpec.Sidecars = append(taskSpec.Sidecars, resultsSidecar)
 		commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-result_from", config.ResultExtractionMethodSidecarLogs)
 	}
-	if true {
-		sidecar, err := createArtifactsSidecar(taskSpec, b.Images.SidecarLogArtifactsImage, setSecurityContext, windows)
-		if err != nil {
-			return nil, err
-		}
-		taskSpec.Sidecars = append(taskSpec.Sidecars, sidecar)
+	sidecar, err := createArtifactsSidecar(taskSpec, b.Images.SidecarLogArtifactsImage, setSecurityContext, windows)
+	if err != nil {
+		return nil, err
 	}
+	taskSpec.Sidecars = append(taskSpec.Sidecars, sidecar)
 	sidecars, err := v1.MergeSidecarsWithSpecs(taskSpec.Sidecars, taskRun.Spec.SidecarSpecs)
 	if err != nil {
 		return nil, err

@@ -6,8 +6,8 @@ type Artifact struct {
 }
 
 type ArtifactValue struct {
-	Digest string `json:"digest,omitempty"`
-	Uri    string `json:"uri,omitempty"`
+	Digest map[string]string `json:"digest,omitempty"`
+	Uri    string            `json:"uri,omitempty"`
 }
 
 type TaskRunStepArtifact = Artifact

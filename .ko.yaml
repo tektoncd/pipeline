@@ -1,1 +1,1 @@
-defaultBaseImage: gcr.io/buildpacks/builder:v1
+defaultBaseImage: gcr.io/distroless/static-debian12

@@ -27,6 +27,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -122,8 +123,12 @@ func LookForArtifacts(names []string, runDir string) (SidecarArtifacts, error) {
 		log.Fatal(err)
 	}
 	artifacts := SidecarArtifacts{}
-	for _, name := range names {
-		p := filepath.Join(pipeline.StepsDir, name, "artifacts", "provenance.json")
+	for _, stepName := range names {
+		p := filepath.Join(pipeline.StepsDir, stepName, "artifacts", "provenance.json")
+		// not necessary all steps will produce artifacts, this is a hack until we define a filed on step Spec to indicate a step is going to produce artifacts
+		if !strings.Contains(stepName, "producer") {
+			continue
+		}
 		if _, err := fileExists(p); err != nil {
 			return artifacts, err
 		}
@@ -131,7 +136,7 @@ func LookForArtifacts(names []string, runDir string) (SidecarArtifacts, error) {
 		if err != nil {
 			return artifacts, err
 		}
-		artifacts[name] = v1.Artifacts{Inputs: subRes.Inputs, Outputs: subRes.Outputs}
+		artifacts[stepName] = v1.Artifacts{Inputs: subRes.Inputs, Outputs: subRes.Outputs}
 
 	}
 	return artifacts, nil

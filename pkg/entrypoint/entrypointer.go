@@ -18,8 +18,10 @@ package entrypoint
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/tektoncd/pipeline/pkg/internal/artifactref"
 	"log"
 	"os"
 	"os/exec"
@@ -365,6 +367,26 @@ func getStepResultPath(stepDir string, stepName string, resultName string) strin
 	return filepath.Join(stepDir, stepName, "results", resultName)
 }
 
+// getStepArtifactPath gets the path to the step artifacts
+func getStepArtifactPath(stepDir string, stepName string) string {
+	return filepath.Join(stepDir, stepName, "artifacts", "provenance.json")
+}
+
+// loadStepResult reads the step result file and returns the string, array or object result value.
+func loadStepArtifacts(stepDir string, stepName string) (v1.Artifacts, error) {
+	v := v1.Artifacts{}
+	fp := getStepArtifactPath(stepDir, pod.GetContainerName(stepName))
+	fileContents, err := os.ReadFile(fp)
+	if err != nil {
+		return v, err
+	}
+	err = json.Unmarshal(fileContents, &v)
+	if err != nil {
+		return v, err
+	}
+	return v, nil
+}
+
 // findReplacement looks for any usage of step results in an input string.
 // If found, it loads the results from the previous steps and provides the replacement value.
 func findReplacement(stepDir string, s string) (string, []string, error) {
@@ -414,6 +436,52 @@ func replaceEnv(stepDir string) error {
 	return nil
 }
 
+func getArtifactValues(dir string, template string) (string, error) {
+	// parse template and getName
+	artifactTemplate := parseArtifactTemplate(template)
+	artifacts, err := loadStepArtifacts(dir, artifactTemplate.StepName)
+	if err != nil {
+		return "", nil
+	}
+
+	// $(steps.stepName.outputs.artifactName) <- artifacts.Output[artifactName].Values
+	// $(steps.stepName.outputs) <- artifacts.Output[0].Values
+
+	if artifactTemplate.ArtifactName == "" {
+		marshal, err := json.Marshal(artifacts.Outputs[0].Values)
+		if err != nil {
+			return "", err
+		}
+		return string(marshal), err
+	}
+	for _, ar := range artifacts.Outputs {
+		if ar.Name == artifactTemplate.ArtifactName {
+			marshal, err := json.Marshal(ar.Values)
+			if err != nil {
+				return "", err
+			}
+			return string(marshal), err
+		}
+	}
+	return "", fmt.Errorf("values for template %s not found", template)
+}
+
+func parseArtifactTemplate(template string) ArtifactTemplate {
+	split := strings.Split(template, ".")
+	at := ArtifactTemplate{
+		StepName: split[1],
+	}
+	if len(split) == 4 {
+		at.ArtifactName = split[3]
+	}
+	return at
+}
+
+type ArtifactTemplate struct {
+	StepName     string
+	ArtifactName string
+}
+
 // replaceCommandAndArgs performs replacements for step results in e.Command
 func replaceCommandAndArgs(command []string, stepDir string) ([]string, error) {
 	newCommand := []string{}
@@ -454,5 +522,45 @@ func (e *Entrypointer) applyStepResultSubstitutions(stepDir string) error {
 		return err
 	}
 	e.Command = newCommand
+	return nil
+}
+
+func (e *Entrypointer) applyStepArtifactSubstitutions(stepDir string) error {
+
+	// substitute cmd
+	command := e.Command
+	newCmd := []string{}
+	for _, c := range command {
+		matches := artifactref.StepArtifactOutputRegex.FindAllStringSubmatch(c, -1)
+		if len(matches) > 0 {
+			for _, m := range matches {
+				values, err := getArtifactValues(stepDir, m[0])
+
+				if err != nil {
+					return err
+				}
+				c = strings.ReplaceAll(c, m[0], values)
+				newCmd = append(newCmd, c)
+			}
+		} else {
+			newCmd = append(newCmd, c)
+		}
+	}
+	e.Command = newCmd
+
+	// substitute env
+	for _, e := range os.Environ() {
+		pair := strings.SplitN(e, "=", 2)
+		matches := artifactref.StepArtifactOutputRegex.FindAllStringSubmatch(pair[1], -1)
+		for _, m := range matches {
+			values, err := getArtifactValues(stepDir, m[0])
+
+			if err != nil {
+				return err
+			}
+			os.Setenv(pair[0], strings.ReplaceAll(pair[1], m[0], values))
+		}
+	}
+
 	return nil
 }

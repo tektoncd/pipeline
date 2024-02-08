@@ -303,8 +303,6 @@ type TaskRunStatusFields struct {
 	// +optional
 	Provenance *Provenance `json:"provenance,omitempty"`
 
-	Artifacts []Artifact `json:"artifacts,omitempty"`
-
 	// SpanContext contains tracing span context fields
 	SpanContext map[string]string `json:"spanContext,omitempty"`
 }

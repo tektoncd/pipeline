@@ -1,3 +1,16 @@
+#apiVersion: tekton.dev/v1alpha1
+#kind: StepActions
+#metadata:
+#  name: step-action-consuming-artifacts
+#  description: |
+#    This stepaction produces an `output`` artifact called `images`.
+#spec:
+#  params:
+#    - name: image-artifact-provenance
+#  image: jq
+#  script: |
+#    echo $(params.image-artifact-provenance) | jq
+---
 apiVersion: tekton.dev/v1
 kind: TaskRun
 metadata:
@@ -7,32 +20,47 @@ spec:
     description: |
       A simple task that populates artifacts to TaskRun stepState
     steps:
-      - name: save-artifacts-to-step-state
+      - name: step-producing-artifacts
         image: bash:latest
         script: |
           cat > $(step.artifacts.path) << EOF
           {
-            "inputs": [
+            "inputs":[
               {
-                "name": "input-artifacts",
-                "values": [
+                "name":"input-artifacts",
+                "values":[
                   {
-                    "uri": "git:jjjsss",
-                    "digest": "sha256:33333"
+                    "uri":"git:jjjsss",
+                    "digest":{
+                      "sha256":"b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"
+                    }
                   }
                 ]
               }
             ],
-            "outputs": [
+            "outputs":[
               {
-                "name": "build-result",
-                "values": [
+                "name":"build-result",
+                "values":[
                   {
-                    "uri": "pkg:balba",
-                    "digest": "sha256:a1ebe34234212312321"
+                    "uri":"pkg:balba",
+                    "digest":{
+                      "sha256":"df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48",
+                      "sha1":"95588b8f34c31eb7d62c92aaa4e6506639b06ef2"
+                    }
                   }
                 ]
               }
             ]
           }
           EOF
+#      - name: artifacts-consumer
+#        image: bash:latest
+#        script: |
+#          echo $(steps.step-step-producing-artifacts.outputs) | jq
+#      - name: step-consuming-artifacts
+#        ref:
+#          name: step-action-consuming-artifacts
+#        params:
+#          - name: image-artifact-provenance
+#            value: $(steps.step-producing-artifacts.outputs.build_result)

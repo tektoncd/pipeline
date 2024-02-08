@@ -77,9 +77,14 @@ func applyStepActionParameters(step *v1.Step, spec *v1.TaskSpec, tr *v1.TaskRun,
 	for k, v := range stepResultReplacements {
 		stringReplacements[k] = v
 	}
+	//stepArtifactsReplacements, _ := replacementsFromStepArtifacts(step, stepParams, defaults)
 	container.ApplyStepReplacements(step, stringReplacements, arrayReplacements)
 	return step
 }
+
+//func replacementsFromStepArtifacts(step *v1.Step, params v1.Params, defaults []v1.ParamSpec) (map[string]string, error) {
+//
+//}
 
 // findArrayIndexParamUsage finds the array index in a string using array param substitution
 func findArrayIndexParamUsage(s string, paramName string, stepName string, resultName string, stringReplacements map[string]string) map[string]string {

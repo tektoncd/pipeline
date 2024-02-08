@@ -319,7 +319,6 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 			}
 		}
 
-		//todo append TaskArtifacts With StepArtifacts
 		stepState := v1.StepState{
 			ContainerState: *state,
 			Name:           trimStepPrefix(s.Name),

@@ -987,7 +987,6 @@ func storeTaskSpecAndMergeMeta(ctx context.Context, tr *v1.TaskRun, ts *v1.TaskS
 		if tr.Status.Provenance == nil {
 			tr.Status.Provenance = &v1.Provenance{}
 		}
-		tr.Status.Artifacts = []v1.Artifact{{Name: "aaaa", Values: []v1.ArtifactValue{{Digest: "aafsd", Uri: "111"}}}}
 		// Store FeatureFlags in the Provenance.
 		tr.Status.Provenance.FeatureFlags = cfg.FeatureFlags
 		// Propagate RefSource from remote resolution to TaskRun Status
