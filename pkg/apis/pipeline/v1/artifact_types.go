@@ -2,7 +2,7 @@ package v1
 
 type Artifact struct {
 	Name   string          `json:"name,omitempty"`
-	Values []ArtifactValue `json:"values"`
+	Values []ArtifactValue `json:"values,omitempty"`
 }
 
 type ArtifactValue struct {
