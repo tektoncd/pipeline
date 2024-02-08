@@ -410,6 +410,7 @@ func (s *sharedIndexInformer) SetTransform(handler TransformFunc) error {
 }
 
 func (s *sharedIndexInformer) Run(stopCh <-chan struct{}) {
+	fmt.Println("sharedIndex")
 	defer utilruntime.HandleCrash()
 
 	if s.HasStarted() {
@@ -470,9 +471,16 @@ func (s *sharedIndexInformer) HasSynced() bool {
 	defer s.startedLock.Unlock()
 
 	if s.controller == nil {
+		fmt.Println("controler is nil")
 		return false
 	}
-	return s.controller.HasSynced()
+	synced := s.controller.HasSynced()
+	//if synced {
+	//	fmt.Println("controller synced")
+	//}else {
+	//	fmt.Println("controller not synced")
+	//}
+	return synced
 }
 
 func (s *sharedIndexInformer) LastSyncResourceVersion() string {

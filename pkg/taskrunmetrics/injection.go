@@ -18,6 +18,7 @@ package taskrunmetrics
 
 import (
 	"context"
+	"fmt"
 
 	taskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1/taskrun"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1"
@@ -75,6 +76,7 @@ var _ controller.Informer = (*recorderInformer)(nil)
 
 // Run starts the recorder informer in a goroutine
 func (ri *recorderInformer) Run(stopCh <-chan struct{}) {
+	fmt.Println("run task run informer")
 	// Turn the stopCh into a context for reporting metrics.
 	ctx, cancel := context.WithCancel(ri.ctx)
 	go func() {
