@@ -5,9 +5,11 @@ metadata:
 spec:
   params:
     - name: image-artifact-provenance
-  image: jq
-  script: |
-    echo $(params.image-artifact-provenance) | jq
+  image: endeveit/docker-jq
+  command:
+    - sh
+    - -c
+    - "echo '$(params.image-artifact-provenance)' | jq '.[0].digest.sha256'"
 ---
 apiVersion: tekton.dev/v1
 kind: TaskRun
@@ -61,4 +63,4 @@ spec:
           name: step-action-consuming-artifacts
         params:
           - name: image-artifact-provenance
-            value: $(steps.step-artifacts-producer.outputs.build_result)
+            value: $(steps.artifacts-producer.outputs.build-result)

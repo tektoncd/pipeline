@@ -536,6 +536,10 @@ func (e *Entrypointer) applyStepArtifactSubstitutions(stepDir string) error {
 
 	// Script was re-written into a file, we need to read the file to and substitute the content
 	// and re-write the command.
+	// param substitution cannot be used in Script, should we allow artifact substitution, doesn't seem to bad
+	// artifacts are unmarshalled, should be safe.
+	// Need something to indicate, producer/consumer, should substitution only applies to consumer, as we don't want or need
+	// to rewrite this for producer?
 	if len(e.Command) == 1 && strings.HasPrefix(e.Command[0], "/tekton/scripts/") {
 		dataBytes, err := os.ReadFile(e.Command[0])
 		if err != nil {
@@ -574,6 +578,7 @@ func (e *Entrypointer) applyStepArtifactSubstitutions(stepDir string) error {
 		}
 		e.Command = newCmd
 	}
+	fmt.Println(e.Command)
 
 	// substitute env
 	for _, e := range os.Environ() {
