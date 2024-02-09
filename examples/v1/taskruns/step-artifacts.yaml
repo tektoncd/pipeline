@@ -1,15 +1,15 @@
-#apiVersion: tekton.dev/v1alpha1
-#kind: StepActions
-#metadata:
-#  name: step-action-consuming-artifacts
-#  description: |
-#    This stepaction produces an `output`` artifact called `images`.
-#spec:
-#  params:
-#    - name: image-artifact-provenance
-#  image: jq
-#  script: |
-#    echo $(params.image-artifact-provenance) | jq
+apiVersion: tekton.dev/v1alpha1
+kind: StepActions
+metadata:
+  name: step-action-consuming-artifacts
+  description: |
+    This stepaction produces an `output`` artifact called `images`.
+spec:
+  params:
+    - name: image-artifact-provenance
+  image: jq
+  script: |
+    echo $(params.image-artifact-provenance) | jq
 ---
 apiVersion: tekton.dev/v1
 kind: TaskRun
@@ -58,9 +58,9 @@ spec:
         image: bash:latest
         script: |
           echo $(steps.artifacts-producer.outputs)
-#      - name: step-consuming-artifacts
-#        ref:
-#          name: step-action-consuming-artifacts
-#        params:
-#          - name: image-artifact-provenance
-#            value: $(steps.step-artifacts-producer.outputs.build_result)
+      - name: consuming-artifacts-ref
+        ref:
+          name: step-action-consuming-artifacts
+        params:
+          - name: image-artifact-provenance
+            value: $(steps.step-artifacts-producer.outputs.build_result)

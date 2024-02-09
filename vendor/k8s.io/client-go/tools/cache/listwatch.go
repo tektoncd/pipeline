@@ -23,7 +23,6 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
-	"fmt"
 	restclient "k8s.io/client-go/rest"
 )
 
@@ -81,7 +80,6 @@ func NewListWatchFromClient(c Getter, resource string, namespace string, fieldSe
 func NewFilteredListWatchFromClient(c Getter, resource string, namespace string, optionsModifier func(options *metav1.ListOptions)) *ListWatch {
 	listFunc := func(options metav1.ListOptions) (runtime.Object, error) {
 		optionsModifier(&options)
-		fmt.Println("list called")
 		return c.Get().
 			Namespace(namespace).
 			Resource(resource).
@@ -92,7 +90,6 @@ func NewFilteredListWatchFromClient(c Getter, resource string, namespace string,
 	watchFunc := func(options metav1.ListOptions) (watch.Interface, error) {
 		options.Watch = true
 		optionsModifier(&options)
-		fmt.Println("watched called")
 		return c.Get().
 			Namespace(namespace).
 			Resource(resource).

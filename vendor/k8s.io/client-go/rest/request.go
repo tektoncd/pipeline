@@ -1283,7 +1283,6 @@ func (r Result) Get() (runtime.Object, error) {
 		return nil, fmt.Errorf("serializer for %s doesn't exist", r.contentType)
 	}
 
-	fmt.Println("result:::"+ string(r.body))
 	// decode, but if the result is Status return that as an error instead.
 	out, _, err := r.decoder.Decode(r.body, nil, nil)
 	if err != nil {

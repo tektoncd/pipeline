@@ -125,6 +125,6 @@ data:
   enable-cel-in-whenexpression: "false"
   # Setting this flag to "true" will enable the use of StepActions in Steps
   # This feature is in preview mode and not implemented yet. Please check #7259 for updates.
-  enable-step-actions: "false"
+  enable-step-actions: "true"
   # Setting this flag to "true" will enable the built-in param input validation via param enum.
   enable-param-enum: "false"

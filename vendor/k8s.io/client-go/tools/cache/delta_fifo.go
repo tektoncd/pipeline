@@ -298,11 +298,8 @@ func (f *DeltaFIFO) KeyOf(obj interface{}) (string, error) {
 // HasSynced returns true if an Add/Update/Delete/AddIfNotPresent are called first,
 // or the first batch of items inserted by Replace() has been popped.
 func (f *DeltaFIFO) HasSynced() bool {
-	//fmt.Println("delta FIFO")
 	f.lock.Lock()
 	defer f.lock.Unlock()
-	//fmt.Println(f.populated)
-	//fmt.Println(f.initialPopulationCount)
 	return f.populated && f.initialPopulationCount == 0
 }
 

@@ -20,7 +20,6 @@ import (
 	"errors"
 	"sync"
 	"time"
-	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -132,7 +131,6 @@ func (c *controller) Run(stopCh <-chan struct{}) {
 		<-stopCh
 		c.config.Queue.Close()
 	}()
-	fmt.Println("listWatcher")
 	r := NewReflector(
 		c.config.ListerWatcher,
 		c.config.ObjectType,

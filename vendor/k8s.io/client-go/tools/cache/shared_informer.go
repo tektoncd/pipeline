@@ -470,16 +470,9 @@ func (s *sharedIndexInformer) HasSynced() bool {
 	defer s.startedLock.Unlock()
 
 	if s.controller == nil {
-		fmt.Println("controler is nil")
 		return false
 	}
-	synced := s.controller.HasSynced()
-	//if synced {
-	//	fmt.Println("controller synced")
-	//}else {
-	//	fmt.Println("controller not synced")
-	//}
-	return synced
+	return s.controller.HasSynced()
 }
 
 func (s *sharedIndexInformer) LastSyncResourceVersion() string {
