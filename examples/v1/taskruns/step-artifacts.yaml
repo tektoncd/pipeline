@@ -1,9 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
-kind: StepActions
+kind: StepAction
 metadata:
   name: step-action-consuming-artifacts
-  description: |
-    This stepaction produces an `output`` artifact called `images`.
 spec:
   params:
     - name: image-artifact-provenance
