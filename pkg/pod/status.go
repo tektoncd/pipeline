@@ -326,6 +326,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 			ImageID:        s.ImageID,
 			Results:        taskRunStepResults,
 		}
+		fmt.Println(s.Name)
 
 		if v, ok := sidecarArtifacts[s.Name]; ok {
 			stepState.Inputs = v.Inputs

@@ -127,6 +127,7 @@ func LookForArtifacts(names []string, runDir string) (SidecarArtifacts, error) {
 		p := filepath.Join(pipeline.StepsDir, stepName, "artifacts", "provenance.json")
 		// not necessary all steps will produce artifacts, this is a hack until we define a filed on step Spec to indicate a step is going to produce artifacts
 		if !strings.Contains(stepName, "producer") {
+			fmt.Println("skip lookup")
 			continue
 		}
 		if _, err := fileExists(p); err != nil {

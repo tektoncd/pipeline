@@ -20,7 +20,7 @@ spec:
     description: |
       A simple task that populates artifacts to TaskRun stepState
     steps:
-      - name: step-producing-artifacts
+      - name: artifacts-producer
         image: bash:latest
         script: |
           cat > $(step.artifacts.path) << EOF
@@ -54,13 +54,13 @@ spec:
             ]
           }
           EOF
-#      - name: artifacts-consumer
-#        image: bash:latest
-#        script: |
-#          echo $(steps.step-step-producing-artifacts.outputs) | jq
+      - name: artifacts-consumer
+        image: bash:latest
+        script: |
+          echo $(steps.artifacts-producer.outputs)
 #      - name: step-consuming-artifacts
 #        ref:
 #          name: step-action-consuming-artifacts
 #        params:
 #          - name: image-artifact-provenance
-#            value: $(steps.step-producing-artifacts.outputs.build_result)
+#            value: $(steps.step-artifacts-producer.outputs.build_result)

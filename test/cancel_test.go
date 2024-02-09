@@ -185,15 +185,3 @@ spec:
 		})
 	}
 }
-
-func Test(t *testing.T) {
-	type name struct {
-		AAA map[string]string `json:"AAA,omitempty"`
-	}
-	var a name
-	err := json.Unmarshal([]byte(`{"AAA":{"aaa":"bbb", "ddd":"ff"}}`), &a)
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println(a.AAA["aaa"])
-}

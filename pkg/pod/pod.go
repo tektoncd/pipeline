@@ -756,6 +756,9 @@ func createArtifactsSidecar(taskSpec v1.TaskSpec, image string, setSecurityConte
 
 	for i, s := range taskSpec.Steps {
 		// todo something to indicate that the step is going to output artifacts, output artifacts declaration
+		if !strings.Contains(s.Name, "producer") {
+			continue
+		}
 		stepName := StepName(s.Name, i)
 		stepNames = append(stepNames, stepName)
 	}

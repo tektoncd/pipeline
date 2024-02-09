@@ -410,7 +410,6 @@ func (s *sharedIndexInformer) SetTransform(handler TransformFunc) error {
 }
 
 func (s *sharedIndexInformer) Run(stopCh <-chan struct{}) {
-	fmt.Println("sharedIndex")
 	defer utilruntime.HandleCrash()
 
 	if s.HasStarted() {

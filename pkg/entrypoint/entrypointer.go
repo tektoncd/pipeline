@@ -192,6 +192,10 @@ func (e Entrypointer) Go() error {
 		if err := e.applyStepResultSubstitutions(pipeline.StepsDir); err != nil {
 			logger.Error("Error while substituting step results: ", err)
 		}
+		if err := e.applyStepArtifactSubstitutions(pipeline.StepsDir); err != nil {
+			logger.Error("Error while substituting step artifacts: ", err)
+		}
+
 		ctx, cancel = context.WithCancel(ctx)
 		if e.Timeout != nil && *e.Timeout > time.Duration(0) {
 			ctx, cancel = context.WithTimeout(ctx, *e.Timeout)
@@ -372,7 +376,7 @@ func getStepArtifactPath(stepDir string, stepName string) string {
 	return filepath.Join(stepDir, stepName, "artifacts", "provenance.json")
 }
 
-// loadStepResult reads the step result file and returns the string, array or object result value.
+// loadStepArtifacts
 func loadStepArtifacts(stepDir string, stepName string) (v1.Artifacts, error) {
 	v := v1.Artifacts{}
 	fp := getStepArtifactPath(stepDir, pod.GetContainerName(stepName))
@@ -441,6 +445,8 @@ func getArtifactValues(dir string, template string) (string, error) {
 	artifactTemplate := parseArtifactTemplate(template)
 	artifacts, err := loadStepArtifacts(dir, artifactTemplate.StepName)
 	if err != nil {
+		fmt.Println("failed to load artifacts")
+		fmt.Println(err)
 		return "", nil
 	}
 
@@ -467,6 +473,7 @@ func getArtifactValues(dir string, template string) (string, error) {
 }
 
 func parseArtifactTemplate(template string) ArtifactTemplate {
+	template = strings.TrimSuffix(strings.TrimPrefix(template, "$("), ")")
 	split := strings.Split(template, ".")
 	at := ArtifactTemplate{
 		StepName: split[1],
@@ -527,26 +534,46 @@ func (e *Entrypointer) applyStepResultSubstitutions(stepDir string) error {
 
 func (e *Entrypointer) applyStepArtifactSubstitutions(stepDir string) error {
 
-	// substitute cmd
-	command := e.Command
-	newCmd := []string{}
-	for _, c := range command {
-		matches := artifactref.StepArtifactOutputRegex.FindAllStringSubmatch(c, -1)
+	// Script was re-written into a file, we need to read the file to and substitute the content
+	// and re-write the command.
+	if len(e.Command) == 1 && strings.HasPrefix(e.Command[0], "/tekton/scripts/") {
+		dataBytes, err := os.ReadFile(e.Command[0])
+		if err != nil {
+			return err
+		}
+		fileContent := string(dataBytes)
+		matches := artifactref.StepArtifactOutputRegex.FindAllStringSubmatch(fileContent, -1)
 		if len(matches) > 0 {
 			for _, m := range matches {
 				values, err := getArtifactValues(stepDir, m[0])
-
 				if err != nil {
 					return err
 				}
-				c = strings.ReplaceAll(c, m[0], values)
+				fileContent = strings.ReplaceAll(fileContent, m[0], values)
+			}
+		}
+		e.Command = []string{"sh", "-c", fileContent}
+	} else {
+		command := e.Command
+		newCmd := []string{}
+		for _, c := range command {
+			matches := artifactref.StepArtifactOutputRegex.FindAllStringSubmatch(c, -1)
+			if len(matches) > 0 {
+				for _, m := range matches {
+					values, err := getArtifactValues(stepDir, m[0])
+
+					if err != nil {
+						return err
+					}
+					c = strings.ReplaceAll(c, m[0], values)
+					newCmd = append(newCmd, c)
+				}
+			} else {
 				newCmd = append(newCmd, c)
 			}
-		} else {
-			newCmd = append(newCmd, c)
 		}
+		e.Command = newCmd
 	}
-	e.Command = newCmd
 
 	// substitute env
 	for _, e := range os.Environ() {

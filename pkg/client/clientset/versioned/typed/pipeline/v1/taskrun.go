@@ -20,8 +20,6 @@ package v1
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"time"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -86,19 +84,12 @@ func (c *taskRuns) List(ctx context.Context, opts metav1.ListOptions) (result *v
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	result = &v1.TaskRunList{}
-	do := c.client.Get().
+	c.client.Get().
 		Namespace(c.ns).
 		Resource("taskruns").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Do(ctx)
-	raw, err := do.Raw()
-	fmt.Println(string(raw))
-	err = json.Unmarshal(raw, &result)
-	if err != nil {
-		fmt.Println("bala")
-		fmt.Println(err)
-	}
+		Do(ctx).Into(result)
 	return
 }
 
