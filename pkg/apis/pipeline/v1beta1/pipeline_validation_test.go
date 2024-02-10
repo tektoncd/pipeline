@@ -223,6 +223,52 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 			Paths:   []string{"spec.finally[0].steps[0].script"},
 		},
 	}, {
+		name: "invalid duplicate parameter in pipeline task",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name: "pipeline-task",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Steps: []Step{{
+							Name:    "some-step",
+							Image:   "some-image",
+							Command: []string{"cmd"},
+						}},
+					}},
+				}},
+				Finally: []PipelineTask{{
+					Name: "invalid-pipeline-task",
+					Params: Params{
+						{
+							Name: "name",
+							Value: ParamValue{
+								Type:      ParamTypeString,
+								StringVal: "",
+							},
+						},
+						{
+							Name: "name",
+							Value: ParamValue{
+								Type:      ParamTypeString,
+								StringVal: "",
+							},
+						},
+					},
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Steps: []Step{{
+							Name:  "some-step",
+							Image: "some-image",
+						}},
+					}},
+				}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `parameter names must be unique, the parameter "name" is also defined at`,
+			Paths:   []string{"spec.finally[0].params[1].name"},
+		},
+	}, {
 		name: "invalid task with pipelineRef and pipelineSpec",
 		wc:   cfgtesting.EnableAlphaAPIFields,
 		p: &Pipeline{
