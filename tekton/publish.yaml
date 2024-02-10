@@ -46,7 +46,7 @@ spec:
     env:
       - name: "PROJECT_ROOT"
         value: "$(workspaces.source.path)"
-      - name: CONTAINER_REGISTY_CREDENTIALS
+      - name: CONTAINER_REGISTRY_CREDENTIALS
         value: "$(workspaces.release-secret.path)/$(params.serviceAccountPath)"
       - name: CONTAINER_REGISTRY
         value: "$(params.imageRegistry)/$(params.imageRegistryPath)"
@@ -60,14 +60,14 @@ spec:
   - name: IMAGES
   steps:
 
-  - name: container-registy-auth
+  - name: container-registry-auth
     image: gcr.io/go-containerregistry/crane:debug
     script: |
       #!/busybox/sh
       set -ex
 
       # Login to the container registry
-      DOCKER_CONFIG=$(cat ${CONTAINER_REGISTY_CREDENTIALS} | \
+      DOCKER_CONFIG=$(cat ${CONTAINER_REGISTRY_CREDENTIALS} | \
         crane auth login -u _json_key --password-stdin $(params.imageRegistry) 2>&1 | \
         sed 's,^.*logged in via \(.*\)$,\1,g')
 
@@ -75,7 +75,7 @@ spec:
       for region in ${REGIONS}
       do
         HOSTNAME=${region}.$(params.imageRegistry)
-        cat ${CONTAINER_REGISTY_CREDENTIALS} | crane auth login -u _json_key --password-stdin ${HOSTNAME}
+        cat ${CONTAINER_REGISTRY_CREDENTIALS} | crane auth login -u _json_key --password-stdin ${HOSTNAME}
       done
       cp ${DOCKER_CONFIG} /workspace/docker-config.json
 
