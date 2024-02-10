@@ -400,7 +400,7 @@ func validatePipelineTaskParameterUsage(tasks []PipelineTask, params ParamSpecs)
 	}
 	errs = errs.Also(validatePipelineParametersVariables(tasks, "params", allParamNames, arrayParamNames, objectParameterNameKeys))
 	for i, task := range tasks {
-		errs = errs.Also(task.Params.validateDuplicateParameters().ViaFieldIndex("params", i))
+		errs = errs.Also(task.Params.validateDuplicateParameters().ViaField("params").ViaIndex(i))
 	}
 	return errs
 }
