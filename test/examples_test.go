@@ -268,10 +268,10 @@ func imageNamesMapping() map[string]string {
 	switch getTestArch() {
 	case "s390x":
 		return map[string]string{
-			"registry":                              getTestImage(registryImage),
-			"node":                                  "node:alpine3.11",
-			"gcr.io/cloud-builders/git":             "alpine/git:latest",
-			"docker:dind":                           "ibmcom/docker-s390x:20.10",
+			"registry":                  getTestImage(registryImage),
+			"node":                      "node:alpine3.11",
+			"gcr.io/cloud-builders/git": "alpine/git:latest",
+			"docker@sha256:74e78208fc18da48ddf8b569abe21563730845c312130bd0f0b059746a7e10f5": "ibmcom/docker-s390x:20.10",
 			"docker":                                "docker:18.06.3",
 			"mikefarah/yq:3":                        "danielxlee/yq:2.4.0",
 			"stedolan/jq":                           "ibmcom/jq-s390x:latest",
