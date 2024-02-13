@@ -31,6 +31,7 @@ installation.
     - [Verify the transparency logs using `rekor-cli`](#verify-the-transparency-logs-using-rekor-cli)
   - [Verify Tekton Resources](#verify-tekton-resources)
   - [Pipelinerun with Affinity Assistant](#pipelineruns-with-affinity-assistant)
+  - [TaskRuns with `imagePullBackOff` Timeout](#taskruns-with-imagepullbackoff-timeout)
   - [Next steps](#next-steps)
 
 
@@ -671,6 +672,26 @@ please take a look at [Trusted Resources](./trusted-resources.md).
 
 The cluster operators can review the [guidelines](developers/affinity-assistant.md) to `cordon` a node in the cluster
 with the tekton controller and the affinity assistant is enabled.
+
+## TaskRuns with `imagePullBackOff` Timeout
+
+Tekton pipelines has adopted a fail fast strategy with a taskRun failing with `TaskRunImagePullFailed` in case of an
+`imagePullBackOff`. This can be limited in some cases, and it generally depends on the infrastructure. To allow the
+cluster operators to decide whether to wait in case of an `imagePullBackOff`, a setting is available to configure
+the wait time in minutes such that the controller will wait for the specified duration before declaring a failure.
+For example, with the following `config-defaults`, the controller does not mark the taskRun as failure for 5 minutes since
+the pod is scheduled in case the image pull fails with `imagePullBackOff`.
+See issue https://github.com/tektoncd/pipeline/issues/5987 for more details.
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-defaults
+  namespace: tekton-pipelines
+data:
+  default-imagepullbackoff-timeout: "5"
+```
 
 ## Next steps
 
