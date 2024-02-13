@@ -2,6 +2,10 @@
 
 The stability levels of features (feature versioning) are independent of CRD [API versioning](./api-versioning.md).
 
+You may follow the existing Tekton feature flags demo for detailed reference:
+- [Tekton Per-feature Flag Demo Slides](https://docs.google.com/presentation/d/1MAwBTKYUN40SZcd6om6LMw217TtNSppbmA8MatMjyjk/edit?usp=sharing&resourcekey=0-JY7-QhCrWJrzFgsFbJGROg)
+- [Tekton Per-feature Flag Demo Recording](https://drive.google.com/file/d/1myFHtqps3gt2I6wBkvGIghDaJElOYOq1/view?usp=sharing)
+
 ## Adding feature gates for API-driven features
 API-driven features are features that are accessed via a specific field in pipeline API. They comply to the [feature gates](../../api_compatibility_policy.md#feature-gates) and the [feature graduation process](../../api_compatibility_policy.md#feature-graduation-process) specified in the [API compatibility policy](../../api_compatibility_policy.md). For example, [remote tasks](https://github.com/tektoncd/pipeline/blob/454bfd340d102f16f4f2838cf4487198537e3cfa/docs/taskruns.md#remote-tasks) is an API-driven feature.
 
