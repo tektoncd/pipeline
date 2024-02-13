@@ -42,7 +42,7 @@ Further documentation available:
 ## Release
 ### v0.56 (LTS)
 
-- **Latest Release**: [v0.56.0][v0.56-0] (2024-01-19) ([docs][v0.56-0-docs], [examples][v0.56-0-examples])
+- **Latest Release**: [v0.56.1][v0.56-1] (2024-02-13) ([docs][v0.56-1-docs], [examples][v0.56-1-examples])
 - **Initial Release**: [v0.56.0][v0.56-0] (2024-01-19)
 - **Estimated End of Life**: 2025-01-19
 - **Patch Releases**: [v0.56.0][v0.56-0]
