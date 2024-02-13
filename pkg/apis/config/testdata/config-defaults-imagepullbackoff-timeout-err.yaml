@@ -18,8 +18,4 @@ metadata:
   name: config-defaults
   namespace: tekton-pipelines
 data:
-  default-timeout-minutes: "50"
-  default-service-account: "tekton"
-  default-managed-by-label-value: "something-else"
-  default-resolver-type: "git"
-  default-imagepullbackoff-timeout: "5s"
+  default-imagepullbackoff-timeout: "not-a-timeout"

@@ -49,6 +49,8 @@ const (
 	// default resource requirements, will be applied to all the containers, which has empty resource requirements
 	ResourceRequirementDefaultContainerKey = "default"
 
+	DefaultImagePullBackOffTimeout = 0 * time.Minute
+
 	defaultTimeoutMinutesKey                = "default-timeout-minutes"
 	defaultServiceAccountKey                = "default-service-account"
 	defaultManagedByLabelValueKey           = "default-managed-by-label-value"
@@ -60,6 +62,7 @@ const (
 	defaultForbiddenEnv                     = "default-forbidden-env"
 	defaultResolverTypeKey                  = "default-resolver-type"
 	defaultContainerResourceRequirementsKey = "default-container-resource-requirements"
+	defaultImagePullBackOffTimeout          = "default-imagepullbackoff-timeout"
 )
 
 // DefaultConfig holds all the default configurations for the config.
@@ -79,6 +82,7 @@ type Defaults struct {
 	DefaultForbiddenEnv                  []string
 	DefaultResolverType                  string
 	DefaultContainerResourceRequirements map[string]corev1.ResourceRequirements
+	DefaultImagePullBackOffTimeout       time.Duration
 }
 
 // GetDefaultsConfigName returns the name of the configmap containing all
@@ -109,6 +113,7 @@ func (cfg *Defaults) Equals(other *Defaults) bool {
 		other.DefaultTaskRunWorkspaceBinding == cfg.DefaultTaskRunWorkspaceBinding &&
 		other.DefaultMaxMatrixCombinationsCount == cfg.DefaultMaxMatrixCombinationsCount &&
 		other.DefaultResolverType == cfg.DefaultResolverType &&
+		other.DefaultImagePullBackOffTimeout == cfg.DefaultImagePullBackOffTimeout &&
 		reflect.DeepEqual(other.DefaultForbiddenEnv, cfg.DefaultForbiddenEnv)
 }
 
@@ -121,6 +126,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		DefaultCloudEventsSink:            DefaultCloudEventSinkValue,
 		DefaultMaxMatrixCombinationsCount: DefaultMaxMatrixCombinationsCount,
 		DefaultResolverType:               DefaultResolverTypeValue,
+		DefaultImagePullBackOffTimeout:    DefaultImagePullBackOffTimeout,
 	}
 
 	if defaultTimeoutMin, ok := cfgMap[defaultTimeoutMinutesKey]; ok {
@@ -189,6 +195,14 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 			return nil, fmt.Errorf("failed to unmarshal %v", resourceRequirementsStringValue)
 		}
 		tc.DefaultContainerResourceRequirements = resourceRequirementsValue
+	}
+
+	if defaultImagePullBackOff, ok := cfgMap[defaultImagePullBackOffTimeout]; ok {
+		timeout, err := time.ParseDuration(defaultImagePullBackOff)
+		if err != nil {
+			return nil, fmt.Errorf("failed parsing tracing config %q", defaultImagePullBackOffTimeout)
+		}
+		tc.DefaultImagePullBackOffTimeout = timeout
 	}
 
 	return &tc, nil

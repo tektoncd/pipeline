@@ -94,13 +94,15 @@ type Reconciler struct {
 	tracerProvider           trace.TracerProvider
 }
 
+const ImagePullBackOff = "ImagePullBackOff"
+
 var (
 	// Check that our Reconciler implements taskrunreconciler.Interface
 	_ taskrunreconciler.Interface = (*Reconciler)(nil)
 
 	// Pod failure reasons that trigger failure of the TaskRun
 	podFailureReasons = map[string]struct{}{
-		"ImagePullBackOff": {},
+		ImagePullBackOff:   {},
 		"InvalidImageName": {},
 	}
 )
@@ -171,7 +173,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 	}
 
 	// Check for Pod Failures
-	if failed, reason, message := c.checkPodFailed(tr); failed {
+	if failed, reason, message := c.checkPodFailed(ctx, tr); failed {
 		err := c.failTaskRun(ctx, tr, reason, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
 	}
@@ -222,10 +224,30 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 	return nil
 }
 
-func (c *Reconciler) checkPodFailed(tr *v1.TaskRun) (bool, v1.TaskRunReason, string) {
+func (c *Reconciler) checkPodFailed(ctx context.Context, tr *v1.TaskRun) (bool, v1.TaskRunReason, string) {
 	for _, step := range tr.Status.Steps {
 		if step.Waiting != nil {
 			if _, found := podFailureReasons[step.Waiting.Reason]; found {
+				if step.Waiting.Reason == ImagePullBackOff {
+					imagePullBackOffTimeOut := config.FromContextOrDefaults(ctx).Defaults.DefaultImagePullBackOffTimeout
+					// only attempt to recover from the imagePullBackOff if specified
+					if imagePullBackOffTimeOut.Seconds() != 0 {
+						p, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
+						if err != nil {
+							message := fmt.Sprintf(`The step %q in TaskRun %q failed to pull the image %q and the pod with error: "%s."`, step.Name, tr.Name, step.ImageID, err)
+							return true, v1.TaskRunReasonImagePullFailed, message
+						}
+						for _, condition := range p.Status.Conditions {
+							// check the pod condition to get the time when the pod was scheduled
+							// keep trying until the pod schedule time has exceeded the specified imagePullBackOff timeout duration
+							if condition.Type == corev1.PodScheduled {
+								if c.Clock.Since(condition.LastTransitionTime.Time) < imagePullBackOffTimeOut {
+									return false, "", ""
+								}
+							}
+						}
+					}
+				}
 				image := step.ImageID
 				message := fmt.Sprintf(`The step %q in TaskRun %q failed to pull the image %q. The pod errored with the message: "%s."`, step.Name, tr.Name, image, step.Waiting.Message)
 				return true, v1.TaskRunReasonImagePullFailed, message
@@ -235,6 +257,26 @@ func (c *Reconciler) checkPodFailed(tr *v1.TaskRun) (bool, v1.TaskRunReason, str
 	for _, sidecar := range tr.Status.Sidecars {
 		if sidecar.Waiting != nil {
 			if _, found := podFailureReasons[sidecar.Waiting.Reason]; found {
+				if sidecar.Waiting.Reason == ImagePullBackOff {
+					imagePullBackOffTimeOut := config.FromContextOrDefaults(ctx).Defaults.DefaultImagePullBackOffTimeout
+					// only attempt to recover from the imagePullBackOff if specified
+					if imagePullBackOffTimeOut.Seconds() != 0 {
+						p, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
+						if err != nil {
+							message := fmt.Sprintf(`The sidecar %q in TaskRun %q failed to pull the image %q and the pod with error: "%s."`, sidecar.Name, tr.Name, sidecar.ImageID, err)
+							return true, v1.TaskRunReasonImagePullFailed, message
+						}
+						for _, condition := range p.Status.Conditions {
+							// check the pod condition to get the time when the pod was scheduled
+							// keep trying until the pod schedule time has exceeded the specified imagePullBackOff timeout duration
+							if condition.Type == corev1.PodScheduled {
+								if c.Clock.Since(condition.LastTransitionTime.Time) < imagePullBackOffTimeOut {
+									return false, "", ""
+								}
+							}
+						}
+					}
+				}
 				image := sidecar.ImageID
 				message := fmt.Sprintf(`The sidecar %q in TaskRun %q failed to pull the image %q. The pod errored with the message: "%s."`, sidecar.Name, tr.Name, image, sidecar.Waiting.Message)
 				return true, v1.TaskRunReasonImagePullFailed, message
