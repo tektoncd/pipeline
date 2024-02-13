@@ -2658,13 +2658,15 @@ status:
 	}
 }
 
-func TestReconcilePodFailuresImageFailures(t *testing.T) {
+func TestReconcilePodFailures(t *testing.T) {
 	var stepNumber int8
 	for _, tc := range []struct {
-		desc    string
-		reason  string
-		message string
-		failure string // "step" or "sidecar"
+		desc                    string
+		reason                  string
+		message                 string
+		failure                 string // "step" or "sidecar"
+		imagePullBackOffTimeout string
+		podNotFound             bool
 	}{{
 		desc:    "image pull failed sidecar",
 		reason:  "ImagePullBackOff",
@@ -2685,6 +2687,44 @@ func TestReconcilePodFailuresImageFailures(t *testing.T) {
 		reason:  "InvalidImageName",
 		message: "Invalid image \"whatever\"",
 		failure: "step",
+	}, {
+		desc:                    "image pull failure for the sidecar with non-zero imagePullBackOff timeout",
+		reason:                  "ImagePullBackOff",
+		message:                 "Back-off pulling image \"whatever\"",
+		failure:                 "sidecar",
+		imagePullBackOffTimeout: "5s",
+	}, {
+		desc:                    "image pull failure for the sidecar with non-zero imagePullBackOff timeout and no pod",
+		reason:                  "ImagePullBackOff",
+		message:                 "pods \"pod-1\" not found",
+		failure:                 "sidecar",
+		imagePullBackOffTimeout: "5m",
+		podNotFound:             true,
+	}, {
+		desc:                    "invalid image sidecar with non-zero imagePullBackOff timeout",
+		reason:                  "InvalidImageName",
+		message:                 "Invalid image \"whatever\"",
+		failure:                 "sidecar",
+		imagePullBackOffTimeout: "5h",
+	}, {
+		desc:                    "image pull failure for the step with non-zero imagePullBackOff timeout",
+		reason:                  "ImagePullBackOff",
+		message:                 "Back-off pulling image \"whatever\"",
+		failure:                 "step",
+		imagePullBackOffTimeout: "5s",
+	}, {
+		desc:                    "image pull failure for the step with non-zero imagePullBackOff timeout and no pod",
+		reason:                  "ImagePullBackOff",
+		message:                 "pods \"pod-1\" not found",
+		failure:                 "step",
+		imagePullBackOffTimeout: "5m",
+		podNotFound:             true,
+	}, {
+		desc:                    "invalid image step with non-zero imagePullBackOff timeout",
+		reason:                  "InvalidImageName",
+		message:                 "Invalid image \"whatever\"",
+		failure:                 "step",
+		imagePullBackOffTimeout: "5h",
 	}} {
 		t.Run(tc.desc, func(t *testing.T) {
 			taskRun := parse.MustParseV1TaskRun(t, `
@@ -2699,6 +2739,7 @@ spec:
     steps:
     - image: alpine
 status:
+  podName: "pod-1"
   sidecars:
   - container: step-unnamed-0
     name: unnamed-0
@@ -2750,28 +2791,76 @@ status:
 				"Normal Started ",
 				fmt.Sprintf(`Warning Failed The %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever". The pod errored with the message: "%s.`, tc.failure, stepNumber, tc.message),
 			}
+
 			d := test.Data{
 				TaskRuns: []*v1.TaskRun{taskRun},
+			}
+			var timeout time.Duration
+			if tc.imagePullBackOffTimeout != "" {
+				timeout, _ = time.ParseDuration(tc.imagePullBackOffTimeout)
+				if timeout.Seconds() != 0 {
+					d.ConfigMaps = []*corev1.ConfigMap{
+						{
+							ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+							Data: map[string]string{
+								"default-imagepullbackoff-timeout": tc.imagePullBackOffTimeout,
+							},
+						},
+					}
+				}
+			}
+			if !tc.podNotFound {
+				d.Pods = []*corev1.Pod{{
+					ObjectMeta: metav1.ObjectMeta{Name: "pod-1", Namespace: "foo"},
+					Status: corev1.PodStatus{
+						Conditions: []corev1.PodCondition{{
+							Type:               corev1.PodScheduled,
+							LastTransitionTime: metav1.Time{Time: time.Now()},
+						}},
+					},
+				}}
 			}
 			testAssets, cancel := getTaskRunController(t, d)
 			defer cancel()
 			c := testAssets.Controller
 			clients := testAssets.Clients
 
-			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
-				t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
-			}
-			newTr, err := clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
-			if err != nil {
-				t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
-			}
-			condition := newTr.Status.GetCondition(apis.ConditionSucceeded)
-			if d := cmp.Diff(expectedStatus, condition, ignoreLastTransitionTime); d != "" {
-				t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
-			}
-			err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, taskRun.Name, wantEvents)
-			if err != nil {
-				t.Errorf(err.Error())
+			// for a step or a sidecar, controller must continue and retry podCreation with non-zero imagePullBackOff timeout
+			if tc.reason == "ImagePullBackOff" && timeout.Seconds() != 0 && !tc.podNotFound {
+				err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun))
+				if err == nil {
+					t.Errorf("expected error when reconciling completed TaskRun : %v", err)
+				}
+				if isRequeueError, requeueDuration := controller.IsRequeueKey(err); !isRequeueError {
+					t.Errorf("Expected requeue error, but got: %s", err.Error())
+				} else if requeueDuration < 0 {
+					t.Errorf("Expected a positive requeue duration but got %s", requeueDuration.String())
+				}
+				_, err = clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+				if err != nil {
+					t.Errorf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+				}
+			} else {
+				if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+					t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
+				}
+				newTr, err := clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+				if err != nil {
+					t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+				}
+				// the error message includes the error if the pod is not found
+				if tc.podNotFound {
+					expectedStatus.Message = fmt.Sprintf(`The %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever" and the pod with error: "%s."`, tc.failure, stepNumber, tc.message)
+					wantEvents[1] = fmt.Sprintf(`Warning Failed The %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever" and the pod with error: "%s.`, tc.failure, stepNumber, tc.message)
+				}
+				condition := newTr.Status.GetCondition(apis.ConditionSucceeded)
+				if d := cmp.Diff(expectedStatus, condition, ignoreLastTransitionTime); d != "" {
+					t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
+				}
+				err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, taskRun.Name, wantEvents)
+				if err != nil {
+					t.Errorf(err.Error())
+				}
 			}
 		})
 	}

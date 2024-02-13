@@ -18,6 +18,7 @@ package config_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -43,6 +44,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultManagedByLabelValue:        "something-else",
 				DefaultMaxMatrixCombinationsCount: 256,
 				DefaultResolverType:               "git",
+				DefaultImagePullBackOffTimeout:    time.Duration(5) * time.Second,
 			},
 			fileName: config.GetDefaultsConfigName(),
 		},
@@ -62,12 +64,16 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 					},
 				},
 				DefaultMaxMatrixCombinationsCount: 256,
+				DefaultImagePullBackOffTimeout:    0,
 			},
 			fileName: "config-defaults-with-pod-template",
 		},
 		{
 			expectedError: true,
 			fileName:      "config-defaults-timeout-err",
+		}, {
+			expectedError: true,
+			fileName:      "config-defaults-imagepullbackoff-timeout-err",
 		},
 		// Previously the yaml package did not support UnmarshalStrict, though
 		// it's supported now however it may introduce incompatibility, so we decide
@@ -81,6 +87,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultManagedByLabelValue:        config.DefaultManagedByLabelValue,
 				DefaultPodTemplate:                &pod.Template{},
 				DefaultMaxMatrixCombinationsCount: 256,
+				DefaultImagePullBackOffTimeout:    0,
 			},
 		},
 		{
@@ -92,6 +99,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultManagedByLabelValue:        config.DefaultManagedByLabelValue,
 				DefaultAAPodTemplate:              &pod.AffinityAssistantTemplate{},
 				DefaultMaxMatrixCombinationsCount: 256,
+				DefaultImagePullBackOffTimeout:    0,
 			},
 		},
 		{
@@ -106,6 +114,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultTimeoutMinutes:             60,
 				DefaultServiceAccount:             "default",
 				DefaultManagedByLabelValue:        config.DefaultManagedByLabelValue,
+				DefaultImagePullBackOffTimeout:    0,
 			},
 		},
 		{
@@ -117,6 +126,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultMaxMatrixCombinationsCount: 256,
 				DefaultManagedByLabelValue:        "tekton-pipelines",
 				DefaultForbiddenEnv:               []string{"TEKTON_POWER_MODE", "TEST_ENV", "TEST_TEKTON"},
+				DefaultImagePullBackOffTimeout:    time.Duration(15) * time.Second,
 			},
 		},
 		{
@@ -128,6 +138,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultManagedByLabelValue:           "tekton-pipelines",
 				DefaultMaxMatrixCombinationsCount:    256,
 				DefaultContainerResourceRequirements: map[string]corev1.ResourceRequirements{},
+				DefaultImagePullBackOffTimeout:       0,
 			},
 		},
 		{
@@ -142,6 +153,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultServiceAccount:             "default",
 				DefaultManagedByLabelValue:        "tekton-pipelines",
 				DefaultMaxMatrixCombinationsCount: 256,
+				DefaultImagePullBackOffTimeout:    0,
 				DefaultContainerResourceRequirements: map[string]corev1.ResourceRequirements{
 					config.ResourceRequirementDefaultContainerKey: {
 						Requests: corev1.ResourceList{
@@ -197,6 +209,7 @@ func TestNewDefaultsFromEmptyConfigMap(t *testing.T) {
 		DefaultManagedByLabelValue:        "tekton-pipelines",
 		DefaultServiceAccount:             "default",
 		DefaultMaxMatrixCombinationsCount: 256,
+		DefaultImagePullBackOffTimeout:    0,
 	}
 	verifyConfigFileWithExpectedConfig(t, DefaultsConfigEmptyName, expectedConfig)
 }
@@ -343,6 +356,24 @@ func TestEquals(t *testing.T) {
 			},
 			right: &config.Defaults{
 				DefaultForbiddenEnv: []string{"TEST_ENV", "TEKTON_POWER_MODE"},
+			},
+			expected: true,
+		}, {
+			name: "different default ImagePullBackOff timeout",
+			left: &config.Defaults{
+				DefaultImagePullBackOffTimeout: 10,
+			},
+			right: &config.Defaults{
+				DefaultImagePullBackOffTimeout: 20,
+			},
+			expected: false,
+		}, {
+			name: "same default ImagePullBackOff timeout",
+			left: &config.Defaults{
+				DefaultImagePullBackOffTimeout: 20,
+			},
+			right: &config.Defaults{
+				DefaultImagePullBackOffTimeout: 20,
 			},
 			expected: true,
 		},
