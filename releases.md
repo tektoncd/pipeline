@@ -42,7 +42,7 @@ Further documentation available:
 ## Release
 ### v0.56 (LTS)
 
-- **Latest Release**: [v0.56.0][v0.56-0] (2024-01-19) ([docs][v0.56-0-docs], [examples][v0.56-0-examples])
+- **Latest Release**: [v0.56.1][v0.56-1] (2024-02-13) ([docs][v0.56-1-docs], [examples][v0.56-1-examples])
 - **Initial Release**: [v0.56.0][v0.56-0] (2024-01-19)
 - **Estimated End of Life**: 2025-01-19
 - **Patch Releases**: [v0.56.0][v0.56-0]
@@ -187,6 +187,7 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 [release-notes-standards]:
     https://github.com/tektoncd/community/blob/main/standards.md#release-notes
     
+[v0.56-1]: https://github.com/tektoncd/pipeline/releases/tag/v0.56.1
 [v0.56-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.56.0
 [v0.54-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.54.0
 [v0.53-2]: https://github.com/tektoncd/pipeline/releases/tag/v0.53.2
@@ -233,6 +234,7 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 [v0-37-5]: https://github.com/tektoncd/pipeline/releases/tag/v0.37.5
 [v0-37-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.37.0
 
+[v0.56-0-docs]: https://github.com/tektoncd/pipeline/tree/v0.56.1/docs#tekton-pipelines
 [v0.56-0-docs]: https://github.com/tektoncd/pipeline/tree/v0.56.0/docs#tekton-pipelines
 [v0.54-0-docs]: https://github.com/tektoncd/pipeline/tree/v0.54.0/docs#tekton-pipelines
 [v0.53-0-docs]: https://github.com/tektoncd/pipeline/tree/v0.53.0/docs#tekton-pipelines
@@ -260,6 +262,7 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 [v0-38-4-docs]: https://github.com/tektoncd/pipeline/tree/v0.38.4/docs#tekton-pipelines
 [v0-37-5-docs]: https://github.com/tektoncd/pipeline/tree/v0.37.5/docs#tekton-pipelines
 
+[v0.56-0-examples]: https://github.com/tektoncd/pipeline/tree/v0.56.1/examples#examples
 [v0.56-0-examples]: https://github.com/tektoncd/pipeline/tree/v0.56.0/examples#examples
 [v0.54-0-examples]: https://github.com/tektoncd/pipeline/tree/v0.54.0/examples#examples
 [v0.53-2-examples]: https://github.com/tektoncd/pipeline/tree/v0.53.2/examples#examples
