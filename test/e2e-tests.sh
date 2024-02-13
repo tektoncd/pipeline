@@ -26,6 +26,7 @@ SKIP_INITIALIZE=${SKIP_INITIALIZE:="false"}
 RUN_YAML_TESTS=${RUN_YAML_TESTS:="true"}
 SKIP_GO_E2E_TESTS=${SKIP_GO_E2E_TESTS:="false"}
 E2E_GO_TEST_TIMEOUT=${E2E_GO_TEST_TIMEOUT:="20m"}
+RUN_FEATUREFLAGS_TESTS=${RUN_FEATUREFLAGS_TESTS:="false"}
 RESULTS_FROM=${RESULTS_FROM:-termination-message}
 ENABLE_STEP_ACTIONS=${ENABLE_STEP_ACTIONS:="false"}
 ENABLE_CEL_IN_WHENEXPRESSION=${ENABLE_CEL_IN_WHENEXPRESSION:="false"}
@@ -128,6 +129,10 @@ function run_e2e() {
   # test failures.
   if [ "${RUN_YAML_TESTS}" == "true" ]; then
     go_test_e2e -mod=readonly -tags=examples -timeout=${E2E_GO_TEST_TIMEOUT} ./test/ || failed=1
+  fi
+
+  if [ "${RUN_FEATUREFLAG_TESTS}" == "true" ]; then
+    go_test_e2e -mod=readonly -tags=featureflags -timeout=${E2E_GO_TEST_TIMEOUT} ./test/ || failed=1
   fi
 }
 
