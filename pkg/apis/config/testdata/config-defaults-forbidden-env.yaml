@@ -21,3 +21,4 @@ data:
   default-timeout-minutes: "50"
   default-service-account: "tekton"
   default-forbidden-env: "TEST_TEKTON, TEKTON_POWER_MODE,TEST_ENV,TEST_TEKTON"
+  default-imagepullbackoff-timeout: "15s"

@@ -46,6 +46,8 @@ const (
 	DefaultMaxMatrixCombinationsCount = 256
 	// DefaultResolverTypeValue is used when no default resolver type is specified
 	DefaultResolverTypeValue = ""
+	// DefaultImagePullBackOffTimeout is used when no imagePullBackOff timeout is specified
+	DefaultImagePullBackOffTimeout = 0 * time.Minute
 
 	defaultTimeoutMinutesKey             = "default-timeout-minutes"
 	defaultServiceAccountKey             = "default-service-account"
@@ -57,6 +59,7 @@ const (
 	defaultMaxMatrixCombinationsCountKey = "default-max-matrix-combinations-count"
 	defaultForbiddenEnv                  = "default-forbidden-env"
 	defaultResolverTypeKey               = "default-resolver-type"
+	defaultImagePullBackOffTimeout       = "default-imagepullbackoff-timeout"
 )
 
 // DefaultConfig holds all the default configurations for the config.
@@ -75,6 +78,7 @@ type Defaults struct {
 	DefaultMaxMatrixCombinationsCount int
 	DefaultForbiddenEnv               []string
 	DefaultResolverType               string
+	DefaultImagePullBackOffTimeout    time.Duration
 }
 
 // GetDefaultsConfigName returns the name of the configmap containing all
@@ -105,6 +109,7 @@ func (cfg *Defaults) Equals(other *Defaults) bool {
 		other.DefaultTaskRunWorkspaceBinding == cfg.DefaultTaskRunWorkspaceBinding &&
 		other.DefaultMaxMatrixCombinationsCount == cfg.DefaultMaxMatrixCombinationsCount &&
 		other.DefaultResolverType == cfg.DefaultResolverType &&
+		other.DefaultImagePullBackOffTimeout == cfg.DefaultImagePullBackOffTimeout &&
 		reflect.DeepEqual(other.DefaultForbiddenEnv, cfg.DefaultForbiddenEnv)
 }
 
@@ -117,6 +122,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		DefaultCloudEventsSink:            DefaultCloudEventSinkValue,
 		DefaultMaxMatrixCombinationsCount: DefaultMaxMatrixCombinationsCount,
 		DefaultResolverType:               DefaultResolverTypeValue,
+		DefaultImagePullBackOffTimeout:    DefaultImagePullBackOffTimeout,
 	}
 
 	if defaultTimeoutMin, ok := cfgMap[defaultTimeoutMinutesKey]; ok {
@@ -177,6 +183,14 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 
 	if defaultResolverType, ok := cfgMap[defaultResolverTypeKey]; ok {
 		tc.DefaultResolverType = defaultResolverType
+	}
+
+	if defaultImagePullBackOff, ok := cfgMap[defaultImagePullBackOffTimeout]; ok {
+		timeout, err := time.ParseDuration(defaultImagePullBackOff)
+		if err != nil {
+			return nil, fmt.Errorf("failed parsing tracing config %q", defaultImagePullBackOffTimeout)
+		}
+		tc.DefaultImagePullBackOffTimeout = timeout
 	}
 
 	return &tc, nil
