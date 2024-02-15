@@ -1238,3 +1238,210 @@ func TestFindWorkspacesUsedByTask(t *testing.T) {
 		})
 	}
 }
+
+func TestReplaceWorkspaceBindingsVars(t *testing.T) {
+	testCases := []struct {
+		name              string
+		workspaceBindings []v1.WorkspaceBinding
+		replacements      map[string]string
+		expected          []v1.WorkspaceBinding
+	}{
+		{
+			name:         "No replacements",
+			replacements: nil,
+			workspaceBindings: []v1.WorkspaceBinding{
+				{SubPath: "$(params.to-replace)"},
+			},
+			expected: []v1.WorkspaceBinding{
+				{SubPath: "$(params.to-replace)"},
+			},
+		},
+		{
+			name: "Replace SubPath",
+			replacements: map[string]string{
+				"params.to-replace": "replaced",
+			},
+			workspaceBindings: []v1.WorkspaceBinding{
+				{SubPath: "$(params.to-replace)"},
+			},
+			expected: []v1.WorkspaceBinding{
+				{SubPath: "replaced"},
+			},
+		},
+		{
+			name: "Replace PersistentVolumeClaim",
+			replacements: map[string]string{
+				"params.to-replace": "replaced",
+			},
+			workspaceBindings: []v1.WorkspaceBinding{
+				{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "$(params.to-replace)",
+					},
+				},
+			},
+			expected: []v1.WorkspaceBinding{
+				{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "replaced",
+					},
+				},
+			},
+		},
+		{
+			name: "Replace ConfigMap",
+			replacements: map[string]string{
+				"params.to-replace": "replaced",
+			},
+			workspaceBindings: []v1.WorkspaceBinding{
+				{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "$(params.to-replace)",
+						},
+						Items: []corev1.KeyToPath{{
+							Key:  "$(params.to-replace)",
+							Path: "$(params.to-replace)",
+						}},
+					},
+				},
+			},
+			expected: []v1.WorkspaceBinding{
+				{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "replaced",
+						},
+						Items: []corev1.KeyToPath{{
+							Key:  "replaced",
+							Path: "replaced",
+						}},
+					},
+				},
+			},
+		},
+		{
+			name: "Replace Secret",
+			replacements: map[string]string{
+				"params.to-replace": "replaced",
+			},
+			workspaceBindings: []v1.WorkspaceBinding{
+				{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: "$(params.to-replace)",
+						Items: []corev1.KeyToPath{{
+							Key:  "$(params.to-replace)",
+							Path: "$(params.to-replace)",
+						}},
+					},
+				},
+			},
+			expected: []v1.WorkspaceBinding{
+				{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: "replaced",
+						Items: []corev1.KeyToPath{{
+							Key:  "replaced",
+							Path: "replaced",
+						}},
+					},
+				},
+			},
+		},
+		{
+			name: "Replace Projected",
+			replacements: map[string]string{
+				"params.to-replace": "replaced",
+			},
+			workspaceBindings: []v1.WorkspaceBinding{
+				{
+					Projected: &corev1.ProjectedVolumeSource{
+						Sources: []corev1.VolumeProjection{{
+							ConfigMap: &corev1.ConfigMapProjection{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "$(params.to-replace)",
+								},
+								Items: []corev1.KeyToPath{{
+									Key:  "$(params.to-replace)",
+									Path: "$(params.to-replace)",
+								}},
+							},
+						}, {
+							Secret: &corev1.SecretProjection{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "$(params.to-replace)",
+								},
+								Items: []corev1.KeyToPath{{
+									Key:  "$(params.to-replace)",
+									Path: "$(params.to-replace)",
+								}},
+							},
+						}},
+					},
+				},
+			},
+			expected: []v1.WorkspaceBinding{
+				{
+					Projected: &corev1.ProjectedVolumeSource{
+						Sources: []corev1.VolumeProjection{{
+							ConfigMap: &corev1.ConfigMapProjection{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "replaced",
+								},
+								Items: []corev1.KeyToPath{{
+									Key:  "replaced",
+									Path: "replaced",
+								}},
+							},
+						}, {
+							Secret: &corev1.SecretProjection{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "replaced",
+								},
+								Items: []corev1.KeyToPath{{
+									Key:  "replaced",
+									Path: "replaced",
+								}},
+							},
+						}},
+					},
+				},
+			},
+		},
+		{
+			name: "Replace CSI",
+			replacements: map[string]string{
+				"params.to-replace": "replaced",
+			},
+			workspaceBindings: []v1.WorkspaceBinding{
+				{
+					CSI: &corev1.CSIVolumeSource{
+						Driver: "$(params.to-replace)",
+						NodePublishSecretRef: &corev1.LocalObjectReference{
+							Name: "$(params.to-replace)",
+						},
+					},
+				},
+			},
+			expected: []v1.WorkspaceBinding{
+				{
+					CSI: &corev1.CSIVolumeSource{
+						Driver: "replaced",
+						NodePublishSecretRef: &corev1.LocalObjectReference{
+							Name: "replaced",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := workspace.ReplaceWorkspaceBindingsVars(tc.workspaceBindings, tc.replacements)
+			if d := cmp.Diff(tc.expected, result); d != "" {
+				t.Errorf("Test case %q, diff: %s", tc.name, diff.PrintWantGot(d))
+			}
+		})
+	}
+}

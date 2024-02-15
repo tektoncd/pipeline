@@ -4891,10 +4891,10 @@ spec:
       steps:
         - name: s1
           image: alpine
-          script: | 
+          script: |
             echo $(params.version) + $(params.tag)
   - name: b-task
-    params: 
+    params:
     - name: ref-p1
       value: $(params.version)
     - name: ref-p2
@@ -4902,7 +4902,7 @@ spec:
     taskRef:
       name: ref-task
   - name: c-task-matrixed
-    matrix: 
+    matrix:
       params:
       - name: ref-p1
         value: [v1, v2]
@@ -4981,7 +4981,7 @@ spec:
       steps:
         - name: s1
           image: alpine
-          script: | 
+          script: |
             echo $(params.version)
 `)}
 	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
@@ -5870,8 +5870,8 @@ spec:
 `),
 	}
 	trs := []*v1.TaskRun{mustParseTaskRunWithObjectMeta(t,
-		taskRunObjectMeta("test-pipeline-run-different-service-accs-a-task-xxyyy", "foo",
-			"test-pipeline-run-different-service-accs", "test-pipeline", "a-task", true),
+		taskRunObjectMeta("test-pipeline-run-variable-substitution-a-task-xxyyy", "foo",
+			"test-pipeline-run-variable-substitution", "test-pipeline", "a-task", true),
 		`
 spec:
   serviceAccountName: test-sa
@@ -5899,7 +5899,7 @@ status:
 			name: "pcv success",
 			prs: []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
 metadata:
-  name: test-pipeline-run-different-service-accs
+  name: test-pipeline-run-variable-substitution
   namespace: foo
 spec:
   pipelineRef:
@@ -5913,8 +5913,8 @@ spec:
 `)},
 			disableAA: true,
 			expectedTr: mustParseTaskRunWithObjectMeta(t,
-				taskRunObjectMeta("test-pipeline-run-different-service-accs-b-task", "foo",
-					"test-pipeline-run-different-service-accs", "test-pipeline", "b-task", false),
+				taskRunObjectMeta("test-pipeline-run-variable-substitution-b-task", "foo",
+					"test-pipeline-run-variable-substitution", "test-pipeline", "b-task", false),
 				`spec:
   serviceAccountName: test-sa-0
   taskRef:
@@ -5930,7 +5930,7 @@ spec:
 			name: "subPath success",
 			prs: []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
 metadata:
-  name: test-pipeline-run-different-service-accs
+  name: test-pipeline-run-variable-substitution
   namespace: foo
 spec:
   pipelineRef:
@@ -5942,8 +5942,8 @@ spec:
       subPath: $(tasks.a-task.results.aResult)
 `)},
 			expectedTr: mustParseTaskRunWithObjectMeta(t,
-				taskRunObjectMeta("test-pipeline-run-different-service-accs-b-task", "foo",
-					"test-pipeline-run-different-service-accs", "test-pipeline", "b-task", false),
+				taskRunObjectMeta("test-pipeline-run-variable-substitution-b-task", "foo",
+					"test-pipeline-run-variable-substitution", "test-pipeline", "b-task", false),
 				`spec:
   serviceAccountName: test-sa-0
   taskRef:
@@ -5958,7 +5958,7 @@ spec:
 			name: "secret.secretName success",
 			prs: []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
 metadata:
-  name: test-pipeline-run-different-service-accs
+  name: test-pipeline-run-variable-substitution
   namespace: foo
 spec:
   pipelineRef:
@@ -5967,12 +5967,12 @@ spec:
     serviceAccountName: test-sa-0
   workspaces:
     - name: ws-1
-      secret: 
+      secret:
         secretName: $(tasks.a-task.results.aResult)
 `)},
 			expectedTr: mustParseTaskRunWithObjectMeta(t,
-				taskRunObjectMeta("test-pipeline-run-different-service-accs-b-task", "foo",
-					"test-pipeline-run-different-service-accs", "test-pipeline", "b-task", false),
+				taskRunObjectMeta("test-pipeline-run-variable-substitution-b-task", "foo",
+					"test-pipeline-run-variable-substitution", "test-pipeline", "b-task", false),
 				`spec:
   serviceAccountName: test-sa-0
   taskRef:
@@ -5988,7 +5988,7 @@ spec:
 			name: "projected.sources.configMap.name success",
 			prs: []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
 metadata:
-  name: test-pipeline-run-different-service-accs
+  name: test-pipeline-run-variable-substitution
   namespace: foo
 spec:
   pipelineRef:
@@ -5997,14 +5997,14 @@ spec:
     serviceAccountName: test-sa-0
   workspaces:
     - name: ws-1
-      projected: 
+      projected:
         sources:
          - configMap:
              name: $(tasks.a-task.results.aResult)
 `)},
 			expectedTr: mustParseTaskRunWithObjectMeta(t,
-				taskRunObjectMeta("test-pipeline-run-different-service-accs-b-task", "foo",
-					"test-pipeline-run-different-service-accs", "test-pipeline", "b-task", false),
+				taskRunObjectMeta("test-pipeline-run-variable-substitution-b-task", "foo",
+					"test-pipeline-run-variable-substitution", "test-pipeline", "b-task", false),
 				`spec:
   serviceAccountName: test-sa-0
   taskRef:
@@ -6012,17 +6012,17 @@ spec:
     kind: Task
   workspaces:
     - name: s1
-      projected: 
+      projected:
         sources:
          - configMap:
-             name: aResultValue 
+             name: aResultValue
 `),
 		},
 		{
 			name: "projected.sources.secret.name success",
 			prs: []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
 metadata:
-  name: test-pipeline-run-different-service-accs
+  name: test-pipeline-run-variable-substitution
   namespace: foo
 spec:
   pipelineRef:
@@ -6031,14 +6031,14 @@ spec:
     serviceAccountName: test-sa-0
   workspaces:
     - name: ws-1
-      projected: 
+      projected:
         sources:
          - secret:
              name: $(tasks.a-task.results.aResult)
 `)},
 			expectedTr: mustParseTaskRunWithObjectMeta(t,
-				taskRunObjectMeta("test-pipeline-run-different-service-accs-b-task", "foo",
-					"test-pipeline-run-different-service-accs", "test-pipeline", "b-task", false),
+				taskRunObjectMeta("test-pipeline-run-variable-substitution-b-task", "foo",
+					"test-pipeline-run-variable-substitution", "test-pipeline", "b-task", false),
 				`spec:
   serviceAccountName: test-sa-0
   taskRef:
@@ -6046,17 +6046,57 @@ spec:
     kind: Task
   workspaces:
     - name: s1
-      projected: 
+      projected:
         sources:
          - secret:
-             name: aResultValue 
+             name: aResultValue
+`),
+		},
+		{
+			name: "projected.sources.secret.items success",
+			prs: []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-variable-substitution
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa-0
+  workspaces:
+    - name: ws-1
+      projected:
+        sources:
+         - secret:
+             name: name
+             items:
+               - key: $(tasks.a-task.results.aResult)
+                 path: $(tasks.a-task.results.aResult)
+`)},
+			expectedTr: mustParseTaskRunWithObjectMeta(t,
+				taskRunObjectMeta("test-pipeline-run-variable-substitution-b-task", "foo",
+					"test-pipeline-run-variable-substitution", "test-pipeline", "b-task", false),
+				`spec:
+  serviceAccountName: test-sa-0
+  taskRef:
+    name: b-task
+    kind: Task
+  workspaces:
+    - name: s1
+      projected:
+        sources:
+         - secret:
+             name: name
+             items:
+               - key: aResultValue
+                 path: aResultValue
 `),
 		},
 		{
 			name: "csi.driver success",
 			prs: []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
 metadata:
-  name: test-pipeline-run-different-service-accs
+  name: test-pipeline-run-variable-substitution
   namespace: foo
 spec:
   pipelineRef:
@@ -6069,8 +6109,8 @@ spec:
         driver: $(tasks.a-task.results.aResult)
 `)},
 			expectedTr: mustParseTaskRunWithObjectMeta(t,
-				taskRunObjectMeta("test-pipeline-run-different-service-accs-b-task", "foo",
-					"test-pipeline-run-different-service-accs", "test-pipeline", "b-task", false),
+				taskRunObjectMeta("test-pipeline-run-variable-substitution-b-task", "foo",
+					"test-pipeline-run-variable-substitution", "test-pipeline", "b-task", false),
 				`spec:
   serviceAccountName: test-sa-0
   taskRef:
@@ -6079,14 +6119,14 @@ spec:
   workspaces:
     - name: s1
       csi:
-        driver: aResultValue 
+        driver: aResultValue
 `),
 		},
 		{
 			name: "nodePublishSecretRef.name success",
 			prs: []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
 metadata:
-  name: test-pipeline-run-different-service-accs
+  name: test-pipeline-run-variable-substitution
   namespace: foo
 spec:
   pipelineRef:
@@ -6100,8 +6140,8 @@ spec:
           name: $(tasks.a-task.results.aResult)
 `)},
 			expectedTr: mustParseTaskRunWithObjectMeta(t,
-				taskRunObjectMeta("test-pipeline-run-different-service-accs-b-task", "foo",
-					"test-pipeline-run-different-service-accs", "test-pipeline", "b-task", false),
+				taskRunObjectMeta("test-pipeline-run-variable-substitution-b-task", "foo",
+					"test-pipeline-run-variable-substitution", "test-pipeline", "b-task", false),
 				`spec:
   serviceAccountName: test-sa-0
   taskRef:
@@ -6110,7 +6150,7 @@ spec:
   workspaces:
     - name: s1
       csi:
-        nodePublishSecretRef: 
+        nodePublishSecretRef:
           name: aResultValue
 `),
 		},
@@ -6132,10 +6172,10 @@ spec:
 			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
 
-			_, clients := prt.reconcileRun("foo", "test-pipeline-run-different-service-accs", []string{}, false)
+			_, clients := prt.reconcileRun("foo", "test-pipeline-run-variable-substitution", []string{}, false)
 			// Check that the expected TaskRun was created
 			actual, err := clients.Pipeline.TektonV1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
-				LabelSelector: "tekton.dev/pipelineTask=b-task,tekton.dev/pipelineRun=test-pipeline-run-different-service-accs",
+				LabelSelector: "tekton.dev/pipelineTask=b-task,tekton.dev/pipelineRun=test-pipeline-run-variable-substitution",
 				Limit:         1,
 			})
 
