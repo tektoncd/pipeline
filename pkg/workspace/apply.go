@@ -275,3 +275,88 @@ func FindWorkspacesUsedByTask(ts v1.TaskSpec) (sets.String, error) {
 	}
 	return workspacesUsedInSteps, nil
 }
+
+// ReplaceWorkspaceBindingsVars returns a new slice of WorkspaceBinding with references to parameters replaced,
+// based on the mapping provided in replacements.
+func ReplaceWorkspaceBindingsVars(wbs []v1.WorkspaceBinding, replacements map[string]string) []v1.WorkspaceBinding {
+	for i := range wbs {
+		replaceWorkspaceBindingVars(&wbs[i], replacements)
+	}
+	return wbs
+}
+
+// replaceWorkspaceBindingVars returns a new WorkspaceBinding with references to parameters replaced,
+// based on the mapping provided in replacements.
+func replaceWorkspaceBindingVars(wb *v1.WorkspaceBinding, replacements map[string]string) *v1.WorkspaceBinding {
+	wb.SubPath = substitution.ApplyReplacements(wb.SubPath, replacements)
+	if wb.PersistentVolumeClaim != nil {
+		wb.PersistentVolumeClaim = applyPersistentVolumeClaimVolumeSource(wb.PersistentVolumeClaim, replacements)
+	}
+	if wb.ConfigMap != nil {
+		wb.ConfigMap = applyConfigMapVolumeSource(wb.ConfigMap, replacements)
+	}
+	if wb.Secret != nil {
+		wb.Secret = applySecretVolumeSource(wb.Secret, replacements)
+	}
+	if wb.Projected != nil {
+		for j, source := range wb.Projected.Sources {
+			if source.ConfigMap != nil {
+				wb.Projected.Sources[j].ConfigMap = applyConfigMapProjection(wb.Projected.Sources[j].ConfigMap, replacements)
+			}
+			if source.Secret != nil {
+				wb.Projected.Sources[j].Secret = applySecretProjection(wb.Projected.Sources[j].Secret, replacements)
+			}
+		}
+	}
+	if wb.CSI != nil {
+		wb.CSI = applyCSIVolumeSource(wb.CSI, replacements)
+	}
+	return wb
+}
+
+func applyPersistentVolumeClaimVolumeSource(pvc *corev1.PersistentVolumeClaimVolumeSource,
+	replacements map[string]string) *corev1.PersistentVolumeClaimVolumeSource {
+	pvc.ClaimName = substitution.ApplyReplacements(pvc.ClaimName, replacements)
+	return pvc
+}
+
+func applyConfigMapVolumeSource(cm *corev1.ConfigMapVolumeSource, replacements map[string]string) *corev1.ConfigMapVolumeSource {
+	cm.Name = substitution.ApplyReplacements(cm.Name, replacements)
+	cm.Items = applyKeyToPathItems(cm.Items, replacements)
+	return cm
+}
+
+func applySecretVolumeSource(s *corev1.SecretVolumeSource, replacements map[string]string) *corev1.SecretVolumeSource {
+	s.SecretName = substitution.ApplyReplacements(s.SecretName, replacements)
+	s.Items = applyKeyToPathItems(s.Items, replacements)
+	return s
+}
+
+func applyConfigMapProjection(cm *corev1.ConfigMapProjection, replacements map[string]string) *corev1.ConfigMapProjection {
+	cm.Name = substitution.ApplyReplacements(cm.Name, replacements)
+	cm.Items = applyKeyToPathItems(cm.Items, replacements)
+	return cm
+}
+
+func applySecretProjection(s *corev1.SecretProjection, replacements map[string]string) *corev1.SecretProjection {
+	s.Name = substitution.ApplyReplacements(s.Name, replacements)
+	s.Items = applyKeyToPathItems(s.Items, replacements)
+	return s
+}
+
+func applyCSIVolumeSource(csi *corev1.CSIVolumeSource, replacements map[string]string) *corev1.CSIVolumeSource {
+	csi.Driver = substitution.ApplyReplacements(csi.Driver, replacements)
+	if csi.NodePublishSecretRef != nil {
+		csi.NodePublishSecretRef.Name = substitution.ApplyReplacements(csi.NodePublishSecretRef.Name, replacements)
+	}
+	return csi
+}
+
+func applyKeyToPathItems(items []corev1.KeyToPath, replacements map[string]string) []corev1.KeyToPath {
+	for i := range items {
+		item := &items[i]
+		item.Key = substitution.ApplyReplacements(item.Key, replacements)
+		item.Path = substitution.ApplyReplacements(item.Path, replacements)
+	}
+	return items
+}

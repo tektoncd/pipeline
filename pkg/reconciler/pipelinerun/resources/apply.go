@@ -26,6 +26,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/substitution"
+	"github.com/tektoncd/pipeline/pkg/workspace"
 )
 
 const (
@@ -396,34 +397,7 @@ func ApplyResultsToWorkspaceBindings(trResults map[string][]v1.TaskRunResult, pr
 		}
 	}
 
-	for i, binding := range pr.Spec.Workspaces {
-		if pr.Spec.Workspaces[i].PersistentVolumeClaim != nil {
-			pr.Spec.Workspaces[i].PersistentVolumeClaim.ClaimName = substitution.ApplyReplacements(binding.PersistentVolumeClaim.ClaimName, stringReplacements)
-		}
-		pr.Spec.Workspaces[i].SubPath = substitution.ApplyReplacements(binding.SubPath, stringReplacements)
-		if pr.Spec.Workspaces[i].ConfigMap != nil {
-			pr.Spec.Workspaces[i].ConfigMap.Name = substitution.ApplyReplacements(binding.ConfigMap.Name, stringReplacements)
-		}
-		if pr.Spec.Workspaces[i].CSI != nil {
-			pr.Spec.Workspaces[i].CSI.Driver = substitution.ApplyReplacements(binding.CSI.Driver, stringReplacements)
-			if pr.Spec.Workspaces[i].CSI.NodePublishSecretRef != nil {
-				pr.Spec.Workspaces[i].CSI.NodePublishSecretRef.Name = substitution.ApplyReplacements(binding.CSI.NodePublishSecretRef.Name, stringReplacements)
-			}
-		}
-		if pr.Spec.Workspaces[i].Secret != nil {
-			pr.Spec.Workspaces[i].Secret.SecretName = substitution.ApplyReplacements(binding.Secret.SecretName, stringReplacements)
-		}
-		if pr.Spec.Workspaces[i].Projected != nil {
-			for j, source := range binding.Projected.Sources {
-				if pr.Spec.Workspaces[i].Projected.Sources[j].ConfigMap != nil {
-					pr.Spec.Workspaces[i].Projected.Sources[j].ConfigMap.Name = substitution.ApplyReplacements(source.ConfigMap.Name, stringReplacements)
-				}
-				if pr.Spec.Workspaces[i].Projected.Sources[j].Secret != nil {
-					pr.Spec.Workspaces[i].Projected.Sources[j].Secret.Name = substitution.ApplyReplacements(source.Secret.Name, stringReplacements)
-				}
-			}
-		}
-	}
+	pr.Spec.Workspaces = workspace.ReplaceWorkspaceBindingsVars(pr.Spec.Workspaces, stringReplacements)
 }
 
 // PropagateResults propagate the result of the completed task to the unfinished task that is not explicitly specify in the params
@@ -605,32 +579,5 @@ func runResultValue(taskName string, resultName string, runResults map[string][]
 // placeholders in various binding types with values from provided parameters.
 func ApplyParametersToWorkspaceBindings(ctx context.Context, pr *v1.PipelineRun) {
 	parameters, _, _ := paramsFromPipelineRun(ctx, pr)
-	for i, binding := range pr.Spec.Workspaces {
-		if pr.Spec.Workspaces[i].PersistentVolumeClaim != nil {
-			pr.Spec.Workspaces[i].PersistentVolumeClaim.ClaimName = substitution.ApplyReplacements(binding.PersistentVolumeClaim.ClaimName, parameters)
-		}
-		pr.Spec.Workspaces[i].SubPath = substitution.ApplyReplacements(binding.SubPath, parameters)
-		if pr.Spec.Workspaces[i].ConfigMap != nil {
-			pr.Spec.Workspaces[i].ConfigMap.Name = substitution.ApplyReplacements(binding.ConfigMap.Name, parameters)
-		}
-		if pr.Spec.Workspaces[i].Secret != nil {
-			pr.Spec.Workspaces[i].Secret.SecretName = substitution.ApplyReplacements(binding.Secret.SecretName, parameters)
-		}
-		if pr.Spec.Workspaces[i].CSI != nil {
-			pr.Spec.Workspaces[i].CSI.Driver = substitution.ApplyReplacements(binding.CSI.Driver, parameters)
-			if pr.Spec.Workspaces[i].CSI.NodePublishSecretRef != nil {
-				pr.Spec.Workspaces[i].CSI.NodePublishSecretRef.Name = substitution.ApplyReplacements(binding.CSI.NodePublishSecretRef.Name, parameters)
-			}
-		}
-		if pr.Spec.Workspaces[i].Projected != nil {
-			for j, source := range binding.Projected.Sources {
-				if pr.Spec.Workspaces[i].Projected.Sources[j].ConfigMap != nil {
-					pr.Spec.Workspaces[i].Projected.Sources[j].ConfigMap.Name = substitution.ApplyReplacements(source.ConfigMap.Name, parameters)
-				}
-				if pr.Spec.Workspaces[i].Projected.Sources[j].Secret != nil {
-					pr.Spec.Workspaces[i].Projected.Sources[j].Secret.Name = substitution.ApplyReplacements(source.Secret.Name, parameters)
-				}
-			}
-		}
-	}
+	pr.Spec.Workspaces = workspace.ReplaceWorkspaceBindingsVars(pr.Spec.Workspaces, parameters)
 }
