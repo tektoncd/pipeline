@@ -201,8 +201,7 @@ func (opt *inliningOptimizer) rewritePresenceExpr(ctx *OptimizerContext, prev, i
 // in most cases.
 func isBindable(matches []ast.NavigableExpr, inlined ast.Expr, inlinedType *Type) bool {
 	if inlinedType.IsAssignableType(NullType) ||
-		inlinedType.HasTrait(traits.SizerType) ||
-		inlinedType.HasTrait(traits.FieldTesterType) {
+		inlinedType.HasTrait(traits.SizerType) {
 		return true
 	}
 	for _, m := range matches {
