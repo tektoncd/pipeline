@@ -125,7 +125,7 @@ EOF
 kubectl apply -f ./pipelinerun.yaml
 ```
 
-## Step 6: Monitor the PipelineRun
+## Step 4: Monitor the PipelineRun
 
 First let's watch the PipelineRun to see if it succeeds:
 
