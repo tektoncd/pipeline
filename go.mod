@@ -23,7 +23,7 @@ require (
 	github.com/spiffe/spire-api-sdk v1.8.7
 	github.com/tektoncd/plumbing v0.0.0-20220817140952-3da8ce01aeeb
 	go.opencensus.io v0.24.0
-	go.uber.org/zap v1.26.0
+	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20230515195305-f3d0a9c9a5cc
 	golang.org/x/oauth2 v0.16.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0
