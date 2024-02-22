@@ -35,3 +35,4 @@ data:
   enable-cel-in-whenexpression: "true"
   enable-step-actions: "true"
   enable-param-enum: "true"
+  enable-artifacts: "true"

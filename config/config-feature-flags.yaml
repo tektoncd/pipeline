@@ -126,5 +126,8 @@ data:
   # Setting this flag to "true" will enable the use of StepActions in Steps
   # This feature is in preview mode and not implemented yet. Please check #7259 for updates.
   enable-step-actions: "false"
+  # Setting this flag to "true" will enable the use of Artifacts in Steps
+  # This feature is in preview mode and not implemented yet. Please check #7693 for updates.
+  enable-artifacts: "false"
   # Setting this flag to "true" will enable the built-in param input validation via param enum.
   enable-param-enum: "false"

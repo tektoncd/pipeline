@@ -79,6 +79,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				Coschedule:                       config.CoscheduleDisabled,
 				EnableCELInWhenExpression:        true,
 				EnableStepActions:                true,
+				EnableArtifacts:                  true,
 				EnableParamEnum:                  true,
 			},
 			fileName: "feature-flags-all-flags-set",
@@ -303,6 +304,9 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 	}, {
 		fileName: "feature-flags-invalid-enable-param-enum",
 		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature enable-param-enum`,
+	}, {
+		fileName: "feature-flags-invalid-enable-artifacts",
+		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature enable-artifacts`,
 	}} {
 		t.Run(tc.fileName, func(t *testing.T) {
 			cm := test.ConfigMapFromTestFile(t, tc.fileName)
