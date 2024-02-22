@@ -117,6 +117,7 @@ func getFeatureFlagsBaseOnAPIFlag(t *testing.T) *config.FeatureFlags {
 		"enable-step-actions":          "true",
 		"enable-cel-in-whenexpression": "true",
 		"enable-param-enum":            "true",
+		"enable-artifacts":             "true",
 	})
 	if err != nil {
 		t.Fatalf("error creating alpha feature flags configmap: %v", err)
