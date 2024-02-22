@@ -706,5 +706,8 @@ Except as otherwise noted, the content of this page is licensed under the
 under the [Apache 2.0 License][apache2l].
 {{% /comment %}}
 
+[quickstarts]: https://tekton.dev/docs/getting-started/
+[howtos]: https://tekton.dev/docs/how-to-guides/
+[examples]: https://github.com/tektoncd/pipeline/tree/main/examples/
 [cca4]: https://creativecommons.org/licenses/by/4.0/
 [apache2l]: https://www.apache.org/licenses/LICENSE-2.0
