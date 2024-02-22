@@ -1304,6 +1304,92 @@ TaskRunStatus
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.Algorithm">Algorithm
+(<code>string</code> alias)</h3>
+<div>
+<p>Algorithm Standard cryptographic hash algorithm</p>
+</div>
+<h3 id="tekton.dev/v1.Artifact">Artifact
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.StepState">StepState</a>)
+</p>
+<div>
+<p>TaskRunStepArtifact represents an artifact produced or used by a step within a task run.
+It directly uses the Artifact type for its structure.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>values</code><br/>
+<em>
+<a href="#tekton.dev/v1.ArtifactValue">
+[]ArtifactValue
+</a>
+</em>
+</td>
+<td>
+<p>The artifact&rsquo;s identifying category name</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.ArtifactValue">ArtifactValue
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.Artifact">Artifact</a>)
+</p>
+<div>
+<p>ArtifactValue represents a specific value or data element within an Artifact.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>digest</code><br/>
+<em>
+map[github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Algorithm]string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>uri</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Algorithm-specific digests for verifying the content (e.g., SHA256)</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1.ChildStatusReference">ChildStatusReference
 </h3>
 <p>
@@ -4646,6 +4732,30 @@ string
 <code>terminationReason</code><br/>
 <em>
 string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>inputs</code><br/>
+<em>
+<a href="#tekton.dev/v1.Artifact">
+[]Artifact
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>outputs</code><br/>
+<em>
+<a href="#tekton.dev/v1.Artifact">
+[]Artifact
+</a>
 </em>
 </td>
 <td>
@@ -9484,6 +9594,92 @@ TaskRunStatus
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.Algorithm">Algorithm
+(<code>string</code> alias)</h3>
+<div>
+<p>Algorithm Standard cryptographic hash algorithm</p>
+</div>
+<h3 id="tekton.dev/v1beta1.Artifact">Artifact
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.StepState">StepState</a>)
+</p>
+<div>
+<p>TaskRunStepArtifact represents an artifact produced or used by a step within a task run.
+It directly uses the Artifact type for its structure.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>values</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.ArtifactValue">
+[]ArtifactValue
+</a>
+</em>
+</td>
+<td>
+<p>The artifact&rsquo;s identifying category name</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1beta1.ArtifactValue">ArtifactValue
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Artifact">Artifact</a>)
+</p>
+<div>
+<p>ArtifactValue represents a specific value or data element within an Artifact.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>digest</code><br/>
+<em>
+map[github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Algorithm]string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>uri</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Algorithm-specific digests for verifying the content (e.g., SHA256)</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1beta1.ChildStatusReference">ChildStatusReference
 </h3>
 <p>
@@ -13549,6 +13745,30 @@ string
 <em>
 <a href="#tekton.dev/v1beta1.TaskRunResult">
 []TaskRunResult
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>inputs</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.Artifact">
+[]Artifact
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>outputs</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.Artifact">
+[]Artifact
 </a>
 </em>
 </td>

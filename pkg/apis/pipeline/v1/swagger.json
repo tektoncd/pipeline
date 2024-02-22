@@ -151,6 +151,40 @@
         }
       }
     },
+    "v1.Artifact": {
+      "description": "TaskRunStepArtifact represents an artifact produced or used by a step within a task run. It directly uses the Artifact type for its structure.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "values": {
+          "description": "The artifact's identifying category name",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.ArtifactValue"
+          }
+        }
+      }
+    },
+    "v1.ArtifactValue": {
+      "description": "ArtifactValue represents a specific value or data element within an Artifact.",
+      "type": "object",
+      "properties": {
+        "digest": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "uri": {
+          "description": "Algorithm-specific digests for verifying the content (e.g., SHA256)",
+          "type": "string"
+        }
+      }
+    },
     "v1.ChildStatusReference": {
       "description": "ChildStatusReference is used to point to the statuses of individual TaskRuns and Runs within this PipelineRun.",
       "type": "object",
@@ -1591,8 +1625,22 @@
         "imageID": {
           "type": "string"
         },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Artifact"
+          }
+        },
         "name": {
           "type": "string"
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Artifact"
+          }
         },
         "results": {
           "type": "array",

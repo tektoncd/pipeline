@@ -303,7 +303,44 @@ func TestTaskRunConversion(t *testing.T) {
 					}},
 			},
 		},
-	}}
+	}, {
+		name: "taskrun with stepArtifacts in step state",
+		in: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.TaskRunSpec{},
+			Status: v1beta1.TaskRunStatus{
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					Steps: []v1beta1.StepState{{
+						Inputs: []v1beta1.TaskRunStepArtifact{{
+							Name: "Input",
+							Values: []v1beta1.ArtifactValue{
+								{Uri: "git:example.com",
+									Digest: map[v1beta1.Algorithm]string{
+										"sha256": "49149151d283ac77d3fd4594825242f076c999903261bd95f79a8b261811c11a",
+										"sha1":   "22b80854ba81d11d980794952f2343fedf2189d5",
+									},
+								},
+							},
+						}},
+						Outputs: []v1beta1.TaskRunStepArtifact{{
+							Name: "Output",
+							Values: []v1beta1.ArtifactValue{
+								{Uri: "docker:example.aaa/bbb:latest",
+									Digest: map[v1beta1.Algorithm]string{
+										"sha256": "f05a847a269ccafc90af40ad55aedef62d165227475e4d95ef6812f7c5daa21a",
+									},
+								},
+							},
+						}},
+					}},
+				},
+			},
+		},
+	},
+	}
 
 	for _, test := range tests {
 		versions := []apis.Convertible{&v1.TaskRun{}}
