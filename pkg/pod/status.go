@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/tektoncd/pipeline/internal/sidecarlogartifacts"
 	"strconv"
 	"strings"
 	"time"
@@ -238,10 +237,10 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 	if tr.IsDone() {
 		trs.Results = append(trs.Results, taskResults...)
 	}
-	sidecarArtifacts, err := sidecarlogartifacts.GetArtifactsFromSidecarLogs(ctx, kubeclient, tr.Namespace, tr.Status.PodName, pipeline.ReservedArtifactsSidecarContainerName, podPhase)
-	if err != nil {
-		return nil
-	}
+	//sidecarArtifacts, err := sidecarlogartifacts.GetArtifactsFromSidecarLogs(ctx, kubeclient, tr.Namespace, tr.Status.PodName, pipeline.ReservedArtifactsSidecarContainerName, podPhase)
+	//if err != nil {
+	//	return nil
+	//}
 
 	// Continue with extraction of termination messages
 	for _, s := range stepStatuses {
@@ -276,11 +275,20 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 			trs.Results = append(trs.Results, createTaskResultsFromStepResults(stepRunRes, neededStepResults)...)
 		}
 
+		var as v1.Artifacts
 		// Parse termination messages
 		if state.Terminated != nil && len(state.Terminated.Message) != 0 {
 			msg := state.Terminated.Message
 
 			results, err := termination.ParseMessage(logger, msg)
+			for _, r := range results {
+				if strings.HasSuffix(r.Key, "/provenance.json") {
+					if err := json.Unmarshal([]byte(r.Value), &as); err != nil {
+						merr = multierror.Append(merr, err)
+					}
+					break
+				}
+			}
 			if err != nil {
 				logger.Errorf("termination message could not be parsed as JSON: %v", err)
 				merr = multierror.Append(merr, err)
@@ -327,11 +335,9 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 			Results:        taskRunStepResults,
 		}
 		fmt.Println(s.Name)
+		stepState.Inputs = as.Inputs
+		stepState.Outputs = as.Outputs
 
-		if v, ok := sidecarArtifacts[s.Name]; ok {
-			stepState.Inputs = v.Inputs
-			stepState.Outputs = v.Outputs
-		}
 		trs.Steps = append(trs.Steps, stepState)
 	}
 

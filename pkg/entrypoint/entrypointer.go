@@ -269,10 +269,27 @@ func (e Entrypointer) Go() error {
 			logger.Fatalf("Error while handling step results: %s", err)
 		}
 	}
+	artifacts, err := e.readArtifacts()
+	if err != nil {
+		logger.Fatalf("Error while handling artifacts: %s", err)
+	}
+	output = append(output, artifacts...)
 
 	return err
 }
 
+func (e Entrypointer) readArtifacts() ([]result.RunResult, error) {
+	fp := filepath.Join(e.StepMetadataDir, "artifacts", "provenance.json")
+
+	file, err := os.ReadFile(fp)
+	if os.IsNotExist(err) {
+		return []result.RunResult{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return []result.RunResult{{Key: fp, Value: string(file), ResultType: result.ArtifactResultType}}, nil
+}
 func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string, resultType result.ResultType) error {
 	output := []result.RunResult{}
 	results := e.Results
