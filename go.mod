@@ -56,10 +56,10 @@ require (
 	github.com/sigstore/sigstore/pkg/signature/kms/azure v1.8.1
 	github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.8.1
 	github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.8.1
-	go.opentelemetry.io/otel v1.23.1
+	go.opentelemetry.io/otel v1.24.0
 	go.opentelemetry.io/otel/exporters/jaeger v1.17.0
 	go.opentelemetry.io/otel/sdk v1.23.1
-	go.opentelemetry.io/otel/trace v1.23.1
+	go.opentelemetry.io/otel/trace v1.24.0
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
 )
 
@@ -133,7 +133,7 @@ require (
 	github.com/zeebo/errs v1.3.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.46.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.46.1 // indirect
-	go.opentelemetry.io/otel/metric v1.23.1 // indirect
+	go.opentelemetry.io/otel/metric v1.24.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20231212172506-995d672761c0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240102182953-50ed04b92917 // indirect
 	gopkg.in/go-jose/go-jose.v2 v2.6.1 // indirect
