@@ -1,16 +1,17 @@
 apiVersion: tekton.dev/v1
 kind: TaskRun
 metadata:
-  generateName: step-artifacts-
+  generateName: task-run-artifacts
 spec:
   taskSpec:
     description: |
-      A simple task that populates artifacts to TaskRun stepState
+      A simple task that produces artifacts
     steps:
-      - name: artifacts-producer
-        image: docker.io/library/bash:latest
+      - name: produce-artifacts
+        image: bash:latest
         script: |
-          cat > $(step.artifacts.path) << EOF
+          #!/usr/bin/env bash
+          cat > $(artifacts.path) << EOF
           {
             "inputs":[
               {
@@ -41,14 +42,3 @@ spec:
             ]
           }
           EOF
-      - name: artifacts-consumer
-        image: docker.io/library/bash:latest
-        script: |
-          echo $(steps.artifacts-producer.inputs.input-artifacts)
-      - name: artifacts-consumer-python
-        image: docker.io/library/python:latest
-        script: |
-          #!/usr/bin/env python3
-          import json
-          data = json.loads('$(steps.artifacts-producer.outputs.image)')
-          print(data[0]['uri'])

@@ -49,6 +49,7 @@ const (
 	stepResultType SidecarLogResultType = "step"
 
 	stepArtifactType           SidecarLogResultType = "stepArtifact"
+	taskArtifactType           SidecarLogResultType = "taskArtifact"
 	sidecarResultNameSeparator string               = "."
 )
 
@@ -285,6 +286,8 @@ func parseResults(resultBytes []byte, maxResultLimit int) (result.RunResult, err
 		resultType = result.StepResultType
 	case stepArtifactType:
 		resultType = result.StepArtifactsResultType
+	case taskArtifactType:
+		resultType = result.TaskRunArtifactsResultType
 	default:
 		return result.RunResult{}, fmt.Errorf("invalid sidecar result type %v. Must be %v or %v or %v", res.Type, taskResultType, stepResultType, stepArtifactType)
 	}

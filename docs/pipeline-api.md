@@ -1428,6 +1428,9 @@ string
 </table>
 <h3 id="tekton.dev/v1.Artifacts">Artifacts
 </h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRunStatusFields">TaskRunStatusFields</a>)
+</p>
 <div>
 <p>Artifacts represents the collection of input and output artifacts associated with
 a task run or a similar process. Artifacts in this context are units of data or resources
@@ -5898,6 +5901,20 @@ All TaskRunStatus stored in RetriesStatus will have no date within the RetriesSt
 <td>
 <em>(Optional)</em>
 <p>Results are the list of results written out by the task&rsquo;s containers</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>artifacts</code><br/>
+<em>
+<a href="#tekton.dev/v1.Artifacts">
+Artifacts
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Artifacts are the list of artifacts written out by the task&rsquo;s containers</p>
 </td>
 </tr>
 <tr>

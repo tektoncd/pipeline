@@ -315,7 +315,10 @@ func errorIfStepResultReferenceinField(value, fieldName string) (errs *apis.Fiel
 }
 
 func stepArtifactReferenceExists(src string) bool {
-	return len(artifactref.StepArtifactRegex.FindAllStringSubmatch(src, -1)) > 0 || strings.Contains(src, "$(step.artifacts.path)")
+	return len(artifactref.StepArtifactRegex.FindAllStringSubmatch(src, -1)) > 0 || strings.Contains(src, "$("+artifactref.StepArtifactPathPattern+")")
+}
+func taskArtifactReferenceExists(src string) bool {
+	return len(artifactref.TaskArtifactRegex.FindAllStringSubmatch(src, -1)) > 0 || strings.Contains(src, "$("+artifactref.TaskArtifactPathPattern+")")
 }
 func errorIfStepArtifactReferencedInField(value, fieldName string) (errs *apis.FieldError) {
 	if stepArtifactReferenceExists(value) {
@@ -381,7 +384,7 @@ func validateStepResultReference(s Step) (errs *apis.FieldError) {
 }
 
 func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.FieldError) {
-	if err := validateStepArtifactsReferences(ctx, s); err != nil {
+	if err := validateArtifactsReferencesInStep(ctx, s); err != nil {
 		return err
 	}
 
@@ -537,7 +540,7 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 	return errs
 }
 
-func validateStepArtifactsReferences(ctx context.Context, s Step) *apis.FieldError {
+func validateArtifactsReferencesInStep(ctx context.Context, s Step) *apis.FieldError {
 	if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableArtifacts {
 		var t []string
 		t = append(t, s.Script)
@@ -546,7 +549,7 @@ func validateStepArtifactsReferences(ctx context.Context, s Step) *apis.FieldErr
 		for _, e := range s.Env {
 			t = append(t, e.Value)
 		}
-		if slices.ContainsFunc(t, stepArtifactReferenceExists) {
+		if slices.ContainsFunc(t, stepArtifactReferenceExists) || slices.ContainsFunc(t, taskArtifactReferenceExists) {
 			return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use artifacts feature.", config.EnableArtifacts), "")
 		}
 	}

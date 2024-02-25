@@ -1508,7 +1508,8 @@ func TestReadArtifactsFileDoesNotExist(t *testing.T) {
 	t.Run("readArtifact file doesn't exist, empty result, no error.", func(t *testing.T) {
 		dir := createTmpDir(t, "")
 		fp := filepath.Join(dir, "provenance.json")
-		got, err := readArtifacts(fp)
+		got, err := readArtifacts(fp, result.StepArtifactsResultType)
+
 		if err != nil {
 			t.Fatalf("Did not expect and error but got: %v", err)
 		}
@@ -1528,7 +1529,8 @@ func TestReadArtifactsFileExistNoError(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Did not expect and error but got: %v", err)
 		}
-		got, err := readArtifacts(fp)
+		got, err := readArtifacts(fp, result.StepArtifactsResultType)
+
 		if err != nil {
 			t.Fatalf("Did not expect and error but got: %v", err)
 		}
@@ -1551,7 +1553,7 @@ func TestReadArtifactsFileExistReadError(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Did not expect and error but got: %v", err)
 		}
-		got, err := readArtifacts(fp)
+		got, err := readArtifacts(fp, result.StepArtifactsResultType)
 
 		if err == nil {
 			t.Fatalf("expecting error but got nil")
@@ -1584,13 +1586,13 @@ func TestLoadStepArtifacts(t *testing.T) {
 	}{
 		{
 			desc:        "read artifact success",
-			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"output","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
+			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"image","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
 			want: v1.Artifacts{
 				Inputs: []v1.Artifact{{Name: "inputs", Values: []v1.ArtifactValue{{
 					Digest: map[v1.Algorithm]string{"sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},
 					Uri:    "pkg:example.github.com/inputs",
 				}}}},
-				Outputs: []v1.Artifact{{Name: "output", Values: []v1.ArtifactValue{{
+				Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{
 					Digest: map[v1.Algorithm]string{"sha256": "64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},
 					Uri:    "docker:example.registry.com/outputs",
 				}}}},
@@ -1610,7 +1612,7 @@ func TestLoadStepArtifacts(t *testing.T) {
 		},
 		{
 			desc:        "read artifact, file cannot be read, error",
-			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"output","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
+			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"image","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
 			mode:        0o000,
 			wantErr:     true,
 		},
@@ -1653,7 +1655,7 @@ func TestParseArtifactTemplate(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			desc:  "valid outputs template with artifact name",
+			desc:  "valid outputs template",
 			input: "$(steps.name.outputs.aaa)",
 			want: ArtifactTemplate{
 				ContainerName: "step-name",
@@ -1662,34 +1664,13 @@ func TestParseArtifactTemplate(t *testing.T) {
 			},
 		},
 		{
-			desc:  "valid outputs template without artifact name",
-			input: "$(steps.name.outputs)",
-			want: ArtifactTemplate{
-				Type:          "outputs",
-				ContainerName: "step-name",
-			},
-		},
-		{
-			desc:  "valid inputs template with artifact name",
+			desc:  "valid inputs template",
 			input: "$(steps.name.inputs.aaa)",
 			want: ArtifactTemplate{
 				ContainerName: "step-name",
 				Type:          "inputs",
 				ArtifactName:  "aaa",
 			},
-		},
-		{
-			desc:  "valid outputs template without artifact name",
-			input: "$(steps.name.inputs)",
-			want: ArtifactTemplate{
-				Type:          "inputs",
-				ContainerName: "step-name",
-			},
-		},
-		{
-			desc:    "invalid template without artifact name, no prefix and suffix",
-			input:   "steps.name.outputs",
-			wantErr: true,
 		},
 		{
 			desc:    "invalid template with artifact name, no prefix and suffix",
@@ -1758,39 +1739,11 @@ func TestGetArtifactValues(t *testing.T) {
 		template    string
 	}{
 		{
-			desc:        "read outputs artifact without artifact name, success",
-			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"output","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
-			want:        `[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]`,
-			mode:        0o755,
-			template:    fmt.Sprintf("$(steps.%s.outputs)", name),
-		},
-		{
-			desc:        "read inputs artifact without artifact name, success",
-			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"output","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
-			want:        `[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]`,
-			mode:        0o755,
-			template:    fmt.Sprintf("$(steps.%s.inputs)", name),
-		},
-		{
-			desc:        "read outputs artifact without artifact name, multiple outputs, default to first",
-			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"output","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]},{"name":"output2","values":[{"digest":{"sha256":"22222157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f13402222"},"uri":"docker2:example.registry.com/outputs"}]}]}`,
-			want:        `[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]`,
-			mode:        0o755,
-			template:    fmt.Sprintf("$(steps.%s.outputs)", name),
-		},
-		{
-			desc:        "read inputs artifact without artifact name, multiple outputs, default to first",
-			fileContent: `{"outputs":[{"name":"out","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"inputs":[{"name":"in","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/inputs"}]},{"name":"in2","values":[{"digest":{"sha256":"22222157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f13402222"},"uri":"docker2:example.registry.com/inputs"}]}]}`,
-			want:        `[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/inputs"}]`,
-			mode:        0o755,
-			template:    fmt.Sprintf("$(steps.%s.inputs)", name),
-		},
-		{
 			desc:        "read outputs artifact with artifact name, success",
-			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"output","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
+			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"image","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
 			want:        `[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]`,
 			mode:        0o755,
-			template:    fmt.Sprintf("$(steps.%s.outputs.output)", name),
+			template:    fmt.Sprintf("$(steps.%s.outputs.image)", name),
 		},
 		{
 			desc:        "read inputs artifact with artifact name, success",
@@ -1801,7 +1754,7 @@ func TestGetArtifactValues(t *testing.T) {
 		},
 		{
 			desc:        "read outputs artifact with artifact name, multiple outputs, success",
-			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"output","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]},{"name":"output2","values":[{"digest":{"sha256":"22222157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f13402222"},"uri":"docker2:example.registry.com/outputs"}]}]}`,
+			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"image","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]},{"name":"output2","values":[{"digest":{"sha256":"22222157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f13402222"},"uri":"docker2:example.registry.com/outputs"}]}]}`,
 			want:        `[{"digest":{"sha256":"22222157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f13402222"},"uri":"docker2:example.registry.com/outputs"}]`,
 			mode:        0o755,
 			template:    fmt.Sprintf("$(steps.%s.outputs.output2)", name),
@@ -1815,21 +1768,21 @@ func TestGetArtifactValues(t *testing.T) {
 		},
 		{
 			desc:        "invalid template",
-			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"output","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]},{"name":"output2","values":[{"digest":{"sha256":"22222157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f13402222"},"uri":"docker2:example.registry.com/outputs"}]}]}`,
+			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"image","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]},{"name":"output2","values":[{"digest":{"sha256":"22222157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f13402222"},"uri":"docker2:example.registry.com/outputs"}]}]}`,
 			mode:        0o755,
 			template:    fmt.Sprintf("$(steps.%s.outputs.output2.333)", name),
 			wantErr:     true,
 		},
 		{
 			desc:        "fail to load artifacts",
-			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"output","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]},{"name":"output2","values":[{"digest":{"sha256":"22222157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f13402222"},"uri":"docker2:example.registry.com/outputs"}]}]}`,
+			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"image","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]},{"name":"output2","values":[{"digest":{"sha256":"22222157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f13402222"},"uri":"docker2:example.registry.com/outputs"}]}]}`,
 			mode:        0o000,
 			template:    fmt.Sprintf("$(steps.%s.outputs.output2.333)", name),
 			wantErr:     true,
 		},
 		{
 			desc:        "template not found",
-			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"output","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]},{"name":"output2","values":[{"digest":{"sha256":"22222157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f13402222"},"uri":"docker2:example.registry.com/outputs"}]}]}`,
+			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"image","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]},{"name":"output2","values":[{"digest":{"sha256":"22222157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f13402222"},"uri":"docker2:example.registry.com/outputs"}]}]}`,
 			mode:        0o755,
 			template:    fmt.Sprintf("$(steps.%s.outputs.output3)", name),
 			wantErr:     true,
@@ -1887,10 +1840,10 @@ func TestApplyStepArtifactSubstitutionsCommandSuccess(t *testing.T) {
 	}{
 		{
 			desc:          "apply substitution to command from script file, success",
-			fileContent:   `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"output","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
+			fileContent:   `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"image","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
 			want:          `echo [{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]`,
 			mode:          0o755,
-			scriptContent: fmt.Sprintf("echo $(steps.%s.outputs)", stepName),
+			scriptContent: fmt.Sprintf("echo $(steps.%s.outputs.image)", stepName),
 			scriptFile:    filepath.Join(scriptDir, "foo.sh"),
 			command:       []string{filepath.Join(scriptDir, "foo.sh")},
 		},
@@ -1953,17 +1906,17 @@ func TestApplyStepArtifactSubstitutionsCommand(t *testing.T) {
 	}{
 		{
 			desc:          "apply substitution script, fail to read artifacts",
-			fileContent:   `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"output","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
+			fileContent:   `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"image","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
 			want:          []string{filepath.Join(scriptDir, "foo2.sh")},
 			mode:          0o000,
 			wantErr:       true,
-			scriptContent: fmt.Sprintf("echo $(steps.%s.outputs)", stepName),
+			scriptContent: fmt.Sprintf("echo $(steps.%s.outputs.image)", stepName),
 			scriptFile:    filepath.Join(scriptDir, "foo2.sh"),
 			command:       []string{filepath.Join(scriptDir, "foo2.sh")},
 		},
 		{
 			desc:          "apply substitution to command from script file , no matches success",
-			fileContent:   `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"output","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
+			fileContent:   `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"image","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
 			want:          []string{filepath.Join(scriptDir, "bar.sh")},
 			mode:          0o755,
 			scriptContent: "echo 123",
@@ -1972,18 +1925,18 @@ func TestApplyStepArtifactSubstitutionsCommand(t *testing.T) {
 		},
 		{
 			desc:        "apply substitution to inline command, success",
-			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"output","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
+			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"image","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
 			want:        []string{"echo", `[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]`, "|", "jq", "."},
 			mode:        0o755,
-			command:     []string{"echo", fmt.Sprintf("$(steps.%s.outputs)", stepName), "|", "jq", "."},
+			command:     []string{"echo", fmt.Sprintf("$(steps.%s.outputs.image)", stepName), "|", "jq", "."},
 		},
 		{
 			desc:        "apply substitution to inline command, fail to read, command no change",
-			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"output","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
-			want:        []string{"echo", fmt.Sprintf("$(steps.%s.outputs)", stepName), "|", "jq", "."},
+			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"image","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
+			want:        []string{"echo", fmt.Sprintf("$(steps.%s.outputs.image)", stepName), "|", "jq", "."},
 			mode:        0o000,
 			wantErr:     true,
-			command:     []string{"echo", fmt.Sprintf("$(steps.%s.outputs)", stepName), "|", "jq", "."},
+			command:     []string{"echo", fmt.Sprintf("$(steps.%s.outputs.image)", stepName), "|", "jq", "."},
 		},
 	}
 
@@ -2043,7 +1996,7 @@ func TestApplyStepArtifactSubstitutionsEnv(t *testing.T) {
 	}{
 		{
 			desc:        "apply substitution to env, no matches, no changes",
-			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"output","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
+			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"image","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
 			mode:        0o755,
 			envKey:      "aaa",
 			envValue:    "bbb",
@@ -2051,19 +2004,19 @@ func TestApplyStepArtifactSubstitutionsEnv(t *testing.T) {
 		},
 		{
 			desc:        "apply substitution to env, matches found, has change",
-			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"output","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
+			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"image","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
 			mode:        0o755,
 			envKey:      "aaa",
-			envValue:    fmt.Sprintf("abc-$(steps.%s.outputs)", stepName),
+			envValue:    fmt.Sprintf("abc-$(steps.%s.outputs.image)", stepName),
 			want:        `abc-[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]`,
 		},
 		{
 			desc:        "apply substitution to env, matches found, read artifacts failed.",
-			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"output","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
+			fileContent: `{"inputs":[{"name":"inputs","values":[{"digest":{"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},"uri":"pkg:example.github.com/inputs"}]}],"outputs":[{"name":"image","values":[{"digest":{"sha256":"64d0b157fdf2d7f6548836dd82085fd8401c9481a9f59e554f1b337f134074b0"},"uri":"docker:example.registry.com/outputs"}]}]}`,
 			mode:        0o000,
 			envKey:      "aaa",
-			envValue:    fmt.Sprintf("abc-$(steps.%s.outputs)", stepName),
-			want:        fmt.Sprintf("abc-$(steps.%s.outputs)", stepName),
+			envValue:    fmt.Sprintf("abc-$(steps.%s.outputs.image)", stepName),
+			want:        fmt.Sprintf("abc-$(steps.%s.outputs.image)", stepName),
 			wantErr:     true,
 		},
 	}

@@ -1,0 +1,60 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: pipelinerun-consume-tasks-artifacts
+spec:
+  pipelineSpec:
+    tasks:
+      - name: produce-artifacts-task
+        taskSpec:
+          description: |
+            A simple task that produces artifacts
+          steps:
+            - name: produce-artifacts
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                cat > $(artifacts.path) << EOF
+                {
+                  "inputs":[
+                    {
+                      "name":"input-artifacts",
+                      "values":[
+                        {
+                          "uri":"pkg:example.github.com/inputs",
+                          "digest":{
+                            "sha256":"b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "outputs":[
+                    {
+                      "name":"image",
+                      "values":[
+                        {
+                          "uri":"pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c",
+                          "digest":{
+                            "sha256":"df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48",
+                            "sha1":"95588b8f34c31eb7d62c92aaa4e6506639b06ef2"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+                EOF
+      - name: consume-artifacts
+        runAfter:
+          - produce-artifacts-task
+        taskSpec:
+          steps:
+            - name: artifacts-consumer-python
+              image: python:latest
+              script: |
+                #!/usr/bin/env python3
+                import json
+                data = json.loads('$(tasks.produce-artifacts-task.outputs.image)')
+                if data[0]['uri'] != "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c":
+                  exit(1)
