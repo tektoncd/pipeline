@@ -433,6 +433,118 @@ func TestMakeTaskRunStatus_StepResults(t *testing.T) {
 	}
 }
 
+func TestMakeTaskRunStatus_StepArtifacts(t *testing.T) {
+	for _, c := range []struct {
+		desc      string
+		podStatus corev1.PodStatus
+		pod       corev1.Pod
+		tr        v1.TaskRun
+		want      v1.TaskRunStatus
+	}{
+		{
+			desc: "step artifacts result type",
+			podStatus: corev1.PodStatus{
+				Phase: corev1.PodSucceeded,
+				ContainerStatuses: []corev1.ContainerStatus{{
+					Name: "step-one",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							Message: `[{"key":"/tekton/run/0/status/artifacts/provenance.json","value":"{\n  \"inputs\":[\n    {\n      \"name\":\"input-artifacts\",\n      \"values\":[\n        {\n          \"uri\":\"git:jjjsss\",\n          \"digest\":{\n            \"sha256\":\"b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0\"\n          }\n        }\n      ]\n    }\n  ],\n  \"outputs\":[\n    {\n      \"name\":\"build-results\",\n      \"values\":[\n        {\n          \"uri\":\"pkg:balba\",\n          \"digest\":{\n            \"sha256\":\"df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48\",\n            \"sha1\":\"95588b8f34c31eb7d62c92aaa4e6506639b06ef2\"\n          }\n        }\n      ]\n    }\n  ]\n}\n","type":5}]`,
+						},
+					},
+				}},
+			},
+			tr: v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "task-run",
+					Namespace: "foo",
+				},
+				Spec: v1.TaskRunSpec{
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{{
+							Name: "one",
+						}},
+					},
+				},
+			},
+			want: v1.TaskRunStatus{
+				Status: statusSuccess(),
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Steps: []v1.StepState{{
+						ContainerState: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								Message: `[{"key":"/tekton/run/0/status/artifacts/provenance.json","value":"{\n  \"inputs\":[\n    {\n      \"name\":\"input-artifacts\",\n      \"values\":[\n        {\n          \"uri\":\"git:jjjsss\",\n          \"digest\":{\n            \"sha256\":\"b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0\"\n          }\n        }\n      ]\n    }\n  ],\n  \"outputs\":[\n    {\n      \"name\":\"build-results\",\n      \"values\":[\n        {\n          \"uri\":\"pkg:balba\",\n          \"digest\":{\n            \"sha256\":\"df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48\",\n            \"sha1\":\"95588b8f34c31eb7d62c92aaa4e6506639b06ef2\"\n          }\n        }\n      ]\n    }\n  ]\n}\n","type":5}]`,
+							}},
+						Name:      "one",
+						Container: "step-one",
+						Inputs: []v1.Artifact{
+							{
+								Name: "input-artifacts",
+								Values: []v1.ArtifactValue{{
+									Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"},
+									Uri:    "git:jjjsss",
+								},
+								},
+							},
+						},
+						Outputs: []v1.Artifact{
+							{
+								Name: "build-results",
+								Values: []v1.ArtifactValue{{
+									Digest: map[v1.Algorithm]string{
+										"sha1":   "95588b8f34c31eb7d62c92aaa4e6506639b06ef2",
+										"sha256": "df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48",
+									},
+									Uri: "pkg:balba",
+								},
+								},
+							},
+						},
+						Results: []v1.TaskRunResult{},
+					}},
+					Sidecars: []v1.SidecarState{},
+					// We don't actually care about the time, just that it's not nil
+					CompletionTime: &metav1.Time{Time: time.Now()},
+				},
+			},
+		},
+	} {
+		t.Run(c.desc, func(t *testing.T) {
+			now := metav1.Now()
+			if cmp.Diff(c.pod, corev1.Pod{}) == "" {
+				c.pod = corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "pod",
+						Namespace:         "foo",
+						CreationTimestamp: now,
+					},
+					Status: c.podStatus,
+				}
+			}
+
+			logger, _ := logging.NewLogger("", "status")
+			kubeclient := fakek8s.NewSimpleClientset()
+			got, err := MakeTaskRunStatus(context.Background(), logger, c.tr, &c.pod, kubeclient, c.tr.Spec.TaskSpec)
+			if err != nil {
+				t.Errorf("MakeTaskRunResult: %s", err)
+			}
+
+			// Common traits, set for test case brevity.
+			c.want.PodName = "pod"
+
+			ensureTimeNotNil := cmp.Comparer(func(x, y *metav1.Time) bool {
+				if x == nil {
+					return y == nil
+				}
+				return y != nil
+			})
+			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ensureTimeNotNil); d != "" {
+				t.Errorf("Diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestMakeTaskRunStatus(t *testing.T) {
 	for _, c := range []struct {
 		desc      string

@@ -1,0 +1,55 @@
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: step-artifacts-
+spec:
+  taskSpec:
+    description: |
+      A simple task that populates artifacts to TaskRun stepState
+    steps:
+      - name: artifacts-producer
+        image: bash:latest
+        script: |
+          cat > $(step.artifacts.path) << EOF
+          {
+            "inputs":[
+              {
+                "name":"input-artifacts",
+                "values":[
+                  {
+                    "uri":"git:jjjsss",
+                    "digest":{
+                      "sha256":"b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"
+                    }
+                  }
+                ]
+              }
+            ],
+            "outputs":[
+              {
+                "name":"image",
+                "values":[
+                  {
+                    "uri":"pkg:balba",
+                    "digest":{
+                      "sha256":"df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48",
+                      "sha1":"95588b8f34c31eb7d62c92aaa4e6506639b06ef2"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+          EOF
+      - name: artifacts-consumer
+        image: bash:latest
+        script: |
+          echo $(steps.artifacts-producer.outputs)
+          echo $(steps.artifacts-producer.inputs.input-artifacts)
+      - name: artifacts-consumer-python
+        image: python:latest
+        script: |
+          #!/usr/bin/env python3
+          import json
+          data = json.loads('$(steps.artifacts-producer.outputs)')
+          print(data[0]['uri'])
