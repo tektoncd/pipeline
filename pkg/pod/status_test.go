@@ -116,36 +116,87 @@ func TestSetTaskRunStatusBasedOnStepStatus(t *testing.T) {
 
 func TestSetTaskRunStatusBasedOnStepStatus_sidecar_logs(t *testing.T) {
 	for _, c := range []struct {
-		desc          string
-		maxResultSize int
-		wantErr       error
+		desc            string
+		maxResultSize   int
+		wantErr         error
+		enableArtifacts bool
+		tr              v1.TaskRun
 	}{{
-		desc:          "test result with sidecar logs too large",
+		desc: "test result with sidecar logs too large",
+		tr: v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task-run",
+				Namespace: "foo",
+			},
+			Status: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					TaskSpec: &v1.TaskSpec{
+						Results: []v1.TaskResult{{
+							Name: "result1",
+						}},
+					},
+					PodName: "task-run-pod",
+				},
+			},
+		},
 		maxResultSize: 1,
 		wantErr:       sidecarlogresults.ErrSizeExceeded,
 	}, {
-		desc:          "test result with sidecar logs bad format",
+		desc: "test result with sidecar logs bad format",
+		tr: v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task-run",
+				Namespace: "foo",
+			},
+			Status: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					TaskSpec: &v1.TaskSpec{
+						Results: []v1.TaskResult{{
+							Name: "result1",
+						}},
+					},
+					PodName: "task-run-pod",
+				},
+			},
+		},
 		maxResultSize: 4096,
 		wantErr:       fmt.Errorf("%s", "invalid result \"\": invalid character 'k' in literal false (expecting 'l')"),
+	}, {
+		desc: "test artifact with sidecar logs too large",
+		tr: v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task-run",
+				Namespace: "foo",
+			},
+			Status: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					TaskSpec: &v1.TaskSpec{},
+					PodName:  "task-run-pod",
+				},
+			},
+		},
+		maxResultSize:   1,
+		wantErr:         sidecarlogresults.ErrSizeExceeded,
+		enableArtifacts: true,
+	}, {
+		desc: "test artifact with sidecar logs bad format",
+		tr: v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task-run",
+				Namespace: "foo",
+			},
+			Status: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					TaskSpec: &v1.TaskSpec{},
+					PodName:  "task-run-pod",
+				},
+			},
+		},
+		maxResultSize:   4096,
+		wantErr:         fmt.Errorf("%s", "invalid result \"\": invalid character 'k' in literal false (expecting 'l')"),
+		enableArtifacts: true,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			tr := v1.TaskRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "task-run",
-					Namespace: "foo",
-				},
-				Status: v1.TaskRunStatus{
-					TaskRunStatusFields: v1.TaskRunStatusFields{
-						TaskSpec: &v1.TaskSpec{
-							Results: []v1.TaskResult{{
-								Name: "result1",
-							}},
-						},
-						PodName: "task-run-pod",
-					},
-				},
-			}
-
 			logger, _ := logging.NewLogger("", "status")
 			kubeclient := fakek8s.NewSimpleClientset()
 			pod := &corev1.Pod{
@@ -173,15 +224,21 @@ func TestSetTaskRunStatusBasedOnStepStatus_sidecar_logs(t *testing.T) {
 			if err != nil {
 				t.Errorf("Error occurred while creating pod %s: %s", pod.Name, err.Error())
 			}
+			featureFlags := &config.FeatureFlags{
+				ResultExtractionMethod: config.ResultExtractionMethodSidecarLogs,
+				MaxResultSize:          c.maxResultSize,
+			}
+			ts := &v1.TaskSpec{}
+			if c.enableArtifacts {
+				featureFlags.EnableArtifacts = true
+				ts.Steps = []v1.Step{{Name: "name", Script: `echo aaa >> /tekton/steps/step-name/artifacts/provenance.json`}}
+			}
 			ctx := config.ToContext(context.Background(), &config.Config{
-				FeatureFlags: &config.FeatureFlags{
-					ResultExtractionMethod: config.ResultExtractionMethodSidecarLogs,
-					MaxResultSize:          c.maxResultSize,
-				},
+				FeatureFlags: featureFlags,
 			})
 			var wantErr *multierror.Error
 			wantErr = multierror.Append(wantErr, c.wantErr)
-			merr := setTaskRunStatusBasedOnStepStatus(ctx, logger, []corev1.ContainerStatus{{}}, &tr, pod.Status.Phase, kubeclient, &v1.TaskSpec{})
+			merr := setTaskRunStatusBasedOnStepStatus(ctx, logger, []corev1.ContainerStatus{{}}, &c.tr, pod.Status.Phase, kubeclient, ts)
 
 			if d := cmp.Diff(wantErr.Error(), merr.Error()); d != "" {
 				t.Errorf("Got unexpected error  %s", diff.PrintWantGot(d))

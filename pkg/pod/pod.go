@@ -73,6 +73,8 @@ const (
 
 	// TerminationReasonCancelled indicates a step was cancelled.
 	TerminationReasonCancelled = "Cancelled"
+
+	StepArtifactPathPattern = "step.artifacts.path"
 )
 
 // These are effectively const, but Go doesn't have such an annotation.
@@ -201,15 +203,18 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		tasklevel.ApplyTaskLevelComputeResources(steps, taskRun.Spec.ComputeResources)
 	}
 	windows := usesWindows(taskRun)
-	if sidecarLogsResultsEnabled && taskSpec.Results != nil {
-		// create a results sidecar
-		resultsSidecar, err := createResultsSidecar(taskSpec, b.Images.SidecarLogResultsImage, setSecurityContext, windows)
-		if err != nil {
-			return nil, err
+	if sidecarLogsResultsEnabled {
+		if taskSpec.Results != nil || artifactsPathReferenced(steps) {
+			// create a results sidecar
+			resultsSidecar, err := createResultsSidecar(taskSpec, b.Images.SidecarLogResultsImage, setSecurityContext, windows)
+			if err != nil {
+				return nil, err
+			}
+			taskSpec.Sidecars = append(taskSpec.Sidecars, resultsSidecar)
+			commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-result_from", config.ResultExtractionMethodSidecarLogs)
 		}
-		taskSpec.Sidecars = append(taskSpec.Sidecars, resultsSidecar)
-		commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-result_from", config.ResultExtractionMethodSidecarLogs)
 	}
+
 	sidecars, err := v1.MergeSidecarsWithSpecs(taskSpec.Sidecars, taskRun.Spec.SidecarSpecs)
 	if err != nil {
 		return nil, err
@@ -339,25 +344,30 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		stepContainers[i].VolumeMounts = vms
 	}
 
-	if sidecarLogsResultsEnabled && taskSpec.Results != nil {
+	if sidecarLogsResultsEnabled {
 		// Mount implicit volumes onto sidecarContainers
 		// so that they can access /tekton/results and /tekton/run.
-		for i, s := range sidecarContainers {
-			for j := 0; j < len(stepContainers); j++ {
-				s.VolumeMounts = append(s.VolumeMounts, runMount(j, true))
-			}
-			requestedVolumeMounts := map[string]bool{}
-			for _, vm := range s.VolumeMounts {
-				requestedVolumeMounts[filepath.Clean(vm.MountPath)] = true
-			}
-			var toAdd []corev1.VolumeMount
-			for _, imp := range volumeMounts {
-				if !requestedVolumeMounts[filepath.Clean(imp.MountPath)] {
-					toAdd = append(toAdd, imp)
+		if taskSpec.Results != nil || artifactsPathReferenced(steps) {
+			for i, s := range sidecarContainers {
+				if s.Name != pipeline.ReservedResultsSidecarName {
+					continue
 				}
+				for j := 0; j < len(stepContainers); j++ {
+					s.VolumeMounts = append(s.VolumeMounts, runMount(j, true))
+				}
+				requestedVolumeMounts := map[string]bool{}
+				for _, vm := range s.VolumeMounts {
+					requestedVolumeMounts[filepath.Clean(vm.MountPath)] = true
+				}
+				var toAdd []corev1.VolumeMount
+				for _, imp := range volumeMounts {
+					if !requestedVolumeMounts[filepath.Clean(imp.MountPath)] {
+						toAdd = append(toAdd, imp)
+					}
+				}
+				vms := append(s.VolumeMounts, toAdd...) //nolint:gocritic
+				sidecarContainers[i].VolumeMounts = vms
 			}
-			vms := append(s.VolumeMounts, toAdd...) //nolint:gocritic
-			sidecarContainers[i].VolumeMounts = vms
 		}
 	}
 
@@ -687,8 +697,19 @@ func createResultsSidecar(taskSpec v1.TaskSpec, image string, setSecurityContext
 	for _, r := range taskSpec.Results {
 		names = append(names, r.Name)
 	}
+
+	stepNames := make([]string, 0, len(taskSpec.Steps))
+	var artifactProducerSteps []string
+	for i, s := range taskSpec.Steps {
+		stepName := StepName(s.Name, i)
+		stepNames = append(stepNames, stepName)
+		if artifactPathReferencedInStep(s) {
+			artifactProducerSteps = append(artifactProducerSteps, GetContainerName(s.Name))
+		}
+	}
+
 	resultsStr := strings.Join(names, ",")
-	command := []string{"/ko-app/sidecarlogresults", "-results-dir", pipeline.DefaultResultPath, "-result-names", resultsStr}
+	command := []string{"/ko-app/sidecarlogresults", "-results-dir", pipeline.DefaultResultPath, "-result-names", resultsStr, "-step-names", strings.Join(artifactProducerSteps, ",")}
 
 	// create a map of container Name to step results
 	stepResults := map[string][]string{}
@@ -733,4 +754,40 @@ func usesWindows(tr *v1.TaskRun) bool {
 	}
 	osSelector := tr.Spec.PodTemplate.NodeSelector[osSelectorLabel]
 	return osSelector == "windows"
+}
+
+func artifactsPathReferenced(steps []v1.Step) bool {
+	for _, step := range steps {
+		if artifactPathReferencedInStep(step) {
+			return true
+		}
+	}
+	return false
+}
+
+func artifactPathReferencedInStep(step v1.Step) bool {
+	// `$(step.artifacts.path)` in  taskRun.Spec.TaskSpec.Steps and `taskSpec.steps` are substituted when building the pod while when setting status for taskRun
+	// neither of them is substituted, so we need two forms to check if artifactsPath is referenced in steps.
+	unresolvedPath := "$(" + StepArtifactPathPattern + ")"
+
+	path := filepath.Join(pipeline.StepsDir, GetContainerName(step.Name), "artifacts", "provenance.json")
+	if strings.Contains(step.Script, path) || strings.Contains(step.Script, unresolvedPath) {
+		return true
+	}
+	for _, arg := range step.Args {
+		if strings.Contains(arg, path) || strings.Contains(arg, unresolvedPath) {
+			return true
+		}
+	}
+	for _, c := range step.Command {
+		if strings.Contains(c, path) || strings.Contains(c, unresolvedPath) {
+			return true
+		}
+	}
+	for _, e := range step.Env {
+		if strings.Contains(e.Value, path) || strings.Contains(e.Value, unresolvedPath) {
+			return true
+		}
+	}
+	return false
 }

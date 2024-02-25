@@ -300,7 +300,7 @@ func readArtifacts(fp string) ([]result.RunResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	return []result.RunResult{{Key: fp, Value: string(file), ResultType: result.ArtifactsResultType}}, nil
+	return []result.RunResult{{Key: fp, Value: string(file), ResultType: result.StepArtifactsResultType}}, nil
 }
 
 func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string, resultType result.ResultType) error {

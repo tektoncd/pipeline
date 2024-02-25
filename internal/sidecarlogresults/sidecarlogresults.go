@@ -28,6 +28,8 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/result"
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
@@ -36,12 +38,15 @@ import (
 
 // ErrSizeExceeded indicates that the result exceeded its maximum allowed size
 var ErrSizeExceeded = errors.New("results size exceeds configured limit")
+var stepDir = pipeline.StepsDir
 
 type SidecarLogResultType string
 
 const (
-	taskResultType             SidecarLogResultType = "task"
-	stepResultType             SidecarLogResultType = "step"
+	taskResultType SidecarLogResultType = "task"
+	stepResultType SidecarLogResultType = "step"
+
+	stepArtifactType           SidecarLogResultType = "stepArtifact"
 	sidecarResultNameSeparator string               = "."
 )
 
@@ -197,6 +202,37 @@ func LookForResults(w io.Writer, runDir string, resultsDir string, resultNames [
 	return nil
 }
 
+// LookForArtifacts searches for and processes artifacts within a specified run directory.
+// It looks for "provenance.json" files within the "artifacts" subdirectory of each named step.
+// If the provenance file exists, the function extracts artifact information, formats it into a
+// JSON string, and encodes it for output alongside relevant metadata (step name, artifact type).
+func LookForArtifacts(w io.Writer, names []string, runDir string) error {
+	if err := waitForStepsToFinish(runDir); err != nil {
+		return err
+	}
+
+	for _, name := range names {
+		p := filepath.Join(stepDir, name, "artifacts", "provenance.json")
+		if exist, err := fileExists(p); err != nil {
+			return err
+		} else if !exist {
+			continue
+		}
+		subRes, err := extractArtifactsFromFile(p)
+		if err != nil {
+			return err
+		}
+		values, err := json.Marshal(&subRes)
+		if err != nil {
+			return err
+		}
+		if err := encode(w, SidecarLogResult{Name: name, Value: string(values), Type: stepArtifactType}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // GetResultsFromSidecarLogs extracts results from the logs of the results sidecar
 func GetResultsFromSidecarLogs(ctx context.Context, clientset kubernetes.Interface, namespace string, name string, container string, podPhase corev1.PodPhase) ([]result.RunResult, error) {
 	sidecarLogResults := []result.RunResult{}
@@ -250,8 +286,10 @@ func parseResults(resultBytes []byte, maxResultLimit int) (result.RunResult, err
 		resultType = result.TaskRunResultType
 	case stepResultType:
 		resultType = result.StepResultType
+	case stepArtifactType:
+		resultType = result.StepArtifactsResultType
 	default:
-		return result.RunResult{}, fmt.Errorf("invalid sidecar result type %v. Must be %v or %v", res.Type, taskResultType, stepResultType)
+		return result.RunResult{}, fmt.Errorf("invalid sidecar result type %v. Must be %v or %v or %v", res.Type, taskResultType, stepResultType, stepArtifactType)
 	}
 	runResult = result.RunResult{
 		Key:        res.Name,
@@ -259,4 +297,20 @@ func parseResults(resultBytes []byte, maxResultLimit int) (result.RunResult, err
 		ResultType: resultType,
 	}
 	return runResult, nil
+}
+
+func parseArtifacts(fileContent []byte) (v1.Artifacts, error) {
+	var as v1.Artifacts
+	if err := json.Unmarshal(fileContent, &as); err != nil {
+		return as, fmt.Errorf("invalid artifacts : %w", err)
+	}
+	return as, nil
+}
+
+func extractArtifactsFromFile(filename string) (v1.Artifacts, error) {
+	b, err := os.ReadFile(filename)
+	if err != nil {
+		return v1.Artifacts{}, fmt.Errorf("error reading the results file %w", err)
+	}
+	return parseArtifacts(b)
 }

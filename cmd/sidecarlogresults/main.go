@@ -32,19 +32,33 @@ func main() {
 	var resultsDir string
 	var resultNames string
 	var stepResultsStr string
+	var stepNames string
+
 	flag.StringVar(&resultsDir, "results-dir", pipeline.DefaultResultPath, "Path to the results directory. Default is /tekton/results")
 	flag.StringVar(&resultNames, "result-names", "", "comma separated result names to expect from the steps running in the pod. eg. foo,bar,baz")
 	flag.StringVar(&stepResultsStr, "step-results", "", "json containing a map of step Name as key and list of result Names. eg. {\"stepName\":[\"foo\",\"bar\",\"baz\"]}")
+	flag.StringVar(&stepNames, "step-names", "", "comma separated step names. eg. foo,bar,baz")
 	flag.Parse()
-	if resultNames == "" {
-		log.Fatal("result-names were not provided")
+
+	var expectedResults []string
+	// strings.Split returns [""] instead of [] for empty string, we don't want pass [""] to other methods.
+	if len(resultNames) > 0 {
+		expectedResults = strings.Split(resultNames, ",")
 	}
-	expectedResults := strings.Split(resultNames, ",")
 	expectedStepResults := map[string][]string{}
 	if err := json.Unmarshal([]byte(stepResultsStr), &expectedStepResults); err != nil {
 		log.Fatal(err)
 	}
 	err := sidecarlogresults.LookForResults(os.Stdout, pod.RunDir, resultsDir, expectedResults, pipeline.StepsDir, expectedStepResults)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var names []string
+	if len(stepNames) > 0 {
+		names = strings.Split(stepNames, ",")
+	}
+	err = sidecarlogresults.LookForArtifacts(os.Stdout, names, pod.RunDir)
 	if err != nil {
 		log.Fatal(err)
 	}
