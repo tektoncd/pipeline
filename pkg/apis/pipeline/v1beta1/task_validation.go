@@ -25,12 +25,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tektoncd/pipeline/internal/artifactref"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/internal/resultref"
 	"github.com/tektoncd/pipeline/pkg/substitution"
+
+	"golang.org/x/exp/slices"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -297,6 +300,46 @@ func errorIfStepResultReferenceinField(value, fieldName string) (errs *apis.Fiel
 	return errs
 }
 
+func stepArtifactReferenceExists(src string) bool {
+	return len(artifactref.StepArtifactRegex.FindAllStringSubmatch(src, -1)) > 0 || strings.Contains(src, "$(step.artifacts.path)")
+}
+
+func errorIfStepArtifactReferencedInField(value, fieldName string) (errs *apis.FieldError) {
+	if stepArtifactReferenceExists(value) {
+		errs = errs.Also(&apis.FieldError{
+			Message: "stepArtifact substitutions are only allowed in env, command, args and script. Found usage in",
+			Paths:   []string{fieldName},
+		})
+	}
+	return errs
+}
+
+func validateStepArtifactsReference(s Step) (errs *apis.FieldError) {
+	errs = errs.Also(errorIfStepArtifactReferencedInField(s.Name, "name"))
+	errs = errs.Also(errorIfStepArtifactReferencedInField(s.Image, "image"))
+	errs = errs.Also(errorIfStepArtifactReferencedInField(string(s.ImagePullPolicy), "imagePullPoliicy"))
+	errs = errs.Also(errorIfStepArtifactReferencedInField(s.WorkingDir, "workingDir"))
+	for _, e := range s.EnvFrom {
+		errs = errs.Also(errorIfStepArtifactReferencedInField(e.Prefix, "envFrom.prefix"))
+		if e.ConfigMapRef != nil {
+			errs = errs.Also(errorIfStepArtifactReferencedInField(e.ConfigMapRef.LocalObjectReference.Name, "envFrom.configMapRef"))
+		}
+		if e.SecretRef != nil {
+			errs = errs.Also(errorIfStepArtifactReferencedInField(e.SecretRef.LocalObjectReference.Name, "envFrom.secretRef"))
+		}
+	}
+	for _, v := range s.VolumeMounts {
+		errs = errs.Also(errorIfStepArtifactReferencedInField(v.Name, "volumeMounts.name"))
+		errs = errs.Also(errorIfStepArtifactReferencedInField(v.MountPath, "volumeMounts.mountPath"))
+		errs = errs.Also(errorIfStepArtifactReferencedInField(v.SubPath, "volumeMounts.subPath"))
+	}
+	for _, v := range s.VolumeDevices {
+		errs = errs.Also(errorIfStepArtifactReferencedInField(v.Name, "volumeDevices.name"))
+		errs = errs.Also(errorIfStepArtifactReferencedInField(v.DevicePath, "volumeDevices.devicePath"))
+	}
+	return errs
+}
+
 func validateStepResultReference(s Step) (errs *apis.FieldError) {
 	errs = errs.Also(errorIfStepResultReferenceinField(s.Name, "name"))
 	errs = errs.Also(errorIfStepResultReferenceinField(s.Image, "image"))
@@ -325,6 +368,19 @@ func validateStepResultReference(s Step) (errs *apis.FieldError) {
 }
 
 func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.FieldError) {
+	if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableArtifacts {
+		var t []string
+		t = append(t, s.Script)
+		t = append(t, s.Command...)
+		t = append(t, s.Args...)
+		for _, e := range s.Env {
+			t = append(t, e.Value)
+		}
+		if slices.ContainsFunc(t, stepArtifactReferenceExists) {
+			return errs.Also(apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use artifacts feature.", config.EnableArtifacts), ""))
+		}
+	}
+
 	if s.Ref != nil {
 		if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions && isCreateOrUpdateAndDiverged(ctx, s) {
 			return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to reference StepActions in Steps.", config.EnableStepActions), "")
@@ -465,6 +521,11 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 	// Validate usage of step result reference.
 	// Referencing previous step's results are only allowed in `env`, `command` and `args`.
 	errs = errs.Also(validateStepResultReference(s))
+
+	// Validate usage of step artifacts output reference
+	// Referencing previous step's results are only allowed in `env`, `command` and `args`, `script`.
+	errs = errs.Also(validateStepArtifactsReference(s))
+
 	return errs
 }
 

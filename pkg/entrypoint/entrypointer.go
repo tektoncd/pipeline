@@ -18,17 +18,20 @@ package entrypoint
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/tektoncd/pipeline/internal/artifactref"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -46,6 +49,9 @@ const (
 	ContinueOnError = "continue"
 	FailOnError     = "stopAndFail"
 )
+
+// ScriptDir for testing
+var ScriptDir = pipeline.ScriptDir
 
 // ContextError context error type
 type ContextError string
@@ -162,6 +168,9 @@ func (e Entrypointer) Go() error {
 	if err := os.MkdirAll(filepath.Join(e.StepMetadataDir, "results"), os.ModePerm); err != nil {
 		return err
 	}
+	if err := os.MkdirAll(filepath.Join(e.StepMetadataDir, "artifacts"), os.ModePerm); err != nil {
+		return err
+	}
 	for _, f := range e.WaitFiles {
 		if err := e.Waiter.Wait(context.Background(), f, e.WaitFileContent, e.BreakpointOnFailure); err != nil {
 			// An error happened while waiting, so we bail
@@ -200,6 +209,10 @@ func (e Entrypointer) Go() error {
 		if err := e.applyStepResultSubstitutions(pipeline.StepsDir); err != nil {
 			logger.Error("Error while substituting step results: ", err)
 		}
+		if err := e.applyStepArtifactSubstitutions(pipeline.StepsDir); err != nil {
+			logger.Error("Error while substituting step artifacts: ", err)
+		}
+
 		ctx, cancel = context.WithCancel(ctx)
 		if e.Timeout != nil && *e.Timeout > time.Duration(0) {
 			ctx, cancel = context.WithTimeout(ctx, *e.Timeout)
@@ -266,7 +279,28 @@ func (e Entrypointer) Go() error {
 		}
 	}
 
+	if e.ResultExtractionMethod == config.ResultExtractionMethodTerminationMessage {
+		fp := filepath.Join(e.StepMetadataDir, "artifacts", "provenance.json")
+
+		artifacts, err := readArtifacts(fp)
+		if err != nil {
+			logger.Fatalf("Error while handling artifacts: %s", err)
+		}
+		output = append(output, artifacts...)
+	}
+
 	return err
+}
+
+func readArtifacts(fp string) ([]result.RunResult, error) {
+	file, err := os.ReadFile(fp)
+	if os.IsNotExist(err) {
+		return []result.RunResult{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return []result.RunResult{{Key: fp, Value: string(file), ResultType: result.ArtifactsResultType}}, nil
 }
 
 func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string, resultType result.ResultType) error {
@@ -466,4 +500,190 @@ func (e Entrypointer) outputRunResult(terminationReason string) result.RunResult
 		Value:      terminationReason,
 		ResultType: result.InternalTektonResultType,
 	}
+}
+
+// getStepArtifactsPath gets the path to the step artifacts
+func getStepArtifactsPath(stepDir string, containerName string) string {
+	return filepath.Join(stepDir, containerName, "artifacts", "provenance.json")
+}
+
+// loadStepArtifacts loads and parses the artifacts file for a specified step.
+func loadStepArtifacts(stepDir string, containerName string) (v1.Artifacts, error) {
+	v := v1.Artifacts{}
+	fp := getStepArtifactsPath(stepDir, containerName)
+
+	fileContents, err := os.ReadFile(fp)
+	if err != nil {
+		return v, err
+	}
+	err = json.Unmarshal(fileContents, &v)
+	if err != nil {
+		return v, err
+	}
+	return v, nil
+}
+
+// getArtifactValues retrieves the values associated with a specified artifact reference.
+// It parses the provided artifact template, loads the corresponding step's artifacts, and extracts the relevant values.
+// If the artifact name is not specified in the template, the values of the first output are returned.
+func getArtifactValues(dir string, template string) (string, error) {
+	artifactTemplate, err := parseArtifactTemplate(template)
+
+	if err != nil {
+		return "", err
+	}
+
+	artifacts, err := loadStepArtifacts(dir, artifactTemplate.ContainerName)
+	if err != nil {
+		return "", err
+	}
+
+	// $(steps.stepName.outputs.artifactName) <- artifacts.Output[artifactName].Values
+	// $(steps.stepName.outputs) <- artifacts.Output[0].Values
+	var t []v1.Artifact
+	if artifactTemplate.Type == "outputs" {
+		t = artifacts.Outputs
+	} else {
+		t = artifacts.Inputs
+	}
+
+	if artifactTemplate.ArtifactName == "" {
+		marshal, err := json.Marshal(t[0].Values)
+		if err != nil {
+			return "", err
+		}
+		return string(marshal), err
+	}
+	for _, ar := range t {
+		if ar.Name == artifactTemplate.ArtifactName {
+			marshal, err := json.Marshal(ar.Values)
+			if err != nil {
+				return "", err
+			}
+			return string(marshal), err
+		}
+	}
+	return "", fmt.Errorf("values for template %s not found", template)
+}
+
+// parseArtifactTemplate parses an artifact template string and extracts relevant information into an ArtifactTemplate struct.
+//
+// The artifact template is expected to be in the format "$(steps.{step-name}.outputs.{artifact-name})" or "$(steps.{step-name}.outputs)".
+func parseArtifactTemplate(template string) (ArtifactTemplate, error) {
+	if template == "" {
+		return ArtifactTemplate{}, errors.New("template is empty")
+	}
+	if artifactref.StepArtifactRegex.FindString(template) != template {
+		return ArtifactTemplate{}, fmt.Errorf("invalid artifact template %s", template)
+	}
+	template = strings.TrimSuffix(strings.TrimPrefix(template, "$("), ")")
+	split := strings.Split(template, ".")
+	at := ArtifactTemplate{
+		ContainerName: "step-" + split[1],
+		Type:          split[2],
+	}
+	if len(split) == 4 {
+		at.ArtifactName = split[3]
+	}
+	return at, nil
+}
+
+// ArtifactTemplate holds steps artifacts metadata parsed from step artifacts interpolation
+type ArtifactTemplate struct {
+	ContainerName string
+	Type          string // inputs or outputs
+	ArtifactName  string
+}
+
+// applyStepArtifactSubstitutions replaces artifact references within a step's command and environment variables with their corresponding values.
+//
+// This function is designed to handle artifact substitutions in a script file, inline command, or environment variables.
+//
+// Args:
+//
+//	stepDir: The directory of the executing step.
+//
+// Returns:
+//
+//	An error object if any issues occur during substitution.
+func (e *Entrypointer) applyStepArtifactSubstitutions(stepDir string) error {
+	// Script was re-written into a file, we need to read the file to and substitute the content
+	// and re-write the command.
+	// While param substitution cannot be used in Script from StepAction, allowing artifact substitution doesn't seem bad as
+	// artifacts are unmarshalled, should be safe.
+	if len(e.Command) == 1 && filepath.Dir(e.Command[0]) == filepath.Clean(ScriptDir) {
+		dataBytes, err := os.ReadFile(e.Command[0])
+		if err != nil {
+			return err
+		}
+		fileContent := string(dataBytes)
+		v, err := replaceValue(artifactref.StepArtifactRegex, fileContent, stepDir, getArtifactValues)
+		if err != nil {
+			return err
+		}
+		if v != fileContent {
+			temp, err := writeToTempFile(v)
+			if err != nil {
+				return err
+			}
+			e.Command = []string{temp.Name()}
+		}
+	} else {
+		command := e.Command
+		var newCmd []string
+		for _, c := range command {
+			v, err := replaceValue(artifactref.StepArtifactRegex, c, stepDir, getArtifactValues)
+			if err != nil {
+				return err
+			}
+			newCmd = append(newCmd, v)
+		}
+		e.Command = newCmd
+	}
+
+	// substitute env
+	for _, e := range os.Environ() {
+		pair := strings.SplitN(e, "=", 2)
+		v, err := replaceValue(artifactref.StepArtifactRegex, pair[1], stepDir, getArtifactValues)
+
+		if err != nil {
+			return err
+		}
+		os.Setenv(pair[0], v)
+	}
+
+	return nil
+}
+
+func writeToTempFile(v string) (*os.File, error) {
+	tmp, err := os.CreateTemp("", "script-*")
+	if err != nil {
+		return nil, err
+	}
+	err = os.Chmod(tmp.Name(), 0o755)
+	if err != nil {
+		return nil, err
+	}
+	_, err = tmp.WriteString(v)
+	if err != nil {
+		return nil, err
+	}
+	err = tmp.Close()
+	if err != nil {
+		return nil, err
+	}
+	return tmp, nil
+}
+
+func replaceValue(regex *regexp.Regexp, src string, stepDir string, getValue func(string, string) (string, error)) (string, error) {
+	matches := regex.FindAllStringSubmatch(src, -1)
+	t := src
+	for _, m := range matches {
+		v, err := getValue(stepDir, m[0])
+		if err != nil {
+			return "", err
+		}
+		t = strings.ReplaceAll(t, m[0], v)
+	}
+	return t, nil
 }

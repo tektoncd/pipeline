@@ -918,6 +918,8 @@ func applyParamsContextsResultsAndWorkspaces(ctx context.Context, tr *v1.TaskRun
 	// Apply task result substitution
 	ts = resources.ApplyResults(ts)
 
+	// Apply step Artifacts substitution
+	ts = resources.ApplyArtifacts(ts)
 	// Apply step exitCode path substitution
 	ts = resources.ApplyStepExitCodePath(ts)
 

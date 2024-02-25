@@ -1312,7 +1312,7 @@ TaskRunStatus
 <h3 id="tekton.dev/v1.Artifact">Artifact
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.StepState">StepState</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.Artifacts">Artifacts</a>, <a href="#tekton.dev/v1.StepState">StepState</a>)
 </p>
 <div>
 <p>TaskRunStepArtifact represents an artifact produced or used by a step within a task run.
@@ -1386,6 +1386,47 @@ string
 </td>
 <td>
 <p>Algorithm-specific digests for verifying the content (e.g., SHA256)</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.Artifacts">Artifacts
+</h3>
+<div>
+<p>Artifacts represents the collection of input and output artifacts associated with
+a task run or a similar process. Artifacts in this context are units of data or resources
+that the process either consumes as input or produces as output.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>inputs</code><br/>
+<em>
+<a href="#tekton.dev/v1.Artifact">
+[]Artifact
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>outputs</code><br/>
+<em>
+<a href="#tekton.dev/v1.Artifact">
+[]Artifact
+</a>
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -9640,7 +9681,7 @@ TaskRunStatus
 <h3 id="tekton.dev/v1beta1.Artifact">Artifact
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.StepState">StepState</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Artifacts">Artifacts</a>, <a href="#tekton.dev/v1beta1.StepState">StepState</a>)
 </p>
 <div>
 <p>TaskRunStepArtifact represents an artifact produced or used by a step within a task run.
@@ -9714,6 +9755,47 @@ string
 </td>
 <td>
 <p>Algorithm-specific digests for verifying the content (e.g., SHA256)</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1beta1.Artifacts">Artifacts
+</h3>
+<div>
+<p>Artifacts represents the collection of input and output artifacts associated with
+a task run or a similar process. Artifacts in this context are units of data or resources
+that the process either consumes as input or produces as output.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>inputs</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.Artifact">
+[]Artifact
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>outputs</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.Artifact">
+[]Artifact
+</a>
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>

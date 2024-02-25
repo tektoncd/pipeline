@@ -28,4 +28,6 @@ const (
 	CredsDir = "/tekton/creds" // #nosec
 	// StepsDir is the directory used for a step to store any metadata related to the step
 	StepsDir = "/tekton/steps"
+
+	ScriptDir = "/tekton/scripts"
 )

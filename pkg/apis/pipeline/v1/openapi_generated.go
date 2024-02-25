@@ -34,6 +34,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template":                    schema_pkg_apis_pipeline_pod_Template(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifact":                     schema_pkg_apis_pipeline_v1_Artifact(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArtifactValue":                schema_pkg_apis_pipeline_v1_ArtifactValue(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifacts":                    schema_pkg_apis_pipeline_v1_Artifacts(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ChildStatusReference":         schema_pkg_apis_pipeline_v1_ChildStatusReference(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.EmbeddedTask":                 schema_pkg_apis_pipeline_v1_EmbeddedTask(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.IncludeParams":                schema_pkg_apis_pipeline_v1_IncludeParams(ref),
@@ -452,6 +453,47 @@ func schema_pkg_apis_pipeline_v1_ArtifactValue(ref common.ReferenceCallback) com
 				},
 			},
 		},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1_Artifacts(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Artifacts represents the collection of input and output artifacts associated with a task run or a similar process. Artifacts in this context are units of data or resources that the process either consumes as input or produces as output.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"inputs": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifact"),
+									},
+								},
+							},
+						},
+					},
+					"outputs": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifact"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifact"},
 	}
 }
 
