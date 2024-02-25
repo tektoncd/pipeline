@@ -3725,6 +3725,34 @@ spec:
 			Results: []v1.StepResult{{Name: "result", Type: "string"}},
 		}},
 	}, {
+		name: "step artifacts",
+		taskRun: parse.MustParseV1TaskRun(t, `
+metadata:
+  name: taskrun-with-step-artifacts
+  namespace: foo
+spec:
+  taskSpec:
+    steps:
+      - ref:
+          name: stepAction
+        name: step1
+`),
+		stepAction: parse.MustParseV1alpha1StepAction(t, `
+metadata:
+  name: stepAction
+  namespace: foo
+spec:
+  image: myImage
+  command: ["echo"]
+  args: ["hi", ">>", "$(step.artifacts.path)"]
+`),
+		want: []v1.Step{{
+			Image:   "myImage",
+			Command: []string{"echo"},
+			Args:    []string{"hi", ">>", "/tekton/steps/step-step1/artifacts/provenance.json"},
+			Name:    "step1",
+		}},
+	}, {
 		name: "params from taskspec",
 		taskRun: parse.MustParseV1TaskRun(t, `
 metadata:

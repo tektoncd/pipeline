@@ -273,6 +273,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 
 		// Parse termination messages
 		terminationReason := ""
+		var as v1.Artifacts
 		if state.Terminated != nil && len(state.Terminated.Message) != 0 {
 			msg := state.Terminated.Message
 
@@ -281,6 +282,15 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 				logger.Errorf("termination message could not be parsed as JSON: %v", err)
 				merr = multierror.Append(merr, err)
 			} else {
+				for _, r := range results {
+					if r.ResultType == result.ArtifactsResultType {
+						if err := json.Unmarshal([]byte(r.Value), &as); err != nil {
+							merr = multierror.Append(merr, err)
+						}
+						// there should be only one ArtifactsResult
+						break
+					}
+				}
 				time, err := extractStartedAtTimeFromResults(results)
 				if err != nil {
 					logger.Errorf("error setting the start time of step %q in taskrun %q: %v", s.Name, tr.Name, err)
@@ -324,6 +334,8 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 			ImageID:           s.ImageID,
 			Results:           taskRunStepResults,
 			TerminationReason: terminationReason,
+			Inputs:            as.Inputs,
+			Outputs:           as.Outputs,
 		})
 	}
 
@@ -435,6 +447,9 @@ func filterResults(results []result.RunResult, specResults []v1.TaskResult, step
 			}
 			taskRunStepResults = append(taskRunStepResults, taskRunStepResult)
 			filteredResults = append(filteredResults, r)
+		case result.ArtifactsResultType:
+			filteredResults = append(filteredResults, r)
+			continue
 		case result.InternalTektonResultType:
 			// Internal messages are ignored because they're not used as external result
 			continue
