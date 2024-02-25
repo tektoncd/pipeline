@@ -195,6 +195,10 @@ func TestEntrypointer(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Entrypointer failed: %v", err)
 			}
+			_, err = os.Stat(filepath.Join(c.stepDir, "artifacts"))
+			if err != nil {
+				t.Fatalf("fail to stat artifacts dir: %v", err)
+			}
 
 			if len(c.waitFiles) > 0 {
 				if fw.waited == nil {

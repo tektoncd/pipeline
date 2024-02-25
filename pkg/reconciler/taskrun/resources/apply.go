@@ -425,6 +425,22 @@ func getTaskResultReplacements(spec *v1.TaskSpec) map[string]string {
 	return stringReplacements
 }
 
+func ApplyArtifacts(spec *v1.TaskSpec) *v1.TaskSpec {
+	for i := range spec.Steps {
+		stringReplacements := getStepArtifactReplacements(spec.Steps[i], i)
+		container.ApplyStepReplacements(&spec.Steps[i], stringReplacements, map[string][]string{})
+	}
+	return spec
+}
+
+func getStepArtifactReplacements(step v1.Step, idx int) map[string]string {
+	stringReplacements := map[string]string{}
+	stepName := pod.StepName(step.Name, idx)
+	stringReplacements["step.artifacts.path"] = filepath.Join(pipeline.StepsDir, stepName, "artifacts", "provenance.json")
+
+	return stringReplacements
+}
+
 // ApplyStepExitCodePath replaces the occurrences of exitCode path with the absolute tekton internal path
 // Replace $(steps.<step-name>.exitCode.path) with pipeline.StepPath/<step-name>/exitCode
 func ApplyStepExitCodePath(spec *v1.TaskSpec) *v1.TaskSpec {

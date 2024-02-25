@@ -162,6 +162,9 @@ func (e Entrypointer) Go() error {
 	if err := os.MkdirAll(filepath.Join(e.StepMetadataDir, "results"), os.ModePerm); err != nil {
 		return err
 	}
+	if err := os.MkdirAll(filepath.Join(e.StepMetadataDir, "artifacts"), os.ModePerm); err != nil {
+		return err
+	}
 	for _, f := range e.WaitFiles {
 		if err := e.Waiter.Wait(context.Background(), f, e.WaitFileContent, e.BreakpointOnFailure); err != nil {
 			// An error happened while waiting, so we bail
