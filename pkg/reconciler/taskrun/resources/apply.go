@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tektoncd/pipeline/internal/artifactref"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/container"
@@ -399,19 +400,20 @@ func getTaskResultReplacements(spec *v1.TaskSpec) map[string]string {
 	return stringReplacements
 }
 
-// ApplyArtifacts replaces the occurrences of step.artifacts.path with the absolute tekton internal path
+// ApplyArtifacts replaces the occurrences of artifacts.path and step.artifacts.path with the absolute tekton internal path
 func ApplyArtifacts(spec *v1.TaskSpec) *v1.TaskSpec {
 	for i := range spec.Steps {
-		stringReplacements := getStepArtifactReplacements(spec.Steps[i], i)
+		stringReplacements := getArtifactReplacements(spec.Steps[i], i)
 		container.ApplyStepReplacements(&spec.Steps[i], stringReplacements, map[string][]string{})
 	}
 	return spec
 }
 
-func getStepArtifactReplacements(step v1.Step, idx int) map[string]string {
+func getArtifactReplacements(step v1.Step, idx int) map[string]string {
 	stringReplacements := map[string]string{}
 	stepName := pod.StepName(step.Name, idx)
-	stringReplacements[pod.StepArtifactPathPattern] = filepath.Join(pipeline.StepsDir, stepName, "artifacts", "provenance.json")
+	stringReplacements[artifactref.StepArtifactPathPattern] = filepath.Join(pipeline.StepsDir, stepName, "artifacts", "provenance.json")
+	stringReplacements[artifactref.TaskArtifactPathPattern] = filepath.Join(pipeline.ArtifactsDir, "provenance.json")
 
 	return stringReplacements
 }

@@ -252,10 +252,10 @@ func TestConsumeArtifacts(t *testing.T) {
 			task := simpleArtifactProducerTask(t, namespace, fqImageName)
 			task.Spec.Steps = append(task.Spec.Steps,
 				v1.Step{Name: "consume-outputs", Image: fqImageName,
-					Command: []string{"sh", "-c", "echo -n $(steps.hello.outputs) >> $(step.results.result1.path)"},
+					Command: []string{"sh", "-c", "echo -n $(steps.hello.outputs.image) >> $(step.results.result1.path)"},
 					Results: []v1.StepResult{{Name: "result1", Type: v1.ResultsTypeString}}},
 				v1.Step{Name: "consume-inputs", Image: fqImageName,
-					Command: []string{"sh", "-c", "echo -n $(steps.hello.inputs) >> $(step.results.result2.path)"},
+					Command: []string{"sh", "-c", "echo -n $(steps.hello.inputs.source) >> $(step.results.result2.path)"},
 					Results: []v1.StepResult{{Name: "result2", Type: v1.ResultsTypeString}}},
 			)
 			if _, err := c.V1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {

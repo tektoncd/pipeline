@@ -1787,7 +1787,7 @@ func TestTaskSpecValidateSuccessWithArtifactsRefFlagEnabled(t *testing.T) {
 			name: "reference step artifacts in Env",
 			Steps: []v1.Step{{
 				Image: "busybox",
-				Env:   []corev1.EnvVar{{Name: "AAA", Value: "$(steps.aaa.outputs)"}},
+				Env:   []corev1.EnvVar{{Name: "AAA", Value: "$(steps.aaa.outputs.image)"}},
 			}},
 		},
 		{
@@ -1869,7 +1869,7 @@ func TestTaskSpecValidateErrorWithArtifactsRefFlagNotEnabled(t *testing.T) {
 		{
 			name: "Cannot reference step artifacts in Env without setting enable-artifacts to true",
 			Steps: []v1.Step{{
-				Env: []corev1.EnvVar{{Name: "AAA", Value: "$(steps.aaa.outputs)"}},
+				Env: []corev1.EnvVar{{Name: "AAA", Value: "$(steps.aaa.outputs.image)"}},
 			}},
 			expectedError: apis.FieldError{
 				Message: fmt.Sprintf("feature flag %s should be set to true to use artifacts feature.", config.EnableArtifacts),
