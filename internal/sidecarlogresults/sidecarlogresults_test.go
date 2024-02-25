@@ -338,6 +338,39 @@ func TestParseResults(t *testing.T) {
           }`,
 			Type: "stepArtifact",
 		},
+		{
+			Name: "task-run-artifacts-result",
+			Value: `{
+            "inputs":[
+              {
+                "name":"input-artifacts",
+                "values":[
+                  {
+                    "uri":"pkg:example.github.com/inputs",
+                    "digest":{
+                      "sha256":"b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"
+                    }
+                  }
+                ]
+              }
+            ],
+            "outputs":[
+              {
+                "name":"image",
+                "values":[
+                  {
+                    "uri":"pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c",
+                    "digest":{
+                      "sha256":"df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48",
+                      "sha1":"95588b8f34c31eb7d62c92aaa4e6506639b06ef2"
+                    }
+                  }
+                ]
+              }
+            ]
+          }`,
+			Type: "taskArtifact",
+		},
 	}
 	podLogs := []string{}
 	for _, r := range results {
@@ -400,6 +433,38 @@ func TestParseResults(t *testing.T) {
             ]
           }`,
 		ResultType: result.StepArtifactsResultType,
+	}, {
+		Key: "task-run-artifacts-result",
+		Value: `{
+            "inputs":[
+              {
+                "name":"input-artifacts",
+                "values":[
+                  {
+                    "uri":"pkg:example.github.com/inputs",
+                    "digest":{
+                      "sha256":"b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"
+                    }
+                  }
+                ]
+              }
+            ],
+            "outputs":[
+              {
+                "name":"image",
+                "values":[
+                  {
+                    "uri":"pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c",
+                    "digest":{
+                      "sha256":"df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48",
+                      "sha1":"95588b8f34c31eb7d62c92aaa4e6506639b06ef2"
+                    }
+                  }
+                ]
+              }
+            ]
+          }`,
+		ResultType: result.TaskRunArtifactsResultType,
 	}}
 	stepResults := []result.RunResult{}
 	for _, plog := range podLogs {

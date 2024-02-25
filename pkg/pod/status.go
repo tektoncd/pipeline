@@ -180,9 +180,18 @@ func createTaskResultsFromStepResults(stepRunRes []v1.TaskRunStepResult, neededS
 	return taskResults
 }
 
-func getTaskResultsFromSidecarLogs(sidecarLogResults []result.RunResult) []result.RunResult {
+func setTaskRunArtifactsFromRunResult(runResults []result.RunResult, artifacts *v1.Artifacts) error {
+	for _, slr := range runResults {
+		if slr.ResultType == result.TaskRunArtifactsResultType {
+			return json.Unmarshal([]byte(slr.Value), artifacts)
+		}
+	}
+	return nil
+}
+
+func getTaskResultsFromSidecarLogs(runResults []result.RunResult) []result.RunResult {
 	taskResultsFromSidecarLogs := []result.RunResult{}
-	for _, slr := range sidecarLogResults {
+	for _, slr := range runResults {
 		if slr.ResultType == result.TaskRunResultType {
 			taskResultsFromSidecarLogs = append(taskResultsFromSidecarLogs, slr)
 		}
@@ -241,6 +250,14 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 	taskResults, _, _ := filterResults(taskResultsFromSidecarLogs, specResults, nil)
 	if tr.IsDone() {
 		trs.Results = append(trs.Results, taskResults...)
+		var tras v1.Artifacts
+		err := setTaskRunArtifactsFromRunResult(sidecarLogResults, &tras)
+		if err != nil {
+			logger.Errorf("Failed to set artifacts value from sidecar logs: %v", err)
+			merr = multierror.Append(merr, err)
+		} else {
+			trs.Artifacts = tras
+		}
 	}
 
 	// Continue with extraction of termination messages
@@ -275,9 +292,9 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 			// Set TaskResults from StepResults
 			trs.Results = append(trs.Results, createTaskResultsFromStepResults(stepRunRes, neededStepResults)...)
 		}
-		var as v1.Artifacts
+		var sas v1.Artifacts
 
-		err = setStepArtifactsValueFromSidecarLogs(sidecarLogResults, s.Name, &as)
+		err = setStepArtifactsValueFromSidecarLogResult(sidecarLogResults, s.Name, &sas)
 		if err != nil {
 			logger.Errorf("Failed to set artifacts value from sidecar logs: %v", err)
 			merr = multierror.Append(merr, err)
@@ -290,18 +307,13 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 
 			results, err := termination.ParseMessage(logger, msg)
 			if err != nil {
-				logger.Errorf("termination message could not be parsed as JSON: %v", err)
+				logger.Errorf("termination message could not be parsed sas JSON: %v", err)
 				merr = multierror.Append(merr, err)
 			} else {
-				for _, r := range results {
-					if r.ResultType == result.StepArtifactsResultType {
-						if err := json.Unmarshal([]byte(r.Value), &as); err != nil {
-							logger.Errorf("result value could not be parsed as Artifacts: %v", err)
-							merr = multierror.Append(merr, err)
-						}
-						// there should be only one ArtifactsResult
-						break
-					}
+				err := setStepArtifactsValueFromTerminationMessageRunResult(results, &sas)
+				if err != nil {
+					logger.Errorf("error setting step artifacts of step %q in taskrun %q: %v", s.Name, tr.Name, err)
+					merr = multierror.Append(merr, err)
 				}
 				time, err := extractStartedAtTimeFromResults(results)
 				if err != nil {
@@ -320,6 +332,15 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 					// Set TaskResults from StepResults
 					taskResults = append(taskResults, createTaskResultsFromStepResults(stepRunRes, neededStepResults)...)
 					trs.Results = append(trs.Results, taskResults...)
+
+					var tras v1.Artifacts
+					err := setTaskRunArtifactsFromRunResult(filteredResults, &tras)
+					if err != nil {
+						logger.Errorf("error setting step artifacts in taskrun %q: %v", tr.Name, err)
+						merr = multierror.Append(merr, err)
+					}
+					trs.Artifacts.Merge(tras)
+					trs.Artifacts.Merge(sas)
 				}
 				msg, err = createMessageFromResults(filteredResults)
 				if err != nil {
@@ -339,6 +360,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 				terminationReason = getTerminationReason(state.Terminated.Reason, terminationFromResults, exitCode)
 			}
 		}
+
 		trs.Steps = append(trs.Steps, v1.StepState{
 			ContainerState:    *state,
 			Name:              trimStepPrefix(s.Name),
@@ -346,17 +368,26 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 			ImageID:           s.ImageID,
 			Results:           taskRunStepResults,
 			TerminationReason: terminationReason,
-			Inputs:            as.Inputs,
-			Outputs:           as.Outputs,
+			Inputs:            sas.Inputs,
+			Outputs:           sas.Outputs,
 		})
 	}
 
 	return merr
 }
 
-func setStepArtifactsValueFromSidecarLogs(results []result.RunResult, name string, artifacts *v1.Artifacts) error {
+func setStepArtifactsValueFromSidecarLogResult(results []result.RunResult, name string, artifacts *v1.Artifacts) error {
 	for _, r := range results {
 		if r.Key == name && r.ResultType == result.StepArtifactsResultType {
+			return json.Unmarshal([]byte(r.Value), artifacts)
+		}
+	}
+	return nil
+}
+
+func setStepArtifactsValueFromTerminationMessageRunResult(results []result.RunResult, artifacts *v1.Artifacts) error {
+	for _, r := range results {
+		if r.ResultType == result.StepArtifactsResultType {
 			return json.Unmarshal([]byte(r.Value), artifacts)
 		}
 	}
@@ -469,6 +500,9 @@ func filterResults(results []result.RunResult, specResults []v1.TaskResult, step
 			taskRunStepResults = append(taskRunStepResults, taskRunStepResult)
 			filteredResults = append(filteredResults, r)
 		case result.StepArtifactsResultType:
+			filteredResults = append(filteredResults, r)
+			continue
+		case result.TaskRunArtifactsResultType:
 			filteredResults = append(filteredResults, r)
 			continue
 		case result.InternalTektonResultType:

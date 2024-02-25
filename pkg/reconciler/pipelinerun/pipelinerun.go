@@ -894,6 +894,13 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 		// propagate previous task results
 		resources.PropagateResults(rpt, pipelineRunFacts.State)
 
+		// propagate previous task artifacts
+		err = resources.PropagateArtifacts(rpt, pipelineRunFacts.State)
+		if err != nil {
+			logger.Errorf("Failed to propagate artifacts due to error: %v", err)
+			return controller.NewPermanentError(err)
+		}
+
 		// Validate parameter types in matrix after apply substitutions from Task Results
 		if rpt.PipelineTask.IsMatrixed() {
 			if err := resources.ValidateParameterTypesInMatrix(pipelineRunFacts.State); err != nil {
