@@ -126,7 +126,7 @@ var (
 // Additionally, Step timeouts are added as entrypoint flag.
 func orderContainers(ctx context.Context, commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1.TaskSpec, breakpointConfig *v1.TaskRunDebug, waitForReadyAnnotation, enableKeepPodOnCancel bool) ([]corev1.Container, error) {
 	if len(steps) == 0 {
-		return nil, errors.New("No steps specified")
+		return nil, errors.New("no steps specified")
 	}
 
 	for i, s := range steps {

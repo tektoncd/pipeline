@@ -1937,7 +1937,7 @@ _EOF_
 			},
 		},
 		{
-			desc:         "sidecar logs enabled",
+			desc:         "sidecar logs enabled, artifacts not enabled",
 			featureFlags: map[string]string{"results-from": "sidecar-logs"},
 			ts: v1.TaskSpec{
 				Results: []v1.TaskResult{{
@@ -1991,6 +1991,8 @@ _EOF_
 						"/tekton/results",
 						"-result-names",
 						"foo",
+						"-step-names",
+						"",
 						"-step-results",
 						"{}",
 					},
@@ -2010,7 +2012,7 @@ _EOF_
 			},
 		},
 		{
-			desc:         "sidecar logs enabled with step results",
+			desc:         "sidecar logs enabled with step results, artifacts not enabled",
 			featureFlags: map[string]string{"results-from": "sidecar-logs"},
 			ts: v1.TaskSpec{
 				Results: []v1.TaskResult{{
@@ -2070,6 +2072,8 @@ _EOF_
 						"/tekton/results",
 						"-result-names",
 						"foo",
+						"-step-names",
+						"",
 						"-step-results",
 						"{\"step-name\":[\"step-foo\"]}",
 					},
@@ -2089,7 +2093,7 @@ _EOF_
 			},
 		},
 		{
-			desc:         "sidecar logs enabled with security context",
+			desc:         "sidecar logs enabled and artifacts not enabled, set security context is true",
 			featureFlags: map[string]string{"results-from": "sidecar-logs", "set-security-context": "true"},
 			ts: v1.TaskSpec{
 				Results: []v1.TaskResult{{
@@ -2143,6 +2147,249 @@ _EOF_
 						"/tekton/results",
 						"-result-names",
 						"foo",
+						"-step-names",
+						"",
+						"-step-results",
+						"{}",
+					},
+					Resources: corev1.ResourceRequirements{
+						Requests: nil,
+					},
+					VolumeMounts: append([]corev1.VolumeMount{
+						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
+						{Name: "tekton-internal-run-0", ReadOnly: true, MountPath: "/tekton/run/0"},
+					}, implicitVolumeMounts...),
+					SecurityContext: linuxSecurityContext,
+				}},
+				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+					Name:         "tekton-creds-init-home-0",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}),
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
+			},
+		},
+		{
+			desc:         "sidecar logs enabled and artifacts referenced",
+			featureFlags: map[string]string{"results-from": "sidecar-logs", "enable-artifacts": "true"},
+			ts: v1.TaskSpec{
+				Results: []v1.TaskResult{{
+					Name: "foo",
+					Type: v1.ResultsTypeString,
+				}},
+				Steps: []v1.Step{{
+					Name:    "name",
+					Image:   "image",
+					Command: []string{"echo", "aaa", ">>>", "/tekton/steps/step-name/artifacts/provenance.json"}, // avoid entrypoint lookup.
+				}},
+			},
+			want: &corev1.PodSpec{
+				RestartPolicy: corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{
+					entrypointInitContainer(images.EntrypointImage, []v1.Step{{Name: "name"}}, false /* setSecurityContext */, false /* windows */),
+				},
+				Containers: []corev1.Container{{
+					Name:    "step-name",
+					Image:   "image",
+					Command: []string{"/tekton/bin/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/run/0/out",
+						"-termination_path",
+						"/tekton/termination",
+						"-step_metadata_dir",
+						"/tekton/run/0/status",
+						"-result_from",
+						"sidecar-logs",
+						"-results",
+						"foo",
+						"-entrypoint",
+						"echo",
+						"--",
+						"aaa",
+						">>>",
+						"/tekton/steps/step-name/artifacts/provenance.json",
+					},
+					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
+						Name:      "tekton-creds-init-home-0",
+						MountPath: "/tekton/creds",
+					}}, implicitVolumeMounts...),
+					TerminationMessagePath: "/tekton/termination",
+				}, {
+					Name:  pipeline.ReservedResultsSidecarContainerName,
+					Image: "",
+					Command: []string{
+						"/ko-app/sidecarlogresults",
+						"-results-dir",
+						"/tekton/results",
+						"-result-names",
+						"foo",
+						"-step-names",
+						"step-name",
+						"-step-results",
+						"{}",
+					},
+					Resources: corev1.ResourceRequirements{
+						Requests: nil,
+					},
+					VolumeMounts: append([]corev1.VolumeMount{
+						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
+						{Name: "tekton-internal-run-0", ReadOnly: true, MountPath: "/tekton/run/0"},
+					}, implicitVolumeMounts...),
+				}},
+				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+					Name:         "tekton-creds-init-home-0",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}),
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
+			},
+		},
+		{
+			desc:         "sidecar logs enabled with step results, artifacts referenced",
+			featureFlags: map[string]string{"results-from": "sidecar-logs", "enable-artifacts": "true"},
+			ts: v1.TaskSpec{
+				Results: []v1.TaskResult{{
+					Name: "foo",
+					Type: v1.ResultsTypeString,
+				}},
+				Steps: []v1.Step{{
+					Name: "name",
+					Results: []v1.StepResult{{
+						Name: "step-foo",
+						Type: v1.ResultsTypeString,
+					}},
+					Image:   "image",
+					Command: []string{"echo", "aaa", ">>>", "/tekton/steps/step-name/artifacts/provenance.json"}, //
+				}},
+			},
+			want: &corev1.PodSpec{
+				RestartPolicy: corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{
+					entrypointInitContainer(images.EntrypointImage, []v1.Step{{Name: "name"}}, false /* setSecurityContext */, false /* windows */),
+				},
+				Containers: []corev1.Container{{
+					Name:    "step-name",
+					Image:   "image",
+					Command: []string{"/tekton/bin/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/run/0/out",
+						"-termination_path",
+						"/tekton/termination",
+						"-step_metadata_dir",
+						"/tekton/run/0/status",
+						"-result_from",
+						"sidecar-logs",
+						"-step_results",
+						"step-foo",
+						"-results",
+						"foo",
+						"-entrypoint",
+						"echo",
+						"--",
+						"aaa",
+						">>>",
+						"/tekton/steps/step-name/artifacts/provenance.json",
+					},
+					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
+						Name:      "tekton-creds-init-home-0",
+						MountPath: "/tekton/creds",
+					}}, implicitVolumeMounts...),
+					TerminationMessagePath: "/tekton/termination",
+				}, {
+					Name:  pipeline.ReservedResultsSidecarContainerName,
+					Image: "",
+					Command: []string{
+						"/ko-app/sidecarlogresults",
+						"-results-dir",
+						"/tekton/results",
+						"-result-names",
+						"foo",
+						"-step-names",
+						"step-name",
+						"-step-results",
+						"{\"step-name\":[\"step-foo\"]}",
+					},
+					Resources: corev1.ResourceRequirements{
+						Requests: nil,
+					},
+					VolumeMounts: append([]corev1.VolumeMount{
+						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
+						{Name: "tekton-internal-run-0", ReadOnly: true, MountPath: "/tekton/run/0"},
+					}, implicitVolumeMounts...),
+				}},
+				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+					Name:         "tekton-creds-init-home-0",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}),
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
+			},
+		},
+		{
+			desc:         "sidecar logs enabled, artifacts referenced and security context set ",
+			featureFlags: map[string]string{"results-from": "sidecar-logs", "set-security-context": "true", "enable-artifacts": "true"},
+			ts: v1.TaskSpec{
+				Results: []v1.TaskResult{{
+					Name: "foo",
+					Type: v1.ResultsTypeString,
+				}},
+				Steps: []v1.Step{{
+					Name:    "name",
+					Image:   "image",
+					Command: []string{"echo", "aaa", ">>>", "/tekton/steps/step-name/artifacts/provenance.json"},
+				}},
+			},
+			want: &corev1.PodSpec{
+				RestartPolicy: corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{
+					entrypointInitContainer(images.EntrypointImage, []v1.Step{{Name: "name"}}, true /* setSecurityContext */, false /* windows */),
+				},
+				Containers: []corev1.Container{{
+					Name:    "step-name",
+					Image:   "image",
+					Command: []string{"/tekton/bin/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/run/0/out",
+						"-termination_path",
+						"/tekton/termination",
+						"-step_metadata_dir",
+						"/tekton/run/0/status",
+						"-result_from",
+						"sidecar-logs",
+						"-results",
+						"foo",
+						"-entrypoint",
+						"echo",
+						"--",
+						"aaa",
+						">>>",
+						"/tekton/steps/step-name/artifacts/provenance.json",
+					},
+					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
+						Name:      "tekton-creds-init-home-0",
+						MountPath: "/tekton/creds",
+					}}, implicitVolumeMounts...),
+					TerminationMessagePath: "/tekton/termination",
+				}, {
+					Name:  pipeline.ReservedResultsSidecarContainerName,
+					Image: "",
+					Command: []string{
+						"/ko-app/sidecarlogresults",
+						"-results-dir",
+						"/tekton/results",
+						"-result-names",
+						"foo",
+						"-step-names",
+						"step-name",
 						"-step-results",
 						"{}",
 					},
@@ -3621,6 +3868,131 @@ func TestUpdateResourceRequirements(t *testing.T) {
 
 			expectedPod := tc.getExpectedPod()
 			if d := cmp.Diff(expectedPod, targetPod); d != "" {
+				t.Errorf("Diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func Test_artifactsPathReferenced(t *testing.T) {
+	tests := []struct {
+		name  string
+		steps []v1.Step
+		want  bool
+	}{
+		{
+			name:  "No Steps",
+			steps: []v1.Step{},
+			want:  false,
+		},
+		{
+			name: "No Reference",
+			steps: []v1.Step{
+				{
+					Name:    "name",
+					Script:  "echo hello",
+					Command: []string{"echo", "hello"},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "Reference in Script",
+			steps: []v1.Step{
+				{
+					Name:   "name",
+					Script: "echo aaa >> /tekton/steps/step-name/artifacts/provenance.json",
+				},
+			},
+			want: true,
+		},
+		{
+			name: "Reference in Args",
+			steps: []v1.Step{
+				{
+					Name:    "name",
+					Command: []string{"cat"},
+					Args:    []string{"/tekton/steps/step-name/artifacts/provenance.json"},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "Reference in Command",
+			steps: []v1.Step{
+				{
+					Name:    "name",
+					Command: []string{"cat", "/tekton/steps/step-name/artifacts/provenance.json"},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "Reference in Env",
+			steps: []v1.Step{
+				{
+					Name: "name",
+					Env: []corev1.EnvVar{
+						{
+							Name:  "MY_VAR",
+							Value: "/tekton/steps/step-name/artifacts/provenance.json",
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "Unresolved reference in Script",
+			steps: []v1.Step{
+				{
+					Name:   "name",
+					Script: "echo aaa >> $(step.artifacts.path)",
+				},
+			},
+			want: true,
+		},
+		{
+			name: "Unresolved reference in Args",
+			steps: []v1.Step{
+				{
+					Name:    "name",
+					Command: []string{"cat"},
+					Args:    []string{"$(step.artifacts.path)"},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "Unresolved reference in Command",
+			steps: []v1.Step{
+				{
+					Name:    "name",
+					Command: []string{"cat", "$(step.artifacts.path)"},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "Unresolved reference in Env",
+			steps: []v1.Step{
+				{
+					Name: "name",
+					Env: []corev1.EnvVar{
+						{
+							Name:  "MY_VAR",
+							Value: "$(step.artifacts.path)",
+						},
+					},
+				},
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := artifactsPathReferenced(tt.steps)
+			if d := cmp.Diff(tt.want, got); d != "" {
 				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 		})

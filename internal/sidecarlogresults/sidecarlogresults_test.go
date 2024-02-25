@@ -29,10 +29,10 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/result"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 )
@@ -305,6 +305,38 @@ func TestParseResults(t *testing.T) {
 			Name:  "step-foo.result3",
 			Value: `["hello","world"]`,
 			Type:  "step",
+		}, {
+			Name: "step-artifacts-result",
+			Value: `{
+            "inputs":[
+              {
+                "name":"input-artifacts",
+                "values":[
+                  {
+                    "uri":"pkg:example.github.com/inputs",
+                    "digest":{
+                      "sha256":"b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"
+                    }
+                  }
+                ]
+              }
+            ],
+            "outputs":[
+              {
+                "name":"image",
+                "values":[
+                  {
+                    "uri":"pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c",
+                    "digest":{
+                      "sha256":"df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48",
+                      "sha1":"95588b8f34c31eb7d62c92aaa4e6506639b06ef2"
+                    }
+                  }
+                ]
+              }
+            ]
+          }`,
+			Type: "stepArtifact",
 		},
 	}
 	podLogs := []string{}
@@ -336,6 +368,38 @@ func TestParseResults(t *testing.T) {
 		Key:        "step-foo.result3",
 		Value:      `["hello","world"]`,
 		ResultType: result.StepResultType,
+	}, {
+		Key: "step-artifacts-result",
+		Value: `{
+            "inputs":[
+              {
+                "name":"input-artifacts",
+                "values":[
+                  {
+                    "uri":"pkg:example.github.com/inputs",
+                    "digest":{
+                      "sha256":"b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"
+                    }
+                  }
+                ]
+              }
+            ],
+            "outputs":[
+              {
+                "name":"image",
+                "values":[
+                  {
+                    "uri":"pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c",
+                    "digest":{
+                      "sha256":"df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48",
+                      "sha1":"95588b8f34c31eb7d62c92aaa4e6506639b06ef2"
+                    }
+                  }
+                ]
+              }
+            ]
+          }`,
+		ResultType: result.StepArtifactsResultType,
 	}}
 	stepResults := []result.RunResult{}
 	for _, plog := range podLogs {
@@ -354,7 +418,7 @@ func TestParseResults_InvalidType(t *testing.T) {
 	results := []SidecarLogResult{{
 		Name:  "result1",
 		Value: "foo",
-		Type:  "not task or step",
+		Type:  "invalid",
 	}}
 	podLogs := []string{}
 	for _, r := range results {
@@ -363,7 +427,7 @@ func TestParseResults_InvalidType(t *testing.T) {
 	}
 	for _, plog := range podLogs {
 		_, err := parseResults([]byte(plog), 4096)
-		wantErr := errors.New("invalid sidecar result type not task or step. Must be task or step")
+		wantErr := errors.New("invalid sidecar result type invalid. Must be task or step or stepArtifact")
 		if d := cmp.Diff(wantErr.Error(), err.Error()); d != "" {
 			t.Fatal(diff.PrintWantGot(d))
 		}
@@ -397,7 +461,7 @@ func TestParseResults_Failure(t *testing.T) {
 func TestGetResultsFromSidecarLogs(t *testing.T) {
 	for _, c := range []struct {
 		desc      string
-		podPhase  v1.PodPhase
+		podPhase  corev1.PodPhase
 		wantError bool
 	}{{
 		desc:      "pod pending to start",
@@ -411,7 +475,7 @@ func TestGetResultsFromSidecarLogs(t *testing.T) {
 		t.Run(c.desc, func(t *testing.T) {
 			ctx := context.Background()
 			clientset := fakekubeclientset.NewSimpleClientset()
-			pod := &v1.Pod{
+			pod := &corev1.Pod{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Pod",
 					APIVersion: "v1",
@@ -420,15 +484,15 @@ func TestGetResultsFromSidecarLogs(t *testing.T) {
 					Name:      "pod",
 					Namespace: "foo",
 				},
-				Spec: v1.PodSpec{
-					Containers: []v1.Container{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
 						{
 							Name:  "container",
 							Image: "image",
 						},
 					},
 				},
-				Status: v1.PodStatus{
+				Status: corev1.PodStatus{
 					Phase: c.podPhase,
 				},
 			}
@@ -474,6 +538,165 @@ func TestExtractStepAndResultFromSidecarResultName_Error(t *testing.T) {
 	}
 }
 
+func TestLookForArtifacts(t *testing.T) {
+	base := basicArtifacts()
+	var modified = base.DeepCopy()
+	modified.Outputs[0].Name = "tests"
+	type Arg struct {
+		stepName      string
+		artifacts     *v1.Artifacts
+		customContent []byte
+	}
+	tests := []struct {
+		desc     string
+		wantErr  bool
+		args     []Arg
+		expected []SidecarLogResult
+	}{
+		{
+			desc: "one step produces artifacts, read success",
+			args: []Arg{{stepName: "first", artifacts: &base}},
+			expected: []SidecarLogResult{{
+				Name:  "first",
+				Type:  stepArtifactType,
+				Value: mustJSON(&base),
+			}},
+		}, {
+			desc: "two step produce artifacts, read success",
+			args: []Arg{{stepName: "first", artifacts: &base}, {stepName: "second", artifacts: modified}},
+			expected: []SidecarLogResult{{
+				Name:  "first",
+				Type:  stepArtifactType,
+				Value: mustJSON(&base),
+			}, {
+				Name:  "second",
+				Type:  stepArtifactType,
+				Value: mustJSON(modified),
+			}},
+		},
+		{
+			desc: "one step produces artifacts,  one step does not, read success",
+			args: []Arg{{stepName: "first", artifacts: &base}, {stepName: "second"}},
+			expected: []SidecarLogResult{{
+				Name:  "first",
+				Type:  stepArtifactType,
+				Value: mustJSON(&base),
+			}},
+		},
+		{
+			desc: "two step produces,  one read success, one not, error out and result is not empty.",
+			args: []Arg{{stepName: "first", artifacts: &base}, {stepName: "second", artifacts: modified, customContent: []byte("this is to break json")}},
+			expected: []SidecarLogResult{{
+				Name:  "first",
+				Type:  stepArtifactType,
+				Value: mustJSON(&base),
+			}},
+			wantErr: true,
+		},
+		{
+			desc:     "two step produces,  first read fails,  error out and result is empty.",
+			args:     []Arg{{stepName: "first", artifacts: modified, customContent: []byte("this is to break json")}, {stepName: "second", artifacts: &base}},
+			expected: []SidecarLogResult{},
+			wantErr:  true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			dir := t.TempDir()
+			curStepDir := stepDir
+			stepDir = dir
+			t.Cleanup(func() {
+				stepDir = curStepDir
+			})
+
+			var names []string
+			for _, arg := range tc.args {
+				names = append(names, arg.stepName)
+				if err := os.MkdirAll(filepath.Join(dir, arg.stepName, "artifacts"), os.ModePerm); err != nil {
+					t.Errorf("failed to create artifacts folder, err: %v", err)
+				}
+				if _, err := os.Create(filepath.Join(dir, arg.stepName, "out")); err != nil {
+					t.Errorf("failed to file, err: %v", err)
+				}
+				if arg.artifacts != nil {
+					if err := writeArtifacts(filepath.Join(dir, arg.stepName, "artifacts", "provenance.json"), arg.artifacts); err != nil {
+						t.Errorf("failed to write artifacts to provenance.json, err: %v", err)
+					}
+				}
+				if arg.customContent != nil {
+					if err := os.WriteFile(filepath.Join(dir, arg.stepName, "artifacts", "provenance.json"), arg.customContent, os.ModePerm); err != nil {
+						t.Errorf("failed to write customContent to provenance.json, err: %v", err)
+					}
+				}
+			}
+			var buf bytes.Buffer
+			err := LookForArtifacts(&buf, names, dir)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("error checking failed, wantErr: %v, got: %v", tc.wantErr, err)
+			}
+			want := ""
+			for _, logResult := range tc.expected {
+				want += mustJSON(logResult) + "\n"
+			}
+			got := buf.String()
+
+			if d := cmp.Diff(want, got); d != "" {
+				t.Errorf(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func writeArtifacts(path string, artifacts *v1.Artifacts) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	res := json.NewEncoder(f).Encode(artifacts)
+	return res
+}
+
+func basicArtifacts() v1.Artifacts {
+	data := `{
+            "inputs":[
+              {
+                "name":"inputs",
+                "values":[
+                  {
+                    "uri":"pkg:example.github.com/inputs",
+                    "digest":{
+                      "sha256":"b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"
+                    }
+                  }
+                ]
+              }
+            ],
+            "outputs":[
+              {
+                "name":"image",
+                "values":[
+                  {
+                    "uri":"pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c",
+                    "digest":{
+                      "sha256":"df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48",
+                      "sha1":"95588b8f34c31eb7d62c92aaa4e6506639b06ef2"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+`
+	var ars v1.Artifacts
+	err := json.Unmarshal([]byte(data), &ars)
+	if err != nil {
+		panic(err)
+	}
+	return ars
+}
+
 func createStepResult(t *testing.T, dir, stepName, resultName, resultValue string) {
 	t.Helper()
 	resultDir := filepath.Join(dir, stepName, "results")
@@ -506,4 +729,12 @@ func createRun(t *testing.T, dir string, causeErr bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func mustJSON(data any) string {
+	marshal, err := json.Marshal(data)
+	if err != nil {
+		panic(err)
+	}
+	return string(marshal)
 }
