@@ -103,8 +103,7 @@ const (
 
 	// EnableArtifacts is the flag to enable the use of Artifacts in Steps
 	EnableArtifacts = "enable-artifacts"
-	// DefaultEnableArtifacts is the default value for EnableStepActions
-	DefaultEnableArtifacts = false
+
 	// EnableParamEnum is the flag to enabled enum in params
 	EnableParamEnum = "enable-param-enum"
 
@@ -145,6 +144,12 @@ var (
 
 	// DefaultEnableStepActions is the default PerFeatureFlag value for EnableStepActions
 	DefaultEnableStepActions = PerFeatureFlag{
+		Name:      EnableStepActions,
+		Stability: AlphaAPIFields,
+		Enabled:   DefaultAlphaFeatureEnabled}
+
+	// DefaultEnableArtifacts is the default PerFeatureFlag value for EnableStepActions
+	DefaultEnableArtifacts = PerFeatureFlag{
 		Name:      EnableStepActions,
 		Stability: AlphaAPIFields,
 		Enabled:   DefaultAlphaFeatureEnabled}
@@ -283,7 +288,7 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 
-	if err := setFeature(EnableStepActions, DefaultEnableArtifacts, &tc.EnableArtifacts); err != nil {
+	if err := setPerFeatureFlag(EnableArtifacts, DefaultEnableArtifacts, &tc.EnableArtifacts); err != nil {
 		return nil, err
 	}
 	// Given that they are alpha features, Tekton Bundles and Custom Tasks should be switched on if
