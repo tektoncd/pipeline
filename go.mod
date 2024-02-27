@@ -58,6 +58,8 @@ require (
 	github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.8.1
 	go.opentelemetry.io/otel v1.24.0
 	go.opentelemetry.io/otel/exporters/jaeger v1.17.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.24.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.24.0
 	go.opentelemetry.io/otel/sdk v1.24.0
 	go.opentelemetry.io/otel/trace v1.24.0
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
@@ -92,6 +94,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/kms v1.27.9 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.21.6 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
+	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
@@ -107,7 +110,7 @@ require (
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.2 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
@@ -134,6 +137,7 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.46.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.46.1 // indirect
 	go.opentelemetry.io/otel/metric v1.24.0 // indirect
+	go.opentelemetry.io/proto/otlp v1.1.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240123012728-ef4313101c80 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240123012728-ef4313101c80 // indirect
 	gopkg.in/go-jose/go-jose.v2 v2.6.1 // indirect
@@ -251,3 +255,5 @@ require (
 )
 
 replace github.com/ahmetb/gen-crd-api-reference-docs => github.com/tektoncd/ahmetb-gen-crd-api-reference-docs v0.3.1-0.20220729140133-6ce2d5aafcb4 // Waiting for https://github.com/ahmetb/gen-crd-api-reference-docs/pull/43/files to merge
+
+replace github.com/docker/distribution => github.com/docker/distribution v2.7.1+incompatible

@@ -239,3 +239,28 @@ func TestHandlerSecretUpdate(t *testing.T) {
 		t.Errorf("Tracing provider is not updated when secret is updated")
 	}
 }
+
+func TestGRPCTracerProviderInitialization(t *testing.T) {
+	// Setup test logging
+	logger := zap.NewNop().Sugar()
+
+	// Create a new tracerProvider instance
+	tp := New("test-service", logger)
+
+	// Setup the tracing config to enable gRPC tracing
+	cfg := &config.Tracing{
+		Enabled:  true,
+		Endpoint: "grpc://some-grpc-endpoint:4317", // Use a sample gRPC endpoint
+	}
+
+	// Simulate the OnStore callback with the new gRPC tracing config
+	tp.OnStore(nil)("config-tracing", cfg)
+
+	// Attempt to create a tracer and start a span
+	tracer := tp.Tracer("tracer")
+	_, span := tracer.Start(context.Background(), "gRPCTest")
+
+	if !span.IsRecording() {
+		t.Fatalf("Span is not recording after gRPC tracing configuration")
+	}
+}

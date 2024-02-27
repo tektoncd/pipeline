@@ -18,10 +18,14 @@ package tracing
 
 import (
 	"context"
+	"net/url"
+	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
@@ -132,7 +136,23 @@ func (t *tracerProvider) OnSecret(secret *corev1.Secret) {
 }
 
 func (t *tracerProvider) reinitialize() {
-	tp, err := createTracerProvider(t.service, t.cfg, t.username, t.password)
+	// check the scheme and port of the endpoint before we initialize the tracer provider
+	endpoint := t.cfg.Endpoint
+	if !strings.Contains(endpoint, "://") {
+		// add placeholder scheme if the original ep doesn't have it so it can parsed correctly
+		endpoint = "placeholder://" + endpoint
+	}
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		t.logger.Errorf("failed to parse the endpoint URL: %v", err.Error())
+		return
+	}
+	var tp trace.TracerProvider
+	if u.Scheme == "grpc" || u.Port() == "4317" {
+		tp, err = creategRPCTracerProvider(t.service, t.cfg)
+	} else {
+		tp, err = createHTTPTracerProvider(t.service, t.cfg, t.username, t.password)
+	}
 	if err != nil {
 		t.logger.Errorf("unable to initialize tracing with error : %v", err.Error())
 		return
@@ -146,7 +166,7 @@ func (t *tracerProvider) reinitialize() {
 	t.provider = tp
 }
 
-func createTracerProvider(service string, cfg *config.Tracing, user, pass string) (trace.TracerProvider, error) {
+func createHTTPTracerProvider(service string, cfg *config.Tracing, user, pass string) (trace.TracerProvider, error) {
 	if !cfg.Enabled {
 		return noop.NewTracerProvider(), nil
 	}
@@ -160,6 +180,35 @@ func createTracerProvider(service string, cfg *config.Tracing, user, pass string
 		return nil, err
 	}
 	// Initialize tracerProvider with the jaeger exporter
+	tp := tracesdk.NewTracerProvider(
+		tracesdk.WithBatcher(exp),
+		// Record information about the service in a Resource.
+		tracesdk.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String(service),
+		)),
+	)
+	return tp, nil
+}
+
+func creategRPCTracerProvider(service string, cfg *config.Tracing) (trace.TracerProvider, error) {
+	if !cfg.Enabled {
+		return noop.NewTracerProvider(), nil
+	}
+
+	ctx := context.Background()
+	exp, err := otlptrace.New(ctx,
+		otlptracegrpc.NewClient(
+			otlptracegrpc.WithEndpoint(cfg.Endpoint),
+			otlptracegrpc.WithInsecure(),
+			// TODO: support TLS cert verification
+			// otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, "")),
+		),
+	)
+	if err != nil {
+		return nil, err
+	}
+	// Initialize tracerProvider with the otlptrace exporter
 	tp := tracesdk.NewTracerProvider(
 		tracesdk.WithBatcher(exp),
 		// Record information about the service in a Resource.

@@ -29,5 +29,5 @@ Check the official [Jaeger docs](https://www.jaegertracing.io/docs/) on how to w
 The configmap `config/config-tracing.yaml` contains the configuration for tracing. It contains the following fields:
 
 * enabled: Set this to true to enable tracing
-* endpoint: API endpoint for jaeger collector to send the traces. By default the endpoint is configured to be `http://jaeger-collector.jaeger.svc.cluster.local:14268/api/traces`.
+* endpoint: API endpoint for jaeger collector to send the traces. By default the endpoint is configured to be `http://jaeger-collector.jaeger.svc.cluster.local:14268/api/traces`. It also support gRPC protocal endpoint, for example: `grpc://otlp-collector:4318`
 * credentialsSecret: Name of the secret which contains `username` and `password` to authenticate against the endpoint
