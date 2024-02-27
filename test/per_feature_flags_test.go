@@ -47,7 +47,7 @@ const (
 )
 
 var (
-	alphaFeatureFlags = []string{"enable-param-enum", "enable-step-actions", "keep-pod-enabled-cancel", "enable-cel-in-whenexpression"}
+	alphaFeatureFlags = []string{"enable-param-enum", "enable-step-actions", "keep-pod-enabled-cancel", "enable-cel-in-whenexpression", "enable-artifacts"}
 	betaFeatureFlags  = []string{}
 	perFeatureFlags   = map[string][]string{
 		"alpha": alphaFeatureFlags,
