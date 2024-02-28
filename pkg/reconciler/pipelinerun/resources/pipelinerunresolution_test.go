@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -2431,6 +2432,31 @@ func TestResolvePipelineRun_PipelineTaskHasNoResources(t *testing.T) {
 	}
 	if d := cmp.Diff(expectedTask, pipelineState[1].ResolvedTask, cmpopts.IgnoreUnexported(v1.TaskRunSpec{})); d != "" {
 		t.Fatalf("Expected resources where only Tasks were resolved but actual differed %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestResolvePipelineRun_PipelineTaskHasPipelineRef(t *testing.T) {
+	pt := v1.PipelineTask{
+		Name:        "pipeline-in-pipeline",
+		PipelineRef: &v1.PipelineRef{Name: "pipeline"},
+	}
+
+	getTask := func(ctx context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+		return task, nil, nil, nil
+	}
+	getTaskRun := func(name string) (*v1.TaskRun, error) { return &trs[0], nil }
+	pr := v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun",
+		},
+	}
+
+	_, err := ResolvePipelineTask(context.Background(), pr, getTask, getTaskRun, nopGetCustomRun, pt, nil)
+	if err == nil {
+		t.Errorf("Error getting tasks for fake pipeline %s, expected an error but got nil.", p.ObjectMeta.Name)
+	}
+	if !strings.Contains(err.Error(), "does not support PipelineRef or PipelineSpec") {
+		t.Errorf("Error getting tasks for fake pipeline %s: expected contains keyword but got %s", p.ObjectMeta.Name, err)
 	}
 }
 

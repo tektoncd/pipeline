@@ -630,7 +630,8 @@ func resolveTask(
 	pipelineTask v1.PipelineTask,
 ) (*resources.ResolvedTask, error) {
 	rt := &resources.ResolvedTask{}
-	if pipelineTask.TaskRef != nil {
+	switch {
+	case pipelineTask.TaskRef != nil:
 		// If the TaskRun has already a stored TaskSpec in its status, use it as source of truth
 		if taskRun != nil && taskRun.Status.TaskSpec != nil {
 			rt.TaskSpec = taskRun.Status.TaskSpec
@@ -655,8 +656,13 @@ func resolveTask(
 			}
 		}
 		rt.Kind = pipelineTask.TaskRef.Kind
-	} else {
+	case pipelineTask.TaskSpec != nil:
 		rt.TaskSpec = &pipelineTask.TaskSpec.TaskSpec
+	default:
+		// If the alpha feature is enabled, and the user has configured pipelineSpec or pipelineRef, it will enter here.
+		// Currently, the controller is not yet adapted, and to avoid a panic, an error message is provided here.
+		// TODO: Adjust the logic here once the feature is supported in the future.
+		return nil, fmt.Errorf("Currently, Task %q does not support PipelineRef or PipelineSpec, please use TaskRef or TaskSpec instead", pipelineTask.Name)
 	}
 	rt.TaskSpec.SetDefaults(ctx)
 	return rt, nil
