@@ -79,6 +79,7 @@ func applyStepActionParameters(step *v1.Step, spec *v1.TaskSpec, tr *v1.TaskRun,
 		stringReplacements[k] = v
 	}
 	container.ApplyStepReplacements(step, stringReplacements, arrayReplacements)
+	fmt.Println("dummy print to see step action dogfoofing")
 	return step
 }
 

@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mypvc
+spec:
+  resources:
+    requests:
+      storage: 16Mi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: write-to-default-workspace 
+spec:
+  steps:
+    - name: write
+      image: ubuntu
+      script: |
+        echo bar > foo.txt
+    - name: write-somethingelse
+      image: ubuntu
+      script: |
+        echo hello > hi.txt
+  stepTemplate:
+    workingDir: $(workspaces.task-ws.path)
+  workspaces:
+    - name: task-ws
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: read-from-default-workspace 
+spec:
+  steps:
+    - name: read
+      image: ubuntu
+      command:
+        - cat
+      args:
+        - foo.txt
+    - name: read-somethingelse
+      image: ubuntu
+      command:
+        - cat
+      args:
+        - hi.txt
+  stepTemplate:
+    workingDir: $(workspaces.read-ws.path)
+  workspaces:
+    - name: read-ws
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: run-with-template
+spec:
+  PipelineSpec:
+    tasks:
+      - name: t1
+        taskRef:
+          name: write-to-default-workspace
+      - name: t2
+        taskRef:
+          name: read-from-default-workspace
+        runAfter: ["t1"]

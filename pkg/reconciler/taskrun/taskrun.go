@@ -510,6 +510,8 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
+	fmt.Println("dummy print statement")
+
 	var workspaceDeclarations []v1.WorkspaceDeclaration
 	// Propagating workspaces allows users to skip declarations
 	// In order to validate the workspace bindings we create declarations based on

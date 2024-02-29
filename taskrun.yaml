@@ -1,0 +1,34 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mypvc
+spec:
+  resources:
+    requests:
+      storage: 16Mi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: taskrun-default-workspace 
+spec:
+  steps:
+    - name: write
+      image: ubuntu
+      script: |
+        echo bar > $(workspaces.task-ws.path)/foo
+        cat $(workspaces.task-ws.path)/foo
+  workspaces:
+    - name: task-ws
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: run-with-template-
+spec:
+  TaskRef:
+    apiVersion: v1
+    name: taskrun-default-workspace
