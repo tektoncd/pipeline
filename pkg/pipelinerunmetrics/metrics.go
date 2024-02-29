@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1"
 	"go.opencensus.io/stats"
@@ -96,6 +97,8 @@ const (
 	// ReasonCancelled indicates that a PipelineRun was cancelled.
 	// Aliased for backwards compatibility; additional reasons should not be added here.
 	ReasonCancelled = v1.PipelineRunReasonCancelled
+
+	anonymous = "anonymous"
 )
 
 // Recorder holds keys for Tekton metrics
@@ -291,6 +294,24 @@ func nilInsertTag(task, taskrun string) []tag.Mutator {
 	return []tag.Mutator{}
 }
 
+func getPipelineTagName(pr *v1.PipelineRun) string {
+	pipelineName := anonymous
+	switch {
+	case pr.Spec.PipelineRef != nil && pr.Spec.PipelineRef.Name != "":
+		pipelineName = pr.Spec.PipelineRef.Name
+	case pr.Spec.PipelineSpec != nil:
+	default:
+		if len(pr.Labels) > 0 {
+			pipelineLabel, hasPipelineLabel := pr.Labels[pipeline.PipelineLabelKey]
+			if hasPipelineLabel && len(pipelineLabel) > 0 {
+				pipelineName = pipelineLabel
+			}
+		}
+	}
+
+	return pipelineName
+}
+
 // DurationAndCount logs the duration of PipelineRun execution and
 // count for number of PipelineRuns succeed or failed
 // returns an error if its failed to log the metrics
@@ -326,10 +347,8 @@ func (r *Recorder) DurationAndCount(pr *v1.PipelineRun, beforeCondition *apis.Co
 	}
 	reason := cond.Reason
 
-	pipelineName := "anonymous"
-	if pr.Spec.PipelineRef != nil && pr.Spec.PipelineRef.Name != "" {
-		pipelineName = pr.Spec.PipelineRef.Name
-	}
+	pipelineName := getPipelineTagName(pr)
+
 	ctx, err := tag.New(
 		context.Background(),
 		append([]tag.Mutator{tag.Insert(namespaceTag, pr.Namespace),
