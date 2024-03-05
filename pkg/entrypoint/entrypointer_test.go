@@ -32,7 +32,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -41,7 +40,10 @@ import (
 	"github.com/tektoncd/pipeline/pkg/spire"
 	"github.com/tektoncd/pipeline/pkg/termination"
 	"github.com/tektoncd/pipeline/test/diff"
+
+	"github.com/google/go-cmp/cmp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/selection"
 	"knative.dev/pkg/logging"
 )
 
@@ -940,6 +942,377 @@ func TestApplyStepResultSubstitutions_Command(t *testing.T) {
 	}
 }
 
+func TestApplyStepWhenSubstitutions_Input(t *testing.T) {
+	testCases := []struct {
+		name       string
+		stepName   string
+		resultName string
+		result     string
+		want       v1.StepWhenExpressions
+		when       v1.StepWhenExpressions
+		wantErr    bool
+	}{{
+		name:       "string param",
+		stepName:   "foo",
+		resultName: "res",
+		result:     "Hello",
+		when:       v1.StepWhenExpressions{{Input: "$(steps.foo.results.res)"}},
+		want:       v1.StepWhenExpressions{{Input: "Hello"}},
+		wantErr:    false,
+	}, {
+		name:       "array param",
+		stepName:   "foo",
+		resultName: "res",
+		result:     "[\"Hello\",\"World\"]",
+		when:       v1.StepWhenExpressions{{Input: "$(steps.foo.results.res[1])"}},
+		want:       v1.StepWhenExpressions{{Input: "World"}},
+		wantErr:    false,
+	}, {
+		name:       "object param",
+		stepName:   "foo",
+		resultName: "res",
+		result:     "{\"hello\":\"World\"}",
+		when:       v1.StepWhenExpressions{{Input: "$(steps.foo.results.res.hello)"}},
+		want:       v1.StepWhenExpressions{{Input: "World"}},
+		wantErr:    false,
+	}, {
+		name:       "bad-result-format",
+		stepName:   "foo",
+		resultName: "res",
+		result:     "{\"hello\":\"World\"}",
+		when:       v1.StepWhenExpressions{{Input: "$(steps.foo.results.res.hello.bar)"}},
+		want:       v1.StepWhenExpressions{{Input: "$(steps.foo.results.res.hello.bar)"}},
+		wantErr:    true,
+	}}
+	stepDir := createTmpDir(t, "when-input")
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			resultPath := filepath.Join(stepDir, pod.GetContainerName(tc.stepName), "results")
+			err := os.MkdirAll(resultPath, 0750)
+			if err != nil {
+				log.Fatal(err)
+			}
+			resultFile := filepath.Join(resultPath, tc.resultName)
+			err = os.WriteFile(resultFile, []byte(tc.result), 0666)
+			if err != nil {
+				log.Fatal(err)
+			}
+			e := Entrypointer{
+				Command:             []string{},
+				StepWhenExpressions: tc.when,
+			}
+			err = e.applyStepResultSubstitutions(stepDir)
+			if tc.wantErr == false && err != nil {
+				t.Fatalf("Did not expect and error but got: %v", err)
+			} else if tc.wantErr == true && err == nil {
+				t.Fatalf("Expected and error but did not get any.")
+			}
+			got := e.StepWhenExpressions
+			if d := cmp.Diff(got, tc.want); d != "" {
+				t.Errorf("applyStepResultSubstitutions(): got %v; want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestApplyStepWhenSubstitutions_CEL(t *testing.T) {
+	testCases := []struct {
+		name       string
+		stepName   string
+		resultName string
+		result     string
+		want       v1.StepWhenExpressions
+		when       v1.StepWhenExpressions
+		wantErr    bool
+	}{{
+		name:       "string param",
+		stepName:   "foo",
+		resultName: "res",
+		result:     "Hello",
+		when:       v1.StepWhenExpressions{{CEL: "$(steps.foo.results.res)"}},
+		want:       v1.StepWhenExpressions{{CEL: "Hello"}},
+		wantErr:    false,
+	}, {
+		name:       "array param",
+		stepName:   "foo",
+		resultName: "res",
+		result:     "[\"Hello\",\"World\"]",
+		when:       v1.StepWhenExpressions{{CEL: "$(steps.foo.results.res[1])"}},
+		want:       v1.StepWhenExpressions{{CEL: "World"}},
+		wantErr:    false,
+	}, {
+		name:       "object param",
+		stepName:   "foo",
+		resultName: "res",
+		result:     "{\"hello\":\"World\"}",
+		when:       v1.StepWhenExpressions{{CEL: "$(steps.foo.results.res.hello)"}},
+		want:       v1.StepWhenExpressions{{CEL: "World"}},
+		wantErr:    false,
+	}, {
+		name:       "bad-result-format",
+		stepName:   "foo",
+		resultName: "res",
+		result:     "{\"hello\":\"World\"}",
+		when:       v1.StepWhenExpressions{{CEL: "$(steps.foo.results.res.hello.bar)"}},
+		want:       v1.StepWhenExpressions{{CEL: "$(steps.foo.results.res.hello.bar)"}},
+		wantErr:    true,
+	}}
+	stepDir := createTmpDir(t, "when-CEL")
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			resultPath := filepath.Join(stepDir, pod.GetContainerName(tc.stepName), "results")
+			err := os.MkdirAll(resultPath, 0750)
+			if err != nil {
+				log.Fatal(err)
+			}
+			resultFile := filepath.Join(resultPath, tc.resultName)
+			err = os.WriteFile(resultFile, []byte(tc.result), 0666)
+			if err != nil {
+				log.Fatal(err)
+			}
+			e := Entrypointer{
+				Command:             []string{},
+				StepWhenExpressions: tc.when,
+			}
+			err = e.applyStepResultSubstitutions(stepDir)
+			if tc.wantErr == false && err != nil {
+				t.Fatalf("Did not expect and error but got: %v", err)
+			} else if tc.wantErr == true && err == nil {
+				t.Fatalf("Expected and error but did not get any.")
+			}
+			got := e.StepWhenExpressions
+			if d := cmp.Diff(got, tc.want); d != "" {
+				t.Errorf("applyStepResultSubstitutions(): got %v; want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestApplyStepWhenSubstitutions_Values(t *testing.T) {
+	testCases := []struct {
+		name       string
+		stepName   string
+		resultName string
+		result     string
+		want       v1.StepWhenExpressions
+		when       v1.StepWhenExpressions
+		wantErr    bool
+	}{{
+		name:       "string param",
+		stepName:   "foo",
+		resultName: "res",
+		result:     "Hello",
+		when:       v1.StepWhenExpressions{{Values: []string{"$(steps.foo.results.res)"}}},
+		want:       v1.StepWhenExpressions{{Values: []string{"Hello"}}},
+		wantErr:    false,
+	}, {
+		name:       "array param, reference an element",
+		stepName:   "foo",
+		resultName: "res",
+		result:     "[\"Hello\",\"World\"]",
+		when:       v1.StepWhenExpressions{{Values: []string{"$(steps.foo.results.res[1])"}}},
+		want:       v1.StepWhenExpressions{{Values: []string{"World"}}},
+		wantErr:    false,
+	}, {
+		name:       "array param, reference whole array",
+		stepName:   "foo",
+		resultName: "res",
+		result:     "[\"Hello\",\"World\"]",
+		when:       v1.StepWhenExpressions{{Values: []string{"$(steps.foo.results.res[*])"}}},
+		want:       v1.StepWhenExpressions{{Values: []string{"Hello", "World"}}},
+		wantErr:    false,
+	},
+		{
+			name:       "array param, reference whole array with concatenation, error",
+			stepName:   "foo",
+			resultName: "res",
+			result:     "[\"Hello\",\"World\"]",
+			when:       v1.StepWhenExpressions{{Values: []string{"$(steps.foo.results.res[*])1"}}},
+			want:       v1.StepWhenExpressions{{Values: []string{"$(steps.foo.results.res[*])1"}}},
+			wantErr:    true,
+		},
+		{
+			name:       "object param",
+			stepName:   "foo",
+			resultName: "res",
+			result:     "{\"hello\":\"World\"}",
+			when:       v1.StepWhenExpressions{{Values: []string{"$(steps.foo.results.res.hello)"}}},
+			want:       v1.StepWhenExpressions{{Values: []string{"World"}}},
+			wantErr:    false,
+		}, {
+			name:       "bad-result-format",
+			stepName:   "foo",
+			resultName: "res",
+			result:     "{\"hello\":\"World\"}",
+			when:       v1.StepWhenExpressions{{Values: []string{"$(steps.foo.results.res.hello.bar)"}}},
+			want:       v1.StepWhenExpressions{{Values: []string{"$(steps.foo.results.res.hello.bar)"}}},
+			wantErr:    true,
+		}}
+	stepDir := createTmpDir(t, "when-values")
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			resultPath := filepath.Join(stepDir, pod.GetContainerName(tc.stepName), "results")
+			err := os.MkdirAll(resultPath, 0750)
+			if err != nil {
+				log.Fatal(err)
+			}
+			resultFile := filepath.Join(resultPath, tc.resultName)
+			err = os.WriteFile(resultFile, []byte(tc.result), 0666)
+			if err != nil {
+				log.Fatal(err)
+			}
+			e := Entrypointer{
+				Command:             []string{},
+				StepWhenExpressions: tc.when,
+			}
+			err = e.applyStepResultSubstitutions(stepDir)
+			if tc.wantErr == false && err != nil {
+				t.Fatalf("Did not expect and error but got: %v", err)
+			} else if tc.wantErr == true && err == nil {
+				t.Fatalf("Expected and error but did not get any.")
+			}
+			got := e.StepWhenExpressions
+			if d := cmp.Diff(got, tc.want); d != "" {
+				t.Errorf("applyStepResultSubstitutions(): got %v; want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestAllowExec(t *testing.T) {
+	tests := []struct {
+		name            string
+		whenExpressions v1.StepWhenExpressions
+		expected        bool
+		wantErr         bool
+	}{{
+		name: "in expression",
+		whenExpressions: v1.StepWhenExpressions{
+			{
+				Input:    "foo",
+				Operator: selection.In,
+				Values:   []string{"foo", "bar"},
+			},
+		},
+		expected: true,
+	}, {
+		name: "notin expression",
+		whenExpressions: v1.StepWhenExpressions{
+			{
+				Input:    "foobar",
+				Operator: selection.NotIn,
+				Values:   []string{"foobar"},
+			},
+		},
+		expected: false,
+	}, {
+		name: "multiple expressions - false",
+		whenExpressions: v1.StepWhenExpressions{
+			{
+				Input:    "foobar",
+				Operator: selection.In,
+				Values:   []string{"foobar"},
+			}, {
+				Input:    "foo",
+				Operator: selection.In,
+				Values:   []string{"bar"},
+			},
+		},
+		expected: false,
+	}, {
+		name: "multiple expressions - true",
+		whenExpressions: v1.StepWhenExpressions{
+			{
+				Input:    "foobar",
+				Operator: selection.In,
+				Values:   []string{"foobar"},
+			}, {
+				Input:    "foo",
+				Operator: selection.NotIn,
+				Values:   []string{"bar"},
+			},
+		},
+		expected: true,
+	}, {
+		name: "CEL is true",
+		whenExpressions: v1.StepWhenExpressions{
+			{
+				CEL: "'foo'=='foo'",
+			},
+		},
+		expected: true,
+	}, {
+		name: "CEL is false",
+		whenExpressions: v1.StepWhenExpressions{
+			{
+				CEL: "'foo'!='foo'",
+			},
+		},
+		expected: false,
+	},
+		{
+			name: "multiple expressions - 1. CEL is true 2. In Op is false, expect false",
+			whenExpressions: v1.StepWhenExpressions{
+				{
+					CEL: "'foo'=='foo'",
+				},
+				{
+					Input:    "foo",
+					Operator: selection.In,
+					Values:   []string{"bar"},
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "multiple expressions - 1. CEL is true 2. CEL is false, expect false",
+			whenExpressions: v1.StepWhenExpressions{
+				{
+					CEL: "'foo'=='foo'",
+				},
+				{
+					CEL: "'xxx'!='xxx'",
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "CEL is not evaluated to bool",
+			whenExpressions: v1.StepWhenExpressions{
+				{
+					CEL: "'foo'",
+				},
+			},
+			expected: false,
+			wantErr:  true,
+		},
+		{
+			name: "CEL cannot be compiled",
+			whenExpressions: v1.StepWhenExpressions{
+				{
+					CEL: "foo==foo",
+				},
+			},
+			expected: false,
+			wantErr:  true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			e := Entrypointer{
+				StepWhenExpressions: tc.whenExpressions,
+			}
+			allowExec, err := e.allowExec()
+			if d := cmp.Diff(allowExec, tc.expected); d != "" {
+				t.Errorf("expected equlity of execution evalution, but got: %t, want: %t", allowExec, tc.expected)
+			}
+			if (err != nil) != tc.wantErr {
+				t.Errorf("error checking failed, err %v", err)
+			}
+		})
+	}
+}
 func TestIsContextDeadlineError(t *testing.T) {
 	ctxErr := ContextError(context.DeadlineExceeded.Error())
 	if !IsContextDeadlineError(ctxErr) {
@@ -972,6 +1345,7 @@ func TestTerminationReason(t *testing.T) {
 		expectedExitCode  *string
 		expectedWrotefile *string
 		expectedStatus    []result.RunResult
+		when              v1.WhenExpressions
 	}{
 		{
 			desc:              "reason completed",
@@ -1033,10 +1407,27 @@ func TestTerminationReason(t *testing.T) {
 			},
 		},
 		{
-			desc:              "reason skipped",
+			desc:              "reason skipped due to previous step error",
 			waitFiles:         []string{"file"},
 			expectedRunErr:    ErrSkipPreviousStepFailed,
 			expectedWrotefile: ptr("postfile.err"),
+			expectedStatus: []result.RunResult{
+				{
+					Key:        "Reason",
+					Value:      pod.TerminationReasonSkipped,
+					ResultType: result.InternalTektonResultType,
+				},
+				{
+					Key:        "StartedAt",
+					ResultType: result.InternalTektonResultType,
+				},
+			},
+		},
+		{
+			desc:              "reason skipped due to when expressions evaluation",
+			expectedExitCode:  ptr("0"),
+			expectedWrotefile: ptr("postfile"),
+			when:              v1.StepWhenExpressions{{Input: "foo", Operator: selection.In, Values: []string{"bar"}}},
 			expectedStatus: []result.RunResult{
 				{
 					Key:        "Reason",
@@ -1078,6 +1469,7 @@ func TestTerminationReason(t *testing.T) {
 				BreakpointOnFailure: false,
 				StepMetadataDir:     tmpFolder,
 				OnError:             test.onError,
+				StepWhenExpressions: test.when,
 			}
 
 			err = e.Go()

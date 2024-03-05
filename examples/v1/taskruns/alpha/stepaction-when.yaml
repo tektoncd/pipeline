@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-pvc-2
+spec:
+  resources:
+    requests:
+      storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+---
+apiVersion: tekton.dev/v1alpha1
+kind: StepAction
+metadata:
+  name: step-action-when
+spec:
+  image: alpine
+  script: |
+    echo "I am a Step Action!!!"
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: when-in-steps-
+spec:
+  workspaces:
+    - name: custom
+      persistentVolumeClaim:
+        claimName: my-pvc-2
+  taskSpec:
+    description: |
+      A simple task to demotrate how when expressions work in steps.
+    steps:
+      - name: should-execute
+        ref:
+          name: "step-action-when"
+        when:
+          - input: "$(workspaces.custom.bound)"
+            operator: in
+            values: ["true"]
+      - name: should-skip
+        image: bash:latest
+        script: |
+          #!/usr/bin/env bash
+          echo skipskipskip
+        when:
+          - input: "$(workspaces.custom2.bound)"
+            operator: in
+            values: ["true"]
+      - name: should-continue
+        image: bash:latest
+        script: |
+          #!/usr/bin/env bash
+          echo blabalbaba
+      - name: produce-step
+        image: alpine
+        results:
+          - name: result2
+            type: string
+        script: |
+          echo -n "foo" | tee $(step.results.result2.path)
+      - name: run-based-on-step-results
+        image: alpine
+        script: |
+          echo "wooooooo"
+        when:
+          - input: "$(steps.produce-step.results.result2)"
+            operator: in
+            values: ["bar"]
+    workspaces:
+      - name: custom

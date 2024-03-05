@@ -247,6 +247,8 @@ type Step struct {
 	// +optional
 	// +listType=atomic
 	Results []v1.StepResult `json:"results,omitempty"`
+
+	When StepWhenExpressions `json:"when,omitempty"`
 }
 
 // Ref can be used to refer to a specific instance of a StepAction.

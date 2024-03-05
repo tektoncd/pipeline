@@ -40,6 +40,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/result"
 	"github.com/tektoncd/pipeline/pkg/spire"
 	"github.com/tektoncd/pipeline/pkg/termination"
+
+	"github.com/google/cel-go/cel"
 	"go.uber.org/zap"
 )
 
@@ -132,6 +134,9 @@ type Entrypointer struct {
 	ResultsDirectory string
 	// ResultExtractionMethod is the method using which the controller extracts the results from the task pod.
 	ResultExtractionMethod string
+
+	// StepWhenExpressions     a list of when expression to decide if the step should be skipped
+	StepWhenExpressions v1.StepWhenExpressions
 }
 
 // Waiter encapsulates waiting for files to exist.
@@ -224,7 +229,20 @@ func (e Entrypointer) Go() error {
 				logger.Error("Error while waiting for cancellation", zap.Error(err))
 			}
 		}()
-		err = e.Runner.Run(ctx, e.Command...)
+		allowExec, err1 := e.allowExec()
+
+		switch {
+		case err1 != nil:
+			err = err1
+		case allowExec:
+			err = e.Runner.Run(ctx, e.Command...)
+		default:
+			logger.Info("Step was skipped due to when expressions were evaluated to false.")
+			output = append(output, e.outputRunResult(pod.TerminationReasonSkipped))
+			e.WritePostFile(e.PostFile, nil)
+			e.WriteExitCodeFile(e.StepMetadataDir, "0")
+			return nil
+		}
 	}
 
 	var ee *exec.ExitError
@@ -301,6 +319,50 @@ func readArtifacts(fp string) ([]result.RunResult, error) {
 		return nil, err
 	}
 	return []result.RunResult{{Key: fp, Value: string(file), ResultType: result.StepArtifactsResultType}}, nil
+}
+
+func (e Entrypointer) allowExec() (bool, error) {
+	when := e.StepWhenExpressions
+	m := map[string]bool{}
+
+	for _, we := range when {
+		if we.CEL == "" {
+			continue
+		}
+		b, ok := m[we.CEL]
+		if ok && !b {
+			return false, nil
+		}
+
+		env, err := cel.NewEnv()
+		if err != nil {
+			return false, err
+		}
+		ast, iss := env.Compile(we.CEL)
+		if iss.Err() != nil {
+			return false, iss.Err()
+		}
+		// Generate an evaluable instance of the Ast within the environment
+		prg, err := env.Program(ast)
+		if err != nil {
+			return false, err
+		}
+		// Evaluate the CEL expression
+		out, _, err := prg.Eval(map[string]interface{}{})
+		if err != nil {
+			return false, err
+		}
+
+		b, ok = out.Value().(bool)
+		if !ok {
+			return false, fmt.Errorf("the CEL expression %s is not evaluated to a boolean", we.CEL)
+		}
+		if !b {
+			return false, err
+		}
+		m[we.CEL] = true
+	}
+	return when.AllowsExecution(m), nil
 }
 
 func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string, resultType result.ResultType) error {
@@ -485,6 +547,13 @@ func (e *Entrypointer) applyStepResultSubstitutions(stepDir string) error {
 	if err := replaceEnv(stepDir); err != nil {
 		return err
 	}
+
+	// replace when
+	newWhen, err := replaceWhen(stepDir, e.StepWhenExpressions)
+	if err != nil {
+		return err
+	}
+	e.StepWhenExpressions = newWhen
 	// command + args
 	newCommand, err := replaceCommandAndArgs(e.Command, stepDir)
 	if err != nil {
@@ -492,6 +561,58 @@ func (e *Entrypointer) applyStepResultSubstitutions(stepDir string) error {
 	}
 	e.Command = newCommand
 	return nil
+}
+
+func replaceWhen(stepDir string, when v1.StepWhenExpressions) (v1.StepWhenExpressions, error) {
+	for i, w := range when {
+		var newValues []string
+	flag:
+		for _, v := range when[i].Values {
+			matches := resultref.StepResultRegex.FindAllStringSubmatch(v, -1)
+			newV := v
+			for _, m := range matches {
+				replaceWithString, replaceWithArray, err := findReplacement(stepDir, m[0])
+				if err != nil {
+					return v1.WhenExpressions{}, err
+				}
+				// replaceWithString and replaceWithArray are mutually exclusive
+				if len(replaceWithArray) > 0 {
+					if v != m[0] {
+						// it has to be exact in "$(steps.<step-name>.results.<result-name>[*])" format, without anything else in the original string
+						return nil, errors.New("value must be in \"$(steps.<step-name>.results.<result-name>[*])\" format, when using array results")
+					}
+					newValues = append(newValues, replaceWithArray...)
+					continue flag
+				}
+				newV = strings.ReplaceAll(newV, m[0], replaceWithString)
+			}
+			newValues = append(newValues, newV)
+		}
+		when[i].Values = newValues
+
+		matches := resultref.StepResultRegex.FindAllStringSubmatch(w.Input, -1)
+		v := when[i].Input
+		for _, m := range matches {
+			replaceWith, _, err := findReplacement(stepDir, m[0])
+			if err != nil {
+				return v1.StepWhenExpressions{}, err
+			}
+			v = strings.ReplaceAll(v, m[0], replaceWith)
+		}
+		when[i].Input = v
+
+		matches = resultref.StepResultRegex.FindAllStringSubmatch(w.CEL, -1)
+		c := when[i].CEL
+		for _, m := range matches {
+			replaceWith, _, err := findReplacement(stepDir, m[0])
+			if err != nil {
+				return v1.StepWhenExpressions{}, err
+			}
+			c = strings.ReplaceAll(c, m[0], replaceWith)
+		}
+		when[i].CEL = c
+	}
+	return when, nil
 }
 
 // outputRunResult returns the run reason for a termination
