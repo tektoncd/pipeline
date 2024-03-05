@@ -18,15 +18,19 @@ package tracing
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
+	"net/url"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/embedded"
 	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -35,15 +39,14 @@ import (
 )
 
 type tracerProvider struct {
+	embedded.TracerProvider
+
 	service  string
 	provider trace.TracerProvider
 	cfg      *config.Tracing
 	username string
 	password string
 	logger   *zap.SugaredLogger
-	// (#7464)noop.TracerProvider is added to implement embedded.TracerProvider
-	// for bumping to go.opentelemetry.io/otel/trace/v1.21.0.TracerProvider
-	noop.TracerProvider
 }
 
 func init() {
@@ -150,12 +153,32 @@ func createTracerProvider(service string, cfg *config.Tracing, user, pass string
 	if !cfg.Enabled {
 		return noop.NewTracerProvider(), nil
 	}
+	u, err := url.Parse(cfg.Endpoint)
+	if err != nil {
+		return nil, err
+	}
 
-	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(
-		jaeger.WithEndpoint(cfg.Endpoint),
-		jaeger.WithUsername(user),
-		jaeger.WithPassword(pass),
-	))
+	opts := []otlptracehttp.Option{
+		otlptracehttp.WithEndpoint(u.Host),
+		otlptracehttp.WithURLPath(u.Path),
+	}
+
+	if u.Scheme == "http" {
+		opts = append(opts, otlptracehttp.WithInsecure())
+	}
+
+	if user != "" && pass != "" {
+		creds := fmt.Sprintf("%s:%s", user, pass)
+		enc := base64.StdEncoding.EncodeToString([]byte(creds))
+		o := otlptracehttp.WithHeaders(map[string]string{
+			"Authorization": fmt.Sprintf("Basic %s", enc),
+		})
+		opts = append(opts, o)
+	}
+
+	ctx := context.Background()
+	exp, err := otlptracehttp.New(ctx, opts...)
+
 	if err != nil {
 		return nil, err
 	}
