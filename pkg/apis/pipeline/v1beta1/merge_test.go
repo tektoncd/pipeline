@@ -19,11 +19,13 @@ package v1beta1_test
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
+
+	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 func TestMergeStepsWithStepTemplate(t *testing.T) {
@@ -182,6 +184,17 @@ func TestMergeStepsWithStepTemplate(t *testing.T) {
 					},
 				},
 			}},
+		}},
+	}, {
+		name:     "when",
+		template: nil,
+		steps: []v1beta1.Step{{
+			Image: "some-image",
+			When:  v1beta1.StepWhenExpressions{{Input: "foo", Operator: selection.In, Values: []string{"foo", "bar"}}},
+		}},
+		expected: []v1beta1.Step{{
+			Image: "some-image",
+			When:  v1beta1.StepWhenExpressions{{Input: "foo", Operator: selection.In, Values: []string{"foo", "bar"}}},
 		}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
