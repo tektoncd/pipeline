@@ -1858,6 +1858,13 @@ func (in *Step) DeepCopyInto(out *Step) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.When != nil {
+		in, out := &in.When, &out.When
+		*out = make(WhenExpressions, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
