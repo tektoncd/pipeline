@@ -507,7 +507,7 @@ func validateExecutionStatusVariables(tasks []PipelineTask, finallyTasks []Pipel
 // dag tasks cannot have param value as $(tasks.pipelineTask.status)
 func validateExecutionStatusVariablesInTasks(tasks []PipelineTask) (errs *apis.FieldError) {
 	for idx, t := range tasks {
-		errs = errs.Also(t.validateExecutionStatusVariablesDisallowed()).ViaIndex(idx)
+		errs = errs.Also(t.validateExecutionStatusVariablesDisallowed().ViaIndex(idx))
 	}
 	return errs
 }
