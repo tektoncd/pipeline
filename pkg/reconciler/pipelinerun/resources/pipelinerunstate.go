@@ -497,6 +497,15 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 		}
 	}
 
+	if pr.HaveTasksTimedOut(ctx, c) {
+		return &apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1.PipelineRunReasonTimedOut.String(),
+			Message: fmt.Sprintf("PipelineRun %q failed due to tasks failed to finish within %q", pr.Name, pr.TasksTimeout().Duration.String()),
+		}
+	}
+
 	// report the count in PipelineRun Status
 	// get the count of successful tasks, failed tasks, cancelled tasks, skipped task, and incomplete tasks
 	s := facts.getPipelineTasksCount()
