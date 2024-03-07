@@ -3535,6 +3535,25 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 			Paths:   []string{"tasks[0].params[tasks-status].value"},
 		},
 	}, {
+		name: "invalid array variable in multi dag tasks accessing aggregate tasks status",
+		tasks: []PipelineTask{
+			{
+				Name:    "foo",
+				TaskRef: &TaskRef{Name: "foo-task"},
+				Params: Params{{
+					Name: "tasks-status", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.status)"}},
+				}},
+			},
+			{
+				Name:    "bar",
+				TaskRef: &TaskRef{Name: "foo-task"},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: pipeline tasks can not refer to execution status of any other pipeline task or aggregate status of tasks`,
+			Paths:   []string{"tasks[0].params[tasks-status].value"},
+		},
+	}, {
 		name: "invalid string variable in finally accessing missing pipelineTask status",
 		finalTasks: []PipelineTask{{
 			Name:    "bar",
