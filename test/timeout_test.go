@@ -511,7 +511,7 @@ spec:
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to be failed", pipelineRun.Name, namespace)
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason(v1.PipelineRunReasonFailed.String(), pipelineRun.Name), "PipelineRunFailed", v1Version); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason(v1.PipelineRunReasonTimedOut.String(), pipelineRun.Name), "PipelineRunFailed", v1Version); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 	}
 
