@@ -22,14 +22,15 @@ package cryptosigner
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/asn1"
 	"io"
 	"math/big"
 
-	"golang.org/x/crypto/ed25519"
-	"gopkg.in/square/go-jose.v2"
+	"github.com/go-jose/go-jose/v3"
 )
 
 // Opaque creates an OpaqueSigner from a "crypto".Signer
@@ -51,12 +52,20 @@ func (s *cryptoSigner) Public() *jose.JSONWebKey {
 }
 
 func (s *cryptoSigner) Algs() []jose.SignatureAlgorithm {
-	switch s.signer.Public().(type) {
+	switch key := s.signer.Public().(type) {
 	case ed25519.PublicKey:
 		return []jose.SignatureAlgorithm{jose.EdDSA}
 	case *ecdsa.PublicKey:
-		// This could be more precise
-		return []jose.SignatureAlgorithm{jose.ES256, jose.ES384, jose.ES512}
+		switch key.Curve {
+		case elliptic.P256():
+			return []jose.SignatureAlgorithm{jose.ES256}
+		case elliptic.P384():
+			return []jose.SignatureAlgorithm{jose.ES384}
+		case elliptic.P521():
+			return []jose.SignatureAlgorithm{jose.ES512}
+		default:
+			return nil
+		}
 	case *rsa.PublicKey:
 		return []jose.SignatureAlgorithm{jose.RS256, jose.RS384, jose.RS512, jose.PS256, jose.PS384, jose.PS512}
 	default:
@@ -118,14 +127,14 @@ func (s *cryptoSigner) SignPayload(payload []byte, alg jose.SignatureAlgorithm) 
 		}
 
 		rBytes := sig.R.Bytes()
-		rBytesPadded := make([]byte, byteLen)
-		copy(rBytesPadded[byteLen-len(rBytes):], rBytes)
+		out = make([]byte, byteLen)
+		copy(out[byteLen-len(rBytes):], rBytes)
 
 		sBytes := sig.S.Bytes()
 		sBytesPadded := make([]byte, byteLen)
 		copy(sBytesPadded[byteLen-len(sBytes):], sBytes)
 
-		out = append(rBytesPadded, sBytesPadded...)
+		out = append(out, sBytesPadded...)
 	case jose.RS256, jose.RS384, jose.RS512:
 		out, err = s.signer.Sign(s.rand, hashed, hash)
 	case jose.PS256, jose.PS384, jose.PS512:
