@@ -2,5 +2,5 @@
   "AssetsRepo": "Azure/azure-sdk-assets",
   "AssetsRepoPrefixPath": "go",
   "TagPrefix": "go/security/keyvault/azkeys",
-  "Tag": "go/security/keyvault/azkeys_afbe036428"
+  "Tag": "go/security/keyvault/azkeys_2d421aec6c"
 }
