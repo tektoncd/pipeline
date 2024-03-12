@@ -27,8 +27,14 @@ stages:
     TimeoutInMinutes: 120
     ServiceDirectory: 'security/keyvault/azkeys'
     RunLiveTests: true
+    UsePipelineProxy: false
     AdditionalMatrixConfigs:
       - Name: keyvault_test_matrix_addons
         Path: sdk/security/keyvault/azkeys/platform-matrix.json
         Selection: sparse
         GenerateVMJobs: true
+
+    # Due to the high cost of Managed HSMs, we only want to test using them weekly.
+    ${{ if not(contains(variables['Build.DefinitionName'], 'tests-weekly')) }}:
+      MatrixFilters:
+        - ArmTemplateParameters=^(?!.*enableHsm.*true)

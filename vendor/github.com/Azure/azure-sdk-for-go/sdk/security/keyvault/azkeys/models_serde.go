@@ -399,6 +399,7 @@ func (k KeyAttributes) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "enabled", k.Enabled)
 	populateTimeUnix(objectMap, "exp", k.Expires)
 	populate(objectMap, "exportable", k.Exportable)
+	populate(objectMap, "HSMPlatform", k.HSMPlatform)
 	populateTimeUnix(objectMap, "nbf", k.NotBefore)
 	populate(objectMap, "recoverableDays", k.RecoverableDays)
 	populate(objectMap, "recoveryLevel", k.RecoveryLevel)
@@ -426,6 +427,9 @@ func (k *KeyAttributes) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "exportable":
 			err = unpopulate(val, "Exportable", &k.Exportable)
+			delete(rawMsg, key)
+		case "HSMPlatform":
+			err = unpopulate(val, "HSMPlatform", &k.HSMPlatform)
 			delete(rawMsg, key)
 		case "nbf":
 			err = unpopulateTimeUnix(val, "NotBefore", &k.NotBefore)
