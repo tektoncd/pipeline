@@ -148,6 +148,10 @@ func (c *Cache[K, V]) set(key K, value V, ttl time.Duration) *Item[K, V] {
 		c.evict(EvictionReasonCapacityReached, c.items.lru.Back())
 	}
 
+	if ttl == PreviousOrDefaultTTL {
+		ttl = c.options.ttl
+	}
+
 	// create a new item
 	item := newItem(key, value, ttl, c.options.enableVersionTracking)
 	elem = c.items.lru.PushFront(item)
