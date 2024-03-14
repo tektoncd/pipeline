@@ -142,6 +142,21 @@ type StepActionSpec struct {
 	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty" patchStrategy:"merge" patchMergeKey:"mountPath" protobuf:"bytes,9,rep,name=volumeMounts"`
 }
 
+// ToStep converts the StepActionSpec to a Step struct
+func (ss *StepActionSpec) ToStep() *v1.Step {
+	return &v1.Step{
+		Image:           ss.Image,
+		Command:         ss.Command,
+		Args:            ss.Args,
+		WorkingDir:      ss.WorkingDir,
+		Script:          ss.Script,
+		Env:             ss.Env,
+		VolumeMounts:    ss.VolumeMounts,
+		SecurityContext: ss.SecurityContext,
+		Results:         ss.Results,
+	}
+}
+
 // StepActionObject is implemented by StepAction
 type StepActionObject interface {
 	apis.Defaultable

@@ -114,31 +114,33 @@ func GetStepActionsData(ctx context.Context, taskSpec v1.TaskSpec, taskRun *v1.T
 			stepActionSpec := stepAction.StepActionSpec()
 			stepActionSpec.SetDefaults(ctx)
 
-			s.Image = stepActionSpec.Image
-			s.SecurityContext = stepActionSpec.SecurityContext
-			if len(stepActionSpec.Command) > 0 {
-				s.Command = stepActionSpec.Command
-			}
-			if len(stepActionSpec.Args) > 0 {
-				s.Args = stepActionSpec.Args
-			}
-			if stepActionSpec.Script != "" {
-				s.Script = stepActionSpec.Script
-			}
-			s.WorkingDir = stepActionSpec.WorkingDir
-			if stepActionSpec.Env != nil {
-				s.Env = stepActionSpec.Env
-			}
-			if len(stepActionSpec.VolumeMounts) > 0 {
-				s.VolumeMounts = stepActionSpec.VolumeMounts
-			}
-			if len(stepActionSpec.Results) > 0 {
-				s.Results = stepActionSpec.Results
-			}
+			stepFromStepAction := stepActionSpec.ToStep()
 			if err := validateStepHasStepActionParameters(s.Params, stepActionSpec.Params); err != nil {
 				return nil, err
 			}
-			s = applyStepActionParameters(s, &taskSpec, taskRun, s.Params, stepActionSpec.Params)
+			stepFromStepAction = applyStepActionParameters(stepFromStepAction, &taskSpec, taskRun, s.Params, stepActionSpec.Params)
+
+			s.Image = stepFromStepAction.Image
+			s.SecurityContext = stepFromStepAction.SecurityContext
+			if len(stepFromStepAction.Command) > 0 {
+				s.Command = stepFromStepAction.Command
+			}
+			if len(stepFromStepAction.Args) > 0 {
+				s.Args = stepFromStepAction.Args
+			}
+			if stepFromStepAction.Script != "" {
+				s.Script = stepFromStepAction.Script
+			}
+			s.WorkingDir = stepFromStepAction.WorkingDir
+			if stepFromStepAction.Env != nil {
+				s.Env = stepFromStepAction.Env
+			}
+			if len(stepFromStepAction.VolumeMounts) > 0 {
+				s.VolumeMounts = stepFromStepAction.VolumeMounts
+			}
+			if len(stepFromStepAction.Results) > 0 {
+				s.Results = stepFromStepAction.Results
+			}
 			s.Params = nil
 			s.Ref = nil
 			steps = append(steps, *s)
