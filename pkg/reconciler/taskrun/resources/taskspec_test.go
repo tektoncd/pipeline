@@ -818,6 +818,61 @@ func TestGetStepActionsData(t *testing.T) {
 			Args:  []string{"taskrun string param", "taskspec", "array", "taskspec", "array", "param", "taskrun key", "taskspec key2", "step action key3"},
 		}},
 	}, {
+		name: "params in step propagated to stepaction only",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				Params: v1.Params{{
+					Name: "stringparam",
+					Value: v1.ParamValue{
+						Type:      v1.ParamTypeString,
+						StringVal: "taskrun string param",
+					},
+				}},
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							Name: "stepAction",
+						},
+						Params: v1.Params{{
+							Name: "stringparam",
+							Value: v1.ParamValue{
+								Type:      v1.ParamTypeString,
+								StringVal: "step string param",
+							},
+						}},
+						OnError:      v1.OnErrorType("$(params.stringparam)"),
+						StdoutConfig: &v1.StepOutputConfig{Path: "$(params.stringparam)"},
+						StderrConfig: &v1.StepOutputConfig{Path: "$(params.stringparam)"},
+					}},
+				},
+			},
+		},
+		stepAction: &v1alpha1.StepAction{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "stepAction",
+				Namespace: "default",
+			},
+			Spec: v1alpha1.StepActionSpec{
+				Image: "myimage",
+				Args:  []string{"echo", "$(params.stringparam)"},
+				Params: v1.ParamSpecs{{
+					Name: "stringparam",
+					Type: v1.ParamTypeString,
+				}},
+			},
+		},
+		want: []v1.Step{{
+			Image:        "myimage",
+			Args:         []string{"echo", "step string param"},
+			OnError:      v1.OnErrorType("$(params.stringparam)"),
+			StdoutConfig: &v1.StepOutputConfig{Path: "$(params.stringparam)"},
+			StderrConfig: &v1.StepOutputConfig{Path: "$(params.stringparam)"},
+		}},
+	}, {
 		name: "propagating step result substitution strings into step actions",
 		tr: &v1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{

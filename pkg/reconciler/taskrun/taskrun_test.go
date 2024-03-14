@@ -3694,6 +3694,47 @@ spec:
 			Name:    "step1",
 		}},
 	}, {
+		name: "params with the same name propagated from taskrun and step",
+		taskRun: parse.MustParseV1TaskRun(t, `
+metadata:
+  name: taskrun-with-string-params
+  namespace: foo
+spec:
+  params:
+    - name: stringparam
+      value: "taskrun string param"
+  taskSpec:
+    steps:
+      - ref:
+          name: stepAction
+        name: step1
+        stdoutConfig: 
+          path: $(params.stringparam)
+        params:
+          - name: stringparam
+            value: "step string param"
+`),
+		stepAction: parse.MustParseV1alpha1StepAction(t, `
+metadata:
+  name: stepAction
+  namespace: foo
+spec:
+  params:
+    - name: stringparam
+  image: myImage
+  command: ["echo"]
+  args: ["$(params.stringparam)"]
+`),
+		want: []v1.Step{{
+			Image:   "myImage",
+			Command: []string{"echo"},
+			Args:    []string{"step string param"},
+			Name:    "step1",
+			StdoutConfig: &v1.StepOutputConfig{
+				Path: "taskrun string param",
+			},
+		}},
+	}, {
 		name: "step results",
 		taskRun: parse.MustParseV1TaskRun(t, `
 metadata:
