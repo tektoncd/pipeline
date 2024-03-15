@@ -128,6 +128,31 @@ func TestMergeStepsWithStepTemplate(t *testing.T) {
 			}},
 		}},
 	}, {
+		name: "results-and-params-should-not-be-removed",
+		template: &v1.StepTemplate{
+			Command: []string{"/somecmd"},
+		},
+		steps: []v1.Step{{
+			Image:   "some-image",
+			OnError: "foo",
+			Results: []v1.StepResult{{
+				Name: "result",
+			}},
+			Params: v1.Params{{
+				Name: "param",
+			}},
+		}},
+		expected: []v1.Step{{
+			Command: []string{"/somecmd"}, Image: "some-image",
+			OnError: "foo",
+			Results: []v1.StepResult{{
+				Name: "result",
+			}},
+			Params: v1.Params{{
+				Name: "param",
+			}},
+		}},
+	}, {
 		name: "merge-env-by-step",
 		template: &v1.StepTemplate{
 			Env: []corev1.EnvVar{{
