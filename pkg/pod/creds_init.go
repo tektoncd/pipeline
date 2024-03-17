@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -29,8 +30,12 @@ import (
 	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+	"knative.dev/pkg/controller"
+	"knative.dev/pkg/logging"
 )
 
 const (
@@ -51,7 +56,8 @@ var dnsLabel1123Forbidden = regexp.MustCompile("[^a-zA-Z0-9-]+")
 // Any errors encountered during this process are returned to the
 // caller. If no matching annotated secrets are found, nil lists with a
 // nil error are returned.
-func credsInit(ctx context.Context, serviceAccountName, namespace string, kubeclient kubernetes.Interface) ([]string, []corev1.Volume, []corev1.VolumeMount, error) {
+func credsInit(ctx context.Context, obj runtime.Object, serviceAccountName, namespace string, kubeclient kubernetes.Interface) ([]string, []corev1.Volume, []corev1.VolumeMount, error) {
+	logger := logging.FromContext(ctx)
 	cfg := config.FromContextOrDefaults(ctx)
 	if cfg != nil && cfg.FeatureFlags != nil && cfg.FeatureFlags.DisableCredsInit {
 		return nil, nil, nil, nil
@@ -73,6 +79,17 @@ func credsInit(ctx context.Context, serviceAccountName, namespace string, kubecl
 	var volumeMounts []corev1.VolumeMount
 	var volumes []corev1.Volume
 	var args []string
+	var missingSecrets []string
+
+	defer func() {
+		recorder := controller.GetEventRecorder(ctx)
+		if len(missingSecrets) > 0 && recorder != nil && obj != nil {
+			recorder.Eventf(obj, corev1.EventTypeWarning, "FailedToRetrieveSecret",
+				"Unable to retrieve some secrets (%s); attempting to use them may not succeed.",
+				strings.Join(missingSecrets, ", "))
+		}
+	}()
+
 	// Track duplicated secrets, prevent errors like this:
 	//  Pod "xxx" is invalid: spec.containers[0].volumeMounts[12].mountPath: Invalid value:
 	//  "/tekton/creds-secrets/demo-docker-credentials": must be unique
@@ -87,6 +104,11 @@ func credsInit(ctx context.Context, serviceAccountName, namespace string, kubecl
 		visitedSecrets[secretEntry.Name] = struct{}{}
 
 		secret, err := kubeclient.CoreV1().Secrets(namespace).Get(ctx, secretEntry.Name, metav1.GetOptions{})
+		if k8serrors.IsNotFound(err) {
+			missingSecrets = append(missingSecrets, secretEntry.Name)
+			logger.Warnf("Secret %q in ServiceAccount %s/%s not found, skipping", secretEntry.Name, namespace, serviceAccountName)
+			continue
+		}
 		if err != nil {
 			return nil, nil, nil, err
 		}

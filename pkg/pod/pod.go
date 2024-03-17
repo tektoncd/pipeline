@@ -179,7 +179,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	if config.IsSpireEnabled(ctx) {
 		commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-enable_spire")
 	}
-	credEntrypointArgs, credVolumes, credVolumeMounts, err := credsInit(ctx, taskRun.Spec.ServiceAccountName, taskRun.Namespace, b.KubeClient)
+	credEntrypointArgs, credVolumes, credVolumeMounts, err := credsInit(ctx, taskRun, taskRun.Spec.ServiceAccountName, taskRun.Namespace, b.KubeClient)
 	if err != nil {
 		return nil, err
 	}

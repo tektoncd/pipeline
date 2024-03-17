@@ -28,6 +28,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/tools/record"
+	"knative.dev/pkg/controller"
 	logtesting "knative.dev/pkg/logging/testing"
 	"knative.dev/pkg/system"
 )
@@ -49,6 +51,7 @@ func TestCredsInit(t *testing.T) {
 		wantVolumeMounts []corev1.VolumeMount
 		objs             []runtime.Object
 		envVars          []corev1.EnvVar
+		events           []string
 		ctx              context.Context
 	}{{
 		desc: "service account exists with no secrets; nothing to initialize",
@@ -288,11 +291,52 @@ func TestCredsInit(t *testing.T) {
 			MountPath: "/tekton/creds-secrets/my-creds",
 		}},
 		ctx: context.Background(),
+	}, {
+		desc: "service account has not found secrets",
+		objs: []runtime.Object{
+			&corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{Name: serviceAccountName, Namespace: namespace},
+				Secrets: []corev1.ObjectReference{
+					{Name: "my-creds"},
+					{Name: "not-exist-1"},
+					{Name: "not-exist-2"},
+				},
+			},
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "my-creds",
+					Namespace: namespace,
+					Annotations: map[string]string{
+						"tekton.dev/git-0": "github.com",
+					},
+				},
+				Type: "kubernetes.io/basic-auth",
+				Data: map[string][]byte{
+					"username": []byte("foo"),
+					"password": []byte("BestEver"),
+				},
+			},
+		},
+		envVars: []corev1.EnvVar{},
+		wantArgs: []string{
+			"-basic-git=my-creds=github.com",
+		},
+		wantVolumeMounts: []corev1.VolumeMount{{
+			Name:      "tekton-internal-secret-volume-my-creds-9l9zj",
+			MountPath: "/tekton/creds-secrets/my-creds",
+		}},
+		events: []string{
+			`Warning FailedToRetrieveSecret Unable to retrieve some secrets (not-exist-1, not-exist-2); attempting to use them may not succeed.`,
+		},
+		ctx: context.Background(),
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
+			eventObj := &corev1.Event{}
 			kubeclient := fakek8s.NewSimpleClientset(c.objs...)
-			args, volumes, volumeMounts, err := credsInit(c.ctx, serviceAccountName, namespace, kubeclient)
+			recorder := record.NewFakeRecorder(1000)
+			c.ctx = controller.WithEventRecorder(c.ctx, recorder)
+			args, volumes, volumeMounts, err := credsInit(c.ctx, eventObj, serviceAccountName, namespace, kubeclient)
 			if err != nil {
 				t.Fatalf("credsInit: %v", err)
 			}
@@ -304,6 +348,15 @@ func TestCredsInit(t *testing.T) {
 			}
 			if d := cmp.Diff(c.wantVolumeMounts, volumeMounts); d != "" {
 				t.Fatalf("Diff %s", diff.PrintWantGot(d))
+			}
+			if len(recorder.Events) != len(c.events) {
+				t.Fatalf("Expected %d events, got %d", len(c.events), len(recorder.Events))
+			}
+			for i, e := range c.events {
+				message := <-recorder.Events
+				if message != e {
+					t.Fatalf("Expected event %d to be %q, got %q", i, e, message)
+				}
 			}
 		})
 	}
