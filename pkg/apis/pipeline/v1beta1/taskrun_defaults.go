@@ -59,11 +59,11 @@ func (tr *TaskRun) SetDefaults(ctx context.Context) {
 func (trs *TaskRunSpec) SetDefaults(ctx context.Context) {
 	cfg := config.FromContextOrDefaults(ctx)
 	if trs.TaskRef != nil {
-		if trs.TaskRef.Kind == "" {
-			trs.TaskRef.Kind = NamespacedTaskKind
-		}
 		if trs.TaskRef.Name == "" && trs.TaskRef.Resolver == "" {
 			trs.TaskRef.Resolver = ResolverName(cfg.Defaults.DefaultResolverType)
+		}
+		if trs.TaskRef.Kind == "" && trs.TaskRef.Resolver == "" {
+			trs.TaskRef.Kind = NamespacedTaskKind
 		}
 	}
 

@@ -49,6 +49,7 @@ func (tr *TaskRef) ConvertFrom(ctx context.Context, source v1.TaskRef) {
 // default and it will be in beta before the stored version of CRD getting swapped to v1.
 func (tr TaskRef) convertBundleToResolver(sink *v1.TaskRef) {
 	if tr.Bundle != "" {
+		sink.Kind = ""
 		sink.ResolverRef = v1.ResolverRef{
 			Resolver: "bundles",
 			Params: v1.Params{{
