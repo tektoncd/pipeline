@@ -136,6 +136,7 @@ func resolvePipeline(ctx context.Context, resolver remote.Resolver, name string,
 func readRuntimeObjectAsPipeline(ctx context.Context, namespace string, obj runtime.Object, k8s kubernetes.Interface, tekton clientset.Interface, refSource *v1.RefSource, verificationPolicies []*v1alpha1.VerificationPolicy) (*v1.Pipeline, *trustedresources.VerificationResult, error) {
 	switch obj := obj.(type) {
 	case *v1beta1.Pipeline:
+		obj.SetDefaults(ctx)
 		// Verify the Pipeline once we fetch from the remote resolution, mutating, validation and conversion of the pipeline should happen after the verification, since signatures are based on the remote pipeline contents
 		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
 		// Issue a dry-run request to create the remote Pipeline, so that it can undergo validation from validating admission webhooks
@@ -154,6 +155,9 @@ func readRuntimeObjectAsPipeline(ctx context.Context, namespace string, obj runt
 		}
 		return p, &vr, nil
 	case *v1.Pipeline:
+		// This SetDefaults is currently not necessary, but for consistency, it is recommended to add it.
+		// Avoid forgetting to add it in the future when there is a v2 version, causing similar problems.
+		obj.SetDefaults(ctx)
 		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
 		// Issue a dry-run request to create the remote Pipeline, so that it can undergo validation from validating admission webhooks
 		// without actually creating the Pipeline on the cluster
