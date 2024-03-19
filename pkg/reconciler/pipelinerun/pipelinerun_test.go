@@ -15923,7 +15923,7 @@ spec:
 func TestReconcile_verifyResolved_V1beta1Pipeline_NoError(t *testing.T) {
 	resolverName := "foobar"
 
-	ts := parse.MustParseV1beta1Task(t, `
+	ts := parse.MustParseV1beta1TaskAndSetDefaults(t, `
 metadata:
   name: test-task
   namespace: foo
@@ -15947,7 +15947,7 @@ spec:
 		t.Fatal("fail to marshal task", err)
 	}
 
-	ps := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+	ps := parse.MustParseV1beta1PipelineAndSetDefaults(t, fmt.Sprintf(`
 metadata:
   name: test-pipeline
   namespace: foo
@@ -16260,7 +16260,7 @@ spec:
 func TestReconcile_verifyResolved_V1Pipeline_NoError(t *testing.T) {
 	resolverName := "foobar"
 
-	ts := parse.MustParseV1Task(t, `
+	ts := parse.MustParseV1TaskAndSetDefaults(t, `
 metadata:
   name: test-task
   namespace: foo
@@ -16284,7 +16284,7 @@ spec:
 		t.Fatal("fail to marshal task", err)
 	}
 
-	ps := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+	ps := parse.MustParseV1PipelineAndSetDefaults(t, fmt.Sprintf(`
 metadata:
   name: test-pipeline
   namespace: foo
@@ -16416,7 +16416,7 @@ func TestReconcile_verifyResolved_V1Pipeline_Error(t *testing.T) {
 	resolverName := "foobar"
 
 	// Case1: unsigned Pipeline refers to unsigned Task
-	unsignedTask := parse.MustParseV1beta1Task(t, `
+	unsignedTask := parse.MustParseV1beta1TaskAndSetDefaults(t, `
 metadata:
   name: test-task
   namespace: foo

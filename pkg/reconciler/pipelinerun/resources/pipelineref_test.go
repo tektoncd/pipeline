@@ -316,7 +316,7 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 			"apiVersion: tekton.dev/v1beta1",
 			pipelineYAMLString,
 		}, "\n"),
-		wantPipeline: parse.MustParseV1Pipeline(t, pipelineYAMLString),
+		wantPipeline: parse.MustParseV1PipelineAndSetDefaults(t, pipelineYAMLString),
 	}, {
 		name: "v1 pipeline",
 		pipelineYAML: strings.Join([]string{
@@ -324,7 +324,7 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 			"apiVersion: tekton.dev/v1",
 			pipelineYAMLString,
 		}, "\n"),
-		wantPipeline: parse.MustParseV1Pipeline(t, pipelineYAMLString),
+		wantPipeline: parse.MustParseV1PipelineAndSetDefaults(t, pipelineYAMLString),
 	}, {
 		name: "v1 remote pipeline without defaults",
 		pipelineYAML: strings.Join([]string{
@@ -332,7 +332,7 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 			"apiVersion: tekton.dev/v1",
 			pipelineYAMLStringWithoutDefaults,
 		}, "\n"),
-		wantPipeline: parse.MustParseV1Pipeline(t, pipelineYAMLStringWithoutDefaults),
+		wantPipeline: parse.MustParseV1PipelineAndSetDefaults(t, pipelineYAMLStringWithoutDefaults),
 	}, {
 		name: "v1 remote pipeline with different namespace",
 		pipelineYAML: strings.Join([]string{
@@ -340,7 +340,7 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 			"apiVersion: tekton.dev/v1",
 			pipelineYAMLStringNamespaceFoo,
 		}, "\n"),
-		wantPipeline: parse.MustParseV1Pipeline(t, pipelineYAMLStringNamespaceFoo),
+		wantPipeline: parse.MustParseV1PipelineAndSetDefaults(t, pipelineYAMLStringNamespaceFoo),
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -433,7 +433,7 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	ctx, clients := getFakePipelineClient(t)
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
-	pipeline := parse.MustParseV1Pipeline(t, pipelineYAMLString)
+	pipeline := parse.MustParseV1PipelineAndSetDefaults(t, pipelineYAMLString)
 	pipelineRef := &v1.PipelineRef{
 		ResolverRef: v1.ResolverRef{
 			Resolver: "git",
@@ -1315,9 +1315,21 @@ var pipelineYAMLString = `
 metadata:
   name: foo
 spec:
+  params:
+  - name: array
+    # type: array
+    default:
+      - "bar"
+      - "bar"
   tasks:
   - name: task1
     taskSpec:
+      params:
+      - name: array
+        # type: array
+        default:
+          - "bar"
+          - "bar"
       steps:
       - name: step1
         image: ubuntu
