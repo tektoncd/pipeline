@@ -1062,7 +1062,7 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 			"apiVersion: tekton.dev/v1beta1",
 			taskYAMLString,
 		}, "\n"),
-		wantTask: parse.MustParseV1Task(t, taskYAMLString),
+		wantTask: parse.MustParseV1TaskAndSetDefaults(t, taskYAMLString),
 	}, {
 		name: "v1beta1 cluster task",
 		taskYAML: strings.Join([]string{
@@ -1070,7 +1070,7 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 			"apiVersion: tekton.dev/v1beta1",
 			taskYAMLString,
 		}, "\n"),
-		wantTask: parse.MustParseV1Task(t, taskYAMLString),
+		wantTask: parse.MustParseV1TaskAndSetDefaults(t, taskYAMLString),
 	}, {
 		name: "v1 task",
 		taskYAML: strings.Join([]string{
@@ -1078,7 +1078,7 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 			"apiVersion: tekton.dev/v1",
 			taskYAMLString,
 		}, "\n"),
-		wantTask: parse.MustParseV1Task(t, taskYAMLString),
+		wantTask: parse.MustParseV1TaskAndSetDefaults(t, taskYAMLString),
 	}, {
 		name: "v1 task without defaults",
 		taskYAML: strings.Join([]string{
@@ -1086,7 +1086,7 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 			"apiVersion: tekton.dev/v1",
 			remoteTaskYamlWithoutDefaults,
 		}, "\n"),
-		wantTask: parse.MustParseV1Task(t, remoteTaskYamlWithoutDefaults),
+		wantTask: parse.MustParseV1TaskAndSetDefaults(t, remoteTaskYamlWithoutDefaults),
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1189,7 +1189,7 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	ctx := context.Background()
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
-	task := parse.MustParseV1Task(t, taskYAMLString)
+	task := parse.MustParseV1TaskAndSetDefaults(t, taskYAMLString)
 	taskRef := &v1.TaskRef{
 		ResolverRef: v1.ResolverRef{
 			Resolver: "git",
@@ -1899,6 +1899,12 @@ var taskYAMLString = `
 metadata:
   name: foo
 spec:
+  params:
+  - name: array
+    # type: array
+    default:
+      - "bar"
+      - "bar"
   steps:
   - name: step1
     image: ubuntu
