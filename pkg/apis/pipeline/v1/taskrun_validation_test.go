@@ -704,6 +704,20 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		wantErr: apis.ErrInvalidValue("turnOn is not a valid onFailure breakpoint value, onFailure breakpoint is only allowed to be set as enabled", "debug.breakpoints.onFailure"),
 		wc:      cfgtesting.EnableAlphaAPIFields,
 	}, {
+		name: "empty onFailure breakpoint",
+		spec: v1.TaskRunSpec{
+			TaskRef: &v1.TaskRef{
+				Name: "my-task",
+			},
+			Debug: &v1.TaskRunDebug{
+				Breakpoints: &v1.TaskBreakpoints{
+					OnFailure: "",
+				},
+			},
+		},
+		wantErr: apis.ErrInvalidValue("onFailure breakpoint is empty, it is only allowed to be set as enabled", "debug.breakpoints.onFailure"),
+		wc:      cfgtesting.EnableAlphaAPIFields,
+	}, {
 		name: "stepSpecs disallowed without beta feature gate",
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{
