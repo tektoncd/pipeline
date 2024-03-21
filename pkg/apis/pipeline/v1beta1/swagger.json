@@ -808,10 +808,6 @@
           "description": "API version of the referent",
           "type": "string"
         },
-        "bundle": {
-          "description": "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead.",
-          "type": "string"
-        },
         "name": {
           "description": "Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names",
           "type": "string"
@@ -2505,10 +2501,6 @@
       "properties": {
         "apiVersion": {
           "description": "API version of the referent Note: A Task with non-empty APIVersion and Kind is considered a Custom Task",
-          "type": "string"
-        },
-        "bundle": {
-          "description": "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead.",
           "type": "string"
         },
         "kind": {
