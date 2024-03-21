@@ -218,6 +218,11 @@ func validateDebug(db *TaskRunDebug) (errs *apis.FieldError) {
 	if db == nil || db.Breakpoints == nil {
 		return errs
 	}
+
+	if db.Breakpoints.OnFailure == "" {
+		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("onFailure breakpoint is empty, it is only allowed to be set as enabled"), "breakpoints.onFailure"))
+	}
+
 	if db.Breakpoints.OnFailure != "" && db.Breakpoints.OnFailure != EnabledOnFailureBreakpoint {
 		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s is not a valid onFailure breakpoint value, onFailure breakpoint is only allowed to be set as enabled", db.Breakpoints.OnFailure), "breakpoints.onFailure"))
 	}
