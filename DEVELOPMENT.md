@@ -96,9 +96,9 @@ You must install these tools:
 1. [`go-licenses`](https://github.com/google/go-licenses) is used in e2e tests.
 
 1. (Optional)
-   [`golangci-lint`](https://golangci-lint.run/usage/install/#local-installation)
+   [`golangci-lint`](https://golangci-lint.run/welcome/install/#local-installation)
    is run against every PR. You may want to install and [run this tool
-   locally](https://golangci-lint.run/usage/quick-start) to iterate quickly on
+   locally](https://golangci-lint.run/welcome/quick-start) to iterate quickly on
    linter issues.
 
    > **Note** Linter findings are dependent on your installed Go version. Match
