@@ -1,6 +1,6 @@
 module github.com/tektoncd/pipeline
 
-go 1.19
+go 1.21
 
 require (
 	github.com/Microsoft/go-winio v0.6.1 // indirect
@@ -27,7 +27,6 @@ require (
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
 	golang.org/x/oauth2 v0.16.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0
-	gopkg.in/square/go-jose.v2 v2.6.0
 	k8s.io/api v0.27.1
 	k8s.io/apimachinery v0.29.0
 	k8s.io/client-go v0.27.1
@@ -48,6 +47,7 @@ replace (
 
 require (
 	code.gitea.io/sdk/gitea v0.16.0
+	github.com/go-jose/go-jose/v3 v3.0.3
 	github.com/goccy/kpoward v0.1.0
 	github.com/google/cel-go v0.18.1
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20230625233257-b8504803389b
@@ -100,7 +100,6 @@ require (
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-fed/httpsig v1.1.0 // indirect
-	github.com/go-jose/go-jose/v3 v3.0.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.0.0 // indirect
 	github.com/google/gnostic v0.6.9 // indirect
