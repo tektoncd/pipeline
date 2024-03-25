@@ -27,7 +27,6 @@ require (
 	golang.org/x/exp v0.0.0-20230515195305-f3d0a9c9a5cc
 	golang.org/x/oauth2 v0.18.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0
-	gopkg.in/square/go-jose.v2 v2.6.0
 	k8s.io/api v0.28.5
 	k8s.io/apimachinery v0.29.0
 	k8s.io/client-go v0.28.5
@@ -48,6 +47,7 @@ replace (
 
 require (
 	code.gitea.io/sdk/gitea v0.17.1
+	github.com/go-jose/go-jose/v3 v3.0.3
 	github.com/goccy/kpoward v0.1.0
 	github.com/google/cel-go v0.20.1
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20240108195214-a0658aa1d0cc
@@ -100,7 +100,6 @@ require (
 	github.com/emicklei/go-restful/v3 v3.10.2 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-fed/httpsig v1.1.0 // indirect
-	github.com/go-jose/go-jose/v3 v3.0.3 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.0 // indirect
