@@ -1,6 +1,6 @@
 module github.com/tektoncd/pipeline
 
-go 1.19
+go 1.21
 
 require (
 	github.com/Microsoft/go-winio v0.6.1 // indirect
@@ -27,7 +27,6 @@ require (
 	golang.org/x/exp v0.0.0-20230307190834-24139beb5833
 	golang.org/x/oauth2 v0.9.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0
-	gopkg.in/square/go-jose.v2 v2.6.0
 	k8s.io/api v0.27.1
 	k8s.io/apimachinery v0.27.1
 	k8s.io/client-go v0.27.1
@@ -50,6 +49,7 @@ require github.com/benbjohnson/clock v1.1.0 // indirect
 
 require (
 	code.gitea.io/sdk/gitea v0.15.1
+	github.com/go-jose/go-jose/v3 v3.0.3
 	github.com/goccy/kpoward v0.1.0
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20230625233257-b8504803389b
 	github.com/sigstore/sigstore/pkg/signature/kms/aws v1.7.1
@@ -93,7 +93,6 @@ require (
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
 	github.com/emicklei/go-restful/v3 v3.10.2 // indirect
 	github.com/fatih/color v1.13.0 // indirect
-	github.com/go-jose/go-jose/v3 v3.0.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/gnostic v0.6.9 // indirect
 	github.com/google/go-containerregistry/pkg/authn/kubernetes v0.0.0-20230516205744-dbecb1de8cfa // indirect
@@ -126,6 +125,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.16.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230530153820-e85fd2cbaebc // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect
+	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 )
 
 require (
