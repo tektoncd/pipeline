@@ -59,13 +59,11 @@ func newH2CTransport(disableCompression bool) http.RoundTripper {
 
 // newH2Transport constructs a neew H2 transport. That transport will handles HTTPS traffic
 // with TLS config.
-func newH2Transport(disableCompression bool, tlsConf *tls.Config) http.RoundTripper {
+func newH2Transport(disableCompression bool, tlsContext DialTLSContextFunc) http.RoundTripper {
 	return &http2.Transport{
 		DisableCompression: disableCompression,
-		DialTLS: func(netw, addr string, tlsConf *tls.Config) (net.Conn, error) {
-			return DialTLSWithBackOff(context.Background(),
-				netw, addr, tlsConf)
+		DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
+			return tlsContext(ctx, network, addr)
 		},
-		TLSClientConfig: tlsConf,
 	}
 }

@@ -156,11 +156,11 @@ func (g *reconcilerReconcilerGenerator) GenerateType(c *generator.Context, t *ty
 		}),
 		"setsNewString": c.Universe.Function(types.Name{
 			Package: "k8s.io/apimachinery/pkg/util/sets",
-			Name:    "NewString",
+			Name:    "New[string]",
 		}),
 		"setsString": c.Universe.Type(types.Name{
 			Package: "k8s.io/apimachinery/pkg/util/sets",
-			Name:    "String",
+			Name:    "Set[string]",
 		}),
 		"controllerOptions": c.Universe.Type(types.Name{
 			Package: "knative.dev/pkg/controller",
@@ -630,7 +630,7 @@ func (r *reconcilerImpl) updateFinalizersFiltered(ctx {{.contextContext|raw}}, r
 		}
 		// Remove the finalizer.
 		existingFinalizers.Delete(r.finalizerName)
-		finalizers = existingFinalizers.List()
+		finalizers = sets.List(existingFinalizers)
 	}
 
 	mergePatch := map[string]interface{}{

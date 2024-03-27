@@ -180,7 +180,7 @@ func validate(ctx context.Context, resource resourcesemantics.GenericCRD, req *a
 	}
 
 	if result := resource.Validate(ctx); result != nil {
-		logger.Errorw("Failed the resource specific validation", zap.Error(err))
+		logger.Infow("Failed the resource specific validation", zap.Error(result))
 		// While we have the strong typing of apis.FieldError, partition the
 		// returned error into the error-level diagnostics and warning-level
 		// diagnostics, so that the admission response can embed things into

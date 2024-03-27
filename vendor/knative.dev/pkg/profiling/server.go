@@ -22,9 +22,9 @@ import (
 	"net/http/pprof"
 	"os"
 	"strconv"
+	"sync/atomic"
 	"time"
 
-	"go.uber.org/atomic"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -63,8 +63,11 @@ func NewHandler(logger *zap.SugaredLogger, enableProfiling bool) *Handler {
 	mux.HandleFunc(pprofPrefix+"trace", pprof.Trace)
 
 	logger.Info("Profiling enabled: ", enableProfiling)
+	var enabled atomic.Bool
+	enabled.Store(enableProfiling)
+
 	return &Handler{
-		enabled: atomic.NewBool(enableProfiling),
+		enabled: &enabled,
 		handler: mux,
 		log:     logger,
 	}

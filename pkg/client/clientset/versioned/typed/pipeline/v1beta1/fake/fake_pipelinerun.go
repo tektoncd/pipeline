@@ -24,7 +24,6 @@ import (
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -36,9 +35,9 @@ type FakePipelineRuns struct {
 	ns   string
 }
 
-var pipelinerunsResource = schema.GroupVersionResource{Group: "tekton.dev", Version: "v1beta1", Resource: "pipelineruns"}
+var pipelinerunsResource = v1beta1.SchemeGroupVersion.WithResource("pipelineruns")
 
-var pipelinerunsKind = schema.GroupVersionKind{Group: "tekton.dev", Version: "v1beta1", Kind: "PipelineRun"}
+var pipelinerunsKind = v1beta1.SchemeGroupVersion.WithKind("PipelineRun")
 
 // Get takes name of the pipelineRun, and returns the corresponding pipelineRun object, and an error if there is any.
 func (c *FakePipelineRuns) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.PipelineRun, err error) {

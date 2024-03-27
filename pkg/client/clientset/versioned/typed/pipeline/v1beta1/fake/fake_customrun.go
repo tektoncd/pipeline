@@ -24,7 +24,6 @@ import (
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -36,9 +35,9 @@ type FakeCustomRuns struct {
 	ns   string
 }
 
-var customrunsResource = schema.GroupVersionResource{Group: "tekton.dev", Version: "v1beta1", Resource: "customruns"}
+var customrunsResource = v1beta1.SchemeGroupVersion.WithResource("customruns")
 
-var customrunsKind = schema.GroupVersionKind{Group: "tekton.dev", Version: "v1beta1", Kind: "CustomRun"}
+var customrunsKind = v1beta1.SchemeGroupVersion.WithKind("CustomRun")
 
 // Get takes name of the customRun, and returns the corresponding customRun object, and an error if there is any.
 func (c *FakeCustomRuns) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.CustomRun, err error) {
