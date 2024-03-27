@@ -39,6 +39,9 @@ func EscapeMetricName(metricName string) string {
 	// This is an character replacement method optimized for this limited
 	// use case.  It is much faster than using a regex.
 	offset := 0
+
+	var prevChar rune
+
 	for i, c := range metricName {
 		// Seek forward, skipping valid characters until we find one that needs
 		// to be replaced, then add all the characters we've seen so far to the
@@ -47,6 +50,13 @@ func EscapeMetricName(metricName string) string {
 			(c >= '0' && c <= '9') || (c == '_') {
 			// Character is valid, so skip over it without doing anything.
 		} else {
+			// Double-dashes are allowed if there is a corresponding mapping.
+			// For consistency, double-dashes should also be allowed in the default case.
+			if c == '-' && prevChar == '-' {
+				offset = i + utf8.RuneLen(c)
+				continue
+			}
+
 			if !escaped {
 				// Up until now we've been lazy and avoided actually allocating
 				// memory.  Unfortunately we've now determined this string needs
@@ -58,6 +68,8 @@ func EscapeMetricName(metricName string) string {
 			offset = i + utf8.RuneLen(c)
 			sb.WriteByte('_')
 		}
+
+		prevChar = c
 	}
 
 	if !escaped {
