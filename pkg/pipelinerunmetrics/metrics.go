@@ -56,20 +56,40 @@ var (
 		stats.UnitDimensionless)
 	prCountView *view.View
 
+	prTotal = stats.Float64("pipelinerun_total",
+		"Number of pipelineruns",
+		stats.UnitDimensionless)
+	prTotalView *view.View
+
 	runningPRsCount = stats.Float64("running_pipelineruns_count",
 		"Number of pipelineruns executing currently",
 		stats.UnitDimensionless)
 	runningPRsCountView *view.View
+
+	runningPRs = stats.Float64("running_pipelineruns",
+		"Number of pipelineruns executing currently",
+		stats.UnitDimensionless)
+	runningPRsView *view.View
 
 	runningPRsWaitingOnPipelineResolutionCount = stats.Float64("running_pipelineruns_waiting_on_pipeline_resolution_count",
 		"Number of pipelineruns executing currently that are waiting on resolution requests for their pipeline references.",
 		stats.UnitDimensionless)
 	runningPRsWaitingOnPipelineResolutionCountView *view.View
 
+	runningPRsWaitingOnPipelineResolution = stats.Float64("running_pipelineruns_waiting_on_pipeline_resolution",
+		"Number of pipelineruns executing currently that are waiting on resolution requests for their pipeline references.",
+		stats.UnitDimensionless)
+	runningPRsWaitingOnPipelineResolutionView *view.View
+
 	runningPRsWaitingOnTaskResolutionCount = stats.Float64("running_pipelineruns_waiting_on_task_resolution_count",
 		"Number of pipelineruns executing currently that are waiting on resolution requests for the task references of their taskrun children.",
 		stats.UnitDimensionless)
 	runningPRsWaitingOnTaskResolutionCountView *view.View
+
+	runningPRsWaitingOnTaskResolution = stats.Float64("running_pipelineruns_waiting_on_task_resolution",
+		"Number of pipelineruns executing currently that are waiting on resolution requests for the task references of their taskrun children.",
+		stats.UnitDimensionless)
+	runningPRsWaitingOnTaskResolutionView *view.View
 )
 
 const (
@@ -171,33 +191,69 @@ func viewRegister(cfg *config.Metrics) error {
 		Aggregation: view.Count(),
 		TagKeys:     prCountViewTags,
 	}
+	prTotalView = &view.View{
+		Description: prTotal.Description(),
+		Measure:     prTotal,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{statusTag},
+	}
+
 	runningPRsCountView = &view.View{
 		Description: runningPRsCount.Description(),
 		Measure:     runningPRsCount,
 		Aggregation: view.LastValue(),
 	}
+	runningPRsView = &view.View{
+		Description: runningPRs.Description(),
+		Measure:     runningPRs,
+		Aggregation: view.LastValue(),
+	}
+
 	runningPRsWaitingOnPipelineResolutionCountView = &view.View{
 		Description: runningPRsWaitingOnPipelineResolutionCount.Description(),
 		Measure:     runningPRsWaitingOnPipelineResolutionCount,
 		Aggregation: view.LastValue(),
 	}
+	runningPRsWaitingOnPipelineResolutionView = &view.View{
+		Description: runningPRsWaitingOnPipelineResolution.Description(),
+		Measure:     runningPRsWaitingOnPipelineResolution,
+		Aggregation: view.LastValue(),
+	}
+
 	runningPRsWaitingOnTaskResolutionCountView = &view.View{
 		Description: runningPRsWaitingOnTaskResolutionCount.Description(),
 		Measure:     runningPRsWaitingOnTaskResolutionCount,
+		Aggregation: view.LastValue(),
+	}
+	runningPRsWaitingOnTaskResolutionView = &view.View{
+		Description: runningPRsWaitingOnTaskResolution.Description(),
+		Measure:     runningPRsWaitingOnTaskResolution,
 		Aggregation: view.LastValue(),
 	}
 
 	return view.Register(
 		prDurationView,
 		prCountView,
+		prTotalView,
 		runningPRsCountView,
+		runningPRsView,
 		runningPRsWaitingOnPipelineResolutionCountView,
+		runningPRsWaitingOnPipelineResolutionView,
 		runningPRsWaitingOnTaskResolutionCountView,
+		runningPRsWaitingOnTaskResolutionView,
 	)
 }
 
 func viewUnregister() {
-	view.Unregister(prDurationView, prCountView, runningPRsCountView, runningPRsWaitingOnPipelineResolutionCountView, runningPRsWaitingOnTaskResolutionCountView)
+	view.Unregister(prDurationView,
+		prCountView,
+		prTotalView,
+		runningPRsCountView,
+		runningPRsView,
+		runningPRsWaitingOnPipelineResolutionCountView,
+		runningPRsWaitingOnPipelineResolutionView,
+		runningPRsWaitingOnTaskResolutionCountView,
+		runningPRsWaitingOnTaskResolutionView)
 }
 
 // MetricsOnStore returns a function that checks if metrics are configured for a config.Store, and registers it if so
@@ -282,6 +338,7 @@ func (r *Recorder) DurationAndCount(pr *v1.PipelineRun, beforeCondition *apis.Co
 
 	metrics.Record(ctx, prDuration.M(duration.Seconds()))
 	metrics.Record(ctx, prCount.M(1))
+	metrics.Record(ctx, prTotal.M(1))
 
 	return nil
 }
@@ -301,13 +358,13 @@ func (r *Recorder) RunningPipelineRuns(lister listers.PipelineRunLister) error {
 		return fmt.Errorf("failed to list pipelineruns while generating metrics : %w", err)
 	}
 
-	var runningPRs int
+	var runningPipelineRuns int
 	var trsWaitResolvingTaskRef int
 	var prsWaitResolvingPipelineRef int
 
 	for _, pr := range prs {
 		if !pr.IsDone() {
-			runningPRs++
+			runningPipelineRuns++
 			succeedCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
 			if succeedCondition != nil && succeedCondition.Status == corev1.ConditionUnknown {
 				switch succeedCondition.Reason {
@@ -324,9 +381,12 @@ func (r *Recorder) RunningPipelineRuns(lister listers.PipelineRunLister) error {
 	if err != nil {
 		return err
 	}
-	metrics.Record(ctx, runningPRsCount.M(float64(runningPRs)))
 	metrics.Record(ctx, runningPRsWaitingOnPipelineResolutionCount.M(float64(prsWaitResolvingPipelineRef)))
+	metrics.Record(ctx, runningPRsWaitingOnPipelineResolution.M(float64(prsWaitResolvingPipelineRef)))
 	metrics.Record(ctx, runningPRsWaitingOnTaskResolutionCount.M(float64(trsWaitResolvingTaskRef)))
+	metrics.Record(ctx, runningPRsWaitingOnTaskResolution.M(float64(trsWaitResolvingTaskRef)))
+	metrics.Record(ctx, runningPRsCount.M(float64(runningPipelineRuns)))
+	metrics.Record(ctx, runningPRs.M(float64(runningPipelineRuns)))
 
 	return nil
 }
