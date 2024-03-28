@@ -50,11 +50,11 @@ func (ps *PipelineSpec) SetDefaults(ctx context.Context) {
 func (pt *PipelineTask) SetDefaults(ctx context.Context) {
 	cfg := config.FromContextOrDefaults(ctx)
 	if pt.TaskRef != nil {
-		if pt.TaskRef.Kind == "" {
-			pt.TaskRef.Kind = NamespacedTaskKind
-		}
 		if pt.TaskRef.Name == "" && pt.TaskRef.Resolver == "" {
 			pt.TaskRef.Resolver = ResolverName(cfg.Defaults.DefaultResolverType)
+		}
+		if pt.TaskRef.Kind == "" && pt.TaskRef.Resolver == "" {
+			pt.TaskRef.Kind = NamespacedTaskKind
 		}
 	}
 	if pt.TaskSpec != nil {
