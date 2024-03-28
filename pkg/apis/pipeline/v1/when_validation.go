@@ -48,7 +48,7 @@ func (wes WhenExpressions) validateWhenExpressionsFields(ctx context.Context) (e
 func (we *WhenExpression) validateWhenExpressionFields(ctx context.Context) *apis.FieldError {
 	if we.CEL != "" {
 		if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableCELInWhenExpression {
-			return apis.ErrGeneric("feature flag %s should be set to true to use CEL: %s in WhenExpression", config.EnableCELInWhenExpression, we.CEL)
+			return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use CEL: %s in WhenExpression", config.EnableCELInWhenExpression, we.CEL), "")
 		}
 		if we.Input != "" || we.Operator != "" || len(we.Values) != 0 {
 			return apis.ErrGeneric(fmt.Sprintf("cel and input+operator+values cannot be set in one WhenExpression: %v", we))

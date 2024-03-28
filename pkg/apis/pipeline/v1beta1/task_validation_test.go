@@ -22,16 +22,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
@@ -2569,6 +2571,88 @@ func TestTaskSpecValidate_StepResults_Error(t *testing.T) {
 			}
 			ts.SetDefaults(ctx)
 			err := ts.Validate(ctx)
+			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("StepActionSpec.Validate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestTaskSpecValidate_StepWhen_Error(t *testing.T) {
+	tests := []struct {
+		name             string
+		ts               *v1beta1.TaskSpec
+		isCreate         bool
+		Results          []v1.StepResult
+		isUpdate         bool
+		baselineTaskRun  *v1beta1.TaskRun
+		expectedError    apis.FieldError
+		EnableStepAction bool
+		EnableCEL        bool
+	}{
+		{
+			name: "step when not allowed without enable step actions - create event",
+			ts: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
+				Image: "my-image",
+				When:  v1beta1.StepWhenExpressions{{Input: "foo", Operator: selection.In, Values: []string{"foo"}}},
+			}}},
+			isCreate: true,
+			expectedError: apis.FieldError{
+				Message: "feature flag enable-step-actions should be set to true in order to use When in Steps.",
+				Paths:   []string{"steps[0]"},
+			},
+		},
+		{
+			name: "step when not allowed without enable step actions - update and diverged event",
+			ts: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
+				Image: "my-image",
+				When:  v1beta1.StepWhenExpressions{{Input: "foo", Operator: selection.In, Values: []string{"foo"}}},
+			}}},
+			isUpdate: true,
+			baselineTaskRun: &v1beta1.TaskRun{
+				Spec: v1beta1.TaskRunSpec{
+					TaskSpec: &v1beta1.TaskSpec{
+						Steps: []v1beta1.Step{{
+							Image:   "my-image",
+							Results: []v1.StepResult{{Name: "a-result"}},
+						}},
+					},
+				},
+			},
+			expectedError: apis.FieldError{
+				Message: "feature flag enable-step-actions should be set to true in order to use When in Steps.",
+				Paths:   []string{"steps[0]"},
+			},
+		},
+		{
+			name: "cel not allowed if EnableCELInWhenExpression is false",
+			ts: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
+				Image: "my-image",
+				When:  v1beta1.StepWhenExpressions{{CEL: "'d'=='d'"}},
+			}}},
+			EnableStepAction: true,
+			expectedError: apis.FieldError{
+				Message: `feature flag enable-cel-in-whenexpression should be set to true to use CEL: 'd'=='d' in WhenExpression`,
+				Paths:   []string{"steps[0].when[0]"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := config.ToContext(context.Background(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					EnableStepActions:         tt.EnableStepAction,
+					EnableCELInWhenExpression: tt.EnableCEL,
+				},
+			})
+			if tt.isCreate {
+				ctx = apis.WithinCreate(ctx)
+			}
+			if tt.isUpdate {
+				ctx = apis.WithinUpdate(ctx, tt.baselineTaskRun)
+			}
+			tt.ts.SetDefaults(ctx)
+			err := tt.ts.Validate(ctx)
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("StepActionSpec.Validate() errors diff %s", diff.PrintWantGot(d))
 			}
