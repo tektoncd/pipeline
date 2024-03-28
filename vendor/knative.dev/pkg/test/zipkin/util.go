@@ -28,10 +28,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
-	"go.uber.org/atomic"
 	tracingconfig "knative.dev/pkg/tracing/config"
 
 	"github.com/openzipkin/zipkin-go/model"

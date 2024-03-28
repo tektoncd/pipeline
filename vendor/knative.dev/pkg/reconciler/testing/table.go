@@ -289,7 +289,7 @@ func (r *TableRow) Test(t *testing.T, factory Factory) {
 	// Build a set of unique strings that represent type-name{-namespace}.
 	// Adding type will help catch the bugs where several similarly named
 	// resources are deleted (and some should or should not).
-	gotDeletes := make(sets.String, len(actions.Deletes))
+	gotDeletes := make(sets.Set[string], len(actions.Deletes))
 	for _, w := range actions.Deletes {
 		n := w.GetResource().Resource + "~~" + w.GetName()
 		if !r.SkipNamespaceValidation {
@@ -297,7 +297,7 @@ func (r *TableRow) Test(t *testing.T, factory Factory) {
 		}
 		gotDeletes.Insert(n)
 	}
-	wantDeletes := make(sets.String, len(actions.Deletes))
+	wantDeletes := make(sets.Set[string], len(actions.Deletes))
 	for _, w := range r.WantDeletes {
 		n := w.GetResource().Resource + "~~" + w.GetName()
 		if !r.SkipNamespaceValidation {

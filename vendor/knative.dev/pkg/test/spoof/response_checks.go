@@ -62,8 +62,8 @@ func MatchesAllBodies(all ...string) ResponseChecker {
 	// This helps with two things:
 	// 1. we can use Equal on sets
 	// 2. it will collapse the duplicates
-	want := sets.NewString(all...)
-	seen := make(sets.String, len(all))
+	want := sets.New[string](all...)
+	seen := make(sets.Set[string], len(all))
 
 	return func(resp *Response) (bool, error) {
 		bs := string(resp.Body)

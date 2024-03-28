@@ -21,10 +21,9 @@ package fake
 import (
 	"context"
 
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -36,25 +35,25 @@ type FakeTaskRuns struct {
 	ns   string
 }
 
-var taskrunsResource = schema.GroupVersionResource{Group: "tekton.dev", Version: "v1", Resource: "taskruns"}
+var taskrunsResource = v1.SchemeGroupVersion.WithResource("taskruns")
 
-var taskrunsKind = schema.GroupVersionKind{Group: "tekton.dev", Version: "v1", Kind: "TaskRun"}
+var taskrunsKind = v1.SchemeGroupVersion.WithKind("TaskRun")
 
 // Get takes name of the taskRun, and returns the corresponding taskRun object, and an error if there is any.
-func (c *FakeTaskRuns) Get(ctx context.Context, name string, options v1.GetOptions) (result *pipelinev1.TaskRun, err error) {
+func (c *FakeTaskRuns) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.TaskRun, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(taskrunsResource, c.ns, name), &pipelinev1.TaskRun{})
+		Invokes(testing.NewGetAction(taskrunsResource, c.ns, name), &v1.TaskRun{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*pipelinev1.TaskRun), err
+	return obj.(*v1.TaskRun), err
 }
 
 // List takes label and field selectors, and returns the list of TaskRuns that match those selectors.
-func (c *FakeTaskRuns) List(ctx context.Context, opts v1.ListOptions) (result *pipelinev1.TaskRunList, err error) {
+func (c *FakeTaskRuns) List(ctx context.Context, opts metav1.ListOptions) (result *v1.TaskRunList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(taskrunsResource, taskrunsKind, c.ns, opts), &pipelinev1.TaskRunList{})
+		Invokes(testing.NewListAction(taskrunsResource, taskrunsKind, c.ns, opts), &v1.TaskRunList{})
 
 	if obj == nil {
 		return nil, err
@@ -64,8 +63,8 @@ func (c *FakeTaskRuns) List(ctx context.Context, opts v1.ListOptions) (result *p
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &pipelinev1.TaskRunList{ListMeta: obj.(*pipelinev1.TaskRunList).ListMeta}
-	for _, item := range obj.(*pipelinev1.TaskRunList).Items {
+	list := &v1.TaskRunList{ListMeta: obj.(*v1.TaskRunList).ListMeta}
+	for _, item := range obj.(*v1.TaskRunList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -74,69 +73,69 @@ func (c *FakeTaskRuns) List(ctx context.Context, opts v1.ListOptions) (result *p
 }
 
 // Watch returns a watch.Interface that watches the requested taskRuns.
-func (c *FakeTaskRuns) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeTaskRuns) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(taskrunsResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a taskRun and creates it.  Returns the server's representation of the taskRun, and an error, if there is any.
-func (c *FakeTaskRuns) Create(ctx context.Context, taskRun *pipelinev1.TaskRun, opts v1.CreateOptions) (result *pipelinev1.TaskRun, err error) {
+func (c *FakeTaskRuns) Create(ctx context.Context, taskRun *v1.TaskRun, opts metav1.CreateOptions) (result *v1.TaskRun, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(taskrunsResource, c.ns, taskRun), &pipelinev1.TaskRun{})
+		Invokes(testing.NewCreateAction(taskrunsResource, c.ns, taskRun), &v1.TaskRun{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*pipelinev1.TaskRun), err
+	return obj.(*v1.TaskRun), err
 }
 
 // Update takes the representation of a taskRun and updates it. Returns the server's representation of the taskRun, and an error, if there is any.
-func (c *FakeTaskRuns) Update(ctx context.Context, taskRun *pipelinev1.TaskRun, opts v1.UpdateOptions) (result *pipelinev1.TaskRun, err error) {
+func (c *FakeTaskRuns) Update(ctx context.Context, taskRun *v1.TaskRun, opts metav1.UpdateOptions) (result *v1.TaskRun, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(taskrunsResource, c.ns, taskRun), &pipelinev1.TaskRun{})
+		Invokes(testing.NewUpdateAction(taskrunsResource, c.ns, taskRun), &v1.TaskRun{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*pipelinev1.TaskRun), err
+	return obj.(*v1.TaskRun), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeTaskRuns) UpdateStatus(ctx context.Context, taskRun *pipelinev1.TaskRun, opts v1.UpdateOptions) (*pipelinev1.TaskRun, error) {
+func (c *FakeTaskRuns) UpdateStatus(ctx context.Context, taskRun *v1.TaskRun, opts metav1.UpdateOptions) (*v1.TaskRun, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(taskrunsResource, "status", c.ns, taskRun), &pipelinev1.TaskRun{})
+		Invokes(testing.NewUpdateSubresourceAction(taskrunsResource, "status", c.ns, taskRun), &v1.TaskRun{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*pipelinev1.TaskRun), err
+	return obj.(*v1.TaskRun), err
 }
 
 // Delete takes name of the taskRun and deletes it. Returns an error if one occurs.
-func (c *FakeTaskRuns) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+func (c *FakeTaskRuns) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(taskrunsResource, c.ns, name, opts), &pipelinev1.TaskRun{})
+		Invokes(testing.NewDeleteActionWithOptions(taskrunsResource, c.ns, name, opts), &v1.TaskRun{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeTaskRuns) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+func (c *FakeTaskRuns) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	action := testing.NewDeleteCollectionAction(taskrunsResource, c.ns, listOpts)
 
-	_, err := c.Fake.Invokes(action, &pipelinev1.TaskRunList{})
+	_, err := c.Fake.Invokes(action, &v1.TaskRunList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched taskRun.
-func (c *FakeTaskRuns) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *pipelinev1.TaskRun, err error) {
+func (c *FakeTaskRuns) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.TaskRun, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(taskrunsResource, c.ns, name, pt, data, subresources...), &pipelinev1.TaskRun{})
+		Invokes(testing.NewPatchSubresourceAction(taskrunsResource, c.ns, name, pt, data, subresources...), &v1.TaskRun{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*pipelinev1.TaskRun), err
+	return obj.(*v1.TaskRun), err
 }

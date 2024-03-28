@@ -37,7 +37,7 @@ import (
 //
 //	logger.Info("Revision State", zap.Object("healthy", logging.StringSet(healthySet)),
 //		zap.Object("unhealthy", logging.StringSet(unhealthySet)))
-func StringSet(s sets.String) zapcore.ObjectMarshalerFunc {
+func StringSet(s sets.Set[string]) zapcore.ObjectMarshalerFunc {
 	return func(enc zapcore.ObjectEncoder) error {
 		enc.AddString("keys", strings.Join(s.UnsortedList(), ","))
 		return nil

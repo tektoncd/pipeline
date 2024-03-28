@@ -24,7 +24,6 @@ import (
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -35,9 +34,9 @@ type FakeClusterTasks struct {
 	Fake *FakeTektonV1beta1
 }
 
-var clustertasksResource = schema.GroupVersionResource{Group: "tekton.dev", Version: "v1beta1", Resource: "clustertasks"}
+var clustertasksResource = v1beta1.SchemeGroupVersion.WithResource("clustertasks")
 
-var clustertasksKind = schema.GroupVersionKind{Group: "tekton.dev", Version: "v1beta1", Kind: "ClusterTask"}
+var clustertasksKind = v1beta1.SchemeGroupVersion.WithKind("ClusterTask")
 
 // Get takes name of the clusterTask, and returns the corresponding clusterTask object, and an error if there is any.
 func (c *FakeClusterTasks) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.ClusterTask, err error) {

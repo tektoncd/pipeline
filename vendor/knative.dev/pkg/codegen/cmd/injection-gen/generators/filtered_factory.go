@@ -117,14 +117,15 @@ func withInformerFactory(ctx {{.contextContext|raw}}) {{.contextContext|raw}} {
 	}
 	labelSelectors := untyped.([]string)
 	for _, selector := range labelSelectors {
+        selectorVal := selector
 		opts := []{{.informersSharedInformerOption|raw}}{}
 		if {{.injectionHasNamespace|raw}}(ctx) {
 			opts = append(opts, {{.informersWithNamespace|raw}}({{.injectionGetNamespace|raw}}(ctx)))
 		}	
 		opts = append(opts, {{.informersWithTweakListOptions|raw}}(func(l *{{.metav1ListOptions|raw}}) {
-			l.LabelSelector = selector
+			l.LabelSelector = selectorVal
 		}))
-		ctx = context.WithValue(ctx, Key{Selector: selector},
+		ctx = context.WithValue(ctx, Key{Selector: selectorVal},
 			{{.informersNewSharedInformerFactoryWithOptions|raw}}(c, {{.controllerGetResyncPeriod|raw}}(ctx), opts...))
 	}
 	return ctx

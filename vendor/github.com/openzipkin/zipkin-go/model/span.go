@@ -1,4 +1,4 @@
-// Copyright 2021 The OpenZipkin Authors
+// Copyright 2022 The OpenZipkin Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,14 +28,34 @@ var (
 	ErrValidDurationRequired = errors.New("valid duration required")
 )
 
+// BaggageFields holds the interface for consumers needing to interact with
+// the fields in application logic.
+type BaggageFields interface {
+	// Get returns the values for a field identified by its key.
+	Get(key string) []string
+	// Add adds the provided values to a header designated by key. If not
+	// accepted by the baggage implementation, it will return false.
+	Add(key string, value ...string) bool
+	// Set sets the provided values to a header designated by key. If not
+	// accepted by the baggage implementation, it will return false.
+	Set(key string, value ...string) bool
+	// Delete removes the field data designated by key. If not accepted by the
+	// baggage implementation, it will return false.
+	Delete(key string) bool
+	// Iterate will iterate over the available fields and for each one it will
+	// trigger the callback function.
+	Iterate(f func(key string, values []string))
+}
+
 // SpanContext holds the context of a Span.
 type SpanContext struct {
-	TraceID  TraceID `json:"traceId"`
-	ID       ID      `json:"id"`
-	ParentID *ID     `json:"parentId,omitempty"`
-	Debug    bool    `json:"debug,omitempty"`
-	Sampled  *bool   `json:"-"`
-	Err      error   `json:"-"`
+	TraceID  TraceID       `json:"traceId"`
+	ID       ID            `json:"id"`
+	ParentID *ID           `json:"parentId,omitempty"`
+	Debug    bool          `json:"debug,omitempty"`
+	Sampled  *bool         `json:"-"`
+	Err      error         `json:"-"`
+	Baggage  BaggageFields `json:"-"`
 }
 
 // SpanModel structure.

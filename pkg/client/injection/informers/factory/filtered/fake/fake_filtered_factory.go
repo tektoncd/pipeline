@@ -45,14 +45,15 @@ func withInformerFactory(ctx context.Context) context.Context {
 	}
 	labelSelectors := untyped.([]string)
 	for _, selector := range labelSelectors {
+		selectorVal := selector
 		opts := []externalversions.SharedInformerOption{}
 		if injection.HasNamespaceScope(ctx) {
 			opts = append(opts, externalversions.WithNamespace(injection.GetNamespaceScope(ctx)))
 		}
 		opts = append(opts, externalversions.WithTweakListOptions(func(l *v1.ListOptions) {
-			l.LabelSelector = selector
+			l.LabelSelector = selectorVal
 		}))
-		ctx = context.WithValue(ctx, filtered.Key{Selector: selector},
+		ctx = context.WithValue(ctx, filtered.Key{Selector: selectorVal},
 			externalversions.NewSharedInformerFactoryWithOptions(c, controller.GetResyncPeriod(ctx), opts...))
 	}
 	return ctx

@@ -20,9 +20,9 @@ package testing
 import (
 	"errors"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"go.uber.org/atomic"
 	"k8s.io/apimachinery/pkg/runtime"
 	kubetesting "k8s.io/client-go/testing"
 )
@@ -94,16 +94,18 @@ type Hooks struct {
 // more fake clients and wait for all hooks to complete.
 // TODO(grantr): Allow validating that a hook never fires
 func NewHooks() *Hooks {
+	var ci atomic.Int32
+	ci.Store(-1)
 	return &Hooks{
 		completionCh:    make(chan int32, 100),
-		completionIndex: atomic.NewInt32(-1),
+		completionIndex: &ci,
 	}
 }
 
 // OnCreate attaches a create hook to the given Fake. The hook function is
 // executed every time a resource of the given type is created.
 func (h *Hooks) OnCreate(fake *kubetesting.Fake, resource string, rf CreateHookFunc) {
-	index := h.completionIndex.Inc()
+	index := h.completionIndex.Add(1)
 	fake.PrependReactor("create", resource, func(a kubetesting.Action) (bool, runtime.Object, error) {
 		obj := a.(kubetesting.CreateActionImpl).Object
 
@@ -119,7 +121,7 @@ func (h *Hooks) OnCreate(fake *kubetesting.Fake, resource string, rf CreateHookF
 // OnUpdate attaches an update hook to the given Fake. The hook function is
 // executed every time a resource of the given type is updated.
 func (h *Hooks) OnUpdate(fake *kubetesting.Fake, resource string, rf UpdateHookFunc) {
-	index := h.completionIndex.Inc()
+	index := h.completionIndex.Add(1)
 	fake.PrependReactor("update", resource, func(a kubetesting.Action) (bool, runtime.Object, error) {
 		obj := a.(kubetesting.UpdateActionImpl).Object
 
@@ -135,7 +137,7 @@ func (h *Hooks) OnUpdate(fake *kubetesting.Fake, resource string, rf UpdateHookF
 // OnDelete attaches a delete hook to the given Fake. The hook function is
 // executed every time a resource of the given type is deleted.
 func (h *Hooks) OnDelete(fake *kubetesting.Fake, resource string, rf DeleteHookFunc) {
-	index := h.completionIndex.Inc()
+	index := h.completionIndex.Add(1)
 	fake.PrependReactor("delete", resource, func(a kubetesting.Action) (bool, runtime.Object, error) {
 		name := a.(kubetesting.DeleteActionImpl).Name
 
@@ -173,7 +175,7 @@ func (h *Hooks) WaitForHooks(timeout time.Duration) error {
 		case i := <-h.completionCh:
 			hookCompletions[i] = HookComplete
 			if len(hookCompletions) == ci {
-				h.completionIndex.Dec()
+				h.completionIndex.Add(-1)
 				return nil
 			}
 		case <-timer:

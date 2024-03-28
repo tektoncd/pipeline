@@ -19,12 +19,12 @@ package metrics
 import (
 	"context"
 	"net/url"
+	"sync/atomic"
 	"time"
 
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
-	"go.uber.org/atomic"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/metrics"
 	"k8s.io/client-go/util/workqueue"
@@ -74,13 +74,13 @@ var _ workqueue.GaugeMetric = (*gaugeMetric)(nil)
 
 // Inc implements CounterMetric
 func (m *gaugeMetric) Inc() {
-	total := m.total.Inc()
+	total := m.total.Add(1)
 	Record(context.Background(), m.measure.M(total), stats.WithTags(m.mutators...))
 }
 
 // Dec implements GaugeMetric
 func (m *gaugeMetric) Dec() {
-	total := m.total.Dec()
+	total := m.total.Add(-1)
 	Record(context.Background(), m.measure.M(total), stats.WithTags(m.mutators...))
 }
 

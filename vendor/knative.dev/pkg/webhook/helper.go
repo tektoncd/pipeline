@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/webhook/certificates/resources"
 )
 
 // EnsureLabelSelectorExpressions merges the current label selector's MatchExpressions
@@ -65,4 +66,17 @@ func ensureLabelSelectorRequirements(
 	}
 
 	return append(want, nonKnative...)
+}
+
+func getSecretDataKeyNamesOrDefault(sKey string, sCert string) (serverKey string, serverCert string) {
+	serverKey = resources.ServerKey
+	serverCert = resources.ServerCert
+
+	if sKey != "" {
+		serverKey = sKey
+	}
+	if sCert != "" {
+		serverCert = sCert
+	}
+	return serverKey, serverCert
 }

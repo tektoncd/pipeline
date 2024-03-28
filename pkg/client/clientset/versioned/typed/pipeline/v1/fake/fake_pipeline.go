@@ -21,10 +21,9 @@ package fake
 import (
 	"context"
 
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -36,25 +35,25 @@ type FakePipelines struct {
 	ns   string
 }
 
-var pipelinesResource = schema.GroupVersionResource{Group: "tekton.dev", Version: "v1", Resource: "pipelines"}
+var pipelinesResource = v1.SchemeGroupVersion.WithResource("pipelines")
 
-var pipelinesKind = schema.GroupVersionKind{Group: "tekton.dev", Version: "v1", Kind: "Pipeline"}
+var pipelinesKind = v1.SchemeGroupVersion.WithKind("Pipeline")
 
 // Get takes name of the pipeline, and returns the corresponding pipeline object, and an error if there is any.
-func (c *FakePipelines) Get(ctx context.Context, name string, options v1.GetOptions) (result *pipelinev1.Pipeline, err error) {
+func (c *FakePipelines) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.Pipeline, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(pipelinesResource, c.ns, name), &pipelinev1.Pipeline{})
+		Invokes(testing.NewGetAction(pipelinesResource, c.ns, name), &v1.Pipeline{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*pipelinev1.Pipeline), err
+	return obj.(*v1.Pipeline), err
 }
 
 // List takes label and field selectors, and returns the list of Pipelines that match those selectors.
-func (c *FakePipelines) List(ctx context.Context, opts v1.ListOptions) (result *pipelinev1.PipelineList, err error) {
+func (c *FakePipelines) List(ctx context.Context, opts metav1.ListOptions) (result *v1.PipelineList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(pipelinesResource, pipelinesKind, c.ns, opts), &pipelinev1.PipelineList{})
+		Invokes(testing.NewListAction(pipelinesResource, pipelinesKind, c.ns, opts), &v1.PipelineList{})
 
 	if obj == nil {
 		return nil, err
@@ -64,8 +63,8 @@ func (c *FakePipelines) List(ctx context.Context, opts v1.ListOptions) (result *
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &pipelinev1.PipelineList{ListMeta: obj.(*pipelinev1.PipelineList).ListMeta}
-	for _, item := range obj.(*pipelinev1.PipelineList).Items {
+	list := &v1.PipelineList{ListMeta: obj.(*v1.PipelineList).ListMeta}
+	for _, item := range obj.(*v1.PipelineList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -74,57 +73,57 @@ func (c *FakePipelines) List(ctx context.Context, opts v1.ListOptions) (result *
 }
 
 // Watch returns a watch.Interface that watches the requested pipelines.
-func (c *FakePipelines) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakePipelines) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(pipelinesResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a pipeline and creates it.  Returns the server's representation of the pipeline, and an error, if there is any.
-func (c *FakePipelines) Create(ctx context.Context, pipeline *pipelinev1.Pipeline, opts v1.CreateOptions) (result *pipelinev1.Pipeline, err error) {
+func (c *FakePipelines) Create(ctx context.Context, pipeline *v1.Pipeline, opts metav1.CreateOptions) (result *v1.Pipeline, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(pipelinesResource, c.ns, pipeline), &pipelinev1.Pipeline{})
+		Invokes(testing.NewCreateAction(pipelinesResource, c.ns, pipeline), &v1.Pipeline{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*pipelinev1.Pipeline), err
+	return obj.(*v1.Pipeline), err
 }
 
 // Update takes the representation of a pipeline and updates it. Returns the server's representation of the pipeline, and an error, if there is any.
-func (c *FakePipelines) Update(ctx context.Context, pipeline *pipelinev1.Pipeline, opts v1.UpdateOptions) (result *pipelinev1.Pipeline, err error) {
+func (c *FakePipelines) Update(ctx context.Context, pipeline *v1.Pipeline, opts metav1.UpdateOptions) (result *v1.Pipeline, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(pipelinesResource, c.ns, pipeline), &pipelinev1.Pipeline{})
+		Invokes(testing.NewUpdateAction(pipelinesResource, c.ns, pipeline), &v1.Pipeline{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*pipelinev1.Pipeline), err
+	return obj.(*v1.Pipeline), err
 }
 
 // Delete takes name of the pipeline and deletes it. Returns an error if one occurs.
-func (c *FakePipelines) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+func (c *FakePipelines) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(pipelinesResource, c.ns, name, opts), &pipelinev1.Pipeline{})
+		Invokes(testing.NewDeleteActionWithOptions(pipelinesResource, c.ns, name, opts), &v1.Pipeline{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakePipelines) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+func (c *FakePipelines) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	action := testing.NewDeleteCollectionAction(pipelinesResource, c.ns, listOpts)
 
-	_, err := c.Fake.Invokes(action, &pipelinev1.PipelineList{})
+	_, err := c.Fake.Invokes(action, &v1.PipelineList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched pipeline.
-func (c *FakePipelines) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *pipelinev1.Pipeline, err error) {
+func (c *FakePipelines) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Pipeline, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(pipelinesResource, c.ns, name, pt, data, subresources...), &pipelinev1.Pipeline{})
+		Invokes(testing.NewPatchSubresourceAction(pipelinesResource, c.ns, name, pt, data, subresources...), &v1.Pipeline{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*pipelinev1.Pipeline), err
+	return obj.(*v1.Pipeline), err
 }

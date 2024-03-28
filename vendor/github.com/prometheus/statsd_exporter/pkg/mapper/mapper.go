@@ -21,19 +21,19 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 
+	"github.com/prometheus/statsd_exporter/pkg/level"
 	"github.com/prometheus/statsd_exporter/pkg/mapper/fsm"
 )
 
 var (
 	// The first segment of a match cannot start with a number
-	statsdMetricRE = `[a-zA-Z_](-?[a-zA-Z0-9_])*`
+	statsdMetricRE = `[a-zA-Z_]([a-zA-Z0-9_\-])*`
 	// The subsequent segments of a match can start with a number
 	// See https://github.com/prometheus/statsd_exporter/issues/328
-	statsdMetricSubsequentRE = `[a-zA-Z0-9_](-?[a-zA-Z0-9_])*`
+	statsdMetricSubsequentRE = `[a-zA-Z0-9_]([a-zA-Z0-9_\-])*`
 	templateReplaceRE        = `(\$\{?\d+\}?)`
 
 	metricLineRE = regexp.MustCompile(`^(\*|` + statsdMetricRE + `)(\.\*|\.` + statsdMetricSubsequentRE + `)*$`)
@@ -381,7 +381,6 @@ func (m *MetricMapper) GetMapping(statsdMetric string, statsdMetricType MetricTy
 // make a shallow copy so that we do not overwrite name
 // as multiple names can be matched by same mapping
 func copyMetricMapping(in *MetricMapping) *MetricMapping {
-	var out MetricMapping
-	out = *in
+	out := *in
 	return &out
 }

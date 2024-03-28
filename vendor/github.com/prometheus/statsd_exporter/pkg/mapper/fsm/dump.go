@@ -43,6 +43,6 @@ func (f *FSM) DumpFSM(w io.Writer) {
 		idx++
 	}
 	// color for start state
-	w.Write([]byte(fmt.Sprintf("0 [color=\"#a94442\",fillcolor=\"#f2dede\"];\n")))
+	w.Write([]byte(fmt.Sprintln("0 [color=\"#a94442\",fillcolor=\"#f2dede\"];")))
 	w.Write([]byte("}"))
 }
