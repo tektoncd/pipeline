@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"knative.dev/pkg/apis"
 )
@@ -38,17 +37,11 @@ func (ref *PipelineRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 			if ref.Name != "" {
 				errs = errs.Also(apis.ErrMultipleOneOf("name", "resolver"))
 			}
-			if ref.Bundle != "" {
-				errs = errs.Also(apis.ErrMultipleOneOf("bundle", "resolver"))
-			}
 		}
 		if ref.Params != nil {
 			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "resolver params", config.BetaAPIFields).ViaField("params"))
 			if ref.Name != "" {
 				errs = errs.Also(apis.ErrMultipleOneOf("name", "params"))
-			}
-			if ref.Bundle != "" {
-				errs = errs.Also(apis.ErrMultipleOneOf("bundle", "params"))
 			}
 			if ref.Resolver == "" {
 				errs = errs.Also(apis.ErrMissingField("resolver"))
@@ -58,12 +51,6 @@ func (ref *PipelineRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 	} else {
 		if ref.Name == "" {
 			errs = errs.Also(apis.ErrMissingField("name"))
-		}
-		if ref.Bundle != "" {
-			errs = errs.Also(validateBundleFeatureFlag(ctx, "bundle", true).ViaField("bundle"))
-			if _, err := name.ParseReference(ref.Bundle); err != nil {
-				errs = errs.Also(apis.ErrInvalidValue("invalid bundle reference", "bundle", err.Error()))
-			}
 		}
 	}
 	return //nolint:nakedret

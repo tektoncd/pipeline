@@ -1645,13 +1645,6 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRef(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
-					"bundle": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 				},
 			},
 		},
@@ -4554,13 +4547,6 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRef(ref common.ReferenceCallback) comm
 					"apiVersion": {
 						SchemaProps: spec.SchemaProps{
 							Description: "API version of the referent Note: A Task with non-empty APIVersion and Kind is considered a Custom Task",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"bundle": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead.",
 							Type:        []string{"string"},
 							Format:      "",
 						},

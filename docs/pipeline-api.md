@@ -10738,19 +10738,6 @@ string
 </tr>
 <tr>
 <td>
-<code>bundle</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Bundle url reference to a Tekton Bundle.</p>
-<p>Deprecated: Please use ResolverRef with the bundles resolver instead.</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>ResolverRef</code><br/>
 <em>
 <a href="#tekton.dev/v1beta1.ResolverRef">
@@ -14286,19 +14273,6 @@ string
 <em>(Optional)</em>
 <p>API version of the referent
 Note: A Task with non-empty APIVersion and Kind is considered a Custom Task</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>bundle</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Bundle url reference to a Tekton Bundle.</p>
-<p>Deprecated: Please use ResolverRef with the bundles resolver instead.</p>
 </td>
 </tr>
 <tr>
