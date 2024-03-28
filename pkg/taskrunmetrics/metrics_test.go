@@ -415,8 +415,11 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 			}
 			if c.expectedCountTags != nil {
 				metricstest.CheckCountData(t, "taskrun_count", c.expectedCountTags, c.expectedCount)
+				delete(c.expectedCountTags, "reason")
+				metricstest.CheckCountData(t, "taskrun_total", c.expectedCountTags, c.expectedCount)
 			} else {
 				metricstest.CheckStatsNotReported(t, "taskrun_count")
+				metricstest.CheckStatsNotReported(t, "taskrun_total")
 			}
 			if c.expectedDurationTags != nil {
 				metricstest.CheckLastValueData(t, c.metricName, c.expectedDurationTags, c.expectedDuration)
@@ -680,7 +683,7 @@ func TestTaskRunIsOfPipelinerun(t *testing.T) {
 }
 
 func unregisterMetrics() {
-	metricstest.Unregister("taskrun_duration_seconds", "pipelinerun_taskrun_duration_seconds", "taskrun_count", "running_taskruns_count", "running_taskruns_throttled_by_quota_count", "running_taskruns_throttled_by_node_count", "running_taskruns_waiting_on_task_resolution_count", "taskruns_pod_latency_milliseconds")
+	metricstest.Unregister("taskrun_duration_seconds", "pipelinerun_taskrun_duration_seconds", "taskrun_count", "running_taskruns_count", "running_taskruns_throttled_by_quota_count", "running_taskruns_throttled_by_node_count", "running_taskruns_waiting_on_task_resolution_count", "taskruns_pod_latency_milliseconds", "taskrun_total", "running_taskruns", "running_taskruns_throttled_by_quota", "running_taskruns_throttled_by_node", "running_taskruns_waiting_on_task_resolution")
 
 	// Allow the recorder singleton to be recreated.
 	once = sync.Once{}

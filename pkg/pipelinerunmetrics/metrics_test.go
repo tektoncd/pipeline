@@ -404,8 +404,11 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 			}
 			if test.expectedCountTags != nil {
 				metricstest.CheckCountData(t, "pipelinerun_count", test.expectedCountTags, test.expectedCount)
+				delete(test.expectedCountTags, "reason")
+				metricstest.CheckCountData(t, "pipelinerun_total", test.expectedCountTags, test.expectedCount)
 			} else {
 				metricstest.CheckStatsNotReported(t, "pipelinerun_count")
+				metricstest.CheckStatsNotReported(t, "pipelinerun_total")
 			}
 		})
 	}
@@ -451,6 +454,7 @@ func TestRecordRunningPipelineRunsCount(t *testing.T) {
 		t.Errorf("RunningPipelineRuns: %v", err)
 	}
 	metricstest.CheckLastValueData(t, "running_pipelineruns_count", map[string]string{}, 1)
+	metricstest.CheckLastValueData(t, "running_pipelineruns", map[string]string{}, 1)
 }
 
 func TestRecordRunningPipelineRunsResolutionWaitCounts(t *testing.T) {
@@ -532,11 +536,13 @@ func TestRecordRunningPipelineRunsResolutionWaitCounts(t *testing.T) {
 		}
 		metricstest.CheckLastValueData(t, "running_pipelineruns_waiting_on_pipeline_resolution_count", map[string]string{}, tc.prWaitCount)
 		metricstest.CheckLastValueData(t, "running_pipelineruns_waiting_on_task_resolution_count", map[string]string{}, tc.trWaitCount)
+		metricstest.CheckLastValueData(t, "running_pipelineruns_waiting_on_pipeline_resolution", map[string]string{}, tc.prWaitCount)
+		metricstest.CheckLastValueData(t, "running_pipelineruns_waiting_on_task_resolution", map[string]string{}, tc.trWaitCount)
 	}
 }
 
 func unregisterMetrics() {
-	metricstest.Unregister("pipelinerun_duration_seconds", "pipelinerun_count", "running_pipelineruns_waiting_on_pipeline_resolution_count", "running_pipelineruns_waiting_on_task_resolution_count", "running_pipelineruns_count")
+	metricstest.Unregister("pipelinerun_duration_seconds", "pipelinerun_count", "pipelinerun_total", "running_pipelineruns_waiting_on_pipeline_resolution_count", "running_pipelineruns_waiting_on_pipeline_resolution", "running_pipelineruns_waiting_on_task_resolution_count", "running_pipelineruns_waiting_on_task_resolution", "running_pipelineruns_count", "running_pipelineruns")
 
 	// Allow the recorder singleton to be recreated.
 	once = sync.Once{}

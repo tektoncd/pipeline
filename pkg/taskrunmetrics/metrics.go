@@ -56,9 +56,13 @@ var (
 	trDurationView                             *view.View
 	prTRDurationView                           *view.View
 	trCountView                                *view.View
+	trTotalView                                *view.View
 	runningTRsCountView                        *view.View
+	runningTRsView                             *view.View
 	runningTRsThrottledByQuotaCountView        *view.View
 	runningTRsThrottledByNodeCountView         *view.View
+	runningTRsThrottledByQuotaView             *view.View
+	runningTRsThrottledByNodeView              *view.View
 	runningTRsWaitingOnTaskResolutionCountView *view.View
 	podLatencyView                             *view.View
 
@@ -76,7 +80,15 @@ var (
 		"number of taskruns",
 		stats.UnitDimensionless)
 
+	trTotal = stats.Float64("taskrun_total",
+		"Number of taskruns",
+		stats.UnitDimensionless)
+
 	runningTRsCount = stats.Float64("running_taskruns_count",
+		"Number of taskruns executing currently",
+		stats.UnitDimensionless)
+
+	runningTRs = stats.Float64("running_taskruns",
 		"Number of taskruns executing currently",
 		stats.UnitDimensionless)
 
@@ -90,6 +102,14 @@ var (
 
 	runningTRsWaitingOnTaskResolutionCount = stats.Float64("running_taskruns_waiting_on_task_resolution_count",
 		"Number of taskruns executing currently that are waiting on resolution requests for their task references.",
+		stats.UnitDimensionless)
+
+	runningTRsThrottledByQuota = stats.Float64("running_taskruns_throttled_by_quota",
+		"Number of taskruns executing currently, but whose underlying Pods or Containers are suspended by k8s because of defined ResourceQuotas.  Such suspensions can occur as part of initial scheduling of the Pod, or scheduling of any of the subsequent Container(s) in the Pod after the first Container is started",
+		stats.UnitDimensionless)
+
+	runningTRsThrottledByNode = stats.Float64("running_taskruns_throttled_by_node",
+		"Number of taskruns executing currently, but whose underlying Pods or Containers are suspended by k8s because of Node level constraints. Such suspensions can occur as part of initial scheduling of the Pod, or scheduling of any of the subsequent Container(s) in the Pod after the first Container is started",
 		stats.UnitDimensionless)
 
 	podLatency = stats.Float64("taskruns_pod_latency_milliseconds",
@@ -215,9 +235,21 @@ func viewRegister(cfg *config.Metrics) error {
 		Aggregation: view.Count(),
 		TagKeys:     trCountViewTags,
 	}
+	trTotalView = &view.View{
+		Description: trTotal.Description(),
+		Measure:     trTotal,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{statusTag},
+	}
 	runningTRsCountView = &view.View{
 		Description: runningTRsCount.Description(),
 		Measure:     runningTRsCount,
+		Aggregation: view.LastValue(),
+	}
+
+	runningTRsView = &view.View{
+		Description: runningTRs.Description(),
+		Measure:     runningTRs,
 		Aggregation: view.LastValue(),
 	}
 	runningTRsThrottledByQuotaCountView = &view.View{
@@ -235,6 +267,17 @@ func viewRegister(cfg *config.Metrics) error {
 		Measure:     runningTRsWaitingOnTaskResolutionCount,
 		Aggregation: view.LastValue(),
 	}
+
+	runningTRsThrottledByQuotaView = &view.View{
+		Description: runningTRsThrottledByQuota.Description(),
+		Measure:     runningTRsThrottledByQuota,
+		Aggregation: view.LastValue(),
+	}
+	runningTRsThrottledByNodeView = &view.View{
+		Description: runningTRsThrottledByNode.Description(),
+		Measure:     runningTRsThrottledByNode,
+		Aggregation: view.LastValue(),
+	}
 	podLatencyView = &view.View{
 		Description: podLatency.Description(),
 		Measure:     podLatency,
@@ -245,10 +288,14 @@ func viewRegister(cfg *config.Metrics) error {
 		trDurationView,
 		prTRDurationView,
 		trCountView,
+		trTotalView,
 		runningTRsCountView,
+		runningTRsView,
 		runningTRsThrottledByQuotaCountView,
 		runningTRsThrottledByNodeCountView,
 		runningTRsWaitingOnTaskResolutionCountView,
+		runningTRsThrottledByQuotaView,
+		runningTRsThrottledByNodeView,
 		podLatencyView,
 	)
 }
@@ -258,10 +305,14 @@ func viewUnregister() {
 		trDurationView,
 		prTRDurationView,
 		trCountView,
+		trTotalView,
 		runningTRsCountView,
+		runningTRsView,
 		runningTRsThrottledByQuotaCountView,
 		runningTRsThrottledByNodeCountView,
 		runningTRsWaitingOnTaskResolutionCountView,
+		runningTRsThrottledByQuotaView,
+		runningTRsThrottledByNodeView,
 		podLatencyView,
 	)
 }
@@ -356,6 +407,7 @@ func (r *Recorder) DurationAndCount(ctx context.Context, tr *v1.TaskRun, beforeC
 
 	metrics.Record(ctx, durationStat.M(duration.Seconds()))
 	metrics.Record(ctx, trCount.M(1))
+	metrics.Record(ctx, trTotal.M(1))
 
 	return nil
 }
@@ -402,9 +454,12 @@ func (r *Recorder) RunningTaskRuns(ctx context.Context, lister listers.TaskRunLi
 		return err
 	}
 	metrics.Record(ctx, runningTRsCount.M(float64(runningTrs)))
+	metrics.Record(ctx, runningTRs.M(float64(runningTrs)))
 	metrics.Record(ctx, runningTRsThrottledByNodeCount.M(float64(trsThrottledByNode)))
 	metrics.Record(ctx, runningTRsThrottledByQuotaCount.M(float64(trsThrottledByQuota)))
 	metrics.Record(ctx, runningTRsWaitingOnTaskResolutionCount.M(float64(trsWaitResolvingTaskRef)))
+	metrics.Record(ctx, runningTRsThrottledByNode.M(float64(trsThrottledByNode)))
+	metrics.Record(ctx, runningTRsThrottledByQuota.M(float64(trsThrottledByQuota)))
 
 	return nil
 }
