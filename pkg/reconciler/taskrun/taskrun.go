@@ -234,7 +234,7 @@ func (c *Reconciler) checkPodFailed(ctx context.Context, tr *v1.TaskRun) (bool, 
 					if imagePullBackOffTimeOut.Seconds() != 0 {
 						p, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
 						if err != nil {
-							message := fmt.Sprintf(`The step %q in TaskRun %q failed to pull the image %q and the pod with error: "%s."`, step.Name, tr.Name, step.ImageID, err)
+							message := fmt.Sprintf(`the step %q in TaskRun %q failed to pull the image %q and the pod with error: "%s."`, step.Name, tr.Name, step.ImageID, err)
 							return true, v1.TaskRunReasonImagePullFailed, message
 						}
 						for _, condition := range p.Status.Conditions {
@@ -249,7 +249,7 @@ func (c *Reconciler) checkPodFailed(ctx context.Context, tr *v1.TaskRun) (bool, 
 					}
 				}
 				image := step.ImageID
-				message := fmt.Sprintf(`The step %q in TaskRun %q failed to pull the image %q. The pod errored with the message: "%s."`, step.Name, tr.Name, image, step.Waiting.Message)
+				message := fmt.Sprintf(`the step %q in TaskRun %q failed to pull the image %q. The pod errored with the message: "%s."`, step.Name, tr.Name, image, step.Waiting.Message)
 				return true, v1.TaskRunReasonImagePullFailed, message
 			}
 		}
@@ -263,7 +263,7 @@ func (c *Reconciler) checkPodFailed(ctx context.Context, tr *v1.TaskRun) (bool, 
 					if imagePullBackOffTimeOut.Seconds() != 0 {
 						p, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
 						if err != nil {
-							message := fmt.Sprintf(`The sidecar %q in TaskRun %q failed to pull the image %q and the pod with error: "%s."`, sidecar.Name, tr.Name, sidecar.ImageID, err)
+							message := fmt.Sprintf(`the sidecar %q in TaskRun %q failed to pull the image %q and the pod with error: "%s."`, sidecar.Name, tr.Name, sidecar.ImageID, err)
 							return true, v1.TaskRunReasonImagePullFailed, message
 						}
 						for _, condition := range p.Status.Conditions {
@@ -278,7 +278,7 @@ func (c *Reconciler) checkPodFailed(ctx context.Context, tr *v1.TaskRun) (bool, 
 					}
 				}
 				image := sidecar.ImageID
-				message := fmt.Sprintf(`The sidecar %q in TaskRun %q failed to pull the image %q. The pod errored with the message: "%s."`, sidecar.Name, tr.Name, image, sidecar.Waiting.Message)
+				message := fmt.Sprintf(`the sidecar %q in TaskRun %q failed to pull the image %q. The pod errored with the message: "%s."`, sidecar.Name, tr.Name, image, sidecar.Waiting.Message)
 				return true, v1.TaskRunReasonImagePullFailed, message
 			}
 		}

@@ -678,9 +678,10 @@ with the tekton controller and the affinity assistant is enabled.
 Tekton pipelines has adopted a fail fast strategy with a taskRun failing with `TaskRunImagePullFailed` in case of an
 `imagePullBackOff`. This can be limited in some cases, and it generally depends on the infrastructure. To allow the
 cluster operators to decide whether to wait in case of an `imagePullBackOff`, a setting is available to configure
-the wait time in minutes such that the controller will wait for the specified duration before declaring a failure.
+the wait time such that the controller will wait for the specified duration before declaring a failure.
 For example, with the following `config-defaults`, the controller does not mark the taskRun as failure for 5 minutes since
-the pod is scheduled in case the image pull fails with `imagePullBackOff`.
+the pod is scheduled in case the image pull fails with `imagePullBackOff`. The `default-imagepullbackoff-timeout` is
+of type `time.Duration` and can be set to a duration such as "1m", "5m", "10s", "1h", etc.
 See issue https://github.com/tektoncd/pipeline/issues/5987 for more details.
 
 ```yaml
@@ -690,7 +691,7 @@ metadata:
   name: config-defaults
   namespace: tekton-pipelines
 data:
-  default-imagepullbackoff-timeout: "5"
+  default-imagepullbackoff-timeout: "5m"
 ```
 
 ## Next steps

@@ -1579,7 +1579,7 @@ status:
   - reason: ToBeRetried
     status: Unknown
     type: Succeeded
-    message: "The step \"unamed-0\" in TaskRun \"test-taskrun-run-retry-pod-failure\" failed to pull the image \"\". The pod errored with the message: \".\""
+    message: "the step \"unamed-0\" in TaskRun \"test-taskrun-run-retry-pod-failure\" failed to pull the image \"\". The pod errored with the message: \".\""
   steps:
   - container: step-unamed-0
     name: unamed-0
@@ -1592,7 +1592,7 @@ status:
     - reason: "TaskRunImagePullFailed"
       status: "False"
       type: Succeeded
-      message: "The step \"unamed-0\" in TaskRun \"test-taskrun-run-retry-pod-failure\" failed to pull the image \"\". The pod errored with the message: \".\""
+      message: "the step \"unamed-0\" in TaskRun \"test-taskrun-run-retry-pod-failure\" failed to pull the image \"\". The pod errored with the message: \".\""
     startTime: "2021-12-31T23:59:59Z"
     completionTime: "2022-01-01T00:00:00Z"
     podName: test-taskrun-run-retry-pod-failure-pod
@@ -2785,12 +2785,12 @@ status:
 				Type:    apis.ConditionSucceeded,
 				Status:  corev1.ConditionFalse,
 				Reason:  "TaskRunImagePullFailed",
-				Message: fmt.Sprintf(`The %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever". The pod errored with the message: "%s."`, tc.failure, stepNumber, tc.message),
+				Message: fmt.Sprintf(`the %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever". The pod errored with the message: "%s."`, tc.failure, stepNumber, tc.message),
 			}
 
 			wantEvents := []string{
 				"Normal Started ",
-				fmt.Sprintf(`Warning Failed The %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever". The pod errored with the message: "%s.`, tc.failure, stepNumber, tc.message),
+				fmt.Sprintf(`Warning Failed the %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever". The pod errored with the message: "%s.`, tc.failure, stepNumber, tc.message),
 			}
 
 			d := test.Data{
@@ -2851,8 +2851,8 @@ status:
 				}
 				// the error message includes the error if the pod is not found
 				if tc.podNotFound {
-					expectedStatus.Message = fmt.Sprintf(`The %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever" and the pod with error: "%s."`, tc.failure, stepNumber, tc.message)
-					wantEvents[1] = fmt.Sprintf(`Warning Failed The %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever" and the pod with error: "%s.`, tc.failure, stepNumber, tc.message)
+					expectedStatus.Message = fmt.Sprintf(`the %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever" and the pod with error: "%s."`, tc.failure, stepNumber, tc.message)
+					wantEvents[1] = fmt.Sprintf(`Warning Failed the %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever" and the pod with error: "%s.`, tc.failure, stepNumber, tc.message)
 				}
 				condition := newTr.Status.GetCondition(apis.ConditionSucceeded)
 				if d := cmp.Diff(expectedStatus, condition, ignoreLastTransitionTime); d != "" {
