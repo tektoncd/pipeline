@@ -308,6 +308,24 @@ func nilInsertTag(task, taskrun string) []tag.Mutator {
 	return []tag.Mutator{}
 }
 
+func getTaskTagName(tr *v1.TaskRun) string {
+	taskName := anonymous
+	switch {
+	case tr.Spec.TaskRef != nil && len(tr.Spec.TaskRef.Name) > 0:
+		taskName = tr.Spec.TaskRef.Name
+	case tr.Spec.TaskSpec != nil:
+	default:
+		if len(tr.Labels) > 0 {
+			taskLabel, hasTaskLabel := tr.Labels[pipeline.TaskLabelKey]
+			if hasTaskLabel && len(taskLabel) > 0 {
+				taskName = taskLabel
+			}
+		}
+	}
+
+	return taskName
+}
+
 // DurationAndCount logs the duration of TaskRun execution and
 // count for number of TaskRuns succeed or failed
 // returns an error if its failed to log the metrics
@@ -329,10 +347,7 @@ func (r *Recorder) DurationAndCount(ctx context.Context, tr *v1.TaskRun, beforeC
 		duration = tr.Status.CompletionTime.Sub(tr.Status.StartTime.Time)
 	}
 
-	taskName := anonymous
-	if tr.Spec.TaskRef != nil {
-		taskName = tr.Spec.TaskRef.Name
-	}
+	taskName := getTaskTagName(tr)
 
 	cond := tr.Status.GetCondition(apis.ConditionSucceeded)
 	status := "success"
@@ -449,10 +464,7 @@ func (r *Recorder) RecordPodLatency(ctx context.Context, pod *corev1.Pod, tr *v1
 	}
 
 	latency := scheduledTime.Sub(pod.CreationTimestamp.Time)
-	taskName := anonymous
-	if tr.Spec.TaskRef != nil {
-		taskName = tr.Spec.TaskRef.Name
-	}
+	taskName := getTaskTagName(tr)
 
 	ctx, err := tag.New(
 		ctx,
