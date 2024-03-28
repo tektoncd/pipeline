@@ -356,6 +356,10 @@ optional: As a convenience, the [Tekton plumbing project](https://github.com/tek
    --user=$(gcloud config get-value core/account)
    ```
 
+#### Using [devcontainer](https://code.visualstudio.com/docs/devcontainers/containers)
+
+- Follow the instruction for [getting up and running](https://code.visualstudio.com/docs/devcontainers/tutorial)
+
 ---
 
 ## Developing and testing
