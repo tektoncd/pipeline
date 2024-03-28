@@ -74,6 +74,7 @@ import (
 	k8sruntimeschema "k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
@@ -6961,7 +6962,7 @@ func TestIsConcurrentModificationError(t *testing.T) {
 		want:        false,
 	}, {
 		description: "concurrent modification error",
-		err:         k8serrors.NewConflict(schema.ParseGroupResource("foo"), "bar", errors.New(optimisticLockErrorMsg)),
+		err:         k8serrors.NewConflict(schema.ParseGroupResource("foo"), "bar", errors.New(genericregistry.OptimisticLockErrorMsg)),
 		want:        true,
 	}, {
 		description: "not conflict error",

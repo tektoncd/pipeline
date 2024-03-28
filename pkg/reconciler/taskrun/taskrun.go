@@ -60,6 +60,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
 	"k8s.io/client-go/kubernetes"
 	corev1Listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/utils/clock"
@@ -1078,13 +1079,6 @@ func isResourceQuotaConflictError(err error) bool {
 	return k8ErrStatus.Details != nil && k8ErrStatus.Details.Kind == "resourcequotas"
 }
 
-const (
-	// TODO(#7466) Currently this appears as a local constant due to upstream dependencies bump blocker.
-	// This shall reference to k8s.io/apiserver/pkg/registry/generic/registry.OptimisticLockErrorMsg
-	// once #7464 is unblocked.
-	optimisticLockErrorMsg = "the object has been modified; please apply your changes to the latest version and try again"
-)
-
 // isConcurrentModificationError determines whether it is a concurrent
 // modification  error depending on its error type and error message.
 func isConcurrentModificationError(err error) bool {
@@ -1097,7 +1091,7 @@ func isConcurrentModificationError(err error) bool {
 		return false
 	}
 
-	return strings.Contains(err.Error(), optimisticLockErrorMsg)
+	return strings.Contains(err.Error(), genericregistry.OptimisticLockErrorMsg)
 }
 
 // retryTaskRun archives taskRun.Status to taskRun.Status.RetriesStatus, and set
