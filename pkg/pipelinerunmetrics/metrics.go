@@ -174,6 +174,12 @@ func viewRegister(cfg *config.Metrics) error {
 		}
 	}
 
+	prCountViewTags := []tag.Key{statusTag}
+	if cfg.CountWithReason {
+		prCountViewTags = append(prCountViewTags, reasonTag)
+		prunTag = append(prunTag, reasonTag)
+	}
+
 	prDurationView = &view.View{
 		Description: prDuration.Description(),
 		Measure:     prDuration,
@@ -181,10 +187,6 @@ func viewRegister(cfg *config.Metrics) error {
 		TagKeys:     append([]tag.Key{statusTag, namespaceTag}, prunTag...),
 	}
 
-	prCountViewTags := []tag.Key{statusTag}
-	if cfg.CountWithReason {
-		prCountViewTags = append(prCountViewTags, reasonTag)
-	}
 	prCountView = &view.View{
 		Description: prCount.Description(),
 		Measure:     prCount,

@@ -339,6 +339,7 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 			"pipeline":    "pipeline-1",
 			"pipelinerun": "pipelinerun-1",
 			"namespace":   "ns",
+			"reason":      "Failed",
 			"status":      "failed",
 		},
 		expectedCountTags: map[string]string{
@@ -375,6 +376,7 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 			"pipelinerun": "pipelinerun-1",
 			"namespace":   "ns",
 			"status":      "cancelled",
+			"reason":      ReasonCancelled.String(),
 		},
 		expectedCountTags: map[string]string{
 			"status": "cancelled",
