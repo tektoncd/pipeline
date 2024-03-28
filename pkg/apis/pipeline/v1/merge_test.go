@@ -19,6 +19,8 @@ package v1_test
 import (
 	"testing"
 
+	"k8s.io/utils/pointer"
+
 	"github.com/google/go-cmp/cmp"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -144,6 +146,36 @@ func TestMergeStepsWithStepTemplate(t *testing.T) {
 		}},
 		expected: []v1.Step{{
 			Command: []string{"/somecmd"}, Image: "some-image",
+			OnError: "foo",
+			Results: []v1.StepResult{{
+				Name: "result",
+			}},
+			Params: v1.Params{{
+				Name: "param",
+			}},
+		}},
+	}, {
+		name: "ref-should-not-be-removed",
+		template: &v1.StepTemplate{
+			SecurityContext: &corev1.SecurityContext{
+				RunAsNonRoot: pointer.Bool(true),
+			},
+		},
+		steps: []v1.Step{{
+			Ref:     &v1.Ref{Name: "my-step-action"},
+			OnError: "foo",
+			Results: []v1.StepResult{{
+				Name: "result",
+			}},
+			Params: v1.Params{{
+				Name: "param",
+			}},
+		}},
+		expected: []v1.Step{{
+			SecurityContext: &corev1.SecurityContext{
+				RunAsNonRoot: pointer.Bool(true),
+			},
+			Ref:     &v1.Ref{Name: "my-step-action"},
 			OnError: "foo",
 			Results: []v1.StepResult{{
 				Name: "result",
