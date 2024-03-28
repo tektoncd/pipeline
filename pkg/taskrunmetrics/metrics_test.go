@@ -391,6 +391,7 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 			"task":        "task-1",
 			"taskrun":     "taskrun-1",
 			"namespace":   "ns",
+			"reason":      "TaskRunImagePullFailed",
 			"status":      "failed",
 		},
 		expectedCountTags: map[string]string{

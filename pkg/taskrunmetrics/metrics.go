@@ -212,6 +212,12 @@ func viewRegister(cfg *config.Metrics) error {
 		}
 	}
 
+	trCountViewTags := []tag.Key{statusTag}
+	if cfg.CountWithReason {
+		trCountViewTags = append(trCountViewTags, reasonTag)
+		trunTag = append(trunTag, reasonTag)
+	}
+
 	trDurationView = &view.View{
 		Description: trDuration.Description(),
 		Measure:     trDuration,
@@ -225,10 +231,6 @@ func viewRegister(cfg *config.Metrics) error {
 		TagKeys:     append([]tag.Key{statusTag, namespaceTag}, append(trunTag, prunTag...)...),
 	}
 
-	trCountViewTags := []tag.Key{statusTag}
-	if cfg.CountWithReason {
-		trCountViewTags = append(trCountViewTags, reasonTag)
-	}
 	trCountView = &view.View{
 		Description: trCount.Description(),
 		Measure:     trCount,
