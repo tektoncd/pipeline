@@ -135,7 +135,8 @@ func TestTaskRunConversion(t *testing.T) {
 			Spec: v1beta1.TaskRunSpec{
 				Debug: &v1beta1.TaskRunDebug{
 					Breakpoints: &v1beta1.TaskBreakpoints{
-						OnFailure: "enabled",
+						OnFailure:   "enabled",
+						BeforeSteps: []string{"step-1", "step-2"},
 					},
 				},
 				Params: v1beta1.Params{{

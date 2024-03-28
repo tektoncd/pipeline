@@ -47,6 +47,22 @@ const (
 	FailOnError     = "stopAndFail"
 )
 
+const (
+	breakpointExitSuffix       = ".breakpointexit"
+	breakpointBeforeStepSuffix = ".beforestepexit"
+)
+
+// DebugBeforeStepError is an error means mark before step breakpoint failure
+type DebugBeforeStepError string
+
+func (e DebugBeforeStepError) Error() string {
+	return string(e)
+}
+
+var (
+	errDebugBeforeStep = DebugBeforeStepError("before step breakpoint error file, user decided to skip the current step execution")
+)
+
 // ContextError context error type
 type ContextError string
 
@@ -114,6 +130,8 @@ type Entrypointer struct {
 	Timeout *time.Duration
 	// BreakpointOnFailure helps determine if entrypoint execution needs to adapt debugging requirements
 	BreakpointOnFailure bool
+	// DebugBeforeStep help user attach container before execution
+	DebugBeforeStep bool
 	// OnError defines exiting behavior of the entrypoint
 	// set it to "stopAndFail" to indicate the entrypoint to exit the taskRun if the container exits with non zero exit code
 	// set it to "continue" to indicate the entrypoint to continue executing the rest of the steps irrespective of the container exit code
@@ -184,13 +202,24 @@ func (e Entrypointer) Go() error {
 		}
 	}
 
+	var err error
+	if e.DebugBeforeStep {
+		log.Println(`debug before step breakpoint has taken effect, waiting for user's decision:
+1) continue, use cmd: /tekton/debug/scripts/debug-beforestep-continue
+2) fail-continue, use cmd: /tekton/debug/scripts/debug-beforestep-fail-continue`)
+		breakpointBeforeStepPostFile := e.PostFile + breakpointBeforeStepSuffix
+		if waitErr := e.Waiter.Wait(context.Background(), breakpointBeforeStepPostFile, false, false); waitErr != nil {
+			err = errDebugBeforeStep
+			log.Println("error occurred while waiting for " + breakpointBeforeStepPostFile + " : " + err.Error())
+		}
+	}
+
 	output = append(output, result.RunResult{
 		Key:        "StartedAt",
 		Value:      time.Now().Format(timeFormat),
 		ResultType: result.InternalTektonResultType,
 	})
 
-	var err error
 	if e.Timeout != nil && *e.Timeout < time.Duration(0) {
 		err = fmt.Errorf("negative timeout specified")
 	}
@@ -216,6 +245,8 @@ func (e Entrypointer) Go() error {
 
 	var ee *exec.ExitError
 	switch {
+	case err != nil && errors.Is(err, errDebugBeforeStep):
+		e.WritePostFile(e.PostFile, err)
 	case err != nil && errors.Is(err, ErrContextCanceled):
 		logger.Info("Step was canceling")
 		output = append(output, e.outputRunResult(pod.TerminationReasonCancelled))
@@ -345,6 +376,28 @@ func (e Entrypointer) waitingCancellation(ctx context.Context, cancel context.Ca
 	}
 	cancel()
 	return nil
+}
+
+// CheckForBreakpointOnFailure if step up breakpoint on failure
+// waiting breakpointExitPostFile to be written
+func (e Entrypointer) CheckForBreakpointOnFailure() {
+	if e.BreakpointOnFailure {
+		log.Println(`debug onFailure breakpoint has taken effect, waiting for user's decision:
+1) continue, use cmd: /tekton/debug/scripts/debug-continue
+2) fail-continue, use cmd: /tekton/debug/scripts/debug-fail-continue`)
+		breakpointExitPostFile := e.PostFile + breakpointExitSuffix
+		if waitErr := e.Waiter.Wait(context.Background(), breakpointExitPostFile, false, false); waitErr != nil {
+			log.Println("error occurred while waiting for " + breakpointExitPostFile + " : " + waitErr.Error())
+		}
+		// get exitcode from .breakpointexit
+		exitCode, readErr := e.BreakpointExitCode(breakpointExitPostFile)
+		// if readErr exists, the exitcode with default to 0 as we would like
+		// to encourage to continue running the next steps in the taskRun
+		if readErr != nil {
+			log.Println("error occurred while reading breakpoint exit code : " + readErr.Error())
+		}
+		os.Exit(exitCode)
+	}
 }
 
 // loadStepResult reads the step result file and returns the string, array or object result value.

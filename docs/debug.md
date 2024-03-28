@@ -13,7 +13,8 @@ weight: 108
     - [Breakpoint on Failure](#breakpoint-on-failure)
       - [Failure of a Step](#failure-of-a-step)
       - [Halting a Step on failure](#halting-a-step-on-failure)
-      - [Exiting breakpoint](#exiting-breakpoint)
+      - [Exiting onfailure breakpoint](#exiting-onfailure-breakpoint)
+    - [Breakpoint before step](#breakpoint-before-step)
 - [Debug Environment](#debug-environment)
   - [Mounts](#mounts)
   - [Debug Scripts](#debug-scripts)
@@ -59,11 +60,25 @@ stopping write of the `<step-no>.err` file and waiting on a signal by the user t
 In this breakpoint, which is essentially a limbo state the TaskRun finds itself in, the user can interact with the step 
 environment using a CLI or an IDE. 
 
-#### Exiting breakpoint
+#### Exiting onfailure breakpoint
 
 To exit a step which has been paused upon failure, the step would wait on a file similar to `<step-no>.breakpointexit` which 
 would unpause and exit the step container. eg: Step 0 fails and is paused. Writing `0.breakpointexit` in `/tekton/run`
 would unpause and exit the step container.
+
+### Breakpoint before step
+
+
+TaskRun will be stuck waiting for user debugging before the step execution.
+When beforeStep-Breakpoint takes effect, the user can see the following information
+from the corresponding step container log:
+```
+debug before step breakpoint has taken effect, waiting for user's decision:
+1) continue, use cmd: /tekton/debug/scripts/debug-beforestep-continue
+2) fail-continue, use cmd: /tekton/debug/scripts/debug-beforestep-fail-continue
+```
+1. Executing /tekton/debug/scripts/debug-beforestep-continue will continue to execute the step program
+2. Executing /tekton/debug/scripts/debug-beforestep-fail-continue will not continue to execute the task, and will mark the step as failed
 
 ## Debug Environment 
 
@@ -80,7 +95,13 @@ to reflect step number. eg: Step 0 will have `/tekton/debug/info/0`, Step 1 will
 ### Debug Scripts
 
 `/tekton/debug/scripts/debug-continue` : Mark the step as completed with success by writing to `/tekton/run`. eg: User wants to exit
-breakpoint for failed step 0. Running this script would create `/tekton/run/0` and `/tekton/run/0.breakpointexit`.
+onfailure breakpoint for failed step 0. Running this script would create `/tekton/run/0` and `/tekton/run/0/out.breakpointexit`.
 
 `/tekton/debug/scripts/debug-fail-continue` : Mark the step as completed with failure by writing to `/tekton/run`. eg: User wants to exit
-breakpoint for failed step 0. Running this script would create `/tekton/run/0.err` and `/tekton/run/0.breakpointexit`.
+onfailure breakpoint for failed step 0. Running this script would create `/tekton/run/0` and `/tekton/run/0/out.breakpointexit.err`.
+
+`/tekton/debug/scripts/debug-beforestep-continue` : Mark the step continue to execute by writing to `/tekton/run`. eg: User wants to exit
+before step breakpoint for before step 0. Running this script would create `/tekton/run/0` and `/tekton/run/0/out.beforestepexit`.
+
+`/tekton/debug/scripts/debug-beforestep-fail-continue` : Mark the step not continue to execute by writing to `/tekton/run`. eg: User wants to exit
+before step breakpoint for before step 0. Running this script would create `/tekton/run/0` and `/tekton/run/0/out.beforestepexit.err`.
