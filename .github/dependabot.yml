@@ -57,3 +57,16 @@ updates:
     - "dependencies"
     - "release-note-none"
     - "kind/misc"
+  - package-ecosystem: "docker"
+    directory: "/tekton"
+    schedule:
+      interval: "weekly"
+    labels:
+    - "ok-to-test"
+    - "dependencies"
+    - "release-note-none"
+    - "kind/misc"
+    groups:
+      all:
+        patterns:
+          - "*"

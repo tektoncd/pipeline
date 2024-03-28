@@ -61,7 +61,7 @@ spec:
   steps:
 
   - name: container-registry-auth
-    image: gcr.io/go-containerregistry/crane:debug
+    image: cgr.dev/chainguard/crane:latest-dev@sha256:9030bfdf4956cb0c245a68b36f7ae5e7343d12a0d94ee905c4d8612e531c5ddd
     script: |
       #!/busybox/sh
       set -ex
@@ -80,7 +80,7 @@ spec:
       cp ${DOCKER_CONFIG} /workspace/docker-config.json
 
   - name: create-ko-yaml
-    image: golang:1.18.7
+    image: cgr.dev/chainguard/go:latest-dev@sha256:24281104d437c318a3a4ae49d4d6dfc20516a1bea77f2757a1e90d84fd8b618f
     script: |
       #!/bin/sh
       set -ex
@@ -187,7 +187,7 @@ spec:
 
 
   - name: tag-images
-    image: gcr.io/go-containerregistry/crane:debug
+    image: cgr.dev/chainguard/crane:latest-dev@sha256:9030bfdf4956cb0c245a68b36f7ae5e7343d12a0d94ee905c4d8612e531c5ddd
     script: |
       #!/busybox/sh
       set -ex
