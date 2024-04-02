@@ -9,10 +9,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/jenkins-x/go-scm/scm/driver/azure"
 	"github.com/pkg/errors"
 
 	"github.com/jenkins-x/go-scm/scm"
+	"github.com/jenkins-x/go-scm/scm/driver/azure"
 	"github.com/jenkins-x/go-scm/scm/driver/bitbucket"
 	"github.com/jenkins-x/go-scm/scm/driver/fake"
 	"github.com/jenkins-x/go-scm/scm/driver/gitea"
@@ -93,7 +93,11 @@ func newClient(driver, serverURL string, authOptions *AuthOptions, opts ...Clien
 
 	switch driver {
 	case "azure":
-		client = azure.NewDefault()
+		if serverURL != "" {
+			client, err = azure.New(serverURL)
+		} else {
+			client = azure.NewDefault()
+		}
 	case "bitbucket", "bitbucketcloud":
 		if serverURL != "" {
 			client, err = bitbucket.New(ensureBBCEndpoint(serverURL))

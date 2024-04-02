@@ -732,8 +732,8 @@ github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 h1:BQSFePA1RWJOl
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99/go.mod h1:1lJo3i6rXxKeerYnT8Nvf0QmHCRC1n8sfWVwXF2Frvo=
 github.com/jellydator/ttlcache/v3 v3.2.0 h1:6lqVJ8X3ZaUwvzENqPAobDsXNExfUJd61u++uW8a3LE=
 github.com/jellydator/ttlcache/v3 v3.2.0/go.mod h1:hi7MGFdMAwZna5n2tuvh63DvFLzVKySzCVW6+0gA2n4=
-github.com/jenkins-x/go-scm v1.14.26 h1:d8pwhrRTGclWwG0EN9dZhTIpAYEwh5Gi5JLLzsjbTaE=
-github.com/jenkins-x/go-scm v1.14.26/go.mod h1:OpvYpDeea7cZN4jd7q/oGaAVNTYpMARFp/Vn/NrzahE=
+github.com/jenkins-x/go-scm v1.14.29 h1:i6xcaLvKvNhVxtlnhwoGLIqxov1ORBH2NFMepxFSg4E=
+github.com/jenkins-x/go-scm v1.14.29/go.mod h1:9MGEHpudIt+JypKTf4zUHpiRggl5piIb9xcLu+1FrbU=
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
 github.com/jmespath/go-jmespath v0.0.0-20160202185014-0b12d6b521d8/go.mod h1:Nht3zPeWKUH0NzdCt2Blrr5ys8VGpn0CEB0cQHVjt7k=
 github.com/jmespath/go-jmespath v0.0.0-20160803190731-bd40a432e4c7/go.mod h1:Nht3zPeWKUH0NzdCt2Blrr5ys8VGpn0CEB0cQHVjt7k=

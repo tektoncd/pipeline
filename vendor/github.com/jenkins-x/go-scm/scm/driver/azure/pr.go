@@ -17,8 +17,35 @@ type pullService struct {
 	*issueService
 }
 
-func (s *pullService) Update(ctx context.Context, s2 string, i int, input *scm.PullRequestInput) (*scm.PullRequest, *scm.Response, error) {
-	return nil, nil, scm.ErrNotSupported
+func (s *pullService) Update(ctx context.Context, repo string, number int, input *scm.PullRequestInput) (*scm.PullRequest, *scm.Response, error) {
+	prevPrState, _, _ := s.Find(ctx, repo, number)
+
+	ro, err := decodeRepo(repo)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/update?view=azure-devops-rest-6.0
+	endpoint := fmt.Sprintf("%s/%s/_apis/git/repositories/%s/pullrequests/%d?api-version=6.0",
+		ro.org, ro.project, ro.name, number)
+
+	in := &prUpdate{}
+	if input.Title != "" {
+		in.Title = &input.Title
+	}
+	if input.Body != "" {
+		in.Description = &input.Body
+	}
+	if input.Base != "" {
+		if prevPrState.Base.Ref != input.Base {
+			targetRefName := fmt.Sprintf("refs/heads/%s", input.Base)
+			in.TargetRefName = &targetRefName
+		}
+	}
+
+	out := new(pr)
+	res, err := s.client.do(ctx, "PATCH", endpoint, in, out)
+	return convertPullRequest(out), res, err
 }
 
 func (s *pullService) RequestReview(ctx context.Context, repo string, number int, logins []string) (*scm.Response, error) {
@@ -49,8 +76,12 @@ func (s *pullService) List(ctx context.Context, repo string, opts *scm.PullReque
 		return nil, nil, err
 	}
 
+	top := opts.Size
+	skip := (opts.Page - 1) * opts.Size
+
 	// https://docs.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/get-pull-request?view=azure-devops-rest-6.0
-	endpoint := fmt.Sprintf("%s/%s/_apis/git/repositories/%s/pullrequests?api-version=6.0", ro.org, ro.project, ro.name)
+	endpoint := fmt.Sprintf("%s/%s/_apis/git/repositories/%s/pullrequests?api-version=6.0&$skip=%d&$top=%d",
+		ro.org, ro.project, ro.name, skip, top)
 	out := new(prList)
 	res, err := s.client.do(ctx, "GET", endpoint, nil, out)
 	return convertPullRequests(out), res, err
@@ -146,6 +177,12 @@ type prInput struct {
 	Reviewers     []struct {
 		ID string `json:"id"`
 	} `json:"reviewers"`
+}
+
+type prUpdate struct {
+	Title         *string `json:"title"`
+	Description   *string `json:"description"`
+	TargetRefName *string `json:"targetRefName"`
 }
 
 type pr struct {
@@ -250,11 +287,27 @@ func convertPullRequests(from *prList) []*scm.PullRequest {
 }
 
 func convertPullRequest(from *pr) *scm.PullRequest {
+	var (
+		headSha string
+		baseSha string
+	)
+	if from.LastMergeSourceCommit != nil {
+		headSha = from.LastMergeSourceCommit.CommitID
+	} else {
+		headSha = ""
+	}
+
+	if from.LastMergeTargetCommit != nil {
+		baseSha = from.LastMergeTargetCommit.CommitID
+	} else {
+		baseSha = ""
+	}
+
 	return &scm.PullRequest{
 		Number: from.PullRequestID,
 		Title:  from.Title,
 		Body:   from.Description,
-		Sha:    from.LastMergeSourceCommit.CommitID,
+		Sha:    headSha,
 		Source: scm.TrimRef(from.SourceRefName),
 		Target: scm.TrimRef(from.TargetRefName),
 		Link:   fmt.Sprintf("%s/pullrequest/%d", from.Repository.WebURL, from.PullRequestID),
@@ -262,10 +315,12 @@ func convertPullRequest(from *pr) *scm.PullRequest {
 		Merged: from.Status == "completed",
 		Ref:    fmt.Sprintf("refs/pull/%d/merge", from.PullRequestID),
 		Head: scm.PullRequestBranch{
-			Sha: from.LastMergeSourceCommit.CommitID,
+			Sha: headSha,
+			Ref: scm.TrimRef(from.SourceRefName),
 		},
 		Base: scm.PullRequestBranch{
-			Sha: from.LastMergeTargetCommit.CommitID,
+			Sha: baseSha,
+			Ref: scm.TrimRef(from.TargetRefName),
 		},
 		Author: scm.User{
 			Login:  from.CreatedBy.UniqueName,
