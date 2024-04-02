@@ -467,6 +467,12 @@ github.com/go-jose/go-jose/v3
 github.com/go-jose/go-jose/v3/cipher
 github.com/go-jose/go-jose/v3/json
 github.com/go-jose/go-jose/v3/jwt
+# github.com/go-jose/go-jose/v4 v4.0.1
+## explicit; go 1.21
+github.com/go-jose/go-jose/v4
+github.com/go-jose/go-jose/v4/cipher
+github.com/go-jose/go-jose/v4/json
+github.com/go-jose/go-jose/v4/jwt
 # github.com/go-kit/log v0.2.1
 ## explicit; go 1.17
 github.com/go-kit/log
@@ -868,8 +874,8 @@ github.com/skeema/knownhosts
 # github.com/spf13/pflag v1.0.5
 ## explicit; go 1.12
 github.com/spf13/pflag
-# github.com/spiffe/go-spiffe/v2 v2.1.7
-## explicit; go 1.19
+# github.com/spiffe/go-spiffe/v2 v2.2.0
+## explicit; go 1.21
 github.com/spiffe/go-spiffe/v2/bundle/jwtbundle
 github.com/spiffe/go-spiffe/v2/bundle/spiffebundle
 github.com/spiffe/go-spiffe/v2/bundle/x509bundle
