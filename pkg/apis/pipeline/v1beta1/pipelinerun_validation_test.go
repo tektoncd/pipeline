@@ -505,6 +505,21 @@ func TestPipelineRun_Invalid(t *testing.T) {
 			},
 		},
 		want: &apis.FieldError{Message: "must not set the field(s)", Paths: []string{"spec.resources"}},
+	}, {
+		name: "uses bundle (deprecated) on creation is disallowed",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinerunname",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name:   "foo",
+					Bundle: "example.com/foo/bar",
+				},
+			},
+		},
+		want: &apis.FieldError{Message: "must not set the field(s)", Paths: []string{"spec.pipelineRef.bundle"}},
+		wc:   apis.WithinCreate,
 	}}
 
 	for _, tc := range tests {
@@ -944,17 +959,21 @@ func TestPipelineRun_Validate(t *testing.T) {
 				TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{
 					{
 						PipelineTaskName: "bar",
-						StepOverrides: []v1beta1.TaskRunStepOverride{{
-							Name: "task-1",
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
-							}},
+						StepOverrides: []v1beta1.TaskRunStepOverride{
+							{
+								Name: "task-1",
+								Resources: corev1.ResourceRequirements{
+									Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+								},
+							},
 						},
-						SidecarOverrides: []v1beta1.TaskRunSidecarOverride{{
-							Name: "task-1",
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
-							}},
+						SidecarOverrides: []v1beta1.TaskRunSidecarOverride{
+							{
+								Name: "task-1",
+								Resources: corev1.ResourceRequirements{
+									Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+								},
+							},
 						},
 					},
 				},
@@ -994,7 +1013,8 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 					TaskRef: &v1beta1.TaskRef{
 						Name: "mytask",
 					},
-				}}},
+				}},
+			},
 		},
 		wantErr: apis.ErrMultipleOneOf("pipelineRef", "pipelineSpec"),
 	}, {
@@ -1095,11 +1115,13 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{
 				{
 					PipelineTaskName: "bar",
-					StepOverrides: []v1beta1.TaskRunStepOverride{{
-						Name: "task-1",
-						Resources: corev1.ResourceRequirements{
-							Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
-						}},
+					StepOverrides: []v1beta1.TaskRunStepOverride{
+						{
+							Name: "task-1",
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+							},
+						},
 					},
 				},
 			},
@@ -1113,11 +1135,13 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{
 				{
 					PipelineTaskName: "bar",
-					SidecarOverrides: []v1beta1.TaskRunSidecarOverride{{
-						Name: "task-1",
-						Resources: corev1.ResourceRequirements{
-							Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
-						}},
+					SidecarOverrides: []v1beta1.TaskRunSidecarOverride{
+						{
+							Name: "task-1",
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+							},
+						},
 					},
 				},
 			},
@@ -1131,10 +1155,12 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{
 				{
 					PipelineTaskName: "bar",
-					StepOverrides: []v1beta1.TaskRunStepOverride{{
-						Resources: corev1.ResourceRequirements{
-							Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
-						}},
+					StepOverrides: []v1beta1.TaskRunStepOverride{
+						{
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+							},
+						},
 					},
 				},
 			},
@@ -1163,10 +1189,12 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{
 				{
 					PipelineTaskName: "bar",
-					SidecarOverrides: []v1beta1.TaskRunSidecarOverride{{
-						Resources: corev1.ResourceRequirements{
-							Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
-						}},
+					SidecarOverrides: []v1beta1.TaskRunSidecarOverride{
+						{
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+							},
+						},
 					},
 				},
 			},
@@ -1180,11 +1208,13 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{
 				{
 					PipelineTaskName: "pipelineTask",
-					StepOverrides: []v1beta1.TaskRunStepOverride{{
-						Name: "stepOverride",
-						Resources: corev1.ResourceRequirements{
-							Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
-						}},
+					StepOverrides: []v1beta1.TaskRunStepOverride{
+						{
+							Name: "stepOverride",
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+							},
+						},
 					},
 					ComputeResources: &corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("2Gi")},

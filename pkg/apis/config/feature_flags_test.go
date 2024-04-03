@@ -43,7 +43,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				RequireGitSSHSecretKnownHosts:    false,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
-				EnableTektonOCIBundles:           config.DefaultEnableTektonOciBundles,
 				EnableAPIFields:                  config.DefaultEnableAPIFields,
 				SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
 				VerificationNoMatchPolicy:        config.DefaultNoMatchPolicyConfig,
@@ -68,7 +67,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				RunningInEnvWithInjectedSidecars: false,
 				AwaitSidecarReadiness:            false,
 				RequireGitSSHSecretKnownHosts:    true,
-				EnableTektonOCIBundles:           true,
 				EnableAPIFields:                  "alpha",
 				SendCloudEventsForRuns:           true,
 				EnforceNonfalsifiability:         "spire",
@@ -93,7 +91,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableAPIFields: "alpha",
 				// These are prescribed as true by enabling "alpha" API fields, even
 				// if the submitted text value is "false".
-				EnableTektonOCIBundles:           true,
 				EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
 				DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
@@ -119,7 +116,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		{
 			expectedConfig: &config.FeatureFlags{
 				EnableAPIFields:                  "stable",
-				EnableTektonOCIBundles:           true,
 				EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
 				DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
@@ -141,7 +137,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		{
 			expectedConfig: &config.FeatureFlags{
 				EnableAPIFields:                  "beta",
-				EnableTektonOCIBundles:           config.DefaultEnableTektonOciBundles,
 				EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
 				DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
@@ -164,7 +159,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 			expectedConfig: &config.FeatureFlags{
 				EnableAPIFields:                  config.DefaultEnableAPIFields,
 				EnforceNonfalsifiability:         config.EnforceNonfalsifiabilityWithSpire,
-				EnableTektonOCIBundles:           config.DefaultEnableTektonOciBundles,
 				VerificationNoMatchPolicy:        config.DefaultNoMatchPolicyConfig,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
@@ -220,7 +214,6 @@ func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 		RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 		AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
 		RequireGitSSHSecretKnownHosts:    config.DefaultRequireGitSSHSecretKnownHosts,
-		EnableTektonOCIBundles:           config.DefaultEnableTektonOciBundles,
 		EnableAPIFields:                  config.DefaultEnableAPIFields,
 		SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
 		EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,

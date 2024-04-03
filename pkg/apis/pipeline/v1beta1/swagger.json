@@ -829,7 +829,7 @@
           "type": "string"
         },
         "bundle": {
-          "description": "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead.",
+          "description": "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead. The field is staying there for go client backward compatibility, but is not used/allowed anymore.",
           "type": "string"
         },
         "name": {
@@ -2668,7 +2668,7 @@
           "type": "string"
         },
         "bundle": {
-          "description": "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead.",
+          "description": "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead. The field is staying there for go client backward compatibility, but is not used/allowed anymore.",
           "type": "string"
         },
         "kind": {

@@ -11138,7 +11138,8 @@ string
 <td>
 <em>(Optional)</em>
 <p>Bundle url reference to a Tekton Bundle.</p>
-<p>Deprecated: Please use ResolverRef with the bundles resolver instead.</p>
+<p>Deprecated: Please use ResolverRef with the bundles resolver instead.
+The field is staying there for go client backward compatibility, but is not used/allowed anymore.</p>
 </td>
 </tr>
 <tr>
@@ -14887,7 +14888,8 @@ string
 <td>
 <em>(Optional)</em>
 <p>Bundle url reference to a Tekton Bundle.</p>
-<p>Deprecated: Please use ResolverRef with the bundles resolver instead.</p>
+<p>Deprecated: Please use ResolverRef with the bundles resolver instead.
+The field is staying there for go client backward compatibility, but is not used/allowed anymore.</p>
 </td>
 </tr>
 <tr>

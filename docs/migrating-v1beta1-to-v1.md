@@ -50,6 +50,9 @@ In Tekton `v1`, the following fields have been changed:
 `PipelineResources` and the `resources` fields of Task, TaskRun, Pipeline and PipelineRun have been removed. Please use `Tasks` instead. For more information, see [Replacing PipelineResources](https://github.com/tektoncd/pipeline/blob/main/docs/pipelineresources.md)
 
 ## Replacing `taskRef.bundle` and `pipelineRef.bundle` with Bundle Resolver <a id='replacing-taskRef.bundle-and-pipelineRef.bundle-with-bundle-resolver'> </a>
+
+**Note: `taskRef.bundle` and `pipelineRef.bundle` are now removed from `v1beta1`. This is kept for "history" purposes**.
+
 Bundle resolver in remote resolution should be used instead of `taskRun.spec.taskRef.bundle` and `pipelineRun.spec.pipelineRef.bundle`.
 
 The [`enable-bundles-resolver`](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#customizing-the-pipelines-controller-behavior) feature flag must be enabled to use this feature.

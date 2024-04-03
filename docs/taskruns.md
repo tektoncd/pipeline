@@ -120,10 +120,6 @@ A `Tekton Bundle` is an OCI artifact that contains Tekton resources like `Tasks`
 
 You can reference a `Tekton bundle` in a `TaskRef` in both `v1` and `v1beta1` using [remote resolution](./bundle-resolver.md#pipeline-resolution). The example syntax shown below for `v1` uses remote resolution and requires enabling [beta features](./additional-configs.md#beta-features).
 
-In `v1beta1`, you can also reference a `Tekton bundle` using OCI bundle syntax, which has been deprecated in favor of remote resolution. The example shown below for `v1beta1` uses OCI bundle syntax, and requires enabling `enable-tekton-oci-bundles: "true"` feature flag.
-
-{{< tabs >}}
-{{% tab "v1 & v1beta1" %}}
 ```yaml
 spec:
   taskRef:
@@ -136,25 +132,9 @@ spec:
     - name: kind
       value: Task
 ```
-{{% /tab %}}
-
-{{% tab "v1beta1" %}}
-```yaml
-spec:
-taskRef:
-  name: echo-task
-  bundle: docker.io/myrepo/mycatalog
-```
-{{% /tab %}}
-{{< /tabs >}}
-
-Here, the `bundle` field is the full reference url to the artifact. The name is the
-`metadata.name` field of the `Task`.
 
 You may also specify a `tag` as you would with a Docker image which will give you a repeatable reference to a `Task`.
 
-{{< tabs >}}
-{{% tab "v1 & v1beta1" %}}
 ```yaml
 spec:
   taskRef:
@@ -167,22 +147,9 @@ spec:
     - name: kind
       value: Task
 ```
-{{% /tab %}}
-
-{{% tab "v1beta1" %}}
-```yaml
-spec:
-taskRef:
-  name: echo-task
-  bundle: docker.io/myrepo/mycatalog:v1.0.1
-```
-{{% /tab %}}
-{{< /tabs >}}
 
 You may also specify a fixed digest instead of a tag which ensures the referenced task is constant.
 
-{{< tabs >}}
-{{% tab "v1 & v1beta1" %}}
 ```yaml
 spec:
   taskRef:
@@ -195,17 +162,6 @@ spec:
     - name: kind
       value: Task
 ```
-{{% /tab %}}
-
-{{% tab "v1beta1" %}}
-```yaml
-spec:
-taskRef:
-  name: echo-task
-  bundle: docker.io/myrepo/mycatalog@sha256:abc123
-```
-{{% /tab %}}
-{{< /tabs >}}
 
 A working example can be found [here](../examples/v1beta1/taskruns/no-ci/tekton-bundles.yaml).
 

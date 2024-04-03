@@ -25,13 +25,11 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	"github.com/tektoncd/pipeline/test/diff"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
-	logtesting "knative.dev/pkg/logging/testing"
 )
 
 func TestPipeline_Validate_Success(t *testing.T) {
@@ -60,7 +58,8 @@ func TestPipeline_Validate_Success(t *testing.T) {
 		p: &Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 			Spec: PipelineSpec{
-				Tasks: []PipelineTask{{Name: "foo",
+				Tasks: []PipelineTask{{
+					Name: "foo",
 					TaskSpec: &EmbeddedTask{
 						TypeMeta: runtime.TypeMeta{
 							APIVersion: "example.dev/v0",
@@ -68,7 +67,8 @@ func TestPipeline_Validate_Success(t *testing.T) {
 						},
 						Spec: runtime.RawExtension{
 							Raw: []byte(`{"field1":123,"field2":"value"}`),
-						}},
+						},
+					},
 				}},
 			},
 		},
@@ -1416,64 +1416,66 @@ func TestFinallyTaskResultsToPipelineResults_Success(t *testing.T) {
 		name string
 		p    *Pipeline
 		wc   func(context.Context) context.Context
-	}{{
-		name: "valid pipeline with pipeline results",
-		p: &Pipeline{
-			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
-			Spec: PipelineSpec{
-				Results: []PipelineResult{{
-					Name:  "initialized",
-					Value: *NewStructuredValues("$(tasks.clone-app-repo.results.initialized)"),
-				}},
-				Tasks: []PipelineTask{{
-					Name: "clone-app-repo",
-					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
-						Results: []TaskResult{{
-							Name: "initialized",
-							Type: "string",
-						}},
-						Steps: []Step{{
-							Name: "foo", Image: "bar",
+	}{
+		{
+			name: "valid pipeline with pipeline results",
+			p: &Pipeline{
+				ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+				Spec: PipelineSpec{
+					Results: []PipelineResult{{
+						Name:  "initialized",
+						Value: *NewStructuredValues("$(tasks.clone-app-repo.results.initialized)"),
+					}},
+					Tasks: []PipelineTask{{
+						Name: "clone-app-repo",
+						TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+							Results: []TaskResult{{
+								Name: "initialized",
+								Type: "string",
+							}},
+							Steps: []Step{{
+								Name: "foo", Image: "bar",
+							}},
 						}},
 					}},
-				}},
+				},
 			},
-		}}, {
-		name: "referencing existent finally task result",
-		p: &Pipeline{
-			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
-			Spec: PipelineSpec{
-				Results: []PipelineResult{{
-					Name:  "initialized",
-					Value: *NewStructuredValues("$(finally.check-git-commit.results.init)"),
-				}},
-				Tasks: []PipelineTask{{
-					Name: "clone-app-repo",
-					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
-						Results: []TaskResult{{
-							Name: "current-date-unix-timestamp",
-							Type: "string",
-						}},
-						Steps: []Step{{
-							Name: "foo", Image: "bar",
+		}, {
+			name: "referencing existent finally task result",
+			p: &Pipeline{
+				ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+				Spec: PipelineSpec{
+					Results: []PipelineResult{{
+						Name:  "initialized",
+						Value: *NewStructuredValues("$(finally.check-git-commit.results.init)"),
+					}},
+					Tasks: []PipelineTask{{
+						Name: "clone-app-repo",
+						TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+							Results: []TaskResult{{
+								Name: "current-date-unix-timestamp",
+								Type: "string",
+							}},
+							Steps: []Step{{
+								Name: "foo", Image: "bar",
+							}},
 						}},
 					}},
-				}},
-				Finally: []PipelineTask{{
-					Name: "check-git-commit",
-					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
-						Results: []TaskResult{{
-							Name: "init",
-							Type: "string",
-						}},
-						Steps: []Step{{
-							Name: "foo2", Image: "bar",
+					Finally: []PipelineTask{{
+						Name: "check-git-commit",
+						TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+							Results: []TaskResult{{
+								Name: "init",
+								Type: "string",
+							}},
+							Steps: []Step{{
+								Name: "foo2", Image: "bar",
+							}},
 						}},
 					}},
-				}},
+				},
 			},
 		},
-	},
 	}
 
 	for _, tt := range tests {
@@ -1717,7 +1719,8 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.baz)", "and", "$(params.foo-is-baz)"}},
-				}}},
+				}},
+			},
 		}},
 	}, {
 		name: "valid star array parameter variables in matrix",
@@ -1732,7 +1735,8 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.baz[*])", "and", "$(params.foo-is-baz[*])"}},
-				}}},
+				}},
+			},
 		}},
 	}, {
 		name: "array param - using the whole variable as a param's value that is intended to be array type",
@@ -1758,9 +1762,13 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Matrix: &Matrix{
 				Include: IncludeParamsList{{
 					Name: "build-1",
-					Params: Params{{
-						Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.baz)"}},
-					}}}},
+					Params: Params{
+						{
+							Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.baz)"},
+						},
+					},
+				}},
+			},
 		}},
 	}, {
 		name: "object param - using single individual variable in string param",
@@ -1852,7 +1860,8 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.myObject.key1)", "and", "$(params.myObject.key2)"}},
-				}}},
+				}},
+			},
 		}},
 	}, {
 		name: "object param - using the whole variable as a param's value that is intended to be object type",
@@ -2034,7 +2043,8 @@ func TestValidatePipelineDeclaredParameterUsage_Failure(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.does-not-exist)"}},
-				}}},
+				}},
+			},
 		}},
 		expectedError: apis.FieldError{
 			Message: `non-existent variable in "$(params.does-not-exist)"`,
@@ -2051,7 +2061,8 @@ func TestValidatePipelineDeclaredParameterUsage_Failure(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.foo)", "and", "$(params.does-not-exist)"}},
-				}}},
+				}},
+			},
 		}},
 		expectedError: apis.FieldError{
 			Message: `non-existent variable in "$(params.does-not-exist)"`,
@@ -2069,7 +2080,9 @@ func TestValidatePipelineDeclaredParameterUsage_Failure(t *testing.T) {
 				Params: Params{{
 					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.foo)"}},
 				}, {
-					Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.does-not-exist)"}}}}},
+					Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.does-not-exist)"}},
+				}},
+			},
 		}},
 		expectedError: apis.FieldError{
 			Message: `non-existent variable in "$(params.does-not-exist)"`,
@@ -2090,7 +2103,8 @@ func TestValidatePipelineDeclaredParameterUsage_Failure(t *testing.T) {
 					}, {
 						Name: "b-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.does-not-exist)"},
 					}},
-				}}},
+				}},
+			},
 		}},
 		expectedError: apis.FieldError{
 			Message: `non-existent variable in "$(params.does-not-exist)"`,
@@ -2229,7 +2243,8 @@ func TestValidatePipelineDeclaredParameterUsage_Failure(t *testing.T) {
 					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.myObject.key1)"}},
 				}, {
 					Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.myObject.non-exist-key)"}},
-				}}},
+				}},
+			},
 		}},
 		expectedError: apis.FieldError{
 			Message: `non-existent variable in "$(params.myObject.non-exist-key)"`,
@@ -2257,7 +2272,8 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 		expectedError apis.FieldError
 		configMap     map[string]string
 	}{
-		{name: "param enum with array type - failure",
+		{
+			name: "param enum with array type - failure",
 			params: []ParamSpec{{
 				Name: "param2",
 				Type: ParamTypeArray,
@@ -2482,7 +2498,8 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 				Message: `parameter names must be unique, the parameter "duplicate-param" is also defined at`,
 				Paths:   []string{"[0].params[1].name, [0].params[2].name"},
 			},
-		}}
+		},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
@@ -3385,7 +3402,8 @@ func TestContextValid(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipeline.name)"}},
-				}}},
+				}},
+			},
 		}},
 	}, {
 		name: "valid string context variable for PipelineRun name",
@@ -3398,7 +3416,8 @@ func TestContextValid(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipelineRun.name)"}},
-				}}},
+				}},
+			},
 		}},
 	}, {
 		name: "valid string context variable for PipelineRun namespace",
@@ -3411,7 +3430,8 @@ func TestContextValid(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipelineRun.namespace)"}},
-				}}},
+				}},
+			},
 		}},
 	}, {
 		name: "valid string context variable for PipelineRun uid",
@@ -3424,7 +3444,8 @@ func TestContextValid(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipelineRun.uid)"}},
-				}}},
+				}},
+			},
 		}},
 	}, {
 		name: "valid array context variables for Pipeline and PipelineRun names",
@@ -3437,7 +3458,8 @@ func TestContextValid(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipeline.name)", "and", "$(context.pipelineRun.name)"}},
-				}}},
+				}},
+			},
 		}},
 	}, {
 		name: "valid string context variable for PipelineTask retries",
@@ -3450,7 +3472,8 @@ func TestContextValid(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param", Value: ParamValue{StringVal: "$(context.pipelineTask.retries)"},
-				}}},
+				}},
+			},
 		}},
 	}, {
 		name: "valid array context variable for PipelineTask retries",
@@ -3463,7 +3486,8 @@ func TestContextValid(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipelineTask.retries)"}},
-				}}},
+				}},
+			},
 		}},
 	}, {
 		name: "valid string context variable for Pipeline name in include params",
@@ -3477,8 +3501,10 @@ func TestContextValid(t *testing.T) {
 				Include: IncludeParamsList{{
 					Name: "build-1",
 					Params: Params{{
-						Name: "a-param-mat", Value: ParamValue{Type: ParamTypeString, StringVal: "$(context.pipeline.name)"}}},
-				}}},
+						Name: "a-param-mat", Value: ParamValue{Type: ParamTypeString, StringVal: "$(context.pipeline.name)"},
+					}},
+				}},
+			},
 		}},
 	}, {
 		name: "valid string context variable for PipelineTask retries in matrix include",
@@ -3492,8 +3518,10 @@ func TestContextValid(t *testing.T) {
 				Include: IncludeParamsList{{
 					Name: "build-1",
 					Params: Params{{
-						Name: "a-param-mat", Value: ParamValue{Type: ParamTypeString, StringVal: "$(context.pipelineTask.retries)"}}},
-				}}},
+						Name: "a-param-mat", Value: ParamValue{Type: ParamTypeString, StringVal: "$(context.pipelineTask.retries)"},
+					}},
+				}},
+			},
 		}},
 	}}
 	for _, tt := range tests {
@@ -3521,7 +3549,8 @@ func TestContextInvalid(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param-foo", Value: ParamValue{ArrayVal: []string{"$(context.pipeline.missing-foo)"}},
-				}}},
+				}},
+			},
 		}},
 		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
 			Message: `non-existent variable in "$(context.pipeline.missing)"`,
@@ -3541,7 +3570,8 @@ func TestContextInvalid(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param-foo", Value: ParamValue{ArrayVal: []string{"$(context.pipelineRun.missing-foo)"}},
-				}}},
+				}},
+			},
 		}},
 		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
 			Message: `non-existent variable in "$(context.pipelineRun.missing)"`,
@@ -3561,7 +3591,8 @@ func TestContextInvalid(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param-foo", Value: ParamValue{ArrayVal: []string{"$(context.pipelineTask.missing-foo)"}},
-				}}},
+				}},
+			},
 		}},
 		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
 			Message: `non-existent variable in "$(context.pipelineTask.missing)"`,
@@ -3581,7 +3612,8 @@ func TestContextInvalid(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param", Value: ParamValue{ArrayVal: []string{"$(context.pipeline.missing-foo)", "$(context.pipelineTask.missing-foo)", "$(context.pipelineRun.missing-foo)"}},
-				}}},
+				}},
+			},
 		}},
 		expectedError: *apis.ErrGeneric(`non-existent variable in "$(context.pipeline.missing)"`, "value").
 			Also(apis.ErrGeneric(`non-existent variable in "$(context.pipelineRun.missing)"`, "value")).
@@ -3598,8 +3630,10 @@ func TestContextInvalid(t *testing.T) {
 				Include: IncludeParamsList{{
 					Name: "build-1",
 					Params: Params{{
-						Name: "a-param-foo", Value: ParamValue{Type: ParamTypeString, StringVal: "$(context.pipeline.missing)"}}},
-				}}},
+						Name: "a-param-foo", Value: ParamValue{Type: ParamTypeString, StringVal: "$(context.pipeline.missing)"},
+					}},
+				}},
+			},
 		}},
 		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
 			Message: `non-existent variable in "$(context.pipeline.missing)"`,
@@ -3614,8 +3648,10 @@ func TestContextInvalid(t *testing.T) {
 				Include: IncludeParamsList{{
 					Name: "build-1",
 					Params: Params{{
-						Name: "a-param-foo", Value: ParamValue{Type: ParamTypeString, StringVal: "$(context.pipelineRun.missing)"}}},
-				}}},
+						Name: "a-param-foo", Value: ParamValue{Type: ParamTypeString, StringVal: "$(context.pipelineRun.missing)"},
+					}},
+				}},
+			},
 		}},
 		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
 			Message: `non-existent variable in "$(context.pipelineRun.missing)"`,
@@ -3630,8 +3666,10 @@ func TestContextInvalid(t *testing.T) {
 				Include: IncludeParamsList{{
 					Name: "build-1",
 					Params: Params{{
-						Name: "a-param-foo", Value: ParamValue{Type: ParamTypeString, StringVal: "$(context.pipelineTask.missing)"}}},
-				}}},
+						Name: "a-param-foo", Value: ParamValue{Type: ParamTypeString, StringVal: "$(context.pipelineTask.missing)"},
+					}},
+				}},
+			},
 		}},
 		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
 			Message: `non-existent variable in "$(context.pipelineTask.missing)"`,
@@ -3911,7 +3949,8 @@ func TestMatrixIncompatibleAPIVersions(t *testing.T) {
 		Matrix: &Matrix{
 			Params: Params{{
 				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-			}}},
+			}},
+		},
 	}
 	tests := []struct {
 		name    string
@@ -3974,7 +4013,8 @@ func Test_validateMatrix(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}}},
+				}},
+			},
 			Params: Params{{
 				Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 			}},
@@ -3988,7 +4028,8 @@ func Test_validateMatrix(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}}},
+				}},
+			},
 			Params: Params{{
 				Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
 			}},
@@ -4001,14 +4042,16 @@ func Test_validateMatrix(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.foo-task.results.a-result)"}},
-				}}},
+				}},
+			},
 		}, {
 			Name:    "b-task",
 			TaskRef: &TaskRef{Name: "b-task"},
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.bar-task.results.b-result)"}},
-				}}},
+				}},
+			},
 		}},
 	}, {
 		name: "parameters in matrix contain whole array results references",
@@ -4018,7 +4061,8 @@ func Test_validateMatrix(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.foo-task.results.a-task-results[*])"}},
-				}}},
+				}},
+			},
 		}},
 	}, {
 		name: "results from matrixed task consumed in tasks through parameters",
@@ -4028,7 +4072,8 @@ func Test_validateMatrix(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}}},
+				}},
+			},
 		}, {
 			Name:    "b-task",
 			TaskRef: &TaskRef{Name: "b-task"},
@@ -4044,7 +4089,8 @@ func Test_validateMatrix(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}}},
+				}},
+			},
 		}},
 		finally: PipelineTaskList{{
 			Name:    "b-task",
@@ -4061,7 +4107,8 @@ func Test_validateMatrix(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}}},
+				}},
+			},
 		}, {
 			Name:    "b-task",
 			TaskRef: &TaskRef{Name: "b-task"},
@@ -4084,7 +4131,8 @@ func Test_validateMatrix(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}}},
+				}},
+			},
 		}, {
 			Name:    "b-task",
 			TaskRef: &TaskRef{Name: "b-task"},
@@ -4102,7 +4150,8 @@ func Test_validateMatrix(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}}},
+				}},
+			},
 		}},
 		finally: PipelineTaskList{{
 			Name:    "b-task",
@@ -4121,7 +4170,8 @@ func Test_validateMatrix(t *testing.T) {
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}}},
+				}},
+			},
 		}, {
 			Name:    "b-task",
 			TaskRef: &TaskRef{Name: "b-task"},
@@ -4150,7 +4200,8 @@ func Test_validateMatrix(t *testing.T) {
 					Name: "platform", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac"}},
 				}, {
 					Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "safari"}},
-				}}},
+				}},
+			},
 		}, {
 			Name: "echoarrayurl",
 			TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
@@ -4172,7 +4223,8 @@ func Test_validateMatrix(t *testing.T) {
 				Params: ParamSpecs{{
 					Name: "platform",
 				}, {
-					Name: "browser"}},
+					Name: "browser",
+				}},
 				Results: []TaskResult{{
 					Name: "report-url",
 					Type: ResultsTypeString,
@@ -4181,7 +4233,8 @@ func Test_validateMatrix(t *testing.T) {
 					Name:  "produce-report-url",
 					Image: "alpine",
 					Script: ` |
-							echo -n "https://api.example/get-report/$(params.platform)-$(params.browser)" | tee $(results.report-url.path)`}},
+							echo -n "https://api.example/get-report/$(params.platform)-$(params.browser)" | tee $(results.report-url.path)`,
+				}},
 			}},
 		}, {
 			Name:    "task-consuming-results",
@@ -4215,7 +4268,8 @@ func Test_validateMatrix(t *testing.T) {
 					Name: "platform", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac"}},
 				}, {
 					Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "safari"}},
-				}}},
+				}},
+			},
 		}, {
 			Name: "task-consuming-results",
 			TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
@@ -4245,14 +4299,16 @@ func Test_validateMatrix(t *testing.T) {
 					Name: "platform", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac"}},
 				}, {
 					Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "safari"}},
-				}}},
+				}},
+			},
 		}, {
 			Name: "taskwithresult",
 			TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
 				Params: ParamSpecs{{
 					Name: "platform",
 				}, {
-					Name: "browser"}},
+					Name: "browser",
+				}},
 				Results: []TaskResult{{
 					Name: "report-url",
 					Type: ResultsTypeString,
@@ -4261,7 +4317,8 @@ func Test_validateMatrix(t *testing.T) {
 					Name:  "produce-report-url",
 					Image: "alpine",
 					Script: ` |
-						echo -n "https://api.example/get-report/$(params.platform)-$(params.browser)" | tee $(results.report-url.path)`}},
+						echo -n "https://api.example/get-report/$(params.platform)-$(params.browser)" | tee $(results.report-url.path)`,
+				}},
 			}},
 		}, {
 			Name:    "task-consuming-results",
@@ -4294,7 +4351,8 @@ func Test_validateMatrix(t *testing.T) {
 				Params: ParamSpecs{{
 					Name: "platform",
 				}, {
-					Name: "browser"}},
+					Name: "browser",
+				}},
 				Results: []TaskResult{{
 					Name: "array-result",
 					Type: ResultsTypeArray,
@@ -4303,21 +4361,24 @@ func Test_validateMatrix(t *testing.T) {
 					Name:  "produce-array-result",
 					Image: "alpine",
 					Script: ` |
-						echo -n "[\"${params.platform}\",\"${params.browser}\"]" | tee $(results.array-result.path)`}},
+						echo -n "[\"${params.platform}\",\"${params.browser}\"]" | tee $(results.array-result.path)`,
+				}},
 			}},
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "platform", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac"}},
 				}, {
 					Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "safari"}},
-				}}},
+				}},
+			},
 		}, {
 			Name: "taskwithresult",
 			TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
 				Params: ParamSpecs{{
 					Name: "platform",
 				}, {
-					Name: "browser"}},
+					Name: "browser",
+				}},
 				Results: []TaskResult{{
 					Name: "array-result",
 					Type: ResultsTypeArray,
@@ -4326,7 +4387,8 @@ func Test_validateMatrix(t *testing.T) {
 					Name:  "produce-array-result",
 					Image: "alpine",
 					Script: ` |
-						echo -n "https://api.example/get-report/$(params.platform)-$(params.browser)" | tee $(results.array-result.path)`}},
+						echo -n "https://api.example/get-report/$(params.platform)-$(params.browser)" | tee $(results.array-result.path)`,
+				}},
 			}},
 		}, {
 			Name:    "task-consuming-results",
@@ -4359,7 +4421,8 @@ func Test_validateMatrix(t *testing.T) {
 				Params: ParamSpecs{{
 					Name: "platform",
 				}, {
-					Name: "browser"}},
+					Name: "browser",
+				}},
 				Results: []TaskResult{{
 					Name: "array-result",
 					Type: ResultsTypeArray,
@@ -4368,21 +4431,24 @@ func Test_validateMatrix(t *testing.T) {
 					Name:  "produce-array-result",
 					Image: "alpine",
 					Script: ` |
-						echo -n "[\"${params.platform}\",\"${params.browser}\"]" | tee $(results.array-result.path)`}},
+						echo -n "[\"${params.platform}\",\"${params.browser}\"]" | tee $(results.array-result.path)`,
+				}},
 			}},
 			Matrix: &Matrix{
 				Params: Params{{
 					Name: "platform", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac"}},
 				}, {
 					Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "safari"}},
-				}}},
+				}},
+			},
 		}, {
 			Name: "task-consuming-results",
 			TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
 				Params: ParamSpecs{{
 					Name: "platform",
 				}, {
-					Name: "browser"}},
+					Name: "browser",
+				}},
 				Results: []TaskResult{{
 					Name: "report-url",
 					Type: ResultsTypeString,
@@ -4391,7 +4457,8 @@ func Test_validateMatrix(t *testing.T) {
 					Name:  "produce-report-url",
 					Image: "alpine",
 					Script: ` |
-							echo -n "https://api.example/get-report/$(params.platform)-$(params.browser)" | tee $(results.report-url.path)`}},
+							echo -n "https://api.example/get-report/$(params.platform)-$(params.browser)" | tee $(results.report-url.path)`,
+				}},
 			}},
 			Params: Params{{
 				Name: "b-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.matrix-emitting-results-embedded.results.report-url[0])"},
@@ -4408,14 +4475,16 @@ func Test_validateMatrix(t *testing.T) {
 					Name: "platform", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac"}},
 				}, {
 					Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "safari"}},
-				}}},
+				}},
+			},
 		}, {
 			Name: "taskwithresult",
 			TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
 				Params: ParamSpecs{{
 					Name: "platform",
 				}, {
-					Name: "browser"}},
+					Name: "browser",
+				}},
 				Results: []TaskResult{{
 					Name: "array-result",
 					Type: ResultsTypeArray,
@@ -4424,7 +4493,8 @@ func Test_validateMatrix(t *testing.T) {
 					Name:  "produce-array-result",
 					Image: "alpine",
 					Script: ` |
-						echo -n "[\"${params.platform}\",\"${params.browser}\"]" | tee $(results.array-result.path)`}},
+						echo -n "[\"${params.platform}\",\"${params.browser}\"]" | tee $(results.array-result.path)`,
+				}},
 			}},
 		}, {
 			Name:    "task-consuming-results",
@@ -4461,22 +4531,6 @@ func getTaskSpec() TaskSpec {
 		Steps: []Step{{
 			Name: "foo", Image: "bar",
 		}},
-	}
-}
-
-func enableFeatures(t *testing.T, features []string) func(context.Context) context.Context {
-	t.Helper()
-	return func(ctx context.Context) context.Context {
-		s := config.NewStore(logtesting.TestLogger(t))
-		data := make(map[string]string)
-		for _, f := range features {
-			data[f] = "true"
-		}
-		s.OnConfigChanged(&corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
-			Data:       data,
-		})
-		return s.ToContext(ctx)
 	}
 }
 
@@ -4549,142 +4603,143 @@ func TestGetIndexingReferencesToArrayParams(t *testing.T) {
 		name string
 		spec PipelineSpec
 		want sets.String
-	}{{
-		name: "references in task params",
-		spec: PipelineSpec{
-			Params: []ParamSpec{
-				{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
-				{Name: "second-param", Type: ParamTypeString},
-			},
-			Tasks: []PipelineTask{{
-				Params: Params{
-					{Name: "first-task-first-param", Value: *NewStructuredValues("$(params.first-param[1])")},
-					{Name: "first-task-second-param", Value: *NewStructuredValues("$(params.second-param[0])")},
-					{Name: "first-task-third-param", Value: *NewStructuredValues("static value")},
+	}{
+		{
+			name: "references in task params",
+			spec: PipelineSpec{
+				Params: []ParamSpec{
+					{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+					{Name: "second-param", Type: ParamTypeString},
 				},
-			}},
-		},
-		want: sets.NewString("$(params.first-param[1])", "$(params.second-param[0])"),
-	}, {
-		name: "references in when expression",
-		spec: PipelineSpec{
-			Params: []ParamSpec{
-				{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
-				{Name: "second-param", Type: ParamTypeString},
-			},
-			Tasks: []PipelineTask{{
-				WhenExpressions: []WhenExpression{{
-					Input:    "$(params.first-param[1])",
-					Operator: selection.In,
-					Values:   []string{"$(params.second-param[0])"},
-				}},
-			}},
-		},
-		want: sets.NewString("$(params.first-param[1])", "$(params.second-param[0])"),
-	}, {
-		name: "nested references in task params",
-		spec: PipelineSpec{
-			Params: []ParamSpec{
-				{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
-				{Name: "second-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
-			},
-			Tasks: []PipelineTask{{
-				Params: Params{
-					{Name: "first-task-first-param", Value: *NewStructuredValues("$(input.workspace.$(params.first-param[0]))")},
-					{Name: "first-task-second-param", Value: *NewStructuredValues("$(input.workspace.$(params.second-param[1]))")},
-				},
-			}},
-		},
-		want: sets.NewString("$(params.first-param[0])", "$(params.second-param[1])"),
-	}, {
-		name: "array parameter",
-		spec: PipelineSpec{
-			Params: []ParamSpec{
-				{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default", "array", "value")},
-				{Name: "second-param", Type: ParamTypeArray},
-			},
-			Tasks: []PipelineTask{{
-				Params: Params{
-					{Name: "first-task-first-param", Value: *NewStructuredValues("firstelement", "$(params.first-param)")},
-					{Name: "first-task-second-param", Value: *NewStructuredValues("firstelement", "$(params.second-param[0])")},
-				},
-			}},
-		},
-		want: sets.NewString("$(params.second-param[0])"),
-	}, {
-		name: "references in finally params",
-		spec: PipelineSpec{
-			Params: []ParamSpec{
-				{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
-				{Name: "second-param", Type: ParamTypeArray},
-			},
-			Finally: []PipelineTask{{
-				Params: Params{
-					{Name: "final-task-first-param", Value: *NewStructuredValues("$(params.first-param[0])")},
-					{Name: "final-task-second-param", Value: *NewStructuredValues("$(params.second-param[1])")},
-				},
-			}},
-		},
-		want: sets.NewString("$(params.first-param[0])", "$(params.second-param[1])"),
-	}, {
-		name: "references in finally when expressions",
-		spec: PipelineSpec{
-			Params: []ParamSpec{
-				{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
-				{Name: "second-param", Type: ParamTypeArray},
-			},
-			Finally: []PipelineTask{{
-				WhenExpressions: WhenExpressions{{
-					Input:    "$(params.first-param[0])",
-					Operator: selection.In,
-					Values:   []string{"$(params.second-param[1])"},
-				}},
-			}},
-		},
-		want: sets.NewString("$(params.first-param[0])", "$(params.second-param[1])"),
-	}, {
-		name: "parameter references with bracket notation and special characters",
-		spec: PipelineSpec{
-			Params: []ParamSpec{
-				{Name: "first.param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
-				{Name: "second/param", Type: ParamTypeArray},
-				{Name: "third.param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
-				{Name: "fourth/param", Type: ParamTypeArray},
-			},
-			Tasks: []PipelineTask{{
-				Params: Params{
-					{Name: "first-task-first-param", Value: *NewStructuredValues(`$(params["first.param"][0])`)},
-					{Name: "first-task-second-param", Value: *NewStructuredValues(`$(params["first.param"][0])`)},
-					{Name: "first-task-third-param", Value: *NewStructuredValues(`$(params['third.param'][1])`)},
-					{Name: "first-task-fourth-param", Value: *NewStructuredValues(`$(params['fourth/param'][1])`)},
-					{Name: "first-task-fifth-param", Value: *NewStructuredValues("static value")},
-				},
-			}},
-		},
-		want: sets.NewString(`$(params["first.param"][0])`, `$(params["first.param"][0])`, `$(params['third.param'][1])`, `$(params['fourth/param'][1])`),
-	}, {
-		name: "single parameter in workspace subpath",
-		spec: PipelineSpec{
-			Params: []ParamSpec{
-				{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
-				{Name: "second-param", Type: ParamTypeArray},
-			},
-			Tasks: []PipelineTask{{
-				Params: Params{
-					{Name: "first-task-first-param", Value: *NewStructuredValues("$(params.first-param[0])")},
-					{Name: "first-task-second-param", Value: *NewStructuredValues("static value")},
-				},
-				Workspaces: []WorkspacePipelineTaskBinding{
-					{
-						Name:      "first-workspace",
-						Workspace: "first-workspace",
-						SubPath:   "$(params.second-param[1])",
+				Tasks: []PipelineTask{{
+					Params: Params{
+						{Name: "first-task-first-param", Value: *NewStructuredValues("$(params.first-param[1])")},
+						{Name: "first-task-second-param", Value: *NewStructuredValues("$(params.second-param[0])")},
+						{Name: "first-task-third-param", Value: *NewStructuredValues("static value")},
 					},
+				}},
+			},
+			want: sets.NewString("$(params.first-param[1])", "$(params.second-param[0])"),
+		}, {
+			name: "references in when expression",
+			spec: PipelineSpec{
+				Params: []ParamSpec{
+					{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+					{Name: "second-param", Type: ParamTypeString},
 				},
-			}},
+				Tasks: []PipelineTask{{
+					WhenExpressions: []WhenExpression{{
+						Input:    "$(params.first-param[1])",
+						Operator: selection.In,
+						Values:   []string{"$(params.second-param[0])"},
+					}},
+				}},
+			},
+			want: sets.NewString("$(params.first-param[1])", "$(params.second-param[0])"),
+		}, {
+			name: "nested references in task params",
+			spec: PipelineSpec{
+				Params: []ParamSpec{
+					{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+					{Name: "second-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+				},
+				Tasks: []PipelineTask{{
+					Params: Params{
+						{Name: "first-task-first-param", Value: *NewStructuredValues("$(input.workspace.$(params.first-param[0]))")},
+						{Name: "first-task-second-param", Value: *NewStructuredValues("$(input.workspace.$(params.second-param[1]))")},
+					},
+				}},
+			},
+			want: sets.NewString("$(params.first-param[0])", "$(params.second-param[1])"),
+		}, {
+			name: "array parameter",
+			spec: PipelineSpec{
+				Params: []ParamSpec{
+					{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default", "array", "value")},
+					{Name: "second-param", Type: ParamTypeArray},
+				},
+				Tasks: []PipelineTask{{
+					Params: Params{
+						{Name: "first-task-first-param", Value: *NewStructuredValues("firstelement", "$(params.first-param)")},
+						{Name: "first-task-second-param", Value: *NewStructuredValues("firstelement", "$(params.second-param[0])")},
+					},
+				}},
+			},
+			want: sets.NewString("$(params.second-param[0])"),
+		}, {
+			name: "references in finally params",
+			spec: PipelineSpec{
+				Params: []ParamSpec{
+					{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+					{Name: "second-param", Type: ParamTypeArray},
+				},
+				Finally: []PipelineTask{{
+					Params: Params{
+						{Name: "final-task-first-param", Value: *NewStructuredValues("$(params.first-param[0])")},
+						{Name: "final-task-second-param", Value: *NewStructuredValues("$(params.second-param[1])")},
+					},
+				}},
+			},
+			want: sets.NewString("$(params.first-param[0])", "$(params.second-param[1])"),
+		}, {
+			name: "references in finally when expressions",
+			spec: PipelineSpec{
+				Params: []ParamSpec{
+					{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+					{Name: "second-param", Type: ParamTypeArray},
+				},
+				Finally: []PipelineTask{{
+					WhenExpressions: WhenExpressions{{
+						Input:    "$(params.first-param[0])",
+						Operator: selection.In,
+						Values:   []string{"$(params.second-param[1])"},
+					}},
+				}},
+			},
+			want: sets.NewString("$(params.first-param[0])", "$(params.second-param[1])"),
+		}, {
+			name: "parameter references with bracket notation and special characters",
+			spec: PipelineSpec{
+				Params: []ParamSpec{
+					{Name: "first.param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+					{Name: "second/param", Type: ParamTypeArray},
+					{Name: "third.param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+					{Name: "fourth/param", Type: ParamTypeArray},
+				},
+				Tasks: []PipelineTask{{
+					Params: Params{
+						{Name: "first-task-first-param", Value: *NewStructuredValues(`$(params["first.param"][0])`)},
+						{Name: "first-task-second-param", Value: *NewStructuredValues(`$(params["first.param"][0])`)},
+						{Name: "first-task-third-param", Value: *NewStructuredValues(`$(params['third.param'][1])`)},
+						{Name: "first-task-fourth-param", Value: *NewStructuredValues(`$(params['fourth/param'][1])`)},
+						{Name: "first-task-fifth-param", Value: *NewStructuredValues("static value")},
+					},
+				}},
+			},
+			want: sets.NewString(`$(params["first.param"][0])`, `$(params["first.param"][0])`, `$(params['third.param'][1])`, `$(params['fourth/param'][1])`),
+		}, {
+			name: "single parameter in workspace subpath",
+			spec: PipelineSpec{
+				Params: []ParamSpec{
+					{Name: "first-param", Type: ParamTypeArray, Default: NewStructuredValues("default-value", "default-value-again")},
+					{Name: "second-param", Type: ParamTypeArray},
+				},
+				Tasks: []PipelineTask{{
+					Params: Params{
+						{Name: "first-task-first-param", Value: *NewStructuredValues("$(params.first-param[0])")},
+						{Name: "first-task-second-param", Value: *NewStructuredValues("static value")},
+					},
+					Workspaces: []WorkspacePipelineTaskBinding{
+						{
+							Name:      "first-workspace",
+							Workspace: "first-workspace",
+							SubPath:   "$(params.second-param[1])",
+						},
+					},
+				}},
+			},
+			want: sets.NewString("$(params.first-param[0])", "$(params.second-param[1])"),
 		},
-		want: sets.NewString("$(params.first-param[0])", "$(params.second-param[1])"),
-	},
 	} {
 		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
