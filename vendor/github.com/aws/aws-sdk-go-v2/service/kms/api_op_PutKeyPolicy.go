@@ -79,11 +79,6 @@ type PutKeyPolicyInput struct {
 	// This member is required.
 	Policy *string
 
-	// The name of the key policy. The only valid value is default .
-	//
-	// This member is required.
-	PolicyName *string
-
 	// Skips ("bypasses") the key policy lockout safety check. The default value is
 	// false. Setting this value to true increases the risk that the KMS key becomes
 	// unmanageable. Do not set this value to true indiscriminately. For more
@@ -93,6 +88,10 @@ type PutKeyPolicyInput struct {
 	// subsequent PutKeyPolicy (https://docs.aws.amazon.com/kms/latest/APIReference/API_PutKeyPolicy.html)
 	// request on the KMS key.
 	BypassPolicyLockoutSafetyCheck bool
+
+	// The name of the key policy. If no policy name is specified, the default value
+	// is default . The only valid value is default .
+	PolicyName *string
 
 	noSmithyDocumentSerde
 }

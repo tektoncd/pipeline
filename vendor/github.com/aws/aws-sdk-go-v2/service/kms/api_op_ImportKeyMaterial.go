@@ -25,13 +25,11 @@ import (
 // into that KMS key, but you cannot import different key material. You might
 // reimport key material to replace key material that expired or key material that
 // you deleted. You might also reimport key material to change the expiration model
-// or expiration date of the key material. Before reimporting key material, if
-// necessary, call DeleteImportedKeyMaterial to delete the current imported key
-// material. Each time you import key material into KMS, you can determine whether
-// ( ExpirationModel ) and when ( ValidTo ) the key material expires. To change the
-// expiration of your key material, you must import it again, either by calling
-// ImportKeyMaterial or using the import features of the KMS console. Before
-// calling ImportKeyMaterial :
+// or expiration date of the key material. Each time you import key material into
+// KMS, you can determine whether ( ExpirationModel ) and when ( ValidTo ) the key
+// material expires. To change the expiration of your key material, you must import
+// it again, either by calling ImportKeyMaterial or using the import features of
+// the KMS console. Before calling ImportKeyMaterial :
 //   - Create or identify a KMS key with no key material. The KMS key must have an
 //     Origin value of EXTERNAL , which indicates that the KMS key is designed for
 //     imported key material. To create an new KMS key for imported key material, call
