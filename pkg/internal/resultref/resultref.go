@@ -42,7 +42,7 @@ const (
 
 	// arrayIndexing will match all `[int]` and `[*]` for parseExpression
 	arrayIndexing          = `\[([0-9])*\*?\]`
-	stepResultUsagePattern = `\$\(steps\..*\.results\..*\)`
+	stepResultUsagePattern = `\$\(steps\..*?\.results\..*?\)`
 )
 
 // arrayIndexingRegex is used to match `[int]` and `[*]`
