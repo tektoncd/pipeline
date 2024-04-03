@@ -400,9 +400,9 @@ A `ParamValue` may be a string, a list of string, or a map of string to string.
 
 | Field            | Type                                | Requirement | Notes                         |
 |------------------|-------------------------------------|-------------|-------------------------------|
-| `name`           | string                              | RECOMMENDED | Name of the SidecarState.     |
-| `imageID`        | string                              | RECOMMENDED | Image ID of the SidecarState. |
-| `containerState` | [`ContainerState`](#containerstate) | RECOMMENDED | State of the container.       |
+| `name`           | string                              | REQUIRED    | Name of the SidecarState.     |
+| `imageID`        | string                              | REQUIRED    | Image ID of the SidecarState. |
+| `containerState` | [`ContainerState`](#containerstate) | REQUIRED    | State of the container.       |
 
 ### PipelineRunSpec
 
