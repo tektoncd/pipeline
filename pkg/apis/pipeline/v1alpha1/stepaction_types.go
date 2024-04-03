@@ -74,6 +74,10 @@ type StepActionList struct {
 
 // StepActionSpec contains the actionable components of a step.
 type StepActionSpec struct {
+	// Description is a user-facing description of the stepaction that may be
+	// used to populate a UI.
+	// +optional
+	Description string `json:"description,omitempty"`
 	// Image reference name to run for this StepAction.
 	// More info: https://kubernetes.io/docs/concepts/containers/images
 	// +optional
