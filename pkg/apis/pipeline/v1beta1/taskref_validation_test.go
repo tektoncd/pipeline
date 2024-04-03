@@ -60,12 +60,6 @@ func TestTaskRef_Valid(t *testing.T) {
 				StringVal: "baz",
 			},
 		}}}},
-	}, {
-		name: "valid bundle",
-		taskRef: &v1beta1.TaskRef{
-			Name:   "bundled-task",
-			Bundle: "gcr.io/my-bundle"},
-		wc: enableTektonOCIBundles(t),
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
@@ -90,28 +84,6 @@ func TestTaskRef_Invalid(t *testing.T) {
 		name:    "missing taskref name",
 		taskRef: &v1beta1.TaskRef{},
 		wantErr: apis.ErrMissingField("name"),
-	}, {
-		name: "use of bundle without the feature flag set",
-		taskRef: &v1beta1.TaskRef{
-			Name:   "my-task",
-			Bundle: "docker.io/foo",
-		},
-		wantErr: apis.ErrGeneric("bundle requires \"enable-tekton-oci-bundles\" feature gate to be true but it is false"),
-	}, {
-		name: "bundle missing name",
-		taskRef: &v1beta1.TaskRef{
-			Bundle: "docker.io/foo",
-		},
-		wantErr: apis.ErrMissingField("name"),
-		wc:      enableTektonOCIBundles(t),
-	}, {
-		name: "invalid bundle reference",
-		taskRef: &v1beta1.TaskRef{
-			Name:   "my-task",
-			Bundle: "invalid reference",
-		},
-		wantErr: apis.ErrInvalidValue("invalid bundle reference", "bundle", "could not parse reference: invalid reference"),
-		wc:      enableTektonOCIBundles(t),
 	}, {
 		name: "taskRef with resolver and k8s style name",
 		taskRef: &v1beta1.TaskRef{
@@ -152,32 +124,6 @@ func TestTaskRef_Invalid(t *testing.T) {
 		wantErr: &apis.FieldError{
 			Message: `feature flag enable-concise-resolver-syntax should be set to true to use concise resolver syntax`,
 		},
-	}, {
-		name: "taskref resolver disallowed in conjunction with taskref bundle",
-		taskRef: &v1beta1.TaskRef{
-			Bundle: "bar",
-			ResolverRef: v1beta1.ResolverRef{
-				Resolver: "git",
-			},
-		},
-		wantErr: apis.ErrMultipleOneOf("bundle", "resolver"),
-		wc:      enableTektonOCIBundles(t),
-	}, {
-		name: "taskref params disallowed in conjunction with taskref bundle",
-		taskRef: &v1beta1.TaskRef{
-			Bundle: "bar",
-			ResolverRef: v1beta1.ResolverRef{
-				Params: v1beta1.Params{{
-					Name: "foo",
-					Value: v1beta1.ParamValue{
-						Type:      v1beta1.ParamTypeString,
-						StringVal: "bar",
-					},
-				}},
-			},
-		},
-		wantErr: apis.ErrMultipleOneOf("bundle", "params").Also(apis.ErrMissingField("resolver")),
-		wc:      enableTektonOCIBundles(t),
 	}, {
 		name:    "invalid taskref name",
 		taskRef: &v1beta1.TaskRef{Name: "_foo"},

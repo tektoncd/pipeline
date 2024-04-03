@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
@@ -33,15 +32,15 @@ func (ref *PipelineRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if ref == nil {
 		return errs
 	}
+	if apis.IsInCreate(ctx) && ref.Bundle != "" {
+		errs = errs.Also(apis.ErrDisallowedFields("bundle"))
+	}
 	switch {
 	case ref.Resolver != "" || ref.Params != nil:
 		if ref.Params != nil {
 			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "resolver params", config.BetaAPIFields).ViaField("params"))
 			if ref.Name != "" {
 				errs = errs.Also(apis.ErrMultipleOneOf("name", "params"))
-			}
-			if ref.Bundle != "" {
-				errs = errs.Also(apis.ErrMultipleOneOf("bundle", "params"))
 			}
 			if ref.Resolver == "" {
 				errs = errs.Also(apis.ErrMissingField("resolver"))
@@ -61,17 +60,6 @@ func (ref *PipelineRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 					errs = errs.Also(apis.ErrInvalidValue(err, "name"))
 				}
 			}
-			if ref.Bundle != "" {
-				errs = errs.Also(apis.ErrMultipleOneOf("bundle", "resolver"))
-			}
-		}
-	case ref.Bundle != "":
-		if ref.Name == "" {
-			errs = errs.Also(apis.ErrMissingField("name"))
-		}
-		errs = errs.Also(validateBundleFeatureFlag(ctx, "bundle", true).ViaField("bundle"))
-		if _, err := name.ParseReference(ref.Bundle); err != nil {
-			errs = errs.Also(apis.ErrInvalidValue("invalid bundle reference", "bundle", err.Error()))
 		}
 	case ref.Name != "":
 		// ref name can be a Url-like format.
@@ -96,14 +84,4 @@ func (ref *PipelineRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(apis.ErrMissingField("name"))
 	}
 	return //nolint:nakedret
-}
-
-func validateBundleFeatureFlag(ctx context.Context, featureName string, wantValue bool) *apis.FieldError {
-	flagValue := config.FromContextOrDefaults(ctx).FeatureFlags.EnableTektonOCIBundles
-	if flagValue != wantValue {
-		var errs *apis.FieldError
-		message := fmt.Sprintf(`%s requires "enable-tekton-oci-bundles" feature gate to be %t but it is %t`, featureName, wantValue, flagValue)
-		return errs.Also(apis.ErrGeneric(message))
-	}
-	return nil
 }

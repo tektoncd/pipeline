@@ -143,6 +143,21 @@ func TestTaskRun_Invalidate(t *testing.T) {
 			Message: `missing field(s)`,
 			Paths:   []string{"spec.task-words.properties"},
 		},
+	}, {
+		name: "uses bundle (deprecated) on creation is disallowed",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "taskrunrunname",
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name:   "foo",
+					Bundle: "example.com/foo/bar",
+				},
+			},
+		},
+		want: &apis.FieldError{Message: "must not set the field(s)", Paths: []string{"spec.taskRef.bundle"}},
+		wc:   apis.WithinCreate,
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {

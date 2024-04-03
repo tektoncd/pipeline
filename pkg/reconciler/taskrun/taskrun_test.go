@@ -1695,7 +1695,6 @@ status:
     provenance:
       featureFlags:
         RunningInEnvWithInjectedSidecars: true
-        EnableTektonOCIBundles: true
         EnforceNonfalsifiability: "none"
         EnableAPIFields: "alpha"
         AwaitSidecarReadiness: true
@@ -1708,7 +1707,6 @@ status:
   provenance:
     featureFlags:
       RunningInEnvWithInjectedSidecars: true
-      EnableTektonOCIBundles: true
       EnableAPIFields: "alpha"
       EnforceNonfalsifiability: "none"
       AwaitSidecarReadiness: true

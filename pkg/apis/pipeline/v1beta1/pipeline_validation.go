@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/internal/resultref"
@@ -205,7 +204,6 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 		}
 	}
 
-	cfg := config.FromContextOrDefaults(ctx)
 	// Pipeline task having taskRef/taskSpec with APIVersion is classified as custom task
 	switch {
 	case pt.TaskRef != nil && !taskKinds[pt.TaskRef.Kind]:
@@ -216,9 +214,6 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(pt.validateCustomTask())
 	case pt.TaskSpec != nil && pt.TaskSpec.APIVersion != "":
 		errs = errs.Also(pt.validateCustomTask())
-		// If EnableTektonOCIBundles feature flag is on, validate bundle specifications
-	case cfg.FeatureFlags.EnableTektonOCIBundles && pt.TaskRef != nil && pt.TaskRef.Bundle != "":
-		errs = errs.Also(pt.validateBundle())
 	default:
 		errs = errs.Also(pt.validateTask(ctx))
 	}
@@ -352,21 +347,6 @@ func (pt PipelineTask) validateCustomTask() (errs *apis.FieldError) {
 	}
 	if pt.TaskSpec != nil && pt.TaskSpec.APIVersion == "" {
 		errs = errs.Also(apis.ErrInvalidValue("custom task spec must specify apiVersion", "taskSpec.apiVersion"))
-	}
-	return errs
-}
-
-// validateBundle validates bundle specifications - checking name and bundle
-func (pt PipelineTask) validateBundle() (errs *apis.FieldError) {
-	// bundle requires a TaskRef to be specified
-	if (pt.TaskRef != nil && pt.TaskRef.Bundle != "") && pt.TaskRef.Name == "" {
-		errs = errs.Also(apis.ErrMissingField("taskRef.name"))
-	}
-	// If a bundle url is specified, ensure it is parsable
-	if pt.TaskRef != nil && pt.TaskRef.Bundle != "" {
-		if _, err := name.ParseReference(pt.TaskRef.Bundle); err != nil {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("invalid bundle reference (%s)", err.Error()), "taskRef.bundle"))
-		}
 	}
 	return errs
 }

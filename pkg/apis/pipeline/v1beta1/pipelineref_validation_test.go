@@ -21,14 +21,10 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-	logtesting "knative.dev/pkg/logging/testing"
 )
 
 func TestPipelineRef_Invalid(t *testing.T) {
@@ -38,28 +34,6 @@ func TestPipelineRef_Invalid(t *testing.T) {
 		wantErr     *apis.FieldError
 		withContext func(context.Context) context.Context
 	}{{
-		name: "use of bundle without the feature flag set",
-		ref: &v1beta1.PipelineRef{
-			Name:   "my-pipeline",
-			Bundle: "docker.io/foo",
-		},
-		wantErr: apis.ErrGeneric("bundle requires \"enable-tekton-oci-bundles\" feature gate to be true but it is false"),
-	}, {
-		name: "bundle missing name",
-		ref: &v1beta1.PipelineRef{
-			Bundle: "docker.io/foo",
-		},
-		wantErr:     apis.ErrMissingField("name"),
-		withContext: enableTektonOCIBundles(t),
-	}, {
-		name: "invalid bundle reference",
-		ref: &v1beta1.PipelineRef{
-			Name:   "my-pipeline",
-			Bundle: "not a valid reference",
-		},
-		wantErr:     apis.ErrInvalidValue("invalid bundle reference", "bundle", "could not parse reference: not a valid reference"),
-		withContext: enableTektonOCIBundles(t),
-	}, {
 		name:    "pipelineRef without Pipeline Name",
 		ref:     &v1beta1.PipelineRef{},
 		wantErr: apis.ErrMissingField("name"),
@@ -137,22 +111,6 @@ func TestPipelineRef_Invalid(t *testing.T) {
 		wantErr: &apis.FieldError{
 			Message: `feature flag enable-concise-resolver-syntax should be set to true to use concise resolver syntax`,
 		},
-	}, {
-		name: "pipelineref params disallowed in conjunction with pipelineref bundle",
-		ref: &v1beta1.PipelineRef{
-			Bundle: "bar",
-			ResolverRef: v1beta1.ResolverRef{
-				Params: v1beta1.Params{{
-					Name: "foo",
-					Value: v1beta1.ParamValue{
-						Type:      v1beta1.ParamTypeString,
-						StringVal: "bar",
-					},
-				}},
-			},
-		},
-		wantErr:     apis.ErrMultipleOneOf("bundle", "params").Also(apis.ErrMissingField("resolver")),
-		withContext: enableTektonOCIBundles(t),
 	}}
 
 	for _, tc := range tests {
@@ -213,19 +171,5 @@ func TestPipelineRef_Valid(t *testing.T) {
 				t.Error(err)
 			}
 		})
-	}
-}
-
-func enableTektonOCIBundles(t *testing.T) func(context.Context) context.Context {
-	t.Helper()
-	return func(ctx context.Context) context.Context {
-		s := config.NewStore(logtesting.TestLogger(t))
-		s.OnConfigChanged(&corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
-			Data: map[string]string{
-				"enable-tekton-oci-bundles": "true",
-			},
-		})
-		return s.ToContext(ctx)
 	}
 }
