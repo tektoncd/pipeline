@@ -405,41 +405,42 @@ func replaceEnv(stepDir string) error {
 	for _, e := range os.Environ() {
 		pair := strings.SplitN(e, "=", 2)
 		matches := resultref.StepResultRegex.FindAllStringSubmatch(pair[1], -1)
+		v := pair[1]
 		for _, m := range matches {
 			replaceWith, _, err := findReplacement(stepDir, m[0])
 			if err != nil {
 				return err
 			}
-			os.Setenv(pair[0], strings.ReplaceAll(pair[1], m[0], replaceWith))
+			v = strings.ReplaceAll(v, m[0], replaceWith)
 		}
+		os.Setenv(pair[0], v)
 	}
 	return nil
 }
 
 // replaceCommandAndArgs performs replacements for step results in e.Command
 func replaceCommandAndArgs(command []string, stepDir string) ([]string, error) {
-	newCommand := []string{}
+	var newCommand []string
 	for _, c := range command {
 		matches := resultref.StepResultRegex.FindAllStringSubmatch(c, -1)
-		if len(matches) > 0 {
-			for _, m := range matches {
-				replaceWithString, replaceWithArray, err := findReplacement(stepDir, m[0])
-				if err != nil {
-					return nil, err
-				}
-				// if replacing with an array
-				if len(replaceWithArray) > 1 {
-					// append with the array items
-					newCommand = append(newCommand, replaceWithArray...)
-				} else {
-					// append with replaced string
-					c = strings.ReplaceAll(c, m[0], replaceWithString)
-					newCommand = append(newCommand, c)
-				}
+		newC := []string{c}
+		for _, m := range matches {
+			replaceWithString, replaceWithArray, err := findReplacement(stepDir, m[0])
+			if err != nil {
+				return []string{}, fmt.Errorf("failed to find replacement for %s to replace %s", m[0], c)
 			}
-		} else {
-			newCommand = append(newCommand, c)
+			// replaceWithString and replaceWithArray are mutually exclusive
+			if len(replaceWithArray) > 0 {
+				if c != m[0] {
+					// it has to be exact in "$(steps.<step-name>.results.<result-name>[*])" format, without anything else in the original string
+					return nil, errors.New("value must be in \"$(steps.<step-name>.results.<result-name>[*])\" format, when using array results")
+				}
+				newC = replaceWithArray
+			} else {
+				newC[0] = strings.ReplaceAll(newC[0], m[0], replaceWithString)
+			}
 		}
+		newCommand = append(newCommand, newC...)
 	}
 	return newCommand, nil
 }
