@@ -6783,6 +6783,19 @@ StepActionSpec
 <table>
 <tr>
 <td>
+<code>description</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Description is a user-facing description of the stepaction that may be
+used to populate a UI.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>image</code><br/>
 <em>
 string
@@ -7617,6 +7630,19 @@ Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>
+<code>description</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Description is a user-facing description of the stepaction that may be
+used to populate a UI.</p>
+</td>
+</tr>
 <tr>
 <td>
 <code>image</code><br/>
