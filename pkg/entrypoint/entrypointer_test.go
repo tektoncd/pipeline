@@ -786,15 +786,24 @@ func TestApplyStepResultSubstitutions_Env(t *testing.T) {
 		envValue:   "$(steps.foo.results.res.hello)",
 		want:       "World",
 		wantErr:    false,
-	}, {
-		name:       "bad-result-format",
-		stepName:   "foo",
-		resultName: "res",
-		result:     "{\"hello\":\"World\"}",
-		envValue:   "echo $(steps.foo.results.res.hello.bar)",
-		want:       "echo $(steps.foo.results.res.hello.bar)",
-		wantErr:    true,
-	}}
+	},
+		{
+			name:       "interpolation multiple matches",
+			stepName:   "foo",
+			resultName: "res",
+			result:     `{"first":"hello", "second":"world"}`,
+			envValue:   "$(steps.foo.results.res.first)-$(steps.foo.results.res.second)",
+			want:       "hello-world",
+			wantErr:    false,
+		}, {
+			name:       "bad-result-format",
+			stepName:   "foo",
+			resultName: "res",
+			result:     "{\"hello\":\"World\"}",
+			envValue:   "echo $(steps.foo.results.res.hello.bar)",
+			want:       "echo $(steps.foo.results.res.hello.bar)",
+			wantErr:    true,
+		}}
 	stepDir := createTmpDir(t, "env-steps")
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -875,7 +884,32 @@ func TestApplyStepResultSubstitutions_Command(t *testing.T) {
 		command:    []string{"echo $(steps.foo.results.res.hello.bar)"},
 		want:       []string{"echo $(steps.foo.results.res.hello.bar)"},
 		wantErr:    true,
-	}}
+	}, {
+		name:       "array param no index, with extra string",
+		stepName:   "foo",
+		resultName: "res",
+		result:     "[\"Hello\",\"World\"]",
+		command:    []string{"start", "$(steps.foo.results.res[*])bbb", "stop"},
+		want:       []string{"start", "$(steps.foo.results.res[*])bbb", "stop"},
+		wantErr:    true,
+	}, {
+		name:       "array param, multiple matches",
+		stepName:   "foo",
+		resultName: "res",
+		result:     "[\"Hello\",\"World\"]",
+		command:    []string{"$(steps.foo.results.res[0])-$(steps.foo.results.res[1])"},
+		want:       []string{"Hello-World"},
+		wantErr:    false,
+	}, {
+		name:       "object param, multiple matches",
+		stepName:   "foo",
+		resultName: "res",
+		result:     `{"first":"hello", "second":"world"}`,
+		command:    []string{"$(steps.foo.results.res.first)-$(steps.foo.results.res.second)"},
+		want:       []string{"hello-world"},
+		wantErr:    false,
+	},
+	}
 	stepDir := createTmpDir(t, "command-steps")
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
