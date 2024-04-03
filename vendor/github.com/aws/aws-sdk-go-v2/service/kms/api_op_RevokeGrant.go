@@ -11,7 +11,7 @@ import (
 )
 
 // Deletes the specified grant. You revoke a grant to terminate the permissions
-// that the grant allows. For more information, see Retiring and revoking grants (https://docs.aws.amazon.com/kms/latest/developerguide/managing-grants.html#grant-delete)
+// that the grant allows. For more information, see Retiring and revoking grants (https://docs.aws.amazon.com/kms/latest/developerguide/grant-manage.html#grant-delete)
 // in the Key Management Service Developer Guide . When you create, retire, or
 // revoke a grant, there might be a brief delay, usually less than five minutes,
 // until the grant is available throughout KMS. This state is known as eventual

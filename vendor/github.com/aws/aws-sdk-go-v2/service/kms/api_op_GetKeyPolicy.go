@@ -44,10 +44,9 @@ type GetKeyPolicyInput struct {
 	// This member is required.
 	KeyId *string
 
-	// Specifies the name of the key policy. The only valid name is default . To get
-	// the names of key policies, use ListKeyPolicies .
-	//
-	// This member is required.
+	// Specifies the name of the key policy. If no policy name is specified, the
+	// default value is default . The only valid name is default . To get the names of
+	// key policies, use ListKeyPolicies .
 	PolicyName *string
 
 	noSmithyDocumentSerde
@@ -57,6 +56,9 @@ type GetKeyPolicyOutput struct {
 
 	// A key policy document in JSON format.
 	Policy *string
+
+	// The name of the key policy. The only valid value is default .
+	PolicyName *string
 
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata

@@ -11790,6 +11790,15 @@ func awsAwsjson11_deserializeOpDocumentGetKeyPolicyOutput(v **GetKeyPolicyOutput
 				sv.Policy = ptr.String(jtv)
 			}
 
+		case "PolicyName":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected PolicyNameType to be of type string, got %T instead", value)
+				}
+				sv.PolicyName = ptr.String(jtv)
+			}
+
 		default:
 			_, _ = key, value
 

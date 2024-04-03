@@ -1,3 +1,13 @@
+# v1.30.0 (2024-03-18)
+
+* **Feature**: Adds the ability to use the default policy name by omitting the policyName parameter in calls to PutKeyPolicy and GetKeyPolicy
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.29.2 (2024-03-07)
+
+* **Bug Fix**: Remove dependency on go-cmp.
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.29.1 (2024-02-23)
 
 * **Bug Fix**: Move all common, SDK-side middleware stack ops into the service client module to prevent cross-module compatibility issues in the future.
