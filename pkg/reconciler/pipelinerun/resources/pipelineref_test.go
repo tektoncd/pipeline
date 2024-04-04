@@ -74,7 +74,8 @@ var (
 	unsignedV1beta1Pipeline = &v1beta1.Pipeline{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1beta1",
-			Kind:       "Pipeline"},
+			Kind:       "Pipeline",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "test-pipeline",
 			Namespace:   "trusted-resources",
@@ -553,6 +554,7 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 	}
 }
 
+//nolint:musttag
 func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 	ctx := context.Background()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
@@ -657,76 +659,77 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 		expected                   runtime.Object
 		expectedRefSource          *v1.RefSource
 		expectedVerificationResult *trustedresources.VerificationResult
-	}{{
-		name:                       "signed pipeline with matching policy pass verification with enforce no match policy",
-		requester:                  requesterMatched,
-		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
-		pipelinerun:                pr,
-		policies:                   vps,
-		expected:                   signedV1Pipeline,
-		expectedRefSource:          matchPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
-	}, {
-		name:                       "signed pipeline with matching policy pass verification with warn no match policy",
-		requester:                  requesterMatched,
-		verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
-		pipelinerun:                pr,
-		policies:                   vps,
-		expected:                   signedV1Pipeline,
-		expectedRefSource:          matchPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
-	}, {
-		name:                       "signed pipeline with matching policy pass verification with ignore no match policy",
-		requester:                  requesterMatched,
-		verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
-		pipelinerun:                pr,
-		policies:                   vps,
-		expected:                   signedV1Pipeline,
-		expectedRefSource:          matchPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
-	}, {
-		name:                       "warn unsigned pipeline without matching policies",
-		requester:                  requesterUnmatched,
-		verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
-		pipelinerun:                pr,
-		policies:                   vps,
-		expected:                   unsignedV1Pipeline,
-		expectedRefSource:          noMatchPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationWarn, Err: trustedresources.ErrNoMatchedPolicies},
-	}, {
-		name:                       "unsigned pipeline fails warn mode policies doesn't return error",
-		requester:                  requesterUnsignedMatched,
-		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
-		pipelinerun:                pr,
-		policies:                   vps,
-		expected:                   unsignedV1Pipeline,
-		expectedRefSource:          warnPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationWarn, Err: trustedresources.ErrResourceVerificationFailed},
-	}, {
-		name:                       "ignore unsigned pipeline without matching policies",
-		requester:                  requesterUnmatched,
-		verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
-		pipelinerun:                pr,
-		policies:                   vps,
-		expected:                   unsignedV1Pipeline,
-		expectedRefSource:          noMatchPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationSkip},
-	}, {
-		name:                      "signed pipeline in status no need to verify",
-		requester:                 requesterMatched,
-		verificationNoMatchPolicy: config.FailNoMatchPolicy,
-		pipelinerun:               prWithStatus,
-		policies:                  vps,
-		expected: &v1.Pipeline{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      signedV1Pipeline.Name,
-				Namespace: signedV1Pipeline.Namespace,
+	}{
+		{
+			name:                       "signed pipeline with matching policy pass verification with enforce no match policy",
+			requester:                  requesterMatched,
+			verificationNoMatchPolicy:  config.FailNoMatchPolicy,
+			pipelinerun:                pr,
+			policies:                   vps,
+			expected:                   signedV1Pipeline,
+			expectedRefSource:          matchPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
+		}, {
+			name:                       "signed pipeline with matching policy pass verification with warn no match policy",
+			requester:                  requesterMatched,
+			verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
+			pipelinerun:                pr,
+			policies:                   vps,
+			expected:                   signedV1Pipeline,
+			expectedRefSource:          matchPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
+		}, {
+			name:                       "signed pipeline with matching policy pass verification with ignore no match policy",
+			requester:                  requesterMatched,
+			verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
+			pipelinerun:                pr,
+			policies:                   vps,
+			expected:                   signedV1Pipeline,
+			expectedRefSource:          matchPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
+		}, {
+			name:                       "warn unsigned pipeline without matching policies",
+			requester:                  requesterUnmatched,
+			verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
+			pipelinerun:                pr,
+			policies:                   vps,
+			expected:                   unsignedV1Pipeline,
+			expectedRefSource:          noMatchPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationWarn, Err: trustedresources.ErrNoMatchedPolicies},
+		}, {
+			name:                       "unsigned pipeline fails warn mode policies doesn't return error",
+			requester:                  requesterUnsignedMatched,
+			verificationNoMatchPolicy:  config.FailNoMatchPolicy,
+			pipelinerun:                pr,
+			policies:                   vps,
+			expected:                   unsignedV1Pipeline,
+			expectedRefSource:          warnPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationWarn, Err: trustedresources.ErrResourceVerificationFailed},
+		}, {
+			name:                       "ignore unsigned pipeline without matching policies",
+			requester:                  requesterUnmatched,
+			verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
+			pipelinerun:                pr,
+			policies:                   vps,
+			expected:                   unsignedV1Pipeline,
+			expectedRefSource:          noMatchPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationSkip},
+		}, {
+			name:                      "signed pipeline in status no need to verify",
+			requester:                 requesterMatched,
+			verificationNoMatchPolicy: config.FailNoMatchPolicy,
+			pipelinerun:               prWithStatus,
+			policies:                  vps,
+			expected: &v1.Pipeline{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      signedV1Pipeline.Name,
+					Namespace: signedV1Pipeline.Namespace,
+				},
+				Spec: signedV1Pipeline.Spec,
 			},
-			Spec: signedV1Pipeline.Spec,
+			expectedRefSource:          noMatchPolicyRefSource,
+			expectedVerificationResult: nil,
 		},
-		expectedRefSource:          noMatchPolicyRefSource,
-		expectedVerificationResult: nil,
-	},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -756,6 +759,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 	}
 }
 
+//nolint:musttag
 func TestGetPipelineFunc_V1beta1Pipeline_VerifyError(t *testing.T) {
 	ctx := context.Background()
 	tektonclient := fake.NewSimpleClientset()
@@ -875,6 +879,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyError(t *testing.T) {
 	}
 }
 
+//nolint:musttag
 func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 	ctx := context.Background()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
@@ -987,76 +992,77 @@ func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 		expected                   runtime.Object
 		expectedRefSource          *v1.RefSource
 		expectedVerificationResult *trustedresources.VerificationResult
-	}{{
-		name:                       "signed pipeline with matching policy pass verification with enforce no match policy",
-		requester:                  requesterMatched,
-		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
-		pipelinerun:                pr,
-		policies:                   vps,
-		expected:                   signedPipeline,
-		expectedRefSource:          matchPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
-	}, {
-		name:                       "signed pipeline with matching policy pass verification with warn no match policy",
-		requester:                  requesterMatched,
-		verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
-		pipelinerun:                pr,
-		policies:                   vps,
-		expected:                   signedPipeline,
-		expectedRefSource:          matchPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
-	}, {
-		name:                       "signed pipeline with matching policy pass verification with ignore no match policy",
-		requester:                  requesterMatched,
-		verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
-		pipelinerun:                pr,
-		policies:                   vps,
-		expected:                   signedPipeline,
-		expectedRefSource:          matchPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
-	}, {
-		name:                       "warn unsigned pipeline without matching policies",
-		requester:                  requesterUnmatched,
-		verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
-		pipelinerun:                pr,
-		policies:                   vps,
-		expected:                   unsignedV1Pipeline,
-		expectedRefSource:          noMatchPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationWarn, Err: trustedresources.ErrNoMatchedPolicies},
-	}, {
-		name:                       "unsigned pipeline fails warn mode policies doesn't return error",
-		requester:                  requesterUnsignedMatched,
-		verificationNoMatchPolicy:  config.FailNoMatchPolicy,
-		pipelinerun:                pr,
-		policies:                   vps,
-		expected:                   unsignedV1Pipeline,
-		expectedRefSource:          warnPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationWarn, Err: trustedresources.ErrResourceVerificationFailed},
-	}, {
-		name:                       "ignore unsigned pipeline without matching policies",
-		requester:                  requesterUnmatched,
-		verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
-		pipelinerun:                pr,
-		policies:                   vps,
-		expected:                   unsignedV1Pipeline,
-		expectedRefSource:          noMatchPolicyRefSource,
-		expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationSkip},
-	}, {
-		name:                      "signed pipeline in status no need to verify",
-		requester:                 requesterMatched,
-		verificationNoMatchPolicy: config.FailNoMatchPolicy,
-		pipelinerun:               prWithStatus,
-		policies:                  vps,
-		expected: &v1.Pipeline{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      signedPipeline.Name,
-				Namespace: signedPipeline.Namespace,
+	}{
+		{
+			name:                       "signed pipeline with matching policy pass verification with enforce no match policy",
+			requester:                  requesterMatched,
+			verificationNoMatchPolicy:  config.FailNoMatchPolicy,
+			pipelinerun:                pr,
+			policies:                   vps,
+			expected:                   signedPipeline,
+			expectedRefSource:          matchPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
+		}, {
+			name:                       "signed pipeline with matching policy pass verification with warn no match policy",
+			requester:                  requesterMatched,
+			verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
+			pipelinerun:                pr,
+			policies:                   vps,
+			expected:                   signedPipeline,
+			expectedRefSource:          matchPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
+		}, {
+			name:                       "signed pipeline with matching policy pass verification with ignore no match policy",
+			requester:                  requesterMatched,
+			verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
+			pipelinerun:                pr,
+			policies:                   vps,
+			expected:                   signedPipeline,
+			expectedRefSource:          matchPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationPass},
+		}, {
+			name:                       "warn unsigned pipeline without matching policies",
+			requester:                  requesterUnmatched,
+			verificationNoMatchPolicy:  config.WarnNoMatchPolicy,
+			pipelinerun:                pr,
+			policies:                   vps,
+			expected:                   unsignedV1Pipeline,
+			expectedRefSource:          noMatchPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationWarn, Err: trustedresources.ErrNoMatchedPolicies},
+		}, {
+			name:                       "unsigned pipeline fails warn mode policies doesn't return error",
+			requester:                  requesterUnsignedMatched,
+			verificationNoMatchPolicy:  config.FailNoMatchPolicy,
+			pipelinerun:                pr,
+			policies:                   vps,
+			expected:                   unsignedV1Pipeline,
+			expectedRefSource:          warnPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationWarn, Err: trustedresources.ErrResourceVerificationFailed},
+		}, {
+			name:                       "ignore unsigned pipeline without matching policies",
+			requester:                  requesterUnmatched,
+			verificationNoMatchPolicy:  config.IgnoreNoMatchPolicy,
+			pipelinerun:                pr,
+			policies:                   vps,
+			expected:                   unsignedV1Pipeline,
+			expectedRefSource:          noMatchPolicyRefSource,
+			expectedVerificationResult: &trustedresources.VerificationResult{VerificationResultType: trustedresources.VerificationSkip},
+		}, {
+			name:                      "signed pipeline in status no need to verify",
+			requester:                 requesterMatched,
+			verificationNoMatchPolicy: config.FailNoMatchPolicy,
+			pipelinerun:               prWithStatus,
+			policies:                  vps,
+			expected: &v1.Pipeline{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      signedPipeline.Name,
+					Namespace: signedPipeline.Namespace,
+				},
+				Spec: signedPipeline.Spec,
 			},
-			Spec: signedPipeline.Spec,
+			expectedRefSource:          noMatchPolicyRefSource,
+			expectedVerificationResult: nil,
 		},
-		expectedRefSource:          noMatchPolicyRefSource,
-		expectedVerificationResult: nil,
-	},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1086,6 +1092,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 	}
 }
 
+//nolint:musttag
 func TestGetPipelineFunc_V1Pipeline_VerifyError(t *testing.T) {
 	ctx := context.Background()
 	tektonclient := fake.NewSimpleClientset()
@@ -1202,6 +1209,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyError(t *testing.T) {
 	}
 }
 
+//nolint:musttag
 func TestGetPipelineFunc_GetFuncError(t *testing.T) {
 	ctx := context.Background()
 	tektonclient := fake.NewSimpleClientset()
@@ -1215,7 +1223,7 @@ func TestGetPipelineFunc_GetFuncError(t *testing.T) {
 
 	resolvedUnsigned := test.NewResolvedResource(unsignedPipelineBytes, nil, sampleRefSource.DeepCopy(), nil)
 	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
-	resolvedUnsigned.DataErr = fmt.Errorf("resolution error")
+	resolvedUnsigned.DataErr = errors.New("resolution error")
 
 	prResolutionError := &v1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
@@ -1361,7 +1369,7 @@ func getSignedV1Pipeline(unsigned *v1.Pipeline, signer signature.Signer, name st
 
 func signInterface(signer signature.Signer, i interface{}) ([]byte, error) {
 	if signer == nil {
-		return nil, fmt.Errorf("signer is nil")
+		return nil, errors.New("signer is nil")
 	}
 	b, err := json.Marshal(i)
 	if err != nil {

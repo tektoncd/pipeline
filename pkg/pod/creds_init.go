@@ -18,6 +18,7 @@ package pod
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 
@@ -106,7 +107,7 @@ func credsInit(ctx context.Context, serviceAccountName, namespace string, kubecl
 			// While secret names can use RFC1123 DNS subdomain name rules, the volume mount
 			// name required the stricter DNS label standard, for example no dots anymore.
 			sanitizedName := dnsLabel1123Forbidden.ReplaceAllString(secret.Name, "-")
-			name := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("tekton-internal-secret-volume-%s", sanitizedName))
+			name := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("tekton-internal-secret-volume-" + sanitizedName)
 			volumeMounts = append(volumeMounts, corev1.VolumeMount{
 				Name:      name,
 				MountPath: credentials.VolumeName(secret.Name),
@@ -159,7 +160,7 @@ func checkGitSSHSecret(ctx context.Context, secret *corev1.Secret) error {
 
 	if secret.Type == corev1.SecretTypeSSHAuth && cfg.FeatureFlags.RequireGitSSHSecretKnownHosts {
 		if _, ok := secret.Data[sshKnownHosts]; !ok {
-			return fmt.Errorf("TaskRun validation failed. Git SSH Secret must have \"known_hosts\" included " +
+			return errors.New("TaskRun validation failed. Git SSH Secret must have \"known_hosts\" included " +
 				"when feature flag \"require-git-ssh-secret-known-hosts\" is set to true")
 		}
 	}

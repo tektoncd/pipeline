@@ -18,7 +18,6 @@ package v1alpha1_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -159,7 +158,7 @@ func TestRun_Invalid(t *testing.T) {
 				StatusMessage: v1alpha1.RunSpecStatusMessage(invalidStatusMessage),
 			},
 		},
-		want: apis.ErrInvalidValue(fmt.Sprintf("statusMessage should not be set if status is not set, but it is currently set to %s", invalidStatusMessage), "statusMessage"),
+		want: apis.ErrInvalidValue("statusMessage should not be set if status is not set, but it is currently set to "+invalidStatusMessage, "statusMessage"),
 	}, {
 		name: "non-unique params",
 		run: &v1alpha1.Run{

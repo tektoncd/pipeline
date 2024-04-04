@@ -527,7 +527,7 @@ func TestResolve(t *testing.T) {
 			APISecretNamespaceKey: system.Namespace(),
 		},
 		expectedStatus: internal.CreateResolutionRequestFailureStatus(),
-		expectedErr:    createError(fmt.Sprintf("cannot get API token, secret token-secret not found in namespace %s", system.Namespace())),
+		expectedErr:    createError("cannot get API token, secret token-secret not found in namespace " + system.Namespace()),
 	}, {
 		name: "api: token secret name not specified",
 		args: &params{
@@ -765,7 +765,7 @@ func writeAndCommitToTestRepo(t *testing.T, worktree *git.Worktree, repoDir stri
 		targetDir = filepath.Join(targetDir, subPath)
 		fi, err := os.Stat(targetDir)
 		if os.IsNotExist(err) {
-			if err := os.MkdirAll(targetDir, 0700); err != nil {
+			if err := os.MkdirAll(targetDir, 0o700); err != nil {
 				t.Fatalf("couldn't create directory %s in worktree: %v", targetDir, err)
 			}
 		} else if err != nil {
@@ -777,7 +777,7 @@ func writeAndCommitToTestRepo(t *testing.T, worktree *git.Worktree, repoDir stri
 	}
 
 	outfile := filepath.Join(targetDir, filename)
-	if err := os.WriteFile(outfile, content, 0600); err != nil {
+	if err := os.WriteFile(outfile, content, 0o600); err != nil {
 		t.Fatalf("couldn't write content to file %s: %v", outfile, err)
 	}
 

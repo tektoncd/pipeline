@@ -40,10 +40,10 @@ import (
 func TestLookForResults_FanOutAndWait(t *testing.T) {
 	for _, c := range []struct {
 		desc    string
-		results []SidecarLogResult
+		Results []SidecarLogResult `json:"result"`
 	}{{
 		desc: "multiple results",
-		results: []SidecarLogResult{{
+		Results: []SidecarLogResult{{
 			Name:  "foo",
 			Value: "bar",
 			Type:  "task",
@@ -57,7 +57,7 @@ func TestLookForResults_FanOutAndWait(t *testing.T) {
 			dir := t.TempDir()
 			resultNames := []string{}
 			wantResults := []byte{}
-			for _, result := range c.results {
+			for _, result := range c.Results {
 				createResult(t, dir, result.Name, result.Value)
 				resultNames = append(resultNames, result.Name)
 				encodedResult, err := json.Marshal(result)
@@ -363,7 +363,7 @@ func TestParseResults_InvalidType(t *testing.T) {
 	}
 	for _, plog := range podLogs {
 		_, err := parseResults([]byte(plog), 4096)
-		wantErr := fmt.Errorf("invalid sidecar result type not task or step. Must be task or step")
+		wantErr := errors.New("invalid sidecar result type not task or step. Must be task or step")
 		if d := cmp.Diff(wantErr.Error(), err.Error()); d != "" {
 			t.Fatal(diff.PrintWantGot(d))
 		}
@@ -468,7 +468,7 @@ func TestExtractStepAndResultFromSidecarResultName(t *testing.T) {
 func TestExtractStepAndResultFromSidecarResultName_Error(t *testing.T) {
 	sidecarResultName := "step-foo-resultName"
 	_, _, err := ExtractStepAndResultFromSidecarResultName(sidecarResultName)
-	wantErr := fmt.Errorf("invalid string step-foo-resultName : expected somtthing that looks like <stepName>.<resultName>")
+	wantErr := errors.New("invalid string step-foo-resultName : expected somtthing that looks like <stepName>.<resultName>")
 	if d := cmp.Diff(wantErr.Error(), err.Error()); d != "" {
 		t.Fatal(diff.PrintWantGot(d))
 	}
@@ -477,9 +477,9 @@ func TestExtractStepAndResultFromSidecarResultName_Error(t *testing.T) {
 func createStepResult(t *testing.T, dir, stepName, resultName, resultValue string) {
 	t.Helper()
 	resultDir := filepath.Join(dir, stepName, "results")
-	_ = os.MkdirAll(resultDir, 0755)
+	_ = os.MkdirAll(resultDir, 0o755)
 	resultFile := filepath.Join(resultDir, resultName)
-	err := os.WriteFile(resultFile, []byte(resultValue), 0644)
+	err := os.WriteFile(resultFile, []byte(resultValue), 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -488,7 +488,7 @@ func createStepResult(t *testing.T, dir, stepName, resultName, resultValue strin
 func createResult(t *testing.T, dir string, resultName string, resultValue string) {
 	t.Helper()
 	resultFile := filepath.Join(dir, resultName)
-	err := os.WriteFile(resultFile, []byte(resultValue), 0644)
+	err := os.WriteFile(resultFile, []byte(resultValue), 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -497,12 +497,12 @@ func createResult(t *testing.T, dir string, resultName string, resultValue strin
 func createRun(t *testing.T, dir string, causeErr bool) {
 	t.Helper()
 	stepFile := filepath.Join(dir, "1")
-	_ = os.Mkdir(stepFile, 0755)
+	_ = os.Mkdir(stepFile, 0o755)
 	stepFile = filepath.Join(stepFile, "out")
 	if causeErr {
 		stepFile += ".err"
 	}
-	err := os.WriteFile(stepFile, []byte(""), 0644)
+	err := os.WriteFile(stepFile, []byte(""), 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}

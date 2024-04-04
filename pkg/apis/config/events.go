@@ -17,7 +17,7 @@ limitations under the License.
 package config
 
 import (
-	"fmt"
+	"errors"
 	"os"
 	"sort"
 	"strings"
@@ -106,17 +106,17 @@ func (efs EventFormats) Equals(other EventFormats) bool {
 func ParseEventFormats(formats string) (EventFormats, error) {
 	// An empty string is not a valid configuration
 	if formats == "" {
-		return EventFormats{}, fmt.Errorf("formats cannot be empty")
+		return EventFormats{}, errors.New("formats cannot be empty")
 	}
 	stringFormats := strings.Split(formats, ",")
 	var eventFormats EventFormats = make(map[EventFormat]struct{}, len(stringFormats))
 	for _, format := range stringFormats {
 		if !EventFormat(format).IsValid() {
-			return EventFormats{}, fmt.Errorf("invalid format: %s", format)
+			return EventFormats{}, errors.New("invalid format: " + format)
 		}
 		// If already in the map (duplicate), fail
 		if _, ok := eventFormats[EventFormat(format)]; ok {
-			return EventFormats{}, fmt.Errorf("duplicate format: %s", format)
+			return EventFormats{}, errors.New("duplicate format: " + format)
 		}
 		eventFormats[EventFormat(format)] = struct{}{}
 	}

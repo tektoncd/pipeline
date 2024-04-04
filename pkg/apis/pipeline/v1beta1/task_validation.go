@@ -50,16 +50,20 @@ const (
 	objectVariableNameFormat = "^[_a-zA-Z][_a-zA-Z0-9-]*$"
 )
 
-var _ apis.Validatable = (*Task)(nil)
-var _ resourcesemantics.VerbLimited = (*Task)(nil)
+var (
+	_ apis.Validatable              = (*Task)(nil)
+	_ resourcesemantics.VerbLimited = (*Task)(nil)
+)
 
 // SupportedVerbs returns the operations that validation should be called for
 func (t *Task) SupportedVerbs() []admissionregistrationv1.OperationType {
 	return []admissionregistrationv1.OperationType{admissionregistrationv1.Create, admissionregistrationv1.Update}
 }
 
-var stringAndArrayVariableNameFormatRegex = regexp.MustCompile(stringAndArrayVariableNameFormat)
-var objectVariableNameFormatRegex = regexp.MustCompile(objectVariableNameFormat)
+var (
+	stringAndArrayVariableNameFormatRegex = regexp.MustCompile(stringAndArrayVariableNameFormat)
+	objectVariableNameFormatRegex         = regexp.MustCompile(objectVariableNameFormat)
+)
 
 // Validate implements apis.Validatable
 func (t *Task) Validate(ctx context.Context) *apis.FieldError {
@@ -117,7 +121,7 @@ func validateObjectParamsHaveProperties(ctx context.Context, params ParamSpecs) 
 	var errs *apis.FieldError
 	for _, p := range params {
 		if p.Type == ParamTypeObject && p.Properties == nil {
-			errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("%s.properties", p.Name)))
+			errs = errs.Also(apis.ErrMissingField(p.Name + ".properties"))
 		}
 	}
 	return errs
@@ -482,7 +486,7 @@ func (p ParamSpec) ValidateType(ctx context.Context) *apis.FieldError {
 		}
 	}
 	if !validType {
-		return apis.ErrInvalidValue(p.Type, fmt.Sprintf("%s.type", p.Name))
+		return apis.ErrInvalidValue(p.Type, p.Name+".type")
 	}
 
 	// If a default value is provided, ensure its type matches param's declared type.
@@ -491,8 +495,8 @@ func (p ParamSpec) ValidateType(ctx context.Context) *apis.FieldError {
 			Message: fmt.Sprintf(
 				"\"%v\" type does not match default value's type: \"%v\"", p.Type, p.Default.Type),
 			Paths: []string{
-				fmt.Sprintf("%s.type", p.Name),
-				fmt.Sprintf("%s.default.type", p.Name),
+				p.Name + ".type",
+				p.Name + ".default.type",
 			},
 		}
 	}
@@ -515,7 +519,7 @@ func (p ParamSpec) ValidateObjectType(ctx context.Context) *apis.FieldError {
 	if len(invalidKeys) != 0 {
 		return &apis.FieldError{
 			Message: fmt.Sprintf("The value type specified for these keys %v is invalid", invalidKeys),
-			Paths:   []string{fmt.Sprintf("%s.properties", p.Name)},
+			Paths:   []string{p.Name + ".properties"},
 		}
 	}
 
@@ -575,7 +579,7 @@ func validateObjectUsage(ctx context.Context, steps []Step, params []ParamSpec) 
 		}
 
 		// check if the object's key names are referenced correctly i.e. param.objectParam.key1
-		errs = errs.Also(validateVariables(ctx, steps, fmt.Sprintf("params\\.%s", p.Name), objectKeys))
+		errs = errs.Also(validateVariables(ctx, steps, "params\\."+p.Name, objectKeys))
 	}
 
 	return errs.Also(validateObjectUsageAsWhole(steps, "params", objectParameterNames))

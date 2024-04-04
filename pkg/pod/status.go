@@ -602,7 +602,7 @@ func getFailureMessage(logger *zap.SugaredLogger, pod *corev1.Pod) string {
 	// First, try to surface an error about the actual init container that failed.
 	for _, status := range pod.Status.InitContainerStatuses {
 		if msg := extractContainerFailureMessage(logger, status, pod.ObjectMeta); len(msg) > 0 {
-			return fmt.Sprintf("init container failed, %s", msg)
+			return "init container failed, " + msg
 		}
 	}
 

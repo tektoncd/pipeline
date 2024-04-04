@@ -33,7 +33,7 @@ type ResolverName string
 type Requester interface {
 	// Submit accepts the name of a resolver to submit a request to
 	// along with the request itself.
-	Submit(context.Context, ResolverName, Request) (ResolvedResource, error)
+	Submit(ctx context.Context, name ResolverName, req Request) (ResolvedResource, error)
 }
 
 // Request is implemented by any type that represents a single request

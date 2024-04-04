@@ -18,7 +18,6 @@ package v1_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -575,7 +574,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			},
 			StatusMessage: v1.TaskRunSpecStatusMessage(invalidStatusMessage),
 		},
-		wantErr: apis.ErrInvalidValue(fmt.Sprintf("statusMessage should not be set if status is not set, but it is currently set to %s", invalidStatusMessage), "statusMessage"),
+		wantErr: apis.ErrInvalidValue("statusMessage should not be set if status is not set, but it is currently set to "+invalidStatusMessage, "statusMessage"),
 	}, {
 		name: "invalid taskspec",
 		spec: v1.TaskRunSpec{

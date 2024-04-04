@@ -72,7 +72,7 @@ func TestTektonBundlesSimpleWorkingExample(t *testing.T) {
 	taskName := helpers.ObjectNameForTest(t)
 	pipelineName := helpers.ObjectNameForTest(t)
 	pipelineRunName := helpers.ObjectNameForTest(t)
-	repo := fmt.Sprintf("%s:5000/tektonbundlessimple", getRegistryServiceIP(ctx, t, c, namespace))
+	repo := getRegistryServiceIP(ctx, t, c, namespace) + ":5000/tektonbundlessimple"
 	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -133,7 +133,6 @@ spec:
 		t.Fatal("Error getting a PodName (empty)")
 	}
 	p, err := c.KubeClient.CoreV1().Pods(namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
-
 	if err != nil {
 		t.Fatalf("Error getting pod `%s` in namespace `%s`", tr.Status.PodName, namespace)
 	}
@@ -165,7 +164,7 @@ func TestTektonBundlesResolver(t *testing.T) {
 	taskName := helpers.ObjectNameForTest(t)
 	pipelineName := helpers.ObjectNameForTest(t)
 	pipelineRunName := helpers.ObjectNameForTest(t)
-	repo := fmt.Sprintf("%s:5000/tektonbundlesresolver", getRegistryServiceIP(ctx, t, c, namespace))
+	repo := getRegistryServiceIP(ctx, t, c, namespace) + ":5000/tektonbundlesresolver"
 
 	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
@@ -237,7 +236,6 @@ spec:
 		t.Fatal("Error getting a PodName (empty)")
 	}
 	p, err := c.KubeClient.CoreV1().Pods(namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
-
 	if err != nil {
 		t.Fatalf("Error getting pod `%s` in namespace `%s`", tr.Status.PodName, namespace)
 	}
@@ -268,7 +266,7 @@ func TestTektonBundlesUsingRegularImage(t *testing.T) {
 	taskName := helpers.ObjectNameForTest(t)
 	pipelineName := helpers.ObjectNameForTest(t)
 	pipelineRunName := helpers.ObjectNameForTest(t)
-	repo := fmt.Sprintf("%s:5000/tektonbundlesregularimage", getRegistryServiceIP(ctx, t, c, namespace))
+	repo := getRegistryServiceIP(ctx, t, c, namespace) + ":5000/tektonbundlesregularimage"
 
 	pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
@@ -321,7 +319,7 @@ func TestTektonBundlesUsingImproperFormat(t *testing.T) {
 	taskName := helpers.ObjectNameForTest(t)
 	pipelineName := helpers.ObjectNameForTest(t)
 	pipelineRunName := helpers.ObjectNameForTest(t)
-	repo := fmt.Sprintf("%s:5000/tektonbundlesimproperformat", getRegistryServiceIP(ctx, t, c, namespace))
+	repo := getRegistryServiceIP(ctx, t, c, namespace) + ":5000/tektonbundlesimproperformat"
 
 	ref, err := name.ParseReference(repo)
 	if err != nil {

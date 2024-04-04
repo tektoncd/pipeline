@@ -32,8 +32,10 @@ import (
 	"knative.dev/pkg/webhook/resourcesemantics"
 )
 
-var _ apis.Validatable = (*TaskRun)(nil)
-var _ resourcesemantics.VerbLimited = (*TaskRun)(nil)
+var (
+	_ apis.Validatable              = (*TaskRun)(nil)
+	_ resourcesemantics.VerbLimited = (*TaskRun)(nil)
+)
 
 // SupportedVerbs returns the operations that validation should be called for
 func (tr *TaskRun) SupportedVerbs() []admissionregistrationv1.OperationType {
@@ -100,7 +102,7 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if ts.Timeout != nil {
 		// timeout should be a valid duration of at least 0.
 		if ts.Timeout.Duration < 0 {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", ts.Timeout.Duration.String()), "timeout"))
+			errs = errs.Also(apis.ErrInvalidValue(ts.Timeout.Duration.String()+" should be >= 0", "timeout"))
 		}
 	}
 	if ts.PodTemplate != nil {
@@ -191,14 +193,14 @@ func combineParamSpec(p ParamSpec, paramSpecForValidation map[string]ParamSpec) 
 			}
 			// If Default values of object type are provided then Properties must also be fully declared.
 			if p.Properties == nil {
-				return paramSpecForValidation, apis.ErrMissingField(fmt.Sprintf("%s.properties", p.Name))
+				return paramSpecForValidation, apis.ErrMissingField(p.Name + ".properties")
 			}
 		}
 
 		// Properties must be defined if paramSpec is of object Type
 		if pSpec.Type == ParamTypeObject {
 			if p.Properties == nil {
-				return paramSpecForValidation, apis.ErrMissingField(fmt.Sprintf("%s.properties", p.Name))
+				return paramSpecForValidation, apis.ErrMissingField(p.Name + ".properties")
 			}
 			// Expect Properties to be complete
 			pSpec.Properties = p.Properties
@@ -219,7 +221,7 @@ func validateDebug(db *TaskRunDebug) (errs *apis.FieldError) {
 		return errs
 	}
 	if db.Breakpoints.OnFailure != "" && db.Breakpoints.OnFailure != EnabledOnFailureBreakpoint {
-		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s is not a valid onFailure breakpoint value, onFailure breakpoint is only allowed to be set as enabled", db.Breakpoints.OnFailure), "breakpoints.onFailure"))
+		errs = errs.Also(apis.ErrInvalidValue(db.Breakpoints.OnFailure+" is not a valid onFailure breakpoint value, onFailure breakpoint is only allowed to be set as enabled", "breakpoints.onFailure"))
 	}
 	return errs
 }

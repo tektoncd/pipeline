@@ -1172,7 +1172,7 @@ func TestBundleConversion(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	repo := fmt.Sprintf("%s:5000/tektonbundlessimple", getRegistryServiceIP(ctx, t, c, namespace))
+	repo := getRegistryServiceIP(ctx, t, c, namespace) + ":5000/tektonbundlessimple"
 	taskName := helpers.ObjectNameForTest(t)
 	pipelineName := helpers.ObjectNameForTest(t)
 	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(v1beta1TaskWithBundleYaml, taskName, namespace))

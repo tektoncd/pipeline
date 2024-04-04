@@ -286,6 +286,6 @@ func (r *Resolver) getBasicAuthSecret(ctx context.Context, params map[string]str
 		r.logger.Info(err)
 		return "", err
 	}
-	return fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString(
-		[]byte(fmt.Sprintf("%s:%s", userName, secretVal)))), nil
+	return "Basic " + base64.StdEncoding.EncodeToString(
+		[]byte(fmt.Sprintf("%s:%s", userName, secretVal))), nil
 }

@@ -189,7 +189,7 @@ func readTarLayer(layer v1.Layer) (runtime.Object, error) {
 	treader := tar.NewReader(rc)
 	header, err := treader.Next()
 	if err != nil {
-		return nil, fmt.Errorf("layer is not a tarball")
+		return nil, errors.New("layer is not a tarball")
 	}
 
 	contents := make([]byte, header.Size)

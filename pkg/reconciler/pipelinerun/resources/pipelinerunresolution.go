@@ -676,7 +676,7 @@ func GetTaskRunName(childRefs []v1.ChildStatusReference, ptName, prName string) 
 			return cr.Name
 		}
 	}
-	return kmeta.ChildName(prName, fmt.Sprintf("-%s", ptName))
+	return kmeta.ChildName(prName, "-"+ptName)
 }
 
 // GetNamesOfTaskRuns should return unique names for `TaskRuns` if one has not already been defined, and the existing one otherwise.
@@ -702,7 +702,7 @@ func getNewRunNames(ptName, prName string, numberOfRuns int) []string {
 	var taskRunNames []string
 	// If it is a singular TaskRun/CustomRun, we only append the ptName
 	if numberOfRuns == 1 {
-		taskRunName := kmeta.ChildName(prName, fmt.Sprintf("-%s", ptName))
+		taskRunName := kmeta.ChildName(prName, "-"+ptName)
 		return append(taskRunNames, taskRunName)
 	}
 	// For a matrix we append i to then end of the fanned out TaskRuns "matrixed-pr-taskrun-0"
@@ -710,7 +710,7 @@ func getNewRunNames(ptName, prName string, numberOfRuns int) []string {
 		taskRunName := kmeta.ChildName(prName, fmt.Sprintf("-%s-%d", ptName, i))
 		// check if the taskRun name ends with a matrix instance count
 		if !strings.HasSuffix(taskRunName, fmt.Sprintf("-%d", i)) {
-			taskRunName = kmeta.ChildName(prName, fmt.Sprintf("-%s", ptName))
+			taskRunName = kmeta.ChildName(prName, "-"+ptName)
 			// kmeta.ChildName limits the size of a name to max of 63 characters based on k8s guidelines
 			// truncate the name such that "-<matrix-id>" can be appended to the taskRun name
 			longest := 63 - len(fmt.Sprintf("-%d", numberOfRuns))
@@ -733,7 +733,7 @@ func getCustomRunName(childRefs []v1.ChildStatusReference, ptName, prName string
 		}
 	}
 
-	return kmeta.ChildName(prName, fmt.Sprintf("-%s", ptName))
+	return kmeta.ChildName(prName, "-"+ptName)
 }
 
 // getNamesOfCustomRuns should return a unique names for `CustomRuns` if they have not already been defined,

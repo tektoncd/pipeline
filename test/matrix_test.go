@@ -21,6 +21,7 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -33,14 +34,11 @@ import (
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
-
-	"fmt"
 )
 
-var (
-	requireAlphaFeatureFlag = requireAnyGate(map[string]string{
-		"enable-api-fields": "alpha"})
-)
+var requireAlphaFeatureFlag = requireAnyGate(map[string]string{
+	"enable-api-fields": "alpha",
+})
 
 // TestPipelineRunMatrixed is an integration test that verifies that a Matrixed PipelineRun
 // succeeds with both `matrix params` and `matrix include params`. It also tests array indexing
@@ -363,7 +361,7 @@ spec:
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 	}
 
-	actualTaskrunList, err := c.V1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", prName)})
+	actualTaskrunList, err := c.V1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + prName})
 	if err != nil {
 		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", prName, err)
 	}

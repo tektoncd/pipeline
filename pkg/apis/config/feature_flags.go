@@ -146,13 +146,15 @@ var (
 	DefaultEnableStepActions = PerFeatureFlag{
 		Name:      EnableStepActions,
 		Stability: AlphaAPIFields,
-		Enabled:   DefaultAlphaFeatureEnabled}
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
 
 	// DefaultEnableArtifacts is the default PerFeatureFlag value for EnableStepActions
 	DefaultEnableArtifacts = PerFeatureFlag{
 		Name:      EnableStepActions,
 		Stability: AlphaAPIFields,
-		Enabled:   DefaultAlphaFeatureEnabled}
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
 
 	// DefaultEnableParamEnum is the default PerFeatureFlag value for EnableParamEnum
 	DefaultEnableParamEnum = PerFeatureFlag{
@@ -164,8 +166,6 @@ var (
 
 // FeatureFlags holds the features configurations
 // +k8s:deepcopy-gen=true
-//
-//nolint:musttag
 type FeatureFlags struct {
 	DisableAffinityAssistant         bool
 	DisableCredsInit                 bool
@@ -349,7 +349,7 @@ func setCoschedule(cfgMap map[string]string, defaultValue string, disabledAffini
 // setEnforceNonFalsifiability sets the "enforce-nonfalsifiability" flag based on the content of a given map.
 // If the feature gate is invalid, then an error is returned.
 func setEnforceNonFalsifiability(cfgMap map[string]string, feature *string) error {
-	var value = DefaultEnforceNonfalsifiability
+	value := DefaultEnforceNonfalsifiability
 	if cfg, ok := cfgMap[enforceNonfalsifiability]; ok {
 		value = strings.ToLower(cfg)
 	}
@@ -393,7 +393,7 @@ func setMaxResultSize(cfgMap map[string]string, defaultValue int, feature *int) 
 	}
 	// if max limit is > 1.5 MB (CRD limit).
 	if value >= 1572864 {
-		return fmt.Errorf("invalid value for feature flag %q: %q. This is exceeding the CRD limit", resultExtractionMethod, fmt.Sprint(value))
+		return fmt.Errorf("invalid value for feature flag %q: %q. This is exceeding the CRD limit", resultExtractionMethod, strconv.Itoa(value))
 	}
 	*feature = value
 	return nil

@@ -139,14 +139,14 @@ spec:
 			sidecarTerminated := false
 
 			for _, c := range pod.Status.ContainerStatuses {
-				if c.Name == fmt.Sprintf("step-%s", primaryContainerName) {
+				if c.Name == "step-"+primaryContainerName {
 					if c.State.Terminated == nil || c.State.Terminated.Reason != "Completed" {
 						t.Errorf("Primary container has nil Terminated state or did not complete successfully. Actual Terminated state: %v", c.State.Terminated)
 					} else {
 						primaryTerminated = true
 					}
 				}
-				if c.Name == fmt.Sprintf("sidecar-%s", sidecarContainerName) {
+				if c.Name == "sidecar-"+sidecarContainerName {
 					if c.State.Terminated == nil {
 						t.Errorf("Sidecar container has a nil Terminated status but non-nil is expected.")
 					} else {
@@ -167,7 +167,7 @@ spec:
 			sidecarFromStatus := trCheckSidecarStatus.Status.Sidecars[0]
 
 			// Check if Sidecar ContainerName is present for SidecarStatus
-			if sidecarFromStatus.Container != fmt.Sprintf("sidecar-%s", sidecarContainerName) {
+			if sidecarFromStatus.Container != "sidecar-"+sidecarContainerName {
 				t.Errorf("Sidecar ContainerName should be: %s", sidecarContainerName)
 			}
 

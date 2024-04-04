@@ -87,14 +87,14 @@ func TestValidateParams(t *testing.T) {
 		}, {
 			name:        "invalid/url",
 			url:         "xttps:ufoo/bar/",
-			expectedErr: fmt.Errorf(`url xttps:ufoo/bar/ is not a valid http(s) url`),
+			expectedErr: errors.New(`url xttps:ufoo/bar/ is not a valid http(s) url`),
 		}, {
 			name:        "invalid/url empty",
 			url:         "",
-			expectedErr: fmt.Errorf(`cannot parse url : parse "": empty url`),
+			expectedErr: errors.New(`cannot parse url : parse "": empty url`),
 		}, {
 			name:        "missing/url",
-			expectedErr: fmt.Errorf(`missing required http resolver params: url`),
+			expectedErr: errors.New(`missing required http resolver params: url`),
 			url:         "nourl",
 		},
 	}
@@ -129,7 +129,7 @@ func TestMakeHTTPClient(t *testing.T) {
 		{
 			name:        "bad/duration",
 			duration:    "xxx",
-			expectedErr: fmt.Errorf(`error parsing timeout value xxx: time: invalid duration "xxx"`),
+			expectedErr: errors.New(`error parsing timeout value xxx: time: invalid duration "xxx"`),
 		},
 	}
 	for _, tc := range tests {

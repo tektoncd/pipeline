@@ -32,12 +32,12 @@ func TestProcessSuccessfulSubcommands(t *testing.T) {
 	src := filepath.Join(tmp, "foo.txt")
 	dst := filepath.Join(tmp, "bar.txt")
 
-	srcFile, err := os.OpenFile(src, os.O_WRONLY|os.O_CREATE, 0666)
+	srcFile, err := os.OpenFile(src, os.O_WRONLY|os.O_CREATE, 0o666)
 	if err != nil {
 		t.Fatalf("error opening temp file for writing: %v", err)
 	}
 	defer srcFile.Close()
-	if _, err := srcFile.Write([]byte(helloWorldBase64)); err != nil {
+	if _, err := srcFile.WriteString(helloWorldBase64); err != nil {
 		t.Fatalf("error writing source file: %v", err)
 	}
 

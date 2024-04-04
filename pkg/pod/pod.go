@@ -559,7 +559,7 @@ func updateResourceRequirements(resourceRequirementsMap map[string]corev1.Resour
 		// get actual container name, remove "prefix-" string and append "-" at the end
 		// append '-' in the container prefix
 		containerPrefix = strings.Replace(containerPrefix, "prefix-", "", 1)
-		containerPrefix = fmt.Sprintf("%s-", containerPrefix)
+		containerPrefix += "-"
 
 		// update init containers
 		for index := range pod.Spec.InitContainers {

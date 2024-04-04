@@ -71,7 +71,7 @@ func (c FakeClient) Send(ctx context.Context, event cloudevents.Event) protocol.
 func (c FakeClient) Request(ctx context.Context, event cloudevents.Event) (*cloudevents.Event, protocol.Result) {
 	if c.behaviour.SendSuccessfully {
 		if len(c.events) < cap(c.events) {
-			c.events <- fmt.Sprintf("%v", event.String())
+			c.events <- event.String()
 			return &event, nil
 		}
 		return nil, fmt.Errorf("channel is full of size:%v, but extra event wants to be sent:%v", cap(c.events), event)

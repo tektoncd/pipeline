@@ -72,7 +72,7 @@ type Step struct {
 	// +patchMergeKey=name
 	// +patchStrategy=merge
 	// +listType=atomic
-	Env []corev1.EnvVar `json:"env,omitempty" patchStrategy:"merge" patchMergeKey:"name" protobuf:"bytes,7,rep,name=env"`
+	Env []corev1.EnvVar `json:"env,omitempty" patchMergeKey:"name" patchStrategy:"merge" protobuf:"bytes,7,rep,name=env"`
 	// ComputeResources required by this Step.
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
@@ -84,13 +84,13 @@ type Step struct {
 	// +patchMergeKey=mountPath
 	// +patchStrategy=merge
 	// +listType=atomic
-	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty" patchStrategy:"merge" patchMergeKey:"mountPath" protobuf:"bytes,9,rep,name=volumeMounts"`
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty" patchMergeKey:"mountPath" patchStrategy:"merge" protobuf:"bytes,9,rep,name=volumeMounts"`
 	// volumeDevices is the list of block devices to be used by the Step.
 	// +patchMergeKey=devicePath
 	// +patchStrategy=merge
 	// +optional
 	// +listType=atomic
-	VolumeDevices []corev1.VolumeDevice `json:"volumeDevices,omitempty" patchStrategy:"merge" patchMergeKey:"devicePath" protobuf:"bytes,21,rep,name=volumeDevices"`
+	VolumeDevices []corev1.VolumeDevice `json:"volumeDevices,omitempty" patchMergeKey:"devicePath" patchStrategy:"merge" protobuf:"bytes,21,rep,name=volumeDevices"`
 	// Image pull policy.
 	// One of Always, Never, IfNotPresent.
 	// Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.
@@ -294,7 +294,7 @@ type StepTemplate struct {
 	// +patchMergeKey=name
 	// +patchStrategy=merge
 	// +listType=atomic
-	Env []corev1.EnvVar `json:"env,omitempty" patchStrategy:"merge" patchMergeKey:"name" protobuf:"bytes,7,rep,name=env"`
+	Env []corev1.EnvVar `json:"env,omitempty" patchMergeKey:"name" patchStrategy:"merge" protobuf:"bytes,7,rep,name=env"`
 	// ComputeResources required by this Step.
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
@@ -306,13 +306,13 @@ type StepTemplate struct {
 	// +patchMergeKey=mountPath
 	// +patchStrategy=merge
 	// +listType=atomic
-	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty" patchStrategy:"merge" patchMergeKey:"mountPath" protobuf:"bytes,9,rep,name=volumeMounts"`
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty" patchMergeKey:"mountPath" patchStrategy:"merge" protobuf:"bytes,9,rep,name=volumeMounts"`
 	// volumeDevices is the list of block devices to be used by the Step.
 	// +patchMergeKey=devicePath
 	// +patchStrategy=merge
 	// +optional
 	// +listType=atomic
-	VolumeDevices []corev1.VolumeDevice `json:"volumeDevices,omitempty" patchStrategy:"merge" patchMergeKey:"devicePath" protobuf:"bytes,21,rep,name=volumeDevices"`
+	VolumeDevices []corev1.VolumeDevice `json:"volumeDevices,omitempty" patchMergeKey:"devicePath" patchStrategy:"merge" protobuf:"bytes,21,rep,name=volumeDevices"`
 	// Image pull policy.
 	// One of Always, Never, IfNotPresent.
 	// Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.
@@ -410,7 +410,7 @@ type Sidecar struct {
 	// +listType=map
 	// +listMapKey=containerPort
 	// +listMapKey=protocol
-	Ports []corev1.ContainerPort `json:"ports,omitempty" patchStrategy:"merge" patchMergeKey:"containerPort" protobuf:"bytes,6,rep,name=ports"`
+	Ports []corev1.ContainerPort `json:"ports,omitempty" patchMergeKey:"containerPort" patchStrategy:"merge" protobuf:"bytes,6,rep,name=ports"`
 	// List of sources to populate environment variables in the Sidecar.
 	// The keys defined within a source must be a C_IDENTIFIER. All invalid keys
 	// will be reported as an event when the container is starting. When a key exists in multiple
@@ -426,7 +426,7 @@ type Sidecar struct {
 	// +patchMergeKey=name
 	// +patchStrategy=merge
 	// +listType=atomic
-	Env []corev1.EnvVar `json:"env,omitempty" patchStrategy:"merge" patchMergeKey:"name" protobuf:"bytes,7,rep,name=env"`
+	Env []corev1.EnvVar `json:"env,omitempty" patchMergeKey:"name" patchStrategy:"merge" protobuf:"bytes,7,rep,name=env"`
 	// ComputeResources required by this Sidecar.
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
@@ -438,13 +438,13 @@ type Sidecar struct {
 	// +patchMergeKey=mountPath
 	// +patchStrategy=merge
 	// +listType=atomic
-	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty" patchStrategy:"merge" patchMergeKey:"mountPath" protobuf:"bytes,9,rep,name=volumeMounts"`
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty" patchMergeKey:"mountPath" patchStrategy:"merge" protobuf:"bytes,9,rep,name=volumeMounts"`
 	// volumeDevices is the list of block devices to be used by the Sidecar.
 	// +patchMergeKey=devicePath
 	// +patchStrategy=merge
 	// +optional
 	// +listType=atomic
-	VolumeDevices []corev1.VolumeDevice `json:"volumeDevices,omitempty" patchStrategy:"merge" patchMergeKey:"devicePath" protobuf:"bytes,21,rep,name=volumeDevices"`
+	VolumeDevices []corev1.VolumeDevice `json:"volumeDevices,omitempty" patchMergeKey:"devicePath" patchStrategy:"merge" protobuf:"bytes,21,rep,name=volumeDevices"`
 	// Periodic probe of Sidecar liveness.
 	// Container will be restarted if the probe fails.
 	// Cannot be updated.

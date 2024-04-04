@@ -47,7 +47,7 @@ func (tr TaskResult) Validate(ctx context.Context) (errs *apis.FieldError) {
 // for Properties values it will check if the type is string.
 func validateObjectResult(tr TaskResult) (errs *apis.FieldError) {
 	if ParamType(tr.Type) == ParamTypeObject && tr.Properties == nil {
-		return apis.ErrMissingField(fmt.Sprintf("%s.properties", tr.Name))
+		return apis.ErrMissingField(tr.Name + ".properties")
 	}
 
 	invalidKeys := []string{}
@@ -60,7 +60,7 @@ func validateObjectResult(tr TaskResult) (errs *apis.FieldError) {
 	if len(invalidKeys) != 0 {
 		return &apis.FieldError{
 			Message: fmt.Sprintf("The value type specified for these keys %v is invalid, the type must be string", invalidKeys),
-			Paths:   []string{fmt.Sprintf("%s.properties", tr.Name)},
+			Paths:   []string{tr.Name + ".properties"},
 		}
 	}
 	return nil
@@ -81,7 +81,7 @@ func (tr TaskResult) validateValue(ctx context.Context) (errs *apis.FieldError) 
 			Message: fmt.Sprintf(
 				"Invalid Type. Wanted string but got: \"%v\"", tr.Value.Type),
 			Paths: []string{
-				fmt.Sprintf("%s.type", tr.Name),
+				tr.Name + ".type",
 			},
 		}
 	}
@@ -90,20 +90,20 @@ func (tr TaskResult) validateValue(ctx context.Context) (errs *apis.FieldError) 
 		if err != nil {
 			return &apis.FieldError{
 				Message: fmt.Sprintf("%v", err),
-				Paths:   []string{fmt.Sprintf("%s.value", tr.Name)},
+				Paths:   []string{tr.Name + ".value"},
 			}
 		}
 		if e := validation.IsDNS1123Label(stepName); len(e) > 0 {
 			errs = errs.Also(&apis.FieldError{
 				Message: fmt.Sprintf("invalid extracted step name %q", stepName),
-				Paths:   []string{fmt.Sprintf("%s.value", tr.Name)},
+				Paths:   []string{tr.Name + ".value"},
 				Details: "stepName in $(steps.<stepName>.results.<resultName>) must be a valid DNS Label, For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
 			})
 		}
 		if !resultNameFormatRegex.MatchString(resultName) {
 			errs = errs.Also(&apis.FieldError{
 				Message: fmt.Sprintf("invalid extracted result name %q", resultName),
-				Paths:   []string{fmt.Sprintf("%s.value", tr.Name)},
+				Paths:   []string{tr.Name + ".value"},
 				Details: fmt.Sprintf("resultName in $(steps.<stepName>.results.<resultName>) must consist of alphanumeric characters, '-', '_', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my-name',  or 'my_name', regex used for validation is '%s')", ResultNameFormat),
 			})
 		}
@@ -136,7 +136,7 @@ func (sr StepResult) Validate(ctx context.Context) (errs *apis.FieldError) {
 // for Properties values it will check if the type is string.
 func validateObjectStepResult(sr StepResult) (errs *apis.FieldError) {
 	if ParamType(sr.Type) == ParamTypeObject && sr.Properties == nil {
-		return apis.ErrMissingField(fmt.Sprintf("%s.properties", sr.Name))
+		return apis.ErrMissingField(sr.Name + ".properties")
 	}
 
 	invalidKeys := []string{}
@@ -150,7 +150,7 @@ func validateObjectStepResult(sr StepResult) (errs *apis.FieldError) {
 	if len(invalidKeys) != 0 {
 		return &apis.FieldError{
 			Message: fmt.Sprintf("the value type specified for these keys %v is invalid, the type must be string", invalidKeys),
-			Paths:   []string{fmt.Sprintf("%s.properties", sr.Name)},
+			Paths:   []string{sr.Name + ".properties"},
 		}
 	}
 	return nil

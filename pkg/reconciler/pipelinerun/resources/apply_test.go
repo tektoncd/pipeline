@@ -18,7 +18,7 @@ package resources_test
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -42,1420 +42,1453 @@ func TestApplyParameters(t *testing.T) {
 		params   []v1.Param
 		expected v1.PipelineSpec
 		wc       func(context.Context) context.Context
-	}{{
-		name: "single parameter",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
-				{Name: "second-param", Type: v1.ParamTypeString},
-			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param)")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("$(params.second-param)")},
-					{Name: "first-task-third-param", Value: *v1.NewStructuredValues("static value")},
+	}{
+		{
+			name: "single parameter",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
+					{Name: "second-param", Type: v1.ParamTypeString},
 				},
-			}},
-		},
-		params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value")}},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
-				{Name: "second-param", Type: v1.ParamTypeString},
-			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("default-value")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("second-value")},
-					{Name: "first-task-third-param", Value: *v1.NewStructuredValues("static value")},
-				},
-			}},
-		},
-	}, {
-		name: "parameter propagation string no task or task default winner pipeline",
-		original: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Steps: []v1.Step{{
-							Name:   "step1",
-							Image:  "ubuntu",
-							Script: `#!/usr/bin/env bash\necho "$(params.HELLO)"`,
-						}},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param)")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("$(params.second-param)")},
+						{Name: "first-task-third-param", Value: *v1.NewStructuredValues("static value")},
 					},
-				},
-			}},
-		},
-		params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("hello param!")}},
-		expected: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Steps: []v1.Step{{
-							Name:   "step1",
-							Image:  "ubuntu",
-							Script: `#!/usr/bin/env bash\necho "hello param!"`,
-						}},
-					},
-				},
-			}},
-		},
-	}, {
-		name: "parameter propagation string into finally task",
-		original: v1.PipelineSpec{
-			Finally: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Steps: []v1.Step{{
-							Name:   "step1",
-							Image:  "ubuntu",
-							Script: `#!/usr/bin/env bash\necho "$(params.HELLO)"`,
-						}},
-					},
-				},
-			}},
-		},
-		params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("hello param!")}},
-		expected: v1.PipelineSpec{
-			Finally: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Steps: []v1.Step{{
-							Name:   "step1",
-							Image:  "ubuntu",
-							Script: `#!/usr/bin/env bash\necho "hello param!"`,
-						}},
-					},
-				},
-			}},
-		},
-	}, {
-		name: "parameter propagation array no task or task default winner pipeline",
-		original: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.HELLO[*])"},
-						}},
-					},
-				},
-			}},
-		},
-		params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("hello", "param", "!!!")}},
-		expected: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "hello", "param", "!!!"},
-						}},
-					},
-				},
-			}},
-		},
-	}, {
-		name: "parameter propagation array finally task",
-		original: v1.PipelineSpec{
-			Finally: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.HELLO[*])"},
-						}},
-					},
-				},
-			}},
-		},
-		params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("hello", "param", "!!!")}},
-		expected: v1.PipelineSpec{
-			Finally: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "hello", "param", "!!!"},
-						}},
-					},
-				},
-			}},
-		},
-	}, {
-		name: "parameter propagation object no task or task default winner pipeline",
-		original: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.myObject.key1) $(params.myObject.key2)"},
-						}},
-					},
-				},
-			}},
-		},
-		params: v1.Params{{Name: "myObject", Value: *v1.NewObject(map[string]string{"key1": "hello", "key2": "world!"})}},
-		expected: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "hello world!"},
-						}},
-					},
-				},
-			}},
-		},
-		wc: cfgtesting.EnableAlphaAPIFields,
-	}, {
-		name: "parameter propagation object finally task",
-		original: v1.PipelineSpec{
-			Finally: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.myObject.key1) $(params.myObject.key2)"},
-						}},
-					},
-				},
-			}},
-		},
-		params: v1.Params{{Name: "myObject", Value: *v1.NewObject(map[string]string{"key1": "hello", "key2": "world!"})}},
-		expected: v1.PipelineSpec{
-			Finally: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "hello world!"},
-						}},
-					},
-				},
-			}},
-		},
-		wc: cfgtesting.EnableAlphaAPIFields,
-	}, {
-		name: "parameter propagation with task default but no task winner pipeline",
-		original: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name:    "HELLO",
-							Default: v1.NewStructuredValues("default param!"),
-						}},
-						Steps: []v1.Step{{
-							Name:   "step1",
-							Image:  "ubuntu",
-							Script: `#!/usr/bin/env bash\necho "$(params.HELLO)"`,
-						}},
-					},
-				},
-			}},
-		},
-		params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("pipeline param!")}},
-		expected: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name:    "HELLO",
-							Default: v1.NewStructuredValues("default param!"),
-						}},
-						Steps: []v1.Step{{
-							Name:   "step1",
-							Image:  "ubuntu",
-							Script: `#!/usr/bin/env bash\necho "pipeline param!"`,
-						}},
-					},
-				},
-			}},
-		},
-	}, {
-		name: "parameter propagation with task scoping Finally task",
-		original: v1.PipelineSpec{
-			Finally: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name:    "HELLO",
-							Default: v1.NewStructuredValues("default param!"),
-						}},
-						Steps: []v1.Step{{
-							Name:   "step1",
-							Image:  "ubuntu",
-							Script: `#!/usr/bin/env bash\necho "$(params.HELLO)"`,
-						}},
-					},
-				},
-			}},
-		},
-		params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("pipeline param!")}},
-		expected: v1.PipelineSpec{
-			Finally: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name:    "HELLO",
-							Default: v1.NewStructuredValues("default param!"),
-						}},
-						Steps: []v1.Step{{
-							Name:   "step1",
-							Image:  "ubuntu",
-							Script: `#!/usr/bin/env bash\necho "pipeline param!"`,
-						}},
-					},
-				},
-			}},
-		},
-	}, {
-		name: "parameter propagation array with task default but no task winner pipeline",
-		original: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name:    "HELLO",
-							Default: v1.NewStructuredValues("default", "param!"),
-						}},
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.HELLO)"},
-						}},
-					},
-				},
-			}},
-		},
-		params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("pipeline", "param!")}},
-		expected: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name:    "HELLO",
-							Default: v1.NewStructuredValues("default", "param!"),
-						}},
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "pipeline", "param!"},
-						}},
-					},
-				},
-			}},
-		},
-	}, {
-		name: "parameter propagation array with task scoping Finally task",
-		original: v1.PipelineSpec{
-			Finally: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name:    "HELLO",
-							Default: v1.NewStructuredValues("default", "param!"),
-						}},
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.HELLO)"},
-						}},
-					},
-				},
-			}},
-		},
-		params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("pipeline", "param!")}},
-		expected: v1.PipelineSpec{
-			Finally: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name:    "HELLO",
-							Default: v1.NewStructuredValues("default", "param!"),
-						}},
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "pipeline", "param!"},
-						}},
-					},
-				},
-			}},
-		},
-	}, {
-		name: "parameter propagation array with task default and task winner task",
-		original: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "HELLO", Value: *v1.NewStructuredValues("task", "param!")},
-				},
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name:    "HELLO",
-							Default: v1.NewStructuredValues("default", "param!"),
-						}},
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.HELLO)"},
-						}},
-					},
-				},
-			}},
-		},
-		params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("pipeline", "param!")}},
-		expected: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "HELLO", Value: *v1.NewStructuredValues("task", "param!")},
-				},
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name:    "HELLO",
-							Default: v1.NewStructuredValues("default", "param!"),
-						}},
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "task", "param!"},
-						}},
-					},
-				},
-			}},
-		},
-	}, {
-		name: "Finally task parameter propagation array with task default and task winner task",
-		original: v1.PipelineSpec{
-			Finally: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "HELLO", Value: *v1.NewStructuredValues("task", "param!")},
-				},
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name:    "HELLO",
-							Default: v1.NewStructuredValues("default", "param!"),
-						}},
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.HELLO)"},
-						}},
-					},
-				},
-			}},
-		},
-		params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("pipeline", "param!")}},
-		expected: v1.PipelineSpec{
-			Finally: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "HELLO", Value: *v1.NewStructuredValues("task", "param!")},
-				},
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name:    "HELLO",
-							Default: v1.NewStructuredValues("default", "param!"),
-						}},
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "task", "param!"},
-						}},
-					},
-				},
-			}},
-		},
-	}, {
-		name: "parameter propagation with task default and task winner task",
-		original: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "HELLO", Value: *v1.NewStructuredValues("task param!")},
-				},
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name:    "HELLO",
-							Default: v1.NewStructuredValues("default param!"),
-						}},
-						Steps: []v1.Step{{
-							Name:   "step1",
-							Image:  "ubuntu",
-							Script: `#!/usr/bin/env bash\necho "$(params.HELLO)"`,
-						}},
-					},
-				},
-			}},
-		},
-		params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("pipeline param!")}},
-		expected: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "HELLO", Value: *v1.NewStructuredValues("task param!")},
-				},
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name:    "HELLO",
-							Default: v1.NewStructuredValues("default param!"),
-						}},
-						Steps: []v1.Step{{
-							Name:   "step1",
-							Image:  "ubuntu",
-							Script: `#!/usr/bin/env bash\necho "task param!"`,
-						}},
-					},
-				},
-			}},
-		},
-	}, {
-		name: "Finally task parameter propagation with task default and task winner task",
-		original: v1.PipelineSpec{
-			Finally: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "HELLO", Value: *v1.NewStructuredValues("task param!")},
-				},
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name:    "HELLO",
-							Default: v1.NewStructuredValues("default param!"),
-						}},
-						Steps: []v1.Step{{
-							Name:   "step1",
-							Image:  "ubuntu",
-							Script: `#!/usr/bin/env bash\necho "$(params.HELLO)"`,
-						}},
-					},
-				},
-			}},
-		},
-		params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("pipeline param!")}},
-		expected: v1.PipelineSpec{
-			Finally: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "HELLO", Value: *v1.NewStructuredValues("task param!")},
-				},
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name:    "HELLO",
-							Default: v1.NewStructuredValues("default param!"),
-						}},
-						Steps: []v1.Step{{
-							Name:   "step1",
-							Image:  "ubuntu",
-							Script: `#!/usr/bin/env bash\necho "task param!"`,
-						}},
-					},
-				},
-			}},
-		},
-	}, {
-		name: "parameter propagation object with task default but no task winner pipeline",
-		original: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name: "myobject",
-							Properties: map[string]v1.PropertySpec{
-								"key1": {Type: "string"},
-								"key2": {Type: "string"},
-							},
-							Default: v1.NewObject(map[string]string{
-								"key1": "default",
-								"key2": "param!",
-							}),
-						}},
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.myobject.key1) $(params.myobject.key2)"},
-						}},
-					},
-				},
-			}},
-		},
-		params: v1.Params{{Name: "myobject", Value: *v1.NewObject(map[string]string{
-			"key1": "pipeline",
-			"key2": "param!!",
-		})}},
-		expected: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name: "myobject",
-							Properties: map[string]v1.PropertySpec{
-								"key1": {Type: "string"},
-								"key2": {Type: "string"},
-							},
-							Default: v1.NewObject(map[string]string{
-								"key1": "default",
-								"key2": "param!",
-							}),
-						}},
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "pipeline param!!"},
-						}},
-					},
-				},
-			}},
-		},
-		wc: cfgtesting.EnableAlphaAPIFields,
-	}, {
-		name: "Finally task parameter propagation object with task default but no task winner pipeline",
-		original: v1.PipelineSpec{
-			Finally: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name: "myobject",
-							Properties: map[string]v1.PropertySpec{
-								"key1": {Type: "string"},
-								"key2": {Type: "string"},
-							},
-							Default: v1.NewObject(map[string]string{
-								"key1": "default",
-								"key2": "param!",
-							}),
-						}},
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.myobject.key1) $(params.myobject.key2)"},
-						}},
-					},
-				},
-			}},
-		},
-		params: v1.Params{{Name: "myobject", Value: *v1.NewObject(map[string]string{
-			"key1": "pipeline",
-			"key2": "param!!",
-		})}},
-		expected: v1.PipelineSpec{
-			Finally: []v1.PipelineTask{{
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name: "myobject",
-							Properties: map[string]v1.PropertySpec{
-								"key1": {Type: "string"},
-								"key2": {Type: "string"},
-							},
-							Default: v1.NewObject(map[string]string{
-								"key1": "default",
-								"key2": "param!",
-							}),
-						}},
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "pipeline param!!"},
-						}},
-					},
-				},
-			}},
-		},
-		wc: cfgtesting.EnableAlphaAPIFields,
-	}, {
-		name: "parameter propagation object with task default and task winner task",
-		original: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "myobject", Value: *v1.NewObject(map[string]string{
-						"key1": "task",
-						"key2": "param!",
-					})},
-				},
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name: "myobject",
-							Properties: map[string]v1.PropertySpec{
-								"key1": {Type: "string"},
-								"key2": {Type: "string"},
-							},
-							Default: v1.NewObject(map[string]string{
-								"key1": "default",
-								"key2": "param!!",
-							}),
-						}},
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.myobject.key1) $(params.myobject.key2)"},
-						}},
-					},
-				},
-			}},
-		},
-		params: v1.Params{{Name: "myobject", Value: *v1.NewObject(map[string]string{"key1": "pipeline", "key2": "param!!!"})}},
-		expected: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "myobject", Value: *v1.NewObject(map[string]string{
-						"key1": "task",
-						"key2": "param!",
-					})},
-				},
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name: "myobject",
-							Properties: map[string]v1.PropertySpec{
-								"key1": {Type: "string"},
-								"key2": {Type: "string"},
-							},
-							Default: v1.NewObject(map[string]string{
-								"key1": "default",
-								"key2": "param!!",
-							}),
-						}},
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "task param!"},
-						}},
-					},
-				},
-			}},
-		},
-		wc: cfgtesting.EnableAlphaAPIFields,
-	}, {
-		name: "Finally task parameter propagation object with task default and task winner task",
-		original: v1.PipelineSpec{
-			Finally: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "myobject", Value: *v1.NewObject(map[string]string{
-						"key1": "task",
-						"key2": "param!",
-					})},
-				},
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name: "myobject",
-							Properties: map[string]v1.PropertySpec{
-								"key1": {Type: "string"},
-								"key2": {Type: "string"},
-							},
-							Default: v1.NewObject(map[string]string{
-								"key1": "default",
-								"key2": "param!!",
-							}),
-						}},
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.myobject.key1) $(params.myobject.key2)"},
-						}},
-					},
-				},
-			}},
-		},
-		params: v1.Params{{Name: "myobject", Value: *v1.NewObject(map[string]string{"key1": "pipeline", "key2": "param!!!"})}},
-		expected: v1.PipelineSpec{
-			Finally: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "myobject", Value: *v1.NewObject(map[string]string{
-						"key1": "task",
-						"key2": "param!",
-					})},
-				},
-				TaskSpec: &v1.EmbeddedTask{
-					TaskSpec: v1.TaskSpec{
-						Params: []v1.ParamSpec{{
-							Name: "myobject",
-							Properties: map[string]v1.PropertySpec{
-								"key1": {Type: "string"},
-								"key2": {Type: "string"},
-							},
-							Default: v1.NewObject(map[string]string{
-								"key1": "default",
-								"key2": "param!!",
-							}),
-						}},
-						Steps: []v1.Step{{
-							Name:  "step1",
-							Image: "ubuntu",
-							Args:  []string{"#!/usr/bin/env bash\n", "echo", "task param!"},
-						}},
-					},
-				},
-			}},
-		},
-		wc: cfgtesting.EnableAlphaAPIFields,
-	}, {
-		name: "single parameter with when expression",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
-				{Name: "second-param", Type: v1.ParamTypeString},
-			},
-			Tasks: []v1.PipelineTask{{
-				When: []v1.WhenExpression{{
-					Input:    "$(params.first-param)",
-					Operator: selection.In,
-					Values:   []string{"$(params.second-param)"},
 				}},
-			}},
-		},
-		params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value")}},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
-				{Name: "second-param", Type: v1.ParamTypeString},
 			},
-			Tasks: []v1.PipelineTask{{
-				When: []v1.WhenExpression{{
-					Input:    "default-value",
-					Operator: selection.In,
-					Values:   []string{"second-value"},
-				}},
-			}},
-		},
-	}, {
-		name: "object parameter with when expression",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{
-					Name: "myobject",
-					Type: v1.ParamTypeObject,
-					Properties: map[string]v1.PropertySpec{
-						"key1": {Type: "string"},
-						"key2": {Type: "string"},
-						"key3": {Type: "string"},
+			params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value")}},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
+					{Name: "second-param", Type: v1.ParamTypeString},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("default-value")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("second-value")},
+						{Name: "first-task-third-param", Value: *v1.NewStructuredValues("static value")},
 					},
-					Default: v1.NewObject(map[string]string{
-						"key1": "val1",
-						"key2": "val2",
-						"key3": "val3",
-					}),
-				},
-			},
-			Tasks: []v1.PipelineTask{{
-				When: []v1.WhenExpression{{
-					Input:    "$(params.myobject.key1)",
-					Operator: selection.In,
-					Values:   []string{"$(params.myobject.key2)", "$(params.myobject.key3)"},
 				}},
-			}},
+			},
 		},
-		params: v1.Params{{Name: "myobject", Value: *v1.NewObject(map[string]string{
-			"key1": "val1",
-			"key2": "val2",
-			"key3": "val1",
-		})}},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{
-					Name: "myobject",
-					Type: v1.ParamTypeObject,
-					Properties: map[string]v1.PropertySpec{
-						"key1": {Type: "string"},
-						"key2": {Type: "string"},
-						"key3": {Type: "string"},
+		{
+			name: "parameter propagation string no task or task default winner pipeline",
+			original: v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Steps: []v1.Step{{
+								Name:   "step1",
+								Image:  "ubuntu",
+								Script: `#!/usr/bin/env bash\necho "$(params.HELLO)"`,
+							}},
+						},
 					},
-					Default: v1.NewObject(map[string]string{
-						"key1": "val1",
-						"key2": "val2",
-						"key3": "val3",
-					}),
-				},
-			},
-			Tasks: []v1.PipelineTask{{
-				When: []v1.WhenExpression{{
-					Input:    "val1",
-					Operator: selection.In,
-					Values:   []string{"val2", "val1"},
 				}},
-			}},
-		},
-	}, {
-		name: "string pipeline parameter nested inside task parameter",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
-				{Name: "second-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
 			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(input.workspace.$(params.first-param))")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("$(input.workspace.$(params.second-param))")},
-				},
-			}},
-		},
-		params: nil, // no parameter values.
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
-				{Name: "second-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
-			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(input.workspace.default-value)")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("$(input.workspace.default-value)")},
-				},
-			}},
-		},
-	}, {
-		name: "array pipeline parameter nested inside task parameter",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default", "array", "value")},
-				{Name: "second-param", Type: v1.ParamTypeArray},
-			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("firstelement", "$(params.first-param)")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("firstelement", "$(params.second-param)")},
-				},
-			}},
-		},
-		params: v1.Params{
-			{Name: "second-param", Value: *v1.NewStructuredValues("second-value", "array")},
-		},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default", "array", "value")},
-				{Name: "second-param", Type: v1.ParamTypeArray},
-			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("firstelement", "default", "array", "value")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("firstelement", "second-value", "array")},
-				},
-			}},
-		},
-	}, {
-		name: "object pipeline parameter nested inside task parameter",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{
-					Name: "myobject",
-					Type: v1.ParamTypeObject,
-					Properties: map[string]v1.PropertySpec{
-						"key1": {Type: "string"},
-						"key2": {Type: "string"},
+			params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("hello param!")}},
+			expected: v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Steps: []v1.Step{{
+								Name:   "step1",
+								Image:  "ubuntu",
+								Script: `#!/usr/bin/env bash\necho "hello param!"`,
+							}},
+						},
 					},
-					Default: v1.NewObject(map[string]string{
-						"key1": "val1",
-						"key2": "val2",
-					}),
-				},
+				}},
 			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(input.workspace.$(params.myobject.key1))")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("$(input.workspace.$(params.myobject.key2))")},
-				},
-			}},
 		},
-		params: nil, // no parameter values.
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{
-					Name: "myobject",
-					Type: v1.ParamTypeObject,
-					Properties: map[string]v1.PropertySpec{
-						"key1": {Type: "string"},
-						"key2": {Type: "string"},
+		{
+			name: "parameter propagation string into finally task",
+			original: v1.PipelineSpec{
+				Finally: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Steps: []v1.Step{{
+								Name:   "step1",
+								Image:  "ubuntu",
+								Script: `#!/usr/bin/env bash\necho "$(params.HELLO)"`,
+							}},
+						},
 					},
-					Default: v1.NewObject(map[string]string{
-						"key1": "val1",
-						"key2": "val2",
-					}),
-				},
-			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(input.workspace.val1)")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("$(input.workspace.val2)")},
-				},
-			}},
-		},
-	}, {
-		name: "parameter evaluation with final tasks",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
-				{Name: "second-param", Type: v1.ParamTypeString},
-			},
-			Finally: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "final-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param)")},
-					{Name: "final-task-second-param", Value: *v1.NewStructuredValues("$(params.second-param)")},
-				},
-				When: v1.WhenExpressions{{
-					Input:    "$(params.first-param)",
-					Operator: selection.In,
-					Values:   []string{"$(params.second-param)"},
 				}},
-			}},
-		},
-		params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value")}},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
-				{Name: "second-param", Type: v1.ParamTypeString},
 			},
-			Finally: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "final-task-first-param", Value: *v1.NewStructuredValues("default-value")},
-					{Name: "final-task-second-param", Value: *v1.NewStructuredValues("second-value")},
-				},
-				When: v1.WhenExpressions{{
-					Input:    "default-value",
-					Operator: selection.In,
-					Values:   []string{"second-value"},
-				}},
-			}},
-		},
-	}, {
-		name: "parameter evaluation with both tasks and final tasks",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
-				{Name: "second-param", Type: v1.ParamTypeString},
-			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "final-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param)")},
-					{Name: "final-task-second-param", Value: *v1.NewStructuredValues("$(params.second-param)")},
-				},
-			}},
-			Finally: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "final-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param)")},
-					{Name: "final-task-second-param", Value: *v1.NewStructuredValues("$(params.second-param)")},
-				},
-				When: v1.WhenExpressions{{
-					Input:    "$(params.first-param)",
-					Operator: selection.In,
-					Values:   []string{"$(params.second-param)"},
-				}},
-			}},
-		},
-		params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value")}},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
-				{Name: "second-param", Type: v1.ParamTypeString},
-			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "final-task-first-param", Value: *v1.NewStructuredValues("default-value")},
-					{Name: "final-task-second-param", Value: *v1.NewStructuredValues("second-value")},
-				},
-			}},
-			Finally: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "final-task-first-param", Value: *v1.NewStructuredValues("default-value")},
-					{Name: "final-task-second-param", Value: *v1.NewStructuredValues("second-value")},
-				},
-				When: v1.WhenExpressions{{
-					Input:    "default-value",
-					Operator: selection.In,
-					Values:   []string{"second-value"},
-				}},
-			}},
-		},
-	}, {
-		name: "object parameter evaluation with both tasks and final tasks",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{
-					Name: "myobject",
-					Type: v1.ParamTypeObject,
-					Properties: map[string]v1.PropertySpec{
-						"key1": {Type: "string"},
-						"key2": {Type: "string"},
+			params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("hello param!")}},
+			expected: v1.PipelineSpec{
+				Finally: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Steps: []v1.Step{{
+								Name:   "step1",
+								Image:  "ubuntu",
+								Script: `#!/usr/bin/env bash\necho "hello param!"`,
+							}},
+						},
 					},
-					Default: v1.NewObject(map[string]string{
-						"key1": "val1",
-						"key2": "val2",
-					}),
-				},
-			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "final-task-first-param", Value: *v1.NewStructuredValues("$(params.myobject.key1)")},
-					{Name: "final-task-second-param", Value: *v1.NewStructuredValues("$(params.myobject.key2)")},
-				},
-			}},
-			Finally: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "final-task-first-param", Value: *v1.NewStructuredValues("$(params.myobject.key1)")},
-					{Name: "final-task-second-param", Value: *v1.NewStructuredValues("$(params.myobject.key2)")},
-				},
-				When: v1.WhenExpressions{{
-					Input:    "$(params.myobject.key1)",
-					Operator: selection.In,
-					Values:   []string{"$(params.myobject.key2)"},
 				}},
-			}},
+			},
 		},
-		params: v1.Params{{Name: "myobject", Value: *v1.NewObject(map[string]string{
-			"key1": "foo",
-			"key2": "bar",
-		})}},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{
-					Name: "myobject",
-					Type: v1.ParamTypeObject,
-					Properties: map[string]v1.PropertySpec{
-						"key1": {Type: "string"},
-						"key2": {Type: "string"},
+		{
+			name: "parameter propagation array no task or task default winner pipeline",
+			original: v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.HELLO[*])"},
+							}},
+						},
 					},
-					Default: v1.NewObject(map[string]string{
-						"key1": "val1",
-						"key2": "val2",
-					}),
-				},
-			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "final-task-first-param", Value: *v1.NewStructuredValues("foo")},
-					{Name: "final-task-second-param", Value: *v1.NewStructuredValues("bar")},
-				},
-			}},
-			Finally: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "final-task-first-param", Value: *v1.NewStructuredValues("foo")},
-					{Name: "final-task-second-param", Value: *v1.NewStructuredValues("bar")},
-				},
-				When: v1.WhenExpressions{{
-					Input:    "foo",
-					Operator: selection.In,
-					Values:   []string{"bar"},
 				}},
-			}},
-		},
-	}, {
-		name: "parameter references with bracket notation and special characters",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first.param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
-				{Name: "second/param", Type: v1.ParamTypeString},
-				{Name: "third.param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
-				{Name: "fourth/param", Type: v1.ParamTypeString},
 			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues(`$(params["first.param"])`)},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues(`$(params["second/param"])`)},
-					{Name: "first-task-third-param", Value: *v1.NewStructuredValues(`$(params['third.param'])`)},
-					{Name: "first-task-fourth-param", Value: *v1.NewStructuredValues(`$(params['fourth/param'])`)},
-					{Name: "first-task-fifth-param", Value: *v1.NewStructuredValues("static value")},
-				},
-			}},
-		},
-		params: v1.Params{
-			{Name: "second/param", Value: *v1.NewStructuredValues("second-value")},
-			{Name: "fourth/param", Value: *v1.NewStructuredValues("fourth-value")},
-		},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first.param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
-				{Name: "second/param", Type: v1.ParamTypeString},
-				{Name: "third.param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
-				{Name: "fourth/param", Type: v1.ParamTypeString},
+			params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("hello", "param", "!!!")}},
+			expected: v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "hello", "param", "!!!"},
+							}},
+						},
+					},
+				}},
 			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("default-value")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("second-value")},
-					{Name: "first-task-third-param", Value: *v1.NewStructuredValues("default-value")},
-					{Name: "first-task-fourth-param", Value: *v1.NewStructuredValues("fourth-value")},
-					{Name: "first-task-fifth-param", Value: *v1.NewStructuredValues("static value")},
-				},
-			}},
 		},
-	}, {
-		name: "single parameter in workspace subpath",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
-				{Name: "second-param", Type: v1.ParamTypeString},
+		{
+			name: "parameter propagation array finally task",
+			original: v1.PipelineSpec{
+				Finally: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.HELLO[*])"},
+							}},
+						},
+					},
+				}},
 			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param)")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("static value")},
+			params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("hello", "param", "!!!")}},
+			expected: v1.PipelineSpec{
+				Finally: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "hello", "param", "!!!"},
+							}},
+						},
+					},
+				}},
+			},
+		},
+		{
+			name: "parameter propagation object no task or task default winner pipeline",
+			original: v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.myObject.key1) $(params.myObject.key2)"},
+							}},
+						},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "myObject", Value: *v1.NewObject(map[string]string{"key1": "hello", "key2": "world!"})}},
+			expected: v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "hello world!"},
+							}},
+						},
+					},
+				}},
+			},
+			wc: cfgtesting.EnableAlphaAPIFields,
+		},
+		{
+			name: "parameter propagation object finally task",
+			original: v1.PipelineSpec{
+				Finally: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.myObject.key1) $(params.myObject.key2)"},
+							}},
+						},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "myObject", Value: *v1.NewObject(map[string]string{"key1": "hello", "key2": "world!"})}},
+			expected: v1.PipelineSpec{
+				Finally: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "hello world!"},
+							}},
+						},
+					},
+				}},
+			},
+			wc: cfgtesting.EnableAlphaAPIFields,
+		},
+		{
+			name: "parameter propagation with task default but no task winner pipeline",
+			original: v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name:    "HELLO",
+								Default: v1.NewStructuredValues("default param!"),
+							}},
+							Steps: []v1.Step{{
+								Name:   "step1",
+								Image:  "ubuntu",
+								Script: `#!/usr/bin/env bash\necho "$(params.HELLO)"`,
+							}},
+						},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("pipeline param!")}},
+			expected: v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name:    "HELLO",
+								Default: v1.NewStructuredValues("default param!"),
+							}},
+							Steps: []v1.Step{{
+								Name:   "step1",
+								Image:  "ubuntu",
+								Script: `#!/usr/bin/env bash\necho "pipeline param!"`,
+							}},
+						},
+					},
+				}},
+			},
+		},
+		{
+			name: "parameter propagation with task scoping Finally task",
+			original: v1.PipelineSpec{
+				Finally: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name:    "HELLO",
+								Default: v1.NewStructuredValues("default param!"),
+							}},
+							Steps: []v1.Step{{
+								Name:   "step1",
+								Image:  "ubuntu",
+								Script: `#!/usr/bin/env bash\necho "$(params.HELLO)"`,
+							}},
+						},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("pipeline param!")}},
+			expected: v1.PipelineSpec{
+				Finally: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name:    "HELLO",
+								Default: v1.NewStructuredValues("default param!"),
+							}},
+							Steps: []v1.Step{{
+								Name:   "step1",
+								Image:  "ubuntu",
+								Script: `#!/usr/bin/env bash\necho "pipeline param!"`,
+							}},
+						},
+					},
+				}},
+			},
+		},
+		{
+			name: "parameter propagation array with task default but no task winner pipeline",
+			original: v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name:    "HELLO",
+								Default: v1.NewStructuredValues("default", "param!"),
+							}},
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.HELLO)"},
+							}},
+						},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("pipeline", "param!")}},
+			expected: v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name:    "HELLO",
+								Default: v1.NewStructuredValues("default", "param!"),
+							}},
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "pipeline", "param!"},
+							}},
+						},
+					},
+				}},
+			},
+		},
+		{
+			name: "parameter propagation array with task scoping Finally task",
+			original: v1.PipelineSpec{
+				Finally: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name:    "HELLO",
+								Default: v1.NewStructuredValues("default", "param!"),
+							}},
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.HELLO)"},
+							}},
+						},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("pipeline", "param!")}},
+			expected: v1.PipelineSpec{
+				Finally: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name:    "HELLO",
+								Default: v1.NewStructuredValues("default", "param!"),
+							}},
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "pipeline", "param!"},
+							}},
+						},
+					},
+				}},
+			},
+		},
+		{
+			name: "parameter propagation array with task default and task winner task",
+			original: v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "HELLO", Value: *v1.NewStructuredValues("task", "param!")},
+					},
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name:    "HELLO",
+								Default: v1.NewStructuredValues("default", "param!"),
+							}},
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.HELLO)"},
+							}},
+						},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("pipeline", "param!")}},
+			expected: v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "HELLO", Value: *v1.NewStructuredValues("task", "param!")},
+					},
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name:    "HELLO",
+								Default: v1.NewStructuredValues("default", "param!"),
+							}},
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "task", "param!"},
+							}},
+						},
+					},
+				}},
+			},
+		},
+		{
+			name: "Finally task parameter propagation array with task default and task winner task",
+			original: v1.PipelineSpec{
+				Finally: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "HELLO", Value: *v1.NewStructuredValues("task", "param!")},
+					},
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name:    "HELLO",
+								Default: v1.NewStructuredValues("default", "param!"),
+							}},
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.HELLO)"},
+							}},
+						},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("pipeline", "param!")}},
+			expected: v1.PipelineSpec{
+				Finally: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "HELLO", Value: *v1.NewStructuredValues("task", "param!")},
+					},
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name:    "HELLO",
+								Default: v1.NewStructuredValues("default", "param!"),
+							}},
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "task", "param!"},
+							}},
+						},
+					},
+				}},
+			},
+		},
+		{
+			name: "parameter propagation with task default and task winner task",
+			original: v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "HELLO", Value: *v1.NewStructuredValues("task param!")},
+					},
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name:    "HELLO",
+								Default: v1.NewStructuredValues("default param!"),
+							}},
+							Steps: []v1.Step{{
+								Name:   "step1",
+								Image:  "ubuntu",
+								Script: `#!/usr/bin/env bash\necho "$(params.HELLO)"`,
+							}},
+						},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("pipeline param!")}},
+			expected: v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "HELLO", Value: *v1.NewStructuredValues("task param!")},
+					},
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name:    "HELLO",
+								Default: v1.NewStructuredValues("default param!"),
+							}},
+							Steps: []v1.Step{{
+								Name:   "step1",
+								Image:  "ubuntu",
+								Script: `#!/usr/bin/env bash\necho "task param!"`,
+							}},
+						},
+					},
+				}},
+			},
+		},
+		{
+			name: "Finally task parameter propagation with task default and task winner task",
+			original: v1.PipelineSpec{
+				Finally: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "HELLO", Value: *v1.NewStructuredValues("task param!")},
+					},
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name:    "HELLO",
+								Default: v1.NewStructuredValues("default param!"),
+							}},
+							Steps: []v1.Step{{
+								Name:   "step1",
+								Image:  "ubuntu",
+								Script: `#!/usr/bin/env bash\necho "$(params.HELLO)"`,
+							}},
+						},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "HELLO", Value: *v1.NewStructuredValues("pipeline param!")}},
+			expected: v1.PipelineSpec{
+				Finally: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "HELLO", Value: *v1.NewStructuredValues("task param!")},
+					},
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name:    "HELLO",
+								Default: v1.NewStructuredValues("default param!"),
+							}},
+							Steps: []v1.Step{{
+								Name:   "step1",
+								Image:  "ubuntu",
+								Script: `#!/usr/bin/env bash\necho "task param!"`,
+							}},
+						},
+					},
+				}},
+			},
+		},
+		{
+			name: "parameter propagation object with task default but no task winner pipeline",
+			original: v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name: "myobject",
+								Properties: map[string]v1.PropertySpec{
+									"key1": {Type: "string"},
+									"key2": {Type: "string"},
+								},
+								Default: v1.NewObject(map[string]string{
+									"key1": "default",
+									"key2": "param!",
+								}),
+							}},
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.myobject.key1) $(params.myobject.key2)"},
+							}},
+						},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "myobject", Value: *v1.NewObject(map[string]string{
+				"key1": "pipeline",
+				"key2": "param!!",
+			})}},
+			expected: v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name: "myobject",
+								Properties: map[string]v1.PropertySpec{
+									"key1": {Type: "string"},
+									"key2": {Type: "string"},
+								},
+								Default: v1.NewObject(map[string]string{
+									"key1": "default",
+									"key2": "param!",
+								}),
+							}},
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "pipeline param!!"},
+							}},
+						},
+					},
+				}},
+			},
+			wc: cfgtesting.EnableAlphaAPIFields,
+		},
+		{
+			name: "Finally task parameter propagation object with task default but no task winner pipeline",
+			original: v1.PipelineSpec{
+				Finally: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name: "myobject",
+								Properties: map[string]v1.PropertySpec{
+									"key1": {Type: "string"},
+									"key2": {Type: "string"},
+								},
+								Default: v1.NewObject(map[string]string{
+									"key1": "default",
+									"key2": "param!",
+								}),
+							}},
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.myobject.key1) $(params.myobject.key2)"},
+							}},
+						},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "myobject", Value: *v1.NewObject(map[string]string{
+				"key1": "pipeline",
+				"key2": "param!!",
+			})}},
+			expected: v1.PipelineSpec{
+				Finally: []v1.PipelineTask{{
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name: "myobject",
+								Properties: map[string]v1.PropertySpec{
+									"key1": {Type: "string"},
+									"key2": {Type: "string"},
+								},
+								Default: v1.NewObject(map[string]string{
+									"key1": "default",
+									"key2": "param!",
+								}),
+							}},
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "pipeline param!!"},
+							}},
+						},
+					},
+				}},
+			},
+			wc: cfgtesting.EnableAlphaAPIFields,
+		},
+		{
+			name: "parameter propagation object with task default and task winner task",
+			original: v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "myobject", Value: *v1.NewObject(map[string]string{
+							"key1": "task",
+							"key2": "param!",
+						})},
+					},
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name: "myobject",
+								Properties: map[string]v1.PropertySpec{
+									"key1": {Type: "string"},
+									"key2": {Type: "string"},
+								},
+								Default: v1.NewObject(map[string]string{
+									"key1": "default",
+									"key2": "param!!",
+								}),
+							}},
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.myobject.key1) $(params.myobject.key2)"},
+							}},
+						},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "myobject", Value: *v1.NewObject(map[string]string{"key1": "pipeline", "key2": "param!!!"})}},
+			expected: v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "myobject", Value: *v1.NewObject(map[string]string{
+							"key1": "task",
+							"key2": "param!",
+						})},
+					},
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name: "myobject",
+								Properties: map[string]v1.PropertySpec{
+									"key1": {Type: "string"},
+									"key2": {Type: "string"},
+								},
+								Default: v1.NewObject(map[string]string{
+									"key1": "default",
+									"key2": "param!!",
+								}),
+							}},
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "task param!"},
+							}},
+						},
+					},
+				}},
+			},
+			wc: cfgtesting.EnableAlphaAPIFields,
+		},
+		{
+			name: "Finally task parameter propagation object with task default and task winner task",
+			original: v1.PipelineSpec{
+				Finally: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "myobject", Value: *v1.NewObject(map[string]string{
+							"key1": "task",
+							"key2": "param!",
+						})},
+					},
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name: "myobject",
+								Properties: map[string]v1.PropertySpec{
+									"key1": {Type: "string"},
+									"key2": {Type: "string"},
+								},
+								Default: v1.NewObject(map[string]string{
+									"key1": "default",
+									"key2": "param!!",
+								}),
+							}},
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.myobject.key1) $(params.myobject.key2)"},
+							}},
+						},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "myobject", Value: *v1.NewObject(map[string]string{"key1": "pipeline", "key2": "param!!!"})}},
+			expected: v1.PipelineSpec{
+				Finally: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "myobject", Value: *v1.NewObject(map[string]string{
+							"key1": "task",
+							"key2": "param!",
+						})},
+					},
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Params: []v1.ParamSpec{{
+								Name: "myobject",
+								Properties: map[string]v1.PropertySpec{
+									"key1": {Type: "string"},
+									"key2": {Type: "string"},
+								},
+								Default: v1.NewObject(map[string]string{
+									"key1": "default",
+									"key2": "param!!",
+								}),
+							}},
+							Steps: []v1.Step{{
+								Name:  "step1",
+								Image: "ubuntu",
+								Args:  []string{"#!/usr/bin/env bash\n", "echo", "task param!"},
+							}},
+						},
+					},
+				}},
+			},
+			wc: cfgtesting.EnableAlphaAPIFields,
+		},
+		{
+			name: "single parameter with when expression",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
+					{Name: "second-param", Type: v1.ParamTypeString},
 				},
-				Workspaces: []v1.WorkspacePipelineTaskBinding{
+				Tasks: []v1.PipelineTask{{
+					When: []v1.WhenExpression{{
+						Input:    "$(params.first-param)",
+						Operator: selection.In,
+						Values:   []string{"$(params.second-param)"},
+					}},
+				}},
+			},
+			params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value")}},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
+					{Name: "second-param", Type: v1.ParamTypeString},
+				},
+				Tasks: []v1.PipelineTask{{
+					When: []v1.WhenExpression{{
+						Input:    "default-value",
+						Operator: selection.In,
+						Values:   []string{"second-value"},
+					}},
+				}},
+			},
+		},
+		{
+			name: "object parameter with when expression",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
 					{
-						Name:      "first-workspace",
-						Workspace: "first-workspace",
-						SubPath:   "$(params.second-param)",
+						Name: "myobject",
+						Type: v1.ParamTypeObject,
+						Properties: map[string]v1.PropertySpec{
+							"key1": {Type: "string"},
+							"key2": {Type: "string"},
+							"key3": {Type: "string"},
+						},
+						Default: v1.NewObject(map[string]string{
+							"key1": "val1",
+							"key2": "val2",
+							"key3": "val3",
+						}),
 					},
 				},
-			}},
-		},
-		params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value")}},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
-				{Name: "second-param", Type: v1.ParamTypeString},
+				Tasks: []v1.PipelineTask{{
+					When: []v1.WhenExpression{{
+						Input:    "$(params.myobject.key1)",
+						Operator: selection.In,
+						Values:   []string{"$(params.myobject.key2)", "$(params.myobject.key3)"},
+					}},
+				}},
 			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("default-value")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("static value")},
-				},
-				Workspaces: []v1.WorkspacePipelineTaskBinding{
+			params: v1.Params{{Name: "myobject", Value: *v1.NewObject(map[string]string{
+				"key1": "val1",
+				"key2": "val2",
+				"key3": "val1",
+			})}},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
 					{
-						Name:      "first-workspace",
-						Workspace: "first-workspace",
-						SubPath:   "second-value",
+						Name: "myobject",
+						Type: v1.ParamTypeObject,
+						Properties: map[string]v1.PropertySpec{
+							"key1": {Type: "string"},
+							"key2": {Type: "string"},
+							"key3": {Type: "string"},
+						},
+						Default: v1.NewObject(map[string]string{
+							"key1": "val1",
+							"key2": "val2",
+							"key3": "val3",
+						}),
 					},
 				},
-			}},
-		},
-	}, {
-		name: "object parameter in workspace subpath",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{
-					Name: "myobject",
-					Type: v1.ParamTypeObject,
-					Properties: map[string]v1.PropertySpec{
-						"key1": {Type: "string"},
-						"key2": {Type: "string"},
-					},
-					Default: v1.NewObject(map[string]string{
-						"key1": "val1",
-						"key2": "val2",
-					}),
-				},
+				Tasks: []v1.PipelineTask{{
+					When: []v1.WhenExpression{{
+						Input:    "val1",
+						Operator: selection.In,
+						Values:   []string{"val2", "val1"},
+					}},
+				}},
 			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(params.myobject.key1)")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("static value")},
+		},
+		{
+			name: "string pipeline parameter nested inside task parameter",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
+					{Name: "second-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
 				},
-				Workspaces: []v1.WorkspacePipelineTaskBinding{
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(input.workspace.$(params.first-param))")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("$(input.workspace.$(params.second-param))")},
+					},
+				}},
+			},
+			params: nil, // no parameter values.
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
+					{Name: "second-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(input.workspace.default-value)")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("$(input.workspace.default-value)")},
+					},
+				}},
+			},
+		},
+		{
+			name: "array pipeline parameter nested inside task parameter",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default", "array", "value")},
+					{Name: "second-param", Type: v1.ParamTypeArray},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("firstelement", "$(params.first-param)")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("firstelement", "$(params.second-param)")},
+					},
+				}},
+			},
+			params: v1.Params{
+				{Name: "second-param", Value: *v1.NewStructuredValues("second-value", "array")},
+			},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default", "array", "value")},
+					{Name: "second-param", Type: v1.ParamTypeArray},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("firstelement", "default", "array", "value")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("firstelement", "second-value", "array")},
+					},
+				}},
+			},
+		},
+		{
+			name: "object pipeline parameter nested inside task parameter",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
 					{
-						Name:      "first-workspace",
-						Workspace: "first-workspace",
-						SubPath:   "$(params.myobject.key2)",
+						Name: "myobject",
+						Type: v1.ParamTypeObject,
+						Properties: map[string]v1.PropertySpec{
+							"key1": {Type: "string"},
+							"key2": {Type: "string"},
+						},
+						Default: v1.NewObject(map[string]string{
+							"key1": "val1",
+							"key2": "val2",
+						}),
 					},
 				},
-			}},
-		},
-		params: v1.Params{{Name: "myobject", Value: *v1.NewObject(map[string]string{
-			"key1": "foo",
-			"key2": "bar",
-		})}},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{
-					Name: "myobject",
-					Type: v1.ParamTypeObject,
-					Properties: map[string]v1.PropertySpec{
-						"key1": {Type: "string"},
-						"key2": {Type: "string"},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(input.workspace.$(params.myobject.key1))")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("$(input.workspace.$(params.myobject.key2))")},
 					},
-					Default: v1.NewObject(map[string]string{
-						"key1": "val1",
-						"key2": "val2",
-					}),
-				},
+				}},
 			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("foo")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("static value")},
-				},
-				Workspaces: []v1.WorkspacePipelineTaskBinding{
+			params: nil, // no parameter values.
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
 					{
-						Name:      "first-workspace",
-						Workspace: "first-workspace",
-						SubPath:   "bar",
+						Name: "myobject",
+						Type: v1.ParamTypeObject,
+						Properties: map[string]v1.PropertySpec{
+							"key1": {Type: "string"},
+							"key2": {Type: "string"},
+						},
+						Default: v1.NewObject(map[string]string{
+							"key1": "val1",
+							"key2": "val2",
+						}),
 					},
 				},
-			}},
-		},
-	}, {
-		name: "single parameter with resolver",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
-				{Name: "second-param", Type: v1.ParamTypeString},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(input.workspace.val1)")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("$(input.workspace.val2)")},
+					},
+				}},
 			},
-			Tasks: []v1.PipelineTask{{
-				TaskRef: &v1.TaskRef{
-					ResolverRef: v1.ResolverRef{
-						Params: v1.Params{{
-							Name:  "first-resolver-param",
-							Value: *v1.NewStructuredValues("$(params.first-param)"),
-						}, {
-							Name:  "second-resolver-param",
-							Value: *v1.NewStructuredValues("$(params.second-param)"),
-						}},
-					},
-				},
-			}},
 		},
-		params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value")}},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
-				{Name: "second-param", Type: v1.ParamTypeString},
-			},
-			Tasks: []v1.PipelineTask{{
-				TaskRef: &v1.TaskRef{
-					ResolverRef: v1.ResolverRef{
-						Params: v1.Params{{
-							Name:  "first-resolver-param",
-							Value: *v1.NewStructuredValues("default-value"),
-						}, {
-							Name:  "second-resolver-param",
-							Value: *v1.NewStructuredValues("second-value"),
-						}},
-					},
+		{
+			name: "parameter evaluation with final tasks",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
+					{Name: "second-param", Type: v1.ParamTypeString},
 				},
-			}},
+				Finally: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "final-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param)")},
+						{Name: "final-task-second-param", Value: *v1.NewStructuredValues("$(params.second-param)")},
+					},
+					When: v1.WhenExpressions{{
+						Input:    "$(params.first-param)",
+						Operator: selection.In,
+						Values:   []string{"$(params.second-param)"},
+					}},
+				}},
+			},
+			params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value")}},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
+					{Name: "second-param", Type: v1.ParamTypeString},
+				},
+				Finally: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "final-task-first-param", Value: *v1.NewStructuredValues("default-value")},
+						{Name: "final-task-second-param", Value: *v1.NewStructuredValues("second-value")},
+					},
+					When: v1.WhenExpressions{{
+						Input:    "default-value",
+						Operator: selection.In,
+						Values:   []string{"second-value"},
+					}},
+				}},
+			},
 		},
-	}, {
-		name: "object parameter with resolver",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{
-					Name: "myobject",
-					Type: v1.ParamTypeObject,
-					Properties: map[string]v1.PropertySpec{
-						"key1": {Type: "string"},
-						"key2": {Type: "string"},
-						"key3": {Type: "string"},
-					},
-					Default: v1.NewObject(map[string]string{
-						"key1": "val1",
-						"key2": "val2",
-						"key3": "val3",
-					}),
+		{
+			name: "parameter evaluation with both tasks and final tasks",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
+					{Name: "second-param", Type: v1.ParamTypeString},
 				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "final-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param)")},
+						{Name: "final-task-second-param", Value: *v1.NewStructuredValues("$(params.second-param)")},
+					},
+				}},
+				Finally: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "final-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param)")},
+						{Name: "final-task-second-param", Value: *v1.NewStructuredValues("$(params.second-param)")},
+					},
+					When: v1.WhenExpressions{{
+						Input:    "$(params.first-param)",
+						Operator: selection.In,
+						Values:   []string{"$(params.second-param)"},
+					}},
+				}},
 			},
-			Tasks: []v1.PipelineTask{{
-				TaskRef: &v1.TaskRef{
-					ResolverRef: v1.ResolverRef{
-						Params: v1.Params{{
-							Name:  "first-resolver-param",
-							Value: *v1.NewStructuredValues("$(params.myobject.key1)"),
-						}, {
-							Name:  "second-resolver-param",
-							Value: *v1.NewStructuredValues("$(params.myobject.key2)"),
-						}, {
-							Name:  "third-resolver-param",
-							Value: *v1.NewStructuredValues("$(params.myobject.key3)"),
-						}},
-					},
+			params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value")}},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
+					{Name: "second-param", Type: v1.ParamTypeString},
 				},
-			}},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "final-task-first-param", Value: *v1.NewStructuredValues("default-value")},
+						{Name: "final-task-second-param", Value: *v1.NewStructuredValues("second-value")},
+					},
+				}},
+				Finally: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "final-task-first-param", Value: *v1.NewStructuredValues("default-value")},
+						{Name: "final-task-second-param", Value: *v1.NewStructuredValues("second-value")},
+					},
+					When: v1.WhenExpressions{{
+						Input:    "default-value",
+						Operator: selection.In,
+						Values:   []string{"second-value"},
+					}},
+				}},
+			},
 		},
-		params: v1.Params{{Name: "myobject", Value: *v1.NewObject(map[string]string{
-			"key1": "val1",
-			"key2": "val2",
-			"key3": "val1",
-		})}},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{
-					Name: "myobject",
-					Type: v1.ParamTypeObject,
-					Properties: map[string]v1.PropertySpec{
-						"key1": {Type: "string"},
-						"key2": {Type: "string"},
-						"key3": {Type: "string"},
-					},
-					Default: v1.NewObject(map[string]string{
-						"key1": "val1",
-						"key2": "val2",
-						"key3": "val3",
-					}),
-				},
-			},
-			Tasks: []v1.PipelineTask{{
-				TaskRef: &v1.TaskRef{
-					ResolverRef: v1.ResolverRef{
-						Params: v1.Params{{
-							Name:  "first-resolver-param",
-							Value: *v1.NewStructuredValues("val1"),
-						}, {
-							Name:  "second-resolver-param",
-							Value: *v1.NewStructuredValues("val2"),
-						}, {
-							Name:  "third-resolver-param",
-							Value: *v1.NewStructuredValues("val1"),
-						}},
-					},
-				},
-			}},
-		},
-		wc: cfgtesting.EnableAlphaAPIFields,
-	}, {
-		name: "single parameter in finally workspace subpath",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
-				{Name: "second-param", Type: v1.ParamTypeString},
-			},
-			Finally: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param)")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("static value")},
-				},
-				Workspaces: []v1.WorkspacePipelineTaskBinding{
+		{
+			name: "object parameter evaluation with both tasks and final tasks",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
 					{
-						Name:      "first-workspace",
-						Workspace: "first-workspace",
-						SubPath:   "$(params.second-param)",
+						Name: "myobject",
+						Type: v1.ParamTypeObject,
+						Properties: map[string]v1.PropertySpec{
+							"key1": {Type: "string"},
+							"key2": {Type: "string"},
+						},
+						Default: v1.NewObject(map[string]string{
+							"key1": "val1",
+							"key2": "val2",
+						}),
 					},
 				},
-			}},
-		},
-		params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value")}},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
-				{Name: "second-param", Type: v1.ParamTypeString},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "final-task-first-param", Value: *v1.NewStructuredValues("$(params.myobject.key1)")},
+						{Name: "final-task-second-param", Value: *v1.NewStructuredValues("$(params.myobject.key2)")},
+					},
+				}},
+				Finally: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "final-task-first-param", Value: *v1.NewStructuredValues("$(params.myobject.key1)")},
+						{Name: "final-task-second-param", Value: *v1.NewStructuredValues("$(params.myobject.key2)")},
+					},
+					When: v1.WhenExpressions{{
+						Input:    "$(params.myobject.key1)",
+						Operator: selection.In,
+						Values:   []string{"$(params.myobject.key2)"},
+					}},
+				}},
 			},
-			Finally: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("default-value")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("static value")},
-				},
-				Workspaces: []v1.WorkspacePipelineTaskBinding{
+			params: v1.Params{{Name: "myobject", Value: *v1.NewObject(map[string]string{
+				"key1": "foo",
+				"key2": "bar",
+			})}},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
 					{
-						Name:      "first-workspace",
-						Workspace: "first-workspace",
-						SubPath:   "second-value",
+						Name: "myobject",
+						Type: v1.ParamTypeObject,
+						Properties: map[string]v1.PropertySpec{
+							"key1": {Type: "string"},
+							"key2": {Type: "string"},
+						},
+						Default: v1.NewObject(map[string]string{
+							"key1": "val1",
+							"key2": "val2",
+						}),
 					},
 				},
-			}},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "final-task-first-param", Value: *v1.NewStructuredValues("foo")},
+						{Name: "final-task-second-param", Value: *v1.NewStructuredValues("bar")},
+					},
+				}},
+				Finally: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "final-task-first-param", Value: *v1.NewStructuredValues("foo")},
+						{Name: "final-task-second-param", Value: *v1.NewStructuredValues("bar")},
+					},
+					When: v1.WhenExpressions{{
+						Input:    "foo",
+						Operator: selection.In,
+						Values:   []string{"bar"},
+					}},
+				}},
+			},
 		},
-	},
+		{
+			name: "parameter references with bracket notation and special characters",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first.param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
+					{Name: "second/param", Type: v1.ParamTypeString},
+					{Name: "third.param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
+					{Name: "fourth/param", Type: v1.ParamTypeString},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues(`$(params["first.param"])`)},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues(`$(params["second/param"])`)},
+						{Name: "first-task-third-param", Value: *v1.NewStructuredValues(`$(params['third.param'])`)},
+						{Name: "first-task-fourth-param", Value: *v1.NewStructuredValues(`$(params['fourth/param'])`)},
+						{Name: "first-task-fifth-param", Value: *v1.NewStructuredValues("static value")},
+					},
+				}},
+			},
+			params: v1.Params{
+				{Name: "second/param", Value: *v1.NewStructuredValues("second-value")},
+				{Name: "fourth/param", Value: *v1.NewStructuredValues("fourth-value")},
+			},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first.param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
+					{Name: "second/param", Type: v1.ParamTypeString},
+					{Name: "third.param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
+					{Name: "fourth/param", Type: v1.ParamTypeString},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("default-value")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("second-value")},
+						{Name: "first-task-third-param", Value: *v1.NewStructuredValues("default-value")},
+						{Name: "first-task-fourth-param", Value: *v1.NewStructuredValues("fourth-value")},
+						{Name: "first-task-fifth-param", Value: *v1.NewStructuredValues("static value")},
+					},
+				}},
+			},
+		},
+		{
+			name: "single parameter in workspace subpath",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
+					{Name: "second-param", Type: v1.ParamTypeString},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param)")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("static value")},
+					},
+					Workspaces: []v1.WorkspacePipelineTaskBinding{
+						{
+							Name:      "first-workspace",
+							Workspace: "first-workspace",
+							SubPath:   "$(params.second-param)",
+						},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value")}},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
+					{Name: "second-param", Type: v1.ParamTypeString},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("default-value")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("static value")},
+					},
+					Workspaces: []v1.WorkspacePipelineTaskBinding{
+						{
+							Name:      "first-workspace",
+							Workspace: "first-workspace",
+							SubPath:   "second-value",
+						},
+					},
+				}},
+			},
+		},
+		{
+			name: "object parameter in workspace subpath",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{
+						Name: "myobject",
+						Type: v1.ParamTypeObject,
+						Properties: map[string]v1.PropertySpec{
+							"key1": {Type: "string"},
+							"key2": {Type: "string"},
+						},
+						Default: v1.NewObject(map[string]string{
+							"key1": "val1",
+							"key2": "val2",
+						}),
+					},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(params.myobject.key1)")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("static value")},
+					},
+					Workspaces: []v1.WorkspacePipelineTaskBinding{
+						{
+							Name:      "first-workspace",
+							Workspace: "first-workspace",
+							SubPath:   "$(params.myobject.key2)",
+						},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "myobject", Value: *v1.NewObject(map[string]string{
+				"key1": "foo",
+				"key2": "bar",
+			})}},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{
+						Name: "myobject",
+						Type: v1.ParamTypeObject,
+						Properties: map[string]v1.PropertySpec{
+							"key1": {Type: "string"},
+							"key2": {Type: "string"},
+						},
+						Default: v1.NewObject(map[string]string{
+							"key1": "val1",
+							"key2": "val2",
+						}),
+					},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("foo")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("static value")},
+					},
+					Workspaces: []v1.WorkspacePipelineTaskBinding{
+						{
+							Name:      "first-workspace",
+							Workspace: "first-workspace",
+							SubPath:   "bar",
+						},
+					},
+				}},
+			},
+		},
+		{
+			name: "single parameter with resolver",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
+					{Name: "second-param", Type: v1.ParamTypeString},
+				},
+				Tasks: []v1.PipelineTask{{
+					TaskRef: &v1.TaskRef{
+						ResolverRef: v1.ResolverRef{
+							Params: v1.Params{{
+								Name:  "first-resolver-param",
+								Value: *v1.NewStructuredValues("$(params.first-param)"),
+							}, {
+								Name:  "second-resolver-param",
+								Value: *v1.NewStructuredValues("$(params.second-param)"),
+							}},
+						},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value")}},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
+					{Name: "second-param", Type: v1.ParamTypeString},
+				},
+				Tasks: []v1.PipelineTask{{
+					TaskRef: &v1.TaskRef{
+						ResolverRef: v1.ResolverRef{
+							Params: v1.Params{{
+								Name:  "first-resolver-param",
+								Value: *v1.NewStructuredValues("default-value"),
+							}, {
+								Name:  "second-resolver-param",
+								Value: *v1.NewStructuredValues("second-value"),
+							}},
+						},
+					},
+				}},
+			},
+		},
+		{
+			name: "object parameter with resolver",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{
+						Name: "myobject",
+						Type: v1.ParamTypeObject,
+						Properties: map[string]v1.PropertySpec{
+							"key1": {Type: "string"},
+							"key2": {Type: "string"},
+							"key3": {Type: "string"},
+						},
+						Default: v1.NewObject(map[string]string{
+							"key1": "val1",
+							"key2": "val2",
+							"key3": "val3",
+						}),
+					},
+				},
+				Tasks: []v1.PipelineTask{{
+					TaskRef: &v1.TaskRef{
+						ResolverRef: v1.ResolverRef{
+							Params: v1.Params{{
+								Name:  "first-resolver-param",
+								Value: *v1.NewStructuredValues("$(params.myobject.key1)"),
+							}, {
+								Name:  "second-resolver-param",
+								Value: *v1.NewStructuredValues("$(params.myobject.key2)"),
+							}, {
+								Name:  "third-resolver-param",
+								Value: *v1.NewStructuredValues("$(params.myobject.key3)"),
+							}},
+						},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "myobject", Value: *v1.NewObject(map[string]string{
+				"key1": "val1",
+				"key2": "val2",
+				"key3": "val1",
+			})}},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{
+						Name: "myobject",
+						Type: v1.ParamTypeObject,
+						Properties: map[string]v1.PropertySpec{
+							"key1": {Type: "string"},
+							"key2": {Type: "string"},
+							"key3": {Type: "string"},
+						},
+						Default: v1.NewObject(map[string]string{
+							"key1": "val1",
+							"key2": "val2",
+							"key3": "val3",
+						}),
+					},
+				},
+				Tasks: []v1.PipelineTask{{
+					TaskRef: &v1.TaskRef{
+						ResolverRef: v1.ResolverRef{
+							Params: v1.Params{{
+								Name:  "first-resolver-param",
+								Value: *v1.NewStructuredValues("val1"),
+							}, {
+								Name:  "second-resolver-param",
+								Value: *v1.NewStructuredValues("val2"),
+							}, {
+								Name:  "third-resolver-param",
+								Value: *v1.NewStructuredValues("val1"),
+							}},
+						},
+					},
+				}},
+			},
+			wc: cfgtesting.EnableAlphaAPIFields,
+		},
+		{
+			name: "single parameter in finally workspace subpath",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
+					{Name: "second-param", Type: v1.ParamTypeString},
+				},
+				Finally: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param)")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("static value")},
+					},
+					Workspaces: []v1.WorkspacePipelineTaskBinding{
+						{
+							Name:      "first-workspace",
+							Workspace: "first-workspace",
+							SubPath:   "$(params.second-param)",
+						},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value")}},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-value")},
+					{Name: "second-param", Type: v1.ParamTypeString},
+				},
+				Finally: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("default-value")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("static value")},
+					},
+					Workspaces: []v1.WorkspacePipelineTaskBinding{
+						{
+							Name:      "first-workspace",
+							Workspace: "first-workspace",
+							SubPath:   "second-value",
+						},
+					},
+				}},
+			},
+		},
 		{
 			name: "tasks with the same parameter name but referencing different values",
 			original: v1.PipelineSpec{
@@ -1709,7 +1742,8 @@ func TestApplyParameters(t *testing.T) {
 					},
 				},
 			},
-		}, {
+		},
+		{
 			name:   "parameter/s in tasks and finally display name",
 			params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value")}},
 			original: v1.PipelineSpec{
@@ -1764,288 +1798,289 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 		original v1.PipelineSpec
 		params   []v1.Param
 		expected v1.PipelineSpec
-	}{{
-		name: "single parameter",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
-				{Name: "second-param", Type: v1.ParamTypeString},
-			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param[1])")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("$(params.second-param[0])")},
-					{Name: "first-task-third-param", Value: *v1.NewStructuredValues("static value")},
+	}{
+		{
+			name: "single parameter",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
+					{Name: "second-param", Type: v1.ParamTypeString},
 				},
-			}},
-		},
-		params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value", "second-value-again")}},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
-				{Name: "second-param", Type: v1.ParamTypeString},
-			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("default-value-again")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("second-value")},
-					{Name: "first-task-third-param", Value: *v1.NewStructuredValues("static value")},
-				},
-			}},
-		},
-	}, {
-		name: "single parameter with when expression",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
-				{Name: "second-param", Type: v1.ParamTypeString},
-			},
-			Tasks: []v1.PipelineTask{{
-				When: []v1.WhenExpression{{
-					Input:    "$(params.first-param[1])",
-					Operator: selection.In,
-					Values:   []string{"$(params.second-param[0])"},
-				}},
-			}},
-		},
-		params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value", "second-value-again")}},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
-				{Name: "second-param", Type: v1.ParamTypeString},
-			},
-			Tasks: []v1.PipelineTask{{
-				When: []v1.WhenExpression{{
-					Input:    "default-value-again",
-					Operator: selection.In,
-					Values:   []string{"second-value"},
-				}},
-			}},
-		},
-	}, {
-		name: "pipeline parameter nested inside task parameter",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
-				{Name: "second-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
-			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(input.workspace.$(params.first-param[0]))")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("$(input.workspace.$(params.second-param[1]))")},
-				},
-			}},
-		},
-		params: nil, // no parameter values.
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
-				{Name: "second-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
-			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(input.workspace.default-value)")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("$(input.workspace.default-value-again)")},
-				},
-			}},
-		},
-	}, {
-		name: "array parameter",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default", "array", "value")},
-				{Name: "second-param", Type: v1.ParamTypeArray},
-			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("firstelement", "$(params.first-param)")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("firstelement", "$(params.second-param[0])")},
-				},
-			}},
-		},
-		params: v1.Params{
-			{Name: "second-param", Value: *v1.NewStructuredValues("second-value", "array")},
-		},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default", "array", "value")},
-				{Name: "second-param", Type: v1.ParamTypeArray},
-			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("firstelement", "default", "array", "value")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("firstelement", "second-value")},
-				},
-			}},
-		},
-	}, {
-		name: "parameter evaluation with final tasks",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
-				{Name: "second-param", Type: v1.ParamTypeArray},
-			},
-			Finally: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "final-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param[0])")},
-					{Name: "final-task-second-param", Value: *v1.NewStructuredValues("$(params.second-param[1])")},
-				},
-				When: v1.WhenExpressions{{
-					Input:    "$(params.first-param[0])",
-					Operator: selection.In,
-					Values:   []string{"$(params.second-param[1])"},
-				}},
-			}},
-		},
-		params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value", "second-value-again")}},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
-				{Name: "second-param", Type: v1.ParamTypeArray},
-			},
-			Finally: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "final-task-first-param", Value: *v1.NewStructuredValues("default-value")},
-					{Name: "final-task-second-param", Value: *v1.NewStructuredValues("second-value-again")},
-				},
-				When: v1.WhenExpressions{{
-					Input:    "default-value",
-					Operator: selection.In,
-					Values:   []string{"second-value-again"},
-				}},
-			}},
-		},
-	}, {
-		name: "parameter evaluation with both tasks and final tasks",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
-				{Name: "second-param", Type: v1.ParamTypeArray},
-			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "final-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param[0])")},
-					{Name: "final-task-second-param", Value: *v1.NewStructuredValues("$(params.second-param[1])")},
-				},
-			}},
-			Finally: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "final-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param[0])")},
-					{Name: "final-task-second-param", Value: *v1.NewStructuredValues("$(params.second-param[1])")},
-				},
-				When: v1.WhenExpressions{{
-					Input:    "$(params.first-param[0])",
-					Operator: selection.In,
-					Values:   []string{"$(params.second-param[1])"},
-				}},
-			}},
-		},
-		params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value", "second-value-again")}},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
-				{Name: "second-param", Type: v1.ParamTypeArray},
-			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "final-task-first-param", Value: *v1.NewStructuredValues("default-value")},
-					{Name: "final-task-second-param", Value: *v1.NewStructuredValues("second-value-again")},
-				},
-			}},
-			Finally: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "final-task-first-param", Value: *v1.NewStructuredValues("default-value")},
-					{Name: "final-task-second-param", Value: *v1.NewStructuredValues("second-value-again")},
-				},
-				When: v1.WhenExpressions{{
-					Input:    "default-value",
-					Operator: selection.In,
-					Values:   []string{"second-value-again"},
-				}},
-			}},
-		},
-	}, {
-		name: "parameter references with bracket notation and special characters",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first.param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
-				{Name: "second/param", Type: v1.ParamTypeArray},
-				{Name: "third.param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
-				{Name: "fourth/param", Type: v1.ParamTypeArray},
-			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues(`$(params["first.param"][0])`)},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues(`$(params["second/param"][0])`)},
-					{Name: "first-task-third-param", Value: *v1.NewStructuredValues(`$(params['third.param'][1])`)},
-					{Name: "first-task-fourth-param", Value: *v1.NewStructuredValues(`$(params['fourth/param'][1])`)},
-					{Name: "first-task-fifth-param", Value: *v1.NewStructuredValues("static value")},
-				},
-			}},
-		},
-		params: v1.Params{
-			{Name: "second/param", Value: *v1.NewStructuredValues("second-value", "second-value-again")},
-			{Name: "fourth/param", Value: *v1.NewStructuredValues("fourth-value", "fourth-value-again")},
-		},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first.param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
-				{Name: "second/param", Type: v1.ParamTypeArray},
-				{Name: "third.param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
-				{Name: "fourth/param", Type: v1.ParamTypeArray},
-			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("default-value")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("second-value")},
-					{Name: "first-task-third-param", Value: *v1.NewStructuredValues("default-value-again")},
-					{Name: "first-task-fourth-param", Value: *v1.NewStructuredValues("fourth-value-again")},
-					{Name: "first-task-fifth-param", Value: *v1.NewStructuredValues("static value")},
-				},
-			}},
-		},
-	}, {
-		name: "single parameter in workspace subpath",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
-				{Name: "second-param", Type: v1.ParamTypeArray},
-			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param[0])")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("static value")},
-				},
-				Workspaces: []v1.WorkspacePipelineTaskBinding{
-					{
-						Name:      "first-workspace",
-						Workspace: "first-workspace",
-						SubPath:   "$(params.second-param[1])",
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param[1])")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("$(params.second-param[0])")},
+						{Name: "first-task-third-param", Value: *v1.NewStructuredValues("static value")},
 					},
-				},
-			}},
-		},
-		params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value", "second-value-again")}},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{
-				{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
-				{Name: "second-param", Type: v1.ParamTypeArray},
+				}},
 			},
-			Tasks: []v1.PipelineTask{{
-				Params: v1.Params{
-					{Name: "first-task-first-param", Value: *v1.NewStructuredValues("default-value")},
-					{Name: "first-task-second-param", Value: *v1.NewStructuredValues("static value")},
+			params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value", "second-value-again")}},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
+					{Name: "second-param", Type: v1.ParamTypeString},
 				},
-				Workspaces: []v1.WorkspacePipelineTaskBinding{
-					{
-						Name:      "first-workspace",
-						Workspace: "first-workspace",
-						SubPath:   "second-value-again",
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("default-value-again")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("second-value")},
+						{Name: "first-task-third-param", Value: *v1.NewStructuredValues("static value")},
 					},
+				}},
+			},
+		}, {
+			name: "single parameter with when expression",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
+					{Name: "second-param", Type: v1.ParamTypeString},
 				},
-			}},
+				Tasks: []v1.PipelineTask{{
+					When: []v1.WhenExpression{{
+						Input:    "$(params.first-param[1])",
+						Operator: selection.In,
+						Values:   []string{"$(params.second-param[0])"},
+					}},
+				}},
+			},
+			params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value", "second-value-again")}},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
+					{Name: "second-param", Type: v1.ParamTypeString},
+				},
+				Tasks: []v1.PipelineTask{{
+					When: []v1.WhenExpression{{
+						Input:    "default-value-again",
+						Operator: selection.In,
+						Values:   []string{"second-value"},
+					}},
+				}},
+			},
+		}, {
+			name: "pipeline parameter nested inside task parameter",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
+					{Name: "second-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(input.workspace.$(params.first-param[0]))")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("$(input.workspace.$(params.second-param[1]))")},
+					},
+				}},
+			},
+			params: nil, // no parameter values.
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
+					{Name: "second-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(input.workspace.default-value)")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("$(input.workspace.default-value-again)")},
+					},
+				}},
+			},
+		}, {
+			name: "array parameter",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default", "array", "value")},
+					{Name: "second-param", Type: v1.ParamTypeArray},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("firstelement", "$(params.first-param)")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("firstelement", "$(params.second-param[0])")},
+					},
+				}},
+			},
+			params: v1.Params{
+				{Name: "second-param", Value: *v1.NewStructuredValues("second-value", "array")},
+			},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default", "array", "value")},
+					{Name: "second-param", Type: v1.ParamTypeArray},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("firstelement", "default", "array", "value")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("firstelement", "second-value")},
+					},
+				}},
+			},
+		}, {
+			name: "parameter evaluation with final tasks",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
+					{Name: "second-param", Type: v1.ParamTypeArray},
+				},
+				Finally: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "final-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param[0])")},
+						{Name: "final-task-second-param", Value: *v1.NewStructuredValues("$(params.second-param[1])")},
+					},
+					When: v1.WhenExpressions{{
+						Input:    "$(params.first-param[0])",
+						Operator: selection.In,
+						Values:   []string{"$(params.second-param[1])"},
+					}},
+				}},
+			},
+			params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value", "second-value-again")}},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
+					{Name: "second-param", Type: v1.ParamTypeArray},
+				},
+				Finally: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "final-task-first-param", Value: *v1.NewStructuredValues("default-value")},
+						{Name: "final-task-second-param", Value: *v1.NewStructuredValues("second-value-again")},
+					},
+					When: v1.WhenExpressions{{
+						Input:    "default-value",
+						Operator: selection.In,
+						Values:   []string{"second-value-again"},
+					}},
+				}},
+			},
+		}, {
+			name: "parameter evaluation with both tasks and final tasks",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
+					{Name: "second-param", Type: v1.ParamTypeArray},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "final-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param[0])")},
+						{Name: "final-task-second-param", Value: *v1.NewStructuredValues("$(params.second-param[1])")},
+					},
+				}},
+				Finally: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "final-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param[0])")},
+						{Name: "final-task-second-param", Value: *v1.NewStructuredValues("$(params.second-param[1])")},
+					},
+					When: v1.WhenExpressions{{
+						Input:    "$(params.first-param[0])",
+						Operator: selection.In,
+						Values:   []string{"$(params.second-param[1])"},
+					}},
+				}},
+			},
+			params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value", "second-value-again")}},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
+					{Name: "second-param", Type: v1.ParamTypeArray},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "final-task-first-param", Value: *v1.NewStructuredValues("default-value")},
+						{Name: "final-task-second-param", Value: *v1.NewStructuredValues("second-value-again")},
+					},
+				}},
+				Finally: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "final-task-first-param", Value: *v1.NewStructuredValues("default-value")},
+						{Name: "final-task-second-param", Value: *v1.NewStructuredValues("second-value-again")},
+					},
+					When: v1.WhenExpressions{{
+						Input:    "default-value",
+						Operator: selection.In,
+						Values:   []string{"second-value-again"},
+					}},
+				}},
+			},
+		}, {
+			name: "parameter references with bracket notation and special characters",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first.param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
+					{Name: "second/param", Type: v1.ParamTypeArray},
+					{Name: "third.param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
+					{Name: "fourth/param", Type: v1.ParamTypeArray},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues(`$(params["first.param"][0])`)},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues(`$(params["second/param"][0])`)},
+						{Name: "first-task-third-param", Value: *v1.NewStructuredValues(`$(params['third.param'][1])`)},
+						{Name: "first-task-fourth-param", Value: *v1.NewStructuredValues(`$(params['fourth/param'][1])`)},
+						{Name: "first-task-fifth-param", Value: *v1.NewStructuredValues("static value")},
+					},
+				}},
+			},
+			params: v1.Params{
+				{Name: "second/param", Value: *v1.NewStructuredValues("second-value", "second-value-again")},
+				{Name: "fourth/param", Value: *v1.NewStructuredValues("fourth-value", "fourth-value-again")},
+			},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first.param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
+					{Name: "second/param", Type: v1.ParamTypeArray},
+					{Name: "third.param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
+					{Name: "fourth/param", Type: v1.ParamTypeArray},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("default-value")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("second-value")},
+						{Name: "first-task-third-param", Value: *v1.NewStructuredValues("default-value-again")},
+						{Name: "first-task-fourth-param", Value: *v1.NewStructuredValues("fourth-value-again")},
+						{Name: "first-task-fifth-param", Value: *v1.NewStructuredValues("static value")},
+					},
+				}},
+			},
+		}, {
+			name: "single parameter in workspace subpath",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
+					{Name: "second-param", Type: v1.ParamTypeArray},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("$(params.first-param[0])")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("static value")},
+					},
+					Workspaces: []v1.WorkspacePipelineTaskBinding{
+						{
+							Name:      "first-workspace",
+							Workspace: "first-workspace",
+							SubPath:   "$(params.second-param[1])",
+						},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value", "second-value-again")}},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "first-param", Type: v1.ParamTypeArray, Default: v1.NewStructuredValues("default-value", "default-value-again")},
+					{Name: "second-param", Type: v1.ParamTypeArray},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "first-task-first-param", Value: *v1.NewStructuredValues("default-value")},
+						{Name: "first-task-second-param", Value: *v1.NewStructuredValues("static value")},
+					},
+					Workspaces: []v1.WorkspacePipelineTaskBinding{
+						{
+							Name:      "first-workspace",
+							Workspace: "first-workspace",
+							SubPath:   "second-value-again",
+						},
+					},
+				}},
+			},
 		},
-	},
 	} {
 		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
@@ -2069,235 +2104,236 @@ func TestApplyReplacementsMatrix(t *testing.T) {
 		original v1.PipelineSpec
 		params   []v1.Param
 		expected v1.PipelineSpec
-	}{{
-		name: "matrix params replacements",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{{
-				Name: "foo", Type: v1.ParamTypeString,
-			}, {
-				Name: "bar", Type: v1.ParamTypeArray,
-			}, {
-				Name: "rad", Type: v1.ParamTypeObject,
-			}},
-			Tasks: []v1.PipelineTask{{
-				Matrix: &v1.Matrix{
-					Params: v1.Params{{
-						// string replacements from string param, array param and object param
-						Name: "first-param", Value: *v1.NewStructuredValues("$(params.foo)", "$(params.bar[0])", "$(params.rad.key1)"),
-					}, {
-						// array replacement from array param
-						Name: "second-param", Value: *v1.NewStructuredValues("$(params.bar)"),
-					}},
-				},
-			}},
-		},
-		params: v1.Params{
-			{Name: "foo", Value: *v1.NewStructuredValues("foo")},
-			{Name: "bar", Value: *v1.NewStructuredValues("b", "a", "r")},
-			{Name: "rad", Value: *v1.NewObject(map[string]string{
-				"key1": "r",
-				"key2": "a",
-				"key3": "d",
-			})},
-		},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{{
-				Name: "foo", Type: v1.ParamTypeString,
-			}, {
-				Name: "bar", Type: v1.ParamTypeArray,
-			}, {
-				Name: "rad", Type: v1.ParamTypeObject,
-			}},
-			Tasks: []v1.PipelineTask{{
-				Matrix: &v1.Matrix{
-					Params: v1.Params{{
-						// string replacements from string param, array param and object param
-						Name: "first-param", Value: *v1.NewStructuredValues("foo", "b", "r"),
-					}, {
-						// array replacement from array param
-						Name: "second-param", Value: *v1.NewStructuredValues("b", "a", "r"),
-					}},
-				},
-			}},
-		},
-	}, {
-		name: "matrix include params replacement",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{{
-				Name: "foo", Type: v1.ParamTypeString,
-			}, {
-				Name: "bar", Type: v1.ParamTypeArray,
-			}, {
-				Name: "rad", Type: v1.ParamTypeObject,
-			}},
-			Tasks: []v1.PipelineTask{{
-				Matrix: &v1.Matrix{
-					Include: []v1.IncludeParams{{
-						Name: "build-1",
+	}{
+		{
+			name: "matrix params replacements",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{{
+					Name: "foo", Type: v1.ParamTypeString,
+				}, {
+					Name: "bar", Type: v1.ParamTypeArray,
+				}, {
+					Name: "rad", Type: v1.ParamTypeObject,
+				}},
+				Tasks: []v1.PipelineTask{{
+					Matrix: &v1.Matrix{
 						Params: v1.Params{{
-							// string replacements from string param
-							Name: "first-param", Value: *v1.NewStructuredValues("$(params.foo)"),
+							// string replacements from string param, array param and object param
+							Name: "first-param", Value: *v1.NewStructuredValues("$(params.foo)", "$(params.bar[0])", "$(params.rad.key1)"),
 						}, {
-							// string replacements from array param
-							Name: "second-param", Value: *v1.NewStructuredValues("$(params.bar[0])"),
-						}, {
-							// string replacements from object param
-							Name: "third-param", Value: *v1.NewStructuredValues("$(params.rad.key1)"),
+							// array replacement from array param
+							Name: "second-param", Value: *v1.NewStructuredValues("$(params.bar)"),
 						}},
-					}},
-				},
-			}},
-		},
-		params: v1.Params{
-			{Name: "foo", Value: *v1.NewStructuredValues("foo")},
-			{Name: "bar", Value: *v1.NewStructuredValues("b", "a", "r")},
-			{Name: "rad", Value: *v1.NewObject(map[string]string{
-				"key1": "r",
-				"key2": "a",
-				"key3": "d",
-			})},
-		},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{{
-				Name: "foo", Type: v1.ParamTypeString,
-			}, {
-				Name: "bar", Type: v1.ParamTypeArray,
-			}, {
-				Name: "rad", Type: v1.ParamTypeObject,
-			}},
-			Tasks: []v1.PipelineTask{{
-				Matrix: &v1.Matrix{
-					Include: []v1.IncludeParams{{
-						Name: "build-1",
+					},
+				}},
+			},
+			params: v1.Params{
+				{Name: "foo", Value: *v1.NewStructuredValues("foo")},
+				{Name: "bar", Value: *v1.NewStructuredValues("b", "a", "r")},
+				{Name: "rad", Value: *v1.NewObject(map[string]string{
+					"key1": "r",
+					"key2": "a",
+					"key3": "d",
+				})},
+			},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{{
+					Name: "foo", Type: v1.ParamTypeString,
+				}, {
+					Name: "bar", Type: v1.ParamTypeArray,
+				}, {
+					Name: "rad", Type: v1.ParamTypeObject,
+				}},
+				Tasks: []v1.PipelineTask{{
+					Matrix: &v1.Matrix{
 						Params: v1.Params{{
-							// string replacements from string param
-							Name: "first-param", Value: *v1.NewStructuredValues("foo"),
+							// string replacements from string param, array param and object param
+							Name: "first-param", Value: *v1.NewStructuredValues("foo", "b", "r"),
 						}, {
-							// string replacements from array param
-							Name: "second-param", Value: *v1.NewStructuredValues("b"),
-						}, {
-							// string replacements from object param
-							Name: "third-param", Value: *v1.NewStructuredValues("r"),
+							// array replacement from array param
+							Name: "second-param", Value: *v1.NewStructuredValues("b", "a", "r"),
 						}},
-					}},
-				},
-			}},
-		},
-	}, {
-		name: "matrix params with final tasks",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{{
-				Name: "foo", Type: v1.ParamTypeString,
-			}, {
-				Name: "bar", Type: v1.ParamTypeArray,
-			}, {
-				Name: "rad", Type: v1.ParamTypeObject,
-			}},
-			Finally: []v1.PipelineTask{{
-				Matrix: &v1.Matrix{
-					Params: v1.Params{{
-						// string replacements from string param, array param and object param
-						Name: "first-param", Value: *v1.NewStructuredValues("$(params.foo)", "$(params.bar[0])", "$(params.rad.key1)"),
-					}, {
-						// array replacement from array param
-						Name: "second-param", Value: *v1.NewStructuredValues("$(params.bar)"),
-					}},
-				},
-			}},
-		},
-		params: v1.Params{
-			{Name: "foo", Value: *v1.NewStructuredValues("foo")},
-			{Name: "bar", Value: *v1.NewStructuredValues("b", "a", "r")},
-			{Name: "rad", Value: *v1.NewObject(map[string]string{
-				"key1": "r",
-				"key2": "a",
-				"key3": "d",
-			})},
-		},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{{
-				Name: "foo", Type: v1.ParamTypeString,
-			}, {
-				Name: "bar", Type: v1.ParamTypeArray,
-			}, {
-				Name: "rad", Type: v1.ParamTypeObject,
-			}},
-			Finally: []v1.PipelineTask{{
-				Matrix: &v1.Matrix{
-					Params: v1.Params{{
-						// string replacements from string param, array param and object param
-						Name: "first-param", Value: *v1.NewStructuredValues("foo", "b", "r"),
-					}, {
-						// array replacement from array param
-						Name: "second-param", Value: *v1.NewStructuredValues("b", "a", "r"),
-					}},
-				},
-			}},
-		},
-	}, {
-		name: "matrix include params with final tasks",
-		original: v1.PipelineSpec{
-			Params: []v1.ParamSpec{{
-				Name: "foo", Type: v1.ParamTypeString,
-			}, {
-				Name: "bar", Type: v1.ParamTypeArray,
-			}, {
-				Name: "rad", Type: v1.ParamTypeObject,
-			}},
-			Finally: []v1.PipelineTask{{
-				Matrix: &v1.Matrix{
-					Include: []v1.IncludeParams{{
-						Name: "build-1",
+					},
+				}},
+			},
+		}, {
+			name: "matrix include params replacement",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{{
+					Name: "foo", Type: v1.ParamTypeString,
+				}, {
+					Name: "bar", Type: v1.ParamTypeArray,
+				}, {
+					Name: "rad", Type: v1.ParamTypeObject,
+				}},
+				Tasks: []v1.PipelineTask{{
+					Matrix: &v1.Matrix{
+						Include: []v1.IncludeParams{{
+							Name: "build-1",
+							Params: v1.Params{{
+								// string replacements from string param
+								Name: "first-param", Value: *v1.NewStructuredValues("$(params.foo)"),
+							}, {
+								// string replacements from array param
+								Name: "second-param", Value: *v1.NewStructuredValues("$(params.bar[0])"),
+							}, {
+								// string replacements from object param
+								Name: "third-param", Value: *v1.NewStructuredValues("$(params.rad.key1)"),
+							}},
+						}},
+					},
+				}},
+			},
+			params: v1.Params{
+				{Name: "foo", Value: *v1.NewStructuredValues("foo")},
+				{Name: "bar", Value: *v1.NewStructuredValues("b", "a", "r")},
+				{Name: "rad", Value: *v1.NewObject(map[string]string{
+					"key1": "r",
+					"key2": "a",
+					"key3": "d",
+				})},
+			},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{{
+					Name: "foo", Type: v1.ParamTypeString,
+				}, {
+					Name: "bar", Type: v1.ParamTypeArray,
+				}, {
+					Name: "rad", Type: v1.ParamTypeObject,
+				}},
+				Tasks: []v1.PipelineTask{{
+					Matrix: &v1.Matrix{
+						Include: []v1.IncludeParams{{
+							Name: "build-1",
+							Params: v1.Params{{
+								// string replacements from string param
+								Name: "first-param", Value: *v1.NewStructuredValues("foo"),
+							}, {
+								// string replacements from array param
+								Name: "second-param", Value: *v1.NewStructuredValues("b"),
+							}, {
+								// string replacements from object param
+								Name: "third-param", Value: *v1.NewStructuredValues("r"),
+							}},
+						}},
+					},
+				}},
+			},
+		}, {
+			name: "matrix params with final tasks",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{{
+					Name: "foo", Type: v1.ParamTypeString,
+				}, {
+					Name: "bar", Type: v1.ParamTypeArray,
+				}, {
+					Name: "rad", Type: v1.ParamTypeObject,
+				}},
+				Finally: []v1.PipelineTask{{
+					Matrix: &v1.Matrix{
 						Params: v1.Params{{
-							// string replacements from string param
-							Name: "first-param", Value: *v1.NewStructuredValues("$(params.foo)"),
+							// string replacements from string param, array param and object param
+							Name: "first-param", Value: *v1.NewStructuredValues("$(params.foo)", "$(params.bar[0])", "$(params.rad.key1)"),
 						}, {
-							// string replacements from array param
-							Name: "second-param", Value: *v1.NewStructuredValues("$(params.bar[0])"),
-						}, {
-							// string replacements from object param
-							Name: "third-param", Value: *v1.NewStructuredValues("$(params.rad.key1)"),
+							// array replacement from array param
+							Name: "second-param", Value: *v1.NewStructuredValues("$(params.bar)"),
 						}},
-					}},
-				},
-			}},
-		},
-		params: v1.Params{
-			{Name: "foo", Value: *v1.NewStructuredValues("foo")},
-			{Name: "bar", Value: *v1.NewStructuredValues("b", "a", "r")},
-			{Name: "rad", Value: *v1.NewObject(map[string]string{
-				"key1": "r",
-				"key2": "a",
-				"key3": "d",
-			})},
-		},
-		expected: v1.PipelineSpec{
-			Params: []v1.ParamSpec{{
-				Name: "foo", Type: v1.ParamTypeString,
-			}, {
-				Name: "bar", Type: v1.ParamTypeArray,
-			}, {
-				Name: "rad", Type: v1.ParamTypeObject,
-			}},
-			Finally: []v1.PipelineTask{{
-				Matrix: &v1.Matrix{
-					Include: []v1.IncludeParams{{
-						Name: "build-1",
+					},
+				}},
+			},
+			params: v1.Params{
+				{Name: "foo", Value: *v1.NewStructuredValues("foo")},
+				{Name: "bar", Value: *v1.NewStructuredValues("b", "a", "r")},
+				{Name: "rad", Value: *v1.NewObject(map[string]string{
+					"key1": "r",
+					"key2": "a",
+					"key3": "d",
+				})},
+			},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{{
+					Name: "foo", Type: v1.ParamTypeString,
+				}, {
+					Name: "bar", Type: v1.ParamTypeArray,
+				}, {
+					Name: "rad", Type: v1.ParamTypeObject,
+				}},
+				Finally: []v1.PipelineTask{{
+					Matrix: &v1.Matrix{
 						Params: v1.Params{{
-							// string replacements from string param
-							Name: "first-param", Value: *v1.NewStructuredValues("foo"),
+							// string replacements from string param, array param and object param
+							Name: "first-param", Value: *v1.NewStructuredValues("foo", "b", "r"),
 						}, {
-							// string replacements from array param
-							Name: "second-param", Value: *v1.NewStructuredValues("b"),
-						}, {
-							// string replacements from object param
-							Name: "third-param", Value: *v1.NewStructuredValues("r"),
+							// array replacement from array param
+							Name: "second-param", Value: *v1.NewStructuredValues("b", "a", "r"),
 						}},
-					}},
-				},
-			}},
+					},
+				}},
+			},
+		}, {
+			name: "matrix include params with final tasks",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{{
+					Name: "foo", Type: v1.ParamTypeString,
+				}, {
+					Name: "bar", Type: v1.ParamTypeArray,
+				}, {
+					Name: "rad", Type: v1.ParamTypeObject,
+				}},
+				Finally: []v1.PipelineTask{{
+					Matrix: &v1.Matrix{
+						Include: []v1.IncludeParams{{
+							Name: "build-1",
+							Params: v1.Params{{
+								// string replacements from string param
+								Name: "first-param", Value: *v1.NewStructuredValues("$(params.foo)"),
+							}, {
+								// string replacements from array param
+								Name: "second-param", Value: *v1.NewStructuredValues("$(params.bar[0])"),
+							}, {
+								// string replacements from object param
+								Name: "third-param", Value: *v1.NewStructuredValues("$(params.rad.key1)"),
+							}},
+						}},
+					},
+				}},
+			},
+			params: v1.Params{
+				{Name: "foo", Value: *v1.NewStructuredValues("foo")},
+				{Name: "bar", Value: *v1.NewStructuredValues("b", "a", "r")},
+				{Name: "rad", Value: *v1.NewObject(map[string]string{
+					"key1": "r",
+					"key2": "a",
+					"key3": "d",
+				})},
+			},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{{
+					Name: "foo", Type: v1.ParamTypeString,
+				}, {
+					Name: "bar", Type: v1.ParamTypeArray,
+				}, {
+					Name: "rad", Type: v1.ParamTypeObject,
+				}},
+				Finally: []v1.PipelineTask{{
+					Matrix: &v1.Matrix{
+						Include: []v1.IncludeParams{{
+							Name: "build-1",
+							Params: v1.Params{{
+								// string replacements from string param
+								Name: "first-param", Value: *v1.NewStructuredValues("foo"),
+							}, {
+								// string replacements from array param
+								Name: "second-param", Value: *v1.NewStructuredValues("b"),
+							}, {
+								// string replacements from object param
+								Name: "third-param", Value: *v1.NewStructuredValues("r"),
+							}},
+						}},
+					},
+				}},
+			},
 		},
-	},
 	} {
 		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
@@ -2428,7 +2464,8 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 				TaskRef: &v1.TaskRef{Name: "bTask"},
 				Params: v1.Params{{
 					Name: "bParam",
-					Value: v1.ParamValue{Type: v1.ParamTypeArray,
+					Value: v1.ParamValue{
+						Type:     v1.ParamTypeArray,
 						ArrayVal: []string{`$(tasks.aTask.results["a.Result"][*])`},
 					},
 				}},
@@ -2533,7 +2570,8 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 					Params: v1.Params{{
 						Name:  "bParam",
 						Value: *v1.NewStructuredValues(`$(tasks.aTask.results["a.Result"])`),
-					}}},
+					}},
+				},
 			},
 		}},
 		want: resources.PipelineRunState{{
@@ -2544,7 +2582,8 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 					Params: v1.Params{{
 						Name:  "bParam",
 						Value: *v1.NewStructuredValues("aResultValue"),
-					}}},
+					}},
+				},
 			},
 		}},
 	}, {
@@ -2565,7 +2604,8 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 					Params: v1.Params{{
 						Name:  "bParam",
 						Value: *v1.NewStructuredValues(`$(tasks.aTask.results["a.Result"][1])`),
-					}}},
+					}},
+				},
 			},
 		}},
 		want: resources.PipelineRunState{{
@@ -2576,7 +2616,8 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 					Params: v1.Params{{
 						Name:  "bParam",
 						Value: *v1.NewStructuredValues("arrayResultValueTwo"),
-					}}},
+					}},
+				},
 			},
 		}},
 	}, {
@@ -2597,7 +2638,8 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 					Params: v1.Params{{
 						Name:  "bParam",
 						Value: *v1.NewStructuredValues(`$(tasks.aTask.results["a.Result"][3])`),
-					}}},
+					}},
+				},
 			},
 		}},
 		want: resources.PipelineRunState{{
@@ -2608,7 +2650,8 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 					Params: v1.Params{{
 						Name:  "bParam",
 						Value: *v1.NewStructuredValues(`$(tasks.aTask.results["a.Result"][3])`),
-					}}},
+					}},
+				},
 			},
 		}},
 	}, {
@@ -2724,7 +2767,8 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 					ResolverRef: v1.ResolverRef{
 						Params: v1.Params{{
 							Name: "bParam",
-							Value: v1.ParamValue{Type: v1.ParamTypeArray,
+							Value: v1.ParamValue{
+								Type:     v1.ParamTypeArray,
 								ArrayVal: []string{`$(tasks.aTask.results["aResult"][*])`},
 							},
 						}},
@@ -2738,7 +2782,8 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 					ResolverRef: v1.ResolverRef{
 						Params: v1.Params{{
 							Name: "bParam",
-							Value: v1.ParamValue{Type: v1.ParamTypeArray,
+							Value: v1.ParamValue{
+								Type:     v1.ParamTypeArray,
 								ArrayVal: []string{"arrayResultValueOne", "arrayResultValueTwo"},
 							},
 						}},
@@ -2836,375 +2881,387 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 		targets            resources.PipelineRunState
 		resolvedResultRefs resources.ResolvedResultRefs
 		want               resources.PipelineRunState
-	}{{
-		name: "Test result substitution on embedded variable substitution expression - params",
-		resolvedResultRefs: resources.ResolvedResultRefs{{
-			Value: *v1.NewStructuredValues("aResultValue"),
-			ResultReference: v1.ResultRef{
-				PipelineTask: "aTask",
-				Result:       "aResult",
-			},
-			FromTaskRun: "aTaskRun",
-		}},
-		targets: resources.PipelineRunState{{
-			PipelineTask: &v1.PipelineTask{
-				Name:    "bTask",
-				TaskRef: &v1.TaskRef{Name: "bTask"},
-				Params: v1.Params{{
-					Name:  "bParam",
-					Value: *v1.NewStructuredValues("Result value --> $(tasks.aTask.results.aResult)"),
-				}},
-			},
-		}},
-		want: resources.PipelineRunState{{
-			PipelineTask: &v1.PipelineTask{
-				Name:    "bTask",
-				TaskRef: &v1.TaskRef{Name: "bTask"},
-				Params: v1.Params{{
-					Name:  "bParam",
-					Value: *v1.NewStructuredValues("Result value --> aResultValue"),
-				}},
-			},
-		}},
-	}, {
-		name: "Test array indexing result substitution on embedded variable substitution expression - params",
-		resolvedResultRefs: resources.ResolvedResultRefs{{
-			Value: *v1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),
-			ResultReference: v1.ResultRef{
-				PipelineTask: "aTask",
-				Result:       "aResult",
-			},
-			FromTaskRun: "aTaskRun",
-		}},
-		targets: resources.PipelineRunState{{
-			PipelineTask: &v1.PipelineTask{
-				Name:    "bTask",
-				TaskRef: &v1.TaskRef{Name: "bTask"},
-				Params: v1.Params{{
-					Name:  "bParam",
-					Value: *v1.NewStructuredValues("Result value --> $(tasks.aTask.results.aResult[0])"),
-				}},
-			},
-		}},
-		want: resources.PipelineRunState{{
-			PipelineTask: &v1.PipelineTask{
-				Name:    "bTask",
-				TaskRef: &v1.TaskRef{Name: "bTask"},
-				Params: v1.Params{{
-					Name:  "bParam",
-					Value: *v1.NewStructuredValues("Result value --> arrayResultValueOne"),
-				}},
-			},
-		}},
-	}, {
-		name: "Test result substitution on embedded variable substitution expression - matrix",
-		resolvedResultRefs: resources.ResolvedResultRefs{{
-			Value: *v1.NewStructuredValues("aResultValue"),
-			ResultReference: v1.ResultRef{
-				PipelineTask: "aTask",
-				Result:       "aResult",
-			},
-			FromTaskRun: "aTaskRun",
-		}},
-		targets: resources.PipelineRunState{{
-			PipelineTask: &v1.PipelineTask{
-				Name:    "bTask",
-				TaskRef: &v1.TaskRef{Name: "bTask"},
-				Matrix: &v1.Matrix{
+	}{
+		{
+			name: "Test result substitution on embedded variable substitution expression - params",
+			resolvedResultRefs: resources.ResolvedResultRefs{{
+				Value: *v1.NewStructuredValues("aResultValue"),
+				ResultReference: v1.ResultRef{
+					PipelineTask: "aTask",
+					Result:       "aResult",
+				},
+				FromTaskRun: "aTaskRun",
+			}},
+			targets: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					Name:    "bTask",
+					TaskRef: &v1.TaskRef{Name: "bTask"},
 					Params: v1.Params{{
 						Name:  "bParam",
 						Value: *v1.NewStructuredValues("Result value --> $(tasks.aTask.results.aResult)"),
-					}}},
-			},
-		}},
-		want: resources.PipelineRunState{{
-			PipelineTask: &v1.PipelineTask{
-				Name:    "bTask",
-				TaskRef: &v1.TaskRef{Name: "bTask"},
-				Matrix: &v1.Matrix{
+					}},
+				},
+			}},
+			want: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					Name:    "bTask",
+					TaskRef: &v1.TaskRef{Name: "bTask"},
 					Params: v1.Params{{
 						Name:  "bParam",
 						Value: *v1.NewStructuredValues("Result value --> aResultValue"),
-					}}},
-			},
-		}},
-	}, {
-		name: "test result substitution for strings and arrays in matrix params",
-		resolvedResultRefs: resources.ResolvedResultRefs{{
-			Value: *v1.NewStructuredValues("foo"),
-			ResultReference: v1.ResultRef{
-				PipelineTask: "aTask",
-				Result:       "foo",
-			},
-			FromTaskRun: "aTaskRun",
-		}, {
-			Value: *v1.NewStructuredValues("b", "a", "r"),
-			ResultReference: v1.ResultRef{
-				PipelineTask: "aTask",
-				Result:       "bar",
-			},
-			FromTaskRun: "aTaskRun",
-		}, {
-			Value: *v1.NewObject(map[string]string{
-				"key1": "r",
-				"key2": "a",
-				"key3": "d",
-			}),
-			ResultReference: v1.ResultRef{
-				PipelineTask: "aTask",
-				Result:       "rad",
-			},
-			FromTaskRun: "aTaskRun",
-		}},
-		targets: resources.PipelineRunState{{
-			PipelineTask: &v1.PipelineTask{
-				Name:    "bTask",
-				TaskRef: &v1.TaskRef{Name: "bTask"},
-				Matrix: &v1.Matrix{
+					}},
+				},
+			}},
+		},
+		{
+			name: "Test array indexing result substitution on embedded variable substitution expression - params",
+			resolvedResultRefs: resources.ResolvedResultRefs{{
+				Value: *v1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),
+				ResultReference: v1.ResultRef{
+					PipelineTask: "aTask",
+					Result:       "aResult",
+				},
+				FromTaskRun: "aTaskRun",
+			}},
+			targets: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					Name:    "bTask",
+					TaskRef: &v1.TaskRef{Name: "bTask"},
 					Params: v1.Params{{
-						// string replacements from string param, array param and object results
-						Name: "first-param", Value: *v1.NewStructuredValues("$(tasks.aTask.results.foo)", "$(tasks.aTask.results.bar[0])", "$(tasks.aTask.results.rad.key1)"),
+						Name:  "bParam",
+						Value: *v1.NewStructuredValues("Result value --> $(tasks.aTask.results.aResult[0])"),
 					}},
 				},
-			},
-		}},
-		want: resources.PipelineRunState{{
-			PipelineTask: &v1.PipelineTask{
-				Name:    "bTask",
-				TaskRef: &v1.TaskRef{Name: "bTask"},
-				Matrix: &v1.Matrix{
+			}},
+			want: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					Name:    "bTask",
+					TaskRef: &v1.TaskRef{Name: "bTask"},
 					Params: v1.Params{{
-						// string replacements from string param, array param and object results
-						Name: "first-param", Value: *v1.NewStructuredValues("foo", "b", "r"),
+						Name:  "bParam",
+						Value: *v1.NewStructuredValues("Result value --> arrayResultValueOne"),
 					}},
 				},
-			},
-		}},
-	}, {
-		name: "test result substitution for strings from string, arr, obj results in matrix include params",
-		resolvedResultRefs: resources.ResolvedResultRefs{{
-			Value: *v1.NewStructuredValues("foo"),
-			ResultReference: v1.ResultRef{
-				PipelineTask: "aTask",
-				Result:       "foo",
-			},
-			FromTaskRun: "aTaskRun",
-		}, {
-			Value: *v1.NewStructuredValues("b", "a", "r"),
-			ResultReference: v1.ResultRef{
-				PipelineTask: "aTask",
-				Result:       "bar",
-			},
-			FromTaskRun: "aTaskRun",
-		}, {
-			Value: *v1.NewObject(map[string]string{
-				"key1": "r",
-				"key2": "a",
-				"key3": "d",
-			}),
-			ResultReference: v1.ResultRef{
-				PipelineTask: "aTask",
-				Result:       "rad",
-			},
-			FromTaskRun: "aTaskRun",
-		}},
-		targets: resources.PipelineRunState{{
-			PipelineTask: &v1.PipelineTask{
-				Name:    "bTask",
-				TaskRef: &v1.TaskRef{Name: "bTask"},
-				Matrix: &v1.Matrix{
-					Include: []v1.IncludeParams{{
-						Name: "build-1",
-						Params: v1.Params{{
-							// string replacements from string results, array results and object results
-							Name: "first-param", Value: *v1.NewStructuredValues("foo", "b", "r"),
-						}},
-					}},
+			}},
+		},
+		{
+			name: "Test result substitution on embedded variable substitution expression - matrix",
+			resolvedResultRefs: resources.ResolvedResultRefs{{
+				Value: *v1.NewStructuredValues("aResultValue"),
+				ResultReference: v1.ResultRef{
+					PipelineTask: "aTask",
+					Result:       "aResult",
 				},
-			},
-		}},
-		want: resources.PipelineRunState{{
-			PipelineTask: &v1.PipelineTask{
-				Name:    "bTask",
-				TaskRef: &v1.TaskRef{Name: "bTask"},
-				Matrix: &v1.Matrix{
-					Include: []v1.IncludeParams{{
-						Name: "build-1",
-						Params: v1.Params{{
-							// string replacements from string results, array results and object results
-							Name: "first-param", Value: *v1.NewStructuredValues("foo", "b", "r"),
-						}},
-					}},
-				},
-			},
-		}},
-	}, {
-		name: "Test result substitution on embedded variable substitution expression - when expressions",
-		resolvedResultRefs: resources.ResolvedResultRefs{{
-			Value: *v1.NewStructuredValues("aResultValue"),
-			ResultReference: v1.ResultRef{
-				PipelineTask: "aTask",
-				Result:       "aResult",
-			},
-			FromTaskRun: "aTaskRun",
-		}},
-		targets: resources.PipelineRunState{{
-			PipelineTask: &v1.PipelineTask{
-				Name:    "bTask",
-				TaskRef: &v1.TaskRef{Name: "bTask"},
-				When: []v1.WhenExpression{
-					{
-						Input:    "Result value --> $(tasks.aTask.results.aResult)",
-						Operator: selection.In,
-						Values:   []string{"Result value --> $(tasks.aTask.results.aResult)"},
-					},
-				},
-			},
-		}},
-		want: resources.PipelineRunState{{
-			PipelineTask: &v1.PipelineTask{
-				Name:    "bTask",
-				TaskRef: &v1.TaskRef{Name: "bTask"},
-				When: []v1.WhenExpression{{
-					Input:    "Result value --> aResultValue",
-					Operator: selection.In,
-					Values:   []string{"Result value --> aResultValue"},
-				}},
-			},
-		}},
-	}, {
-		name: "Test array indexing result substitution on embedded variable substitution expression - when expressions",
-		resolvedResultRefs: resources.ResolvedResultRefs{{
-			Value: *v1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),
-			ResultReference: v1.ResultRef{
-				PipelineTask: "aTask",
-				Result:       "aResult",
-			},
-			FromTaskRun: "aTaskRun",
-		}},
-		targets: resources.PipelineRunState{{
-			PipelineTask: &v1.PipelineTask{
-				Name:    "bTask",
-				TaskRef: &v1.TaskRef{Name: "bTask"},
-				When: []v1.WhenExpression{
-					{
-						Input:    "Result value --> $(tasks.aTask.results.aResult[1])",
-						Operator: selection.In,
-						Values:   []string{"Result value --> $(tasks.aTask.results.aResult[0])"},
-					},
-				},
-			},
-		}},
-		want: resources.PipelineRunState{{
-			PipelineTask: &v1.PipelineTask{
-				Name:    "bTask",
-				TaskRef: &v1.TaskRef{Name: "bTask"},
-				When: []v1.WhenExpression{{
-					Input:    "Result value --> arrayResultValueTwo",
-					Operator: selection.In,
-					Values:   []string{"Result value --> arrayResultValueOne"},
-				}},
-			},
-		}},
-	}, {
-		name: "Test result substitution on embedded variable substitution expression - resolver params",
-		resolvedResultRefs: resources.ResolvedResultRefs{{
-			Value: *v1.NewStructuredValues("aResultValue"),
-			ResultReference: v1.ResultRef{
-				PipelineTask: "aTask",
-				Result:       "aResult",
-			},
-			FromTaskRun: "aTaskRun",
-		}},
-		targets: resources.PipelineRunState{{
-			PipelineTask: &v1.PipelineTask{
-				TaskRef: &v1.TaskRef{
-					ResolverRef: v1.ResolverRef{
+				FromTaskRun: "aTaskRun",
+			}},
+			targets: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					Name:    "bTask",
+					TaskRef: &v1.TaskRef{Name: "bTask"},
+					Matrix: &v1.Matrix{
 						Params: v1.Params{{
 							Name:  "bParam",
 							Value: *v1.NewStructuredValues("Result value --> $(tasks.aTask.results.aResult)"),
 						}},
 					},
 				},
-			},
-		}},
-		want: resources.PipelineRunState{{
-			PipelineTask: &v1.PipelineTask{
-				TaskRef: &v1.TaskRef{
-					ResolverRef: v1.ResolverRef{
+			}},
+			want: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					Name:    "bTask",
+					TaskRef: &v1.TaskRef{Name: "bTask"},
+					Matrix: &v1.Matrix{
 						Params: v1.Params{{
 							Name:  "bParam",
 							Value: *v1.NewStructuredValues("Result value --> aResultValue"),
 						}},
 					},
 				},
-			},
-		}},
-	}, {
-		name: "Test array indexing result substitution on embedded variable substitution expression - resolver params",
-		resolvedResultRefs: resources.ResolvedResultRefs{{
-			Value: *v1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),
-			ResultReference: v1.ResultRef{
-				PipelineTask: "aTask",
-				Result:       "aResult",
-			},
-			FromTaskRun: "aTaskRun",
-		}},
-		targets: resources.PipelineRunState{{
-			PipelineTask: &v1.PipelineTask{
-				TaskRef: &v1.TaskRef{
-					ResolverRef: v1.ResolverRef{
+			}},
+		},
+		{
+			name: "test result substitution for strings and arrays in matrix params",
+			resolvedResultRefs: resources.ResolvedResultRefs{{
+				Value: *v1.NewStructuredValues("foo"),
+				ResultReference: v1.ResultRef{
+					PipelineTask: "aTask",
+					Result:       "foo",
+				},
+				FromTaskRun: "aTaskRun",
+			}, {
+				Value: *v1.NewStructuredValues("b", "a", "r"),
+				ResultReference: v1.ResultRef{
+					PipelineTask: "aTask",
+					Result:       "bar",
+				},
+				FromTaskRun: "aTaskRun",
+			}, {
+				Value: *v1.NewObject(map[string]string{
+					"key1": "r",
+					"key2": "a",
+					"key3": "d",
+				}),
+				ResultReference: v1.ResultRef{
+					PipelineTask: "aTask",
+					Result:       "rad",
+				},
+				FromTaskRun: "aTaskRun",
+			}},
+			targets: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					Name:    "bTask",
+					TaskRef: &v1.TaskRef{Name: "bTask"},
+					Matrix: &v1.Matrix{
 						Params: v1.Params{{
-							Name:  "bParam",
-							Value: *v1.NewStructuredValues("Result value --> $(tasks.aTask.results.aResult[0])"),
-						}, {
-							Name:  "cParam",
-							Value: *v1.NewStructuredValues("Result value --> $(tasks.aTask.results.aResult[1])"),
+							// string replacements from string param, array param and object results
+							Name: "first-param", Value: *v1.NewStructuredValues("$(tasks.aTask.results.foo)", "$(tasks.aTask.results.bar[0])", "$(tasks.aTask.results.rad.key1)"),
 						}},
 					},
 				},
-			},
-		}},
-		want: resources.PipelineRunState{{
-			PipelineTask: &v1.PipelineTask{
-				TaskRef: &v1.TaskRef{
-					ResolverRef: v1.ResolverRef{
+			}},
+			want: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					Name:    "bTask",
+					TaskRef: &v1.TaskRef{Name: "bTask"},
+					Matrix: &v1.Matrix{
 						Params: v1.Params{{
-							Name:  "bParam",
-							Value: *v1.NewStructuredValues("Result value --> arrayResultValueOne"),
-						}, {
-							Name:  "cParam",
-							Value: *v1.NewStructuredValues("Result value --> arrayResultValueTwo"),
+							// string replacements from string param, array param and object results
+							Name: "first-param", Value: *v1.NewStructuredValues("foo", "b", "r"),
 						}},
 					},
 				},
-			},
-		}},
-	}, {
-		name: "Test result substitution on embedded variable substitution expression - displayName",
-		resolvedResultRefs: resources.ResolvedResultRefs{{
-			Value: *v1.NewStructuredValues("aResultValue"),
-			ResultReference: v1.ResultRef{
-				PipelineTask: "aTask",
-				Result:       "aResult",
-			},
-			FromTaskRun: "aTaskRun",
-		}},
-		targets: resources.PipelineRunState{{
-			PipelineTask: &v1.PipelineTask{
-				Name:        "bTask",
-				TaskRef:     &v1.TaskRef{Name: "bTask"},
-				DisplayName: "Result value --> $(tasks.aTask.results.aResult)",
-			},
-		}},
-		want: resources.PipelineRunState{{
-			PipelineTask: &v1.PipelineTask{
-				Name:        "bTask",
-				TaskRef:     &v1.TaskRef{Name: "bTask"},
-				DisplayName: "Result value --> aResultValue",
-			},
-		}},
-	},
+			}},
+		},
+		{
+			name: "test result substitution for strings from string, arr, obj results in matrix include params",
+			resolvedResultRefs: resources.ResolvedResultRefs{{
+				Value: *v1.NewStructuredValues("foo"),
+				ResultReference: v1.ResultRef{
+					PipelineTask: "aTask",
+					Result:       "foo",
+				},
+				FromTaskRun: "aTaskRun",
+			}, {
+				Value: *v1.NewStructuredValues("b", "a", "r"),
+				ResultReference: v1.ResultRef{
+					PipelineTask: "aTask",
+					Result:       "bar",
+				},
+				FromTaskRun: "aTaskRun",
+			}, {
+				Value: *v1.NewObject(map[string]string{
+					"key1": "r",
+					"key2": "a",
+					"key3": "d",
+				}),
+				ResultReference: v1.ResultRef{
+					PipelineTask: "aTask",
+					Result:       "rad",
+				},
+				FromTaskRun: "aTaskRun",
+			}},
+			targets: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					Name:    "bTask",
+					TaskRef: &v1.TaskRef{Name: "bTask"},
+					Matrix: &v1.Matrix{
+						Include: []v1.IncludeParams{{
+							Name: "build-1",
+							Params: v1.Params{{
+								// string replacements from string results, array results and object results
+								Name: "first-param", Value: *v1.NewStructuredValues("foo", "b", "r"),
+							}},
+						}},
+					},
+				},
+			}},
+			want: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					Name:    "bTask",
+					TaskRef: &v1.TaskRef{Name: "bTask"},
+					Matrix: &v1.Matrix{
+						Include: []v1.IncludeParams{{
+							Name: "build-1",
+							Params: v1.Params{{
+								// string replacements from string results, array results and object results
+								Name: "first-param", Value: *v1.NewStructuredValues("foo", "b", "r"),
+							}},
+						}},
+					},
+				},
+			}},
+		},
+		{
+			name: "Test result substitution on embedded variable substitution expression - when expressions",
+			resolvedResultRefs: resources.ResolvedResultRefs{{
+				Value: *v1.NewStructuredValues("aResultValue"),
+				ResultReference: v1.ResultRef{
+					PipelineTask: "aTask",
+					Result:       "aResult",
+				},
+				FromTaskRun: "aTaskRun",
+			}},
+			targets: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					Name:    "bTask",
+					TaskRef: &v1.TaskRef{Name: "bTask"},
+					When: []v1.WhenExpression{
+						{
+							Input:    "Result value --> $(tasks.aTask.results.aResult)",
+							Operator: selection.In,
+							Values:   []string{"Result value --> $(tasks.aTask.results.aResult)"},
+						},
+					},
+				},
+			}},
+			want: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					Name:    "bTask",
+					TaskRef: &v1.TaskRef{Name: "bTask"},
+					When: []v1.WhenExpression{{
+						Input:    "Result value --> aResultValue",
+						Operator: selection.In,
+						Values:   []string{"Result value --> aResultValue"},
+					}},
+				},
+			}},
+		},
+		{
+			name: "Test array indexing result substitution on embedded variable substitution expression - when expressions",
+			resolvedResultRefs: resources.ResolvedResultRefs{{
+				Value: *v1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),
+				ResultReference: v1.ResultRef{
+					PipelineTask: "aTask",
+					Result:       "aResult",
+				},
+				FromTaskRun: "aTaskRun",
+			}},
+			targets: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					Name:    "bTask",
+					TaskRef: &v1.TaskRef{Name: "bTask"},
+					When: []v1.WhenExpression{
+						{
+							Input:    "Result value --> $(tasks.aTask.results.aResult[1])",
+							Operator: selection.In,
+							Values:   []string{"Result value --> $(tasks.aTask.results.aResult[0])"},
+						},
+					},
+				},
+			}},
+			want: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					Name:    "bTask",
+					TaskRef: &v1.TaskRef{Name: "bTask"},
+					When: []v1.WhenExpression{{
+						Input:    "Result value --> arrayResultValueTwo",
+						Operator: selection.In,
+						Values:   []string{"Result value --> arrayResultValueOne"},
+					}},
+				},
+			}},
+		},
+		{
+			name: "Test result substitution on embedded variable substitution expression - resolver params",
+			resolvedResultRefs: resources.ResolvedResultRefs{{
+				Value: *v1.NewStructuredValues("aResultValue"),
+				ResultReference: v1.ResultRef{
+					PipelineTask: "aTask",
+					Result:       "aResult",
+				},
+				FromTaskRun: "aTaskRun",
+			}},
+			targets: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					TaskRef: &v1.TaskRef{
+						ResolverRef: v1.ResolverRef{
+							Params: v1.Params{{
+								Name:  "bParam",
+								Value: *v1.NewStructuredValues("Result value --> $(tasks.aTask.results.aResult)"),
+							}},
+						},
+					},
+				},
+			}},
+			want: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					TaskRef: &v1.TaskRef{
+						ResolverRef: v1.ResolverRef{
+							Params: v1.Params{{
+								Name:  "bParam",
+								Value: *v1.NewStructuredValues("Result value --> aResultValue"),
+							}},
+						},
+					},
+				},
+			}},
+		},
+		{
+			name: "Test array indexing result substitution on embedded variable substitution expression - resolver params",
+			resolvedResultRefs: resources.ResolvedResultRefs{{
+				Value: *v1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),
+				ResultReference: v1.ResultRef{
+					PipelineTask: "aTask",
+					Result:       "aResult",
+				},
+				FromTaskRun: "aTaskRun",
+			}},
+			targets: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					TaskRef: &v1.TaskRef{
+						ResolverRef: v1.ResolverRef{
+							Params: v1.Params{{
+								Name:  "bParam",
+								Value: *v1.NewStructuredValues("Result value --> $(tasks.aTask.results.aResult[0])"),
+							}, {
+								Name:  "cParam",
+								Value: *v1.NewStructuredValues("Result value --> $(tasks.aTask.results.aResult[1])"),
+							}},
+						},
+					},
+				},
+			}},
+			want: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					TaskRef: &v1.TaskRef{
+						ResolverRef: v1.ResolverRef{
+							Params: v1.Params{{
+								Name:  "bParam",
+								Value: *v1.NewStructuredValues("Result value --> arrayResultValueOne"),
+							}, {
+								Name:  "cParam",
+								Value: *v1.NewStructuredValues("Result value --> arrayResultValueTwo"),
+							}},
+						},
+					},
+				},
+			}},
+		},
+		{
+			name: "Test result substitution on embedded variable substitution expression - displayName",
+			resolvedResultRefs: resources.ResolvedResultRefs{{
+				Value: *v1.NewStructuredValues("aResultValue"),
+				ResultReference: v1.ResultRef{
+					PipelineTask: "aTask",
+					Result:       "aResult",
+				},
+				FromTaskRun: "aTaskRun",
+			}},
+			targets: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					Name:        "bTask",
+					TaskRef:     &v1.TaskRef{Name: "bTask"},
+					DisplayName: "Result value --> $(tasks.aTask.results.aResult)",
+				},
+			}},
+			want: resources.PipelineRunState{{
+				PipelineTask: &v1.PipelineTask{
+					Name:        "bTask",
+					TaskRef:     &v1.TaskRef{Name: "bTask"},
+					DisplayName: "Result value --> aResultValue",
+				},
+			}},
+		},
 		{
 			name: "Test result substitution on embedded variable substitution expression - workspace.subPath",
 			resolvedResultRefs: resources.ResolvedResultRefs{{
@@ -3316,12 +3373,14 @@ func TestContext(t *testing.T) {
 			orig := &v1.Pipeline{
 				ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline"},
 				Spec: v1.PipelineSpec{
-					Tasks: []v1.PipelineTask{{
-						DisplayName: tc.displayName,
-						Params:      v1.Params{tc.original},
-						Matrix: &v1.Matrix{
-							Params: v1.Params{tc.original},
-						}},
+					Tasks: []v1.PipelineTask{
+						{
+							DisplayName: tc.displayName,
+							Params:      v1.Params{tc.original},
+							Matrix: &v1.Matrix{
+								Params: v1.Params{tc.original},
+							},
+						},
 					},
 					Finally: []v1.PipelineTask{{
 						DisplayName: tc.displayName,
@@ -3455,10 +3514,12 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 							Params: v1.Params{
 								{Name: "platform", Value: *v1.NewStructuredValues("linux", "mac", "windows")},
 								{Name: "browser", Value: *v1.NewStructuredValues("chrome", "firefox", "safari")},
-							}},
+							},
+						},
 					}},
 				},
-			}},
+			},
+		},
 		want: v1.PipelineTask{
 			Params: v1.Params{{
 				Name:  "matrixlength",
@@ -3480,51 +3541,53 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 		prstatus: v1.PipelineRunStatus{
 			PipelineRunStatusFields: v1.PipelineRunStatusFields{
 				PipelineSpec: &v1.PipelineSpec{
-					Tasks: []v1.PipelineTask{{
-						Name: "matrix-emitting-results",
-						TaskSpec: &v1.EmbeddedTask{
-							TaskSpec: v1.TaskSpec{
-								Params: []v1.ParamSpec{{
-									Name: "IMAGE",
-									Type: v1.ParamTypeString,
+					Tasks: []v1.PipelineTask{
+						{
+							Name: "matrix-emitting-results",
+							TaskSpec: &v1.EmbeddedTask{
+								TaskSpec: v1.TaskSpec{
+									Params: []v1.ParamSpec{{
+										Name: "IMAGE",
+										Type: v1.ParamTypeString,
+									}, {
+										Name: "DIGEST",
+										Type: v1.ParamTypeString,
+									}},
+									Results: []v1.TaskResult{{
+										Name: "IMAGE-DIGEST",
+									}},
+									Steps: []v1.Step{{
+										Name:   "produce-results",
+										Image:  "bash:latest",
+										Script: `#!/usr/bin/env bash\necho -n "$(params.DIGEST)" | sha256sum | tee $(results.IMAGE-DIGEST.path)"`,
+									}},
+								},
+							},
+							Matrix: &v1.Matrix{
+								Include: []v1.IncludeParams{{
+									Name: "build-1",
+									Params: v1.Params{{
+										Name: "DOCKERFILE", Value: *v1.NewStructuredValues("path/to/Dockerfile1"),
+									}, {
+										Name: "IMAGE", Value: *v1.NewStructuredValues("image-1"),
+									}},
 								}, {
-									Name: "DIGEST",
-									Type: v1.ParamTypeString,
-								}},
-								Results: []v1.TaskResult{{
-									Name: "IMAGE-DIGEST",
-								}},
-								Steps: []v1.Step{{
-									Name:   "produce-results",
-									Image:  "bash:latest",
-									Script: `#!/usr/bin/env bash\necho -n "$(params.DIGEST)" | sha256sum | tee $(results.IMAGE-DIGEST.path)"`,
+									Name: "build-2",
+									Params: v1.Params{{
+										Name: "DOCKERFILE", Value: *v1.NewStructuredValues("path/to/Dockerfile2"),
+									}, {
+										Name: "IMAGE", Value: *v1.NewStructuredValues("image-2"),
+									}},
+								}, {
+									Name: "build-3",
+									Params: v1.Params{{
+										Name: "DOCKERFILE", Value: *v1.NewStructuredValues("path/to/Dockerfile3"),
+									}, {
+										Name: "IMAGE", Value: *v1.NewStructuredValues("image-3"),
+									}},
 								}},
 							},
 						},
-						Matrix: &v1.Matrix{
-							Include: []v1.IncludeParams{{
-								Name: "build-1",
-								Params: v1.Params{{
-									Name: "DOCKERFILE", Value: *v1.NewStructuredValues("path/to/Dockerfile1"),
-								}, {
-									Name: "IMAGE", Value: *v1.NewStructuredValues("image-1"),
-								}},
-							}, {
-								Name: "build-2",
-								Params: v1.Params{{
-									Name: "DOCKERFILE", Value: *v1.NewStructuredValues("path/to/Dockerfile2"),
-								}, {
-									Name: "IMAGE", Value: *v1.NewStructuredValues("image-2"),
-								}},
-							}, {
-								Name: "build-3",
-								Params: v1.Params{{
-									Name: "DOCKERFILE", Value: *v1.NewStructuredValues("path/to/Dockerfile3"),
-								}, {
-									Name: "IMAGE", Value: *v1.NewStructuredValues("image-3"),
-								}},
-							}},
-						}},
 					},
 				},
 			},
@@ -3535,43 +3598,44 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 					Name: "matrix-emitting-results",
 				},
 				TaskRunNames: []string{"matrix-emitting-results-0"},
-				TaskRuns: []*v1.TaskRun{{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "matrix-emitting-results-0",
-					},
-					Status: v1.TaskRunStatus{
-						TaskRunStatusFields: v1.TaskRunStatusFields{
-							Results: []v1.TaskRunResult{{
-								Name:  "IMAGE-DIGEST",
-								Value: *v1.NewStructuredValues("123"),
-							}},
+				TaskRuns: []*v1.TaskRun{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "matrix-emitting-results-0",
+						},
+						Status: v1.TaskRunStatus{
+							TaskRunStatusFields: v1.TaskRunStatusFields{
+								Results: []v1.TaskRunResult{{
+									Name:  "IMAGE-DIGEST",
+									Value: *v1.NewStructuredValues("123"),
+								}},
+							},
+						},
+					}, {
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "matrix-emitting-results-1",
+						},
+						Status: v1.TaskRunStatus{
+							TaskRunStatusFields: v1.TaskRunStatusFields{
+								Results: []v1.TaskRunResult{{
+									Name:  "IMAGE-DIGEST",
+									Value: *v1.NewStructuredValues("456"),
+								}},
+							},
+						},
+					}, {
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "matrix-emitting-results-2",
+						},
+						Status: v1.TaskRunStatus{
+							TaskRunStatusFields: v1.TaskRunStatusFields{
+								Results: []v1.TaskRunResult{{
+									Name:  "IMAGE-DIGEST",
+									Value: *v1.NewStructuredValues("789"),
+								}},
+							},
 						},
 					},
-				}, {
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "matrix-emitting-results-1",
-					},
-					Status: v1.TaskRunStatus{
-						TaskRunStatusFields: v1.TaskRunStatusFields{
-							Results: []v1.TaskRunResult{{
-								Name:  "IMAGE-DIGEST",
-								Value: *v1.NewStructuredValues("456"),
-							}},
-						},
-					},
-				}, {
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "matrix-emitting-results-2",
-					},
-					Status: v1.TaskRunStatus{
-						TaskRunStatusFields: v1.TaskRunStatusFields{
-							Results: []v1.TaskRunResult{{
-								Name:  "IMAGE-DIGEST",
-								Value: *v1.NewStructuredValues("789"),
-							}},
-						},
-					},
-				},
 				},
 				ResultsCache: map[string][]string{},
 			}},
@@ -3656,85 +3720,89 @@ func TestApplyFinallyResultsToPipelineResults(t *testing.T) {
 		skippedTasks  []v1.SkippedTask
 		expected      []v1.PipelineRunResult
 		expectedError error
-	}{{
-		description: "single-string-result-single-successful-task",
-		results: []v1.PipelineResult{{
-			Name:  "pipeline-result-1",
-			Value: *v1.NewStructuredValues("$(finally.pt1.results.foo)"),
-		}},
-		taskResults: map[string][]v1.TaskRunResult{
-			"pt1": {
-				{
-					Name:  "foo",
-					Value: *v1.NewStructuredValues("do"),
+	}{
+		{
+			description: "single-string-result-single-successful-task",
+			results: []v1.PipelineResult{{
+				Name:  "pipeline-result-1",
+				Value: *v1.NewStructuredValues("$(finally.pt1.results.foo)"),
+			}},
+			taskResults: map[string][]v1.TaskRunResult{
+				"pt1": {
+					{
+						Name:  "foo",
+						Value: *v1.NewStructuredValues("do"),
+					},
 				},
 			},
+			expected: []v1.PipelineRunResult{{
+				Name:  "pipeline-result-1",
+				Value: *v1.NewStructuredValues("do"),
+			}},
 		},
-		expected: []v1.PipelineRunResult{{
-			Name:  "pipeline-result-1",
-			Value: *v1.NewStructuredValues("do"),
-		}},
-	}, {
-		description: "single-array-result-single-successful-task",
-		results: []v1.PipelineResult{{
-			Name:  "pipeline-result-1",
-			Value: *v1.NewStructuredValues("$(finally.pt1.results.foo[*])"),
-		}},
-		taskResults: map[string][]v1.TaskRunResult{
-			"pt1": {
-				{
-					Name:  "foo",
-					Value: *v1.NewStructuredValues("do", "rae"),
+		{
+			description: "single-array-result-single-successful-task",
+			results: []v1.PipelineResult{{
+				Name:  "pipeline-result-1",
+				Value: *v1.NewStructuredValues("$(finally.pt1.results.foo[*])"),
+			}},
+			taskResults: map[string][]v1.TaskRunResult{
+				"pt1": {
+					{
+						Name:  "foo",
+						Value: *v1.NewStructuredValues("do", "rae"),
+					},
 				},
 			},
+			expected: []v1.PipelineRunResult{{
+				Name:  "pipeline-result-1",
+				Value: *v1.NewStructuredValues("do", "rae"),
+			}},
 		},
-		expected: []v1.PipelineRunResult{{
-			Name:  "pipeline-result-1",
-			Value: *v1.NewStructuredValues("do", "rae"),
-		}},
-	}, {
-		description: "multiple-results-custom-and-normal-tasks",
-		results: []v1.PipelineResult{{
-			Name:  "pipeline-result-1",
-			Value: *v1.NewStructuredValues("$(finally.customtask.results.foo)"),
-		}},
-		runResults: map[string][]v1beta1.CustomRunResult{
-			"customtask": {
-				{
-					Name:  "foo",
-					Value: "do",
+		{
+			description: "multiple-results-custom-and-normal-tasks",
+			results: []v1.PipelineResult{{
+				Name:  "pipeline-result-1",
+				Value: *v1.NewStructuredValues("$(finally.customtask.results.foo)"),
+			}},
+			runResults: map[string][]v1beta1.CustomRunResult{
+				"customtask": {
+					{
+						Name:  "foo",
+						Value: "do",
+					},
 				},
 			},
+			expected: []v1.PipelineRunResult{{
+				Name:  "pipeline-result-1",
+				Value: *v1.NewStructuredValues("do"),
+			}},
 		},
-		expected: []v1.PipelineRunResult{{
-			Name:  "pipeline-result-1",
-			Value: *v1.NewStructuredValues("do"),
-		}},
-	}, {
-		description: "apply-object-results",
-		results: []v1.PipelineResult{{
-			Name:  "pipeline-result-1",
-			Value: *v1.NewStructuredValues("$(finally.pt1.results.foo[*])"),
-		}},
-		taskResults: map[string][]v1.TaskRunResult{
-			"pt1": {
-				{
-					Name: "foo",
-					Value: *v1.NewObject(map[string]string{
-						"key1": "val1",
-						"key2": "val2",
-					}),
+		{
+			description: "apply-object-results",
+			results: []v1.PipelineResult{{
+				Name:  "pipeline-result-1",
+				Value: *v1.NewStructuredValues("$(finally.pt1.results.foo[*])"),
+			}},
+			taskResults: map[string][]v1.TaskRunResult{
+				"pt1": {
+					{
+						Name: "foo",
+						Value: *v1.NewObject(map[string]string{
+							"key1": "val1",
+							"key2": "val2",
+						}),
+					},
 				},
 			},
+			expected: []v1.PipelineRunResult{{
+				Name: "pipeline-result-1",
+				Value: *v1.NewObject(map[string]string{
+					"key1": "val1",
+					"key2": "val2",
+				}),
+			}},
 		},
-		expected: []v1.PipelineRunResult{{
-			Name: "pipeline-result-1",
-			Value: *v1.NewObject(map[string]string{
-				"key1": "val1",
-				"key2": "val2",
-			}),
-		}},
-	},
 		{
 			description: "referencing-invalid-finally-task",
 			results: []v1.PipelineResult{{
@@ -3750,7 +3818,7 @@ func TestApplyFinallyResultsToPipelineResults(t *testing.T) {
 				},
 			},
 			expected:      nil,
-			expectedError: fmt.Errorf("invalid pipelineresults [pipeline-result-1], the referred result don't exist"),
+			expectedError: errors.New("invalid pipelineresults [pipeline-result-1], the referred result don't exist"),
 		},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
@@ -4078,7 +4146,8 @@ func TestApplyTaskResultsToPipelineResults_Success(t *testing.T) {
 					Name:  "foo",
 					Value: *v1.NewStructuredValues("do", "rae", "mi"),
 				},
-			}},
+			},
+		},
 		taskstatus: map[string]string{resources.PipelineTaskStatusPrefix + "pt1" + resources.PipelineTaskStatusSuffix: v1beta1.TaskRunReasonFailed.String()},
 		expectedResults: []v1.PipelineRunResult{{
 			Name:  "foo",
@@ -4120,7 +4189,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			},
 		},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [pipeline-result-1], the referenced results don't exist"),
+		expectedError:   errors.New("invalid pipelineresults [pipeline-result-1], the referenced results don't exist"),
 	}, {
 		description: "object-reference-key-not-exist",
 		results: []v1.PipelineResult{{
@@ -4139,7 +4208,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			},
 		},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [pipeline-result-1], the referenced results don't exist"),
+		expectedError:   errors.New("invalid pipelineresults [pipeline-result-1], the referenced results don't exist"),
 	}, {
 		description: "object-results-resultname-not-exist",
 		results: []v1.PipelineResult{{
@@ -4158,7 +4227,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			},
 		},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [pipeline-result-1], the referenced results don't exist"),
+		expectedError:   errors.New("invalid pipelineresults [pipeline-result-1], the referenced results don't exist"),
 	}, {
 		description: "invalid-result-variable-no-returned-result",
 		results: []v1.PipelineResult{{
@@ -4172,7 +4241,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			}},
 		},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referenced results don't exist"),
+		expectedError:   errors.New("invalid pipelineresults [foo], the referenced results don't exist"),
 	}, {
 		description: "no-taskrun-results-no-returned-results",
 		results: []v1.PipelineResult{{
@@ -4183,7 +4252,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			"pt1": {},
 		},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referenced results don't exist"),
+		expectedError:   errors.New("invalid pipelineresults [foo], the referenced results don't exist"),
 	}, {
 		description: "invalid-taskrun-name-no-returned-result",
 		results: []v1.PipelineResult{{
@@ -4197,7 +4266,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			}},
 		},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referenced results don't exist"),
+		expectedError:   errors.New("invalid pipelineresults [foo], the referenced results don't exist"),
 	}, {
 		description: "invalid-result-name-no-returned-result",
 		results: []v1.PipelineResult{{
@@ -4211,7 +4280,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			}},
 		},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referenced results don't exist"),
+		expectedError:   errors.New("invalid pipelineresults [foo], the referenced results don't exist"),
 	}, {
 		description: "unsuccessful-taskrun-no-returned-result",
 		results: []v1.PipelineResult{{
@@ -4220,7 +4289,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 		}},
 		taskResults:     map[string][]v1.TaskRunResult{},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referenced results don't exist"),
+		expectedError:   errors.New("invalid pipelineresults [foo], the referenced results don't exist"),
 	}, {
 		description: "mixed-success-tasks-some-returned-results",
 		results: []v1.PipelineResult{{
@@ -4240,7 +4309,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			Name:  "bar",
 			Value: *v1.NewStructuredValues("rae"),
 		}},
-		expectedError: fmt.Errorf("invalid pipelineresults [foo], the referenced results don't exist"),
+		expectedError: errors.New("invalid pipelineresults [foo], the referenced results don't exist"),
 	}, {
 		description: "no-run-results-no-returned-results",
 		results: []v1.PipelineResult{{
@@ -4249,7 +4318,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 		}},
 		runResults:      map[string][]v1beta1.CustomRunResult{},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referenced results don't exist"),
+		expectedError:   errors.New("invalid pipelineresults [foo], the referenced results don't exist"),
 	}, {
 		description: "wrong-customtask-name-no-returned-result",
 		results: []v1.PipelineResult{{
@@ -4263,7 +4332,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			}},
 		},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referenced results don't exist"),
+		expectedError:   errors.New("invalid pipelineresults [foo], the referenced results don't exist"),
 	}, {
 		description: "right-customtask-name-wrong-result-name-no-returned-result",
 		results: []v1.PipelineResult{{
@@ -4277,7 +4346,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			}},
 		},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referenced results don't exist"),
+		expectedError:   errors.New("invalid pipelineresults [foo], the referenced results don't exist"),
 	}, {
 		description: "unsuccessful-run-no-returned-result",
 		results: []v1.PipelineResult{{
@@ -4288,7 +4357,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			"customtask": {},
 		},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referenced results don't exist"),
+		expectedError:   errors.New("invalid pipelineresults [foo], the referenced results don't exist"),
 	}, {
 		description: "wrong-result-reference-expression",
 		results: []v1.PipelineResult{{
@@ -4299,7 +4368,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			"customtask": {},
 		},
 		expectedResults: nil,
-		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referenced results don't exist"),
+		expectedError:   errors.New("invalid pipelineresults [foo], the referenced results don't exist"),
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
 			received, err := resources.ApplyTaskResultsToPipelineResults(context.Background(), tc.results, tc.taskResults, tc.runResults, nil /*skipped tasks*/)
@@ -4683,6 +4752,7 @@ func TestPropagateResults(t *testing.T) {
 		})
 	}
 }
+
 func TestApplyParametersToWorkspaceBindings(t *testing.T) {
 	testCases := []struct {
 		name       string
@@ -5057,6 +5127,7 @@ func TestApplyParametersToWorkspaceBindings(t *testing.T) {
 		})
 	}
 }
+
 func TestApplyResultsToWorkspaceBindings(t *testing.T) {
 	testCases := []struct {
 		name       string

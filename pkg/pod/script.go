@@ -20,6 +20,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -217,7 +218,7 @@ func placeDebugScriptInContainers(containers []corev1.Container, initContainer *
 	for i := 0; i < len(containers); i++ {
 		debugInfoVolumeMount := corev1.VolumeMount{
 			Name:      debugInfoVolumeName,
-			MountPath: filepath.Join(debugInfoDir, fmt.Sprintf("%d", i)),
+			MountPath: filepath.Join(debugInfoDir, strconv.Itoa(i)),
 		}
 		(&containers[i]).VolumeMounts = append((&containers[i]).VolumeMounts, debugScriptsVolumeMount, debugInfoVolumeMount)
 	}

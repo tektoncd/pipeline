@@ -237,13 +237,13 @@ func resolveCatalogName(paramsMap, conf map[string]string) (string, error) {
 	var ok bool
 
 	if configTHCatalog, ok = conf[ConfigTektonHubCatalog]; !ok {
-		return "", fmt.Errorf("default Tekton Hub catalog was not set during installation of the hub resolver")
+		return "", errors.New("default Tekton Hub catalog was not set during installation of the hub resolver")
 	}
 	if configAHTaskCatalog, ok = conf[ConfigArtifactHubTaskCatalog]; !ok {
-		return "", fmt.Errorf("default Artifact Hub task catalog was not set during installation of the hub resolver")
+		return "", errors.New("default Artifact Hub task catalog was not set during installation of the hub resolver")
 	}
 	if configAHPipelineCatalog, ok = conf[ConfigArtifactHubPipelineCatalog]; !ok {
-		return "", fmt.Errorf("default Artifact Hub pipeline catalog was not set during installation of the hub resolver")
+		return "", errors.New("default Artifact Hub pipeline catalog was not set during installation of the hub resolver")
 	}
 	if _, ok := paramsMap[ParamCatalog]; !ok {
 		switch paramsMap[ParamType] {
@@ -380,11 +380,11 @@ func (r *Resolver) validateParams(ctx context.Context, paramsMap map[string]stri
 	}
 	if hubType, ok := paramsMap[ParamType]; ok {
 		if hubType != ArtifactHubType && hubType != TektonHubType {
-			return fmt.Errorf(fmt.Sprintf("type param must be %s or %s", ArtifactHubType, TektonHubType))
+			return fmt.Errorf("type param must be %s or %s", ArtifactHubType, TektonHubType)
 		}
 
 		if hubType == TektonHubType && r.TektonHubURL == "" {
-			return fmt.Errorf("please configure TEKTON_HUB_API env variable to use tekton type")
+			return errors.New("please configure TEKTON_HUB_API env variable to use tekton type")
 		}
 	}
 
@@ -407,7 +407,7 @@ func populateDefaultParams(ctx context.Context, params []pipelinev1.Param) (map[
 		if typeString, ok := conf[ConfigType]; ok {
 			paramsMap[ParamType] = typeString
 		} else {
-			return nil, fmt.Errorf("default type was not set during installation of the hub resolver")
+			return nil, errors.New("default type was not set during installation of the hub resolver")
 		}
 	}
 
@@ -416,7 +416,7 @@ func populateDefaultParams(ctx context.Context, params []pipelinev1.Param) (map[
 		if kindString, ok := conf[ConfigKind]; ok {
 			paramsMap[ParamKind] = kindString
 		} else {
-			return nil, fmt.Errorf("default resource kind was not set during installation of the hub resolver")
+			return nil, errors.New("default resource kind was not set during installation of the hub resolver")
 		}
 	}
 

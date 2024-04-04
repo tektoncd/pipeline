@@ -223,18 +223,18 @@ func (sc *spireControllerAPIClient) CreateEntries(ctx context.Context, tr *v1bet
 		return err
 	}
 
-	if len(resp.Results) != len(entries) {
+	if len(resp.GetResults()) != len(entries) {
 		return fmt.Errorf("batch create entry failed, malformed response expected %v result", len(entries))
 	}
 
 	var errPaths []string
 	var errCodes []int32
 
-	for _, r := range resp.Results {
-		if codes.Code(r.Status.Code) != codes.AlreadyExists &&
-			codes.Code(r.Status.Code) != codes.OK {
-			errPaths = append(errPaths, r.Entry.SpiffeId.Path)
-			errCodes = append(errCodes, r.Status.Code)
+	for _, r := range resp.GetResults() {
+		if codes.Code(r.GetStatus().GetCode()) != codes.AlreadyExists &&
+			codes.Code(r.GetStatus().GetCode()) != codes.OK {
+			errPaths = append(errPaths, r.GetEntry().GetSpiffeId().GetPath())
+			errCodes = append(errCodes, r.GetStatus().GetCode())
 		}
 	}
 
@@ -261,13 +261,13 @@ func (sc *spireControllerAPIClient) getEntries(ctx context.Context, tr *v1beta1.
 			return nil, err
 		}
 
-		entries = append(entries, resp.Entries...)
+		entries = append(entries, resp.GetEntries()...)
 
-		if resp.NextPageToken == "" {
+		if resp.GetNextPageToken() == "" {
 			break
 		}
 
-		req.PageToken = resp.NextPageToken
+		req.PageToken = resp.GetNextPageToken()
 	}
 
 	return entries, nil
@@ -281,7 +281,7 @@ func (sc *spireControllerAPIClient) DeleteEntry(ctx context.Context, tr *v1beta1
 
 	var ids []string
 	for _, e := range entries {
-		ids = append(ids, e.Id)
+		ids = append(ids, e.GetId())
 	}
 
 	req := &entryv1.BatchDeleteEntryRequest{
@@ -295,11 +295,11 @@ func (sc *spireControllerAPIClient) DeleteEntry(ctx context.Context, tr *v1beta1
 	var errIds []string
 	var errCodes []int32
 
-	for _, r := range resp.Results {
-		if codes.Code(r.Status.Code) != codes.NotFound &&
-			codes.Code(r.Status.Code) != codes.OK {
-			errIds = append(errIds, r.Id)
-			errCodes = append(errCodes, r.Status.Code)
+	for _, r := range resp.GetResults() {
+		if codes.Code(r.GetStatus().GetCode()) != codes.NotFound &&
+			codes.Code(r.GetStatus().GetCode()) != codes.OK {
+			errIds = append(errIds, r.GetId())
+			errCodes = append(errCodes, r.GetStatus().GetCode())
 		}
 	}
 

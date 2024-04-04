@@ -19,7 +19,6 @@ package resources_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
@@ -61,7 +60,6 @@ func TestGetTaskSpec_Ref(t *testing.T) {
 		return task, sampleRefSource.DeepCopy(), nil, nil
 	}
 	resolvedObjectMeta, taskSpec, err := resources.GetTaskData(context.Background(), tr, gt)
-
 	if err != nil {
 		t.Fatalf("Did not expect error getting task spec but got: %s", err)
 	}
@@ -95,7 +93,6 @@ func TestGetTaskSpec_Embedded(t *testing.T) {
 		return nil, nil, nil, errors.New("shouldn't be called")
 	}
 	resolvedObjectMeta, taskSpec, err := resources.GetTaskData(context.Background(), tr, gt)
-
 	if err != nil {
 		t.Fatalf("Did not expect error getting task spec but got: %s", err)
 	}
@@ -1002,7 +999,7 @@ func TestGetStepActionsData_Error(t *testing.T) {
 			},
 		},
 		stepAction:    &v1alpha1.StepAction{},
-		expectedError: fmt.Errorf("must specify namespace to resolve reference to step action stepActionError"),
+		expectedError: errors.New("must specify namespace to resolve reference to step action stepActionError"),
 	}, {
 		name: "params missing",
 		tr: &v1.TaskRun{
@@ -1033,7 +1030,7 @@ func TestGetStepActionsData_Error(t *testing.T) {
 				}},
 			},
 		},
-		expectedError: fmt.Errorf("non-existent params in Step: [string-param]"),
+		expectedError: errors.New("non-existent params in Step: [string-param]"),
 	}, {
 		name: "params extra",
 		tr: &v1.TaskRun{
@@ -1064,7 +1061,7 @@ func TestGetStepActionsData_Error(t *testing.T) {
 				Image: "myimage",
 			},
 		},
-		expectedError: fmt.Errorf("extra params passed by Step to StepAction: [string-param]"),
+		expectedError: errors.New("extra params passed by Step to StepAction: [string-param]"),
 	}}
 	for _, tt := range tests {
 		ctx := context.Background()

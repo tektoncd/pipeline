@@ -18,7 +18,6 @@ package v1beta1
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -456,7 +455,7 @@ func (tr *TaskRun) GetPipelineRunPVCName() string {
 	}
 	for _, ref := range tr.GetOwnerReferences() {
 		if ref.Kind == pipeline.PipelineRunControllerName {
-			return fmt.Sprintf("%s-pvc", ref.Name)
+			return ref.Name + "-pvc"
 		}
 	}
 	return ""

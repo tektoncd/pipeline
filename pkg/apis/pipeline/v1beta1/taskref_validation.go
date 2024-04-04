@@ -30,7 +30,7 @@ import (
 // correctly. No errors are returned for a nil TaskRef.
 func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if ref == nil {
-		return
+		return errs
 	}
 
 	switch {

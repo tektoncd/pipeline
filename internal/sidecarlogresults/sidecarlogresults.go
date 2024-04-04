@@ -47,9 +47,9 @@ const (
 
 // SidecarLogResult holds fields for storing extracted results
 type SidecarLogResult struct {
-	Name  string
-	Value string
-	Type  SidecarLogResultType
+	Name  string               `json:"name"`
+	Value string               `json:"value"`
+	Type  SidecarLogResultType `json:"type"`
 }
 
 func fileExists(filename string) (bool, error) {
@@ -91,7 +91,7 @@ func waitForStepsToFinish(runDir string) error {
 			// in either case, existence of out.err marks that the step errored and the following steps will
 			// not run. We want the function to break out with nil error in that case so that
 			// the existing results can be logged.
-			if exists, err = fileExists(fmt.Sprintf("%s.err", stepFile)); exists || err != nil {
+			if exists, err = fileExists(stepFile + ".err"); exists || err != nil {
 				return err
 			}
 		}

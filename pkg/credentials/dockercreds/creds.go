@@ -31,9 +31,11 @@ import (
 
 const annotationPrefix = "tekton.dev/docker-"
 
-var config basicDocker
-var dockerConfig arrayArg
-var dockerCfg arrayArg
+var (
+	config       basicDocker
+	dockerConfig arrayArg
+	dockerCfg    arrayArg
+)
 
 // AddFlags adds CLI flags that dockercreds supports to a given flag.FlagSet.
 func AddFlags(flagSet *flag.FlagSet) {
@@ -154,9 +156,9 @@ func (*basicDockerBuilder) MatchingAnnotations(secret *corev1.Secret) []string {
 			flags = append(flags, fmt.Sprintf("-basic-docker=%s=%s", secret.Name, v))
 		}
 	case corev1.SecretTypeDockerConfigJson:
-		flags = append(flags, fmt.Sprintf("-docker-config=%s", secret.Name))
+		flags = append(flags, "-docker-config="+secret.Name)
 	case corev1.SecretTypeDockercfg:
-		flags = append(flags, fmt.Sprintf("-docker-cfg=%s", secret.Name))
+		flags = append(flags, "-docker-cfg="+secret.Name)
 
 	case corev1.SecretTypeOpaque, corev1.SecretTypeServiceAccountToken, corev1.SecretTypeSSHAuth, corev1.SecretTypeTLS, corev1.SecretTypeBootstrapToken:
 		return flags
@@ -212,7 +214,7 @@ func (*basicDockerBuilder) Write(directory string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(basicDocker, content, 0600)
+	return os.WriteFile(basicDocker, content, 0o600)
 }
 
 func authsFromDockerCfg(secret string) (map[string]entry, error) {
