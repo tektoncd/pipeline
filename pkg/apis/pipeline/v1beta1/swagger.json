@@ -207,6 +207,10 @@
           "description": "PipelineTaskName is the name of the PipelineTask this is referencing.",
           "type": "string"
         },
+        "uid": {
+          "description": "UID is the TaskRun or Run's UID",
+          "type": "string"
+        },
         "whenExpressions": {
           "description": "WhenExpressions is the list of checks guarding the execution of the PipelineTask",
           "type": "array",
@@ -962,6 +966,10 @@
           "description": "Status is the CustomRunStatus for the corresponding CustomRun or Run",
           "$ref": "#/definitions/github.com.tektoncd.pipeline.pkg.apis.run.v1beta1.CustomRunStatus"
         },
+        "uid": {
+          "description": "UID is the Run's UID",
+          "type": "string"
+        },
         "whenExpressions": {
           "description": "WhenExpressions is the list of checks guarding the execution of the PipelineTask",
           "type": "array",
@@ -1224,6 +1232,10 @@
         "status": {
           "description": "Status is the TaskRunStatus for the corresponding TaskRun",
           "$ref": "#/definitions/v1beta1.TaskRunStatus"
+        },
+        "uid": {
+          "description": "UID is the TaskRun's UID",
+          "type": "string"
         },
         "whenExpressions": {
           "description": "WhenExpressions is the list of checks guarding the execution of the PipelineTask",

@@ -66,6 +66,7 @@ import (
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/clock"
@@ -111,7 +112,7 @@ var (
 	ReasonFailedValidation = v1.PipelineRunReasonFailedValidation.String()
 	// ReasonInvalidGraph indicates that the reason for the failure status is that the
 	// associated Pipeline is an invalid graph (a.k.a wrong order, cycle, …)
-	ReasonInvalidGraph = v1.PipelineRunReasonInvalidGraph.String()
+	RewasonInvalidGraph = v1.PipelineRunReasonInvalidGraph.String()
 	// ReasonCancelled indicates that a PipelineRun was cancelled.
 	ReasonCancelled = v1.PipelineRunReasonCancelled.String()
 	// ReasonPending indicates that a PipelineRun is pending.
@@ -338,7 +339,8 @@ func (c *Reconciler) resolvePipelineState(
 	tasks []v1.PipelineTask,
 	pipelineMeta *metav1.ObjectMeta,
 	pr *v1.PipelineRun,
-	pst resources.PipelineRunState) (resources.PipelineRunState, error) {
+	pst resources.PipelineRunState,
+) (resources.PipelineRunState, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "resolvePipelineState")
 	defer span.End()
 	// Resolve each task individually because they each could have a different reference context (remote or local).
@@ -385,9 +387,12 @@ func (c *Reconciler) resolvePipelineState(
 					"Pipeline %s/%s can't be Run; it contains Tasks that don't exist: %s",
 					pipelineMeta.Namespace, pipelineMeta.Name, nfErr)
 			} else {
+				if !strings.Contains(err.Error(), "mismatched UID") {
+					err = pipelineErrors.WrapUserError(err)
+				}
 				pr.Status.MarkFailed(v1.PipelineRunReasonFailedValidation.String(),
 					"PipelineRun %s/%s can't be Run; couldn't resolve all references: %s",
-					pipelineMeta.Namespace, pr.Name, pipelineErrors.WrapUserError(err))
+					pipelineMeta.Namespace, pr.Name, err)
 			}
 			return nil, controller.NewPermanentError(err)
 		}
@@ -1512,11 +1517,12 @@ func filterTaskRunsForPipelineRunStatus(logger *zap.SugaredLogger, pr *v1.Pipeli
 }
 
 // filterCustomRunsForPipelineRunStatus filters the given slice of customRuns, returning information only those owned by the given PipelineRun.
-func filterCustomRunsForPipelineRunStatus(logger *zap.SugaredLogger, pr *v1.PipelineRun, customRuns []*v1beta1.CustomRun) ([]string, []string, []schema.GroupVersionKind, []*v1beta1.CustomRunStatus) {
+func filterCustomRunsForPipelineRunStatus(logger *zap.SugaredLogger, pr *v1.PipelineRun, customRuns []*v1beta1.CustomRun) ([]string, []string, []schema.GroupVersionKind, []*v1beta1.CustomRunStatus, []types.UID) {
 	var names []string
 	var taskLabels []string
 	var gvks []schema.GroupVersionKind
 	var statuses []*v1beta1.CustomRunStatus
+	var uids []types.UID
 
 	// Loop over all the customRuns associated to Tasks
 	for _, cr := range customRuns {
@@ -1529,13 +1535,14 @@ func filterCustomRunsForPipelineRunStatus(logger *zap.SugaredLogger, pr *v1.Pipe
 
 		names = append(names, cr.GetObjectMeta().GetName())
 		taskLabels = append(taskLabels, cr.GetObjectMeta().GetLabels()[pipeline.PipelineTaskLabelKey])
+		uids = append(uids, cr.GetObjectMeta().GetUID())
 
 		statuses = append(statuses, &cr.Status)
 		// We can't just get the gvk from the customRun's TypeMeta because that isn't populated for resources created through the fake client.
 		gvks = append(gvks, v1beta1.SchemeGroupVersion.WithKind(customRun))
 	}
 
-	return names, taskLabels, gvks, statuses
+	return names, taskLabels, gvks, statuses, uids
 }
 
 func updatePipelineRunStatusFromChildRefs(logger *zap.SugaredLogger, pr *v1.PipelineRun, trs []*v1.TaskRun, customRuns []*v1beta1.CustomRun) {
@@ -1572,18 +1579,20 @@ func updatePipelineRunStatusFromChildRefs(logger *zap.SugaredLogger, pr *v1.Pipe
 				},
 				Name:             tr.Name,
 				PipelineTaskName: pipelineTaskName,
+				UID:              tr.UID,
 			}
 		}
 	}
 
 	// Get the names, their task label values, and their group/version/kind info for all CustomRuns or Runs associated with the PipelineRun
-	names, taskLabels, gvks, _ := filterCustomRunsForPipelineRunStatus(logger, pr, customRuns)
+	names, taskLabels, gvks, _, uids := filterCustomRunsForPipelineRunStatus(logger, pr, customRuns)
 
 	// Loop over that data and populate the child references
 	for idx := range names {
 		name := names[idx]
 		taskLabel := taskLabels[idx]
 		gvk := gvks[idx]
+		uid := uids[idx]
 
 		if _, ok := childRefByName[name]; !ok {
 			// This run was missing from the status.
@@ -1598,6 +1607,7 @@ func updatePipelineRunStatusFromChildRefs(logger *zap.SugaredLogger, pr *v1.Pipe
 				},
 				Name:             name,
 				PipelineTaskName: taskLabel,
+				UID:              uid,
 			}
 		}
 	}

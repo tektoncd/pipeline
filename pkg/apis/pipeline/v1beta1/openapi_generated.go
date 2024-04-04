@@ -538,6 +538,13 @@ func schema_pkg_apis_pipeline_v1beta1_ChildStatusReference(ref common.ReferenceC
 							},
 						},
 					},
+					"uid": {
+						SchemaProps: spec.SchemaProps{
+							Description: "UID is the TaskRun or Run's UID",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
@@ -1930,6 +1937,13 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunRunStatus(ref common.ReferenceC
 							},
 						},
 					},
+					"uid": {
+						SchemaProps: spec.SchemaProps{
+							Description: "UID is the Run's UID",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
@@ -2442,6 +2456,13 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunTaskRunStatus(ref common.Refere
 									},
 								},
 							},
+						},
+					},
+					"uid": {
+						SchemaProps: spec.SchemaProps{
+							Description: "UID is the TaskRun's UID",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
