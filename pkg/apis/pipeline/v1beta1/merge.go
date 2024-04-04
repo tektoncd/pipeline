@@ -77,6 +77,7 @@ func MergeStepsWithOverrides(steps []Step, overrides []TaskRunStepOverride) ([]S
 		stepNameToOverride[o.Name] = o
 	}
 	for i, s := range steps {
+		s := s
 		o, found := stepNameToOverride[s.Name]
 		if !found {
 			continue
@@ -103,6 +104,7 @@ func MergeSidecarsWithOverrides(sidecars []Sidecar, overrides []TaskRunSidecarOv
 		sidecarNameToOverride[o.Name] = o
 	}
 	for i, s := range sidecars {
+		s := s
 		o, found := sidecarNameToOverride[s.Name]
 		if !found {
 			continue

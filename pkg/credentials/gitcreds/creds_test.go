@@ -36,10 +36,10 @@ func TestBasicFlagHandling(t *testing.T) {
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", dir, err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthUsernameKey), []byte("bar"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthUsernameKey), []byte("bar"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthPasswordKey), []byte("baz"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthPasswordKey), []byte("baz"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(password) = %v", err)
 	}
 
@@ -89,20 +89,20 @@ func TestBasicFlagHandlingTwice(t *testing.T) {
 	if err := os.MkdirAll(fooDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", fooDir, err)
 	}
-	if err := os.WriteFile(filepath.Join(fooDir, corev1.BasicAuthUsernameKey), []byte("asdf"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(fooDir, corev1.BasicAuthUsernameKey), []byte("asdf"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(fooDir, corev1.BasicAuthPasswordKey), []byte("blah"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(fooDir, corev1.BasicAuthPasswordKey), []byte("blah"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(password) = %v", err)
 	}
 	barDir := credentials.VolumeName("bar")
 	if err := os.MkdirAll(barDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", barDir, err)
 	}
-	if err := os.WriteFile(filepath.Join(barDir, corev1.BasicAuthUsernameKey), []byte("bleh"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(barDir, corev1.BasicAuthUsernameKey), []byte("bleh"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(barDir, corev1.BasicAuthPasswordKey), []byte("belch"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(barDir, corev1.BasicAuthPasswordKey), []byte("belch"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(password) = %v", err)
 	}
 
@@ -170,10 +170,10 @@ func TestBasicFlagHandlingURLCollision(t *testing.T) {
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", dir, err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthUsernameKey), []byte("bar"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthUsernameKey), []byte("bar"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthPasswordKey), []byte("baz"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthPasswordKey), []byte("baz"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(password) = %v", err)
 	}
 
@@ -192,10 +192,10 @@ func TestSSHFlagHandling(t *testing.T) {
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", dir, err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, corev1.SSHAuthPrivateKey), []byte("bar"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, corev1.SSHAuthPrivateKey), []byte("bar"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(ssh-privatekey) = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "known_hosts"), []byte("ssh-rsa blah"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "known_hosts"), []byte("ssh-rsa blah"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(known_hosts) = %v", err)
 	}
 
@@ -253,30 +253,30 @@ func TestSSHFlagHandlingThrice(t *testing.T) {
 	if err := os.MkdirAll(fooDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", fooDir, err)
 	}
-	if err := os.WriteFile(filepath.Join(fooDir, corev1.SSHAuthPrivateKey), []byte("asdf"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(fooDir, corev1.SSHAuthPrivateKey), []byte("asdf"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(ssh-privatekey) = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(fooDir, "known_hosts"), []byte("ssh-rsa aaaa"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(fooDir, "known_hosts"), []byte("ssh-rsa aaaa"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(known_hosts) = %v", err)
 	}
 	barDir := credentials.VolumeName("bar")
 	if err := os.MkdirAll(barDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", barDir, err)
 	}
-	if err := os.WriteFile(filepath.Join(barDir, corev1.SSHAuthPrivateKey), []byte("bleh"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(barDir, corev1.SSHAuthPrivateKey), []byte("bleh"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(ssh-privatekey) = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(barDir, "known_hosts"), []byte("ssh-rsa bbbb"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(barDir, "known_hosts"), []byte("ssh-rsa bbbb"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(known_hosts) = %v", err)
 	}
 	bazDir := credentials.VolumeName("baz")
 	if err := os.MkdirAll(bazDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", bazDir, err)
 	}
-	if err := os.WriteFile(filepath.Join(bazDir, corev1.SSHAuthPrivateKey), []byte("derp"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(bazDir, corev1.SSHAuthPrivateKey), []byte("derp"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(ssh-privatekey) = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(bazDir, "known_hosts"), []byte("ssh-rsa cccc"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(bazDir, "known_hosts"), []byte("ssh-rsa cccc"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(known_hosts) = %v", err)
 	}
 
@@ -409,7 +409,7 @@ func TestMatchingAnnotations(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "git",
 				Annotations: map[string]string{
-					fmt.Sprintf("%s.testkeys", annotationPrefix): "basickeys",
+					annotationPrefix + ".testkeys": "basickeys",
 				},
 			},
 		},
@@ -420,7 +420,7 @@ func TestMatchingAnnotations(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "ssh",
 				Annotations: map[string]string{
-					fmt.Sprintf("%s.testkeys", annotationPrefix): "keys",
+					annotationPrefix + ".testkeys": "keys",
 				},
 			},
 		},
@@ -431,9 +431,9 @@ func TestMatchingAnnotations(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "ssh",
 				Annotations: map[string]string{
-					fmt.Sprintf("%s.testkeys1", annotationPrefix): "keys1",
-					fmt.Sprintf("%s.testkeys2", annotationPrefix): "keys2",
-					fmt.Sprintf("%s.testkeys3", annotationPrefix): "keys3",
+					annotationPrefix + ".testkeys1": "keys1",
+					annotationPrefix + ".testkeys2": "keys2",
+					annotationPrefix + ".testkeys3": "keys3",
 				},
 			},
 		},
@@ -469,10 +469,10 @@ func TestBasicBackslashInUsername(t *testing.T) {
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", dir, err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthUsernameKey), []byte(`foo\bar\banana`), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthUsernameKey), []byte(`foo\bar\banana`), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthPasswordKey), []byte("baz"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthPasswordKey), []byte("baz"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(password) = %v", err)
 	}
 

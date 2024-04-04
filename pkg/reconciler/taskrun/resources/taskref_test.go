@@ -298,7 +298,7 @@ func TestLocalTaskRef(t *testing.T) {
 			ref: &v1.TaskRef{
 				Name: "simple",
 			},
-			wantErr: fmt.Errorf("must specify namespace to resolve reference to task simple"),
+			wantErr: errors.New("must specify namespace to resolve reference to task simple"),
 		},
 	}
 
@@ -433,7 +433,7 @@ func TestStepActionRef_Error(t *testing.T) {
 			ref: &v1.Ref{
 				Name: "simple",
 			},
-			wantErr: fmt.Errorf("must specify namespace to resolve reference to step action simple"),
+			wantErr: errors.New("must specify namespace to resolve reference to step action simple"),
 		},
 	}
 
@@ -1053,6 +1053,7 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 	}
 }
 
+//nolint:musttag
 func TestGetTaskFunc_V1beta1Task_VerifyNoError(t *testing.T) {
 	ctx := context.Background()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
@@ -1187,6 +1188,7 @@ func TestGetTaskFunc_V1beta1Task_VerifyNoError(t *testing.T) {
 	}
 }
 
+//nolint:musttag
 func TestGetTaskFunc_V1beta1Task_VerifyError(t *testing.T) {
 	ctx := context.Background()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
@@ -1307,6 +1309,7 @@ func TestGetTaskFunc_V1beta1Task_VerifyError(t *testing.T) {
 	}
 }
 
+//nolint:musttag
 func TestGetTaskFunc_V1Task_VerifyNoError(t *testing.T) {
 	ctx := context.Background()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
@@ -1451,6 +1454,7 @@ func TestGetTaskFunc_V1Task_VerifyNoError(t *testing.T) {
 	}
 }
 
+//nolint:musttag
 func TestGetTaskFunc_V1Task_VerifyError(t *testing.T) {
 	ctx := context.Background()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
@@ -1566,6 +1570,7 @@ func TestGetTaskFunc_V1Task_VerifyError(t *testing.T) {
 	}
 }
 
+//nolint:musttag
 func TestGetTaskFunc_GetFuncError(t *testing.T) {
 	ctx := context.Background()
 	_, k8sclient, vps := test.SetupMatchAllVerificationPolicies(t, "trusted-resources")
@@ -1579,7 +1584,7 @@ func TestGetTaskFunc_GetFuncError(t *testing.T) {
 
 	resolvedUnsigned := test.NewResolvedResource(unsignedTaskBytes, nil, sampleRefSource.DeepCopy(), nil)
 	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
-	resolvedUnsigned.DataErr = fmt.Errorf("resolution error")
+	resolvedUnsigned.DataErr = errors.New("resolution error")
 
 	trResolutionError := &v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
@@ -1688,7 +1693,7 @@ func getSignedV1Task(unsigned *v1.Task, signer signature.Signer, name string) (*
 
 func signInterface(signer signature.Signer, i interface{}) ([]byte, error) {
 	if signer == nil {
-		return nil, fmt.Errorf("signer is nil")
+		return nil, errors.New("signer is nil")
 	}
 	b, err := json.Marshal(i)
 	if err != nil {

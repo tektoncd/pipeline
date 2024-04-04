@@ -118,7 +118,7 @@ spec:
 				t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 			}
 			t.Logf("Making sure the expected TaskRuns %s were created", td.expectedTaskRuns)
-			actualTaskrunList, err := c.V1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", prName)})
+			actualTaskrunList, err := c.V1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + prName})
 			if err != nil {
 				t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", prName, err)
 			}
@@ -324,7 +324,7 @@ spec:
 				t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 			}
 			t.Logf("Making sure the expected TaskRuns %s were created", td.expectedTaskRuns)
-			actualTaskrunList, err := c.V1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", prName)})
+			actualTaskrunList, err := c.V1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + prName})
 			if err != nil {
 				t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", prName, err)
 			}

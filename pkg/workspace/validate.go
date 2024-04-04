@@ -18,6 +18,7 @@ package workspace
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
@@ -79,7 +80,7 @@ func ValidateOnlyOnePVCIsUsed(wb []v1.WorkspaceBinding) error {
 	}
 
 	if len(workspaceVolumes) > 1 {
-		return pipelineErrors.WrapUserError(fmt.Errorf("more than one PersistentVolumeClaim is bound"))
+		return pipelineErrors.WrapUserError(errors.New("more than one PersistentVolumeClaim is bound"))
 	}
 	return nil
 }

@@ -9,7 +9,7 @@ TESTPKGS = $(shell env GO111MODULE=on $(GO) list -f \
 BIN      = $(CURDIR)/.bin
 WOKE 	?= go run -modfile go.mod github.com/get-woke/woke
 
-GOLANGCI_VERSION = v1.52.2
+GOLANGCI_VERSION = v1.57.2
 WOKE_VERSION     = v0.19.0
 
 GO           = go
@@ -170,7 +170,7 @@ $(BIN)/golangci-lint: ; $(info $(M) getting golangci-lint $(GOLANGCI_VERSION))
 
 .PHONY: golangci-lint
 golangci-lint: | $(GOLANGCILINT) ; $(info $(M) running golangci-lint…) @ ## Run golangci-lint
-	$Q $(GOLANGCILINT) run --modules-download-mode=vendor --max-issues-per-linter=0 --max-same-issues=0 --deadline 5m
+	$Q $(GOLANGCILINT) run --modules-download-mode=vendor --max-issues-per-linter=0 --max-same-issues=0 --timeout 5m
 
 .PHONY: golangci-lint-check
 golangci-lint-check: | $(GOLANGCILINT) ; $(info $(M) Testing if golint has been done…) @ ## Run golangci-lint for build tests CI job

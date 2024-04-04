@@ -18,7 +18,6 @@ package pipelinerun
 
 import (
 	"context"
-	"fmt"
 	"regexp"
 	"strings"
 	"testing"
@@ -451,7 +450,7 @@ pipelineTaskName: task
 				var fixedChildRefs []v1.ChildStatusReference
 				re := regexp.MustCompile(`^[a-z\-]*?-(task|run)-[0-9]`)
 				for _, cr := range actualChildRefs {
-					cr.Name = fmt.Sprintf("%s-xxyyy", re.FindString(cr.Name))
+					cr.Name = re.FindString(cr.Name) + "-xxyyy"
 					fixedChildRefs = append(fixedChildRefs, cr)
 				}
 				actualPrStatus.ChildReferences = fixedChildRefs
@@ -586,7 +585,7 @@ metadata:
 				var fixedChildRefs []v1.ChildStatusReference
 				re := regexp.MustCompile(`^[a-z\-]*?-(task|run)-[0-9]`)
 				for _, cr := range actualChildRefs {
-					cr.Name = fmt.Sprintf("%s-xxyyy", re.FindString(cr.Name))
+					cr.Name = re.FindString(cr.Name) + "-xxyyy"
 					fixedChildRefs = append(fixedChildRefs, cr)
 				}
 				actualPrStatus.ChildReferences = fixedChildRefs

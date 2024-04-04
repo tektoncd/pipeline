@@ -18,7 +18,6 @@ package v1beta1_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -158,7 +157,7 @@ func TestCustomRun_Invalid(t *testing.T) {
 				StatusMessage: v1beta1.CustomRunSpecStatusMessage(invalidStatusMessage),
 			},
 		},
-		want: apis.ErrInvalidValue(fmt.Sprintf("statusMessage should not be set if status is not set, but it is currently set to %s", invalidStatusMessage), "statusMessage"),
+		want: apis.ErrInvalidValue("statusMessage should not be set if status is not set, but it is currently set to "+invalidStatusMessage, "statusMessage"),
 	}, {
 		name: "non-unique params",
 		customRun: &v1beta1.CustomRun{

@@ -18,7 +18,6 @@ package v1beta1_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -68,7 +67,8 @@ func TestTaskRun_Invalidate(t *testing.T) {
 						Value: "false",
 					}},
 				},
-			}},
+			},
+		},
 		wc:   EnableForbiddenEnv,
 		want: apis.ErrInvalidValue("PodTemplate cannot update a forbidden env: TEST_ENV", "spec.PodTemplate.Env"),
 	}, {
@@ -564,7 +564,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			},
 			StatusMessage: v1beta1.TaskRunSpecStatusMessage(invalidStatusMessage),
 		},
-		wantErr: apis.ErrInvalidValue(fmt.Sprintf("statusMessage should not be set if status is not set, but it is currently set to %s", invalidStatusMessage), "statusMessage"),
+		wantErr: apis.ErrInvalidValue("statusMessage should not be set if status is not set, but it is currently set to "+invalidStatusMessage, "statusMessage"),
 	}, {
 		name: "invalid taskspec",
 		spec: v1beta1.TaskRunSpec{

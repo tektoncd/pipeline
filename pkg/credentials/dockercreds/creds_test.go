@@ -18,7 +18,6 @@ package dockercreds
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -35,10 +34,10 @@ func TestFlagHandling(t *testing.T) {
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", dir, err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthUsernameKey), []byte("bar"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthUsernameKey), []byte("bar"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthPasswordKey), []byte("baz"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthPasswordKey), []byte("baz"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(password) = %v", err)
 	}
 
@@ -74,20 +73,20 @@ func TestFlagHandlingTwice(t *testing.T) {
 	if err := os.MkdirAll(fooDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", fooDir, err)
 	}
-	if err := os.WriteFile(filepath.Join(fooDir, corev1.BasicAuthUsernameKey), []byte("asdf"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(fooDir, corev1.BasicAuthUsernameKey), []byte("asdf"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(fooDir, corev1.BasicAuthPasswordKey), []byte("blah"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(fooDir, corev1.BasicAuthPasswordKey), []byte("blah"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(password) = %v", err)
 	}
 	barDir := credentials.VolumeName("bar")
 	if err := os.MkdirAll(barDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", barDir, err)
 	}
-	if err := os.WriteFile(filepath.Join(barDir, corev1.BasicAuthUsernameKey), []byte("bleh"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(barDir, corev1.BasicAuthUsernameKey), []byte("bleh"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(barDir, corev1.BasicAuthPasswordKey), []byte("belch"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(barDir, corev1.BasicAuthPasswordKey), []byte("belch"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(password) = %v", err)
 	}
 
@@ -138,10 +137,10 @@ func TestFlagHandlingURLCollision(t *testing.T) {
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", dir, err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthUsernameKey), []byte("bar"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthUsernameKey), []byte("bar"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthPasswordKey), []byte("baz"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthPasswordKey), []byte("baz"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(password) = %v", err)
 	}
 
@@ -178,7 +177,7 @@ func TestMatchingAnnotations(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "git",
 				Annotations: map[string]string{
-					fmt.Sprintf("%s.testkeys", annotationPrefix): "basickeys",
+					annotationPrefix + ".testkeys": "basickeys",
 				},
 			},
 		},
@@ -189,7 +188,7 @@ func TestMatchingAnnotations(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "ssh",
 				Annotations: map[string]string{
-					fmt.Sprintf("%s.testkeys", annotationPrefix): "keys",
+					annotationPrefix + ".testkeys": "keys",
 				},
 			},
 		},
@@ -200,13 +199,14 @@ func TestMatchingAnnotations(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "ssh",
 				Annotations: map[string]string{
-					fmt.Sprintf("%s.testkeys1", annotationPrefix): "keys1",
-					fmt.Sprintf("%s.testkeys2", annotationPrefix): "keys2",
-					fmt.Sprintf("%s.testkeys3", annotationPrefix): "keys3",
+					annotationPrefix + ".testkeys1": "keys1",
+					annotationPrefix + ".testkeys2": "keys2",
+					annotationPrefix + ".testkeys3": "keys3",
 				},
 			},
 		},
-		wantFlag: []string{"-basic-docker=ssh=keys1",
+		wantFlag: []string{
+			"-basic-docker=ssh=keys1",
 			"-basic-docker=ssh=keys2",
 			"-basic-docker=ssh=keys3",
 		},
@@ -249,10 +249,10 @@ func TestMultipleFlagHandling(t *testing.T) {
 	if err := os.MkdirAll(fooDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", fooDir, err)
 	}
-	if err := os.WriteFile(filepath.Join(fooDir, corev1.BasicAuthUsernameKey), []byte("bar"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(fooDir, corev1.BasicAuthUsernameKey), []byte("bar"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(fooDir, corev1.BasicAuthPasswordKey), []byte("baz"), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(fooDir, corev1.BasicAuthPasswordKey), []byte("baz"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(password) = %v", err)
 	}
 
@@ -260,7 +260,7 @@ func TestMultipleFlagHandling(t *testing.T) {
 	if err := os.MkdirAll(barDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", barDir, err)
 	}
-	if err := os.WriteFile(filepath.Join(barDir, corev1.DockerConfigJsonKey), []byte(`{"auths":{"https://index.docker.io/v1":{"auth":"fooisbar"}}}`), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(barDir, corev1.DockerConfigJsonKey), []byte(`{"auths":{"https://index.docker.io/v1":{"auth":"fooisbar"}}}`), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
 
@@ -268,7 +268,7 @@ func TestMultipleFlagHandling(t *testing.T) {
 	if err := os.MkdirAll(blubbDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", blubbDir, err)
 	}
-	if err := os.WriteFile(filepath.Join(blubbDir, corev1.DockerConfigJsonKey), []byte(`{"auths":{"us.icr.io":{"auth":"fooisblubb"}}}`), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(blubbDir, corev1.DockerConfigJsonKey), []byte(`{"auths":{"us.icr.io":{"auth":"fooisblubb"}}}`), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
 
@@ -276,7 +276,7 @@ func TestMultipleFlagHandling(t *testing.T) {
 	if err := os.MkdirAll(bazDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", bazDir, err)
 	}
-	if err := os.WriteFile(filepath.Join(bazDir, corev1.DockerConfigKey), []byte(`{"https://my.registry/v1":{"auth":"fooisbaz"}}`), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(bazDir, corev1.DockerConfigKey), []byte(`{"https://my.registry/v1":{"auth":"fooisbaz"}}`), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
 
@@ -284,7 +284,7 @@ func TestMultipleFlagHandling(t *testing.T) {
 	if err := os.MkdirAll(blaDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", blaDir, err)
 	}
-	if err := os.WriteFile(filepath.Join(blaDir, corev1.DockerConfigKey), []byte(`{"de.icr.io":{"auth":"fooisbla"}}`), 0777); err != nil {
+	if err := os.WriteFile(filepath.Join(blaDir, corev1.DockerConfigKey), []byte(`{"de.icr.io":{"auth":"fooisbla"}}`), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
 

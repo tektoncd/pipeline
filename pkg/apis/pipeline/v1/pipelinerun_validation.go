@@ -30,8 +30,10 @@ import (
 	"knative.dev/pkg/webhook/resourcesemantics"
 )
 
-var _ apis.Validatable = (*PipelineRun)(nil)
-var _ resourcesemantics.VerbLimited = (*PipelineRun)(nil)
+var (
+	_ apis.Validatable              = (*PipelineRun)(nil)
+	_ resourcesemantics.VerbLimited = (*PipelineRun)(nil)
+)
 
 // SupportedVerbs returns the operations that validation should be called for
 func (pr *PipelineRun) SupportedVerbs() []admissionregistrationv1.OperationType {
@@ -230,8 +232,8 @@ func validateSpecStatus(status PipelineRunSpecStatus) *apis.FieldError {
 
 func validateTimeoutDuration(field string, d *metav1.Duration) (errs *apis.FieldError) {
 	if d != nil && d.Duration < 0 {
-		fieldPath := fmt.Sprintf("timeouts.%s", field)
-		return errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", d.Duration.String()), fieldPath))
+		fieldPath := "timeouts." + field
+		return errs.Also(apis.ErrInvalidValue(d.Duration.String()+" should be >= 0", fieldPath))
 	}
 	return nil
 }

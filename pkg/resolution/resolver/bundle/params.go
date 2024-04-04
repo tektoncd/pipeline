@@ -15,6 +15,7 @@ package bundle
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/go-containerregistry/pkg/name"
@@ -67,7 +68,7 @@ func OptionsFromParams(ctx context.Context, params []pipelinev1.Param) (RequestO
 		if kindString, ok := conf[ConfigKind]; ok {
 			kind = kindString
 		} else {
-			return opts, fmt.Errorf("default resource Kind  was not set during installation of the bundle resolver")
+			return opts, errors.New("default resource Kind  was not set during installation of the bundle resolver")
 		}
 	} else {
 		kind = kindVal.StringVal

@@ -19,7 +19,7 @@ package pipelinerun
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.opentelemetry.io/otel"
@@ -88,7 +88,7 @@ func getMarshalledSpanFromContext(ctx context.Context) (string, error) {
 	pro.Inject(ctx, propagation.MapCarrier(carrier))
 
 	if len(carrier) == 0 {
-		return "", fmt.Errorf("spanContext not present in the context, unable to marshall")
+		return "", errors.New("spanContext not present in the context, unable to marshall")
 	}
 
 	marshalled, err := json.Marshal(carrier)
@@ -96,7 +96,7 @@ func getMarshalledSpanFromContext(ctx context.Context) (string, error) {
 		return "", err
 	}
 	if len(marshalled) >= 1024 {
-		return "", fmt.Errorf("marshalled spanContext size is too big")
+		return "", errors.New("marshalled spanContext size is too big")
 	}
 	return string(marshalled), nil
 }

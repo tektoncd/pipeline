@@ -221,7 +221,7 @@ func (r *Resolver) resolveAnonymousGit(ctx context.Context, params map[string]st
 		if urlString, ok := conf[defaultURLKey]; ok {
 			repo = urlString
 		} else {
-			return nil, fmt.Errorf("default Git Repo Url was not set during installation of the git resolver")
+			return nil, errors.New("default Git Repo Url was not set during installation of the git resolver")
 		}
 	}
 	revision := params[revisionParam]
@@ -229,7 +229,7 @@ func (r *Resolver) resolveAnonymousGit(ctx context.Context, params map[string]st
 		if revisionString, ok := conf[defaultRevisionKey]; ok {
 			revision = revisionString
 		} else {
-			return nil, fmt.Errorf("default Git Revision was not set during installation of the git resolver")
+			return nil, errors.New("default Git Revision was not set during installation of the git resolver")
 		}
 	}
 

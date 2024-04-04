@@ -19,6 +19,7 @@ package volumeclaim
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 
@@ -159,6 +160,6 @@ func GeneratePVCNameFromWorkspaceBinding(claimName string, wb v1.WorkspaceBindin
 
 func getPersistentVolumeClaimIdentity(workspaceName, ownerName string) string {
 	hashBytes := sha256.Sum256([]byte(workspaceName + ownerName))
-	hashString := fmt.Sprintf("%x", hashBytes)
+	hashString := hex.EncodeToString(hashBytes[:])
 	return hashString[:10]
 }

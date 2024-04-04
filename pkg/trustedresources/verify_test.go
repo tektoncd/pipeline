@@ -25,7 +25,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/sigstore/sigstore/pkg/signature"
@@ -48,7 +47,8 @@ var (
 	unsignedV1beta1Task = &v1beta1.Task{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1beta1",
-			Kind:       "Task"},
+			Kind:       "Task",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "test-task",
 			Namespace:   "trusted-resources",
@@ -64,7 +64,8 @@ var (
 	unsignedV1Task = v1.Task{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1",
-			Kind:       "Task"},
+			Kind:       "Task",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "task",
 			Annotations: map[string]string{"foo": "bar"},
@@ -79,7 +80,8 @@ var (
 	unsignedV1beta1Pipeline = &v1beta1.Pipeline{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1beta1",
-			Kind:       "Pipeline"},
+			Kind:       "Pipeline",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "test-pipeline",
 			Namespace:   "trusted-resources",
@@ -96,7 +98,8 @@ var (
 	unsignedV1Pipeline = v1.Pipeline{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "tekton.dev/v1",
-			Kind:       "Pipeline"},
+			Kind:       "Pipeline",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "pipeline",
 			Annotations: map[string]string{"foo": "bar"},
@@ -500,6 +503,7 @@ func TestVerifyResource_V1Task_Success(t *testing.T) {
 		t.Errorf("VerificationResult mismatch: want %v, got %v", VerificationPass, vr.VerificationResultType)
 	}
 }
+
 func TestVerifyResource_V1Task_Error(t *testing.T) {
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 	signedTask, err := getSignedV1Task(unsignedV1Task.DeepCopy(), signer, "signed")
@@ -552,7 +556,7 @@ func TestVerifyResource_TypeNotSupported(t *testing.T) {
 
 func signInterface(signer signature.Signer, i interface{}) ([]byte, error) {
 	if signer == nil {
-		return nil, fmt.Errorf("signer is nil")
+		return nil, errors.New("signer is nil")
 	}
 	b, err := json.Marshal(i)
 	if err != nil {

@@ -284,7 +284,7 @@ func populateParamsWithDefaults(ctx context.Context, origParams []pipelinev1.Par
 	}
 
 	if conf[BlockedNamespacesKey] != "" && conf[BlockedNamespacesKey] == "*" {
-		return nil, fmt.Errorf("only explicit allowed access to namespaces is allowed")
+		return nil, errors.New("only explicit allowed access to namespaces is allowed")
 	}
 
 	if conf[AllowedNamespacesKey] != "" && !isInCommaSeparatedList(params[NamespaceParam], conf[AllowedNamespacesKey]) {

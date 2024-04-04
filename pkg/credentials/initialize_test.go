@@ -28,7 +28,7 @@ func TestTryCopyCredDir(t *testing.T) {
 	dir := t.TempDir()
 
 	fakeCredDir := filepath.Join(dir, ".docker")
-	err := os.Mkdir(fakeCredDir, 0700)
+	err := os.Mkdir(fakeCredDir, 0o700)
 	if err != nil {
 		t.Fatalf("unexpected error creating fake credential directory: %v", err)
 	}
@@ -93,11 +93,11 @@ func writeFakeCred(t *testing.T, dir, name, contents string) string {
 	t.Helper()
 	flags := os.O_RDWR | os.O_CREATE | os.O_TRUNC
 	path := filepath.Join(dir, name)
-	cred, err := os.OpenFile(path, flags, 0600)
+	cred, err := os.OpenFile(path, flags, 0o600)
 	if err != nil {
 		t.Fatalf("unexpected error writing fake credential: %v", err)
 	}
-	_, _ = cred.Write([]byte(credContents))
+	_, _ = cred.WriteString(contents)
 	_ = cred.Close()
 	return path
 }

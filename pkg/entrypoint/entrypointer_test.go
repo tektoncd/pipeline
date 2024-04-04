@@ -20,13 +20,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -237,7 +237,7 @@ func TestEntrypointer(t *testing.T) {
 			if err == nil {
 				var entries []result.RunResult
 				if err := json.Unmarshal(fileContents, &entries); err == nil {
-					var found = false
+					found := false
 					for _, result := range entries {
 						if result.Key == "StartedAt" {
 							found = true
@@ -265,61 +265,82 @@ func TestReadResultsFromDisk(t *testing.T) {
 		resultContent []v1beta1.ResultValue
 		resultType    result.ResultType
 		want          []result.RunResult
-	}{{
-		desc:          "read string result file",
-		results:       []string{"results"},
-		resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello world")},
-		resultType:    result.TaskRunResultType,
-		want: []result.RunResult{
-			{Value: `"hello world"`,
-				ResultType: 1}},
-	}, {
-		desc:          "read array result file",
-		results:       []string{"results"},
-		resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello", "world")},
-		resultType:    result.TaskRunResultType,
-		want: []result.RunResult{
-			{Value: `["hello","world"]`,
-				ResultType: 1}},
-	}, {
-		desc:          "read string and array result files",
-		results:       []string{"resultsArray", "resultsString"},
-		resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello", "world"), *v1beta1.NewStructuredValues("hello world")},
-		resultType:    result.TaskRunResultType,
-		want: []result.RunResult{
-			{Value: `["hello","world"]`,
-				ResultType: 1},
-			{Value: `"hello world"`,
-				ResultType: 1},
+	}{
+		{
+			desc:          "read string result file",
+			results:       []string{"results"},
+			resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello world")},
+			resultType:    result.TaskRunResultType,
+			want: []result.RunResult{
+				{
+					Value:      `"hello world"`,
+					ResultType: 1,
+				},
+			},
+		}, {
+			desc:          "read array result file",
+			results:       []string{"results"},
+			resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello", "world")},
+			resultType:    result.TaskRunResultType,
+			want: []result.RunResult{
+				{
+					Value:      `["hello","world"]`,
+					ResultType: 1,
+				},
+			},
+		}, {
+			desc:          "read string and array result files",
+			results:       []string{"resultsArray", "resultsString"},
+			resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello", "world"), *v1beta1.NewStructuredValues("hello world")},
+			resultType:    result.TaskRunResultType,
+			want: []result.RunResult{
+				{
+					Value:      `["hello","world"]`,
+					ResultType: 1,
+				},
+				{
+					Value:      `"hello world"`,
+					ResultType: 1,
+				},
+			},
+		}, {
+			desc:          "read string step result file",
+			results:       []string{"results"},
+			resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello world")},
+			resultType:    result.StepResultType,
+			want: []result.RunResult{
+				{
+					Value:      `"hello world"`,
+					ResultType: 4,
+				},
+			},
+		}, {
+			desc:          "read array step result file",
+			results:       []string{"results"},
+			resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello", "world")},
+			resultType:    result.StepResultType,
+			want: []result.RunResult{
+				{
+					Value:      `["hello","world"]`,
+					ResultType: 4,
+				},
+			},
+		}, {
+			desc:          "read string and array step result files",
+			results:       []string{"resultsArray", "resultsString"},
+			resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello", "world"), *v1beta1.NewStructuredValues("hello world")},
+			resultType:    result.StepResultType,
+			want: []result.RunResult{
+				{
+					Value:      `["hello","world"]`,
+					ResultType: 4,
+				},
+				{
+					Value:      `"hello world"`,
+					ResultType: 4,
+				},
+			},
 		},
-	}, {
-		desc:          "read string step result file",
-		results:       []string{"results"},
-		resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello world")},
-		resultType:    result.StepResultType,
-		want: []result.RunResult{
-			{Value: `"hello world"`,
-				ResultType: 4}},
-	}, {
-		desc:          "read array step result file",
-		results:       []string{"results"},
-		resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello", "world")},
-		resultType:    result.StepResultType,
-		want: []result.RunResult{
-			{Value: `["hello","world"]`,
-				ResultType: 4}},
-	}, {
-		desc:          "read string and array step result files",
-		results:       []string{"resultsArray", "resultsString"},
-		resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello", "world"), *v1beta1.NewStructuredValues("hello world")},
-		resultType:    result.StepResultType,
-		want: []result.RunResult{
-			{Value: `["hello","world"]`,
-				ResultType: 4},
-			{Value: `"hello world"`,
-				ResultType: 4},
-		},
-	},
 	} {
 		t.Run(c.desc, func(t *testing.T) {
 			ctx := context.Background()
@@ -342,7 +363,7 @@ func TestReadResultsFromDisk(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					if err := os.WriteFile(resultName, d, 0777); err != nil {
+					if err := os.WriteFile(resultName, d, 0o777); err != nil {
 						t.Fatal(err)
 					}
 					defer os.Remove(resultName)
@@ -383,7 +404,7 @@ func TestEntrypointer_ReadBreakpointExitCodeFromDisk(t *testing.T) {
 		t.Errorf("error while creating temp file for testing exit code written by breakpoint")
 	}
 	// write exit code to file
-	if err = os.WriteFile(tmp.Name(), []byte(fmt.Sprintf("%d", expectedExitCode)), 0700); err != nil {
+	if err = os.WriteFile(tmp.Name(), []byte(strconv.Itoa(expectedExitCode)), 0o700); err != nil {
 		t.Errorf("error while writing to temp file create temp file for testing exit code written by breakpoint")
 	}
 	e := Entrypointer{}
@@ -772,12 +793,12 @@ func TestApplyStepResultSubstitutions_Env(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			resultPath := filepath.Join(stepDir, pod.GetContainerName(tc.stepName), "results")
-			err := os.MkdirAll(resultPath, 0750)
+			err := os.MkdirAll(resultPath, 0o750)
 			if err != nil {
 				log.Fatal(err)
 			}
 			resultFile := filepath.Join(resultPath, tc.resultName)
-			err = os.WriteFile(resultFile, []byte(tc.result), 0666)
+			err = os.WriteFile(resultFile, []byte(tc.result), 0o666)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -853,12 +874,12 @@ func TestApplyStepResultSubstitutions_Command(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			resultPath := filepath.Join(stepDir, pod.GetContainerName(tc.stepName), "results")
-			err := os.MkdirAll(resultPath, 0750)
+			err := os.MkdirAll(resultPath, 0o750)
 			if err != nil {
 				log.Fatal(err)
 			}
 			resultFile := filepath.Join(resultPath, tc.resultName)
-			err = os.WriteFile(resultFile, []byte(tc.result), 0666)
+			err = os.WriteFile(resultFile, []byte(tc.result), 0o666)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -1187,7 +1208,7 @@ type fakeResultsWriter struct {
 func (f *fakeResultsWriter) Run(ctx context.Context, args ...string) error {
 	f.args = &args
 	for k, v := range f.resultsToWrite {
-		err := os.WriteFile(k, []byte(v), 0666)
+		err := os.WriteFile(k, []byte(v), 0o666)
 		if err != nil {
 			return err
 		}

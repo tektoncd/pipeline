@@ -308,6 +308,7 @@ type ParamValuesHolder struct {
 	AOrS v1.ParamValue `json:"val"`
 }
 
+//nolint:musttag
 func TestParamValues_UnmarshalJSON(t *testing.T) {
 	cases := []struct {
 		input  map[string]interface{}
@@ -398,6 +399,7 @@ func TestParamValues_UnmarshalJSON_Directly(t *testing.T) {
 	}
 }
 
+//nolint:musttag
 func TestParamValues_UnmarshalJSON_Error(t *testing.T) {
 	cases := []struct {
 		desc  string
@@ -415,6 +417,7 @@ func TestParamValues_UnmarshalJSON_Error(t *testing.T) {
 	}
 }
 
+//nolint:musttag
 func TestParamValues_MarshalJSON(t *testing.T) {
 	cases := []struct {
 		input  v1.ParamValue
@@ -471,7 +474,8 @@ func TestExtractNames(t *testing.T) {
 		params: v1.Params{{
 			Name: "IMAGE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "image-1"},
 		}, {
-			Name: "DOCKERFILE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
+			Name: "DOCKERFILE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/Dockerfile1"},
+		}},
 		want: sets.NewString("IMAGE", "DOCKERFILE"),
 	}, {
 		name: "extract param names from ParamTypeArray",

@@ -19,6 +19,7 @@ package hub
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -68,7 +69,7 @@ func TestValidateParams(t *testing.T) {
 			version:      "bar",
 			catalog:      "baz",
 			hubType:      TektonHubType,
-			expectedErr:  fmt.Errorf("failed to validate params: please configure TEKTON_HUB_API env variable to use tekton type"),
+			expectedErr:  errors.New("failed to validate params: please configure TEKTON_HUB_API env variable to use tekton type"),
 		},
 	}
 
@@ -301,7 +302,7 @@ func TestResolveConstraint(t *testing.T) {
 					},
 				},
 			},
-			expectedErr: fmt.Errorf("no version found for constraint >= 0.2.0"),
+			expectedErr: errors.New("no version found for constraint >= 0.2.0"),
 		}, {
 			name:     "bad/tekton hub/no matching constraints",
 			kind:     "task",
@@ -318,7 +319,7 @@ func TestResolveConstraint(t *testing.T) {
 					},
 				},
 			},
-			expectedErr: fmt.Errorf("no version found for constraint >= 0.2.0"),
+			expectedErr: errors.New("no version found for constraint >= 0.2.0"),
 		},
 	}
 	for _, tt := range tests {
@@ -556,7 +557,7 @@ func TestResolve(t *testing.T) {
 			catalog:     "Tekton",
 			hubType:     TektonHubType,
 			input:       `value`,
-			expectedErr: fmt.Errorf("fail to fetch Tekton Hub resource: error unmarshalling json response: invalid character 'v' looking for beginning of value"),
+			expectedErr: errors.New("fail to fetch Tekton Hub resource: error unmarshalling json response: invalid character 'v' looking for beginning of value"),
 		},
 		{
 			name:        "response with empty body error from Tekton Hub",
@@ -565,7 +566,7 @@ func TestResolve(t *testing.T) {
 			version:     "baz",
 			catalog:     "Tekton",
 			hubType:     TektonHubType,
-			expectedErr: fmt.Errorf("fail to fetch Tekton Hub resource: error unmarshalling json response: unexpected end of JSON input"),
+			expectedErr: errors.New("fail to fetch Tekton Hub resource: error unmarshalling json response: unexpected end of JSON input"),
 		},
 		{
 			name:        "response with empty body error from Artifact Hub",
@@ -574,7 +575,7 @@ func TestResolve(t *testing.T) {
 			version:     "baz",
 			catalog:     "Tekton",
 			hubType:     ArtifactHubType,
-			expectedErr: fmt.Errorf("fail to fetch Artifact Hub resource: error unmarshalling json response: unexpected end of JSON input"),
+			expectedErr: errors.New("fail to fetch Artifact Hub resource: error unmarshalling json response: unexpected end of JSON input"),
 		},
 	}
 

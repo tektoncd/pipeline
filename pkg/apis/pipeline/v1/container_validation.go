@@ -29,7 +29,7 @@ import (
 // correctly. No errors are returned for a nil Ref.
 func (ref *Ref) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if ref == nil {
-		return
+		return errs
 	}
 
 	switch {

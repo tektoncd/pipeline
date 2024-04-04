@@ -192,7 +192,7 @@ func (e Entrypointer) Go() error {
 
 	var err error
 	if e.Timeout != nil && *e.Timeout < time.Duration(0) {
-		err = fmt.Errorf("negative timeout specified")
+		err = errors.New("negative timeout specified")
 	}
 	ctx := context.Background()
 	var cancel context.CancelFunc
@@ -325,7 +325,7 @@ func (e Entrypointer) BreakpointExitCode(breakpointExitPostFile string) (int, er
 // WritePostFile write the postfile
 func (e Entrypointer) WritePostFile(postFile string, err error) {
 	if err != nil && postFile != "" {
-		postFile = fmt.Sprintf("%s.err", postFile)
+		postFile += ".err"
 	}
 	if postFile != "" {
 		e.PostWriter.Write(postFile, "")

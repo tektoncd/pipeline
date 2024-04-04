@@ -29,7 +29,7 @@ import (
 // correctly. No errors are returned for a nil PipelineRef.
 func (ref *PipelineRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if ref == nil {
-		return
+		return errs
 	}
 
 	if ref.Resolver != "" || ref.Params != nil {

@@ -19,6 +19,7 @@ package pipelinerun
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 
@@ -257,7 +258,7 @@ func getAffinityAssistantAnnotationVal(aaBehavior affinityassistant.AffinityAssi
 // GetAffinityAssistantName returns the Affinity Assistant name based on pipelineWorkspaceName and pipelineRunName
 func GetAffinityAssistantName(pipelineWorkspaceName string, pipelineRunName string) string {
 	hashBytes := sha256.Sum256([]byte(pipelineWorkspaceName + pipelineRunName))
-	hashString := fmt.Sprintf("%x", hashBytes)
+	hashString := hex.EncodeToString(hashBytes[:])
 	return fmt.Sprintf("%s-%s", workspace.ComponentNameAffinityAssistant, hashString[:10])
 }
 
@@ -391,18 +392,16 @@ func getAssistantAffinityMergedWithPodTemplateAffinity(pr *v1.PipelineRun, aaBeh
 
 	if aaBehavior == aa.AffinityAssistantPerPipelineRunWithIsolation {
 		// use RequiredDuringSchedulingIgnoredDuringExecution term to enforce only one pipelinerun can run in a node at a time
-		affinityAssistantsAffinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution =
-			append(affinityAssistantsAffinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution,
-				repelOtherAffinityAssistantsPodAffinityTerm)
+		affinityAssistantsAffinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution = append(affinityAssistantsAffinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution,
+			repelOtherAffinityAssistantsPodAffinityTerm)
 	} else {
 		preferredRepelOtherAffinityAssistantsPodAffinityTerm := corev1.WeightedPodAffinityTerm{
 			Weight:          100,
 			PodAffinityTerm: repelOtherAffinityAssistantsPodAffinityTerm,
 		}
 		// use RequiredDuringSchedulingIgnoredDuringExecution term to schedule pipelineruns to different nodes when possible
-		affinityAssistantsAffinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution =
-			append(affinityAssistantsAffinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution,
-				preferredRepelOtherAffinityAssistantsPodAffinityTerm)
+		affinityAssistantsAffinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution = append(affinityAssistantsAffinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution,
+			preferredRepelOtherAffinityAssistantsPodAffinityTerm)
 	}
 
 	return affinityAssistantsAffinity

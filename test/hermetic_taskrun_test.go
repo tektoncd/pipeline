@@ -57,7 +57,7 @@ func TestHermeticTaskRun(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
 			// first, run the task run with hermetic=false to prove that it succeeds
-			regularTaskRunName := fmt.Sprintf("not-hermetic-%s", test.desc)
+			regularTaskRunName := "not-hermetic-" + test.desc
 			regularTaskRun := test.getTaskRun(t, regularTaskRunName, namespace, "")
 			t.Logf("Creating TaskRun %s, hermetic=false", regularTaskRunName)
 			if _, err := c.V1TaskRunClient.Create(ctx, regularTaskRun, metav1.CreateOptions{}); err != nil {
@@ -69,7 +69,7 @@ func TestHermeticTaskRun(t *testing.T) {
 
 			// now, run the task mode with hermetic mode
 			// it should fail, since it shouldn't be able to access any network
-			hermeticTaskRunName := fmt.Sprintf("hermetic-should-fail-%s", test.desc)
+			hermeticTaskRunName := "hermetic-should-fail-" + test.desc
 			hermeticTaskRun := test.getTaskRun(t, hermeticTaskRunName, namespace, "hermetic")
 			t.Logf("Creating TaskRun %s, hermetic=true", hermeticTaskRunName)
 			if _, err := c.V1TaskRunClient.Create(ctx, hermeticTaskRun, metav1.CreateOptions{}); err != nil {

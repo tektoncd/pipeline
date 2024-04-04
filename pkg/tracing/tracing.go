@@ -171,14 +171,13 @@ func createTracerProvider(service string, cfg *config.Tracing, user, pass string
 		creds := fmt.Sprintf("%s:%s", user, pass)
 		enc := base64.StdEncoding.EncodeToString([]byte(creds))
 		o := otlptracehttp.WithHeaders(map[string]string{
-			"Authorization": fmt.Sprintf("Basic %s", enc),
+			"Authorization": "Basic " + enc,
 		})
 		opts = append(opts, o)
 	}
 
 	ctx := context.Background()
 	exp, err := otlptracehttp.New(ctx, opts...)
-
 	if err != nil {
 		return nil, err
 	}

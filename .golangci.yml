@@ -16,6 +16,20 @@ linters-settings:
         - github.com/ghodss/yaml:
             recommendations:
               - sigs.k8s.io/yaml
+  depguard:
+    rules:
+      prevent_unmaintained_packages:
+        list-mode: lax # allow unless explicitely denied
+        files:
+          - $all
+          - "!$test"
+        allow:
+          - $gostd
+        deny:
+          - pkg: io/ioutil
+            desc: "replaced by io and os packages since Go 1.16: https://tip.golang.org/doc/go1.16#ioutil"
+          - pkg: github.com/ghodss/yaml
+            desc: "use sigs.k8s.io/yaml instead, to be consistent"
 linters:
   enable:
   - bodyclose
@@ -174,16 +188,16 @@ issues:
   # Enable off-by-default rules for revive requiring that all exported elements have a properly formatted comment.
   - EXC0012 # https://golangci-lint.run/usage/false-positives/#exc0012
   - EXC0014 # https://golangci-lint.run/usage/false-positives/#exc0014
+  exclude-files:
+  - .*/zz_generated.deepcopy.go
+  - pkg/apis/pipeline/v1beta1/openapi_generated.go
+  exclude-dirs:
+  - vendor
+  - pkg/client
+  - pkg/spire/test
 run:
   issues-exit-code: 1
   build-tags:
   - e2e
-  skip-files:
-  - .*/zz_generated.deepcopy.go
-  - pkg/apis/pipeline/v1beta1/openapi_generated.go
-  skip-dirs:
-  - vendor
-  - pkg/client
-  - pkg/spire/test
   timeout: 20m
   modules-download-mode: vendor
