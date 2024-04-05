@@ -19,6 +19,8 @@ package v1
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -66,6 +68,10 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 
 	// Validate PipelineSpec if it's present
 	if ps.PipelineSpec != nil {
+		if slices.Contains(strings.Split(
+			config.FromContextOrDefaults(ctx).FeatureFlags.DisableInlineSpec, ","), "pipelinerun") {
+			errs = errs.Also(apis.ErrDisallowedFields("pipelineSpec"))
+		}
 		errs = errs.Also(ps.PipelineSpec.Validate(ctx).ViaField("pipelineSpec"))
 	}
 

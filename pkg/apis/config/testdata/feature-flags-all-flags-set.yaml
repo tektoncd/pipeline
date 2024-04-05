@@ -36,3 +36,4 @@ data:
   enable-step-actions: "true"
   enable-param-enum: "true"
   enable-artifacts: "true"
+  disable-inline-spec: "pipeline,pipelinerun,taskrun"

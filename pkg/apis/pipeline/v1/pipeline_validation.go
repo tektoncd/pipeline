@@ -19,6 +19,7 @@ package v1
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -175,6 +176,8 @@ func (pt PipelineTask) ValidateName() *apis.FieldError {
 func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(pt.validateRefOrSpec(ctx))
 
+	errs = errs.Also(pt.validateEnabledInlineSpec(ctx))
+
 	errs = errs.Also(pt.validateEmbeddedOrType())
 	// taskKinds contains the kinds when the apiVersion is not set, they are not custom tasks,
 	// if apiVersion is set they are custom tasks.
@@ -265,6 +268,24 @@ func (pt *PipelineTask) validateWorkspaces(workspaceNames sets.String) (errs *ap
 		}
 
 		workspaceBindingNames.Insert(ws.Name)
+	}
+	return errs
+}
+
+// validateEnabledInlineSpec validates that pipelineSpec or taskSpec is allowed by checking
+// disable-inline-spec field
+func (pt PipelineTask) validateEnabledInlineSpec(ctx context.Context) (errs *apis.FieldError) {
+	if pt.TaskSpec != nil {
+		if slices.Contains(strings.Split(
+			config.FromContextOrDefaults(ctx).FeatureFlags.DisableInlineSpec, ","), "pipeline") {
+			errs = errs.Also(apis.ErrDisallowedFields("taskSpec"))
+		}
+	}
+	if pt.PipelineSpec != nil {
+		if slices.Contains(strings.Split(
+			config.FromContextOrDefaults(ctx).FeatureFlags.DisableInlineSpec, ","), "pipeline") {
+			errs = errs.Also(apis.ErrDisallowedFields("pipelineSpec"))
+		}
 	}
 	return errs
 }

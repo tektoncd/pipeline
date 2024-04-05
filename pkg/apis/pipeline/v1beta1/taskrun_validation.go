@@ -61,6 +61,10 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 	// Validate TaskSpec if it's present.
 	if ts.TaskSpec != nil {
+		if slices.Contains(strings.Split(
+			config.FromContextOrDefaults(ctx).FeatureFlags.DisableInlineSpec, ","), "taskrun") {
+			errs = errs.Also(apis.ErrDisallowedFields("taskSpec"))
+		}
 		errs = errs.Also(ts.TaskSpec.Validate(ctx).ViaField("taskSpec"))
 	}
 

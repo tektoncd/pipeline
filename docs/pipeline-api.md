@@ -733,6 +733,8 @@ PipelineSpec
 </td>
 <td>
 <em>(Optional)</em>
+<p>Specifying PipelineSpec can be disabled by setting
+<code>disable-inline-spec</code> feature flag..</p>
 </td>
 </tr>
 <tr>
@@ -1155,6 +1157,8 @@ TaskSpec
 </td>
 <td>
 <em>(Optional)</em>
+<p>Specifying PipelineSpec can be disabled by setting
+<code>disable-inline-spec</code> feature flag..</p>
 </td>
 </tr>
 <tr>
@@ -2308,6 +2312,8 @@ PipelineSpec
 </td>
 <td>
 <em>(Optional)</em>
+<p>Specifying PipelineSpec can be disabled by setting
+<code>disable-inline-spec</code> feature flag..</p>
 </td>
 </tr>
 <tr>
@@ -2846,7 +2852,9 @@ EmbeddedTask
 </td>
 <td>
 <em>(Optional)</em>
-<p>TaskSpec is a specification of a task</p>
+<p>TaskSpec is a specification of a task
+Specifying TaskSpec can be disabled by setting
+<code>disable-inline-spec</code> feature flag..</p>
 </td>
 </tr>
 <tr>
@@ -2973,7 +2981,9 @@ PipelineSpec
 <td>
 <em>(Optional)</em>
 <p>PipelineSpec is a specification of a pipeline
-Note: PipelineSpec is in preview mode and not yet supported</p>
+Note: PipelineSpec is in preview mode and not yet supported
+Specifying PipelineSpec can be disabled by setting
+<code>disable-inline-spec</code> feature flag..</p>
 </td>
 </tr>
 <tr>
@@ -5489,6 +5499,8 @@ TaskSpec
 </td>
 <td>
 <em>(Optional)</em>
+<p>Specifying PipelineSpec can be disabled by setting
+<code>disable-inline-spec</code> feature flag..</p>
 </td>
 </tr>
 <tr>
@@ -8985,6 +8997,8 @@ PipelineSpec
 </td>
 <td>
 <em>(Optional)</em>
+<p>Specifying PipelineSpec can be disabled by setting
+<code>disable-inline-spec</code> feature flag..</p>
 </td>
 </tr>
 <tr>
@@ -9483,6 +9497,8 @@ TaskSpec
 </td>
 <td>
 <em>(Optional)</em>
+<p>Specifying PipelineSpec can be disabled by setting
+<code>disable-inline-spec</code> feature flag..</p>
 </td>
 </tr>
 <tr>
@@ -11115,6 +11131,8 @@ PipelineSpec
 </td>
 <td>
 <em>(Optional)</em>
+<p>Specifying PipelineSpec can be disabled by setting
+<code>disable-inline-spec</code> feature flag..</p>
 </td>
 </tr>
 <tr>
@@ -11746,7 +11764,9 @@ EmbeddedTask
 </td>
 <td>
 <em>(Optional)</em>
-<p>TaskSpec is a specification of a task</p>
+<p>TaskSpec is a specification of a task
+Specifying TaskSpec can be disabled by setting
+<code>disable-inline-spec</code> feature flag..</p>
 </td>
 </tr>
 <tr>
@@ -11887,7 +11907,9 @@ PipelineSpec
 <td>
 <em>(Optional)</em>
 <p>PipelineSpec is a specification of a pipeline
-Note: PipelineSpec is in preview mode and not yet supported</p>
+Note: PipelineSpec is in preview mode and not yet supported
+Specifying TaskSpec can be disabled by setting
+<code>disable-inline-spec</code> feature flag..</p>
 </td>
 </tr>
 <tr>
@@ -14915,6 +14937,8 @@ TaskSpec
 </td>
 <td>
 <em>(Optional)</em>
+<p>Specifying PipelineSpec can be disabled by setting
+<code>disable-inline-spec</code> feature flag..</p>
 </td>
 </tr>
 <tr>

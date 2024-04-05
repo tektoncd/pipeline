@@ -1703,6 +1703,7 @@ status:
         ResultExtractionMethod: "termination-message"
         MaxResultSize: 4096
         Coschedule: "workspaces"
+        DisableInlineSpec: ""
   provenance:
     featureFlags:
       RunningInEnvWithInjectedSidecars: true
@@ -1715,6 +1716,7 @@ status:
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
       Coschedule: "workspaces"
+      DisableInlineSpec: ""
 `, pipelineErrors.UserErrorLabel, pipelineErrors.UserErrorLabel))
 		reconciliatonError = fmt.Errorf("1 error occurred:\n\t* Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\"")
 		toBeRetriedTaskRun = parse.MustParseV1TaskRun(t, `
@@ -1768,6 +1770,7 @@ status:
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
       Coschedule: "workspaces"
+      DisableInlineSpec: ""
 `)
 		toBeRetriedWithResultsTaskRun = parse.MustParseV1TaskRun(t, `
 metadata:
