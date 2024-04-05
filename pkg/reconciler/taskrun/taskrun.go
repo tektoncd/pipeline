@@ -1079,9 +1079,10 @@ func isResourceQuotaConflictError(err error) bool {
 }
 
 const (
-	// TODO(#7466) Currently this appears as a local constant due to upstream dependencies bump blocker.
-	// This shall reference to k8s.io/apiserver/pkg/registry/generic/registry.OptimisticLockErrorMsg
-	// once #7464 is unblocked.
+	// optimisticLockErrorMsg is an error message exported from k8s.io/apiserver/pkg/registry/generic/registry.OptimisticLockErrorMsg
+	// We made a tradeoff here because importing the package would introduce approximately 94klines
+	// of code as a new dependency, and it would only be used to export one constant in one place.
+	// In future we might find a better way to maintain consistency for this upstream error message.
 	optimisticLockErrorMsg = "the object has been modified; please apply your changes to the latest version and try again"
 )
 
