@@ -549,6 +549,42 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		},
 		wantErr: apis.ErrMultipleOneOf("taskRef", "taskSpec"),
 	}, {
+		name: "taskspec when inline disabled",
+		spec: v1.TaskRunSpec{
+			TaskSpec: &v1.TaskSpec{
+				Steps: []v1.Step{{
+					Name:  "mystep",
+					Image: "myimage",
+				}},
+			},
+		},
+		wantErr: apis.ErrDisallowedFields("taskSpec"),
+		wc: func(ctx context.Context) context.Context {
+			return config.ToContext(ctx, &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					DisableInlineSpec: "taskrun",
+				},
+			})
+		},
+	}, {
+		name: "taskspec when inline disabled all",
+		spec: v1.TaskRunSpec{
+			TaskSpec: &v1.TaskSpec{
+				Steps: []v1.Step{{
+					Name:  "mystep",
+					Image: "myimage",
+				}},
+			},
+		},
+		wantErr: apis.ErrDisallowedFields("taskSpec"),
+		wc: func(ctx context.Context) context.Context {
+			return config.ToContext(ctx, &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					DisableInlineSpec: "taskrun,pipelinerun,pipeline",
+				},
+			})
+		},
+	}, {
 		name: "negative pipeline timeout",
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{

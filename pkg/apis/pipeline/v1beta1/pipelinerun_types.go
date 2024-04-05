@@ -252,6 +252,8 @@ func (pr *PipelineRun) HasVolumeClaimTemplate() bool {
 type PipelineRunSpec struct {
 	// +optional
 	PipelineRef *PipelineRef `json:"pipelineRef,omitempty"`
+	// Specifying PipelineSpec can be disabled by setting
+	// `disable-inline-spec` feature flag..
 	// +optional
 	PipelineSpec *PipelineSpec `json:"pipelineSpec,omitempty"`
 	// Resources is a list of bindings specifying which actual instances of

@@ -131,3 +131,9 @@ data:
   enable-artifacts: "false"
   # Setting this flag to "true" will enable the built-in param input validation via param enum.
   enable-param-enum: "false"
+  # Setting this flag to "pipeline,pipelinerun,taskrun" will prevent users from creating
+  # embedded spec Taskruns or Pipelineruns for Pipeline, Pipelinerun and taskrun
+  # respectively. We can specify "pipeline" to disable for Pipeline resource only.
+  # "pipelinerun" for Pipelinerun and "taskrun" for Taskrun. Or a combination of
+  # these.
+  disable-inline-spec: ""

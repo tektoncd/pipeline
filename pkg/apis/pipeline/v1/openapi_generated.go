@@ -1349,7 +1349,8 @@ func schema_pkg_apis_pipeline_v1_PipelineRunSpec(ref common.ReferenceCallback) c
 					},
 					"pipelineSpec": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineSpec"),
+							Description: "Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag..",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineSpec"),
 						},
 					},
 					"params": {
@@ -1923,7 +1924,7 @@ func schema_pkg_apis_pipeline_v1_PipelineTask(ref common.ReferenceCallback) comm
 					},
 					"taskSpec": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TaskSpec is a specification of a task",
+							Description: "TaskSpec is a specification of a task Specifying TaskSpec can be disabled by setting `disable-inline-spec` feature flag..",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.EmbeddedTask"),
 						},
 					},
@@ -2026,7 +2027,7 @@ func schema_pkg_apis_pipeline_v1_PipelineTask(ref common.ReferenceCallback) comm
 					},
 					"pipelineSpec": {
 						SchemaProps: spec.SchemaProps{
-							Description: "PipelineSpec is a specification of a pipeline Note: PipelineSpec is in preview mode and not yet supported",
+							Description: "PipelineSpec is a specification of a pipeline Note: PipelineSpec is in preview mode and not yet supported Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag..",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineSpec"),
 						},
 					},
@@ -3941,7 +3942,8 @@ func schema_pkg_apis_pipeline_v1_TaskRunSpec(ref common.ReferenceCallback) commo
 					},
 					"taskSpec": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskSpec"),
+							Description: "Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag..",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskSpec"),
 						},
 					},
 					"status": {

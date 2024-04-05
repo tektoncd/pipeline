@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -996,6 +997,44 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 				}}},
 		},
 		wantErr: apis.ErrMultipleOneOf("pipelineRef", "pipelineSpec"),
+	}, {
+		name: "pipelineSpec when inline disabled all",
+		spec: v1beta1.PipelineRunSpec{
+			PipelineSpec: &v1beta1.PipelineSpec{
+				Tasks: []v1beta1.PipelineTask{{
+					Name: "mytask",
+					TaskRef: &v1beta1.TaskRef{
+						Name: "mytask",
+					},
+				}}},
+		},
+		wantErr: apis.ErrDisallowedFields("pipelineSpec"),
+		withContext: func(ctx context.Context) context.Context {
+			return config.ToContext(ctx, &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					DisableInlineSpec: "taskrun,pipelinerun,pipeline",
+				},
+			})
+		},
+	}, {
+		name: "pipelineSpec when inline disabled",
+		spec: v1beta1.PipelineRunSpec{
+			PipelineSpec: &v1beta1.PipelineSpec{
+				Tasks: []v1beta1.PipelineTask{{
+					Name: "mytask",
+					TaskRef: &v1beta1.TaskRef{
+						Name: "mytask",
+					},
+				}}},
+		},
+		wantErr: apis.ErrDisallowedFields("pipelineSpec"),
+		withContext: func(ctx context.Context) context.Context {
+			return config.ToContext(ctx, &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					DisableInlineSpec: "pipelinerun",
+				},
+			})
+		},
 	}, {
 		name: "workspaces may only appear once",
 		spec: v1beta1.PipelineRunSpec{

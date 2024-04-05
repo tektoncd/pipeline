@@ -566,6 +566,42 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		},
 		wantErr: apis.ErrInvalidValue("statusMessage should not be set if status is not set, but it is currently set to "+invalidStatusMessage, "statusMessage"),
 	}, {
+		name: "taskspec when inline disabled",
+		spec: v1beta1.TaskRunSpec{
+			TaskSpec: &v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Name:  "mystep",
+					Image: "myimage",
+				}},
+			},
+		},
+		wantErr: apis.ErrDisallowedFields("taskSpec"),
+		wc: func(ctx context.Context) context.Context {
+			return config.ToContext(ctx, &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					DisableInlineSpec: "taskrun",
+				},
+			})
+		},
+	}, {
+		name: "taskspec when inline disabled all",
+		spec: v1beta1.TaskRunSpec{
+			TaskSpec: &v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Name:  "mystep",
+					Image: "myimage",
+				}},
+			},
+		},
+		wantErr: apis.ErrDisallowedFields("taskSpec"),
+		wc: func(ctx context.Context) context.Context {
+			return config.ToContext(ctx, &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					DisableInlineSpec: "taskrun,pipelinerun,pipeline",
+				},
+			})
+		},
+	}, {
 		name: "invalid taskspec",
 		spec: v1beta1.TaskRunSpec{
 			TaskSpec: &v1beta1.TaskSpec{

@@ -669,6 +669,7 @@
           "$ref": "#/definitions/v1.PipelineRef"
         },
         "pipelineSpec": {
+          "description": "Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag..",
           "$ref": "#/definitions/v1.PipelineSpec"
         },
         "status": {
@@ -969,7 +970,7 @@
           "$ref": "#/definitions/v1.PipelineRef"
         },
         "pipelineSpec": {
-          "description": "PipelineSpec is a specification of a pipeline Note: PipelineSpec is in preview mode and not yet supported",
+          "description": "PipelineSpec is a specification of a pipeline Note: PipelineSpec is in preview mode and not yet supported Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag..",
           "$ref": "#/definitions/v1.PipelineSpec"
         },
         "retries": {
@@ -991,7 +992,7 @@
           "$ref": "#/definitions/v1.TaskRef"
         },
         "taskSpec": {
-          "description": "TaskSpec is a specification of a task",
+          "description": "TaskSpec is a specification of a task Specifying TaskSpec can be disabled by setting `disable-inline-spec` feature flag..",
           "$ref": "#/definitions/v1.EmbeddedTask"
         },
         "timeout": {
@@ -2074,6 +2075,7 @@
           "$ref": "#/definitions/v1.TaskRef"
         },
         "taskSpec": {
+          "description": "Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag..",
           "$ref": "#/definitions/v1.TaskSpec"
         },
         "timeout": {

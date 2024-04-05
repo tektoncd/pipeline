@@ -287,6 +287,86 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 			Message: `expected exactly one, got multiple`,
 			Paths:   []string{"spec.tasks[0].pipelineRef, spec.tasks[0].pipelineSpec"},
 		},
+	}, {
+		name: "pipelineSpec when disable-inline-spec",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{
+					{
+						Name:         "foo",
+						PipelineSpec: &PipelineSpec{Description: "foo-pipeline-description"},
+					},
+				},
+			},
+		},
+		expectedError: *apis.ErrDisallowedFields("spec.tasks[0]" + "." + "pipelineSpec"),
+		wc: func(ctx context.Context) context.Context {
+			return cfgtesting.SetFeatureFlags(ctx, t,
+				map[string]string{
+					"disable-inline-spec": "pipeline",
+					"enable-api-fields":   "alpha"})
+		},
+	}, {
+		name: "pipelineSpec when disable-inline-spec all",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{
+					{
+						Name:         "foo",
+						PipelineSpec: &PipelineSpec{Description: "foo-pipeline-description"},
+					},
+				},
+			},
+		},
+		expectedError: *apis.ErrDisallowedFields("spec.tasks[0]" + "." + "pipelineSpec"),
+		wc: func(ctx context.Context) context.Context {
+			return cfgtesting.SetFeatureFlags(ctx, t,
+				map[string]string{
+					"disable-inline-spec": "pipeline,taskrun,pipelinerun",
+					"enable-api-fields":   "alpha"})
+		},
+	}, {
+		name: "taskSpec when disable-inline-spec",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Description: "inline task",
+				Tasks: []PipelineTask{{
+					Name:     "task-spec",
+					TaskSpec: &EmbeddedTask{TaskSpec: getTaskSpec()},
+				}},
+			},
+		},
+		expectedError: *apis.ErrDisallowedFields("spec.tasks[0]" + "." + "taskSpec"),
+		wc: func(ctx context.Context) context.Context {
+			return config.ToContext(ctx, &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					DisableInlineSpec: "pipeline",
+				},
+			})
+		},
+	}, {
+		name: "taskSpec when disable-inline-spec all",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Description: "inline task",
+				Tasks: []PipelineTask{{
+					Name:     "task-spec",
+					TaskSpec: &EmbeddedTask{TaskSpec: getTaskSpec()},
+				}},
+			},
+		},
+		expectedError: *apis.ErrDisallowedFields("spec.tasks[0]" + "." + "taskSpec"),
+		wc: func(ctx context.Context) context.Context {
+			return config.ToContext(ctx, &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					DisableInlineSpec: "pipeline,pipelinerun,taskrun",
+				},
+			})
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
