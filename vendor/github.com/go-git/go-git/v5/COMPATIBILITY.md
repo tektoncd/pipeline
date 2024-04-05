@@ -27,14 +27,14 @@ compatibility status with go-git.
 
 ## Branching and merging
 
-| Feature     | Sub-feature | Status | Notes                                   | Examples                                                                                        |
-| ----------- | ----------- | ------ | --------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `branch`    |             | ✅     |                                         | - [branch](_examples/branch/main.go)                                                            |
-| `checkout`  |             | ✅     | Basic usages of checkout are supported. | - [checkout](_examples/checkout/main.go)                                                        |
-| `merge`     |             | ❌     |                                         |                                                                                                 |
-| `mergetool` |             | ❌     |                                         |                                                                                                 |
-| `stash`     |             | ❌     |                                         |                                                                                                 |
-| `tag`       |             | ✅     |                                         | - [tag](_examples/tag/main.go) <br/> - [tag create and push](_examples/tag-create-push/main.go) |
+| Feature     | Sub-feature | Status       | Notes                                   | Examples                                                                                        |
+| ----------- | ----------- | ------------ | --------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `branch`    |             | ✅           |                                         | - [branch](_examples/branch/main.go)                                                            |
+| `checkout`  |             | ✅           | Basic usages of checkout are supported. | - [checkout](_examples/checkout/main.go)                                                        |
+| `merge`     |             | ⚠️ (partial) | Fast-forward only                       |                                                                                                 |
+| `mergetool` |             | ❌           |                                         |                                                                                                 |
+| `stash`     |             | ❌           |                                         |                                                                                                 |
+| `tag`       |             | ✅           |                                         | - [tag](_examples/tag/main.go) <br/> - [tag create and push](_examples/tag-create-push/main.go) |
 
 ## Sharing and updating projects
 
@@ -109,10 +109,10 @@ compatibility status with go-git.
 
 ## Server admin
 
-| Feature              | Sub-feature | Status | Notes | Examples |
-| -------------------- | ----------- | ------ | ----- | -------- |
-| `daemon`             |             | ❌     |       |          |
-| `update-server-info` |             | ❌     |       |          |
+| Feature              | Sub-feature | Status | Notes | Examples                                  |
+| -------------------- | ----------- | ------ | ----- | ----------------------------------------- |
+| `daemon`             |             | ❌     |       |                                           |
+| `update-server-info` |             | ✅     |       | [cli](./cli/go-git/update_server_info.go) |
 
 ## Advanced
 
