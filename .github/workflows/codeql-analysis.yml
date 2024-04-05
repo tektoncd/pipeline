@@ -48,6 +48,11 @@ jobs:
         # Learn more about CodeQL language support at https://git.io/codeql-language-support
 
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@63c24ba6bd7ba022e95695ff85de572c04a18142 # v2.7.0
+      with:
+        egress-policy: audit
+
     - name: Checkout repository
       uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
 
@@ -61,7 +66,7 @@ jobs:
         # Prefix the list here with "+" to use these queries and those in the config file.
         # queries: ./path/to/local/query, your-org/your-repo/queries@main
 
-    - uses: actions/cache@v4
+    - uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
       with:
         path: |
           ~/.cache/go-build
@@ -84,8 +89,7 @@ jobs:
     #    uses a compiled language
 
     - run: |
-        # Switch to "make binaries" later
-        make bin/controller bin/entrypoint bin/events bin/nop bin/resolvers bin/sidecarlogresults bin/webhook bin/workingdirinit
+        make -j 4 all
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@1b1aada464948af03b950897e5eb522f92603cc2 # v3.24.9
