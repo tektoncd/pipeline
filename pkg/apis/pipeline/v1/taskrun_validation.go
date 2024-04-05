@@ -96,7 +96,9 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("statusMessage should not be set if status is not set, but it is currently set to %s", ts.StatusMessage), "statusMessage"))
 		}
 	}
-
+	if ts.Retries < 0 {
+		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%d should be >= 0", ts.Retries), "retries"))
+	}
 	if ts.Timeout != nil {
 		// timeout should be a valid duration of at least 0.
 		if ts.Timeout.Duration < 0 {
