@@ -1084,8 +1084,8 @@ github.com/spf13/viper v1.4.0/go.mod h1:PTJ7Z/lr49W6bUbkmS1V3by4uWynFiR9p7+dSq/y
 github.com/spf13/viper v1.8.1/go.mod h1:o0Pch8wJ9BVSWGQMbra6iw0oQ5oktSIBaujf1rJH9Ns=
 github.com/spiffe/go-spiffe/v2 v2.2.0 h1:9Vf06UsvsDbLYK/zJ4sYsIsHmMFknUD+feA7IYoWMQY=
 github.com/spiffe/go-spiffe/v2 v2.2.0/go.mod h1:Urzb779b3+IwDJD2ZbN8fVl3Aa8G4N/PiUe6iXC0XxU=
-github.com/spiffe/spire-api-sdk v1.9.2 h1:btzUwbcB7W7eUtOke4nUtqAgyzecvs2A80OJp22alj8=
-github.com/spiffe/spire-api-sdk v1.9.2/go.mod h1:4uuhFlN6KBWjACRP3xXwrOTNnvaLp1zJs8Lribtr4fI=
+github.com/spiffe/spire-api-sdk v1.9.3 h1:FUyRDPMK3cqFiO8KOI7pWQO/d6QctMdYYUBuc/oJqRo=
+github.com/spiffe/spire-api-sdk v1.9.3/go.mod h1:4uuhFlN6KBWjACRP3xXwrOTNnvaLp1zJs8Lribtr4fI=
 github.com/src-d/gcfg v1.4.0/go.mod h1:p/UMsR43ujA89BJY9duynAwIpvqEujIH/jFlfL7jWoI=
 github.com/stefanberger/go-pkcs11uri v0.0.0-20201008174630-78d3cae3a980/go.mod h1:AO3tvPzVZ/ayst6UlUKUv6rcPQInYe3IknH3jYhAKu8=
 github.com/stoewer/go-strcase v1.2.0 h1:Z2iHWqGXH00XYgqDmNgQbIBxf3wrNq0F3feEy0ainaU=
