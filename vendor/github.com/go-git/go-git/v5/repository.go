@@ -22,6 +22,7 @@ import (
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/internal/path_util"
 	"github.com/go-git/go-git/v5/internal/revision"
+	"github.com/go-git/go-git/v5/internal/url"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/cache"
 	formatcfg "github.com/go-git/go-git/v5/plumbing/format/config"
@@ -50,18 +51,21 @@ var (
 	// ErrFetching is returned when the packfile could not be downloaded
 	ErrFetching = errors.New("unable to fetch packfile")
 
-	ErrInvalidReference          = errors.New("invalid reference, should be a tag or a branch")
-	ErrRepositoryNotExists       = errors.New("repository does not exist")
-	ErrRepositoryIncomplete      = errors.New("repository's commondir path does not exist")
-	ErrRepositoryAlreadyExists   = errors.New("repository already exists")
-	ErrRemoteNotFound            = errors.New("remote not found")
-	ErrRemoteExists              = errors.New("remote already exists")
-	ErrAnonymousRemoteName       = errors.New("anonymous remote name must be 'anonymous'")
-	ErrWorktreeNotProvided       = errors.New("worktree should be provided")
-	ErrIsBareRepository          = errors.New("worktree not available in a bare repository")
-	ErrUnableToResolveCommit     = errors.New("unable to resolve commit")
-	ErrPackedObjectsNotSupported = errors.New("packed objects not supported")
-	ErrSHA256NotSupported        = errors.New("go-git was not compiled with SHA256 support")
+	ErrInvalidReference            = errors.New("invalid reference, should be a tag or a branch")
+	ErrRepositoryNotExists         = errors.New("repository does not exist")
+	ErrRepositoryIncomplete        = errors.New("repository's commondir path does not exist")
+	ErrRepositoryAlreadyExists     = errors.New("repository already exists")
+	ErrRemoteNotFound              = errors.New("remote not found")
+	ErrRemoteExists                = errors.New("remote already exists")
+	ErrAnonymousRemoteName         = errors.New("anonymous remote name must be 'anonymous'")
+	ErrWorktreeNotProvided         = errors.New("worktree should be provided")
+	ErrIsBareRepository            = errors.New("worktree not available in a bare repository")
+	ErrUnableToResolveCommit       = errors.New("unable to resolve commit")
+	ErrPackedObjectsNotSupported   = errors.New("packed objects not supported")
+	ErrSHA256NotSupported          = errors.New("go-git was not compiled with SHA256 support")
+	ErrAlternatePathNotSupported   = errors.New("alternate path must use the file scheme")
+	ErrUnsupportedMergeStrategy    = errors.New("unsupported merge strategy")
+	ErrFastForwardMergeNotPossible = errors.New("not possible to fast-forward merge changes")
 )
 
 // Repository represents a git repository
@@ -94,6 +98,10 @@ func InitWithOptions(s storage.Storer, worktree billy.Filesystem, options InitOp
 
 	if options.DefaultBranch == "" {
 		options.DefaultBranch = plumbing.Master
+	}
+
+	if err := options.DefaultBranch.Validate(); err != nil {
+		return nil, err
 	}
 
 	r := newRepository(s, worktree)
@@ -235,9 +243,19 @@ func CloneContext(
 // if the repository will have worktree (non-bare) or not (bare), if the path
 // is not empty ErrRepositoryAlreadyExists is returned.
 func PlainInit(path string, isBare bool) (*Repository, error) {
+	return PlainInitWithOptions(path, &PlainInitOptions{
+		Bare: isBare,
+	})
+}
+
+func PlainInitWithOptions(path string, opts *PlainInitOptions) (*Repository, error) {
+	if opts == nil {
+		opts = &PlainInitOptions{}
+	}
+
 	var wt, dot billy.Filesystem
 
-	if isBare {
+	if opts.Bare {
 		dot = osfs.New(path)
 	} else {
 		wt = osfs.New(path)
@@ -246,16 +264,7 @@ func PlainInit(path string, isBare bool) (*Repository, error) {
 
 	s := filesystem.NewStorage(dot, cache.NewObjectLRUDefault())
 
-	return Init(s, wt)
-}
-
-func PlainInitWithOptions(path string, opts *PlainInitOptions) (*Repository, error) {
-	wt := osfs.New(path)
-	dot, _ := wt.Chroot(GitDirName)
-
-	s := filesystem.NewStorage(dot, cache.NewObjectLRUDefault())
-
-	r, err := Init(s, wt)
+	r, err := InitWithOptions(s, wt, opts.InitOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -265,7 +274,7 @@ func PlainInitWithOptions(path string, opts *PlainInitOptions) (*Repository, err
 		return nil, err
 	}
 
-	if opts != nil {
+	if opts.ObjectFormat != "" {
 		if opts.ObjectFormat == formatcfg.SHA256 && hash.CryptoType != crypto.SHA256 {
 			return nil, ErrSHA256NotSupported
 		}
@@ -721,7 +730,10 @@ func (r *Repository) DeleteBranch(name string) error {
 // CreateTag creates a tag. If opts is included, the tag is an annotated tag,
 // otherwise a lightweight tag is created.
 func (r *Repository) CreateTag(name string, hash plumbing.Hash, opts *CreateTagOptions) (*plumbing.Reference, error) {
-	rname := plumbing.ReferenceName(path.Join("refs", "tags", name))
+	rname := plumbing.NewTagReferenceName(name)
+	if err := rname.Validate(); err != nil {
+		return nil, err
+	}
 
 	_, err := r.Storer.Reference(rname)
 	switch err {
@@ -884,6 +896,30 @@ func (r *Repository) clone(ctx context.Context, o *CloneOptions) error {
 
 	if _, err := r.CreateRemote(c); err != nil {
 		return err
+	}
+
+	// When the repository to clone is on the local machine,
+	// instead of using hard links, automatically setup .git/objects/info/alternates
+	// to share the objects with the source repository
+	if o.Shared {
+		if !url.IsLocalEndpoint(o.URL) {
+			return ErrAlternatePathNotSupported
+		}
+		altpath := o.URL
+		remoteRepo, err := PlainOpen(o.URL)
+		if err != nil {
+			return fmt.Errorf("failed to open remote repository: %w", err)
+		}
+		conf, err := remoteRepo.Config()
+		if err != nil {
+			return fmt.Errorf("failed to read remote repository configuration: %w", err)
+		}
+		if !conf.Core.IsBare {
+			altpath = path.Join(altpath, GitDirName)
+		}
+		if err := r.Storer.AddAlternate(altpath); err != nil {
+			return fmt.Errorf("failed to add alternate file to git objects dir: %w", err)
+		}
 	}
 
 	ref, err := r.fetchAndUpdateReferences(ctx, &FetchOptions{
@@ -1735,8 +1771,43 @@ func (r *Repository) RepackObjects(cfg *RepackConfig) (err error) {
 	return nil
 }
 
+// Merge merges the reference branch into the current branch.
+//
+// If the merge is not possible (or supported) returns an error without changing
+// the HEAD for the current branch. Possible errors include:
+//   - The merge strategy is not supported.
+//   - The specific strategy cannot be used (e.g. using FastForwardMerge when one is not possible).
+func (r *Repository) Merge(ref plumbing.Reference, opts MergeOptions) error {
+	if opts.Strategy != FastForwardMerge {
+		return ErrUnsupportedMergeStrategy
+	}
+
+	// Ignore error as not having a shallow list is optional here.
+	shallowList, _ := r.Storer.Shallow()
+	var earliestShallow *plumbing.Hash
+	if len(shallowList) > 0 {
+		earliestShallow = &shallowList[0]
+	}
+
+	head, err := r.Head()
+	if err != nil {
+		return err
+	}
+
+	ff, err := isFastForward(r.Storer, head.Hash(), ref.Hash(), earliestShallow)
+	if err != nil {
+		return err
+	}
+
+	if !ff {
+		return ErrFastForwardMergeNotPossible
+	}
+
+	return r.Storer.SetReference(plumbing.NewHashReference(head.Name(), ref.Hash()))
+}
+
 // createNewObjectPack is a helper for RepackObjects taking care
-// of creating a new pack. It is used so the the PackfileWriter
+// of creating a new pack. It is used so the PackfileWriter
 // deferred close has the right scope.
 func (r *Repository) createNewObjectPack(cfg *RepackConfig) (h plumbing.Hash, err error) {
 	ow := newObjectWalker(r.Storer)
