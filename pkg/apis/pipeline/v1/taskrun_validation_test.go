@@ -558,6 +558,15 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		},
 		wantErr: apis.ErrInvalidValue("-48h0m0s should be >= 0", "timeout"),
 	}, {
+		name: "negative pipeline retries",
+		spec: v1.TaskRunSpec{
+			TaskRef: &v1.TaskRef{
+				Name: "taskrefname",
+			},
+			Retries: -3,
+		},
+		wantErr: apis.ErrInvalidValue("-3 should be >= 0", "retries"),
+	}, {
 		name: "wrong taskrun cancel",
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{
@@ -820,6 +829,18 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 		name: "no timeout",
 		spec: v1.TaskRunSpec{
 			Timeout: &metav1.Duration{Duration: 0},
+			TaskSpec: &v1.TaskSpec{
+				Steps: []v1.Step{{
+					Name:  "mystep",
+					Image: "myimage",
+				}},
+			},
+		},
+	}, {
+		name: "with positive retries",
+		spec: v1.TaskRunSpec{
+			Timeout: &metav1.Duration{Duration: 0},
+			Retries: 3,
 			TaskSpec: &v1.TaskSpec{
 				Steps: []v1.Step{{
 					Name:  "mystep",
