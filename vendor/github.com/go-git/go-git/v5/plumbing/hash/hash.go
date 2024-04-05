@@ -21,9 +21,10 @@ func init() {
 // that registers new algorithms to avoid side effects.
 func reset() {
 	algos[crypto.SHA1] = sha1cd.New
+	algos[crypto.SHA256] = crypto.SHA256.New
 }
 
-// RegisterHash allows for the hash algorithm used to be overriden.
+// RegisterHash allows for the hash algorithm used to be overridden.
 // This ensures the hash selection for go-git must be explicit, when
 // overriding the default value.
 func RegisterHash(h crypto.Hash, f func() hash.Hash) error {
@@ -33,6 +34,8 @@ func RegisterHash(h crypto.Hash, f func() hash.Hash) error {
 
 	switch h {
 	case crypto.SHA1:
+		algos[h] = f
+	case crypto.SHA256:
 		algos[h] = f
 	default:
 		return fmt.Errorf("unsupported hash function: %v", h)

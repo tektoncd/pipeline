@@ -10,6 +10,7 @@ import (
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
+	formatcfg "github.com/go-git/go-git/v5/plumbing/format/config"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/protocol/packp/sideband"
 	"github.com/go-git/go-git/v5/plumbing/transport"
@@ -45,6 +46,14 @@ type CloneOptions struct {
 	ReferenceName plumbing.ReferenceName
 	// Fetch only ReferenceName if true.
 	SingleBranch bool
+	// Mirror clones the repository as a mirror.
+	//
+	// Compared to a bare clone, mirror not only maps local branches of the
+	// source to local branches of the target, it maps all refs (including
+	// remote-tracking branches, notes etc.) and sets up a refspec configuration
+	// such that all these refs are overwritten by a git remote update in the
+	// target repository.
+	Mirror bool
 	// No checkout of HEAD after clone if true.
 	NoCheckout bool
 	// Limit fetching to the specified number of commits.
@@ -53,6 +62,9 @@ type CloneOptions struct {
 	// within, using their default settings. This option is ignored if the
 	// cloned repository does not have a worktree.
 	RecurseSubmodules SubmoduleRescursivity
+	// ShallowSubmodules limit cloning submodules to the 1 level of depth.
+	// It matches the git command --shallow-submodules.
+	ShallowSubmodules bool
 	// Progress is where the human readable information sent by the server is
 	// stored, if nil nothing is stored and the capability (if supported)
 	// no-progress, is sent to the server to avoid send this information.
@@ -64,7 +76,37 @@ type CloneOptions struct {
 	InsecureSkipTLS bool
 	// CABundle specify additional ca bundle with system cert pool
 	CABundle []byte
+	// ProxyOptions provides info required for connecting to a proxy.
+	ProxyOptions transport.ProxyOptions
+	// When the repository to clone is on the local machine, instead of
+	// using hard links, automatically setup .git/objects/info/alternates
+	// to share the objects with the source repository.
+	// The resulting repository starts out without any object of its own.
+	// NOTE: this is a possibly dangerous operation; do not use it unless
+	// you understand what it does.
+	//
+	// [Reference]: https://git-scm.com/docs/git-clone#Documentation/git-clone.txt---shared
+	Shared bool
 }
+
+// MergeOptions describes how a merge should be performed.
+type MergeOptions struct {
+	// Strategy defines the merge strategy to be used.
+	Strategy MergeStrategy
+}
+
+// MergeStrategy represents the different types of merge strategies.
+type MergeStrategy int8
+
+const (
+	// FastForwardMerge represents a Git merge strategy where the current
+	// branch can be simply updated to point to the HEAD of the branch being
+	// merged. This is only possible if the history of the branch being merged
+	// is a linear descendant of the current branch, with no conflicting commits.
+	//
+	// This is the default option.
+	FastForwardMerge MergeStrategy = iota
+)
 
 // Validate validates the fields and sets the default values.
 func (o *CloneOptions) Validate() error {
@@ -115,6 +157,8 @@ type PullOptions struct {
 	InsecureSkipTLS bool
 	// CABundle specify additional ca bundle with system cert pool
 	CABundle []byte
+	// ProxyOptions provides info required for connecting to a proxy.
+	ProxyOptions transport.ProxyOptions
 }
 
 // Validate validates the fields and sets the default values.
@@ -141,7 +185,7 @@ const (
 	// AllTags fetch all tags from the remote (i.e., fetch remote tags
 	// refs/tags/* into local tags with the same name)
 	AllTags
-	//NoTags fetch no tags from the remote at all
+	// NoTags fetch no tags from the remote at all
 	NoTags
 )
 
@@ -171,6 +215,11 @@ type FetchOptions struct {
 	InsecureSkipTLS bool
 	// CABundle specify additional ca bundle with system cert pool
 	CABundle []byte
+	// ProxyOptions provides info required for connecting to a proxy.
+	ProxyOptions transport.ProxyOptions
+	// Prune specify that local refs that match given RefSpecs and that do
+	// not exist remotely will be removed.
+	Prune bool
 }
 
 // Validate validates the fields and sets the default values.
@@ -234,6 +283,8 @@ type PushOptions struct {
 	Options map[string]string
 	// Atomic sets option to be an atomic push
 	Atomic bool
+	// ProxyOptions provides info required for connecting to a proxy.
+	ProxyOptions transport.ProxyOptions
 }
 
 // ForceWithLease sets fields on the lease
@@ -283,6 +334,9 @@ type SubmoduleUpdateOptions struct {
 	RecurseSubmodules SubmoduleRescursivity
 	// Auth credentials, if required, to use with the remote repository.
 	Auth transport.AuthMethod
+	// Depth limit fetching to the specified number of commits from the tip of
+	// each remote branch history.
+	Depth int
 }
 
 var (
@@ -292,9 +346,9 @@ var (
 
 // CheckoutOptions describes how a checkout operation should be performed.
 type CheckoutOptions struct {
-	// Hash is the hash of the commit to be checked out. If used, HEAD will be
-	// in detached mode. If Create is not used, Branch and Hash are mutually
-	// exclusive.
+	// Hash is the hash of a commit or tag to be checked out. If used, HEAD
+	// will be in detached mode. If Create is not used, Branch and Hash are
+	// mutually exclusive.
 	Hash plumbing.Hash
 	// Branch to be checked out, if Branch and Hash are empty is set to `master`.
 	Branch plumbing.ReferenceName
@@ -373,6 +427,11 @@ func (o *ResetOptions) Validate(r *Repository) error {
 		}
 
 		o.Commit = ref.Hash()
+	} else {
+		_, err := r.CommitObject(o.Commit)
+		if err != nil {
+			return fmt.Errorf("invalid reset option: %w", err)
+		}
 	}
 
 	return nil
@@ -442,6 +501,11 @@ type AddOptions struct {
 	// Glob adds all paths, matching pattern, to the index. If pattern matches a
 	// directory path, all directory contents are added to the index recursively.
 	Glob string
+	// SkipStatus adds the path with no status check. This option is relevant only
+	// when the `Path` option is specified and does not apply when the `All` option is used.
+	// Notice that when passing an ignored path it will be added anyway.
+	// When true it can speed up adding files to the worktree in very large repositories.
+	SkipStatus bool
 }
 
 // Validate validates the fields and sets the default values.
@@ -475,10 +539,25 @@ type CommitOptions struct {
 	// commit will not be signed. The private key must be present and already
 	// decrypted.
 	SignKey *openpgp.Entity
+	// Signer denotes a cryptographic signer to sign the commit with.
+	// A nil value here means the commit will not be signed.
+	// Takes precedence over SignKey.
+	Signer Signer
+	// Amend will create a new commit object and replace the commit that HEAD currently
+	// points to. Cannot be used with All nor Parents.
+	Amend bool
 }
 
 // Validate validates the fields and sets the default values.
 func (o *CommitOptions) Validate(r *Repository) error {
+	if o.All && o.Amend {
+		return errors.New("all and amend cannot be used together")
+	}
+
+	if o.Amend && len(o.Parents) > 0 {
+		return errors.New("parents cannot be used with amend")
+	}
+
 	if o.Author == nil {
 		if err := o.loadConfigAuthorAndCommitter(r); err != nil {
 			return err
@@ -615,7 +694,30 @@ type ListOptions struct {
 	InsecureSkipTLS bool
 	// CABundle specify additional ca bundle with system cert pool
 	CABundle []byte
+	// PeelingOption defines how peeled objects are handled during a
+	// remote list.
+	PeelingOption PeelingOption
+	// ProxyOptions provides info required for connecting to a proxy.
+	ProxyOptions transport.ProxyOptions
+	// Timeout specifies the timeout in seconds for list operations
+	Timeout int
 }
+
+// PeelingOption represents the different ways to handle peeled references.
+//
+// Peeled references represent the underlying object of an annotated
+// (or signed) tag. Refer to upstream documentation for more info:
+// https://github.com/git/git/blob/master/Documentation/technical/reftable.txt
+type PeelingOption uint8
+
+const (
+	// IgnorePeeled ignores all peeled reference names. This is the default behavior.
+	IgnorePeeled PeelingOption = 0
+	// OnlyPeeled returns only peeled reference names.
+	OnlyPeeled PeelingOption = 1
+	// AppendPeeled appends peeled reference names to the reference list.
+	AppendPeeled PeelingOption = 2
+)
 
 // CleanOptions describes how a clean should be performed.
 type CleanOptions struct {
@@ -641,7 +743,13 @@ var (
 )
 
 // Validate validates the fields and sets the default values.
+//
+// TODO: deprecate in favor of Validate(r *Repository) in v6.
 func (o *GrepOptions) Validate(w *Worktree) error {
+	return o.validate(w.r)
+}
+
+func (o *GrepOptions) validate(r *Repository) error {
 	if !o.CommitHash.IsZero() && o.ReferenceName != "" {
 		return ErrHashOrReference
 	}
@@ -649,7 +757,7 @@ func (o *GrepOptions) Validate(w *Worktree) error {
 	// If none of CommitHash and ReferenceName are provided, set commit hash of
 	// the repository's head.
 	if o.CommitHash.IsZero() && o.ReferenceName == "" {
-		ref, err := w.r.Head()
+		ref, err := r.Head()
 		if err != nil {
 			return err
 		}
@@ -672,3 +780,13 @@ type PlainOpenOptions struct {
 
 // Validate validates the fields and sets the default values.
 func (o *PlainOpenOptions) Validate() error { return nil }
+
+type PlainInitOptions struct {
+	InitOptions
+	// Determines if the repository will have a worktree (non-bare) or not (bare).
+	Bare         bool
+	ObjectFormat formatcfg.ObjectFormat
+}
+
+// Validate validates the fields and sets the default values.
+func (o *PlainInitOptions) Validate() error { return nil }
