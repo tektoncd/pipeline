@@ -723,6 +723,112 @@ func TestPipelineRun_GetTaskRunSpec(t *testing.T) {
 					SchedulerName: "task-2-schedule",
 				},
 			},
+		}, {
+			name: "verify whether tolerations are merged correctly",
+			pr: &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "pr"},
+				Spec: v1beta1.PipelineRunSpec{
+					PodTemplate: &pod.Template{
+						Tolerations: []corev1.Toleration{
+							{
+								Key:      "arch",
+								Operator: corev1.TolerationOpEqual,
+								Effect:   corev1.TaintEffectPreferNoSchedule,
+								Value:    "arm64",
+							},
+						},
+					},
+					ServiceAccountName: "defaultSA",
+					PipelineRef:        &v1beta1.PipelineRef{Name: "prs"},
+					TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{{
+						PipelineTaskName:       "different-tolerations",
+						TaskServiceAccountName: "different-tolerations-service-account",
+						TaskPodTemplate: &pod.Template{
+							Tolerations: []corev1.Toleration{
+								{
+									Key:      "pipeline-priority",
+									Operator: corev1.TolerationOpEqual,
+									Effect:   corev1.TaintEffectNoSchedule,
+									Value:    "low",
+								},
+							},
+						},
+					}, {
+						PipelineTaskName:       "same-tolerations",
+						TaskServiceAccountName: "same-tolerations-service-account",
+						TaskPodTemplate: &pod.Template{
+							Tolerations: []corev1.Toleration{
+								{
+									Key:      "arch",
+									Operator: corev1.TolerationOpEqual,
+									Effect:   corev1.TaintEffectPreferNoSchedule,
+									Value:    "amd64",
+								},
+							},
+						},
+					}},
+				},
+			},
+			expectedPodTemplates: map[string]*pod.PodTemplate{
+				"different-tolerations": {
+					Tolerations: []corev1.Toleration{
+						{
+							Key:      "pipeline-priority",
+							Operator: corev1.TolerationOpEqual,
+							Effect:   corev1.TaintEffectNoSchedule,
+							Value:    "low",
+						}, {
+							Key:      "arch",
+							Operator: corev1.TolerationOpEqual,
+							Effect:   corev1.TaintEffectPreferNoSchedule,
+							Value:    "arm64",
+						},
+					},
+				},
+				"same-tolerations": {
+					Tolerations: []corev1.Toleration{
+						{
+							Key:      "arch",
+							Operator: corev1.TolerationOpEqual,
+							Effect:   corev1.TaintEffectPreferNoSchedule,
+							Value:    "amd64",
+						},
+					},
+				},
+			},
+		}, {
+			name: "verify whether nodeselector are merged correctly",
+			pr: &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "pr"},
+				Spec: v1beta1.PipelineRunSpec{
+					PodTemplate: &pod.Template{
+						NodeSelector: map[string]string{"disktype": "ssd"},
+					},
+					ServiceAccountName: "defaultSA",
+					PipelineRef: &v1beta1.PipelineRef{Name: "prs"},
+					TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{{
+						PipelineTaskName:   "different-nodeselector",
+						TaskServiceAccountName: "different-nodeselector-service-account",
+						TaskPodTemplate: &pod.Template{
+							NodeSelector: map[string]string{"disktype": "hdd"},
+						},
+					}, {
+						PipelineTaskName:   "same-nodeselector",
+						TaskServiceAccountName: "same-nodeselector-service-account",
+						TaskPodTemplate: &pod.Template{
+							NodeSelector: map[string]string{"kubernetes.io/os": "linux"},
+						},
+					}},
+				},
+			},
+			expectedPodTemplates: map[string]*pod.PodTemplate{
+				"different-nodeselector": {
+					NodeSelector: map[string]string{"disktype": "hdd"},
+				},
+				"same-nodeselector": {
+					NodeSelector: map[string]string{"disktype": "ssd", "kubernetes.io/os": "linux"},
+				},
+			},
 		},
 	} {
 		for taskName := range tt.expectedPodTemplates {

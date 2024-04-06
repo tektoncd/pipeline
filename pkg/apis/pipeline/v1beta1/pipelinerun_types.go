@@ -624,7 +624,7 @@ func (pr *PipelineRun) GetTaskRunSpec(pipelineTaskName string) PipelineTaskRunSp
 		if task.PipelineTaskName == pipelineTaskName {
 			// merge podTemplates specified in pipelineRun.spec.taskRunSpecs[].podTemplate and pipelineRun.spec.podTemplate
 			// with taskRunSpecs taking higher precedence
-			s.TaskPodTemplate = pod.MergePodTemplateWithDefault(task.TaskPodTemplate, s.TaskPodTemplate)
+			s.TaskPodTemplate = pod.ExpandedMergePodTemplateWithDefault(task.TaskPodTemplate, s.TaskPodTemplate)
 			if task.TaskServiceAccountName != "" {
 				s.TaskServiceAccountName = task.TaskServiceAccountName
 			}

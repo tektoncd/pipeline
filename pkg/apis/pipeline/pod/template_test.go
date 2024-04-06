@@ -168,3 +168,107 @@ func TestMergePodTemplateWithDefault(t *testing.T) {
 		})
 	}
 }
+
+func TestExpandedMergePodTemplateWithDefault(t *testing.T) {
+	type testCase struct {
+		name       string
+		tpl        *PodTemplate
+		defaultTpl *PodTemplate
+		expected   *PodTemplate
+	}
+
+	testCases := []testCase{
+		{
+			name: "defaultTpl is nil",
+			tpl: &PodTemplate{
+				NodeSelector: map[string]string{"foo": "bar"},
+			},
+			defaultTpl: nil,
+			expected: &PodTemplate{
+				NodeSelector: map[string]string{"foo": "bar"},
+			},
+		},
+		{
+			name: "tpl is nil",
+			tpl:  nil,
+			defaultTpl: &PodTemplate{
+				NodeSelector: map[string]string{"foo": "bar"},
+			},
+			expected: &PodTemplate{
+				NodeSelector: map[string]string{"foo": "bar"},
+			},
+		},
+		{
+			name: "override default env",
+			tpl: &PodTemplate{
+				Env: []corev1.EnvVar{{Name: "foo", Value: "bar"}},
+			},
+			defaultTpl: &PodTemplate{
+				Env: []corev1.EnvVar{{Name: "foo", Value: "baz"}},
+			},
+			expected: &PodTemplate{
+				Env: []corev1.EnvVar{{Name: "foo", Value: "bar"}},
+			},
+		},
+		{
+			name: "merge envs",
+			tpl: &PodTemplate{
+				Env: []corev1.EnvVar{{Name: "foo", Value: "bar"}},
+			},
+			defaultTpl: &PodTemplate{
+				Env: []corev1.EnvVar{{Name: "bar", Value: "bar"}},
+			},
+			expected: &PodTemplate{
+				Env: []corev1.EnvVar{
+					{Name: "foo", Value: "bar"},
+					{Name: "bar", Value: "bar"},
+				},
+			},
+		},
+		{
+			name: "override default nodeselector",
+			tpl: &PodTemplate{
+				NodeSelector: map[string]string{"disktype": "ssd"},
+			},
+			defaultTpl: &PodTemplate{
+				NodeSelector: map[string]string{"disktype": "hdd"},
+			},
+			expected: &PodTemplate{
+				NodeSelector: map[string]string{"disktype": "ssd"},
+			},
+		},
+		{
+			name: "merge nodeselector",
+			tpl: &PodTemplate{
+				NodeSelector: map[string]string{"kubernetes.io/hostname": "node-1"},
+			},
+			defaultTpl: &PodTemplate{
+				NodeSelector: map[string]string{"kubernetes.io/os": "linux"},
+			},
+			expected: &PodTemplate{
+				NodeSelector: map[string]string{"kubernetes.io/hostname": "node-1", "kubernetes.io/os": "linux"},
+			},
+		},
+		{
+			name: "update host network",
+			tpl: &PodTemplate{
+				HostNetwork: false,
+			},
+			defaultTpl: &PodTemplate{
+				HostNetwork: true,
+			},
+			expected: &PodTemplate{
+				HostNetwork: true,
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := ExpandedMergePodTemplateWithDefault(tc.tpl, tc.defaultTpl)
+			if !reflect.DeepEqual(result, tc.expected) {
+				t.Errorf("mergeByName(%v, %v) = %v, want %v", tc.tpl, tc.defaultTpl, result, tc.expected)
+			}
+		})
+	}
+}
