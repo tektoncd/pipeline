@@ -18,12 +18,15 @@ package framework
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 )
+
+const FakeUrl string = "fake://url"
 
 var _ Resolver = &FakeResolver{}
 
@@ -56,13 +59,26 @@ func (r *FakeResolver) GetSelector(_ context.Context) map[string]string {
 // Validate returns an error if the given parameter map is not
 // valid for a resource request targeting the fake resolver.
 func (r *FakeResolver) Validate(_ context.Context, req *v1beta1.ResolutionRequestSpec) error {
-	return framework.ValidateParams(req.Params)
+	if len(req.Params) > 0 {
+		return framework.ValidateParams(req.Params)
+	}
+	if req.URL != FakeUrl {
+		return fmt.Errorf("Wrong url. Expected: %s,  Got: %s", FakeUrl, req.URL)
+	}
+	return nil
 }
 
 // Resolve performs the work of fetching a file from the fake resolver given a map of
 // parameters.
 func (r *FakeResolver) Resolve(_ context.Context, req *v1beta1.ResolutionRequestSpec) (framework.ResolvedResource, error) {
-	return framework.Resolve(req.Params, r.ForParam)
+	if len(req.Params) > 0 {
+		return framework.Resolve(req.Params, r.ForParam)
+	}
+	frr, ok := r.ForParam[req.URL]
+	if !ok {
+		return nil, fmt.Errorf("couldn't find resource for url %s", req.URL)
+	}
+	return frr, nil
 }
 
 var _ framework.TimedResolution = &FakeResolver{}

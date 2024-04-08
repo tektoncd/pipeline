@@ -137,3 +137,5 @@ data:
   # "pipelinerun" for Pipelinerun and "taskrun" for Taskrun. Or a combination of
   # these.
   disable-inline-spec: ""
+  # Setting this flag to "true" will enable the use of concise resolver syntax
+  enable-concise-resolver-syntax: "false"

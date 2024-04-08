@@ -78,6 +78,7 @@ resolverPayload:
       value: main
     - name: pathInRepo
       value: task/git-clone/0.6/git-clone.yaml
+    url: "https://foo/bar"
 `)
 	baseRR := mustParseResolutionRequest(t, `
 kind: "ResolutionRequest"
@@ -102,6 +103,7 @@ spec:
       value: "main"
     - name: "pathInRepo"
       value: "task/git-clone/0.6/git-clone.yaml"
+  url: "https://foo/bar"
 `)
 	createdRR := baseRR.DeepCopy()
 	//

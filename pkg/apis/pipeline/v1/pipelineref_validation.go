@@ -19,7 +19,6 @@ package v1
 import (
 	"context"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"knative.dev/pkg/apis"
 )
 
@@ -27,28 +26,7 @@ import (
 // correctly. No errors are returned for a nil PipelineRef.
 func (ref *PipelineRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if ref == nil {
-		return
+		return errs
 	}
-
-	if ref.Resolver != "" || ref.Params != nil {
-		if ref.Resolver != "" {
-			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "resolver", config.BetaAPIFields).ViaField("resolver"))
-			if ref.Name != "" {
-				errs = errs.Also(apis.ErrMultipleOneOf("name", "resolver"))
-			}
-		}
-		if ref.Params != nil {
-			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "resolver params", config.BetaAPIFields).ViaField("params"))
-			if ref.Name != "" {
-				errs = errs.Also(apis.ErrMultipleOneOf("name", "params"))
-			}
-			if ref.Resolver == "" {
-				errs = errs.Also(apis.ErrMissingField("resolver"))
-			}
-			errs = errs.Also(ValidateParameters(ctx, ref.Params))
-		}
-	} else if ref.Name == "" {
-		errs = errs.Also(apis.ErrMissingField("name"))
-	}
-	return
+	return validateRef(ctx, ref.Name, ref.Resolver, ref.Params)
 }

@@ -64,6 +64,13 @@ func TestPipelineRef_Invalid(t *testing.T) {
 		ref:     &v1beta1.PipelineRef{},
 		wantErr: apis.ErrMissingField("name"),
 	}, {
+		name: "invalid pipelineref name",
+		ref:  &v1beta1.PipelineRef{Name: "_foo"},
+		wantErr: &apis.FieldError{
+			Message: `invalid value: name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`,
+			Paths:   []string{"name"},
+		},
+	}, {
 		name: "pipelineref resolver disallowed without beta feature gate",
 		ref: &v1beta1.PipelineRef{
 			ResolverRef: v1beta1.ResolverRef{
@@ -91,41 +98,45 @@ func TestPipelineRef_Invalid(t *testing.T) {
 		wantErr:     apis.ErrMissingField("resolver"),
 		withContext: cfgtesting.EnableBetaAPIFields,
 	}, {
-		name: "pipelineref resolver disallowed in conjunction with pipelineref name",
+		name: "pipelineRef with resolver and k8s style name",
 		ref: &v1beta1.PipelineRef{
 			Name: "foo",
 			ResolverRef: v1beta1.ResolverRef{
-				Resolver: "bar",
+				Resolver: "git",
 			},
 		},
-		wantErr:     apis.ErrMultipleOneOf("name", "resolver"),
-		withContext: cfgtesting.EnableBetaAPIFields,
+		wantErr:     apis.ErrInvalidValue(`parse "foo": invalid URI for request`, "name"),
+		withContext: enableConciseResolverSyntax,
 	}, {
-		name: "pipelineref resolver disallowed in conjunction with pipelineref bundle",
+		name: "pipelineRef with url-like name without resolver",
 		ref: &v1beta1.PipelineRef{
-			Bundle: "foo",
-			ResolverRef: v1beta1.ResolverRef{
-				Resolver: "baz",
-			},
+			Name: "https://foo.com/bar",
 		},
-		wantErr:     apis.ErrMultipleOneOf("bundle", "resolver"),
-		withContext: enableTektonOCIBundles(t),
+		wantErr:     apis.ErrMissingField("resolver"),
+		withContext: enableConciseResolverSyntax,
 	}, {
-		name: "pipelineref params disallowed in conjunction with pipelineref name",
+		name: "pipelineRef params disallowed in conjunction with pipelineref name",
 		ref: &v1beta1.PipelineRef{
-			Name: "bar",
+			Name: "https://foo/bar",
 			ResolverRef: v1beta1.ResolverRef{
-				Params: v1beta1.Params{{
-					Name: "foo",
-					Value: v1beta1.ParamValue{
-						Type:      v1beta1.ParamTypeString,
-						StringVal: "bar",
-					},
-				}},
+				Resolver: "git",
+				Params:   []v1beta1.Param{{Name: "foo", Value: v1beta1.ParamValue{StringVal: "bar"}}},
 			},
 		},
-		wantErr:     apis.ErrMultipleOneOf("name", "params").Also(apis.ErrMissingField("resolver")),
-		withContext: cfgtesting.EnableBetaAPIFields,
+		wantErr:     apis.ErrMultipleOneOf("name", "params"),
+		withContext: enableConciseResolverSyntax,
+	}, {
+		name: "pipelineRef with url-like name without enable-concise-resolver-syntax",
+		ref:  &v1beta1.PipelineRef{Name: "https://foo.com/bar"},
+		wantErr: apis.ErrMissingField("resolver").Also(&apis.FieldError{
+			Message: `feature flag enable-concise-resolver-syntax should be set to true to use concise resolver syntax`,
+		}),
+	}, {
+		name: "pipelineRef without enable-concise-resolver-syntax",
+		ref:  &v1beta1.PipelineRef{Name: "https://foo.com/bar", ResolverRef: v1beta1.ResolverRef{Resolver: "git"}},
+		wantErr: &apis.FieldError{
+			Message: `feature flag enable-concise-resolver-syntax should be set to true to use concise resolver syntax`,
+		},
 	}, {
 		name: "pipelineref params disallowed in conjunction with pipelineref bundle",
 		ref: &v1beta1.PipelineRef{

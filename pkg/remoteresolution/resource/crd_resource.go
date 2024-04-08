@@ -87,6 +87,7 @@ func (r *CRDRequester) createResolutionRequest(ctx context.Context, resolver Res
 		owner = ownedReq.OwnerRef()
 	}
 	rr := resolutionresource.CreateResolutionRequest(ctx, resolver, req.ResolverPayload().Name, req.ResolverPayload().Namespace, req.ResolverPayload().ResolutionSpec.Params, owner)
+	rr.Spec.URL = req.ResolverPayload().ResolutionSpec.URL
 	_, err := r.clientset.ResolutionV1beta1().ResolutionRequests(rr.Namespace).Create(ctx, rr, metav1.CreateOptions{})
 	return err
 }

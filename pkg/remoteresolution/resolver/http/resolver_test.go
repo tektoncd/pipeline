@@ -108,6 +108,9 @@ func TestValidate(t *testing.T) {
 			params := map[string]string{}
 			if tc.url != "nourl" {
 				params[httpresolution.UrlParam] = tc.url
+			} else {
+				// inject a fake param so that it can validate that the url is actually missing.
+				params["foo"] = "bar"
 			}
 			req := v1beta1.ResolutionRequestSpec{
 				Params: toParams(params),
@@ -160,6 +163,11 @@ func TestResolve(t *testing.T) {
 					Name:  httpresolution.UrlParam,
 					Value: *pipelinev1.NewStructuredValues(svr.URL),
 				})
+			} else {
+				params = append(params, pipelinev1.Param{
+					Name:  "foo",
+					Value: *pipelinev1.NewStructuredValues("bar"),
+				})
 			}
 			resolver := Resolver{}
 			req := v1beta1.ResolutionRequestSpec{
@@ -199,7 +207,7 @@ func TestResolve(t *testing.T) {
 func TestResolveNotEnabled(t *testing.T) {
 	var err error
 	resolver := Resolver{}
-	someParams := map[string]string{}
+	someParams := map[string]string{"foo": "bar"}
 	req := v1beta1.ResolutionRequestSpec{
 		Params: toParams(someParams),
 	}
@@ -210,7 +218,7 @@ func TestResolveNotEnabled(t *testing.T) {
 	if d := cmp.Diff(disabledError, err.Error()); d != "" {
 		t.Errorf("unexpected error: %s", diff.PrintWantGot(d))
 	}
-	err = resolver.Validate(resolverDisabledContext(), &v1beta1.ResolutionRequestSpec{Params: toParams(map[string]string{})})
+	err = resolver.Validate(resolverDisabledContext(), &v1beta1.ResolutionRequestSpec{Params: toParams(someParams)})
 	if err == nil {
 		t.Fatalf("expected disabled err")
 	}

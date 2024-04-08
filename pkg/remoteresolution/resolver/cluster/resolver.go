@@ -18,6 +18,7 @@ package cluster
 
 import (
 	"context"
+	"errors"
 
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -70,13 +71,21 @@ func (r *Resolver) GetSelector(_ context.Context) map[string]string {
 // Validate returns an error if the given parameter map is not
 // valid for a resource request targeting the cluster resolver.
 func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestSpec) error {
-	return cluster.ValidateParams(ctx, req.Params)
+	if len(req.Params) > 0 {
+		return cluster.ValidateParams(ctx, req.Params)
+	}
+	// Remove this error once validate url has been implemented.
+	return errors.New("cannot validate request. the Validate method has not been implemented.")
 }
 
 // Resolve performs the work of fetching a resource from a namespace with the given
-// parameters.
+// resolution spec.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
-	return cluster.ResolveFromParams(ctx, req.Params, r.pipelineClientSet)
+	if len(req.Params) > 0 {
+		return cluster.ResolveFromParams(ctx, req.Params, r.pipelineClientSet)
+	}
+	// Remove this error once resolution of url has been implemented.
+	return nil, errors.New("the Resolve method has not been implemented.")
 }
 
 var _ resolutionframework.ConfigWatcher = &Resolver{}

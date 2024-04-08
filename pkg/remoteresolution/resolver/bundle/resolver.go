@@ -18,6 +18,7 @@ package bundle
 
 import (
 	"context"
+	"errors"
 
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
@@ -69,10 +70,18 @@ func (r *Resolver) GetSelector(context.Context) map[string]string {
 
 // Validate ensures reqolution request spec from a request are as expected.
 func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestSpec) error {
-	return bundle.ValidateParams(ctx, req.Params)
+	if len(req.Params) > 0 {
+		return bundle.ValidateParams(ctx, req.Params)
+	}
+	// Remove this error once validate url has been implemented.
+	return errors.New("cannot validate request. the Validate method has not been implemented.")
 }
 
-// Resolve uses the given params to resolve the requested file or resource.
+// Resolve uses the given request spec resolve the requested file or resource.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
-	return bundle.ResolveRequest(ctx, r.kubeClientSet, req)
+	if len(req.Params) > 0 {
+		return bundle.ResolveRequest(ctx, r.kubeClientSet, req)
+	}
+	// Remove this error once resolution of url has been implemented.
+	return nil, errors.New("the Resolve method has not been implemented.")
 }

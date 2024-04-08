@@ -37,3 +37,4 @@ data:
   enable-param-enum: "true"
   enable-artifacts: "true"
   disable-inline-spec: "pipeline,pipelinerun,taskrun"
+  enable-concise-resolver-syntax: "true"
