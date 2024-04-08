@@ -233,7 +233,7 @@ func TestRunIsCancelledWithMessage(t *testing.T) {
 	}
 }
 
-// TestRunStatusExtraFields tests that extraFields in a RunStatus can be parsed
+// TestRunStatus tests that extraFields in a RunStatus can be parsed
 // from YAML.
 func TestRunStatus(t *testing.T) {
 	in := `apiVersion: tekton.dev/v1alpha1
