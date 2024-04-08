@@ -149,6 +149,142 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 		}, {
+			name: "unknown url",
+			inputRequest: &v1beta1.ResolutionRequest{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "resolution.tekton.dev/v1beta1",
+					Kind:       "ResolutionRequest",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "rr",
+					Namespace:         "foo",
+					CreationTimestamp: metav1.Time{Time: time.Now()},
+					Labels: map[string]string{
+						resolutioncommon.LabelKeyResolverType: resolutionframework.LabelValueFakeResolverType,
+					},
+				},
+				Spec: v1beta1.ResolutionRequestSpec{
+					URL: "dne://does-not-exist",
+				},
+				Status: v1beta1.ResolutionRequestStatus{},
+			},
+			expectedErr: errors.New("invalid resource request \"foo/rr\": Wrong url. Expected: fake://url,  Got: dne://does-not-exist"),
+		}, {
+			name: "valid url",
+			inputRequest: &v1beta1.ResolutionRequest{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "resolution.tekton.dev/v1beta1",
+					Kind:       "ResolutionRequest",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "rr",
+					Namespace:         "foo",
+					CreationTimestamp: metav1.Time{Time: time.Now()},
+					Labels: map[string]string{
+						resolutioncommon.LabelKeyResolverType: resolutionframework.LabelValueFakeResolverType,
+					},
+				},
+				Spec: v1beta1.ResolutionRequestSpec{
+					URL: framework.FakeUrl,
+				},
+				Status: v1beta1.ResolutionRequestStatus{},
+			},
+			paramMap: map[string]*resolutionframework.FakeResolvedResource{
+				framework.FakeUrl: {
+					Content:       "some content",
+					AnnotationMap: map[string]string{"foo": "bar"},
+					ContentSource: &pipelinev1.RefSource{
+						URI: "https://abc.com",
+						Digest: map[string]string{
+							"sha1": "xyz",
+						},
+						EntryPoint: "foo/bar",
+					},
+				},
+			},
+			expectedStatus: &v1beta1.ResolutionRequestStatus{
+				Status: duckv1.Status{
+					Annotations: map[string]string{
+						"foo": "bar",
+					},
+				},
+				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
+					Data: base64.StdEncoding.Strict().EncodeToString([]byte("some content")),
+					RefSource: &pipelinev1.RefSource{
+						URI: "https://abc.com",
+						Digest: map[string]string{
+							"sha1": "xyz",
+						},
+						EntryPoint: "foo/bar",
+					},
+					Source: &pipelinev1.RefSource{
+						URI: "https://abc.com",
+						Digest: map[string]string{
+							"sha1": "xyz",
+						},
+						EntryPoint: "foo/bar",
+					},
+				},
+			},
+		}, {
+			name: "resource not found for url",
+			inputRequest: &v1beta1.ResolutionRequest{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "resolution.tekton.dev/v1beta1",
+					Kind:       "ResolutionRequest",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "rr",
+					Namespace:         "foo",
+					CreationTimestamp: metav1.Time{Time: time.Now()},
+					Labels: map[string]string{
+						resolutioncommon.LabelKeyResolverType: resolutionframework.LabelValueFakeResolverType,
+					},
+				},
+				Spec: v1beta1.ResolutionRequestSpec{
+					URL: framework.FakeUrl,
+				},
+				Status: v1beta1.ResolutionRequestStatus{},
+			},
+			paramMap: map[string]*resolutionframework.FakeResolvedResource{
+				"other://resource": {
+					Content:       "some content",
+					AnnotationMap: map[string]string{"foo": "bar"},
+					ContentSource: &pipelinev1.RefSource{
+						URI: "https://abc.com",
+						Digest: map[string]string{
+							"sha1": "xyz",
+						},
+						EntryPoint: "foo/bar",
+					},
+				},
+			},
+			expectedErr: errors.New("error getting \"Fake\" \"foo/rr\": couldn't find resource for url fake://url"),
+		}, {
+			name: "invalid params",
+			inputRequest: &v1beta1.ResolutionRequest{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "resolution.tekton.dev/v1beta1",
+					Kind:       "ResolutionRequest",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "rr",
+					Namespace:         "foo",
+					CreationTimestamp: metav1.Time{Time: time.Now()},
+					Labels: map[string]string{
+						resolutioncommon.LabelKeyResolverType: resolutionframework.LabelValueFakeResolverType,
+					},
+				},
+				Spec: v1beta1.ResolutionRequestSpec{
+					Params: []pipelinev1.Param{{
+						Name:  "not-a-fake-param",
+						Value: *pipelinev1.NewStructuredValues("bar"),
+					}},
+				},
+				Status: v1beta1.ResolutionRequestStatus{},
+			},
+			expectedErr: errors.New(`invalid resource request "foo/rr": missing fake-key`),
+		}, {
 			name: "error resolving",
 			inputRequest: &v1beta1.ResolutionRequest{
 				TypeMeta: metav1.TypeMeta{

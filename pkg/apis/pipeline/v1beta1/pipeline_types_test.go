@@ -617,6 +617,7 @@ func TestPipelineTask_ValidateRegularTask_Failure(t *testing.T) {
 		name          string
 		task          PipelineTask
 		expectedError apis.FieldError
+		configMap     map[string]string
 	}{{
 		name: "pipeline task - invalid taskSpec",
 		task: PipelineTask{
@@ -655,15 +656,58 @@ func TestPipelineTask_ValidateRegularTask_Failure(t *testing.T) {
 		},
 		expectedError: *apis.ErrGeneric("bundle requires \"enable-tekton-oci-bundles\" feature gate to be true but it is false"),
 	}, {
-		name: "pipeline task - taskRef with resolver and name",
+		name: "pipeline task - taskRef with resolver and k8s style name",
 		task: PipelineTask{
 			Name:    "foo",
 			TaskRef: &TaskRef{Name: "foo", ResolverRef: ResolverRef{Resolver: "git"}},
 		},
 		expectedError: apis.FieldError{
-			Message: `expected exactly one, got both`,
-			Paths:   []string{"taskRef.name", "taskRef.resolver"},
+			Message: `invalid value: parse "foo": invalid URI for request`,
+			Paths:   []string{"taskRef.name"},
 		},
+		configMap: map[string]string{"enable-concise-resolver-syntax": "true"},
+	}, {
+		name: "pipeline task - taskRef with url-like name without enable-concise-resolver-syntax",
+		task: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "https://foo.com/bar"},
+		},
+		expectedError: *apis.ErrMissingField("taskRef.resolver").Also(&apis.FieldError{
+			Message: `feature flag enable-concise-resolver-syntax should be set to true to use concise resolver syntax`,
+			Paths:   []string{"taskRef"},
+		}),
+	}, {
+		name: "pipeline task - taskRef without enable-concise-resolver-syntax",
+		task: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "https://foo.com/bar", ResolverRef: ResolverRef{Resolver: "git"}},
+		},
+		expectedError: apis.FieldError{
+			Message: `feature flag enable-concise-resolver-syntax should be set to true to use concise resolver syntax`,
+			Paths:   []string{"taskRef"},
+		},
+	}, {
+		name: "pipeline task - taskRef with url-like name without resolver",
+		task: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "https://foo.com/bar"},
+		},
+		expectedError: apis.FieldError{
+			Message: `missing field(s)`,
+			Paths:   []string{"taskRef.resolver"},
+		},
+		configMap: map[string]string{"enable-concise-resolver-syntax": "true"},
+	}, {
+		name: "pipeline task - taskRef with name and params",
+		task: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "https://foo/bar", ResolverRef: ResolverRef{Resolver: "git", Params: Params{{Name: "foo", Value: ParamValue{StringVal: "bar"}}}}},
+		},
+		expectedError: apis.FieldError{
+			Message: `expected exactly one, got both`,
+			Paths:   []string{"taskRef.name", "taskRef.params"},
+		},
+		configMap: map[string]string{"enable-concise-resolver-syntax": "true"},
 	}, {
 		name: "pipeline task - taskRef with resolver params but no resolver",
 		task: PipelineTask{
@@ -677,7 +721,8 @@ func TestPipelineTask_ValidateRegularTask_Failure(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.task.validateTask(context.Background())
+			ctx := cfgtesting.SetFeatureFlags(context.Background(), t, tt.configMap)
+			err := tt.task.validateTask(ctx)
 			if err == nil {
 				t.Error("PipelineTask.validateTask() did not return error for invalid pipeline task")
 			}

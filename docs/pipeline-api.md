@@ -304,6 +304,22 @@ resource being requested. For example: repo URL, commit SHA,
 path to file, the kind of authentication to leverage, etc.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>url</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>URL is the runtime url passed to the resolver
+to help it figure out how to resolver the resource being
+requested.
+This is currently at an ALPHA stability level and subject to
+alpha API compatibility policies.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -356,6 +372,22 @@ ResolutionRequest CRD.</p>
 the resolver to help it figure out how to resolve the
 resource being requested. For example: repo URL, commit SHA,
 path to file, the kind of authentication to leverage, etc.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>url</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>URL is the runtime url passed to the resolver
+to help it figure out how to resolver the resource being
+requested.
+This is currently at an ALPHA stability level and subject to
+alpha API compatibility policies.</p>
 </td>
 </tr>
 </tbody>

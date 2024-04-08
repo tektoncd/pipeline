@@ -255,6 +255,7 @@ import (
 The `Validate` method checks that the resolution-spec submitted as part of
 a resolution request are valid. Our example resolver doesn't expect
 any params in the spec so we'll simply ensure that the there are no params.
+Our example resolver also expects format for the `url` to be `demoscheme://<path>` so we'll validate this format.
 In the previous version, this was instead called `ValidateParams` method. See below 
 for the differences.
 
@@ -268,8 +269,24 @@ func (r *resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestS
   if len(req.Params) > 0 {
     return errors.New("no params allowed")
   }
+  url := req.URL
+  u, err := neturl.ParseRequestURI(url)
+  if err != nil {
+    return err
+  }
+  if u.Scheme != "demoscheme" {
+    return fmt.Errorf("Invalid Scheme. Want %s, Got %s", "demoscheme", u.Scheme)
+  }
+  if u.Path == "" {
+    return errors.New("Empty path.")
+  }
   return nil
 }
+```
+
+You'll also need to add the `net/url` as `neturl` and `"errors"` package to your list of imports at
+the top of the file.
+
 ```
 {{% /tab %}}
 
@@ -295,8 +312,8 @@ the top of the file.
 ## The `Resolve` method
 
 We implement the `Resolve` method to do the heavy lifting of fetching
-the contents of a file and returning them. For this example we're just
-going to return a hard-coded string of YAML. Since Tekton Pipelines
+the contents of a file and returning them.  It takes in the resolution request spec as input.
+For this example we're just going to return a hard-coded string of YAML. Since Tekton Pipelines
 currently only supports fetching Pipeline resources via remote
 resolution that's what we'll return.
 
@@ -464,6 +481,7 @@ func (*myResolvedResource) RefSource() *pipelinev1.RefSource {
 	}
 }
 ```
+
 
 ## The deployment configuration
 

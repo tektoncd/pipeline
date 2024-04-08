@@ -16,6 +16,8 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
+	neturl "net/url"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
@@ -56,6 +58,13 @@ func (r *resolver) GetSelector(context.Context) map[string]string {
 func (r *resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestSpec) error {
 	if len(req.Params) > 0 {
 		return errors.New("no params allowed")
+	}
+	u, err := neturl.ParseRequestURI(req.URL)
+	if err != nil {
+		return err
+	}
+	if u.Scheme != "demoscheme" {
+		return fmt.Errorf("Invalid Scheme. Want %s, Got %s", "demoscheme", u.Scheme)
 	}
 	return nil
 }

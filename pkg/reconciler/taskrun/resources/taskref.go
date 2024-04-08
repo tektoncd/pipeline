@@ -31,6 +31,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/remote"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/remote/resolution"
 	remoteresource "github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
+	"github.com/tektoncd/pipeline/pkg/substitution"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -97,6 +98,7 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 		// casting it to a TaskObject.
 		return func(ctx context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 			var replacedParams v1.Params
+			var url string
 			if ownerAsTR, ok := owner.(*v1.TaskRun); ok {
 				stringReplacements, arrayReplacements, _ := replacementsFromParams(ownerAsTR.Spec.Params)
 				for k, v := range getContextReplacements("", ownerAsTR) {
@@ -106,6 +108,11 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 					p.Value.ApplyReplacements(stringReplacements, arrayReplacements, nil)
 					replacedParams = append(replacedParams, p)
 				}
+				if err := v1.RefNameLikeUrl(tr.Name); err == nil {
+					// The name is url-like so its not a local reference.
+					tr.Name = substitution.ApplyReplacements(tr.Name, stringReplacements)
+					url = tr.Name
+				}
 			} else {
 				replacedParams = append(replacedParams, tr.Params...)
 			}
@@ -114,6 +121,7 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 				Namespace: namespace,
 				ResolutionSpec: &resolutionV1beta1.ResolutionRequestSpec{
 					Params: replacedParams,
+					URL:    url,
 				},
 			}
 			resolver := resolution.NewResolver(requester, owner, string(tr.Resolver), resolverPayload)
@@ -149,6 +157,7 @@ func GetStepActionFunc(tekton clientset.Interface, k8s kubernetes.Interface, req
 				Namespace: namespace,
 				ResolutionSpec: &resolutionV1beta1.ResolutionRequestSpec{
 					Params: step.Ref.Params,
+					URL:    step.Ref.Name,
 				},
 			}
 			resolver := resolution.NewResolver(requester, tr, string(step.Ref.Resolver), resolverPayload)

@@ -40,6 +40,7 @@ func TestNewRequest(t *testing.T) {
 					{Name: "param1", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "value1"}},
 					{Name: "param2", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "value2"}},
 				},
+				URL: "https://foo/bar",
 			},
 		},
 	}

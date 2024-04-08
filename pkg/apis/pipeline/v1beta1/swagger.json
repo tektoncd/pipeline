@@ -1722,6 +1722,10 @@
             "$ref": "#/definitions/v1.Param"
           },
           "x-kubernetes-list-type": "atomic"
+        },
+        "url": {
+          "description": "URL is the runtime url passed to the resolver to help it figure out how to resolver the resource being requested. This is currently at an ALPHA stability level and subject to alpha API compatibility policies.",
+          "type": "string"
         }
       }
     },

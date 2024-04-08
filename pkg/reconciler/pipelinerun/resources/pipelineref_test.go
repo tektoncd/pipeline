@@ -438,6 +438,7 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	ctx = config.ToContext(ctx, cfg)
 	pipeline := parse.MustParseV1PipelineAndSetDefaults(t, pipelineYAMLString)
 	pipelineRef := &v1.PipelineRef{
+		Name: "https://foo/bar",
 		ResolverRef: v1.ResolverRef{
 			Resolver: "git",
 			Params: []v1.Param{{
@@ -467,6 +468,7 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 					Name:  "bar",
 					Value: *v1.NewStructuredValues("test-pipeline"),
 				}},
+				URL: "https://foo/bar",
 			},
 		},
 	}

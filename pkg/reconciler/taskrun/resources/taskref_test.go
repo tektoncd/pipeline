@@ -1194,6 +1194,7 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	ctx = config.ToContext(ctx, cfg)
 	task := parse.MustParseV1TaskAndSetDefaults(t, taskYAMLString)
 	taskRef := &v1.TaskRef{
+		Name: "https://foo/bar",
 		ResolverRef: v1.ResolverRef{
 			Resolver: "git",
 			Params: []v1.Param{{
@@ -1223,6 +1224,7 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 					Name:  "bar",
 					Value: *v1.NewStructuredValues("test-task"),
 				}},
+				URL: "https://foo/bar",
 			},
 		},
 	}

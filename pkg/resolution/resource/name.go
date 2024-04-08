@@ -105,6 +105,11 @@ func GenerateDeterministicNameFromSpec(prefix, base string, resolutionSpec *v1be
 			}
 		}
 	}
+	if len(resolutionSpec.URL) > 0 {
+		if _, err := hasher.Write([]byte(resolutionSpec.URL)); err != nil {
+			return "", err
+		}
+	}
 	name := fmt.Sprintf("%s-%x", prefix, hasher.Sum(nil))
 	if maxLength > len(name) {
 		return name, nil

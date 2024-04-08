@@ -97,28 +97,36 @@ func (r *Resolver) GetSelector(_ context.Context) map[string]string {
 // ValidateParams returns an error if the given parameter map is not
 // valid for a resource request targeting the gitresolver.
 func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestSpec) error {
-	return git.ValidateParams(ctx, req.Params)
+	if len(req.Params) > 0 {
+		return git.ValidateParams(ctx, req.Params)
+	}
+	// Remove this error once validate url has been implemented.
+	return errors.New("cannot validate request. the Validate method has not been implemented.")
 }
 
 // Resolve performs the work of fetching a file from git given a map of
 // parameters.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
-	origParams := req.Params
+	if len(req.Params) > 0 {
+		origParams := req.Params
 
-	if git.IsDisabled(ctx) {
-		return nil, errors.New(disabledError)
+		if git.IsDisabled(ctx) {
+			return nil, errors.New(disabledError)
+		}
+
+		params, err := git.PopulateDefaultParams(ctx, origParams)
+		if err != nil {
+			return nil, err
+		}
+
+		if params[git.UrlParam] != "" {
+			return git.ResolveAnonymousGit(ctx, params)
+		}
+
+		return git.ResolveAPIGit(ctx, params, r.kubeClient, r.logger, r.cache, r.ttl, r.clientFunc)
 	}
-
-	params, err := git.PopulateDefaultParams(ctx, origParams)
-	if err != nil {
-		return nil, err
-	}
-
-	if params[git.UrlParam] != "" {
-		return git.ResolveAnonymousGit(ctx, params)
-	}
-
-	return git.ResolveAPIGit(ctx, params, r.kubeClient, r.logger, r.cache, r.ttl, r.clientFunc)
+	// Remove this error once resolution of url has been implemented.
+	return nil, errors.New("the Resolve method has not been implemented.")
 }
 
 var _ resolutionframework.ConfigWatcher = &Resolver{}

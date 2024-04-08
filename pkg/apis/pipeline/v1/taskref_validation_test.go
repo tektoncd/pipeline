@@ -120,31 +120,45 @@ func TestTaskRef_Invalid(t *testing.T) {
 		wantErr: apis.ErrMissingField("resolver"),
 		wc:      cfgtesting.EnableBetaAPIFields,
 	}, {
-		name: "taskref resolver disallowed in conjunction with taskref name",
+		name: "taskRef with resolver and k8s style name",
 		taskRef: &v1.TaskRef{
 			Name: "foo",
 			ResolverRef: v1.ResolverRef{
 				Resolver: "git",
 			},
 		},
-		wantErr: apis.ErrMultipleOneOf("name", "resolver"),
-		wc:      cfgtesting.EnableBetaAPIFields,
+		wantErr: apis.ErrInvalidValue(`parse "foo": invalid URI for request`, "name"),
+		wc:      enableConciseResolverSyntax,
 	}, {
-		name: "taskref params disallowed in conjunction with taskref name",
+		name: "taskRef with url-like name without resolver",
 		taskRef: &v1.TaskRef{
-			Name: "bar",
+			Name: "https://foo.com/bar",
+		},
+		wantErr: apis.ErrMissingField("resolver"),
+		wc:      enableConciseResolverSyntax,
+	}, {
+		name: "taskRef params disallowed in conjunction with pipelineref name",
+		taskRef: &v1.TaskRef{
+			Name: "https://foo/bar",
 			ResolverRef: v1.ResolverRef{
-				Params: v1.Params{{
-					Name: "foo",
-					Value: v1.ParamValue{
-						Type:      v1.ParamTypeString,
-						StringVal: "bar",
-					},
-				}},
+				Resolver: "git",
+				Params:   v1.Params{{Name: "foo", Value: v1.ParamValue{StringVal: "bar"}}},
 			},
 		},
-		wantErr: apis.ErrMultipleOneOf("name", "params").Also(apis.ErrMissingField("resolver")),
-		wc:      cfgtesting.EnableBetaAPIFields,
+		wantErr: apis.ErrMultipleOneOf("name", "params"),
+		wc:      enableConciseResolverSyntax,
+	}, {
+		name:    "taskRef with url-like name without enable-concise-resolver-syntax",
+		taskRef: &v1.TaskRef{Name: "https://foo.com/bar"},
+		wantErr: apis.ErrMissingField("resolver").Also(&apis.FieldError{
+			Message: `feature flag enable-concise-resolver-syntax should be set to true to use concise resolver syntax`,
+		}),
+	}, {
+		name:    "taskRef without enable-concise-resolver-syntax",
+		taskRef: &v1.TaskRef{Name: "https://foo.com/bar", ResolverRef: v1.ResolverRef{Resolver: "git"}},
+		wantErr: &apis.FieldError{
+			Message: `feature flag enable-concise-resolver-syntax should be set to true to use concise resolver syntax`,
+		},
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {

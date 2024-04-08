@@ -73,7 +73,9 @@ func (r *Requester) Submit(ctx context.Context, resolverName resolution.Resolver
 	if (r.ResolverPayload == resource.ResolverPayload{} || r.ResolverPayload.ResolutionSpec == nil || len(r.ResolverPayload.ResolutionSpec.Params) == 0) {
 		return r.ResolvedResource, r.SubmitErr
 	}
-
+	if r.ResolverPayload.ResolutionSpec.URL == "" {
+		return r.ResolvedResource, r.SubmitErr
+	}
 	reqParams := make(map[string]pipelinev1.ParamValue)
 	for _, p := range req.ResolverPayload().ResolutionSpec.Params {
 		reqParams[p.Name] = p.Value
@@ -89,6 +91,9 @@ func (r *Requester) Submit(ctx context.Context, resolverName resolution.Resolver
 	}
 	if len(wrongParams) > 0 {
 		return nil, errors.New(strings.Join(wrongParams, "; "))
+	}
+	if r.ResolverPayload.ResolutionSpec.URL != req.ResolverPayload().ResolutionSpec.URL {
+		return nil, fmt.Errorf("Resolution name did not match. Got %s; Want %s", req.ResolverPayload().ResolutionSpec.URL, r.ResolverPayload.ResolutionSpec.URL)
 	}
 
 	return r.ResolvedResource, r.SubmitErr
