@@ -10,11 +10,11 @@ git fetch -p --all
 TEKTON_RELEASE_GIT_SHA=$(git rev-parse "${RELEASE_BRANCH}")
 TEKTON_OLD_VERSION=$(git describe --tags --abbrev=0 "${TEKTON_RELEASE_GIT_SHA}")
 TEKTON_OLD_VERSION_COMMIT_SHA=$(git rev-list -n 1 "${TEKTON_OLD_VERSION}")
-TEKTON_RELEASE_NAME=$(gh release view v0.47.7 --json name | jq .name | sed -e 's/.*\\"\(.*\)\\"\"/\1/')
+TEKTON_RELEASE_NAME=$(gh release view "${TEKTON_OLD_VERSION}" --json name | jq .name | sed -e 's/.*\\"\(.*\)\\"\"/\1/')
 
 if [[ "${TEKTON_RELEASE_GIT_SHA}" == "${TEKTON_OLD_VERSION_COMMIT_SHA}" ]]; then
     echo "> No new commit in ${RELEASE_BRANCH} (${TEKTON_RELEASE_GIT_SHA}==${TEKTON_OLD_VERSION_COMMIT_SHA})"
-    return 0
+    exit 0
 fi
 
 TEKTON_VERSION=$(echo ${TEKTON_OLD_VERSION} | awk -F. -v OFS=. '{$NF += 1 ; print}')
