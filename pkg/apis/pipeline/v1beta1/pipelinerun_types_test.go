@@ -805,15 +805,15 @@ func TestPipelineRun_GetTaskRunSpec(t *testing.T) {
 						NodeSelector: map[string]string{"disktype": "ssd"},
 					},
 					ServiceAccountName: "defaultSA",
-					PipelineRef: &v1beta1.PipelineRef{Name: "prs"},
+					PipelineRef:        &v1beta1.PipelineRef{Name: "prs"},
 					TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{{
-						PipelineTaskName:   "different-nodeselector",
+						PipelineTaskName:       "different-nodeselector",
 						TaskServiceAccountName: "different-nodeselector-service-account",
 						TaskPodTemplate: &pod.Template{
 							NodeSelector: map[string]string{"disktype": "hdd"},
 						},
 					}, {
-						PipelineTaskName:   "same-nodeselector",
+						PipelineTaskName:       "same-nodeselector",
 						TaskServiceAccountName: "same-nodeselector-service-account",
 						TaskPodTemplate: &pod.Template{
 							NodeSelector: map[string]string{"kubernetes.io/os": "linux"},

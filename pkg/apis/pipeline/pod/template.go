@@ -236,12 +236,12 @@ func ExpandedMergePodTemplateWithDefault(tpl, defaultTpl *PodTemplate) *PodTempl
 		return defaultTpl
 	default:
 		// Otherwise, merge fields
-		if tpl.NodeSelector==nil{
+		if tpl.NodeSelector == nil {
 			tpl.NodeSelector = defaultTpl.NodeSelector
-		}else{
+		} else {
 			tpl.NodeSelector = mergeMaps(defaultTpl.NodeSelector, tpl.NodeSelector)
 		}
-		
+
 		tpl.Env = mergeByName(defaultTpl.Env, tpl.Env)
 		tpl.Tolerations = mergeByName(defaultTpl.Tolerations, tpl.Tolerations)
 		if tpl.SecurityContext == nil {
