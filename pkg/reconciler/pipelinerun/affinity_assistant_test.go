@@ -465,7 +465,7 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCs_Failure(t *testing.T) {
 	}
 }
 
-// TestCreateAffinityAssistantWhenNodeIsCordoned tests an existing Affinity Assistant can identify the node failure and
+// TestCreateOrUpdateAffinityAssistantWhenNodeIsCordoned tests an existing Affinity Assistant can identify the node failure and
 // can migrate the affinity assistant pod to a healthy node so that the existing pipelineRun runs to competition
 func TestCreateOrUpdateAffinityAssistantWhenNodeIsCordoned(t *testing.T) {
 	expectedAffinityAssistantName := GetAffinityAssistantName(workspacePVCName, testPRWithPVC.Name)

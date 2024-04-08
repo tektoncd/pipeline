@@ -842,7 +842,7 @@ func TestLooksLikeResultRefWhenExpressionFalse(t *testing.T) {
 	}
 }
 
-// TestPipelineTaskResultReferences tests that PipelineTaskResultRefs()
+// TestPipelineTaskResultRefs tests that PipelineTaskResultRefs()
 // parses all the result variables used in a PipelineTask correctly and
 // returns them all in the expected order.
 func TestPipelineTaskResultRefs(t *testing.T) {

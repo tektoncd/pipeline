@@ -400,7 +400,7 @@ func findReplacement(stepDir string, s string) (string, []string, error) {
 	return replaceWithString, replaceWithArray, nil
 }
 
-// replaceCommandAndArgs performs replacements for step results in environment variables.
+// replaceEnv performs replacements for step results in environment variables.
 func replaceEnv(stepDir string) error {
 	for _, e := range os.Environ() {
 		pair := strings.SplitN(e, "=", 2)
