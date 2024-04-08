@@ -36,7 +36,7 @@ var (
 // InvalidRuntimeObjectError is returned when remote resolution
 // succeeded but the returned data is not a valid runtime.Object.
 type InvalidRuntimeObjectError struct {
-	original error
+	Original error
 }
 
 // ErrorInvalidRuntimeObject is an alias to InvalidRuntimeObjectError.
@@ -51,12 +51,12 @@ var (
 
 // Error returns the string representation of this error.
 func (e *InvalidRuntimeObjectError) Error() string {
-	return fmt.Sprintf("invalid runtime object: %v", e.original)
+	return fmt.Sprintf("invalid runtime object: %v", e.Original)
 }
 
 // Unwrap returns the underlying original error.
 func (e *InvalidRuntimeObjectError) Unwrap() error {
-	return e.original
+	return e.Original
 }
 
 // Is returns true if the given error coerces into an error of this type.
@@ -68,7 +68,7 @@ func (e *InvalidRuntimeObjectError) Is(that error) bool {
 // attempting to access the resolved data failed. An example of this
 // type of error would be if a ResolutionRequest contained malformed base64.
 type DataAccessError struct {
-	original error
+	Original error
 }
 
 // ErrorAccessingData is an alias to DataAccessError
@@ -83,12 +83,12 @@ var (
 
 // Error returns the string representation of this error.
 func (e *DataAccessError) Error() string {
-	return fmt.Sprintf("error accessing data from remote resource: %v", e.original)
+	return fmt.Sprintf("error accessing data from remote resource: %v", e.Original)
 }
 
 // Unwrap returns the underlying original error.
 func (e *DataAccessError) Unwrap() error {
-	return e.original
+	return e.Original
 }
 
 // Is returns true if the given error coerces into an error of this type.

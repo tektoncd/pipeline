@@ -30,12 +30,12 @@ import (
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/internal/resolution"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
-	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	common "github.com/tektoncd/pipeline/pkg/resolution/common"
 	cluster "github.com/tektoncd/pipeline/pkg/resolution/resolver/cluster"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	frtesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
-	"github.com/tektoncd/pipeline/pkg/resolution/resolver/internal"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -53,7 +53,7 @@ const (
 func TestGetSelector(t *testing.T) {
 	resolver := cluster.Resolver{}
 	sel := resolver.GetSelector(context.Background())
-	if typ, has := sel[resolutioncommon.LabelKeyResolverType]; !has {
+	if typ, has := sel[common.LabelKeyResolverType]; !has {
 		t.Fatalf("unexpected selector: %v", sel)
 	} else if typ != cluster.LabelValueClusterResolverType {
 		t.Fatalf("unexpected type: %q", typ)
@@ -360,8 +360,8 @@ func TestResolve(t *testing.T) {
 			kind:           "task",
 			resourceName:   exampleTask.Name,
 			namespace:      "other-ns",
-			expectedStatus: internal.CreateResolutionRequestFailureStatus(),
-			expectedErr: &resolutioncommon.GetResourceError{
+			expectedStatus: resolution.CreateResolutionRequestFailureStatus(),
+			expectedErr: &common.GetResourceError{
 				ResolverName: cluster.ClusterResolverName,
 				Key:          "foo/rr",
 				Original:     errors.New(`tasks.tekton.dev "example-task" not found`),
@@ -372,8 +372,8 @@ func TestResolve(t *testing.T) {
 			resourceName:      exampleTask.Name,
 			namespace:         "other-ns",
 			allowedNamespaces: "foo,bar",
-			expectedStatus:    internal.CreateResolutionRequestFailureStatus(),
-			expectedErr: &resolutioncommon.InvalidRequestError{
+			expectedStatus:    resolution.CreateResolutionRequestFailureStatus(),
+			expectedErr: &common.InvalidRequestError{
 				ResolutionRequestKey: "foo/rr",
 				Message:              "access to specified namespace other-ns is not allowed",
 			},
@@ -383,8 +383,8 @@ func TestResolve(t *testing.T) {
 			resourceName:      exampleTask.Name,
 			namespace:         "other-ns",
 			blockedNamespaces: "foo,other-ns,bar",
-			expectedStatus:    internal.CreateResolutionRequestFailureStatus(),
-			expectedErr: &resolutioncommon.InvalidRequestError{
+			expectedStatus:    resolution.CreateResolutionRequestFailureStatus(),
+			expectedErr: &common.InvalidRequestError{
 				ResolutionRequestKey: "foo/rr",
 				Message:              "access to specified namespace other-ns is blocked",
 			},
@@ -471,7 +471,7 @@ func createRequest(kind, name, namespace string) *v1beta1.ResolutionRequest {
 			Namespace:         "foo",
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 			Labels: map[string]string{
-				resolutioncommon.LabelKeyResolverType: cluster.LabelValueClusterResolverType,
+				common.LabelKeyResolverType: cluster.LabelValueClusterResolverType,
 			},
 		},
 		Spec: v1beta1.ResolutionRequestSpec{

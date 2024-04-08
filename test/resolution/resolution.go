@@ -24,16 +24,16 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	resolution "github.com/tektoncd/pipeline/pkg/resolution/common"
+	common "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/test/diff"
 )
 
-var _ resolution.Requester = &Requester{}
-var _ resolution.ResolvedResource = &ResolvedResource{}
+var _ common.Requester = &Requester{}
+var _ common.ResolvedResource = &ResolvedResource{}
 
 // NewRequester creates a mock requester that resolves to the given
 // resource or returns the given error on Submit().
-func NewRequester(resource resolution.ResolvedResource, err error) *Requester {
+func NewRequester(resource common.ResolvedResource, err error) *Requester {
 	return &Requester{
 		ResolvedResource: resource,
 		SubmitErr:        err,
@@ -57,7 +57,7 @@ func NewResolvedResource(data []byte, annotations map[string]string, source *pip
 type Requester struct {
 	// The resolved resource object to return when a request is
 	// submitted.
-	ResolvedResource resolution.ResolvedResource
+	ResolvedResource common.ResolvedResource
 	// An error to return when a request is submitted.
 	SubmitErr error
 	// Params that should match those on the request in order to return the resolved resource
@@ -67,7 +67,7 @@ type Requester struct {
 // Submit implements resolution.Requester, accepting the name of a
 // resolver and a request for a specific remote file, and then returns
 // whatever mock data was provided on initialization.
-func (r *Requester) Submit(ctx context.Context, resolverName resolution.ResolverName, req resolution.Request) (resolution.ResolvedResource, error) {
+func (r *Requester) Submit(ctx context.Context, resolverName common.ResolverName, req common.Request) (common.ResolvedResource, error) {
 	if len(r.Params) == 0 {
 		return r.ResolvedResource, r.SubmitErr
 	}
@@ -134,7 +134,7 @@ type RawRequest struct {
 }
 
 // Request returns a Request interface based on the RawRequest.
-func (r *RawRequest) Request() resolution.Request {
+func (r *RawRequest) Request() common.Request {
 	if r == nil {
 		r = &RawRequest{}
 	}
@@ -149,7 +149,7 @@ type Request struct {
 	RawRequest
 }
 
-var _ resolution.Request = &Request{}
+var _ common.Request = &Request{}
 
 // NewRequest creates a mock request that is populated with the given name namespace and params
 func NewRequest(name, namespace string, params []pipelinev1.Param) *Request {

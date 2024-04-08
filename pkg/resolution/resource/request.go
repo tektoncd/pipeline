@@ -33,8 +33,6 @@ func NewRequest(name, namespace string, params v1.Params) Request {
 	return &BasicRequest{name, namespace, params}
 }
 
-var _ Request = &BasicRequest{}
-
 // Name returns the name attached to the request
 func (req *BasicRequest) Name() string {
 	return req.name

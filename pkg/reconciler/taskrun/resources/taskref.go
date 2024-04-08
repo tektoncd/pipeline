@@ -25,11 +25,12 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resolutionV1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"github.com/tektoncd/pipeline/pkg/reconciler/apiserver"
 	"github.com/tektoncd/pipeline/pkg/remote"
-	"github.com/tektoncd/pipeline/pkg/remote/resolution"
-	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/remote/resolution"
+	remoteresource "github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -108,7 +109,14 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 			} else {
 				replacedParams = append(replacedParams, tr.Params...)
 			}
-			resolver := resolution.NewResolver(requester, owner, string(tr.Resolver), trName, namespace, replacedParams)
+			resolverPayload := remoteresource.ResolverPayload{
+				Name:      trName,
+				Namespace: namespace,
+				ResolutionSpec: &resolutionV1beta1.ResolutionRequestSpec{
+					Params: replacedParams,
+				},
+			}
+			resolver := resolution.NewResolver(requester, owner, string(tr.Resolver), resolverPayload)
 			return resolveTask(ctx, resolver, name, namespace, kind, k8s, tekton, verificationPolicies)
 		}
 
@@ -136,7 +144,14 @@ func GetStepActionFunc(tekton clientset.Interface, k8s kubernetes.Interface, req
 		return func(ctx context.Context, name string) (*v1alpha1.StepAction, *v1.RefSource, error) {
 			// Perform params replacements for StepAction resolver params
 			ApplyParameterSubstitutionInResolverParams(tr, step)
-			resolver := resolution.NewResolver(requester, tr, string(step.Ref.Resolver), trName, namespace, step.Ref.Params)
+			resolverPayload := remoteresource.ResolverPayload{
+				Name:      trName,
+				Namespace: namespace,
+				ResolutionSpec: &resolutionV1beta1.ResolutionRequestSpec{
+					Params: step.Ref.Params,
+				},
+			}
+			resolver := resolution.NewResolver(requester, tr, string(step.Ref.Resolver), resolverPayload)
 			return resolveStepAction(ctx, resolver, name, namespace, k8s, tekton)
 		}
 	}

@@ -25,7 +25,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
-	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
+	remoteresource "github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"

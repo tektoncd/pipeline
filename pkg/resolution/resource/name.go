@@ -21,14 +21,15 @@ import (
 	"hash"
 	"hash/fnv"
 	"sort"
+	"strings"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	"k8s.io/apimachinery/pkg/util/validation"
+	"knative.dev/pkg/kmeta"
 )
 
-// nameHasher returns the hash.Hash to use when generating names.
-func nameHasher() hash.Hash {
-	return fnv.New128a()
-}
+const maxLength = validation.DNS1123LabelMaxLength
 
 // GenerateDeterministicName makes a best-effort attempt to create a
 // unique but reproducible name for use in a Request. The returned value
@@ -36,11 +37,48 @@ func nameHasher() hash.Hash {
 // given and {hash} is nameHasher(base) + nameHasher(param1) +
 // nameHasher(param2) + ...
 func GenerateDeterministicName(prefix, base string, params v1.Params) (string, error) {
+	return GenerateDeterministicNameFromSpec(prefix, base, &v1beta1.ResolutionRequestSpec{Params: params})
+}
+
+func GetNameAndNamespace(resolverName string, owner kmeta.OwnerRefable, name string, namespace string, params v1.Params) (string, string, error) {
+	if name == "" {
+		name = owner.GetObjectMeta().GetName()
+		namespace = owner.GetObjectMeta().GetNamespace()
+	}
+	if namespace == "" {
+		namespace = "default"
+	}
+	// Generating a deterministic name for the resource request
+	// prevents multiple requests being issued for the same
+	// pipelinerun's pipelineRef or taskrun's taskRef.
+	remoteResourceBaseName := namespace + "/" + name
+	name, err := GenerateDeterministicNameFromSpec(resolverName, remoteResourceBaseName, &v1beta1.ResolutionRequestSpec{Params: params})
+	if err != nil {
+		return "", "", fmt.Errorf("error generating name for taskrun %s/%s: %w", namespace, name, err)
+	}
+	return name, namespace, nil
+}
+
+// nameHasher returns the hash.Hash to use when generating names.
+func nameHasher() hash.Hash {
+	return fnv.New128a()
+}
+
+// GenerateDeterministicNameFromSpec makes a best-effort attempt to create a
+// unique but reproducible name for use in a Request. The returned value
+// will have the format {prefix}-{hash} where {prefix} is
+// given and {hash} is nameHasher(base) + nameHasher(param1) +
+// nameHasher(param2) + ...
+func GenerateDeterministicNameFromSpec(prefix, base string, resolutionSpec *v1beta1.ResolutionRequestSpec) (string, error) {
 	hasher := nameHasher()
 	if _, err := hasher.Write([]byte(base)); err != nil {
 		return "", err
 	}
 
+	if resolutionSpec == nil {
+		return fmt.Sprintf("%s-%x", prefix, hasher.Sum(nil)), nil
+	}
+	params := resolutionSpec.Params
 	sortedParams := make(v1.Params, len(params))
 	for i := range params {
 		sortedParams[i] = *params[i].DeepCopy()
@@ -67,5 +105,9 @@ func GenerateDeterministicName(prefix, base string, params v1.Params) (string, e
 			}
 		}
 	}
-	return fmt.Sprintf("%s-%x", prefix, hasher.Sum(nil)), nil
+	name := fmt.Sprintf("%s-%x", prefix, hasher.Sum(nil))
+	if maxLength > len(name) {
+		return name, nil
+	}
+	return name[:strings.LastIndex(name[:maxLength], " ")], nil
 }

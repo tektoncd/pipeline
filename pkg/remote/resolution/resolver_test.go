@@ -23,8 +23,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/remote"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
-	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
+	resolution "github.com/tektoncd/pipeline/test/resolution"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/kmeta"
 )
@@ -60,11 +60,11 @@ func TestGet_Successful(t *testing.T) {
 				Namespace: "bar",
 			},
 		}
-		resolved := &test.ResolvedResource{
+		resolved := &resolution.ResolvedResource{
 			ResolvedData:        tc.resolvedData,
 			ResolvedAnnotations: tc.resolvedAnnotations,
 		}
-		requester := &test.Requester{
+		requester := &resolution.Requester{
 			SubmitErr:        nil,
 			ResolvedResource: resolved,
 		}
@@ -77,11 +77,11 @@ func TestGet_Successful(t *testing.T) {
 
 func TestGet_Errors(t *testing.T) {
 	genericError := errors.New("uh oh something bad happened")
-	notARuntimeObject := &test.ResolvedResource{
+	notARuntimeObject := &resolution.ResolvedResource{
 		ResolvedData:        []byte(">:)"),
 		ResolvedAnnotations: nil,
 	}
-	invalidDataResource := &test.ResolvedResource{
+	invalidDataResource := &resolution.ResolvedResource{
 		DataErr:             errors.New("data access error"),
 		ResolvedAnnotations: nil,
 	}
@@ -117,7 +117,7 @@ func TestGet_Errors(t *testing.T) {
 				Namespace: "bar",
 			},
 		}
-		requester := &test.Requester{
+		requester := &resolution.Requester{
 			SubmitErr:        tc.submitErr,
 			ResolvedResource: tc.resolvedResource,
 		}
