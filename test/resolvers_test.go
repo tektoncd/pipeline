@@ -37,7 +37,7 @@ import (
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
-	"github.com/tektoncd/pipeline/pkg/resolution/resolver/git"
+	gitresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/git"
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -484,24 +484,24 @@ func TestGitResolver_API(t *testing.T) {
 
 	resovlerNS := resolverconfig.ResolversNamespace(systemNamespace)
 
-	originalConfigMap, err := c.KubeClient.CoreV1().ConfigMaps(resovlerNS).Get(ctx, git.ConfigMapName, metav1.GetOptions{})
+	originalConfigMap, err := c.KubeClient.CoreV1().ConfigMaps(resovlerNS).Get(ctx, gitresolution.ConfigMapName, metav1.GetOptions{})
 	if err != nil {
-		t.Fatalf("Failed to get ConfigMap `%s`: %s", git.ConfigMapName, err)
+		t.Fatalf("Failed to get ConfigMap `%s`: %s", gitresolution.ConfigMapName, err)
 	}
 	originalConfigMapData := originalConfigMap.Data
 
-	t.Logf("Creating ConfigMap %s", git.ConfigMapName)
+	t.Logf("Creating ConfigMap %s", gitresolution.ConfigMapName)
 	configMapData := map[string]string{
-		git.ServerURLKey:          fmt.Sprint("http://", net.JoinHostPort(giteaClusterHostname, "3000")),
-		git.SCMTypeKey:            "gitea",
-		git.APISecretNameKey:      tokenSecretName,
-		git.APISecretKeyKey:       scmTokenSecretKey,
-		git.APISecretNamespaceKey: namespace,
+		gitresolution.ServerURLKey:          fmt.Sprint("http://", net.JoinHostPort(giteaClusterHostname, "3000")),
+		gitresolution.SCMTypeKey:            "gitea",
+		gitresolution.APISecretNameKey:      tokenSecretName,
+		gitresolution.APISecretKeyKey:       scmTokenSecretKey,
+		gitresolution.APISecretNamespaceKey: namespace,
 	}
-	if err := updateConfigMap(ctx, c.KubeClient, resovlerNS, git.ConfigMapName, configMapData); err != nil {
+	if err := updateConfigMap(ctx, c.KubeClient, resovlerNS, gitresolution.ConfigMapName, configMapData); err != nil {
 		t.Fatal(err)
 	}
-	defer resetConfigMap(ctx, t, c, resovlerNS, git.ConfigMapName, originalConfigMapData)
+	defer resetConfigMap(ctx, t, c, resovlerNS, gitresolution.ConfigMapName, originalConfigMapData)
 
 	trName := helpers.ObjectNameForTest(t)
 	tr := parse.MustParseV1TaskRun(t, fmt.Sprintf(`

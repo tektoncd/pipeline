@@ -46,7 +46,7 @@ type ReconcilerModifier = func(reconciler *Reconciler)
 // This sets up a lot of the boilerplate that individual resolvers
 // shouldn't need to be concerned with since it's common to all of them.
 func NewController(ctx context.Context, resolver Resolver, modifiers ...ReconcilerModifier) func(context.Context, configmap.Watcher) *controller.Impl {
-	if err := validateResolver(ctx, resolver); err != nil {
+	if err := ValidateResolver(ctx, resolver.GetSelector(ctx)); err != nil {
 		panic(err.Error())
 	}
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
@@ -60,7 +60,7 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 		}
 
 		r := &Reconciler{
-			LeaderAwareFuncs:           leaderAwareFuncs(rrInformer.Lister()),
+			LeaderAwareFuncs:           LeaderAwareFuncs(rrInformer.Lister()),
 			kubeClientSet:              kubeclientset,
 			resolutionRequestLister:    rrInformer.Lister(),
 			resolutionRequestClientSet: rrclientset,
@@ -82,7 +82,7 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 		})
 
 		_, err := rrInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: filterResolutionRequestsBySelector(resolver.GetSelector(ctx)),
+			FilterFunc: FilterResolutionRequestsBySelector(resolver.GetSelector(ctx)),
 			Handler: cache.ResourceEventHandlerFuncs{
 				AddFunc: impl.Enqueue,
 				UpdateFunc: func(oldObj, newObj interface{}) {
@@ -99,72 +99,6 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 
 		return impl
 	}
-}
-
-func filterResolutionRequestsBySelector(selector map[string]string) func(obj interface{}) bool {
-	return func(obj interface{}) bool {
-		rr, ok := obj.(*v1beta1.ResolutionRequest)
-		if !ok {
-			return false
-		}
-		if len(rr.ObjectMeta.Labels) == 0 {
-			return false
-		}
-		for key, val := range selector {
-			lookup, has := rr.ObjectMeta.Labels[key]
-			if !has {
-				return false
-			}
-			if lookup != val {
-				return false
-			}
-		}
-		return true
-	}
-}
-
-// TODO(sbwsg): I don't really understand the LeaderAwareness types beyond the
-// fact that the controller crashes if they're missing. It looks
-// like this is bucketing based on labels. Should we use the filter
-// selector from above in the call to lister.List here?
-func leaderAwareFuncs(lister rrlister.ResolutionRequestLister) reconciler.LeaderAwareFuncs {
-	return reconciler.LeaderAwareFuncs{
-		PromoteFunc: func(bkt reconciler.Bucket, enq func(reconciler.Bucket, types.NamespacedName)) error {
-			all, err := lister.List(labels.Everything())
-			if err != nil {
-				return err
-			}
-			for _, elt := range all {
-				enq(bkt, types.NamespacedName{
-					Namespace: elt.GetNamespace(),
-					Name:      elt.GetName(),
-				})
-			}
-			return nil
-		},
-	}
-}
-
-var (
-	// ErrMissingTypeSelector is returned when a resolver does not return
-	// a selector with a type label from its GetSelector method.
-	ErrMissingTypeSelector = fmt.Errorf("invalid resolver: minimum selector must include %q", common.LabelKeyResolverType)
-
-	// ErrorMissingTypeSelector is an alias to ErrMissingTypeSelector
-	//
-	// Deprecated: use ErrMissingTypeSelector instead.
-	ErrorMissingTypeSelector = ErrMissingTypeSelector
-)
-
-func validateResolver(ctx context.Context, r Resolver) error {
-	sel := r.GetSelector(ctx)
-	if sel == nil {
-		return ErrMissingTypeSelector
-	}
-	if sel[common.LabelKeyResolverType] == "" {
-		return ErrMissingTypeSelector
-	}
-	return nil
 }
 
 // watchConfigChanges binds a framework.Resolver to updates on its
@@ -193,4 +127,69 @@ func applyModifiersAndDefaults(ctx context.Context, r *Reconciler, modifiers []R
 	if r.Clock == nil {
 		r.Clock = clock.RealClock{}
 	}
+}
+
+func FilterResolutionRequestsBySelector(selector map[string]string) func(obj interface{}) bool {
+	return func(obj interface{}) bool {
+		rr, ok := obj.(*v1beta1.ResolutionRequest)
+		if !ok {
+			return false
+		}
+		if len(rr.ObjectMeta.Labels) == 0 {
+			return false
+		}
+		for key, val := range selector {
+			lookup, has := rr.ObjectMeta.Labels[key]
+			if !has {
+				return false
+			}
+			if lookup != val {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+// TODO(sbwsg): I don't really understand the LeaderAwareness types beyond the
+// fact that the controller crashes if they're missing. It looks
+// like this is bucketing based on labels. Should we use the filter
+// selector from above in the call to lister.List here?
+func LeaderAwareFuncs(lister rrlister.ResolutionRequestLister) reconciler.LeaderAwareFuncs {
+	return reconciler.LeaderAwareFuncs{
+		PromoteFunc: func(bkt reconciler.Bucket, enq func(reconciler.Bucket, types.NamespacedName)) error {
+			all, err := lister.List(labels.Everything())
+			if err != nil {
+				return err
+			}
+			for _, elt := range all {
+				enq(bkt, types.NamespacedName{
+					Namespace: elt.GetNamespace(),
+					Name:      elt.GetName(),
+				})
+			}
+			return nil
+		},
+	}
+}
+
+var (
+	// ErrMissingTypeSelector is returned when a resolver does not return
+	// a selector with a type label from its GetSelector method.
+	ErrMissingTypeSelector = fmt.Errorf("invalid resolver: minimum selector must include %q", common.LabelKeyResolverType)
+
+	// ErrorMissingTypeSelector is an alias to ErrMissingTypeSelector
+	//
+	// Deprecated: use ErrMissingTypeSelector instead.
+	ErrorMissingTypeSelector = ErrMissingTypeSelector
+)
+
+func ValidateResolver(ctx context.Context, sel map[string]string) error {
+	if sel == nil {
+		return ErrMissingTypeSelector
+	}
+	if sel[common.LabelKeyResolverType] == "" {
+		return ErrMissingTypeSelector
+	}
+	return nil
 }

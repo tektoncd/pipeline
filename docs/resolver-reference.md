@@ -21,13 +21,33 @@ a resolver](./how-to-write-a-resolver.md).
 Implementing this interface is required. It provides just enough
 configuration for the framework to get a resolver running.
 
+{{% tabs %}}
+
+{{% tab "Upgraded Framework" %}}
+
 | Method  to Implement | Description |
 |----------------------|-------------|
 | Initialize | Use this method to perform any setup required before the resolver starts receiving requests. |
 | GetName | Use this method to return a name to refer to your Resolver by. e.g. `"Git"` |
 | GetSelector | Use this method to specify the labels that a resolution request must have to be routed to your resolver. |
-| ValidateParams | Use this method to validate the parameters given to your resolver. |
-| Resolve | Use this method to perform get the resource and return it, along with any metadata about it in annotations |
+| Validate | Use this method to validate the resolution Spec given to your resolver. |
+| Resolve | Use this method to perform get the resource based on the ResolutionRequestSpec as input and return it, along with any metadata about it in annotations |
+
+{{% /tab %}}
+
+{{% tab "Previous Framework" %}}
+
+| Method  to Implement | Description |
+|----------------------|-------------|
+| Initialize | Use this method to perform any setup required before the resolver starts receiving requests. |
+| GetName | Use this method to return a name to refer to your Resolver by. e.g. `"Git"` |
+| GetSelector | Use this method to specify the labels that a resolution request must have to be routed to your resolver. |
+| ValidateParams | Use this method to validate the params given to your resolver. |
+| Resolve | Use this method to perform get the resource based on params as input and return it, along with any metadata about it in annotations |
+
+{{% /tab %}}
+
+{{% /tabs %}}
 
 ## The `ConfigWatcher` Interface
 
@@ -38,7 +58,7 @@ api endpoints or base urls, service account names to use, etc...
 
 | Method to Implement | Description |
 |---------------------|-------------|
-| GetConfigName       | Use this method to return the name of the configmap admins will use to configure this resolver. Once this interface is implemented your `ValidateParams` and `Resolve` methods will be able to access your latest resolver configuration by calling `framework.GetResolverConfigFromContext(ctx)`. Note that this configmap must exist when your resolver starts - put a default one in your resolver's `config/` directory. |
+| GetConfigName       | Use this method to return the name of the configmap admins will use to configure this resolver. Once this interface is implemented your `Validate` and `Resolve` methods will be able to access your latest resolver configuration by calling `framework.GetResolverConfigFromContext(ctx)`. Note that this configmap must exist when your resolver starts - put a default one in your resolver's `config/` directory. |
 
 ## The `TimedResolution` Interface
 

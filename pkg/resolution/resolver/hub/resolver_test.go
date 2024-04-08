@@ -29,7 +29,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	common "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	frtesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -38,7 +38,7 @@ import (
 func TestGetSelector(t *testing.T) {
 	resolver := Resolver{}
 	sel := resolver.GetSelector(context.Background())
-	if typ, has := sel[resolutioncommon.LabelKeyResolverType]; !has {
+	if typ, has := sel[common.LabelKeyResolverType]; !has {
 		t.Fatalf("unexpected selector: %v", sel)
 	} else if typ != LabelValueHubResolverType {
 		t.Fatalf("unexpected type: %q", typ)

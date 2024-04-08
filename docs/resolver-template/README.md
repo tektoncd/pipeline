@@ -19,10 +19,18 @@ You can use this as a template to quickly get a new Resolver up and
 running with your own preferred storage backend.
 
 To reuse the template, simply copy this entire subdirectory to a new
-directory. The entire program is defined in
+directory. 
+
+The entire program for the `latest` framework is defined in 
+[`./cmd/resolver/main.go`](./cmd/resolver/main.go) and provides stub
+implementations of all the methods defined by the [`framework.Resolver`
+interface](../../pkg/remoteresolution/resolver/framework/interface.go).
+
+If you choose to use the previous framework (soon to be deprecated) is defined in
 [`./cmd/demoresolver/main.go`](./cmd/demoresolver/main.go) and provides stub
 implementations of all the methods defined by the [`framework.Resolver`
 interface](../../pkg/resolution/resolver/framework/interface.go).
+
 
 Once copied you'll need to run `go mod init` and `go mod tidy` at the root
 of your project. We don't need this in `tektoncd/resolution` because this

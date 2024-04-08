@@ -28,7 +28,7 @@ import (
 
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	"github.com/tektoncd/pipeline/pkg/resolution/common"
+	common "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"go.uber.org/zap"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -89,31 +89,24 @@ func (r *Resolver) GetSelector(context.Context) map[string]string {
 
 // ValidateParams ensures parameters from a request are as expected.
 func (r *Resolver) ValidateParams(ctx context.Context, params []pipelinev1.Param) error {
-	if r.isDisabled(ctx) {
-		return errors.New(disabledError)
-	}
-	_, err := populateDefaultParams(ctx, params)
-	if err != nil {
-		return err
-	}
-	return nil
+	return ValidateParams(ctx, params)
 }
 
 // Resolve uses the given params to resolve the requested file or resource.
 func (r *Resolver) Resolve(ctx context.Context, oParams []pipelinev1.Param) (framework.ResolvedResource, error) {
-	if r.isDisabled(ctx) {
+	if IsDisabled(ctx) {
 		return nil, errors.New(disabledError)
 	}
 
-	params, err := populateDefaultParams(ctx, oParams)
+	params, err := PopulateDefaultParams(ctx, oParams)
 	if err != nil {
 		return nil, err
 	}
 
-	return r.fetchHttpResource(ctx, params)
+	return FetchHttpResource(ctx, params, r.kubeClient, r.logger)
 }
 
-func (r *Resolver) isDisabled(ctx context.Context) bool {
+func IsDisabled(ctx context.Context) bool {
 	cfg := resolverconfig.FromContextOrDefaults(ctx)
 	return !cfg.FeatureFlags.EnableHttpResolver
 }
@@ -151,7 +144,7 @@ func (rr *resolvedHttpResource) RefSource() *pipelinev1.RefSource {
 	}
 }
 
-func populateDefaultParams(ctx context.Context, params []pipelinev1.Param) (map[string]string, error) {
+func PopulateDefaultParams(ctx context.Context, params []pipelinev1.Param) (map[string]string, error) {
 	paramsMap := make(map[string]string)
 	for _, p := range params {
 		paramsMap[p.Name] = p.Value.StringVal
@@ -159,33 +152,33 @@ func populateDefaultParams(ctx context.Context, params []pipelinev1.Param) (map[
 
 	var missingParams []string
 
-	if _, ok := paramsMap[urlParam]; !ok {
-		missingParams = append(missingParams, urlParam)
+	if _, ok := paramsMap[UrlParam]; !ok {
+		missingParams = append(missingParams, UrlParam)
 	} else {
-		u, err := url.ParseRequestURI(paramsMap[urlParam])
+		u, err := url.ParseRequestURI(paramsMap[UrlParam])
 		if err != nil {
-			return nil, fmt.Errorf("cannot parse url %s: %w", paramsMap[urlParam], err)
+			return nil, fmt.Errorf("cannot parse url %s: %w", paramsMap[UrlParam], err)
 		}
 		if u.Scheme != "http" && u.Scheme != "https" {
-			return nil, fmt.Errorf("url %s is not a valid http(s) url", paramsMap[urlParam])
+			return nil, fmt.Errorf("url %s is not a valid http(s) url", paramsMap[UrlParam])
 		}
 	}
 
-	if username, ok := paramsMap[httpBasicAuthUsername]; ok {
-		if _, ok := paramsMap[httpBasicAuthSecret]; !ok {
-			return nil, fmt.Errorf("missing required param %s when using %s", httpBasicAuthSecret, httpBasicAuthUsername)
+	if username, ok := paramsMap[HttpBasicAuthUsername]; ok {
+		if _, ok := paramsMap[HttpBasicAuthSecret]; !ok {
+			return nil, fmt.Errorf("missing required param %s when using %s", HttpBasicAuthSecret, HttpBasicAuthUsername)
 		}
 		if username == "" {
-			return nil, fmt.Errorf("value %s cannot be empty", httpBasicAuthUsername)
+			return nil, fmt.Errorf("value %s cannot be empty", HttpBasicAuthUsername)
 		}
 	}
 
-	if secret, ok := paramsMap[httpBasicAuthSecret]; ok {
-		if _, ok := paramsMap[httpBasicAuthUsername]; !ok {
-			return nil, fmt.Errorf("missing required param %s when using %s", httpBasicAuthUsername, httpBasicAuthSecret)
+	if secret, ok := paramsMap[HttpBasicAuthSecret]; ok {
+		if _, ok := paramsMap[HttpBasicAuthUsername]; !ok {
+			return nil, fmt.Errorf("missing required param %s when using %s", HttpBasicAuthUsername, HttpBasicAuthSecret)
 		}
 		if secret == "" {
-			return nil, fmt.Errorf("value %s cannot be empty", httpBasicAuthSecret)
+			return nil, fmt.Errorf("value %s cannot be empty", HttpBasicAuthSecret)
 		}
 	}
 
@@ -199,7 +192,7 @@ func populateDefaultParams(ctx context.Context, params []pipelinev1.Param) (map[
 func makeHttpClient(ctx context.Context) (*http.Client, error) {
 	conf := framework.GetResolverConfigFromContext(ctx)
 	timeout, _ := time.ParseDuration(defaultHttpTimeoutValue)
-	if v, ok := conf[timeoutKey]; ok {
+	if v, ok := conf[TimeoutKey]; ok {
 		var err error
 		timeout, err = time.ParseDuration(v)
 		if err != nil {
@@ -211,7 +204,7 @@ func makeHttpClient(ctx context.Context) (*http.Client, error) {
 	}, nil
 }
 
-func (r *Resolver) fetchHttpResource(ctx context.Context, params map[string]string) (framework.ResolvedResource, error) {
+func FetchHttpResource(ctx context.Context, params map[string]string, kubeclient kubernetes.Interface, logger *zap.SugaredLogger) (framework.ResolvedResource, error) {
 	var targetURL string
 	var ok bool
 
@@ -220,8 +213,8 @@ func (r *Resolver) fetchHttpResource(ctx context.Context, params map[string]stri
 		return nil, err
 	}
 
-	if targetURL, ok = params[urlParam]; !ok {
-		return nil, fmt.Errorf("missing required params: %s", urlParam)
+	if targetURL, ok = params[UrlParam]; !ok {
+		return nil, fmt.Errorf("missing required params: %s", UrlParam)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
@@ -230,8 +223,8 @@ func (r *Resolver) fetchHttpResource(ctx context.Context, params map[string]stri
 	}
 
 	// NOTE(chmouel): We already made sure that username and secret was specified by the user
-	if secret, ok := params[httpBasicAuthSecret]; ok && secret != "" {
-		if encodedSecret, err := r.getBasicAuthSecret(ctx, params); err != nil {
+	if secret, ok := params[HttpBasicAuthSecret]; ok && secret != "" {
+		if encodedSecret, err := getBasicAuthSecret(ctx, params, kubeclient, logger); err != nil {
 			return nil, err
 		} else {
 			req.Header.Set("Authorization", encodedSecret)
@@ -259,33 +252,44 @@ func (r *Resolver) fetchHttpResource(ctx context.Context, params map[string]stri
 	}, nil
 }
 
-func (r *Resolver) getBasicAuthSecret(ctx context.Context, params map[string]string) (string, error) {
-	secretName := params[httpBasicAuthSecret]
-	userName := params[httpBasicAuthUsername]
+func getBasicAuthSecret(ctx context.Context, params map[string]string, kubeclient kubernetes.Interface, logger *zap.SugaredLogger) (string, error) {
+	secretName := params[HttpBasicAuthSecret]
+	userName := params[HttpBasicAuthUsername]
 	tokenSecretKey := defaultBasicAuthSecretKey
-	if v, ok := params[httpBasicAuthSecretKey]; ok {
+	if v, ok := params[HttpBasicAuthSecretKey]; ok {
 		if v != "" {
 			tokenSecretKey = v
 		}
 	}
 	secretNS := common.RequestNamespace(ctx)
-	secret, err := r.kubeClient.CoreV1().Secrets(secretNS).Get(ctx, secretName, metav1.GetOptions{})
+	secret, err := kubeclient.CoreV1().Secrets(secretNS).Get(ctx, secretName, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			notFoundErr := fmt.Errorf("cannot get API token, secret %s not found in namespace %s", secretName, secretNS)
-			r.logger.Info(notFoundErr)
+			logger.Info(notFoundErr)
 			return "", notFoundErr
 		}
 		wrappedErr := fmt.Errorf("error reading API token from secret %s in namespace %s: %w", secretName, secretNS, err)
-		r.logger.Info(wrappedErr)
+		logger.Info(wrappedErr)
 		return "", wrappedErr
 	}
 	secretVal, ok := secret.Data[tokenSecretKey]
 	if !ok {
 		err := fmt.Errorf("cannot get API token, key %s not found in secret %s in namespace %s", tokenSecretKey, secretName, secretNS)
-		r.logger.Info(err)
+		logger.Info(err)
 		return "", err
 	}
 	return "Basic " + base64.StdEncoding.EncodeToString(
 		[]byte(fmt.Sprintf("%s:%s", userName, secretVal))), nil
+}
+
+func ValidateParams(ctx context.Context, params []pipelinev1.Param) error {
+	if IsDisabled(ctx) {
+		return errors.New(disabledError)
+	}
+	_, err := PopulateDefaultParams(ctx, params)
+	if err != nil {
+		return err
+	}
+	return nil
 }

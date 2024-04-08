@@ -34,13 +34,16 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resolutionV1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/pipeline/pkg/reconciler/apiserver"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/parse"
+	resolution "github.com/tektoncd/pipeline/test/remoteresolution"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -897,8 +900,8 @@ func TestGetStepActionFunc_RemoteResolution_Success(t *testing.T) {
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			resolved := test.NewResolvedResource([]byte(tc.stepActionYAML), nil /* annotations */, sampleRefSource.DeepCopy(), nil /* data error */)
-			requester := test.NewRequester(resolved, nil)
+			resolved := resolution.NewResolvedResource([]byte(tc.stepActionYAML), nil /* annotations */, sampleRefSource.DeepCopy(), nil /* data error */)
+			requester := resolution.NewRequester(resolved, nil, resource.ResolverPayload{})
 			tr := &v1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
 				Spec: v1.TaskRunSpec{
@@ -958,8 +961,8 @@ func TestGetStepActionFunc_RemoteResolution_Error(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			resource := test.NewResolvedResource(tc.resolvesTo, nil, nil, nil)
-			requester := test.NewRequester(resource, nil)
+			res := resolution.NewResolvedResource(tc.resolvesTo, nil, nil, nil)
+			requester := resolution.NewRequester(res, nil, resource.ResolverPayload{})
 			tr := &v1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
 				Spec: v1.TaskRunSpec{
@@ -1090,8 +1093,8 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			resolved := test.NewResolvedResource([]byte(tc.taskYAML), nil /* annotations */, sampleRefSource.DeepCopy(), nil /* data error */)
-			requester := test.NewRequester(resolved, nil)
+			resolved := resolution.NewResolvedResource([]byte(tc.taskYAML), nil /* annotations */, sampleRefSource.DeepCopy(), nil /* data error */)
+			requester := resolution.NewRequester(resolved, nil, resource.ResolverPayload{})
 			tr := &v1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
 				Spec: v1.TaskRunSpec{
@@ -1157,8 +1160,8 @@ func TestGetTaskFunc_RemoteResolution_ValidationFailure(t *testing.T) {
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			resolved := test.NewResolvedResource([]byte(tc.taskYAML), nil /* annotations */, sampleRefSource.DeepCopy(), nil /* data error */)
-			requester := test.NewRequester(resolved, nil)
+			resolved := resolution.NewResolvedResource([]byte(tc.taskYAML), nil /* annotations */, sampleRefSource.DeepCopy(), nil /* data error */)
+			requester := resolution.NewRequester(resolved, nil, resource.ResolverPayload{})
 			tektonclient := fake.NewSimpleClientset()
 			fn := resources.GetTaskFunc(ctx, nil, tektonclient, requester, &v1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
@@ -1208,16 +1211,20 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 		taskYAMLString,
 	}, "\n")
 
-	resolved := test.NewResolvedResource([]byte(taskYAML), nil, sampleRefSource.DeepCopy(), nil)
-	requester := &test.Requester{
+	resolved := resolution.NewResolvedResource([]byte(taskYAML), nil, sampleRefSource.DeepCopy(), nil)
+	requester := &resolution.Requester{
 		ResolvedResource: resolved,
-		Params: v1.Params{{
-			Name:  "foo",
-			Value: *v1.NewStructuredValues("bar"),
-		}, {
-			Name:  "bar",
-			Value: *v1.NewStructuredValues("test-task"),
-		}},
+		ResolverPayload: resource.ResolverPayload{
+			ResolutionSpec: &resolutionV1beta1.ResolutionRequestSpec{
+				Params: v1.Params{{
+					Name:  "foo",
+					Value: *v1.NewStructuredValues("bar"),
+				}, {
+					Name:  "bar",
+					Value: *v1.NewStructuredValues("test-task"),
+				}},
+			},
+		},
 	}
 	tr := &v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1293,8 +1300,8 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 	ctx = config.ToContext(ctx, cfg)
 	taskRef := &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "git"}}
 	resolvesTo := []byte("INVALID YAML")
-	resource := test.NewResolvedResource(resolvesTo, nil, nil, nil)
-	requester := test.NewRequester(resource, nil)
+	res := resolution.NewResolvedResource(resolvesTo, nil, nil, nil)
+	requester := resolution.NewRequester(res, nil, resource.ResolverPayload{})
 	tr := &v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
 		Spec: v1.TaskRunSpec{
@@ -1355,7 +1362,7 @@ func TestGetTaskFunc_V1beta1Task_VerifyNoError(t *testing.T) {
 
 	testcases := []struct {
 		name                       string
-		requester                  *test.Requester
+		requester                  *resolution.Requester
 		verificationNoMatchPolicy  string
 		policies                   []*v1alpha1.VerificationPolicy
 		expected                   runtime.Object
@@ -1484,7 +1491,7 @@ func TestGetTaskFunc_V1beta1Task_VerifyError(t *testing.T) {
 
 	testcases := []struct {
 		name                           string
-		requester                      *test.Requester
+		requester                      *resolution.Requester
 		verificationNoMatchPolicy      string
 		expected                       *v1.Task
 		expectedErr                    error
@@ -1621,7 +1628,7 @@ func TestGetTaskFunc_V1Task_VerifyNoError(t *testing.T) {
 
 	testcases := []struct {
 		name                       string
-		requester                  *test.Requester
+		requester                  *resolution.Requester
 		verificationNoMatchPolicy  string
 		policies                   []*v1alpha1.VerificationPolicy
 		expected                   runtime.Object
@@ -1750,7 +1757,7 @@ func TestGetTaskFunc_V1Task_VerifyError(t *testing.T) {
 
 	testcases := []struct {
 		name                       string
-		requester                  *test.Requester
+		requester                  *resolution.Requester
 		verificationNoMatchPolicy  string
 		expected                   *v1.Task
 		expectedErr                error
@@ -1837,8 +1844,8 @@ func TestGetTaskFunc_GetFuncError(t *testing.T) {
 		t.Fatal("fail to marshal task", err)
 	}
 
-	resolvedUnsigned := test.NewResolvedResource(unsignedTaskBytes, nil, sampleRefSource.DeepCopy(), nil)
-	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
+	resolvedUnsigned := resolution.NewResolvedResource(unsignedTaskBytes, nil, sampleRefSource.DeepCopy(), nil)
+	requesterUnsigned := resolution.NewRequester(resolvedUnsigned, nil, resource.ResolverPayload{})
 	resolvedUnsigned.DataErr = errors.New("resolution error")
 
 	trResolutionError := &v1.TaskRun{
@@ -1856,7 +1863,7 @@ func TestGetTaskFunc_GetFuncError(t *testing.T) {
 
 	testcases := []struct {
 		name        string
-		requester   *test.Requester
+		requester   *resolution.Requester
 		taskrun     v1.TaskRun
 		expectedErr error
 	}{
@@ -1926,9 +1933,9 @@ spec:
   - name: foo
 `
 
-func bytesToRequester(data []byte, source *v1.RefSource) *test.Requester {
-	resolved := test.NewResolvedResource(data, nil, source, nil)
-	requester := test.NewRequester(resolved, nil)
+func bytesToRequester(data []byte, source *v1.RefSource) *resolution.Requester {
+	resolved := resolution.NewResolvedResource(data, nil, source, nil)
+	requester := resolution.NewRequester(resolved, nil, resource.ResolverPayload{})
 	return requester
 }
 

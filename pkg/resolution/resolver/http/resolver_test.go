@@ -33,11 +33,11 @@ import (
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/internal/resolution"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
-	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	common "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	frtesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
-	"github.com/tektoncd/pipeline/pkg/resolution/resolver/internal"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -68,7 +68,7 @@ const emptyStr = "empty"
 func TestGetSelector(t *testing.T) {
 	resolver := Resolver{}
 	sel := resolver.GetSelector(context.Background())
-	if typ, has := sel[resolutioncommon.LabelKeyResolverType]; !has {
+	if typ, has := sel[common.LabelKeyResolverType]; !has {
 		t.Fatalf("unexpected selector: %v", sel)
 	} else if typ != LabelValueHttpResolverType {
 		t.Fatalf("unexpected type: %q", typ)
@@ -104,7 +104,7 @@ func TestValidateParams(t *testing.T) {
 			resolver := Resolver{}
 			params := map[string]string{}
 			if tc.url != "nourl" {
-				params[urlParam] = tc.url
+				params[UrlParam] = tc.url
 			}
 			err := resolver.ValidateParams(contextWithConfig(defaultHttpTimeoutValue), toParams(params))
 			if tc.expectedErr != nil {
@@ -186,7 +186,7 @@ func TestResolve(t *testing.T) {
 			params := []pipelinev1.Param{}
 			if tc.paramSet {
 				params = append(params, pipelinev1.Param{
-					Name:  urlParam,
+					Name:  UrlParam,
 					Value: *pipelinev1.NewStructuredValues(svr.URL),
 				})
 			}
@@ -253,12 +253,12 @@ func createRequest(params *params) *v1beta1.ResolutionRequest {
 			Namespace:         "foo",
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 			Labels: map[string]string{
-				resolutioncommon.LabelKeyResolverType: LabelValueHttpResolverType,
+				common.LabelKeyResolverType: LabelValueHttpResolverType,
 			},
 		},
 		Spec: v1beta1.ResolutionRequestSpec{
 			Params: []pipelinev1.Param{{
-				Name:  urlParam,
+				Name:  UrlParam,
 				Value: *pipelinev1.NewStructuredValues(params.url),
 			}},
 		},
@@ -269,7 +269,7 @@ func createRequest(params *params) *v1beta1.ResolutionRequest {
 			s = ""
 		}
 		rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
-			Name:  httpBasicAuthSecret,
+			Name:  HttpBasicAuthSecret,
 			Value: *pipelinev1.NewStructuredValues(s),
 		})
 	}
@@ -280,14 +280,14 @@ func createRequest(params *params) *v1beta1.ResolutionRequest {
 			s = ""
 		}
 		rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
-			Name:  httpBasicAuthUsername,
+			Name:  HttpBasicAuthUsername,
 			Value: *pipelinev1.NewStructuredValues(s),
 		})
 	}
 
 	if params.authSecretKey != "" {
 		rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
-			Name:  httpBasicAuthSecretKey,
+			Name:  HttpBasicAuthSecretKey,
 			Value: *pipelinev1.NewStructuredValues(params.authSecretKey),
 		})
 	}
@@ -309,12 +309,12 @@ func TestResolverReconcileBasicAuth(t *testing.T) {
 		{
 			name:           "good/URL Resolution",
 			taskContent:    sampleTask,
-			expectedStatus: internal.CreateResolutionRequestStatusWithData([]byte(sampleTask)),
+			expectedStatus: resolution.CreateResolutionRequestStatusWithData([]byte(sampleTask)),
 		},
 		{
 			name:           "good/URL Resolution with custom basic auth, and custom secret key",
 			taskContent:    sampleTask,
-			expectedStatus: internal.CreateResolutionRequestStatusWithData([]byte(sampleTask)),
+			expectedStatus: resolution.CreateResolutionRequestStatusWithData([]byte(sampleTask)),
 			params: &params{
 				authSecret:        "auth-secret",
 				authUsername:      "auth",
@@ -325,7 +325,7 @@ func TestResolverReconcileBasicAuth(t *testing.T) {
 		{
 			name:           "good/URL Resolution with custom basic auth no custom secret key",
 			taskContent:    sampleTask,
-			expectedStatus: internal.CreateResolutionRequestStatusWithData([]byte(sampleTask)),
+			expectedStatus: resolution.CreateResolutionRequestStatusWithData([]byte(sampleTask)),
 			params: &params{
 				authSecret:        "auth-secret",
 				authUsername:      "auth",
@@ -510,7 +510,7 @@ func toParams(m map[string]string) []pipelinev1.Param {
 
 func contextWithConfig(timeout string) context.Context {
 	config := map[string]string{
-		timeoutKey: timeout,
+		TimeoutKey: timeout,
 	}
 	return framework.InjectResolverConfigToContext(context.Background(), config)
 }

@@ -14,15 +14,15 @@ limitations under the License.
 package http
 
 const (
-	// urlParam is the URL to fetch the task from
-	urlParam string = "url"
+	// UrlParam is the URL to fetch the task from
+	UrlParam string = "url"
 
-	// httpBasicAuthUsername is the user name to use for basic auth
-	httpBasicAuthUsername string = "http-username"
+	// HttpBasicAuthUsername is the user name to use for basic auth
+	HttpBasicAuthUsername string = "http-username"
 
-	// httpBasicAuthSecret is the reference to a secret in the PipelineRun or TaskRun namespace to use for basic auth
-	httpBasicAuthSecret string = "http-password-secret"
+	// HttpBasicAuthSecret is the reference to a secret in the PipelineRun or TaskRun namespace to use for basic auth
+	HttpBasicAuthSecret string = "http-password-secret"
 
-	// httpBasicAuthSecretKey is the key in the httpBasicAuthSecret secret to use for basic auth
-	httpBasicAuthSecretKey string = "http-password-secret-key"
+	// HttpBasicAuthSecretKey is the key in the httpBasicAuthSecret secret to use for basic auth
+	HttpBasicAuthSecretKey string = "http-password-secret-key"
 )

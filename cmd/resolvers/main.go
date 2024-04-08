@@ -21,12 +21,13 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/resolution/resolver/bundle"
-	"github.com/tektoncd/pipeline/pkg/resolution/resolver/cluster"
-	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
-	"github.com/tektoncd/pipeline/pkg/resolution/resolver/git"
-	"github.com/tektoncd/pipeline/pkg/resolution/resolver/http"
-	"github.com/tektoncd/pipeline/pkg/resolution/resolver/hub"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/bundle"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/cluster"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/git"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/http"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/hub"
+	hubresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/hub"
 	filteredinformerfactory "knative.dev/pkg/client/injection/kube/informers/factory/filtered"
 	"knative.dev/pkg/injection/sharedmain"
 	"knative.dev/pkg/signals"
@@ -35,7 +36,7 @@ import (
 func main() {
 	ctx := filteredinformerfactory.WithSelectors(signals.NewContext(), v1alpha1.ManagedByLabelKey)
 	tektonHubURL := buildHubURL(os.Getenv("TEKTON_HUB_API"), "")
-	artifactHubURL := buildHubURL(os.Getenv("ARTIFACT_HUB_API"), hub.DefaultArtifactHubURL)
+	artifactHubURL := buildHubURL(os.Getenv("ARTIFACT_HUB_API"), hubresolution.DefaultArtifactHubURL)
 
 	sharedmain.MainWithContext(ctx, "controller",
 		framework.NewController(ctx, &git.Resolver{}),

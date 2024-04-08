@@ -32,11 +32,11 @@ import (
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/internal/resolution"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
-	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	common "github.com/tektoncd/pipeline/pkg/resolution/common"
 	bundle "github.com/tektoncd/pipeline/pkg/resolution/resolver/bundle"
 	frtesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
-	"github.com/tektoncd/pipeline/pkg/resolution/resolver/internal"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -56,7 +56,7 @@ const (
 func TestGetSelector(t *testing.T) {
 	resolver := bundle.Resolver{}
 	sel := resolver.GetSelector(context.Background())
-	if typ, has := sel[resolutioncommon.LabelKeyResolverType]; !has {
+	if typ, has := sel[common.LabelKeyResolverType]; !has {
 		t.Fatalf("unexpected selector: %v", sel)
 	} else if typ != bundle.LabelValueBundleResolverType {
 		t.Fatalf("unexpected type: %q", typ)
@@ -347,7 +347,7 @@ func TestResolve(t *testing.T) {
 				kind:   "task",
 			},
 			imageName:      "single-task",
-			expectedStatus: internal.CreateResolutionRequestStatusWithData(taskAsYAML),
+			expectedStatus: resolution.CreateResolutionRequestStatusWithData(taskAsYAML),
 		}, {
 			name: "single task: param kind is capitalized, but kind in bundle is not",
 			args: &params{
@@ -357,7 +357,7 @@ func TestResolve(t *testing.T) {
 			},
 			kindInBundle:   "task",
 			imageName:      "single-task",
-			expectedStatus: internal.CreateResolutionRequestStatusWithData(taskAsYAML),
+			expectedStatus: resolution.CreateResolutionRequestStatusWithData(taskAsYAML),
 		}, {
 			name: "single task: tag is included in the bundle parameter",
 			args: &params{
@@ -366,7 +366,7 @@ func TestResolve(t *testing.T) {
 				kind:   "task",
 			},
 			imageName:      "single-task",
-			expectedStatus: internal.CreateResolutionRequestStatusWithData(taskAsYAML),
+			expectedStatus: resolution.CreateResolutionRequestStatusWithData(taskAsYAML),
 		}, {
 			name: "single task: using default kind value from configmap",
 			args: &params{
@@ -374,7 +374,7 @@ func TestResolve(t *testing.T) {
 				name:   "example-task",
 			},
 			imageName:      "single-task",
-			expectedStatus: internal.CreateResolutionRequestStatusWithData(taskAsYAML),
+			expectedStatus: resolution.CreateResolutionRequestStatusWithData(taskAsYAML),
 		}, {
 			name: "single pipeline",
 			args: &params{
@@ -383,7 +383,7 @@ func TestResolve(t *testing.T) {
 				kind:   "pipeline",
 			},
 			imageName:      "single-pipeline",
-			expectedStatus: internal.CreateResolutionRequestStatusWithData(pipelineAsYAML),
+			expectedStatus: resolution.CreateResolutionRequestStatusWithData(pipelineAsYAML),
 		}, {
 			name: "multiple resources: an image has both task and pipeline resource",
 			args: &params{
@@ -392,7 +392,7 @@ func TestResolve(t *testing.T) {
 				kind:   "pipeline",
 			},
 			imageName:      "multiple-resources",
-			expectedStatus: internal.CreateResolutionRequestStatusWithData(pipelineAsYAML),
+			expectedStatus: resolution.CreateResolutionRequestStatusWithData(pipelineAsYAML),
 		}, {
 			name: "too many objects in an image",
 			args: &params{
@@ -400,7 +400,7 @@ func TestResolve(t *testing.T) {
 				name:   "2-task",
 				kind:   "task",
 			},
-			expectedStatus:     internal.CreateResolutionRequestFailureStatus(),
+			expectedStatus:     resolution.CreateResolutionRequestFailureStatus(),
 			expectedErrMessage: fmt.Sprintf("contained more than the maximum %d allow objects", bundle.MaximumBundleObjects),
 		}, {
 			name: "single task no version",
@@ -409,7 +409,7 @@ func TestResolve(t *testing.T) {
 				name:   "foo",
 				kind:   "task",
 			},
-			expectedStatus:     internal.CreateResolutionRequestFailureStatus(),
+			expectedStatus:     resolution.CreateResolutionRequestFailureStatus(),
 			expectedErrMessage: fmt.Sprintf("the layer 0 does not contain a %s annotation", bundle.BundleAnnotationAPIVersion),
 		}, {
 			name: "single task no kind",
@@ -418,7 +418,7 @@ func TestResolve(t *testing.T) {
 				name:   "foo",
 				kind:   "task",
 			},
-			expectedStatus:     internal.CreateResolutionRequestFailureStatus(),
+			expectedStatus:     resolution.CreateResolutionRequestFailureStatus(),
 			expectedErrMessage: fmt.Sprintf("the layer 0 does not contain a %s annotation", bundle.BundleAnnotationKind),
 		}, {
 			name: "single task no name",
@@ -427,7 +427,7 @@ func TestResolve(t *testing.T) {
 				name:   "foo",
 				kind:   "task",
 			},
-			expectedStatus:     internal.CreateResolutionRequestFailureStatus(),
+			expectedStatus:     resolution.CreateResolutionRequestFailureStatus(),
 			expectedErrMessage: fmt.Sprintf("the layer 0 does not contain a %s annotation", bundle.BundleAnnotationName),
 		}, {
 			name: "single task kind incorrect form",
@@ -436,7 +436,7 @@ func TestResolve(t *testing.T) {
 				name:   "foo",
 				kind:   "task",
 			},
-			expectedStatus:     internal.CreateResolutionRequestFailureStatus(),
+			expectedStatus:     resolution.CreateResolutionRequestFailureStatus(),
 			expectedErrMessage: fmt.Sprintf("the layer 0 the annotation %s must be lowercased and singular, found %s", bundle.BundleAnnotationKind, "Task"),
 		},
 	}
@@ -521,7 +521,7 @@ func createRequest(p *params) *v1beta1.ResolutionRequest {
 			Namespace:         "foo",
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 			Labels: map[string]string{
-				resolutioncommon.LabelKeyResolverType: bundle.LabelValueBundleResolverType,
+				common.LabelKeyResolverType: bundle.LabelValueBundleResolverType,
 			},
 		},
 		Spec: v1beta1.ResolutionRequestSpec{
@@ -544,7 +544,7 @@ func createRequest(p *params) *v1beta1.ResolutionRequest {
 }
 
 func createError(image, msg string) error {
-	return &resolutioncommon.GetResourceError{
+	return &common.GetResourceError{
 		ResolverName: bundle.BundleResolverName,
 		Key:          "foo/rr",
 		Original:     fmt.Errorf("invalid tekton bundle %s, error: %s", image, msg),

@@ -14,13 +14,13 @@
  limitations under the License.
 */
 
-package internal
+package resolution
 
 import (
 	"encoding/base64"
 
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
-	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	common "github.com/tektoncd/pipeline/pkg/resolution/common"
 	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -43,7 +43,7 @@ func CreateResolutionRequestFailureStatus() *v1beta1.ResolutionRequestStatus {
 			Conditions: duckv1.Conditions{{
 				Type:   apis.ConditionSucceeded,
 				Status: corev1.ConditionFalse,
-				Reason: resolutioncommon.ReasonResolutionFailed,
+				Reason: common.ReasonResolutionFailed,
 			}},
 		},
 	}
