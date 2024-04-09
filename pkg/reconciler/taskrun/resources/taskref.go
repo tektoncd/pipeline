@@ -134,7 +134,8 @@ func GetStepActionFunc(tekton clientset.Interface, k8s kubernetes.Interface, req
 		// Return an inline function that implements GetStepAction by calling Resolver.Get with the specified StepAction type and
 		// casting it to a StepAction.
 		return func(ctx context.Context, name string) (*v1alpha1.StepAction, *v1.RefSource, error) {
-			// TODO(#7259): support params replacements for resolver params
+			// Perform params replacements for StepAction resolver params
+			ApplyParameterSubstitutionInResolverParams(tr, step)
 			resolver := resolution.NewResolver(requester, tr, string(step.Ref.Resolver), trName, namespace, step.Ref.Params)
 			return resolveStepAction(ctx, resolver, name, namespace, k8s, tekton)
 		}
@@ -144,6 +145,46 @@ func GetStepActionFunc(tekton clientset.Interface, k8s kubernetes.Interface, req
 		Tektonclient: tekton,
 	}
 	return local.GetStepAction
+}
+
+// ApplyParameterSubstitutionInResolverParams applies parameter substitutions in resolver params for Step Ref.
+func ApplyParameterSubstitutionInResolverParams(tr *v1.TaskRun, step *v1.Step) {
+	stringReplacements := make(map[string]string)
+	arrayReplacements := make(map[string][]string)
+	objectReplacements := make(map[string]map[string]string)
+	if tr.Spec.TaskSpec != nil {
+		defaultSR, defaultAR, defaultOR := replacementsFromDefaultParams(tr.Spec.TaskSpec.Params)
+		stringReplacements, arrayReplacements, objectReplacements = extendReplacements(stringReplacements, arrayReplacements, objectReplacements, defaultSR, defaultAR, defaultOR)
+	}
+	paramSR, paramAR, paramOR := replacementsFromParams(tr.Spec.Params)
+	stringReplacements, arrayReplacements, objectReplacements = extendReplacements(stringReplacements, arrayReplacements, objectReplacements, paramSR, paramAR, paramOR)
+	step.Ref.Params = step.Ref.Params.ReplaceVariables(stringReplacements, arrayReplacements, objectReplacements)
+}
+
+func extendReplacements(stringReplacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string, stringReplacementsToAdd map[string]string, arrayReplacementsToAdd map[string][]string, objectReplacementsToAdd map[string]map[string]string) (map[string]string, map[string][]string, map[string]map[string]string) {
+	for k, v := range stringReplacementsToAdd {
+		stringReplacements[k] = v
+	}
+	for k, v := range arrayReplacementsToAdd {
+		arrayReplacements[k] = v
+	}
+	objectReplacements = extendObjectReplacements(objectReplacements, objectReplacementsToAdd)
+	return stringReplacements, arrayReplacements, objectReplacements
+}
+
+func extendObjectReplacements(objectReplacements map[string]map[string]string, objectReplacementsToAdd map[string]map[string]string) map[string]map[string]string {
+	for k, v := range objectReplacementsToAdd {
+		for key, val := range v {
+			if objectReplacements != nil {
+				if objectReplacements[k] != nil {
+					objectReplacements[k][key] = val
+				} else {
+					objectReplacements[k] = v
+				}
+			}
+		}
+	}
+	return objectReplacements
 }
 
 // resolveTask accepts an impl of remote.Resolver and attempts to

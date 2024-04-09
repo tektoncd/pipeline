@@ -339,6 +339,261 @@ func TestLocalTaskRef(t *testing.T) {
 	}
 }
 
+func TestStepActionResolverParamReplacements(t *testing.T) {
+	testcases := []struct {
+		name      string
+		namespace string
+		taskrun   *v1.TaskRun
+		want      *v1.Step
+	}{{
+		name:      "default taskspec parms",
+		namespace: "default",
+		taskrun: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "some-tr"},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Params: []v1.ParamSpec{{
+						Name:    "resolver-param",
+						Default: v1.NewStructuredValues("foo/bar"),
+					}},
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							ResolverRef: v1.ResolverRef{
+								Resolver: "git",
+								Params: []v1.Param{{
+									Name:  "pathInRepo",
+									Value: *v1.NewStructuredValues("$(params.resolver-param)"),
+								}},
+							},
+						},
+					}},
+				},
+			},
+		},
+		want: &v1.Step{
+			Ref: &v1.Ref{
+				ResolverRef: v1.ResolverRef{
+					Resolver: "git",
+					Params: []v1.Param{{
+						Name:  "pathInRepo",
+						Value: *v1.NewStructuredValues("foo/bar"),
+					}},
+				},
+			},
+		},
+	}, {
+		name:      "default taskspec array parms",
+		namespace: "default",
+		taskrun: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "some-tr"},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Params: []v1.ParamSpec{{
+						Name:    "resolver-param",
+						Type:    v1.ParamTypeArray,
+						Default: v1.NewStructuredValues("foo/bar", "bar/baz"),
+					}},
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							ResolverRef: v1.ResolverRef{
+								Resolver: "git",
+								Params: []v1.Param{{
+									Name:  "pathInRepo",
+									Value: *v1.NewStructuredValues("$(params.resolver-param[0])"),
+								}},
+							},
+						},
+					}},
+				},
+			},
+		},
+		want: &v1.Step{
+			Ref: &v1.Ref{
+				ResolverRef: v1.ResolverRef{
+					Resolver: "git",
+					Params: []v1.Param{{
+						Name:  "pathInRepo",
+						Value: *v1.NewStructuredValues("foo/bar"),
+					}},
+				},
+			},
+		},
+	}, {
+		name:      "default taskspec object parms",
+		namespace: "default",
+		taskrun: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "some-tr"},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Params: []v1.ParamSpec{{
+						Name: "resolver-param",
+						Type: v1.ParamTypeObject,
+						Properties: map[string]v1.PropertySpec{
+							"key1": {},
+						},
+						Default: v1.NewObject(map[string]string{
+							"key1": "foo/bar",
+						}),
+					}},
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							ResolverRef: v1.ResolverRef{
+								Resolver: "git",
+								Params: []v1.Param{{
+									Name:  "pathInRepo",
+									Value: *v1.NewStructuredValues("$(params.resolver-param.key1)"),
+								}},
+							},
+						},
+					}},
+				},
+			},
+		},
+		want: &v1.Step{
+			Ref: &v1.Ref{
+				ResolverRef: v1.ResolverRef{
+					Resolver: "git",
+					Params: []v1.Param{{
+						Name:  "pathInRepo",
+						Value: *v1.NewStructuredValues("foo/bar"),
+					}},
+				},
+			},
+		},
+	}, {
+		name:      "default and taskrun params",
+		namespace: "default",
+		taskrun: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "some-tr"},
+			Spec: v1.TaskRunSpec{
+				Params: []v1.Param{{
+					Name:  "resolver-param",
+					Value: *v1.NewStructuredValues("foo/bar/baz"),
+				}},
+				TaskSpec: &v1.TaskSpec{
+					Params: []v1.ParamSpec{{
+						Name:    "resolver-param",
+						Default: v1.NewStructuredValues("foo/bar"),
+					}},
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							ResolverRef: v1.ResolverRef{
+								Resolver: "git",
+								Params: []v1.Param{{
+									Name:  "pathInRepo",
+									Value: *v1.NewStructuredValues("$(params.resolver-param)"),
+								}},
+							},
+						},
+					}},
+				},
+			},
+		},
+		want: &v1.Step{
+			Ref: &v1.Ref{
+				ResolverRef: v1.ResolverRef{
+					Resolver: "git",
+					Params: []v1.Param{{
+						Name:  "pathInRepo",
+						Value: *v1.NewStructuredValues("foo/bar/baz"),
+					}},
+				},
+			},
+		},
+	}, {
+		name:      "default and taskrun object parms",
+		namespace: "default",
+		taskrun: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "some-tr"},
+			Spec: v1.TaskRunSpec{
+				Params: v1.Params{{
+					Name:  "resolver-param",
+					Value: *v1.NewObject(map[string]string{"key1": "foo/bar/baz"}),
+				}},
+				TaskSpec: &v1.TaskSpec{
+					Params: []v1.ParamSpec{{
+						Name: "resolver-param",
+						Type: v1.ParamTypeObject,
+						Properties: map[string]v1.PropertySpec{
+							"key1": {},
+						},
+						Default: v1.NewObject(map[string]string{
+							"key1": "foo/bar",
+						}),
+					}},
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							ResolverRef: v1.ResolverRef{
+								Resolver: "git",
+								Params: []v1.Param{{
+									Name:  "pathInRepo",
+									Value: *v1.NewStructuredValues("$(params.resolver-param.key1)"),
+								}},
+							},
+						},
+					}},
+				},
+			},
+		},
+		want: &v1.Step{
+			Ref: &v1.Ref{
+				ResolverRef: v1.ResolverRef{
+					Resolver: "git",
+					Params: []v1.Param{{
+						Name:  "pathInRepo",
+						Value: *v1.NewStructuredValues("foo/bar/baz"),
+					}},
+				},
+			},
+		},
+	}, {
+		name:      "taskrun params",
+		namespace: "default",
+		taskrun: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "some-tr"},
+			Spec: v1.TaskRunSpec{
+				Params: []v1.Param{{
+					Name:  "resolver-param",
+					Value: *v1.NewStructuredValues("foo/bar/baz"),
+				}},
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							ResolverRef: v1.ResolverRef{
+								Resolver: "git",
+								Params: []v1.Param{{
+									Name:  "pathInRepo",
+									Value: *v1.NewStructuredValues("$(params.resolver-param)"),
+								}},
+							},
+						},
+					}},
+				},
+			},
+		},
+		want: &v1.Step{
+			Ref: &v1.Ref{
+				ResolverRef: v1.ResolverRef{
+					Resolver: "git",
+					Params: []v1.Param{{
+						Name:  "pathInRepo",
+						Value: *v1.NewStructuredValues("foo/bar/baz"),
+					}},
+				},
+			},
+		},
+	}}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			step := &tc.taskrun.Spec.TaskSpec.Steps[0]
+			resources.ApplyParameterSubstitutionInResolverParams(tc.taskrun, step)
+			if d := cmp.Diff(tc.want, step); tc.want != nil && d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestStepActionRef(t *testing.T) {
 	testcases := []struct {
 		name        string
