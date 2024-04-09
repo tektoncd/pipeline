@@ -57,10 +57,17 @@ This Pipeline uses:
 
 To start from scratch and use these Pipelines and Tasks:
 
-1. [Install Tekton](#install-tekton)
-1. [Setup the Tasks and Pipelines](#install-tasks-and-pipelines)
-1. [Create the required service account + secrets](#service-account-and-secrets)
-1. [Setup post-processing](#setup-post-processing)
+- [Tekton Repo CI/CD](#tekton-repo-cicd)
+  - [Create an official release](#create-an-official-release)
+  - [Create a patch release](#create-a-patch-release)
+  - [Nightly releases](#nightly-releases)
+  - [Setup](#setup)
+    - [Install Tekton](#install-tekton)
+    - [Install tasks and pipelines](#install-tasks-and-pipelines)
+    - [Service account and secrets](#service-account-and-secrets)
+    - [Setup post processing](#setup-post-processing)
+  - [Supporting scripts and images](#supporting-scripts-and-images)
+    - [ko image](#ko-image)
 
 ### Install Tekton
 
@@ -110,7 +117,6 @@ Apply the tasks from the `pipeline` repo:
 # Apply the Tasks and Pipelines we use from this repo
 kubectl apply -f tekton/publish.yaml
 kubectl apply -f tekton/release-pipeline.yaml
-kubectl apply -f tekton/release-pipeline-nightly.yaml
 
 # Apply the resources - note that when manually releasing you'll re-apply these
 kubectl apply -f tekton/resources.yaml
