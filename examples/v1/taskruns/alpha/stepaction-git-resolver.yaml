@@ -4,6 +4,13 @@ kind: TaskRun
 metadata:
   generateName: step-action-run-
 spec:
+  params:
+    - name: pathInRepo
+      value: basic_step.yaml
+    - name: revision
+      value: main
+    - name: repoUrl
+      value: https://github.com/chitrangpatel/repo1M.git
   TaskSpec:
     steps:
       - name: action-runner
@@ -11,8 +18,8 @@ spec:
           resolver: git
           params:
             - name: url
-              value: https://github.com/chitrangpatel/repo1M.git
+              value: $(params.repoUrl)
             - name: revision
-              value: main
+              value: $(params.revision)
             - name: pathInRepo
-              value: basic_step.yaml
+              value: $(params.pathInRepo)
