@@ -36,12 +36,12 @@ In order to ensure that Tasks are scheduled to a node with the correct host OS, 
 
 ### Node Selectors
 
-Node selectors are the simplest way to schedule pods to a Windows or Linux node. By default, Kubernetes nodes include a label `kubernetes.io/os` to identify the host OS. The Kubelet populates this with `runtime.GOOS` as defined by Go. Use `spec.podTemplate.nodeSelector` (or `spec.taskRunSpecs[i].taskPodTemplate.nodeSelector` in a PipelineRun) to schedule Tasks to a node with a specific label and value.
+Node selectors are the simplest way to schedule pods to a Windows or Linux node. By default, Kubernetes nodes include a label `kubernetes.io/os` to identify the host OS. The Kubelet populates this with `runtime.GOOS` as defined by Go. Use `spec.podTemplate.nodeSelector` (or `spec.taskRunSpecs[i].podTemplate.nodeSelector` in a PipelineRun) to schedule Tasks to a node with a specific label and value.
 
 For example:
 
 ``` yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: TaskRun
 metadata:
   name: windows-taskrun
@@ -52,7 +52,7 @@ spec:
     nodeSelector:
       kubernetes.io/os: windows
 ---
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: TaskRun
 metadata:
   name: linux-taskrun
@@ -71,7 +71,7 @@ Node affinity can be used as an alternative method of defining the OS requiremen
 For example:
 
 ```yaml
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: TaskRun
 metadata:
   name: windows-taskrun
@@ -89,7 +89,7 @@ spec:
                   values:
                   - windows
 ---
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: TaskRun
 metadata:
   name: linux-taskrun

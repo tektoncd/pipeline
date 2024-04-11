@@ -31,6 +31,6 @@ spec:
     name: windows-pipeline-ns
   taskRunSpecs:
     - pipelineTaskName: windows-task-ns
-      taskPodTemplate:
+      podTemplate:
         nodeSelector:
           kubernetes.io/os: windows

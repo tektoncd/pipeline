@@ -74,7 +74,7 @@ spec:
   - pipelineTaskName: first-add-taskspec
     serviceAccountName: 'default'
   - pipelineTaskName: second-add-taskspec
-    taskPodTemplate:
+    podTemplate:
       nodeSelector:
         disktype: ssd
   params:
