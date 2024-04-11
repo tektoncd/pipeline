@@ -285,6 +285,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 				for _, r := range results {
 					if r.ResultType == result.ArtifactsResultType {
 						if err := json.Unmarshal([]byte(r.Value), &as); err != nil {
+							logger.Errorf("result value could not be parsed as Artifacts: %v", err)
 							merr = multierror.Append(merr, err)
 						}
 						// there should be only one ArtifactsResult
