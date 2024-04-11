@@ -268,15 +268,21 @@ func viewRegister(cfg *config.Metrics) error {
 		Aggregation: view.LastValue(),
 	}
 
+	throttleViewTags := []tag.Key{}
+	if cfg.ThrottleWithNamespace {
+		throttleViewTags = append(throttleViewTags, namespaceTag)
+	}
 	runningTRsThrottledByQuotaView = &view.View{
 		Description: runningTRsThrottledByQuota.Description(),
 		Measure:     runningTRsThrottledByQuota,
 		Aggregation: view.LastValue(),
+		TagKeys:     throttleViewTags,
 	}
 	runningTRsThrottledByNodeView = &view.View{
 		Description: runningTRsThrottledByNode.Description(),
 		Measure:     runningTRsThrottledByNode,
 		Aggregation: view.LastValue(),
+		TagKeys:     throttleViewTags,
 	}
 	podLatencyView = &view.View{
 		Description: podLatency.Description(),
@@ -427,22 +433,44 @@ func (r *Recorder) RunningTaskRuns(ctx context.Context, lister listers.TaskRunLi
 		return err
 	}
 
+	cfg := config.FromContextOrDefaults(ctx)
+	addNamespaceLabelToQuotaThrottleMetric := cfg.Metrics != nil && cfg.Metrics.ThrottleWithNamespace
+
 	var runningTrs int
-	var trsThrottledByQuota int
-	var trsThrottledByNode int
+	trsThrottledByQuota := map[string]int{}
+	trsThrottledByQuotaCount := 0
+	trsThrottledByNode := map[string]int{}
+	trsThrottledByNodeCount := 0
 	var trsWaitResolvingTaskRef int
 	for _, pr := range trs {
+		// initialize metrics with namespace tag to zero if unset; will then update as needed below
+		_, ok := trsThrottledByQuota[pr.Namespace]
+		if !ok {
+			trsThrottledByQuota[pr.Namespace] = 0
+		}
+		_, ok = trsThrottledByNode[pr.Namespace]
+		if !ok {
+			trsThrottledByNode[pr.Namespace] = 0
+		}
+
 		if pr.IsDone() {
 			continue
 		}
 		runningTrs++
+
 		succeedCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
 		if succeedCondition != nil && succeedCondition.Status == corev1.ConditionUnknown {
 			switch succeedCondition.Reason {
 			case pod.ReasonExceededResourceQuota:
-				trsThrottledByQuota++
+				trsThrottledByQuotaCount++
+				cnt := trsThrottledByQuota[pr.Namespace]
+				cnt++
+				trsThrottledByQuota[pr.Namespace] = cnt
 			case pod.ReasonExceededNodeResources:
-				trsThrottledByNode++
+				trsThrottledByNodeCount++
+				cnt := trsThrottledByNode[pr.Namespace]
+				cnt++
+				trsThrottledByNode[pr.Namespace] = cnt
 			case v1.TaskRunReasonResolvingTaskRef:
 				trsWaitResolvingTaskRef++
 			}
@@ -455,12 +483,28 @@ func (r *Recorder) RunningTaskRuns(ctx context.Context, lister listers.TaskRunLi
 	}
 	metrics.Record(ctx, runningTRsCount.M(float64(runningTrs)))
 	metrics.Record(ctx, runningTRs.M(float64(runningTrs)))
-	metrics.Record(ctx, runningTRsThrottledByNodeCount.M(float64(trsThrottledByNode)))
-	metrics.Record(ctx, runningTRsThrottledByQuotaCount.M(float64(trsThrottledByQuota)))
 	metrics.Record(ctx, runningTRsWaitingOnTaskResolutionCount.M(float64(trsWaitResolvingTaskRef)))
-	metrics.Record(ctx, runningTRsThrottledByNode.M(float64(trsThrottledByNode)))
-	metrics.Record(ctx, runningTRsThrottledByQuota.M(float64(trsThrottledByQuota)))
+	metrics.Record(ctx, runningTRsThrottledByQuotaCount.M(float64(trsThrottledByQuotaCount)))
+	metrics.Record(ctx, runningTRsThrottledByNodeCount.M(float64(trsThrottledByNodeCount)))
 
+	for ns, cnt := range trsThrottledByQuota {
+		var mutators []tag.Mutator
+		if addNamespaceLabelToQuotaThrottleMetric {
+			mutators = []tag.Mutator{tag.Insert(namespaceTag, ns)}
+		}
+		ctx, err = tag.New(ctx, mutators...)
+		if err != nil {
+			return err
+		}
+		metrics.Record(ctx, runningTRsThrottledByQuota.M(float64(cnt)))
+	}
+	for ns, cnt := range trsThrottledByNode {
+		ctx, err = tag.New(ctx, []tag.Mutator{tag.Insert(namespaceTag, ns)}...)
+		if err != nil {
+			return err
+		}
+		metrics.Record(ctx, runningTRsThrottledByNode.M(float64(cnt)))
+	}
 	return nil
 }
 

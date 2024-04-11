@@ -39,6 +39,9 @@ const (
 	// countWithReasonKey sets if the reason label should be included on count metrics
 	countWithReasonKey = "metrics.count.enable-reason"
 
+	// throttledWithNamespaceKey sets if the namespace label should be included on the taskrun throttled metrics
+	throttledWithNamespaceKey = "metrics.taskrun.throttle.enable-namespace"
+
 	// DefaultTaskrunLevel determines to what level to aggregate metrics
 	// when it isn't specified in configmap
 	DefaultTaskrunLevel = TaskrunLevelAtTask
@@ -96,6 +99,7 @@ type Metrics struct {
 	DurationTaskrunType     string
 	DurationPipelinerunType string
 	CountWithReason         bool
+	ThrottleWithNamespace   bool
 }
 
 // GetMetricsConfigName returns the name of the configmap containing all
@@ -129,6 +133,7 @@ func newMetricsFromMap(cfgMap map[string]string) (*Metrics, error) {
 		DurationTaskrunType:     DefaultDurationTaskrunType,
 		DurationPipelinerunType: DefaultDurationPipelinerunType,
 		CountWithReason:         false,
+		ThrottleWithNamespace:   false,
 	}
 
 	if taskrunLevel, ok := cfgMap[metricsTaskrunLevelKey]; ok {
@@ -147,6 +152,10 @@ func newMetricsFromMap(cfgMap map[string]string) (*Metrics, error) {
 
 	if countWithReason, ok := cfgMap[countWithReasonKey]; ok && countWithReason != "false" {
 		tc.CountWithReason = true
+	}
+
+	if throttleWithNamespace, ok := cfgMap[throttledWithNamespaceKey]; ok && throttleWithNamespace != "false" {
+		tc.ThrottleWithNamespace = true
 	}
 
 	return &tc, nil

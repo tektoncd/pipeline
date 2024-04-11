@@ -11,24 +11,24 @@ The following pipeline metrics are available at `controller-service` on port `90
 
 We expose several kinds of exporters, including Prometheus, Google Stackdriver, and many others. You can set them up using [observability configuration](../config/config-observability.yaml).
 
-| Name                                                                                    | Type | Labels/Tags | Status |
-|-----------------------------------------------------------------------------------------| ----------- | ----------- | ----------- |
+| Name                                                                                    | Type | Labels/Tags                                     | Status |
+|-----------------------------------------------------------------------------------------| ----------- |-------------------------------------------------| ----------- |
 | `tekton_pipelines_controller_pipelinerun_duration_seconds_[bucket, sum, count]`         | Histogram/LastValue(Gauge) | `*pipeline`=&lt;pipeline_name&gt; <br> `*pipelinerun`=&lt;pipelinerun_name&gt; <br> `status`=&lt;status&gt; <br> `namespace`=&lt;pipelinerun-namespace&gt; | experimental |
-| `tekton_pipelines_controller_pipelinerun_taskrun_duration_seconds_[bucket, sum, count]` | Histogram/LastValue(Gauge) | `*pipeline`=&lt;pipeline_name&gt; <br> `*pipelinerun`=&lt;pipelinerun_name&gt; <br> `status`=&lt;status&gt; <br> `*task`=&lt;task_name&gt; <br> `*taskrun`=&lt;taskrun_name&gt;<br> `namespace`=&lt;pipelineruns-taskruns-namespace&gt;| experimental |
-| `tekton_pipelines_controller_pipelinerun_count` | Counter | `status`=&lt;status&gt; | deprecate |
-| `tekton_pipelines_controller_pipelinerun_total` | Counter | `status`=&lt;status&gt; | experimental |
-| `tekton_pipelines_controller_running_pipelineruns_count` | Gauge | | deprecate |
-| `tekton_pipelines_controller_running_pipelineruns` | Gauge | | experimental |
+| `tekton_pipelines_controller_pipelinerun_taskrun_duration_seconds_[bucket, sum, count]` | Histogram/LastValue(Gauge) | `*pipeline`=&lt;pipeline_name&gt; <br> `*pipelinerun`=&lt;pipelinerun_name&gt; <br> `status`=&lt;status&gt; <br> `*task`=&lt;task_name&gt; <br> `*taskrun`=&lt;taskrun_name&gt;<br> `namespace`=&lt;pipelineruns-taskruns-namespace&gt; | experimental |
+| `tekton_pipelines_controller_pipelinerun_count` | Counter | `status`=&lt;status&gt;                         | deprecate |
+| `tekton_pipelines_controller_pipelinerun_total` | Counter | `status`=&lt;status&gt;                         | experimental |
+| `tekton_pipelines_controller_running_pipelineruns_count` | Gauge |                                                 | deprecate |
+| `tekton_pipelines_controller_running_pipelineruns` | Gauge |                                                 | experimental |
 | `tekton_pipelines_controller_taskrun_duration_seconds_[bucket, sum, count]` | Histogram/LastValue(Gauge) | `status`=&lt;status&gt; <br> `*task`=&lt;task_name&gt; <br> `*taskrun`=&lt;taskrun_name&gt;<br> `namespace`=&lt;pipelineruns-taskruns-namespace&gt; | experimental |
-| `tekton_pipelines_controller_taskrun_count` | Counter | `status`=&lt;status&gt; | deprecate |
-| `tekton_pipelines_controller_taskrun_total` | Counter | `status`=&lt;status&gt; | experimental |
-| `tekton_pipelines_controller_running_taskruns_count` | Gauge | | deprecate |
-| `tekton_pipelines_controller_running_taskruns` | Gauge | | experimental |
-| `tekton_pipelines_controller_running_taskruns_throttled_by_quota_count` | Gauge | | deprecate |
-| `tekton_pipelines_controller_running_taskruns_throttled_by_node_count`  | Gauge | | deprecate |
-| `tekton_pipelines_controller_running_taskruns_throttled_by_quota` | Gauge | | experimental |
-| `tekton_pipelines_controller_running_taskruns_throttled_by_node`  | Gauge | | experimental |
-| `tekton_pipelines_controller_client_latency_[bucket, sum, count]` | Histogram | | experimental |
+| `tekton_pipelines_controller_taskrun_count` | Counter | `status`=&lt;status&gt;                         | deprecate |
+| `tekton_pipelines_controller_taskrun_total` | Counter | `status`=&lt;status&gt;                         | experimental |
+| `tekton_pipelines_controller_running_taskruns_count` | Gauge |                                                 | deprecate |
+| `tekton_pipelines_controller_running_taskruns` | Gauge |                                                 | experimental |
+| `tekton_pipelines_controller_running_taskruns_throttled_by_quota_count` | Gauge | <br> `namespace`=&lt;pipelinerun-namespace&gt;  | deprecate |
+| `tekton_pipelines_controller_running_taskruns_throttled_by_node_count`  | Gauge | <br> `namespace`=&lt;pipelinerun-namespace&gt;  | deprecate |
+| `tekton_pipelines_controller_running_taskruns_throttled_by_quota` | Gauge | <br> `namespace`=&lt;pipelinerun-namespace&gt; | experimental |
+| `tekton_pipelines_controller_running_taskruns_throttled_by_node`  | Gauge | <br> `namespace`=&lt;pipelinerun-namespace&gt; | experimental |
+| `tekton_pipelines_controller_client_latency_[bucket, sum, count]` | Histogram |                                                 | experimental |
 
 The Labels/Tag marked as "*" are optional. And there's a choice between Histogram and LastValue(Gauge) for pipelinerun and taskrun duration metrics.
 
@@ -48,7 +48,7 @@ A sample config-map has been provided as [config-observability](./../config/conf
 Following values are available in the configmap:
 
 | configmap data | value | description |
-| ---------- | ----------- | ----------- |
+| -- | ----------- | ----------- |
 | metrics.taskrun.level | `taskrun` | Level of metrics is taskrun |
 | metrics.taskrun.level | `task` | Level of metrics is task and taskrun label isn't present in the metrics |
 | metrics.taskrun.level | `namespace` | Level of metrics is namespace, and task and taskrun label isn't present in the metrics
@@ -60,6 +60,7 @@ Following values are available in the configmap:
 | metrics.pipelinerun.duration-type | `histogram` | `tekton_pipelines_controller_pipelinerun_duration_seconds` is of type histogram |
 | metrics.pipelinerun.duration-type | `lastvalue` | `tekton_pipelines_controller_pipelinerun_duration_seconds` is of type gauge or lastvalue |
 | metrics.count.enable-reason | `false` | Sets if the `reason` label should be included on count metrics |
+| metrics.taskrun.throttle.enable-namespace | `false` | Sets if the `namespace` label should be included on the `tekton_pipelines_controller_running_taskruns_throttled_by_quota` metric |
 
 Histogram value isn't available when pipelinerun or taskrun labels are selected. The Lastvalue or Gauge will be provided. Histogram would serve no purpose because it would generate a single bar. TaskRun and PipelineRun level metrics aren't recommended because they lead to an unbounded cardinality which degrades the observability database.
 

@@ -39,6 +39,7 @@ func TestNewMetricsFromConfigMap(t *testing.T) {
 				DurationTaskrunType:     config.DurationPipelinerunTypeHistogram,
 				DurationPipelinerunType: config.DurationPipelinerunTypeHistogram,
 				CountWithReason:         false,
+				ThrottleWithNamespace:   false,
 			},
 			fileName: config.GetMetricsConfigName(),
 		},
@@ -49,6 +50,7 @@ func TestNewMetricsFromConfigMap(t *testing.T) {
 				DurationTaskrunType:     config.DurationTaskrunTypeHistogram,
 				DurationPipelinerunType: config.DurationPipelinerunTypeLastValue,
 				CountWithReason:         false,
+				ThrottleWithNamespace:   false,
 			},
 			fileName: "config-observability-namespacelevel",
 		},
@@ -59,8 +61,20 @@ func TestNewMetricsFromConfigMap(t *testing.T) {
 				DurationTaskrunType:     config.DurationTaskrunTypeHistogram,
 				DurationPipelinerunType: config.DurationPipelinerunTypeLastValue,
 				CountWithReason:         true,
+				ThrottleWithNamespace:   false,
 			},
 			fileName: "config-observability-reason",
+		},
+		{
+			expectedConfig: &config.Metrics{
+				TaskrunLevel:            config.TaskrunLevelAtNS,
+				PipelinerunLevel:        config.PipelinerunLevelAtNS,
+				DurationTaskrunType:     config.DurationTaskrunTypeHistogram,
+				DurationPipelinerunType: config.DurationPipelinerunTypeLastValue,
+				CountWithReason:         true,
+				ThrottleWithNamespace:   true,
+			},
+			fileName: "config-observability-throttle",
 		},
 	}
 
@@ -77,6 +91,7 @@ func TestNewMetricsFromEmptyConfigMap(t *testing.T) {
 		DurationTaskrunType:     config.DurationPipelinerunTypeHistogram,
 		DurationPipelinerunType: config.DurationPipelinerunTypeHistogram,
 		CountWithReason:         false,
+		ThrottleWithNamespace:   false,
 	}
 	verifyConfigFileWithExpectedMetricsConfig(t, MetricsConfigEmptyName, expectedConfig)
 }
