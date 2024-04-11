@@ -12565,7 +12565,7 @@ string
 </tr>
 <tr>
 <td>
-<code>taskServiceAccountName</code><br/>
+<code>serviceAccountName</code><br/>
 <em>
 string
 </em>
@@ -12575,7 +12575,7 @@ string
 </tr>
 <tr>
 <td>
-<code>taskPodTemplate</code><br/>
+<code>podTemplate</code><br/>
 <em>
 <a href="#tekton.dev/unversioned.Template">
 Template
