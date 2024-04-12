@@ -171,236 +171,312 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 		expectedCount:    1,
 		beforeCondition:  nil,
 		countWithReason:  false,
-	}, {
-		name: "for succeeded taskrun with before condition",
-		taskRun: &v1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{Name: "taskrun-1", Namespace: "ns"},
-			Spec: v1.TaskRunSpec{
-				TaskRef: &v1.TaskRef{Name: "task-1"},
-			},
-			Status: v1.TaskRunStatus{
-				Status: duckv1.Status{
-					Conditions: duckv1.Conditions{{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionTrue,
-					}},
+	},
+		{
+			name: "for succeeded taskrun with inline task spec",
+			taskRun: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "taskrun-1", Namespace: "ns"},
+				Spec: v1.TaskRunSpec{
+					TaskSpec: &v1.TaskSpec{
+						DisplayName: "inline-task-1",
+					},
 				},
-				TaskRunStatusFields: v1.TaskRunStatusFields{
-					StartTime:      &startTime,
-					CompletionTime: &completionTime,
-				},
-			},
-		},
-		metricName: "taskrun_duration_seconds",
-		expectedDurationTags: map[string]string{
-			"task":      "task-1",
-			"taskrun":   "taskrun-1",
-			"namespace": "ns",
-			"status":    "success",
-		},
-		expectedCountTags: map[string]string{
-			"status": "success",
-		},
-		expectedDuration: 60,
-		expectedCount:    1,
-		beforeCondition: &apis.Condition{
-			Type:   apis.ConditionReady,
-			Status: corev1.ConditionUnknown,
-		},
-		countWithReason: false,
-	}, {
-		name: "for succeeded taskrun recount",
-		taskRun: &v1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{Name: "taskrun-1", Namespace: "ns"},
-			Spec: v1.TaskRunSpec{
-				TaskRef: &v1.TaskRef{Name: "task-1"},
-			},
-			Status: v1.TaskRunStatus{
-				Status: duckv1.Status{
-					Conditions: duckv1.Conditions{{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionTrue,
-					}},
-				},
-				TaskRunStatusFields: v1.TaskRunStatusFields{
-					StartTime:      &startTime,
-					CompletionTime: &completionTime,
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionTrue,
+						}},
+					},
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						StartTime:      &startTime,
+						CompletionTime: &completionTime,
+					},
 				},
 			},
-		},
-		metricName:           "taskrun_duration_seconds",
-		expectedDurationTags: nil,
-		expectedCountTags:    nil,
-		expectedDuration:     0,
-		expectedCount:        0,
-		beforeCondition: &apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionTrue,
-		},
-		countWithReason: false,
-	}, {
-		name: "for failed taskrun",
-		taskRun: &v1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{Name: "taskrun-1", Namespace: "ns"},
-			Spec: v1.TaskRunSpec{
-				TaskRef: &v1.TaskRef{Name: "task-1"},
+			metricName: "taskrun_duration_seconds",
+			expectedDurationTags: map[string]string{
+				"task":      "inline-task-1",
+				"taskrun":   "taskrun-1",
+				"namespace": "ns",
+				"status":    "success",
 			},
-			Status: v1.TaskRunStatus{
-				Status: duckv1.Status{
-					Conditions: duckv1.Conditions{{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionFalse,
-					}},
-				},
-				TaskRunStatusFields: v1.TaskRunStatusFields{
-					StartTime:      &startTime,
-					CompletionTime: &completionTime,
-				},
+			expectedCountTags: map[string]string{
+				"status": "success",
 			},
+			expectedDuration: 60,
+			expectedCount:    1,
+			beforeCondition:  nil,
+			countWithReason:  false,
 		},
-		metricName: "taskrun_duration_seconds",
-		expectedDurationTags: map[string]string{
-			"task":      "task-1",
-			"taskrun":   "taskrun-1",
-			"namespace": "ns",
-			"status":    "failed",
-		},
-		expectedCountTags: map[string]string{
-			"status": "failed",
-		},
-		expectedDuration: 60,
-		expectedCount:    1,
-		beforeCondition:  nil,
-		countWithReason:  false,
-	}, {
-		name: "for succeeded taskrun in pipelinerun",
-		taskRun: &v1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "taskrun-1", Namespace: "ns",
-				Labels: map[string]string{
-					pipeline.PipelineLabelKey:    "pipeline-1",
-					pipeline.PipelineRunLabelKey: "pipelinerun-1",
+		{
+			name: "for succeeded taskrun with bundle ref",
+			taskRun: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "taskrun-1", Namespace: "ns"},
+				Spec: v1.TaskRunSpec{
+					TaskRef: &v1.TaskRef{
+						ResolverRef: v1.ResolverRef{Params: []v1.Param{
+							{Name: "name", Value: v1.ParamValue{StringVal: "remote-task-1"}},
+						}},
+					},
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionTrue,
+						}},
+					},
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						StartTime:      &startTime,
+						CompletionTime: &completionTime,
+					},
 				},
 			},
-			Spec: v1.TaskRunSpec{
-				TaskRef: &v1.TaskRef{Name: "task-1"},
+			metricName: "taskrun_duration_seconds",
+			expectedDurationTags: map[string]string{
+				"task":      "remote-task-1",
+				"taskrun":   "taskrun-1",
+				"namespace": "ns",
+				"status":    "success",
 			},
-			Status: v1.TaskRunStatus{
-				Status: duckv1.Status{
-					Conditions: duckv1.Conditions{{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionTrue,
-					}},
-				},
-				TaskRunStatusFields: v1.TaskRunStatusFields{
-					StartTime:      &startTime,
-					CompletionTime: &completionTime,
-				},
+			expectedCountTags: map[string]string{
+				"status": "success",
 			},
-		},
-		metricName: "pipelinerun_taskrun_duration_seconds",
-		expectedDurationTags: map[string]string{
-			"pipeline":    "pipeline-1",
-			"pipelinerun": "pipelinerun-1",
-			"task":        "task-1",
-			"taskrun":     "taskrun-1",
-			"namespace":   "ns",
-			"status":      "success",
-		},
-		expectedCountTags: map[string]string{
-			"status": "success",
-		},
-		expectedDuration: 60,
-		expectedCount:    1,
-		beforeCondition:  nil,
-		countWithReason:  false,
-	}, {
-		name: "for failed taskrun in pipelinerun",
-		taskRun: &v1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "taskrun-1", Namespace: "ns",
-				Labels: map[string]string{
-					pipeline.PipelineLabelKey:    "pipeline-1",
-					pipeline.PipelineRunLabelKey: "pipelinerun-1",
+			expectedDuration: 60,
+			expectedCount:    1,
+			beforeCondition:  nil,
+			countWithReason:  false,
+		}, {
+			name: "for succeeded taskrun with before condition",
+			taskRun: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "taskrun-1", Namespace: "ns"},
+				Spec: v1.TaskRunSpec{
+					TaskRef: &v1.TaskRef{Name: "task-1"},
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionTrue,
+						}},
+					},
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						StartTime:      &startTime,
+						CompletionTime: &completionTime,
+					},
 				},
 			},
-			Spec: v1.TaskRunSpec{
-				TaskRef: &v1.TaskRef{Name: "task-1"},
+			metricName: "taskrun_duration_seconds",
+			expectedDurationTags: map[string]string{
+				"task":      "task-1",
+				"taskrun":   "taskrun-1",
+				"namespace": "ns",
+				"status":    "success",
 			},
-			Status: v1.TaskRunStatus{
-				Status: duckv1.Status{
-					Conditions: duckv1.Conditions{{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionFalse,
-					}},
-				},
-				TaskRunStatusFields: v1.TaskRunStatusFields{
-					StartTime:      &startTime,
-					CompletionTime: &completionTime,
-				},
+			expectedCountTags: map[string]string{
+				"status": "success",
 			},
-		},
-		metricName: "pipelinerun_taskrun_duration_seconds",
-		expectedDurationTags: map[string]string{
-			"pipeline":    "pipeline-1",
-			"pipelinerun": "pipelinerun-1",
-			"task":        "task-1",
-			"taskrun":     "taskrun-1",
-			"namespace":   "ns",
-			"status":      "failed",
-		},
-		expectedCountTags: map[string]string{
-			"status": "failed",
-		},
-		expectedDuration: 60,
-		expectedCount:    1,
-		beforeCondition:  nil,
-		countWithReason:  false,
-	}, {
-		name: "for failed taskrun in pipelinerun with reason",
-		taskRun: &v1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "taskrun-1", Namespace: "ns",
-				Labels: map[string]string{
-					pipeline.PipelineLabelKey:    "pipeline-1",
-					pipeline.PipelineRunLabelKey: "pipelinerun-1",
+			expectedDuration: 60,
+			expectedCount:    1,
+			beforeCondition: &apis.Condition{
+				Type:   apis.ConditionReady,
+				Status: corev1.ConditionUnknown,
+			},
+			countWithReason: false,
+		}, {
+			name: "for succeeded taskrun recount",
+			taskRun: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "taskrun-1", Namespace: "ns"},
+				Spec: v1.TaskRunSpec{
+					TaskRef: &v1.TaskRef{Name: "task-1"},
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionTrue,
+						}},
+					},
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						StartTime:      &startTime,
+						CompletionTime: &completionTime,
+					},
 				},
 			},
-			Spec: v1.TaskRunSpec{
-				TaskRef: &v1.TaskRef{Name: "task-1"},
+			metricName:           "taskrun_duration_seconds",
+			expectedDurationTags: nil,
+			expectedCountTags:    nil,
+			expectedDuration:     0,
+			expectedCount:        0,
+			beforeCondition: &apis.Condition{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionTrue,
 			},
-			Status: v1.TaskRunStatus{
-				Status: duckv1.Status{
-					Conditions: duckv1.Conditions{{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionFalse,
-						Reason: "TaskRunImagePullFailed",
-					}},
+			countWithReason: false,
+		}, {
+			name: "for failed taskrun",
+			taskRun: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "taskrun-1", Namespace: "ns"},
+				Spec: v1.TaskRunSpec{
+					TaskRef: &v1.TaskRef{Name: "task-1"},
 				},
-				TaskRunStatusFields: v1.TaskRunStatusFields{
-					StartTime:      &startTime,
-					CompletionTime: &completionTime,
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionFalse,
+						}},
+					},
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						StartTime:      &startTime,
+						CompletionTime: &completionTime,
+					},
 				},
 			},
-		},
-		metricName: "pipelinerun_taskrun_duration_seconds",
-		expectedDurationTags: map[string]string{
-			"pipeline":    "pipeline-1",
-			"pipelinerun": "pipelinerun-1",
-			"task":        "task-1",
-			"taskrun":     "taskrun-1",
-			"namespace":   "ns",
-			"status":      "failed",
-		},
-		expectedCountTags: map[string]string{
-			"status": "failed",
-			"reason": "TaskRunImagePullFailed",
-		},
-		expectedDuration: 60,
-		expectedCount:    1,
-		beforeCondition:  nil,
-		countWithReason:  true,
-	}} {
+			metricName: "taskrun_duration_seconds",
+			expectedDurationTags: map[string]string{
+				"task":      "task-1",
+				"taskrun":   "taskrun-1",
+				"namespace": "ns",
+				"status":    "failed",
+			},
+			expectedCountTags: map[string]string{
+				"status": "failed",
+			},
+			expectedDuration: 60,
+			expectedCount:    1,
+			beforeCondition:  nil,
+			countWithReason:  false,
+		}, {
+			name: "for succeeded taskrun in pipelinerun",
+			taskRun: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "taskrun-1", Namespace: "ns",
+					Labels: map[string]string{
+						pipeline.PipelineLabelKey:    "pipeline-1",
+						pipeline.PipelineRunLabelKey: "pipelinerun-1",
+					},
+				},
+				Spec: v1.TaskRunSpec{
+					TaskRef: &v1.TaskRef{Name: "task-1"},
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionTrue,
+						}},
+					},
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						StartTime:      &startTime,
+						CompletionTime: &completionTime,
+					},
+				},
+			},
+			metricName: "pipelinerun_taskrun_duration_seconds",
+			expectedDurationTags: map[string]string{
+				"pipeline":    "pipeline-1",
+				"pipelinerun": "pipelinerun-1",
+				"task":        "task-1",
+				"taskrun":     "taskrun-1",
+				"namespace":   "ns",
+				"status":      "success",
+			},
+			expectedCountTags: map[string]string{
+				"status": "success",
+			},
+			expectedDuration: 60,
+			expectedCount:    1,
+			beforeCondition:  nil,
+			countWithReason:  false,
+		}, {
+			name: "for failed taskrun in pipelinerun",
+			taskRun: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "taskrun-1", Namespace: "ns",
+					Labels: map[string]string{
+						pipeline.PipelineLabelKey:    "pipeline-1",
+						pipeline.PipelineRunLabelKey: "pipelinerun-1",
+					},
+				},
+				Spec: v1.TaskRunSpec{
+					TaskRef: &v1.TaskRef{Name: "task-1"},
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionFalse,
+						}},
+					},
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						StartTime:      &startTime,
+						CompletionTime: &completionTime,
+					},
+				},
+			},
+			metricName: "pipelinerun_taskrun_duration_seconds",
+			expectedDurationTags: map[string]string{
+				"pipeline":    "pipeline-1",
+				"pipelinerun": "pipelinerun-1",
+				"task":        "task-1",
+				"taskrun":     "taskrun-1",
+				"namespace":   "ns",
+				"status":      "failed",
+			},
+			expectedCountTags: map[string]string{
+				"status": "failed",
+			},
+			expectedDuration: 60,
+			expectedCount:    1,
+			beforeCondition:  nil,
+			countWithReason:  false,
+		}, {
+			name: "for failed taskrun in pipelinerun with reason",
+			taskRun: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "taskrun-1", Namespace: "ns",
+					Labels: map[string]string{
+						pipeline.PipelineLabelKey:    "pipeline-1",
+						pipeline.PipelineRunLabelKey: "pipelinerun-1",
+					},
+				},
+				Spec: v1.TaskRunSpec{
+					TaskRef: &v1.TaskRef{Name: "task-1"},
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionFalse,
+							Reason: "TaskRunImagePullFailed",
+						}},
+					},
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						StartTime:      &startTime,
+						CompletionTime: &completionTime,
+					},
+				},
+			},
+			metricName: "pipelinerun_taskrun_duration_seconds",
+			expectedDurationTags: map[string]string{
+				"pipeline":    "pipeline-1",
+				"pipelinerun": "pipelinerun-1",
+				"task":        "task-1",
+				"taskrun":     "taskrun-1",
+				"namespace":   "ns",
+				"status":      "failed",
+			},
+			expectedCountTags: map[string]string{
+				"status": "failed",
+				"reason": "TaskRunImagePullFailed",
+			},
+			expectedDuration: 60,
+			expectedCount:    1,
+			beforeCondition:  nil,
+			countWithReason:  true,
+		}} {
 		t.Run(c.name, func(t *testing.T) {
 			unregisterMetrics()
 

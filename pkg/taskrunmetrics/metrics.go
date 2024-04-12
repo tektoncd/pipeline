@@ -382,7 +382,17 @@ func (r *Recorder) DurationAndCount(ctx context.Context, tr *v1.TaskRun, beforeC
 
 	taskName := anonymous
 	if tr.Spec.TaskRef != nil {
-		taskName = tr.Spec.TaskRef.Name
+		if len(tr.Spec.TaskRef.Params) > 0 {
+			for _, p := range tr.Spec.TaskRef.Params {
+				if p.Name == "name" {
+					taskName = p.Value.StringVal
+				}
+			}
+		} else {
+			taskName = tr.Spec.TaskRef.Name
+		}
+	} else if tr.Spec.TaskSpec.DisplayName != "" {
+		taskName = tr.Spec.TaskSpec.DisplayName
 	}
 
 	cond := tr.Status.GetCondition(apis.ConditionSucceeded)
@@ -506,7 +516,17 @@ func (r *Recorder) RecordPodLatency(ctx context.Context, pod *corev1.Pod, tr *v1
 	latency := scheduledTime.Sub(pod.CreationTimestamp.Time)
 	taskName := anonymous
 	if tr.Spec.TaskRef != nil {
-		taskName = tr.Spec.TaskRef.Name
+		if len(tr.Spec.TaskRef.Params) > 0 {
+			for _, p := range tr.Spec.TaskRef.Params {
+				if p.Name == "name" {
+					taskName = p.Value.StringVal
+				}
+			}
+		} else {
+			taskName = tr.Spec.TaskRef.Name
+		}
+	} else if tr.Spec.TaskSpec.DisplayName != "" {
+		taskName = tr.Spec.TaskSpec.DisplayName
 	}
 
 	ctx, err := tag.New(
