@@ -2669,6 +2669,7 @@ func TestReconcilePodFailures(t *testing.T) {
 		failure                 string // "step" or "sidecar"
 		imagePullBackOffTimeout string
 		podNotFound             bool
+		usePodRTSCondition      bool // use "PodReadyToStartContainers"(1.29) or corev1.PodInitialized to start timeout
 	}{{
 		desc:    "image pull failed sidecar",
 		reason:  "ImagePullBackOff",
@@ -2696,12 +2697,21 @@ func TestReconcilePodFailures(t *testing.T) {
 		failure:                 "sidecar",
 		imagePullBackOffTimeout: "5s",
 	}, {
-		desc:                    "image pull failure for the sidecar with non-zero imagePullBackOff timeout and no pod",
+		desc:                    "image pull failure for the sidecar with non-zero imagePullBackOff timeout and no pod - using PodInitialized",
 		reason:                  "ImagePullBackOff",
 		message:                 "pods \"pod-1\" not found",
 		failure:                 "sidecar",
 		imagePullBackOffTimeout: "5m",
 		podNotFound:             true,
+		usePodRTSCondition:      false,
+	}, {
+		desc:                    "image pull failure for the sidecar with non-zero imagePullBackOff timeout and no pod - using PodReadyToStartContainer",
+		reason:                  "ImagePullBackOff",
+		message:                 "pods \"pod-1\" not found",
+		failure:                 "sidecar",
+		imagePullBackOffTimeout: "5m",
+		podNotFound:             true,
+		usePodRTSCondition:      true,
 	}, {
 		desc:                    "invalid image sidecar with non-zero imagePullBackOff timeout",
 		reason:                  "InvalidImageName",
@@ -2812,11 +2822,15 @@ status:
 				}
 			}
 			if !tc.podNotFound {
+				timeoutCondition := corev1.PodConditionType("PodReadyToStartContainers")
+				if !tc.usePodRTSCondition {
+					timeoutCondition = corev1.PodInitialized
+				}
 				d.Pods = []*corev1.Pod{{
 					ObjectMeta: metav1.ObjectMeta{Name: "pod-1", Namespace: "foo"},
 					Status: corev1.PodStatus{
 						Conditions: []corev1.PodCondition{{
-							Type:               corev1.PodScheduled,
+							Type:               timeoutCondition,
 							LastTransitionTime: metav1.Time{Time: time.Now()},
 						}},
 					},

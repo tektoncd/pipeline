@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -225,6 +226,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 }
 
 func (c *Reconciler) checkPodFailed(ctx context.Context, tr *v1.TaskRun) (bool, v1.TaskRunReason, string) {
+	imagePullBackOffTimeoutPodConditions := []string{string(corev1.PodInitialized), "PodReadyToStartContainers"}
 	for _, step := range tr.Status.Steps {
 		if step.Waiting != nil {
 			if _, found := podFailureReasons[step.Waiting.Reason]; found {
@@ -238,9 +240,9 @@ func (c *Reconciler) checkPodFailed(ctx context.Context, tr *v1.TaskRun) (bool, 
 							return true, v1.TaskRunReasonImagePullFailed, message
 						}
 						for _, condition := range p.Status.Conditions {
-							// check the pod condition to get the time when the pod was scheduled
+							// check the pod condition to get the time when the pod was ready to start containers / initialized.
 							// keep trying until the pod schedule time has exceeded the specified imagePullBackOff timeout duration
-							if condition.Type == corev1.PodScheduled {
+							if slices.Contains(imagePullBackOffTimeoutPodConditions, string(condition.Type)) {
 								if c.Clock.Since(condition.LastTransitionTime.Time) < imagePullBackOffTimeOut {
 									return false, "", ""
 								}
@@ -267,9 +269,9 @@ func (c *Reconciler) checkPodFailed(ctx context.Context, tr *v1.TaskRun) (bool, 
 							return true, v1.TaskRunReasonImagePullFailed, message
 						}
 						for _, condition := range p.Status.Conditions {
-							// check the pod condition to get the time when the pod was scheduled
+							// check the pod condition to get the time when the pod was ready to start containers / initialized.
 							// keep trying until the pod schedule time has exceeded the specified imagePullBackOff timeout duration
-							if condition.Type == corev1.PodScheduled {
+							if slices.Contains(imagePullBackOffTimeoutPodConditions, string(condition.Type)) {
 								if c.Clock.Since(condition.LastTransitionTime.Time) < imagePullBackOffTimeOut {
 									return false, "", ""
 								}
