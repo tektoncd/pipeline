@@ -1046,7 +1046,7 @@ spec:
 		},
 		wantPod: addVolumeMounts(expectedPod("test-taskrun-with-output-config-ws-pod", "", "test-taskrun-with-output-config-ws", "foo", config.DefaultServiceAccountValue, false,
 			[]corev1.Volume{{
-				Name: "ws-9l9zj",
+				Name: "ws-d872e",
 				VolumeSource: corev1.VolumeSource{
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				},
@@ -1058,7 +1058,7 @@ spec:
 				cmd:        "/mycmd",
 			}}),
 			[]corev1.VolumeMount{{
-				Name:      "ws-9l9zj",
+				Name:      "ws-d872e",
 				MountPath: "/workspace/data",
 			}}),
 	}} {
@@ -4034,8 +4034,8 @@ spec:
 		t.Fatalf("create pod threw error %v", err)
 	}
 
-	if vm := pod.Spec.Containers[0].VolumeMounts[0]; !strings.HasPrefix(vm.Name, "ws-9l9zj") || vm.MountPath != expectedMountPath {
-		t.Fatalf("failed to find expanded Workspace mountpath %v", expectedMountPath)
+	if vm := pod.Spec.Containers[0].VolumeMounts[0]; !strings.HasPrefix(vm.Name, "ws-f888c") || vm.MountPath != expectedMountPath {
+		t.Fatalf("failed to find expanded Workspace mountpath %v for %v", expectedMountPath, vm.Name)
 	}
 
 	if a := pod.Spec.Containers[0].Args; a[len(a)-1] != expectedReplacedArgs {

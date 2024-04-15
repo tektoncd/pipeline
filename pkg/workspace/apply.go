@@ -21,14 +21,15 @@ import (
 	"fmt"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	"github.com/tektoncd/pipeline/pkg/names"
+	pkgnames "github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 const (
-	volumeNameBase = "ws"
+	volumeNameBase      = "ws"
+	defaultRandomLength = 5
 )
 
 // nameVolumeMap is a map from a workspace's name to its Volume.
@@ -42,15 +43,31 @@ func (nvm nameVolumeMap) setVolumeSource(workspaceName string, volumeName string
 	}
 }
 
+// generateVolumeName generates a unique name for a volume based on the workspace name.
+func generateVolumeName(name string) string {
+	return pkgnames.GenerateHashedName(volumeNameBase, name, defaultRandomLength)
+}
+
 // CreateVolumes will return a dictionary where the keys are the names of the workspaces bound in
 // wb and the value is a newly-created Volume to use. If the same Volume is bound twice, the
 // resulting volumes will both have the same name to prevent the same Volume from being attached
-// to a pod twice. The names of the returned volumes will be a short random string starting "ws-".
+// to a pod twice. The names of the returned volumes will be a short hash string starting "ws-".
 func CreateVolumes(wb []v1.WorkspaceBinding) map[string]corev1.Volume {
 	pvcs := map[string]corev1.Volume{}
-	v := make(nameVolumeMap)
+	v := make(nameVolumeMap, len(wb))
+	// Track the names we've used so far to avoid collisions
+	usedNames := make(map[string]struct{}, len(wb))
+
 	for _, w := range wb {
-		name := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(volumeNameBase)
+		name := generateVolumeName(w.Name)
+
+		// If we've already generated this name, try appending extra characters until we find a unique name
+		for _, exists := usedNames[name]; exists; _, exists = usedNames[name] {
+			name = generateVolumeName(name + "$")
+		}
+		// Track the name we've used
+		usedNames[name] = struct{}{}
+
 		switch {
 		case w.PersistentVolumeClaim != nil:
 			// If it's a PVC, we need to check if we've encountered it before so we avoid mounting it twice

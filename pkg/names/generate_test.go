@@ -67,3 +67,64 @@ func TestRestrictLength(t *testing.T) {
 		})
 	}
 }
+
+func TestGenerateHashedName(t *testing.T) {
+	tests := []struct {
+		title              string
+		prefix             string
+		name               string
+		randomLength       int
+		expectedHashedName string
+	}{{
+		title:              "generate hashed name with custom random length",
+		prefix:             "ws",
+		name:               "workspace-name",
+		randomLength:       10,
+		expectedHashedName: "ws-d70baf7a00",
+	}, {
+		title:              "generate hashed name with default random length",
+		prefix:             "ws",
+		name:               "workspace-name",
+		randomLength:       -1,
+		expectedHashedName: "ws-d70ba",
+	}, {
+		title:              "generate hashed name with empty prefix",
+		prefix:             "",
+		name:               "workspace-name",
+		randomLength:       0,
+		expectedHashedName: "-d70ba",
+	}, {
+		title:              "consistent hashed name for different inputs - 1",
+		prefix:             "ws",
+		name:               "test-01097628",
+		randomLength:       5,
+		expectedHashedName: "ws-f32ff",
+	}, {
+		title:              "consistent hashed name for different inputs - 2",
+		prefix:             "ws",
+		name:               "test-01617609",
+		randomLength:       5,
+		expectedHashedName: "ws-f32ff",
+	}, {
+		title:              "consistent hashed name for different inputs - 3",
+		prefix:             "ws",
+		name:               "test-01675975",
+		randomLength:       5,
+		expectedHashedName: "ws-f32ff",
+	}, {
+		title:              "consistent hashed name for different inputs - 4",
+		prefix:             "ws",
+		name:               "test-01809743",
+		randomLength:       5,
+		expectedHashedName: "ws-f32ff",
+	}}
+
+	for _, tc := range tests {
+		t.Run(tc.title, func(t *testing.T) {
+			hashedName := pkgnames.GenerateHashedName(tc.prefix, tc.name, tc.randomLength)
+			if hashedName != tc.expectedHashedName {
+				t.Errorf("expected %q, got %q", tc.expectedHashedName, hashedName)
+			}
+		})
+	}
+}

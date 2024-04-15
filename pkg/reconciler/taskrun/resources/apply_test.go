@@ -1141,29 +1141,29 @@ func TestApplyWorkspaces(t *testing.T) {
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		}},
 		want: applyMutation(ts, func(spec *v1.TaskSpec) {
-			spec.StepTemplate.Env[0].Value = "ws-9l9zj"
+			spec.StepTemplate.Env[0].Value = "ws-b31db"
 			spec.StepTemplate.Env[1].Value = "foo"
 			spec.StepTemplate.Env[2].Value = ""
 
-			spec.Steps[0].Name = "ws-9l9zj"
-			spec.Steps[0].Image = "ws-mz4c7"
-			spec.Steps[0].WorkingDir = "ws-mz4c7"
+			spec.Steps[0].Name = "ws-b31db"
+			spec.Steps[0].Image = "ws-a6f34"
+			spec.Steps[0].WorkingDir = "ws-a6f34"
 			spec.Steps[0].Args = []string{"/workspace/myws"}
 
-			spec.Steps[1].VolumeMounts[0].Name = "ws-9l9zj"
+			spec.Steps[1].VolumeMounts[0].Name = "ws-b31db"
 			spec.Steps[1].VolumeMounts[0].MountPath = "path/to//foo"
-			spec.Steps[1].VolumeMounts[0].SubPath = "ws-9l9zj"
+			spec.Steps[1].VolumeMounts[0].SubPath = "ws-b31db"
 
-			spec.Steps[2].Env[0].Value = "ws-9l9zj"
-			spec.Steps[2].Env[1].ValueFrom.SecretKeyRef.LocalObjectReference.Name = "ws-9l9zj"
-			spec.Steps[2].Env[1].ValueFrom.SecretKeyRef.Key = "ws-9l9zj"
-			spec.Steps[2].EnvFrom[0].Prefix = "ws-9l9zj"
-			spec.Steps[2].EnvFrom[0].ConfigMapRef.LocalObjectReference.Name = "ws-9l9zj"
+			spec.Steps[2].Env[0].Value = "ws-b31db"
+			spec.Steps[2].Env[1].ValueFrom.SecretKeyRef.LocalObjectReference.Name = "ws-b31db"
+			spec.Steps[2].Env[1].ValueFrom.SecretKeyRef.Key = "ws-b31db"
+			spec.Steps[2].EnvFrom[0].Prefix = "ws-b31db"
+			spec.Steps[2].EnvFrom[0].ConfigMapRef.LocalObjectReference.Name = "ws-b31db"
 
-			spec.Volumes[0].Name = "ws-9l9zj"
-			spec.Volumes[0].VolumeSource.ConfigMap.LocalObjectReference.Name = "ws-9l9zj"
-			spec.Volumes[1].VolumeSource.Secret.SecretName = "ws-9l9zj"
-			spec.Volumes[2].VolumeSource.PersistentVolumeClaim.ClaimName = "ws-9l9zj"
+			spec.Volumes[0].Name = "ws-b31db"
+			spec.Volumes[0].VolumeSource.ConfigMap.LocalObjectReference.Name = "ws-b31db"
+			spec.Volumes[1].VolumeSource.Secret.SecretName = "ws-b31db"
+			spec.Volumes[2].VolumeSource.PersistentVolumeClaim.ClaimName = "ws-b31db"
 		}),
 	}, {
 		name: "optional-workspace-provided-variable-replacement",
