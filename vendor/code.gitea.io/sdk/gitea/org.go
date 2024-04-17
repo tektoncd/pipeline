@@ -93,7 +93,7 @@ func (opt CreateOrgOption) Validate() error {
 		return fmt.Errorf("empty org name")
 	}
 	if len(opt.Visibility) != 0 && !checkVisibilityOpt(opt.Visibility) {
-		return fmt.Errorf("infalid bisibility option")
+		return fmt.Errorf("invalid visibility option")
 	}
 	return nil
 }
@@ -124,7 +124,7 @@ type EditOrgOption struct {
 // Validate the EditOrgOption struct
 func (opt EditOrgOption) Validate() error {
 	if len(opt.Visibility) != 0 && !checkVisibilityOpt(opt.Visibility) {
-		return fmt.Errorf("infalid bisibility option")
+		return fmt.Errorf("invalid visibility option")
 	}
 	return nil
 }
