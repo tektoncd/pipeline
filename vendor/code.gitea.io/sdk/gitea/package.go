@@ -16,7 +16,7 @@ type Package struct {
 	// the package's owner
 	Owner User `json:"owner"`
 	// the repo this package belongs to (if any)
-	Repository *string `json:"repository"`
+	Repository *Repository `json:"repository"`
 	// the package's creator
 	Creator User `json:"creator"`
 	// the type of package:
