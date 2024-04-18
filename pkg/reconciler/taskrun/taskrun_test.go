@@ -1961,38 +1961,41 @@ spec:
 		Tasks:        []*v1.Task{simpleTask},
 		ClusterTasks: []*v1beta1.ClusterTask{},
 	}
-	testAssets, cancel := getTaskRunController(t, d)
-	defer cancel()
-	c := testAssets.Controller
-	clients := testAssets.Clients
-	createServiceAccount(t, testAssets, "default", tr.Namespace)
+	for _, v := range []error{errors.New("etcdserver: leader changed"),
+		context.DeadlineExceeded} {
+		testAssets, cancel := getTaskRunController(t, d)
+		defer cancel()
+		c := testAssets.Controller
+		clients := testAssets.Clients
+		createServiceAccount(t, testAssets, "default", tr.Namespace)
 
-	failingReactorActivated := true
-	clients.Pipeline.PrependReactor("*", "tasks", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-		return failingReactorActivated, &v1.Task{}, errors.New("etcdserver: leader changed")
-	})
-	err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
-	if err == nil {
-		t.Error("Wanted a wrapped error, but got nil.")
-	}
-	if controller.IsPermanentError(err) {
-		t.Errorf("Unexpected permanent error %v", err)
-	}
-
-	failingReactorActivated = false
-	err = c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
-	if err != nil {
-		if ok, _ := controller.IsRequeueKey(err); !ok {
-			t.Errorf("unexpected error in TaskRun reconciliation: %v", err)
+		failingReactorActivated := true
+		clients.Pipeline.PrependReactor("*", "tasks", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+			return failingReactorActivated, &v1.Task{}, v
+		})
+		err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
+		if err == nil {
+			t.Error("Wanted a wrapped error, but got nil.")
 		}
-	}
-	reconciledRun, err := clients.Pipeline.TektonV1().TaskRuns("foo").Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
-	}
-	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-	if !condition.IsUnknown() {
-		t.Errorf("Expected TaskRun to still be running but succeeded condition is %v", condition.Status)
+		if controller.IsPermanentError(err) {
+			t.Errorf("Unexpected permanent error %v", err)
+		}
+
+		failingReactorActivated = false
+		err = c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
+		if err != nil {
+			if ok, _ := controller.IsRequeueKey(err); !ok {
+				t.Errorf("unexpected error in TaskRun reconciliation: %v", err)
+			}
+		}
+		reconciledRun, err := clients.Pipeline.TektonV1().TaskRuns("foo").Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+		}
+		condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+		if !condition.IsUnknown() {
+			t.Errorf("Expected TaskRun to still be running but succeeded condition is %v", condition.Status)
+		}
 	}
 }
 

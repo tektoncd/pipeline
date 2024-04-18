@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -282,7 +283,9 @@ func (l *LocalStepActionRefResolver) GetStepAction(ctx context.Context, name str
 
 // IsErrTransient returns true if an error returned by GetTask/GetStepAction is retryable.
 func IsErrTransient(err error) bool {
-	return strings.Contains(err.Error(), errEtcdLeaderChange)
+	return slices.ContainsFunc([]string{errEtcdLeaderChange, context.DeadlineExceeded.Error()}, func(s string) bool {
+		return strings.Contains(err.Error(), s)
+	})
 }
 
 // convertClusterTaskToTask converts deprecated v1beta1 ClusterTasks to Tasks for
