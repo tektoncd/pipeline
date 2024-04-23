@@ -976,8 +976,8 @@ Whole `Array` and `Object` replacements are not supported yet. The following usa
 
 ```yaml
   when:
-    - cel: "'foo' in '$(params.array_params[*]']"
-    - cel: "'foo' in '$(params.object_params[*]']"
+    - cel: "'foo' in '$(params.array_params[*])'"
+    - cel: "'foo' in '$(params.object_params[*])'"
 ```
 <!-- wokeignore:rule=master -->
 In addition to the cases listed above, you can craft any valid CEL expression as defined by the [cel-spec language definition](https://github.com/google/cel-spec/blob/master/doc/langdef.md)
