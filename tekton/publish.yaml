@@ -189,7 +189,7 @@ spec:
   - name: tag-images
     image: cgr.dev/chainguard/crane:latest-dev@sha256:a91db0ec686127bf25698bc102c8d887437b6717b7df15570e70927fdbf7bcc5
     script: |
-      #!/busybox/sh
+      #!/bin/sh
       set -ex
 
       # Setup docker-auth
