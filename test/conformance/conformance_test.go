@@ -533,3 +533,193 @@ spec:
 		t.Errorf("Expect vendor service to provide Reason in StepState.Terminated to be Error but it has: %s", failureResolvedTR.Status.Steps[0].Terminated.Reason)
 	}
 }
+
+func TestSidecarName(t *testing.T) {
+	sidecarName := "hello-sidecar"
+	inputYAML := fmt.Sprintf(`
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: %s
+spec:
+  taskSpec:
+    sidecars:
+    - name: %s
+      image: ubuntu
+      script: echo "hello from sidecar"
+    steps:
+    - name: hello-step
+      image: ubuntu
+      script: echo "hello from step"
+`, helpers.ObjectNameForTest(t), sidecarName)
+
+	// The execution of Pipeline CRDs that should be implemented by Vendor service
+	outputYAML, err := ProcessAndSendToTekton(inputYAML, TaskRunInputType, t)
+	if err != nil {
+		t.Fatalf("Vendor service failed processing inputYAML: %s", err)
+	}
+
+	// Parse and validate output YAML
+	resolvedTR := parse.MustParseV1TaskRun(t, outputYAML)
+
+	if err := checkTaskRunConditionSucceeded(resolvedTR.Status, SucceedConditionStatus, "Succeeded"); err != nil {
+		t.Error(err)
+	}
+
+	if len(resolvedTR.Spec.TaskSpec.Sidecars) != 1 {
+		t.Errorf("Expect vendor service to provide 1 Sidcar but it has: %v", len(resolvedTR.Spec.TaskSpec.Sidecars))
+	}
+
+	if resolvedTR.Spec.TaskSpec.Sidecars[0].Name != sidecarName {
+		t.Errorf("Expect vendor service to provide Sidcar name %s but it has: %s", sidecarName, resolvedTR.Spec.TaskSpec.Sidecars[0].Name)
+	}
+}
+
+// This test relies on the support of Sidecar Script and its volumeMounts.
+// For sidecar tests, sidecars don't have /workspace mounted by default, so we have to define
+// our own shared volume. For vendor services, please feel free to override the shared workspace
+// supported in your sidecar. Otherwise there are no existing v1 conformance `REQUIRED` fields that
+// are going to be used for verifying Sidecar functionality.
+func TestSidecarScriptSuccess(t *testing.T) {
+	succeedInputYAML := fmt.Sprintf(`
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: %s
+spec:
+  taskSpec:
+    sidecars:
+    - name: slow-sidecar
+      image: ubuntu
+      script: |
+        echo "hello from sidecar" > /shared/message
+      volumeMounts:
+      - name: shared
+        mountPath: /shared
+
+    steps:
+    - name: check-ready
+      image: ubuntu
+      script: cat /shared/message
+      volumeMounts:
+      - name: shared
+        mountPath: /shared
+
+    # Sidecars don't have /workspace mounted by default, so we have to define
+    # our own shared volume.
+    volumes:
+    - name: shared
+      emptyDir: {}
+`, helpers.ObjectNameForTest(t))
+
+	// The execution of Pipeline CRDs that should be implemented by Vendor service
+	succeedOutputYAML, err := ProcessAndSendToTekton(succeedInputYAML, TaskRunInputType, t)
+	if err != nil {
+		t.Fatalf("Vendor service failed processing inputYAML: %s", err)
+	}
+
+	// Parse and validate output YAML
+	succeededResolvedTR := parse.MustParseV1TaskRun(t, succeedOutputYAML)
+
+	if err := checkTaskRunConditionSucceeded(succeededResolvedTR.Status, SucceedConditionStatus, "Succeeded"); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestSidecarScriptFailure(t *testing.T) {
+	failInputYAML := fmt.Sprintf(`
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: %s
+spec:
+  taskSpec:
+    sidecars:
+    - name: exit-sidecar
+      image: ubuntu
+      script: exit 1
+
+    steps:
+    - name: check-ready
+      image: ubuntu
+      script: cat /shared/message
+      volumeMounts:
+        - name: shared
+          mountPath: /shared
+
+    # Sidecars don't have /workspace mounted by default, so we have to define
+    # our own shared volume.
+    volumes:
+    - name: shared
+      emptyDir: {}
+`, helpers.ObjectNameForTest(t))
+
+	// The execution of Pipeline CRDs that should be implemented by Vendor service
+	failOutputYAML, err := ProcessAndSendToTekton(failInputYAML, TaskRunInputType, t, ExpectRunToFail)
+	if err != nil {
+		t.Fatalf("Vendor service failed processing inputYAML: %s", err)
+	}
+
+	// Parse and validate output YAML
+	failResolvedTR := parse.MustParseV1TaskRun(t, failOutputYAML)
+
+	if len(failResolvedTR.Spec.TaskSpec.Sidecars) != 1 {
+		t.Errorf("Expect vendor service to provide 1 Sidcar but it has: %v", len(failResolvedTR.Spec.TaskSpec.Sidecars))
+	}
+
+	if err := checkTaskRunConditionSucceeded(failResolvedTR.Status, "False", "Failed"); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestSidecarArgAndCommand(t *testing.T) {
+	failInputYAML := fmt.Sprintf(`
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: %s
+spec:
+  taskSpec:
+    sidecars:
+    - name: slow-sidecar
+      image: ubuntu
+      command: [/bin/bash]
+      args: [-c, "echo 'hello from sidecar' > /shared/message"]
+      volumeMounts:
+      - name: shared
+        mountPath: /shared
+    steps:
+    - name: check-ready
+      image: ubuntu
+      command:
+      - cat
+      args:
+      - '/shared/message'
+      volumeMounts:
+      - name: shared
+        mountPath: /shared
+    
+    # Sidecars don't have /workspace mounted by default, so we have to define
+    # our own shared volume.
+    volumes:
+    - name: shared
+      emptyDir: {}
+`, helpers.ObjectNameForTest(t))
+
+	// The execution of Pipeline CRDs that should be implemented by Vendor service
+	failOutputYAML, err := ProcessAndSendToTekton(failInputYAML, TaskRunInputType, t)
+	if err != nil {
+		t.Fatalf("Vendor service failed processing inputYAML: %s", err)
+	}
+
+	// Parse and validate output YAML
+	failResolvedTR := parse.MustParseV1TaskRun(t, failOutputYAML)
+
+	if len(failResolvedTR.Spec.TaskSpec.Sidecars) != 1 {
+		t.Errorf("Expect vendor service to provide 1 Sidcar but it has: %v", len(failResolvedTR.Spec.TaskSpec.Sidecars))
+	}
+
+	if err := checkTaskRunConditionSucceeded(failResolvedTR.Status, SucceedConditionStatus, "Succeeded"); err != nil {
+		t.Error(err)
+	}
+}
