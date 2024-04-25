@@ -39,9 +39,13 @@ package conformance_test
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/parse"
 	"knative.dev/pkg/test/helpers"
 )
@@ -1086,4 +1090,474 @@ spec:
 	if err := checkTaskRunConditionSucceeded(resolvedTR.Status, SucceedConditionStatus, "Succeeded"); err != nil {
 		t.Error(err)
 	}
+}
+
+// TestPipelineTaskParams examines the PipelineTask
+// Params functionality by creating a Pipeline that performs addition in its
+// Task for validation.
+func TestPipelineTaskParams(t *testing.T) {
+	var op0, op1 = 10, 1
+	expectedParams := v1.Params{{
+		Name:  "op0",
+		Value: v1.ParamValue{StringVal: strconv.Itoa(op0)},
+	}, {
+		Name:  "op1",
+		Value: v1.ParamValue{StringVal: strconv.Itoa(op1)}},
+	}
+
+	inputYAML := fmt.Sprintf(`
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: sum-params
+      taskSpec:
+        params:
+        - name: op0
+          type: string
+          description: The first integer from PipelineTask Param
+        - name: op1
+          type: string
+          description: The second integer from PipelineTask Param
+        steps:
+        - name: sum
+          image: bash:latest
+          script: |
+            #!/usr/bin/env bash
+            echo -n $(( "$(inputs.params.op0)" + "$(inputs.params.op1)" ))
+      params:
+      - name: op0
+        value: %s
+      - name: op1
+        value: %s
+`, helpers.ObjectNameForTest(t), strconv.Itoa(op0), strconv.Itoa(op1))
+
+	// The execution of Pipeline CRDs that should be implemented by Vendor service
+	outputYAML, err := ProcessAndSendToTekton(inputYAML, PipelineRunInputType, t)
+	if err != nil {
+		t.Fatalf("Vendor service failed processing inputYAML: %s", err)
+	}
+
+	// Parse and validate output YAML
+	resolvedPR := parse.MustParseV1PipelineRun(t, outputYAML)
+	if len(resolvedPR.Spec.PipelineSpec.Tasks) != 1 {
+		t.Errorf("Expect vendor service to provide 1 PipelineTask but got: %v", len(resolvedPR.Spec.PipelineSpec.Tasks))
+	}
+
+	if d := cmp.Diff(expectedParams, resolvedPR.Spec.PipelineSpec.Tasks[0].Params, cmpopts.IgnoreFields(v1.ParamValue{}, "Type")); d != "" {
+		t.Errorf("Expect vendor service to provide 2 params 10, 1, but got: %v", d)
+
+	}
+}
+
+func TestPipelineResult(t *testing.T) {
+	inputYAML := fmt.Sprintf(`
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: %s
+spec:
+  params:
+  - name: prefix
+    value: prefix
+  pipelineSpec:
+    results:
+    - name: output
+      type: string
+      value: $(tasks.do-something.results.output)
+    params:
+    - name: prefix
+    tasks:
+    - name: generate-suffix
+      taskSpec:
+        results:
+        - name: suffix
+        steps:
+        - name: generate-suffix
+          image: alpine
+          script: |
+            echo -n "suffix" > $(results.suffix.path)
+    - name: do-something
+      taskSpec:
+        results:
+        - name: output
+        params:
+        - name: arg
+        steps:
+        - name: do-something
+          image: alpine
+          script: |
+            echo -n "$(params.arg)" | tee $(results.output.path)
+      params:
+      - name: arg
+        value: "$(params.prefix):$(tasks.generate-suffix.results.suffix)"
+`, helpers.ObjectNameForTest(t))
+
+	// The execution of Pipeline CRDs that should be implemented by Vendor service
+	outputYAML, err := ProcessAndSendToTekton(inputYAML, PipelineRunInputType, t)
+	if err != nil {
+		t.Fatalf("Vendor service failed processing inputYAML: %s", err)
+	}
+
+	// Parse and validate output YAML
+	resolvedPR := parse.MustParseV1PipelineRun(t, outputYAML)
+
+	if len(resolvedPR.Status.Results) != 1 {
+		t.Errorf("Expect vendor service to provide 1 result but has: %v", len(resolvedPR.Status.Results))
+	}
+
+	if resolvedPR.Status.Results[0].Value.StringVal != "prefix:suffix" {
+		t.Errorf("Not producing correct result :\"%s\"", resolvedPR.Status.Results[0].Value.StringVal)
+	}
+}
+
+func TestPipelineWorkspace(t *testing.T) {
+	inputYAML := fmt.Sprintf(`
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: %s
+spec:
+  workspaces:
+  - name: custom-workspace
+    # Vendor service could override the actual workspace binding type.
+    # This is considered as the implementation detail for the conformant workspace fields.
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 16Mi
+        volumeMode: Filesystem
+  pipelineSpec:
+    workspaces:
+    - name: custom-workspace
+    tasks:
+    - name: write-task
+      taskSpec:
+        steps:
+        - name: write-step
+          image: ubuntu
+          script: |
+            echo $(workspaces.custom-workspace-write-task.path) > $(workspaces.custom-workspace-write-task.path)/foo
+            cat $(workspaces.custom-workspace-write-task.path)/foo
+        workspaces:
+        - name: custom-workspace-write-task
+      workspaces:
+      - name: custom-workspace-write-task
+        workspace: custom-workspace
+    - name: read-task
+      taskSpec:
+        steps:
+        - name: read-step
+          image: ubuntu
+          script: cat $(workspaces.custom-workspace-read-task.path)/foo
+        workspaces:
+        - name: custom-workspace-read-task
+      workspaces:
+      - name: custom-workspace-read-task
+        workspace: custom-workspace
+      runAfter:
+      - write-task
+    - name: check-task
+      taskSpec:
+        steps:
+        - name: check-step
+          image: ubuntu
+          script: |
+            if [ "$(cat $(workspaces.custom-workspace-check-task.path)/foo)" != "/workspace/custom-workspace-write-task" ]; then
+              echo $(cat $(workspaces.custom-workspace-check-task.path)/foo)
+              exit 1
+            fi
+        workspaces:
+        - name: custom-workspace-check-task
+      workspaces:
+      - name: custom-workspace-check-task
+        workspace: custom-workspace
+      runAfter:
+      - read-task
+`, helpers.ObjectNameForTest(t))
+
+	// The execution of Pipeline CRDs that should be implemented by Vendor service
+	outputYAML, err := ProcessAndSendToTekton(inputYAML, PipelineRunInputType, t)
+	if err != nil {
+		t.Fatalf("Vendor service failed processing inputYAML: %s", err)
+	}
+
+	// Parse and validate output YAML
+	resolvedPR := parse.MustParseV1PipelineRun(t, outputYAML)
+
+	if err := checkPipelineRunConditionSucceeded(resolvedPR.Status, SucceedConditionStatus, "Succeeded"); err != nil {
+		t.Error(err)
+	}
+
+	if resolvedPR.Spec.Workspaces[0].Name != "custom-workspace" {
+		t.Errorf("Expect vendor service to provide Workspace 'custom-workspace' but it has: %s", resolvedPR.Spec.Workspaces[0].Name)
+	}
+
+	if resolvedPR.Status.PipelineSpec.Workspaces[0].Name != "custom-workspace" {
+		t.Errorf("Expect vendor service to provide Workspace 'custom-workspace' in PipelineRun.Status.TaskSpec but it has: %s", resolvedPR.Spec.Workspaces[0].Name)
+	}
+
+	// TODO add more tests for WorkSpace Declaration test for PipelineTask Workspace in a separate test
+}
+
+func TestPipelineTaskTimeout(t *testing.T) {
+	expectedFailedStatus := true
+	inputYAML := fmt.Sprintf(`
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: timeout
+      timeout: 15s
+      taskSpec:
+        steps:
+        - image: busybox
+          command: ['/bin/sh']
+          args: ['-c', 'sleep 15001']
+`, helpers.ObjectNameForTest(t))
+
+	// Execution of Pipeline CRDs that should be implemented by Vendor service
+	outputYAML, err := ProcessAndSendToTekton(inputYAML, PipelineRunInputType, t, expectedFailedStatus)
+	if err != nil {
+		t.Fatalf("Vendor service failed processing inputYAML: %s", err)
+	}
+
+	// Parse and validate output YAML
+	resolvedPR := parse.MustParseV1PipelineRun(t, outputYAML)
+
+	// TODO to examine PipelineRunReason when https://github.com/tektoncd/pipeline/issues/7573 is fixed - PipelineTaskTimeout
+	if err := checkPipelineRunConditionSucceeded(resolvedPR.Status, FailureConditionStatus, "Failed"); err != nil {
+		t.Error(err)
+	}
+}
+
+// TestPipelineRunTimeout examines the Timeout behaviour for
+// PipelineRun level. It creates a TaskRun with Timeout and wait in the Step of the
+// inline Task for the time length longer than the specified Timeout.
+// The TaskRun is expected to fail with the Reason `TaskRunTimeout`.
+func TestPipelineRunTimeout(t *testing.T) {
+	expectedFailedStatus := true
+	inputYAML := fmt.Sprintf(`
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: %s
+spec:
+  timeouts:
+    tasks: 15s
+  pipelineSpec:
+    tasks:
+    - name: timeout
+      taskSpec:
+        steps:
+        - image: busybox
+          command: ['/bin/sh']
+          args: ['-c', 'sleep 15001']
+`, helpers.ObjectNameForTest(t))
+
+	// Execution of Pipeline CRDs that should be implemented by Vendor service
+	outputYAML, err := ProcessAndSendToTekton(inputYAML, PipelineRunInputType, t, expectedFailedStatus)
+	if err != nil {
+		t.Fatalf("Vendor service failed processing inputYAML: %s", err)
+	}
+
+	// Parse and validate output YAML
+	resolvedPR := parse.MustParseV1PipelineRun(t, outputYAML)
+
+	if err := checkPipelineRunConditionSucceeded(resolvedPR.Status, FailureConditionStatus, "PipelineRunTimeout"); err != nil {
+		t.Error(err)
+	}
+
+}
+
+// ** there is no feasible way as in v1 conformance policy to test finally without
+// dependencies: results, param functionality
+func TestPipelineRunTaskFinally(t *testing.T) {
+	var inputOp0, inputOp1 = 3, 1
+	inputYAML := fmt.Sprintf(`
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: %s
+spec:
+  pipelineSpec:
+    params:
+      - name: a
+        type: string
+      - name: b
+        type: string
+    results:
+      - name: task-result
+        description: "grabbing results from the tasks section"
+        value: $(tasks.multiply-inputs.results.product)
+      - name: finally-result
+        description: "grabbing results from the finally section"
+        value: $(finally.exponent.results.product)
+    tasks:
+      - name: multiply-inputs
+        taskSpec:
+          results:
+            - name: product
+              description: The product of the two provided integers
+          steps:
+            - name: product
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                echo -n $(( "$(params.a)" * "$(params.b)" )) | tee $(results.product.path)
+        params:
+          - name: a
+            value: "$(params.a)"
+          - name: b
+            value: "$(params.b)"
+    finally:
+      - name: exponent
+        taskSpec:
+          results:
+            - name: product
+              description: The product of the two provided integers
+          steps:
+            - name: product
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                echo -n $(( "$(params.a)" * "$(params.b)" )) | tee $(results.product.path)
+        params:
+          - name: a
+            value: "$(tasks.multiply-inputs.results.product)$(tasks.multiply-inputs.results.product)"
+          - name: b
+            value: "$(tasks.multiply-inputs.results.product)$(tasks.multiply-inputs.results.product)"
+  params:
+    - name: a
+      value: %s
+    - name: b
+      value: %s
+`, helpers.ObjectNameForTest(t), strconv.Itoa(inputOp0), strconv.Itoa(inputOp1))
+
+	// The execution of Pipeline CRDs that should be implemented by Vendor service
+	outputYAML, err := ProcessAndSendToTekton(inputYAML, PipelineRunInputType, t)
+	if err != nil {
+		t.Fatalf("Vendor service failed processing inputYAML: %s", err)
+	}
+
+	// Parse and validate output YAML
+	resolvedPR := parse.MustParseV1PipelineRun(t, outputYAML)
+	if len(resolvedPR.Status.Conditions) != 1 {
+		t.Errorf("Expect vendor service to populate 1 Condition but no")
+	}
+
+	expectedFinallyResultVal := strconv.Itoa((inputOp0*10 + inputOp0) * (inputOp1*10 + inputOp1) * inputOp0 * inputOp1)
+
+	for _, res := range resolvedPR.Status.Results {
+		if res.Name == "finally-result" {
+			if res.Value.StringVal != expectedFinallyResultVal {
+				t.Errorf("Expect vendor service to provide finally task computation to have resultVal %s, but has: %s", expectedFinallyResultVal, res.Value.StringVal)
+			}
+		}
+	}
+}
+
+// TestPipelineRunConditions examines population of Conditions
+// fields. It creates the a PipelineRun with minimal specifications and checks the
+// required Condition Status and Type.
+func TestPipelineRunConditions(t *testing.T) {
+	inputYAML := fmt.Sprintf(`
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: pipeline-task-0
+      taskSpec:
+        steps:
+        - name: add
+          image: ubuntu
+          script:
+            echo Hello world!
+`, helpers.ObjectNameForTest(t))
+
+	// The execution of Pipeline CRDs that should be implemented by Vendor service
+	outputYAML, err := ProcessAndSendToTekton(inputYAML, PipelineRunInputType, t)
+	if err != nil {
+		t.Fatalf("Vendor service failed processing inputYAML: %s", err)
+	}
+
+	// Parse and validate output YAML
+	resolvedPR := parse.MustParseV1PipelineRun(t, outputYAML)
+
+	if err := checkPipelineRunConditionSucceeded(resolvedPR.Status, SucceedConditionStatus, "Succeeded"); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestPipelineRunChildReferences(t *testing.T) {
+	prName := helpers.ObjectNameForTest(t)
+	pt0, pt1 := "pipeline-task-0", "pipeline-task-1"
+	expectedChildRefs := map[string]string{
+		pt0: prName + "-" + pt0,
+		pt1: prName + "-" + pt1,
+	}
+
+	inputYAML := fmt.Sprintf(`
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: %s
+      taskSpec:
+        steps:
+        - name: hello-step
+          image: ubuntu
+          script:
+            echo Hello world!
+    - name: %s
+      taskSpec:
+        steps:
+        - name: hell-step
+          image: ubuntu
+          script:
+            echo Hello world!
+`, prName, pt0, pt1)
+
+	// The execution of Pipeline CRDs that should be implemented by Vendor service
+	outputYAML, err := ProcessAndSendToTekton(inputYAML, PipelineRunInputType, t)
+	if err != nil {
+		t.Fatalf("Vendor service failed processing inputYAML: %s", err)
+	}
+
+	// Parse and validate output YAML
+	resolvedPR := parse.MustParseV1PipelineRun(t, outputYAML)
+
+	if err := checkPipelineRunConditionSucceeded(resolvedPR.Status, SucceedConditionStatus, "Succeeded"); err != nil {
+		t.Error(err)
+	}
+
+	if len(resolvedPR.Status.ChildReferences) != 2 {
+		t.Errorf("Expect vendor service to have 2 ChildReferences but it has: %v", len(resolvedPR.Status.ChildReferences))
+	}
+
+	for _, cr := range resolvedPR.Status.ChildReferences {
+		if childRefName, ok := expectedChildRefs[cr.PipelineTaskName]; ok {
+			if childRefName != cr.Name {
+				t.Errorf("Expect vendor service to populate ChildReferenceStatus Name %s but it has: %s", childRefName, cr.Name)
+			}
+		} else {
+			t.Errorf("Does not expect vendor service to populate ChildReferenceStatus PipelineTaskName: %s", cr.PipelineTaskName)
+		}
+	}
+
 }
