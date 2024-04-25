@@ -109,6 +109,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableCELInWhenExpression:        config.DefaultEnableCELInWhenExpression.Enabled,
 				EnableStepActions:                config.DefaultEnableStepActions.Enabled,
 				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
+				EnableArtifacts:                  config.DefaultEnableArtifacts.Enabled,
 				DisableInlineSpec:                config.DefaultDisableInlineSpec,
 			},
 			fileName: "feature-flags-enable-api-fields-overrides-bundles-and-custom-tasks",
