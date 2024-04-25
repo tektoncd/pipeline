@@ -962,3 +962,128 @@ spec:
 		t.Errorf("Expect vendor service to provide Param Description \"foo param\" but it has: %s", resolvedTR.Spec.TaskSpec.Params[0].Description)
 	}
 }
+
+// The goal of the Taskrun Workspace test is to verify if different Steps in the TaskRun could
+// pass data among each other.
+func TestTaskRunWorkspace(t *testing.T) {
+	inputYAML := fmt.Sprintf(`
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: %s
+spec:
+  workspaces:
+    - name: custom-workspace
+      # Please note that vendor services are welcomed to override the following actual workspace binding type.
+      # This is considered as the implementation detail for the conformant workspace fields.
+      emptyDir: {}
+  taskSpec:
+    steps:
+    - name: write
+      image: ubuntu
+      script: echo $(workspaces.custom-workspace.path) > $(workspaces.custom-workspace.path)/foo
+    - name: read
+      image: ubuntu
+      script: cat $(workspaces.custom-workspace.path)/foo
+    - name: check
+      image: ubuntu
+      script: |
+        if [ "$(cat $(workspaces.custom-workspace.path)/foo)" != "/workspace/custom-workspace" ]; then
+          echo $(cat $(workspaces.custom-workspace.path)/foo)
+          exit 1
+        fi
+    workspaces:
+    - name: custom-workspace
+`, helpers.ObjectNameForTest(t))
+
+	// The execution of Pipeline CRDs that should be implemented by Vendor service
+	outputYAML, err := ProcessAndSendToTekton(inputYAML, TaskRunInputType, t)
+	if err != nil {
+		t.Fatalf("Vendor service failed processing inputYAML: %s", err)
+	}
+
+	// Parse and validate output YAML
+	resolvedTR := parse.MustParseV1TaskRun(t, outputYAML)
+
+	if err := checkTaskRunConditionSucceeded(resolvedTR.Status, SucceedConditionStatus, "Succeeded"); err != nil {
+		t.Error(err)
+	}
+
+	if len(resolvedTR.Spec.Workspaces) != 1 {
+		t.Errorf("Expect vendor service to provide 1 Workspace but it has: %v", len(resolvedTR.Spec.Workspaces))
+	}
+
+	if resolvedTR.Spec.Workspaces[0].Name != "custom-workspace" {
+		t.Errorf("Expect vendor service to provide Workspace 'custom-workspace' but it has: %s", resolvedTR.Spec.Workspaces[0].Name)
+	}
+
+	if resolvedTR.Status.TaskSpec.Workspaces[0].Name != "custom-workspace" {
+		t.Errorf("Expect vendor service to provide Workspace 'custom-workspace' in TaskRun.Status.TaskSpec but it has: %s", resolvedTR.Spec.Workspaces[0].Name)
+	}
+}
+
+// TestTaskRunTimeout examines the Timeout behaviour for
+// TaskRun level. It creates a TaskRun with Timeout and wait in the Step of the
+// inline Task for the time length longer than the specified Timeout.
+// The TaskRun is expected to fail with the Reason `TaskRunTimeout`.
+func TestTaskRunTimeout(t *testing.T) {
+	expectedFailedStatus := true
+	inputYAML := fmt.Sprintf(`
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: %s
+spec:
+  timeout: 15s
+  taskSpec:
+    steps:
+    - image: busybox
+      command: ['/bin/sh']
+      args: ['-c', 'sleep 15001']
+`, helpers.ObjectNameForTest(t))
+
+	// Execution of Pipeline CRDs that should be implemented by Vendor service
+	outputYAML, err := ProcessAndSendToTekton(inputYAML, TaskRunInputType, t, expectedFailedStatus)
+	if err != nil {
+		t.Fatalf("Vendor service failed processing inputYAML: %s", err)
+	}
+
+	// Parse and validate output YAML
+	resolvedTR := parse.MustParseV1TaskRun(t, outputYAML)
+
+	if err := checkTaskRunConditionSucceeded(resolvedTR.Status, "False", "TaskRunTimeout"); err != nil {
+		t.Error(err)
+	}
+}
+
+// TestConditions examines population of Conditions
+// fields. It creates the a TaskRun with minimal specifications and checks the
+// required Condition Status and Type.
+func TestConditions(t *testing.T) {
+	inputYAML := fmt.Sprintf(`
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: %s
+spec:
+  taskSpec:
+    steps:
+    - name: add
+      image: ubuntu
+      script:
+        echo Hello world!
+`, helpers.ObjectNameForTest(t))
+
+	// The execution of Pipeline CRDs that should be implemented by Vendor service
+	outputYAML, err := ProcessAndSendToTekton(inputYAML, TaskRunInputType, t)
+	if err != nil {
+		t.Fatalf("Vendor service failed processing inputYAML: %s", err)
+	}
+
+	// Parse and validate output YAML
+	resolvedTR := parse.MustParseV1TaskRun(t, outputYAML)
+
+	if err := checkTaskRunConditionSucceeded(resolvedTR.Status, SucceedConditionStatus, "Succeeded"); err != nil {
+		t.Error(err)
+	}
+}
