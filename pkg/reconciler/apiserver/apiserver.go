@@ -65,6 +65,13 @@ func DryRunValidate(ctx context.Context, namespace string, obj runtime.Object, t
 		if _, err := tekton.TektonV1alpha1().StepActions(namespace).Create(ctx, dryRunObj, metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}}); err != nil {
 			return handleDryRunCreateErr(err, obj.Name)
 		}
+	case *v1beta1.StepAction:
+		dryRunObj := obj.DeepCopy()
+		dryRunObj.Name = dryRunObjName
+		dryRunObj.Namespace = namespace // Make sure the namespace is the same as the StepAction
+		if _, err := tekton.TektonV1beta1().StepActions(namespace).Create(ctx, dryRunObj, metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}}); err != nil {
+			return handleDryRunCreateErr(err, obj.Name)
+		}
 	default:
 		return fmt.Errorf("unsupported object GVK %s", obj.GetObjectKind().GroupVersionKind())
 	}

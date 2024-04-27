@@ -133,7 +133,7 @@ func GetStepActionFunc(tekton clientset.Interface, k8s kubernetes.Interface, req
 	if step.Ref != nil && step.Ref.Resolver != "" && requester != nil {
 		// Return an inline function that implements GetStepAction by calling Resolver.Get with the specified StepAction type and
 		// casting it to a StepAction.
-		return func(ctx context.Context, name string) (*v1alpha1.StepAction, *v1.RefSource, error) {
+		return func(ctx context.Context, name string) (*v1beta1.StepAction, *v1.RefSource, error) {
 			// Perform params replacements for StepAction resolver params
 			ApplyParameterSubstitutionInResolverParams(tr, step)
 			resolver := resolution.NewResolver(requester, tr, string(step.Ref.Resolver), trName, namespace, step.Ref.Params)
@@ -206,17 +206,33 @@ func resolveTask(ctx context.Context, resolver remote.Resolver, name, namespace 
 	return taskObj, refSource, vr, nil
 }
 
-func resolveStepAction(ctx context.Context, resolver remote.Resolver, name, namespace string, k8s kubernetes.Interface, tekton clientset.Interface) (*v1alpha1.StepAction, *v1.RefSource, error) {
+func resolveStepAction(ctx context.Context, resolver remote.Resolver, name, namespace string, k8s kubernetes.Interface, tekton clientset.Interface) (*v1beta1.StepAction, *v1.RefSource, error) {
 	obj, refSource, err := resolver.Get(ctx, "StepAction", name)
 	if err != nil {
 		return nil, nil, err
 	}
-	switch obj := obj.(type) { //nolint:gocritic
-	case *v1alpha1.StepAction:
+	switch obj := obj.(type) {
+	case *v1beta1.StepAction:
 		if err := apiserver.DryRunValidate(ctx, namespace, obj, tekton); err != nil {
 			return nil, nil, err
 		}
 		return obj, refSource, nil
+	case *v1alpha1.StepAction:
+		obj.SetDefaults(ctx)
+		if err := apiserver.DryRunValidate(ctx, namespace, obj, tekton); err != nil {
+			return nil, nil, err
+		}
+		v1BetaStepAction := v1beta1.StepAction{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "StepAction",
+				APIVersion: "tekton.dev/v1beta1",
+			},
+		}
+		err := obj.ConvertTo(ctx, &v1BetaStepAction)
+		if err != nil {
+			return nil, nil, err
+		}
+		return &v1BetaStepAction, refSource, nil
 	}
 	return nil, nil, errors.New("resource is not a StepAction")
 }
@@ -314,12 +330,12 @@ type LocalStepActionRefResolver struct {
 
 // GetStepAction will resolve a StepAction from the local cluster using a versioned Tekton client.
 // It will return an error if it can't find an appropriate StepAction for any reason.
-func (l *LocalStepActionRefResolver) GetStepAction(ctx context.Context, name string) (*v1alpha1.StepAction, *v1.RefSource, error) {
+func (l *LocalStepActionRefResolver) GetStepAction(ctx context.Context, name string) (*v1beta1.StepAction, *v1.RefSource, error) {
 	// If we are going to resolve this reference locally, we need a namespace scope.
 	if l.Namespace == "" {
 		return nil, nil, fmt.Errorf("must specify namespace to resolve reference to step action %s", name)
 	}
-	stepAction, err := l.Tektonclient.TektonV1alpha1().StepActions(l.Namespace).Get(ctx, name, metav1.GetOptions{})
+	stepAction, err := l.Tektonclient.TektonV1beta1().StepActions(l.Namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return nil, nil, err
 	}

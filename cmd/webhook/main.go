@@ -60,6 +60,7 @@ var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	v1beta1.SchemeGroupVersion.WithKind("TaskRun"):     &v1beta1.TaskRun{},
 	v1beta1.SchemeGroupVersion.WithKind("PipelineRun"): &v1beta1.PipelineRun{},
 	v1beta1.SchemeGroupVersion.WithKind("CustomRun"):   &v1beta1.CustomRun{},
+	v1beta1.SchemeGroupVersion.WithKind("StepAction"):  &v1beta1.StepAction{},
 	// v1
 	v1.SchemeGroupVersion.WithKind("Task"):        &v1.Task{},
 	v1.SchemeGroupVersion.WithKind("Pipeline"):    &v1.Pipeline{},
@@ -153,6 +154,7 @@ func newConfigValidationController(name string) func(context.Context, configmap.
 
 func newConversionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 	var (
+		v1alpha1GroupVersion           = v1alpha1.SchemeGroupVersion.Version
 		v1beta1GroupVersion            = v1beta1.SchemeGroupVersion.Version
 		v1GroupVersion                 = v1.SchemeGroupVersion.Version
 		resolutionv1alpha1GroupVersion = resolutionv1alpha1.SchemeGroupVersion.Version
@@ -170,6 +172,14 @@ func newConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 		// conversions to and from all types.
 		// "Zygotes" are the supported versions.
 		map[schema.GroupKind]conversion.GroupKindConversion{
+			v1beta1.Kind("StepAction"): {
+				DefinitionName: pipeline.StepActionResource.String(),
+				HubVersion:     v1alpha1GroupVersion,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					v1alpha1GroupVersion: &v1alpha1.StepAction{},
+					v1beta1GroupVersion:  &v1beta1.StepAction{},
+				},
+			},
 			v1.Kind("Task"): {
 				DefinitionName: pipeline.TaskResource.String(),
 				HubVersion:     v1beta1GroupVersion,

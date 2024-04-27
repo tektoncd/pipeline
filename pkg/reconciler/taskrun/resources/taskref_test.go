@@ -51,16 +51,16 @@ import (
 )
 
 var (
-	simpleNamespacedStepAction = &v1alpha1.StepAction{
+	simpleNamespacedStepAction = &v1beta1.StepAction{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "simple",
 			Namespace: "default",
 		},
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1alpha1",
+			APIVersion: "tekton.dev/v1beta1",
 			Kind:       "StepAction",
 		},
-		Spec: v1alpha1.StepActionSpec{
+		Spec: v1beta1.StepActionSpec{
 			Image: "something",
 		},
 	}
@@ -605,13 +605,13 @@ func TestStepActionRef(t *testing.T) {
 		name:      "local-step-action",
 		namespace: "default",
 		stepactions: []runtime.Object{
-			&v1alpha1.StepAction{
+			&v1beta1.StepAction{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "simple",
 					Namespace: "default",
 				},
 			},
-			&v1alpha1.StepAction{
+			&v1beta1.StepAction{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "sample",
 					Namespace: "default",
@@ -621,7 +621,7 @@ func TestStepActionRef(t *testing.T) {
 		ref: &v1.Ref{
 			Name: "simple",
 		},
-		expected: &v1alpha1.StepAction{
+		expected: &v1beta1.StepAction{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "simple",
 				Namespace: "default",
@@ -678,7 +678,7 @@ func TestStepActionRef_Error(t *testing.T) {
 			name:      "local-step-action-missing-namespace",
 			namespace: "",
 			stepactions: []runtime.Object{
-				&v1alpha1.StepAction{
+				&v1beta1.StepAction{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "simple",
 						Namespace: "default",
@@ -884,16 +884,24 @@ func TestGetStepActionFunc_RemoteResolution_Success(t *testing.T) {
 	testcases := []struct {
 		name           string
 		stepActionYAML string
-		wantStepAction *v1alpha1.StepAction
+		wantStepAction *v1beta1.StepAction
 		wantErr        bool
 	}{{
-		name: "remote StepAction",
+		name: "remote StepAction v1alpha1",
 		stepActionYAML: strings.Join([]string{
 			"kind: StepAction",
 			"apiVersion: tekton.dev/v1alpha1",
 			stepActionYAMLString,
 		}, "\n"),
-		wantStepAction: parse.MustParseV1alpha1StepAction(t, stepActionYAMLString),
+		wantStepAction: parse.MustParseV1beta1StepAction(t, stepActionYAMLString),
+	}, {
+		name: "remote StepAction v1beta1",
+		stepActionYAML: strings.Join([]string{
+			"kind: StepAction",
+			"apiVersion: tekton.dev/v1beta1",
+			stepActionYAMLString,
+		}, "\n"),
+		wantStepAction: parse.MustParseV1beta1StepAction(t, stepActionYAMLString),
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
