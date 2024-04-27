@@ -46,6 +46,14 @@ type PipelineRunListerExpansion interface{}
 // PipelineRunNamespaceLister.
 type PipelineRunNamespaceListerExpansion interface{}
 
+// StepActionListerExpansion allows custom methods to be added to
+// StepActionLister.
+type StepActionListerExpansion interface{}
+
+// StepActionNamespaceListerExpansion allows custom methods to be added to
+// StepActionNamespaceLister.
+type StepActionNamespaceListerExpansion interface{}
+
 // TaskListerExpansion allows custom methods to be added to
 // TaskLister.
 type TaskListerExpansion interface{}

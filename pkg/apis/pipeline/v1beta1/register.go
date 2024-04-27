@@ -58,6 +58,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&PipelineRunList{},
 		&CustomRun{},
 		&CustomRunList{},
+		&StepAction{},
+		&StepActionList{},
 	)
 	// &Condition{},
 	// &ConditionList{},

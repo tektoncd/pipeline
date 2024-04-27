@@ -2099,7 +2099,7 @@ spec:
           resolver: bar
 `)
 
-	stepAction := parse.MustParseV1alpha1StepAction(t, `
+	stepAction := parse.MustParseV1beta1StepAction(t, `
 metadata:
   name: stepAction
   namespace: foo
@@ -2134,7 +2134,7 @@ spec:
 	clients := testAssets.Clients
 	err = c.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", tr.Namespace, tr.Name))
 	if controller.IsPermanentError(err) {
-		t.Errorf("Not expected permanent error but got %t", err)
+		t.Errorf("Not expected permanent error but got %v", err)
 	}
 	reconciledRun, err := clients.Pipeline.TektonV1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
 	if err != nil {
@@ -2159,7 +2159,7 @@ spec:
           resolver: bar
 `)}
 
-	stepAction := parse.MustParseV1alpha1StepAction(t, `
+	stepAction := parse.MustParseV1beta1StepAction(t, `
 metadata:
   name: stepAction
   namespace: foo
@@ -3549,7 +3549,7 @@ spec:
       - name: inlined-step
         image: "inlined-image"
 `)
-	stepAction := parse.MustParseV1alpha1StepAction(t, `
+	stepAction := parse.MustParseV1beta1StepAction(t, `
 metadata:
   name: stepAction
   namespace: foo
@@ -3559,7 +3559,7 @@ spec:
   securityContext:
     privileged: true
 `)
-	stepAction2 := parse.MustParseV1alpha1StepAction(t, `
+	stepAction2 := parse.MustParseV1beta1StepAction(t, `
 metadata:
   name: stepAction2
   namespace: foo
@@ -3569,7 +3569,7 @@ spec:
 `)
 	d := test.Data{
 		TaskRuns:    []*v1.TaskRun{taskRun},
-		StepActions: []*v1alpha1.StepAction{stepAction, stepAction2},
+		StepActions: []*v1beta1.StepAction{stepAction, stepAction2},
 		ConfigMaps: []*corev1.ConfigMap{
 			{
 				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
@@ -3659,7 +3659,7 @@ func TestStepActionRefParams(t *testing.T) {
 	tests := []struct {
 		name       string
 		taskRun    *v1.TaskRun
-		stepAction *v1alpha1.StepAction
+		stepAction *v1beta1.StepAction
 		want       []v1.Step
 	}{{
 		name: "params propagated from taskrun",
@@ -3689,7 +3689,7 @@ spec:
           - name: object-param
             value: $(params.objectparam[*])
 `),
-		stepAction: parse.MustParseV1alpha1StepAction(t, `
+		stepAction: parse.MustParseV1beta1StepAction(t, `
 metadata:
   name: stepAction
   namespace: foo
@@ -3734,7 +3734,7 @@ spec:
           - name: stringparam
             value: "step string param"
 `),
-		stepAction: parse.MustParseV1alpha1StepAction(t, `
+		stepAction: parse.MustParseV1beta1StepAction(t, `
 metadata:
   name: stepAction
   namespace: foo
@@ -3767,7 +3767,7 @@ spec:
           name: stepAction
         name: step1
 `),
-		stepAction: parse.MustParseV1alpha1StepAction(t, `
+		stepAction: parse.MustParseV1beta1StepAction(t, `
 metadata:
   name: stepAction
   namespace: foo
@@ -3798,7 +3798,7 @@ spec:
           name: stepAction
         name: step1
 `),
-		stepAction: parse.MustParseV1alpha1StepAction(t, `
+		stepAction: parse.MustParseV1beta1StepAction(t, `
 metadata:
   name: stepAction
   namespace: foo
@@ -3844,7 +3844,7 @@ spec:
           - name: object-param
             value: $(params.objectparam[*])
 `),
-		stepAction: parse.MustParseV1alpha1StepAction(t, `
+		stepAction: parse.MustParseV1beta1StepAction(t, `
 metadata:
   name: stepAction
   namespace: foo
@@ -3881,7 +3881,7 @@ spec:
           name: stepAction
         name: step1
 `),
-		stepAction: parse.MustParseV1alpha1StepAction(t, `
+		stepAction: parse.MustParseV1beta1StepAction(t, `
 metadata:
   name: stepAction
   namespace: foo
@@ -3918,7 +3918,7 @@ spec:
 		t.Run(tt.name, func(t *testing.T) {
 			d := test.Data{
 				TaskRuns:    []*v1.TaskRun{tt.taskRun},
-				StepActions: []*v1alpha1.StepAction{tt.stepAction},
+				StepActions: []*v1beta1.StepAction{tt.stepAction},
 				ConfigMaps: []*corev1.ConfigMap{
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},

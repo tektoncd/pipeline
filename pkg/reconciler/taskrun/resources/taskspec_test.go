@@ -25,7 +25,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
@@ -303,7 +303,7 @@ func TestGetStepActionsData(t *testing.T) {
 	tests := []struct {
 		name       string
 		tr         *v1.TaskRun
-		stepAction *v1alpha1.StepAction
+		stepAction *v1beta1.StepAction
 		want       []v1.Step
 	}{{
 		name: "step-action-with-command-args",
@@ -323,12 +323,12 @@ func TestGetStepActionsData(t *testing.T) {
 				},
 			},
 		},
-		stepAction: &v1alpha1.StepAction{
+		stepAction: &v1beta1.StepAction{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "stepAction",
 				Namespace: "default",
 			},
-			Spec: v1alpha1.StepActionSpec{
+			Spec: v1beta1.StepActionSpec{
 				Image:   "myimage",
 				Command: []string{"ls"},
 				Args:    []string{"-lh"},
@@ -365,12 +365,12 @@ func TestGetStepActionsData(t *testing.T) {
 				},
 			},
 		},
-		stepAction: &v1alpha1.StepAction{
+		stepAction: &v1beta1.StepAction{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "stepActionWithScript",
 				Namespace: "default",
 			},
-			Spec: v1alpha1.StepActionSpec{
+			Spec: v1beta1.StepActionSpec{
 				Image:  "myimage",
 				Script: "ls",
 			},
@@ -396,12 +396,12 @@ func TestGetStepActionsData(t *testing.T) {
 				},
 			},
 		},
-		stepAction: &v1alpha1.StepAction{
+		stepAction: &v1beta1.StepAction{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "stepActionWithEnv",
 				Namespace: "default",
 			},
-			Spec: v1alpha1.StepActionSpec{
+			Spec: v1beta1.StepActionSpec{
 				Image: "myimage",
 				Env: []corev1.EnvVar{{
 					Name:  "env1",
@@ -433,12 +433,12 @@ func TestGetStepActionsData(t *testing.T) {
 				},
 			},
 		},
-		stepAction: &v1alpha1.StepAction{
+		stepAction: &v1beta1.StepAction{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "stepActionWithScript",
 				Namespace: "default",
 			},
-			Spec: v1alpha1.StepActionSpec{
+			Spec: v1beta1.StepActionSpec{
 				Image:  "myimage",
 				Script: "ls",
 				Results: []v1.StepResult{{
@@ -472,12 +472,12 @@ func TestGetStepActionsData(t *testing.T) {
 				},
 			},
 		},
-		stepAction: &v1alpha1.StepAction{
+		stepAction: &v1beta1.StepAction{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "stepAction",
 				Namespace: "default",
 			},
-			Spec: v1alpha1.StepActionSpec{
+			Spec: v1beta1.StepActionSpec{
 				Image:   "myimage",
 				Command: []string{"ls"},
 				Args:    []string{"-lh"},
@@ -510,12 +510,12 @@ func TestGetStepActionsData(t *testing.T) {
 				},
 			},
 		},
-		stepAction: &v1alpha1.StepAction{
+		stepAction: &v1beta1.StepAction{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "stepAction",
 				Namespace: "default",
 			},
-			Spec: v1alpha1.StepActionSpec{
+			Spec: v1beta1.StepActionSpec{
 				Image:           "myimage",
 				Command:         []string{"ls"},
 				Args:            []string{"-lh"},
@@ -574,12 +574,12 @@ func TestGetStepActionsData(t *testing.T) {
 				},
 			},
 		},
-		stepAction: &v1alpha1.StepAction{
+		stepAction: &v1beta1.StepAction{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "stepAction",
 				Namespace: "default",
 			},
-			Spec: v1alpha1.StepActionSpec{
+			Spec: v1beta1.StepActionSpec{
 				Image: "myimage",
 				Args:  []string{"$(params.string-param)", "$(params.array-param[0])", "$(params.array-param[1])", "$(params.array-param[*])", "$(params.object-param.key)"},
 				Params: v1.ParamSpecs{{
@@ -645,12 +645,12 @@ func TestGetStepActionsData(t *testing.T) {
 				},
 			},
 		},
-		stepAction: &v1alpha1.StepAction{
+		stepAction: &v1beta1.StepAction{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "stepAction",
 				Namespace: "default",
 			},
-			Spec: v1alpha1.StepActionSpec{
+			Spec: v1beta1.StepActionSpec{
 				Image: "myimage",
 				Args:  []string{"$(params.string-param)", "$(params.array-param[0])", "$(params.array-param[1])", "$(params.array-param[*])", "$(params.object-param.key)"},
 				Params: v1.ParamSpecs{{
@@ -687,12 +687,12 @@ func TestGetStepActionsData(t *testing.T) {
 				},
 			},
 		},
-		stepAction: &v1alpha1.StepAction{
+		stepAction: &v1beta1.StepAction{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "stepAction",
 				Namespace: "default",
 			},
-			Spec: v1alpha1.StepActionSpec{
+			Spec: v1beta1.StepActionSpec{
 				Image: "myimage",
 				Args:  []string{"$(params.string-param)", "$(params.array-param[0])", "$(params.array-param[1])", "$(params.array-param[*])", "$(params.object-param.key)"},
 				Params: v1.ParamSpecs{{
@@ -777,12 +777,12 @@ func TestGetStepActionsData(t *testing.T) {
 				},
 			},
 		},
-		stepAction: &v1alpha1.StepAction{
+		stepAction: &v1beta1.StepAction{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "stepAction",
 				Namespace: "default",
 			},
-			Spec: v1alpha1.StepActionSpec{
+			Spec: v1beta1.StepActionSpec{
 				Image: "myimage",
 				Args:  []string{"$(params.string-param)", "$(params.array-param[0])", "$(params.array-param[1])", "$(params.array-param[*])", "$(params.object-param.key)", "$(params.object-param.key2)", "$(params.object-param.key3)"},
 				Params: v1.ParamSpecs{{
@@ -848,12 +848,12 @@ func TestGetStepActionsData(t *testing.T) {
 				},
 			},
 		},
-		stepAction: &v1alpha1.StepAction{
+		stepAction: &v1beta1.StepAction{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "stepAction",
 				Namespace: "default",
 			},
-			Spec: v1alpha1.StepActionSpec{
+			Spec: v1beta1.StepActionSpec{
 				Image: "myimage",
 				Args:  []string{"echo", "$(params.stringparam)"},
 				Params: v1.ParamSpecs{{
@@ -908,12 +908,12 @@ func TestGetStepActionsData(t *testing.T) {
 				},
 			},
 		},
-		stepAction: &v1alpha1.StepAction{
+		stepAction: &v1beta1.StepAction{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "stepAction",
 				Namespace: "default",
 			},
-			Spec: v1alpha1.StepActionSpec{
+			Spec: v1beta1.StepActionSpec{
 				Image:   "myimage",
 				Args:    []string{"$(params.string-param)", "$(params.array-param[0])", "$(params.array-param[1])", "$(params.array-param[*])", "$(params.object-param.key)"},
 				Command: []string{"$(params[\"string-param\"])", "$(params[\"array-param\"][0])"},
@@ -980,7 +980,7 @@ func TestGetStepActionsData_Error(t *testing.T) {
 	tests := []struct {
 		name          string
 		tr            *v1.TaskRun
-		stepAction    *v1alpha1.StepAction
+		stepAction    *v1beta1.StepAction
 		expectedError error
 	}{{
 		name: "namespace missing error",
@@ -998,7 +998,7 @@ func TestGetStepActionsData_Error(t *testing.T) {
 				},
 			},
 		},
-		stepAction:    &v1alpha1.StepAction{},
+		stepAction:    &v1beta1.StepAction{},
 		expectedError: errors.New("must specify namespace to resolve reference to step action stepActionError"),
 	}, {
 		name: "params missing",
@@ -1017,12 +1017,12 @@ func TestGetStepActionsData_Error(t *testing.T) {
 				},
 			},
 		},
-		stepAction: &v1alpha1.StepAction{
+		stepAction: &v1beta1.StepAction{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "stepaction",
 				Namespace: "default",
 			},
-			Spec: v1alpha1.StepActionSpec{
+			Spec: v1beta1.StepActionSpec{
 				Image: "myimage",
 				Params: v1.ParamSpecs{{
 					Name: "string-param",
@@ -1052,12 +1052,12 @@ func TestGetStepActionsData_Error(t *testing.T) {
 				},
 			},
 		},
-		stepAction: &v1alpha1.StepAction{
+		stepAction: &v1beta1.StepAction{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "stepaction",
 				Namespace: "default",
 			},
-			Spec: v1alpha1.StepActionSpec{
+			Spec: v1beta1.StepActionSpec{
 				Image: "myimage",
 			},
 		},

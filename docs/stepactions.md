@@ -22,7 +22,7 @@ weight: 201
   - [Cannot pass Step Results between Steps](#cannot-pass-step-results-between-steps)
 
 ## Overview
-> :seedling: **`StepActions` is an [alpha](additional-configs.md#alpha-features) feature.**
+> :seedling: **`StepActions` is an [beta](additional-configs.md#beta-features) feature.**
 > The `enable-step-actions` feature flag must be set to `"true"` to specify a `StepAction` in a `Step`.
 
 A `StepAction` is the reusable and scriptable unit of work that is performed by a `Step`.
@@ -62,7 +62,7 @@ A `StepAction` definition supports the following fields:
 The example below demonstrates the use of most of the above-mentioned fields:
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: StepAction
 metadata:
   name: example-stepaction-name
@@ -82,7 +82,7 @@ Like with `Tasks`, a `StepAction` must declare all the parameters that it uses. 
  `Parameters` are passed to the `StepAction` from its corresponding `Step` referencing it.
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: StepAction
 metadata:
   name: stepaction-using-params

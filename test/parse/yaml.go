@@ -35,6 +35,17 @@ kind: StepAction
 	return &sa
 }
 
+// MustParseV1beta1StepAction takes YAML and parses it into a *v1alpha1.StepAction
+func MustParseV1beta1StepAction(t *testing.T, yaml string) *v1beta1.StepAction {
+	t.Helper()
+	var sa v1beta1.StepAction
+	yaml = `apiVersion: tekton.dev/v1beta1
+kind: StepAction
+` + yaml
+	mustParseYAML(t, yaml, &sa)
+	return &sa
+}
+
 // MustParseV1beta1TaskRun takes YAML and parses it into a *v1beta1.TaskRun
 func MustParseV1beta1TaskRun(t *testing.T, yaml string) *v1beta1.TaskRun {
 	t.Helper()
