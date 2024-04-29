@@ -11,50 +11,58 @@ import (
 	"time"
 )
 
-// Deletes the lifecycle policy associated with the specified repository.
-func (c *Client) DeleteLifecyclePolicy(ctx context.Context, params *DeleteLifecyclePolicyInput, optFns ...func(*Options)) (*DeleteLifecyclePolicyOutput, error) {
+// Updates an existing pull through cache rule.
+func (c *Client) UpdatePullThroughCacheRule(ctx context.Context, params *UpdatePullThroughCacheRuleInput, optFns ...func(*Options)) (*UpdatePullThroughCacheRuleOutput, error) {
 	if params == nil {
-		params = &DeleteLifecyclePolicyInput{}
+		params = &UpdatePullThroughCacheRuleInput{}
 	}
 
-	result, metadata, err := c.invokeOperation(ctx, "DeleteLifecyclePolicy", params, optFns, c.addOperationDeleteLifecyclePolicyMiddlewares)
+	result, metadata, err := c.invokeOperation(ctx, "UpdatePullThroughCacheRule", params, optFns, c.addOperationUpdatePullThroughCacheRuleMiddlewares)
 	if err != nil {
 		return nil, err
 	}
 
-	out := result.(*DeleteLifecyclePolicyOutput)
+	out := result.(*UpdatePullThroughCacheRuleOutput)
 	out.ResultMetadata = metadata
 	return out, nil
 }
 
-type DeleteLifecyclePolicyInput struct {
+type UpdatePullThroughCacheRuleInput struct {
 
-	// The name of the repository.
+	// The Amazon Resource Name (ARN) of the Amazon Web Services Secrets Manager
+	// secret that identifies the credentials to authenticate to the upstream registry.
 	//
 	// This member is required.
-	RepositoryName *string
+	CredentialArn *string
 
-	// The Amazon Web Services account ID associated with the registry that contains
-	// the repository. If you do not specify a registry, the default registry is
-	// assumed.
+	// The repository name prefix to use when caching images from the source registry.
+	//
+	// This member is required.
+	EcrRepositoryPrefix *string
+
+	// The Amazon Web Services account ID associated with the registry associated with
+	// the pull through cache rule. If you do not specify a registry, the default
+	// registry is assumed.
 	RegistryId *string
 
 	noSmithyDocumentSerde
 }
 
-type DeleteLifecyclePolicyOutput struct {
+type UpdatePullThroughCacheRuleOutput struct {
 
-	// The time stamp of the last time that the lifecycle policy was run.
-	LastEvaluatedAt *time.Time
+	// The Amazon Resource Name (ARN) of the Amazon Web Services Secrets Manager
+	// secret associated with the pull through cache rule.
+	CredentialArn *string
 
-	// The JSON lifecycle policy text.
-	LifecyclePolicyText *string
+	// The Amazon ECR repository prefix associated with the pull through cache rule.
+	EcrRepositoryPrefix *string
 
 	// The registry ID associated with the request.
 	RegistryId *string
 
-	// The repository name associated with the request.
-	RepositoryName *string
+	// The date and time, in JavaScript date format, when the pull through cache rule
+	// was updated.
+	UpdatedAt *time.Time
 
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -62,19 +70,19 @@ type DeleteLifecyclePolicyOutput struct {
 	noSmithyDocumentSerde
 }
 
-func (c *Client) addOperationDeleteLifecyclePolicyMiddlewares(stack *middleware.Stack, options Options) (err error) {
+func (c *Client) addOperationUpdatePullThroughCacheRuleMiddlewares(stack *middleware.Stack, options Options) (err error) {
 	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDeleteLifecyclePolicy{}, middleware.After)
+	err = stack.Serialize.Add(&awsAwsjson11_serializeOpUpdatePullThroughCacheRule{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDeleteLifecyclePolicy{}, middleware.After)
+	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpUpdatePullThroughCacheRule{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "DeleteLifecyclePolicy"); err != nil {
+	if err := addProtocolFinalizerMiddlewares(stack, options, "UpdatePullThroughCacheRule"); err != nil {
 		return fmt.Errorf("add protocol finalizers: %v", err)
 	}
 
@@ -117,10 +125,10 @@ func (c *Client) addOperationDeleteLifecyclePolicyMiddlewares(stack *middleware.
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addOpDeleteLifecyclePolicyValidationMiddleware(stack); err != nil {
+	if err = addOpUpdatePullThroughCacheRuleValidationMiddleware(stack); err != nil {
 		return err
 	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDeleteLifecyclePolicy(options.Region), middleware.Before); err != nil {
+	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opUpdatePullThroughCacheRule(options.Region), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRecursionDetection(stack); err != nil {
@@ -141,10 +149,10 @@ func (c *Client) addOperationDeleteLifecyclePolicyMiddlewares(stack *middleware.
 	return nil
 }
 
-func newServiceMetadataMiddleware_opDeleteLifecyclePolicy(region string) *awsmiddleware.RegisterServiceMetadata {
+func newServiceMetadataMiddleware_opUpdatePullThroughCacheRule(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		OperationName: "DeleteLifecyclePolicy",
+		OperationName: "UpdatePullThroughCacheRule",
 	}
 }
