@@ -139,6 +139,12 @@ require (
 	gopkg.in/go-jose/go-jose.v2 v2.6.3 // indirect
 )
 
+// TODO: Remove this once github.com/google/go-containerregistry uses github.com/aws/aws-sdk-go-v2 >v1.23.0
+replace (
+	github.com/aws/aws-sdk-go-v2/service/ecr => github.com/aws/aws-sdk-go-v2/service/ecr v1.27.3
+	github.com/aws/aws-sdk-go-v2/service/ecrpublic => github.com/aws/aws-sdk-go-v2/service/ecrpublic v1.23.3
+)
+
 require (
 	cloud.google.com/go/compute v1.24.0 // indirect
 	contrib.go.opencensus.io/exporter/ocagent v0.7.1-0.20200907061046-05415f1de66d // indirect
