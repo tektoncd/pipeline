@@ -151,10 +151,10 @@ func (l PipelineTaskList) Validate(ctx context.Context, taskNames sets.String, p
 }
 
 // validateUsageOfDeclaredPipelineTaskParameters validates that all parameters referenced in the pipeline Task are declared by the pipeline Task.
-func (l PipelineTaskList) validateUsageOfDeclaredPipelineTaskParameters(ctx context.Context, path string) (errs *apis.FieldError) {
+func (l PipelineTaskList) validateUsageOfDeclaredPipelineTaskParameters(ctx context.Context, additionalParams []ParamSpec, path string) (errs *apis.FieldError) {
 	for i, t := range l {
 		if t.TaskSpec != nil {
-			errs = errs.Also(ValidateUsageOfDeclaredParameters(ctx, t.TaskSpec.Steps, t.TaskSpec.Params).ViaFieldIndex(path, i))
+			errs = errs.Also(ValidateUsageOfDeclaredParameters(ctx, t.TaskSpec.Steps, append(t.TaskSpec.Params, additionalParams...)).ViaFieldIndex(path, i))
 		}
 	}
 	return errs
@@ -385,8 +385,8 @@ func validatePipelineWorkspacesDeclarations(wss []PipelineWorkspaceDeclaration) 
 
 // validatePipelineParameterUsage validates that parameters referenced in the Pipeline are declared by the Pipeline
 func (ps *PipelineSpec) validatePipelineParameterUsage(ctx context.Context) (errs *apis.FieldError) {
-	errs = errs.Also(PipelineTaskList(ps.Tasks).validateUsageOfDeclaredPipelineTaskParameters(ctx, "tasks"))
-	errs = errs.Also(PipelineTaskList(ps.Finally).validateUsageOfDeclaredPipelineTaskParameters(ctx, "finally"))
+	errs = errs.Also(PipelineTaskList(ps.Tasks).validateUsageOfDeclaredPipelineTaskParameters(ctx, ps.Params, "tasks"))
+	errs = errs.Also(PipelineTaskList(ps.Finally).validateUsageOfDeclaredPipelineTaskParameters(ctx, ps.Params, "finally"))
 	errs = errs.Also(validatePipelineTaskParameterUsage(ps.Tasks, ps.Params).ViaField("tasks"))
 	errs = errs.Also(validatePipelineTaskParameterUsage(ps.Finally, ps.Params).ViaField("finally"))
 	return errs

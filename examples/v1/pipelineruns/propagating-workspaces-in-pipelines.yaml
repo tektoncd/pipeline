@@ -1,0 +1,32 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: workspace-example
+spec:
+  workspaces:
+    - name: shared-data
+  tasks:
+    - name: t1
+      taskSpec:
+        steps:
+          - image: ubuntu
+            command: ["ls"]
+            args: ["$(workspaces.shared-data.path)"]
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: workspace-example-run
+spec:
+  pipelineRef:
+    name: workspace-example
+  workspaces:
+    - name: shared-data
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 16Mi
+          volumeMode: Filesystem
