@@ -616,7 +616,7 @@ func (facts *PipelineRunFacts) GetPipelineTaskStatus() map[string]string {
 	return tStatus
 }
 
-// GetPipelineTaskStatus returns the status of a PipelineFinalTask depending on its taskRun
+// GetPipelineFinalTaskStatus returns the status of a PipelineFinalTask depending on its taskRun
 func (facts *PipelineRunFacts) GetPipelineFinalTaskStatus() map[string]string {
 	// construct a map of tasks.<pipelineTask>.status and its state
 	tStatus := make(map[string]string)

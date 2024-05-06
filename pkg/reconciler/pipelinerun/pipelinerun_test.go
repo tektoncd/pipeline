@@ -140,7 +140,7 @@ func getPipelineRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 	return initializePipelineRunControllerAssets(t, d, pipeline.Options{Images: images})
 }
 
-// initiailizePipelinerunControllerAssets is a shared helper for
+// initializePipelineRunControllerAssets is a shared helper for
 // controller initialization.
 func initializePipelineRunControllerAssets(t *testing.T, d test.Data, opts pipeline.Options) (test.Assets, func()) {
 	t.Helper()

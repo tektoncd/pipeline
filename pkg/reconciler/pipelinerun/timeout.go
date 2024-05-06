@@ -107,7 +107,7 @@ func timeoutTaskRun(ctx context.Context, taskRunName string, namespace string, c
 	return err
 }
 
-// timeoutPipelineTaskRuns patches `TaskRun` and `Run` with canceled status and an appropriate message
+// timeoutPipelineTasks patches `TaskRun` and `Run` with canceled status and an appropriate message
 func timeoutPipelineTasks(ctx context.Context, logger *zap.SugaredLogger, pr *v1.PipelineRun, clientSet clientset.Interface) []string {
 	return timeoutPipelineTasksForTaskNames(ctx, logger, pr, clientSet, sets.NewString())
 }
