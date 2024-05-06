@@ -15,11 +15,11 @@ jobs:
         with:
           egress-policy: audit
       - name: 'Checkout'
-        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
         
       - name: Get changed files
         id: changed-files
-        uses: tj-actions/changed-files@635f118699dd888d737c15018cd30aff2e0274f8 # v44.0.1
+        uses: tj-actions/changed-files@0874344d6ebbaa00a27da73276ae7162fadcaf69 # v44.3.0
         with:
           write_output_files: true
           files: |

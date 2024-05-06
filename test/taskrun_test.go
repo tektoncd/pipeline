@@ -36,6 +36,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"knative.dev/pkg/apis"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
 )
@@ -489,4 +490,94 @@ func cancelTaskRun(t *testing.T, ctx context.Context, taskRunName string, c *cli
 	}
 
 	return nil
+}
+
+func TestTaskRunRetryFailure(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	c, namespace := setup(ctx, t)
+	t.Parallel()
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	taskRunName := helpers.ObjectNameForTest(t)
+
+	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
+	task := parse.MustParseV1Task(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  steps:
+  - image: busybox
+    command: ['/bin/sh']
+    args: ['-c', 'exit 1']
+    volumeMounts:
+    - mountPath: /cache
+      name: $(workspaces.cache.volume)
+  workspaces:
+  - description: cache
+    name: cache
+`, helpers.ObjectNameForTest(t), namespace))
+	if _, err := c.V1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create Task: %s", err)
+	}
+	taskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  taskRef:
+    name: %s
+  retries: 1
+  workspaces:
+  - name: cache
+    emptyDir: {}
+`, taskRunName, namespace, task.Name))
+	if _, err := c.V1TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create TaskRun: %s", err)
+	}
+
+	t.Logf("Waiting for TaskRun in namespace %s to fail", namespace)
+	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunFailed(taskRunName), "TaskRunFailed", v1Version); err != nil {
+		t.Errorf("Error waiting for TaskRun to finish: %s", err)
+	}
+
+	taskrun, err := c.V1TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Couldn't get expected TaskRun %s: %s", taskRunName, err)
+	}
+
+	if !isFailed(t, taskrun.GetName(), taskrun.Status.Conditions) {
+		t.Fatalf("task should have been a failure")
+	}
+
+	expectedReason := "Failed"
+	actualReason := taskrun.Status.GetCondition(apis.ConditionSucceeded).GetReason()
+	if actualReason != expectedReason {
+		t.Fatalf("expected TaskRun to have failed reason %s, got %s", expectedReason, actualReason)
+	}
+
+	expectedStepState := []v1.StepState{{
+		ContainerState: corev1.ContainerState{
+			Terminated: &corev1.ContainerStateTerminated{
+				ExitCode: 1,
+				Reason:   "Error",
+			},
+		},
+		TerminationReason: "Error",
+		Name:              "unnamed-0",
+		Container:         "step-unnamed-0",
+	}}
+	ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
+	ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID")
+	if d := cmp.Diff(taskrun.Status.Steps, expectedStepState, ignoreTerminatedFields, ignoreStepFields); d != "" {
+		t.Fatalf("-got, +want: %v", d)
+	}
+	if len(taskrun.Status.RetriesStatus) != 1 {
+		t.Fatalf("expected 1 retry status, got %d", len(taskrun.Status.RetriesStatus))
+	}
 }

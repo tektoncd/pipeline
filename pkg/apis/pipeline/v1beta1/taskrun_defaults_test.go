@@ -359,7 +359,6 @@ func TestTaskRunDefaulting(t *testing.T) {
 			},
 			Spec: v1beta1.TaskRunSpec{
 				TaskRef: &v1beta1.TaskRef{
-					Kind: "Task",
 					ResolverRef: v1beta1.ResolverRef{
 						Resolver: "git",
 					},
@@ -388,7 +387,6 @@ func TestTaskRunDefaulting(t *testing.T) {
 			},
 			Spec: v1beta1.TaskRunSpec{
 				TaskRef: &v1beta1.TaskRef{
-					Kind: "Task",
 					ResolverRef: v1beta1.ResolverRef{
 						Resolver: "custom resolver",
 					},

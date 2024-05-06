@@ -57,6 +57,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableCELInWhenExpression:        config.DefaultEnableCELInWhenExpression.Enabled,
 				EnableStepActions:                config.DefaultEnableStepActions.Enabled,
 				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
+				DisableInlineSpec:                config.DefaultDisableInlineSpec,
 			},
 			fileName: config.GetFeatureFlagsConfigName(),
 		},
@@ -81,6 +82,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableStepActions:                true,
 				EnableArtifacts:                  true,
 				EnableParamEnum:                  true,
+				DisableInlineSpec:                "pipeline,pipelinerun,taskrun",
 			},
 			fileName: "feature-flags-all-flags-set",
 		},
@@ -107,6 +109,8 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableCELInWhenExpression:        config.DefaultEnableCELInWhenExpression.Enabled,
 				EnableStepActions:                config.DefaultEnableStepActions.Enabled,
 				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
+				EnableArtifacts:                  config.DefaultEnableArtifacts.Enabled,
+				DisableInlineSpec:                config.DefaultDisableInlineSpec,
 			},
 			fileName: "feature-flags-enable-api-fields-overrides-bundles-and-custom-tasks",
 		},
@@ -128,6 +132,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				SetSecurityContext:               config.DefaultSetSecurityContext,
 				Coschedule:                       config.DefaultCoschedule,
 				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
+				DisableInlineSpec:                config.DefaultDisableInlineSpec,
 			},
 			fileName: "feature-flags-bundles-and-custom-tasks",
 		},
@@ -149,6 +154,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				SetSecurityContext:               config.DefaultSetSecurityContext,
 				Coschedule:                       config.DefaultCoschedule,
 				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
+				DisableInlineSpec:                config.DefaultDisableInlineSpec,
 			},
 			fileName: "feature-flags-beta-api-fields",
 		},
@@ -169,6 +175,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableCELInWhenExpression:        config.DefaultEnableCELInWhenExpression.Enabled,
 				EnableStepActions:                config.DefaultEnableStepActions.Enabled,
 				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
+				DisableInlineSpec:                config.DefaultDisableInlineSpec,
 			},
 			fileName: "feature-flags-enforce-nonfalsifiability-spire",
 		},
@@ -188,6 +195,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableCELInWhenExpression:        config.DefaultEnableCELInWhenExpression.Enabled,
 				EnableStepActions:                config.DefaultEnableStepActions.Enabled,
 				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
+				DisableInlineSpec:                config.DefaultDisableInlineSpec,
 			},
 			fileName: "feature-flags-results-via-sidecar-logs",
 		},
@@ -224,6 +232,7 @@ func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 		EnableCELInWhenExpression:        config.DefaultEnableCELInWhenExpression.Enabled,
 		EnableStepActions:                config.DefaultEnableStepActions.Enabled,
 		EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
+		DisableInlineSpec:                config.DefaultDisableInlineSpec,
 	}
 	verifyConfigFileWithExpectedFeatureFlagsConfig(t, FeatureFlagsConfigEmptyName, expectedConfig)
 }
@@ -311,7 +320,9 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 		t.Run(tc.fileName, func(t *testing.T) {
 			cm := test.ConfigMapFromTestFile(t, tc.fileName)
 			_, err := config.NewFeatureFlagsFromConfigMap(cm)
-			if d := cmp.Diff(tc.want, err.Error()); d != "" {
+			if err == nil {
+				t.Error("failed to get:", tc.want)
+			} else if d := cmp.Diff(tc.want, err.Error()); d != "" {
 				t.Errorf("failed to get expected error; diff:\n%s", diff.PrintWantGot(d))
 			}
 		})

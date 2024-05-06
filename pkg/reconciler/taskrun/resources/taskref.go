@@ -233,6 +233,7 @@ func resolveStepAction(ctx context.Context, resolver remote.Resolver, name, name
 func readRuntimeObjectAsTask(ctx context.Context, namespace string, obj runtime.Object, k8s kubernetes.Interface, tekton clientset.Interface, refSource *v1.RefSource, verificationPolicies []*v1alpha1.VerificationPolicy) (*v1.Task, *trustedresources.VerificationResult, error) {
 	switch obj := obj.(type) {
 	case *v1beta1.Task:
+		obj.SetDefaults(ctx)
 		// Verify the Task once we fetch from the remote resolution, mutating, validation and conversion of the task should happen after the verification, since signatures are based on the remote task contents
 		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
 		// Issue a dry-run request to create the remote Task, so that it can undergo validation from validating admission webhooks
@@ -251,6 +252,7 @@ func readRuntimeObjectAsTask(ctx context.Context, namespace string, obj runtime.
 		}
 		return t, &vr, nil
 	case *v1beta1.ClusterTask:
+		obj.SetDefaults(ctx)
 		t, err := convertClusterTaskToTask(ctx, *obj)
 		// Issue a dry-run request to create the remote Task, so that it can undergo validation from validating admission webhooks
 		// without actually creating the Task on the cluster
@@ -259,6 +261,9 @@ func readRuntimeObjectAsTask(ctx context.Context, namespace string, obj runtime.
 		}
 		return t, nil, err
 	case *v1.Task:
+		// This SetDefaults is currently not necessary, but for consistency, it is recommended to add it.
+		// Avoid forgetting to add it in the future when there is a v2 version, causing similar problems.
+		obj.SetDefaults(ctx)
 		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
 		// Issue a dry-run request to create the remote Task, so that it can undergo validation from validating admission webhooks
 		// without actually creating the Task on the cluster

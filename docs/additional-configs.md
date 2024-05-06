@@ -32,6 +32,7 @@ installation.
   - [Verify Tekton Resources](#verify-tekton-resources)
   - [Pipelinerun with Affinity Assistant](#pipelineruns-with-affinity-assistant)
   - [TaskRuns with `imagePullBackOff` Timeout](#taskruns-with-imagepullbackoff-timeout)
+  - [Disabling Inline Spec in TaskRun and PipelineRun](#disabling-inline-spec-in-taskrun-and-pipelinerun)
   - [Next steps](#next-steps)
 
 
@@ -693,6 +694,31 @@ metadata:
 data:
   default-imagepullbackoff-timeout: "5m"
 ```
+
+## Disabling Inline Spec in Pipeline, TaskRun and PipelineRun
+
+Tekton users may embed the specification of a `Task` (via `taskSpec`) or a `Pipeline` (via `pipelineSpec`) as an alternative to referring to an external resource via `taskRef` and `pipelineRef` respectively.  This behaviour can be selectively disabled for three Tekton resources: `TaskRun`, `PipelineRun` and `Pipeline`.
+
+ In certain clusters and scenarios, an admin might want to disable the customisation of `Tasks` and `Pipelines` and only allow users to run pre-defined resources. To achieve that the admin should disable embedded specification via the `disable-inline-spec` flag, and remote resolvers too.
+
+To disable inline specification, set the `disable-inline-spec` flag to `"pipeline,pipelinerun,taskrun"`
+in the `feature-flags` configmap.
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: feature-flags
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+data:
+  disable-inline-spec: "pipeline,pipelinerun,taskrun"
+```
+
+Inline specifications can be disabled for specific resources only. To achieve that, set the disable-inline-spec flag to a comma-separated list of the desired resources. Valid values are pipeline, pipelinerun and taskrun.
+
+The default value of disable-inline-spec is "", which means inline specification is enabled in all cases.
 
 ## Next steps
 
