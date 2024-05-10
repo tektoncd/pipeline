@@ -280,13 +280,14 @@ func imageNamesMapping() map[string]string {
 		}
 	case "ppc64le":
 		return map[string]string{
-			"registry":                              getTestImage(registryImage),
-			"node":                                  "node:alpine3.11",
-			"gcr.io/cloud-builders/git":             "alpine/git:latest",
-			"docker:dind":                           "ibmcom/docker-ppc64le:19.03-dind",
+			"registry":                  getTestImage(registryImage),
+			"node":                      "node:alpine3.11",
+			"gcr.io/cloud-builders/git": "alpine/git:latest",
+			"docker@sha256:74e78208fc18da48ddf8b569abe21563730845c312130bd0f0b059746a7e10f5": "ibmcom/docker-ppc64le:19.03-dind",
 			"docker":                                "docker:18.06.3",
 			"mikefarah/yq:3":                        "danielxlee/yq:2.4.0",
 			"stedolan/jq":                           "ibmcom/jq-ppc64le:latest",
+			"amd64/ubuntu":                          "ppc64le/ubuntu",
 			"gcr.io/kaniko-project/executor:v1.3.0": getTestImage(kanikoImage),
 		}
 	}
