@@ -41,40 +41,47 @@ refers to `TaskRuns` and `PipelineRuns` as `Runs` for the sake of brevity.
 
 ## Overview
 
-Tekton supports authentication via the Kubernetes first-class `Secret` types listed below.
+## Overview
+
+Tekton supports authentication for Git and Docker registries using Kubernetes Secrets. The supported Secret types are:
 
 <table>
-	<thead>
-		<th>Git</th>
-		<th>Docker</th>
-	</thead>
-	<tbody>
-		<tr>
-			<td><code>kubernetes.io/basic-auth</code><br>
-				<code>kubernetes.io/ssh-auth</code>
-			</td>
-			<td><code>kubernetes.io/basic-auth</code><br>
-				<code>kubernetes.io/dockercfg</code><br>
-				<code>kubernetes.io/dockerconfigjson</code>
-			</td>
-	</tbody>
+    <thead>
+        <th>Git</th>
+        <th>Docker</th>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>kubernetes.io/basic-auth</code><br>
+                <code>kubernetes.io/ssh-auth</code>
+            </td>
+            <td><code>kubernetes.io/basic-auth</code><br>
+                <code>kubernetes.io/dockercfg</code><br>
+                <code>kubernetes.io/dockerconfigjson</code>
+            </td>
+    </tbody>
 </table>
 
-A `Run` gains access to these `Secrets` through its associated `ServiceAccount`. Tekton requires that each
-supported `Secret` includes a [Tekton-specific annotation](#understanding-credential-selection).
+A TaskRun or PipelineRun (collectively referred to as "Run") gains access to these Secrets through its associated ServiceAccount. Each supported Secret must include a Tekton-specific annotation for Tekton to recognize and process it (see [Understanding Credential Selection](#understanding-credential-selection)).
 
-Tekton converts properly annotated `Secrets` of the supported types and stores them in a `Step's` container as follows:
+Tekton handles authentication in two stages:
 
- - **Git:** Tekton produces a ~/.gitconfig file or a ~/.ssh directory.
- - **Docker:** Tekton produces a ~/.docker/config.json file.
+1. **Pod Scheduling and Image Pulling**: When a Run is executed, Tekton creates a Pod to run the defined Steps. During this Pod creation phase, Tekton uses the provided Docker credentials (if any) to authenticate with the respective registries and pull the required container images.
 
-Each `Secret` type supports multiple credentials covering multiple domains and establishes specific rules governing
-credential formatting and merging. Tekton follows those rules when merging credentials of each supported type.
+2. **Step Execution**: After the Pod is created and the images are pulled, Tekton executes the Steps within the Pod. At this stage, Tekton sets up the appropriate authentication credentials for Git and Docker within the container's environment, allowing the Steps to access and interact with the respective services.
 
-To consume these `Secrets`, Tekton performs credential initialization within every `Pod` it instantiates, before executing
-any `Steps` in the `Run`. During credential initialization, Tekton accesses each `Secret` associated with the `Run` and
-aggregates them into a `/tekton/creds` directory. Tekton then copies or symlinks files from this directory into the user's
-`$HOME` directory.
+To provide the appropriate credentials within the container's environment, Tekton performs the following credential initialization process for every Pod it creates:
+
+1. Tekton accesses all Secrets associated with the Run and aggregates their contents into a temporary directory (`/tekton/creds`).
+
+2. Tekton then copies or symlinks the relevant credential files from the temporary directory into the user's home directory (`$HOME`) within the container.
+
+This process ensures that the container has access to the necessary Git and Docker credentials during Step execution, allowing the Steps to authenticate with the respective services.
+
+For Git authentication, Tekton generates a `~/.gitconfig` file or a `~/.ssh` directory within the container.
+For Docker authentication, Tekton generates a `~/.docker/config.json` file within the container.
+
+Each Secret type has specific rules governing credential formatting and merging. Tekton follows these rules when aggregating and merging credentials of the supported types.
 
 TODO(#5357): Update docs to explain recommended methods of passing secrets in via workspaces
 
