@@ -169,6 +169,9 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 // OnError is used to handle any situation where a ResolutionRequest has
 // reached a terminal situation that cannot be recovered from.
 func (r *Reconciler) OnError(ctx context.Context, rr *v1beta1.ResolutionRequest, err error) error {
+	if resolutioncommon.IsErrTransient(err) {
+		return err
+	}
 	if rr == nil {
 		return controller.NewPermanentError(err)
 	}
@@ -213,6 +216,7 @@ func (r *Reconciler) writeResolvedData(ctx context.Context, rr *v1beta1.Resoluti
 		},
 	})
 	if err != nil {
+		logging.FromContext(ctx).Warnf("writeResolvedData error serializing resource request patch for resolution request %s:%s: %s", rr.Namespace, rr.Name, err.Error())
 		return r.OnError(ctx, rr, &resolutioncommon.UpdatingRequestError{
 			ResolutionRequestKey: fmt.Sprintf("%s/%s", rr.Namespace, rr.Name),
 			Original:             fmt.Errorf("error serializing resource request patch: %w", err),
@@ -220,6 +224,7 @@ func (r *Reconciler) writeResolvedData(ctx context.Context, rr *v1beta1.Resoluti
 	}
 	_, err = r.resolutionRequestClientSet.ResolutionV1beta1().ResolutionRequests(rr.Namespace).Patch(ctx, rr.Name, types.MergePatchType, patchBytes, metav1.PatchOptions{}, "status")
 	if err != nil {
+		logging.FromContext(ctx).Warnf("writeResolvedData error patching resolution request %s:%s: %s", rr.Namespace, rr.Name, err.Error())
 		return r.OnError(ctx, rr, &resolutioncommon.UpdatingRequestError{
 			ResolutionRequestKey: fmt.Sprintf("%s/%s", rr.Namespace, rr.Name),
 			Original:             err,

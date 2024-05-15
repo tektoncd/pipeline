@@ -29,6 +29,16 @@ import (
 	"knative.dev/pkg/kmeta"
 )
 
+const (
+	// ParamName is a param that explicitly assigns a name to the remote object
+	ParamName = "name"
+
+	// ParamURL is a param that hold the URL used for accesing the remote object
+	ParamURL = "url"
+)
+
+//
+
 const maxLength = validation.DNS1123LabelMaxLength
 
 // GenerateDeterministicName makes a best-effort attempt to create a
@@ -115,4 +125,29 @@ func GenerateDeterministicNameFromSpec(prefix, base string, resolutionSpec *v1be
 		return name, nil
 	}
 	return name[:strings.LastIndex(name[:maxLength], " ")], nil
+}
+
+// GenerateErrorLogString makes a best effort attempt to get the name of the task
+// when a resolver error occurred.  The TaskRef name does not have to be set, where
+// the specific resolver gets the name from the parameters.
+func GenerateErrorLogString(resolverType string, params v1.Params) string {
+	paramString := fmt.Sprintf("resolver type %s\n", resolverType)
+	for _, p := range params {
+		if p.Name == ParamName {
+			name := p.Value.StringVal
+			if p.Value.Type != v1.ParamTypeString {
+				asJSON, err := p.Value.MarshalJSON()
+				if err != nil {
+					paramString += fmt.Sprintf("name could not be marshalled: %s\n", err.Error())
+					continue
+				}
+				name = string(asJSON)
+			}
+			paramString += fmt.Sprintf("name = %s\n", name)
+		}
+		if p.Name == ParamURL {
+			paramString += fmt.Sprintf("url = %s\n", p.Value.StringVal)
+		}
+	}
+	return paramString
 }

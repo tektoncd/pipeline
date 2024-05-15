@@ -30,7 +30,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
-	framework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"

@@ -17,6 +17,7 @@ limitations under the License.
 package resource_test
 
 import (
+	"strings"
 	"testing"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -214,6 +215,100 @@ func TestGenerateDeterministicNameFromSpec(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("GenerateDeterministicNameFromSpec() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGenerateErrorLogString(t *testing.T) {
+	tests := []struct {
+		resolverType string
+		name         string
+		url          string
+		err          string
+		params       []v1.Param
+		isPresent    bool
+	}{
+		{
+			name:         "foo",
+			url:          "https://bar",
+			resolverType: "git",
+			isPresent:    true,
+			params: []v1.Param{
+				{
+					Name: resource.ParamName,
+					Value: v1.ParamValue{
+						Type:      v1.ParamTypeString,
+						StringVal: "foo",
+					},
+				},
+				{
+					Name: resource.ParamURL,
+					Value: v1.ParamValue{
+						Type:      v1.ParamTypeString,
+						StringVal: "https://bar",
+					},
+				},
+			},
+		},
+		{
+			name:         "foo",
+			url:          "https://bar",
+			resolverType: "",
+			err:          "name could not be marshalled",
+			params:       []v1.Param{},
+		},
+		{
+			name:         "goo",
+			resolverType: "bundle",
+			isPresent:    true,
+			params: []v1.Param{
+				{
+					Name: resource.ParamName,
+					Value: v1.ParamValue{
+						Type:      v1.ParamTypeString,
+						StringVal: "goo",
+					},
+				},
+			},
+		},
+		{
+			name:         "hoo",
+			resolverType: "cluster",
+			err:          "name could not be marshalled",
+			isPresent:    true,
+			params: []v1.Param{
+				{
+					Name: resource.ParamName,
+					Value: v1.ParamValue{
+						Type:      v1.ParamTypeString,
+						StringVal: "hoo",
+					},
+				},
+				{
+					Name: resource.ParamName,
+					Value: v1.ParamValue{
+						Type: v1.ParamType("foo"),
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := resource.GenerateErrorLogString(tt.resolverType, tt.params)
+			if strings.Contains(got, tt.name) != tt.isPresent {
+				t.Errorf("name %s presence in %s should be %v", tt.name, got, tt.isPresent)
+			}
+			if strings.Contains(got, tt.url) != tt.isPresent {
+				t.Errorf("url %s presence in %s should be %v", tt.url, got, tt.isPresent)
+			}
+			if strings.Contains(got, tt.err) != tt.isPresent {
+				t.Errorf("err %s presence in %s should be %v", tt.err, got, tt.isPresent)
+			}
+			// should always have resolver type
+			if !strings.Contains(got, tt.resolverType) {
+				t.Errorf("type %s not in %s", tt.resolverType, got)
 			}
 		})
 	}

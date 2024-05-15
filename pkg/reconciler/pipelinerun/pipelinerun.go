@@ -53,6 +53,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/remote"
 	resolution "github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
+	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/pkg/workspace"
@@ -373,7 +374,7 @@ func (c *Reconciler) resolvePipelineState(
 			pst,
 		)
 		if err != nil {
-			if tresources.IsErrTransient(err) {
+			if resolutioncommon.IsErrTransient(err) {
 				return nil, err
 			}
 			if errors.Is(err, remote.ErrRequestInProgress) {

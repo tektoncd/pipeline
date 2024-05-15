@@ -17,9 +17,20 @@ limitations under the License.
 package common
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
+
+// This error is defined in etcd at
+// https://github.com/etcd-io/etcd/blob/5b226e0abf4100253c94bb71f47d6815877ed5a2/server/etcdserver/errors.go#L30
+// TODO: If/when https://github.com/kubernetes/kubernetes/issues/106491 is addressed,
+// we should stop relying on a hardcoded string.
+var errEtcdLeaderChange = "etcdserver: leader changed"
 
 // Error embeds both a short machine-readable string reason for resolution
 // problems alongside the original error generated during the resolution flow.
@@ -164,4 +175,20 @@ func ReasonError(err error) (string, error) {
 	}
 
 	return reason, resolutionError
+}
+
+// IsErrTransient returns true if an error returned by GetTask/GetStepAction is retryable.
+func IsErrTransient(err error) bool {
+	switch {
+	case apierrors.IsConflict(err):
+		return true
+	case apierrors.IsServerTimeout(err):
+		return true
+	case apierrors.IsTimeout(err):
+		return true
+	default:
+		return slices.ContainsFunc([]string{errEtcdLeaderChange, context.DeadlineExceeded.Error()}, func(s string) bool {
+			return strings.Contains(err.Error(), s)
+		})
+	}
 }

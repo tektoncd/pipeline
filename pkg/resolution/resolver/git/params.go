@@ -16,9 +16,11 @@ limitations under the License.
 
 package git
 
+import "github.com/tektoncd/pipeline/pkg/resolution/resource"
+
 const (
 	// UrlParam is the git repo Url when using the anonymous/full clone approach
-	UrlParam string = "url"
+	UrlParam string = resource.ParamURL
 	// OrgParam is the organization to find the repository in when using the SCM API approach
 	OrgParam = "org"
 	// RepoParam is the repository to use when using the SCM API approach
