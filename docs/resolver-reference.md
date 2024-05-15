@@ -35,7 +35,7 @@ configuration for the framework to get a resolver running.
 
 {{% /tab %}}
 
-{{% tab "Previous Framework" %}}
+{{% tab "Previous Framework (Deprecated)" %}}
 
 | Method  to Implement | Description |
 |----------------------|-------------|

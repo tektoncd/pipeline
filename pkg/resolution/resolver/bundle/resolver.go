@@ -49,6 +49,8 @@ const (
 )
 
 // Resolver implements a framework.Resolver that can fetch files from OCI bundles.
+//
+// Deprecated: Use [github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/bundle.Resolver] instead.
 type Resolver struct {
 	kubeClientSet kubernetes.Interface
 }

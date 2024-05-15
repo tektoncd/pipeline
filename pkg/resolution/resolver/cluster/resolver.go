@@ -51,6 +51,8 @@ const (
 var _ framework.Resolver = &Resolver{}
 
 // Resolver implements a framework.Resolver that can fetch resources from other namespaces.
+//
+// Deprecated: Use [github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/cluster.Resolver] instead.
 type Resolver struct {
 	pipelineClientSet clientset.Interface
 }

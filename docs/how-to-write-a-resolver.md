@@ -119,7 +119,7 @@ type resolver struct {}
 ```
 {{% /tab %}}
 
-{{% tab "Previous Framework" %}}
+{{% tab "Previous Framework (Deprecated)" %}}
 ```go
 package main
 
@@ -232,7 +232,7 @@ import (
 ```
 {{% /tab %}}
 
-{{% tab "Previous Framework" %}}
+{{% tab "Previous Framework (Deprecated)" %}}
 
 ```go
 import (
@@ -273,7 +273,7 @@ func (r *resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestS
 ```
 {{% /tab %}}
 
-{{% tab "Previous Framework" %}}
+{{% tab "Previous Framework (Deprecated)" %}}
 
 ```go
 // ValidateParams ensures that the params from a request are as expected.
@@ -354,7 +354,7 @@ func (*myResolvedResource) RefSource() *pipelinev1.RefSource {
 
 {{% /tab %}}
 
-{{% tab "Previous Framework" %}}
+{{% tab "Previous Framework (Deprecated)" %}}
 
 
 ```go

@@ -34,6 +34,8 @@ import (
 
 // CRDRequester implements the Requester interface using
 // ResolutionRequest CRDs.
+//
+// Deprecated: Use [github.com/tektoncd/pipeline/pkg/remoteresolution/resource.CRDRequester] instead.
 type CRDRequester struct {
 	clientset rrclient.Interface
 	lister    rrlisters.ResolutionRequestLister
@@ -43,6 +45,8 @@ type CRDRequester struct {
 // ResolutionRequest CRD objects to mediate between the caller who wants a
 // resource (e.g. Tekton Pipelines) and the responder who can fetch
 // it (e.g. the gitresolver)
+//
+// Deprecated: Use [github.com/tektoncd/pipeline/pkg/remoteresolution/resource.NewCRDRequester] instead.
 func NewCRDRequester(clientset rrclient.Interface, lister rrlisters.ResolutionRequestLister) *CRDRequester {
 	return &CRDRequester{clientset, lister}
 }

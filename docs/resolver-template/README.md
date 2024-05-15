@@ -26,7 +26,7 @@ The entire program for the `latest` framework is defined in
 implementations of all the methods defined by the [`framework.Resolver`
 interface](../../pkg/remoteresolution/resolver/framework/interface.go).
 
-If you choose to use the previous framework (soon to be deprecated) is defined in
+If you choose to use the previous framework (deprecated) is defined in
 [`./cmd/demoresolver/main.go`](./cmd/demoresolver/main.go) and provides stub
 implementations of all the methods defined by the [`framework.Resolver`
 interface](../../pkg/resolution/resolver/framework/interface.go).

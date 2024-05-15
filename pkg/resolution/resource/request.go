@@ -21,6 +21,8 @@ import v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 var _ Request = &BasicRequest{}
 
 // BasicRequest holds the fields needed to submit a new resource request.
+//
+// Deprecated: Use [github.com/tektoncd/pipeline/pkg/remoteresolution/resource.BasicRequest] instead.
 type BasicRequest struct {
 	name      string
 	namespace string
@@ -29,6 +31,8 @@ type BasicRequest struct {
 
 // NewRequest returns an instance of a BasicRequest with the given name,
 // namespace and params.
+//
+// Deprecated: Use [github.com/tektoncd/pipeline/pkg/remoteresolution/resource.NewRequest] instead.
 func NewRequest(name, namespace string, params v1.Params) Request {
 	return &BasicRequest{name, namespace, params}
 }
