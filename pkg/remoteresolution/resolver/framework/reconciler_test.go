@@ -63,6 +63,7 @@ func TestReconcile(t *testing.T) {
 		reconcilerTimeout time.Duration
 		expectedStatus    *v1beta1.ResolutionRequestStatus
 		expectedErr       error
+		transient         bool
 	}{
 		{
 			name: "unknown value",
@@ -343,6 +344,7 @@ func TestReconcile(t *testing.T) {
 			},
 			reconcilerTimeout: 1 * time.Second,
 			expectedErr:       errors.New("context deadline exceeded"),
+			transient:         true,
 		},
 	}
 
@@ -368,6 +370,9 @@ func TestReconcile(t *testing.T) {
 				}
 				if tc.expectedErr.Error() != err.Error() {
 					t.Fatalf("expected to get error %v, but got %v", tc.expectedErr, err)
+				}
+				if tc.transient && controller.IsPermanentError(err) {
+					t.Fatalf("exepected error to not be wrapped as permanent %v", err)
 				}
 			} else {
 				if err != nil {

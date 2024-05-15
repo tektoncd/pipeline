@@ -2490,6 +2490,18 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 				Value: *v1.NewStructuredValues("b", "a", "r"),
 			}},
 		},
+	}, {
+		Name:    "mytask3",
+		TaskRef: &v1.TaskRef{ResolverRef: v1.ResolverRef{Params: v1.Params{{Name: "name", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "foo"}}}}},
+		Matrix: &v1.Matrix{
+			Params: v1.Params{{
+				Name:  "foo",
+				Value: *v1.NewStructuredValues("f", "o", "o"),
+			}, {
+				Name:  "bar",
+				Value: *v1.NewStructuredValues("b", "a", "r"),
+			}},
+		},
 	}}
 
 	// Return an error when the Task is retrieved, as if it didn't exist
@@ -2512,6 +2524,9 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 			t.Fatalf("Pipeline %s: want error, got nil", p.Name)
 		case errors.As(err, &tnf):
 			// expected error
+			if len(tnf.Name) == 0 {
+				t.Fatalf("Pipeline %s: TaskNotFoundError did not have name set: %s", p.Name, tnf.Error())
+			}
 		default:
 			t.Fatalf("Pipeline %s: Want %T, got %s of type %T", p.Name, tnf, err, err)
 		}

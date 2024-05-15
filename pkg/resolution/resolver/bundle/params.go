@@ -21,6 +21,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+	"github.com/tektoncd/pipeline/pkg/resolution/resource"
 )
 
 // ParamImagePullSecret is the parameter defining what secret
@@ -32,7 +33,7 @@ const ParamBundle = "bundle"
 
 // ParamName is the parameter defining what the layer name in the bundle
 // image is.
-const ParamName = "name"
+const ParamName = resource.ParamName
 
 // ParamKind is the parameter defining what the layer kind in the bundle
 // image is.

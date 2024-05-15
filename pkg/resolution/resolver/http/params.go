@@ -13,9 +13,11 @@ limitations under the License.
 
 package http
 
+import "github.com/tektoncd/pipeline/pkg/resolution/resource"
+
 const (
 	// UrlParam is the URL to fetch the task from
-	UrlParam string = "url"
+	UrlParam string = resource.ParamURL
 
 	// HttpBasicAuthUsername is the user name to use for basic auth
 	HttpBasicAuthUsername string = "http-username"

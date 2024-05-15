@@ -39,12 +39,6 @@ import (
 	"knative.dev/pkg/kmeta"
 )
 
-// This error is defined in etcd at
-// https://github.com/etcd-io/etcd/blob/5b226e0abf4100253c94bb71f47d6815877ed5a2/server/etcdserver/errors.go#L30
-// TODO: If/when https://github.com/kubernetes/kubernetes/issues/106491 is addressed,
-// we should stop relying on a hardcoded string.
-var errEtcdLeaderChange = "etcdserver: leader changed"
-
 // GetTaskKind returns the referenced Task kind (Task, ClusterTask, ...) if the TaskRun is using TaskRef.
 func GetTaskKind(taskrun *v1.TaskRun) v1.TaskKind {
 	kind := v1.NamespacedTaskKind
@@ -364,11 +358,6 @@ func (l *LocalStepActionRefResolver) GetStepAction(ctx context.Context, name str
 		return nil, nil, err
 	}
 	return stepAction, nil, nil
-}
-
-// IsErrTransient returns true if an error returned by GetTask/GetStepAction is retryable.
-func IsErrTransient(err error) bool {
-	return strings.Contains(err.Error(), errEtcdLeaderChange)
 }
 
 // convertClusterTaskToTask converts deprecated v1beta1 ClusterTasks to Tasks for
