@@ -43,6 +43,8 @@ import (
 // Reconciler handles ResolutionRequest objects, performs functionality
 // common to all resolvers and delegates resolver-specific actions
 // to its embedded type-specific Resolver object.
+//
+// Deprecated: Use [github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework.Reconciler] instead.
 type Reconciler struct {
 	// Implements reconciler.LeaderAware
 	reconciler.LeaderAwareFuncs

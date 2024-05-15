@@ -46,6 +46,8 @@ const (
 )
 
 // Resolver implements a framework.Resolver that can fetch files from OCI bundles.
+//
+// Deprecated: Use [github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/hub.Resolver] instead.
 type Resolver struct {
 	// TektonHubURL is the URL for hub resolver with type tekton
 	TektonHubURL string

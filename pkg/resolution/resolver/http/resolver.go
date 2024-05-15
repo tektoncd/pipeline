@@ -59,6 +59,8 @@ const (
 )
 
 // Resolver implements a framework.Resolver that can fetch files from an HTTP URL
+//
+// Deprecated: Use [github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/http.Resolver] instead.
 type Resolver struct {
 	kubeClient kubernetes.Interface
 	logger     *zap.SugaredLogger

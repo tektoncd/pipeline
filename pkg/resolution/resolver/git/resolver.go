@@ -73,6 +73,8 @@ const (
 var _ framework.Resolver = &Resolver{}
 
 // Resolver implements a framework.Resolver that can fetch files from git.
+//
+// Deprecated: Use [github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/git.Resolver] instead.
 type Resolver struct {
 	kubeClient kubernetes.Interface
 	logger     *zap.SugaredLogger
