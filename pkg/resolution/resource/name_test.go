@@ -273,6 +273,20 @@ func TestGenerateErrorLogString(t *testing.T) {
 			},
 		},
 		{
+			name:         "goo-array",
+			resolverType: "bundle",
+			isPresent:    true,
+			params: []v1.Param{
+				{
+					Name: resource.ParamName,
+					Value: v1.ParamValue{
+						Type:     v1.ParamTypeArray,
+						ArrayVal: []string{resource.ParamName, "goo-array"},
+					},
+				},
+			},
+		},
+		{
 			name:         "hoo",
 			resolverType: "cluster",
 			err:          "name could not be marshalled",
