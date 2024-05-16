@@ -24,6 +24,7 @@ import (
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"knative.dev/pkg/kmeta"
 )
 
@@ -97,7 +98,8 @@ func ResolvedRequest(resolved resolutioncommon.ResolvedResource, err error) (run
 	if err != nil {
 		return nil, nil, &DataAccessError{Original: err}
 	}
-	obj, _, err := scheme.Codecs.UniversalDeserializer().Decode(data, nil, nil)
+	codecs := serializer.NewCodecFactory(scheme.Scheme, serializer.EnableStrict)
+	obj, _, err := codecs.UniversalDeserializer().Decode(data, nil, nil)
 	if err != nil {
 		return nil, nil, &InvalidRuntimeObjectError{Original: err}
 	}
