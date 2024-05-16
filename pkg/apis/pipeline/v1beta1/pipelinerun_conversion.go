@@ -332,6 +332,7 @@ func (st *SkippedTask) convertFrom(ctx context.Context, source v1.SkippedTask) {
 func (csr ChildStatusReference) convertTo(ctx context.Context, sink *v1.ChildStatusReference) {
 	sink.TypeMeta = csr.TypeMeta
 	sink.Name = csr.Name
+	sink.UID = csr.UID
 	sink.DisplayName = csr.DisplayName
 	sink.PipelineTaskName = csr.PipelineTaskName
 	sink.WhenExpressions = nil
@@ -345,6 +346,7 @@ func (csr ChildStatusReference) convertTo(ctx context.Context, sink *v1.ChildSta
 func (csr *ChildStatusReference) convertFrom(ctx context.Context, source v1.ChildStatusReference) {
 	csr.TypeMeta = source.TypeMeta
 	csr.Name = source.Name
+	csr.UID = source.UID
 	csr.DisplayName = source.DisplayName
 	csr.PipelineTaskName = source.PipelineTaskName
 	csr.WhenExpressions = nil

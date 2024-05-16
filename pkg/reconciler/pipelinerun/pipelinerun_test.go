@@ -796,6 +796,7 @@ spec:
 	for _, tc := range []struct {
 		name               string
 		pipelineRun        *v1.PipelineRun
+		taskRuns           []*v1.TaskRun
 		reason             string
 		hasNoDefaultLabels bool
 		permanentError     bool
@@ -1023,14 +1024,62 @@ spec:
 			"Normal Started",
 			"Warning Failed [User error] PipelineRun foo/pipeline-invalid-final-graph's Pipeline DAG is invalid for finally clause: task final-task-1 is already present in Graph, can't add it again: duplicate pipeline task",
 		},
+	}, {
+		name: "mismatched-taskrun-uid",
+		pipelineRun: parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pipeline-with-mismatched-taskrun-uid
+  namespace: foo
+spec:
+  pipelineSpec:
+    tasks:
+      - name: hello-world-task-1
+        taskSpec:
+          steps:
+            - image: myimage
+              name: mystep
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+  startTime: "2021-12-31T23:58:59Z"
+  childReferences:
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: mismatched-taskrun-uid-task
+    pipelineTaskName: hello-world-task-1
+    uid: 11111111-1111-1111-1111-111111111111
+`),
+		taskRuns: []*v1.TaskRun{mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMetaWithUID("mismatched-taskrun-uid-task", "foo",
+				"pipeline-with-mismatched-taskrun-uid", "", "hello-world-task-1", true,
+				"22222222-2222-2222-2222-222222222222"),
+			`
+spec:
+  taskSpec:
+    steps:
+      - image: otherImage
+        name: otherStep
+status:
+  conditions:
+  - status: "Unknown"
+    type: Succeeded
+`)},
+		reason:         ReasonFailedValidation,
+		permanentError: true,
+		wantEvents: []string{
+			"Warning Failed PipelineRun foo/pipeline-with-mismatched-taskrun-uid can't be Run; couldn't resolve all references: mismatched UID for TaskRun mismatched-taskrun-uid-task; expected 11111111-1111-1111-1111-111111111111, found 22222222-2222-2222-2222-222222222222",
+		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
+			tc := tc
 			cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
 
 			d := test.Data{
 				PipelineRuns: []*v1.PipelineRun{tc.pipelineRun},
 				Pipelines:    ps,
 				Tasks:        ts,
+				TaskRuns:     tc.taskRuns,
 				ConfigMaps:   cms,
 			}
 			prt := newPipelineRunTest(t, d)
@@ -9166,6 +9215,12 @@ func baseObjectMeta(name, ns string) metav1.ObjectMeta {
 		Labels:      map[string]string{},
 		Annotations: map[string]string{},
 	}
+}
+
+func taskRunObjectMetaWithUID(trName, ns, prName, pipelineName, pipelineTaskName string, skipMemberOfLabel bool, uid string) metav1.ObjectMeta {
+	om := taskRunObjectMeta(trName, ns, prName, pipelineName, pipelineTaskName, skipMemberOfLabel)
+	om.UID = types.UID(uid)
+	return om
 }
 
 func taskRunObjectMeta(trName, ns, prName, pipelineName, pipelineTaskName string, skipMemberOfLabel bool) metav1.ObjectMeta {

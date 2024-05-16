@@ -35,6 +35,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
+	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -2550,6 +2551,71 @@ func TestResolvePipelineRun_VerificationFailed(t *testing.T) {
 		if d := cmp.Diff(verificationResult, rt.ResolvedTask.VerificationResult, cmpopts.EquateErrors()); d != "" {
 			t.Errorf(diff.PrintWantGot(d))
 		}
+	}
+}
+
+func TestResolvePipelineRun_MismatchedTaskRunUID(t *testing.T) {
+	names.TestingSeed()
+
+	p := &v1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{Name: "pipelines"},
+		Spec: v1.PipelineSpec{
+			Tasks: []v1.PipelineTask{
+				{
+					Name: "mytask1",
+					TaskSpec: &v1.EmbeddedTask{
+						TaskSpec: v1.TaskSpec{
+							Steps: []v1.Step{{Name: "step1"}},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pr := v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun",
+		},
+		Status: v1.PipelineRunStatus{
+			PipelineRunStatusFields: v1.PipelineRunStatusFields{
+				ChildReferences: []v1.ChildStatusReference{{
+					TypeMeta: runtime.TypeMeta{
+						APIVersion: v1.SchemeGroupVersion.Version,
+						Kind:       "TaskRun",
+					},
+					Name:             "mytask1-1",
+					PipelineTaskName: "mytask1",
+					UID:              "11111111-1111-1111-1111-111111111111",
+				}},
+			},
+		},
+	}
+	// The Task "task" doesn't actually take any inputs or outputs, but validating
+	// that is not done as part of Run resolution
+	getTask := func(ctx context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+		return nil, nil, nil, nil
+	}
+	getTaskRun := func(name string) (*v1.TaskRun, error) {
+		return parse.MustParseV1TaskRun(t, `
+metadata:
+  name: mytask1-1
+  uid: 22222222-2222-2222-2222-222222222222
+spec:
+  steps:
+  - name: mystep
+    image: myimage
+`), nil
+	}
+
+	_, err := ResolvePipelineTask(context.Background(), pr, getTask, getTaskRun, nopGetCustomRun, p.Spec.Tasks[0], nil)
+	if err == nil {
+		t.Fatalf("Expected error getting tasks for fake pipeline %s, but did not get one", p.ObjectMeta.Name)
+	}
+
+	expectedErrStr := "mismatched UID for TaskRun mytask1-1; expected 11111111-1111-1111-1111-111111111111, found 22222222-2222-2222-2222-222222222222"
+	if err.Error() != expectedErrStr {
+		t.Fatalf("Expected error %s, but got %s", expectedErrStr, err.Error())
 	}
 }
 

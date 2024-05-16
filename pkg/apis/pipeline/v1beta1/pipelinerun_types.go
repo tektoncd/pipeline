@@ -444,6 +444,9 @@ type ChildStatusReference struct {
 	// +optional
 	// +listType=atomic
 	WhenExpressions []WhenExpression `json:"whenExpressions,omitempty"`
+
+	// UID is the TaskRun or Run's UID
+	UID types.UID `json:"uid,omitempty"`
 }
 
 // PipelineRunStatusFields holds the fields of PipelineRunStatus' status.
@@ -564,6 +567,8 @@ type PipelineRunTaskRunStatus struct {
 	// +optional
 	// +listType=atomic
 	WhenExpressions []WhenExpression `json:"whenExpressions,omitempty"`
+	// UID is the TaskRun's UID
+	UID types.UID `json:"uid,omitempty"`
 }
 
 // PipelineRunRunStatus contains the name of the PipelineTask for this CustomRun or Run and the CustomRun or Run's Status
@@ -577,6 +582,8 @@ type PipelineRunRunStatus struct {
 	// +optional
 	// +listType=atomic
 	WhenExpressions []WhenExpression `json:"whenExpressions,omitempty"`
+	// UID is the Run's UID
+	UID types.UID `json:"uid,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

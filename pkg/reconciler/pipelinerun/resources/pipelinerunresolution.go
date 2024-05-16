@@ -33,6 +33,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/remote"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/kmeta"
 )
@@ -590,7 +591,40 @@ func ResolvePipelineTask(
 			}
 		}
 	}
+
+	existingPipelineTaskUIDs := getPipelineTaskUIDs(pipelineRun.Status)
+
+	for _, run := range rpt.CustomRuns {
+		if run == nil {
+			continue
+		}
+		if existingUID, ok := existingPipelineTaskUIDs[run.GetObjectMeta().GetName()]; ok && existingUID != run.GetObjectMeta().GetUID() && existingUID != "" {
+			return nil, fmt.Errorf("mismatched UID for Run %s; expected %s, found %s", run.GetObjectMeta().GetName(), existingUID, run.GetObjectMeta().GetUID())
+		}
+	}
+
+	for _, tr := range rpt.TaskRuns {
+		if tr == nil {
+			continue
+		}
+		if existingUID, ok := existingPipelineTaskUIDs[tr.Name]; ok && existingUID != tr.UID && existingUID != "" {
+			return nil, fmt.Errorf("mismatched UID for TaskRun %s; expected %s, found %s", tr.Name, existingUID, tr.UID)
+		}
+	}
+
 	return &rpt, nil
+}
+
+func getPipelineTaskUIDs(prs v1.PipelineRunStatus) map[string]types.UID {
+	m := make(map[string]types.UID)
+
+	if len(prs.ChildReferences) > 0 {
+		for _, cr := range prs.ChildReferences {
+			m[cr.Name] = cr.UID
+		}
+		return m
+	}
+	return m
 }
 
 // setTaskRunsAndResolvedTask fetches the named TaskRun using the input function getTaskRun,

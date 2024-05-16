@@ -35,6 +35,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/types"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -43,6 +44,7 @@ var (
 	childRefTaskRuns = []v1beta1.ChildStatusReference{{
 		TypeMeta:         runtime.TypeMeta{Kind: "TaskRun", APIVersion: "tekton.dev/v1beta1"},
 		Name:             "tr-0",
+		UID:              types.UID("22222222-2222-2222-2222-222222222222"),
 		DisplayName:      "TR 0",
 		PipelineTaskName: "ptn",
 		WhenExpressions:  []v1beta1.WhenExpression{{Input: "default-value", Operator: "in", Values: []string{"val"}}},
@@ -50,12 +52,14 @@ var (
 	childRefRuns = []v1beta1.ChildStatusReference{{
 		TypeMeta:         runtime.TypeMeta{Kind: "Run", APIVersion: "tekton.dev/v1alpha1"},
 		Name:             "r-0",
+		UID:              types.UID("22222222-2222-2222-2222-222222222222"),
 		DisplayName:      "R 0",
 		PipelineTaskName: "ptn-0",
 		WhenExpressions:  []v1beta1.WhenExpression{{Input: "default-value-0", Operator: "in", Values: []string{"val-0", "val-1"}}},
 	}}
 	trs = &v1beta1.PipelineRunTaskRunStatus{
 		PipelineTaskName: "ptn",
+		UID:              types.UID("22222222-2222-2222-2222-222222222222"),
 		Status: &v1beta1.TaskRunStatus{
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 				PodName: "pod-name",
@@ -88,13 +92,14 @@ var (
 						},
 					},
 				},
-				Sidecars: []v1beta1.SidecarState{{ContainerState: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{
-						ExitCode: 1,
-						Reason:   "Error",
-						Message:  "Error",
+				Sidecars: []v1beta1.SidecarState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 1,
+							Reason:   "Error",
+							Message:  "Error",
+						},
 					},
-				},
 					Name:          "error",
 					ImageID:       "image-id",
 					ContainerName: "sidecar-error",
@@ -109,6 +114,7 @@ var (
 	}
 	rrs = &v1beta1.PipelineRunRunStatus{
 		PipelineTaskName: "ptn-0",
+		UID:              types.UID("22222222-2222-2222-2222-222222222222"),
 		Status: &runv1beta1.CustomRunStatus{
 			CustomRunStatusFields: runv1beta1.CustomRunStatusFields{
 				Results: []runv1beta1.CustomRunResult{{
@@ -268,17 +274,21 @@ func TestPipelineRunConversion(t *testing.T) {
 							},
 							HostNetwork: false,
 						},
-						StepOverrides: []v1beta1.TaskRunStepOverride{{
-							Name: "test-so",
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
-							}},
+						StepOverrides: []v1beta1.TaskRunStepOverride{
+							{
+								Name: "test-so",
+								Resources: corev1.ResourceRequirements{
+									Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+								},
+							},
 						},
-						SidecarOverrides: []v1beta1.TaskRunSidecarOverride{{
-							Name: "test-so",
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
-							}},
+						SidecarOverrides: []v1beta1.TaskRunSidecarOverride{
+							{
+								Name: "test-so",
+								Resources: corev1.ResourceRequirements{
+									Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+								},
+							},
 						},
 						Metadata: &v1beta1.PipelineTaskMetadata{
 							Labels: map[string]string{
@@ -315,7 +325,8 @@ func TestPipelineRunConversion(t *testing.T) {
 						Value: *v1beta1.NewObject(map[string]string{
 							"pkey1": "val1",
 							"pkey2": "rae",
-						})}, {
+						}),
+					}, {
 						Name: "pipeline-result-2",
 						Value: *v1beta1.NewObject(map[string]string{
 							"pkey1": "val2",
@@ -349,6 +360,7 @@ func TestPipelineRunConversion(t *testing.T) {
 							TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
 							Name:             "t1",
 							PipelineTaskName: "task-1",
+							UID:              types.UID("22222222-2222-2222-2222-222222222222"),
 							WhenExpressions: []v1beta1.WhenExpression{{
 								Input:    "foo",
 								Operator: "notin",
@@ -358,6 +370,7 @@ func TestPipelineRunConversion(t *testing.T) {
 						{
 							TypeMeta:         runtime.TypeMeta{Kind: "Run"},
 							Name:             "t2",
+							UID:              types.UID("22222222-2222-2222-2222-222222222222"),
 							PipelineTaskName: "task-2",
 						},
 					},
