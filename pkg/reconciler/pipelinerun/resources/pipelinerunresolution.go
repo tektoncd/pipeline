@@ -646,6 +646,8 @@ func resolveTask(
 			case errors.Is(err, remote.ErrRequestInProgress):
 				return rt, err
 			case err != nil:
+				// some of the resolvers obtain the name from the parameters instead of from the TaskRef.Name field,
+				// so we account for both locations when constructing the error
 				name := pipelineTask.TaskRef.Name
 				if len(strings.TrimSpace(name)) == 0 {
 					name = resource.GenerateErrorLogString(string(pipelineTask.TaskRef.Resolver), pipelineTask.TaskRef.Params)
