@@ -1004,8 +1004,8 @@ status:
 ```
 
 [cel]: https://github.com/tektoncd/experimental/tree/1609827ea81d05c8d00f8933c5c9d6150cd36989/cel
-[pr-with-matrix]: ../examples/v1/pipelineruns/beta/pipelinerun-with-matrix.yaml
-[pr-with-matrix-and-results]: ../examples/v1/pipelineruns/beta/pipelinerun-with-matrix-and-results.yaml
-[pr-with-matrix-context-variables]: ../examples/v1/pipelineruns/beta/pipelinerun-with-matrix-context-variables.yaml
-[pr-with-matrix-emitting-results]: ../examples/v1/pipelineruns/beta/pipelinerun-with-matrix-emitting-results.yaml
+[pr-with-matrix]: https://github.com/tektoncd/pipeline/blob/main/examples/v1/pipelineruns/beta/pipelinerun-with-matrix.yaml
+[pr-with-matrix-and-results]: https://github.com/tektoncd/pipeline/blob/main/examples/v1/pipelineruns/beta/pipelinerun-with-matrix-and-results.yaml
+[pr-with-matrix-context-variables]: https://github.com/tektoncd/pipeline/blob/main/examples/v1/pipelineruns/beta/pipelinerun-with-matrix-context-variables.yaml
+[pr-with-matrix-emitting-results]: https://github.com/tektoncd/pipeline/blob/main/examples/v1/pipelineruns/beta/pipelinerun-with-matrix-emitting-results.yaml
 [retries]: pipelines.md#using-the-retries-field
