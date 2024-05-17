@@ -90,6 +90,7 @@ spec:
           value: /etc/ssl/certs
         securityContext:
           allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           capabilities:
             drop:
             - "ALL"
