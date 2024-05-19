@@ -17,20 +17,20 @@ limitations under the License.
 package git
 
 const (
-	// defaultTimeoutKey is the configuration field name for controlling
+	// DefaultTimeoutKey is the configuration field name for controlling
 	// the maximum duration of a resolution request for a file from git.
-	defaultTimeoutKey = "fetch-timeout"
+	DefaultTimeoutKey = "fetch-timeout"
 
-	// defaultURLKey is the configuration field name for controlling
+	// DefaultURLKey is the configuration field name for controlling
 	// the git url to fetch the remote resource from.
-	defaultURLKey = "default-url"
+	DefaultURLKey = "default-url"
 
-	// defaultRevisionKey is the configuration field name for controlling
+	// DefaultRevisionKey is the configuration field name for controlling
 	// the revision to fetch the remote resource from.
-	defaultRevisionKey = "default-revision"
+	DefaultRevisionKey = "default-revision"
 
-	// defaultOrgKey is the configuration field name for setting a default organization when using the SCM API.
-	defaultOrgKey = "default-org"
+	// DefaultOrgKey is the configuration field name for setting a default organization when using the SCM API.
+	DefaultOrgKey = "default-org"
 
 	// ServerURLKey is the config map key for the SCM provider URL
 	ServerURLKey = "server-url"

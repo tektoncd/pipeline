@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Tekton Authors
+Copyright 2024 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,21 +24,13 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	resource "github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
 	resolution "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/test/diff"
 )
 
-var _ resolution.Requester = &Requester{}
+var _ resource.Requester = &Requester{}
 var _ resolution.ResolvedResource = &ResolvedResource{}
-
-// NewRequester creates a mock requester that resolves to the given
-// resource or returns the given error on Submit().
-func NewRequester(resource resolution.ResolvedResource, err error) *Requester {
-	return &Requester{
-		ResolvedResource: resource,
-		SubmitErr:        err,
-	}
-}
 
 // NewResolvedResource creates a mock resolved resource that is
 // populated with the given data and annotations or returns the given
@@ -52,6 +44,16 @@ func NewResolvedResource(data []byte, annotations map[string]string, source *pip
 	}
 }
 
+// NewRequester creates a mock requester that resolves to the given
+// resource or returns the given error on Submit().
+func NewRequester(resource resolution.ResolvedResource, err error, resolverPayload resource.ResolverPayload) *Requester {
+	return &Requester{
+		ResolvedResource: resource,
+		SubmitErr:        err,
+		ResolverPayload:  resolverPayload,
+	}
+}
+
 // Requester implements resolution.Requester and makes it easier
 // to mock the outcome of a remote pipelineRef or taskRef resolution.
 type Requester struct {
@@ -60,24 +62,27 @@ type Requester struct {
 	ResolvedResource resolution.ResolvedResource
 	// An error to return when a request is submitted.
 	SubmitErr error
-	// Params that should match those on the request in order to return the resolved resource
-	Params []pipelinev1.Param
+	// ResolverPayload that should match that of the request in order to return the resolved resource
+	ResolverPayload resource.ResolverPayload
 }
 
 // Submit implements resolution.Requester, accepting the name of a
 // resolver and a request for a specific remote file, and then returns
 // whatever mock data was provided on initialization.
-func (r *Requester) Submit(ctx context.Context, resolverName resolution.ResolverName, req resolution.Request) (resolution.ResolvedResource, error) {
-	if len(r.Params) == 0 {
+func (r *Requester) Submit(ctx context.Context, resolverName resolution.ResolverName, req resource.Request) (resolution.ResolvedResource, error) {
+	if (r.ResolverPayload == resource.ResolverPayload{} || r.ResolverPayload.ResolutionSpec == nil || len(r.ResolverPayload.ResolutionSpec.Params) == 0) {
+		return r.ResolvedResource, r.SubmitErr
+	}
+	if r.ResolverPayload.ResolutionSpec.URL == "" {
 		return r.ResolvedResource, r.SubmitErr
 	}
 	reqParams := make(map[string]pipelinev1.ParamValue)
-	for _, p := range req.Params() {
+	for _, p := range req.ResolverPayload().ResolutionSpec.Params {
 		reqParams[p.Name] = p.Value
 	}
 
 	var wrongParams []string
-	for _, p := range r.Params {
+	for _, p := range r.ResolverPayload.ResolutionSpec.Params {
 		if reqValue, ok := reqParams[p.Name]; !ok {
 			wrongParams = append(wrongParams, fmt.Sprintf("expected %s param to be %#v, but was %#v", p.Name, p.Value, reqValue))
 		} else if d := cmp.Diff(p.Value, reqValue); d != "" {
@@ -86,6 +91,9 @@ func (r *Requester) Submit(ctx context.Context, resolverName resolution.Resolver
 	}
 	if len(wrongParams) > 0 {
 		return nil, errors.New(strings.Join(wrongParams, "; "))
+	}
+	if r.ResolverPayload.ResolutionSpec.URL != req.ResolverPayload().ResolutionSpec.URL {
+		return nil, fmt.Errorf("Resolution name did not match. Got %s; Want %s", req.ResolverPayload().ResolutionSpec.URL, r.ResolverPayload.ResolutionSpec.URL)
 	}
 
 	return r.ResolvedResource, r.SubmitErr
@@ -125,16 +133,11 @@ func (r *ResolvedResource) RefSource() *pipelinev1.RefSource {
 
 // RawRequest stores the raw request data
 type RawRequest struct {
-	// the request name
-	Name string
-	// the request namespace
-	Namespace string
-	// the params for the request
-	Params []pipelinev1.Param
+	ResolverPayload resource.ResolverPayload
 }
 
 // Request returns a Request interface based on the RawRequest.
-func (r *RawRequest) Request() resolution.Request {
+func (r *RawRequest) Request() resource.Request {
 	if r == nil {
 		r = &RawRequest{}
 	}
@@ -149,30 +152,20 @@ type Request struct {
 	RawRequest
 }
 
-var _ resolution.Request = &Request{}
+var _ resource.Request = &Request{}
 
 // NewRequest creates a mock request that is populated with the given name namespace and params
-func NewRequest(name, namespace string, params []pipelinev1.Param) *Request {
+func NewRequest(resolverPayload resource.ResolverPayload) *Request {
 	return &Request{
 		RawRequest: RawRequest{
-			Name:      name,
-			Namespace: namespace,
-			Params:    params,
+			ResolverPayload: resolverPayload,
 		},
 	}
 }
 
-// Name implements resolution.Request and returns the mock name given to it on initialization.
-func (r *Request) Name() string {
-	return r.RawRequest.Name
-}
-
-// Namespace implements resolution.Request and returns the mock namespace given to it on initialization.
-func (r *Request) Namespace() string {
-	return r.RawRequest.Namespace
-}
-
 // Params implements resolution.Request and returns the mock params given to it on initialization.
-func (r *Request) Params() pipelinev1.Params {
-	return r.RawRequest.Params
+func (r *Request) ResolverPayload() resource.ResolverPayload {
+	return r.RawRequest.ResolverPayload
 }
+
+var _ resource.Request = &Request{}

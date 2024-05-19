@@ -1965,38 +1965,46 @@ spec:
 		Tasks:        []*v1.Task{simpleTask},
 		ClusterTasks: []*v1beta1.ClusterTask{},
 	}
-	testAssets, cancel := getTaskRunController(t, d)
-	defer cancel()
-	c := testAssets.Controller
-	clients := testAssets.Clients
-	createServiceAccount(t, testAssets, "default", tr.Namespace)
+	for _, v := range []error{
+		errors.New("etcdserver: leader changed"),
+		context.DeadlineExceeded,
+		apierrors.NewConflict(pipeline.TaskRunResource, "", nil),
+		apierrors.NewServerTimeout(pipeline.TaskRunResource, "", 0),
+		apierrors.NewTimeoutError("", 0),
+	} {
+		testAssets, cancel := getTaskRunController(t, d)
+		defer cancel()
+		c := testAssets.Controller
+		clients := testAssets.Clients
+		createServiceAccount(t, testAssets, "default", tr.Namespace)
 
-	failingReactorActivated := true
-	clients.Pipeline.PrependReactor("*", "tasks", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-		return failingReactorActivated, &v1.Task{}, errors.New("etcdserver: leader changed")
-	})
-	err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
-	if err == nil {
-		t.Error("Wanted a wrapped error, but got nil.")
-	}
-	if controller.IsPermanentError(err) {
-		t.Errorf("Unexpected permanent error %v", err)
-	}
-
-	failingReactorActivated = false
-	err = c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
-	if err != nil {
-		if ok, _ := controller.IsRequeueKey(err); !ok {
-			t.Errorf("unexpected error in TaskRun reconciliation: %v", err)
+		failingReactorActivated := true
+		clients.Pipeline.PrependReactor("*", "tasks", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+			return failingReactorActivated, &v1.Task{}, v
+		})
+		err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
+		if err == nil {
+			t.Error("Wanted a wrapped error, but got nil.")
 		}
-	}
-	reconciledRun, err := clients.Pipeline.TektonV1().TaskRuns("foo").Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
-	}
-	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-	if !condition.IsUnknown() {
-		t.Errorf("Expected TaskRun to still be running but succeeded condition is %v", condition.Status)
+		if controller.IsPermanentError(err) {
+			t.Errorf("Unexpected permanent error %v", err)
+		}
+
+		failingReactorActivated = false
+		err = c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
+		if err != nil {
+			if ok, _ := controller.IsRequeueKey(err); !ok {
+				t.Errorf("unexpected error in TaskRun reconciliation: %v", err)
+			}
+		}
+		reconciledRun, err := clients.Pipeline.TektonV1().TaskRuns("foo").Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+		}
+		condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+		if !condition.IsUnknown() {
+			t.Errorf("Expected TaskRun to still be running but succeeded condition is %v", condition.Status)
+		}
 	}
 }
 
@@ -2099,7 +2107,7 @@ spec:
           resolver: bar
 `)
 
-	stepAction := parse.MustParseV1alpha1StepAction(t, `
+	stepAction := parse.MustParseV1beta1StepAction(t, `
 metadata:
   name: stepAction
   namespace: foo
@@ -2134,7 +2142,7 @@ spec:
 	clients := testAssets.Clients
 	err = c.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", tr.Namespace, tr.Name))
 	if controller.IsPermanentError(err) {
-		t.Errorf("Not expected permanent error but got %t", err)
+		t.Errorf("Not expected permanent error but got %v", err)
 	}
 	reconciledRun, err := clients.Pipeline.TektonV1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
 	if err != nil {
@@ -2159,7 +2167,7 @@ spec:
           resolver: bar
 `)}
 
-	stepAction := parse.MustParseV1alpha1StepAction(t, `
+	stepAction := parse.MustParseV1beta1StepAction(t, `
 metadata:
   name: stepAction
   namespace: foo
@@ -3549,7 +3557,7 @@ spec:
       - name: inlined-step
         image: "inlined-image"
 `)
-	stepAction := parse.MustParseV1alpha1StepAction(t, `
+	stepAction := parse.MustParseV1beta1StepAction(t, `
 metadata:
   name: stepAction
   namespace: foo
@@ -3559,7 +3567,7 @@ spec:
   securityContext:
     privileged: true
 `)
-	stepAction2 := parse.MustParseV1alpha1StepAction(t, `
+	stepAction2 := parse.MustParseV1beta1StepAction(t, `
 metadata:
   name: stepAction2
   namespace: foo
@@ -3569,7 +3577,7 @@ spec:
 `)
 	d := test.Data{
 		TaskRuns:    []*v1.TaskRun{taskRun},
-		StepActions: []*v1alpha1.StepAction{stepAction, stepAction2},
+		StepActions: []*v1beta1.StepAction{stepAction, stepAction2},
 		ConfigMaps: []*corev1.ConfigMap{
 			{
 				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
@@ -3659,7 +3667,7 @@ func TestStepActionRefParams(t *testing.T) {
 	tests := []struct {
 		name       string
 		taskRun    *v1.TaskRun
-		stepAction *v1alpha1.StepAction
+		stepAction *v1beta1.StepAction
 		want       []v1.Step
 	}{{
 		name: "params propagated from taskrun",
@@ -3689,7 +3697,7 @@ spec:
           - name: object-param
             value: $(params.objectparam[*])
 `),
-		stepAction: parse.MustParseV1alpha1StepAction(t, `
+		stepAction: parse.MustParseV1beta1StepAction(t, `
 metadata:
   name: stepAction
   namespace: foo
@@ -3734,7 +3742,7 @@ spec:
           - name: stringparam
             value: "step string param"
 `),
-		stepAction: parse.MustParseV1alpha1StepAction(t, `
+		stepAction: parse.MustParseV1beta1StepAction(t, `
 metadata:
   name: stepAction
   namespace: foo
@@ -3767,7 +3775,7 @@ spec:
           name: stepAction
         name: step1
 `),
-		stepAction: parse.MustParseV1alpha1StepAction(t, `
+		stepAction: parse.MustParseV1beta1StepAction(t, `
 metadata:
   name: stepAction
   namespace: foo
@@ -3798,7 +3806,7 @@ spec:
           name: stepAction
         name: step1
 `),
-		stepAction: parse.MustParseV1alpha1StepAction(t, `
+		stepAction: parse.MustParseV1beta1StepAction(t, `
 metadata:
   name: stepAction
   namespace: foo
@@ -3844,7 +3852,7 @@ spec:
           - name: object-param
             value: $(params.objectparam[*])
 `),
-		stepAction: parse.MustParseV1alpha1StepAction(t, `
+		stepAction: parse.MustParseV1beta1StepAction(t, `
 metadata:
   name: stepAction
   namespace: foo
@@ -3881,7 +3889,7 @@ spec:
           name: stepAction
         name: step1
 `),
-		stepAction: parse.MustParseV1alpha1StepAction(t, `
+		stepAction: parse.MustParseV1beta1StepAction(t, `
 metadata:
   name: stepAction
   namespace: foo
@@ -3918,7 +3926,7 @@ spec:
 		t.Run(tt.name, func(t *testing.T) {
 			d := test.Data{
 				TaskRuns:    []*v1.TaskRun{tt.taskRun},
-				StepActions: []*v1alpha1.StepAction{tt.stepAction},
+				StepActions: []*v1beta1.StepAction{tt.stepAction},
 				ConfigMaps: []*corev1.ConfigMap{
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
@@ -7039,7 +7047,7 @@ func TestIsConcurrentModificationError(t *testing.T) {
 // the ResolutionRequest's name is generated by resolverName, namespace and runName.
 func getResolvedResolutionRequest(t *testing.T, resolverName string, resourceBytes []byte, namespace string, runName string) resolutionv1beta1.ResolutionRequest {
 	t.Helper()
-	name, err := remoteresource.GenerateDeterministicName(resolverName, namespace+"/"+runName, nil)
+	name, err := remoteresource.GenerateDeterministicNameFromSpec(resolverName, namespace+"/"+runName, &resolutionv1beta1.ResolutionRequestSpec{})
 	if err != nil {
 		t.Errorf("error generating name for %s/%s/%s: %v", resolverName, namespace, runName, err)
 	}

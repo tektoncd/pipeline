@@ -16,25 +16,27 @@ limitations under the License.
 
 package git
 
+import "github.com/tektoncd/pipeline/pkg/resolution/resource"
+
 const (
-	// urlParam is the git repo url when using the anonymous/full clone approach
-	urlParam string = "url"
-	// orgParam is the organization to find the repository in when using the SCM API approach
-	orgParam = "org"
-	// repoParam is the repository to use when using the SCM API approach
-	repoParam = "repo"
-	// pathParam is the pathInRepo into the git repo where a file is located. This is used with both approaches.
-	pathParam string = "pathInRepo"
-	// revisionParam is the git revision that a file should be fetched from. This is used with both approaches.
-	revisionParam string = "revision"
-	// tokenParam is an optional reference to a secret name for SCM API authentication
-	tokenParam string = "token"
-	// tokenKeyParam is an optional reference to a key in the tokenParam secret for SCM API authentication
-	tokenKeyParam string = "tokenKey"
-	// defaultTokenKeyParam is the default key in the tokenParam secret for SCM API authentication
-	defaultTokenKeyParam string = "token"
-	// scmTypeParams is an optional string overriding the scm-type configuration (ie: github, gitea, gitlab etc..)
-	scmTypeParam string = "scmType"
-	// serverURLParams is an optional string to the server URL for the SCM API to connect to
-	serverURLParam string = "serverURL"
+	// UrlParam is the git repo Url when using the anonymous/full clone approach
+	UrlParam string = resource.ParamURL
+	// OrgParam is the organization to find the repository in when using the SCM API approach
+	OrgParam = "org"
+	// RepoParam is the repository to use when using the SCM API approach
+	RepoParam = "repo"
+	// PathParam is the pathInRepo into the git repo where a file is located. This is used with both approaches.
+	PathParam string = "pathInRepo"
+	// RevisionParam is the git revision that a file should be fetched from. This is used with both approaches.
+	RevisionParam string = "revision"
+	// TokenParam is an optional reference to a secret name for SCM API authentication
+	TokenParam string = "token"
+	// TokenKeyParam is an optional reference to a key in the TokenParam secret for SCM API authentication
+	TokenKeyParam string = "tokenKey"
+	// DefaultTokenKeyParam is the default key in the TokenParam secret for SCM API authentication
+	DefaultTokenKeyParam string = "token"
+	// scmTypeParam is an optional string overriding the scm-type configuration (ie: github, gitea, gitlab etc..)
+	ScmTypeParam string = "scmType"
+	// serverURLParam is an optional string to the server URL for the SCM API to connect to
+	ServerURLParam string = "serverURL"
 )

@@ -1,0 +1,37 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: propagating-params-in-pipeline
+spec:
+  params:
+    - name: HELLO
+      default: "Pipeline Hello World!"
+  tasks:
+    - name: echo-hello
+      taskSpec:
+        steps:
+          - name: echo
+            image: ubuntu
+            script: |
+              #!/usr/bin/env bash
+              echo "$(params.HELLO)"
+  finally:
+    - name: echo-hello-finally
+      taskSpec:
+        steps:
+          - name: echo
+            image: ubuntu
+            script: |
+              #!/usr/bin/env bash
+              echo "And Finally ... $(params.HELLO)"
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: propagating-params-in-pipeline-
+spec:
+  params:
+    - name: HELLO
+      value: "Hello from pipeline run"
+  pipelineRef:
+    name: propagating-params-in-pipeline

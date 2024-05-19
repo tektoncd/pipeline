@@ -25,23 +25,19 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resolutionV1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"github.com/tektoncd/pipeline/pkg/reconciler/apiserver"
 	"github.com/tektoncd/pipeline/pkg/remote"
-	"github.com/tektoncd/pipeline/pkg/remote/resolution"
-	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/remote/resolution"
+	remoteresource "github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
+	"github.com/tektoncd/pipeline/pkg/substitution"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/kmeta"
 )
-
-// This error is defined in etcd at
-// https://github.com/etcd-io/etcd/blob/5b226e0abf4100253c94bb71f47d6815877ed5a2/server/etcdserver/errors.go#L30
-// TODO: If/when https://github.com/kubernetes/kubernetes/issues/106491 is addressed,
-// we should stop relying on a hardcoded string.
-var errEtcdLeaderChange = "etcdserver: leader changed"
 
 // GetTaskKind returns the referenced Task kind (Task, ClusterTask, ...) if the TaskRun is using TaskRef.
 func GetTaskKind(taskrun *v1.TaskRun) v1.TaskKind {
@@ -96,6 +92,7 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 		// casting it to a TaskObject.
 		return func(ctx context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 			var replacedParams v1.Params
+			var url string
 			if ownerAsTR, ok := owner.(*v1.TaskRun); ok {
 				stringReplacements, arrayReplacements, _ := replacementsFromParams(ownerAsTR.Spec.Params)
 				for k, v := range getContextReplacements("", ownerAsTR) {
@@ -105,10 +102,23 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 					p.Value.ApplyReplacements(stringReplacements, arrayReplacements, nil)
 					replacedParams = append(replacedParams, p)
 				}
+				if err := v1.RefNameLikeUrl(tr.Name); err == nil {
+					// The name is url-like so its not a local reference.
+					tr.Name = substitution.ApplyReplacements(tr.Name, stringReplacements)
+					url = tr.Name
+				}
 			} else {
 				replacedParams = append(replacedParams, tr.Params...)
 			}
-			resolver := resolution.NewResolver(requester, owner, string(tr.Resolver), trName, namespace, replacedParams)
+			resolverPayload := remoteresource.ResolverPayload{
+				Name:      trName,
+				Namespace: namespace,
+				ResolutionSpec: &resolutionV1beta1.ResolutionRequestSpec{
+					Params: replacedParams,
+					URL:    url,
+				},
+			}
+			resolver := resolution.NewResolver(requester, owner, string(tr.Resolver), resolverPayload)
 			return resolveTask(ctx, resolver, name, namespace, kind, k8s, tekton, verificationPolicies)
 		}
 
@@ -133,10 +143,18 @@ func GetStepActionFunc(tekton clientset.Interface, k8s kubernetes.Interface, req
 	if step.Ref != nil && step.Ref.Resolver != "" && requester != nil {
 		// Return an inline function that implements GetStepAction by calling Resolver.Get with the specified StepAction type and
 		// casting it to a StepAction.
-		return func(ctx context.Context, name string) (*v1alpha1.StepAction, *v1.RefSource, error) {
+		return func(ctx context.Context, name string) (*v1beta1.StepAction, *v1.RefSource, error) {
 			// Perform params replacements for StepAction resolver params
 			ApplyParameterSubstitutionInResolverParams(tr, step)
-			resolver := resolution.NewResolver(requester, tr, string(step.Ref.Resolver), trName, namespace, step.Ref.Params)
+			resolverPayload := remoteresource.ResolverPayload{
+				Name:      trName,
+				Namespace: namespace,
+				ResolutionSpec: &resolutionV1beta1.ResolutionRequestSpec{
+					Params: step.Ref.Params,
+					URL:    step.Ref.Name,
+				},
+			}
+			resolver := resolution.NewResolver(requester, tr, string(step.Ref.Resolver), resolverPayload)
 			return resolveStepAction(ctx, resolver, name, namespace, k8s, tekton)
 		}
 	}
@@ -206,17 +224,33 @@ func resolveTask(ctx context.Context, resolver remote.Resolver, name, namespace 
 	return taskObj, refSource, vr, nil
 }
 
-func resolveStepAction(ctx context.Context, resolver remote.Resolver, name, namespace string, k8s kubernetes.Interface, tekton clientset.Interface) (*v1alpha1.StepAction, *v1.RefSource, error) {
+func resolveStepAction(ctx context.Context, resolver remote.Resolver, name, namespace string, k8s kubernetes.Interface, tekton clientset.Interface) (*v1beta1.StepAction, *v1.RefSource, error) {
 	obj, refSource, err := resolver.Get(ctx, "StepAction", name)
 	if err != nil {
 		return nil, nil, err
 	}
-	switch obj := obj.(type) { //nolint:gocritic
-	case *v1alpha1.StepAction:
+	switch obj := obj.(type) {
+	case *v1beta1.StepAction:
 		if err := apiserver.DryRunValidate(ctx, namespace, obj, tekton); err != nil {
 			return nil, nil, err
 		}
 		return obj, refSource, nil
+	case *v1alpha1.StepAction:
+		obj.SetDefaults(ctx)
+		if err := apiserver.DryRunValidate(ctx, namespace, obj, tekton); err != nil {
+			return nil, nil, err
+		}
+		v1BetaStepAction := v1beta1.StepAction{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "StepAction",
+				APIVersion: "tekton.dev/v1beta1",
+			},
+		}
+		err := obj.ConvertTo(ctx, &v1BetaStepAction)
+		if err != nil {
+			return nil, nil, err
+		}
+		return &v1BetaStepAction, refSource, nil
 	}
 	return nil, nil, errors.New("resource is not a StepAction")
 }
@@ -314,21 +348,16 @@ type LocalStepActionRefResolver struct {
 
 // GetStepAction will resolve a StepAction from the local cluster using a versioned Tekton client.
 // It will return an error if it can't find an appropriate StepAction for any reason.
-func (l *LocalStepActionRefResolver) GetStepAction(ctx context.Context, name string) (*v1alpha1.StepAction, *v1.RefSource, error) {
+func (l *LocalStepActionRefResolver) GetStepAction(ctx context.Context, name string) (*v1beta1.StepAction, *v1.RefSource, error) {
 	// If we are going to resolve this reference locally, we need a namespace scope.
 	if l.Namespace == "" {
 		return nil, nil, fmt.Errorf("must specify namespace to resolve reference to step action %s", name)
 	}
-	stepAction, err := l.Tektonclient.TektonV1alpha1().StepActions(l.Namespace).Get(ctx, name, metav1.GetOptions{})
+	stepAction, err := l.Tektonclient.TektonV1beta1().StepActions(l.Namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return nil, nil, err
 	}
 	return stepAction, nil, nil
-}
-
-// IsErrTransient returns true if an error returned by GetTask/GetStepAction is retryable.
-func IsErrTransient(err error) bool {
-	return strings.Contains(err.Error(), errEtcdLeaderChange)
 }
 
 // convertClusterTaskToTask converts deprecated v1beta1 ClusterTasks to Tasks for

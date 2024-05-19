@@ -369,6 +369,45 @@ any resolved `param` value against the `enum` specified in each `PipelineTask` b
 
 See usage in this [example](../examples/v1/pipelineruns/alpha/param-enum.yaml)
 
+#### Propagated Params
+
+Like with embedded [pipelineruns](pipelineruns.md#propagated-parameters), you can propagate `params` declared in the `pipeline` down to the inlined `pipelineTasks` and its inlined `Steps`. Wherever a resource (e.g. a `pipelineTask`) or a `StepAction` is referenced, the parameters need to be passed explicitly. 
+
+For example, the following is a valid yaml.
+
+```yaml
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: pipelien-propagated-params
+spec:
+  params:
+    - name: HELLO
+      default: "Hello World!"
+    - name: BYE
+      default: "Bye World!"
+  tasks:
+    - name: echo-hello
+      taskSpec:
+        steps:
+          - name: echo
+            image: ubuntu
+            script: |
+              #!/usr/bin/env bash
+              echo "$(params.HELLO)"
+    - name: echo-bye
+      taskSpec:
+        steps:
+          - name: echo-action
+            ref:
+              name: step-action-echo
+            params:
+              - name: msg
+                value: "$(params.BYE)" 
+```
+The same rules defined in [pipelineruns](pipelineruns.md#propagated-parameters) apply here.
+
+
 ## Adding `Tasks` to the `Pipeline`
 
  Your `Pipeline` definition must reference at least one [`Task`](tasks.md).

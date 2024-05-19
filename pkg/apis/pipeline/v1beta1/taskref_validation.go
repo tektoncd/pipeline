@@ -18,6 +18,7 @@ package v1beta1
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
@@ -32,18 +33,8 @@ func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if ref == nil {
 		return errs
 	}
-
 	switch {
 	case ref.Resolver != "" || ref.Params != nil:
-		if ref.Resolver != "" {
-			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "resolver", config.BetaAPIFields).ViaField("resolver"))
-			if ref.Name != "" {
-				errs = errs.Also(apis.ErrMultipleOneOf("name", "resolver"))
-			}
-			if ref.Bundle != "" {
-				errs = errs.Also(apis.ErrMultipleOneOf("bundle", "resolver"))
-			}
-		}
 		if ref.Params != nil {
 			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "resolver params", config.BetaAPIFields).ViaField("params"))
 			if ref.Name != "" {
@@ -57,6 +48,23 @@ func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 			}
 			errs = errs.Also(ValidateParameters(ctx, ref.Params))
 		}
+		if ref.Resolver != "" {
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "resolver", config.BetaAPIFields).ViaField("resolver"))
+			if ref.Name != "" {
+				// make sure that the name is url-like.
+				err := RefNameLikeUrl(ref.Name)
+				if err == nil && !config.FromContextOrDefaults(ctx).FeatureFlags.EnableConciseResolverSyntax {
+					// If name is url-like then concise resolver syntax must be enabled
+					errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use concise resolver syntax", config.EnableConciseResolverSyntax), ""))
+				}
+				if err != nil {
+					errs = errs.Also(apis.ErrInvalidValue(err, "name"))
+				}
+			}
+			if ref.Bundle != "" {
+				errs = errs.Also(apis.ErrMultipleOneOf("bundle", "resolver"))
+			}
+		}
 	case ref.Bundle != "":
 		if ref.Name == "" {
 			errs = errs.Also(apis.ErrMissingField("name"))
@@ -65,13 +73,27 @@ func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 		if _, err := name.ParseReference(ref.Bundle); err != nil {
 			errs = errs.Also(apis.ErrInvalidValue("invalid bundle reference", "bundle", err.Error()))
 		}
-	default:
-		if ref.Name == "" {
-			errs = errs.Also(apis.ErrMissingField("name"))
-		} else if errSlice := validation.IsQualifiedName(ref.Name); len(errSlice) != 0 {
-			// TaskRef name must be a valid k8s name
-			errs = errs.Also(apis.ErrInvalidValue(strings.Join(errSlice, ","), "name"))
+	case ref.Name != "":
+		// ref name can be a Url-like format.
+		if err := RefNameLikeUrl(ref.Name); err == nil {
+			// If name is url-like then concise resolver syntax must be enabled
+			if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableConciseResolverSyntax {
+				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use concise resolver syntax", config.EnableConciseResolverSyntax), ""))
+			}
+			// In stage1 of concise remote resolvers syntax, this is a required field.
+			// TODO: remove this check when implementing stage 2 where this is optional.
+			if ref.Resolver == "" {
+				errs = errs.Also(apis.ErrMissingField("resolver"))
+			}
+			// Or, it must be a valid k8s name
+		} else {
+			// ref name must be a valid k8s name
+			if errSlice := validation.IsQualifiedName(ref.Name); len(errSlice) != 0 {
+				errs = errs.Also(apis.ErrInvalidValue(strings.Join(errSlice, ","), "name"))
+			}
 		}
+	default:
+		errs = errs.Also(apis.ErrMissingField("name"))
 	}
-	return errs
+	return //nolint:nakedret
 }

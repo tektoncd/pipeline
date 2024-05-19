@@ -31,7 +31,7 @@ spec:
     name: windows-pipeline-na
   taskRunSpecs:
     - pipelineTaskName: windows-task-na
-      taskPodTemplate:
+      podTemplate:
         affinity:
           nodeAffinity:
             requiredDuringSchedulingIgnoredDuringExecution:

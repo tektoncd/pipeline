@@ -1611,7 +1611,7 @@
       }
     },
     "v1.StepResult": {
-      "description": "StepResult used to describe the Results of a Step.\n\nThis is field is at an ALPHA stability level and gated by \"enable-step-actions\" feature flag.",
+      "description": "StepResult used to describe the Results of a Step.\n\nThis is field is at an BETA stability level and gated by \"enable-step-actions\" feature flag.",
       "type": "object",
       "required": [
         "name"

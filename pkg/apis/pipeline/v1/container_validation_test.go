@@ -21,11 +21,21 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"knative.dev/pkg/apis"
 )
+
+func enableConciseResolverSyntax(ctx context.Context) context.Context {
+	return config.ToContext(ctx, &config.Config{
+		FeatureFlags: &config.FeatureFlags{
+			EnableConciseResolverSyntax: true,
+			EnableAPIFields:             config.BetaAPIFields,
+		},
+	})
+}
 
 func TestRef_Valid(t *testing.T) {
 	tests := []struct {
@@ -93,29 +103,45 @@ func TestRef_Invalid(t *testing.T) {
 		},
 		wantErr: apis.ErrMissingField("resolver"),
 	}, {
-		name: "ref resolver disallowed in conjunction with ref name",
+		name: "ref with resolver and k8s style name",
 		ref: &v1.Ref{
 			Name: "foo",
 			ResolverRef: v1.ResolverRef{
 				Resolver: "git",
 			},
 		},
-		wantErr: apis.ErrMultipleOneOf("name", "resolver"),
+		wantErr: apis.ErrInvalidValue(`parse "foo": invalid URI for request`, "name"),
+		wc:      enableConciseResolverSyntax,
 	}, {
-		name: "ref params disallowed in conjunction with ref name",
+		name: "ref with url-like name without resolver",
 		ref: &v1.Ref{
-			Name: "bar",
+			Name: "https://foo.com/bar",
+		},
+		wantErr: apis.ErrMissingField("resolver"),
+		wc:      enableConciseResolverSyntax,
+	}, {
+		name: "ref params disallowed in conjunction with pipelineref name",
+		ref: &v1.Ref{
+			Name: "https://foo/bar",
 			ResolverRef: v1.ResolverRef{
-				Params: v1.Params{{
-					Name: "foo",
-					Value: v1.ParamValue{
-						Type:      v1.ParamTypeString,
-						StringVal: "bar",
-					},
-				}},
+				Resolver: "git",
+				Params:   v1.Params{{Name: "foo", Value: v1.ParamValue{StringVal: "bar"}}},
 			},
 		},
-		wantErr: apis.ErrMultipleOneOf("name", "params").Also(apis.ErrMissingField("resolver")),
+		wantErr: apis.ErrMultipleOneOf("name", "params"),
+		wc:      enableConciseResolverSyntax,
+	}, {
+		name: "ref with url-like name without enable-concise-resolver-syntax",
+		ref:  &v1.Ref{Name: "https://foo.com/bar"},
+		wantErr: apis.ErrMissingField("resolver").Also(&apis.FieldError{
+			Message: `feature flag enable-concise-resolver-syntax should be set to true to use concise resolver syntax`,
+		}),
+	}, {
+		name: "ref without enable-concise-resolver-syntax",
+		ref:  &v1.Ref{Name: "https://foo.com/bar", ResolverRef: v1.ResolverRef{Resolver: "git"}},
+		wantErr: &apis.FieldError{
+			Message: `feature flag enable-concise-resolver-syntax should be set to true to use concise resolver syntax`,
+		},
 	}, {
 		name: "invalid ref name",
 		ref:  &v1.Ref{Name: "_foo"},

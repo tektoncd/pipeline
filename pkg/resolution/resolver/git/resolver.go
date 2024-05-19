@@ -36,8 +36,7 @@ import (
 	"github.com/jenkins-x/go-scm/scm/factory"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	"github.com/tektoncd/pipeline/pkg/resolution/common"
-	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	common "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"go.uber.org/zap"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -74,6 +73,8 @@ const (
 var _ framework.Resolver = &Resolver{}
 
 // Resolver implements a framework.Resolver that can fetch files from git.
+//
+// Deprecated: Use [github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/git.Resolver] instead.
 type Resolver struct {
 	kubeClient kubernetes.Interface
 	logger     *zap.SugaredLogger
@@ -106,41 +107,45 @@ func (r *Resolver) GetName(_ context.Context) string {
 // the gitresolver to process them.
 func (r *Resolver) GetSelector(_ context.Context) map[string]string {
 	return map[string]string{
-		resolutioncommon.LabelKeyResolverType: labelValueGitResolverType,
+		common.LabelKeyResolverType: labelValueGitResolverType,
 	}
 }
 
 // ValidateParams returns an error if the given parameter map is not
 // valid for a resource request targeting the gitresolver.
 func (r *Resolver) ValidateParams(ctx context.Context, params []pipelinev1.Param) error {
-	if r.isDisabled(ctx) {
-		return errors.New(disabledError)
-	}
-
-	_, err := populateDefaultParams(ctx, params)
-	if err != nil {
-		return err
-	}
-	return nil
+	return ValidateParams(ctx, params)
 }
 
 // Resolve performs the work of fetching a file from git given a map of
 // parameters.
 func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1.Param) (framework.ResolvedResource, error) {
-	if r.isDisabled(ctx) {
+	if IsDisabled(ctx) {
 		return nil, errors.New(disabledError)
 	}
 
-	params, err := populateDefaultParams(ctx, origParams)
+	params, err := PopulateDefaultParams(ctx, origParams)
 	if err != nil {
 		return nil, err
 	}
 
-	if params[urlParam] != "" {
-		return r.resolveAnonymousGit(ctx, params)
+	if params[UrlParam] != "" {
+		return ResolveAnonymousGit(ctx, params)
 	}
 
-	return r.resolveAPIGit(ctx, params)
+	return ResolveAPIGit(ctx, params, r.kubeClient, r.logger, r.cache, r.ttl, r.clientFunc)
+}
+
+func ValidateParams(ctx context.Context, params []pipelinev1.Param) error {
+	if IsDisabled(ctx) {
+		return errors.New(disabledError)
+	}
+
+	_, err := PopulateDefaultParams(ctx, params)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // validateRepoURL validates if the given URL is a valid git, http, https URL or
@@ -152,81 +157,19 @@ func validateRepoURL(url string) bool {
 	return re.MatchString(url)
 }
 
-func (r *Resolver) resolveAPIGit(ctx context.Context, params map[string]string) (framework.ResolvedResource, error) {
-	// If we got here, the "repo" param was specified, so use the API approach
-	scmType, serverURL, err := r.getSCMTypeAndServerURL(ctx, params)
-	if err != nil {
-		return nil, err
-	}
-	secretRef := &secretCacheKey{
-		name: params[tokenParam],
-		key:  params[tokenKeyParam],
-	}
-	if secretRef.name != "" {
-		if secretRef.key == "" {
-			secretRef.key = defaultTokenKeyParam
-		}
-		secretRef.ns = common.RequestNamespace(ctx)
-	} else {
-		secretRef = nil
-	}
-	apiToken, err := r.getAPIToken(ctx, secretRef)
-	if err != nil {
-		return nil, err
-	}
-	scmClient, err := r.clientFunc(scmType, serverURL, string(apiToken))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create SCM client: %w", err)
-	}
-
-	orgRepo := fmt.Sprintf("%s/%s", params[orgParam], params[repoParam])
-	path := params[pathParam]
-	ref := params[revisionParam]
-
-	// fetch the actual content from a file in the repo
-	content, _, err := scmClient.Contents.Find(ctx, orgRepo, path, ref)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't fetch resource content: %w", err)
-	}
-	if content == nil || len(content.Data) == 0 {
-		return nil, fmt.Errorf("no content for resource in %s %s", orgRepo, path)
-	}
-
-	// find the actual git commit sha by the ref
-	commit, _, err := scmClient.Git.FindCommit(ctx, orgRepo, ref)
-	if err != nil || commit == nil {
-		return nil, fmt.Errorf("couldn't fetch the commit sha for the ref %s in the repo: %w", ref, err)
-	}
-
-	// fetch the repository URL
-	repo, _, err := scmClient.Repositories.Find(ctx, orgRepo)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't fetch repository: %w", err)
-	}
-
-	return &resolvedGitResource{
-		Content:  content.Data,
-		Revision: commit.Sha,
-		Org:      params[orgParam],
-		Repo:     params[repoParam],
-		Path:     content.Path,
-		URL:      repo.Clone,
-	}, nil
-}
-
-func (r *Resolver) resolveAnonymousGit(ctx context.Context, params map[string]string) (framework.ResolvedResource, error) {
+func ResolveAnonymousGit(ctx context.Context, params map[string]string) (framework.ResolvedResource, error) {
 	conf := framework.GetResolverConfigFromContext(ctx)
-	repo := params[urlParam]
+	repo := params[UrlParam]
 	if repo == "" {
-		if urlString, ok := conf[defaultURLKey]; ok {
+		if urlString, ok := conf[DefaultURLKey]; ok {
 			repo = urlString
 		} else {
 			return nil, errors.New("default Git Repo Url was not set during installation of the git resolver")
 		}
 	}
-	revision := params[revisionParam]
+	revision := params[RevisionParam]
 	if revision == "" {
-		if revisionString, ok := conf[defaultRevisionKey]; ok {
+		if revisionString, ok := conf[DefaultRevisionKey]; ok {
 			revision = revisionString
 		} else {
 			return nil, errors.New("default Git Revision was not set during installation of the git resolver")
@@ -271,7 +214,7 @@ func (r *Resolver) resolveAnonymousGit(ctx context.Context, params map[string]st
 		return nil, fmt.Errorf("checkout error: %w", err)
 	}
 
-	path := params[pathParam]
+	path := params[PathParam]
 
 	f, err := filesystem.Open(path)
 	if err != nil {
@@ -287,8 +230,8 @@ func (r *Resolver) resolveAnonymousGit(ctx context.Context, params map[string]st
 	return &resolvedGitResource{
 		Revision: h.String(),
 		Content:  buf.Bytes(),
-		URL:      params[urlParam],
-		Path:     params[pathParam],
+		URL:      params[UrlParam],
+		Path:     params[PathParam],
 	}, nil
 }
 
@@ -306,7 +249,7 @@ var _ framework.TimedResolution = &Resolver{}
 // fetch-timeout field in the git-resolver-config configmap.
 func (r *Resolver) GetResolutionTimeout(ctx context.Context, defaultTimeout time.Duration) time.Duration {
 	conf := framework.GetResolverConfigFromContext(ctx)
-	if timeoutString, ok := conf[defaultTimeoutKey]; ok {
+	if timeoutString, ok := conf[DefaultTimeoutKey]; ok {
 		timeout, err := time.ParseDuration(timeoutString)
 		if err == nil {
 			return timeout
@@ -315,9 +258,66 @@ func (r *Resolver) GetResolutionTimeout(ctx context.Context, defaultTimeout time
 	return defaultTimeout
 }
 
-func (r *Resolver) isDisabled(ctx context.Context) bool {
-	cfg := resolverconfig.FromContextOrDefaults(ctx)
-	return !cfg.FeatureFlags.EnableGitResolver
+func PopulateDefaultParams(ctx context.Context, params []pipelinev1.Param) (map[string]string, error) {
+	conf := framework.GetResolverConfigFromContext(ctx)
+
+	paramsMap := make(map[string]string)
+	for _, p := range params {
+		paramsMap[p.Name] = p.Value.StringVal
+	}
+
+	var missingParams []string
+
+	if _, ok := paramsMap[RevisionParam]; !ok {
+		if defaultRevision, ok := conf[DefaultRevisionKey]; ok {
+			paramsMap[RevisionParam] = defaultRevision
+		} else {
+			missingParams = append(missingParams, RevisionParam)
+		}
+	}
+	if _, ok := paramsMap[PathParam]; !ok {
+		missingParams = append(missingParams, PathParam)
+	}
+
+	if paramsMap[UrlParam] != "" && paramsMap[RepoParam] != "" {
+		return nil, fmt.Errorf("cannot specify both '%s' and '%s'", UrlParam, RepoParam)
+	}
+
+	if paramsMap[UrlParam] == "" && paramsMap[RepoParam] == "" {
+		if urlString, ok := conf[DefaultURLKey]; ok {
+			paramsMap[UrlParam] = urlString
+		} else {
+			return nil, fmt.Errorf("must specify one of '%s' or '%s'", UrlParam, RepoParam)
+		}
+	}
+
+	if paramsMap[RepoParam] != "" {
+		if _, ok := paramsMap[OrgParam]; !ok {
+			if defaultOrg, ok := conf[DefaultOrgKey]; ok {
+				paramsMap[OrgParam] = defaultOrg
+			} else {
+				return nil, fmt.Errorf("'%s' is required when '%s' is specified", OrgParam, RepoParam)
+			}
+		}
+	}
+	if len(missingParams) > 0 {
+		return nil, fmt.Errorf("missing required git resolver params: %s", strings.Join(missingParams, ", "))
+	}
+
+	// validate the url params if we are not using the SCM API
+	if paramsMap[RepoParam] == "" && paramsMap[OrgParam] == "" && !validateRepoURL(paramsMap[UrlParam]) {
+		return nil, fmt.Errorf("invalid git repository url: %s", paramsMap[UrlParam])
+	}
+
+	// TODO(sbwsg): validate pathInRepo is valid relative pathInRepo
+	return paramsMap, nil
+}
+
+// supports the SPDX format which is recommended by in-toto
+// ref: https://spdx.dev/spdx-specification-21-web-version/#h.49x2ik5
+// ref: https://github.com/in-toto/attestation/blob/main/spec/field_types.md
+func spdxGit(url string) string {
+	return "git+" + url
 }
 
 // resolvedGitResource implements framework.ResolvedResource and returns
@@ -342,10 +342,10 @@ func (r *resolvedGitResource) Data() []byte {
 // from git.
 func (r *resolvedGitResource) Annotations() map[string]string {
 	m := map[string]string{
-		AnnotationKeyRevision:                     r.Revision,
-		AnnotationKeyPath:                         r.Path,
-		AnnotationKeyURL:                          r.URL,
-		resolutioncommon.AnnotationKeyContentType: yamlContentType,
+		AnnotationKeyRevision:           r.Revision,
+		AnnotationKeyPath:               r.Path,
+		AnnotationKeyURL:                r.URL,
+		common.AnnotationKeyContentType: yamlContentType,
 	}
 
 	if r.Org != "" {
@@ -376,34 +376,69 @@ type secretCacheKey struct {
 	key  string
 }
 
-func (r *Resolver) getSCMTypeAndServerURL(ctx context.Context, params map[string]string) (string, string, error) {
-	conf := framework.GetResolverConfigFromContext(ctx)
+func ResolveAPIGit(ctx context.Context, params map[string]string, kubeclient kubernetes.Interface, logger *zap.SugaredLogger, cache *cache.LRUExpireCache, ttl time.Duration, clientFunc func(string, string, string, ...factory.ClientOptionFunc) (*scm.Client, error)) (framework.ResolvedResource, error) {
+	// If we got here, the "repo" param was specified, so use the API approach
+	scmType, serverURL, err := getSCMTypeAndServerURL(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	secretRef := &secretCacheKey{
+		name: params[TokenParam],
+		key:  params[TokenKeyParam],
+	}
+	if secretRef.name != "" {
+		if secretRef.key == "" {
+			secretRef.key = DefaultTokenKeyParam
+		}
+		secretRef.ns = common.RequestNamespace(ctx)
+	} else {
+		secretRef = nil
+	}
+	apiToken, err := getAPIToken(ctx, secretRef, kubeclient, logger, cache, ttl)
+	if err != nil {
+		return nil, err
+	}
+	scmClient, err := clientFunc(scmType, serverURL, string(apiToken))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create SCM client: %w", err)
+	}
 
-	var scmType, serverURL string
-	if key, ok := params[scmTypeParam]; ok {
-		scmType = key
+	orgRepo := fmt.Sprintf("%s/%s", params[OrgParam], params[RepoParam])
+	path := params[PathParam]
+	ref := params[RevisionParam]
+
+	// fetch the actual content from a file in the repo
+	content, _, err := scmClient.Contents.Find(ctx, orgRepo, path, ref)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't fetch resource content: %w", err)
 	}
-	if scmType == "" {
-		if key, ok := conf[SCMTypeKey]; ok && scmType == "" {
-			scmType = key
-		} else {
-			return "", "", fmt.Errorf("missing or empty %s value in configmap", SCMTypeKey)
-		}
+	if content == nil || len(content.Data) == 0 {
+		return nil, fmt.Errorf("no content for resource in %s %s", orgRepo, path)
 	}
-	if key, ok := params[serverURLParam]; ok {
-		serverURL = key
+
+	// find the actual git commit sha by the ref
+	commit, _, err := scmClient.Git.FindCommit(ctx, orgRepo, ref)
+	if err != nil || commit == nil {
+		return nil, fmt.Errorf("couldn't fetch the commit sha for the ref %s in the repo: %w", ref, err)
 	}
-	if serverURL == "" {
-		if key, ok := conf[ServerURLKey]; ok && serverURL == "" {
-			serverURL = key
-		} else {
-			return "", "", fmt.Errorf("missing or empty %s value in configmap", ServerURLKey)
-		}
+
+	// fetch the repository URL
+	repo, _, err := scmClient.Repositories.Find(ctx, orgRepo)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't fetch repository: %w", err)
 	}
-	return scmType, serverURL, nil
+
+	return &resolvedGitResource{
+		Content:  content.Data,
+		Revision: commit.Sha,
+		Org:      params[OrgParam],
+		Repo:     params[RepoParam],
+		Path:     content.Path,
+		URL:      repo.Clone,
+	}, nil
 }
 
-func (r *Resolver) getAPIToken(ctx context.Context, apiSecret *secretCacheKey) ([]byte, error) {
+func getAPIToken(ctx context.Context, apiSecret *secretCacheKey, kubeclient kubernetes.Interface, logger *zap.SugaredLogger, cache *cache.LRUExpireCache, ttl time.Duration) ([]byte, error) {
 	conf := framework.GetResolverConfigFromContext(ctx)
 
 	ok := false
@@ -417,15 +452,15 @@ func (r *Resolver) getAPIToken(ctx context.Context, apiSecret *secretCacheKey) (
 
 	if apiSecret.name == "" {
 		if apiSecret.name, ok = conf[APISecretNameKey]; !ok || apiSecret.name == "" {
-			err := fmt.Errorf("cannot get API token, required when specifying '%s' param, '%s' not specified in config", repoParam, APISecretNameKey)
-			r.logger.Info(err)
+			err := fmt.Errorf("cannot get API token, required when specifying '%s' param, '%s' not specified in config", RepoParam, APISecretNameKey)
+			logger.Info(err)
 			return nil, err
 		}
 	}
 	if apiSecret.key == "" {
 		if apiSecret.key, ok = conf[APISecretKeyKey]; !ok || apiSecret.key == "" {
-			err := fmt.Errorf("cannot get API token, required when specifying '%s' param, '%s' not specified in config", repoParam, APISecretKeyKey)
-			r.logger.Info(err)
+			err := fmt.Errorf("cannot get API token, required when specifying '%s' param, '%s' not specified in config", RepoParam, APISecretKeyKey)
+			logger.Info(err)
 			return nil, err
 		}
 	}
@@ -436,94 +471,64 @@ func (r *Resolver) getAPIToken(ctx context.Context, apiSecret *secretCacheKey) (
 	}
 
 	if cacheSecret {
-		val, ok := r.cache.Get(apiSecret)
+		val, ok := cache.Get(apiSecret)
 		if ok {
 			return val.([]byte), nil
 		}
 	}
 
-	secret, err := r.kubeClient.CoreV1().Secrets(apiSecret.ns).Get(ctx, apiSecret.name, metav1.GetOptions{})
+	secret, err := kubeclient.CoreV1().Secrets(apiSecret.ns).Get(ctx, apiSecret.name, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			notFoundErr := fmt.Errorf("cannot get API token, secret %s not found in namespace %s", apiSecret.name, apiSecret.ns)
-			r.logger.Info(notFoundErr)
+			logger.Info(notFoundErr)
 			return nil, notFoundErr
 		}
 		wrappedErr := fmt.Errorf("error reading API token from secret %s in namespace %s: %w", apiSecret.name, apiSecret.ns, err)
-		r.logger.Info(wrappedErr)
+		logger.Info(wrappedErr)
 		return nil, wrappedErr
 	}
 
 	secretVal, ok := secret.Data[apiSecret.key]
 	if !ok {
 		err := fmt.Errorf("cannot get API token, key %s not found in secret %s in namespace %s", apiSecret.key, apiSecret.name, apiSecret.ns)
-		r.logger.Info(err)
+		logger.Info(err)
 		return nil, err
 	}
 	if cacheSecret {
-		r.cache.Add(apiSecret, secretVal, r.ttl)
+		cache.Add(apiSecret, secretVal, ttl)
 	}
 	return secretVal, nil
 }
 
-func populateDefaultParams(ctx context.Context, params []pipelinev1.Param) (map[string]string, error) {
+func getSCMTypeAndServerURL(ctx context.Context, params map[string]string) (string, string, error) {
 	conf := framework.GetResolverConfigFromContext(ctx)
 
-	paramsMap := make(map[string]string)
-	for _, p := range params {
-		paramsMap[p.Name] = p.Value.StringVal
+	var scmType, serverURL string
+	if key, ok := params[ScmTypeParam]; ok {
+		scmType = key
 	}
-
-	var missingParams []string
-
-	if _, ok := paramsMap[revisionParam]; !ok {
-		if defaultRevision, ok := conf[defaultRevisionKey]; ok {
-			paramsMap[revisionParam] = defaultRevision
+	if scmType == "" {
+		if key, ok := conf[SCMTypeKey]; ok && scmType == "" {
+			scmType = key
 		} else {
-			missingParams = append(missingParams, revisionParam)
+			return "", "", fmt.Errorf("missing or empty %s value in configmap", SCMTypeKey)
 		}
 	}
-	if _, ok := paramsMap[pathParam]; !ok {
-		missingParams = append(missingParams, pathParam)
+	if key, ok := params[ServerURLParam]; ok {
+		serverURL = key
 	}
-
-	if paramsMap[urlParam] != "" && paramsMap[repoParam] != "" {
-		return nil, fmt.Errorf("cannot specify both '%s' and '%s'", urlParam, repoParam)
-	}
-
-	if paramsMap[urlParam] == "" && paramsMap[repoParam] == "" {
-		if urlString, ok := conf[defaultURLKey]; ok {
-			paramsMap[urlParam] = urlString
+	if serverURL == "" {
+		if key, ok := conf[ServerURLKey]; ok && serverURL == "" {
+			serverURL = key
 		} else {
-			return nil, fmt.Errorf("must specify one of '%s' or '%s'", urlParam, repoParam)
+			return "", "", fmt.Errorf("missing or empty %s value in configmap", ServerURLKey)
 		}
 	}
-
-	if paramsMap[repoParam] != "" {
-		if _, ok := paramsMap[orgParam]; !ok {
-			if defaultOrg, ok := conf[defaultOrgKey]; ok {
-				paramsMap[orgParam] = defaultOrg
-			} else {
-				return nil, fmt.Errorf("'%s' is required when '%s' is specified", orgParam, repoParam)
-			}
-		}
-	}
-	if len(missingParams) > 0 {
-		return nil, fmt.Errorf("missing required git resolver params: %s", strings.Join(missingParams, ", "))
-	}
-
-	// validate the url params if we are not using the SCM API
-	if paramsMap[repoParam] == "" && paramsMap[orgParam] == "" && !validateRepoURL(paramsMap[urlParam]) {
-		return nil, fmt.Errorf("invalid git repository url: %s", paramsMap[urlParam])
-	}
-
-	// TODO(sbwsg): validate pathInRepo is valid relative pathInRepo
-	return paramsMap, nil
+	return scmType, serverURL, nil
 }
 
-// supports the SPDX format which is recommended by in-toto
-// ref: https://spdx.dev/spdx-specification-21-web-version/#h.49x2ik5
-// ref: https://github.com/in-toto/attestation/blob/main/spec/field_types.md
-func spdxGit(url string) string {
-	return "git+" + url
+func IsDisabled(ctx context.Context) bool {
+	cfg := resolverconfig.FromContextOrDefaults(ctx)
+	return !cfg.FeatureFlags.EnableGitResolver
 }

@@ -1,0 +1,124 @@
+/*
+Copyright 2022 The Tekton Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package framework
+
+import (
+	"context"
+	"strings"
+
+	rrclient "github.com/tektoncd/pipeline/pkg/client/resolution/injection/client"
+	rrinformer "github.com/tektoncd/pipeline/pkg/client/resolution/injection/informers/resolution/v1beta1/resolutionrequest"
+	framework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/utils/clock"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
+	"knative.dev/pkg/configmap"
+	"knative.dev/pkg/controller"
+	"knative.dev/pkg/logging"
+)
+
+// ReconcilerModifier is a func that can access and modify a reconciler
+// in the moments before a resolver is started. It allows for
+// things like injecting a test clock.
+type ReconcilerModifier = func(reconciler *Reconciler)
+
+// NewController returns a knative controller for a Tekton Resolver.
+// This sets up a lot of the boilerplate that individual resolvers
+// shouldn't need to be concerned with since it's common to all of them.
+func NewController(ctx context.Context, resolver Resolver, modifiers ...ReconcilerModifier) func(context.Context, configmap.Watcher) *controller.Impl {
+	if err := framework.ValidateResolver(ctx, resolver.GetSelector(ctx)); err != nil {
+		panic(err.Error())
+	}
+	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+		logger := logging.FromContext(ctx)
+		kubeclientset := kubeclient.Get(ctx)
+		rrclientset := rrclient.Get(ctx)
+		rrInformer := rrinformer.Get(ctx)
+
+		if err := resolver.Initialize(ctx); err != nil {
+			panic(err.Error())
+		}
+
+		r := &Reconciler{
+			LeaderAwareFuncs:           framework.LeaderAwareFuncs(rrInformer.Lister()),
+			kubeClientSet:              kubeclientset,
+			resolutionRequestLister:    rrInformer.Lister(),
+			resolutionRequestClientSet: rrclientset,
+			resolver:                   resolver,
+		}
+
+		watchConfigChanges(ctx, r, cmw)
+
+		// TODO(sbwsg): Do better sanitize.
+		resolverName := resolver.GetName(ctx)
+		resolverName = strings.ReplaceAll(resolverName, "/", "")
+		resolverName = strings.ReplaceAll(resolverName, " ", "")
+
+		applyModifiersAndDefaults(ctx, r, modifiers)
+
+		impl := controller.NewContext(ctx, r, controller.ControllerOptions{
+			WorkQueueName: "TektonResolverFramework." + resolverName,
+			Logger:        logger,
+		})
+
+		_, err := rrInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: framework.FilterResolutionRequestsBySelector(resolver.GetSelector(ctx)),
+			Handler: cache.ResourceEventHandlerFuncs{
+				AddFunc: impl.Enqueue,
+				UpdateFunc: func(oldObj, newObj interface{}) {
+					impl.Enqueue(newObj)
+				},
+				// TODO(sbwsg): should we deliver delete events
+				// to the resolver?
+				// DeleteFunc: impl.Enqueue,
+			},
+		})
+		if err != nil {
+			logging.FromContext(ctx).Panicf("Couldn't register ResolutionRequest informer event handler: %w", err)
+		}
+
+		return impl
+	}
+}
+
+// watchConfigChanges binds a framework.Resolver to updates on its
+// configmap, using knative's configmap helpers. This is only done if
+// the resolver implements the framework.ConfigWatcher interface.
+func watchConfigChanges(ctx context.Context, reconciler *Reconciler, cmw configmap.Watcher) {
+	if configWatcher, ok := reconciler.resolver.(framework.ConfigWatcher); ok {
+		logger := logging.FromContext(ctx)
+		resolverConfigName := configWatcher.GetConfigName(ctx)
+		if resolverConfigName == "" {
+			panic("resolver returned empty config name")
+		}
+		reconciler.configStore = framework.NewConfigStore(resolverConfigName, logger)
+		reconciler.configStore.WatchConfigs(cmw)
+	}
+}
+
+// applyModifiersAndDefaults applies the given modifiers to
+// a reconciler and, after doing so, sets any default values for things
+// that weren't set by a modifier.
+func applyModifiersAndDefaults(ctx context.Context, r *Reconciler, modifiers []ReconcilerModifier) {
+	for _, mod := range modifiers {
+		mod(r)
+	}
+
+	if r.Clock == nil {
+		r.Clock = clock.RealClock{}
+	}
+}

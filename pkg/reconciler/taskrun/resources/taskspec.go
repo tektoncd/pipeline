@@ -22,10 +22,10 @@ import (
 	"fmt"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
-	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
+	remoteresource "github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -42,7 +42,7 @@ type ResolvedTask struct {
 }
 
 // GetStepAction is a function used to retrieve StepActions.
-type GetStepAction func(context.Context, string) (*v1alpha1.StepAction, *v1.RefSource, error)
+type GetStepAction func(context.Context, string) (*v1beta1.StepAction, *v1.RefSource, error)
 
 // GetTask is a function used to retrieve Tasks.
 // VerificationResult is the result from trusted resources if the feature is enabled.

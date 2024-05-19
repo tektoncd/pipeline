@@ -22,11 +22,11 @@ import (
 	"errors"
 	"fmt"
 
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	rrclient "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned"
 	rrlisters "github.com/tektoncd/pipeline/pkg/client/resolution/listers/resolution/v1beta1"
-	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	common "github.com/tektoncd/pipeline/pkg/resolution/common"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -34,6 +34,8 @@ import (
 
 // CRDRequester implements the Requester interface using
 // ResolutionRequest CRDs.
+//
+// Deprecated: Use [github.com/tektoncd/pipeline/pkg/remoteresolution/resource.CRDRequester] instead.
 type CRDRequester struct {
 	clientset rrclient.Interface
 	lister    rrlisters.ResolutionRequestLister
@@ -43,6 +45,8 @@ type CRDRequester struct {
 // ResolutionRequest CRD objects to mediate between the caller who wants a
 // resource (e.g. Tekton Pipelines) and the responder who can fetch
 // it (e.g. the gitresolver)
+//
+// Deprecated: Use [github.com/tektoncd/pipeline/pkg/remoteresolution/resource.NewCRDRequester] instead.
 func NewCRDRequester(clientset rrclient.Interface, lister rrlisters.ResolutionRequestLister) *CRDRequester {
 	return &CRDRequester{clientset, lister}
 }
@@ -63,7 +67,7 @@ func (r *CRDRequester) Submit(ctx context.Context, resolver ResolverName, req Re
 			!apierrors.IsAlreadyExists(err) {
 			return nil, err
 		}
-		return nil, resolutioncommon.ErrRequestInProgress
+		return nil, common.ErrRequestInProgress
 	}
 
 	if rr.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
@@ -72,52 +76,58 @@ func (r *CRDRequester) Submit(ctx context.Context, resolver ResolverName, req Re
 		// that it doesn't get deleted until the caller is done
 		// with it. Use appendOwnerReference and then submit
 		// update to ResolutionRequest.
-		return nil, resolutioncommon.ErrRequestInProgress
+		return nil, common.ErrRequestInProgress
 	}
 
 	if rr.Status.GetCondition(apis.ConditionSucceeded).IsTrue() {
-		return crdIntoResource(rr), nil
+		return CrdIntoResource(rr), nil
 	}
 
 	message := rr.Status.GetCondition(apis.ConditionSucceeded).GetMessage()
-	err := resolutioncommon.NewError(resolutioncommon.ReasonResolutionFailed, errors.New(message))
+	err := common.NewError(common.ReasonResolutionFailed, errors.New(message))
 	return nil, err
 }
 
 func (r *CRDRequester) createResolutionRequest(ctx context.Context, resolver ResolverName, req Request) error {
+	var owner metav1.OwnerReference
+	if ownedReq, ok := req.(OwnedRequest); ok {
+		owner = ownedReq.OwnerRef()
+	}
+	rr := CreateResolutionRequest(ctx, resolver, req.Name(), req.Namespace(), req.Params(), owner)
+	_, err := r.clientset.ResolutionV1beta1().ResolutionRequests(rr.Namespace).Create(ctx, rr, metav1.CreateOptions{})
+	return err
+}
+
+func CreateResolutionRequest(ctx context.Context, resolver common.ResolverName, name, namespace string, params []v1.Param, ownerRef metav1.OwnerReference) *v1beta1.ResolutionRequest {
 	rr := &v1beta1.ResolutionRequest{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "resolution.tekton.dev/v1beta1",
 			Kind:       "ResolutionRequest",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      req.Name(),
-			Namespace: req.Namespace(),
+			Name:      name,
+			Namespace: namespace,
 			Labels: map[string]string{
-				resolutioncommon.LabelKeyResolverType: string(resolver),
+				common.LabelKeyResolverType: string(resolver),
 			},
 		},
 		Spec: v1beta1.ResolutionRequestSpec{
-			Params: req.Params(),
+			Params: params,
 		},
 	}
-	appendOwnerReference(rr, req)
-	_, err := r.clientset.ResolutionV1beta1().ResolutionRequests(rr.Namespace).Create(ctx, rr, metav1.CreateOptions{})
-	return err
+	appendOwnerReference(rr, ownerRef)
+	return rr
 }
 
-func appendOwnerReference(rr *v1beta1.ResolutionRequest, req Request) {
-	if ownedReq, ok := req.(OwnedRequest); ok {
-		newOwnerRef := ownedReq.OwnerRef()
-		isOwner := false
-		for _, ref := range rr.ObjectMeta.OwnerReferences {
-			if ownerRefsAreEqual(ref, newOwnerRef) {
-				isOwner = true
-			}
+func appendOwnerReference(rr *v1beta1.ResolutionRequest, ownerRef metav1.OwnerReference) {
+	isOwner := false
+	for _, ref := range rr.ObjectMeta.OwnerReferences {
+		if ownerRefsAreEqual(ref, ownerRef) {
+			isOwner = true
 		}
-		if !isOwner {
-			rr.ObjectMeta.OwnerReferences = append(rr.ObjectMeta.OwnerReferences, newOwnerRef)
-		}
+	}
+	if !isOwner {
+		rr.ObjectMeta.OwnerReferences = append(rr.ObjectMeta.OwnerReferences, ownerRef)
 	}
 }
 
@@ -131,21 +141,21 @@ func ownerRefsAreEqual(a, b metav1.OwnerReference) bool {
 	return a.APIVersion == b.APIVersion && a.Kind == b.Kind && a.Name == b.Name && a.UID == b.UID
 }
 
-// readOnlyResolutionRequest is an opaque wrapper around ResolutionRequest
+// ReadOnlyResolutionRequest is an opaque wrapper around ResolutionRequest
 // that provides the methods needed to read data from it using the
 // Resource interface without exposing the underlying API
 // object.
-type readOnlyResolutionRequest struct {
+type ReadOnlyResolutionRequest struct {
 	req *v1beta1.ResolutionRequest
 }
 
-var _ ResolvedResource = readOnlyResolutionRequest{}
+var _ common.ResolvedResource = ReadOnlyResolutionRequest{}
 
-func crdIntoResource(rr *v1beta1.ResolutionRequest) readOnlyResolutionRequest {
-	return readOnlyResolutionRequest{req: rr}
+func CrdIntoResource(rr *v1beta1.ResolutionRequest) ReadOnlyResolutionRequest {
+	return ReadOnlyResolutionRequest{req: rr}
 }
 
-func (r readOnlyResolutionRequest) Annotations() map[string]string {
+func (r ReadOnlyResolutionRequest) Annotations() map[string]string {
 	status := r.req.GetStatus()
 	if status != nil && status.Annotations != nil {
 		annotationsCopy := map[string]string{}
@@ -157,7 +167,7 @@ func (r readOnlyResolutionRequest) Annotations() map[string]string {
 	return nil
 }
 
-func (r readOnlyResolutionRequest) Data() ([]byte, error) {
+func (r ReadOnlyResolutionRequest) Data() ([]byte, error) {
 	encodedData := r.req.Status.ResolutionRequestStatusFields.Data
 	decodedBytes, err := base64.StdEncoding.Strict().DecodeString(encodedData)
 	if err != nil {
@@ -166,6 +176,6 @@ func (r readOnlyResolutionRequest) Data() ([]byte, error) {
 	return decodedBytes, nil
 }
 
-func (r readOnlyResolutionRequest) RefSource() *pipelinev1.RefSource {
+func (r ReadOnlyResolutionRequest) RefSource() *v1.RefSource {
 	return r.req.Status.RefSource
 }

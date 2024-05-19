@@ -52,7 +52,8 @@ import (
 	tresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/remote"
-	resolution "github.com/tektoncd/pipeline/pkg/resolution/resource"
+	resolution "github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
+	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/pkg/workspace"
@@ -373,7 +374,7 @@ func (c *Reconciler) resolvePipelineState(
 			pst,
 		)
 		if err != nil {
-			if tresources.IsErrTransient(err) {
+			if resolutioncommon.IsErrTransient(err) {
 				return nil, err
 			}
 			if errors.Is(err, remote.ErrRequestInProgress) {
@@ -1308,6 +1309,11 @@ func propagatePipelineNameLabelToPipelineRun(pr *v1.PipelineRun) error {
 	if pr.ObjectMeta.Labels == nil {
 		pr.ObjectMeta.Labels = make(map[string]string)
 	}
+
+	if _, ok := pr.ObjectMeta.Labels[pipeline.PipelineLabelKey]; ok {
+		return nil
+	}
+
 	switch {
 	case pr.Spec.PipelineRef != nil && pr.Spec.PipelineRef.Name != "":
 		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pr.Spec.PipelineRef.Name
@@ -1426,7 +1432,9 @@ func storePipelineSpecAndMergeMeta(ctx context.Context, pr *v1.PipelineRun, ps *
 
 		// Propagate labels from Pipeline to PipelineRun. PipelineRun labels take precedences over Pipeline.
 		pr.ObjectMeta.Labels = kmap.Union(meta.Labels, pr.ObjectMeta.Labels)
-		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = meta.Name
+		if len(meta.Name) > 0 {
+			pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = meta.Name
+		}
 
 		// Propagate annotations from Pipeline to PipelineRun. PipelineRun annotations take precedences over Pipeline.
 		pr.ObjectMeta.Annotations = kmap.Union(kmap.ExcludeKeys(meta.Annotations, tknreconciler.KubectlLastAppliedAnnotationKey), pr.ObjectMeta.Annotations)

@@ -27,7 +27,7 @@ import (
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
-	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	common "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/logging"
@@ -51,6 +51,8 @@ const (
 var _ framework.Resolver = &Resolver{}
 
 // Resolver implements a framework.Resolver that can fetch resources from other namespaces.
+//
+// Deprecated: Use [github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/cluster.Resolver] instead.
 type Resolver struct {
 	pipelineClientSet clientset.Interface
 }
@@ -71,25 +73,24 @@ func (r *Resolver) GetName(_ context.Context) string {
 // the cluster resolver to process them.
 func (r *Resolver) GetSelector(_ context.Context) map[string]string {
 	return map[string]string{
-		resolutioncommon.LabelKeyResolverType: LabelValueClusterResolverType,
+		common.LabelKeyResolverType: LabelValueClusterResolverType,
 	}
 }
 
 // ValidateParams returns an error if the given parameter map is not
 // valid for a resource request targeting the cluster resolver.
 func (r *Resolver) ValidateParams(ctx context.Context, params []pipelinev1.Param) error {
-	if r.isDisabled(ctx) {
-		return errors.New(disabledError)
-	}
-
-	_, err := populateParamsWithDefaults(ctx, params)
-	return err
+	return ValidateParams(ctx, params)
 }
 
 // Resolve performs the work of fetching a resource from a namespace with the given
 // parameters.
 func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1.Param) (framework.ResolvedResource, error) {
-	if r.isDisabled(ctx) {
+	return ResolveFromParams(ctx, origParams, r.pipelineClientSet)
+}
+
+func ResolveFromParams(ctx context.Context, origParams []pipelinev1.Param, pipelineClientSet clientset.Interface) (framework.ResolvedResource, error) {
+	if isDisabled(ctx) {
 		return nil, errors.New(disabledError)
 	}
 
@@ -109,52 +110,23 @@ func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1.Param) (
 
 	switch params[KindParam] {
 	case "task":
-		task, err := r.pipelineClientSet.TektonV1().Tasks(params[NamespaceParam]).Get(ctx, params[NameParam], metav1.GetOptions{})
+		task, err := pipelineClientSet.TektonV1().Tasks(params[NamespaceParam]).Get(ctx, params[NameParam], metav1.GetOptions{})
 		if err != nil {
 			logger.Infof("failed to load task %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
 			return nil, err
 		}
-		uid = string(task.UID)
-		task.Kind = "Task"
-		task.APIVersion = groupVersion
-		data, err = yaml.Marshal(task)
+		uid, data, sha256Checksum, spec, err = fetchTask(ctx, groupVersion, task, params)
 		if err != nil {
-			logger.Infof("failed to marshal task %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
-			return nil, err
-		}
-		sha256Checksum, err = task.Checksum()
-		if err != nil {
-			return nil, err
-		}
-
-		spec, err = yaml.Marshal(task.Spec)
-		if err != nil {
-			logger.Infof("failed to marshal the spec of the task %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
 			return nil, err
 		}
 	case "pipeline":
-		pipeline, err := r.pipelineClientSet.TektonV1().Pipelines(params[NamespaceParam]).Get(ctx, params[NameParam], metav1.GetOptions{})
+		pipeline, err := pipelineClientSet.TektonV1().Pipelines(params[NamespaceParam]).Get(ctx, params[NameParam], metav1.GetOptions{})
 		if err != nil {
 			logger.Infof("failed to load pipeline %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
 			return nil, err
 		}
-		uid = string(pipeline.UID)
-		pipeline.Kind = "Pipeline"
-		pipeline.APIVersion = groupVersion
-		data, err = yaml.Marshal(pipeline)
+		uid, data, sha256Checksum, spec, err = fetchPipeline(ctx, groupVersion, pipeline, params)
 		if err != nil {
-			logger.Infof("failed to marshal pipeline %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
-			return nil, err
-		}
-
-		sha256Checksum, err = pipeline.Checksum()
-		if err != nil {
-			return nil, err
-		}
-
-		spec, err = yaml.Marshal(pipeline.Spec)
-		if err != nil {
-			logger.Infof("failed to marshal the spec of the pipeline %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
 			return nil, err
 		}
 	default:
@@ -177,11 +149,6 @@ var _ framework.ConfigWatcher = &Resolver{}
 // GetConfigName returns the name of the cluster resolver's configmap.
 func (r *Resolver) GetConfigName(context.Context) string {
 	return configMapName
-}
-
-func (r *Resolver) isDisabled(ctx context.Context) bool {
-	cfg := resolverconfig.FromContextOrDefaults(ctx)
-	return !cfg.FeatureFlags.EnableClusterResolver
 }
 
 // ResolvedClusterResource implements framework.ResolvedResource and returns
@@ -301,4 +268,63 @@ func isInCommaSeparatedList(checkVal string, commaList string) bool {
 		}
 	}
 	return false
+}
+func isDisabled(ctx context.Context) bool {
+	cfg := resolverconfig.FromContextOrDefaults(ctx)
+	return !cfg.FeatureFlags.EnableClusterResolver
+}
+
+func ValidateParams(ctx context.Context, params []pipelinev1.Param) error {
+	if isDisabled(ctx) {
+		return errors.New(disabledError)
+	}
+
+	_, err := populateParamsWithDefaults(ctx, params)
+	return err
+}
+
+func fetchTask(ctx context.Context, groupVersion string, task *pipelinev1.Task, params map[string]string) (string, []byte, []byte, []byte, error) {
+	logger := logging.FromContext(ctx)
+	uid := string(task.UID)
+	task.Kind = "Task"
+	task.APIVersion = groupVersion
+	data, err := yaml.Marshal(task)
+	if err != nil {
+		logger.Infof("failed to marshal task %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
+		return "", nil, nil, nil, err
+	}
+	sha256Checksum, err := task.Checksum()
+	if err != nil {
+		return "", nil, nil, nil, err
+	}
+
+	spec, err := yaml.Marshal(task.Spec)
+	if err != nil {
+		logger.Infof("failed to marshal the spec of the task %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
+		return "", nil, nil, nil, err
+	}
+	return uid, data, sha256Checksum, spec, nil
+}
+func fetchPipeline(ctx context.Context, groupVersion string, pipeline *pipelinev1.Pipeline, params map[string]string) (string, []byte, []byte, []byte, error) {
+	logger := logging.FromContext(ctx)
+	uid := string(pipeline.UID)
+	pipeline.Kind = "Pipeline"
+	pipeline.APIVersion = groupVersion
+	data, err := yaml.Marshal(pipeline)
+	if err != nil {
+		logger.Infof("failed to marshal pipeline %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
+		return "", nil, nil, nil, err
+	}
+
+	sha256Checksum, err := pipeline.Checksum()
+	if err != nil {
+		return "", nil, nil, nil, err
+	}
+
+	spec, err := yaml.Marshal(pipeline.Spec)
+	if err != nil {
+		logger.Infof("failed to marshal the spec of the pipeline %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
+		return "", nil, nil, nil, err
+	}
+	return uid, data, sha256Checksum, spec, nil
 }

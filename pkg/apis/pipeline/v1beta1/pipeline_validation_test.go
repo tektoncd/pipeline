@@ -116,6 +116,65 @@ func TestPipeline_Validate_Success(t *testing.T) {
 				},
 			},
 		},
+	}, {
+		name: "propagating params into Step",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: PipelineSpec{
+				Params: ParamSpecs{{
+					Name: "pipeline-words",
+					Type: ParamTypeArray,
+					Default: &ParamValue{
+						Type:     ParamTypeArray,
+						ArrayVal: []string{"hello", "pipeline"},
+					},
+				}},
+				Tasks: []PipelineTask{{
+					Name: "echoit",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Steps: []Step{{
+							Name:    "echo",
+							Image:   "ubuntu",
+							Command: []string{"echo"},
+							Args:    []string{"$(params.pipeline-words[*])"},
+						}},
+					}},
+				}},
+			},
+		},
+	}, {
+		name: "propagating object params with pipelinespec and taskspec",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: PipelineSpec{
+				Params: ParamSpecs{{
+					Name: "pipeline-words",
+					Default: &ParamValue{
+						Type:      ParamTypeObject,
+						ObjectVal: map[string]string{"hello": "pipeline"},
+					},
+					Type: ParamTypeObject,
+					Properties: map[string]PropertySpec{
+						"hello": {Type: ParamTypeString},
+					},
+				}},
+				Tasks: []PipelineTask{{
+					Name: "echoit",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Steps: []Step{{
+							Name:    "echo",
+							Image:   "ubuntu",
+							Command: []string{"echo"},
+							Args:    []string{"$(params.pipeline-words.hello)"},
+						}},
+					}},
+				}},
+			},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -366,6 +425,78 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 					DisableInlineSpec: "pipeline,pipelinerun,taskrun",
 				},
 			})
+		},
+	}, {
+		name: "propagating params with pipelinespec and taskspec",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinename",
+			},
+			Spec: PipelineSpec{
+				Params: ParamSpecs{{
+					Name: "pipeline-words",
+					Type: ParamTypeArray,
+					Default: &ParamValue{
+						Type:     ParamTypeArray,
+						ArrayVal: []string{"hello", "pipeline"},
+					},
+				}},
+				Tasks: []PipelineTask{{
+					Name: "echoit",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Steps: []Step{{
+							Name:    "echo",
+							Image:   "ubuntu",
+							Command: []string{"echo"},
+							Args:    []string{"$(params.random-words[*])"},
+						}},
+					}},
+				}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.random-words[*])"`,
+			Paths:   []string{"spec.tasks[0].steps[0].args[0]"},
+		},
+	}, {
+		name: "propagating params to taskRef",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinename",
+			},
+			Spec: PipelineSpec{
+				Params: ParamSpecs{{
+					Name: "hello",
+					Type: ParamTypeString,
+					Default: &ParamValue{
+						Type:      ParamTypeString,
+						StringVal: "hi",
+					},
+				}},
+				Tasks: []PipelineTask{{
+					Name: "echoit",
+					TaskRef: &TaskRef{
+						Name: "remote-task",
+					},
+					Params: Params{{
+						Name: "param1",
+						Value: ParamValue{
+							Type:      ParamTypeString,
+							StringVal: "$(params.param1)",
+						},
+					}, {
+						Name: "holla",
+						Value: ParamValue{
+							Type:      ParamTypeString,
+							StringVal: "$(params.hello)",
+						},
+					}},
+				}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.param1)"`,
+			Paths:   []string{"spec.tasks[0].params[param1]"},
 		},
 	}}
 	for _, tt := range tests {

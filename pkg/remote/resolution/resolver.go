@@ -24,6 +24,7 @@ import (
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"knative.dev/pkg/kmeta"
 )
 
@@ -63,6 +64,27 @@ func (resolver *Resolver) Get(ctx context.Context, _, _ string) (runtime.Object,
 		return nil, nil, fmt.Errorf("error building request for remote resource: %w", err)
 	}
 	resolved, err := resolver.requester.Submit(ctx, resolverName, req)
+	return ResolvedRequest(resolved, err)
+}
+
+// List implements remote.Resolver but is unused for remote resolution.
+func (resolver *Resolver) List(_ context.Context) ([]remote.ResolvedObject, error) {
+	return nil, nil
+}
+
+func buildRequest(resolverName string, owner kmeta.OwnerRefable, name string, namespace string, params v1.Params) (*resolutionRequest, error) {
+	name, namespace, err := remoteresource.GetNameAndNamespace(resolverName, owner, name, namespace, params)
+	if err != nil {
+		return nil, err
+	}
+	req := &resolutionRequest{
+		Request: remoteresource.NewRequest(name, namespace, params),
+		owner:   owner,
+	}
+	return req, nil
+}
+
+func ResolvedRequest(resolved resolutioncommon.ResolvedResource, err error) (runtime.Object, *v1.RefSource, error) {
 	switch {
 	case errors.Is(err, resolutioncommon.ErrRequestInProgress):
 		return nil, nil, remote.ErrRequestInProgress
@@ -74,39 +96,12 @@ func (resolver *Resolver) Get(ctx context.Context, _, _ string) (runtime.Object,
 	}
 	data, err := resolved.Data()
 	if err != nil {
-		return nil, nil, &DataAccessError{original: err}
+		return nil, nil, &DataAccessError{Original: err}
 	}
-	obj, _, err := scheme.Codecs.UniversalDeserializer().Decode(data, nil, nil)
+	codecs := serializer.NewCodecFactory(scheme.Scheme, serializer.EnableStrict)
+	obj, _, err := codecs.UniversalDeserializer().Decode(data, nil, nil)
 	if err != nil {
-		return nil, nil, &InvalidRuntimeObjectError{original: err}
+		return nil, nil, &InvalidRuntimeObjectError{Original: err}
 	}
 	return obj, resolved.RefSource(), nil
-}
-
-// List implements remote.Resolver but is unused for remote resolution.
-func (resolver *Resolver) List(_ context.Context) ([]remote.ResolvedObject, error) {
-	return nil, nil
-}
-
-func buildRequest(resolverName string, owner kmeta.OwnerRefable, name string, namespace string, params v1.Params) (*resolutionRequest, error) {
-	if name == "" {
-		name = owner.GetObjectMeta().GetName()
-		namespace = owner.GetObjectMeta().GetNamespace()
-	}
-	if namespace == "" {
-		namespace = "default"
-	}
-	// Generating a deterministic name for the resource request
-	// prevents multiple requests being issued for the same
-	// pipelinerun's pipelineRef or taskrun's taskRef.
-	remoteResourceBaseName := namespace + "/" + name
-	name, err := remoteresource.GenerateDeterministicName(resolverName, remoteResourceBaseName, params)
-	if err != nil {
-		return nil, fmt.Errorf("error generating name for taskrun %s/%s: %w", namespace, name, err)
-	}
-	req := &resolutionRequest{
-		Request: remoteresource.NewRequest(name, namespace, params),
-		owner:   owner,
-	}
-	return req, nil
 }

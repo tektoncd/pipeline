@@ -111,19 +111,21 @@ func requireAllGates(gates map[string]string) func(context.Context, *testing.T, 
 func getFeatureFlagsBaseOnAPIFlag(t *testing.T) *config.FeatureFlags {
 	t.Helper()
 	alphaFeatureFlags, err := config.NewFeatureFlagsFromMap(map[string]string{
-		"enable-api-fields":            "alpha",
-		"results-from":                 "sidecar-logs",
-		"enable-tekton-oci-bundles":    "true",
-		"enable-step-actions":          "true",
-		"enable-cel-in-whenexpression": "true",
-		"enable-param-enum":            "true",
-		"enable-artifacts":             "true",
+		"enable-api-fields":              "alpha",
+		"results-from":                   "sidecar-logs",
+		"enable-tekton-oci-bundles":      "true",
+		"enable-step-actions":            "true",
+		"enable-cel-in-whenexpression":   "true",
+		"enable-param-enum":              "true",
+		"enable-artifacts":               "true",
+		"enable-concise-resolver-syntax": "true",
 	})
 	if err != nil {
 		t.Fatalf("error creating alpha feature flags configmap: %v", err)
 	}
 	betaFeatureFlags, err := config.NewFeatureFlagsFromMap(map[string]string{
-		"enable-api-fields": "beta",
+		"enable-api-fields":   "beta",
+		"enable-step-actions": "true",
 	})
 	if err != nil {
 		t.Fatalf("error creating beta feature flags configmap: %v", err)

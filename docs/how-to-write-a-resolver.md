@@ -97,6 +97,29 @@ a little bit of boilerplate.
 
 Create `cmd/demoresolver/main.go` with the following setup code:
 
+{{% tabs %}}
+
+{{% tab "Latest Framework" %}}
+```go
+package main
+
+import (
+  "context"
+  "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
+  "knative.dev/pkg/injection/sharedmain"
+)
+
+func main() {
+  sharedmain.Main("controller",
+    framework.NewController(context.Background(), &resolver{}),
+  )
+}
+
+type resolver struct {}
+```
+{{% /tab %}}
+
+{{% tab "Previous Framework (Deprecated)" %}}
 ```go
 package main
 
@@ -114,6 +137,10 @@ func main() {
 
 type resolver struct {}
 ```
+
+{{% /tab %}}
+
+{{% /tabs %}}
 
 This won't compile yet but you can download the dependencies by running:
 
@@ -189,6 +216,24 @@ example resolver.
 
 We'll also need to add another import for this package at the top:
 
+{{% tabs %}}
+
+{{% tab "Latest Framework" %}}
+```go
+import (
+  "context"
+  
+  // Add this one; it defines LabelKeyResolverType we use in GetSelector
+  "github.com/tektoncd/pipeline/pkg/resolution/common"
+  "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
+  "knative.dev/pkg/injection/sharedmain"
+  pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+)
+```
+{{% /tab %}}
+
+{{% tab "Previous Framework (Deprecated)" %}}
+
 ```go
 import (
   "context"
@@ -201,21 +246,65 @@ import (
 )
 ```
 
-## The `ValidateParams` method
+{{% /tab %}}
 
-The `ValidateParams` method checks that the params submitted as part of
+{{% /tabs %}}
+
+## The `Validate` method
+
+The `Validate` method checks that the resolution-spec submitted as part of
 a resolution request are valid. Our example resolver doesn't expect
-any params so we'll simply ensure that the given map is empty.
+any params in the spec so we'll simply ensure that the there are no params.
+Our example resolver also expects format for the `url` to be `demoscheme://<path>` so we'll validate this format.
+In the previous version, this was instead called `ValidateParams` method. See below 
+for the differences.
+
+{{% tabs %}}
+
+{{% tab "Latest Framework" %}}
 
 ```go
-// ValidateParams ensures parameters from a request are as expected.
-func (r *resolver) ValidateParams(ctx context.Context, params map[string]string) error {
-  if len(params) > 0 {
+// Validate ensures that the resolution spec from a request is as expected.
+func (r *resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestSpec) error {
+  if len(req.Params) > 0 {
+    return errors.New("no params allowed")
+  }
+  url := req.URL
+  u, err := neturl.ParseRequestURI(url)
+  if err != nil {
+    return err
+  }
+  if u.Scheme != "demoscheme" {
+    return fmt.Errorf("Invalid Scheme. Want %s, Got %s", "demoscheme", u.Scheme)
+  }
+  if u.Path == "" {
+    return errors.New("Empty path.")
+  }
+  return nil
+}
+```
+
+You'll also need to add the `net/url` as `neturl` and `"errors"` package to your list of imports at
+the top of the file.
+
+```
+{{% /tab %}}
+
+{{% tab "Previous Framework (Deprecated)" %}}
+
+```go
+// ValidateParams ensures that the params from a request are as expected.
+func (r *resolver) ValidateParams(ctx context.Context, params []pipelinev1.Param) error {
+  if len(req.Params) > 0 {
     return errors.New("no params allowed")
   }
   return nil
 }
 ```
+
+{{% /tab %}}
+
+{{% /tabs %}}
 
 You'll also need to add the `"errors"` package to your list of imports at
 the top of the file.
@@ -223,18 +312,118 @@ the top of the file.
 ## The `Resolve` method
 
 We implement the `Resolve` method to do the heavy lifting of fetching
-the contents of a file and returning them. For this example we're just
-going to return a hard-coded string of YAML. Since Tekton Pipelines
+the contents of a file and returning them.  It takes in the resolution request spec as input.
+For this example we're just going to return a hard-coded string of YAML. Since Tekton Pipelines
 currently only supports fetching Pipeline resources via remote
 resolution that's what we'll return.
+
 
 The method signature we're implementing here has a
 `framework.ResolvedResource` interface as one of its return values. This
 is another type we have to implement but it has a small footprint:
 
+{{% tabs %}}
+
+{{% tab "Latest Framework" %}}
+
+
 ```go
-// Resolve uses the given params to resolve the requested file or resource.
-func (r *resolver) Resolve(ctx context.Context, params map[string]string) (framework.ResolvedResource, error) {
+// Resolve uses the given resolution spec to resolve the requested file or resource.
+func (r *resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (framework.ResolvedResource, error) {
+  return &myResolvedResource{}, nil
+}
+
+// our hard-coded resolved file to return
+const pipeline = `
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: my-pipeline
+spec:
+  tasks:
+  - name: hello-world
+    taskSpec:
+      steps:
+      - image: alpine:3.15.1
+        script: |
+          echo "hello world"
+`
+
+// myResolvedResource wraps the data we want to return to Pipelines
+type myResolvedResource struct {}
+
+// Data returns the bytes of our hard-coded Pipeline
+func (*myResolvedResource) Data() []byte {
+  return []byte(pipeline)
+}
+
+// Annotations returns any metadata needed alongside the data. None atm.
+func (*myResolvedResource) Annotations() map[string]string {
+  return nil
+}
+
+// RefSource is the source reference of the remote data that records where the remote 
+// file came from including the url, digest and the entrypoint. None atm.
+func (*myResolvedResource) RefSource() *pipelinev1.RefSource {
+	return nil
+}
+```
+
+{{% /tab %}}
+
+{{% tab "Previous Framework (Deprecated)" %}}
+
+
+```go
+// Resolve uses the given resolution spec to resolve the requested file or resource.
+func (r *resolver) Resolve(ctx context.Context, params []pipelinev1.Param) (framework.ResolvedResource, error) {
+  return &myResolvedResource{}, nil
+}
+
+// our hard-coded resolved file to return
+const pipeline = `
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: my-pipeline
+spec:
+  tasks:
+  - name: hello-world
+    taskSpec:
+      steps:
+      - image: alpine:3.15.1
+        script: |
+          echo "hello world"
+`
+
+// myResolvedResource wraps the data we want to return to Pipelines
+type myResolvedResource struct {}
+
+// Data returns the bytes of our hard-coded Pipeline
+func (*myResolvedResource) Data() []byte {
+  return []byte(pipeline)
+}
+
+// Annotations returns any metadata needed alongside the data. None atm.
+func (*myResolvedResource) Annotations() map[string]string {
+  return nil
+}
+
+// RefSource is the source reference of the remote data that records where the remote 
+// file came from including the url, digest and the entrypoint. None atm.
+func (*myResolvedResource) RefSource() *pipelinev1.RefSource {
+	return nil
+}
+```
+
+
+{{% /tab %}}
+
+{{% /tabs %}}
+
+```go
+// Resolve uses the given resolution spec to resolve the requested file or resource.
+func (r *resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (framework.ResolvedResource, error) {
   return &myResolvedResource{}, nil
 }
 
@@ -292,6 +481,7 @@ func (*myResolvedResource) RefSource() *pipelinev1.RefSource {
 	}
 }
 ```
+
 
 ## The deployment configuration
 

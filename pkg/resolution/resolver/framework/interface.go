@@ -26,6 +26,8 @@ import (
 // Resolver is the interface to implement for type-specific resource
 // resolution. It fetches resources from a given type of remote location
 // and returns their content along with any associated annotations.
+//
+// Deprecated: Use [github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework.Resolver] instead.
 type Resolver interface {
 	// Initialize is called at the moment the resolver controller is
 	// instantiated and is a good place to setup things like

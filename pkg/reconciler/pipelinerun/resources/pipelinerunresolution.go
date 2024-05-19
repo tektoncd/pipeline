@@ -31,6 +31,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/remote"
+	"github.com/tektoncd/pipeline/pkg/resolution/resource"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"knative.dev/pkg/apis"
@@ -645,8 +646,14 @@ func resolveTask(
 			case errors.Is(err, remote.ErrRequestInProgress):
 				return rt, err
 			case err != nil:
+				// some of the resolvers obtain the name from the parameters instead of from the TaskRef.Name field,
+				// so we account for both locations when constructing the error
+				name := pipelineTask.TaskRef.Name
+				if len(strings.TrimSpace(name)) == 0 {
+					name = resource.GenerateErrorLogString(string(pipelineTask.TaskRef.Resolver), pipelineTask.TaskRef.Params)
+				}
 				return rt, &TaskNotFoundError{
-					Name: pipelineTask.TaskRef.Name,
+					Name: name,
 					Msg:  err.Error(),
 				}
 			default:

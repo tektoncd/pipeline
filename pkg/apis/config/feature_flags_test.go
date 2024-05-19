@@ -58,6 +58,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableStepActions:                config.DefaultEnableStepActions.Enabled,
 				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 				DisableInlineSpec:                config.DefaultDisableInlineSpec,
+				EnableConciseResolverSyntax:      config.DefaultEnableConciseResolverSyntax.Enabled,
 			},
 			fileName: config.GetFeatureFlagsConfigName(),
 		},
@@ -83,6 +84,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableArtifacts:                  true,
 				EnableParamEnum:                  true,
 				DisableInlineSpec:                "pipeline,pipelinerun,taskrun",
+				EnableConciseResolverSyntax:      true,
 			},
 			fileName: "feature-flags-all-flags-set",
 		},
@@ -316,6 +318,9 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 	}, {
 		fileName: "feature-flags-invalid-enable-artifacts",
 		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature enable-artifacts`,
+	}, {
+		fileName: "feature-flags-invalid-enable-concise-resolver-syntax",
+		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature enable-concise-resolver-syntax`,
 	}} {
 		t.Run(tc.fileName, func(t *testing.T) {
 			cm := test.ConfigMapFromTestFile(t, tc.fileName)

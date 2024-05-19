@@ -102,12 +102,12 @@ const (
 	EnableCELInWhenExpression = "enable-cel-in-whenexpression"
 	// EnableStepActions is the flag to enable the use of StepActions in Steps
 	EnableStepActions = "enable-step-actions"
-
 	// EnableArtifacts is the flag to enable the use of Artifacts in Steps
 	EnableArtifacts = "enable-artifacts"
-
 	// EnableParamEnum is the flag to enabled enum in params
 	EnableParamEnum = "enable-param-enum"
+	// EnableConciseResolverSyntax is the flag to enable concise resolver syntax
+	EnableConciseResolverSyntax = "enable-concise-resolver-syntax"
 
 	// DisableInlineSpec is the flag to disable embedded spec
 	// in Taskrun or Pipelinerun
@@ -151,8 +151,8 @@ var (
 	// DefaultEnableStepActions is the default PerFeatureFlag value for EnableStepActions
 	DefaultEnableStepActions = PerFeatureFlag{
 		Name:      EnableStepActions,
-		Stability: AlphaAPIFields,
-		Enabled:   DefaultAlphaFeatureEnabled,
+		Stability: BetaAPIFields,
+		Enabled:   DefaultBetaFeatureEnabled,
 	}
 
 	// DefaultEnableArtifacts is the default PerFeatureFlag value for EnableArtifacts
@@ -165,6 +165,13 @@ var (
 	// DefaultEnableParamEnum is the default PerFeatureFlag value for EnableParamEnum
 	DefaultEnableParamEnum = PerFeatureFlag{
 		Name:      EnableParamEnum,
+		Stability: AlphaAPIFields,
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
+
+	// DefaultEnableConciseResolverSyntax is the default PerFeatureFlag value for EnableConciseResolverSyntax
+	DefaultEnableConciseResolverSyntax = PerFeatureFlag{
+		Name:      EnableConciseResolverSyntax,
 		Stability: AlphaAPIFields,
 		Enabled:   DefaultAlphaFeatureEnabled,
 	}
@@ -189,17 +196,18 @@ type FeatureFlags struct {
 	// ignore: skip trusted resources verification when no matching verification policies found
 	// warn: skip trusted resources verification when no matching verification policies found and log a warning
 	// fail: fail the taskrun or pipelines run if no matching verification policies found
-	VerificationNoMatchPolicy string
-	EnableProvenanceInStatus  bool
-	ResultExtractionMethod    string
-	MaxResultSize             int
-	SetSecurityContext        bool
-	Coschedule                string
-	EnableCELInWhenExpression bool
-	EnableStepActions         bool
-	EnableParamEnum           bool
-	EnableArtifacts           bool
-	DisableInlineSpec         string
+	VerificationNoMatchPolicy   string
+	EnableProvenanceInStatus    bool
+	ResultExtractionMethod      string
+	MaxResultSize               int
+	SetSecurityContext          bool
+	Coschedule                  string
+	EnableCELInWhenExpression   bool
+	EnableStepActions           bool
+	EnableParamEnum             bool
+	EnableArtifacts             bool
+	DisableInlineSpec           string
+	EnableConciseResolverSyntax bool
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -294,14 +302,15 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if err := setPerFeatureFlag(EnableParamEnum, DefaultEnableParamEnum, &tc.EnableParamEnum); err != nil {
 		return nil, err
 	}
-
 	if err := setPerFeatureFlag(EnableArtifacts, DefaultEnableArtifacts, &tc.EnableArtifacts); err != nil {
 		return nil, err
 	}
 	if err := setFeatureInlineSpec(cfgMap, DisableInlineSpec, DefaultDisableInlineSpec, &tc.DisableInlineSpec); err != nil {
 		return nil, err
 	}
-
+	if err := setPerFeatureFlag(EnableConciseResolverSyntax, DefaultEnableConciseResolverSyntax, &tc.EnableConciseResolverSyntax); err != nil {
+		return nil, err
+	}
 	// Given that they are alpha features, Tekton Bundles and Custom Tasks should be switched on if
 	// enable-api-fields is "alpha". If enable-api-fields is not "alpha" then fall back to the value of
 	// each feature's individual flag.

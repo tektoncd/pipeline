@@ -274,6 +274,50 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 		beforeCondition:  nil,
 		countWithReason:  false,
 	}, {
+		name: "for failed taskrun with reference remote task",
+		taskRun: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "taskrun-1",
+				Namespace: "ns",
+				Labels: map[string]string{
+					pipeline.TaskLabelKey: "task-remote",
+				},
+			},
+			Spec: v1.TaskRunSpec{
+				TaskRef: &v1.TaskRef{
+					ResolverRef: v1.ResolverRef{
+						Resolver: "git",
+					},
+				},
+			},
+			Status: v1.TaskRunStatus{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+					}},
+				},
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					StartTime:      &startTime,
+					CompletionTime: &completionTime,
+				},
+			},
+		},
+		metricName: "taskrun_duration_seconds",
+		expectedDurationTags: map[string]string{
+			"task":      "task-remote",
+			"taskrun":   "taskrun-1",
+			"namespace": "ns",
+			"status":    "failed",
+		},
+		expectedCountTags: map[string]string{
+			"status": "failed",
+		},
+		expectedDuration: 60,
+		expectedCount:    1,
+		beforeCondition:  nil,
+		countWithReason:  false,
+	}, {
 		name: "for succeeded taskrun in pipelinerun",
 		taskRun: &v1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
@@ -391,6 +435,7 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 			"task":        "task-1",
 			"taskrun":     "taskrun-1",
 			"namespace":   "ns",
+			"reason":      "TaskRunImagePullFailed",
 			"status":      "failed",
 		},
 		expectedCountTags: map[string]string{
@@ -595,12 +640,38 @@ func TestRecordPodLatency(t *testing.T) {
 			TaskRef: &v1.TaskRef{Name: "task-1"},
 		},
 	}
+	trFromRemoteTask := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun",
+			Namespace: "foo",
+			Labels: map[string]string{
+				pipeline.TaskLabelKey: "task-remote",
+			},
+		},
+		Spec: v1.TaskRunSpec{
+			TaskRef: &v1.TaskRef{
+				ResolverRef: v1.ResolverRef{Resolver: "task-remote"},
+			},
+		},
+	}
+	emptyLabelTRFromRemoteTask := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun",
+			Namespace: "foo",
+		},
+		Spec: v1.TaskRunSpec{
+			TaskRef: &v1.TaskRef{
+				ResolverRef: v1.ResolverRef{Resolver: "task-remote"},
+			},
+		},
+	}
 	for _, td := range []struct {
 		name           string
 		pod            *corev1.Pod
 		expectedTags   map[string]string
 		expectedValue  float64
 		expectingError bool
+		taskRun        *v1.TaskRun
 	}{{
 		name: "for scheduled pod",
 		pod: &corev1.Pod{
@@ -623,6 +694,53 @@ func TestRecordPodLatency(t *testing.T) {
 			"namespace": "foo",
 		},
 		expectedValue: 4000,
+		taskRun:       taskRun,
+	}, {
+		name: "for scheduled pod with reference remote task",
+		pod: &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              "test-taskrun-pod-123456",
+				Namespace:         "foo",
+				CreationTimestamp: creationTime,
+			},
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{{
+					Type:               corev1.PodScheduled,
+					LastTransitionTime: metav1.Time{Time: creationTime.Add(4 * time.Second)},
+				}},
+			},
+		},
+		expectedTags: map[string]string{
+			"pod":       "test-taskrun-pod-123456",
+			"task":      "task-remote",
+			"taskrun":   "test-taskrun",
+			"namespace": "foo",
+		},
+		expectedValue: 4000,
+		taskRun:       trFromRemoteTask,
+	}, {
+		name: "for scheduled pod - empty label tr reference remote task",
+		pod: &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              "test-taskrun-pod-123456",
+				Namespace:         "foo",
+				CreationTimestamp: creationTime,
+			},
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{{
+					Type:               corev1.PodScheduled,
+					LastTransitionTime: metav1.Time{Time: creationTime.Add(4 * time.Second)},
+				}},
+			},
+		},
+		expectedTags: map[string]string{
+			"pod":       "test-taskrun-pod-123456",
+			"task":      anonymous,
+			"taskrun":   "test-taskrun",
+			"namespace": "foo",
+		},
+		expectedValue: 4000,
+		taskRun:       emptyLabelTRFromRemoteTask,
 	}, {
 		name: "for non scheduled pod",
 		pod: &corev1.Pod{
@@ -634,6 +752,7 @@ func TestRecordPodLatency(t *testing.T) {
 			Status: corev1.PodStatus{},
 		},
 		expectingError: true,
+		taskRun:        taskRun,
 	}} {
 		t.Run(td.name, func(t *testing.T) {
 			unregisterMetrics()
@@ -644,7 +763,7 @@ func TestRecordPodLatency(t *testing.T) {
 				t.Fatalf("NewRecorder: %v", err)
 			}
 
-			if err := metrics.RecordPodLatency(ctx, td.pod, taskRun); td.expectingError && err == nil {
+			if err := metrics.RecordPodLatency(ctx, td.pod, td.taskRun); td.expectingError && err == nil {
 				t.Error("RecordPodLatency wanted error, got nil")
 			} else if !td.expectingError {
 				if err != nil {

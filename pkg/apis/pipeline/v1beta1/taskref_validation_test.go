@@ -113,22 +113,45 @@ func TestTaskRef_Invalid(t *testing.T) {
 		wantErr: apis.ErrInvalidValue("invalid bundle reference", "bundle", "could not parse reference: invalid reference"),
 		wc:      enableTektonOCIBundles(t),
 	}, {
-		name: "taskref params disallowed without resolver",
-		taskRef: &v1beta1.TaskRef{
-			ResolverRef: v1beta1.ResolverRef{
-				Params: v1beta1.Params{},
-			},
-		},
-		wantErr: apis.ErrMissingField("resolver"),
-	}, {
-		name: "taskref resolver disallowed in conjunction with taskref name",
+		name: "taskRef with resolver and k8s style name",
 		taskRef: &v1beta1.TaskRef{
 			Name: "foo",
 			ResolverRef: v1beta1.ResolverRef{
 				Resolver: "git",
 			},
 		},
-		wantErr: apis.ErrMultipleOneOf("name", "resolver"),
+		wantErr: apis.ErrInvalidValue(`parse "foo": invalid URI for request`, "name"),
+		wc:      enableConciseResolverSyntax,
+	}, {
+		name: "taskRef with url-like name without resolver",
+		taskRef: &v1beta1.TaskRef{
+			Name: "https://foo.com/bar",
+		},
+		wantErr: apis.ErrMissingField("resolver"),
+		wc:      enableConciseResolverSyntax,
+	}, {
+		name: "taskRef params disallowed in conjunction with pipelineref name",
+		taskRef: &v1beta1.TaskRef{
+			Name: "https://foo/bar",
+			ResolverRef: v1beta1.ResolverRef{
+				Resolver: "git",
+				Params:   v1beta1.Params{{Name: "foo", Value: v1beta1.ParamValue{StringVal: "bar"}}},
+			},
+		},
+		wantErr: apis.ErrMultipleOneOf("name", "params"),
+		wc:      enableConciseResolverSyntax,
+	}, {
+		name:    "taskRef with url-like name without enable-concise-resolver-syntax",
+		taskRef: &v1beta1.TaskRef{Name: "https://foo.com/bar"},
+		wantErr: apis.ErrMissingField("resolver").Also(&apis.FieldError{
+			Message: `feature flag enable-concise-resolver-syntax should be set to true to use concise resolver syntax`,
+		}),
+	}, {
+		name:    "taskRef without enable-concise-resolver-syntax",
+		taskRef: &v1beta1.TaskRef{Name: "https://foo.com/bar", ResolverRef: v1beta1.ResolverRef{Resolver: "git"}},
+		wantErr: &apis.FieldError{
+			Message: `feature flag enable-concise-resolver-syntax should be set to true to use concise resolver syntax`,
+		},
 	}, {
 		name: "taskref resolver disallowed in conjunction with taskref bundle",
 		taskRef: &v1beta1.TaskRef{
@@ -139,21 +162,6 @@ func TestTaskRef_Invalid(t *testing.T) {
 		},
 		wantErr: apis.ErrMultipleOneOf("bundle", "resolver"),
 		wc:      enableTektonOCIBundles(t),
-	}, {
-		name: "taskref params disallowed in conjunction with taskref name",
-		taskRef: &v1beta1.TaskRef{
-			Name: "bar",
-			ResolverRef: v1beta1.ResolverRef{
-				Params: v1beta1.Params{{
-					Name: "foo",
-					Value: v1beta1.ParamValue{
-						Type:      v1beta1.ParamTypeString,
-						StringVal: "bar",
-					},
-				}},
-			},
-		},
-		wantErr: apis.ErrMultipleOneOf("name", "params").Also(apis.ErrMissingField("resolver")),
 	}, {
 		name: "taskref params disallowed in conjunction with taskref bundle",
 		taskRef: &v1beta1.TaskRef{

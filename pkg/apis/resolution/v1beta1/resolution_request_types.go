@@ -64,6 +64,13 @@ type ResolutionRequestSpec struct {
 	// +optional
 	// +listType=atomic
 	Params []pipelinev1.Param `json:"params,omitempty"`
+	// URL is the runtime url passed to the resolver
+	// to help it figure out how to resolver the resource being
+	// requested.
+	// This is currently at an ALPHA stability level and subject to
+	// alpha API compatibility policies.
+	// +optional
+	URL string `json:"url,omitempty"`
 }
 
 // ResolutionRequestStatus are all the fields in a ResolutionRequest's

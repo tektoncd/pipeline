@@ -103,6 +103,10 @@ func (r *FakeResolver) GetSelector(_ context.Context) map[string]string {
 // ValidateParams returns an error if the given parameter map is not
 // valid for a resource request targeting the fake resolver.
 func (r *FakeResolver) ValidateParams(_ context.Context, params []pipelinev1.Param) error {
+	return ValidateParams(params)
+}
+
+func ValidateParams(params []pipelinev1.Param) error {
 	paramsMap := make(map[string]pipelinev1.ParamValue)
 	for _, p := range params {
 		paramsMap[p.Name] = p.Value
@@ -132,6 +136,10 @@ func (r *FakeResolver) ValidateParams(_ context.Context, params []pipelinev1.Par
 // Resolve performs the work of fetching a file from the fake resolver given a map of
 // parameters.
 func (r *FakeResolver) Resolve(_ context.Context, params []pipelinev1.Param) (ResolvedResource, error) {
+	return Resolve(params, r.ForParam)
+}
+
+func Resolve(params []pipelinev1.Param, forParam map[string]*FakeResolvedResource) (ResolvedResource, error) {
 	paramsMap := make(map[string]pipelinev1.ParamValue)
 	for _, p := range params {
 		paramsMap[p.Name] = p.Value
@@ -139,7 +147,7 @@ func (r *FakeResolver) Resolve(_ context.Context, params []pipelinev1.Param) (Re
 
 	paramValue := paramsMap[FakeParamName].StringVal
 
-	frr, ok := r.ForParam[paramValue]
+	frr, ok := forParam[paramValue]
 	if !ok {
 		return nil, fmt.Errorf("couldn't find resource for param value %s", paramValue)
 	}
@@ -159,8 +167,13 @@ var _ TimedResolution = &FakeResolver{}
 
 // GetResolutionTimeout returns the configured timeout for the reconciler, or the default time.Duration if not configured.
 func (r *FakeResolver) GetResolutionTimeout(ctx context.Context, defaultTimeout time.Duration) time.Duration {
-	if r.Timeout > 0 {
-		return r.Timeout
+	return GetResolutionTimeout(r.Timeout, defaultTimeout)
+}
+
+// GetResolutionTimeout returns the input timeout if set to something greater than 0 or the default time.Duration if not configured.
+func GetResolutionTimeout(timeout, defaultTimeout time.Duration) time.Duration {
+	if timeout > 0 {
+		return timeout
 	}
 	return defaultTimeout
 }

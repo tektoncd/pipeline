@@ -47,7 +47,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/remote"
-	resolution "github.com/tektoncd/pipeline/pkg/resolution/resource"
+	resolution "github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
+	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/spire"
 	"github.com/tektoncd/pipeline/pkg/taskrunmetrics"
 	_ "github.com/tektoncd/pipeline/pkg/taskrunmetrics/fake" // Make sure the taskrunmetrics are setup
@@ -409,7 +410,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		return nil, nil, err
 	case err != nil:
 		logger.Errorf("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
-		if resources.IsErrTransient(err) {
+		if resolutioncommon.IsErrTransient(err) {
 			return nil, nil, err
 		}
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedResolution, err)
@@ -434,7 +435,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		return nil, nil, err
 	case err != nil:
 		logger.Errorf("Failed to determine StepAction to use for TaskRun %s: %v", tr.Name, err)
-		if resources.IsErrTransient(err) {
+		if resolutioncommon.IsErrTransient(err) {
 			return nil, nil, err
 		}
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedResolution, err)

@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	fakepipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1/pipelinerun/fake"
@@ -339,6 +341,7 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 			"pipeline":    "pipeline-1",
 			"pipelinerun": "pipelinerun-1",
 			"namespace":   "ns",
+			"reason":      "Failed",
 			"status":      "failed",
 		},
 		expectedCountTags: map[string]string{
@@ -375,6 +378,7 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 			"pipelinerun": "pipelinerun-1",
 			"namespace":   "ns",
 			"status":      "cancelled",
+			"reason":      ReasonCancelled.String(),
 		},
 		expectedCountTags: map[string]string{
 			"status": "cancelled",
@@ -384,6 +388,49 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 		expectedCount:    1,
 		beforeCondition:  nil,
 		countWithReason:  true,
+	}, {
+		name: "for failed pipeline with reference remote pipeline",
+		pipelineRun: &v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pipelinerun-1",
+				Namespace: "ns",
+				Labels: map[string]string{
+					pipeline.PipelineLabelKey: "pipeline-remote",
+				},
+			},
+			Spec: v1.PipelineRunSpec{
+				PipelineRef: &v1.PipelineRef{
+					ResolverRef: v1.ResolverRef{
+						Resolver: "git",
+					},
+				},
+			},
+			Status: v1.PipelineRunStatus{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+					}},
+				},
+				PipelineRunStatusFields: v1.PipelineRunStatusFields{
+					StartTime:      &startTime,
+					CompletionTime: &completionTime,
+				},
+			},
+		},
+		expectedDurationTags: map[string]string{
+			"pipeline":    "pipeline-remote",
+			"pipelinerun": "pipelinerun-1",
+			"namespace":   "ns",
+			"status":      "failed",
+		},
+		expectedCountTags: map[string]string{
+			"status": "failed",
+		},
+		expectedDuration: 60,
+		expectedCount:    1,
+		beforeCondition:  nil,
+		countWithReason:  false,
 	}} {
 		t.Run(test.name, func(t *testing.T) {
 			unregisterMetrics()

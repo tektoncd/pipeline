@@ -24,12 +24,14 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resolutionV1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"github.com/tektoncd/pipeline/pkg/reconciler/apiserver"
 	rprp "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/pipelinespec"
 	"github.com/tektoncd/pipeline/pkg/remote"
-	"github.com/tektoncd/pipeline/pkg/remote/resolution"
-	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/remote/resolution"
+	remoteresource "github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
+	"github.com/tektoncd/pipeline/pkg/substitution"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -69,8 +71,20 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 				stringReplacements[k] = v
 			}
 			replacedParams := pr.Params.ReplaceVariables(stringReplacements, arrayReplacements, objectReplacements)
-
-			resolver := resolution.NewResolver(requester, pipelineRun, string(pr.Resolver), "", "", replacedParams)
+			var url string
+			// The name is url-like so its not a local reference.
+			if err := v1.RefNameLikeUrl(pr.Name); err == nil {
+				// apply variable replacements in the name.
+				pr.Name = substitution.ApplyReplacements(pr.Name, stringReplacements)
+				url = pr.Name
+			}
+			resolverPayload := remoteresource.ResolverPayload{
+				ResolutionSpec: &resolutionV1beta1.ResolutionRequestSpec{
+					Params: replacedParams,
+					URL:    url,
+				},
+			}
+			resolver := resolution.NewResolver(requester, pipelineRun, string(pr.Resolver), resolverPayload)
 			return resolvePipeline(ctx, resolver, name, namespace, k8s, tekton, verificationPolicies)
 		}
 	default:

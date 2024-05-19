@@ -26,6 +26,8 @@ type PipelineExpansion interface{}
 
 type PipelineRunExpansion interface{}
 
+type StepActionExpansion interface{}
+
 type TaskExpansion interface{}
 
 type TaskRunExpansion interface{}

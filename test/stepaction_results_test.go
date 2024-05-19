@@ -28,7 +28,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/parse"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/system"
@@ -49,7 +49,7 @@ func TestStepResultsStepActions(t *testing.T) {
 	type tests struct {
 		name           string
 		taskRunFunc    func(*testing.T, string) (*v1.TaskRun, *v1.TaskRun)
-		stepActionFunc func(*testing.T, string) *v1alpha1.StepAction
+		stepActionFunc func(*testing.T, string) *v1beta1.StepAction
 	}
 
 	tds := []tests{{
@@ -80,7 +80,7 @@ func TestStepResultsStepActions(t *testing.T) {
 
 			trName := taskRun.Name
 
-			_, err := c.V1alpha1StepActionClient.Create(ctx, stepAction, metav1.CreateOptions{})
+			_, err := c.V1beta1StepActionClient.Create(ctx, stepAction, metav1.CreateOptions{})
 			if err != nil {
 				t.Fatalf("Failed to create StepAction : %s", err)
 			}
@@ -114,9 +114,9 @@ func TestStepResultsStepActions(t *testing.T) {
 	}
 }
 
-func getStepAction(t *testing.T, namespace string) *v1alpha1.StepAction {
+func getStepAction(t *testing.T, namespace string) *v1beta1.StepAction {
 	t.Helper()
-	return parse.MustParseV1alpha1StepAction(t, fmt.Sprintf(`
+	return parse.MustParseV1beta1StepAction(t, fmt.Sprintf(`
 metadata:
   name: step-action
   namespace: %s
