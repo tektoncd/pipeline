@@ -426,14 +426,21 @@ the credentials specified in the `Secret`.
 
 ## Configuring `docker*` authentication for Docker
 
-This section describes how to configure authentication using the `dockercfg` and `dockerconfigjson` type
-`Secrets` for use with Docker. In the example below, before executing any `Steps` in the `Run`, Tekton creates
-a `~/.docker/config.json` file containing the credentials specified in the `Secret`. When the `Steps` execute,
-Tekton uses those credentials to access the target Docker registry.
-f
-**Note:** If you specify both the Tekton `basic-auth` and the above Kubernetes `Secrets`, Tekton merges all
-credentials from all specified `Secrets` but Tekton's `basic-auth` `Secret` overrides either of the
-Kubernetes `Secrets`.
+This section describes how to configure Docker authentication using the `dockercfg`
+and `dockerconfigjson` Secret types. These Secrets are used as `imagePullSecrets`
+to provide the necessary credentials for Tekton to pull container images from 
+private Docker registries when creating the Pod for a TaskRun or PipelineRun 
+(collectively referred to as "Run").
+
+When a Run is executed, Tekton creates a Pod to run the defined Steps. During 
+this Pod creation phase, Tekton uses the provided `imagePullSecrets` to 
+authenticate with the respective registries and pull the required container images. 
+This image pulling process is a crucial step that happens before the Steps 
+within the Pod can start executing.
+
+Note: If you specify both the Tekton `basic-auth` and the Kubernetes `dockercfg` 
+or `dockerconfigjson` Secrets, Tekton merges all credentials from all specified 
+Secrets, but Tekton's basic-auth Secret overrides the Kubernetes Secrets.
 
 1. Define a `Secret` based on your Docker client configuration file.
    
