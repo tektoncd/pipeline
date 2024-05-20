@@ -37,6 +37,7 @@ const (
 // RequestOptions are the options used to request a resource from
 // a remote bundle.
 type RequestOptions struct {
+	ServiceAccount  string
 	ImagePullSecret string
 	Bundle          string
 	EntryName       string
