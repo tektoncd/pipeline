@@ -16,6 +16,9 @@ package bundle
 const (
 	// ConfigMapName is the bundle resolver's config map
 	ConfigMapName = "bundleresolver-config"
+	// ConfigServiceAccount is the configuration field name for controlling
+	// the Service Account name to use for bundle requests.
+	ConfigServiceAccount = "default-service-account"
 	// ConfigKind is the configuration field name for controlling
 	// what the layer name in the bundle image is.
 	ConfigKind = "default-kind"

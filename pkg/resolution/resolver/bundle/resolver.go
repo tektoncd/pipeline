@@ -22,9 +22,7 @@ import (
 	"time"
 
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
-	kauth "github.com/google/go-containerregistry/pkg/authn/kubernetes"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	common "github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -79,7 +77,7 @@ func (r *Resolver) GetSelector(context.Context) map[string]string {
 }
 
 // ValidateParams ensures parameters from a request are as expected.
-func (r *Resolver) ValidateParams(ctx context.Context, params []pipelinev1.Param) error {
+func (r *Resolver) ValidateParams(ctx context.Context, params []v1.Param) error {
 	return ValidateParams(ctx, params)
 }
 
@@ -104,8 +102,8 @@ func ResolveRequest(ctx context.Context, kubeClientSet kubernetes.Interface, req
 	namespace := common.RequestNamespace(ctx)
 	kc, err := k8schain.New(ctx, kubeClientSet, k8schain.Options{
 		Namespace:          namespace,
+		ServiceAccountName: opts.ServiceAccount,
 		ImagePullSecrets:   imagePullSecrets,
-		ServiceAccountName: kauth.NoServiceAccount,
 	})
 	if err != nil {
 		return nil, err
@@ -115,7 +113,7 @@ func ResolveRequest(ctx context.Context, kubeClientSet kubernetes.Interface, req
 	return GetEntry(ctx, kc, opts)
 }
 
-func ValidateParams(ctx context.Context, params []pipelinev1.Param) error {
+func ValidateParams(ctx context.Context, params []v1.Param) error {
 	if isDisabled(ctx) {
 		return errors.New(disabledError)
 	}

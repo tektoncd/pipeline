@@ -38,6 +38,7 @@ import (
 	frtesting "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/testing"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	bundleresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/bundle"
+	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	frameworktesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -65,8 +66,12 @@ func TestGetSelector(t *testing.T) {
 	}
 }
 
-func TestValidate(t *testing.T) {
+func TestValidateParamsSecret(t *testing.T) {
 	resolver := bundle.Resolver{}
+	config := map[string]string{
+		bundleresolution.ConfigServiceAccount: "default",
+	}
+	ctx := framework.InjectResolverConfigToContext(context.Background(), config)
 
 	paramsWithTask := []pipelinev1.Param{{
 		Name:  bundleresolution.ParamKind,
@@ -82,7 +87,7 @@ func TestValidate(t *testing.T) {
 		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 	req := v1beta1.ResolutionRequestSpec{Params: paramsWithTask}
-	if err := resolver.Validate(context.Background(), &req); err != nil {
+	if err := resolver.Validate(ctx, &req); err != nil {
 		t.Fatalf("unexpected error validating params: %v", err)
 	}
 
@@ -97,6 +102,50 @@ func TestValidate(t *testing.T) {
 		Value: *pipelinev1.NewStructuredValues("bar"),
 	}, {
 		Name:  bundleresolution.ParamImagePullSecret,
+		Value: *pipelinev1.NewStructuredValues("baz"),
+	}}
+	req = v1beta1.ResolutionRequestSpec{Params: paramsWithPipeline}
+	if err := resolver.Validate(ctx, &req); err != nil {
+		t.Fatalf("unexpected error validating params: %v", err)
+	}
+}
+
+func TestValidateParamsServiceAccount(t *testing.T) {
+	resolver := bundle.Resolver{}
+	config := map[string]string{
+		bundleresolution.ConfigServiceAccount: "default",
+	}
+	ctx := framework.InjectResolverConfigToContext(context.Background(), config)
+
+	paramsWithTask := []pipelinev1.Param{{
+		Name:  bundleresolution.ParamKind,
+		Value: *pipelinev1.NewStructuredValues("task"),
+	}, {
+		Name:  bundleresolution.ParamName,
+		Value: *pipelinev1.NewStructuredValues("foo"),
+	}, {
+		Name:  bundleresolution.ParamBundle,
+		Value: *pipelinev1.NewStructuredValues("bar"),
+	}, {
+		Name:  bundleresolution.ParamServiceAccount,
+		Value: *pipelinev1.NewStructuredValues("baz"),
+	}}
+	req := v1beta1.ResolutionRequestSpec{Params: paramsWithTask}
+	if err := resolver.Validate(ctx, &req); err != nil {
+		t.Fatalf("unexpected error validating params: %v", err)
+	}
+
+	paramsWithPipeline := []pipelinev1.Param{{
+		Name:  bundleresolution.ParamKind,
+		Value: *pipelinev1.NewStructuredValues("pipeline"),
+	}, {
+		Name:  bundleresolution.ParamName,
+		Value: *pipelinev1.NewStructuredValues("foo"),
+	}, {
+		Name:  bundleresolution.ParamBundle,
+		Value: *pipelinev1.NewStructuredValues("bar"),
+	}, {
+		Name:  bundleresolution.ParamServiceAccount,
 		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 	req = v1beta1.ResolutionRequestSpec{Params: paramsWithPipeline}
@@ -221,7 +270,8 @@ func TestResolve_KeyChainError(t *testing.T) {
 				Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
 			},
 			Data: map[string]string{
-				bundleresolution.ConfigKind: "task",
+				bundleresolution.ConfigKind:           "task",
+				bundleresolution.ConfigServiceAccount: "default",
 			},
 		}},
 	}
@@ -246,10 +296,11 @@ func TestResolve_KeyChainError(t *testing.T) {
 }
 
 type params struct {
-	secret string
-	bundle string
-	name   string
-	kind   string
+	serviceAccount string
+	secret         string
+	bundle         string
+	name           string
+	kind           string
 }
 
 func TestResolve(t *testing.T) {
@@ -450,7 +501,8 @@ func TestResolve(t *testing.T) {
 
 	resolver := &bundle.Resolver{}
 	confMap := map[string]string{
-		bundleresolution.ConfigKind: "task",
+		bundleresolution.ConfigKind:           "task",
+		bundleresolution.ConfigServiceAccount: "default",
 	}
 
 	for _, tc := range testcases {
@@ -544,6 +596,9 @@ func createRequest(p *params) *v1beta1.ResolutionRequest {
 			}, {
 				Name:  bundleresolution.ParamImagePullSecret,
 				Value: *pipelinev1.NewStructuredValues(p.secret),
+			}, {
+				Name:  bundleresolution.ParamServiceAccount,
+				Value: *pipelinev1.NewStructuredValues(p.serviceAccount),
 			}},
 		},
 	}
