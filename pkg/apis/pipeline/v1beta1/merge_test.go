@@ -20,10 +20,12 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/utils/pointer"
 )
 
 func TestMergeStepsWithStepTemplate(t *testing.T) {
@@ -125,6 +127,52 @@ func TestMergeStepsWithStepTemplate(t *testing.T) {
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "data",
 				MountPath: "/workspace/data",
+			}},
+		}},
+	}, {
+		name: "step-ref-should-not-be-merged-with-steptemplate",
+		template: &v1beta1.StepTemplate{
+			SecurityContext: &corev1.SecurityContext{
+				RunAsNonRoot: pointer.Bool(true),
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "data",
+				MountPath: "/workspace/data",
+			}},
+			Env: []corev1.EnvVar{{
+				Name:  "KEEP_THIS",
+				Value: "A_VALUE",
+			}, {
+				Name: "SOME_KEY_1",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						Key:                  "A_KEY",
+						LocalObjectReference: corev1.LocalObjectReference{Name: "A_NAME"},
+					},
+				},
+			}, {
+				Name:  "SOME_KEY_2",
+				Value: "VALUE_2",
+			}},
+		},
+		steps: []v1beta1.Step{{
+			Ref:     &v1beta1.Ref{Name: "my-step-action"},
+			OnError: "foo",
+			Results: []v1.StepResult{{
+				Name: "result",
+			}},
+			Params: v1beta1.Params{{
+				Name: "param",
+			}},
+		}},
+		expected: []v1beta1.Step{{
+			Ref:     &v1beta1.Ref{Name: "my-step-action"},
+			OnError: "foo",
+			Results: []v1.StepResult{{
+				Name: "result",
+			}},
+			Params: v1beta1.Params{{
+				Name: "param",
 			}},
 		}},
 	}, {
