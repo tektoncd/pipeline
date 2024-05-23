@@ -1,0 +1,21 @@
+apiVersion: tekton.dev/v1beta1
+kind: StepAction
+metadata:
+  name: step-action
+spec:
+  image: alpine
+  command: ["env"]
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: task-run
+spec:
+  taskSpec:
+    steps:
+      - ref:
+          name: step-action
+    stepTemplate:
+      env:
+        - name: foo
+          value: bar

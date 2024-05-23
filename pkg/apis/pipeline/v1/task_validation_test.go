@@ -30,6 +30,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/utils/pointer"
 	"knative.dev/pkg/apis"
 )
 
@@ -332,6 +333,41 @@ func TestTaskSpecValidate(t *testing.T) {
 				#!/usr/bin/env bash
 				hello world`,
 			}},
+		},
+	}, {
+		name: "step template included in validation with stepaction",
+		fields: fields{
+			Steps: []v1.Step{{
+				Name: "astep",
+				Ref: &v1.Ref{
+					Name: "stepAction",
+				},
+			}},
+			StepTemplate: &v1.StepTemplate{
+				Image: "some-image",
+				SecurityContext: &corev1.SecurityContext{
+					RunAsNonRoot: pointer.Bool(true),
+				},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "data",
+					MountPath: "/workspace/data",
+				}},
+				Env: []corev1.EnvVar{{
+					Name:  "KEEP_THIS",
+					Value: "A_VALUE",
+				}, {
+					Name: "SOME_KEY_1",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							Key:                  "A_KEY",
+							LocalObjectReference: corev1.LocalObjectReference{Name: "A_NAME"},
+						},
+					},
+				}, {
+					Name:  "SOME_KEY_2",
+					Value: "VALUE_2",
+				}},
+			},
 		},
 	}, {
 		name: "valid step with parameterized script",

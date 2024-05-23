@@ -47,6 +47,11 @@ func MergeStepsWithStepTemplate(template *StepTemplate, steps []Step) ([]Step, e
 	}
 
 	for i, s := range steps {
+		// If the stepaction has not been fetched yet then do not merge.
+		// Skip over to the next one
+		if s.Ref != nil {
+			continue
+		}
 		merged := corev1.Container{}
 		err := mergeObjWithTemplateBytes(md, s.ToK8sContainer(), &merged)
 		if err != nil {
