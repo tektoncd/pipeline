@@ -53,8 +53,6 @@ on the ServiceAccount for that. See the Kubernetes documentation:
 
 ## Overview
 
-## Overview
-
 Tekton supports authentication for Git and Docker registries using Kubernetes Secrets. The supported Secret types are:
 
 <table>
@@ -202,7 +200,7 @@ Note: Github deprecated basic authentication with username and password. You can
    In the above example, the value for `tekton.dev/git-0` specifies the URL for which Tekton will use this `Secret`,
    as described in [Understanding credential selection](#understanding-credential-selection).
 
-1. In `serviceaccount.yaml`, associate the `Secret` with the desired `ServiceAccount`:
+2. In `serviceaccount.yaml`, associate the `Secret` with the desired `ServiceAccount`:
 
    ```yaml
    apiVersion: v1
@@ -213,7 +211,7 @@ Note: Github deprecated basic authentication with username and password. You can
      - name: basic-user-pass
    ```
 
-1. In `run.yaml`, associate the `ServiceAccount` with your `Run` by doing one of the following:
+3. In `run.yaml`, associate the `ServiceAccount` with your `Run` by doing one of the following:
 
    - Associate the `ServiceAccount` with your `TaskRun`:
 
@@ -241,7 +239,7 @@ Note: Github deprecated basic authentication with username and password. You can
          name: demo-pipeline
      ```
 
-1. Execute the `Run`:
+4. Execute the `Run`:
 
    ```shell
    kubectl apply --filename secret.yaml serviceaccount.yaml run.yaml
@@ -348,13 +346,13 @@ specified in the `Secret`.
    In the above example, the value for `tekton.dev/git-0` specifies the URL for which Tekton will use this `Secret`,
    as described in [Understanding credential selection](#understanding-credential-selection).
 
-1. Generate the `ssh-privatekey` value. For example:
+2. Generate the `ssh-privatekey` value. For example:
 
    `cat ~/.ssh/id_rsa`
 
-1. Set the value of the `known_hosts` field to the generated `ssh-privatekey` value from the previous step.
+3. Set the value of the `known_hosts` field to the generated `ssh-privatekey` value from the previous step.
 
-1. In `serviceaccount.yaml`, associate the `Secret` with the desired `ServiceAccount`:
+4. In `serviceaccount.yaml`, associate the `Secret` with the desired `ServiceAccount`:
 
    ```yaml
    apiVersion: v1
@@ -365,7 +363,7 @@ specified in the `Secret`.
      - name: ssh-key
    ```
 
-1. In `run.yaml`, associate the `ServiceAccount` with your `Run` by doing one of the following:
+5. In `run.yaml`, associate the `ServiceAccount` with your `Run` by doing one of the following:
 
    - Associate the `ServiceAccount` with your `TaskRun`:
 
@@ -394,7 +392,7 @@ specified in the `Secret`.
        name: demo-pipeline
    ```
 
-1. Execute the `Run`:
+6. Execute the `Run`:
 
    ```shell
    kubectl apply --filename secret.yaml,serviceaccount.yaml,run.yaml
@@ -462,7 +460,7 @@ the credentials specified in the `Secret`.
    In the above example, the value for `tekton.dev/docker-0` specifies the URL for which Tekton will use this `Secret`,
    as described in [Understanding credential selection](#understanding-credential-selection).
 
-1. In `serviceaccount.yaml`, associate the `Secret` with the desired `ServiceAccount`:
+2. In `serviceaccount.yaml`, associate the `Secret` with the desired `ServiceAccount`:
 
    ```yaml
    apiVersion: v1
@@ -473,7 +471,7 @@ the credentials specified in the `Secret`.
      - name: basic-user-pass
    ```
 
-1. In `run.yaml`, associate the `ServiceAccount` with your `Run` by doing one of the following:
+3. In `run.yaml`, associate the `ServiceAccount` with your `Run` by doing one of the following:
 
    - Associate the `ServiceAccount` with your `TaskRun`:
 
@@ -502,7 +500,7 @@ the credentials specified in the `Secret`.
          name: demo-pipeline
      ```
 
-1. Execute the `Run`:
+4. Execute the `Run`:
 
    ```shell
    kubectl apply --filename secret.yaml serviceaccount.yaml run.yaml
@@ -510,6 +508,7 @@ the credentials specified in the `Secret`.
 
 ## Configuring `docker*` authentication for Docker
 
+<<<<<<< HEAD
 This section describes how to configure authentication using the `dockercfg` and `dockerconfigjson` type
 `Secrets` for use with Docker. Before any `Steps` run, Tekton creates a `~/.docker/config.json` file
 in the Pod containing the credentials specified in the `Secret`. When the process *inside* each Step
@@ -524,6 +523,25 @@ on the ServiceAccount.
 **Note:** If you specify both the Tekton `basic-auth` and the above Kubernetes `Secrets`, Tekton merges all
 credentials from all specified `Secrets` but Tekton's `basic-auth` `Secret` overrides either of the
 Kubernetes `Secrets`.
+=======
+This section describes how to configure Docker authentication using the `dockercfg`
+and `dockerconfigjson` Secret types.
+
+### Image Pulling Authentication
+The `dockercfg` and `dockerconfigjson` Secrets are used as `imagePullSecrets` to
+provide the necessary credentials for Tekton to pull container images from
+private Docker registries during the Pod creation phase.
+
+When a Run is executed, Tekton creates a Pod to run the defined Steps. During 
+this Pod creation phase, Tekton uses the provided `imagePullSecrets` to 
+authenticate with the respective registries and pull the required container 
+images. This image pulling process is a crucial step that happens before the 
+Steps within the Pod can start executing.
+
+Note: If you specify both the Tekton `basic-auth` and the Kubernetes `dockercfg`
+or `dockerconfigjson` Secrets, Tekton merges all credentials from all specified 
+Secrets, but Tekton's basic-auth Secret overrides the Kubernetes Secrets.
+>>>>>>> d944b4c64 (docs: clarify Docker authentication for image pulling and in-Pod)
 
 1. Define a `Secret` based on your Docker client configuration file.
    
@@ -535,7 +553,7 @@ Kubernetes `Secrets`.
    For more information, see [Pull an Image from a Private Registry](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/)
    in the Kubernetes documentation.
 
-1. In `serviceaccount.yaml`, associate the `Secret` with the desired `ServiceAccount`:
+2. In `serviceaccount.yaml`, associate the `Secret` with the desired `ServiceAccount`:
 
    ```yaml
    apiVersion: v1
@@ -546,7 +564,7 @@ Kubernetes `Secrets`.
      - name: regcred
    ```
 
-1. In `run.yaml`, associate the `ServiceAccount` with your `Run` by doing one of the following:
+3. In `run.yaml`, associate the `ServiceAccount` with your `Run` by doing one of the following:
 
    - Associate the `ServiceAccount` with your `TaskRun`:
 
@@ -575,11 +593,29 @@ Kubernetes `Secrets`.
          name: demo-pipeline
      ```
 
-1. Execute the build:
+4. Execute the build:
 
    ```shell
    kubectl apply --filename secret.yaml --filename serviceaccount.yaml --filename taskrun.yaml
    ```
+
+### In-Pod Docker Authentication
+In addition to image pulling authentication, Tekton also sets up Docker 
+authentication within the Pod's container environment. This authentication setup 
+allows the Steps within the Pod to interact with Docker registries during 
+execution, enabling operations like pushing or pulling images, or performing 
+other OCI image manipulations.
+
+After the Pod is created and the container images are pulled, Tekton generates 
+a `~/.docker/config.json` file within the container. This file contains the 
+necessary Docker authentication credentials, allowing the Steps to authenticate 
+with Docker registries during execution.
+
+The Docker authentication credentials used for in-Pod authentication are derived
+from the same Secrets specified as imagePullSecrets. Tekton follows the credential 
+formatting and merging rules defined by the dockercfg and dockerconfigjson Secret 
+types when generating the `~/.docker/config.json` file.
+
 
 ## Technical reference
 
