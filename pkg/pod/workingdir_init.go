@@ -36,27 +36,38 @@ import (
 // If the init container will run on windows, `windows` should be set to `true`,
 // so that the correct security context can be applied.
 func workingDirInit(workingdirinitImage string, stepContainers []corev1.Container, setSecurityContext, windows bool) *corev1.Container {
-	// Gather all unique workingDirs.
-	workingDirs := sets.NewString()
+	vms := implicitVolumeMounts
+	// To ensure that we don't duplicate volume mounts
+	requestedVolumeMounts := map[string]bool{}
+	for _, step := range stepContainers {
+		for _, vm := range step.VolumeMounts {
+			// Only add unique volume mounts from Steps
+			if !requestedVolumeMounts[filepath.Clean(vm.MountPath)] {
+				vms = append(vms, vm)
+				requestedVolumeMounts[filepath.Clean(vm.MountPath)] = true
+			}
+		}
+	}
+	// Gather all unique workingDirs that are on VolumeMounts.
+	workingDirs := sets.New[string]()
 	for _, step := range stepContainers {
 		if step.WorkingDir != "" {
-			workingDirs.Insert(step.WorkingDir)
+			// Only handles relative path inside `/workspace` for backwards compatibility.
+			if !filepath.IsAbs(step.WorkingDir) {
+				step.WorkingDir = filepath.Join(pipeline.WorkspaceDir, step.WorkingDir)
+			}
+			for _, vm := range vms {
+				// only append to workingDirs if the step's workingDir is a subdir of a VolumeMount.
+				// Otherwise, the path will be unique to the init container and won't actually affect
+				// the step's workingDir. In that case, we want to let k8s handle the creation.
+				if strings.HasPrefix(step.WorkingDir, vm.MountPath) {
+					workingDirs.Insert(filepath.Clean(step.WorkingDir))
+				}
+			}
 		}
 	}
+
 	if workingDirs.Len() == 0 {
-		return nil
-	}
-
-	// Clean and append each relative workingDir.
-	var relativeDirs []string
-	for _, wd := range workingDirs.List() {
-		p := filepath.Clean(wd)
-		if !filepath.IsAbs(p) || strings.HasPrefix(p, "/workspace/") {
-			relativeDirs = append(relativeDirs, p)
-		}
-	}
-
-	if len(relativeDirs) == 0 {
 		// There are no workingDirs to initialize.
 		return nil
 	}
@@ -69,9 +80,8 @@ func workingDirInit(workingdirinitImage string, stepContainers []corev1.Containe
 		Name:         "working-dir-initializer",
 		Image:        workingdirinitImage,
 		Command:      []string{"/ko-app/workingdirinit"},
-		Args:         relativeDirs,
-		WorkingDir:   pipeline.WorkspaceDir,
-		VolumeMounts: implicitVolumeMounts,
+		Args:         workingDirs.UnsortedList(),
+		VolumeMounts: vms,
 	}
 	if setSecurityContext {
 		c.SecurityContext = securityContext

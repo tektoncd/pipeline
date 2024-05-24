@@ -473,7 +473,6 @@ func TestPodBuild(t *testing.T) {
 						Image:        images.WorkingDirInitImage,
 						Command:      []string{"/ko-app/workingdirinit"},
 						Args:         []string{filepath.Join(pipeline.WorkspaceDir, "test")},
-						WorkingDir:   pipeline.WorkspaceDir,
 						VolumeMounts: implicitVolumeMounts,
 					},
 				},
