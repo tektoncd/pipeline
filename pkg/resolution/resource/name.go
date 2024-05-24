@@ -50,7 +50,10 @@ func GenerateDeterministicName(prefix, base string, params v1.Params) (string, e
 	return GenerateDeterministicNameFromSpec(prefix, base, &v1beta1.ResolutionRequestSpec{Params: params})
 }
 
-func GetNameAndNamespace(resolverName string, owner kmeta.OwnerRefable, name string, namespace string, params v1.Params) (string, string, error) {
+// GetNameAndNamespace determines the name and namespace for a resource request.
+// It prioritizes explicit values, falling back to the owning object and "default" namespace.
+// If needed, it generates a deterministic name to prevent duplicate requests within a context.
+func GetNameAndNamespace(resolverName string, owner kmeta.OwnerRefable, name string, namespace string, req *v1beta1.ResolutionRequestSpec) (string, string, error) {
 	if name == "" {
 		name = owner.GetObjectMeta().GetName()
 		namespace = owner.GetObjectMeta().GetNamespace()
@@ -62,7 +65,7 @@ func GetNameAndNamespace(resolverName string, owner kmeta.OwnerRefable, name str
 	// prevents multiple requests being issued for the same
 	// pipelinerun's pipelineRef or taskrun's taskRef.
 	remoteResourceBaseName := namespace + "/" + name
-	name, err := GenerateDeterministicNameFromSpec(resolverName, remoteResourceBaseName, &v1beta1.ResolutionRequestSpec{Params: params})
+	name, err := GenerateDeterministicNameFromSpec(resolverName, remoteResourceBaseName, req)
 	if err != nil {
 		return "", "", fmt.Errorf("error generating name for taskrun %s/%s: %w", namespace, name, err)
 	}
