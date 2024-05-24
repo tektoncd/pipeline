@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/remote"
 	resolution "github.com/tektoncd/pipeline/pkg/remote/resolution"
 	remoteresource "github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
@@ -69,15 +70,21 @@ func (resolver *Resolver) List(_ context.Context) ([]remote.ResolvedObject, erro
 func buildRequest(resolverName string, owner kmeta.OwnerRefable, resolverPayload *remoteresource.ResolverPayload) (*resolutionRequest, error) {
 	var name string
 	var namespace string
+	var url string
 	var params v1.Params
 	if resolverPayload != nil {
 		name = resolverPayload.Name
 		namespace = resolverPayload.Namespace
 		if resolverPayload.ResolutionSpec != nil {
 			params = resolverPayload.ResolutionSpec.Params
+			url = resolverPayload.ResolutionSpec.URL
 		}
 	}
-	name, namespace, err := resource.GetNameAndNamespace(resolverName, owner, name, namespace, params)
+	rr := &v1beta1.ResolutionRequestSpec{
+		Params: params,
+		URL:    url,
+	}
+	name, namespace, err := resource.GetNameAndNamespace(resolverName, owner, name, namespace, rr)
 	if err != nil {
 		return nil, err
 	}
