@@ -508,7 +508,6 @@ the credentials specified in the `Secret`.
 
 ## Configuring `docker*` authentication for Docker
 
-<<<<<<< HEAD
 This section describes how to configure authentication using the `dockercfg` and `dockerconfigjson` type
 `Secrets` for use with Docker. Before any `Steps` run, Tekton creates a `~/.docker/config.json` file
 in the Pod containing the credentials specified in the `Secret`. When the process *inside* each Step
@@ -523,25 +522,7 @@ on the ServiceAccount.
 **Note:** If you specify both the Tekton `basic-auth` and the above Kubernetes `Secrets`, Tekton merges all
 credentials from all specified `Secrets` but Tekton's `basic-auth` `Secret` overrides either of the
 Kubernetes `Secrets`.
-=======
-This section describes how to configure Docker authentication using the `dockercfg`
-and `dockerconfigjson` Secret types.
-
-### Image Pulling Authentication
-The `dockercfg` and `dockerconfigjson` Secrets are used as `imagePullSecrets` to
-provide the necessary credentials for Tekton to pull container images from
-private Docker registries during the Pod creation phase.
-
-When a Run is executed, Tekton creates a Pod to run the defined Steps. During 
-this Pod creation phase, Tekton uses the provided `imagePullSecrets` to 
-authenticate with the respective registries and pull the required container 
-images. This image pulling process is a crucial step that happens before the 
-Steps within the Pod can start executing.
-
-Note: If you specify both the Tekton `basic-auth` and the Kubernetes `dockercfg`
-or `dockerconfigjson` Secrets, Tekton merges all credentials from all specified 
-Secrets, but Tekton's basic-auth Secret overrides the Kubernetes Secrets.
->>>>>>> d944b4c64 (docs: clarify Docker authentication for image pulling and in-Pod)
+`Secrets`, but Tekton's basic-auth Secret overrides the Kubernetes Secrets.
 
 1. Define a `Secret` based on your Docker client configuration file.
    
@@ -602,7 +583,7 @@ Secrets, but Tekton's basic-auth Secret overrides the Kubernetes Secrets.
 ### In-Pod Docker Authentication
 In addition to image pulling authentication, Tekton also sets up Docker 
 authentication within the Pod's container environment. This authentication setup 
-allows the Steps within the Pod to interact with Docker registries during 
+allows the Steps within the `Pod` to interact with Docker registries during 
 execution, enabling operations like pushing or pulling images, or performing 
 other OCI image manipulations.
 
@@ -612,8 +593,8 @@ necessary Docker authentication credentials, allowing the Steps to authenticate
 with Docker registries during execution.
 
 The Docker authentication credentials used for in-Pod authentication are derived
-from the same Secrets specified as imagePullSecrets. Tekton follows the credential 
-formatting and merging rules defined by the dockercfg and dockerconfigjson Secret 
+from the same Secrets specified as `imagePullSecrets`. Tekton follows the credential 
+formatting and merging rules defined by the `dockercfg` and `dockerconfigjson` Secret 
 types when generating the `~/.docker/config.json` file.
 
 
