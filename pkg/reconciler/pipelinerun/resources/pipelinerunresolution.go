@@ -118,7 +118,7 @@ func (t *ResolvedPipelineTask) EvaluateCEL() error {
 
 // isDone returns true only if the task is skipped, succeeded or failed
 func (t ResolvedPipelineTask) isDone(facts *PipelineRunFacts) bool {
-	return t.Skip(facts).IsSkipped || t.isSuccessful() || t.isFailure()
+	return t.Skip(facts).IsSkipped || t.isSuccessful() || t.IsFailure()
 }
 
 // IsRunning returns true only if the task is neither succeeded, cancelled nor failed
@@ -129,7 +129,7 @@ func (t ResolvedPipelineTask) IsRunning() bool {
 	if !t.IsCustomTask() && len(t.TaskRuns) == 0 {
 		return false
 	}
-	return !t.isSuccessful() && !t.isFailure()
+	return !t.isSuccessful() && !t.IsFailure()
 }
 
 // IsCustomTask returns true if the PipelineTask references a Custom Task.
@@ -162,9 +162,9 @@ func (t ResolvedPipelineTask) isSuccessful() bool {
 	return true
 }
 
-// isFailure returns true only if the run has failed (if it has ConditionSucceeded = False).
-// If the PipelineTask has a Matrix, isFailure returns true if any run has failed and all other runs are done.
-func (t ResolvedPipelineTask) isFailure() bool {
+// IsFailure returns true only if the run has failed (if it has ConditionSucceeded = False).
+// If the PipelineTask has a Matrix, IsFailure returns true if any run has failed and all other runs are done.
+func (t ResolvedPipelineTask) IsFailure() bool {
 	var isDone bool
 	if t.IsCustomTask() {
 		if len(t.CustomRuns) == 0 {

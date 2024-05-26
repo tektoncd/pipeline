@@ -121,7 +121,7 @@ func convertToResultRefs(pipelineRunState PipelineRunState, target *ResolvedPipe
 		if referencedPipelineTask == nil {
 			return nil, resultRef.PipelineTask, fmt.Errorf("could not find task %q referenced by result", resultRef.PipelineTask)
 		}
-		if !referencedPipelineTask.isSuccessful() && !referencedPipelineTask.isFailure() {
+		if !referencedPipelineTask.isSuccessful() && !referencedPipelineTask.IsFailure() {
 			return nil, resultRef.PipelineTask, fmt.Errorf("task %q referenced by result was not finished", referencedPipelineTask.PipelineTask.Name)
 		}
 		// Custom Task
