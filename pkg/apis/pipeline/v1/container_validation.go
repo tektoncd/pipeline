@@ -18,10 +18,10 @@ package v1
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"regexp"
 	"strings"
-
-	"net/url"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -91,6 +91,9 @@ func (ref *Ref) Validate(ctx context.Context) (errs *apis.FieldError) {
 
 // RefNameLikeUrl checks if the name is url parsable and returns an error if it isn't.
 func RefNameLikeUrl(name string) error {
-	_, err := url.ParseRequestURI(name)
-	return err
+	schemeRegex := regexp.MustCompile(`[\w-]+:\/\/*`)
+	if !schemeRegex.MatchString(name) {
+		return errors.New("invalid URI for request")
+	}
+	return nil
 }

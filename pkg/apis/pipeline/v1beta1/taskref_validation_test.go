@@ -120,7 +120,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 				Resolver: "git",
 			},
 		},
-		wantErr: apis.ErrInvalidValue(`parse "foo": invalid URI for request`, "name"),
+		wantErr: apis.ErrInvalidValue(`invalid URI for request`, "name"),
 		wc:      enableConciseResolverSyntax,
 	}, {
 		name: "taskRef with url-like name without resolver",

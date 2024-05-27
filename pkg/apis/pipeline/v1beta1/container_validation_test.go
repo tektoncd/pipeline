@@ -48,6 +48,10 @@ func TestRef_Valid(t *testing.T) {
 		name: "simple ref",
 		ref:  &v1beta1.Ref{Name: "refname"},
 	}, {
+		name: "ref name - consice syntax",
+		ref:  &v1beta1.Ref{Name: "foo://baz:ver", ResolverRef: v1beta1.ResolverRef{Resolver: "git"}},
+		wc:   enableConciseResolverSyntax,
+	}, {
 		name: "beta feature: valid resolver",
 		ref:  &v1beta1.Ref{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}},
 		wc:   cfgtesting.EnableBetaAPIFields,
@@ -110,7 +114,7 @@ func TestRef_Invalid(t *testing.T) {
 				Resolver: "git",
 			},
 		},
-		wantErr: apis.ErrInvalidValue(`parse "foo": invalid URI for request`, "name"),
+		wantErr: apis.ErrInvalidValue(`invalid URI for request`, "name"),
 		wc:      enableConciseResolverSyntax,
 	}, {
 		name: "ref with url-like name without resolver",
