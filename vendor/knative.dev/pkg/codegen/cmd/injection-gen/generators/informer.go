@@ -37,6 +37,7 @@ type injectionGenerator struct {
 	imports                     namer.ImportTracker
 	typedInformerPackage        string
 	groupInformerFactoryPackage string
+	disableInformerInit         bool
 }
 
 var _ generator.Generator = (*injectionGenerator)(nil)
@@ -98,6 +99,7 @@ func (g *injectionGenerator) GenerateType(c *generator.Context, t *types.Type, w
 			Package: "context",
 			Name:    "WithValue",
 		}),
+		"disableInformerInit": g.disableInformerInit,
 	}
 
 	sw.Do(injectionInformer, m)
@@ -106,14 +108,16 @@ func (g *injectionGenerator) GenerateType(c *generator.Context, t *types.Type, w
 }
 
 var injectionInformer = `
+{{ if not .disableInformerInit }}
 func init() {
 	{{.injectionRegisterInformer|raw}}(withInformer)
 }
+{{ end }}
 
 // Key is used for associating the Informer inside the context.Context.
 type Key struct{}
 
-func withInformer(ctx {{.contextContext|raw}}) ({{.contextContext|raw}}, {{.controllerInformer|raw}}) {
+{{ if .disableInformerInit }} func WithInformer {{ else }} func withInformer {{ end }} (ctx {{.contextContext|raw}}) ({{.contextContext|raw}}, {{.controllerInformer|raw}}) {
 	f := {{.factoryGet|raw}}(ctx)
 	inf := f.{{.groupGoName}}().{{.versionGoName}}().{{.type|publicPlural}}()
 	return {{ .contextWithValue|raw }}(ctx, Key{}, inf), inf.Informer()

@@ -391,7 +391,6 @@ func schema_pkg_apis_pipeline_v1alpha1_EmbeddedRunSpec(ref common.ReferenceCallb
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Spec is a specification of a custom task",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/runtime.RawExtension"),
 						},
 					},

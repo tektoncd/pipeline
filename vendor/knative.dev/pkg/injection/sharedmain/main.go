@@ -74,7 +74,7 @@ func GetLoggingConfig(ctx context.Context) (*logging.Config, error) {
 	// These timeout and retry interval are set by heuristics.
 	// e.g. istio sidecar needs a few seconds to configure the pod network.
 	var lastErr error
-	if err := wait.PollImmediate(1*time.Second, 5*time.Second, func() (bool, error) {
+	if err := wait.PollUntilContextTimeout(ctx, 1*time.Second, 5*time.Second, true, func(ctx context.Context) (bool, error) {
 		loggingConfigMap, lastErr = kubeclient.Get(ctx).CoreV1().ConfigMaps(system.Namespace()).Get(ctx, logging.ConfigMapName(), metav1.GetOptions{})
 		return lastErr == nil || apierrors.IsNotFound(lastErr), nil
 	}); err != nil {
@@ -290,7 +290,12 @@ func MainWithConfig(ctx context.Context, component string, cfg *rest.Config, cto
 	var wh *webhook.Webhook
 	if len(webhooks) > 0 {
 		// Register webhook metrics
-		webhook.RegisterMetrics()
+		opts := webhook.GetOptions(ctx)
+		if opts != nil {
+			webhook.RegisterMetrics(opts.StatsReporterOptions...)
+		} else {
+			webhook.RegisterMetrics()
+		}
 
 		wh, err = webhook.New(ctx, webhooks)
 		if err != nil {

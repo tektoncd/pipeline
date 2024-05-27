@@ -167,7 +167,7 @@ func (sc *SpoofingClient) Poll(req *http.Request, inState ResponseChecker, check
 	}
 
 	var resp *Response
-	err := wait.PollImmediate(sc.RequestInterval, sc.RequestTimeout, func() (bool, error) {
+	err := wait.PollUntilContextTimeout(context.Background(), sc.RequestInterval, sc.RequestTimeout, true, func(ctx context.Context) (bool, error) {
 		// Starting span to capture zipkin trace.
 		traceContext, span := trace.StartSpan(req.Context(), "SpoofingClient-Trace")
 		defer span.End()

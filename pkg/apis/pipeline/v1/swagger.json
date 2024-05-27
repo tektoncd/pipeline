@@ -289,7 +289,6 @@
         },
         "spec": {
           "description": "Spec is a specification of a custom task",
-          "default": {},
           "$ref": "#/definitions/k8s.io.apimachinery.pkg.runtime.RawExtension"
         },
         "stepTemplate": {
@@ -381,7 +380,6 @@
           "default": ""
         },
         "value": {
-          "default": {},
           "$ref": "#/definitions/v1.ParamValue"
         }
       }
@@ -553,7 +551,6 @@
         },
         "value": {
           "description": "Value the expression used to retrieve the value",
-          "default": {},
           "$ref": "#/definitions/v1.ParamValue"
         }
       }
@@ -624,7 +621,6 @@
         },
         "value": {
           "description": "Value is the result returned from the execution of this PipelineRun",
-          "default": {},
           "$ref": "#/definitions/v1.ParamValue"
         }
       }
@@ -1987,7 +1983,6 @@
         },
         "value": {
           "description": "Value the given value of the result",
-          "default": {},
           "$ref": "#/definitions/v1.ParamValue"
         }
       }

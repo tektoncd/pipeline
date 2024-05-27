@@ -185,7 +185,6 @@
         },
         "spec": {
           "description": "Spec is a specification of a custom task",
-          "default": {},
           "$ref": "#/definitions/k8s.io.apimachinery.pkg.runtime.RawExtension"
         }
       }
