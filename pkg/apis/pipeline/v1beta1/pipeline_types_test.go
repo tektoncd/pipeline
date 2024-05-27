@@ -662,7 +662,7 @@ func TestPipelineTask_ValidateRegularTask_Failure(t *testing.T) {
 			TaskRef: &TaskRef{Name: "foo", ResolverRef: ResolverRef{Resolver: "git"}},
 		},
 		expectedError: apis.FieldError{
-			Message: `invalid value: parse "foo": invalid URI for request`,
+			Message: `invalid value: invalid URI for request`,
 			Paths:   []string{"taskRef.name"},
 		},
 		configMap: map[string]string{"enable-concise-resolver-syntax": "true"},
