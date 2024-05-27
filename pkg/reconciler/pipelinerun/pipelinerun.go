@@ -339,7 +339,8 @@ func (c *Reconciler) resolvePipelineState(
 	tasks []v1.PipelineTask,
 	pipelineMeta *metav1.ObjectMeta,
 	pr *v1.PipelineRun,
-	pst resources.PipelineRunState) (resources.PipelineRunState, error) {
+	pst resources.PipelineRunState,
+) (resources.PipelineRunState, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "resolvePipelineState")
 	defer span.End()
 	// Resolve each task individually because they each could have a different reference context (remote or local).
@@ -1542,6 +1543,8 @@ func filterCustomRunsForPipelineRunStatus(logger *zap.SugaredLogger, pr *v1.Pipe
 		// We can't just get the gvk from the customRun's TypeMeta because that isn't populated for resources created through the fake client.
 		gvks = append(gvks, v1beta1.SchemeGroupVersion.WithKind(customRun))
 	}
+
+	// NAMES are names
 
 	return names, taskLabels, gvks, statuses
 }

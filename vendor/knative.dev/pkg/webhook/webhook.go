@@ -70,6 +70,9 @@ type Options struct {
 	// only a single port for the service.
 	Port int
 
+	// StatsReporterOptions are the options used to initialize the default StatsReporter
+	StatsReporterOptions []StatsReporterOption
+
 	// StatsReporter reports metrics about the webhook.
 	// This will be automatically initialized by the constructor if left uninitialized.
 	StatsReporter StatsReporter
@@ -144,7 +147,7 @@ func New(
 	logger := logging.FromContext(ctx)
 
 	if opts.StatsReporter == nil {
-		reporter, err := NewStatsReporter()
+		reporter, err := NewStatsReporter(opts.StatsReporterOptions...)
 		if err != nil {
 			return nil, err
 		}
