@@ -11,45 +11,68 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Gets a list of all KMS keys in the caller's Amazon Web Services account and
-// Region.
+// Returns information about all completed key material rotations for the
+// specified KMS key.
+//
+// You must specify the KMS key in all requests. You can refine the key rotations
+// list by limiting the number of rotations returned.
+//
+// For detailed information about automatic and on-demand key rotations, see [Rotating KMS keys] in
+// the Key Management Service Developer Guide.
 //
 // Cross-account use: No. You cannot perform this operation on a KMS key in a
 // different Amazon Web Services account.
 //
-// Required permissions: [kms:ListKeys] (IAM policy)
+// Required permissions: [kms:ListKeyRotations] (key policy)
 //
 // Related operations:
 //
-// # CreateKey
+// # EnableKeyRotation
 //
-// # DescribeKey
+// # DisableKeyRotation
 //
-// # ListAliases
+// # GetKeyRotationStatus
 //
-// # ListResourceTags
+// # RotateKeyOnDemand
 //
 // Eventual consistency: The KMS API follows an eventual consistency model. For
 // more information, see [KMS eventual consistency].
 //
-// [kms:ListKeys]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
+// [Rotating KMS keys]: https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html
+// [kms:ListKeyRotations]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
 // [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html
-func (c *Client) ListKeys(ctx context.Context, params *ListKeysInput, optFns ...func(*Options)) (*ListKeysOutput, error) {
+func (c *Client) ListKeyRotations(ctx context.Context, params *ListKeyRotationsInput, optFns ...func(*Options)) (*ListKeyRotationsOutput, error) {
 	if params == nil {
-		params = &ListKeysInput{}
+		params = &ListKeyRotationsInput{}
 	}
 
-	result, metadata, err := c.invokeOperation(ctx, "ListKeys", params, optFns, c.addOperationListKeysMiddlewares)
+	result, metadata, err := c.invokeOperation(ctx, "ListKeyRotations", params, optFns, c.addOperationListKeyRotationsMiddlewares)
 	if err != nil {
 		return nil, err
 	}
 
-	out := result.(*ListKeysOutput)
+	out := result.(*ListKeyRotationsOutput)
 	out.ResultMetadata = metadata
 	return out, nil
 }
 
-type ListKeysInput struct {
+type ListKeyRotationsInput struct {
+
+	// Gets the key rotations for the specified KMS key.
+	//
+	// Specify the key ID or key ARN of the KMS key.
+	//
+	// For example:
+	//
+	//   - Key ID: 1234abcd-12ab-34cd-56ef-1234567890ab
+	//
+	//   - Key ARN:
+	//   arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab
+	//
+	// To get the key ID and key ARN for a KMS key, use ListKeys or DescribeKey.
+	//
+	// This member is required.
+	KeyId *string
 
 	// Use this parameter to specify the maximum number of items to return. When this
 	// value is present, KMS does not return more than the specified number of items,
@@ -67,14 +90,14 @@ type ListKeysInput struct {
 	noSmithyDocumentSerde
 }
 
-type ListKeysOutput struct {
-
-	// A list of KMS keys.
-	Keys []types.KeyListEntry
+type ListKeyRotationsOutput struct {
 
 	// When Truncated is true, this element is present and contains the value to use
 	// for the Marker parameter in a subsequent request.
 	NextMarker *string
+
+	// A list of completed key material rotations.
+	Rotations []types.RotationsListEntry
 
 	// A flag that indicates whether there are more items in the list. When this value
 	// is true, the list in this response is truncated. To get more items, pass the
@@ -88,19 +111,19 @@ type ListKeysOutput struct {
 	noSmithyDocumentSerde
 }
 
-func (c *Client) addOperationListKeysMiddlewares(stack *middleware.Stack, options Options) (err error) {
+func (c *Client) addOperationListKeyRotationsMiddlewares(stack *middleware.Stack, options Options) (err error) {
 	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpListKeys{}, middleware.After)
+	err = stack.Serialize.Add(&awsAwsjson11_serializeOpListKeyRotations{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpListKeys{}, middleware.After)
+	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpListKeyRotations{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "ListKeys"); err != nil {
+	if err := addProtocolFinalizerMiddlewares(stack, options, "ListKeyRotations"); err != nil {
 		return fmt.Errorf("add protocol finalizers: %v", err)
 	}
 
@@ -143,7 +166,10 @@ func (c *Client) addOperationListKeysMiddlewares(stack *middleware.Stack, option
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListKeys(options.Region), middleware.Before); err != nil {
+	if err = addOpListKeyRotationsValidationMiddleware(stack); err != nil {
+		return err
+	}
+	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListKeyRotations(options.Region), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRecursionDetection(stack); err != nil {
@@ -164,15 +190,16 @@ func (c *Client) addOperationListKeysMiddlewares(stack *middleware.Stack, option
 	return nil
 }
 
-// ListKeysAPIClient is a client that implements the ListKeys operation.
-type ListKeysAPIClient interface {
-	ListKeys(context.Context, *ListKeysInput, ...func(*Options)) (*ListKeysOutput, error)
+// ListKeyRotationsAPIClient is a client that implements the ListKeyRotations
+// operation.
+type ListKeyRotationsAPIClient interface {
+	ListKeyRotations(context.Context, *ListKeyRotationsInput, ...func(*Options)) (*ListKeyRotationsOutput, error)
 }
 
-var _ ListKeysAPIClient = (*Client)(nil)
+var _ ListKeyRotationsAPIClient = (*Client)(nil)
 
-// ListKeysPaginatorOptions is the paginator options for ListKeys
-type ListKeysPaginatorOptions struct {
+// ListKeyRotationsPaginatorOptions is the paginator options for ListKeyRotations
+type ListKeyRotationsPaginatorOptions struct {
 	// Use this parameter to specify the maximum number of items to return. When this
 	// value is present, KMS does not return more than the specified number of items,
 	// but it might return fewer.
@@ -186,22 +213,22 @@ type ListKeysPaginatorOptions struct {
 	StopOnDuplicateToken bool
 }
 
-// ListKeysPaginator is a paginator for ListKeys
-type ListKeysPaginator struct {
-	options   ListKeysPaginatorOptions
-	client    ListKeysAPIClient
-	params    *ListKeysInput
+// ListKeyRotationsPaginator is a paginator for ListKeyRotations
+type ListKeyRotationsPaginator struct {
+	options   ListKeyRotationsPaginatorOptions
+	client    ListKeyRotationsAPIClient
+	params    *ListKeyRotationsInput
 	nextToken *string
 	firstPage bool
 }
 
-// NewListKeysPaginator returns a new ListKeysPaginator
-func NewListKeysPaginator(client ListKeysAPIClient, params *ListKeysInput, optFns ...func(*ListKeysPaginatorOptions)) *ListKeysPaginator {
+// NewListKeyRotationsPaginator returns a new ListKeyRotationsPaginator
+func NewListKeyRotationsPaginator(client ListKeyRotationsAPIClient, params *ListKeyRotationsInput, optFns ...func(*ListKeyRotationsPaginatorOptions)) *ListKeyRotationsPaginator {
 	if params == nil {
-		params = &ListKeysInput{}
+		params = &ListKeyRotationsInput{}
 	}
 
-	options := ListKeysPaginatorOptions{}
+	options := ListKeyRotationsPaginatorOptions{}
 	if params.Limit != nil {
 		options.Limit = *params.Limit
 	}
@@ -210,7 +237,7 @@ func NewListKeysPaginator(client ListKeysAPIClient, params *ListKeysInput, optFn
 		fn(&options)
 	}
 
-	return &ListKeysPaginator{
+	return &ListKeyRotationsPaginator{
 		options:   options,
 		client:    client,
 		params:    params,
@@ -220,12 +247,12 @@ func NewListKeysPaginator(client ListKeysAPIClient, params *ListKeysInput, optFn
 }
 
 // HasMorePages returns a boolean indicating whether more pages are available
-func (p *ListKeysPaginator) HasMorePages() bool {
+func (p *ListKeyRotationsPaginator) HasMorePages() bool {
 	return p.firstPage || (p.nextToken != nil && len(*p.nextToken) != 0)
 }
 
-// NextPage retrieves the next ListKeys page.
-func (p *ListKeysPaginator) NextPage(ctx context.Context, optFns ...func(*Options)) (*ListKeysOutput, error) {
+// NextPage retrieves the next ListKeyRotations page.
+func (p *ListKeyRotationsPaginator) NextPage(ctx context.Context, optFns ...func(*Options)) (*ListKeyRotationsOutput, error) {
 	if !p.HasMorePages() {
 		return nil, fmt.Errorf("no more pages available")
 	}
@@ -239,7 +266,7 @@ func (p *ListKeysPaginator) NextPage(ctx context.Context, optFns ...func(*Option
 	}
 	params.Limit = limit
 
-	result, err := p.client.ListKeys(ctx, &params, optFns...)
+	result, err := p.client.ListKeyRotations(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
 	}
@@ -258,10 +285,10 @@ func (p *ListKeysPaginator) NextPage(ctx context.Context, optFns ...func(*Option
 	return result, nil
 }
 
-func newServiceMetadataMiddleware_opListKeys(region string) *awsmiddleware.RegisterServiceMetadata {
+func newServiceMetadataMiddleware_opListKeyRotations(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		OperationName: "ListKeys",
+		OperationName: "ListKeyRotations",
 	}
 }
