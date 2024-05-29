@@ -374,7 +374,7 @@ may be overridden by a TaskRun's StepSpecs and SidecarSpecs.
 
 ### Specifying Task-level `ComputeResources`
 
-**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/additional-configs.md#alpha-features))**
+**([beta only](https://github.com/tektoncd/pipeline/blob/main/docs/additional-configs.md#beta-features))**
 
 Task-level compute resources can be configured in `TaskRun.ComputeResources`, or `PipelineRun.TaskRunSpecs.ComputeResources`.
 
