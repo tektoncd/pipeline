@@ -599,7 +599,7 @@ and reasons.
 
 ### Configuring Task Steps and Sidecars in a TaskRun
 
-**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/additional-configs.md#alpha-features))**
+**([beta only](https://github.com/tektoncd/pipeline/blob/main/docs/additional-configs.md#beta-features))**
 
 A TaskRun can specify `StepSpecs` or `SidecarSpecs` to configure Step or Sidecar
 specified in a Task. Only named Steps and Sidecars may be configured.
