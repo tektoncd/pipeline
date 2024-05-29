@@ -416,7 +416,7 @@ func TestTaskRun_Validate(t *testing.T) {
 		},
 		wc: cfgtesting.EnableAlphaAPIFields,
 	}, {
-		name: "alpha feature: valid step and sidecar specs",
+		name: "beta feature: valid step and sidecar specs",
 		taskRun: &v1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
 			Spec: v1.TaskRunSpec{
@@ -435,7 +435,7 @@ func TestTaskRun_Validate(t *testing.T) {
 				}},
 			},
 		},
-		wc: cfgtesting.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableBetaAPIFields,
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
@@ -704,7 +704,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		wantErr: apis.ErrInvalidValue("turnOn is not a valid onFailure breakpoint value, onFailure breakpoint is only allowed to be set as enabled", "debug.breakpoints.onFailure"),
 		wc:      cfgtesting.EnableAlphaAPIFields,
 	}, {
-		name: "stepSpecs disallowed without alpha feature gate",
+		name: "stepSpecs disallowed without beta feature gate",
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{
 				Name: "foo",
@@ -717,9 +717,9 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			}},
 		},
 		wc:      cfgtesting.EnableStableAPIFields,
-		wantErr: apis.ErrGeneric("stepSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
+		wantErr: apis.ErrGeneric("stepSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\""),
 	}, {
-		name: "sidecarSpec disallowed without alpha feature gate",
+		name: "sidecarSpec disallowed without beta feature gate",
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{
 				Name: "foo",
@@ -732,7 +732,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			}},
 		},
 		wc:      cfgtesting.EnableStableAPIFields,
-		wantErr: apis.ErrGeneric("sidecarSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
+		wantErr: apis.ErrGeneric("sidecarSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\""),
 	}, {
 		name: "duplicate stepSpecs names",
 		spec: v1.TaskRunSpec{
@@ -815,7 +815,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			"stepSpecs.resources",
 			"computeResources",
 		),
-		wc: cfgtesting.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "computeResources disallowed without beta feature gate",
 		spec: v1.TaskRunSpec{

@@ -949,7 +949,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 			},
 		},
 	}, {
-		name: "alpha feature: sidecar and step overrides",
+		name: "beta feature: sidecar and step overrides",
 		pr: v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "pr",
@@ -979,7 +979,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: cfgtesting.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableBetaAPIFields,
 	}}
 
 	for _, ts := range tests {
@@ -1109,7 +1109,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 		wantErr:     apis.ErrMultipleOneOf("taskRunSpecs[0].stepOverrides[1].name"),
 		withContext: cfgtesting.EnableAlphaAPIFields,
 	}, {
-		name: "stepOverride disallowed without alpha feature gate",
+		name: "stepOverride disallowed without alpha or beta feature gate",
 		spec: v1beta1.PipelineRunSpec{
 			PipelineRef: &v1beta1.PipelineRef{Name: "foo"},
 			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{
@@ -1127,9 +1127,9 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			},
 		},
 		withContext: cfgtesting.EnableStableAPIFields,
-		wantErr:     apis.ErrGeneric("stepOverrides requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
+		wantErr:     apis.ErrGeneric("stepOverrides requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
 	}, {
-		name: "sidecarOverride disallowed without alpha feature gate",
+		name: "sidecarOverride disallowed without alpha or beta feature gate",
 		spec: v1beta1.PipelineRunSpec{
 			PipelineRef: &v1beta1.PipelineRef{Name: "foo"},
 			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{
@@ -1147,7 +1147,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			},
 		},
 		withContext: cfgtesting.EnableStableAPIFields,
-		wantErr:     apis.ErrGeneric("sidecarOverrides requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
+		wantErr:     apis.ErrGeneric("sidecarOverrides requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
 	}, {
 		name: "missing stepOverride name",
 		spec: v1beta1.PipelineRunSpec{

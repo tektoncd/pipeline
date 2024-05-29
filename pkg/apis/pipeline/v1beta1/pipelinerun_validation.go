@@ -335,11 +335,11 @@ func (ps *PipelineRunSpec) validatePipelineTimeout(timeout time.Duration, errorM
 
 func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec) (errs *apis.FieldError) {
 	if trs.StepOverrides != nil {
-		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "stepOverrides", config.AlphaAPIFields).ViaField("stepOverrides"))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "stepOverrides", config.BetaAPIFields).ViaField("stepOverrides"))
 		errs = errs.Also(validateStepOverrides(trs.StepOverrides).ViaField("stepOverrides"))
 	}
 	if trs.SidecarOverrides != nil {
-		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "sidecarOverrides", config.AlphaAPIFields).ViaField("sidecarOverrides"))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "sidecarOverrides", config.BetaAPIFields).ViaField("sidecarOverrides"))
 		errs = errs.Also(validateSidecarOverrides(trs.SidecarOverrides).ViaField("sidecarOverrides"))
 	}
 	if trs.ComputeResources != nil {
