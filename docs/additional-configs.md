@@ -333,6 +333,8 @@ enables [beta features](#beta-features). When using v1 APIs, setting this field 
 allows only stable features, and setting it to "beta" allows only beta features.
 Set this field to "alpha" to allow [alpha features](#alpha-features) to be used.
 
+- `enable-kubernetes-sidecar`: Set this flag to `"true"` to enable native kubernetes sidecar support. This will allow Tekton sidecars to run as Kubernetes sidecars. Must be using Kubernetes v1.29 or greater.
+
 For example:
 
 ```yaml

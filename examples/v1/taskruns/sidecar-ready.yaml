@@ -18,6 +18,15 @@ spec:
           - -c
           - sleep 5 && touch /shared/ready
         timeoutSeconds: 10
+      # Adding startup probe for k8s native sidecar support
+      # Readiness Probe is not honored for k8s native sidecar support
+      startupProbe:
+        exec:
+          command:
+          - sh
+          - -c
+          - sleep 5 && touch /shared/ready
+        timeoutSeconds: 10
       volumeMounts:
       - name: shared
         mountPath: /shared

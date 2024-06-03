@@ -2317,7 +2317,7 @@ status:
 	// Check actions
 	actions := clients.Kube.Actions()
 	if len(actions) != 2 || !actions[0].Matches("list", "configmaps") || !actions[1].Matches("watch", "configmaps") {
-		t.Errorf("expected 2 actions (list configmaps, and watch configmaps) created by the reconciler,"+
+		t.Errorf("expected 3 actions (list configmaps, and watch configmaps) created by the reconciler,"+
 			" got %d. Actions: %#v", len(actions), actions)
 	}
 

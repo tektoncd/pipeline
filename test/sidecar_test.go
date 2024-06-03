@@ -62,6 +62,12 @@ func TestSidecarTaskSupport(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
+			// If Kubernetes Sidecar support is enabled the Pod will terminate and it gets caught as an error though it's expected
+			ff := getFeatureFlagsBaseOnAPIFlag(t)
+
+			if ff.EnableKubernetesSidecar {
+				t.SkipNow()
+			}
 			t.Parallel()
 
 			ctx, cancel := context.WithCancel(ctx)

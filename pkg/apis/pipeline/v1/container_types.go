@@ -543,10 +543,43 @@ type Sidecar struct {
 	// +optional
 	// +listType=atomic
 	Workspaces []WorkspaceUsage `json:"workspaces,omitempty"`
+
+	// RestartPolicy refers to kubernetes RestartPolicy. It can only be set for an
+	// initContainer and must have it's policy set to "Always". It is currently
+	// left optional to help support Kubernetes versions prior to 1.29 when this feature
+	// was introduced.
+	// +optional
+	RestartPolicy *corev1.ContainerRestartPolicy `json:"restartPolicy,omitempty"`
 }
 
 // ToK8sContainer converts the Sidecar to a Kubernetes Container struct
 func (s *Sidecar) ToK8sContainer() *corev1.Container {
+	if s.RestartPolicy == nil {
+		return &corev1.Container{
+			Name:                     s.Name,
+			Image:                    s.Image,
+			Command:                  s.Command,
+			Args:                     s.Args,
+			WorkingDir:               s.WorkingDir,
+			Ports:                    s.Ports,
+			EnvFrom:                  s.EnvFrom,
+			Env:                      s.Env,
+			Resources:                s.ComputeResources,
+			VolumeMounts:             s.VolumeMounts,
+			VolumeDevices:            s.VolumeDevices,
+			LivenessProbe:            s.LivenessProbe,
+			ReadinessProbe:           s.ReadinessProbe,
+			StartupProbe:             s.StartupProbe,
+			Lifecycle:                s.Lifecycle,
+			TerminationMessagePath:   s.TerminationMessagePath,
+			TerminationMessagePolicy: s.TerminationMessagePolicy,
+			ImagePullPolicy:          s.ImagePullPolicy,
+			SecurityContext:          s.SecurityContext,
+			Stdin:                    s.Stdin,
+			StdinOnce:                s.StdinOnce,
+			TTY:                      s.TTY,
+		}
+	}
 	return &corev1.Container{
 		Name:                     s.Name,
 		Image:                    s.Image,
@@ -561,6 +594,7 @@ func (s *Sidecar) ToK8sContainer() *corev1.Container {
 		VolumeDevices:            s.VolumeDevices,
 		LivenessProbe:            s.LivenessProbe,
 		ReadinessProbe:           s.ReadinessProbe,
+		RestartPolicy:            s.RestartPolicy,
 		StartupProbe:             s.StartupProbe,
 		Lifecycle:                s.Lifecycle,
 		TerminationMessagePath:   s.TerminationMessagePath,
@@ -597,6 +631,7 @@ func (s *Sidecar) SetContainerFields(c corev1.Container) {
 	s.Stdin = c.Stdin
 	s.StdinOnce = c.StdinOnce
 	s.TTY = c.TTY
+	s.RestartPolicy = c.RestartPolicy
 }
 
 // GetVarSubstitutionExpressions walks all the places a substitution reference can be used

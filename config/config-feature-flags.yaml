@@ -138,3 +138,5 @@ data:
   disable-inline-spec: ""
   # Setting this flag to "true" will enable the use of concise resolver syntax
   enable-concise-resolver-syntax: "false"
+  # Setthing this flag to "true" will enable native Kubernetes Sidecar support
+  enable-kubernetes-sidecar: "false"

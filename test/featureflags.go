@@ -119,6 +119,7 @@ func getFeatureFlagsBaseOnAPIFlag(t *testing.T) *config.FeatureFlags {
 		"enable-param-enum":              "true",
 		"enable-artifacts":               "true",
 		"enable-concise-resolver-syntax": "true",
+		"enable-kubernetes-sidecar":      "true",
 	})
 	if err != nil {
 		t.Fatalf("error creating alpha feature flags configmap: %v", err)
