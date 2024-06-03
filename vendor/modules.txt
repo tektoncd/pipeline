@@ -676,8 +676,8 @@ github.com/hashicorp/go-cleanhttp
 # github.com/hashicorp/go-multierror v1.1.1
 ## explicit; go 1.13
 github.com/hashicorp/go-multierror
-# github.com/hashicorp/go-retryablehttp v0.7.2
-## explicit; go 1.13
+# github.com/hashicorp/go-retryablehttp v0.7.6
+## explicit; go 1.19
 github.com/hashicorp/go-retryablehttp
 # github.com/hashicorp/go-rootcerts v1.0.2
 ## explicit; go 1.12
@@ -709,8 +709,8 @@ github.com/hashicorp/hcl/hcl/token
 github.com/hashicorp/hcl/json/parser
 github.com/hashicorp/hcl/json/scanner
 github.com/hashicorp/hcl/json/token
-# github.com/hashicorp/vault/api v1.12.2
-## explicit; go 1.19
+# github.com/hashicorp/vault/api v1.14.0
+## explicit; go 1.21
 github.com/hashicorp/vault/api
 # github.com/imdario/mergo v0.3.13
 ## explicit; go 1.13
@@ -890,8 +890,8 @@ github.com/sigstore/sigstore/pkg/signature/kms/azure
 # github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.8.4
 ## explicit; go 1.21
 github.com/sigstore/sigstore/pkg/signature/kms/gcp
-# github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.8.3
-## explicit; go 1.20
+# github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.8.4
+## explicit; go 1.21
 github.com/sigstore/sigstore/pkg/signature/kms/hashivault
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
