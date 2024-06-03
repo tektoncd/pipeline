@@ -276,9 +276,10 @@ func (h hashivaultClient) sign(digest []byte, alg crypto.Hash, opts ...signature
 	}
 
 	signResult, err := client.Write(fmt.Sprintf("/%s/sign/%s%s", h.transitSecretEnginePath, h.keyPath, hashString(alg)), map[string]interface{}{
-		"input":       base64.StdEncoding.Strict().EncodeToString(digest),
-		"prehashed":   alg != crypto.Hash(0),
-		"key_version": keyVersion,
+		"input":               base64.StdEncoding.Strict().EncodeToString(digest),
+		"prehashed":           alg != crypto.Hash(0),
+		"key_version":         keyVersion,
+		"signature_algorithm": "pkcs1v15",
 	})
 	if err != nil {
 		return nil, fmt.Errorf("transit: failed to sign payload: %w", err)
