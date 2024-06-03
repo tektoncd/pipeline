@@ -1248,6 +1248,11 @@ func (in *Sidecar) DeepCopyInto(out *Sidecar) {
 		*out = make([]WorkspaceUsage, len(*in))
 		copy(*out, *in)
 	}
+	if in.RestartPolicy != nil {
+		in, out := &in.RestartPolicy, &out.RestartPolicy
+		*out = new(corev1.ContainerRestartPolicy)
+		**out = **in
+	}
 	return
 }
 

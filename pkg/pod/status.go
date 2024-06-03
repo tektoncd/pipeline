@@ -151,6 +151,11 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.Tas
 			sidecarStatuses = append(sidecarStatuses, s)
 		}
 	}
+	for _, s := range pod.Status.InitContainerStatuses {
+		if IsContainerSidecar(s.Name) {
+			sidecarStatuses = append(sidecarStatuses, s)
+		}
+	}
 
 	var merr *multierror.Error
 	if err := setTaskRunStatusBasedOnStepStatus(ctx, logger, stepStatuses, &tr, pod.Status.Phase, kubeclient, ts); err != nil {

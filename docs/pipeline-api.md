@@ -4135,6 +4135,23 @@ other Step or Sidecar that does not also request this Workspace will
 not have access to it.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>restartPolicy</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#containerrestartpolicy-v1-core">
+Kubernetes core/v1.ContainerRestartPolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RestartPolicy refers to kubernetes RestartPolicy. It can only be set for an
+initContainer and must have it&rsquo;s policy set to &ldquo;Always&rdquo;. It is currently
+left optional to help support Kubernetes versions prior to 1.29 when this feature
+was introduced.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.SidecarState">SidecarState
@@ -13457,6 +13474,23 @@ for this field to be supported.</p>
 exclusive access to. Adding a workspace to this list means that any
 other Step or Sidecar that does not also request this Workspace will
 not have access to it.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>restartPolicy</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#containerrestartpolicy-v1-core">
+Kubernetes core/v1.ContainerRestartPolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RestartPolicy refers to kubernetes RestartPolicy. It can only be set for an
+initContainer and must have it&rsquo;s policy set to &ldquo;Always&rdquo;. It is currently
+left optional to help support Kubernetes versions prior to 1.29 when this feature
+was introduced.</p>
 </td>
 </tr>
 </tbody>

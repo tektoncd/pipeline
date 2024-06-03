@@ -1113,6 +1113,11 @@ to run alongside the `Steps` in your `Task`. You can use `Sidecars` to provide a
 `Sidecars` spin up before your `Task` executes and are deleted after the `Task` execution completes.
 For further information, see [`Sidecars` in `TaskRuns`](taskruns.md#specifying-sidecars).
 
+**Note**: Starting in v0.62 you can enable native Kubernetes sidecar support using the `enable-kubernetes-sidecar` feature flag ([see instructions](./additional-configs.md#customizing-the-pipelines-controller-behavior)). If kubernetes does not wait for your sidecar application to be ready, use a `startupProbe` to help kubernetes identify when it is ready.
+
+Refer to the detailed instructions listed in [additional config](additional-configs.md#enabling-larger-results-using-sidecar-logs)
+to learn how to enable this feature.
+
 In the example below, a `Step` uses a Docker-in-Docker `Sidecar` to build a Docker image:
 
 ```yaml

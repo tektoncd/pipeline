@@ -9,6 +9,7 @@ spec:
       image: docker.io/library/ubuntu
       script: |
         echo "hello from sidecar" > /shared/message
+        sleep 2
       volumeMounts:
       - name: shared
         mountPath: /shared

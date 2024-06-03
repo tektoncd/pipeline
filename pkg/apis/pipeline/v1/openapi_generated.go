@@ -2745,6 +2745,13 @@ func schema_pkg_apis_pipeline_v1_Sidecar(ref common.ReferenceCallback) common.Op
 							},
 						},
 					},
+					"restartPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RestartPolicy refers to kubernetes RestartPolicy. It can only be set for an initContainer and must have it's policy set to \"Always\". It is currently left optional to help support Kubernetes versions prior to 1.29 when this feature was introduced.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"name"},
 			},
