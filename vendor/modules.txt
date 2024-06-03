@@ -1,15 +1,42 @@
+# cloud.google.com/go v0.113.0
+## explicit; go 1.19
+cloud.google.com/go
+# cloud.google.com/go/auth v0.4.1
+## explicit; go 1.19
+cloud.google.com/go/auth
+cloud.google.com/go/auth/credentials
+cloud.google.com/go/auth/credentials/internal/externalaccount
+cloud.google.com/go/auth/credentials/internal/externalaccountuser
+cloud.google.com/go/auth/credentials/internal/gdch
+cloud.google.com/go/auth/credentials/internal/impersonate
+cloud.google.com/go/auth/credentials/internal/stsexchange
+cloud.google.com/go/auth/grpctransport
+cloud.google.com/go/auth/httptransport
+cloud.google.com/go/auth/internal
+cloud.google.com/go/auth/internal/credsfile
+cloud.google.com/go/auth/internal/jwt
+cloud.google.com/go/auth/internal/transport
+cloud.google.com/go/auth/internal/transport/cert
+# cloud.google.com/go/auth/oauth2adapt v0.2.2
+## explicit; go 1.19
+cloud.google.com/go/auth/oauth2adapt
 # cloud.google.com/go/compute/metadata v0.3.0
 ## explicit; go 1.19
 cloud.google.com/go/compute/metadata
-# cloud.google.com/go/iam v1.1.7
+# cloud.google.com/go/iam v1.1.8
 ## explicit; go 1.19
 cloud.google.com/go/iam
 cloud.google.com/go/iam/apiv1/iampb
-# cloud.google.com/go/kms v1.15.8
-## explicit; go 1.19
+# cloud.google.com/go/kms v1.17.1
+## explicit; go 1.20
 cloud.google.com/go/kms/apiv1
 cloud.google.com/go/kms/apiv1/kmspb
 cloud.google.com/go/kms/internal
+# cloud.google.com/go/longrunning v0.5.7
+## explicit; go 1.19
+cloud.google.com/go/longrunning
+cloud.google.com/go/longrunning/autogen
+cloud.google.com/go/longrunning/autogen/longrunningpb
 # code.gitea.io/sdk/gitea v0.18.0
 ## explicit; go 1.18
 code.gitea.io/sdk/gitea
@@ -628,7 +655,7 @@ github.com/google/uuid
 ## explicit; go 1.19
 github.com/googleapis/enterprise-certificate-proxy/client
 github.com/googleapis/enterprise-certificate-proxy/client/util
-# github.com/googleapis/gax-go/v2 v2.12.3
+# github.com/googleapis/gax-go/v2 v2.12.4
 ## explicit; go 1.19
 github.com/googleapis/gax-go/v2
 github.com/googleapis/gax-go/v2/apierror
@@ -860,8 +887,8 @@ github.com/sigstore/sigstore/pkg/signature/kms/aws
 # github.com/sigstore/sigstore/pkg/signature/kms/azure v1.8.3
 ## explicit; go 1.20
 github.com/sigstore/sigstore/pkg/signature/kms/azure
-# github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.8.3
-## explicit; go 1.20
+# github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.8.4
+## explicit; go 1.21
 github.com/sigstore/sigstore/pkg/signature/kms/gcp
 # github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.8.3
 ## explicit; go 1.20
@@ -1130,8 +1157,8 @@ golang.org/x/tools/internal/stdlib
 # gomodules.xyz/jsonpatch/v2 v2.4.0
 ## explicit; go 1.20
 gomodules.xyz/jsonpatch/v2
-# google.golang.org/api v0.172.0
-## explicit; go 1.19
+# google.golang.org/api v0.181.0
+## explicit; go 1.20
 google.golang.org/api/googleapi
 google.golang.org/api/googleapi/transport
 google.golang.org/api/internal
@@ -1145,7 +1172,7 @@ google.golang.org/api/support/bundler
 google.golang.org/api/transport/grpc
 google.golang.org/api/transport/http
 google.golang.org/api/transport/http/internal/propagation
-# google.golang.org/genproto v0.0.0-20240227224415-6ceb2ff114de
+# google.golang.org/genproto v0.0.0-20240401170217-c3f982113cda
 ## explicit; go 1.19
 google.golang.org/genproto/googleapis/cloud/location
 google.golang.org/genproto/googleapis/type/expr
