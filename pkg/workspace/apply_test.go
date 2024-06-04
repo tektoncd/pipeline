@@ -1225,6 +1225,104 @@ func TestFindWorkspacesUsedByTask(t *testing.T) {
 			"steptemplate-args",
 			"steptemplate-command",
 		),
+	}, {
+		name: "workspace used in step env",
+		ts: &v1.TaskSpec{
+			Steps: []v1.Step{{
+				Name:  "step-name",
+				Image: "step-image",
+				Env: []corev1.EnvVar{{
+					Name:  "path",
+					Value: "$(workspaces.env-ws.path)",
+				}},
+				Command: []string{"ls"},
+			}},
+		},
+		want: sets.NewString(
+			"env-ws",
+		),
+	}, {
+		name: "workspace used in step workingDir",
+		ts: &v1.TaskSpec{
+			Steps: []v1.Step{{
+				Name:       "step-name",
+				Image:      "step-image",
+				WorkingDir: "$(workspaces.shared.path)",
+				Command:    []string{"ls"},
+			}},
+		},
+		want: sets.NewString(
+			"shared",
+		),
+	}, {
+		name: "workspace used in step Params for stepactions",
+		ts: &v1.TaskSpec{
+			Steps: []v1.Step{{
+				Name: "step-name",
+				Params: []v1.Param{{
+					Name:  "path",
+					Value: *v1.NewStructuredValues("$(workspaces.shared.path)"),
+				}},
+				Ref: &v1.Ref{
+					Name: "step-action",
+				},
+			}},
+		},
+		want: sets.NewString(
+			"shared",
+		),
+	}, {
+		name: "workspace used in sidecar env",
+		ts: &v1.TaskSpec{
+			Sidecars: []v1.Sidecar{{
+				Name:  "step-name",
+				Image: "step-image",
+				Env: []corev1.EnvVar{{
+					Name:  "path",
+					Value: "$(workspaces.env-ws.path)",
+				}},
+				Command: []string{"ls"},
+			}},
+		},
+		want: sets.NewString(
+			"env-ws",
+		),
+	}, {
+		name: "workspace used in sidecar workingDir",
+		ts: &v1.TaskSpec{
+			Sidecars: []v1.Sidecar{{
+				Name:       "step-name",
+				Image:      "step-image",
+				WorkingDir: "$(workspaces.shared.path)",
+				Command:    []string{"ls"},
+			}},
+		},
+		want: sets.NewString(
+			"shared",
+		),
+	}, {
+		name: "workspace used in stepTemplate env",
+		ts: &v1.TaskSpec{
+			StepTemplate: &v1.StepTemplate{
+				Env: []corev1.EnvVar{{
+					Name:  "path",
+					Value: "$(workspaces.env-ws.path)",
+				}},
+			},
+		},
+		want: sets.NewString(
+			"env-ws",
+		),
+	}, {
+		name: "workspace used in stepTemplate workingDir",
+		ts: &v1.TaskSpec{
+			StepTemplate: &v1.StepTemplate{
+				WorkingDir: "$(workspaces.shared.path)",
+			},
+		},
+		want: sets.NewString(
+			"shared",
+		),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
