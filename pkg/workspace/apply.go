@@ -225,6 +225,10 @@ func findWorkspaceSubstitutionLocationsInSidecars(sidecars []v1.Sidecar) sets.St
 		for i := range sidecar.Command {
 			locationsToCheck.Insert(sidecar.Command[i])
 		}
+		locationsToCheck.Insert(sidecar.WorkingDir)
+		for _, e := range sidecar.Env {
+			locationsToCheck.Insert(e.Value)
+		}
 	}
 	return locationsToCheck
 }
@@ -241,6 +245,18 @@ func findWorkspaceSubstitutionLocationsInSteps(steps []v1.Step) sets.String {
 		for i := range step.Command {
 			locationsToCheck.Insert(step.Command[i])
 		}
+
+		locationsToCheck.Insert(step.WorkingDir)
+		for _, e := range step.Env {
+			locationsToCheck.Insert(e.Value)
+		}
+		for _, p := range step.Params {
+			locationsToCheck.Insert(p.Value.ArrayVal...)
+			for k := range p.Value.ObjectVal {
+				locationsToCheck.Insert(p.Value.ObjectVal[k])
+			}
+			locationsToCheck.Insert(p.Value.StringVal)
+		}
 	}
 	return locationsToCheck
 }
@@ -254,6 +270,11 @@ func findWorkspaceSubstitutionLocationsInStepTemplate(stepTemplate *v1.StepTempl
 		}
 		for i := range stepTemplate.Command {
 			locationsToCheck.Insert(stepTemplate.Command[i])
+		}
+
+		locationsToCheck.Insert(stepTemplate.WorkingDir)
+		for _, e := range stepTemplate.Env {
+			locationsToCheck.Insert(e.Value)
 		}
 	}
 	return locationsToCheck
