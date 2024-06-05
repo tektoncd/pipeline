@@ -358,11 +358,12 @@ github.com/cloudflare/circl/math/mlsbset
 github.com/cloudflare/circl/sign
 github.com/cloudflare/circl/sign/ed25519
 github.com/cloudflare/circl/sign/ed448
-# github.com/containerd/containerd v1.7.17
+# github.com/containerd/containerd v1.7.18
 ## explicit; go 1.21
-github.com/containerd/containerd/errdefs
-github.com/containerd/containerd/log
 github.com/containerd/containerd/platforms
+# github.com/containerd/errdefs v0.1.0
+## explicit; go 1.20
+github.com/containerd/errdefs
 # github.com/containerd/log v0.1.0
 ## explicit; go 1.20
 github.com/containerd/log
