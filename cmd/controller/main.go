@@ -56,6 +56,7 @@ func main() {
 	flag.StringVar(&opts.Images.ShellImage, "shell-image", "", "The container image containing a shell")
 	flag.StringVar(&opts.Images.ShellImageWin, "shell-image-win", "", "The container image containing a windows shell")
 	flag.StringVar(&opts.Images.WorkingDirInitImage, "workingdirinit-image", "", "The container image containing our working dir init binary.")
+	flag.DurationVar(&opts.ResyncPeriod, "resync-period", controller.DefaultResyncPeriod, "The period between two resync run (going through all objects)")
 
 	// This parses flags.
 	cfg := injection.ParseAndGetRESTConfigOrDie()
@@ -98,6 +99,8 @@ func main() {
 	}()
 
 	ctx = filteredinformerfactory.WithSelectors(ctx, v1beta1.ManagedByLabelKey)
+	ctx = controller.WithResyncPeriod(ctx, opts.ResyncPeriod)
+
 	sharedmain.MainWithConfig(ctx, ControllerLogKey, cfg,
 		taskrun.NewController(opts, clock.RealClock{}),
 		pipelinerun.NewController(opts, clock.RealClock{}),
