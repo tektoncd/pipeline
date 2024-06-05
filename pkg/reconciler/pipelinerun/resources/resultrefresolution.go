@@ -17,6 +17,7 @@ limitations under the License.
 package resources
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -164,11 +165,26 @@ func resolveCustomResultRef(customRuns []*v1beta1.CustomRun, resultRef *v1.Resul
 		return nil, err
 	}
 	return &ResolvedResultRef{
-		Value:           *v1.NewStructuredValues(runValue),
+		Value:           *paramValueFromCustomRunResult(runValue),
 		FromTaskRun:     "",
 		FromRun:         runName,
 		ResultReference: *resultRef,
 	}, nil
+}
+
+func paramValueFromCustomRunResult(result string) *v1.ParamValue {
+	var arrayResult []string
+	// for fan out array result, which is represented as string, we should make it to array type param value
+	if err := json.Unmarshal([]byte(result), &arrayResult); err == nil && len(arrayResult) > 0 {
+		if len(arrayResult) > 1 {
+			return v1.NewStructuredValues(arrayResult[0], arrayResult[1:]...)
+		}
+		return &v1.ParamValue{
+			Type:     v1.ParamTypeArray,
+			ArrayVal: []string{arrayResult[0]},
+		}
+	}
+	return v1.NewStructuredValues(result)
 }
 
 func resolveResultRef(taskRuns []*v1.TaskRun, resultRef *v1.ResultRef) (*ResolvedResultRef, error) {
