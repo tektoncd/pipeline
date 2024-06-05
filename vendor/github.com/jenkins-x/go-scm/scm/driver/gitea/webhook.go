@@ -424,6 +424,6 @@ func convertAction(src string) (action scm.Action) {
 	case "reviewed":
 		return scm.ActionSubmitted
 	default:
-		return
+		return 0
 	}
 }
