@@ -212,7 +212,7 @@ func serializeTaskDeprecations(meta *metav1.ObjectMeta, spec *TaskSpec, taskName
 	existingDeprecations := taskDeprecations{}
 	if str, ok := meta.Annotations[TaskDeprecationsAnnotationKey]; ok {
 		if err := json.Unmarshal([]byte(str), &existingDeprecations); err != nil {
-			return fmt.Errorf("error deserializing key %s from metadata: %w", TaskDeprecationsAnnotationKey, err)
+			return fmt.Errorf("error serializing key %s from metadata: %w", TaskDeprecationsAnnotationKey, err)
 		}
 	}
 	if taskDeprecation != nil {
