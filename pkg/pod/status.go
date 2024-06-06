@@ -125,7 +125,7 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.Tas
 
 	sortPodContainerStatuses(pod.Status.ContainerStatuses, pod.Spec.Containers)
 
-	complete := areStepsComplete(pod) || pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed
+	complete := areContainersCompleted(ctx, pod) || pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed
 
 	if complete {
 		onError, ok := tr.Annotations[v1.PipelineTaskOnErrorAnnotation]
@@ -594,16 +594,45 @@ func IsPodArchived(pod *corev1.Pod, trs *v1.TaskRunStatus) bool {
 	return false
 }
 
-func areStepsComplete(pod *corev1.Pod) bool {
-	stepsComplete := len(pod.Status.ContainerStatuses) > 0 && pod.Status.Phase == corev1.PodRunning
-	for _, s := range pod.Status.ContainerStatuses {
-		if IsContainerStep(s.Name) {
-			if s.State.Terminated == nil {
-				stepsComplete = false
-			}
+// containerNameFilter is a function that filters container names.
+type containerNameFilter func(name string) bool
+
+// isMatchingAnyFilter returns true if the container name matches any of the filters.
+func isMatchingAnyFilter(name string, filters []containerNameFilter) bool {
+	for _, filter := range filters {
+		if filter(name) {
+			return true
 		}
 	}
-	return stepsComplete
+	return false
+}
+
+// areContainersCompleted returns true if all related containers in the pod are completed.
+func areContainersCompleted(ctx context.Context, pod *corev1.Pod) bool {
+	nameFilters := []containerNameFilter{IsContainerStep}
+	if config.FromContextOrDefaults(ctx).FeatureFlags.ResultExtractionMethod == config.ResultExtractionMethodSidecarLogs {
+		// If we are using sidecar logs to extract results, we need to wait for the sidecar to complete.
+		// Avoid failing to obtain the final result from the sidecar because the sidecar is not yet complete.
+		nameFilters = append(nameFilters, func(name string) bool {
+			return name == pipeline.ReservedResultsSidecarContainerName
+		})
+	}
+	return checkContainersCompleted(pod, nameFilters)
+}
+
+// checkContainersCompleted returns true if containers in the pod are completed.
+func checkContainersCompleted(pod *corev1.Pod, nameFilters []containerNameFilter) bool {
+	if len(pod.Status.ContainerStatuses) == 0 ||
+		!(pod.Status.Phase == corev1.PodRunning || pod.Status.Phase == corev1.PodSucceeded) {
+		return false
+	}
+	for _, containerStatus := range pod.Status.ContainerStatuses {
+		if isMatchingAnyFilter(containerStatus.Name, nameFilters) && containerStatus.State.Terminated == nil {
+			// if any container is not completed, return false
+			return false
+		}
+	}
+	return true
 }
 
 func getFailureMessage(logger *zap.SugaredLogger, pod *corev1.Pod) string {
