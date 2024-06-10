@@ -37,14 +37,6 @@ require (
 	sigs.k8s.io/yaml v1.4.0
 )
 
-//  TODO: Remove this once https://github.com/knative/pkg/issues/2759 is fixed
-replace (
-	k8s.io/api => k8s.io/api v0.29.2
-	k8s.io/apimachinery => k8s.io/apimachinery v0.29.2
-	k8s.io/client-go => k8s.io/client-go v0.29.2
-	k8s.io/code-generator => k8s.io/code-generator v0.29.2
-)
-
 require (
 	code.gitea.io/sdk/gitea v0.18.0
 	github.com/go-jose/go-jose/v3 v3.0.3
