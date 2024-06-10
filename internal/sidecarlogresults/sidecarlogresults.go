@@ -37,8 +37,10 @@ import (
 )
 
 // ErrSizeExceeded indicates that the result exceeded its maximum allowed size
-var ErrSizeExceeded = errors.New("results size exceeds configured limit")
-var stepDir = pipeline.StepsDir
+var (
+	ErrSizeExceeded = errors.New("results size exceeds configured limit")
+	stepDir         = pipeline.StepsDir
+)
 
 type SidecarLogResultType string
 
@@ -146,8 +148,6 @@ func LookForResults(w io.Writer, runDir string, resultsDir string, resultNames [
 	results := make(chan SidecarLogResult)
 	g := new(errgroup.Group)
 	for _, resultFile := range resultNames {
-		resultFile := resultFile
-
 		g.Go(func() error {
 			newResult, err := readResults(resultsDir, resultFile, "", taskResultType)
 			if err != nil {
@@ -162,10 +162,7 @@ func LookForResults(w io.Writer, runDir string, resultsDir string, resultNames [
 	}
 
 	for sName, sresults := range stepResults {
-		sresults := sresults
-		sName := sName
 		for _, resultName := range sresults {
-			resultName := resultName
 			stepResultsDir := filepath.Join(stepResultsDir, sName, "results")
 
 			g.Go(func() error {

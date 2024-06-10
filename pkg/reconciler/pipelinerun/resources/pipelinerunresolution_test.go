@@ -3680,7 +3680,7 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 	var taskRuns []*v1.TaskRun
 	var taskRunsNames []string
 	taskRunsMap := map[string]*v1.TaskRun{}
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		trName := fmt.Sprintf("%s-%s-%d", pipelineRunName, pipelineTaskName, i)
 		tr := &v1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
@@ -3838,7 +3838,7 @@ func TestResolvePipelineRunTask_WithMatrixedCustomTask(t *testing.T) {
 	var runs []*v1beta1.CustomRun
 	var runNames []string
 	runsMap := map[string]*v1beta1.CustomRun{}
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		runName := fmt.Sprintf("%s-%s-%d", pipelineRunName, pipelineTaskName, i)
 		run := &v1beta1.CustomRun{
 			ObjectMeta: metav1.ObjectMeta{

@@ -713,7 +713,7 @@ func getNewRunNames(ptName, prName string, numberOfRuns int) []string {
 		return append(taskRunNames, taskRunName)
 	}
 	// For a matrix we append i to then end of the fanned out TaskRuns "matrixed-pr-taskrun-0"
-	for i := 0; i < numberOfRuns; i++ {
+	for i := range numberOfRuns {
 		taskRunName := kmeta.ChildName(prName, fmt.Sprintf("-%s-%d", ptName, i))
 		// check if the taskRun name ends with a matrix instance count
 		if !strings.HasSuffix(taskRunName, fmt.Sprintf("-%d", i)) {

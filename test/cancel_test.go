@@ -42,7 +42,6 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 	// on failure, to ensure that cancelling the PipelineRun doesn't cause
 	// the retrying TaskRun to retry.
 	for _, numRetries := range []int{0, 1} {
-		numRetries := numRetries // capture range variable
 		specStatus := v1.PipelineRunSpecStatusCancelled
 		t.Run(fmt.Sprintf("retries=%d,status=%s", numRetries, specStatus), func(t *testing.T) {
 			ctx := context.Background()

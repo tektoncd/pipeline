@@ -91,8 +91,6 @@ spec:
 	}}
 
 	for i, td := range tds {
-		i := i   // capture range variable
-		td := td // capture range variable
 		t.Run(td.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
@@ -297,8 +295,6 @@ spec:
 	}}
 
 	for i, td := range tds {
-		i := i   // capture range variable
-		td := td // capture range variable
 		t.Run(td.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()

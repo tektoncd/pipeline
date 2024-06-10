@@ -31,8 +31,10 @@ import (
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
-var now = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
-var testClock = clock.NewFakePassiveClock(now)
+var (
+	now       = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
+	testClock = clock.NewFakePassiveClock(now)
+)
 
 func TestTaskRun_GetPipelineRunPVCName(t *testing.T) {
 	tests := []struct {
@@ -511,7 +513,7 @@ func TestTaskRunIsRetriable(t *testing.T) {
 		wantIsRetriable: false,
 	}} {
 		retriesStatus := []v1.TaskRunStatus{}
-		for i := 0; i < tc.numRetriesStatus; i++ {
+		for range tc.numRetriesStatus {
 			retriesStatus = append(retriesStatus, retryStatus)
 		}
 		t.Run(tc.name, func(t *testing.T) {

@@ -43,7 +43,8 @@ func TestPropagatedResults(t *testing.T) {
 	ignorePipelineRunStatusFields := cmpopts.IgnoreFields(v1.PipelineRunStatusFields{}, "Provenance")
 	ignoreTaskRunStatus := cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "StartTime", "CompletionTime", "Sidecars", "Provenance")
 	requireAlphaFeatureFlag = requireAnyGate(map[string]string{
-		"enable-api-fields": "alpha"})
+		"enable-api-fields": "alpha",
+	})
 
 	type tests struct {
 		name            string
@@ -58,7 +59,6 @@ func TestPropagatedResults(t *testing.T) {
 	}}
 
 	for _, td := range tds {
-		td := td
 		t.Run(td.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()

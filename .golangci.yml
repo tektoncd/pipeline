@@ -85,12 +85,13 @@ linters:
   - gocyclo
   - godot
   - godox
-  - goerr113
+  - err113
   - gofumpt
   - gomnd
   - gomoddirectives
   - ireturn
   - lll
+  - mnd
   - nestif
   - nlreturn
   - nonamedreturns

@@ -226,7 +226,7 @@ func getTaskRuns(ctx context.Context, t *testing.T, clients test.Clients, namesp
 	outputs := make(map[string]*v1.TaskRun)
 	for _, item := range taskRuns.Items {
 		tr := item
-		outputs[tr.Name] = &tr
+		outputs[item.Name] = &tr
 	}
 
 	return outputs

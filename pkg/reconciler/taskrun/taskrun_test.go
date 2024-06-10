@@ -5857,7 +5857,7 @@ func podVolumeMounts(idx, totalSteps int) []corev1.VolumeMount {
 		MountPath: "/tekton/bin",
 		ReadOnly:  true,
 	})
-	for i := 0; i < totalSteps; i++ {
+	for i := range totalSteps {
 		mnts = append(mnts, corev1.VolumeMount{
 			Name:      fmt.Sprintf("tekton-internal-run-%d", i),
 			MountPath: filepath.Join("/tekton/run", strconv.Itoa(i)),

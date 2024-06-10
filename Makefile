@@ -9,7 +9,7 @@ TESTPKGS = $(shell env GO111MODULE=on $(GO) list -f \
 BIN      = $(CURDIR)/.bin
 WOKE 	?= go run -modfile go.mod github.com/get-woke/woke
 
-GOLANGCI_VERSION = v1.57.2
+GOLANGCI_VERSION = v1.59.1
 WOKE_VERSION     = v0.19.0
 
 GO           = go

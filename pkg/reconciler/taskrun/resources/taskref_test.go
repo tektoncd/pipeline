@@ -1325,7 +1325,6 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 	}
 }
 
-//nolint:musttag
 func TestGetTaskFunc_V1beta1Task_VerifyNoError(t *testing.T) {
 	ctx := context.Background()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
@@ -1460,7 +1459,6 @@ func TestGetTaskFunc_V1beta1Task_VerifyNoError(t *testing.T) {
 	}
 }
 
-//nolint:musttag
 func TestGetTaskFunc_V1beta1Task_VerifyError(t *testing.T) {
 	ctx := context.Background()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
@@ -1581,7 +1579,6 @@ func TestGetTaskFunc_V1beta1Task_VerifyError(t *testing.T) {
 	}
 }
 
-//nolint:musttag
 func TestGetTaskFunc_V1Task_VerifyNoError(t *testing.T) {
 	ctx := context.Background()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
@@ -1726,7 +1723,6 @@ func TestGetTaskFunc_V1Task_VerifyNoError(t *testing.T) {
 	}
 }
 
-//nolint:musttag
 func TestGetTaskFunc_V1Task_VerifyError(t *testing.T) {
 	ctx := context.Background()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
@@ -1842,7 +1838,6 @@ func TestGetTaskFunc_V1Task_VerifyError(t *testing.T) {
 	}
 }
 
-//nolint:musttag
 func TestGetTaskFunc_GetFuncError(t *testing.T) {
 	ctx := context.Background()
 	_, k8sclient, vps := test.SetupMatchAllVerificationPolicies(t, "trusted-resources")
