@@ -1017,7 +1017,7 @@ As a general rule-of-thumb, if a result needs to be larger than a kilobyte, you 
 
 #### Larger `Results` using sidecar logs
 
-This is an alpha feature which is guarded behind its own feature flag.  The `results-from` feature flag must be set to
+This is a beta feature which is guarded behind its own feature flag.  The `results-from` feature flag must be set to
 [`"sidecar-logs"`](./install.md#enabling-larger-results-using-sidecar-logs) to enable larger results using sidecar logs.
 
 Instead of using termination messages to store results, the taskrun controller injects a sidecar container which monitors
