@@ -91,7 +91,7 @@ func TestLargerResultsSidecarLogs(t *testing.T) {
 			}
 
 			t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
-			if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1Version); err != nil {
+			if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunFailed(prName), "PipelineRunFailed", v1Version); err != nil {
 				t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 			}
 			cl, _ := c.V1PipelineRunClient.Get(ctx, prName, metav1.GetOptions{})
@@ -134,6 +134,26 @@ func TestLargerResultsSidecarLogs(t *testing.T) {
 	}
 }
 
+func setUpSidecarLogs(ctx context.Context, t *testing.T, fn ...func(context.Context, *testing.T, *clients, string)) (*clients, string) {
+	t.Helper()
+	c, ns := setup(ctx, t)
+	configMapData := map[string]string{
+		"results-from": "sidecar-logs",
+	}
+
+	if err := updateConfigMap(ctx, c.KubeClient, system.Namespace(), config.GetFeatureFlagsConfigName(), configMapData); err != nil {
+		t.Fatal(err)
+	}
+	return c, ns
+}
+
+func resetSidecarLogs(ctx context.Context, t *testing.T, c *clients, previousResultExtractionMethod string) {
+	t.Helper()
+	if err := updateConfigMap(ctx, c.KubeClient, system.Namespace(), config.GetFeatureFlagsConfigName(), map[string]string{"results-from": previousResultExtractionMethod}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func getLargerResultsPipelineRun(t *testing.T, namespace string) (*v1.PipelineRun, *v1.PipelineRun, []*v1.TaskRun) {
 	t.Helper()
 	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
@@ -155,11 +175,26 @@ spec:
                echo -n "%s"| tee $(results.result1.path);
                echo -n "%s"| tee $(results.result2.path);
       - name: task2
+        taskSpec:
+          results:
+            - name: result1
+            - name: result2
+          steps:
+           - name: step1
+             onError: continue
+             image: alpine
+             script: |
+               echo -n "%s"| tee $(results.result2.path);
+               # trigger an error
+               not-a-command
+               # This result will be skipped
+               echo -n "%s"| tee $(results.result1.path);
+      - name: task3
         params:
           - name: param1
             value: "$(tasks.task1.results.result1)"
           - name: param2
-            value: "$(tasks.task1.results.result2)"
+            value: "$(tasks.task2.results.result2)"
         taskSpec:
           params:
             - name: param1
@@ -176,10 +211,24 @@ spec:
               script: |
                 echo -n "$(params.param1)">> $(results.large-result.path);
                 echo -n "$(params.param2)">> $(results.large-result.path);
+      - name: failed-task
+        runAfter: ["task3"]
+        taskSpec:
+          results:
+            - name: result1
+            - name: result2
+          steps:
+           - name: step1
+             image: alpine
+             script: |
+               echo -n "%s"| tee $(results.result1.path);
+               echo -n "%s"| tee $(results.result2.path);
+               #trigger a failure
+               not-a-command
     results:
       - name: large-result
-        value: $(tasks.task2.results.large-result)
-`, namespace, strings.Repeat("a", 2000), strings.Repeat("b", 2000)))
+        value: $(tasks.task3.results.large-result)
+`, namespace, strings.Repeat("a", 2000), strings.Repeat("b", 2000), strings.Repeat("d", 2000), strings.Repeat("c", 2000), strings.Repeat("e", 2000), strings.Repeat("f", 2000)))
 	expectedPipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: larger-results-sidecar-logs
@@ -205,11 +254,28 @@ spec:
                echo -n "%s"| tee $(results.result1.path);
                echo -n "%s"| tee $(results.result2.path);
       - name: task2
+        taskSpec:
+          results:
+            - name: result1
+              type: string
+            - name: result2
+              type: string
+          steps:
+           - name: step1
+             onError: continue
+             image: alpine
+             script: |
+               echo -n "%s"| tee $(results.result2.path);
+               # trigger an error
+               not-a-command
+               # This result will be skipped
+               echo -n "%s"| tee $(results.result1.path);
+      - name: task3
         params:
           - name: param1
             value: "$(tasks.task1.results.result1)"
           - name: param2
-            value: "$(tasks.task1.results.result2)"
+            value: "$(tasks.task2.results.result2)"
         taskSpec:
           params:
             - name: param1
@@ -227,9 +293,25 @@ spec:
               script: |
                 echo -n "$(params.param1)">> $(results.large-result.path);
                 echo -n "$(params.param2)">> $(results.large-result.path);
+      - name: failed-task
+        runAfter: ["task3"]
+        taskSpec:
+          results:
+            - name: result1
+              type: string
+            - name: result2
+              type: string
+          steps:
+           - name: step1
+             image: alpine
+             script: |
+               echo -n "%s"| tee $(results.result1.path);
+               echo -n "%s"| tee $(results.result2.path);
+               #trigger a failure
+               not-a-command
     results:
       - name: large-result
-        value: $(tasks.task2.results.large-result)
+        value: $(tasks.task3.results.large-result)
 status:
   pipelineSpec:
     tasks:
@@ -247,11 +329,28 @@ status:
                 echo -n "%s"| tee $(results.result1.path);
                 echo -n "%s"| tee $(results.result2.path);
       - name: task2
+        taskSpec:
+          results:
+            - name: result1
+              type: string
+            - name: result2
+              type: string
+          steps:
+            - name: step1
+              image: alpine
+              onError: continue
+              script: |
+                echo -n "%s"| tee $(results.result2.path);
+                # trigger an error
+                not-a-command
+                # This result will be skipped
+                echo -n "%s"| tee $(results.result1.path);
+      - name: task3
         params:
           - name: param1
             value: "$(tasks.task1.results.result1)"
           - name: param2
-            value: "$(tasks.task1.results.result2)"
+            value: "$(tasks.task2.results.result2)"
         taskSpec:
           params:
             - name: param1
@@ -269,13 +368,29 @@ status:
               script: |
                 echo -n "$(params.param1)">> $(results.large-result.path);
                 echo -n "$(params.param2)">> $(results.large-result.path);
+      - name: failed-task
+        runAfter: ["task3"]
+        taskSpec:
+          results:
+            - name: result1
+              type: string
+            - name: result2
+              type: string
+          steps:
+           - name: step1
+             image: alpine
+             script: |
+               echo -n "%s"| tee $(results.result1.path);
+               echo -n "%s"| tee $(results.result2.path);
+               #trigger a failure
+               not-a-command
     results:
       - name: large-result
-        value: $(tasks.task2.results.large-result)
+        value: $(tasks.task3.results.large-result)
   results:
     - name: large-result
       value: %s%s
-`, namespace, strings.Repeat("a", 2000), strings.Repeat("b", 2000), strings.Repeat("a", 2000), strings.Repeat("b", 2000), strings.Repeat("a", 2000), strings.Repeat("b", 2000)))
+`, namespace, strings.Repeat("a", 2000), strings.Repeat("b", 2000), strings.Repeat("d", 2000), strings.Repeat("c", 2000), strings.Repeat("e", 2000), strings.Repeat("f", 2000), strings.Repeat("a", 2000), strings.Repeat("b", 2000), strings.Repeat("d", 2000), strings.Repeat("c", 2000), strings.Repeat("e", 2000), strings.Repeat("f", 2000), strings.Repeat("a", 2000), strings.Repeat("d", 2000)))
 	taskRun1 := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: larger-results-sidecar-logs-task1
@@ -331,6 +446,59 @@ metadata:
 spec:
   serviceAccountName: default
   timeout: 1h
+  taskSpec:
+    results:
+      - name: result1
+        type: string
+      - name: result2
+        type: string
+    steps:
+      - name: step1
+        onError: continue
+        image: alpine
+        script: |
+          echo -n "%s"| tee $(results.result2.path);
+          # trigger an error
+          not-a-command
+          # This result will be skipped
+          echo -n "%s"| tee $(results.result1.path);
+status:
+  conditions:
+    - type: "Succeeded"
+      status: "True"
+      reason: "Succeeded"
+  podName: larger-results-sidecar-logs-task2-pod
+  taskSpec:
+    results:
+      - name: result1
+        type: string
+      - name: result2
+        type: string
+    steps:
+      - name: step1
+        onError: continue
+        image: alpine
+        script: |
+          echo -n "%s"| tee /tekton/results/result2;
+          # trigger an error
+          not-a-command
+          # This result will be skipped
+          echo -n "%s"| tee /tekton/results/result1;
+  results:
+    - name: result2
+      type: string
+      value: %s
+  sidecars:
+    - name: tekton-log-results
+      container: sidecar-tekton-log-results
+`, namespace, strings.Repeat("d", 2000), strings.Repeat("c", 2000), strings.Repeat("d", 2000), strings.Repeat("c", 2000), strings.Repeat("d", 2000)))
+	taskRun3 := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
+metadata:
+  name: larger-results-sidecar-logs-task3
+  namespace: %s
+spec:
+  serviceAccountName: default
+  timeout: 1h
   params:
     - name: param1
       type: string
@@ -360,7 +528,7 @@ status:
     - type: "Succeeded"
       status: "True"
       reason: "Succeeded"
-  podName: larger-results-sidecar-logs-task2-pod
+  podName: larger-results-sidecar-logs-task3-pod
   taskSpec:
     params:
       - name: param1
@@ -385,26 +553,58 @@ status:
   sidecars:
     - name: tekton-log-results
       container: sidecar-tekton-log-results
-`, namespace, strings.Repeat("a", 2000), strings.Repeat("b", 2000), strings.Repeat("a", 2000), strings.Repeat("b", 2000), strings.Repeat("a", 2000), strings.Repeat("b", 2000)))
-	return pipelineRun, expectedPipelineRun, []*v1.TaskRun{taskRun1, taskRun2}
-}
-
-func setUpSidecarLogs(ctx context.Context, t *testing.T, fn ...func(context.Context, *testing.T, *clients, string)) (*clients, string) {
-	t.Helper()
-	c, ns := setup(ctx, t)
-	configMapData := map[string]string{
-		"results-from": "sidecar-logs",
-	}
-
-	if err := updateConfigMap(ctx, c.KubeClient, system.Namespace(), config.GetFeatureFlagsConfigName(), configMapData); err != nil {
-		t.Fatal(err)
-	}
-	return c, ns
-}
-
-func resetSidecarLogs(ctx context.Context, t *testing.T, c *clients, previousResultExtractionMethod string) {
-	t.Helper()
-	if err := updateConfigMap(ctx, c.KubeClient, system.Namespace(), config.GetFeatureFlagsConfigName(), map[string]string{"results-from": previousResultExtractionMethod}); err != nil {
-		t.Fatal(err)
-	}
+`, namespace, strings.Repeat("a", 2000), strings.Repeat("d", 2000), strings.Repeat("a", 2000), strings.Repeat("d", 2000), strings.Repeat("a", 2000), strings.Repeat("d", 2000)))
+	taskRun4 := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
+metadata:
+  name: larger-results-sidecar-logs-failed-task
+  namespace: %s
+spec:
+  serviceAccountName: default
+  timeout: 1h
+  taskSpec:
+    results:
+      - name: result1
+        type: string
+      - name: result2
+        type: string
+    steps:
+      - name: step1
+        image: alpine
+        script: |
+          echo -n "%s"| tee $(results.result1.path);
+          echo -n "%s"| tee $(results.result2.path);
+          #trigger a failure
+          not-a-command
+status:
+  conditions:
+    - type: "Succeeded"
+      status: "False"
+      reason: "Failed"
+  podName: larger-results-sidecar-logs-failed-task-pod
+  taskSpec:
+    results:
+      - name: result1
+        type: string
+      - name: result2
+        type: string
+    steps:
+      - name: step1
+        image: alpine
+        script: |
+          echo -n "%s"| tee /tekton/results/result1;
+          echo -n "%s"| tee /tekton/results/result2;
+          #trigger a failure
+          not-a-command
+  results:
+    - name: result1
+      type: string
+      value: %s
+    - name: result2
+      type: string
+      value: %s
+  sidecars:
+    - name: tekton-log-results
+      container: sidecar-tekton-log-results
+`, namespace, strings.Repeat("e", 2000), strings.Repeat("f", 2000), strings.Repeat("e", 2000), strings.Repeat("f", 2000), strings.Repeat("e", 2000), strings.Repeat("f", 2000)))
+	return pipelineRun, expectedPipelineRun, []*v1.TaskRun{taskRun1, taskRun2, taskRun3, taskRun4}
 }
