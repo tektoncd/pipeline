@@ -26,11 +26,9 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
-var (
-	// ErrInvalidTaskResultReference indicates that the reason for the failure status is that there
-	// is an invalid task result reference
-	ErrInvalidTaskResultReference = pipelineErrors.WrapUserError(errors.New("Invalid task result reference"))
-)
+// ErrInvalidTaskResultReference indicates that the reason for the failure status is that there
+// is an invalid task result reference
+var ErrInvalidTaskResultReference = pipelineErrors.WrapUserError(errors.New("Invalid task result reference"))
 
 // ResolvedResultRefs represents all of the ResolvedResultRef for a pipeline task
 type ResolvedResultRefs []*ResolvedResultRef
@@ -195,6 +193,7 @@ func findRunResultForParam(customRun *v1beta1.CustomRun, reference *v1.ResultRef
 	err := fmt.Errorf("%w: Could not find result with name %s for task %s", ErrInvalidTaskResultReference, reference.Result, reference.PipelineTask)
 	return "", err
 }
+
 func findTaskResultForParam(taskRun *v1.TaskRun, reference *v1.ResultRef) (v1.ResultValue, error) {
 	results := taskRun.Status.TaskRunStatusFields.Results
 	for _, result := range results {
@@ -239,7 +238,7 @@ func (rs ResolvedResultRefs) getStringReplacements() map[string]string {
 	for _, r := range rs {
 		switch r.Value.Type {
 		case v1.ParamTypeArray:
-			for i := 0; i < len(r.Value.ArrayVal); i++ {
+			for i := range len(r.Value.ArrayVal) {
 				for _, target := range r.getReplaceTargetfromArrayIndex(i) {
 					replacements[target] = r.Value.ArrayVal[i]
 				}

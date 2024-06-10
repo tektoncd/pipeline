@@ -1772,7 +1772,6 @@ func TestApplyParameters(t *testing.T) {
 			},
 		},
 	} {
-		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
@@ -2082,7 +2081,6 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 			},
 		},
 	} {
-		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			run := &v1.PipelineRun{
@@ -2335,7 +2333,6 @@ func TestApplyReplacementsMatrix(t *testing.T) {
 			},
 		},
 	} {
-		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			run := &v1.PipelineRun{

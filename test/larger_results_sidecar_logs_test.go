@@ -61,7 +61,6 @@ func TestLargerResultsSidecarLogs(t *testing.T) {
 	}}
 
 	for _, td := range tds {
-		td := td
 		t.Run(td.name, func(t *testing.T) {
 			ctx := context.Background()
 			ctx, cancel := context.WithCancel(ctx)

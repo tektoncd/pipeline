@@ -47,7 +47,7 @@ func TestDuplicatePodTaskRun(t *testing.T) {
 	// The number of builds generated has a direct impact on test
 	// runtime and is traded off against proving the taskrun
 	// reconciler's efficacy at not duplicating pods.
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		wg.Add(1)
 		taskrunName := helpers.ObjectNameForTest(t)
 		t.Logf("Creating taskrun %q.", taskrunName)

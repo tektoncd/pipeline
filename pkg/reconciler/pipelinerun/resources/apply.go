@@ -39,13 +39,11 @@ const (
 	objectIndividualVariablePattern = "params.%s.%s"
 )
 
-var (
-	paramPatterns = []string{
-		"params.%s",
-		"params[%q]",
-		"params['%s']",
-	}
-)
+var paramPatterns = []string{
+	"params.%s",
+	"params[%q]",
+	"params['%s']",
+}
 
 // ApplyParameters applies the params from a PipelineRun.Params to a PipelineSpec.
 func ApplyParameters(ctx context.Context, p *v1.PipelineSpec, pr *v1.PipelineRun) *v1.PipelineSpec {
@@ -63,7 +61,7 @@ func ApplyParameters(ctx context.Context, p *v1.PipelineSpec, pr *v1.PipelineRun
 			switch p.Default.Type {
 			case v1.ParamTypeArray:
 				for _, pattern := range paramPatterns {
-					for i := 0; i < len(p.Default.ArrayVal); i++ {
+					for i := range len(p.Default.ArrayVal) {
 						stringReplacements[fmt.Sprintf(pattern+"[%d]", p.Name, i)] = p.Default.ArrayVal[i]
 					}
 					arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.ArrayVal
@@ -111,7 +109,7 @@ func paramsFromPipelineRun(ctx context.Context, pr *v1.PipelineRun) (map[string]
 		switch p.Value.Type {
 		case v1.ParamTypeArray:
 			for _, pattern := range paramPatterns {
-				for i := 0; i < len(p.Value.ArrayVal); i++ {
+				for i := range len(p.Value.ArrayVal) {
 					stringReplacements[fmt.Sprintf(pattern+"[%d]", p.Name, i)] = p.Value.ArrayVal[i]
 				}
 				arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.ArrayVal
@@ -454,7 +452,8 @@ func ApplyTaskResultsToPipelineResults(
 	results []v1.PipelineResult,
 	taskRunResults map[string][]v1.TaskRunResult,
 	customTaskResults map[string][]v1beta1.CustomRunResult,
-	taskstatus map[string]string) ([]v1.PipelineRunResult, error) {
+	taskstatus map[string]string,
+) ([]v1.PipelineRunResult, error) {
 	var runResults []v1.PipelineRunResult
 	var invalidPipelineResults []string
 

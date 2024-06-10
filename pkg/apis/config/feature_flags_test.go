@@ -410,7 +410,7 @@ func TestIsSpireEnabled(t *testing.T) {
 			Data: tc.configmap,
 		}
 		store.OnConfigChanged(featureflags)
-		ctx = store.ToContext(ctx)
+		ctx := store.ToContext(ctx)
 		got := config.IsSpireEnabled(ctx)
 
 		if tc.want != got {

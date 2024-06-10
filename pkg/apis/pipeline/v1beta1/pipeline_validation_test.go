@@ -364,7 +364,8 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 			return cfgtesting.SetFeatureFlags(ctx, t,
 				map[string]string{
 					"disable-inline-spec": "pipeline",
-					"enable-api-fields":   "alpha"})
+					"enable-api-fields":   "alpha",
+				})
 		},
 	}, {
 		name: "pipelineSpec when disable-inline-spec all",
@@ -384,7 +385,8 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 			return cfgtesting.SetFeatureFlags(ctx, t,
 				map[string]string{
 					"disable-inline-spec": "pipeline,taskrun,pipelinerun",
-					"enable-api-fields":   "alpha"})
+					"enable-api-fields":   "alpha",
+				})
 		},
 	}, {
 		name: "taskSpec when disable-inline-spec",
@@ -4741,7 +4743,6 @@ func TestGetIndexingReferencesToArrayParams(t *testing.T) {
 			want: sets.NewString("$(params.first-param[0])", "$(params.second-param[1])"),
 		},
 	} {
-		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got := tt.spec.GetIndexingReferencesToArrayParams()

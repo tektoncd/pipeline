@@ -308,7 +308,6 @@ type ParamValuesHolder struct {
 	AOrS v1.ParamValue `json:"val"`
 }
 
-//nolint:musttag
 func TestParamValues_UnmarshalJSON(t *testing.T) {
 	cases := []struct {
 		input  map[string]interface{}
@@ -399,7 +398,6 @@ func TestParamValues_UnmarshalJSON_Directly(t *testing.T) {
 	}
 }
 
-//nolint:musttag
 func TestParamValues_UnmarshalJSON_Error(t *testing.T) {
 	cases := []struct {
 		desc  string
@@ -417,7 +415,6 @@ func TestParamValues_UnmarshalJSON_Error(t *testing.T) {
 	}
 }
 
-//nolint:musttag
 func TestParamValues_MarshalJSON(t *testing.T) {
 	cases := []struct {
 		input  v1.ParamValue

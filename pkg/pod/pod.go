@@ -326,7 +326,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		// Each step should only mount their own volume as RW,
 		// all other steps should be mounted RO.
 		volumes = append(volumes, runVolume(i))
-		for j := 0; j < len(stepContainers); j++ {
+		for j := range len(stepContainers) {
 			s.VolumeMounts = append(s.VolumeMounts, runMount(j, i != j))
 		}
 
@@ -352,7 +352,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 				if s.Name != pipeline.ReservedResultsSidecarName {
 					continue
 				}
-				for j := 0; j < len(stepContainers); j++ {
+				for j := range len(stepContainers) {
 					s.VolumeMounts = append(s.VolumeMounts, runMount(j, true))
 				}
 				requestedVolumeMounts := map[string]bool{}

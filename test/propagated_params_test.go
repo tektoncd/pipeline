@@ -66,7 +66,6 @@ func TestPropagatedParams(t *testing.T) {
 	}}
 
 	for _, td := range tds {
-		td := td
 		t.Run(td.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
