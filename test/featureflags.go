@@ -124,6 +124,7 @@ func getFeatureFlagsBaseOnAPIFlag(t *testing.T) *config.FeatureFlags {
 		t.Fatalf("error creating alpha feature flags configmap: %v", err)
 	}
 	betaFeatureFlags, err := config.NewFeatureFlagsFromMap(map[string]string{
+		"results-from":        "sidecar-logs",
 		"enable-api-fields":   "beta",
 		"enable-step-actions": "true",
 	})
