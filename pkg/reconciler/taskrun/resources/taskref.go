@@ -84,7 +84,8 @@ func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekto
 // a remote image to fetch the  reference. It will also return the "kind" of the task being referenced.
 // OCI bundle and remote resolution tasks will be verified by trusted resources if the feature is enabled
 func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester,
-	owner kmeta.OwnerRefable, tr *v1.TaskRef, trName string, namespace, saName string, verificationPolicies []*v1alpha1.VerificationPolicy) GetTask {
+	owner kmeta.OwnerRefable, tr *v1.TaskRef, trName string, namespace, saName string, verificationPolicies []*v1alpha1.VerificationPolicy,
+) GetTask {
 	kind := v1.NamespacedTaskKind
 	if tr != nil && tr.Kind != "" {
 		kind = tr.Kind
@@ -213,9 +214,14 @@ func resolveStepAction(ctx context.Context, resolver remote.Resolver, name, name
 	}
 	switch obj := obj.(type) { //nolint:gocritic
 	case *v1alpha1.StepAction:
+		obj.SetDefaults(ctx)
+		// Cleanup object from things we don't care about
+		// FIXME: extract this in a function
+		obj.ObjectMeta.OwnerReferences = nil
 		if err := apiserver.DryRunValidate(ctx, namespace, obj, tekton); err != nil {
 			return nil, nil, err
 		}
+
 		return obj, refSource, nil
 	}
 	return nil, nil, errors.New("resource is not a StepAction")
@@ -234,6 +240,9 @@ func readRuntimeObjectAsTask(ctx context.Context, namespace string, obj runtime.
 	switch obj := obj.(type) {
 	case *v1beta1.Task:
 		obj.SetDefaults(ctx)
+		// Cleanup object from things we don't care about
+		// FIXME: extract this in a function
+		obj.ObjectMeta.OwnerReferences = nil
 		// Verify the Task once we fetch from the remote resolution, mutating, validation and conversion of the task should happen after the verification, since signatures are based on the remote task contents
 		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
 		// Issue a dry-run request to create the remote Task, so that it can undergo validation from validating admission webhooks
@@ -253,6 +262,9 @@ func readRuntimeObjectAsTask(ctx context.Context, namespace string, obj runtime.
 		return t, &vr, nil
 	case *v1beta1.ClusterTask:
 		obj.SetDefaults(ctx)
+		// Cleanup object from things we don't care about
+		// FIXME: extract this in a function
+		obj.ObjectMeta.OwnerReferences = nil
 		t, err := convertClusterTaskToTask(ctx, *obj)
 		// Issue a dry-run request to create the remote Task, so that it can undergo validation from validating admission webhooks
 		// without actually creating the Task on the cluster
@@ -264,6 +276,9 @@ func readRuntimeObjectAsTask(ctx context.Context, namespace string, obj runtime.
 		// This SetDefaults is currently not necessary, but for consistency, it is recommended to add it.
 		// Avoid forgetting to add it in the future when there is a v2 version, causing similar problems.
 		obj.SetDefaults(ctx)
+		// Cleanup object from things we don't care about
+		// FIXME: extract this in a function
+		obj.ObjectMeta.OwnerReferences = nil
 		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
 		// Issue a dry-run request to create the remote Task, so that it can undergo validation from validating admission webhooks
 		// without actually creating the Task on the cluster
