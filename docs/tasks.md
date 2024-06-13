@@ -858,6 +858,12 @@ precise string you want returned from your `Task` into the result files that you
 The stored results can be used [at the `Task` level](./pipelines.md#passing-one-tasks-results-into-the-parameters-or-when-expressions-of-another)
 or [at the `Pipeline` level](./pipelines.md#emitting-results-from-a-pipeline).
 
+> **Note** Tekton does not enforce Task results unless there is a consumer: when a Task declares a result,
+> it may complete successfully even if no result was actually produced. When a Task that declares results is
+> used in a Pipeline, and a component of the Pipeline attempts to consume the Task's result, if the result
+> was not produced the pipeline will fail. [TEP-0048](https://github.com/tektoncd/community/blob/main/teps/0048-task-results-without-results.md)
+> propopses introducing default values for results to help Pipeline authors manage this case.
+
 #### Emitting Object `Results`
 Emitting a task result of type `object` is implemented based on the
 [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md#emitting-object-results).
