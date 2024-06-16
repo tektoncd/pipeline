@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -72,36 +73,59 @@ func encode(w io.Writer, v any) error {
 }
 
 func waitForStepsToFinish(runDir string) error {
-	steps := make(map[string]bool)
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return fmt.Errorf("failed to creating the step status watcher: %w", err)
+	}
+	defer watcher.Close()
+
+	steps := make(map[string]struct{})
 	files, err := os.ReadDir(runDir)
 	if err != nil {
-		return fmt.Errorf("error parsing the run dir  %w", err)
+		return err
 	}
 	for _, file := range files {
-		steps[filepath.Join(runDir, file.Name(), "out")] = true
+		stepFile := filepath.Join(runDir, file.Name(), "out")
+		err = watcher.Add(filepath.Dir(stepFile))
+		if err != nil {
+			return fmt.Errorf("failed to add step status file %s to watcher: %w", stepFile, err)
+		}
+		steps[stepFile] = struct{}{}
 	}
+
+	steps = updateWatchableSteps(steps)
 	for len(steps) > 0 {
-		for stepFile := range steps {
-			// check if there is a post file without error
-			exists, err := fileExists(stepFile)
-			if err != nil {
-				return fmt.Errorf("error checking for out file's existence %w", err)
+		select {
+		case event, ok := <-watcher.Events:
+			if !ok {
+				return fmt.Errorf("failed to watch fs events: %w", err)
 			}
-			if exists {
-				delete(steps, stepFile)
-				continue
+			if event.Op&fsnotify.Create == fsnotify.Create {
+				stepFile := strings.TrimSuffix(event.Name, ".err")
+				if _, exists := steps[stepFile]; exists {
+					delete(steps, stepFile)
+				}
 			}
-			// check if there is a post file with error
-			// if err is nil then either the out.err file does not exist or it does and there was no issue
-			// in either case, existence of out.err marks that the step errored and the following steps will
-			// not run. We want the function to break out with nil error in that case so that
-			// the existing results can be logged.
-			if exists, err = fileExists(stepFile + ".err"); exists || err != nil {
-				return err
+		case err, ok := <-watcher.Errors:
+			if !ok {
+				return fmt.Errorf("failed to watch fs events: %w", err)
 			}
+			return fmt.Errorf("watching error: %w", err)
 		}
 	}
 	return nil
+}
+
+func updateWatchableSteps(steps map[string]struct{}) map[string]struct{} {
+	for stepFile := range steps {
+		if exist, err := fileExists(stepFile); exist && err == nil {
+			delete(steps, stepFile)
+		}
+		if exists, err := fileExists(fmt.Sprintf("%s.err", stepFile)); exists && err == nil {
+			delete(steps, stepFile)
+		}
+	}
+	return steps
 }
 
 func createSidecarResultName(stepName, resultName string) string {

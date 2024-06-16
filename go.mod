@@ -47,6 +47,7 @@ replace (
 
 require (
 	code.gitea.io/sdk/gitea v0.18.0
+	github.com/fsnotify/fsnotify v1.7.0
 	github.com/go-jose/go-jose/v3 v3.0.3
 	github.com/goccy/kpoward v0.1.0
 	github.com/google/cel-go v0.20.1
