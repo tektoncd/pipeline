@@ -288,7 +288,8 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 			if taskTimeout.Duration == config.NoTimeoutDuration {
 				waitTime = time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes) * time.Minute
 			}
-		} else if pr.Status.FinallyStartTime != nil && pr.FinallyTimeout() != nil {
+		} else if pr.Status.FinallyStartTime != nil && pr.FinallyTimeout() != nil &&
+			pr.FinallyTimeout().Duration != config.NoTimeoutDuration {
 			finallyWaitTime := pr.FinallyTimeout().Duration - c.Clock.Since(pr.Status.FinallyStartTime.Time)
 			if finallyWaitTime < waitTime {
 				waitTime = finallyWaitTime
