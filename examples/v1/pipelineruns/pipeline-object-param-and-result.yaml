@@ -21,7 +21,7 @@ spec:
           type: string
   steps:
     - name: write-result
-      image: bash:latest
+      image: docker.io/library/bash:latest
       script: |
         #!/usr/bin/env bash
         echo -n "{\"foo\":\"$(params.arg.url)\",\"bar\":\"$(params.arg.commit)\"}" | tee $(results.object-result.path)
@@ -41,7 +41,7 @@ spec:
           type: string
   steps:
     - name: echo-params
-      image: bash:latest
+      image: docker.io/library/bash:latest
       args: [
         "$(params.arg.foo)",
         "$(params.arg.bar)"

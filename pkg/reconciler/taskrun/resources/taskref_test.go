@@ -1919,7 +1919,7 @@ spec:
       - "bar"
   steps:
   - name: step1
-    image: ubuntu
+    image: docker.io/library/ubuntu
     script: |
       echo "hello world!"
 `

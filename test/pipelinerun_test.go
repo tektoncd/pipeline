@@ -68,7 +68,7 @@ spec:
   - name: HELLO
     default: "Hi!"
   steps:
-  - image: ubuntu
+  - image: docker.io/library/ubuntu
     script: |
       #!/usr/bin/env bash
       echo "$(params.HELLO)"
@@ -440,7 +440,7 @@ spec:
     taskSpec:
       steps:
       - name: echo
-        image: ubuntu
+        image: docker.io/library/ubuntu
         script: |
           #!/usr/bin/env bash
           # Sleep for 10s
@@ -450,7 +450,7 @@ spec:
     taskSpec:
       steps:
       - name: echo
-        image: ubuntu
+        image: docker.io/library/ubuntu
         script: |
           #!/usr/bin/env bash
           # Sleep for another 10s
@@ -512,7 +512,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: ubuntu
+  - image: docker.io/library/ubuntu
     command: ['/bin/bash']
     args: ['-c', 'echo hello, world']
 `, taskName, namespace)), metav1.CreateOptions{}); err != nil {
@@ -582,10 +582,10 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: busybox
+  - image: docker.io/library/busybox
     name: write-data-task-0-step-0
     script: echo stuff | tee $(results.result-stuff.path)
-  - image: busybox
+  - image: docker.io/library/busybox
     name: write-data-task-0-step-1
     script: echo other | tee $(results.result-other.path)
   results:
@@ -600,10 +600,10 @@ spec:
   params:
   - name: check-stuff
   steps:
-  - image: busybox
+  - image: docker.io/library/busybox
     name: read-from-task-0
     script: echo $(params.check-stuff)
-  - image: busybox
+  - image: docker.io/library/busybox
     name: write-data-task-1
     script: echo | tee $(results.result-something.path)
   results:
@@ -618,9 +618,9 @@ spec:
   - name: check-other
   steps:
   - script: echo $(params.check-other)
-    image: busybox
+    image: docker.io/library/busybox
     name: read-from-task-0
-  - image: busybox
+  - image: docker.io/library/busybox
     name: write-data-task-1
     script: echo something | tee $(results.result-else.path)
   results:
@@ -637,7 +637,7 @@ spec:
   - name: workspacepath-else
     value: $(tasks.create-file.results.result-else)
   steps:
-  - image: busybox
+  - image: docker.io/library/busybox
     script: echo params.workspacepath-something
 `, helpers.ObjectNameForTest(t), namespace)),
 	}
@@ -971,7 +971,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: ubuntu
+  - image: docker.io/library/ubuntu
     command: ['/bin/bash']
     args: ['-c', 'echo hello, world']
 `, taskName, namespace)), metav1.CreateOptions{}); err != nil {
@@ -1007,7 +1007,7 @@ spec:
           - name: abc
         steps:
         - name: update-sa
-          image: bash:latest
+          image: docker.io/library/bash:latest
           script: |
             echo 'test' >  $(results.abc.path)
             exit 1

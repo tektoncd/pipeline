@@ -16,7 +16,7 @@ spec:
     optional: true
   - name: launch
   steps:
-  - image: node:lts-alpine3.11
+  - image: docker.io/library/node:lts-alpine3.11
     script: |
       #!/usr/bin/env sh
       if [ $(workspaces.prelaunch.bound) == "true" ] ; then
@@ -40,7 +40,7 @@ spec:
   - name: values
     type: array
   steps:
-  - image: alpine
+  - image: docker.io/library/alpine
     command: ["echo"]
     args: ["$(params.values[*])"]
 ---

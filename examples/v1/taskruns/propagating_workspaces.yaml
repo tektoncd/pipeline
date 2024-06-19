@@ -6,7 +6,7 @@ spec:
   taskSpec:
     steps:
       - name: simple-step
-        image: ubuntu
+        image: docker.io/library/ubuntu
         command:
           - echo
         args:

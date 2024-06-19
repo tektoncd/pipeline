@@ -24,7 +24,7 @@ spec:
           IMAGE_DIGEST: {type: string}
     steps:
       - name: validate-object-params
-        image: bash
+        image: docker.io/library/bash
         args: [
           "$(params.gitrepo.url)",
           "$(params.gitrepo.commit)"
@@ -43,7 +43,7 @@ spec:
             echo "validate the params.gitrepo.commit successfully"
           fi
       - name: write-object-result
-        image: bash:latest
+        image: docker.io/library/bash:latest
         script: |
           #!/usr/bin/env bash
           echo -n "{\"IMAGE_URL\":\"ar.com\", \"IMAGE_DIGEST\":\"sha234\"}" > $(results.object-results.path)

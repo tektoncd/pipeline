@@ -6,14 +6,14 @@ spec:
   taskSpec:
     steps:
     - name: write
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script: echo some stuff > /workspace/stuff
     - name: read
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script: cat /workspace/stuff
 
     - name: override-workspace
-      image: ubuntu
+      image: docker.io/library/ubuntu
       # /workspace/stuff *doesn't* exist.
       script: |
         #!/usr/bin/env bash

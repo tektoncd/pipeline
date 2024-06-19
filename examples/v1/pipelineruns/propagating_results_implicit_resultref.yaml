@@ -8,7 +8,7 @@ spec:
       type: string
   steps:
     - name: uid
-      image: busybox
+      image: docker.io/library/busybox
       command: ["/bin/sh", "-c"]
       args:
         - echo "1001" | tee $(results.uid.path)
@@ -27,7 +27,7 @@ spec:
         taskSpec:
           steps:
             - name: show-uid
-              image: busybox
+              image: docker.io/library/busybox
               command: ["/bin/sh", "-c"]
               args:
                 - echo $(tasks.add-uid.results.uid)

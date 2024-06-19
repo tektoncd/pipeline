@@ -62,7 +62,7 @@ spec:
           memory: 5000Gi
   steps:
     - name: echo
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script: |
         #!/usr/bin/env bash
         echo "Good Morning!" > $(workspaces.task-ws.path)

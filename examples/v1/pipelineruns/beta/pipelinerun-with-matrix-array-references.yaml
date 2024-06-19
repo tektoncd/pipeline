@@ -13,7 +13,7 @@ spec:
       default: ""
   steps:
     - name: echo
-      image: alpine
+      image: docker.io/library/alpine
       script: |
         echo "$(params.platform) and $(params.browser)"
 ---
