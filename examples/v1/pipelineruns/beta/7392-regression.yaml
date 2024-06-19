@@ -10,7 +10,7 @@ spec:
     default: []
   steps:
   - name: step1
-    image: bash:latest
+    image: docker.io/library/bash:latest
     args:
       - --images
       - $(params.arrayVal1[*])
@@ -20,7 +20,7 @@ spec:
         echo $arg
       done
   - name: step2
-    image: bash:latest
+    image: docker.io/library/bash:latest
     script: |
       #!/usr/bin/env bash
       echo -n '[]' | tee $(results.resultArray.path)

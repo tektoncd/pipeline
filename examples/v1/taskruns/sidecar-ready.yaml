@@ -6,7 +6,7 @@ spec:
   taskSpec:
     sidecars:
     - name: slow-sidecar
-      image: ubuntu
+      image: docker.io/library/ubuntu
       command: ['sleep', 'infinity']
       # The sidecar takes 5s to report as Ready, even after it starts.  If the
       # step runs as soon as the sidecar starts, it will fail because
@@ -24,7 +24,7 @@ spec:
 
     steps:
     - name: check-ready
-      image: ubuntu
+      image: docker.io/library/ubuntu
       # The step will only succeed if the sidecar has written this file, which
       # it does 5s after it starts, before it reports Ready.
       script: cat /shared/ready

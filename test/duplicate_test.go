@@ -59,7 +59,7 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: busybox
+    - image: docker.io/library/busybox
       command: ['/bin/echo']
       args: ['simple']
 `, taskrunName, namespace))

@@ -79,11 +79,11 @@ metadata:
 spec:
   steps:
   - name: %s
-    image: busybox
+    image: docker.io/library/busybox
     command: [%s]
   sidecars:
   - name: %s
-    image: busybox
+    image: docker.io/library/busybox
     command: [%s]
 `, sidecarTaskName, namespace, primaryContainerName, stringSliceToYAMLArray(test.stepCommand), sidecarContainerName, stringSliceToYAMLArray(test.sidecarCommand)))
 

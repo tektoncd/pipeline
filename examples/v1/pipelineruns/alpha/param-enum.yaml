@@ -9,7 +9,7 @@ spec:
     enum: ["v1", "v2", "v3"]
   steps:
   - name: build
-    image: bash:latest
+    image: docker.io/library/bash:latest
     script: |
       echo "$(params.message)"
 ---

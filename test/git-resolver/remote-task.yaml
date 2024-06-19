@@ -5,6 +5,6 @@ metadata:
 spec:
   steps:
   - name: sleep
-    image: busybox
+    image: docker.io/library/busybox
     command: ['/bin/sh']
     args: ['-c', 'sleep 10']

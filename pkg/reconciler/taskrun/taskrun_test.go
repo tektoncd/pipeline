@@ -1194,7 +1194,7 @@ spec:
           spec:
             steps:
             - name: step1
-              image: ubuntu
+              image: docker.io/library/ubuntu
               script: |
                 echo "hello world!"
         `)
@@ -2755,7 +2755,7 @@ metadata:
 spec:
   taskSpec:
     sidecars:
-    - image: ubuntu
+    - image: docker.io/library/ubuntu
     - image: whatever
     steps:
     - image: alpine

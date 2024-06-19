@@ -19,7 +19,7 @@ spec:
         - name: pipelineTask-retries
         - name: pipelineTask-retry-count
         steps:
-        - image: alpine:3.12.0
+        - image: docker.io/library/alpine:3.12.0
           script: |
             #!/usr/bin/env sh
             if [ "$(params.pipelineTask-retry-count)" == "$(params.pipelineTask-retries)" ]; then
@@ -33,6 +33,6 @@ spec:
       - retry-me
       taskSpec:
         steps:
-        - image: busybox
+        - image: docker.io/library/busybox
           script: |
             echo "hello world"

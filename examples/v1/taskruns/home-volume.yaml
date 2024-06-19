@@ -6,13 +6,13 @@ spec:
   taskSpec:
     steps:
     - name: write
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script: echo some stuff > /tekton/home/stuff
     - name: read
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script: cat /tekton/home/stuff
     - name: override-homevol
-      image: ubuntu
+      image: docker.io/library/ubuntu
       # /tekton/home/stuff *doesn't* exist, because the specified volumeMount
       # conflicts with it, and the user's explicit declaration wins the tie.
       script: |

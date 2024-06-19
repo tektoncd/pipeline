@@ -3,7 +3,7 @@ kind: StepAction
 metadata:
   name: step-action
 spec:
-  image: alpine
+  image: docker.io/library/alpine
   results:
     - name: result1
     - name: result2

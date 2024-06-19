@@ -21,13 +21,13 @@ spec:
           - name: CONTINUE
           steps:
             # not really doing anything here, just a hurdle to test the "ignore step error"
-            - image: alpine
+            - image: docker.io/library/alpine
               onError: $(params.CONTINUE)
               name: exit-with-1
               script: |
                 exit 1
             # initialize a task result which will be validated by the next task
-            - image: alpine
+            - image: docker.io/library/alpine
               name: write-a-result
               onError: continue
               script: |
@@ -46,13 +46,13 @@ spec:
             - name: task1-result
           steps:
             # again, not really doing anything here, just a hurdle to test the "ignore step error"
-            - image: alpine
+            - image: docker.io/library/alpine
               onError: continue
               name: exit-with-255
               script: |
                 exit 255
             # verify that the task result was produced by the first task, fail if the result does not match
-            - image: alpine
+            - image: docker.io/library/alpine
               name: verify-a-task-result
               script: |
                 if [ $(params.task1-result) == 123 ]; then
@@ -62,7 +62,7 @@ spec:
                     exit 1
                 fi
             # the last step of a task and one more hurdle
-            - image: alpine
+            - image: docker.io/library/alpine
               name: exit-with-20
               onError: continue
               script: |
@@ -89,7 +89,7 @@ spec:
         taskSpec:
           steps:
             - name: write
-              image: alpine
+              image: docker.io/library/alpine
               onError: continue
               script: |
                 ls -1 /tekton/run/
@@ -106,7 +106,7 @@ spec:
         taskSpec:
           steps:
             - name: read
-              image: alpine
+              image: docker.io/library/alpine
               onError: continue
               script: |
                 cat $(workspaces.myws.path)/foo | grep bar

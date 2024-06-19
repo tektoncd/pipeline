@@ -47,7 +47,7 @@ spec:
         - name: message-of-the-day
           optional: true
         steps:
-        - image: alpine
+        - image: docker.io/library/alpine
           script: |
             #!/usr/bin/env ash
             for f in "$(workspaces.message-of-the-day.path)"/* ; do
@@ -63,6 +63,6 @@ spec:
       taskSpec:
         steps:
         - name: print-default
-          image: alpine
+          image: docker.io/library/alpine
           script: |
             echo "No message-of-the-day workspace was provided. This is the default MOTD instead!"

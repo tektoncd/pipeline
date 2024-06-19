@@ -5,7 +5,7 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: ubuntu
+    - image: docker.io/library/ubuntu
       env:
       - name: HOME
         value: /tekton/home
