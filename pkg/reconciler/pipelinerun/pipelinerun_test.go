@@ -956,10 +956,26 @@ spec:
 			"Warning Failed [User error] PipelineRun foo/embedded-pipeline-mismatching-param-type parameters have mismatching types with Pipeline foo/embedded-pipeline-mismatching-param-type's parameters: parameters have inconsistent types : [some-param]",
 		},
 	}, {
-		name: "invalid-pipeline-run-missing-params-shd-stop-reconciling",
+		name: "invalid-pipeline-run-missing-params-with-ref-shd-stop-reconciling",
+		pipelineRun: parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pipelinerun-missing-params-1
+  namespace: foo
+spec:
+  pipelineRef:
+    name: a-pipeline-with-array-params
+`),
+		reason:         v1.PipelineRunReasonParameterMissing.String(),
+		permanentError: true,
+		wantEvents: []string{
+			"Normal Started",
+			"Warning Failed [User error] PipelineRun foo/pipelinerun-missing-params-1 is missing some parameters required by Pipeline a-pipeline-with-array-params: pipelineRun missing parameters: [some-param]",
+		},
+	}, {
+		name: "invalid-pipeline-run-missing-params-with-spec-shd-stop-reconciling",
 		pipelineRun: parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
-  name: pipelinerun-missing-params
+  name: pipelinerun-missing-params-2
   namespace: foo
 spec:
   pipelineSpec:
@@ -975,7 +991,7 @@ spec:
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed [User error] PipelineRun foo/pipelinerun-missing-params is missing some parameters required by Pipeline pipelinerun-missing-params: pipelineRun missing parameters: [some-param]",
+			"Warning Failed [User error] PipelineRun foo/pipelinerun-missing-params-2 is missing some parameters required by Pipeline pipelinerun-missing-params-2: pipelineRun missing parameters: [some-param]",
 		},
 	}, {
 		name: "invalid-pipeline-with-invalid-dag-graph",
