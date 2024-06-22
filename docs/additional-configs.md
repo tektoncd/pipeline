@@ -360,6 +360,11 @@ Defaults to "ignore".
 - `set-security-context`: Set this flag to `true` to set a security context for containers injected by Tekton that will allow TaskRun pods
 to run in namespaces with `restricted` pod security admission. By default, this is set to `false`.
 
+- `set-security-context-read-only-root-filesystem`: Set this flag to `true` to enable `readOnlyRootFilesystem` in the
+  security context for containers injected by Tekton. This makes the root filesystem of the container read-only,
+  enhancing security. Note that this requires `set-security-context` to be enabled. By default, this flag is set
+  to `false`. Note: This feature does not work in windows as it is not supported there, [Comparison with linux](https://kubernetes.io/docs/concepts/windows/intro/#compatibility-linux-similarities). 
+
 ### Alpha Features
 
 Alpha features in the following table are still in development and their syntax is subject to change.
