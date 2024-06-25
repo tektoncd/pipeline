@@ -77,6 +77,7 @@ type KeyPolicy struct {
 	AllowRSA           bool // Whether RSA keys should be allowed.
 	AllowECDSANISTP256 bool // Whether ECDSA NISTP256 keys should be allowed.
 	AllowECDSANISTP384 bool // Whether ECDSA NISTP384 keys should be allowed.
+	AllowECDSANISTP521 bool // Whether ECDSA NISTP521 keys should be allowed.
 	weakRSAList        *WeakRSAKeys
 	blockedList        *blockedKeys
 	fermatRounds       int
@@ -268,6 +269,8 @@ func (policy *KeyPolicy) goodCurve(c elliptic.Curve) (err error) {
 		return nil
 	case policy.AllowECDSANISTP384 && params == elliptic.P384().Params():
 		return nil
+	case policy.AllowECDSANISTP521 && params == elliptic.P521().Params():
+		return nil
 	default:
 		return badKey("ECDSA curve %v not allowed", params.Name)
 	}
@@ -400,7 +403,7 @@ func checkPrimeFactorsTooClose(n *big.Int, rounds int) error {
 	b2 := new(big.Int)
 	b2.Mul(a, a).Sub(b2, n)
 
-	for i := 0; i < rounds; i++ {
+	for range rounds {
 		// To see if b2 is a perfect square, we take its square root, square that,
 		// and check to see if we got the same result back.
 		bb.Sqrt(b2).Mul(bb, bb)
