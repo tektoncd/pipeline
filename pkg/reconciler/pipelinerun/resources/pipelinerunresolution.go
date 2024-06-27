@@ -780,14 +780,23 @@ func isCustomRunCancelledByPipelineRunTimeout(cr *v1beta1.CustomRun) bool {
 func CheckMissingResultReferences(pipelineRunState PipelineRunState, targets PipelineRunState) error {
 	for _, target := range targets {
 		for _, resultRef := range v1.PipelineTaskResultRefs(target.PipelineTask) {
-			referencedPipelineTask := pipelineRunState.ToMap()[resultRef.PipelineTask]
+			referencedPipelineTask, ok := pipelineRunState.ToMap()[resultRef.PipelineTask]
+			if !ok {
+				return fmt.Errorf("Result reference error: Could not find ref \"%s\" in internal pipelineRunState", resultRef.PipelineTask)
+			}
 			if referencedPipelineTask.IsCustomTask() {
+				if len(referencedPipelineTask.CustomRuns) == 0 {
+					return fmt.Errorf("Result reference error: Internal result ref \"%s\" has zero-length CustomRuns", resultRef.PipelineTask)
+				}
 				customRun := referencedPipelineTask.CustomRuns[0]
 				_, err := findRunResultForParam(customRun, resultRef)
 				if err != nil {
 					return err
 				}
 			} else {
+				if len(referencedPipelineTask.TaskRuns) == 0 {
+					return fmt.Errorf("Result reference error: Internal result ref \"%s\" has zero-length TaskRuns", resultRef.PipelineTask)
+				}
 				taskRun := referencedPipelineTask.TaskRuns[0]
 				_, err := findTaskResultForParam(taskRun, resultRef)
 				if err != nil {
