@@ -856,6 +856,18 @@ with those declared in the pipeline.</p>
 <p>TaskRunSpecs holds a set of runtime specs</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>failFast</code><br/>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FailFast is an option. When a failed task is found, other parallel tasks can be quickly canceled.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -2474,6 +2486,18 @@ with those declared in the pipeline.</p>
 <td>
 <em>(Optional)</em>
 <p>TaskRunSpecs holds a set of runtime specs</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>failFast</code><br/>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FailFast is an option. When a failed task is found, other parallel tasks can be quickly canceled.</p>
 </td>
 </tr>
 </tbody>
@@ -9206,6 +9230,18 @@ with those declared in the pipeline.</p>
 <p>TaskRunSpecs holds a set of runtime specs</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>failFast</code><br/>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FailFast is an option. When a failed task is found, other parallel tasks can be quickly canceled.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -11614,6 +11650,18 @@ with those declared in the pipeline.</p>
 <td>
 <em>(Optional)</em>
 <p>TaskRunSpecs holds a set of runtime specs</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>failFast</code><br/>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FailFast is an option. When a failed task is found, other parallel tasks can be quickly canceled.</p>
 </td>
 </tr>
 </tbody>
