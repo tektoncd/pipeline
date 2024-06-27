@@ -1717,6 +1717,19 @@ IncludeParamsList
 <p>Include is a list of IncludeParams which allows passing in specific combinations of Parameters into the Matrix.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>strategy</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Strategy is a JSON payload with a list of combinations
+Strategy is an extension of Include to support dynamic combinations</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.OnErrorType">OnErrorType
@@ -5062,6 +5075,9 @@ More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/sec
 </p>
 <div>
 <p>TaskBreakpoints defines the breakpoint config for a particular Task</p>
+<h3 id="tekton.dev/v1.Strategy">Strategy
+</h3>
+<div>
 </div>
 <table>
 <thead>
@@ -5082,6 +5098,12 @@ string
 <em>(Optional)</em>
 <p>if enabled, pause TaskRun on failure of a step
 failed step will not exit</p>
+<code>include</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -10790,6 +10812,19 @@ IncludeParamsList
 <p>Include is a list of IncludeParams which allows passing in specific combinations of Parameters into the Matrix.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>strategy</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Strategy is a JSON payload with a list of combinations
+Strategy is an extension of Include to support dynamic combinations</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1beta1.OnErrorType">OnErrorType
@@ -14779,6 +14814,9 @@ Default is false.</p>
 </p>
 <div>
 <p>TaskBreakpoints defines the breakpoint config for a particular Task</p>
+<h3 id="tekton.dev/v1beta1.Strategy">Strategy
+</h3>
+<div>
 </div>
 <table>
 <thead>
@@ -14799,6 +14837,12 @@ string
 <em>(Optional)</em>
 <p>if enabled, pause TaskRun on failure of a step
 failed step will not exit</p>
+<code>include</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
