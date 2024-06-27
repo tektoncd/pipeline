@@ -120,3 +120,35 @@ func TestSidecarGetVarSubstitutionExpressions(t *testing.T) {
 		t.Fatalf("Unexpected result (-want, +got): %s", d)
 	}
 }
+
+func TestSidecarRestartPolicyToK8sContainer(t *testing.T) {
+	always := corev1.ContainerRestartPolicyAlways
+	s := Sidecar{
+		Name:          "sidecarName",
+		RestartPolicy: &always,
+	}
+
+	expectedContainer := corev1.Container{
+		Name:          "sidecarName",
+		RestartPolicy: &always,
+	}
+
+	c := s.ToK8sContainer()
+
+	if !(c.RestartPolicy == expectedContainer.RestartPolicy) {
+		t.Fatalf("Unexpected result with RestartPolicy")
+	}
+
+	s = Sidecar{
+		Name: "sidecarName",
+	}
+
+	expectedContainer = corev1.Container{
+		Name: "sidecarName",
+	}
+
+	c = s.ToK8sContainer()
+	if !(c.RestartPolicy == expectedContainer.RestartPolicy) {
+		t.Fatalf("Unexpected result without RestartPolicy")
+	}
+}
