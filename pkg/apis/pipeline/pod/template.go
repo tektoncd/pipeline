@@ -223,6 +223,62 @@ func MergePodTemplateWithDefault(tpl, defaultTpl *PodTemplate) *PodTemplate {
 	}
 }
 
+// Similar to MergePodTemplateWithDefault, but more fine-grained. When the value
+// type is map or slice, we will merge their values first. If there is the same
+// value, the value from tpl will overwrite the value from defaultTpl.
+func ExpandedMergePodTemplateWithDefault(tpl, defaultTpl *PodTemplate) *PodTemplate {
+	switch {
+	case defaultTpl == nil:
+		// No configured default, just return the template
+		return tpl
+	case tpl == nil:
+		// No template, just return the default template
+		return defaultTpl
+	default:
+		// Otherwise, merge fields
+		if tpl.NodeSelector == nil {
+			tpl.NodeSelector = defaultTpl.NodeSelector
+		} else {
+			tpl.NodeSelector = mergeMaps(defaultTpl.NodeSelector, tpl.NodeSelector)
+		}
+
+		tpl.Env = mergeByName(defaultTpl.Env, tpl.Env)
+		tpl.Tolerations = mergeByName(defaultTpl.Tolerations, tpl.Tolerations)
+		if tpl.SecurityContext == nil {
+			tpl.SecurityContext = defaultTpl.SecurityContext
+		}
+		tpl.Volumes = mergeByName(defaultTpl.Volumes, tpl.Volumes)
+		if tpl.RuntimeClassName == nil {
+			tpl.RuntimeClassName = defaultTpl.RuntimeClassName
+		}
+		if tpl.AutomountServiceAccountToken == nil {
+			tpl.AutomountServiceAccountToken = defaultTpl.AutomountServiceAccountToken
+		}
+		if tpl.DNSPolicy == nil {
+			tpl.DNSPolicy = defaultTpl.DNSPolicy
+		}
+		if tpl.DNSConfig == nil {
+			tpl.DNSConfig = defaultTpl.DNSConfig
+		}
+		if tpl.EnableServiceLinks == nil {
+			tpl.EnableServiceLinks = defaultTpl.EnableServiceLinks
+		}
+		if tpl.PriorityClassName == nil {
+			tpl.PriorityClassName = defaultTpl.PriorityClassName
+		}
+		if tpl.SchedulerName == "" {
+			tpl.SchedulerName = defaultTpl.SchedulerName
+		}
+		tpl.ImagePullSecrets = mergeByName(defaultTpl.ImagePullSecrets, tpl.ImagePullSecrets)
+		tpl.HostAliases = mergeByName(defaultTpl.HostAliases, tpl.HostAliases)
+		if !tpl.HostNetwork && defaultTpl.HostNetwork {
+			tpl.HostNetwork = true
+		}
+		tpl.TopologySpreadConstraints = mergeByName(defaultTpl.TopologySpreadConstraints, tpl.TopologySpreadConstraints)
+		return tpl
+	}
+}
+
 // AAPodTemplate holds pod specific configuration for the affinity-assistant
 type AAPodTemplate = AffinityAssistantTemplate
 
@@ -249,6 +305,24 @@ func MergeAAPodTemplateWithDefault(tpl, defaultTpl *AAPodTemplate) *AAPodTemplat
 		}
 		return tpl
 	}
+}
+
+// mergeMaps takes two maps with the same key and value types
+// and merges them, giving priority to the items in the override map.
+func mergeMaps[K comparable, V any](base, overrides map[K]V) map[K]V {
+	result := make(map[K]V)
+
+	// Add all elements from base to the result
+	for key, value := range base {
+		result[key] = value
+	}
+
+	// Add all elements from overrides to the result, overwriting any existing keys
+	for key, value := range overrides {
+		result[key] = value
+	}
+
+	return result
 }
 
 // mergeByName merges two slices of items with names based on the getName
@@ -291,6 +365,14 @@ func getName(item interface{}) string {
 	case corev1.EnvVar:
 		return item.Name
 	case corev1.Volume:
+		return item.Name
+	case corev1.Toleration:
+		return item.Key
+	case corev1.TopologySpreadConstraint:
+		return item.TopologyKey
+	case corev1.HostAlias:
+		return item.IP
+	case corev1.LocalObjectReference:
 		return item.Name
 	default:
 		return ""
