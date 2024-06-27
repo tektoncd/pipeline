@@ -1322,6 +1322,20 @@ func propagatePipelineNameLabelToPipelineRun(pr *v1.PipelineRun) error {
 		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pr.Name
 	case pr.Spec.PipelineRef != nil && pr.Spec.PipelineRef.Resolver != "":
 		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pr.Name
+
+		// https://tekton.dev/docs/pipelines/cluster-resolver/#pipeline-resolution
+		var kind, name string
+		for _, param := range pr.Spec.PipelineRef.Params {
+			if param.Name == "kind" {
+				kind = param.Value.StringVal
+			}
+			if param.Name == "name" {
+				name = param.Value.StringVal
+			}
+		}
+		if kind == "pipeline" {
+			pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = name
+		}
 	default:
 		return fmt.Errorf("pipelineRun %s not providing PipelineRef or PipelineSpec", pr.Name)
 	}
