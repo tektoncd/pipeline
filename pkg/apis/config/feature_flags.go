@@ -185,12 +185,12 @@ type FeatureFlags struct {
 	RunningInEnvWithInjectedSidecars bool
 	RequireGitSSHSecretKnownHosts    bool
 	// EnableTektonOCIBundles           bool // Deprecated: this is now ignored
-	ScopeWhenExpressionsToTask bool
-	EnableAPIFields            string
-	SendCloudEventsForRuns     bool
-	AwaitSidecarReadiness      bool
-	EnforceNonfalsifiability   string
-	EnableKeepPodOnCancel      bool
+	// ScopeWhenExpressionsToTask       bool // Deprecated: this is now ignored
+	EnableAPIFields          string
+	SendCloudEventsForRuns   bool
+	AwaitSidecarReadiness    bool
+	EnforceNonfalsifiability string
+	EnableKeepPodOnCancel    bool
 	// VerificationNoMatchPolicy is the feature flag for "trusted-resources-verification-no-match-policy"
 	// VerificationNoMatchPolicy can be set to "ignore", "warn" and "fail" values.
 	// ignore: skip trusted resources verification when no matching verification policies found
