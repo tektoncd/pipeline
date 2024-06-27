@@ -35,7 +35,7 @@ spec:
     description: The second integer
   steps:
   - name: sum
-    image: bash:latest
+    image: docker.io/library/bash:latest
     script: |
       #!/usr/bin/env bash
       echo -n $(( "$(inputs.params.a)" + "$(inputs.params.b)" ))

@@ -51,7 +51,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: ubuntu
+  - image: docker.io/library/ubuntu
     workingDir: /workspace/HELLOMOTO
     args: ['-c', 'echo YES']
 `, wdTaskName, namespace))
@@ -124,7 +124,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: ubuntu
+  - image: docker.io/library/ubuntu
     workingDir: /HELLOMOTO
     args: ['-c', 'echo YES']
 `, wdTaskName, namespace))

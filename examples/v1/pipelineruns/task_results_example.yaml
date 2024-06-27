@@ -58,7 +58,7 @@ spec:
       description: The sum of the two provided integers
   steps:
     - name: sum
-      image: bash:latest
+      image: docker.io/library/bash:latest
       script: |
         #!/usr/bin/env bash
         echo -n $(( "$(params.a)" + "$(params.b)" )) | tee $(results.sum.path)
@@ -85,7 +85,7 @@ spec:
       description: The product of the two provided integers
   steps:
     - name: product
-      image: bash:latest
+      image: docker.io/library/bash:latest
       script: |
         #!/usr/bin/env bash
         echo -n $(( "$(params.a)" * "$(params.b)" )) | tee $(results.product.path)

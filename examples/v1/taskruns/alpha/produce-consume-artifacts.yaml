@@ -8,7 +8,7 @@ spec:
       A simple task that populates artifacts to TaskRun stepState
     steps:
       - name: artifacts-producer
-        image: bash:latest
+        image: docker.io/library/bash:latest
         script: |
           cat > $(step.artifacts.path) << EOF
           {
@@ -42,12 +42,12 @@ spec:
           }
           EOF
       - name: artifacts-consumer
-        image: bash:latest
+        image: docker.io/library/bash:latest
         script: |
           echo $(steps.artifacts-producer.outputs)
           echo $(steps.artifacts-producer.inputs.input-artifacts)
       - name: artifacts-consumer-python
-        image: python:latest
+        image: docker.io/library/python:latest
         script: |
           #!/usr/bin/env python3
           import json

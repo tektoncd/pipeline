@@ -5,8 +5,8 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: busybox
+    - image: docker.io/library/busybox
       # NB: command is not set, so it must be looked up from the registry.
       args: ['-c', 'sleep 3 && touch foo']
-    - image: busybox
+    - image: docker.io/library/busybox
       args: ['-c', 'ls', 'foo']

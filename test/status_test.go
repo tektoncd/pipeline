@@ -60,7 +60,7 @@ metadata:
 spec:
   steps:
   - name: foo
-    image: busybox
+    image: docker.io/library/busybox
     command: ['ls', '-la']`, helpers.ObjectNameForTest(t)))
 	if _, err := c.V1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
@@ -234,7 +234,7 @@ spec:
   - name: HELLO
     default: "hello world!"
   steps:
-  - image: ubuntu
+  - image: docker.io/library/ubuntu
     script: |
       #!/usr/bin/env bash
       echo "$(params.HELLO)"

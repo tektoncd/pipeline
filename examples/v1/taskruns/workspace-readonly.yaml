@@ -29,19 +29,19 @@ spec:
       readOnly: true
     steps:
     - name: write-allowed
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script: echo "hello" > $(workspaces.write-allowed.path)/foo
     - name: read-allowed
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script: cat $(workspaces.write-allowed.path)/foo | grep "hello"
     - name: write-disallowed
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script:
         echo "goodbye" > $(workspaces.write-disallowed.path)/foo || touch write-failed.txt
         test -f write-failed.txt
     - name: read-again
       # We should get "hello" when reading again because writing "goodbye" to
       # the file should have been disallowed.
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script:
         cat $(workspaces.write-disallowed.path)/foo | grep "hello"

@@ -8,7 +8,7 @@ spec:
   - name: shared-data
   steps:
   - name: fetch-and-write
-    image: ubuntu
+    image: docker.io/library/ubuntu
     script: |
       echo hi >> $(workspaces.shared-data.path)/recipe.txt
 ---
@@ -38,7 +38,7 @@ spec:
       taskSpec:
         steps:
         - name: print-secrets
-          image: ubuntu
+          image: docker.io/library/ubuntu
           script: cat $(workspaces.shared-data.path)/recipe.txt
       runAfter:
         - fetch-the-recipe

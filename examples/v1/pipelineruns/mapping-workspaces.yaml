@@ -56,7 +56,7 @@ spec:
   - name: shared-data
   steps:
   - name: fetch-and-write
-    image: ubuntu
+    image: docker.io/library/ubuntu
     script: |
       if [ "hunter2" = "$(cat $(workspaces.password-vault.path)/password)" ]; then
         cp $(workspaces.recipe-store.path)/recipe.txt $(workspaces.shared-data.path)
@@ -77,7 +77,7 @@ spec:
   - name: filename
   steps:
   - name: print-secrets
-    image: ubuntu
+    image: docker.io/library/ubuntu
     script: cat $(workspaces.shared-data.path)/$(params.filename)
 ---
 apiVersion: tekton.dev/v1

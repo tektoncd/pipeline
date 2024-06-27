@@ -123,17 +123,17 @@ spec:
   - name: task1
     taskSpec:
       steps:
-      - image: ubuntu
+      - image: docker.io/library/ubuntu
         script: echo task1
   - name: task2
     taskSpec:
       steps:
-      - image: ubuntu
+      - image: docker.io/library/ubuntu
         script: echo task2
   - name: task3
     taskSpec:
       steps:
-      - image: ubuntu
+      - image: docker.io/library/ubuntu
         script: echo task3
 `, helpers.ObjectNameForTest(t), namespace))
 	if _, err := c.V1PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
@@ -242,7 +242,7 @@ spec:
     taskSpec:
       metadata: {}
       steps:
-      - image: ubuntu
+      - image: docker.io/library/ubuntu
         script: echo task1
 `, helpers.ObjectNameForTest(t), namespace))
 	if _, err := c.V1PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {

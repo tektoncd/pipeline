@@ -123,7 +123,7 @@ spec:
   results:
     - name: result1
       type: string
-  image: alpine
+  image: docker.io/library/alpine
   script: |
     echo -n step-action >> $(step.results.result1.path)
 `, namespace))
@@ -139,7 +139,7 @@ spec:
   taskSpec:
     steps:
      - name: step1
-       image: alpine
+       image: docker.io/library/alpine
        script: |
          echo -n inlined-step >> $(step.results.result1.path)
        results:
@@ -167,7 +167,7 @@ spec:
   taskSpec:
     steps:
       - name: step1
-        image: alpine
+        image: docker.io/library/alpine
         script: |
           echo -n inlined-step >> $(step.results.result1.path)
         results:
@@ -192,14 +192,14 @@ status:
   taskSpec:
     steps:
       - name: step1
-        image: alpine
+        image: docker.io/library/alpine
         results:
           - name: result1
             type: string
         script: |
           echo -n inlined-step >> /tekton/steps/step-step1/results/result1
       - name: step2
-        image: alpine
+        image: docker.io/library/alpine
         results:
           - name: result1
             type: string

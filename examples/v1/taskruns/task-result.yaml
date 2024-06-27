@@ -13,12 +13,12 @@ spec:
         description: The current date in human readable format
     steps:
       - name: print-date-unix-timestamp
-        image: bash:latest
+        image: docker.io/library/bash:latest
         script: |
           #!/usr/bin/env bash
           date +%s | tee $(results.current-date-unix-timestamp.path)
       - name: print-date-human-readable
-        image: bash:latest
+        image: docker.io/library/bash:latest
         script: |
           #!/usr/bin/env bash
           date | tee $(results.current-date-human-readable.path)

@@ -27,7 +27,7 @@ spec:
   - name: secret-password
   steps:
   - name: fetch-csi
-    image: ubuntu
+    image: docker.io/library/ubuntu
     script: cat $(workspaces.secret-password.path)/db-password
 ---
 apiVersion: tekton.dev/v1

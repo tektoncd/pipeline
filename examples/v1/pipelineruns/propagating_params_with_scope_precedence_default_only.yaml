@@ -15,7 +15,7 @@ spec:
               default: "Default Hello World!"
           steps:
             - name: echo
-              image: ubuntu
+              image: docker.io/library/ubuntu
               script: |
                 #!/usr/bin/env bash
                 echo "$(params.HELLO)"
@@ -27,7 +27,7 @@ spec:
               default: "Default Hello World!"
           steps:
             - name: echo
-              image: ubuntu
+              image: docker.io/library/ubuntu
               script: |
                 #!/usr/bin/env bash
                 echo "And finally... $(params.HELLO)"

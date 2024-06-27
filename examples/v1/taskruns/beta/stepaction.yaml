@@ -3,7 +3,7 @@ kind: StepAction
 metadata:
   name: step-action
 spec:
-  image: alpine
+  image: docker.io/library/alpine
   script: |
     echo "I am a Step Action!!!"
 ---

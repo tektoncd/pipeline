@@ -19,7 +19,7 @@ spec:
         taskSpec:
           steps:
             - name: write-result
-              image: bash
+              image: docker.io/library/bash
               args: [
                 "echo",
                 "--url=$(params.gitrepo.url)",
