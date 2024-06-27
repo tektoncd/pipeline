@@ -23,6 +23,7 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/container"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 func TestApplyStepReplacements(t *testing.T) {
@@ -43,6 +44,12 @@ func TestApplyStepReplacements(t *testing.T) {
 		Args:       []string{"$(array.replace.me)"},
 		WorkingDir: "$(replace.me)",
 		OnError:    "$(replace.me)",
+		When: v1.StepWhenExpressions{{
+			Input:    "$(replace.me)",
+			Operator: selection.In,
+			Values:   []string{"$(array.replace.me)"},
+			CEL:      "'$(replace.me)=bar'",
+		}},
 		EnvFrom: []corev1.EnvFromSource{{
 			ConfigMapRef: &corev1.ConfigMapEnvSource{
 				LocalObjectReference: corev1.LocalObjectReference{
@@ -94,6 +101,12 @@ func TestApplyStepReplacements(t *testing.T) {
 		Args:       []string{"val1", "val2"},
 		WorkingDir: "replaced!",
 		OnError:    "replaced!",
+		When: v1.StepWhenExpressions{{
+			Input:    "replaced!",
+			Operator: selection.In,
+			Values:   []string{"val1", "val2"},
+			CEL:      "'replaced!=bar'",
+		}},
 		EnvFrom: []corev1.EnvFromSource{{
 			ConfigMapRef: &corev1.ConfigMapEnvSource{
 				LocalObjectReference: corev1.LocalObjectReference{

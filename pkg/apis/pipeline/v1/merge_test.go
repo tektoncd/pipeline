@@ -26,6 +26,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 func TestMergeStepsWithStepTemplate(t *testing.T) {
@@ -256,6 +257,17 @@ func TestMergeStepsWithStepTemplate(t *testing.T) {
 					},
 				},
 			}},
+		}},
+	}, {
+		name:     "when",
+		template: nil,
+		steps: []v1.Step{{
+			Image: "some-image",
+			When:  v1.StepWhenExpressions{{Input: "foo", Operator: selection.In, Values: []string{"foo", "bar"}}},
+		}},
+		expected: []v1.Step{{
+			Image: "some-image",
+			When:  v1.StepWhenExpressions{{Input: "foo", Operator: selection.In, Values: []string{"foo", "bar"}}},
 		}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {

@@ -152,6 +152,10 @@ type Step struct {
 	// +optional
 	// +listType=atomic
 	Results []StepResult `json:"results,omitempty"`
+
+	// When is a list of when expressions that need to be true for the task to run
+	// +optional
+	When StepWhenExpressions `json:"when,omitempty"`
 }
 
 // Ref can be used to refer to a specific instance of a StepAction.

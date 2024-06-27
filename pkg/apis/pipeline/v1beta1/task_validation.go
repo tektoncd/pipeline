@@ -249,6 +249,9 @@ func validateSteps(ctx context.Context, steps []Step) (errs *apis.FieldError) {
 			errs = errs.Also(v1.ValidateStepResultsVariables(ctx, s.Results, s.Script).ViaIndex(idx))
 			errs = errs.Also(v1.ValidateStepResults(ctx, s.Results).ViaIndex(idx).ViaField("results"))
 		}
+		if len(s.When) > 0 {
+			errs = errs.Also(s.When.validate(ctx).ViaIndex(idx))
+		}
 	}
 	return errs
 }
@@ -368,17 +371,8 @@ func validateStepResultReference(s Step) (errs *apis.FieldError) {
 }
 
 func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.FieldError) {
-	if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableArtifacts {
-		var t []string
-		t = append(t, s.Script)
-		t = append(t, s.Command...)
-		t = append(t, s.Args...)
-		for _, e := range s.Env {
-			t = append(t, e.Value)
-		}
-		if slices.ContainsFunc(t, stepArtifactReferenceExists) {
-			return errs.Also(apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use artifacts feature.", config.EnableArtifacts), ""))
-		}
+	if err := validateStepArtifactsReferences(ctx, s); err != nil {
+		return err
 	}
 
 	if s.Ref != nil {
@@ -444,6 +438,11 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 		if len(s.Results) > 0 {
 			if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions && isCreateOrUpdateAndDiverged(ctx, s) {
 				return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true in order to use Results in Steps.", config.EnableStepActions), "")
+			}
+		}
+		if len(s.When) > 0 {
+			if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions && isCreateOrUpdateAndDiverged(ctx, s) {
+				return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true in order to use When in Steps.", config.EnableStepActions), "")
 			}
 		}
 		if s.Image == "" {
@@ -527,6 +526,22 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 	errs = errs.Also(validateStepArtifactsReference(s))
 
 	return errs
+}
+
+func validateStepArtifactsReferences(ctx context.Context, s Step) *apis.FieldError {
+	if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableArtifacts {
+		var t []string
+		t = append(t, s.Script)
+		t = append(t, s.Command...)
+		t = append(t, s.Args...)
+		for _, e := range s.Env {
+			t = append(t, e.Value)
+		}
+		if slices.ContainsFunc(t, stepArtifactReferenceExists) {
+			return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use artifacts feature.", config.EnableArtifacts), "")
+		}
+	}
+	return nil
 }
 
 // ValidateParameterTypes validates all the types within a slice of ParamSpecs

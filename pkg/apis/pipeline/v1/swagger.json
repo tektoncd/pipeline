@@ -1581,6 +1581,14 @@
           "x-kubernetes-patch-merge-key": "mountPath",
           "x-kubernetes-patch-strategy": "merge"
         },
+        "when": {
+          "description": "When is a list of when expressions that need to be true for the task to run",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.WhenExpression"
+          }
+        },
         "workingDir": {
           "description": "Step's working directory. If not specified, the container runtime's default will be used, which might be configured in the container image. Cannot be updated.",
           "type": "string"

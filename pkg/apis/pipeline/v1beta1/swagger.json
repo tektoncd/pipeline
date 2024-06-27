@@ -2239,6 +2239,13 @@
           "x-kubernetes-patch-merge-key": "mountPath",
           "x-kubernetes-patch-strategy": "merge"
         },
+        "when": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.WhenExpression"
+          }
+        },
         "workingDir": {
           "description": "Step's working directory. If not specified, the container runtime's default will be used, which might be configured in the container image. Cannot be updated.",
           "type": "string"

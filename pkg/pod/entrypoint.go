@@ -171,7 +171,17 @@ func orderContainers(ctx context.Context, commonExtraEntrypointArgs []string, st
 				}
 				// add step results
 				stepResultArgs := stepResultArgument(taskSpec.Steps[i].Results)
+
 				argsForEntrypoint = append(argsForEntrypoint, stepResultArgs...)
+				if len(taskSpec.Steps[i].When) > 0 {
+					// marshal and pass to the entrypoint and unmarshal it there.
+					marshal, err := json.Marshal(taskSpec.Steps[i].When)
+
+					if err != nil {
+						return nil, fmt.Errorf("faile to resolve when %w", err)
+					}
+					argsForEntrypoint = append(argsForEntrypoint, "--when_expressions", string(marshal))
+				}
 			}
 			argsForEntrypoint = append(argsForEntrypoint, resultArgument(steps, taskSpec.Results)...)
 		}
