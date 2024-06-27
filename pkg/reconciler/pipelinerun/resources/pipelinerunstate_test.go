@@ -3146,6 +3146,300 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 	}
 }
 
+func TestPipelineRunState_GetTaskRunsArtifacts(t *testing.T) {
+	testCases := []struct {
+		name              string
+		state             PipelineRunState
+		expectedArtifacts map[string]v1.Artifacts
+	}{
+		{
+			name: "successful-task-with-artifacts",
+			state: PipelineRunState{{
+				TaskRunNames: []string{"successful-task-with-artifacts"},
+				PipelineTask: &v1.PipelineTask{
+					Name: "successful-task-with-artifacts-1",
+				},
+				TaskRuns: []*v1.TaskRun{{
+					Status: v1.TaskRunStatus{
+						Status: duckv1.Status{Conditions: []apis.Condition{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionTrue,
+						}}},
+						TaskRunStatusFields: v1.TaskRunStatusFields{
+							Artifacts: v1.Artifacts{
+								Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
+								Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
+							},
+						}},
+				}},
+			}},
+			expectedArtifacts: map[string]v1.Artifacts{"successful-task-with-artifacts-1": {
+				Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
+				Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
+			}},
+		},
+		{
+			name: "two-successful-tasks-with-artifacts",
+			state: PipelineRunState{{
+				TaskRunNames: []string{"first-successful-task-with-artifacts"},
+				PipelineTask: &v1.PipelineTask{
+					Name: "successful-task-with-artifacts-1",
+				},
+				TaskRuns: []*v1.TaskRun{{
+					Status: v1.TaskRunStatus{
+						Status: duckv1.Status{Conditions: []apis.Condition{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionTrue,
+						}}},
+						TaskRunStatusFields: v1.TaskRunStatusFields{
+							Artifacts: v1.Artifacts{
+								Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
+								Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
+							},
+						}},
+				}},
+			}, {
+				TaskRunNames: []string{"second-successful-task-with-artifacts"},
+				PipelineTask: &v1.PipelineTask{
+					Name: "successful-task-with-artifacts-2",
+				},
+				TaskRuns: []*v1.TaskRun{{
+					Status: v1.TaskRunStatus{
+						Status: duckv1.Status{Conditions: []apis.Condition{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionTrue,
+						}}},
+						TaskRunStatusFields: v1.TaskRunStatusFields{
+							Artifacts: v1.Artifacts{
+								Inputs:  []v1.Artifact{{Name: "source2", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
+								Outputs: []v1.Artifact{{Name: "image2", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
+							},
+						}},
+				}},
+			}},
+			expectedArtifacts: map[string]v1.Artifacts{"successful-task-with-artifacts-1": {
+				Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
+				Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
+			}, "successful-task-with-artifacts-2": {
+				Inputs:  []v1.Artifact{{Name: "source2", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
+				Outputs: []v1.Artifact{{Name: "image2", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
+			}},
+		},
+		{
+			name: "Skip retrieving artifacts from unsuccessful task",
+			state: PipelineRunState{{
+				TaskRunNames: []string{"unsuccessful-task-with-artifacts"},
+				PipelineTask: &v1.PipelineTask{
+					Name: "unsuccessful-task-with-artifacts-1",
+				},
+				TaskRuns: []*v1.TaskRun{{
+					Status: v1.TaskRunStatus{
+						Status: duckv1.Status{Conditions: []apis.Condition{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionFalse,
+						}}},
+						TaskRunStatusFields: v1.TaskRunStatusFields{
+							Artifacts: v1.Artifacts{
+								Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
+								Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
+							},
+						}},
+				}},
+			}},
+			expectedArtifacts: map[string]v1.Artifacts{},
+		},
+		{
+			name: "One successful task and one failed task, only retrieving artifacts from the successful one",
+			state: PipelineRunState{
+				{
+					TaskRunNames: []string{"successful-task-with-artifacts"},
+					PipelineTask: &v1.PipelineTask{
+						Name: "successful-task-with-artifacts-1",
+					},
+					TaskRuns: []*v1.TaskRun{{
+						Status: v1.TaskRunStatus{
+							Status: duckv1.Status{Conditions: []apis.Condition{{
+								Type:   apis.ConditionSucceeded,
+								Status: corev1.ConditionTrue,
+							}}},
+							TaskRunStatusFields: v1.TaskRunStatusFields{
+								Artifacts: v1.Artifacts{
+									Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
+									Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
+								},
+							}},
+					}},
+				},
+				{
+					TaskRunNames: []string{"unsuccessful-task-with-artifacts"},
+					PipelineTask: &v1.PipelineTask{
+						Name: "unsuccessful-task-with-artifacts-1",
+					},
+					TaskRuns: []*v1.TaskRun{{
+						Status: v1.TaskRunStatus{
+							Status: duckv1.Status{Conditions: []apis.Condition{{
+								Type:   apis.ConditionSucceeded,
+								Status: corev1.ConditionFalse,
+							}}},
+							TaskRunStatusFields: v1.TaskRunStatusFields{
+								Artifacts: v1.Artifacts{
+									Inputs:  []v1.Artifact{{Name: "source0", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
+									Outputs: []v1.Artifact{{Name: "image0", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
+								},
+							}},
+					}},
+				}},
+			expectedArtifacts: map[string]v1.Artifacts{"successful-task-with-artifacts-1": {
+				Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
+				Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
+			}},
+		},
+		{
+			name: "One standard successful taskRun with artifacts and one custom task, custom task has no effect",
+			state: PipelineRunState{{
+				CustomRunNames: []string{"successful-run-without-results"},
+				CustomTask:     true,
+				PipelineTask: &v1.PipelineTask{
+					Name: "successful-run-without-results-1",
+				},
+				CustomRuns: []*v1beta1.CustomRun{
+					{
+						Status: v1beta1.CustomRunStatus{
+							Status: duckv1.Status{Conditions: []apis.Condition{{
+								Type:   apis.ConditionSucceeded,
+								Status: corev1.ConditionTrue,
+							}}},
+							CustomRunStatusFields: v1beta1.CustomRunStatusFields{},
+						},
+					}},
+			},
+				{
+					TaskRunNames: []string{"successful-task-with-artifacts"},
+					PipelineTask: &v1.PipelineTask{
+						Name: "successful-task-with-artifacts-1",
+					},
+					TaskRuns: []*v1.TaskRun{{
+						Status: v1.TaskRunStatus{
+							Status: duckv1.Status{Conditions: []apis.Condition{{
+								Type:   apis.ConditionSucceeded,
+								Status: corev1.ConditionTrue,
+							}}},
+							TaskRunStatusFields: v1.TaskRunStatusFields{
+								Artifacts: v1.Artifacts{
+									Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
+									Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
+								},
+							}},
+					}},
+				},
+			},
+			expectedArtifacts: map[string]v1.Artifacts{"successful-task-with-artifacts-1": {
+				Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
+				Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
+			}},
+		},
+		{
+			name: "matrixed tasks",
+			state: PipelineRunState{{
+				TaskRunNames: []string{
+					"matrixed-task-run-0",
+					"matrixed-task-run-1",
+					"matrixed-task-run-2",
+					"matrixed-task-run-3",
+				},
+				PipelineTask: &v1.PipelineTask{
+					Name: "matrixed-task-with-artifacts",
+					TaskRef: &v1.TaskRef{
+						Name:       "task",
+						Kind:       "Task",
+						APIVersion: "v1",
+					},
+					Matrix: &v1.Matrix{
+						Params: v1.Params{{
+							Name:  "foobar",
+							Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+						}, {
+							Name:  "quxbaz",
+							Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
+						}}},
+				},
+				TaskRuns: []*v1.TaskRun{{
+					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1"},
+					ObjectMeta: metav1.ObjectMeta{Name: "matrixed-task-run-0"},
+					Status: v1.TaskRunStatus{
+						Status: duckv1.Status{Conditions: []apis.Condition{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionTrue,
+							Reason: v1.TaskRunReasonSuccessful.String(),
+						}}},
+						TaskRunStatusFields: v1.TaskRunStatusFields{
+							Artifacts: v1.Artifacts{
+								Inputs:  []v1.Artifact{{Name: "source1", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
+								Outputs: []v1.Artifact{{Name: "image1", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
+							},
+						}},
+				}, {
+					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1"},
+					ObjectMeta: metav1.ObjectMeta{Name: "matrixed-task-run-1"},
+					Status: v1.TaskRunStatus{
+						Status: duckv1.Status{Conditions: []apis.Condition{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionTrue,
+							Reason: v1.TaskRunReasonSuccessful.String(),
+						}}},
+						TaskRunStatusFields: v1.TaskRunStatusFields{
+							Artifacts: v1.Artifacts{
+								Inputs:  []v1.Artifact{{Name: "source2", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
+								Outputs: []v1.Artifact{{Name: "image2", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
+							},
+						}},
+				}, {
+					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1"},
+					ObjectMeta: metav1.ObjectMeta{Name: "matrixed-task-run-2"},
+					Status: v1.TaskRunStatus{
+						Status: duckv1.Status{Conditions: []apis.Condition{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionTrue,
+							Reason: v1.TaskRunReasonSuccessful.String(),
+						}}},
+						TaskRunStatusFields: v1.TaskRunStatusFields{
+							Artifacts: v1.Artifacts{
+								Inputs:  []v1.Artifact{{Name: "source3", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
+								Outputs: []v1.Artifact{{Name: "image3", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
+							},
+						}},
+				}, {
+					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1"},
+					ObjectMeta: metav1.ObjectMeta{Name: "matrixed-task-run-3"},
+					Status: v1.TaskRunStatus{
+						Status: duckv1.Status{Conditions: []apis.Condition{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionTrue,
+							Reason: v1.TaskRunReasonSuccessful.String(),
+						}}},
+						TaskRunStatusFields: v1.TaskRunStatusFields{
+							Artifacts: v1.Artifacts{
+								Inputs:  []v1.Artifact{{Name: "source4", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
+								Outputs: []v1.Artifact{{Name: "image4", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
+							},
+						}},
+				}},
+			}},
+			expectedArtifacts: map[string]v1.Artifacts{"matrixed-task-with-artifacts": {
+				Inputs:  []v1.Artifact{{Name: "source1", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}, {Name: "source2", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}, {Name: "source3", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}, {Name: "source4", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
+				Outputs: []v1.Artifact{{Name: "image1", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}, {Name: "image2", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}, {Name: "image3", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}, {Name: "image4", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
+			}},
+		},
+	}
+
+	for _, tt := range testCases {
+		got := tt.state.GetTaskRunsArtifacts()
+		if d := cmp.Diff(tt.expectedArtifacts, got, cmpopts.SortSlices(func(a, b v1.Artifact) bool { return a.Name > b.Name })); d != "" {
+			t.Errorf("GetTaskRunsArtifacts() did not produce expected artifacts for test %s: %s", tt.name, diff.PrintWantGot(d))
+		}
+	}
+}
+
 func TestPipelineRunState_GetChildReferences(t *testing.T) {
 	testCases := []struct {
 		name      string

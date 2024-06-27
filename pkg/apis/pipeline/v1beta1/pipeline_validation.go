@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tektoncd/pipeline/internal/artifactref"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/internal/resultref"
@@ -91,6 +92,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateTasksAndFinallySection(ps))
 	errs = errs.Also(validateFinalTasks(ps.Tasks, ps.Finally))
 	errs = errs.Also(validateWhenExpressions(ctx, ps.Tasks, ps.Finally))
+	errs = errs.Also(validateArtifactReference(ctx, ps.Tasks, ps.Finally))
 	errs = errs.Also(validateMatrix(ctx, ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validateMatrix(ctx, ps.Finally).ViaField("finally"))
 	return errs
@@ -860,6 +862,28 @@ func validateStringResults(results []TaskResult, resultName string) (errs *apis.
 					fmt.Sprintf("Matrixed PipelineTasks emitting results must have an underlying type string, but result %s has type %s in pipelineTask", resultName, string(result.Type)),
 					"",
 				))
+			}
+		}
+	}
+	return errs
+}
+
+// validateArtifactReference ensure that the feature flag enableArtifacts is set to true when using artifacts
+func validateArtifactReference(ctx context.Context, tasks []PipelineTask, finalTasks []PipelineTask) (errs *apis.FieldError) {
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableArtifacts {
+		return errs
+	}
+	for i, t := range tasks {
+		for _, v := range t.Params.extractValues() {
+			if len(artifactref.TaskArtifactRegex.FindAllStringSubmatch(v, -1)) > 0 {
+				return errs.Also(apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use artifacts feature.", config.EnableArtifacts), "").ViaField("params").ViaFieldIndex("tasks", i))
+			}
+		}
+	}
+	for i, t := range finalTasks {
+		for _, v := range t.Params.extractValues() {
+			if len(artifactref.TaskArtifactRegex.FindAllStringSubmatch(v, -1)) > 0 {
+				return errs.Also(apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use artifacts feature.", config.EnableArtifacts), "").ViaField("params").ViaFieldIndex("finally", i))
 			}
 		}
 	}

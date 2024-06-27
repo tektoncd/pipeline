@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tektoncd/pipeline/internal/artifactref"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
@@ -73,8 +74,6 @@ const (
 
 	// TerminationReasonCancelled indicates a step was cancelled.
 	TerminationReasonCancelled = "Cancelled"
-
-	StepArtifactPathPattern = "step.artifacts.path"
 )
 
 // These are effectively const, but Go doesn't have such an annotation.
@@ -100,6 +99,9 @@ var (
 		Name:      "tekton-internal-steps",
 		MountPath: pipeline.StepsDir,
 		ReadOnly:  true,
+	}, {
+		Name:      "tekton-internal-artifacts",
+		MountPath: pipeline.ArtifactsDir,
 	}}
 	implicitVolumes = []corev1.Volume{{
 		Name:         "tekton-internal-workspace",
@@ -112,6 +114,9 @@ var (
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}, {
 		Name:         "tekton-internal-steps",
+		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+	}, {
+		Name:         "tekton-internal-artifacts",
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}}
 
@@ -768,7 +773,7 @@ func artifactsPathReferenced(steps []v1.Step) bool {
 func artifactPathReferencedInStep(step v1.Step) bool {
 	// `$(step.artifacts.path)` in  taskRun.Spec.TaskSpec.Steps and `taskSpec.steps` are substituted when building the pod while when setting status for taskRun
 	// neither of them is substituted, so we need two forms to check if artifactsPath is referenced in steps.
-	unresolvedPath := "$(" + StepArtifactPathPattern + ")"
+	unresolvedPath := "$(" + artifactref.StepArtifactPathPattern + ")"
 
 	path := filepath.Join(pipeline.StepsDir, GetContainerName(step.Name), "artifacts", "provenance.json")
 	if strings.Contains(step.Script, path) || strings.Contains(step.Script, unresolvedPath) {

@@ -18,6 +18,7 @@ package resources
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -440,6 +441,38 @@ func PropagateResults(rpt *ResolvedPipelineTask, runStates PipelineRunState) {
 		}
 	}
 	rpt.ResolvedTask.TaskSpec = resources.ApplyReplacements(rpt.ResolvedTask.TaskSpec, stringReplacements, arrayReplacements, map[string]map[string]string{})
+}
+
+// PropagateArtifacts propagates artifact values from previous task runs into the TaskSpec of the current task.
+func PropagateArtifacts(rpt *ResolvedPipelineTask, runStates PipelineRunState) error {
+	if rpt.ResolvedTask == nil || rpt.ResolvedTask.TaskSpec == nil {
+		return nil
+	}
+	stringReplacements := map[string]string{}
+	for taskName, artifacts := range runStates.GetTaskRunsArtifacts() {
+		for i, input := range artifacts.Inputs {
+			ib, err := json.Marshal(input.Values)
+			if err != nil {
+				return err
+			}
+			stringReplacements[fmt.Sprintf("tasks.%s.inputs.%s", taskName, input.Name)] = string(ib)
+			if i == 0 {
+				stringReplacements[fmt.Sprintf("tasks.%s.inputs", taskName)] = string(ib)
+			}
+		}
+		for i, output := range artifacts.Outputs {
+			ob, err := json.Marshal(output.Values)
+			if err != nil {
+				return err
+			}
+			stringReplacements[fmt.Sprintf("tasks.%s.outputs.%s", taskName, output.Name)] = string(ob)
+			if i == 0 {
+				stringReplacements[fmt.Sprintf("tasks.%s.outputs", taskName)] = string(ob)
+			}
+		}
+	}
+	rpt.ResolvedTask.TaskSpec = resources.ApplyReplacements(rpt.ResolvedTask.TaskSpec, stringReplacements, map[string][]string{}, map[string]map[string]string{})
+	return nil
 }
 
 // ApplyTaskResultsToPipelineResults applies the results of completed TasksRuns and Runs to a Pipeline's

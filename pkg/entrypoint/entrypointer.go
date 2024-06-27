@@ -132,6 +132,9 @@ type Entrypointer struct {
 	ResultsDirectory string
 	// ResultExtractionMethod is the method using which the controller extracts the results from the task pod.
 	ResultExtractionMethod string
+
+	// ArtifactsDirectory is the directory to find artifacts, defaults to pipeline.ArtifactsDir
+	ArtifactsDirectory string
 }
 
 // Waiter encapsulates waiting for files to exist.
@@ -280,11 +283,23 @@ func (e Entrypointer) Go() error {
 	}
 
 	if e.ResultExtractionMethod == config.ResultExtractionMethodTerminationMessage {
+		// step artifacts
 		fp := filepath.Join(e.StepMetadataDir, "artifacts", "provenance.json")
-
-		artifacts, err := readArtifacts(fp)
+		artifacts, err := readArtifacts(fp, result.StepArtifactsResultType)
 		if err != nil {
-			logger.Fatalf("Error while handling artifacts: %s", err)
+			logger.Fatalf("Error while handling step artifacts: %s", err)
+		}
+		output = append(output, artifacts...)
+
+		artifactsDir := pipeline.ArtifactsDir
+		// task artifacts
+		if e.ArtifactsDirectory != "" {
+			artifactsDir = e.ArtifactsDirectory
+		}
+		fp = filepath.Join(artifactsDir, "provenance.json")
+		artifacts, err = readArtifacts(fp, result.TaskRunArtifactsResultType)
+		if err != nil {
+			logger.Fatalf("Error while handling task artifacts: %s", err)
 		}
 		output = append(output, artifacts...)
 	}
@@ -292,7 +307,7 @@ func (e Entrypointer) Go() error {
 	return err
 }
 
-func readArtifacts(fp string) ([]result.RunResult, error) {
+func readArtifacts(fp string, resultType result.ResultType) ([]result.RunResult, error) {
 	file, err := os.ReadFile(fp)
 	if os.IsNotExist(err) {
 		return []result.RunResult{}, nil
@@ -300,7 +315,7 @@ func readArtifacts(fp string) ([]result.RunResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	return []result.RunResult{{Key: fp, Value: string(file), ResultType: result.StepArtifactsResultType}}, nil
+	return []result.RunResult{{Key: fp, Value: string(file), ResultType: resultType}}, nil
 }
 
 func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string, resultType result.ResultType) error {
@@ -540,7 +555,6 @@ func getArtifactValues(dir string, template string) (string, error) {
 	}
 
 	// $(steps.stepName.outputs.artifactName) <- artifacts.Output[artifactName].Values
-	// $(steps.stepName.outputs) <- artifacts.Output[0].Values
 	var t []v1.Artifact
 	if artifactTemplate.Type == "outputs" {
 		t = artifacts.Outputs
@@ -548,13 +562,6 @@ func getArtifactValues(dir string, template string) (string, error) {
 		t = artifacts.Inputs
 	}
 
-	if artifactTemplate.ArtifactName == "" {
-		marshal, err := json.Marshal(t[0].Values)
-		if err != nil {
-			return "", err
-		}
-		return string(marshal), err
-	}
 	for _, ar := range t {
 		if ar.Name == artifactTemplate.ArtifactName {
 			marshal, err := json.Marshal(ar.Values)
@@ -568,8 +575,7 @@ func getArtifactValues(dir string, template string) (string, error) {
 }
 
 // parseArtifactTemplate parses an artifact template string and extracts relevant information into an ArtifactTemplate struct.
-//
-// The artifact template is expected to be in the format "$(steps.{step-name}.outputs.{artifact-name})" or "$(steps.{step-name}.outputs)".
+// The artifact template is expected to be in the format "$(steps.<step-name>.outputs.<artifact-category-name>)".
 func parseArtifactTemplate(template string) (ArtifactTemplate, error) {
 	if template == "" {
 		return ArtifactTemplate{}, errors.New("template is empty")

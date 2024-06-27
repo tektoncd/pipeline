@@ -559,6 +559,31 @@ func TestMakeTaskRunStatus_StepArtifacts(t *testing.T) {
 						},
 						Results: []v1.TaskRunResult{},
 					}},
+					Artifacts: v1.Artifacts{
+						Inputs: []v1.Artifact{
+							{
+								Name: "input-artifacts",
+								Values: []v1.ArtifactValue{{
+									Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"},
+									Uri:    "git:jjjsss",
+								},
+								},
+							},
+						},
+						Outputs: []v1.Artifact{
+							{
+								Name: "build-results",
+								Values: []v1.ArtifactValue{{
+									Digest: map[v1.Algorithm]string{
+										"sha1":   "95588b8f34c31eb7d62c92aaa4e6506639b06ef2",
+										"sha256": "df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48",
+									},
+									Uri: "pkg:balba",
+								},
+								},
+							},
+						},
+					},
 					Sidecars: []v1.SidecarState{},
 					// We don't actually care about the time, just that it's not nil
 					CompletionTime: &metav1.Time{Time: time.Now()},
