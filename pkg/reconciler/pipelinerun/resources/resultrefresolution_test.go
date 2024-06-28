@@ -341,6 +341,28 @@ var pipelineRunState = PipelineRunState{{
 			Value: *v1.NewStructuredValues("$(tasks.kTask.results.I-DO-NOT-EXIST)[*]"),
 		}},
 	},
+}, {
+	TaskRunNames: []string{"lTaskRun"},
+	TaskRuns:     []*v1.TaskRun{},
+	PipelineTask: &v1.PipelineTask{
+		Name:    "lTask",
+		TaskRef: &v1.TaskRef{Name: "lTask"},
+		Params: []v1.Param{{
+			Name:  "jParam",
+			Value: *v1.NewStructuredValues("$(tasks.does-not-exist.results.some-result)"),
+		}},
+	},
+}, {
+	TaskRunNames: []string{"mTaskRun"},
+	TaskRuns:     []*v1.TaskRun{},
+	PipelineTask: &v1.PipelineTask{
+		Name:    "mTask",
+		TaskRef: &v1.TaskRef{Name: "mTask"},
+		Params: []v1.Param{{
+			Name:  "mParam",
+			Value: *v1.NewStructuredValues("$(tasks.lTask.results.aResult)"),
+		}},
+	},
 }}
 
 func TestResolveResultRefs(t *testing.T) {
@@ -724,6 +746,20 @@ func TestCheckMissingResultReferences(t *testing.T) {
 			pipelineRunState[14],
 		},
 		wantErr: "Invalid task result reference: Could not find result with name iDoNotExist for task aCustomPipelineTask",
+	}, {
+		name:             "Invalid: Test result references where ref does not exist in pipelineRunState map",
+		pipelineRunState: pipelineRunState,
+		targets: PipelineRunState{
+			pipelineRunState[18],
+		},
+		wantErr: "Result reference error: Could not find ref \"does-not-exist\" in internal pipelineRunState",
+	}, {
+		name:             "Invalid: Test result references where referencedPipelineTask has no TaskRuns",
+		pipelineRunState: pipelineRunState,
+		targets: PipelineRunState{
+			pipelineRunState[19],
+		},
+		wantErr: "Result reference error: Internal result ref \"lTask\" has zero-length TaskRuns",
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
 			err := CheckMissingResultReferences(tt.pipelineRunState, tt.targets)
