@@ -489,8 +489,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	if err := resources.ValidateRequiredParametersProvided(&pipelineSpec.Params, &pr.Spec.Params); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.MarkFailed(v1.PipelineRunReasonParameterMissing.String(),
-			"PipelineRun %s/%s is missing some parameters required by Pipeline %s: %s",
-			pr.Namespace, pr.Name, pipelineMeta.Name, err)
+			"PipelineRun %s/%s is missing some parameters required by Pipeline %s/%s: %s",
+			pr.Namespace, pr.Name, pr.Namespace, pipelineMeta.Name, err)
 		return controller.NewPermanentError(err)
 	}
 
