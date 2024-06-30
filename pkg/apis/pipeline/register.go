@@ -34,11 +34,17 @@ const (
 	// TaskRunLabelKey is used as the label identifier for a TaskRun
 	TaskRunLabelKey = GroupName + "/taskRun"
 
+	// TaskRunLabelKey is used as the label identifier for a TaskRun
+	TaskRunUIDLabelKey = GroupName + "/taskRunUID"
+
 	// PipelineLabelKey is used as the label identifier for a Pipeline
 	PipelineLabelKey = GroupName + "/pipeline"
 
 	// PipelineRunLabelKey is used as the label identifier for a PipelineRun
 	PipelineRunLabelKey = GroupName + "/pipelineRun"
+
+	// PipelineRunLabelKey is used as the label identifier for a PipelineRun
+	PipelineRunUIDLabelKey = GroupName + "/pipelineRunUID"
 
 	// PipelineTaskLabelKey is used as the label identifier for a PipelineTask
 	PipelineTaskLabelKey = GroupName + "/pipelineTask"
