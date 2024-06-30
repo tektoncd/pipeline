@@ -431,6 +431,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 metadata:
   name: test-taskrun-run-success
   namespace: foo
+  uid: bar
 spec:
   taskRef:
     apiVersion: v1
@@ -440,6 +441,7 @@ spec:
 metadata:
   name: test-taskrun-with-sa-run-success
   namespace: foo
+  uid: bar
 spec:
   serviceAccountName: test-sa
   taskRef:
@@ -469,7 +471,7 @@ spec:
 	}{{
 		name:    "success",
 		taskRun: taskRunSuccess,
-		wantPod: expectedPod("test-taskrun-run-success-pod", "test-task", "test-taskrun-run-success", "foo", defaultSAName, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-run-success-pod", "test-task", "test-taskrun-run-success", "bar", "foo", defaultSAName, false, nil, []stepForExpectedPod{{
 			image: "foo",
 			name:  "simple-step",
 			cmd:   "/mycmd",
@@ -477,7 +479,7 @@ spec:
 	}, {
 		name:    "serviceaccount",
 		taskRun: taskRunWithSaSuccess,
-		wantPod: expectedPod("test-taskrun-with-sa-run-success-pod", "test-with-sa", "test-taskrun-with-sa-run-success", "foo", "test-sa", false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-with-sa-run-success-pod", "test-with-sa", "test-taskrun-with-sa-run-success", "bar", "foo", "test-sa", false, nil, []stepForExpectedPod{{
 			image: "foo",
 			name:  "sa-step",
 			cmd:   "/mycmd",
@@ -643,6 +645,7 @@ func TestReconcile(t *testing.T) {
 metadata:
   name: test-taskrun-run-success
   namespace: foo
+  uid: bar
 spec:
   taskRef:
     apiVersion: v1
@@ -652,6 +655,7 @@ spec:
 metadata:
   name: test-taskrun-with-sa-run-success
   namespace: foo
+  uid: bar
 spec:
   serviceAccountName: test-sa
   taskRef:
@@ -662,6 +666,7 @@ spec:
 metadata:
   name: test-taskrun-substitution
   namespace: foo
+  uid: bar
 spec:
   params:
   - name: myarg
@@ -678,6 +683,7 @@ spec:
 metadata:
   name: test-taskrun-with-taskspec
   namespace: foo
+  uid: bar
 spec:
   params:
   - name: myarg
@@ -699,6 +705,7 @@ spec:
 metadata:
   name: test-taskrun-with-cluster-task
   namespace: foo
+  uid: bar
 spec:
   taskRef:
     kind: ClusterTask
@@ -712,6 +719,7 @@ metadata:
     tekton.dev/taskRun: WillNotBeUsed
   name: test-taskrun-with-labels
   namespace: foo
+  uid: bar
 spec:
   taskRef:
     name: test-task
@@ -723,6 +731,7 @@ metadata:
     TaskRunAnnotation: TaskRunValue
   name: test-taskrun-with-annotations
   namespace: foo
+  uid: bar
 spec:
   taskRef:
     name: test-task
@@ -732,6 +741,7 @@ spec:
 metadata:
   name: test-taskrun-with-pod
   namespace: foo
+  uid: bar
 spec:
   taskRef:
     name: test-task
@@ -743,6 +753,7 @@ status:
 metadata:
   name: test-taskrun-with-credentials-variable
   namespace: foo
+  uid: bar
 spec:
   taskSpec:
     steps:
@@ -770,6 +781,7 @@ spec:
 metadata:
   name: test-taskrun-bundle
   namespace: foo
+  uid: bar
 spec:
   taskRef:
     bundle: %s
@@ -800,7 +812,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-run-success-pod", "test-task", "test-taskrun-run-success", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-run-success-pod", "test-task", "test-taskrun-run-success", "bar", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
 			image: "foo",
 			name:  "simple-step",
 			cmd:   "/mycmd",
@@ -812,7 +824,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-sa-run-success-pod", "test-with-sa", "test-taskrun-with-sa-run-success", "foo", "test-sa", false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-with-sa-run-success-pod", "test-with-sa", "test-taskrun-with-sa-run-success", "bar", "foo", "test-sa", false, nil, []stepForExpectedPod{{
 			image: "foo",
 			name:  "sa-step",
 			cmd:   "/mycmd",
@@ -824,7 +836,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-substitution-pod", "test-task-with-substitution", "test-taskrun-substitution", "foo", config.DefaultServiceAccountValue, false, []corev1.Volume{{
+		wantPod: expectedPod("test-taskrun-substitution-pod", "test-task-with-substitution", "test-taskrun-substitution", "bar", "foo", config.DefaultServiceAccountValue, false, []corev1.Volume{{
 			Name: "volume-configmap",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -860,7 +872,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-taskspec-pod", "", "test-taskrun-with-taskspec", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{
+		wantPod: expectedPod("test-taskrun-with-taskspec-pod", "", "test-taskrun-with-taskspec", "bar", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{
 			{
 				name:  "mycontainer",
 				image: "myimage",
@@ -874,7 +886,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-cluster-task-pod", "test-cluster-task", "test-taskrun-with-cluster-task", "foo", config.DefaultServiceAccountValue, true, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-with-cluster-task-pod", "test-cluster-task", "test-taskrun-with-cluster-task", "bar", "foo", config.DefaultServiceAccountValue, true, nil, []stepForExpectedPod{{
 			name:  "simple-step",
 			image: "foo",
 			cmd:   "/mycmd",
@@ -886,7 +898,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-pod-pod", "test-task", "test-taskrun-with-pod", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-with-pod-pod", "test-task", "test-taskrun-with-pod", "bar", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
 			name:  "simple-step",
 			image: "foo",
 			cmd:   "/mycmd",
@@ -898,7 +910,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-credentials-variable-pod", "", "test-taskrun-with-credentials-variable", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-with-credentials-variable-pod", "", "test-taskrun-with-credentials-variable", "bar", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
 			name:  "mycontainer",
 			image: "myimage",
 			cmd:   "/mycmd /tekton/creds",
@@ -910,7 +922,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-bundle-pod", "test-task", "test-taskrun-bundle", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-bundle-pod", "test-task", "test-taskrun-bundle", "bar", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
 			name:  "simple-step",
 			image: "foo",
 			cmd:   "/mycmd",
@@ -980,6 +992,7 @@ func TestAlphaReconcile(t *testing.T) {
 metadata:
   name: test-taskrun-with-output-config
   namespace: foo
+  uid: bar
 spec:
   taskSpec:
     steps:
@@ -995,6 +1008,7 @@ spec:
 metadata:
   name: test-taskrun-with-output-config-ws
   namespace: foo
+  uid: bar
 spec:
   workspaces:
     - name: data
@@ -1039,7 +1053,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-output-config-pod", "", "test-taskrun-with-output-config", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-with-output-config-pod", "", "test-taskrun-with-output-config", "bar", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
 			name:       "mycontainer",
 			image:      "myimage",
 			stdoutPath: "stdout.txt",
@@ -1052,7 +1066,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: addVolumeMounts(expectedPod("test-taskrun-with-output-config-ws-pod", "", "test-taskrun-with-output-config-ws", "foo", config.DefaultServiceAccountValue, false,
+		wantPod: addVolumeMounts(expectedPod("test-taskrun-with-output-config-ws-pod", "", "test-taskrun-with-output-config-ws", "bar", "foo", config.DefaultServiceAccountValue, false,
 			[]corev1.Volume{{
 				Name: "ws-d872e",
 				VolumeSource: corev1.VolumeSource{
@@ -5942,7 +5956,7 @@ func podArgs(cmd string, stdoutPath string, stderrPath string, additionalArgs []
 	return args
 }
 
-func podObjectMeta(name, taskName, taskRunName, ns string, isClusterTask bool) metav1.ObjectMeta {
+func podObjectMeta(name, taskName, taskRunName, taskRunUID, ns string, isClusterTask bool) metav1.ObjectMeta {
 	trueB := true
 	om := metav1.ObjectMeta{
 		Name:      name,
@@ -5952,6 +5966,7 @@ func podObjectMeta(name, taskName, taskRunName, ns string, isClusterTask bool) m
 		},
 		Labels: map[string]string{
 			pipeline.TaskRunLabelKey:       taskRunName,
+			pipeline.TaskRunUIDLabelKey:    taskRunUID,
 			"app.kubernetes.io/managed-by": "tekton-pipelines",
 		},
 		OwnerReferences: []metav1.OwnerReference{{
@@ -5960,6 +5975,7 @@ func podObjectMeta(name, taskName, taskRunName, ns string, isClusterTask bool) m
 			Controller:         &trueB,
 			BlockOwnerDeletion: &trueB,
 			APIVersion:         currentAPIVersion,
+			UID:                types.UID(taskRunUID),
 		}},
 	}
 
@@ -5986,13 +6002,13 @@ type stepForExpectedPod struct {
 	stderrPath      string
 }
 
-func expectedPod(podName, taskName, taskRunName, ns, saName string, isClusterTask bool, extraVolumes []corev1.Volume, steps []stepForExpectedPod) *corev1.Pod {
+func expectedPod(podName, taskName, taskRunName, taskRunUID, ns, saName string, isClusterTask bool, extraVolumes []corev1.Volume, steps []stepForExpectedPod) *corev1.Pod {
 	stepNames := make([]string, 0, len(steps))
 	for _, s := range steps {
 		stepNames = append(stepNames, "step-"+s.name)
 	}
 	p := &corev1.Pod{
-		ObjectMeta: podObjectMeta(podName, taskName, taskRunName, ns, isClusterTask),
+		ObjectMeta: podObjectMeta(podName, taskName, taskRunName, taskRunUID, ns, isClusterTask),
 		Spec: corev1.PodSpec{
 			Volumes: []corev1.Volume{
 				workspaceVolume,
