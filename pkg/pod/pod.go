@@ -658,6 +658,7 @@ func makeLabels(s *v1.TaskRun) map[string]string {
 	// NB: Set this *after* passing through TaskRun Labels. If the TaskRun
 	// specifies this label, it should be overridden by this value.
 	labels[pipeline.TaskRunLabelKey] = s.Name
+	labels[pipeline.TaskRunUIDLabelKey] = string(s.UID)
 	return labels
 }
 
