@@ -37,6 +37,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/version"
 	fakediscovery "k8s.io/client-go/discovery/fake"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
@@ -3250,14 +3251,17 @@ func verifyTaskLevelComputeResources(expectedComputeResources []ExpectedComputeR
 
 func TestMakeLabels(t *testing.T) {
 	taskRunName := "task-run-name"
+	taskRunUID := types.UID("taskrunuid")
 	want := map[string]string{
-		pipeline.TaskRunLabelKey: taskRunName,
-		"foo":                    "bar",
-		"hello":                  "world",
+		pipeline.TaskRunLabelKey:    taskRunName,
+		"foo":                       "bar",
+		"hello":                     "world",
+		pipeline.TaskRunUIDLabelKey: string(taskRunUID),
 	}
 	got := makeLabels(&v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: taskRunName,
+			UID:  taskRunUID,
 			Labels: map[string]string{
 				"foo":   "bar",
 				"hello": "world",

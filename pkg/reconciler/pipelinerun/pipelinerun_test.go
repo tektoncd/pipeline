@@ -244,6 +244,7 @@ func TestReconcile(t *testing.T) {
 metadata:
   name: test-pipeline-run-success
   namespace: foo
+  uid: bar
 spec:
   params:
   - name: bar
@@ -397,6 +398,8 @@ spec:
     name: unit-test-task
     kind: Task
 `)
+	expectedTaskRun.Labels["tekton.dev/pipelineRunUID"] = "bar"
+	expectedTaskRun.OwnerReferences[0].UID = "bar"
 	// ignore IgnoreUnexported ignore both after and before steps fields
 	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, ignoreResourceVersion); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
@@ -427,6 +430,7 @@ func TestReconcile_V1Beta1CustomTask(t *testing.T) {
 	simpleCustomTaskPRYAML := `metadata:
   name: test-pipelinerun
   namespace: namespace
+  uid: bar
 spec:
   pipelineSpec:
     tasks:
@@ -446,6 +450,7 @@ spec:
     tekton.dev/pipeline: test-pipelinerun
     tekton.dev/pipelineRun: test-pipelinerun
     tekton.dev/pipelineTask: custom-task
+    tekton.dev/pipelineRunUID: bar
   name: test-pipelinerun-custom-task
   namespace: namespace
   ownerReferences:
@@ -454,6 +459,7 @@ spec:
     controller: true
     kind: PipelineRun
     name: test-pipelinerun
+    uid: bar
 spec:
   params:
   - name: param1
@@ -9334,11 +9340,13 @@ func taskRunObjectMeta(trName, ns, prName, pipelineName, pipelineTaskName string
 			APIVersion:         "tekton.dev/v1",
 			Controller:         &trueb,
 			BlockOwnerDeletion: &trueb,
+			UID:                "",
 		}},
 		Labels: map[string]string{
-			pipeline.PipelineLabelKey:     pipelineName,
-			pipeline.PipelineRunLabelKey:  prName,
-			pipeline.PipelineTaskLabelKey: pipelineTaskName,
+			pipeline.PipelineLabelKey:       pipelineName,
+			pipeline.PipelineRunLabelKey:    prName,
+			pipeline.PipelineTaskLabelKey:   pipelineTaskName,
+			pipeline.PipelineRunUIDLabelKey: "",
 		},
 		Annotations: map[string]string{},
 	}
@@ -17675,7 +17683,7 @@ func Test_runNextSchedulableTask(t *testing.T) {
 								ObjectMeta: metav1.ObjectMeta{
 									Name:            "task2",
 									ResourceVersion: "00002",
-									Labels:          map[string]string{"tekton.dev/pipelineRun": "", "tekton.dev/pipelineTask": "task2"},
+									Labels:          map[string]string{"tekton.dev/pipelineRun": "", "tekton.dev/pipelineTask": "task2", "tekton.dev/pipelineRunUID": ""},
 									OwnerReferences: []metav1.OwnerReference{
 										{
 											APIVersion:         "tekton.dev/v1",
