@@ -791,6 +791,9 @@ func validateMatrix(ctx context.Context, tasks []PipelineTask) (errs *apis.Field
 // since consuming a singular result produced by a matrix is currently not supported
 func findAndValidateResultRefsForMatrix(tasks []PipelineTask, taskMapping map[string]PipelineTask) (resultRefs []*ResultRef, errs *apis.FieldError) {
 	for _, t := range tasks {
+		if !t.IsMatrixed() {
+			continue
+		}
 		for _, p := range t.Params {
 			if expressions, ok := p.GetVarSubstitutionExpressions(); ok {
 				if LooksLikeContainsResultRefs(expressions) {
@@ -812,6 +815,9 @@ func validateMatrixedPipelineTaskConsumed(expressions []string, taskMapping map[
 	for _, expression := range expressions {
 		// ie. "tasks.<pipelineTaskName>.results.<resultName>[*]"
 		subExpressions := strings.Split(expression, ".")
+		if len(subExpressions) < 2 {
+			continue
+		}
 		pipelineTask := subExpressions[1] // pipelineTaskName
 		taskConsumed := taskMapping[pipelineTask]
 		if taskConsumed.IsMatrixed() {
