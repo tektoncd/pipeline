@@ -179,8 +179,8 @@ func (s *repositoryService) ListHooks(ctx context.Context, fullName string, opts
 }
 
 func (s *repositoryService) CreateHook(ctx context.Context, fullName string, input *scm.HookInput) (*scm.Hook, *scm.Response, error) {
-	/* #nosec */
 	hook := &scm.Hook{
+		//nolint:gosec
 		ID:     fmt.Sprintf("%d", rand.Int()),
 		Name:   input.Name,
 		Target: input.Target,

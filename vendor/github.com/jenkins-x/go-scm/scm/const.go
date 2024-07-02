@@ -157,7 +157,7 @@ func (a Action) String() (s string) {
 	case ActionCompleted:
 		return "completed"
 	default:
-		return
+		return ""
 	}
 }
 
