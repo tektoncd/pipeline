@@ -93,9 +93,8 @@ func getIssueCommentAction(src *issueCommentPullRequestHook) scm.Action {
 		return scm.ActionDelete
 	} else if src.Resource.Comment.PublishedDate.Equal(src.Resource.Comment.LastUpdatedDate) {
 		return scm.ActionCreate
-	} else {
-		return scm.ActionEdited
 	}
+	return scm.ActionEdited
 }
 
 func convertPushHook(src *pushHook) *scm.PushHook {

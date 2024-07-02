@@ -7,10 +7,8 @@ package scm
 import (
 	"context"
 	"errors"
-
 	"io"
 	"net/http"
-
 	"net/url"
 	"strconv"
 	"strings"
@@ -182,6 +180,8 @@ func (c *Client) Do(ctx context.Context, in *Request) (*Response, error) {
 	if client == nil {
 		client = http.DefaultClient
 	}
+	// The callers of this method should do the closing
+	//nolint:bodyclose
 	res, err := client.Do(req)
 	if err != nil {
 		return nil, err

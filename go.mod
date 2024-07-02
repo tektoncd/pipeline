@@ -1,6 +1,7 @@
 module github.com/tektoncd/pipeline
 
 go 1.22
+toolchain go1.22.4
 
 require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
@@ -14,7 +15,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/golang-lru v1.0.2
-	github.com/jenkins-x/go-scm v1.14.34
+	github.com/jenkins-x/go-scm v1.14.37
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/opencontainers/image-spec v1.1.0
 	github.com/pkg/errors v0.9.1
