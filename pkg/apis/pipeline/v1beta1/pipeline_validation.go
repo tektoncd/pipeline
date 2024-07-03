@@ -195,7 +195,7 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 
 	if pt.OnError != "" {
-		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "OnError", config.AlphaAPIFields))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "OnError", config.BetaAPIFields))
 		if pt.OnError != PipelineTaskContinue && pt.OnError != PipelineTaskStopAndFail {
 			errs = errs.Also(apis.ErrInvalidValue(pt.OnError, "OnError", "PipelineTask OnError must be either \"continue\" or \"stopAndFail\""))
 		}
