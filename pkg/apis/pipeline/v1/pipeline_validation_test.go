@@ -114,6 +114,129 @@ func TestPipeline_Validate_Success(t *testing.T) {
 				},
 			},
 		},
+	}, {
+		name: "param with different type of values without matrix",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: PipelineSpec{
+				Params: ParamSpecs{{
+					Name: "pipeline-words",
+					Default: &ParamValue{
+						Type:      ParamTypeObject,
+						ObjectVal: map[string]string{"hello": "pipeline"},
+					},
+					Type: ParamTypeObject,
+					Properties: map[string]PropertySpec{
+						"hello": {Type: ParamTypeString},
+					},
+				}},
+				Tasks: []PipelineTask{{
+					Name: "echoit",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Steps: []Step{{
+							Name:    "echo",
+							Image:   "ubuntu",
+							Command: []string{"echo"},
+							Args:    []string{"hello"},
+						}},
+					}},
+					Params: Params{
+						{
+							Name: "name",
+							Value: ParamValue{
+								Type:      ParamTypeString,
+								StringVal: "$(params.pipeline-words.hello)",
+							},
+						},
+						{
+							Name: "name2",
+							Value: ParamValue{
+								Type:      ParamTypeString,
+								StringVal: "$(tasks.pipeline-words.results.hello) + $(pipeline-words)",
+							},
+						},
+					},
+					RunAfter: []string{"pipeline-words"},
+				}, {
+					Name: "pipeline-words",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Steps: []Step{{
+							Name:    "echo",
+							Image:   "ubuntu",
+							Command: []string{"echo"},
+							Args:    []string{"hello"},
+						}},
+					}},
+				}},
+			},
+		},
+	}, {
+		name: "param with different type of values with matrix",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: PipelineSpec{
+				Params: ParamSpecs{{
+					Name: "pipeline-words",
+					Default: &ParamValue{
+						Type:      ParamTypeObject,
+						ObjectVal: map[string]string{"hello": "pipeline"},
+					},
+					Type: ParamTypeObject,
+					Properties: map[string]PropertySpec{
+						"hello": {Type: ParamTypeString},
+					},
+				}},
+				Tasks: []PipelineTask{{
+					Name: "echoit",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Steps: []Step{{
+							Name:    "echo",
+							Image:   "ubuntu",
+							Command: []string{"echo"},
+							Args:    []string{"hello"},
+						}},
+					}},
+					Params: Params{
+						{
+							Name: "name",
+							Value: ParamValue{
+								Type:      ParamTypeString,
+								StringVal: "$(params.pipeline-words.hello)",
+							},
+						},
+						{
+							Name: "name2",
+							Value: ParamValue{
+								Type:      ParamTypeString,
+								StringVal: "$(tasks.pipeline-words.results.hello[*]) + $(pipeline-words)",
+							},
+						},
+					},
+					RunAfter: []string{"pipeline-words"},
+				}, {
+					Name: "pipeline-words",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Steps: []Step{{
+							Name:    "echo",
+							Image:   "ubuntu",
+							Command: []string{"echo"},
+							Args:    []string{"hello"},
+						}},
+					}},
+					Matrix: &Matrix{
+						Params: Params{{
+							Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+						}, {
+							Name: "version", Value: ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}},
+						}},
+						Include: IncludeParamsList{{}}},
+				}},
+			},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
