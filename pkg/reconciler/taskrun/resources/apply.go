@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -50,6 +51,14 @@ var (
 		"inputs.params.%s",
 	}
 
+	substitutionToParamNamePatterns = []string{
+		`^params\.(\w+)$`,
+		`^params\["([^"]+)"\]$`,
+		`^params\['([^']+)'\]$`,
+		// FIXME(vdemeester) Remove that with deprecating v1beta1
+		`^inputs\.params\.(\w+)$`,
+	}
+
 	paramIndexRegexPatterns = []string{
 		`\$\(params.%s\[([0-9]*)*\*?\]\)`,
 		`\$\(params\[%q\]\[([0-9]*)*\*?\]\)`,
@@ -58,7 +67,7 @@ var (
 )
 
 // applyStepActionParameters applies the params from the Task and the underlying Step to the referenced StepAction.
-func applyStepActionParameters(step *v1.Step, spec *v1.TaskSpec, tr *v1.TaskRun, stepParams v1.Params, defaults []v1.ParamSpec) *v1.Step {
+func applyStepActionParameters(step *v1.Step, spec *v1.TaskSpec, tr *v1.TaskRun, stepParams v1.Params, defaults []v1.ParamSpec) (*v1.Step, error) {
 	if stepParams != nil {
 		stringR, arrayR, objectR := getTaskParameters(spec, tr, spec.Params...)
 		stepParams = stepParams.ReplaceVariables(stringR, arrayR, objectR)
@@ -79,8 +88,45 @@ func applyStepActionParameters(step *v1.Step, spec *v1.TaskSpec, tr *v1.TaskRun,
 	for k, v := range stepResultReplacements {
 		stringReplacements[k] = v
 	}
+
+	// Check if there are duplicate keys in the replacements
+	// If the same key is present in both stringReplacements and arrayReplacements, it means
+	// that the default value and the passed value have different types.
+	err := checkForDuplicateKeys(stringReplacements, arrayReplacements)
+	if err != nil {
+		return nil, err
+	}
+
 	container.ApplyStepReplacements(step, stringReplacements, arrayReplacements)
-	return step
+	return step, nil
+}
+
+// checkForDuplicateKeys checks if there are duplicate keys in the replacements
+func checkForDuplicateKeys(stringReplacements map[string]string, arrayReplacements map[string][]string) error {
+	keys := make([]string, 0, len(stringReplacements))
+	for k := range stringReplacements {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		if _, ok := arrayReplacements[k]; ok {
+			paramName := paramNameFromReplacementKey(k)
+			return fmt.Errorf("invalid parameter substitution: %s. Please check the types of the default value and the passed value", paramName)
+		}
+	}
+	return nil
+}
+
+// paramNameFromReplacementKey returns the param name from the replacement key in best effort
+func paramNameFromReplacementKey(key string) string {
+	for _, regexPattern := range substitutionToParamNamePatterns {
+		re := regexp.MustCompile(regexPattern)
+		if matches := re.FindStringSubmatch(key); matches != nil {
+			return matches[1]
+		}
+	}
+	// If no match is found, return the key
+	return key
 }
 
 // findArrayIndexParamUsage finds the array index in a string using array param substitution

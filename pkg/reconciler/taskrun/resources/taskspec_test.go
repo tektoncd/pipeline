@@ -961,6 +961,54 @@ func TestGetStepActionsData(t *testing.T) {
 				Value: "$(steps.inlined-step.results.result1)",
 			}},
 		}},
+	}, {
+		name: "param types are matching",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Name: "test",
+						Ref:  &v1.Ref{Name: "stepAction"},
+						Params: v1.Params{{
+							Name: "commands",
+							Value: v1.ParamValue{
+								Type:     v1.ParamTypeArray,
+								ArrayVal: []string{"Hello, I am of type list"},
+							},
+						}},
+					}},
+				},
+			},
+		},
+		stepAction: &v1beta1.StepAction{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "stepAction",
+				Namespace: "default",
+			},
+			Spec: v1beta1.StepActionSpec{
+				Image:  "myimage",
+				Args:   []string{"$(params.commands)"},
+				Script: "echo $@",
+				Params: v1.ParamSpecs{{
+					Name: "commands",
+					Type: v1.ParamTypeArray,
+					Default: &v1.ParamValue{
+						Type:     v1.ParamTypeArray,
+						ArrayVal: []string{"Hello, I am the default value"},
+					},
+				}},
+			},
+		},
+		want: []v1.Step{{
+			Name:   "test",
+			Image:  "myimage",
+			Args:   []string{"Hello, I am of type list"},
+			Script: "echo $@",
+		}},
 	}}
 	for _, tt := range tests {
 		ctx := context.Background()
@@ -1062,6 +1110,46 @@ func TestGetStepActionsData_Error(t *testing.T) {
 			},
 		},
 		expectedError: errors.New("extra params passed by Step to StepAction: [string-param]"),
+	}, {
+		name: "param types not matching",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Name: "test",
+						Ref:  &v1.Ref{Name: "stepAction"},
+						Params: v1.Params{{
+							Name:  "commands",
+							Value: *v1.NewStructuredValues("Hello, I am of type string"),
+						}},
+					}},
+				},
+			},
+		},
+		stepAction: &v1beta1.StepAction{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "stepAction",
+				Namespace: "default",
+			},
+			Spec: v1beta1.StepActionSpec{
+				Image:  "myimage",
+				Args:   []string{"$(params.commands)"},
+				Script: "echo $@",
+				Params: v1.ParamSpecs{{
+					Name: "commands",
+					Type: v1.ParamTypeArray,
+					Default: &v1.ParamValue{
+						Type:     v1.ParamTypeArray,
+						ArrayVal: []string{"Hello, I am the default value"},
+					},
+				}},
+			},
+		},
+		expectedError: errors.New("invalid parameter substitution: commands. Please check the types of the default value and the passed value"),
 	}}
 	for _, tt := range tests {
 		ctx := context.Background()
