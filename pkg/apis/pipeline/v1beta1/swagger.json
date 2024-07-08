@@ -155,11 +155,16 @@
       "description": "TaskRunStepArtifact represents an artifact produced or used by a step within a task run. It directly uses the Artifact type for its structure.",
       "type": "object",
       "properties": {
+        "buildOutput": {
+          "description": "Indicate if the artifact is a build output or a by-product",
+          "type": "boolean"
+        },
         "name": {
+          "description": "The artifact's identifying category name",
           "type": "string"
         },
         "values": {
-          "description": "The artifact's identifying category name",
+          "description": "A collection of values related to the artifact",
           "type": "array",
           "items": {
             "default": {},

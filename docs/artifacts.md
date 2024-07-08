@@ -155,6 +155,55 @@ spec:
 
 It is recommended to use [purl format](https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst) for artifacts uri as shown in the example. 
 
+### Output Artifacts in SLSA Provenance
+
+Artifacts are classified as either:
+
+- Build Outputs - packages, images, etc. that are being published by the build.
+- Build Byproducts - logs, caches, etc. that are incidental artifacts that are produced by the build.
+
+By default, Tekton Chains will consider all output artifacts as `byProducts` when generating in the [SLSA provenance](https://slsa.dev/spec/v1.0/provenance). In order to treat an artifact as a [subject](https://slsa.dev/spec/v1.0/provenance#schema) of the build, you must set a boolean field `"buildOutput": true` for the output artifact.
+
+e.g.  
+```yaml
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: step-artifacts-
+spec:
+  taskSpec:
+    description: |
+      A simple task that populates artifacts to TaskRun stepState
+    steps:
+      - name: artifacts-producer
+        image: bash:latest
+        script: |
+          cat > $(artifacts.path) << EOF
+          {
+            "outputs":[
+              {
+                "name":"image",
+                "buildOutput": true,
+                "values":[
+                  {
+                    "uri":"pkg:oci/nginx:stable-alpine3.17-slim?repository_url=docker.io/library",
+                    "digest":{
+                      "sha256":"df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48",
+                      "sha1":"95588b8f34c31eb7d62c92aaa4e6506639b06ef2"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+          EOF
+```
+
+This informs Tekton Chains your desire to handle the artifact.
+
+> [!TIP] 
+> When authoring a `StepAction` or a `Task`, you can parametrize this field to allow users to indicate their desire depending on what they are uploading - this can be useful for actions that may produce either a build output or a byproduct depending on the context!
+
 ### Passing Artifacts between Steps
 You can pass artifacts from one step to the next using:
 - Specific Artifact: `$(steps.<step-name>.inputs.<artifact-category-name>)` or `$(steps.<step-name>.outputs.<artifact-category-name>)`

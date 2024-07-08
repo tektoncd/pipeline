@@ -1370,6 +1370,7 @@ string
 </em>
 </td>
 <td>
+<p>The artifact&rsquo;s identifying category name</p>
 </td>
 </tr>
 <tr>
@@ -1382,7 +1383,18 @@ string
 </em>
 </td>
 <td>
-<p>The artifact&rsquo;s identifying category name</p>
+<p>A collection of values related to the artifact</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>buildOutput</code><br/>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Indicate if the artifact is a build output or a by-product</p>
 </td>
 </tr>
 </tbody>
@@ -10047,6 +10059,7 @@ string
 </em>
 </td>
 <td>
+<p>The artifact&rsquo;s identifying category name</p>
 </td>
 </tr>
 <tr>
@@ -10059,7 +10072,18 @@ string
 </em>
 </td>
 <td>
-<p>The artifact&rsquo;s identifying category name</p>
+<p>A collection of values related to the artifact</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>buildOutput</code><br/>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Indicate if the artifact is a build output or a by-product</p>
 </td>
 </tr>
 </tbody>
