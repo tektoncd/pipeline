@@ -422,13 +422,14 @@ func schema_pkg_apis_pipeline_v1beta1_Artifact(ref common.ReferenceCallback) com
 				Properties: map[string]spec.Schema{
 					"name": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
+							Description: "The artifact's identifying category name",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"values": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The artifact's identifying category name",
+							Description: "A collection of values related to the artifact",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -438,6 +439,13 @@ func schema_pkg_apis_pipeline_v1beta1_Artifact(ref common.ReferenceCallback) com
 									},
 								},
 							},
+						},
+					},
+					"buildOutput": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Indicate if the artifact is a build output or a by-product",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 				},

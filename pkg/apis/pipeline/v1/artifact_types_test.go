@@ -95,7 +95,8 @@ func TestArtifactsMerge(t *testing.T) {
 				},
 				Outputs: []Artifact{
 					{
-						Name: "output1",
+						Name:        "output1",
+						BuildOutput: true,
 						Values: []ArtifactValue{
 							{
 								Digest: map[Algorithm]string{"sha256": "698c4539633943f7889f41605003d7fa63833722ebd2b37c7e75df1d3d06941a"},
@@ -104,7 +105,8 @@ func TestArtifactsMerge(t *testing.T) {
 						},
 					},
 					{
-						Name: "output2",
+						Name:        "output2",
+						BuildOutput: true,
 						Values: []ArtifactValue{
 							{
 								Digest: map[Algorithm]string{"sha256": "7e406d83706c7193df3e38b66d350e55df6f13d2a28a1d35917a043533a70f5c"},
@@ -150,7 +152,8 @@ func TestArtifactsMerge(t *testing.T) {
 				},
 				Outputs: []Artifact{
 					{
-						Name: "output1",
+						Name:        "output1",
+						BuildOutput: true,
 						Values: []ArtifactValue{
 							{
 								Digest: map[Algorithm]string{"sha256": "47de7a85905970a45132f48a9247879a15c483477e23a637504694e611135b40e"},
@@ -163,7 +166,8 @@ func TestArtifactsMerge(t *testing.T) {
 						},
 					},
 					{
-						Name: "output2",
+						Name:        "output2",
+						BuildOutput: true,
 						Values: []ArtifactValue{
 							{
 								Digest: map[Algorithm]string{"sha256": "7e406d83706c7193df3e38b66d350e55df6f13d2a28a1d35917a043533a70f5c"},
