@@ -235,29 +235,37 @@ func resolveStepAction(ctx context.Context, resolver remote.Resolver, name, name
 		// Cleanup object from things we don't care about
 		// FIXME: extract this in a function
 		obj.ObjectMeta.OwnerReferences = nil
-		if err := apiserver.DryRunValidate(ctx, namespace, obj, tekton); err != nil {
+		o, err := apiserver.DryRunValidate(ctx, namespace, obj, tekton)
+		if err != nil {
 			return nil, nil, err
 		}
-		return obj, refSource, nil
+		if mutatedStepAction, ok := o.(*v1beta1.StepAction); ok {
+			mutatedStepAction.ObjectMeta = obj.ObjectMeta
+			return mutatedStepAction, refSource, nil
+		}
 	case *v1alpha1.StepAction:
 		obj.SetDefaults(ctx)
 		// Cleanup object from things we don't care about
 		// FIXME: extract this in a function
 		obj.ObjectMeta.OwnerReferences = nil
-		if err := apiserver.DryRunValidate(ctx, namespace, obj, tekton); err != nil {
-			return nil, nil, err
-		}
-		v1BetaStepAction := v1beta1.StepAction{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "StepAction",
-				APIVersion: "tekton.dev/v1beta1",
-			},
-		}
-		err := obj.ConvertTo(ctx, &v1BetaStepAction)
+		o, err := apiserver.DryRunValidate(ctx, namespace, obj, tekton)
 		if err != nil {
 			return nil, nil, err
 		}
-		return &v1BetaStepAction, refSource, nil
+		if mutatedStepAction, ok := o.(*v1alpha1.StepAction); ok {
+			mutatedStepAction.ObjectMeta = obj.ObjectMeta
+			v1BetaStepAction := v1beta1.StepAction{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "StepAction",
+					APIVersion: "tekton.dev/v1beta1",
+				},
+			}
+			err := mutatedStepAction.ConvertTo(ctx, &v1BetaStepAction)
+			if err != nil {
+				return nil, nil, err
+			}
+			return &v1BetaStepAction, refSource, nil
+		}
 	}
 	return nil, nil, errors.New("resource is not a StepAction")
 }
@@ -282,31 +290,42 @@ func readRuntimeObjectAsTask(ctx context.Context, namespace string, obj runtime.
 		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
 		// Issue a dry-run request to create the remote Task, so that it can undergo validation from validating admission webhooks
 		// without actually creating the Task on the cluster.
-		if err := apiserver.DryRunValidate(ctx, namespace, obj, tekton); err != nil {
+		o, err := apiserver.DryRunValidate(ctx, namespace, obj, tekton)
+		if err != nil {
 			return nil, nil, err
 		}
-		t := &v1.Task{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Task",
-				APIVersion: "tekton.dev/v1",
-			},
+		if mutatedTask, ok := o.(*v1beta1.Task); ok {
+			t := &v1.Task{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Task",
+					APIVersion: "tekton.dev/v1",
+				},
+			}
+			mutatedTask.ObjectMeta = obj.ObjectMeta
+			if err := mutatedTask.ConvertTo(ctx, t); err != nil {
+				return nil, nil, fmt.Errorf("failed to convert obj %s into Pipeline", mutatedTask.GetObjectKind().GroupVersionKind().String())
+			}
+			return t, &vr, nil
 		}
-		if err := obj.ConvertTo(ctx, t); err != nil {
-			return nil, nil, fmt.Errorf("failed to convert obj %s into Pipeline", obj.GetObjectKind().GroupVersionKind().String())
-		}
-		return t, &vr, nil
 	case *v1beta1.ClusterTask:
 		obj.SetDefaults(ctx)
 		// Cleanup object from things we don't care about
 		// FIXME: extract this in a function
 		obj.ObjectMeta.OwnerReferences = nil
 		t, err := convertClusterTaskToTask(ctx, *obj)
-		// Issue a dry-run request to create the remote Task, so that it can undergo validation from validating admission webhooks
-		// without actually creating the Task on the cluster
-		if err := apiserver.DryRunValidate(ctx, namespace, t, tekton); err != nil {
+		if err != nil {
 			return nil, nil, err
 		}
-		return t, nil, err
+		// Issue a dry-run request to create the remote Task, so that it can undergo validation from validating admission webhooks
+		// without actually creating the Task on the cluster
+		o, err := apiserver.DryRunValidate(ctx, namespace, t, tekton)
+		if err != nil {
+			return nil, nil, err
+		}
+		if mutatedTask, ok := o.(*v1.Task); ok {
+			mutatedTask.ObjectMeta = obj.ObjectMeta
+			return mutatedTask, nil, nil
+		}
 	case *v1.Task:
 		// This SetDefaults is currently not necessary, but for consistency, it is recommended to add it.
 		// Avoid forgetting to add it in the future when there is a v2 version, causing similar problems.
@@ -317,10 +336,14 @@ func readRuntimeObjectAsTask(ctx context.Context, namespace string, obj runtime.
 		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
 		// Issue a dry-run request to create the remote Task, so that it can undergo validation from validating admission webhooks
 		// without actually creating the Task on the cluster
-		if err := apiserver.DryRunValidate(ctx, namespace, obj, tekton); err != nil {
+		o, err := apiserver.DryRunValidate(ctx, namespace, obj, tekton)
+		if err != nil {
 			return nil, nil, err
 		}
-		return obj, &vr, nil
+		if mutatedTask, ok := o.(*v1.Task); ok {
+			mutatedTask.ObjectMeta = obj.ObjectMeta
+			return mutatedTask, &vr, nil
+		}
 	}
 	return nil, nil, errors.New("resource is not a task")
 }
