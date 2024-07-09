@@ -1675,6 +1675,9 @@
             "$ref": "#/definitions/v1.Artifact"
           }
         },
+        "provenance": {
+          "$ref": "#/definitions/v1.Provenance"
+        },
         "results": {
           "type": "array",
           "items": {

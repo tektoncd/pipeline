@@ -3437,7 +3437,7 @@ ParamType
 <h3 id="tekton.dev/v1.Provenance">Provenance
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRunStatusFields">PipelineRunStatusFields</a>, <a href="#tekton.dev/v1.TaskRunStatusFields">TaskRunStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRunStatusFields">PipelineRunStatusFields</a>, <a href="#tekton.dev/v1.StepState">StepState</a>, <a href="#tekton.dev/v1.TaskRunStatusFields">TaskRunStatusFields</a>)
 </p>
 <div>
 <p>Provenance contains metadata about resources used in the TaskRun/PipelineRun
@@ -4850,6 +4850,18 @@ string
 <em>
 <a href="#tekton.dev/v1.TaskRunResult">
 []TaskRunResult
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>provenance</code><br/>
+<em>
+<a href="#tekton.dev/v1.Provenance">
+Provenance
 </a>
 </em>
 </td>
@@ -12776,7 +12788,7 @@ ParamType
 <h3 id="tekton.dev/v1beta1.Provenance">Provenance
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineRunStatusFields">PipelineRunStatusFields</a>, <a href="#tekton.dev/v1beta1.TaskRunStatusFields">TaskRunStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineRunStatusFields">PipelineRunStatusFields</a>, <a href="#tekton.dev/v1beta1.StepState">StepState</a>, <a href="#tekton.dev/v1beta1.TaskRunStatusFields">TaskRunStatusFields</a>)
 </p>
 <div>
 <p>Provenance contains metadata about resources used in the TaskRun/PipelineRun
@@ -14436,6 +14448,18 @@ string
 <em>
 <a href="#tekton.dev/v1beta1.TaskRunResult">
 []TaskRunResult
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>provenance</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.Provenance">
+Provenance
 </a>
 </em>
 </td>

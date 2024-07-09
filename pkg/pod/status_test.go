@@ -490,6 +490,177 @@ func TestMakeTaskRunStatus_StepResults(t *testing.T) {
 	}
 }
 
+func TestMakeTaskRunStatus_StepProvenance(t *testing.T) {
+	for _, c := range []struct {
+		desc      string
+		podStatus corev1.PodStatus
+		pod       corev1.Pod
+		tr        v1.TaskRun
+		want      v1.TaskRunStatus
+	}{{
+		desc: "provenance in step",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodSucceeded,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "step-one",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{},
+				},
+			}},
+		},
+		tr: v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task-run",
+				Namespace: "foo",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Name:  "one",
+						Image: "bash",
+					}},
+				},
+			},
+			Status: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Steps: []v1.StepState{{
+						Name: "one",
+						Provenance: &v1.Provenance{RefSource: &v1.RefSource{
+							URI:    "pkg://foo/bar",
+							Digest: map[string]string{"sha256": "digest"},
+						}},
+					}},
+				},
+			},
+		},
+		want: v1.TaskRunStatus{
+			Status: statusSuccess(),
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Steps: []v1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{},
+					},
+					Name:      "one",
+					Container: "step-one",
+					Results:   []v1.TaskRunResult{},
+					Provenance: &v1.Provenance{RefSource: &v1.RefSource{
+						URI:    "pkg://foo/bar",
+						Digest: map[string]string{"sha256": "digest"},
+					}},
+				}},
+				Sidecars: []v1.SidecarState{},
+				// We don't actually care about the time, just that it's not nil
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+	}, {
+		desc: "provenance in some steps",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodSucceeded,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "step-one",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{},
+				},
+			}, {
+				Name: "step-two",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{},
+				},
+			}},
+		},
+		tr: v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task-run",
+				Namespace: "foo",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Name:  "one",
+						Image: "bash",
+					}, {
+						Name:  "two",
+						Image: "bash",
+					}},
+				},
+			},
+			Status: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Steps: []v1.StepState{{
+						Name: "one",
+						Provenance: &v1.Provenance{RefSource: &v1.RefSource{
+							URI:    "pkg://foo/bar",
+							Digest: map[string]string{"sha256": "digest"},
+						}},
+					}},
+				},
+			},
+		},
+		want: v1.TaskRunStatus{
+			Status: statusSuccess(),
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Steps: []v1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{},
+					},
+					Name:      "one",
+					Container: "step-one",
+					Results:   []v1.TaskRunResult{},
+					Provenance: &v1.Provenance{RefSource: &v1.RefSource{
+						URI:    "pkg://foo/bar",
+						Digest: map[string]string{"sha256": "digest"},
+					}},
+				}, {
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{},
+					},
+					Name:      "two",
+					Container: "step-two",
+					Results:   []v1.TaskRunResult{},
+				}},
+				Sidecars: []v1.SidecarState{},
+				// We don't actually care about the time, just that it's not nil
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			now := metav1.Now()
+			if cmp.Diff(c.pod, corev1.Pod{}) == "" {
+				c.pod = corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "pod",
+						Namespace:         "foo",
+						CreationTimestamp: now,
+					},
+					Status: c.podStatus,
+				}
+			}
+
+			logger, _ := logging.NewLogger("", "status")
+			kubeclient := fakek8s.NewSimpleClientset()
+			got, err := MakeTaskRunStatus(context.Background(), logger, c.tr, &c.pod, kubeclient, c.tr.Spec.TaskSpec)
+			if err != nil {
+				t.Errorf("MakeTaskRunResult: %s", err)
+			}
+
+			// Common traits, set for test case brevity.
+			c.want.PodName = "pod"
+
+			ensureTimeNotNil := cmp.Comparer(func(x, y *metav1.Time) bool {
+				if x == nil {
+					return y == nil
+				}
+				return y != nil
+			})
+			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ensureTimeNotNil); d != "" {
+				t.Errorf("Diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestMakeTaskRunStatus_StepArtifacts(t *testing.T) {
 	for _, c := range []struct {
 		desc      string
@@ -640,7 +811,6 @@ func TestMakeTaskRunStatus(t *testing.T) {
 		want: v1.TaskRunStatus{
 			Status: statusRunning(),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
-				Steps:    []v1.StepState{},
 				Sidecars: []v1.SidecarState{},
 			},
 		},
@@ -810,7 +980,6 @@ func TestMakeTaskRunStatus(t *testing.T) {
 		want: v1.TaskRunStatus{
 			Status: statusFailure(v1.TaskRunReasonFailed.String(), "boom"),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
-				Steps:    []v1.StepState{},
 				Sidecars: []v1.SidecarState{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
@@ -855,7 +1024,6 @@ func TestMakeTaskRunStatus(t *testing.T) {
 		want: v1.TaskRunStatus{
 			Status: statusFailure(v1.TaskRunReasonFailed.String(), "build failed for unspecified reasons."),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
-				Steps:    []v1.StepState{},
 				Sidecars: []v1.SidecarState{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
@@ -905,7 +1073,6 @@ func TestMakeTaskRunStatus(t *testing.T) {
 		want: v1.TaskRunStatus{
 			Status: statusPending("Pending", `pod status "the type":"Unknown"; message: "the message"`),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
-				Steps:    []v1.StepState{},
 				Sidecars: []v1.SidecarState{},
 			},
 		},
@@ -918,7 +1085,6 @@ func TestMakeTaskRunStatus(t *testing.T) {
 		want: v1.TaskRunStatus{
 			Status: statusPending("Pending", "pod status message"),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
-				Steps:    []v1.StepState{},
 				Sidecars: []v1.SidecarState{},
 			},
 		},
@@ -928,7 +1094,6 @@ func TestMakeTaskRunStatus(t *testing.T) {
 		want: v1.TaskRunStatus{
 			Status: statusPending("Pending", "Pending"),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
-				Steps:    []v1.StepState{},
 				Sidecars: []v1.SidecarState{},
 			},
 		},
@@ -944,7 +1109,6 @@ func TestMakeTaskRunStatus(t *testing.T) {
 		want: v1.TaskRunStatus{
 			Status: statusPending(ReasonExceededNodeResources, "TaskRun Pod exceeded available resources"),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
-				Steps:    []v1.StepState{},
 				Sidecars: []v1.SidecarState{},
 			},
 		},
@@ -963,7 +1127,6 @@ func TestMakeTaskRunStatus(t *testing.T) {
 		want: v1.TaskRunStatus{
 			Status: statusFailure(ReasonCreateContainerConfigError, "Failed to create pod due to config error"),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
-				Steps:    []v1.StepState{},
 				Sidecars: []v1.SidecarState{},
 			},
 		},
