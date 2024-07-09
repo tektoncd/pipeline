@@ -345,6 +345,12 @@ func (ss StepState) convertTo(ctx context.Context, sink *v1.StepState) {
 	sink.ImageID = ss.ImageID
 	sink.Results = nil
 
+	if ss.Provenance != nil {
+		new := v1.Provenance{}
+		ss.Provenance.convertTo(ctx, &new)
+		sink.Provenance = &new
+	}
+
 	if ss.ContainerState.Terminated != nil {
 		sink.TerminationReason = ss.ContainerState.Terminated.Reason
 	}
@@ -378,6 +384,11 @@ func (ss *StepState) convertFrom(ctx context.Context, source v1.StepState) {
 		new := TaskRunStepResult{}
 		new.convertFrom(ctx, r)
 		ss.Results = append(ss.Results, new)
+	}
+	if source.Provenance != nil {
+		new := Provenance{}
+		new.convertFrom(ctx, *source.Provenance)
+		ss.Provenance = &new
 	}
 	for _, o := range source.Outputs {
 		new := TaskRunStepArtifact{}

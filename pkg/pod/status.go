@@ -139,7 +139,6 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.Tas
 	}
 
 	trs.PodName = pod.Name
-	trs.Steps = []v1.StepState{}
 	trs.Sidecars = []v1.SidecarState{}
 
 	var stepStatuses []corev1.ContainerStatus
@@ -365,17 +364,28 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 				terminationReason = getTerminationReason(state.Terminated.Reason, terminationFromResults, exitCode)
 			}
 		}
-
-		trs.Steps = append(trs.Steps, v1.StepState{
+		stepState := v1.StepState{
 			ContainerState:    *state,
-			Name:              trimStepPrefix(s.Name),
+			Name:              TrimStepPrefix(s.Name),
 			Container:         s.Name,
 			ImageID:           s.ImageID,
 			Results:           taskRunStepResults,
 			TerminationReason: terminationReason,
 			Inputs:            sas.Inputs,
 			Outputs:           sas.Outputs,
-		})
+		}
+		foundStep := false
+		for i, ss := range trs.Steps {
+			if ss.Name == stepState.Name {
+				stepState.Provenance = ss.Provenance
+				trs.Steps[i] = stepState
+				foundStep = true
+				break
+			}
+		}
+		if !foundStep {
+			trs.Steps = append(trs.Steps, stepState)
+		}
 	}
 
 	return merr

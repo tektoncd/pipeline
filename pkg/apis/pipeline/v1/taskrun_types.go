@@ -364,6 +364,7 @@ type StepState struct {
 	Container             string                `json:"container,omitempty"`
 	ImageID               string                `json:"imageID,omitempty"`
 	Results               []TaskRunStepResult   `json:"results,omitempty"`
+	Provenance            *Provenance           `json:"provenance,omitempty"`
 	TerminationReason     string                `json:"terminationReason,omitempty"`
 	Inputs                []TaskRunStepArtifact `json:"inputs,omitempty"`
 	Outputs               []TaskRunStepArtifact `json:"outputs,omitempty"`

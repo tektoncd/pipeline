@@ -4442,6 +4442,11 @@ func schema_pkg_apis_pipeline_v1beta1_StepState(ref common.ReferenceCallback) co
 							},
 						},
 					},
+					"provenance": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Provenance"),
+						},
+					},
 					"inputs": {
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"array"},
@@ -4472,7 +4477,7 @@ func schema_pkg_apis_pipeline_v1beta1_StepState(ref common.ReferenceCallback) co
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Artifact", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunResult", "k8s.io/api/core/v1.ContainerStateRunning", "k8s.io/api/core/v1.ContainerStateTerminated", "k8s.io/api/core/v1.ContainerStateWaiting"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Artifact", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Provenance", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunResult", "k8s.io/api/core/v1.ContainerStateRunning", "k8s.io/api/core/v1.ContainerStateTerminated", "k8s.io/api/core/v1.ContainerStateWaiting"},
 	}
 }
 

@@ -127,6 +127,27 @@ func TestTaskRunConversion(t *testing.T) {
 				},
 			},
 		}, {
+			name: "taskrun with provenance in step state",
+			in: &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "bar",
+				},
+				Spec: v1beta1.TaskRunSpec{},
+				Status: v1beta1.TaskRunStatus{
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						Steps: []v1beta1.StepState{{
+							Provenance: &v1beta1.Provenance{
+								RefSource: &v1beta1.RefSource{
+									URI:    "test-uri",
+									Digest: map[string]string{"sha256": "digest"},
+								},
+							},
+						}},
+					},
+				},
+			},
+		}, {
 			name: "taskrun conversion all non deprecated fields",
 			in: &v1beta1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{

@@ -2437,6 +2437,9 @@
             "$ref": "#/definitions/v1beta1.Artifact"
           }
         },
+        "provenance": {
+          "$ref": "#/definitions/v1beta1.Provenance"
+        },
         "results": {
           "type": "array",
           "items": {
