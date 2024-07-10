@@ -802,20 +802,21 @@ steps:
 
 The following tables shows how to read the overall status of a `TaskRun`:
 
-`status` | `reason`               | `message`                                                         | `completionTime` is set |                                                                                       Description
-:--------|:-----------------------|:------------------------------------------------------------------|:-----------------------:|-------------------------------------------------------------------------------------------------:
-Unknown  | Started                | n/a                                                               |           No            |                                            The TaskRun has just been picked up by the controller.
-Unknown  | Pending                | n/a                                                               |           No            |                                                The TaskRun is waiting on a Pod in status Pending.
-Unknown  | Running                | n/a                                                               |           No            |                                   The TaskRun has been validated and started to perform its work.
-Unknown  | TaskRunCancelled       | n/a                                                               |           No            |               The user requested the TaskRun to be cancelled. Cancellation has not been done yet.
-True     | Succeeded              | n/a                                                               |           Yes           |                                                               The TaskRun completed successfully.
-False    | Failed                 | n/a                                                               |           Yes           |                                               The TaskRun failed because one of the steps failed.
-False    | \[Error message\]      | n/a                                                               |           No            | The TaskRun encountered a non-permanent error, and it's still running. It may ultimately succeed.
-False    | \[Error message\]      | n/a                                                               |           Yes           |                                   The TaskRun failed with a permanent error (usually validation).
-False    | TaskRunCancelled       | n/a                                                               |           Yes           |                                                           The TaskRun was cancelled successfully.
-False    | TaskRunCancelled       | TaskRun cancelled as the PipelineRun it belongs to has timed out. |           Yes           |                                      The TaskRun was cancelled because the PipelineRun timed out.
-False    | TaskRunTimeout         | n/a                                                               |           Yes           |                                                                            The TaskRun timed out.
-False    | TaskRunImagePullFailed | n/a                                                               |           Yes           |                      The TaskRun failed due to one of its steps not being able to pull the image.
+| `status` | `reason`               | `message`                                                         | `completionTime` is set |                                                                                       Description |
+|:---------|:-----------------------|:------------------------------------------------------------------|:-----------------------:|--------------------------------------------------------------------------------------------------:|
+| Unknown  | Started                | n/a                                                               |           No            |                                            The TaskRun has just been picked up by the controller. |
+| Unknown  | Pending                | n/a                                                               |           No            |                                                The TaskRun is waiting on a Pod in status Pending. |
+| Unknown  | Running                | n/a                                                               |           No            |                                   The TaskRun has been validated and started to perform its work. |
+| Unknown  | TaskRunCancelled       | n/a                                                               |           No            |               The user requested the TaskRun to be cancelled. Cancellation has not been done yet. |
+| True     | Succeeded              | n/a                                                               |           Yes           |                                                               The TaskRun completed successfully. |
+| False    | Failed                 | n/a                                                               |           Yes           |                                               The TaskRun failed because one of the steps failed. |
+| False    | \[Error message\]      | n/a                                                               |           No            | The TaskRun encountered a non-permanent error, and it's still running. It may ultimately succeed. |
+| False    | \[Error message\]      | n/a                                                               |           Yes           |                                   The TaskRun failed with a permanent error (usually validation). |
+| False    | TaskRunCancelled       | n/a                                                               |           Yes           |                                                           The TaskRun was cancelled successfully. |
+| False    | TaskRunCancelled       | TaskRun cancelled as the PipelineRun it belongs to has timed out. |           Yes           |                                      The TaskRun was cancelled because the PipelineRun timed out. |
+| False    | TaskRunTimeout         | n/a                                                               |           Yes           |                                                                            The TaskRun timed out. |
+| False    | TaskRunImagePullFailed | n/a                                                               |           Yes           |                      The TaskRun failed due to one of its steps not being able to pull the image. |
+| False    | FailureIgnored         | n/a                                                               |           Yes           |                                                   The TaskRun failed but the failure was ignored. |
 
 When a `TaskRun` changes status, [events](events.md#taskruns) are triggered accordingly.
 
