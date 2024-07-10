@@ -2351,7 +2351,9 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 		dagTasks: []v1.PipelineTask{pts[0], pts[1]},
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskReasonSuffix: "",
 			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskReasonSuffix: "",
 			v1.PipelineTasksAggregateStatus:                                   PipelineTaskStateNone,
 		},
 	}, {
@@ -2360,7 +2362,9 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 		dagTasks: []v1.PipelineTask{pts[0], pts[1]},
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskReasonSuffix: "",
 			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskReasonSuffix: "",
 			v1.PipelineTasksAggregateStatus:                                   PipelineTaskStateNone,
 		},
 	}, {
@@ -2369,7 +2373,9 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 		dagTasks: []v1.PipelineTask{pts[0], pts[1]},
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: v1.TaskRunReasonSuccessful.String(),
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskReasonSuffix: "Succeeded",
 			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskReasonSuffix: "",
 			v1.PipelineTasksAggregateStatus:                                   PipelineTaskStateNone,
 		},
 	}, {
@@ -2378,7 +2384,9 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 		dagTasks: []v1.PipelineTask{pts[0], pts[1]},
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: v1.TaskRunReasonFailed.String(),
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskReasonSuffix: "Failed",
 			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskReasonSuffix: "",
 			v1.PipelineTasksAggregateStatus:                                   v1.PipelineRunReasonFailed.String(),
 		},
 	}, {
@@ -2387,7 +2395,9 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 		dagTasks: []v1.PipelineTask{pts[0], pts[1]},
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: v1.TaskRunReasonSuccessful.String(),
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskReasonSuffix: "Succeeded",
 			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: v1.TaskRunReasonSuccessful.String(),
+			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskReasonSuffix: "Succeeded",
 			v1.PipelineTasksAggregateStatus:                                   v1.PipelineRunReasonSuccessful.String(),
 		},
 	}, {
@@ -2403,6 +2413,7 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 		dagTasks: []v1.PipelineTask{pts[9]},
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[9].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			PipelineTaskStatusPrefix + pts[9].Name + PipelineTaskReasonSuffix: "",
 			v1.PipelineTasksAggregateStatus:                                   PipelineTaskStateNone,
 		},
 	}, {
@@ -2417,6 +2428,7 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 		dagTasks: []v1.PipelineTask{pts[10]},
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[10].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			PipelineTaskStatusPrefix + pts[10].Name + PipelineTaskReasonSuffix: "",
 			v1.PipelineTasksAggregateStatus:                                    v1.PipelineRunReasonCompleted.String(),
 		},
 	}, {
@@ -2437,7 +2449,9 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 		dagTasks: []v1.PipelineTask{pts[0], pts[11]},
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix:  PipelineTaskStateNone,
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskReasonSuffix:  "",
 			PipelineTaskStatusPrefix + pts[11].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			PipelineTaskStatusPrefix + pts[11].Name + PipelineTaskReasonSuffix: "",
 			v1.PipelineTasksAggregateStatus:                                    PipelineTaskStateNone,
 		},
 	}, {
@@ -2446,6 +2460,7 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 		dagTasks: []v1.PipelineTask{pts[4]},
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[4].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			PipelineTaskStatusPrefix + pts[4].Name + PipelineTaskReasonSuffix: v1.TaskRunReasonCancelled.String(),
 			v1.PipelineTasksAggregateStatus:                                   PipelineTaskStateNone,
 		},
 	}, {
@@ -2467,7 +2482,9 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 		dagTasks: []v1.PipelineTask{pts[0], pts[10]},
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix:  v1.PipelineRunReasonFailed.String(),
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskReasonSuffix:  v1.PipelineRunReasonFailed.String(),
 			PipelineTaskStatusPrefix + pts[10].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			PipelineTaskStatusPrefix + pts[10].Name + PipelineTaskReasonSuffix: "",
 			v1.PipelineTasksAggregateStatus:                                    v1.PipelineRunReasonFailed.String(),
 		},
 	}}
