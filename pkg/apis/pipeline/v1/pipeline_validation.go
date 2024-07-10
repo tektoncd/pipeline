@@ -513,9 +513,13 @@ func (pt *PipelineTask) GetVarSubstitutionExpressions() []string {
 	return allExpressions
 }
 
+// containsExecutionStatusRef checks if a specified param has a reference to execution status or reason
+// $(tasks.<task-name>.status), $(tasks.status), or $(tasks.<task-name>.reason)
 func containsExecutionStatusRef(p string) bool {
-	if strings.HasPrefix(p, "tasks.") && strings.HasSuffix(p, ".status") {
-		return true
+	if strings.HasPrefix(p, "tasks.") {
+		if strings.HasSuffix(p, ".status") || strings.HasSuffix(p, ".reason") {
+			return true
+		}
 	}
 	return false
 }
@@ -589,7 +593,7 @@ func containsExecutionStatusReferences(expressions []string) bool {
 	if !LooksLikeContainsResultRefs(expressions) {
 		for _, e := range expressions {
 			// check if it contains context variable accessing execution status - $(tasks.taskname.status)
-			// or an aggregate status - $(tasks.status)
+			// or an aggregate status - $(tasks.status) or reason - $(tasks.taskname.reason)
 			if containsExecutionStatusRef(e) {
 				return true
 			}
@@ -606,10 +610,17 @@ func validateExecutionStatusVariablesExpressions(expressions []string, ptNames s
 			if expression == PipelineTasksAggregateStatus {
 				continue
 			}
-			// check if it contains context variable accessing execution status - $(tasks.taskname.status)
+			// check if it contains context variable accessing execution status - $(tasks.taskname.status) | $(tasks.taskname.reason)
 			if containsExecutionStatusRef(expression) {
-				// strip tasks. and .status from tasks.taskname.status to further verify task name
-				pt := strings.TrimSuffix(strings.TrimPrefix(expression, "tasks."), ".status")
+				var pt string
+				if strings.HasSuffix(expression, ".status") {
+					// strip tasks. and .status from tasks.taskname.status to further verify task name
+					pt = strings.TrimSuffix(strings.TrimPrefix(expression, "tasks."), ".status")
+				}
+				if strings.HasSuffix(expression, ".reason") {
+					// strip tasks. and .reason from tasks.taskname.reason to further verify task name
+					pt = strings.TrimSuffix(strings.TrimPrefix(expression, "tasks."), ".reason")
+				}
 				// report an error if the task name does not exist in the list of dag tasks
 				if !ptNames.Has(pt) {
 					errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("pipeline task %s is not defined in the pipeline", pt), fieldPath))
@@ -617,6 +628,7 @@ func validateExecutionStatusVariablesExpressions(expressions []string, ptNames s
 			}
 		}
 	}
+
 	return errs
 }
 

@@ -138,6 +138,37 @@ func (t ResolvedPipelineTask) IsCustomTask() bool {
 	return t.CustomTask
 }
 
+// getReason returns the latest reason if the run has completed successfully
+// If the PipelineTask has a Matrix, getReason returns the failure reason for any failure
+// otherwise, it returns an empty string
+func (t ResolvedPipelineTask) getReason() string {
+	if t.IsCustomTask() {
+		if len(t.CustomRuns) == 0 {
+			return ""
+		}
+		for _, run := range t.CustomRuns {
+			if !run.IsSuccessful() && len(run.Status.Conditions) >= 1 {
+				return run.Status.Conditions[0].Reason
+			}
+		}
+		if len(t.CustomRuns) >= 1 && len(t.CustomRuns[0].Status.Conditions) >= 1 {
+			return t.CustomRuns[0].Status.Conditions[0].Reason
+		}
+	}
+	if len(t.TaskRuns) == 0 {
+		return ""
+	}
+	for _, taskRun := range t.TaskRuns {
+		if !taskRun.IsSuccessful() && len(taskRun.Status.Conditions) >= 1 {
+			return taskRun.Status.Conditions[0].Reason
+		}
+	}
+	if len(t.TaskRuns) >= 1 && len(t.TaskRuns[0].Status.Conditions) >= 1 {
+		return t.TaskRuns[0].Status.Conditions[0].Reason
+	}
+	return ""
+}
+
 // isSuccessful returns true only if the run has completed successfully
 // If the PipelineTask has a Matrix, isSuccessful returns true if all runs have completed successfully
 func (t ResolvedPipelineTask) isSuccessful() bool {

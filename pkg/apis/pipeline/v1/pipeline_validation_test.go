@@ -3867,12 +3867,18 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 			Params: Params{{
 				Name: "foo-status", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.foo.status)"},
 			}, {
+				Name: "foo-reason", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.foo.reason)"},
+			}, {
 				Name: "tasks-status", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.status)"},
 			}},
 			When: WhenExpressions{{
 				Input:    "$(tasks.foo.status)",
 				Operator: selection.In,
 				Values:   []string{"Failure"},
+			}, {
+				Input:    "$(tasks.foo.reason)",
+				Operator: selection.In,
+				Values:   []string{"Failed"},
 			}, {
 				Input:    "$(tasks.status)",
 				Operator: selection.In,
