@@ -6,14 +6,14 @@ spec:
   taskSpec:
     steps:
       # exit with 1 and ignore non zero exit code
-      - image: docker.io/library/alpine
+      - image: docker.io/library/alpine:3.20.1
         onError: continue
         name: exit-with-1
         script: |
           exit 1
       # check if the /tekton/steps/step-<step-name>/exitCode got created and contains the exit code
       # check if the symlink /tekton/steps/0/ got created
-      - image: docker.io/library/alpine
+      - image: docker.io/library/alpine:3.20.1
         name: verify-step-path
         script: |
           exitCode=`cat $(steps.step-exit-with-1.exitCode.path)`

@@ -12,7 +12,7 @@ spec:
       description: The array results
   steps:
     - name: write-array
-      image: docker.io/library/bash:latest
+      image: docker.io/library/bash:5.2.26
       script: |
         #!/usr/bin/env bash
         echo -n "[\"hello\",\"world\"]" | tee $(results.array-results.path)

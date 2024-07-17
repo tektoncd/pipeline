@@ -9,7 +9,7 @@ spec:
     - name: t1
       taskSpec:
         steps:
-          - image: docker.io/library/ubuntu
+          - image: docker.io/library/ubuntu:24.04
             command: ["ls"]
             args: ["$(workspaces.shared-data.path)"]
 ---

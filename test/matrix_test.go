@@ -70,7 +70,7 @@ spec:
       default: ""
   steps:
     - name: echo
-      image: docker.io/library/alpine
+      image: docker.io/library/alpine:3.20.1
       script: |
         echo "$(params.GOARCH) and $(params.version)"
 `, namespace))
@@ -85,7 +85,7 @@ spec:
       type: array
   steps:
     - name: produce-a-list-of-results
-      image: docker.io/library/bash:latest
+      image: docker.io/library/bash:5.2.26
       script: |
         #!/usr/bin/env bash
         echo -n "[\"linux/amd64\",\"linux/ppc64le\"]" | tee $(results.GOARCHs.path)
@@ -101,7 +101,7 @@ spec:
       type: array
   steps:
     - name: produce-a-list-of-versions
-      image: docker.io/library/bash:latest
+      image: docker.io/library/bash:5.2.26
       script: |
         #!/usr/bin/env bash
         echo -n "[\"go1.17\",\"go1.18.1\"]" | tee $(results.versions.path)
@@ -403,7 +403,7 @@ spec:
     - name: exit-code
   steps:
     - name: echo
-      image: docker.io/library/alpine
+      image: docker.io/library/alpine:3.20.1
       script: |
         exit "$(params.exit-code)"
 `, namespace))

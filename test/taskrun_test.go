@@ -61,13 +61,13 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/busybox
+  - image: docker.io/library/busybox:1.36
     command: ['/bin/sh']
     args: ['-c', 'echo hello']
-  - image: docker.io/library/busybox
+  - image: docker.io/library/busybox:1.36
     command: ['/bin/sh']
     args: ['-c', 'exit 1']
-  - image: docker.io/library/busybox
+  - image: docker.io/library/busybox:1.36
     command: ['/bin/sh']
     args: ['-c', 'sleep 30s']
 `, helpers.ObjectNameForTest(t), namespace))
@@ -512,7 +512,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/busybox
+  - image: docker.io/library/busybox:1.36
     command: ['/bin/sh']
     args: ['-c', 'exit 1']
     volumeMounts:

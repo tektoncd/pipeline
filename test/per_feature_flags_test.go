@@ -152,9 +152,9 @@ spec:
   results:
   - name: result
   steps:
-  - image: docker.io/library/busybox
+  - image: docker.io/library/busybox:1.36
     script: 'echo $(params["text"])'
-  - image: docker.io/library/busybox
+  - image: docker.io/library/busybox:1.36
     # Sleep for N seconds so that we can check that tasks that
     # should be run in parallel have overlap.
     script: |
@@ -280,7 +280,7 @@ spec:
         params:
         - name: param1
         steps:
-        - image: docker.io/library/busybox
+        - image: docker.io/library/busybox:1.36
           script: 'echo $(params.param1);exit 0'
 `, helpers.ObjectNameForTest(t)))
 

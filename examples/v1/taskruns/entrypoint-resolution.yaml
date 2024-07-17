@@ -13,17 +13,17 @@ spec:
     # Multi-arch image with no command defined, but with args. We'll look
     # up the commands and pass it to the entrypoint binary via env var, then
     # append the specified args.
-    - image: docker.io/library/ubuntu
+    - image: docker.io/library/ubuntu:24.04
       args: ['-c', 'echo', 'hello']
 
     # Multi-arch image, but since we specify `script` we don't need to look it
     # up and pass it down.
-    - image: docker.io/library/ubuntu
+    - image: docker.io/library/ubuntu:24.04
       script: echo hello
 
     # Multi-arch image, but since we specify `command` and `args` we don't
     # need to look it up and pass it down.
-    - image: docker.io/library/ubuntu
+    - image: docker.io/library/ubuntu:24.04
       command: ['sh', '-c']
       args: ['echo hello']
 

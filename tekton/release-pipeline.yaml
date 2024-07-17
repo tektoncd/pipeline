@@ -242,7 +242,7 @@ spec:
             description: The full URL of the release file (no tag) in the bucket
         steps:
           - name: create-results
-            image: docker.io/library/alpine
+            image: docker.io/library/alpine:3.20.1
             env:
               - name: RELEASE_BUCKET
                 value: $(params.releaseBucket)

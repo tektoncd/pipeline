@@ -15,7 +15,7 @@ spec:
           type: string
         IMAGE_DIGEST:
           type: string
-  image: docker.io/library/bash:3.2
+  image: docker.io/library/bash:5.2.26
   env:
     - name: STRINGPARAM
       value: $(params.param2)
@@ -75,7 +75,7 @@ spec:
                 type: string
               IMAGE_DIGEST:
                 type: string
-        image: docker.io/library/alpine
+        image: docker.io/library/alpine:3.20.1
         script: |
           echo -n "[\"image1\", \"image2\", \"image3\"]" | tee $(step.results.result1.path)
           echo -n "foo" | tee $(step.results.result2.path)

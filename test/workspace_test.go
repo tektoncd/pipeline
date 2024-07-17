@@ -51,7 +51,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/alpine
+  - image: docker.io/library/alpine:3.20.1
     script: 'echo foo > /workspace/test/file'
   workspaces:
   - name: test
@@ -129,7 +129,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/alpine
+  - image: docker.io/library/alpine:3.20.1
     script: 'cat /workspace/test/file'
   workspaces:
   - name: test
@@ -199,7 +199,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/alpine
+  - image: docker.io/library/alpine:3.20.1
     script: 'cat /workspace/test/file'
   workspaces:
   - name: test
@@ -268,7 +268,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/alpine
+  - image: docker.io/library/alpine:3.20.1
     name: foo
     command: ['echo']
     args: ['$(workspaces.test.volume)']

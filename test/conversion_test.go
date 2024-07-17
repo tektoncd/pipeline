@@ -224,7 +224,7 @@ spec:
       - name: task1-result
         value: task1-val
     steps:
-      - image: docker.io/library/alpine
+      - image: docker.io/library/alpine:3.20.1
         onError: continue
         name: exit-with-255
         script: |
@@ -278,7 +278,7 @@ spec:
       - name: task1-result
         value: task1-val
     steps:
-      - image: docker.io/library/alpine
+      - image: docker.io/library/alpine:3.20.1
         onError: continue
         name: exit-with-255
         script: |

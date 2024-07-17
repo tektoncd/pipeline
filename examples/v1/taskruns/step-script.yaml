@@ -59,13 +59,13 @@ spec:
         cat file
 
     - name: node
-      image: docker.io/library/node
+      image: docker.io/library/node:lts-alpine3.20
       script: |
         #!/usr/bin/env node
         console.log("Hello from Node!")
 
     - name: python
-      image: docker.io/library/python
+      image: docker.io/library/python:3.12.4
       script: |
         #!/usr/bin/env python3
         print("Hello from Python!")
@@ -78,7 +78,7 @@ spec:
 
     # Test that param values are replaced.
     - name: params-applied
-      image: docker.io/library/python
+      image: docker.io/library/python:3.12.4
       script: |
         #!/usr/bin/env python3
         v = '$(params.PARAM)'
@@ -99,7 +99,7 @@ spec:
 
     # Test that multiple dollar signs next to each other are not replaced by Kubernetes
     - name: dollar-signs-allowed
-      image: docker.io/library/python
+      image: docker.io/library/python:3.12.4
       script: |
         #!/usr/bin/env python3
         if '$' != '\u0024':
@@ -118,7 +118,7 @@ spec:
 
     # Test that bash scripts with variable evaluations work as expected
     - name: bash-variable-evaluations
-      image: docker.io/library/bash:5.1.8
+      image: docker.io/library/bash:5.2.26
       script: |
         #!/usr/bin/env bash
         set -xe

@@ -10,7 +10,7 @@ spec:
     - name: task1  # successful task
       taskSpec:
         steps:
-        - image: docker.io/library/ubuntu
+        - image: docker.io/library/ubuntu:24.04
           name: hello
           script: |
             echo "Hello World!"
@@ -21,7 +21,7 @@ spec:
           values: ["true"]
       taskSpec:
         steps:
-          - image: docker.io/library/ubuntu
+          - image: docker.io/library/ubuntu:24.04
             name: success
             script: |
               exit 0
@@ -37,7 +37,7 @@ spec:
           - name: task1Status
           - name: task2Status
         steps:
-          - image: docker.io/library/alpine
+          - image: docker.io/library/alpine:3.20.1
             name: verify-dag-task-status
             script: |
               if [[ $(params.task1Status) != "Succeeded" ||  $(params.task2Status) != "None" ]]; then
@@ -51,7 +51,7 @@ spec:
         params:
           - name: aggregateStatus
         steps:
-          - image: docker.io/library/alpine
+          - image: docker.io/library/alpine:3.20.1
             name: verify-aggregate-tasks-status
             script: |
               if [[ $(params.aggregateStatus) != "Completed" ]]; then
