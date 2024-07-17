@@ -63,7 +63,7 @@ spec:
         params:
         - name: param1
         steps:
-        - image: docker.io/library/busybox
+        - image: docker.io/library/busybox:1.36
           script: 'exit 0'
     - name: finaltask2
       params:
@@ -73,7 +73,7 @@ spec:
         params:
         - name: param1
         steps:
-        - image: docker.io/library/busybox
+        - image: docker.io/library/busybox:1.36
           script: exit 0`, helpers.ObjectNameForTest(t)))
 
 	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {

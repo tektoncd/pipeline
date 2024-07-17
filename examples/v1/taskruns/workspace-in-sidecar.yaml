@@ -18,7 +18,7 @@ spec:
     workspaces:
     - name: signals
     steps:
-    - image: docker.io/library/alpine:3.12.0
+    - image: docker.io/library/alpine:3.20.1
       computeResources:
         requests:
           memory: "16Mi"
@@ -34,7 +34,7 @@ spec:
         echo "Sidecar responded: ${response}"
         echo "Step Done."
     sidecars:
-    - image: docker.io/library/alpine:3.12.0
+    - image: docker.io/library/alpine:3.20.1
       computeResources:
         requests:
           memory: "16Mi"

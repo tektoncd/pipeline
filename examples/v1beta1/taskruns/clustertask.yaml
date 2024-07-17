@@ -6,7 +6,7 @@ metadata:
   name: clustertask-v1beta1
 spec:
   steps:
-  - image: docker.io/library/ubuntu
+  - image: docker.io/library/ubuntu:24.04
     script: echo hello
 ---
 apiVersion: tekton.dev/v1beta1

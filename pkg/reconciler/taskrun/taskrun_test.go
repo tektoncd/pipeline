@@ -2762,7 +2762,7 @@ metadata:
 spec:
   taskSpec:
     sidecars:
-    - image: docker.io/library/ubuntu
+    - image: docker.io/library/ubuntu:24.04
     - image: whatever
     steps:
     - image: alpine

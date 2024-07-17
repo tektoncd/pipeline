@@ -156,7 +156,7 @@ spec:
       default: param-value
     steps:
     - name: node
-      image: docker.io/library/node
+      image: docker.io/library/node:lts-alpine3.20
       script: |
         #!/usr/bin/env node
         console.log("Hello from Node!")
@@ -167,7 +167,7 @@ spec:
         print "Hello from Perl!"
     # Test that param values are replaced.
     - name: params-applied
-      image: docker.io/library/python
+      image: docker.io/library/python:3.12.4
       script: |
         #!/usr/bin/env python3
         v = '$(params.PARAM)'
@@ -186,7 +186,7 @@ spec:
         [[ $2 == "world" ]]
     # Test that multiple dollar signs next to each other are not replaced by Kubernetes
     - name: dollar-signs-allowed
-      image: docker.io/library/python
+      image: docker.io/library/python:3.12.4
       script: |
         #!/usr/bin/env python3
         if '$' != '\u0024':
@@ -205,7 +205,7 @@ spec:
 
     # Test that bash scripts with variable evaluations work as expected
     - name: bash-variable-evaluations
-      image: docker.io/library/bash:5.1.8
+      image: docker.io/library/bash:5.2.26
       script: |
         #!/usr/bin/env bash
         set -xe
@@ -441,7 +441,7 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: docker.io/library/busybox
+    - image: docker.io/library/busybox:1.36
       args: ['-c', 'echo hello']
 `, helpers.ObjectNameForTest(t))
 
@@ -493,7 +493,7 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: docker.io/library/busybox
+    - image: docker.io/library/busybox:1.36
       script: exit 1
 `, helpers.ObjectNameForTest(t))
 
@@ -794,7 +794,7 @@ spec:
         type: array
     steps:
     - name: concat-array-params
-      image: docker.io/library/alpine
+      image: docker.io/library/alpine:3.20.1
       command: ["/bin/sh", "-c"]
       args:
       - echo -n $(params.array-to-concat[0])"-"$(params.array-to-concat[1]) | tee $(results.concat-array.path);
@@ -863,12 +863,12 @@ spec:
         default: "string-baz-default"
     steps:
       - name: string-params-to-result
-        image: docker.io/library/bash:3.2
+        image: docker.io/library/bash:5.2.26
         command: ["/bin/sh", "-c"]
         args:
         - echo -n $(params.string-param)"-"$(params.string-default) | tee $(results.string-output.path);
       - name: array-params-to-result
-        image: docker.io/library/bash:3.2
+        image: docker.io/library/bash:5.2.26
         command: ["/bin/sh", "-c"]
         args:
         - echo -n $(params.array-param[0])"-"$(params.array-defaul-param[1]) | tee $(results.array-output.path);
@@ -940,7 +940,7 @@ spec:
       default: "foo"
     steps:
     - name: add
-      image: docker.io/library/alpine
+      image: docker.io/library/alpine:3.20.1
       env:
       - name: OP1
         value: $(params.foo)
@@ -1041,7 +1041,7 @@ spec:
   timeout: 15s
   taskSpec:
     steps:
-    - image: docker.io/library/busybox
+    - image: docker.io/library/busybox:1.36
       command: ['/bin/sh']
       args: ['-c', 'sleep 15001']
 `, helpers.ObjectNameForTest(t))
@@ -1124,7 +1124,7 @@ spec:
           description: The second integer from PipelineTask Param
         steps:
         - name: sum
-          image: docker.io/library/bash:latest
+          image: docker.io/library/bash:5.2.26
           script: |
             #!/usr/bin/env bash
             echo -n $(( "$(inputs.params.op0)" + "$(inputs.params.op1)" ))
@@ -1177,7 +1177,7 @@ spec:
         - name: suffix
         steps:
         - name: generate-suffix
-          image: docker.io/library/alpine
+          image: docker.io/library/alpine:3.20.1
           script: |
             echo -n "suffix" > $(results.suffix.path)
     - name: do-something
@@ -1188,7 +1188,7 @@ spec:
         - name: arg
         steps:
         - name: do-something
-          image: docker.io/library/alpine
+          image: docker.io/library/alpine:3.20.1
           script: |
             echo -n "$(params.arg)" | tee $(results.output.path)
       params:
@@ -1320,7 +1320,7 @@ spec:
       timeout: 15s
       taskSpec:
         steps:
-        - image: docker.io/library/busybox
+        - image: docker.io/library/busybox:1.36
           command: ['/bin/sh']
           args: ['-c', 'sleep 15001']
 `, helpers.ObjectNameForTest(t))
@@ -1359,7 +1359,7 @@ spec:
     - name: timeout
       taskSpec:
         steps:
-        - image: docker.io/library/busybox
+        - image: docker.io/library/busybox:1.36
           command: ['/bin/sh']
           args: ['-c', 'sleep 15001']
 `, helpers.ObjectNameForTest(t))
@@ -1410,7 +1410,7 @@ spec:
               description: The product of the two provided integers
           steps:
             - name: product
-              image: docker.io/library/bash:latest
+              image: docker.io/library/bash:5.2.26
               script: |
                 #!/usr/bin/env bash
                 echo -n $(( "$(params.a)" * "$(params.b)" )) | tee $(results.product.path)
@@ -1427,7 +1427,7 @@ spec:
               description: The product of the two provided integers
           steps:
             - name: product
-              image: docker.io/library/bash:latest
+              image: docker.io/library/bash:5.2.26
               script: |
                 #!/usr/bin/env bash
                 echo -n $(( "$(params.a)" * "$(params.b)" )) | tee $(results.product.path)

@@ -234,7 +234,7 @@ spec:
   - name: HELLO
     default: "hello world!"
   steps:
-  - image: docker.io/library/ubuntu
+  - image: docker.io/library/ubuntu:24.04
     script: |
       #!/usr/bin/env bash
       echo "$(params.HELLO)"

@@ -12091,7 +12091,7 @@ spec:
       type: array
   steps:
     - name: produce-a-list-of-platforms
-      image: docker.io/library/bash:latest
+      image: docker.io/library/bash:5.2.26
       script: |
         #!/usr/bin/env bash
         echo -n "[\"linux\",\"mac\",\"windows\"]" | tee $(results.platforms.path)
@@ -12576,7 +12576,7 @@ spec:
       type: array
   steps:
     - name: produce-a-list-of-platforms
-      image: docker.io/library/bash:latest
+      image: docker.io/library/bash:5.2.26
       script: |
         #!/usr/bin/env bash
         echo -n "[\"linux\",\"mac\",\"windows\"]" | tee $(results.platforms.path)

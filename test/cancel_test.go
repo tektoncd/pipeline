@@ -65,7 +65,7 @@ spec:
       retries: %d
       taskSpec:
         steps:
-        - image: docker.io/library/busybox
+        - image: docker.io/library/busybox:1.36
           script: 'sleep 5000'
 `, helpers.ObjectNameForTest(t), namespace, numRetries))
 

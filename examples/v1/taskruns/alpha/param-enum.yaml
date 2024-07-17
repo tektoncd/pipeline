@@ -9,7 +9,7 @@ spec:
     default: "v1"
   steps:
   - name: build
-    image: docker.io/library/bash:3.2
+    image: docker.io/library/bash:5.2.26
     script: |
       echo "$(params.message)"
 ---

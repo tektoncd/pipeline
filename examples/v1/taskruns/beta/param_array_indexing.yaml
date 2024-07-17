@@ -15,7 +15,7 @@ spec:
     steps:
       # this step should echo "foo"
       - name: echo-params-1
-        image: docker.io/library/bash:3.2
+        image: docker.io/library/bash:5.2.26
         args: [
           "echo",
           "$(params.array-to-echo[0])",

@@ -57,7 +57,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/busybox
+  - image: docker.io/library/busybox:1.36
     command: ['/bin/sh']
     args: ['-c', 'sleep 10']
 `, helpers.ObjectNameForTest(t), namespace))
@@ -277,7 +277,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/busybox
+  - image: docker.io/library/busybox:1.36
     command: ['/bin/sh']
     args: ['-c', 'sleep 3000']
 `, helpers.ObjectNameForTest(t), namespace))
@@ -333,7 +333,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/busybox
+  - image: docker.io/library/busybox:1.36
     command: ['/bin/sh']
     args: ['-c', 'sleep 1s']
 `, helpers.ObjectNameForTest(t), namespace))
@@ -343,7 +343,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/busybox
+  - image: docker.io/library/busybox:1.36
     command: ['/bin/sh']
     args: ['-c', 'sleep 10s']
 `, helpers.ObjectNameForTest(t), namespace))
@@ -454,7 +454,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/busybox
+  - image: docker.io/library/busybox:1.36
     command: ['/bin/sh']
     args: ['-c', 'sleep 30']
 `, helpers.ObjectNameForTest(t), namespace))
@@ -469,7 +469,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/busybox
+  - image: docker.io/library/busybox:1.36
     command: ['/bin/sh']
     args: ['-c', 'sleep 1']
 `, helpers.ObjectNameForTest(t), namespace))

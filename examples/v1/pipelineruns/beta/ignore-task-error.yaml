@@ -10,7 +10,7 @@ spec:
         taskSpec:
           steps:
             - name: write
-              image: docker.io/library/alpine
+              image: docker.io/library/alpine:3.20.1
               script: |
                 echo "this is a failing task"
                 exit 1
@@ -20,6 +20,6 @@ spec:
         taskSpec:
           steps:
             - name: write
-              image: docker.io/library/alpine
+              image: docker.io/library/alpine:3.20.1
               script: |
                 echo "this is a success task"
