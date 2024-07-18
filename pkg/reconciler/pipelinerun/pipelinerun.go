@@ -489,8 +489,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	if err := resources.ValidateRequiredParametersProvided(&pipelineSpec.Params, &pr.Spec.Params); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.MarkFailed(v1.PipelineRunReasonParameterMissing.String(),
-			"PipelineRun %s parameters is missing some parameters required by Pipeline %s's parameters: %s",
-			pr.Namespace, pr.Name, err)
+			"PipelineRun %s/%s is missing some parameters required by Pipeline %s/%s: %s",
+			pr.Namespace, pr.Name, pr.Namespace, pipelineMeta.Name, err)
 		return controller.NewPermanentError(err)
 	}
 
@@ -893,6 +893,13 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 
 		// propagate previous task results
 		resources.PropagateResults(rpt, pipelineRunFacts.State)
+
+		// propagate previous task artifacts
+		err = resources.PropagateArtifacts(rpt, pipelineRunFacts.State)
+		if err != nil {
+			logger.Errorf("Failed to propagate artifacts due to error: %v", err)
+			return controller.NewPermanentError(err)
+		}
 
 		// Validate parameter types in matrix after apply substitutions from Task Results
 		if rpt.PipelineTask.IsMatrixed() {
@@ -1322,6 +1329,20 @@ func propagatePipelineNameLabelToPipelineRun(pr *v1.PipelineRun) error {
 		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pr.Name
 	case pr.Spec.PipelineRef != nil && pr.Spec.PipelineRef.Resolver != "":
 		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pr.Name
+
+		// https://tekton.dev/docs/pipelines/cluster-resolver/#pipeline-resolution
+		var kind, name string
+		for _, param := range pr.Spec.PipelineRef.Params {
+			if param.Name == "kind" {
+				kind = param.Value.StringVal
+			}
+			if param.Name == "name" {
+				name = param.Value.StringVal
+			}
+		}
+		if kind == "pipeline" {
+			pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = name
+		}
 	default:
 		return fmt.Errorf("pipelineRun %s not providing PipelineRef or PipelineSpec", pr.Name)
 	}

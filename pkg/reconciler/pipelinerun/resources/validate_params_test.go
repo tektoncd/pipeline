@@ -610,7 +610,6 @@ func TestValidateParamArrayIndex_valid(t *testing.T) {
 			params: v1.Params{{Name: "second-param", Value: *v1.NewStructuredValues("second-value", "second-value-again")}},
 		},
 	} {
-		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := resources.ValidateParamArrayIndex(&tt.original, tt.params)
@@ -837,7 +836,6 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 			expected: errors.New("non-existent param references:[$(params.first-param[2]) $(params.second-param[3])]"),
 		},
 	} {
-		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := resources.ValidateParamArrayIndex(&tt.original, tt.params)

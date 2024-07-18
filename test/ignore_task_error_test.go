@@ -37,7 +37,7 @@ func TestFailingPipelineTaskOnContinue(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t, requireAnyGate(map[string]string{"enable-api-fields": "alpha"}))
+	c, namespace := setup(ctx, t, requireAnyGate(map[string]string{"enable-api-fields": "beta"}))
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
@@ -57,14 +57,14 @@ spec:
           type: string
         steps:
         - name: failing-step
-          image: busybox
+          image: docker.io/library/busybox
           script: 'exit 1; echo -n 123 | tee $(results.result1.path)'
     - name: order-dep-task
       runAfter: ["failed-ignored-task"]
       taskSpec:
         steps:
         - name: foo
-          image: busybox
+          image: docker.io/library/busybox
           script: 'echo hello'
     - name: resource-dep-task
       onError: continue
@@ -77,7 +77,7 @@ spec:
           type: string
         steps:
         - name: foo
-          image: busybox
+          image: docker.io/library/busybox
           script: 'echo $(params.param1)'
 `, prName, namespace))
 

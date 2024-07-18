@@ -554,7 +554,7 @@ func TestRecordRunningPipelineRunsResolutionWaitCounts(t *testing.T) {
 		unregisterMetrics()
 		ctx, _ := ttesting.SetupFakeContext(t)
 		informer := fakepipelineruninformer.Get(ctx)
-		for i := 0; i < multiplier; i++ {
+		for range multiplier {
 			pr := &v1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Name: names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("pipelinerun-")},
 				Status: v1.PipelineRunStatus{

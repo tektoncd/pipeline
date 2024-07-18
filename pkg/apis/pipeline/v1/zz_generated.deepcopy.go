@@ -1248,6 +1248,11 @@ func (in *Sidecar) DeepCopyInto(out *Sidecar) {
 		*out = make([]WorkspaceUsage, len(*in))
 		copy(*out, *in)
 	}
+	if in.RestartPolicy != nil {
+		in, out := &in.RestartPolicy, &out.RestartPolicy
+		*out = new(corev1.ContainerRestartPolicy)
+		**out = **in
+	}
 	return
 }
 
@@ -1381,6 +1386,13 @@ func (in *Step) DeepCopyInto(out *Step) {
 	if in.Results != nil {
 		in, out := &in.Results, &out.Results
 		*out = make([]StepResult, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.When != nil {
+		in, out := &in.When, &out.When
+		*out = make(WhenExpressions, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -1917,6 +1929,7 @@ func (in *TaskRunStatusFields) DeepCopyInto(out *TaskRunStatusFields) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	in.Artifacts.DeepCopyInto(&out.Artifacts)
 	if in.Sidecars != nil {
 		in, out := &in.Sidecars, &out.Sidecars
 		*out = make([]SidecarState, len(*in))

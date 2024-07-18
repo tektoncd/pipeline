@@ -86,7 +86,7 @@ func TestPipelineTask_OnError(t *testing.T) {
 			OnError: PipelineTaskContinue,
 			TaskRef: &TaskRef{Name: "foo"},
 		},
-		wc: cfgtesting.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "valid PipelineTask with onError:stopAndFail",
 		p: PipelineTask{
@@ -94,7 +94,7 @@ func TestPipelineTask_OnError(t *testing.T) {
 			OnError: PipelineTaskStopAndFail,
 			TaskRef: &TaskRef{Name: "foo"},
 		},
-		wc: cfgtesting.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "invalid OnError value",
 		p: PipelineTask{
@@ -103,7 +103,7 @@ func TestPipelineTask_OnError(t *testing.T) {
 			TaskRef: &TaskRef{Name: "foo"},
 		},
 		expectedError: apis.ErrInvalidValue("invalid-val", "OnError", "PipelineTask OnError must be either \"continue\" or \"stopAndFail\""),
-		wc:            cfgtesting.EnableAlphaAPIFields,
+		wc:            cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "OnError:stopAndFail and retries coexist - success",
 		p: PipelineTask{
@@ -112,7 +112,7 @@ func TestPipelineTask_OnError(t *testing.T) {
 			Retries: 1,
 			TaskRef: &TaskRef{Name: "foo"},
 		},
-		wc: cfgtesting.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "OnError:continue and retries coexists - failure",
 		p: PipelineTask{
@@ -122,15 +122,6 @@ func TestPipelineTask_OnError(t *testing.T) {
 			TaskRef: &TaskRef{Name: "foo"},
 		},
 		expectedError: apis.ErrGeneric("PipelineTask OnError cannot be set to \"continue\" when Retries is greater than 0"),
-		wc:            cfgtesting.EnableAlphaAPIFields,
-	}, {
-		name: "setting OnError in beta API version - failure",
-		p: PipelineTask{
-			Name:    "foo",
-			OnError: PipelineTaskContinue,
-			TaskRef: &TaskRef{Name: "foo"},
-		},
-		expectedError: apis.ErrGeneric("OnError requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"beta\""),
 		wc:            cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "setting OnError in stable API version - failure",
@@ -139,7 +130,7 @@ func TestPipelineTask_OnError(t *testing.T) {
 			OnError: PipelineTaskContinue,
 			TaskRef: &TaskRef{Name: "foo"},
 		},
-		expectedError: apis.ErrGeneric("OnError requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
+		expectedError: apis.ErrGeneric("OnError requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\""),
 		wc:            cfgtesting.EnableStableAPIFields,
 	}}
 	for _, tt := range tests {

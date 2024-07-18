@@ -1772,7 +1772,6 @@ func TestApplyParameters(t *testing.T) {
 			},
 		},
 	} {
-		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
@@ -2082,7 +2081,6 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 			},
 		},
 	} {
-		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			run := &v1.PipelineRun{
@@ -2335,7 +2333,6 @@ func TestApplyReplacementsMatrix(t *testing.T) {
 			},
 		},
 	} {
-		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			run := &v1.PipelineRun{
@@ -4748,6 +4745,162 @@ func TestPropagateResults(t *testing.T) {
 			resources.PropagateResults(tt.resolvedTask, tt.runStates)
 			if d := cmp.Diff(tt.expectedResolvedTask, tt.resolvedTask); d != "" {
 				t.Fatalf("PropagateResults() %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestPropagateArtifacts(t *testing.T) {
+	for _, tt := range []struct {
+		name                 string
+		resolvedTask         *resources.ResolvedPipelineTask
+		runStates            resources.PipelineRunState
+		expectedResolvedTask *resources.ResolvedPipelineTask
+		wantErr              bool
+	}{
+		{
+			name: "not propagate artifact when resolved task is nil",
+			resolvedTask: &resources.ResolvedPipelineTask{
+				ResolvedTask: nil,
+			},
+			runStates: resources.PipelineRunState{},
+			expectedResolvedTask: &resources.ResolvedPipelineTask{
+				ResolvedTask: nil,
+			},
+		}, {
+			name: "not propagate artifact when taskSpec is nil",
+			resolvedTask: &resources.ResolvedPipelineTask{
+				ResolvedTask: &taskresources.ResolvedTask{
+					TaskSpec: nil,
+				},
+			},
+			runStates: resources.PipelineRunState{},
+			expectedResolvedTask: &resources.ResolvedPipelineTask{
+				ResolvedTask: &taskresources.ResolvedTask{
+					TaskSpec: nil,
+				},
+			},
+		},
+		{
+			name: "propagate artifacts inputs",
+			resolvedTask: &resources.ResolvedPipelineTask{
+				ResolvedTask: &taskresources.ResolvedTask{
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{
+							{
+								Name:    "get-artifacts-inputs-from-pt1",
+								Command: []string{"$(tasks.pt1.inputs.source)"},
+								Args:    []string{"$(tasks.pt1.inputs.source)"},
+							},
+						},
+					},
+				},
+			},
+			runStates: resources.PipelineRunState{
+				{
+					PipelineTask: &v1.PipelineTask{
+						Name: "pt1",
+					},
+					TaskRuns: []*v1.TaskRun{
+						{
+							Status: v1.TaskRunStatus{
+								Status: duckv1.Status{
+									Conditions: duckv1.Conditions{
+										{
+											Type:   apis.ConditionSucceeded,
+											Status: corev1.ConditionTrue,
+										},
+									},
+								},
+								TaskRunStatusFields: v1.TaskRunStatusFields{
+									Artifacts: v1.Artifacts{
+										Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
+										Outputs: nil,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResolvedTask: &resources.ResolvedPipelineTask{
+				ResolvedTask: &taskresources.ResolvedTask{
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{
+							{
+								Name:    "get-artifacts-inputs-from-pt1",
+								Command: []string{`[{"digest":{"sha256":"b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"},"uri":"pkg:example.github.com/inputs"}]`},
+								Args:    []string{`[{"digest":{"sha256":"b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"},"uri":"pkg:example.github.com/inputs"}]`},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "propagate artifacts outputs",
+			resolvedTask: &resources.ResolvedPipelineTask{
+				ResolvedTask: &taskresources.ResolvedTask{
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{
+							{
+								Name:    "get-artifacts-outputs-from-pt1",
+								Command: []string{"$(tasks.pt1.outputs.image)"},
+								Args:    []string{"$(tasks.pt1.outputs.image)"},
+							},
+						},
+					},
+				},
+			},
+			runStates: resources.PipelineRunState{
+				{
+					PipelineTask: &v1.PipelineTask{
+						Name: "pt1",
+					},
+					TaskRuns: []*v1.TaskRun{
+						{
+							Status: v1.TaskRunStatus{
+								Status: duckv1.Status{
+									Conditions: duckv1.Conditions{
+										{
+											Type:   apis.ConditionSucceeded,
+											Status: corev1.ConditionTrue,
+										},
+									},
+								},
+								TaskRunStatusFields: v1.TaskRunStatusFields{
+									Artifacts: v1.Artifacts{
+										Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
+										Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResolvedTask: &resources.ResolvedPipelineTask{
+				ResolvedTask: &taskresources.ResolvedTask{
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{
+							{
+								Name:    "get-artifacts-outputs-from-pt1",
+								Command: []string{`[{"digest":{"sha1":"95588b8f34c31eb7d62c92aaa4e6506639b06ef2"},"uri":"pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}]`},
+								Args:    []string{`[{"digest":{"sha1":"95588b8f34c31eb7d62c92aaa4e6506639b06ef2"},"uri":"pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}]`},
+							},
+						},
+					},
+				},
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			err := resources.PropagateArtifacts(tt.resolvedTask, tt.runStates)
+			if tt.wantErr != (err != nil) {
+				t.Fatalf("Failed to check err want %t, got %v", tt.wantErr, err)
+			}
+			if d := cmp.Diff(tt.expectedResolvedTask, tt.resolvedTask); d != "" {
+				t.Fatalf("TestPropagateArtifacts() %s", diff.PrintWantGot(d))
 			}
 		})
 	}

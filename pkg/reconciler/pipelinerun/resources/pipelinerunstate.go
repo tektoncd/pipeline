@@ -43,6 +43,7 @@ const (
 	PipelineTaskStatusPrefix = "tasks."
 	// PipelineTaskStatusSuffix is a suffix of the param representing execution state of pipelineTask
 	PipelineTaskStatusSuffix = ".status"
+	PipelineTaskReasonSuffix = ".reason"
 )
 
 // PipelineRunState is a slice of ResolvedPipelineRunTasks the represents the current execution
@@ -168,6 +169,30 @@ func (state PipelineRunState) GetTaskRunsResults() map[string][]v1.TaskRunResult
 			}
 		} else {
 			results[rpt.PipelineTask.Name] = rpt.TaskRuns[0].Status.Results
+		}
+	}
+	return results
+}
+
+// GetTaskRunsArtifacts returns a map of all successfully completed TaskRuns in the state, with the pipeline task name as
+// the key and the artifacts from the corresponding TaskRun as the value. It only includes tasks which have completed successfully.
+func (state PipelineRunState) GetTaskRunsArtifacts() map[string]v1.Artifacts {
+	results := make(map[string]v1.Artifacts)
+	for _, rpt := range state {
+		if rpt.IsCustomTask() {
+			continue
+		}
+		if !rpt.isSuccessful() {
+			continue
+		}
+		if rpt.PipelineTask.IsMatrixed() {
+			var ars v1.Artifacts
+			for _, tr := range rpt.TaskRuns {
+				ars.Merge(tr.Status.Artifacts)
+			}
+			results[rpt.PipelineTask.Name] = ars
+		} else {
+			results[rpt.PipelineTask.Name] = rpt.TaskRuns[0].Status.Artifacts
 		}
 	}
 	return results
@@ -589,6 +614,7 @@ func (facts *PipelineRunFacts) GetPipelineTaskStatus() map[string]string {
 				s = PipelineTaskStateNone
 			}
 			tStatus[PipelineTaskStatusPrefix+t.PipelineTask.Name+PipelineTaskStatusSuffix] = s
+			tStatus[PipelineTaskStatusPrefix+t.PipelineTask.Name+PipelineTaskReasonSuffix] = t.getReason()
 		}
 	}
 	// initialize aggregate status of all dag tasks to None

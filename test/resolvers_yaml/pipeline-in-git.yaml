@@ -12,7 +12,7 @@ spec:
             app: "example"
         steps:
           - name: echo
-            image: ubuntu
+            image: docker.io/library/ubuntu
             script: |
               #!/usr/bin/env bash
               echo "Good Morning!"

@@ -111,7 +111,7 @@ func (c *FakeClient) CheckCloudEventsUnordered(t *testing.T, testName string, wa
 	// extra events are prevented in FakeClient's Send function.
 	// fewer events are detected because we collect all events from channel and compare with wantEvents
 
-	for eventCount := 0; eventCount < channelEvents; eventCount++ {
+	for range channelEvents {
 		event := <-c.events
 		if len(expected) == 0 {
 			t.Errorf("extra event received: %q", event)

@@ -108,6 +108,10 @@ const (
 	EnableParamEnum = "enable-param-enum"
 	// EnableConciseResolverSyntax is the flag to enable concise resolver syntax
 	EnableConciseResolverSyntax = "enable-concise-resolver-syntax"
+	// EnableKubernetesSidecar is the flag to enable kubernetes sidecar support
+	EnableKubernetesSidecar = "enable-kubernetes-sidecar"
+	// DefaultEnableKubernetesSidecar is the default value for EnableKubernetesSidecar
+	DefaultEnableKubernetesSidecar = false
 
 	// DisableInlineSpec is the flag to disable embedded spec
 	// in Taskrun or Pipelinerun
@@ -185,12 +189,12 @@ type FeatureFlags struct {
 	RunningInEnvWithInjectedSidecars bool
 	RequireGitSSHSecretKnownHosts    bool
 	// EnableTektonOCIBundles           bool // Deprecated: this is now ignored
-	ScopeWhenExpressionsToTask bool
-	EnableAPIFields            string
-	SendCloudEventsForRuns     bool
-	AwaitSidecarReadiness      bool
-	EnforceNonfalsifiability   string
-	EnableKeepPodOnCancel      bool
+	// ScopeWhenExpressionsToTask       bool // Deprecated: this is now ignored
+	EnableAPIFields          string
+	SendCloudEventsForRuns   bool
+	AwaitSidecarReadiness    bool
+	EnforceNonfalsifiability string
+	EnableKeepPodOnCancel    bool
 	// VerificationNoMatchPolicy is the feature flag for "trusted-resources-verification-no-match-policy"
 	// VerificationNoMatchPolicy can be set to "ignore", "warn" and "fail" values.
 	// ignore: skip trusted resources verification when no matching verification policies found
@@ -208,6 +212,7 @@ type FeatureFlags struct {
 	EnableArtifacts             bool
 	DisableInlineSpec           string
 	EnableConciseResolverSyntax bool
+	EnableKubernetesSidecar     bool
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -310,6 +315,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setPerFeatureFlag(EnableConciseResolverSyntax, DefaultEnableConciseResolverSyntax, &tc.EnableConciseResolverSyntax); err != nil {
+		return nil, err
+	}
+	if err := setFeature(EnableKubernetesSidecar, DefaultEnableKubernetesSidecar, &tc.EnableKubernetesSidecar); err != nil {
 		return nil, err
 	}
 

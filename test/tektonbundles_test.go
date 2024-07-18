@@ -74,7 +74,7 @@ metadata:
 spec:
   steps:
   - name: hello
-    image: alpine
+    image: docker.io/library/alpine:3.20.1
     script: 'echo Hello'
 `, taskName, namespace))
 

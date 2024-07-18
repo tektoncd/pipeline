@@ -13,7 +13,7 @@ spec:
       description: the sum of the first and second operand
   steps:
     - name: add
-      image: alpine
+      image: docker.io/library/alpine:3.20.1
       env:
         - name: OP1
           value: $(params.first)

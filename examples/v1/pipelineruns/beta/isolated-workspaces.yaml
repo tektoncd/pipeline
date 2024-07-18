@@ -37,7 +37,7 @@ spec:
         workspaces:
         - name: creds
         steps:
-        - image: alpine:3.12.0
+        - image: docker.io/library/alpine:3.20.1
           script: |
             if [ ! -d /creds ] ; then
               echo "unable to access creds"
@@ -46,7 +46,7 @@ spec:
           workspaces:
           - name: creds
             mountpath: /creds
-        - image: alpine:3.12.0
+        - image: docker.io/library/alpine:3.20.1
           script: |
             if [ -d /workspace/creds ] ; then
               echo "this step should not be able to see creds"

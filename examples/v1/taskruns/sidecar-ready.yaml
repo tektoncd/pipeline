@@ -6,12 +6,21 @@ spec:
   taskSpec:
     sidecars:
     - name: slow-sidecar
-      image: ubuntu
+      image: docker.io/library/ubuntu
       command: ['sleep', 'infinity']
       # The sidecar takes 5s to report as Ready, even after it starts.  If the
       # step runs as soon as the sidecar starts, it will fail because
       # /shared/ready isn't available yet.
       readinessProbe:
+        exec:
+          command:
+          - sh
+          - -c
+          - sleep 5 && touch /shared/ready
+        timeoutSeconds: 10
+      # Adding startup probe for k8s native sidecar support
+      # Readiness Probe is not honored for k8s native sidecar support
+      startupProbe:
         exec:
           command:
           - sh
@@ -24,7 +33,7 @@ spec:
 
     steps:
     - name: check-ready
-      image: ubuntu
+      image: docker.io/library/ubuntu
       # The step will only succeed if the sidecar has written this file, which
       # it does 5s after it starts, before it reports Ready.
       script: cat /shared/ready

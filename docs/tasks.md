@@ -858,6 +858,12 @@ precise string you want returned from your `Task` into the result files that you
 The stored results can be used [at the `Task` level](./pipelines.md#passing-one-tasks-results-into-the-parameters-or-when-expressions-of-another)
 or [at the `Pipeline` level](./pipelines.md#emitting-results-from-a-pipeline).
 
+> **Note** Tekton does not enforce Task results unless there is a consumer: when a Task declares a result,
+> it may complete successfully even if no result was actually produced. When a Task that declares results is
+> used in a Pipeline, and a component of the Pipeline attempts to consume the Task's result, if the result
+> was not produced the pipeline will fail. [TEP-0048](https://github.com/tektoncd/community/blob/main/teps/0048-task-results-without-results.md)
+> propopses introducing default values for results to help Pipeline authors manage this case.
+
 #### Emitting Object `Results`
 Emitting a task result of type `object` is implemented based on the
 [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md#emitting-object-results).
@@ -1017,7 +1023,7 @@ As a general rule-of-thumb, if a result needs to be larger than a kilobyte, you 
 
 #### Larger `Results` using sidecar logs
 
-This is an alpha feature which is guarded behind its own feature flag.  The `results-from` feature flag must be set to
+This is a beta feature which is guarded behind its own feature flag.  The `results-from` feature flag must be set to
 [`"sidecar-logs"`](./install.md#enabling-larger-results-using-sidecar-logs) to enable larger results using sidecar logs.
 
 Instead of using termination messages to store results, the taskrun controller injects a sidecar container which monitors
@@ -1106,6 +1112,11 @@ to run alongside the `Steps` in your `Task`. You can use `Sidecars` to provide a
 [Docker in Docker](https://hub.docker.com/_/docker) or running a mock API server that your app can hit during testing.
 `Sidecars` spin up before your `Task` executes and are deleted after the `Task` execution completes.
 For further information, see [`Sidecars` in `TaskRuns`](taskruns.md#specifying-sidecars).
+
+**Note**: Starting in v0.62 you can enable native Kubernetes sidecar support using the `enable-kubernetes-sidecar` feature flag ([see instructions](./additional-configs.md#customizing-the-pipelines-controller-behavior)). If kubernetes does not wait for your sidecar application to be ready, use a `startupProbe` to help kubernetes identify when it is ready.
+
+Refer to the detailed instructions listed in [additional config](additional-configs.md#enabling-larger-results-using-sidecar-logs)
+to learn how to enable this feature.
 
 In the example below, a `Step` uses a Docker-in-Docker `Sidecar` to build a Docker image:
 

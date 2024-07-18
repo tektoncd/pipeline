@@ -80,11 +80,11 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(validateDebug(ts.Debug).ViaField("debug"))
 	}
 	if ts.StepSpecs != nil {
-		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "stepSpecs", config.AlphaAPIFields).ViaField("stepSpecs"))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "stepSpecs", config.BetaAPIFields).ViaField("stepSpecs"))
 		errs = errs.Also(validateStepSpecs(ts.StepSpecs).ViaField("stepSpecs"))
 	}
 	if ts.SidecarSpecs != nil {
-		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "sidecarSpecs", config.AlphaAPIFields).ViaField("sidecarSpecs"))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "sidecarSpecs", config.BetaAPIFields).ViaField("sidecarSpecs"))
 		errs = errs.Also(validateSidecarSpecs(ts.SidecarSpecs).ViaField("sidecarSpecs"))
 	}
 	if ts.ComputeResources != nil {
@@ -224,6 +224,11 @@ func validateDebug(db *TaskRunDebug) (errs *apis.FieldError) {
 	if db == nil || db.Breakpoints == nil {
 		return errs
 	}
+
+	if db.Breakpoints.OnFailure == "" {
+		errs = errs.Also(apis.ErrInvalidValue("onFailure breakpoint is empty, it is only allowed to be set as enabled", "breakpoints.onFailure"))
+	}
+
 	if db.Breakpoints.OnFailure != "" && db.Breakpoints.OnFailure != EnabledOnFailureBreakpoint {
 		errs = errs.Also(apis.ErrInvalidValue(db.Breakpoints.OnFailure+" is not a valid onFailure breakpoint value, onFailure breakpoint is only allowed to be set as enabled", "breakpoints.onFailure"))
 	}

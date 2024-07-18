@@ -26,7 +26,7 @@ spec:
         steps:
           # args must be initialed to "staging"
           - name: validate-environment1
-            image: bash:latest
+            image: docker.io/library/bash:5.2.26
             args: [
               "$(params.environment1)",
             ]
@@ -47,7 +47,7 @@ spec:
               fi
           # this step validates string param which must be set to an array element - qa
           - name: validate-environment2
-            image: ubuntu
+            image: docker.io/library/ubuntu
             script: |
               #!/bin/bash
               VALUE=$(params.environment2)
@@ -63,7 +63,7 @@ spec:
           # this step validates an array param which must have three values
           # also validates indexing into an array param
           - name: validate-environments
-            image: bash:latest
+            image: docker.io/library/bash:5.2.26
             args: [
               "$(params.environments[*])",
             ]

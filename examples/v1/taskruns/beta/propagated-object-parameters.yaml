@@ -11,7 +11,7 @@ spec:
   taskSpec:
     steps:
       - name: echo-object-params
-        image: bash
+        image: docker.io/library/bash
         args: [
           "echo",
           "--url=$(params.gitrepo.url)",

@@ -563,7 +563,6 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 	}
 }
 
-//nolint:musttag
 func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 	ctx := context.Background()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
@@ -768,7 +767,6 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 	}
 }
 
-//nolint:musttag
 func TestGetPipelineFunc_V1beta1Pipeline_VerifyError(t *testing.T) {
 	ctx := context.Background()
 	tektonclient := fake.NewSimpleClientset()
@@ -888,7 +886,6 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyError(t *testing.T) {
 	}
 }
 
-//nolint:musttag
 func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 	ctx := context.Background()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
@@ -1101,7 +1098,6 @@ func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 	}
 }
 
-//nolint:musttag
 func TestGetPipelineFunc_V1Pipeline_VerifyError(t *testing.T) {
 	ctx := context.Background()
 	tektonclient := fake.NewSimpleClientset()
@@ -1218,7 +1214,6 @@ func TestGetPipelineFunc_V1Pipeline_VerifyError(t *testing.T) {
 	}
 }
 
-//nolint:musttag
 func TestGetPipelineFunc_GetFuncError(t *testing.T) {
 	ctx := context.Background()
 	tektonclient := fake.NewSimpleClientset()
@@ -1341,7 +1336,7 @@ spec:
           - "bar"
       steps:
       - name: step1
-        image: ubuntu
+        image: docker.io/library/ubuntu
         script: |
           echo "hello world!"
 `
@@ -1369,7 +1364,7 @@ spec:
     taskSpec:
       steps:
       - name: step1
-        image: ubuntu
+        image: docker.io/library/ubuntu
         script: |
           echo "hello world!"
 `

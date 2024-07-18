@@ -138,6 +138,37 @@ func (t ResolvedPipelineTask) IsCustomTask() bool {
 	return t.CustomTask
 }
 
+// getReason returns the latest reason if the run has completed successfully
+// If the PipelineTask has a Matrix, getReason returns the failure reason for any failure
+// otherwise, it returns an empty string
+func (t ResolvedPipelineTask) getReason() string {
+	if t.IsCustomTask() {
+		if len(t.CustomRuns) == 0 {
+			return ""
+		}
+		for _, run := range t.CustomRuns {
+			if !run.IsSuccessful() && len(run.Status.Conditions) >= 1 {
+				return run.Status.Conditions[0].Reason
+			}
+		}
+		if len(t.CustomRuns) >= 1 && len(t.CustomRuns[0].Status.Conditions) >= 1 {
+			return t.CustomRuns[0].Status.Conditions[0].Reason
+		}
+	}
+	if len(t.TaskRuns) == 0 {
+		return ""
+	}
+	for _, taskRun := range t.TaskRuns {
+		if !taskRun.IsSuccessful() && len(taskRun.Status.Conditions) >= 1 {
+			return taskRun.Status.Conditions[0].Reason
+		}
+	}
+	if len(t.TaskRuns) >= 1 && len(t.TaskRuns[0].Status.Conditions) >= 1 {
+		return t.TaskRuns[0].Status.Conditions[0].Reason
+	}
+	return ""
+}
+
 // isSuccessful returns true only if the run has completed successfully
 // If the PipelineTask has a Matrix, isSuccessful returns true if all runs have completed successfully
 func (t ResolvedPipelineTask) isSuccessful() bool {
@@ -713,7 +744,7 @@ func getNewRunNames(ptName, prName string, numberOfRuns int) []string {
 		return append(taskRunNames, taskRunName)
 	}
 	// For a matrix we append i to then end of the fanned out TaskRuns "matrixed-pr-taskrun-0"
-	for i := 0; i < numberOfRuns; i++ {
+	for i := range numberOfRuns {
 		taskRunName := kmeta.ChildName(prName, fmt.Sprintf("-%s-%d", ptName, i))
 		// check if the taskRun name ends with a matrix instance count
 		if !strings.HasSuffix(taskRunName, fmt.Sprintf("-%d", i)) {
@@ -797,14 +828,23 @@ func isCustomRunCancelledByPipelineRunTimeout(cr *v1beta1.CustomRun) bool {
 func CheckMissingResultReferences(pipelineRunState PipelineRunState, targets PipelineRunState) error {
 	for _, target := range targets {
 		for _, resultRef := range v1.PipelineTaskResultRefs(target.PipelineTask) {
-			referencedPipelineTask := pipelineRunState.ToMap()[resultRef.PipelineTask]
+			referencedPipelineTask, ok := pipelineRunState.ToMap()[resultRef.PipelineTask]
+			if !ok {
+				return fmt.Errorf("Result reference error: Could not find ref \"%s\" in internal pipelineRunState", resultRef.PipelineTask)
+			}
 			if referencedPipelineTask.IsCustomTask() {
+				if len(referencedPipelineTask.CustomRuns) == 0 {
+					return fmt.Errorf("Result reference error: Internal result ref \"%s\" has zero-length CustomRuns", resultRef.PipelineTask)
+				}
 				customRun := referencedPipelineTask.CustomRuns[0]
 				_, err := findRunResultForParam(customRun, resultRef)
 				if err != nil {
 					return err
 				}
 			} else {
+				if len(referencedPipelineTask.TaskRuns) == 0 {
+					return fmt.Errorf("Result reference error: Internal result ref \"%s\" has zero-length TaskRuns", resultRef.PipelineTask)
+				}
 				taskRun := referencedPipelineTask.TaskRuns[0]
 				_, err := findTaskResultForParam(taskRun, resultRef)
 				if err != nil {

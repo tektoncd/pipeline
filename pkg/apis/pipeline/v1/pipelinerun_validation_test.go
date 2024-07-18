@@ -970,7 +970,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 		wantErr:     apis.ErrMultipleOneOf("taskRunSpecs[0].stepSpecs[1].name"),
 		withContext: cfgtesting.EnableAlphaAPIFields,
 	}, {
-		name: "stepSpecs disallowed without alpha feature gate",
+		name: "stepSpecs disallowed without beta feature gate",
 		spec: v1.PipelineRunSpec{
 			PipelineRef: &v1.PipelineRef{Name: "foo"},
 			TaskRunSpecs: []v1.PipelineTaskRunSpec{
@@ -986,9 +986,9 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			},
 		},
 		withContext: cfgtesting.EnableStableAPIFields,
-		wantErr:     apis.ErrGeneric("stepSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
+		wantErr:     apis.ErrGeneric("stepSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
 	}, {
-		name: "sidecarSpec disallowed without alpha feature gate",
+		name: "sidecarSpec disallowed without beta feature gate",
 		spec: v1.PipelineRunSpec{
 			PipelineRef: &v1.PipelineRef{Name: "foo"},
 			TaskRunSpecs: []v1.PipelineTaskRunSpec{
@@ -1004,7 +1004,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			},
 		},
 		withContext: cfgtesting.EnableStableAPIFields,
-		wantErr:     apis.ErrGeneric("sidecarSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
+		wantErr:     apis.ErrGeneric("sidecarSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
 	}, {
 		name: "missing stepSpecs name",
 		spec: v1.PipelineRunSpec{
@@ -1077,7 +1077,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			"taskRunSpecs[0].stepSpecs.resources",
 			"taskRunSpecs[0].computeResources",
 		),
-		withContext: cfgtesting.EnableAlphaAPIFields,
+		withContext: cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "computeResources disallowed without beta feature gate",
 		spec: v1.PipelineRunSpec{
@@ -1140,7 +1140,7 @@ func TestPipelineRunSpec_Validate(t *testing.T) {
 				},
 			}},
 		},
-		withContext: cfgtesting.EnableAlphaAPIFields,
+		withContext: cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "valid sidecar and task-level (taskRunSpecs.resources) resource requirements configured",
 		spec: v1.PipelineRunSpec{
@@ -1163,7 +1163,7 @@ func TestPipelineRunSpec_Validate(t *testing.T) {
 				}},
 			}},
 		},
-		withContext: cfgtesting.EnableAlphaAPIFields,
+		withContext: cfgtesting.EnableBetaAPIFields,
 	}}
 
 	for _, ps := range tests {

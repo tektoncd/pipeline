@@ -388,7 +388,7 @@ spec:
     taskSpec:
       steps:
       - name: echo
-        image: ubuntu
+        image: docker.io/library/ubuntu
         script: |
           #!/usr/bin/env bash
           # Sleep for 10s
@@ -588,7 +588,7 @@ spec:
     - name: token
       type: string
     steps:
-    - image: alpine/curl
+    - image: docker.io/alpine/curl:8.8.0
       script: |
         #!/bin/ash
         curl -X POST "http://gitea_admin:%s@%s:3000/api/v1/admin/users" -H "accept: application/json" -H "Content-Type: application/json" -d '%s'

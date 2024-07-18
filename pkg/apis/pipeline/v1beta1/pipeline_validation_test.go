@@ -175,6 +175,31 @@ func TestPipeline_Validate_Success(t *testing.T) {
 				}},
 			},
 		},
+	}, {
+		name: "valid pipeline with pipeline task and final task referencing artifacts in task params with enable-artifacts flag true",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Description: "this is an invalid pipeline referencing artifacts with enable-artifacts flag true",
+				Tasks: []PipelineTask{{
+					Name:    "pre-task",
+					TaskRef: &TaskRef{Name: "foo-task"},
+				}, {
+					Name: "consume-artifacts-task",
+					Params: Params{{Name: "aaa", Value: ParamValue{
+						Type:      ParamTypeString,
+						StringVal: "$(tasks.produce-artifacts-task.outputs.image)",
+					}}},
+					TaskSpec: &EmbeddedTask{TaskSpec: getTaskSpec()},
+				}},
+			},
+		},
+		wc: func(ctx context.Context) context.Context {
+			return cfgtesting.SetFeatureFlags(ctx, t,
+				map[string]string{
+					"enable-artifacts":  "true",
+					"enable-api-fields": "alpha"})
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -364,7 +389,8 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 			return cfgtesting.SetFeatureFlags(ctx, t,
 				map[string]string{
 					"disable-inline-spec": "pipeline",
-					"enable-api-fields":   "alpha"})
+					"enable-api-fields":   "alpha",
+				})
 		},
 	}, {
 		name: "pipelineSpec when disable-inline-spec all",
@@ -384,7 +410,8 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 			return cfgtesting.SetFeatureFlags(ctx, t,
 				map[string]string{
 					"disable-inline-spec": "pipeline,taskrun,pipelinerun",
-					"enable-api-fields":   "alpha"})
+					"enable-api-fields":   "alpha",
+				})
 		},
 	}, {
 		name: "taskSpec when disable-inline-spec",
@@ -1196,6 +1223,59 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: `must not set the field(s)`,
 			Paths:   []string{"finally[0].taskSpec.resources"},
+		},
+	}, {
+		name: "invalid pipeline with one pipeline task referencing artifacts in task params with enable-artifacts flag false",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline referencing artifacts with enable-artifacts flag false",
+			Tasks: []PipelineTask{{
+				Name:    "pre-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+			}, {
+				Name: "consume-artifacts-task",
+				Params: Params{{Name: "aaa", Value: ParamValue{
+					Type:      ParamTypeString,
+					StringVal: "$(tasks.produce-artifacts-task.outputs.image)",
+				}}},
+				TaskSpec: &EmbeddedTask{TaskSpec: getTaskSpec()},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `feature flag enable-artifacts should be set to true to use artifacts feature.`,
+			Paths:   []string{"tasks[1].params"},
+		},
+		wc: func(ctx context.Context) context.Context {
+			return cfgtesting.SetFeatureFlags(ctx, t,
+				map[string]string{
+					"enable-artifacts":  "false",
+					"enable-api-fields": "alpha"})
+		},
+	}, {
+		name: "invalid pipeline with one final pipeline task referencing artifacts in params with enable-artifacts flag false",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline referencing artifacts with enable-artifacts flag false",
+			Tasks: []PipelineTask{{
+				Name:    "pre-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+			}},
+			Finally: []PipelineTask{{
+				Name: "consume-artifacts-task",
+				Params: Params{{Name: "aaa", Value: ParamValue{
+					Type:      ParamTypeString,
+					StringVal: "$(tasks.produce-artifacts-task.outputs.image)",
+				}}},
+				TaskSpec: &EmbeddedTask{TaskSpec: getTaskSpec()},
+			}},
+		},
+		wc: func(ctx context.Context) context.Context {
+			return cfgtesting.SetFeatureFlags(ctx, t,
+				map[string]string{
+					"enable-artifacts":  "false",
+					"enable-api-fields": "alpha"})
+		},
+		expectedError: apis.FieldError{
+			Message: `feature flag enable-artifacts should be set to true to use artifacts feature.`,
+			Paths:   []string{"finally[0].params"},
 		},
 	}}
 	for _, tt := range tests {
@@ -3706,12 +3786,18 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 			Params: Params{{
 				Name: "foo-status", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.foo.status)"},
 			}, {
+				Name: "foo-reason", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.foo.reason)"},
+			}, {
 				Name: "tasks-status", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.status)"},
 			}},
 			WhenExpressions: WhenExpressions{{
 				Input:    "$(tasks.foo.status)",
 				Operator: selection.In,
 				Values:   []string{"Failure"},
+			}, {
+				Input:    "$(tasks.foo.reason)",
+				Operator: selection.In,
+				Values:   []string{"Failed"},
 			}, {
 				Input:    "$(tasks.status)",
 				Operator: selection.In,
@@ -4741,7 +4827,6 @@ func TestGetIndexingReferencesToArrayParams(t *testing.T) {
 			want: sets.NewString("$(params.first-param[0])", "$(params.second-param[1])"),
 		},
 	} {
-		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got := tt.spec.GetIndexingReferencesToArrayParams()

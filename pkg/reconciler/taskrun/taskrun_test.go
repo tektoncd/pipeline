@@ -313,6 +313,13 @@ var (
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
 	}
+
+	artifactsVolume = corev1.Volume{
+		Name: "tekton-internal-artifacts",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}
 	downwardVolume = corev1.Volume{
 		Name: "tekton-internal-downward",
 		VolumeSource: corev1.VolumeSource{
@@ -1194,7 +1201,7 @@ spec:
           spec:
             steps:
             - name: step1
-              image: ubuntu
+              image: docker.io/library/ubuntu
               script: |
                 echo "hello world!"
         `)
@@ -2310,7 +2317,7 @@ status:
 	// Check actions
 	actions := clients.Kube.Actions()
 	if len(actions) != 2 || !actions[0].Matches("list", "configmaps") || !actions[1].Matches("watch", "configmaps") {
-		t.Errorf("expected 2 actions (list configmaps, and watch configmaps) created by the reconciler,"+
+		t.Errorf("expected 3 actions (list configmaps, and watch configmaps) created by the reconciler,"+
 			" got %d. Actions: %#v", len(actions), actions)
 	}
 
@@ -2755,7 +2762,7 @@ metadata:
 spec:
   taskSpec:
     sidecars:
-    - image: ubuntu
+    - image: docker.io/library/ubuntu:24.04
     - image: whatever
     steps:
     - image: alpine
@@ -5857,7 +5864,7 @@ func podVolumeMounts(idx, totalSteps int) []corev1.VolumeMount {
 		MountPath: "/tekton/bin",
 		ReadOnly:  true,
 	})
-	for i := 0; i < totalSteps; i++ {
+	for i := range totalSteps {
 		mnts = append(mnts, corev1.VolumeMount{
 			Name:      fmt.Sprintf("tekton-internal-run-%d", i),
 			MountPath: filepath.Join("/tekton/run", strconv.Itoa(i)),
@@ -5891,6 +5898,10 @@ func podVolumeMounts(idx, totalSteps int) []corev1.VolumeMount {
 		Name:      "tekton-internal-steps",
 		MountPath: "/tekton/steps",
 		ReadOnly:  true,
+	})
+	mnts = append(mnts, corev1.VolumeMount{
+		Name:      "tekton-internal-artifacts",
+		MountPath: "/tekton/artifacts",
 	})
 
 	return mnts
@@ -5986,6 +5997,7 @@ func expectedPod(podName, taskName, taskRunName, ns, saName string, isClusterTas
 				workspaceVolume,
 				homeVolume,
 				resultsVolume,
+				artifactsVolume,
 				stepsVolume,
 				binVolume,
 				downwardVolume,

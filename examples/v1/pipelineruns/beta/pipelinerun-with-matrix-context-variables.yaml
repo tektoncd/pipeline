@@ -8,7 +8,7 @@ spec:
       type: string
   steps:
     - name: validate
-      image: alpine
+      image: docker.io/library/alpine:3.20.1
       args: ["$(params.matrixlength)"]
       script: |
         #!/usr/bin/env sh
@@ -32,7 +32,7 @@ spec:
       type: string
   steps:
     - name: validate
-      image: alpine
+      image: docker.io/library/alpine:3.20.1
       script: |
         #!/usr/bin/env sh
         echo "Validating the length of the matrix results context variable"
@@ -61,7 +61,7 @@ spec:
     - name: IMAGE-URL
   steps:
     - name: produce-results
-      image: bash:latest
+      image: docker.io/library/bash:5.2.26
       script: |
         #!/usr/bin/env bash
         echo "Building image for $(params.IMAGE)"

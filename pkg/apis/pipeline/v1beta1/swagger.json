@@ -1932,6 +1932,10 @@
           "default": {},
           "$ref": "#/definitions/v1.ResourceRequirements"
         },
+        "restartPolicy": {
+          "description": "RestartPolicy refers to kubernetes RestartPolicy. It can only be set for an initContainer and must have it's policy set to \"Always\". It is currently left optional to help support Kubernetes versions prior to 1.29 when this feature was introduced.",
+          "type": "string"
+        },
         "script": {
           "description": "Script is the contents of an executable file to execute.\n\nIf Script is not empty, the Step cannot have an Command or Args.",
           "type": "string"
@@ -2238,6 +2242,13 @@
           "x-kubernetes-list-type": "atomic",
           "x-kubernetes-patch-merge-key": "mountPath",
           "x-kubernetes-patch-strategy": "merge"
+        },
+        "when": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.WhenExpression"
+          }
         },
         "workingDir": {
           "description": "Step's working directory. If not specified, the container runtime's default will be used, which might be configured in the container image. Cannot be updated.",

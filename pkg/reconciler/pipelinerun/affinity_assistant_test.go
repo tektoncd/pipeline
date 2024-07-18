@@ -49,11 +49,15 @@ import (
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 )
 
-var podSpecFilter cmp.Option = cmpopts.IgnoreFields(corev1.PodSpec{}, "Containers", "Affinity")
-var podTemplateSpecFilter cmp.Option = cmpopts.IgnoreFields(corev1.PodTemplateSpec{}, "ObjectMeta")
+var (
+	podSpecFilter         cmp.Option = cmpopts.IgnoreFields(corev1.PodSpec{}, "Containers", "Affinity")
+	podTemplateSpecFilter cmp.Option = cmpopts.IgnoreFields(corev1.PodTemplateSpec{}, "ObjectMeta")
+)
 
-var workspacePVCName = "test-workspace-pvc"
-var workspaceVolumeClaimTemplateName = "test-workspace-vct"
+var (
+	workspacePVCName                 = "test-workspace-pvc"
+	workspaceVolumeClaimTemplateName = "test-workspace-vct"
+)
 
 var testPRWithPVC = &v1.PipelineRun{
 	TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
@@ -69,6 +73,7 @@ var testPRWithPVC = &v1.PipelineRun{
 		}},
 	},
 }
+
 var testPRWithVolumeClaimTemplate = &v1.PipelineRun{
 	TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
 	ObjectMeta: metav1.ObjectMeta{
@@ -81,23 +86,27 @@ var testPRWithVolumeClaimTemplate = &v1.PipelineRun{
 		}},
 	},
 }
+
 var testPRWithVolumeClaimTemplateAndPVC = &v1.PipelineRun{
 	TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
 	ObjectMeta: metav1.ObjectMeta{
 		Name: "pipelinerun-with-volumeClaimTemplate-and-pvc",
 	},
 	Spec: v1.PipelineRunSpec{
-		Workspaces: []v1.WorkspaceBinding{{
-			Name:                workspaceVolumeClaimTemplateName,
-			VolumeClaimTemplate: &corev1.PersistentVolumeClaim{},
-		}, {
-			Name: workspacePVCName,
-			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-				ClaimName: "myclaim",
-			}},
+		Workspaces: []v1.WorkspaceBinding{
+			{
+				Name:                workspaceVolumeClaimTemplateName,
+				VolumeClaimTemplate: &corev1.PersistentVolumeClaim{},
+			}, {
+				Name: workspacePVCName,
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "myclaim",
+				},
+			},
 		},
 	},
 }
+
 var testPRWithEmptyDir = &v1.PipelineRun{
 	ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-with-emptyDir"},
 	Spec: v1.PipelineRunSpec{
@@ -317,7 +326,8 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerWorkspaceOrDisabled(t *testin
 						},
 					}},
 				},
-			}}, {
+			},
+		}, {
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
@@ -345,7 +355,6 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerWorkspaceOrDisabled(t *testin
 	}}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 			kubeClientSet := fakek8s.NewSimpleClientset()
@@ -684,7 +693,8 @@ func TestMergedPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 						{Name: "reg-creds"},
 						{Name: "alt-creds"},
 					},
-				}},
+				},
+			},
 		},
 	}
 
@@ -731,7 +741,8 @@ func TestOnlySelectPodTemplateFieldsArePropagatedToAffinityAssistant(t *testing.
 						IP:        "1.2.3.4",
 						Hostnames: []string{"localhost"},
 					}},
-				}},
+				},
+			},
 		},
 	}
 

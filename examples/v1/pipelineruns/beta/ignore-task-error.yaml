@@ -1,0 +1,67 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: pipelinerun-with-failing-task-
+spec:
+  pipelineSpec:
+    tasks:
+      - name: echo-continue
+        onError: continue
+        taskSpec:
+          steps:
+            - name: write
+              image: docker.io/library/alpine:3.20.1
+              script: |
+                #!/usr/bin/env sh
+                echo "this is a failing task"
+                exit 1;
+      - name: echo-continue-with-matrix
+        onError: continue
+        matrix:
+          params:
+            - name: param1
+              value:
+                - "foo"
+                - "bar"
+        taskSpec:
+          params:
+            - name: param1
+          steps:
+            - name: write
+              image: docker.io/library/alpine
+              script: |
+                #!/usr/bin/env sh
+                echo "this is a failing task if param1 is set bar"
+                if [[ $(params.param1) == "bar" ]]; then
+                  exit 1;
+                fi
+                exit 0
+      - name: echo
+        runAfter:
+          - echo-continue
+        taskSpec:
+          steps:
+            - name: write
+              image: docker.io/library/alpine:3.20.1
+              script: |
+                #!/usr/bin/env sh
+                echo "this is a success task"
+    finally:
+      - name: verify-task-reason   # this task verifies the reason of failure ignored task, it fails if verification fails
+        params:
+          - name: echo-continue-task-reason
+            value: $(tasks.echo-continue.reason)
+          - name: echo-continue-with-matrix-task-reason
+            value: $(tasks.echo-continue-with-matrix.reason)
+        taskSpec:
+          steps:
+            - name: verify-task-reason
+              image: docker.io/library/alpine
+              script: |
+                #!/usr/bin/env sh
+                if [[ $(params.echo-continue-task-reason) != "FailureIgnored" ]]; then
+                  exit 1;
+                fi
+                if [[ $(params.echo-continue-with-matrix-task-reason) != "FailureIgnored" ]]; then
+                  exit 1;
+                fi

@@ -66,7 +66,6 @@ func TestPropagatedParams(t *testing.T) {
 	}}
 
 	for _, td := range tds {
-		td := td
 		t.Run(td.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
@@ -151,14 +150,14 @@ spec:
         taskSpec:
           steps:
             - name: echo
-              image: ubuntu
+              image: docker.io/library/ubuntu
               script: echo $(params.HELLO)
     finally:
       - name: echo-hello-finally
         taskSpec:
           steps:
             - name: echo
-              image: ubuntu
+              image: docker.io/library/ubuntu
               script: echo $(params.HELLO)
 `, namespace))
 	expectedPipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
@@ -177,14 +176,14 @@ spec:
         taskSpec:
           steps:
             - name: echo
-              image: ubuntu
+              image: docker.io/library/ubuntu
               script: echo $(params.HELLO)
     finally:
       - name: echo-hello-finally
         taskSpec:
           steps:
             - name: echo
-              image: ubuntu
+              image: docker.io/library/ubuntu
               script: echo $(params.HELLO)
 status:
   pipelineSpec:
@@ -193,14 +192,14 @@ status:
         taskSpec:
           steps:
             - name: echo
-              image: ubuntu
+              image: docker.io/library/ubuntu
               script: echo Hello World!
     finally:
       - name: echo-hello-finally
         taskSpec:
           steps:
             - name: echo
-              image: ubuntu
+              image: docker.io/library/ubuntu
               script: echo Hello World!
 `, namespace))
 	taskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
@@ -212,7 +211,7 @@ spec:
   taskSpec:
     steps:
       - name: echo
-        image: ubuntu
+        image: docker.io/library/ubuntu
         script: echo Hello World!
 status:
    podName: propagated-parameters-fully-echo-hello-pod
@@ -222,7 +221,7 @@ status:
    taskSpec:
      steps:
        - name: echo
-         image: ubuntu
+         image: docker.io/library/ubuntu
          script: echo Hello World!
 `, namespace))
 	finallyTaskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
@@ -234,7 +233,7 @@ spec:
   taskSpec:
     steps:
       - name: echo
-        image: ubuntu
+        image: docker.io/library/ubuntu
         script: echo Hello World!
 status:
    podName: propagated-parameters-fully-echo-hello-finally-pod
@@ -244,7 +243,7 @@ status:
    taskSpec:
      steps:
        - name: echo
-         image: ubuntu
+         image: docker.io/library/ubuntu
          script: echo Hello World!
 `, namespace))
 	return pipelineRun, expectedPipelineRun, []*v1.TaskRun{taskRun, finallyTaskRun}
@@ -269,7 +268,7 @@ spec:
         taskSpec:
           steps:
             - name: echo
-              image: ubuntu
+              image: docker.io/library/ubuntu
               script: echo $(params.HELLO)
 `, namespace))
 	expectedPipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
@@ -291,7 +290,7 @@ spec:
         taskSpec:
           steps:
             - name: echo
-              image: ubuntu
+              image: docker.io/library/ubuntu
               script: echo $(params.HELLO)
 status:
   pipelineSpec:
@@ -303,7 +302,7 @@ status:
         taskSpec:
           steps:
             - name: echo
-              image: ubuntu
+              image: docker.io/library/ubuntu
               script: echo Hello World!
 `, namespace))
 	taskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
@@ -318,7 +317,7 @@ spec:
   taskSpec:
     steps:
       - name: echo
-        image: ubuntu
+        image: docker.io/library/ubuntu
         script: echo Hello World!
 status:
   podName: propagated-parameters-task-level-echo-hello-pod
@@ -328,7 +327,7 @@ status:
   taskSpec:
     steps:
       - name: echo
-        image: ubuntu
+        image: docker.io/library/ubuntu
         script: echo Hello World!
 `, namespace))
 	return pipelineRun, expectedPipelineRun, []*v1.TaskRun{taskRun}
@@ -354,7 +353,7 @@ spec:
               default: "Default Hello World"
           steps:
             - name: echo
-              image: ubuntu
+              image: docker.io/library/ubuntu
               script: echo $(params.HELLO)
 `, namespace))
 	expectedPipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
@@ -377,7 +376,7 @@ spec:
               default: "Default Hello World"
           steps:
             - name: echo
-              image: ubuntu
+              image: docker.io/library/ubuntu
               script: echo $(params.HELLO)
 status:
   pipelineSpec:
@@ -390,7 +389,7 @@ status:
               default: "Default Hello World"
           steps:
             - name: echo
-              image: ubuntu
+              image: docker.io/library/ubuntu
               script: echo Hello World!
 `, namespace))
 	taskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
@@ -406,7 +405,7 @@ spec:
         default: "Default Hello World"
     steps:
       - name: echo
-        image: ubuntu
+        image: docker.io/library/ubuntu
         script: echo Hello World!
 status:
   podName: propagated-parameters-default-task-level-echo-hello-pod
@@ -420,7 +419,7 @@ status:
        default: "Default Hello World"
     steps:
       - name: echo
-        image: ubuntu
+        image: docker.io/library/ubuntu
         script: echo Hello World!
 `, namespace))
 	return pipelineRun, expectedPipelineRun, []*v1.TaskRun{taskRun}

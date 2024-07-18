@@ -704,7 +704,7 @@ spec:
         fsGroup: 1000
       initContainers:
         - name: init-directories
-          image: "gitea/gitea:1.17.1"
+          image: "docker.io/gitea/gitea:1.17.1"
           imagePullPolicy: Always
           command: ["/usr/sbin/init_directory_structure.sh"]
           env:
@@ -727,7 +727,7 @@ spec:
           securityContext:
             {}
         - name: init-app-ini
-          image: "gitea/gitea:1.17.1"
+          image: "docker.io/gitea/gitea:1.17.1"
           imagePullPolicy: Always
           command: ["/usr/sbin/config_environment.sh"]
           env:
@@ -752,7 +752,7 @@ spec:
           securityContext:
             {}
         - name: configure-gitea
-          image: "gitea/gitea:1.17.1"
+          image: "docker.io/gitea/gitea:1.17.1"
           command: ["/usr/sbin/configure_gitea.sh"]
           imagePullPolicy: Always
           securityContext:
@@ -781,7 +781,7 @@ spec:
       terminationGracePeriodSeconds: 60
       containers:
         - name: gitea
-          image: "gitea/gitea:1.17.1"
+          image: "docker.io/gitea/gitea:1.17.1"
           imagePullPolicy: Always
           env:
             # SSH Port values have to be set here as well for openssh configuration

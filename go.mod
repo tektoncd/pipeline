@@ -1,6 +1,7 @@
 module github.com/tektoncd/pipeline
 
-go 1.21
+go 1.22
+toolchain go1.22.5
 
 require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
@@ -9,40 +10,32 @@ require (
 	github.com/containerd/containerd v1.7.18
 	github.com/go-git/go-git/v5 v5.12.0
 	github.com/google/go-cmp v0.6.0
-	github.com/google/go-containerregistry v0.19.1
+	github.com/google/go-containerregistry v0.19.2
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/golang-lru v1.0.2
-	github.com/jenkins-x/go-scm v1.14.34
+	github.com/jenkins-x/go-scm v1.14.37
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/opencontainers/image-spec v1.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/sigstore/sigstore v1.8.4
-	github.com/spiffe/go-spiffe/v2 v2.2.0
-	github.com/spiffe/spire-api-sdk v1.9.6
+	github.com/spiffe/go-spiffe/v2 v2.3.0
+	github.com/spiffe/spire-api-sdk v1.10.0
 	github.com/tektoncd/plumbing v0.0.0-20220817140952-3da8ce01aeeb
 	go.opencensus.io v0.24.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20230515195305-f3d0a9c9a5cc
 	golang.org/x/oauth2 v0.20.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0
-	k8s.io/api v0.29.2
-	k8s.io/apimachinery v0.29.2
-	k8s.io/client-go v0.29.2
-	k8s.io/code-generator v0.29.2
+	k8s.io/api v0.29.6
+	k8s.io/apimachinery v0.29.7
+	k8s.io/client-go v0.29.6
+	k8s.io/code-generator v0.29.6
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00
 	knative.dev/pkg v0.0.0-20240416145024-0f34a8815650
 	sigs.k8s.io/yaml v1.4.0
-)
-
-//  TODO: Remove this once https://github.com/knative/pkg/issues/2759 is fixed
-replace (
-	k8s.io/api => k8s.io/api v0.29.2
-	k8s.io/apimachinery => k8s.io/apimachinery v0.29.2
-	k8s.io/client-go => k8s.io/client-go v0.29.2
-	k8s.io/code-generator => k8s.io/code-generator v0.29.2
 )
 
 require (
@@ -55,10 +48,10 @@ require (
 	github.com/sigstore/sigstore/pkg/signature/kms/azure v1.8.4
 	github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.8.4
 	github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.8.4
-	go.opentelemetry.io/otel v1.27.0
+	go.opentelemetry.io/otel v1.28.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.27.0
 	go.opentelemetry.io/otel/sdk v1.27.0
-	go.opentelemetry.io/otel/trace v1.27.0
+	go.opentelemetry.io/otel/trace v1.28.0
 	k8s.io/utils v0.0.0-20240102154912-e7106e64919e
 )
 
@@ -104,7 +97,7 @@ require (
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-fed/httpsig v1.1.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.0.1 // indirect
+	github.com/go-jose/go-jose/v4 v4.0.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
@@ -138,7 +131,7 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.49.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.49.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.27.0 // indirect
-	go.opentelemetry.io/otel/metric v1.27.0 // indirect
+	go.opentelemetry.io/otel/metric v1.28.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.2.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240520151616-dc85e6b867a5 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240515191416-fc5f0ca64291 // indirect
@@ -195,7 +188,7 @@ require (
 	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
-	github.com/go-logr/logr v1.4.1 // indirect
+	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect

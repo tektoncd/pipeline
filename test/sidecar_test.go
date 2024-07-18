@@ -61,8 +61,13 @@ func TestSidecarTaskSupport(t *testing.T) {
 	t.Parallel()
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.desc, func(t *testing.T) {
+			// If Kubernetes Sidecar support is enabled the Pod will terminate and it gets caught as an error though it's expected
+			ff := getFeatureFlagsBaseOnAPIFlag(t)
+
+			if ff.EnableKubernetesSidecar {
+				t.SkipNow()
+			}
 			t.Parallel()
 
 			ctx, cancel := context.WithCancel(ctx)
@@ -80,11 +85,11 @@ metadata:
 spec:
   steps:
   - name: %s
-    image: busybox
+    image: docker.io/library/busybox
     command: [%s]
   sidecars:
   - name: %s
-    image: busybox
+    image: docker.io/library/busybox
     command: [%s]
 `, sidecarTaskName, namespace, primaryContainerName, stringSliceToYAMLArray(test.stepCommand), sidecarContainerName, stringSliceToYAMLArray(test.sidecarCommand)))
 

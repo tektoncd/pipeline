@@ -12,12 +12,12 @@ spec:
       description: The array results
   steps:
     - name: write-array
-      image: bash:latest
+      image: docker.io/library/bash:5.2.26
       script: |
         #!/usr/bin/env bash
         echo -n "[\"hello\",\"world\"]" | tee $(results.array-results.path)
     - name: check-results-array
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script: |
         #!/bin/bash
         VALUE=$(cat $(results.array-results.path))

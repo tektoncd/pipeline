@@ -61,7 +61,6 @@ func TestLargerResultsSidecarLogs(t *testing.T) {
 	}}
 
 	for _, td := range tds {
-		td := td
 		t.Run(td.name, func(t *testing.T) {
 			ctx := context.Background()
 			ctx, cancel := context.WithCancel(ctx)
@@ -170,7 +169,7 @@ spec:
             - name: result2
           steps:
            - name: step1
-             image: alpine
+             image: docker.io/library/alpine:3.20.1
              script: |
                echo -n "%s"| tee $(results.result1.path);
                echo -n "%s"| tee $(results.result2.path);
@@ -182,7 +181,7 @@ spec:
           steps:
            - name: step1
              onError: continue
-             image: alpine
+             image: docker.io/library/alpine:3.20.1
              script: |
                echo -n "%s"| tee $(results.result2.path);
                # trigger an error
@@ -207,7 +206,7 @@ spec:
             - name: large-result
           steps:
             - name: step1
-              image: alpine
+              image: docker.io/library/alpine:3.20.1
               script: |
                 echo -n "$(params.param1)">> $(results.large-result.path);
                 echo -n "$(params.param2)">> $(results.large-result.path);
@@ -219,7 +218,7 @@ spec:
             - name: result2
           steps:
            - name: step1
-             image: alpine
+             image: docker.io/library/alpine:3.20.1
              script: |
                echo -n "%s"| tee $(results.result1.path);
                echo -n "%s"| tee $(results.result2.path);
@@ -249,7 +248,7 @@ spec:
               type: string
           steps:
            - name: step1
-             image: alpine
+             image: docker.io/library/alpine:3.20.1
              script: |
                echo -n "%s"| tee $(results.result1.path);
                echo -n "%s"| tee $(results.result2.path);
@@ -263,7 +262,7 @@ spec:
           steps:
            - name: step1
              onError: continue
-             image: alpine
+             image: docker.io/library/alpine:3.20.1
              script: |
                echo -n "%s"| tee $(results.result2.path);
                # trigger an error
@@ -289,7 +288,7 @@ spec:
               type: string
           steps:
             - name: step1
-              image: alpine
+              image: docker.io/library/alpine:3.20.1
               script: |
                 echo -n "$(params.param1)">> $(results.large-result.path);
                 echo -n "$(params.param2)">> $(results.large-result.path);
@@ -303,7 +302,7 @@ spec:
               type: string
           steps:
            - name: step1
-             image: alpine
+             image: docker.io/library/alpine:3.20.1
              script: |
                echo -n "%s"| tee $(results.result1.path);
                echo -n "%s"| tee $(results.result2.path);
@@ -324,7 +323,7 @@ status:
               type: string
           steps:
             - name: step1
-              image: alpine
+              image: docker.io/library/alpine:3.20.1
               script: |
                 echo -n "%s"| tee $(results.result1.path);
                 echo -n "%s"| tee $(results.result2.path);
@@ -337,7 +336,7 @@ status:
               type: string
           steps:
             - name: step1
-              image: alpine
+              image: docker.io/library/alpine:3.20.1
               onError: continue
               script: |
                 echo -n "%s"| tee $(results.result2.path);
@@ -364,7 +363,7 @@ status:
               type: string
           steps:
             - name: step1
-              image: alpine
+              image: docker.io/library/alpine:3.20.1
               script: |
                 echo -n "$(params.param1)">> $(results.large-result.path);
                 echo -n "$(params.param2)">> $(results.large-result.path);
@@ -378,7 +377,7 @@ status:
               type: string
           steps:
            - name: step1
-             image: alpine
+             image: docker.io/library/alpine:3.20.1
              script: |
                echo -n "%s"| tee $(results.result1.path);
                echo -n "%s"| tee $(results.result2.path);
@@ -406,7 +405,7 @@ spec:
         type: string
     steps:
       - name: step1
-        image: alpine
+        image: docker.io/library/alpine:3.20.1
         script: |
           echo -n "%s"| tee $(results.result1.path);
           echo -n "%s"| tee $(results.result2.path);
@@ -424,7 +423,7 @@ status:
         type: string
     steps:
       - name: step1
-        image: alpine
+        image: docker.io/library/alpine:3.20.1
         script: |
           echo -n "%s"| tee /tekton/results/result1;
           echo -n "%s"| tee /tekton/results/result2;
@@ -455,7 +454,7 @@ spec:
     steps:
       - name: step1
         onError: continue
-        image: alpine
+        image: docker.io/library/alpine:3.20.1
         script: |
           echo -n "%s"| tee $(results.result2.path);
           # trigger an error
@@ -477,7 +476,7 @@ status:
     steps:
       - name: step1
         onError: continue
-        image: alpine
+        image: docker.io/library/alpine:3.20.1
         script: |
           echo -n "%s"| tee /tekton/results/result2;
           # trigger an error
@@ -519,7 +518,7 @@ spec:
         type: string
     steps:
      - name: step1
-       image: alpine
+       image: docker.io/library/alpine:3.20.1
        script: |
          echo -n "$(params.param1)">> $(results.large-result.path);
          echo -n "$(params.param2)">> $(results.large-result.path);
@@ -542,7 +541,7 @@ status:
         type: string
     steps:
      - name: step1
-       image: alpine
+       image: docker.io/library/alpine:3.20.1
        script: |
          echo -n "%s">> /tekton/results/large-result;
          echo -n "%s">> /tekton/results/large-result;
@@ -569,7 +568,7 @@ spec:
         type: string
     steps:
       - name: step1
-        image: alpine
+        image: docker.io/library/alpine:3.20.1
         script: |
           echo -n "%s"| tee $(results.result1.path);
           echo -n "%s"| tee $(results.result2.path);
@@ -589,7 +588,7 @@ status:
         type: string
     steps:
       - name: step1
-        image: alpine
+        image: docker.io/library/alpine:3.20.1
         script: |
           echo -n "%s"| tee /tekton/results/result1;
           echo -n "%s"| tee /tekton/results/result2;

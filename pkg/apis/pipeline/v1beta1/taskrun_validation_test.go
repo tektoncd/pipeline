@@ -446,7 +446,7 @@ func TestTaskRun_Validate(t *testing.T) {
 			},
 		},
 	}, {
-		name: "alpha feature: valid step and sidecar overrides",
+		name: "beta feature: valid step and sidecar overrides",
 		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
 			Spec: v1beta1.TaskRunSpec{
@@ -465,7 +465,7 @@ func TestTaskRun_Validate(t *testing.T) {
 				}},
 			},
 		},
-		wc: cfgtesting.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableBetaAPIFields,
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
@@ -699,35 +699,19 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		wantErr: apis.ErrInvalidValue("turnOn is not a valid onFailure breakpoint value, onFailure breakpoint is only allowed to be set as enabled", "debug.breakpoints.onFailure"),
 		wc:      cfgtesting.EnableAlphaAPIFields,
 	}, {
-		name: "stepOverride disallowed without alpha feature gate",
+		name: "empty onFailure breakpoint",
 		spec: v1beta1.TaskRunSpec{
 			TaskRef: &v1beta1.TaskRef{
-				Name: "foo",
+				Name: "my-task",
 			},
-			StepOverrides: []v1beta1.TaskRunStepOverride{{
-				Name: "foo",
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+			Debug: &v1beta1.TaskRunDebug{
+				Breakpoints: &v1beta1.TaskBreakpoints{
+					OnFailure: "",
 				},
-			}},
-		},
-		wc:      cfgtesting.EnableStableAPIFields,
-		wantErr: apis.ErrGeneric("stepOverrides requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
-	}, {
-		name: "sidecarOverride disallowed without alpha feature gate",
-		spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "foo",
 			},
-			SidecarOverrides: []v1beta1.TaskRunSidecarOverride{{
-				Name: "foo",
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
-				},
-			}},
 		},
-		wc:      cfgtesting.EnableStableAPIFields,
-		wantErr: apis.ErrGeneric("sidecarOverrides requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
+		wantErr: apis.ErrInvalidValue("onFailure breakpoint is empty, it is only allowed to be set as enabled", "debug.breakpoints.onFailure"),
+		wc:      cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "duplicate stepOverride names",
 		spec: v1beta1.TaskRunSpec{
@@ -940,7 +924,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 				},
 			}},
 		},
-		wc: cfgtesting.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableBetaAPIFields,
 	}}
 
 	for _, ts := range tests {

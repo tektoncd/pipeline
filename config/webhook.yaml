@@ -126,6 +126,7 @@ spec:
           value: tekton.dev/pipeline
         securityContext:
           allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           capabilities:
             drop:
             - "ALL"

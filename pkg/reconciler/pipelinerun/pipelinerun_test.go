@@ -226,7 +226,7 @@ func getTaskRuns(ctx context.Context, t *testing.T, clients test.Clients, namesp
 	outputs := make(map[string]*v1.TaskRun)
 	for _, item := range taskRuns.Items {
 		tr := item
-		outputs[tr.Name] = &tr
+		outputs[item.Name] = &tr
 	}
 
 	return outputs
@@ -956,10 +956,26 @@ spec:
 			"Warning Failed [User error] PipelineRun foo/embedded-pipeline-mismatching-param-type parameters have mismatching types with Pipeline foo/embedded-pipeline-mismatching-param-type's parameters: parameters have inconsistent types : [some-param]",
 		},
 	}, {
-		name: "invalid-pipeline-run-missing-params-shd-stop-reconciling",
+		name: "invalid-pipeline-run-missing-params-with-ref-shd-stop-reconciling",
+		pipelineRun: parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pipelinerun-missing-params-1
+  namespace: foo
+spec:
+  pipelineRef:
+    name: a-pipeline-with-array-params
+`),
+		reason:         v1.PipelineRunReasonParameterMissing.String(),
+		permanentError: true,
+		wantEvents: []string{
+			"Normal Started",
+			"Warning Failed [User error] PipelineRun foo/pipelinerun-missing-params-1 is missing some parameters required by Pipeline foo/a-pipeline-with-array-params: pipelineRun missing parameters: [some-param]",
+		},
+	}, {
+		name: "invalid-pipeline-run-missing-params-with-spec-shd-stop-reconciling",
 		pipelineRun: parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
-  name: pipelinerun-missing-params
+  name: pipelinerun-missing-params-2
   namespace: foo
 spec:
   pipelineSpec:
@@ -975,7 +991,7 @@ spec:
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
-			"Warning Failed [User error] PipelineRun foo parameters is missing some parameters required by Pipeline pipelinerun-missing-params's parameters: pipelineRun missing parameters: [some-param]",
+			"Warning Failed [User error] PipelineRun foo/pipelinerun-missing-params-2 is missing some parameters required by Pipeline foo/pipelinerun-missing-params-2: pipelineRun missing parameters: [some-param]",
 		},
 	}, {
 		name: "invalid-pipeline-with-invalid-dag-graph",
@@ -8244,6 +8260,73 @@ spec:
 	}
 }
 
+func TestReconciler_ReconcileKind_PipelineRunLabels(t *testing.T) {
+	names.TestingSeed()
+
+	pipelineName := "p-pipelinetask"
+	pipelineRunName := "pr-pipelinetask"
+
+	ps := []*v1.Pipeline{parse.MustParseV1Pipeline(t, `
+metadata:
+  name: p-pipelinetask
+  namespace: foo
+spec:
+  tasks:
+  - name: task1
+    taskRef:
+      name: mytask
+`)}
+
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pr-pipelinetask
+  namespace: foo
+spec:
+  pipelineRef:
+    params:
+    - name: kind
+      value: pipeline
+    - name: name
+      value: p-pipelinetask
+    - name: namespace
+      value: foo
+    resolver: cluster
+`)}
+
+	ts := []*v1.Task{{ObjectMeta: baseObjectMeta("mytask", "foo")}}
+
+	trs := []*v1.TaskRun{mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta(pipelineRunName+"-task1-xxyy", "foo", pipelineRunName, pipelineName, "task1", false),
+		`
+spec:
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+status:
+  conditions:
+  - reason: "done"
+    status: "True"
+    type: Succeeded
+`)}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	actualPipelineRun, _ := prt.reconcileRun("foo", pipelineRunName, []string{}, false)
+	if actualPipelineRun.Labels == nil {
+		t.Fatalf("Pelinerun should have labels")
+	}
+	if v, ok := actualPipelineRun.Labels[pipeline.PipelineLabelKey]; !ok || v != pipelineName {
+		t.Fatalf("The expected name of the pipeline is %s, but the actual name is %s", pipelineName, v)
+	}
+}
+
 // newPipelineRunTest returns PipelineRunTest with a new PipelineRun controller created with specified state through data
 // This PipelineRunTest can be reused for multiple PipelineRuns by calling reconcileRun for each pipelineRun
 func newPipelineRunTest(t *testing.T, data test.Data) *PipelineRunTest {
@@ -12008,7 +12091,7 @@ spec:
       type: array
   steps:
     - name: produce-a-list-of-platforms
-      image: bash:latest
+      image: docker.io/library/bash:5.2.26
       script: |
         #!/usr/bin/env bash
         echo -n "[\"linux\",\"mac\",\"windows\"]" | tee $(results.platforms.path)
@@ -12493,7 +12576,7 @@ spec:
       type: array
   steps:
     - name: produce-a-list-of-platforms
-      image: bash:latest
+      image: docker.io/library/bash:5.2.26
       script: |
         #!/usr/bin/env bash
         echo -n "[\"linux\",\"mac\",\"windows\"]" | tee $(results.platforms.path)

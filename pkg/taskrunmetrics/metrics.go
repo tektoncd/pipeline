@@ -346,8 +346,10 @@ func MetricsOnStore(logger *zap.SugaredLogger) func(name string,
 }
 
 func pipelinerunInsertTag(pipeline, pipelinerun string) []tag.Mutator {
-	return []tag.Mutator{tag.Insert(pipelineTag, pipeline),
-		tag.Insert(pipelinerunTag, pipelinerun)}
+	return []tag.Mutator{
+		tag.Insert(pipelineTag, pipeline),
+		tag.Insert(pipelinerunTag, pipelinerun),
+	}
 }
 
 func pipelineInsertTag(pipeline, pipelinerun string) []tag.Mutator {
@@ -355,8 +357,10 @@ func pipelineInsertTag(pipeline, pipelinerun string) []tag.Mutator {
 }
 
 func taskrunInsertTag(task, taskrun string) []tag.Mutator {
-	return []tag.Mutator{tag.Insert(taskTag, task),
-		tag.Insert(taskrunTag, taskrun)}
+	return []tag.Mutator{
+		tag.Insert(taskTag, task),
+		tag.Insert(taskrunTag, taskrun),
+	}
 }
 
 func taskInsertTag(task, taskrun string) []tag.Mutator {
@@ -509,14 +513,14 @@ func (r *Recorder) RunningTaskRuns(ctx context.Context, lister listers.TaskRunLi
 		if addNamespaceLabelToQuotaThrottleMetric {
 			mutators = []tag.Mutator{tag.Insert(namespaceTag, ns)}
 		}
-		ctx, err = tag.New(ctx, mutators...)
+		ctx, err := tag.New(ctx, mutators...)
 		if err != nil {
 			return err
 		}
 		metrics.Record(ctx, runningTRsThrottledByQuota.M(float64(cnt)))
 	}
 	for ns, cnt := range trsThrottledByNode {
-		ctx, err = tag.New(ctx, []tag.Mutator{tag.Insert(namespaceTag, ns)}...)
+		ctx, err := tag.New(ctx, []tag.Mutator{tag.Insert(namespaceTag, ns)}...)
 		if err != nil {
 			return err
 		}
@@ -569,8 +573,10 @@ func (r *Recorder) RecordPodLatency(ctx context.Context, pod *corev1.Pod, tr *v1
 
 	ctx, err := tag.New(
 		ctx,
-		append([]tag.Mutator{tag.Insert(namespaceTag, tr.Namespace),
-			tag.Insert(podTag, pod.Name)},
+		append([]tag.Mutator{
+			tag.Insert(namespaceTag, tr.Namespace),
+			tag.Insert(podTag, pod.Name),
+		},
 			r.insertTaskTag(taskName, tr.Name)...)...)
 	if err != nil {
 		return err

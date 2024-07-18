@@ -56,15 +56,15 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: busybox
+    - image: docker.io/library/busybox:1.36
       script: sleep 2
-    - image: busybox
+    - image: docker.io/library/busybox:1.36
       script: sleep 2
-    - image: busybox
+    - image: docker.io/library/busybox:1.36
       script: sleep 2
-    - image: busybox
+    - image: docker.io/library/busybox:1.36
       script: sleep 2
-    - image: busybox
+    - image: docker.io/library/busybox:1.36
       script: sleep 2
 `, helpers.ObjectNameForTest(t), namespace)), metav1.CreateOptions{})
 	if err != nil {

@@ -592,7 +592,7 @@ func TestRecordRunningTaskRunsThrottledCounts(t *testing.T) {
 		unregisterMetrics()
 		ctx, _ := ttesting.SetupFakeContext(t)
 		informer := faketaskruninformer.Get(ctx)
-		for i := 0; i < multiplier; i++ {
+		for range multiplier {
 			tr := &v1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Name: names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("taskrun-"), Namespace: "test"},
 				Status: v1.TaskRunStatus{

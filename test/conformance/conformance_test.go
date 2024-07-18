@@ -71,7 +71,7 @@ spec:
   taskSpec:
     steps:
     - name: add
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script: |
         echo Hello world!
 `, helpers.ObjectNameForTest(t))
@@ -108,7 +108,7 @@ spec:
       taskSpec:
         steps:
         - name: add
-          image: ubuntu
+          image: docker.io/library/ubuntu
           script: |
             echo Hello world!
 `, helpers.ObjectNameForTest(t))
@@ -156,18 +156,18 @@ spec:
       default: param-value
     steps:
     - name: node
-      image: node
+      image: docker.io/library/node:lts-alpine3.20
       script: |
         #!/usr/bin/env node
         console.log("Hello from Node!")
     - name: perl
-      image: perl:devel-bullseye
+      image: docker.io/library/perl:devel-bullseye
       script: |
         #!/usr/bin/perl
         print "Hello from Perl!"
     # Test that param values are replaced.
     - name: params-applied
-      image: python
+      image: docker.io/library/python:3.12.4
       script: |
         #!/usr/bin/env python3
         v = '$(params.PARAM)'
@@ -177,7 +177,7 @@ spec:
           exit(1)
     # Test that args are allowed and passed to the script as expected.
     - name: args-allowed
-      image: ubuntu
+      image: docker.io/library/ubuntu
       args: ['hello', 'world']
       script: |
         #!/usr/bin/env bash
@@ -186,7 +186,7 @@ spec:
         [[ $2 == "world" ]]
     # Test that multiple dollar signs next to each other are not replaced by Kubernetes
     - name: dollar-signs-allowed
-      image: python
+      image: docker.io/library/python:3.12.4
       script: |
         #!/usr/bin/env python3
         if '$' != '\u0024':
@@ -205,7 +205,7 @@ spec:
 
     # Test that bash scripts with variable evaluations work as expected
     - name: bash-variable-evaluations
-      image: bash:5.1.8
+      image: docker.io/library/bash:5.2.26
       script: |
         #!/usr/bin/env bash
         set -xe
@@ -258,7 +258,7 @@ spec:
   taskSpec:
     steps:
     - name: bash
-      image: ubuntu
+      image: docker.io/library/ubuntu
       env:
       - name: %s
         value: %s
@@ -313,7 +313,7 @@ spec:
   taskSpec:
     steps:
     - name: default
-      image: ubuntu
+      image: docker.io/library/ubuntu
       workingDir: %s
       script: |
         #!/usr/bin/env bash
@@ -321,7 +321,7 @@ spec:
           exit 1
         fi
     - name: override
-      image: ubuntu
+      image: docker.io/library/ubuntu
       workingDir: %s
       script: |
         #!/usr/bin/env bash
@@ -404,7 +404,7 @@ spec:
   taskSpec:
     steps:
     - name: %s
-      image: busybox
+      image: docker.io/library/busybox
       args: ['-c', 'echo hello']
 `, helpers.ObjectNameForTest(t), stepName)
 
@@ -441,7 +441,7 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: busybox
+    - image: docker.io/library/busybox:1.36
       args: ['-c', 'echo hello']
 `, helpers.ObjectNameForTest(t))
 
@@ -493,7 +493,7 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: busybox
+    - image: docker.io/library/busybox:1.36
       script: exit 1
 `, helpers.ObjectNameForTest(t))
 
@@ -549,11 +549,11 @@ spec:
   taskSpec:
     sidecars:
     - name: %s
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script: echo "hello from sidecar"
     steps:
     - name: hello-step
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script: echo "hello from step"
 `, helpers.ObjectNameForTest(t), sidecarName)
 
@@ -594,7 +594,7 @@ spec:
   taskSpec:
     sidecars:
     - name: slow-sidecar
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script: |
         echo "hello from sidecar" > /shared/message
       volumeMounts:
@@ -603,7 +603,7 @@ spec:
 
     steps:
     - name: check-ready
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script: cat /shared/message
       volumeMounts:
       - name: shared
@@ -640,12 +640,12 @@ spec:
   taskSpec:
     sidecars:
     - name: exit-sidecar
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script: exit 1
 
     steps:
     - name: check-ready
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script: cat /shared/message
       volumeMounts:
         - name: shared
@@ -686,7 +686,7 @@ spec:
   taskSpec:
     sidecars:
     - name: slow-sidecar
-      image: ubuntu
+      image: docker.io/library/ubuntu
       command: [/bin/bash]
       args: [-c, "echo 'hello from sidecar' > /shared/message"]
       volumeMounts:
@@ -694,7 +694,7 @@ spec:
         mountPath: /shared
     steps:
     - name: check-ready
-      image: ubuntu
+      image: docker.io/library/ubuntu
       command:
       - cat
       args:
@@ -746,7 +746,7 @@ spec:
         type: string
     steps:
       - name: "check-param"
-        image: bash
+        image: docker.io/library/bash
         script: |
           if [[ $(params.string-param) != %s ]]; then
             exit 1
@@ -794,7 +794,7 @@ spec:
         type: array
     steps:
     - name: concat-array-params
-      image: alpine
+      image: docker.io/library/alpine:3.20.1
       command: ["/bin/sh", "-c"]
       args:
       - echo -n $(params.array-to-concat[0])"-"$(params.array-to-concat[1]) | tee $(results.concat-array.path);
@@ -863,12 +863,12 @@ spec:
         default: "string-baz-default"
     steps:
       - name: string-params-to-result
-        image: bash:3.2
+        image: docker.io/library/bash:5.2.26
         command: ["/bin/sh", "-c"]
         args:
         - echo -n $(params.string-param)"-"$(params.string-default) | tee $(results.string-output.path);
       - name: array-params-to-result
-        image: bash:3.2
+        image: docker.io/library/bash:5.2.26
         command: ["/bin/sh", "-c"]
         args:
         - echo -n $(params.array-param[0])"-"$(params.array-defaul-param[1]) | tee $(results.array-output.path);
@@ -940,7 +940,7 @@ spec:
       default: "foo"
     steps:
     - name: add
-      image: alpine
+      image: docker.io/library/alpine:3.20.1
       env:
       - name: OP1
         value: $(params.foo)
@@ -984,13 +984,13 @@ spec:
   taskSpec:
     steps:
     - name: write
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script: echo $(workspaces.custom-workspace.path) > $(workspaces.custom-workspace.path)/foo
     - name: read
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script: cat $(workspaces.custom-workspace.path)/foo
     - name: check
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script: |
         if [ "$(cat $(workspaces.custom-workspace.path)/foo)" != "/workspace/custom-workspace" ]; then
           echo $(cat $(workspaces.custom-workspace.path)/foo)
@@ -1041,7 +1041,7 @@ spec:
   timeout: 15s
   taskSpec:
     steps:
-    - image: busybox
+    - image: docker.io/library/busybox:1.36
       command: ['/bin/sh']
       args: ['-c', 'sleep 15001']
 `, helpers.ObjectNameForTest(t))
@@ -1073,7 +1073,7 @@ spec:
   taskSpec:
     steps:
     - name: add
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script:
         echo Hello world!
 `, helpers.ObjectNameForTest(t))
@@ -1124,7 +1124,7 @@ spec:
           description: The second integer from PipelineTask Param
         steps:
         - name: sum
-          image: bash:latest
+          image: docker.io/library/bash:5.2.26
           script: |
             #!/usr/bin/env bash
             echo -n $(( "$(inputs.params.op0)" + "$(inputs.params.op1)" ))
@@ -1177,7 +1177,7 @@ spec:
         - name: suffix
         steps:
         - name: generate-suffix
-          image: alpine
+          image: docker.io/library/alpine:3.20.1
           script: |
             echo -n "suffix" > $(results.suffix.path)
     - name: do-something
@@ -1188,7 +1188,7 @@ spec:
         - name: arg
         steps:
         - name: do-something
-          image: alpine
+          image: docker.io/library/alpine:3.20.1
           script: |
             echo -n "$(params.arg)" | tee $(results.output.path)
       params:
@@ -1241,7 +1241,7 @@ spec:
       taskSpec:
         steps:
         - name: write-step
-          image: ubuntu
+          image: docker.io/library/ubuntu
           script: |
             echo $(workspaces.custom-workspace-write-task.path) > $(workspaces.custom-workspace-write-task.path)/foo
             cat $(workspaces.custom-workspace-write-task.path)/foo
@@ -1254,7 +1254,7 @@ spec:
       taskSpec:
         steps:
         - name: read-step
-          image: ubuntu
+          image: docker.io/library/ubuntu
           script: cat $(workspaces.custom-workspace-read-task.path)/foo
         workspaces:
         - name: custom-workspace-read-task
@@ -1267,7 +1267,7 @@ spec:
       taskSpec:
         steps:
         - name: check-step
-          image: ubuntu
+          image: docker.io/library/ubuntu
           script: |
             if [ "$(cat $(workspaces.custom-workspace-check-task.path)/foo)" != "/workspace/custom-workspace-write-task" ]; then
               echo $(cat $(workspaces.custom-workspace-check-task.path)/foo)
@@ -1320,7 +1320,7 @@ spec:
       timeout: 15s
       taskSpec:
         steps:
-        - image: busybox
+        - image: docker.io/library/busybox:1.36
           command: ['/bin/sh']
           args: ['-c', 'sleep 15001']
 `, helpers.ObjectNameForTest(t))
@@ -1359,7 +1359,7 @@ spec:
     - name: timeout
       taskSpec:
         steps:
-        - image: busybox
+        - image: docker.io/library/busybox:1.36
           command: ['/bin/sh']
           args: ['-c', 'sleep 15001']
 `, helpers.ObjectNameForTest(t))
@@ -1410,7 +1410,7 @@ spec:
               description: The product of the two provided integers
           steps:
             - name: product
-              image: bash:latest
+              image: docker.io/library/bash:5.2.26
               script: |
                 #!/usr/bin/env bash
                 echo -n $(( "$(params.a)" * "$(params.b)" )) | tee $(results.product.path)
@@ -1427,7 +1427,7 @@ spec:
               description: The product of the two provided integers
           steps:
             - name: product
-              image: bash:latest
+              image: docker.io/library/bash:5.2.26
               script: |
                 #!/usr/bin/env bash
                 echo -n $(( "$(params.a)" * "$(params.b)" )) | tee $(results.product.path)
@@ -1482,7 +1482,7 @@ spec:
       taskSpec:
         steps:
         - name: add
-          image: ubuntu
+          image: docker.io/library/ubuntu
           script:
             echo Hello world!
 `, helpers.ObjectNameForTest(t))
@@ -1521,14 +1521,14 @@ spec:
       taskSpec:
         steps:
         - name: hello-step
-          image: ubuntu
+          image: docker.io/library/ubuntu
           script:
             echo Hello world!
     - name: %s
       taskSpec:
         steps:
         - name: hell-step
-          image: ubuntu
+          image: docker.io/library/ubuntu
           script:
             echo Hello world!
 `, prName, pt0, pt1)

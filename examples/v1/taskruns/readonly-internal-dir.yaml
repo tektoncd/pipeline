@@ -7,9 +7,9 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: ubuntu
+    - image: docker.io/library/ubuntu:24.04
       script: exit 0
-    - image: ubuntu
+    - image: docker.io/library/ubuntu:24.04
       script: |
         set +e # dont fail the script on error
 
@@ -19,7 +19,7 @@ spec:
           echo "able to write to run directory of non-current step"
           exit 1
         fi
-    - image: ubuntu
+    - image: docker.io/library/ubuntu:24.04
       script: |
         set +e # dont fail the script on error
 

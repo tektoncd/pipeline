@@ -15,7 +15,7 @@ spec:
           results:
             - name: result-one
           steps:
-          - image: alpine
+          - image: docker.io/library/alpine:3.20.1
             script: |
               #!/bin/sh
               echo "Hello world!"
@@ -28,7 +28,7 @@ spec:
           results:
             - name: result-two
           steps:
-          - image: alpine
+          - image: docker.io/library/alpine:3.20.1
             script: |
               #!/bin/sh
               echo "Goodbye world!"
@@ -43,7 +43,7 @@ spec:
           results:
             - name: result-three
           steps:
-          - image: alpine
+          - image: docker.io/library/alpine:3.20.1
             script: |
               #!/bin/sh
               echo "Shutdown world!"

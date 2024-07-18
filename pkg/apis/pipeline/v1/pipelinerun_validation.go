@@ -286,11 +286,11 @@ func (ps *PipelineRunSpec) validatePipelineTimeout(timeout time.Duration, errorM
 
 func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec) (errs *apis.FieldError) {
 	if trs.StepSpecs != nil {
-		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "stepSpecs", config.AlphaAPIFields).ViaField("stepSpecs"))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "stepSpecs", config.BetaAPIFields).ViaField("stepSpecs"))
 		errs = errs.Also(validateStepSpecs(trs.StepSpecs).ViaField("stepSpecs"))
 	}
 	if trs.SidecarSpecs != nil {
-		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "sidecarSpecs", config.AlphaAPIFields).ViaField("sidecarSpecs"))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "sidecarSpecs", config.BetaAPIFields).ViaField("sidecarSpecs"))
 		errs = errs.Also(validateSidecarSpecs(trs.SidecarSpecs).ViaField("sidecarSpecs"))
 	}
 	if trs.ComputeResources != nil {

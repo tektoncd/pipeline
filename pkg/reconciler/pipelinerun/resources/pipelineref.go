@@ -151,34 +151,46 @@ func readRuntimeObjectAsPipeline(ctx context.Context, namespace string, obj runt
 	switch obj := obj.(type) {
 	case *v1beta1.Pipeline:
 		obj.SetDefaults(ctx)
+		// Cleanup object from things we don't care about
+		// FIXME: extract this in a function
+		obj.ObjectMeta.OwnerReferences = nil
 		// Verify the Pipeline once we fetch from the remote resolution, mutating, validation and conversion of the pipeline should happen after the verification, since signatures are based on the remote pipeline contents
 		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
 		// Issue a dry-run request to create the remote Pipeline, so that it can undergo validation from validating admission webhooks
-		// without actually creating the Pipeline on the cluster.
-		if err := apiserver.DryRunValidate(ctx, namespace, obj, tekton); err != nil {
+		// and mutation from mutating admission webhooks without actually creating the Pipeline on the cluster
+		o, err := apiserver.DryRunValidate(ctx, namespace, obj, tekton)
+		if err != nil {
 			return nil, nil, err
 		}
-		p := &v1.Pipeline{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Pipeline",
-				APIVersion: "tekton.dev/v1",
-			},
+		if mutatedPipeline, ok := o.(*v1beta1.Pipeline); ok {
+			mutatedPipeline.ObjectMeta = obj.ObjectMeta
+			p := &v1.Pipeline{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Pipeline",
+					APIVersion: "tekton.dev/v1",
+				},
+			}
+			if err := mutatedPipeline.ConvertTo(ctx, p); err != nil {
+				return nil, nil, fmt.Errorf("failed to convert v1beta1 obj %s into v1 Pipeline", mutatedPipeline.GetObjectKind().GroupVersionKind().String())
+			}
+			return p, &vr, nil
 		}
-		if err := obj.ConvertTo(ctx, p); err != nil {
-			return nil, nil, fmt.Errorf("failed to convert v1beta1 obj %s into v1 Pipeline", obj.GetObjectKind().GroupVersionKind().String())
-		}
-		return p, &vr, nil
 	case *v1.Pipeline:
+		// Cleanup object from things we don't care about
+		// FIXME: extract this in a function
+		obj.ObjectMeta.OwnerReferences = nil
 		// This SetDefaults is currently not necessary, but for consistency, it is recommended to add it.
 		// Avoid forgetting to add it in the future when there is a v2 version, causing similar problems.
 		obj.SetDefaults(ctx)
 		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
-		// Issue a dry-run request to create the remote Pipeline, so that it can undergo validation from validating admission webhooks
-		// without actually creating the Pipeline on the cluster
-		if err := apiserver.DryRunValidate(ctx, namespace, obj, tekton); err != nil {
+		o, err := apiserver.DryRunValidate(ctx, namespace, obj, tekton)
+		if err != nil {
 			return nil, nil, err
 		}
-		return obj, &vr, nil
+		if mutatedPipeline, ok := o.(*v1.Pipeline); ok {
+			mutatedPipeline.ObjectMeta = obj.ObjectMeta
+			return mutatedPipeline, &vr, nil
+		}
 	}
 	return nil, nil, errors.New("resource is not a pipeline")
 }

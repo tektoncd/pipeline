@@ -5,9 +5,9 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: ubuntu
+    - image: docker.io/library/ubuntu:24.04
       script: 'true'
-    - image: ubuntu
+    - image: docker.io/library/ubuntu:24.04
       script: 'true'
-    - image: ubuntu
+    - image: docker.io/library/ubuntu:24.04
       script: 'true'

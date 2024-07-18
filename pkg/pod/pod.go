@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tektoncd/pipeline/internal/artifactref"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
@@ -75,6 +76,9 @@ const (
 	TerminationReasonCancelled = "Cancelled"
 
 	StepArtifactPathPattern = "step.artifacts.path"
+
+	// K8s version to determine if to use native k8s sidecar or Tekton sidecar
+	SidecarK8sMinorVersionCheck = 29
 )
 
 // These are effectively const, but Go doesn't have such an annotation.
@@ -100,6 +104,9 @@ var (
 		Name:      "tekton-internal-steps",
 		MountPath: pipeline.StepsDir,
 		ReadOnly:  true,
+	}, {
+		Name:      "tekton-internal-artifacts",
+		MountPath: pipeline.ArtifactsDir,
 	}}
 	implicitVolumes = []corev1.Volume{{
 		Name:         "tekton-internal-workspace",
@@ -112,6 +119,9 @@ var (
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}, {
 		Name:         "tekton-internal-steps",
+		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+	}, {
+		Name:         "tekton-internal-artifacts",
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}}
 
@@ -236,7 +246,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		initContainers = append(initContainers, *scriptsInit)
 		volumes = append(volumes, scriptsVolume)
 	}
-	if alphaAPIEnabled && taskRun.Spec.Debug != nil {
+	if alphaAPIEnabled && taskRun.Spec.Debug != nil && taskRun.Spec.Debug.NeedsDebug() {
 		volumes = append(volumes, debugScriptsVolume, debugInfoVolume)
 	}
 	// Initialize any workingDirs under /workspace.
@@ -326,7 +336,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		// Each step should only mount their own volume as RW,
 		// all other steps should be mounted RO.
 		volumes = append(volumes, runVolume(i))
-		for j := 0; j < len(stepContainers); j++ {
+		for j := range len(stepContainers) {
 			s.VolumeMounts = append(s.VolumeMounts, runMount(j, i != j))
 		}
 
@@ -352,7 +362,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 				if s.Name != pipeline.ReservedResultsSidecarName {
 					continue
 				}
-				for j := 0; j < len(stepContainers); j++ {
+				for j := range len(stepContainers) {
 					s.VolumeMounts = append(s.VolumeMounts, runMount(j, true))
 				}
 				requestedVolumeMounts := map[string]bool{}
@@ -421,11 +431,41 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	}
 
 	mergedPodContainers := stepContainers
+	mergedPodInitContainers := initContainers
 
-	// Merge sidecar containers with step containers.
-	for _, sc := range sidecarContainers {
-		sc.Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", sidecarPrefix, sc.Name))
-		mergedPodContainers = append(mergedPodContainers, sc)
+	// Check if current k8s version is less than 1.29
+	// Since Kubernetes Major version cannot be 0 and if it's 2 then sidecar will be in
+	// we are only concerned about major version 1 and if the minor is less than 29 then
+	// we need to do the current logic
+	useTektonSidecar := true
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableKubernetesSidecar {
+		// Go through the logic for enable-kubernetes feature flag
+		// Kubernetes Version
+		dc := b.KubeClient.Discovery()
+		sv, err := dc.ServerVersion()
+		if err != nil {
+			return nil, err
+		}
+		svMinorInt, _ := strconv.Atoi(sv.Minor)
+		svMajorInt, _ := strconv.Atoi(sv.Major)
+		if svMajorInt >= 1 && svMinorInt >= SidecarK8sMinorVersionCheck {
+			// Add RestartPolicy and Merge into initContainer
+			useTektonSidecar = false
+			for i := range sidecarContainers {
+				sc := &sidecarContainers[i]
+				always := corev1.ContainerRestartPolicyAlways
+				sc.RestartPolicy = &always
+				sc.Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", sidecarPrefix, sc.Name))
+				mergedPodInitContainers = append(mergedPodInitContainers, *sc)
+			}
+		}
+	}
+	if useTektonSidecar {
+		// Merge sidecar containers with step containers.
+		for _, sc := range sidecarContainers {
+			sc.Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", sidecarPrefix, sc.Name))
+			mergedPodContainers = append(mergedPodContainers, sc)
+		}
 	}
 
 	var dnsPolicy corev1.DNSPolicy
@@ -474,7 +514,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy:                corev1.RestartPolicyNever,
-			InitContainers:               initContainers,
+			InitContainers:               mergedPodInitContainers,
 			Containers:                   mergedPodContainers,
 			ServiceAccountName:           taskRun.Spec.ServiceAccountName,
 			Volumes:                      volumes,
@@ -768,7 +808,7 @@ func artifactsPathReferenced(steps []v1.Step) bool {
 func artifactPathReferencedInStep(step v1.Step) bool {
 	// `$(step.artifacts.path)` in  taskRun.Spec.TaskSpec.Steps and `taskSpec.steps` are substituted when building the pod while when setting status for taskRun
 	// neither of them is substituted, so we need two forms to check if artifactsPath is referenced in steps.
-	unresolvedPath := "$(" + StepArtifactPathPattern + ")"
+	unresolvedPath := "$(" + artifactref.StepArtifactPathPattern + ")"
 
 	path := filepath.Join(pipeline.StepsDir, GetContainerName(step.Name), "artifacts", "provenance.json")
 	if strings.Contains(step.Script, path) || strings.Contains(step.Script, unresolvedPath) {

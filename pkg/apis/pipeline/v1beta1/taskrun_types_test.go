@@ -571,7 +571,7 @@ func TestTaskRunIsRetriable(t *testing.T) {
 		wantIsRetriable: false,
 	}} {
 		retriesStatus := []v1beta1.TaskRunStatus{}
-		for i := 0; i < tc.numRetriesStatus; i++ {
+		for range tc.numRetriesStatus {
 			retriesStatus = append(retriesStatus, retryStatus)
 		}
 		t.Run(tc.name, func(t *testing.T) {

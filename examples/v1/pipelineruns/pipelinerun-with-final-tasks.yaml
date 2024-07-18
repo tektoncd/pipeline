@@ -116,18 +116,18 @@ spec:
     - name: source
   steps:
     - name: check-application-dir-has-source
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script: |
         if [ ! -d "$(workspaces.source.path)/application/" ]; then
           echo "Something went wrong and could not find application source under $(workspaces.source.path)/application/"
           exit 1
         fi
     - name: cleanup-workspace
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script: |
         rm -rf $(workspaces.source.path)/application/
     - name: verify-application-dir-has-gone
-      image: ubuntu
+      image: docker.io/library/ubuntu
       script: |
         if [ -d "$(workspaces.source.path)/application/" ]; then
           echo "Something went wrong cleaning up and the application source still exists under $(workspaces.source.path)/application/"
@@ -174,7 +174,7 @@ spec:
           - name: commit
         steps:
           - name: check-commit-initialized
-            image: alpine
+            image: docker.io/library/alpine:3.20.1
             script: |
               if [[ ! $(params.commit) ]]; then
                 exit 1

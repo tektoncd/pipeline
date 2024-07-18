@@ -28,12 +28,12 @@ spec:
         - name: pipelineRun-namespace
         - name: pipelineTask-retries
         steps:
-        - image: ubuntu
+        - image: docker.io/library/ubuntu:24.04
           name: print-uid
           script: |
             echo "TaskRun UID: $(context.taskRun.uid)"
             echo "PipelineRun UID from params: $(params.pipeline-uid)"
-        - image: ubuntu
+        - image: docker.io/library/ubuntu:24.04
           name: print-names
           script: |
             echo "Task name: $(context.task.name)"
@@ -41,7 +41,7 @@ spec:
             echo "Pipeline name from params: $(params.pipeline-name)"
             echo "PipelineRun name from params: $(params.pipelineRun-name)"
             echo "PipelineRun namespace from params: $(params.pipelineRun-namespace)"
-        - image: ubuntu
+        - image: docker.io/library/ubuntu:24.04
           name: print-retries
           script: |
             echo "PipelineTask retries from params: $(params.pipelineTask-retries)"

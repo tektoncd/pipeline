@@ -559,6 +559,31 @@ func TestMakeTaskRunStatus_StepArtifacts(t *testing.T) {
 						},
 						Results: []v1.TaskRunResult{},
 					}},
+					Artifacts: v1.Artifacts{
+						Inputs: []v1.Artifact{
+							{
+								Name: "input-artifacts",
+								Values: []v1.ArtifactValue{{
+									Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"},
+									Uri:    "git:jjjsss",
+								},
+								},
+							},
+						},
+						Outputs: []v1.Artifact{
+							{
+								Name: "build-results",
+								Values: []v1.ArtifactValue{{
+									Digest: map[v1.Algorithm]string{
+										"sha1":   "95588b8f34c31eb7d62c92aaa4e6506639b06ef2",
+										"sha256": "df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48",
+									},
+									Uri: "pkg:balba",
+								},
+								},
+							},
+						},
+					},
 					Sidecars: []v1.SidecarState{},
 					// We don't actually care about the time, just that it's not nil
 					CompletionTime: &metav1.Time{Time: time.Now()},
@@ -1776,6 +1801,132 @@ func TestMakeRunStatus_OnError(t *testing.T) {
 
 			if d := cmp.Diff(c.want.Status, got.Status, ignoreVolatileTime); d != "" {
 				t.Errorf("Diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestMakeTaskRunStatus_SidecarNotCompleted(t *testing.T) {
+	for _, c := range []struct {
+		desc      string
+		podStatus corev1.PodStatus
+		pod       corev1.Pod
+		taskSpec  v1.TaskSpec
+		want      v1.TaskRunStatus
+	}{{
+		desc: "test sidecar not completed",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name: "other-prefix-container",
+					State: corev1.ContainerState{
+						Terminated: nil,
+					},
+				},
+				{
+					Name: "step-bar",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							Message: `[{"key":"resultName","value":"", "type":1}, {"key":"digest","value":"sha256:1234","resourceName":"source-image"}]`,
+						},
+					},
+				},
+				{
+					Name: "sidecar-tekton-log-results",
+					State: corev1.ContainerState{
+						Terminated: nil,
+					},
+				},
+			},
+		},
+		taskSpec: v1.TaskSpec{
+			Results: []v1.TaskResult{
+				{
+					Name: "resultName",
+					Type: v1.ResultsTypeString,
+				},
+			},
+		},
+		want: v1.TaskRunStatus{
+			Status: statusRunning(),
+		},
+	}, {
+		desc: "test sidecar already completed",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name: "step-bar",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							Message: `[{"key":"resultName","value":"", "type":1}, {"key":"digest","value":"sha256:1234","resourceName":"source-image"}]`,
+						},
+					},
+				},
+				{
+					Name: "sidecar-tekton-log-results",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 0,
+						},
+					},
+				},
+			},
+		},
+		taskSpec: v1.TaskSpec{
+			Results: []v1.TaskResult{
+				{
+					Name: "resultName",
+					Type: v1.ResultsTypeString,
+				},
+			},
+		},
+		want: v1.TaskRunStatus{
+			Status: statusSuccess(),
+		},
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			c.pod = corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "pod",
+					Namespace:         "foo",
+					CreationTimestamp: metav1.Now(),
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{
+						Name: "other-prefix-container",
+					}, {
+						Name: "step-bar",
+					}, {
+						Name: "sidecar-tekton-log-results",
+					}},
+				},
+				Status: c.podStatus,
+			}
+
+			tr := v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "task-run",
+					Namespace: "foo",
+				},
+				Status: v1.TaskRunStatus{
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						TaskSpec: &c.taskSpec,
+					},
+				},
+			}
+			logger, _ := logging.NewLogger("", "status")
+			kubeclient := fakek8s.NewSimpleClientset()
+			ctx := config.ToContext(context.Background(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					ResultExtractionMethod: config.ResultExtractionMethodSidecarLogs,
+					MaxResultSize:          1024,
+				},
+			})
+			got, _ := MakeTaskRunStatus(ctx, logger, tr, &c.pod, kubeclient, &c.taskSpec)
+			if d := cmp.Diff(c.want.Status, got.Status, ignoreVolatileTime); d != "" {
+				t.Errorf("Unexpected status: %s", diff.PrintWantGot(d))
 			}
 		})
 	}

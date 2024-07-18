@@ -52,11 +52,11 @@ spec:
     default: "response"
   steps:
   - name: echo-param
-    image: alpine
+    image: docker.io/library/alpine:3.20.1
     script: |
       echo "$(params.rsp)"
   - name: check-workspace
-    image: alpine
+    image: docker.io/library/alpine:3.20.1
     script: |
       if [ "$(workspaces.taskWorkspace.bound)" == "true" ]; then
         echo "Workspace provided"
@@ -128,12 +128,12 @@ status:
     status: "True"
   taskSpec:
     steps:
-    - image: alpine
+    - image: docker.io/library/alpine:3.20.1
       name: echo-param
       script: |
        echo "response"
     - name: check-workspace
-      image: alpine
+      image: docker.io/library/alpine:3.20.1
       script: |
         if [ "true" == "true" ]; then
           echo "Workspace provided"

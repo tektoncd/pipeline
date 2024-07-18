@@ -107,8 +107,7 @@ data:
   enforce-nonfalsifiability: "none"
   # Setting this flag will determine how Tekton pipelines will handle extracting results from the task.
   # Acceptable values are "termination-message" or "sidecar-logs".
-  # "sidecar-logs" is an experimental feature and thus should still be considered
-  # an alpha feature.
+  # "sidecar-logs" is now a beta feature.
   results-from: "termination-message"
   # Setting this flag will determine the upper limit of each task result
   # This flag is optional and only associated with the previous flag, results-from
@@ -139,3 +138,5 @@ data:
   disable-inline-spec: ""
   # Setting this flag to "true" will enable the use of concise resolver syntax
   enable-concise-resolver-syntax: "false"
+  # Setthing this flag to "true" will enable native Kubernetes Sidecar support
+  enable-kubernetes-sidecar: "false"

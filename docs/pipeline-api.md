@@ -1428,6 +1428,9 @@ string
 </table>
 <h3 id="tekton.dev/v1.Artifacts">Artifacts
 </h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRunStatusFields">TaskRunStatusFields</a>)
+</p>
 <div>
 <p>Artifacts represents the collection of input and output artifacts associated with
 a task run or a similar process. Artifacts in this context are units of data or resources
@@ -4132,6 +4135,23 @@ other Step or Sidecar that does not also request this Workspace will
 not have access to it.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>restartPolicy</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#containerrestartpolicy-v1-core">
+Kubernetes core/v1.ContainerRestartPolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RestartPolicy refers to kubernetes RestartPolicy. It can only be set for an
+initContainer and must have it&rsquo;s policy set to &ldquo;Always&rdquo;. It is currently
+left optional to help support Kubernetes versions prior to 1.29 when this feature
+was introduced.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.SidecarState">SidecarState
@@ -4645,6 +4665,20 @@ Params
 <p>It can be used in an inlined Step when used to store Results to $(step.results.resultName.path).
 It cannot be used when referencing StepActions using [v1.Step.Ref].
 The Results declared by the StepActions will be stored here instead.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>when</code><br/>
+<em>
+<a href="#tekton.dev/v1.WhenExpressions">
+WhenExpressions
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>When is a list of when expressions that need to be true for the task to run</p>
 </td>
 </tr>
 </tbody>
@@ -5888,6 +5922,20 @@ All TaskRunStatus stored in RetriesStatus will have no date within the RetriesSt
 </tr>
 <tr>
 <td>
+<code>artifacts</code><br/>
+<em>
+<a href="#tekton.dev/v1.Artifacts">
+Artifacts
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Artifacts are the list of artifacts written out by the task&rsquo;s containers</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>sidecars</code><br/>
 <em>
 <a href="#tekton.dev/v1.SidecarState">
@@ -6251,7 +6299,7 @@ More info about CEL syntax: <a href="https://github.com/google/cel-spec/blob/mas
 <h3 id="tekton.dev/v1.WhenExpressions">WhenExpressions
 (<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression</code> alias)</h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1.Step">Step</a>)
 </p>
 <div>
 <p>WhenExpressions are used to specify whether a Task should be executed or skipped
@@ -13428,6 +13476,23 @@ other Step or Sidecar that does not also request this Workspace will
 not have access to it.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>restartPolicy</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#containerrestartpolicy-v1-core">
+Kubernetes core/v1.ContainerRestartPolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RestartPolicy refers to kubernetes RestartPolicy. It can only be set for an
+initContainer and must have it&rsquo;s policy set to &ldquo;Always&rdquo;. It is currently
+left optional to help support Kubernetes versions prior to 1.29 when this feature
+was introduced.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1beta1.SidecarState">SidecarState
@@ -14067,6 +14132,18 @@ Params
 <p>It can be used in an inlined Step when used to store Results to $(step.results.resultName.path).
 It cannot be used when referencing StepActions using [v1beta1.Step.Ref].
 The Results declared by the StepActions will be stored here instead.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>when</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.WhenExpressions">
+WhenExpressions
+</a>
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -16190,7 +16267,7 @@ More info about CEL syntax: <a href="https://github.com/google/cel-spec/blob/mas
 <h3 id="tekton.dev/v1beta1.WhenExpressions">WhenExpressions
 (<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WhenExpression</code> alias)</h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.Step">Step</a>)
 </p>
 <div>
 <p>WhenExpressions are used to specify whether a Task should be executed or skipped

@@ -72,6 +72,11 @@ func (s Step) convertTo(ctx context.Context, sink *v1.Step) {
 		sink.Params = append(sink.Params, new)
 	}
 	sink.Results = s.Results
+	for _, w := range s.When {
+		new := v1.WhenExpression{}
+		w.convertTo(ctx, &new)
+		sink.When = append(sink.When, new)
+	}
 }
 
 func (s *Step) convertFrom(ctx context.Context, source v1.Step) {
@@ -111,6 +116,11 @@ func (s *Step) convertFrom(ctx context.Context, source v1.Step) {
 		s.Params = append(s.Params, new)
 	}
 	s.Results = source.Results
+	for _, w := range source.When {
+		new := WhenExpression{}
+		new.convertFrom(ctx, w)
+		s.When = append(s.When, new)
+	}
 }
 
 func (s StepTemplate) convertTo(ctx context.Context, sink *v1.StepTemplate) {

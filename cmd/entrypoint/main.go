@@ -33,6 +33,7 @@ import (
 	"github.com/tektoncd/pipeline/cmd/entrypoint/subcommands"
 	featureFlags "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/credentials"
 	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
 	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
@@ -50,6 +51,7 @@ var (
 	terminationPath     = flag.String("termination_path", "/tekton/termination", "If specified, file to write upon termination")
 	results             = flag.String("results", "", "If specified, list of file names that might contain task results")
 	stepResults         = flag.String("step_results", "", "step results if specified")
+	whenExpressions     = flag.String("when_expressions", "", "when expressions if specified")
 	timeout             = flag.Duration("timeout", time.Duration(0), "If specified, sets timeout for step")
 	stdoutPath          = flag.String("stdout_path", "", "If specified, file to copy stdout to")
 	stderrPath          = flag.String("stderr_path", "", "If specified, file to copy stderr to")
@@ -138,6 +140,12 @@ func main() {
 			log.Fatal(err)
 		}
 	}
+	var when v1.StepWhenExpressions
+	if len(*whenExpressions) > 0 {
+		if err := json.Unmarshal([]byte(*whenExpressions), &when); err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	var spireWorkloadAPI spire.EntrypointerAPIClient
 	if enableSpire != nil && *enableSpire && socketPath != nil && *socketPath != "" {
@@ -162,6 +170,7 @@ func main() {
 		Results:                strings.Split(*results, ","),
 		StepResults:            strings.Split(*stepResults, ","),
 		Timeout:                timeout,
+		StepWhenExpressions:    when,
 		BreakpointOnFailure:    *breakpointOnFailure,
 		OnError:                *onError,
 		StepMetadataDir:        *stepMetadataDir,

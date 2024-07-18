@@ -741,8 +741,6 @@ tasks:
 
 ### Using the `onError` field
 
-> :seedling: **Specifying `onError` in `PipelineTasks` is an [alpha](additional-configs.md#alpha-features) feature.** The `enable-api-fields` feature flag must be set to `"alpha"` to specify `onError`  in a `PipelineTask`.
-
 When a `PipelineTask` fails, the rest of the `PipelineTasks` are skipped and the `PipelineRun` is declared a failure. If you would like to
 ignore such `PipelineTask` failure and continue executing the rest of the `PipelineTasks`, you can specify `onError` for such a `PipelineTask`.
 
@@ -1266,6 +1264,10 @@ Tasks can emit [`Results`](tasks.md#emitting-results) when they execute. A Pipel
 
 1. A Pipeline can pass the `Result` of a `Task` into the `Parameters` or `when` expressions of another.
 2. A Pipeline can itself emit `Results` and include data from the `Results` of its Tasks.
+
+> **Note** Tekton does not enforce that results are produced at Task level. If a pipeline attempts to
+> consume a result that was declared by a Task, but not produced, it will fail. [TEP-0048](https://github.com/tektoncd/community/blob/main/teps/0048-task-results-without-results.md)
+> propopses introducing default values for results to help Pipeline authors manage this case.
 
 ### Passing one Task's `Results` into the `Parameters` or `when` expressions of another
 

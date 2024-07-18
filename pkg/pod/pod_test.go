@@ -37,6 +37,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/version"
+	fakediscovery "k8s.io/client-go/discovery/fake"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -3996,5 +3998,143 @@ func Test_artifactsPathReferenced(t *testing.T) {
 				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 		})
+	}
+}
+
+func TestPodBuildWithK8s129(t *testing.T) {
+	always := corev1.ContainerRestartPolicyAlways
+	ts := v1.TaskSpec{
+		Steps: []v1.Step{{
+			Name:    "name",
+			Image:   "image",
+			Command: []string{"cmd"}, // avoid entrypoint lookup.
+		}},
+		Sidecars: []v1.Sidecar{{
+			Name:    "name",
+			Image:   "image",
+			Command: []string{"cmd"},
+		}},
+	}
+	want := &corev1.PodSpec{
+		RestartPolicy: corev1.RestartPolicyNever,
+		InitContainers: []corev1.Container{
+			entrypointInitContainer(
+				images.EntrypointImage,
+				[]v1.Step{{Name: "name"}},
+				false, /* setSecurityContext */
+				false /* windows */),
+			{
+				Name:    "sidecar-name",
+				Image:   "image",
+				Command: []string{"/tekton/bin/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/tekton/run/0/out",
+					"-termination_path",
+					"/tekton/termination",
+					"-step_metadata_dir",
+					"/tekton/run/0/status",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
+				RestartPolicy: &always,
+			},
+		},
+		Containers: []corev1.Container{{
+			Name:    "step-name",
+			Image:   "image",
+			Command: []string{"/tekton/bin/entrypoint"},
+			Args: []string{
+				"-wait_file",
+				"/tekton/downward/ready",
+				"-wait_file_content",
+				"-post_file",
+				"/tekton/run/0/out",
+				"-termination_path",
+				"/tekton/termination",
+				"-step_metadata_dir",
+				"/tekton/run/0/status",
+				"-entrypoint",
+				"cmd",
+				"--",
+			},
+		}},
+	}
+	featureFlags := map[string]string{
+		"enable-kubernetes-sidecar": "true",
+	}
+	store := config.NewStore(logtesting.TestLogger(t))
+	store.OnConfigChanged(
+		&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+			Data:       featureFlags,
+		},
+	)
+	kubeclient := fakek8s.NewSimpleClientset(
+		&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"}},
+		&corev1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{Name: "service-account", Namespace: "default"},
+			Secrets: []corev1.ObjectReference{{
+				Name: "multi-creds",
+			}},
+		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "multi-creds",
+				Namespace: "default",
+				Annotations: map[string]string{
+					"tekton.dev/docker-0": "https://us.gcr.io",
+					"tekton.dev/docker-1": "https://docker.io",
+					"tekton.dev/git-0":    "github.com",
+					"tekton.dev/git-1":    "gitlab.com",
+				},
+			},
+			Type: "kubernetes.io/basic-auth",
+			Data: map[string][]byte{
+				"username": []byte("foo"),
+				"password": []byte("BestEver"),
+			},
+		},
+	)
+	fakeDisc, _ := kubeclient.Discovery().(*fakediscovery.FakeDiscovery)
+	fakeDisc.FakedServerVersion = &version.Info{
+		Major: "1",
+		Minor: "29",
+	}
+
+	trs := v1.TaskRunSpec{
+		TaskSpec: &ts,
+	}
+
+	tr := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "taskrunName",
+			Namespace: "default",
+		},
+		Spec: trs,
+	}
+
+	// No entrypoints should be looked up.
+	entrypointCache := fakeCache{}
+
+	builder := Builder{
+		Images:          images,
+		KubeClient:      kubeclient,
+		EntrypointCache: entrypointCache,
+	}
+	got, err := builder.Build(store.ToContext(context.Background()), tr, ts)
+	if err != nil {
+		t.Errorf("Pod build failed: %s", err)
+	}
+	if d := cmp.Diff(want.InitContainers[1].Name, got.Spec.InitContainers[1].Name); d != "" {
+		t.Errorf("Pod does not have sidecar in init list: %s", diff.PrintWantGot(d))
+	}
+
+	if d := cmp.Diff(want.InitContainers[1].RestartPolicy, got.Spec.InitContainers[1].RestartPolicy); d != "" {
+		t.Errorf("Sidecar does not have RestartPolicy Always: %s", diff.PrintWantGot(d))
 	}
 }

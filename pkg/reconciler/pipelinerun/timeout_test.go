@@ -245,7 +245,6 @@ func TestTimeoutPipelineRun(t *testing.T) {
 		wantErr: true,
 	}}
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			d := test.Data{
 				PipelineRuns: []*v1.PipelineRun{tc.pipelineRun},

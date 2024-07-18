@@ -22,6 +22,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/tektoncd/pipeline/internal/artifactref"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/internal/resultref"
@@ -89,6 +90,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateTasksAndFinallySection(ps))
 	errs = errs.Also(validateFinalTasks(ps.Tasks, ps.Finally))
 	errs = errs.Also(validateWhenExpressions(ctx, ps.Tasks, ps.Finally))
+	errs = errs.Also(validateArtifactReference(ctx, ps.Tasks, ps.Finally))
 	errs = errs.Also(validateMatrix(ctx, ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validateMatrix(ctx, ps.Finally).ViaField("finally"))
 	return errs
@@ -190,7 +192,7 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 
 	if pt.OnError != "" {
-		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "OnError", config.AlphaAPIFields))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "OnError", config.BetaAPIFields))
 		if pt.OnError != PipelineTaskContinue && pt.OnError != PipelineTaskStopAndFail {
 			errs = errs.Also(apis.ErrInvalidValue(pt.OnError, "OnError", "PipelineTask OnError must be either \"continue\" or \"stopAndFail\""))
 		}
@@ -511,9 +513,13 @@ func (pt *PipelineTask) GetVarSubstitutionExpressions() []string {
 	return allExpressions
 }
 
+// containsExecutionStatusRef checks if a specified param has a reference to execution status or reason
+// $(tasks.<task-name>.status), $(tasks.status), or $(tasks.<task-name>.reason)
 func containsExecutionStatusRef(p string) bool {
-	if strings.HasPrefix(p, "tasks.") && strings.HasSuffix(p, ".status") {
-		return true
+	if strings.HasPrefix(p, "tasks.") {
+		if strings.HasSuffix(p, ".status") || strings.HasSuffix(p, ".reason") {
+			return true
+		}
 	}
 	return false
 }
@@ -587,7 +593,7 @@ func containsExecutionStatusReferences(expressions []string) bool {
 	if !LooksLikeContainsResultRefs(expressions) {
 		for _, e := range expressions {
 			// check if it contains context variable accessing execution status - $(tasks.taskname.status)
-			// or an aggregate status - $(tasks.status)
+			// or an aggregate status - $(tasks.status) or reason - $(tasks.taskname.reason)
 			if containsExecutionStatusRef(e) {
 				return true
 			}
@@ -604,10 +610,17 @@ func validateExecutionStatusVariablesExpressions(expressions []string, ptNames s
 			if expression == PipelineTasksAggregateStatus {
 				continue
 			}
-			// check if it contains context variable accessing execution status - $(tasks.taskname.status)
+			// check if it contains context variable accessing execution status - $(tasks.taskname.status) | $(tasks.taskname.reason)
 			if containsExecutionStatusRef(expression) {
-				// strip tasks. and .status from tasks.taskname.status to further verify task name
-				pt := strings.TrimSuffix(strings.TrimPrefix(expression, "tasks."), ".status")
+				var pt string
+				if strings.HasSuffix(expression, ".status") {
+					// strip tasks. and .status from tasks.taskname.status to further verify task name
+					pt = strings.TrimSuffix(strings.TrimPrefix(expression, "tasks."), ".status")
+				}
+				if strings.HasSuffix(expression, ".reason") {
+					// strip tasks. and .reason from tasks.taskname.reason to further verify task name
+					pt = strings.TrimSuffix(strings.TrimPrefix(expression, "tasks."), ".reason")
+				}
 				// report an error if the task name does not exist in the list of dag tasks
 				if !ptNames.Has(pt) {
 					errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("pipeline task %s is not defined in the pipeline", pt), fieldPath))
@@ -615,6 +628,7 @@ func validateExecutionStatusVariablesExpressions(expressions []string, ptNames s
 			}
 		}
 	}
+
 	return errs
 }
 
@@ -810,6 +824,10 @@ func findAndValidateResultRefsForMatrix(tasks []PipelineTask, taskMapping map[st
 func validateMatrixedPipelineTaskConsumed(expressions []string, taskMapping map[string]PipelineTask) (resultRefs []*ResultRef, errs *apis.FieldError) {
 	var filteredExpressions []string
 	for _, expression := range expressions {
+		// if it is not matrix result ref expression, skip
+		if !resultref.LooksLikeResultRef(expression) {
+			continue
+		}
 		// ie. "tasks.<pipelineTaskName>.results.<resultName>[*]"
 		subExpressions := strings.Split(expression, ".")
 		pipelineTask := subExpressions[1] // pipelineTaskName
@@ -876,6 +894,28 @@ func validateStringResults(results []TaskResult, resultName string) (errs *apis.
 					fmt.Sprintf("Matrixed PipelineTasks emitting results must have an underlying type string, but result %s has type %s in pipelineTask", resultName, string(result.Type)),
 					"",
 				))
+			}
+		}
+	}
+	return errs
+}
+
+// validateArtifactReference ensure that the feature flag enableArtifacts is set to true when using artifacts
+func validateArtifactReference(ctx context.Context, tasks []PipelineTask, finalTasks []PipelineTask) (errs *apis.FieldError) {
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableArtifacts {
+		return errs
+	}
+	for i, t := range tasks {
+		for _, v := range t.Params.extractValues() {
+			if len(artifactref.TaskArtifactRegex.FindAllStringSubmatch(v, -1)) > 0 {
+				return errs.Also(apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use artifacts feature.", config.EnableArtifacts), "").ViaField("params").ViaFieldIndex("tasks", i))
+			}
+		}
+	}
+	for i, t := range finalTasks {
+		for _, v := range t.Params.extractValues() {
+			if len(artifactref.TaskArtifactRegex.FindAllStringSubmatch(v, -1)) > 0 {
+				return errs.Also(apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use artifacts feature.", config.EnableArtifacts), "").ViaField("params").ViaFieldIndex("finally", i))
 			}
 		}
 	}

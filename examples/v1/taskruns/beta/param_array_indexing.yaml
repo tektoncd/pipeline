@@ -15,14 +15,14 @@ spec:
     steps:
       # this step should echo "foo"
       - name: echo-params-1
-        image: bash:3.2
+        image: docker.io/library/bash:5.2.26
         args: [
           "echo",
           "$(params.array-to-echo[0])",
         ]
       # this step should echo "bar"
       - name: echo-params-2
-        image: ubuntu
+        image: docker.io/library/ubuntu
         script: |
           #!/bin/bash
           VALUE=$(params.array-to-echo[1])

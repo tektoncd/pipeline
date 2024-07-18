@@ -11,7 +11,7 @@ spec:
     - name: browser
   steps:
     - name: echo
-      image: alpine
+      image: docker.io/library/alpine:3.20.1
       script: |
         echo "$(params.platform) and $(params.browser)"
 ---
@@ -75,7 +75,7 @@ spec:
             - name: version
           steps:
             - name: echo
-              image: ubuntu
+              image: docker.io/library/ubuntu
               script: exit 1
       - name: matrix-with-task-using-onerror
         matrix:
@@ -89,7 +89,7 @@ spec:
             - name: version
           steps:
             - name: echo
-              image: ubuntu
+              image: docker.io/library/ubuntu
               onError: continue
               script: exit 1
       - name: matrix-with-task-retries
@@ -108,7 +108,7 @@ spec:
             - name: version
             - name: pipelineTask-retries
           steps:
-            - image: alpine
+            - image: docker.io/library/alpine:3.20.1
               script: |
                 #!/usr/bin/env sh
                 if [ "$(context.task.retry-count)" == "$(params.pipelineTask-retries)" ]; then
@@ -128,5 +128,5 @@ spec:
             - name: version
           steps:
             - name: echo
-              image: ubuntu
+              image: docker.io/library/ubuntu
               script: exit 1
