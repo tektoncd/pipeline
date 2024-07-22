@@ -696,7 +696,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/alpine:3.20.1
+  - image: mirror.gcr.io/alpine
     script: 'exit 0'
 `, helpers.ObjectNameForTest(t), namespace))
 }
@@ -709,7 +709,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/alpine:3.20.1
+  - image: mirror.gcr.io/alpine
     script: 'exit 1'
 `, helpers.ObjectNameForTest(t), namespace))
 }
@@ -722,7 +722,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/alpine:3.20.1
+  - image: mirror.gcr.io/alpine
     script: 'sleep 5; exit 0'
 `, helpers.ObjectNameForTest(t), namespace))
 }
@@ -735,7 +735,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/alpine:3.20.1
+  - image: mirror.gcr.io/alpine
     script: 'exit 0'
   params:
   - name: dagtask1-status
@@ -753,7 +753,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/alpine:3.20.1
+  - image: mirror.gcr.io/alpine
     script: 'echo -n "Hello" > $(results.result.path)'
   results:
   - name: result
@@ -768,7 +768,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/alpine:3.20.1
+  - image: mirror.gcr.io/alpine
     script: 'sleep 5; echo -n "Hello" > $(results.result.path)'
   results:
   - name: result
@@ -783,7 +783,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/alpine:3.20.1
+  - image: mirror.gcr.io/alpine
     script: 'exit 0'
   params:
   - name: %s

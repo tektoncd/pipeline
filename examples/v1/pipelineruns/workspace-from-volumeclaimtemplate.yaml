@@ -8,7 +8,7 @@ spec:
       taskSpec:
         steps:
           - name: write
-            image: docker.io/library/ubuntu
+            image: mirror.gcr.io/ubuntu
             script: echo bar > $(workspaces.task-ws.path)/foo
         workspaces:
           - name: task-ws
@@ -21,7 +21,7 @@ spec:
       taskSpec:
         steps:
           - name: read
-            image: docker.io/library/ubuntu
+            image: mirror.gcr.io/ubuntu
             script: cat $(workspaces.myws.path)/foo | grep bar
         workspaces:
           - name: myws

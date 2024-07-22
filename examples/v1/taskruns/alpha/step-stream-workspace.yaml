@@ -18,7 +18,7 @@ spec:
           - name: data
         args:
           - digest
-          - docker.io/library/bash
+          - mirror.gcr.io/bash
         stdoutConfig:
           path: $(results.digest.path)
       - image: gcr.io/go-containerregistry/crane
@@ -26,7 +26,7 @@ spec:
           - name: data
         args:
           - digest
-          - docker.io/library/bash
+          - mirror.gcr.io/bash
         stdoutConfig:
           path: $(workspaces.data.path)/stdout.txt
       - image: gcr.io/go-containerregistry/crane
@@ -43,26 +43,26 @@ spec:
           - wrong
         stderrConfig:
           path: $(results.error2.path)
-      - image: docker.io/library/bash:5.2.26
+      - image: mirror.gcr.io/bash
         workspaces:
           - name: data
         onError: continue
         args:
           - -c
           - "echo foobar >$(workspaces.data.path)/foobar.txt"
-      - image: docker.io/library/bash:5.2.26
+      - image: mirror.gcr.io/bash
         onError: continue
         args:
           - -c
           - "2>$(results.error.path) >&2 echo -n fooerr"
-      - image: docker.io/library/bash:5.2.26
+      - image: mirror.gcr.io/bash
         workspaces:
           - name: data
         workingDir: $(workspaces.data.path)
         onError: continue
         script: |
           echo local >out.txt
-      - image: docker.io/library/bash:5.2.26
+      - image: mirror.gcr.io/bash
         workspaces:
           - name: data
         onError: continue

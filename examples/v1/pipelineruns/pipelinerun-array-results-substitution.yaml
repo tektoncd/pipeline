@@ -18,7 +18,7 @@ spec:
               description: The array results
           steps:
             - name: write-array
-              image: docker.io/library/bash:5.2.26
+              image: mirror.gcr.io/bash
               script: |
                 #!/usr/bin/env bash
                 image1="abc.dev/sampler/busysample@sha256:19f02276bf8dbdd62f069b922f10c65262cc34b710eea26ff928129a736be791"
@@ -44,7 +44,7 @@ spec:
               type: string
           steps:
             - name: validate-images
-              image: docker.io/library/bash:5.2.26
+              image: mirror.gcr.io/bash
               args: [
                 "$(params.images[*])"
               ]
@@ -74,7 +74,7 @@ spec:
                 fi
                 echo "Done validating the third image"
             - name: validate-image
-              image: docker.io/library/ubuntu
+              image: mirror.gcr.io/ubuntu
               script: |
                 #!/bin/bash
                 VALUE=$(params.image-1)

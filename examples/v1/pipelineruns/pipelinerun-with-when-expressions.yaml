@@ -32,7 +32,7 @@ spec:
               description: The workspace to create the readme file in
           steps:
             - name: write-new-stuff
-              image: docker.io/library/ubuntu
+              image: mirror.gcr.io/ubuntu
               script: 'touch $(workspaces.source.path)/README.md'
       - name: check-file
         params:
@@ -54,7 +54,7 @@ spec:
               description: indicates whether the file exists or is missing
           steps:
             - name: check-file
-              image: docker.io/library/alpine:3.20.1
+              image: mirror.gcr.io/alpine
               script: |
                 if test -f $(workspaces.source.path)/$(params.path); then
                   printf yes | tee $(results.exists.path)
@@ -69,7 +69,7 @@ spec:
         taskSpec:
           steps:
             - name: echo
-              image: docker.io/library/ubuntu
+              image: mirror.gcr.io/ubuntu
               script: 'echo file exists'
       - name: sample-task-with-array-values
         when:
@@ -79,7 +79,7 @@ spec:
         taskSpec:
           steps:
             - name: echo
-              image: docker.io/library/alpine:3.20.1
+              image: mirror.gcr.io/alpine
               script: 'echo hello'
       - name: task-should-be-skipped-1
         when:
@@ -89,7 +89,7 @@ spec:
         taskSpec:
           steps:
             - name: echo
-              image: docker.io/library/ubuntu
+              image: mirror.gcr.io/ubuntu
               script: exit 1
       - name: task-should-be-skipped-2  # when expression using parameter, evaluates to false
         when:
@@ -99,7 +99,7 @@ spec:
         taskSpec:
           steps:
             - name: echo
-              image: docker.io/library/ubuntu
+              image: mirror.gcr.io/ubuntu
               script: exit 1
       - name: task-should-be-skipped-3  # task with when expression and run after
         runAfter:
@@ -111,7 +111,7 @@ spec:
         taskSpec:
           steps:
             - name: echo
-              image: docker.io/library/ubuntu
+              image: mirror.gcr.io/ubuntu
               script: exit 1
       - name: task-should-be-skipped-4  # task with when expression using array parameter, evaluates to false
         when:
@@ -121,7 +121,7 @@ spec:
         taskSpec:
           steps:
             - name: echo
-              image: docker.io/library/alpine:3.20.1
+              image: mirror.gcr.io/alpine
               script: exit 1
     finally:
       - name: finally-task-should-be-skipped-1  # when expression using execution status, evaluates to false
@@ -132,7 +132,7 @@ spec:
         taskSpec:
           steps:
             - name: echo
-              image: docker.io/library/ubuntu
+              image: mirror.gcr.io/ubuntu
               script: exit 1
       - name: finally-task-should-be-skipped-2  # when expression using task result, evaluates to false
         when:
@@ -142,7 +142,7 @@ spec:
         taskSpec:
           steps:
             - name: echo
-              image: docker.io/library/ubuntu
+              image: mirror.gcr.io/ubuntu
               script: exit 1
       - name: finally-task-should-be-skipped-3  # when expression using parameter, evaluates to false
         when:
@@ -152,7 +152,7 @@ spec:
         taskSpec:
           steps:
             - name: echo
-              image: docker.io/library/ubuntu
+              image: mirror.gcr.io/ubuntu
               script: exit 1
       - name: finally-task-should-be-skipped-4  # when expression using tasks execution status, evaluates to false
         when:
@@ -162,7 +162,7 @@ spec:
         taskSpec:
           steps:
             - name: echo
-              image: docker.io/library/ubuntu
+              image: mirror.gcr.io/ubuntu
               script: exit 1
       - name: finally-task-should-be-skipped-5  # when expression using tasks execution status, evaluates to false
         when:
@@ -172,7 +172,7 @@ spec:
         taskSpec:
           steps:
             - name: echo
-              image: docker.io/library/ubuntu
+              image: mirror.gcr.io/ubuntu
               script: exit 1
       - name: finally-task-should-be-executed  # when expression using execution status, tasks execution status, param, and results
         when:
@@ -191,7 +191,7 @@ spec:
         taskSpec:
           steps:
             - name: echo
-              image: docker.io/library/ubuntu
+              image: mirror.gcr.io/ubuntu
               script: 'echo finally done'
   params:
     - name: path

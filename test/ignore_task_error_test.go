@@ -57,14 +57,14 @@ spec:
           type: string
         steps:
         - name: failing-step
-          image: docker.io/library/busybox
+          image: mirror.gcr.io/busybox
           script: 'exit 1; echo -n 123 | tee $(results.result1.path)'
     - name: order-dep-task
       runAfter: ["failed-ignored-task"]
       taskSpec:
         steps:
         - name: foo
-          image: docker.io/library/busybox
+          image: mirror.gcr.io/busybox
           script: 'echo hello'
     - name: resource-dep-task
       onError: continue
@@ -77,7 +77,7 @@ spec:
           type: string
         steps:
         - name: foo
-          image: docker.io/library/busybox
+          image: mirror.gcr.io/busybox
           script: 'echo $(params.param1)'
 `, prName, namespace))
 

@@ -47,7 +47,7 @@ spec:
     description: The second integer
   steps:
   - name: sum
-    image: docker.io/library/bash:5.2.26
+    image: mirror.gcr.io/bash
     script: |
       #!/usr/bin/env bash
       echo -n $(( "$(inputs.params.a)" + "$(inputs.params.b)" ))
@@ -71,7 +71,7 @@ spec:
     description: The second integer
   steps:
   - name: product
-    image: docker.io/library/bash:5.2.26
+    image: mirror.gcr.io/bash
     script: |
       #!/usr/bin/env bash
       echo -n $(( "$(inputs.params.a)" * "$(inputs.params.b)" ))

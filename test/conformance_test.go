@@ -193,7 +193,7 @@ spec:
 			if d := cmp.Diff(tr.Status.Steps, tc.expectedStepState, ignoreTerminatedFields, ignoreStepFields); d != "" {
 				t.Fatalf("-got, +want: %v", d)
 			}
-			// Note(chmouel): Sometime we have docker-pullable:// or docker.io/library as prefix, so let only compare the suffix
+			// Note(chmouel): Sometime we have docker-pullable:// or mirror.gcr.io as prefix, so let only compare the suffix
 			if !strings.HasSuffix(tr.Status.Steps[0].ImageID, fqImageName) {
 				t.Fatalf("`ImageID: %s` does not end with `%s`", tr.Status.Steps[0].ImageID, fqImageName)
 			}

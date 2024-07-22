@@ -25,7 +25,7 @@ metadata:
 spec:
   steps:
     - name: echo
-      image: docker.io/library/ubuntu
+      image: mirror.gcr.io/ubuntu
       command:
         - echo
       args:

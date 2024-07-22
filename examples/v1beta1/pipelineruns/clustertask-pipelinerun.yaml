@@ -7,7 +7,7 @@ metadata:
 spec:
   steps:
   - name: task-two-step-one
-    image: docker.io/library/ubuntu
+    image: mirror.gcr.io/ubuntu
     command: ["/bin/bash"]
     args: ['-c', 'echo success']
 ---

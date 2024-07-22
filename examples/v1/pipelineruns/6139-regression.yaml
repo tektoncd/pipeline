@@ -15,7 +15,7 @@ spec:
           results:
             - name: result-one
           steps:
-          - image: docker.io/library/alpine:3.20.1
+          - image: mirror.gcr.io/alpine
             script: |
               #!/bin/sh
               echo "Hello world!"
@@ -28,7 +28,7 @@ spec:
           results:
             - name: result-two
           steps:
-          - image: docker.io/library/alpine:3.20.1
+          - image: mirror.gcr.io/alpine
             script: |
               #!/bin/sh
               echo "Goodbye world!"
@@ -43,7 +43,7 @@ spec:
           results:
             - name: result-three
           steps:
-          - image: docker.io/library/alpine:3.20.1
+          - image: mirror.gcr.io/alpine
             script: |
               #!/bin/sh
               echo "Shutdown world!"
