@@ -10,7 +10,7 @@ spec:
       - name: data
     steps:
       - name: echo
-        image: docker.io/library/bash
+        image: mirror.gcr.io/bash
         volumeMounts:
           - name: data
             mountPath: /data
@@ -18,7 +18,7 @@ spec:
         stdoutConfig:
           path: /data/step-echo-stdout
       - name: error
-        image: docker.io/library/bash
+        image: mirror.gcr.io/bash
         onError: continue
         volumeMounts:
           - name: data
@@ -29,7 +29,7 @@ spec:
         stderrConfig:
           path: /data/step-error-stderr
       - name: combined
-        image: docker.io/library/bash
+        image: mirror.gcr.io/bash
         onError: continue
         volumeMounts:
           - name: data
@@ -40,7 +40,7 @@ spec:
         stderrConfig:
           path: /data/step-combined
       - name: cat
-        image: docker.io/library/bash
+        image: mirror.gcr.io/bash
         volumeMounts:
           - name: data
             mountPath: /data
@@ -48,7 +48,7 @@ spec:
         stdoutConfig:
           path: /data/step-cat-stdout
       - name: log-data
-        image: docker.io/library/bash
+        image: mirror.gcr.io/bash
         volumeMounts:
           - name: data
             mountPath: /data

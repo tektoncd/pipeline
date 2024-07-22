@@ -11,7 +11,7 @@ spec:
     - name: duration
   steps:
     - name: echo
-      image: docker.io/library/alpine:3.20.1
+      image: mirror.gcr.io/alpine
       script: |
         echo "$(params.duration)"
 ---
@@ -25,7 +25,7 @@ spec:
       type: array
   steps:
     - name: produce-a-list-of-durations
-      image: docker.io/library/bash:5.2.26
+      image: mirror.gcr.io/bash
       script: |
         #!/usr/bin/env bash
         echo -n "[\"10s\",\"2s\",\"5s\"]" | tee $(results.durations.path)

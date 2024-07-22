@@ -10,6 +10,6 @@ spec:
     # There are no explicit params defined here. They are derived from the TaskRun.
     steps:
     - name: default
-      image: docker.io/library/ubuntu
+      image: mirror.gcr.io/ubuntu
       script: |
         echo $(params.message)

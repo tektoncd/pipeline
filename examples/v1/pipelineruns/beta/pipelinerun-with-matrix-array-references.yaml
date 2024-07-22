@@ -13,7 +13,7 @@ spec:
       default: ""
   steps:
     - name: echo
-      image: docker.io/library/alpine:3.20.1
+      image: mirror.gcr.io/alpine
       script: |
         echo "$(params.platform) and $(params.browser)"
 ---

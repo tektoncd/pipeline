@@ -54,10 +54,10 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: docker.io/library/busybox:1.36
+    - image: mirror.gcr.io/busybox
       workingDir: /workspace
       script: 'sleep 3 && touch foo'
-    - image: docker.io/library/ubuntu:24.04
+    - image: mirror.gcr.io/ubuntu
       workingDir: /workspace
       script: 'ls foo'
 `, epTaskRunName, namespace)), metav1.CreateOptions{}); err != nil {

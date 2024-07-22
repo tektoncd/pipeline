@@ -94,7 +94,7 @@ spec:
         runAsNonRoot: true
   sidecars:
   - name: server
-    image: docker.io/library/alpine/git:v2.26.2
+    image: mirror.gcr.io/alpine/git:v2.26.2
     command: ['/bin/bash']
     args: ['-c', 'gcloud auth activate-service-account --key-file /var/secret/bucket-secret/bucket-secret-key']
     workingDir: /dir
@@ -170,7 +170,7 @@ spec:
         runAsNonRoot: true
   sidecars:
   - name: server
-    image: docker.io/library/alpine/git:v2.26.2
+    image: mirror.gcr.io/alpine/git:v2.26.2
     command: ['/bin/bash']
     args: ['-c', 'gcloud auth activate-service-account --key-file /var/secret/bucket-secret/bucket-secret-key']
     workingDir: /dir
@@ -224,7 +224,7 @@ spec:
       - name: task1-result
         value: task1-val
     steps:
-      - image: docker.io/library/alpine:3.20.1
+      - image: mirror.gcr.io/alpine
         onError: continue
         name: exit-with-255
         script: |
@@ -246,7 +246,7 @@ spec:
           type: string
       steps:
         - name: verify-status
-          image: docker.io/library/ubuntu
+          image: mirror.gcr.io/ubuntu
           script: |
             if [ $(params.echoStatus) == "Succeeded" ]
             then
@@ -278,7 +278,7 @@ spec:
       - name: task1-result
         value: task1-val
     steps:
-      - image: docker.io/library/alpine:3.20.1
+      - image: mirror.gcr.io/alpine
         onError: continue
         name: exit-with-255
         script: |
@@ -300,7 +300,7 @@ spec:
           type: string
       steps:
         - name: verify-status
-          image: docker.io/library/ubuntu
+          image: mirror.gcr.io/ubuntu
           script: |
             if [ $(params.echoStatus) == "Succeeded" ]
             then
@@ -320,7 +320,7 @@ spec:
   taskSpec:
     steps:
       - name: echo
-        image: docker.io/library/ubuntu
+        image: mirror.gcr.io/ubuntu
         script: |
           #!/usr/bin/env bash
           echo "Hello World!"
@@ -353,7 +353,7 @@ spec:
   taskSpec:
     steps:
     - computeResources: {}
-      image: docker.io/library/ubuntu
+      image: mirror.gcr.io/ubuntu
       name: echo
       script: |
         #!/usr/bin/env bash
@@ -372,7 +372,7 @@ status:
   taskSpec:
     steps:
     - computeResources: {}
-      image: docker.io/library/ubuntu
+      image: mirror.gcr.io/ubuntu
       name: echo
       script: |
         #!/usr/bin/env bash
@@ -408,7 +408,7 @@ spec:
   taskSpec:
     steps:
     - computeResources: {}
-      image: docker.io/library/ubuntu
+      image: mirror.gcr.io/ubuntu
       name: echo
       script: |
         #!/usr/bin/env bash
@@ -438,7 +438,7 @@ spec:
   taskSpec:
     steps:
     - computeResources: {}
-      image: docker.io/library/ubuntu
+      image: mirror.gcr.io/ubuntu
       name: echo
       script: |
         #!/usr/bin/env bash
@@ -454,7 +454,7 @@ status:
   taskSpec:
     steps:
     - computeResources: {}
-      image: docker.io/library/ubuntu
+      image: mirror.gcr.io/ubuntu
       name: echo
       script: |
         #!/usr/bin/env bash
@@ -493,7 +493,7 @@ spec:
       taskSpec:
         steps:
         - name: echo-hello
-          image: docker.io/library/ubuntu
+          image: mirror.gcr.io/ubuntu
           script: |
             ls $(workspaces.dir.path)
             echo hello
@@ -524,7 +524,7 @@ spec:
       taskSpec:
         steps:
         - name: echo-hello
-          image: docker.io/library/ubuntu
+          image: mirror.gcr.io/ubuntu
           script: |
             ls $(workspaces.dir.path)
             echo hello
@@ -540,7 +540,7 @@ status:
         name: cluster-task-pipeline-4
         steps:
         - name: "echo-hello"
-          image: "docker.io/library/ubuntu"
+          image: "mirror.gcr.io/ubuntu"
           script: |
             ls $(workspaces.dir.path)
             echo hello
@@ -578,7 +578,7 @@ spec:
       taskSpec:
         steps:
         - name: echo-hello
-          image: docker.io/library/ubuntu
+          image: mirror.gcr.io/ubuntu
           script: |
             ls $(workspaces.dir.path)
             echo hello
@@ -611,7 +611,7 @@ spec:
       taskSpec:
         steps:
         - name: echo-hello
-          image: docker.io/library/ubuntu
+          image: mirror.gcr.io/ubuntu
           script: |
             ls $(workspaces.dir.path)
             echo hello
@@ -635,7 +635,7 @@ status:
         name: cluster-task-pipeline-4
         steps:
         - name: "echo-hello"
-          image: "docker.io/library/ubuntu"
+          image: "mirror.gcr.io/ubuntu"
           script: |
             ls $(workspaces.dir.path)
             echo hello

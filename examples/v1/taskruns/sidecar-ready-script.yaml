@@ -6,7 +6,7 @@ spec:
   taskSpec:
     sidecars:
     - name: slow-sidecar
-      image: docker.io/library/ubuntu
+      image: mirror.gcr.io/ubuntu
       script: |
         echo "hello from sidecar" > /shared/message
         sleep 2
@@ -16,7 +16,7 @@ spec:
 
     steps:
     - name: check-ready
-      image: docker.io/library/ubuntu
+      image: mirror.gcr.io/ubuntu
       script: cat /shared/message
       volumeMounts:
       - name: shared

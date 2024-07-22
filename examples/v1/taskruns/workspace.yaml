@@ -55,28 +55,28 @@ spec:
   taskSpec:
     steps:
     - name: write
-      image: docker.io/library/ubuntu
+      image: mirror.gcr.io/ubuntu
       script: echo $(workspaces.custom.volume) > $(workspaces.custom.path)/foo
     - name: read
-      image: docker.io/library/ubuntu
+      image: mirror.gcr.io/ubuntu
       script: cat $(workspaces.custom.path)/foo | grep $(workspaces.custom.volume)
     - name: write2
-      image: docker.io/library/ubuntu
+      image: mirror.gcr.io/ubuntu
       script: echo $(workspaces.custom2.path) > $(workspaces.custom2.path)/foo
     - name: read2
-      image: docker.io/library/ubuntu
+      image: mirror.gcr.io/ubuntu
       script: cat $(workspaces.custom2.path)/foo | grep $(workspaces.custom2.path)
     - name: write3
-      image: docker.io/library/ubuntu
+      image: mirror.gcr.io/ubuntu
       script: echo $(workspaces.custom3.path) > $(workspaces.custom3.path)/foo
     - name: read3
-      image: docker.io/library/ubuntu
+      image: mirror.gcr.io/ubuntu
       script: cat $(workspaces.custom3.path)/foo | grep $(workspaces.custom3.path)
     - name: readconfigmap
-      image: docker.io/library/ubuntu
+      image: mirror.gcr.io/ubuntu
       script: cat $(workspaces.custom4.path)/my-message.txt | grep "hello world"
     - name: readsecret
-      image: docker.io/library/ubuntu
+      image: mirror.gcr.io/ubuntu
       script: |
         #!/usr/bin/env bash
         set -xe

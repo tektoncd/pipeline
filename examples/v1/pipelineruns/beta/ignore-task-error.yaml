@@ -10,7 +10,7 @@ spec:
         taskSpec:
           steps:
             - name: write
-              image: docker.io/library/alpine:3.20.1
+              image: mirror.gcr.io/alpine
               script: |
                 #!/usr/bin/env sh
                 echo "this is a failing task"
@@ -28,7 +28,7 @@ spec:
             - name: param1
           steps:
             - name: write
-              image: docker.io/library/alpine
+              image: mirror.gcr.io/alpine
               script: |
                 #!/usr/bin/env sh
                 echo "this is a failing task if param1 is set bar"
@@ -42,7 +42,7 @@ spec:
         taskSpec:
           steps:
             - name: write
-              image: docker.io/library/alpine:3.20.1
+              image: mirror.gcr.io/alpine
               script: |
                 #!/usr/bin/env sh
                 echo "this is a success task"
@@ -56,7 +56,7 @@ spec:
         taskSpec:
           steps:
             - name: verify-task-reason
-              image: docker.io/library/alpine
+              image: mirror.gcr.io/alpine
               script: |
                 #!/usr/bin/env sh
                 if [[ $(params.echo-continue-task-reason) != "FailureIgnored" ]]; then

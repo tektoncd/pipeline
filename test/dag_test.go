@@ -70,9 +70,9 @@ spec:
   results:
     - name: result
   steps:
-  - image: docker.io/library/busybox:1.36
+  - image: mirror.gcr.io/busybox
     script: 'echo $(params["text"])'
-  - image: docker.io/library/busybox:1.36
+  - image: mirror.gcr.io/busybox
     # Sleep for N seconds so that we can check that tasks that
     # should be run in parallel have overlap.
     script: |

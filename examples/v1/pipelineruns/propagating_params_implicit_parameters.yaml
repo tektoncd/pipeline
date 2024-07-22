@@ -12,7 +12,7 @@ spec:
         taskSpec:
           steps:
             - name: echo
-              image: docker.io/library/ubuntu
+              image: mirror.gcr.io/ubuntu
               script: |
                 #!/usr/bin/env bash
                 echo "$(params.HELLO)"
@@ -21,7 +21,7 @@ spec:
         taskSpec:
           steps:
             - name: echo
-              image: docker.io/library/ubuntu
+              image: mirror.gcr.io/ubuntu
               script: |
                 #!/usr/bin/env bash
                 echo "And Finally ... $(params.HELLO)"

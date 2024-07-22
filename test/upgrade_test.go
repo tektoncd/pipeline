@@ -52,11 +52,11 @@ spec:
     default: "response"
   steps:
   - name: echo-param
-    image: docker.io/library/alpine:3.20.1
+    image: mirror.gcr.io/alpine
     script: |
       echo "$(params.rsp)"
   - name: check-workspace
-    image: docker.io/library/alpine:3.20.1
+    image: mirror.gcr.io/alpine
     script: |
       if [ "$(workspaces.taskWorkspace.bound)" == "true" ]; then
         echo "Workspace provided"
@@ -128,12 +128,12 @@ status:
     status: "True"
   taskSpec:
     steps:
-    - image: docker.io/library/alpine:3.20.1
+    - image: mirror.gcr.io/alpine
       name: echo-param
       script: |
        echo "response"
     - name: check-workspace
-      image: docker.io/library/alpine:3.20.1
+      image: mirror.gcr.io/alpine
       script: |
         if [ "true" == "true" ]; then
           echo "Workspace provided"

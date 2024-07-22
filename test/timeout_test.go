@@ -57,7 +57,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/busybox:1.36
+  - image: mirror.gcr.io/busybox
     command: ['/bin/sh']
     args: ['-c', 'sleep 10']
 `, helpers.ObjectNameForTest(t), namespace))
@@ -178,15 +178,15 @@ spec:
   taskSpec:
     steps:
     - name: no-timeout
-      image: docker.io/library/busybox
+      image: mirror.gcr.io/busybox
       script: sleep 1
       timeout: 2s
     - name: timeout
-      image: docker.io/library/busybox
+      image: mirror.gcr.io/busybox
       script: sleep 1
       timeout: 1ms
     - name: canceled
-      image: docker.io/library/busybox
+      image: mirror.gcr.io/busybox
       script: sleep 1
 `, helpers.ObjectNameForTest(t), namespace))
 	t.Logf("Creating TaskRun %s in namespace %s", taskRun.Name, namespace)
@@ -242,7 +242,7 @@ spec:
       - name: test
     steps:
       - name: timeout
-        image: docker.io/library/busybox
+        image: mirror.gcr.io/busybox
         script: sleep 1
         timeout: 1ms`)
 
@@ -277,7 +277,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/busybox:1.36
+  - image: mirror.gcr.io/busybox
     command: ['/bin/sh']
     args: ['-c', 'sleep 3000']
 `, helpers.ObjectNameForTest(t), namespace))
@@ -333,7 +333,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/busybox:1.36
+  - image: mirror.gcr.io/busybox
     command: ['/bin/sh']
     args: ['-c', 'sleep 1s']
 `, helpers.ObjectNameForTest(t), namespace))
@@ -343,7 +343,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/busybox:1.36
+  - image: mirror.gcr.io/busybox
     command: ['/bin/sh']
     args: ['-c', 'sleep 10s']
 `, helpers.ObjectNameForTest(t), namespace))
@@ -454,7 +454,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/busybox:1.36
+  - image: mirror.gcr.io/busybox
     command: ['/bin/sh']
     args: ['-c', 'sleep 30']
 `, helpers.ObjectNameForTest(t), namespace))
@@ -469,7 +469,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/busybox:1.36
+  - image: mirror.gcr.io/busybox
     command: ['/bin/sh']
     args: ['-c', 'sleep 1']
 `, helpers.ObjectNameForTest(t), namespace))
