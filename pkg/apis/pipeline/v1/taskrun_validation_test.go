@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
@@ -31,6 +32,7 @@ import (
 	corev1resources "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
 func TestTaskRun_Invalidate(t *testing.T) {
@@ -964,6 +966,151 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 			}
 			if err := ts.spec.Validate(ctx); err != nil {
 				t.Error(err)
+			}
+		})
+	}
+}
+
+func TestTaskRunSpec_ValidateUpdate(t *testing.T) {
+	tests := []struct {
+		name            string
+		isCreate        bool
+		isUpdate        bool
+		baselineTaskRun *v1.TaskRun
+		taskRun         *v1.TaskRun
+		expectedError   apis.FieldError
+	}{
+		{
+			name: "is create ctx",
+			taskRun: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{},
+			},
+			isCreate:      true,
+			isUpdate:      false,
+			expectedError: apis.FieldError{},
+		}, {
+			name: "is update ctx, no changes",
+			baselineTaskRun: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Status: "TaskRunCancelled",
+				},
+			},
+			taskRun: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Status: "TaskRunCancelled",
+				},
+			},
+			isCreate:      false,
+			isUpdate:      true,
+			expectedError: apis.FieldError{},
+		}, {
+			name:            "is update ctx, baseline is nil, skip validation",
+			baselineTaskRun: nil,
+			taskRun: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Timeout: &metav1.Duration{Duration: 1},
+				},
+			},
+			isCreate:      false,
+			isUpdate:      true,
+			expectedError: apis.FieldError{},
+		}, {
+			name: "is update ctx, baseline is unknown, only status changes",
+			baselineTaskRun: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Status:        "",
+					StatusMessage: "",
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionUnknown},
+						},
+					},
+				},
+			},
+			taskRun: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Status:        "TaskRunCancelled",
+					StatusMessage: "TaskRun is cancelled",
+				},
+			},
+			isCreate:      false,
+			isUpdate:      true,
+			expectedError: apis.FieldError{},
+		}, {
+			name: "is update ctx, baseline is unknown, status and timeout changes",
+			baselineTaskRun: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Status:        "",
+					StatusMessage: "",
+					Timeout:       &metav1.Duration{Duration: 0},
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionUnknown},
+						},
+					},
+				},
+			},
+			taskRun: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Status:        "TaskRunCancelled",
+					StatusMessage: "TaskRun is cancelled",
+					Timeout:       &metav1.Duration{Duration: 1},
+				},
+			},
+			isCreate: false,
+			isUpdate: true,
+			expectedError: apis.FieldError{
+				Message: `invalid value: Once the TaskRun has started, only status and statusMessage updates are allowed`,
+				Paths:   []string{""},
+			},
+		}, {
+			name: "is update ctx, baseline is done, status changes",
+			baselineTaskRun: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Status: "",
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+			},
+			taskRun: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Status: "TaskRunCancelled",
+				},
+			},
+			isCreate: false,
+			isUpdate: true,
+			expectedError: apis.FieldError{
+				Message: `invalid value: Once the TaskRun is complete, no updates are allowed`,
+				Paths:   []string{""},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := config.ToContext(context.Background(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{},
+				Defaults:     &config.Defaults{},
+			})
+			if tt.isCreate {
+				ctx = apis.WithinCreate(ctx)
+			}
+			if tt.isUpdate {
+				ctx = apis.WithinUpdate(ctx, tt.baselineTaskRun)
+			}
+			tr := tt.taskRun
+			err := tr.Spec.ValidateUpdate(ctx)
+			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("TaskRunSpec.ValidateUpdate() errors diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}

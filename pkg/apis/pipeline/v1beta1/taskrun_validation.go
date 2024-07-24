@@ -26,6 +26,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/strings/slices"
 	"knative.dev/pkg/apis"
@@ -50,6 +51,9 @@ func (tr *TaskRun) Validate(ctx context.Context) *apis.FieldError {
 
 // Validate taskrun spec
 func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
+	// Validate the spec changes
+	errs = errs.Also(ts.ValidateUpdate(ctx))
+
 	// Must have exactly one of taskRef and taskSpec.
 	if ts.TaskRef == nil && ts.TaskSpec == nil {
 		errs = errs.Also(apis.ErrMissingOneOf("taskRef", "taskSpec"))
@@ -116,6 +120,34 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(apis.ErrDisallowedFields("resources"))
 	}
 	return errs
+}
+
+// ValidateUpdate validates the update of a TaskRunSpec
+func (ts *TaskRunSpec) ValidateUpdate(ctx context.Context) (errs *apis.FieldError) {
+	if !apis.IsInUpdate(ctx) {
+		return
+	}
+	oldObj, ok := apis.GetBaseline(ctx).(*TaskRun)
+	if !ok || oldObj == nil {
+		return
+	}
+	old := &oldObj.Spec
+
+	// If already in the done state, the spec cannot be modified.
+	// Otherwise, only the status, statusMessage field can be modified.
+	tips := "Once the TaskRun is complete, no updates are allowed"
+	if !oldObj.IsDone() {
+		old = old.DeepCopy()
+		old.Status = ts.Status
+		old.StatusMessage = ts.StatusMessage
+		tips = "Once the TaskRun has started, only status and statusMessage updates are allowed"
+	}
+
+	if !equality.Semantic.DeepEqual(old, ts) {
+		errs = errs.Also(apis.ErrInvalidValue(tips, ""))
+	}
+
+	return
 }
 
 // validateInlineParameters validates that any parameters called in the
