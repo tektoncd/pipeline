@@ -3,7 +3,7 @@
 
 // Code generated from semantic convention specification. DO NOT EDIT.
 
-package semconv // import "go.opentelemetry.io/otel/semconv/v1.25.0"
+package semconv // import "go.opentelemetry.io/otel/semconv/v1.26.0"
 
 const (
 
@@ -44,98 +44,201 @@ const (
 	ContainerNetworkIoUnit        = "By"
 	ContainerNetworkIoDescription = "Network bytes for the container."
 
-	// DBClientConnectionsUsage is the metric conforming to the
-	// "db.client.connections.usage" semantic conventions. It represents the number
+	// DBClientOperationDuration is the metric conforming to the
+	// "db.client.operation.duration" semantic conventions. It represents the
+	// duration of database client operations.
+	// Instrument: histogram
+	// Unit: s
+	// Stability: Experimental
+	DBClientOperationDurationName        = "db.client.operation.duration"
+	DBClientOperationDurationUnit        = "s"
+	DBClientOperationDurationDescription = "Duration of database client operations."
+
+	// DBClientConnectionCount is the metric conforming to the
+	// "db.client.connection.count" semantic conventions. It represents the number
 	// of connections that are currently in state described by the `state`
 	// attribute.
 	// Instrument: updowncounter
 	// Unit: {connection}
 	// Stability: Experimental
-	DBClientConnectionsUsageName        = "db.client.connections.usage"
-	DBClientConnectionsUsageUnit        = "{connection}"
-	DBClientConnectionsUsageDescription = "The number of connections that are currently in state described by the `state` attribute"
+	DBClientConnectionCountName        = "db.client.connection.count"
+	DBClientConnectionCountUnit        = "{connection}"
+	DBClientConnectionCountDescription = "The number of connections that are currently in state described by the `state` attribute"
 
-	// DBClientConnectionsIdleMax is the metric conforming to the
-	// "db.client.connections.idle.max" semantic conventions. It represents the
+	// DBClientConnectionIdleMax is the metric conforming to the
+	// "db.client.connection.idle.max" semantic conventions. It represents the
 	// maximum number of idle open connections allowed.
 	// Instrument: updowncounter
 	// Unit: {connection}
 	// Stability: Experimental
-	DBClientConnectionsIdleMaxName        = "db.client.connections.idle.max"
-	DBClientConnectionsIdleMaxUnit        = "{connection}"
-	DBClientConnectionsIdleMaxDescription = "The maximum number of idle open connections allowed"
+	DBClientConnectionIdleMaxName        = "db.client.connection.idle.max"
+	DBClientConnectionIdleMaxUnit        = "{connection}"
+	DBClientConnectionIdleMaxDescription = "The maximum number of idle open connections allowed"
 
-	// DBClientConnectionsIdleMin is the metric conforming to the
-	// "db.client.connections.idle.min" semantic conventions. It represents the
+	// DBClientConnectionIdleMin is the metric conforming to the
+	// "db.client.connection.idle.min" semantic conventions. It represents the
 	// minimum number of idle open connections allowed.
 	// Instrument: updowncounter
 	// Unit: {connection}
 	// Stability: Experimental
-	DBClientConnectionsIdleMinName        = "db.client.connections.idle.min"
-	DBClientConnectionsIdleMinUnit        = "{connection}"
-	DBClientConnectionsIdleMinDescription = "The minimum number of idle open connections allowed"
+	DBClientConnectionIdleMinName        = "db.client.connection.idle.min"
+	DBClientConnectionIdleMinUnit        = "{connection}"
+	DBClientConnectionIdleMinDescription = "The minimum number of idle open connections allowed"
 
-	// DBClientConnectionsMax is the metric conforming to the
-	// "db.client.connections.max" semantic conventions. It represents the maximum
+	// DBClientConnectionMax is the metric conforming to the
+	// "db.client.connection.max" semantic conventions. It represents the maximum
 	// number of open connections allowed.
 	// Instrument: updowncounter
 	// Unit: {connection}
 	// Stability: Experimental
-	DBClientConnectionsMaxName        = "db.client.connections.max"
-	DBClientConnectionsMaxUnit        = "{connection}"
-	DBClientConnectionsMaxDescription = "The maximum number of open connections allowed"
+	DBClientConnectionMaxName        = "db.client.connection.max"
+	DBClientConnectionMaxUnit        = "{connection}"
+	DBClientConnectionMaxDescription = "The maximum number of open connections allowed"
 
-	// DBClientConnectionsPendingRequests is the metric conforming to the
-	// "db.client.connections.pending_requests" semantic conventions. It represents
+	// DBClientConnectionPendingRequests is the metric conforming to the
+	// "db.client.connection.pending_requests" semantic conventions. It represents
 	// the number of pending requests for an open connection, cumulative for the
 	// entire pool.
 	// Instrument: updowncounter
 	// Unit: {request}
 	// Stability: Experimental
-	DBClientConnectionsPendingRequestsName        = "db.client.connections.pending_requests"
-	DBClientConnectionsPendingRequestsUnit        = "{request}"
-	DBClientConnectionsPendingRequestsDescription = "The number of pending requests for an open connection, cumulative for the entire pool"
+	DBClientConnectionPendingRequestsName        = "db.client.connection.pending_requests"
+	DBClientConnectionPendingRequestsUnit        = "{request}"
+	DBClientConnectionPendingRequestsDescription = "The number of pending requests for an open connection, cumulative for the entire pool"
 
-	// DBClientConnectionsTimeouts is the metric conforming to the
-	// "db.client.connections.timeouts" semantic conventions. It represents the
+	// DBClientConnectionTimeouts is the metric conforming to the
+	// "db.client.connection.timeouts" semantic conventions. It represents the
 	// number of connection timeouts that have occurred trying to obtain a
 	// connection from the pool.
 	// Instrument: counter
 	// Unit: {timeout}
 	// Stability: Experimental
+	DBClientConnectionTimeoutsName        = "db.client.connection.timeouts"
+	DBClientConnectionTimeoutsUnit        = "{timeout}"
+	DBClientConnectionTimeoutsDescription = "The number of connection timeouts that have occurred trying to obtain a connection from the pool"
+
+	// DBClientConnectionCreateTime is the metric conforming to the
+	// "db.client.connection.create_time" semantic conventions. It represents the
+	// time it took to create a new connection.
+	// Instrument: histogram
+	// Unit: s
+	// Stability: Experimental
+	DBClientConnectionCreateTimeName        = "db.client.connection.create_time"
+	DBClientConnectionCreateTimeUnit        = "s"
+	DBClientConnectionCreateTimeDescription = "The time it took to create a new connection"
+
+	// DBClientConnectionWaitTime is the metric conforming to the
+	// "db.client.connection.wait_time" semantic conventions. It represents the
+	// time it took to obtain an open connection from the pool.
+	// Instrument: histogram
+	// Unit: s
+	// Stability: Experimental
+	DBClientConnectionWaitTimeName        = "db.client.connection.wait_time"
+	DBClientConnectionWaitTimeUnit        = "s"
+	DBClientConnectionWaitTimeDescription = "The time it took to obtain an open connection from the pool"
+
+	// DBClientConnectionUseTime is the metric conforming to the
+	// "db.client.connection.use_time" semantic conventions. It represents the time
+	// between borrowing a connection and returning it to the pool.
+	// Instrument: histogram
+	// Unit: s
+	// Stability: Experimental
+	DBClientConnectionUseTimeName        = "db.client.connection.use_time"
+	DBClientConnectionUseTimeUnit        = "s"
+	DBClientConnectionUseTimeDescription = "The time between borrowing a connection and returning it to the pool"
+
+	// DBClientConnectionsUsage is the metric conforming to the
+	// "db.client.connections.usage" semantic conventions. It represents the
+	// deprecated, use `db.client.connection.count` instead.
+	// Instrument: updowncounter
+	// Unit: {connection}
+	// Stability: Experimental
+	DBClientConnectionsUsageName        = "db.client.connections.usage"
+	DBClientConnectionsUsageUnit        = "{connection}"
+	DBClientConnectionsUsageDescription = "Deprecated, use `db.client.connection.count` instead."
+
+	// DBClientConnectionsIdleMax is the metric conforming to the
+	// "db.client.connections.idle.max" semantic conventions. It represents the
+	// deprecated, use `db.client.connection.idle.max` instead.
+	// Instrument: updowncounter
+	// Unit: {connection}
+	// Stability: Experimental
+	DBClientConnectionsIdleMaxName        = "db.client.connections.idle.max"
+	DBClientConnectionsIdleMaxUnit        = "{connection}"
+	DBClientConnectionsIdleMaxDescription = "Deprecated, use `db.client.connection.idle.max` instead."
+
+	// DBClientConnectionsIdleMin is the metric conforming to the
+	// "db.client.connections.idle.min" semantic conventions. It represents the
+	// deprecated, use `db.client.connection.idle.min` instead.
+	// Instrument: updowncounter
+	// Unit: {connection}
+	// Stability: Experimental
+	DBClientConnectionsIdleMinName        = "db.client.connections.idle.min"
+	DBClientConnectionsIdleMinUnit        = "{connection}"
+	DBClientConnectionsIdleMinDescription = "Deprecated, use `db.client.connection.idle.min` instead."
+
+	// DBClientConnectionsMax is the metric conforming to the
+	// "db.client.connections.max" semantic conventions. It represents the
+	// deprecated, use `db.client.connection.max` instead.
+	// Instrument: updowncounter
+	// Unit: {connection}
+	// Stability: Experimental
+	DBClientConnectionsMaxName        = "db.client.connections.max"
+	DBClientConnectionsMaxUnit        = "{connection}"
+	DBClientConnectionsMaxDescription = "Deprecated, use `db.client.connection.max` instead."
+
+	// DBClientConnectionsPendingRequests is the metric conforming to the
+	// "db.client.connections.pending_requests" semantic conventions. It represents
+	// the deprecated, use `db.client.connection.pending_requests` instead.
+	// Instrument: updowncounter
+	// Unit: {request}
+	// Stability: Experimental
+	DBClientConnectionsPendingRequestsName        = "db.client.connections.pending_requests"
+	DBClientConnectionsPendingRequestsUnit        = "{request}"
+	DBClientConnectionsPendingRequestsDescription = "Deprecated, use `db.client.connection.pending_requests` instead."
+
+	// DBClientConnectionsTimeouts is the metric conforming to the
+	// "db.client.connections.timeouts" semantic conventions. It represents the
+	// deprecated, use `db.client.connection.timeouts` instead.
+	// Instrument: counter
+	// Unit: {timeout}
+	// Stability: Experimental
 	DBClientConnectionsTimeoutsName        = "db.client.connections.timeouts"
 	DBClientConnectionsTimeoutsUnit        = "{timeout}"
-	DBClientConnectionsTimeoutsDescription = "The number of connection timeouts that have occurred trying to obtain a connection from the pool"
+	DBClientConnectionsTimeoutsDescription = "Deprecated, use `db.client.connection.timeouts` instead."
 
 	// DBClientConnectionsCreateTime is the metric conforming to the
 	// "db.client.connections.create_time" semantic conventions. It represents the
-	// time it took to create a new connection.
+	// deprecated, use `db.client.connection.create_time` instead. Note: the unit
+	// also changed from `ms` to `s`.
 	// Instrument: histogram
 	// Unit: ms
 	// Stability: Experimental
 	DBClientConnectionsCreateTimeName        = "db.client.connections.create_time"
 	DBClientConnectionsCreateTimeUnit        = "ms"
-	DBClientConnectionsCreateTimeDescription = "The time it took to create a new connection"
+	DBClientConnectionsCreateTimeDescription = "Deprecated, use `db.client.connection.create_time` instead. Note: the unit also changed from `ms` to `s`."
 
 	// DBClientConnectionsWaitTime is the metric conforming to the
 	// "db.client.connections.wait_time" semantic conventions. It represents the
-	// time it took to obtain an open connection from the pool.
+	// deprecated, use `db.client.connection.wait_time` instead. Note: the unit
+	// also changed from `ms` to `s`.
 	// Instrument: histogram
 	// Unit: ms
 	// Stability: Experimental
 	DBClientConnectionsWaitTimeName        = "db.client.connections.wait_time"
 	DBClientConnectionsWaitTimeUnit        = "ms"
-	DBClientConnectionsWaitTimeDescription = "The time it took to obtain an open connection from the pool"
+	DBClientConnectionsWaitTimeDescription = "Deprecated, use `db.client.connection.wait_time` instead. Note: the unit also changed from `ms` to `s`."
 
 	// DBClientConnectionsUseTime is the metric conforming to the
 	// "db.client.connections.use_time" semantic conventions. It represents the
-	// time between borrowing a connection and returning it to the pool.
+	// deprecated, use `db.client.connection.use_time` instead. Note: the unit also
+	// changed from `ms` to `s`.
 	// Instrument: histogram
 	// Unit: ms
 	// Stability: Experimental
 	DBClientConnectionsUseTimeName        = "db.client.connections.use_time"
 	DBClientConnectionsUseTimeUnit        = "ms"
-	DBClientConnectionsUseTimeDescription = "The time between borrowing a connection and returning it to the pool"
+	DBClientConnectionsUseTimeDescription = "Deprecated, use `db.client.connection.use_time` instead. Note: the unit also changed from `ms` to `s`."
 
 	// DNSLookupDuration is the metric conforming to the "dns.lookup.duration"
 	// semantic conventions. It represents the measures the time taken to perform a
@@ -1005,6 +1108,16 @@ const (
 	SystemMemoryLimitName        = "system.memory.limit"
 	SystemMemoryLimitUnit        = "By"
 	SystemMemoryLimitDescription = "Total memory available in the system."
+
+	// SystemMemoryShared is the metric conforming to the "system.memory.shared"
+	// semantic conventions. It represents the shared memory used (mostly by
+	// tmpfs).
+	// Instrument: updowncounter
+	// Unit: By
+	// Stability: Experimental
+	SystemMemorySharedName        = "system.memory.shared"
+	SystemMemorySharedUnit        = "By"
+	SystemMemorySharedDescription = "Shared memory used (mostly by tmpfs)."
 
 	// SystemMemoryUtilization is the metric conforming to the
 	// "system.memory.utilization" semantic conventions.
