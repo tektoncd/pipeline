@@ -1460,6 +1460,11 @@ func (in *StepState) DeepCopyInto(out *StepState) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.Provenance != nil {
+		in, out := &in.Provenance, &out.Provenance
+		*out = new(Provenance)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Inputs != nil {
 		in, out := &in.Inputs, &out.Inputs
 		*out = make([]Artifact, len(*in))

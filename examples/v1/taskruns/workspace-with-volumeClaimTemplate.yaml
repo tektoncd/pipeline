@@ -6,7 +6,7 @@ spec:
   taskSpec:
     steps:
       - name: list-files
-        image: docker.io/library/ubuntu
+        image: mirror.gcr.io/ubuntu
         script: ls $(workspaces.read-allowed.path)
     workspaces:
       - name: read-allowed

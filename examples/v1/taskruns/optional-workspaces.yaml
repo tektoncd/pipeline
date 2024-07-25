@@ -14,7 +14,7 @@ spec:
       optional: true
     steps:
     - name: check-workspaces
-      image: docker.io/library/alpine:3.20.1
+      image: mirror.gcr.io/alpine
       script: |
         if [ "$(workspaces.source-code.bound)" == "true" ]; then
           printf "Source code workspace was provided at %s!\n" "$(workspaces.source-code.path)"

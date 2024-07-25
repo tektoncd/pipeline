@@ -3,7 +3,7 @@ kind: StepAction
 metadata:
   name: step-action
 spec:
-  image: docker.io/library/alpine:3.20.1
+  image: mirror.gcr.io/alpine
   command: ["env"]
 ---
 apiVersion: tekton.dev/v1

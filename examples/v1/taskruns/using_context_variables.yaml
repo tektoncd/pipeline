@@ -5,11 +5,11 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: docker.io/library/ubuntu:24.04
+    - image: mirror.gcr.io/ubuntu
       name: print-uid
       script: |
         echo "TaskRunUID name: $(context.taskRun.uid)"
-    - image: docker.io/library/ubuntu:24.04
+    - image: mirror.gcr.io/ubuntu
       name: print-names
       script: |
         echo "Task name: $(context.task.name)"

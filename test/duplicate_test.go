@@ -59,7 +59,7 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: docker.io/library/busybox:1.36
+    - image: mirror.gcr.io/busybox
       command: ['/bin/echo']
       args: ['simple']
 `, taskrunName, namespace))

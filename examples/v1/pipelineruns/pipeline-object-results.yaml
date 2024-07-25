@@ -18,7 +18,7 @@ spec:
                   type: string
           steps:
             - name: write-object
-              image: docker.io/library/bash:5.2.26
+              image: mirror.gcr.io/bash
               script: |
                 #!/usr/bin/env bash
                 echo -n "{\"url\":\"abc.dev/sampler\",\"digest\":\"19f02276bf8dbdd62f069b922f10c65262cc34b710eea26ff928129a736be791\"}" | tee $(results.object-results.path)
@@ -41,7 +41,7 @@ spec:
                   type: string
           steps:
             - name: validate-object-url
-              image: docker.io/library/bash:5.2.26
+              image: mirror.gcr.io/bash
               args: [
                 "$(params.whole-object.url)"
               ]
@@ -54,7 +54,7 @@ spec:
                   echo "validate the object-url successfully"
                 fi
             - name: validate-whole-object
-              image: docker.io/library/ubuntu
+              image: mirror.gcr.io/ubuntu
               script: |
                 #!/bin/bash
                 EXPECTED_url=abc.dev/sampler

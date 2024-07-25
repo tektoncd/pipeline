@@ -13,7 +13,7 @@ spec:
   taskSpec:
     steps:
     - name: secret
-      image: docker.io/library/ubuntu
+      image: mirror.gcr.io/ubuntu
       script: |
         #!/usr/bin/env bash
         [[ $(cat /config/test.data) == $TEST_DATA ]]

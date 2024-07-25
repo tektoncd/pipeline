@@ -5,8 +5,8 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: docker.io/library/busybox:1.36
+    - image: mirror.gcr.io/busybox
       # NB: command is not set, so it must be looked up from the registry.
       args: ['-c', 'sleep 3 && touch foo']
-    - image: docker.io/library/busybox:1.36
+    - image: mirror.gcr.io/busybox
       args: ['-c', 'ls', 'foo']

@@ -1370,6 +1370,7 @@ string
 </em>
 </td>
 <td>
+<p>The artifact&rsquo;s identifying category name</p>
 </td>
 </tr>
 <tr>
@@ -1382,7 +1383,18 @@ string
 </em>
 </td>
 <td>
-<p>The artifact&rsquo;s identifying category name</p>
+<p>A collection of values related to the artifact</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>buildOutput</code><br/>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Indicate if the artifact is a build output or a by-product</p>
 </td>
 </tr>
 </tbody>
@@ -3437,7 +3449,7 @@ ParamType
 <h3 id="tekton.dev/v1.Provenance">Provenance
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRunStatusFields">PipelineRunStatusFields</a>, <a href="#tekton.dev/v1.TaskRunStatusFields">TaskRunStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRunStatusFields">PipelineRunStatusFields</a>, <a href="#tekton.dev/v1.StepState">StepState</a>, <a href="#tekton.dev/v1.TaskRunStatusFields">TaskRunStatusFields</a>)
 </p>
 <div>
 <p>Provenance contains metadata about resources used in the TaskRun/PipelineRun
@@ -4850,6 +4862,18 @@ string
 <em>
 <a href="#tekton.dev/v1.TaskRunResult">
 []TaskRunResult
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>provenance</code><br/>
+<em>
+<a href="#tekton.dev/v1.Provenance">
+Provenance
 </a>
 </em>
 </td>
@@ -10035,6 +10059,7 @@ string
 </em>
 </td>
 <td>
+<p>The artifact&rsquo;s identifying category name</p>
 </td>
 </tr>
 <tr>
@@ -10047,7 +10072,18 @@ string
 </em>
 </td>
 <td>
-<p>The artifact&rsquo;s identifying category name</p>
+<p>A collection of values related to the artifact</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>buildOutput</code><br/>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Indicate if the artifact is a build output or a by-product</p>
 </td>
 </tr>
 </tbody>
@@ -12776,7 +12812,7 @@ ParamType
 <h3 id="tekton.dev/v1beta1.Provenance">Provenance
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineRunStatusFields">PipelineRunStatusFields</a>, <a href="#tekton.dev/v1beta1.TaskRunStatusFields">TaskRunStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineRunStatusFields">PipelineRunStatusFields</a>, <a href="#tekton.dev/v1beta1.StepState">StepState</a>, <a href="#tekton.dev/v1beta1.TaskRunStatusFields">TaskRunStatusFields</a>)
 </p>
 <div>
 <p>Provenance contains metadata about resources used in the TaskRun/PipelineRun
@@ -14436,6 +14472,18 @@ string
 <em>
 <a href="#tekton.dev/v1beta1.TaskRunResult">
 []TaskRunResult
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>provenance</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.Provenance">
+Provenance
 </a>
 </em>
 </td>

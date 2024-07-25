@@ -6,9 +6,12 @@ spec:
   taskSpec:
     description: |
       A simple task that populates artifacts to TaskRun stepState
+    params:
+      - name: buildOutput
+        default: true
     steps:
       - name: artifacts-producer
-        image: docker.io/library/bash:5.2.26
+        image: mirror.gcr.io/bash
         script: |
           cat > $(step.artifacts.path) << EOF
           {
@@ -28,6 +31,7 @@ spec:
             "outputs":[
               {
                 "name":"image",
+                "buildOutput": $(params.buildOutput),
                 "values":[
                   {
                     "uri":"pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c",
@@ -42,11 +46,11 @@ spec:
           }
           EOF
       - name: artifacts-consumer
-        image: docker.io/library/bash:5.2.26
+        image: mirror.gcr.io/bash
         script: |
           echo $(steps.artifacts-producer.inputs.input-artifacts)
       - name: artifacts-consumer-python
-        image: docker.io/library/python:3.12.4
+        image: mirror.gcr.io/python:3.12.4
         script: |
           #!/usr/bin/env python3
           import json

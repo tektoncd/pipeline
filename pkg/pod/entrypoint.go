@@ -352,8 +352,8 @@ func IsContainerStep(name string) bool { return strings.HasPrefix(name, stepPref
 // represents a sidecar.
 func IsContainerSidecar(name string) bool { return strings.HasPrefix(name, sidecarPrefix) }
 
-// trimStepPrefix returns the container name, stripped of its step prefix.
-func trimStepPrefix(name string) string { return strings.TrimPrefix(name, stepPrefix) }
+// TrimStepPrefix returns the container name, stripped of its step prefix.
+func TrimStepPrefix(name string) string { return strings.TrimPrefix(name, stepPrefix) }
 
 // TrimSidecarPrefix returns the container name, stripped of its sidecar
 // prefix.

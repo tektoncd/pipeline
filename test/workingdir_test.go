@@ -51,7 +51,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/ubuntu:24.04
+  - image: mirror.gcr.io/ubuntu
     workingDir: /workspace/HELLOMOTO
     args: ['-c', 'echo YES']
 `, wdTaskName, namespace))
@@ -124,7 +124,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: docker.io/library/ubuntu:24.04
+  - image: mirror.gcr.io/ubuntu
     workingDir: /HELLOMOTO
     args: ['-c', 'echo YES']
 `, wdTaskName, namespace))

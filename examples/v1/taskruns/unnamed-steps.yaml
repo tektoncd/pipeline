@@ -5,9 +5,9 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: docker.io/library/ubuntu:24.04
+    - image: mirror.gcr.io/ubuntu
       script: 'true'
-    - image: docker.io/library/ubuntu:24.04
+    - image: mirror.gcr.io/ubuntu
       script: 'true'
-    - image: docker.io/library/ubuntu:24.04
+    - image: mirror.gcr.io/ubuntu
       script: 'true'

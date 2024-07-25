@@ -20,7 +20,7 @@ spec:
         image: gcr.io/go-containerregistry/crane
         args:
           - digest
-          - docker.io/library/bash
+          - mirror.gcr.io/bash
         stdoutConfig:
           path: $(results.digest.path)
         stderrConfig:
@@ -28,7 +28,7 @@ spec:
       # This step redirects stdout and stderr to the path for the Task
       # result `combined`.
       - name: error
-        image: docker.io/library/bash
+        image: mirror.gcr.io/bash
         onError: continue
         script: echo "combined message" && nonsense
         stdoutConfig:
@@ -38,7 +38,7 @@ spec:
       # This step prints out the contents of the task results
       # if they exist
       - name: log-results
-        image: docker.io/library/bash
+        image: mirror.gcr.io/bash
         script: |
           if [[ -f $(results.digest.path) ]]
           then

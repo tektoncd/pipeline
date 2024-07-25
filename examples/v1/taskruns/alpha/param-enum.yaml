@@ -9,7 +9,7 @@ spec:
     default: "v1"
   steps:
   - name: build
-    image: docker.io/library/bash:5.2.26
+    image: mirror.gcr.io/bash
     script: |
       echo "$(params.message)"
 ---

@@ -5,7 +5,7 @@ metadata:
 spec:
   steps:
     - name: write
-      image: docker.io/library/ubuntu
+      image: mirror.gcr.io/ubuntu
       script: echo bar > $(workspaces.task-ws.path)/foo
   workspaces:
     - name: task-ws
@@ -24,10 +24,10 @@ spec:
     - name: local-ws
   steps:
     - name: read-1
-      image: docker.io/library/ubuntu
+      image: mirror.gcr.io/ubuntu
       script: cat $(workspaces.local-ws.path)/$(params.directory1)/foo | grep bar
     - name: read-2
-      image: docker.io/library/ubuntu
+      image: mirror.gcr.io/ubuntu
       script: cat $(workspaces.local-ws.path)/$(params.directory2)/foo | grep bar
 ---
 apiVersion: tekton.dev/v1

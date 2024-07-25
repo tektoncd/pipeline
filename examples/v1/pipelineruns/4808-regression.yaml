@@ -11,7 +11,7 @@ spec:
       type: string
   steps:
     - name: print-result
-      image: docker.io/library/bash:5.2.26
+      image: mirror.gcr.io/bash
       env:
         - name: PARAM_TO_PRINT
           value: $(params.TO_PRINT)
@@ -39,7 +39,7 @@ spec:
       description: A result string
   steps:
     - name: gen-result
-      image: docker.io/library/bash:5.2.26
+      image: mirror.gcr.io/bash
       env:
         - name: PARAM_STRING_LENGTH
           value: $(params.STRING_LENGTH)

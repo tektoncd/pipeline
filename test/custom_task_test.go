@@ -111,7 +111,7 @@ spec:
         steps:
         - args: ['-c', 'echo $(input-result-from-custom-task-ref) $(input-result-from-custom-task-spec)']
           command: ['/bin/bash']
-          image: docker.io/library/ubuntu
+          image: mirror.gcr.io/ubuntu
 `, pipelineRunName, betaAPIVersion, kind, betaAPIVersion, kind, customTaskRawSpec)),
 		metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun %q: %v", pipelineRunName, err)

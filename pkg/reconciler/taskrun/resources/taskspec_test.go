@@ -28,10 +28,14 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/test/diff"
+	"github.com/tektoncd/pipeline/test/parse"
+	test "github.com/tektoncd/pipeline/test/remoteresolution"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/yaml"
 )
 
 func TestGetTaskSpec_Ref(t *testing.T) {
@@ -294,6 +298,342 @@ func TestGetTaskData_VerificationResult(t *testing.T) {
 	}
 	if d := cmp.Diff(verificationResult, r.VerificationResult, cmpopts.EquateErrors()); d != "" {
 		t.Errorf(diff.PrintWantGot(d))
+	}
+}
+
+func TestGetStepActionsData_Provenance(t *testing.T) {
+	source := v1.RefSource{
+		URI:    "ref-source",
+		Digest: map[string]string{"sha256": "abcd123456"},
+	}
+	stepAction := parse.MustParseV1beta1StepAction(t, `
+metadata:
+  name: stepAction
+  namespace: foo
+spec:
+  image: myImage
+  command: ["ls"]
+`)
+
+	stepActionBytes, err := yaml.Marshal(stepAction)
+	if err != nil {
+		t.Fatal("failed to marshal StepAction", err)
+	}
+	rr := test.NewResolvedResource(stepActionBytes, map[string]string{}, &source, nil)
+	requester := test.NewRequester(rr, nil, resource.ResolverPayload{})
+	tests := []struct {
+		name string
+		tr   *v1.TaskRun
+		want *v1.TaskRun
+	}{{
+		name: "remote-step-action-with-provenance",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Name: "stepname",
+						Ref: &v1.Ref{
+							ResolverRef: v1.ResolverRef{
+								Resolver: "foo",
+								Params: []v1.Param{{
+									Name: "bar",
+									Value: v1.ParamValue{
+										Type:      v1.ParamTypeString,
+										StringVal: "baz",
+									},
+								}},
+							},
+						},
+					}},
+				},
+			},
+		},
+		want: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Name: "stepname",
+						Ref: &v1.Ref{
+							ResolverRef: v1.ResolverRef{
+								Resolver: "foo",
+								Params: []v1.Param{{
+									Name: "bar",
+									Value: v1.ParamValue{
+										Type:      v1.ParamTypeString,
+										StringVal: "baz",
+									},
+								}},
+							},
+						},
+					}},
+				},
+			},
+			Status: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Steps: []v1.StepState{{
+						Name: "stepname",
+						Provenance: &v1.Provenance{
+							RefSource: &source,
+						},
+					}},
+				},
+			},
+		},
+	}, {
+		name: "multiple-remote-step-actions-with-provenance",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Name: "step1",
+						Ref: &v1.Ref{
+							ResolverRef: v1.ResolverRef{
+								Resolver: "foo",
+								Params: []v1.Param{{
+									Name: "bar",
+									Value: v1.ParamValue{
+										Type:      v1.ParamTypeString,
+										StringVal: "baz",
+									},
+								}},
+							},
+						},
+					}, {
+						Name: "step2",
+						Ref: &v1.Ref{
+							ResolverRef: v1.ResolverRef{
+								Resolver: "foo",
+								Params: []v1.Param{{
+									Name: "bar",
+									Value: v1.ParamValue{
+										Type:      v1.ParamTypeString,
+										StringVal: "baz",
+									},
+								}},
+							},
+						},
+					}},
+				},
+			},
+		},
+		want: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Name: "step1",
+						Ref: &v1.Ref{
+							ResolverRef: v1.ResolverRef{
+								Resolver: "foo",
+								Params: []v1.Param{{
+									Name: "bar",
+									Value: v1.ParamValue{
+										Type:      v1.ParamTypeString,
+										StringVal: "baz",
+									},
+								}},
+							},
+						},
+					}, {
+						Name: "step2",
+						Ref: &v1.Ref{
+							ResolverRef: v1.ResolverRef{
+								Resolver: "foo",
+								Params: []v1.Param{{
+									Name: "bar",
+									Value: v1.ParamValue{
+										Type:      v1.ParamTypeString,
+										StringVal: "baz",
+									},
+								}},
+							},
+						},
+					}},
+				},
+			},
+			Status: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Steps: []v1.StepState{{
+						Name: "step1",
+						Provenance: &v1.Provenance{
+							RefSource: &source,
+						},
+					}, {
+						Name: "step2",
+						Provenance: &v1.Provenance{
+							RefSource: &source,
+						},
+					}},
+				},
+			},
+		},
+	}, {
+		name: "remote-step-action-with-existing-provenance",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Name: "step1",
+						Ref: &v1.Ref{
+							ResolverRef: v1.ResolverRef{
+								Resolver: "foo",
+								Params: []v1.Param{{
+									Name: "bar",
+									Value: v1.ParamValue{
+										Type:      v1.ParamTypeString,
+										StringVal: "baz",
+									},
+								}},
+							},
+						},
+					}},
+				},
+			},
+			Status: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Steps: []v1.StepState{{
+						Name: "step1",
+						Provenance: &v1.Provenance{
+							RefSource: &source,
+						},
+					}},
+				},
+			},
+		},
+		want: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Name: "step1",
+						Ref: &v1.Ref{
+							ResolverRef: v1.ResolverRef{
+								Resolver: "foo",
+								Params: []v1.Param{{
+									Name: "bar",
+									Value: v1.ParamValue{
+										Type:      v1.ParamTypeString,
+										StringVal: "baz",
+									},
+								}},
+							},
+						},
+					}},
+				},
+			},
+			Status: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Steps: []v1.StepState{{
+						Name: "step1",
+						Provenance: &v1.Provenance{
+							RefSource: &source,
+						},
+					}},
+				},
+			},
+		},
+	}, {
+		name: "remote-step-action-with-missing-provenance",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Name: "step1",
+						Ref: &v1.Ref{
+							ResolverRef: v1.ResolverRef{
+								Resolver: "foo",
+								Params: []v1.Param{{
+									Name: "bar",
+									Value: v1.ParamValue{
+										Type:      v1.ParamTypeString,
+										StringVal: "baz",
+									},
+								}},
+							},
+						},
+					}},
+				},
+			},
+			Status: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Steps: []v1.StepState{{
+						Name: "step1",
+					}},
+				},
+			},
+		},
+		want: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Name: "step1",
+						Ref: &v1.Ref{
+							ResolverRef: v1.ResolverRef{
+								Resolver: "foo",
+								Params: []v1.Param{{
+									Name: "bar",
+									Value: v1.ParamValue{
+										Type:      v1.ParamTypeString,
+										StringVal: "baz",
+									},
+								}},
+							},
+						},
+					}},
+				},
+			},
+			Status: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Steps: []v1.StepState{{
+						Name: "step1",
+						Provenance: &v1.Provenance{
+							RefSource: &source,
+						},
+					}},
+				},
+			},
+		},
+	}}
+	for _, tt := range tests {
+		ctx := context.Background()
+		tektonclient := fake.NewSimpleClientset(stepAction)
+		_, err := resources.GetStepActionsData(ctx, *tt.tr.Spec.TaskSpec, tt.tr, tektonclient, nil, requester)
+		if err != nil {
+			t.Fatalf("Did not expect an error but got : %s", err)
+		}
+		if d := cmp.Diff(tt.want, tt.tr); d != "" {
+			t.Errorf("the taskrun did not match what was expected diff: %s", diff.PrintWantGot(d))
+		}
 	}
 }
 

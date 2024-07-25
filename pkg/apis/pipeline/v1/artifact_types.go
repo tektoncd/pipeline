@@ -26,8 +26,12 @@ type Algorithm string
 // Artifact represents an artifact within a system, potentially containing multiple values
 // associated with it.
 type Artifact struct {
-	Name   string          `json:"name,omitempty"`   // The artifact's identifying category name
-	Values []ArtifactValue `json:"values,omitempty"` // A collection of values related to the artifact
+	// The artifact's identifying category name
+	Name string `json:"name,omitempty"`
+	// A collection of values related to the artifact
+	Values []ArtifactValue `json:"values,omitempty"`
+	// Indicate if the artifact is a build output or a by-product
+	BuildOutput bool `json:"buildOutput,omitempty"`
 }
 
 // ArtifactValue represents a specific value or data element within an Artifact.
@@ -82,35 +86,45 @@ func (a *Artifacts) Merge(another Artifacts) {
 		})
 	}
 
-	outputMap := make(map[string][]ArtifactValue)
+	outputMap := make(map[string]Artifact)
 	var newOutputs []Artifact
 	for _, v := range a.Outputs {
-		outputMap[v.Name] = v.Values
+		outputMap[v.Name] = v
 	}
 
 	for _, v := range another.Outputs {
 		_, ok := outputMap[v.Name]
 		if !ok {
-			outputMap[v.Name] = []ArtifactValue{}
+			outputMap[v.Name] = Artifact{Name: v.Name, Values: []ArtifactValue{}, BuildOutput: v.BuildOutput}
+		}
+		// only update buildOutput to true.
+		// Do not convert to false if it was true before.
+		if v.BuildOutput {
+			art := outputMap[v.Name]
+			art.BuildOutput = v.BuildOutput
+			outputMap[v.Name] = art
 		}
 		for _, vv := range v.Values {
 			exists := false
-			for _, av := range outputMap[v.Name] {
+			for _, av := range outputMap[v.Name].Values {
 				if cmp.Equal(vv, av) {
 					exists = true
 					break
 				}
 			}
 			if !exists {
-				outputMap[v.Name] = append(outputMap[v.Name], vv)
+				art := outputMap[v.Name]
+				art.Values = append(art.Values, vv)
+				outputMap[v.Name] = art
 			}
 		}
 	}
 
-	for k, v := range outputMap {
+	for _, v := range outputMap {
 		newOutputs = append(newOutputs, Artifact{
-			Name:   k,
-			Values: v,
+			Name:        v.Name,
+			Values:      v.Values,
+			BuildOutput: v.BuildOutput,
 		})
 	}
 	a.Inputs = newInputs

@@ -19,7 +19,7 @@ spec:
       default: ''
   steps:
     - name: echo
-      image: docker.io/library/alpine:3.20.1
+      image: mirror.gcr.io/alpine
       script: |
         echo $(params.GOARCH) and $(params.version) flags? $(params.flags) context? $(params.context) package? $(params.package)
 ---

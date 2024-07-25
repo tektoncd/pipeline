@@ -21,7 +21,7 @@ spec:
           type: string
   steps:
     - name: write-result
-      image: docker.io/library/bash:5.2.26
+      image: mirror.gcr.io/bash
       script: |
         #!/usr/bin/env bash
         echo -n "{\"foo\":\"$(params.arg.url)\",\"bar\":\"$(params.arg.commit)\"}" | tee $(results.object-result.path)
@@ -41,7 +41,7 @@ spec:
           type: string
   steps:
     - name: echo-params
-      image: docker.io/library/bash:5.2.26
+      image: mirror.gcr.io/bash
       args: [
         "$(params.arg.foo)",
         "$(params.arg.bar)"
