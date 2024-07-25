@@ -1,7 +1,6 @@
 module github.com/tektoncd/pipeline
 
 go 1.22
-
 toolchain go1.22.5
 
 require (
@@ -32,7 +31,7 @@ require (
 	k8s.io/api v0.29.6
 	k8s.io/apimachinery v0.29.7
 	k8s.io/client-go v0.29.6
-	k8s.io/code-generator v0.29.6
+	k8s.io/code-generator v0.29.7
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00
 	knative.dev/pkg v0.0.0-20240416145024-0f34a8815650
