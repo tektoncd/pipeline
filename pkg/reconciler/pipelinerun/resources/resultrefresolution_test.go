@@ -363,6 +363,42 @@ var pipelineRunState = PipelineRunState{{
 			Value: *v1.NewStructuredValues("$(tasks.lTask.results.aResult)"),
 		}},
 	},
+}, {
+	TaskRunNames: []string{"nTaskRun"},
+	TaskRuns: []*v1.TaskRun{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "nTaskRun",
+		},
+		Status: v1.TaskRunStatus{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{successCondition},
+			},
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Results: []v1.TaskRunResult{{
+					Name:  "nResult",
+					Value: *v1.NewStructuredValues("one"),
+				}},
+			},
+		},
+	}},
+	PipelineTask: &v1.PipelineTask{
+		Name:    "nTask",
+		TaskRef: &v1.TaskRef{Name: "nTask"},
+		Matrix: &v1.Matrix{
+			Include: v1.IncludeParamsList{v1.IncludeParams{}},
+		},
+	},
+}, {
+	TaskRunNames: []string{"oTaskRun"},
+	TaskRuns:     []*v1.TaskRun{},
+	PipelineTask: &v1.PipelineTask{
+		Name:    "oTask",
+		TaskRef: &v1.TaskRef{Name: "oTask"},
+		Params: []v1.Param{{
+			Name:  "oParam",
+			Value: *v1.NewStructuredValues("$(tasks.nTask.results.nResult)"),
+		}},
+	},
 }}
 
 func TestResolveResultRefs(t *testing.T) {
@@ -551,6 +587,23 @@ func TestResolveResultRefs(t *testing.T) {
 		},
 		wantPt:  "kTask",
 		wantErr: true,
+	}, {
+		name:             "Test result lookup single element matrix",
+		pipelineRunState: pipelineRunState,
+		targets: PipelineRunState{
+			pipelineRunState[21],
+		},
+		want: ResolvedResultRefs{{
+			Value: v1.ParamValue{
+				Type:     v1.ParamTypeArray,
+				ArrayVal: []string{"one"},
+			},
+			ResultReference: v1.ResultRef{
+				PipelineTask: "nTask",
+				Result:       "nResult",
+			},
+			FromTaskRun: "nTaskRun",
+		}},
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
 			got, pt, err := ResolveResultRefs(tt.pipelineRunState, tt.targets)
