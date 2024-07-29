@@ -134,7 +134,7 @@ func convertToResultRefs(pipelineRunState PipelineRunState, target *ResolvedPipe
 			resolvedResultRefs = append(resolvedResultRefs, resolved)
 		default:
 			// Matrixed referenced Pipeline Task
-			if len(referencedPipelineTask.TaskRuns) > 1 {
+			if referencedPipelineTask.PipelineTask.IsMatrixed() {
 				arrayValues, err := findResultValuesForMatrix(referencedPipelineTask, resultRef)
 				if err != nil {
 					return nil, resultRef.PipelineTask, err
