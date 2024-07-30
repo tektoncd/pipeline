@@ -146,6 +146,12 @@ func (c *Client) addOperationDisconnectCustomKeyStoreMiddlewares(stack *middlewa
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpDisconnectCustomKeyStoreValidationMiddleware(stack); err != nil {
 		return err
 	}
