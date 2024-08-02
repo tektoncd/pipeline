@@ -832,7 +832,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			}},
 		},
 		want: v1.TaskRunStatus{
-			Status: statusRunning(),
+			Status: statusFailure(v1.TaskRunReasonFailed.String(), "\"step-state-name\" exited with code 123"),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
 				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
@@ -843,6 +843,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Container: "step-state-name",
 				}},
 				Sidecars: []v1.SidecarState{},
+				// We don't actually care about the time, just that it's not nil
+				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
 		},
 	}, {
@@ -866,7 +868,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			}},
 		},
 		want: v1.TaskRunStatus{
-			Status: statusRunning(),
+			Status: statusFailure(v1.TaskRunReasonFailed.String(), "\"step-state-name\" exited with code 123"),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
 				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
@@ -878,6 +880,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ImageID:   "image-id",
 				}},
 				Sidecars: []v1.SidecarState{},
+				// We don't actually care about the time, just that it's not nil
+				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
 		},
 	}, {
