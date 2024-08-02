@@ -125,9 +125,7 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.Tas
 
 	sortPodContainerStatuses(pod.Status.ContainerStatuses, pod.Spec.Containers)
 
-	complete := areContainersCompleted(ctx, pod) ||
-		pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed ||
-		DidTaskRunFail(pod)
+	complete := areContainersCompleted(ctx, pod) || pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed || DidTaskRunFail(pod)
 
 	if complete {
 		onError, ok := tr.Annotations[v1.PipelineTaskOnErrorAnnotation]
