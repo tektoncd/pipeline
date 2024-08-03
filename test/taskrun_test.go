@@ -127,10 +127,30 @@ spec:
 		Name:              "unnamed-2",
 		Container:         "step-unnamed-2",
 	}}
+	expectedStepNumber := len(expectedStepState)
+	if len(taskrun.Status.Steps) < expectedStepNumber {
+		t.Fatalf("expected at least %d steps, got %d", expectedStepNumber, len(taskrun.Status.Steps))
+	}
 	ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
 	ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID")
-	if d := cmp.Diff(taskrun.Status.Steps, expectedStepState, ignoreTerminatedFields, ignoreStepFields); d != "" {
-		t.Fatalf("-got, +want: %v", d)
+	lastStepIndex := len(expectedStepState) - 1
+	for i := range lastStepIndex {
+		if d := cmp.Diff(taskrun.Status.Steps[i], expectedStepState[i], ignoreTerminatedFields, ignoreStepFields); d != "" {
+			t.Fatalf("-got, +want: %v", d)
+		}
+	}
+
+	// Sometimes, the state of the last container in the Pod is still running,
+	// and the state content of the final step is not skipped.
+	// In this case, we should compare the state of the last step with the normal state.
+	otherLatestExpectedStepState := v1.StepState{
+		Name:      "unnamed-2",
+		Container: "step-unnamed-2",
+	}
+	if d := cmp.Diff(taskrun.Status.Steps[lastStepIndex], otherLatestExpectedStepState, ignoreTerminatedFields, ignoreStepFields); d != "" {
+		if d := cmp.Diff(taskrun.Status.Steps[lastStepIndex], expectedStepState[lastStepIndex], ignoreTerminatedFields, ignoreStepFields); d != "" {
+			t.Fatalf("-got, +want: %v", d)
+		}
 	}
 
 	releaseAnnotation, ok := taskrun.Annotations[pod.ReleaseAnnotation]
