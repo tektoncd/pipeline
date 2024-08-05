@@ -362,6 +362,7 @@ func affinityAssistantStatefulSet(aaBehavior aa.AffinityAssistantBehavior, name 
 					Tolerations:      tpl.Tolerations,
 					NodeSelector:     tpl.NodeSelector,
 					ImagePullSecrets: tpl.ImagePullSecrets,
+					SecurityContext:  tpl.SecurityContext,
 
 					Affinity: getAssistantAffinityMergedWithPodTemplateAffinity(pr, aaBehavior),
 					Volumes:  volumes,
