@@ -28,6 +28,10 @@
             "default": ""
           }
         },
+        "securityContext": {
+          "description": "SecurityContext sets the security context for the pod",
+          "$ref": "#/definitions/v1.PodSecurityContext"
+        },
         "tolerations": {
           "description": "If specified, the pod's tolerations.",
           "type": "array",
