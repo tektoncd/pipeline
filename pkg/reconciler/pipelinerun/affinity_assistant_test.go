@@ -652,6 +652,13 @@ func TestDefaultPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pipelinerun-with-custom-podtemplate",
 		},
+		Spec: v1.PipelineRunSpec{
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				PodTemplate: &pod.PodTemplate{
+					HostNetwork: true,
+				},
+			},
+		},
 	}
 
 	defaultTpl := &pod.AffinityAssistantTemplate{
