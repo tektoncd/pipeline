@@ -188,7 +188,7 @@ spec:
 // TestCancelActivePipelineRunWithCompletedTaskRuns cancels a PipelineRun with completed TaskRuns and verifies TaskRun statuses.
 func TestCancelActivePipelineRunWithCompletedTaskRuns(t *testing.T) {
 	specStatus := v1.PipelineRunSpecStatusCancelled
-	t.Run(fmt.Sprintf("status=%s", specStatus), func(t *testing.T) {
+	t.Run("status="+specStatus, func(t *testing.T) {
 		ctx := context.Background()
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
@@ -279,6 +279,8 @@ spec:
 		for _, taskrunItem := range taskrunList.Items {
 			name := taskrunItem.Name
 			switch n := taskrunItem.Labels["tekton.dev/pipelineTask"]; {
+			case n == "task-succeeded":
+				// the completed TaskRun no need to wait
 			case n == "task-running":
 				err := WaitForTaskRunState(ctx, c, name, FailedWithReason("TaskRunCancelled", name), "TaskRunCancelled", v1Version)
 				if err != nil {
@@ -311,6 +313,5 @@ spec:
 				}
 			}
 		}
-
 	})
 }
