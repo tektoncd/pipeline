@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"testing"
 
+	"knative.dev/pkg/ptr"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -616,23 +618,31 @@ func TestPipelineRunPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 					ImagePullSecrets: []corev1.LocalObjectReference{{
 						Name: "reg-creds",
 					}},
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsNonRoot:   ptr.Bool(true),
+						SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
+					},
 				},
 			},
 		},
 	}
 
-	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []string{}, "nginx", nil)
+	stsWithOverridenTemplateFields := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []string{}, "nginx", nil)
 
-	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 1 {
+	if len(stsWithOverridenTemplateFields.Spec.Template.Spec.Tolerations) != 1 {
 		t.Errorf("expected Tolerations in the StatefulSet")
 	}
 
-	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.NodeSelector) != 1 {
+	if len(stsWithOverridenTemplateFields.Spec.Template.Spec.NodeSelector) != 1 {
 		t.Errorf("expected a NodeSelector in the StatefulSet")
 	}
 
-	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.ImagePullSecrets) != 1 {
+	if len(stsWithOverridenTemplateFields.Spec.Template.Spec.ImagePullSecrets) != 1 {
 		t.Errorf("expected ImagePullSecrets in the StatefulSet")
+	}
+
+	if stsWithOverridenTemplateFields.Spec.Template.Spec.SecurityContext == nil {
+		t.Errorf("expected a SecurityContext in the StatefulSet")
 	}
 }
 
@@ -657,20 +667,28 @@ func TestDefaultPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 		ImagePullSecrets: []corev1.LocalObjectReference{{
 			Name: "reg-creds",
 		}},
+		SecurityContext: &corev1.PodSecurityContext{
+			RunAsNonRoot:   ptr.Bool(true),
+			SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
+		},
 	}
 
-	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []string{}, "nginx", defaultTpl)
+	stsWithOverridenTemplateFields := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []string{}, "nginx", defaultTpl)
 
-	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 1 {
+	if len(stsWithOverridenTemplateFields.Spec.Template.Spec.Tolerations) != 1 {
 		t.Errorf("expected Tolerations in the StatefulSet")
 	}
 
-	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.NodeSelector) != 1 {
+	if len(stsWithOverridenTemplateFields.Spec.Template.Spec.NodeSelector) != 1 {
 		t.Errorf("expected a NodeSelector in the StatefulSet")
 	}
 
-	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.ImagePullSecrets) != 1 {
+	if len(stsWithOverridenTemplateFields.Spec.Template.Spec.ImagePullSecrets) != 1 {
 		t.Errorf("expected ImagePullSecrets in the StatefulSet")
+	}
+
+	if stsWithOverridenTemplateFields.Spec.Template.Spec.SecurityContext == nil {
+		t.Errorf("expected SecurityContext in the StatefulSet")
 	}
 }
 
@@ -693,6 +711,7 @@ func TestMergedPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 						{Name: "reg-creds"},
 						{Name: "alt-creds"},
 					},
+					SecurityContext: &corev1.PodSecurityContext{RunAsNonRoot: ptr.Bool(true)},
 				},
 			},
 		},
@@ -705,20 +724,27 @@ func TestMergedPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 		ImagePullSecrets: []corev1.LocalObjectReference{{
 			Name: "reg-creds",
 		}},
+		SecurityContext: &corev1.PodSecurityContext{
+			RunAsNonRoot: ptr.Bool(false),
+		},
 	}
 
-	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []string{}, "nginx", defaultTpl)
+	stsWithOverridenTemplateFields := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []string{}, "nginx", defaultTpl)
 
-	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 1 {
+	if len(stsWithOverridenTemplateFields.Spec.Template.Spec.Tolerations) != 1 {
 		t.Errorf("expected Tolerations from spec in the StatefulSet")
 	}
 
-	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.NodeSelector) != 1 {
+	if len(stsWithOverridenTemplateFields.Spec.Template.Spec.NodeSelector) != 1 {
 		t.Errorf("expected NodeSelector from defaults in the StatefulSet")
 	}
 
-	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.ImagePullSecrets) != 2 {
+	if len(stsWithOverridenTemplateFields.Spec.Template.Spec.ImagePullSecrets) != 2 {
 		t.Errorf("expected ImagePullSecrets from spec to overwrite default in the StatefulSet")
+	}
+
+	if stsWithOverridenTemplateFields.Spec.Template.Spec.SecurityContext.RunAsNonRoot == ptr.Bool(true) {
+		t.Errorf("expected SecurityContext from spec to overwrite default in the StatefulSet")
 	}
 }
 
@@ -746,13 +772,13 @@ func TestOnlySelectPodTemplateFieldsArePropagatedToAffinityAssistant(t *testing.
 		},
 	}
 
-	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []string{}, "nginx", nil)
+	stsWithOverridenTemplateFields := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []string{}, "nginx", nil)
 
-	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 1 {
+	if len(stsWithOverridenTemplateFields.Spec.Template.Spec.Tolerations) != 1 {
 		t.Errorf("expected Tolerations from spec in the StatefulSet")
 	}
 
-	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.HostAliases) != 0 {
+	if len(stsWithOverridenTemplateFields.Spec.Template.Spec.HostAliases) != 0 {
 		t.Errorf("expected HostAliases to not be passed from pod template")
 	}
 }
@@ -774,6 +800,10 @@ func TestThatTheAffinityAssistantIsWithoutNodeSelectorAndTolerations(t *testing.
 
 	if len(stsWithoutTolerationsAndNodeSelector.Spec.Template.Spec.NodeSelector) != 0 {
 		t.Errorf("unexpected NodeSelector in the StatefulSet")
+	}
+
+	if stsWithoutTolerationsAndNodeSelector.Spec.Template.Spec.SecurityContext != nil {
+		t.Errorf("unexpected SecurityContext in the StatefulSet")
 	}
 }
 

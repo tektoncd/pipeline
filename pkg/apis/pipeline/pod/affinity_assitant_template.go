@@ -42,6 +42,10 @@ type AffinityAssistantTemplate struct {
 	// +optional
 	// +listType=atomic
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+
+	// SecurityContext sets the security context for the pod
+	// +optional
+	SecurityContext *corev1.PodSecurityContext `json:"securityContext,omitempty"`
 }
 
 // Equals checks if this Template is identical to the given Template.
