@@ -159,7 +159,7 @@ _EOF_
 /tekton/bin/entrypoint decode-script "${scriptfile}"
 `},
 		VolumeMounts:    []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
-		SecurityContext: linuxSecurityContext,
+		SecurityContext: LinuxSecurityContext,
 	}
 	want := []corev1.Container{{
 		Image:        "step-1",
@@ -465,7 +465,7 @@ fi
 debug-fail-continue-heredoc-randomly-generated-6nl7g
 `},
 				VolumeMounts:    []corev1.VolumeMount{writeScriptsVolumeMount, binMount, debugScriptsVolumeMount},
-				SecurityContext: linuxSecurityContext,
+				SecurityContext: LinuxSecurityContext,
 			},
 			wantSteps: []corev1.Container{{
 				Image:   "step-1",
@@ -608,7 +608,7 @@ fi
 debug-beforestep-fail-continue-heredoc-randomly-generated-6nl7g
 `},
 				VolumeMounts:    []corev1.VolumeMount{writeScriptsVolumeMount, binMount, debugScriptsVolumeMount},
-				SecurityContext: linuxSecurityContext},
+				SecurityContext: LinuxSecurityContext},
 			wantSteps: []corev1.Container{{
 				Name:    "step-1",
 				Image:   "step-1",
@@ -690,7 +690,7 @@ _EOF_
 /tekton/bin/entrypoint decode-script "${scriptfile}"
 `},
 		VolumeMounts:    []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
-		SecurityContext: linuxSecurityContext,
+		SecurityContext: LinuxSecurityContext,
 	}
 	want := []corev1.Container{{
 		Image:        "step-1",
@@ -777,7 +777,7 @@ no-shebang
 "@ | Out-File -FilePath /tekton/scripts/script-3-mssqb.cmd
 `},
 		VolumeMounts:    []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
-		SecurityContext: windowsSecurityContext,
+		SecurityContext: WindowsSecurityContext,
 	}
 	want := []corev1.Container{{
 		Image:        "step-1",
@@ -860,7 +860,7 @@ sidecar-1
 "@ | Out-File -FilePath /tekton/scripts/sidecar-script-0-mssqb
 `},
 		VolumeMounts:    []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
-		SecurityContext: windowsSecurityContext,
+		SecurityContext: WindowsSecurityContext,
 	}
 	want := []corev1.Container{{
 		Image:        "step-1",
@@ -922,7 +922,7 @@ sidecar-1
 "@ | Out-File -FilePath /tekton/scripts/sidecar-script-0-9l9zj
 `},
 		VolumeMounts:    []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
-		SecurityContext: windowsSecurityContext,
+		SecurityContext: WindowsSecurityContext,
 	}
 	want := []corev1.Container{{
 		Image: "step-1",
