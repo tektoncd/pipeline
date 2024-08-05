@@ -60,8 +60,8 @@ const (
 	// SpiffeCsiDriver is the CSI storage plugin needed for injection of SPIFFE workload api.
 	SpiffeCsiDriver = "csi.spiffe.io"
 
-	// osSelectorLabel is the label Kubernetes uses for OS-specific workloads (https://kubernetes.io/docs/reference/labels-annotations-taints/#kubernetes-io-os)
-	osSelectorLabel = "kubernetes.io/os"
+	// OsSelectorLabel is the label Kubernetes uses for OS-specific workloads (https://kubernetes.io/docs/reference/labels-annotations-taints/#kubernetes-io-os)
+	OsSelectorLabel = "kubernetes.io/os"
 
 	// TerminationReasonTimeoutExceeded indicates a step execution timed out.
 	TerminationReasonTimeoutExceeded = "TimeoutExceeded"
@@ -132,10 +132,10 @@ var (
 	allowPrivilegeEscalation = false
 	runAsNonRoot             = true
 
-	// The following security contexts allow init containers to run in namespaces
+	// LinuxSecurityContext allow init containers to run in namespaces
 	// with "restricted" pod security admission
 	// See https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted
-	linuxSecurityContext = &corev1.SecurityContext{
+	LinuxSecurityContext = &corev1.SecurityContext{
 		AllowPrivilegeEscalation: &allowPrivilegeEscalation,
 		Capabilities: &corev1.Capabilities{
 			Drop: []corev1.Capability{"ALL"},
@@ -145,7 +145,7 @@ var (
 			Type: corev1.SeccompProfileTypeRuntimeDefault,
 		},
 	}
-	windowsSecurityContext = &corev1.SecurityContext{
+	WindowsSecurityContext = &corev1.SecurityContext{
 		RunAsNonRoot: &runAsNonRoot,
 	}
 )
@@ -607,9 +607,9 @@ func entrypointInitContainer(image string, steps []v1.Step, setSecurityContext, 
 		command = append(command, StepName(s.Name, i))
 	}
 	volumeMounts := []corev1.VolumeMount{binMount, internalStepsMount}
-	securityContext := linuxSecurityContext
+	securityContext := LinuxSecurityContext
 	if windows {
-		securityContext = windowsSecurityContext
+		securityContext = WindowsSecurityContext
 	}
 
 	// Rewrite steps with entrypoint binary. Append the entrypoint init
@@ -679,9 +679,9 @@ func createResultsSidecar(taskSpec v1.TaskSpec, image string, setSecurityContext
 		Image:   image,
 		Command: command,
 	}
-	securityContext := linuxSecurityContext
+	securityContext := LinuxSecurityContext
 	if windows {
-		securityContext = windowsSecurityContext
+		securityContext = WindowsSecurityContext
 	}
 	if setSecurityContext {
 		sidecar.SecurityContext = securityContext
@@ -696,7 +696,7 @@ func usesWindows(tr *v1.TaskRun) bool {
 	if tr.Spec.PodTemplate == nil || tr.Spec.PodTemplate.NodeSelector == nil {
 		return false
 	}
-	osSelector := tr.Spec.PodTemplate.NodeSelector[osSelectorLabel]
+	osSelector := tr.Spec.PodTemplate.NodeSelector[OsSelectorLabel]
 	return osSelector == "windows"
 }
 
