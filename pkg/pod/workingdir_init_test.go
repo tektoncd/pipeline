@@ -90,7 +90,7 @@ func TestWorkingDirInit(t *testing.T) {
 			Args:            []string{"/workspace/bbb", "aaa", "zzz"},
 			WorkingDir:      pipeline.WorkspaceDir,
 			VolumeMounts:    implicitVolumeMounts,
-			SecurityContext: linuxSecurityContext,
+			SecurityContext: LinuxSecurityContext,
 		},
 	}, {
 		desc: "workingDirs are unique and sorted, absolute dirs are ignored, uses windows",
@@ -144,7 +144,7 @@ func TestWorkingDirInit(t *testing.T) {
 			Args:            []string{"/workspace/bbb", "aaa", "zzz"},
 			WorkingDir:      pipeline.WorkspaceDir,
 			VolumeMounts:    implicitVolumeMounts,
-			SecurityContext: windowsSecurityContext,
+			SecurityContext: WindowsSecurityContext,
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {

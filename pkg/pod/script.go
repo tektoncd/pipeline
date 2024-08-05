@@ -87,13 +87,13 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1.Ste
 	shellImage := shellImageLinux
 	shellCommand := "sh"
 	shellArg := "-c"
-	securityContext := linuxSecurityContext
+	securityContext := LinuxSecurityContext
 	// Set windows variants for Image, Command and Args
 	if requiresWindows {
 		shellImage = shellImageWin
 		shellCommand = "pwsh"
 		shellArg = "-Command"
-		securityContext = windowsSecurityContext
+		securityContext = WindowsSecurityContext
 	}
 
 	placeScriptsInit := corev1.Container{
