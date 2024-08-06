@@ -55,6 +55,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
+	_ "github.com/tektoncd/pipeline/pkg/taskrunmetrics/fake"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/pkg/trustedresources/verifier"
 	"github.com/tektoncd/pipeline/pkg/workspace"
