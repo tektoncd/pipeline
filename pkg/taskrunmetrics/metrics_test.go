@@ -584,6 +584,18 @@ func TestRecordRunningTaskRunsThrottledCounts(t *testing.T) {
 			nodeCount: 3,
 		},
 		{
+			status:     corev1.ConditionUnknown,
+			reason:     pod.ReasonExceededResourceQuota,
+			quotaCount: 3,
+			addNS:      true,
+		},
+		{
+			status:    corev1.ConditionUnknown,
+			reason:    pod.ReasonExceededNodeResources,
+			nodeCount: 3,
+			addNS:     true,
+		},
+		{
 			status:    corev1.ConditionUnknown,
 			reason:    v1.TaskRunReasonResolvingTaskRef,
 			waitCount: 3,
