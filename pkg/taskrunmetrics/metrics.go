@@ -528,7 +528,11 @@ func (r *Recorder) RunningTaskRuns(ctx context.Context, lister listers.TaskRunLi
 		metrics.Record(ctx, runningTRsThrottledByQuota.M(float64(cnt)))
 	}
 	for ns, cnt := range trsThrottledByNode {
-		ctx, err := tag.New(ctx, []tag.Mutator{tag.Insert(namespaceTag, ns)}...)
+		var mutators []tag.Mutator
+		if addNamespaceLabelToQuotaThrottleMetric {
+			mutators = []tag.Mutator{tag.Insert(namespaceTag, ns)}
+		}
+		ctx, err := tag.New(ctx, mutators...)
 		if err != nil {
 			return err
 		}
