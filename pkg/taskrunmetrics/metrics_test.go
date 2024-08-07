@@ -80,7 +80,7 @@ func TestUninitializedMetrics(t *testing.T) {
 	}
 }
 
-func TestMetricsOnStore(t *testing.T) {
+func TestOnStore(t *testing.T) {
 	log := zap.NewExample()
 	defer log.Sync()
 	logger := log.Sugar()
@@ -92,7 +92,7 @@ func TestMetricsOnStore(t *testing.T) {
 	}
 
 	// We check that there's no change when incorrect config is passed
-	MetricsOnStore(logger)(config.GetMetricsConfigName(), &config.Store{})
+	OnStore(logger, metrics)(config.GetMetricsConfigName(), &config.Store{})
 	// Comparing function assign to struct with the one which should yield same value
 	if reflect.ValueOf(metrics.insertTaskTag).Pointer() != reflect.ValueOf(taskrunInsertTag).Pointer() {
 		t.Fatalf("metrics recorder shouldn't change during this OnStore call")
@@ -107,7 +107,7 @@ func TestMetricsOnStore(t *testing.T) {
 	}
 
 	// We test that there's no change when incorrect values in configmap is passed
-	MetricsOnStore(logger)(config.GetMetricsConfigName(), cfg)
+	OnStore(logger, metrics)(config.GetMetricsConfigName(), cfg)
 	// Comparing function assign to struct with the one which should yield same value
 	if reflect.ValueOf(metrics.insertTaskTag).Pointer() != reflect.ValueOf(taskrunInsertTag).Pointer() {
 		t.Fatalf("metrics recorder shouldn't change during this OnStore call")
@@ -121,7 +121,7 @@ func TestMetricsOnStore(t *testing.T) {
 		DurationPipelinerunType: config.DurationPipelinerunTypeLastValue,
 	}
 
-	MetricsOnStore(logger)(config.GetMetricsConfigName(), cfg)
+	OnStore(logger, metrics)(config.GetMetricsConfigName(), cfg)
 	if reflect.ValueOf(metrics.insertTaskTag).Pointer() != reflect.ValueOf(nilInsertTag).Pointer() {
 		t.Fatalf("metrics recorder didn't change during OnStore call")
 	}
