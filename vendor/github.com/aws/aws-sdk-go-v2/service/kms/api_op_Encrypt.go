@@ -268,6 +268,12 @@ func (c *Client) addOperationEncryptMiddlewares(stack *middleware.Stack, options
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpEncryptValidationMiddleware(stack); err != nil {
 		return err
 	}
