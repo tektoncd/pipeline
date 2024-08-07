@@ -65,8 +65,13 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 		secretinformer := secretinformer.Get(ctx)
 		spireClient := spire.GetControllerAPIClient(ctx)
 		tracerProvider := tracing.New(TracerProviderName, logger.Named("tracing"))
+		taskrunmetricsRecorder := taskrunmetrics.Get(ctx)
 		//nolint:contextcheck // OnStore methods does not support context as a parameter
-		configStore := config.NewStore(logger.Named("config-store"), taskrunmetrics.MetricsOnStore(logger), spire.OnStore(ctx, logger), tracerProvider.OnStore(secretinformer.Lister()))
+		configStore := config.NewStore(logger.Named("config-store"),
+			taskrunmetrics.OnStore(logger, taskrunmetricsRecorder),
+			spire.OnStore(ctx, logger),
+			tracerProvider.OnStore(secretinformer.Lister()),
+		)
 		configStore.WatchConfigs(cmw)
 
 		entrypointCache, err := pod.NewEntrypointCache(kubeclientset)
@@ -84,7 +89,7 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 			limitrangeLister:         limitrangeInformer.Lister(),
 			verificationPolicyLister: verificationpolicyInformer.Lister(),
 			cloudEventClient:         cloudeventclient.Get(ctx),
-			metrics:                  taskrunmetrics.Get(ctx),
+			metrics:                  taskrunmetricsRecorder,
 			entrypointCache:          entrypointCache,
 			podLister:                podInformer.Lister(),
 			pvcHandler:               volumeclaim.NewPVCHandler(kubeclientset, logger),
