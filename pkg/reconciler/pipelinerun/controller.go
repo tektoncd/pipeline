@@ -62,8 +62,12 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 		verificationpolicyInformer := verificationpolicyinformer.Get(ctx)
 		secretinformer := secretinformer.Get(ctx)
 		tracerProvider := tracing.New(TracerProviderName, logger.Named("tracing"))
+		pipelinerunmetricsRecorder := pipelinerunmetrics.Get(ctx)
 		//nolint:contextcheck // OnStore methods does not support context as a parameter
-		configStore := config.NewStore(logger.Named("config-store"), pipelinerunmetrics.MetricsOnStore(logger), tracerProvider.OnStore(secretinformer.Lister()))
+		configStore := config.NewStore(logger.Named("config-store"),
+			pipelinerunmetrics.OnStore(logger, pipelinerunmetricsRecorder),
+			tracerProvider.OnStore(secretinformer.Lister()),
+		)
 		configStore.WatchConfigs(cmw)
 
 		c := &Reconciler{
@@ -76,7 +80,7 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 			customRunLister:          customRunInformer.Lister(),
 			verificationPolicyLister: verificationpolicyInformer.Lister(),
 			cloudEventClient:         cloudeventclient.Get(ctx),
-			metrics:                  pipelinerunmetrics.Get(ctx),
+			metrics:                  pipelinerunmetricsRecorder,
 			pvcHandler:               volumeclaim.NewPVCHandler(kubeclientset, logger),
 			resolutionRequester:      resolution.NewCRDRequester(resolutionclient.Get(ctx), resolutionInformer.Lister()),
 			tracerProvider:           tracerProvider,

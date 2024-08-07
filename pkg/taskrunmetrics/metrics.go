@@ -121,6 +121,7 @@ var (
 type Recorder struct {
 	mutex       sync.Mutex
 	initialized bool
+	cfg         *config.Metrics
 
 	ReportingPeriod time.Duration
 
@@ -144,14 +145,14 @@ var (
 // to log the TaskRun related metrics
 func NewRecorder(ctx context.Context) (*Recorder, error) {
 	once.Do(func() {
+		cfg := config.FromContextOrDefaults(ctx)
 		r = &Recorder{
 			initialized: true,
+			cfg:         cfg.Metrics,
 
 			// Default to reporting metrics every 30s.
 			ReportingPeriod: 30 * time.Second,
 		}
-
-		cfg := config.FromContextOrDefaults(ctx)
 
 		errRegistering = viewRegister(cfg.Metrics)
 		if errRegistering != nil {
@@ -325,9 +326,8 @@ func viewUnregister() {
 	)
 }
 
-// MetricsOnStore returns a function that checks if metrics are configured for a config.Store, and registers it if so
-func MetricsOnStore(logger *zap.SugaredLogger) func(name string,
-	value interface{}) {
+// OnStore returns a function that checks if metrics are configured for a config.Store, and registers it if so
+func OnStore(logger *zap.SugaredLogger, r *Recorder) func(name string, value interface{}) {
 	return func(name string, value interface{}) {
 		if name == config.GetMetricsConfigName() {
 			cfg, ok := value.(*config.Metrics)
@@ -335,6 +335,8 @@ func MetricsOnStore(logger *zap.SugaredLogger) func(name string,
 				logger.Error("Failed to do type insertion for extracting metrics config")
 				return
 			}
+			r.updateConfig(cfg)
+			// Update metrics according to the configuration
 			viewUnregister()
 			err := viewRegister(cfg)
 			if err != nil {
@@ -387,6 +389,13 @@ func getTaskTagName(tr *v1.TaskRun) string {
 	}
 
 	return taskName
+}
+
+func (r *Recorder) updateConfig(cfg *config.Metrics) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	r.cfg = cfg
 }
 
 // DurationAndCount logs the duration of TaskRun execution and
@@ -454,8 +463,7 @@ func (r *Recorder) RunningTaskRuns(ctx context.Context, lister listers.TaskRunLi
 		return err
 	}
 
-	cfg := config.FromContextOrDefaults(ctx)
-	addNamespaceLabelToQuotaThrottleMetric := cfg.Metrics != nil && cfg.Metrics.ThrottleWithNamespace
+	addNamespaceLabelToQuotaThrottleMetric := r.cfg != nil && r.cfg.ThrottleWithNamespace
 
 	var runningTrs int
 	trsThrottledByQuota := map[string]int{}
