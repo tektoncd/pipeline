@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -56,6 +55,7 @@ var (
 	stdoutPath          = flag.String("stdout_path", "", "If specified, file to copy stdout to")
 	stderrPath          = flag.String("stderr_path", "", "If specified, file to copy stderr to")
 	breakpointOnFailure = flag.Bool("breakpoint_on_failure", false, "If specified, expect steps to not skip on failure")
+	debugBeforeStep     = flag.Bool("debug_before_step", false, "If specified, wait for a debugger to attach before executing the step")
 	onError             = flag.String("on_error", "", "Set to \"continue\" to ignore an error and continue when a container terminates with a non-zero exit code."+
 		" Set to \"stopAndFail\" to declare a failure with a step error and stop executing the rest of the steps.")
 	stepMetadataDir        = flag.String("step_metadata_dir", "", "If specified, create directory to store the step metadata e.g. /tekton/steps/<step-name>/")
@@ -66,24 +66,7 @@ var (
 
 const (
 	defaultWaitPollingInterval = time.Second
-	breakpointExitSuffix       = ".breakpointexit"
 )
-
-func checkForBreakpointOnFailure(e entrypoint.Entrypointer, breakpointExitPostFile string) {
-	if e.BreakpointOnFailure {
-		if waitErr := e.Waiter.Wait(context.Background(), breakpointExitPostFile, false, false); waitErr != nil {
-			log.Println("error occurred while waiting for " + breakpointExitPostFile + " : " + waitErr.Error())
-		}
-		// get exitcode from .breakpointexit
-		exitCode, readErr := e.BreakpointExitCode(breakpointExitPostFile)
-		// if readErr exists, the exitcode with default to 0 as we would like
-		// to encourage to continue running the next steps in the taskRun
-		if readErr != nil {
-			log.Println("error occurred while reading breakpoint exit code : " + readErr.Error())
-		}
-		os.Exit(exitCode)
-	}
-}
 
 func main() {
 	// Add credential flags originally introduced with our legacy credentials helper
@@ -172,6 +155,7 @@ func main() {
 		Timeout:                timeout,
 		StepWhenExpressions:    when,
 		BreakpointOnFailure:    *breakpointOnFailure,
+		DebugBeforeStep:        *debugBeforeStep,
 		OnError:                *onError,
 		StepMetadataDir:        *stepMetadataDir,
 		SpireWorkloadAPI:       spireWorkloadAPI,
@@ -185,8 +169,10 @@ func main() {
 	}
 
 	if err := e.Go(); err != nil {
-		breakpointExitPostFile := e.PostFile + breakpointExitSuffix
 		switch t := err.(type) { //nolint:errorlint // checking for multiple types with errors.As is ugly.
+		case entrypoint.DebugBeforeStepError:
+			log.Println("Skipping execute step script because before step breakpoint fail-continue")
+			os.Exit(1)
 		case entrypoint.SkipError:
 			log.Print("Skipping step because a previous step failed")
 			os.Exit(1)
@@ -210,7 +196,7 @@ func main() {
 			// in both cases has an ExitStatus() method with the
 			// same signature.
 			if status, ok := t.Sys().(syscall.WaitStatus); ok {
-				checkForBreakpointOnFailure(e, breakpointExitPostFile)
+				e.CheckForBreakpointOnFailure()
 				// ignore a step error i.e. do not exit if a container terminates with a non-zero exit code when onError is set to "continue"
 				if e.OnError != entrypoint.ContinueOnError {
 					os.Exit(status.ExitStatus())
@@ -221,7 +207,7 @@ func main() {
 				log.Fatalf("Error executing command (ExitError): %v", err)
 			}
 		default:
-			checkForBreakpointOnFailure(e, breakpointExitPostFile)
+			e.CheckForBreakpointOnFailure()
 			log.Fatalf("Error executing command: %v", err)
 		}
 	}

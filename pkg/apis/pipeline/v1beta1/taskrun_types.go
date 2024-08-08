@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/clock"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -126,6 +127,9 @@ type TaskBreakpoints struct {
 	// failed step will not exit
 	// +optional
 	OnFailure string `json:"onFailure,omitempty"`
+	// +optional
+	// +listType=atomic
+	BeforeSteps []string `json:"beforeSteps,omitempty"`
 }
 
 // NeedsDebugOnFailure return true if the TaskRun is configured to debug on failure
@@ -136,14 +140,28 @@ func (trd *TaskRunDebug) NeedsDebugOnFailure() bool {
 	return trd.Breakpoints.OnFailure == EnabledOnFailureBreakpoint
 }
 
+// NeedsDebugBeforeStep return true if the step is configured to debug before execution
+func (trd *TaskRunDebug) NeedsDebugBeforeStep(stepName string) bool {
+	if trd.Breakpoints == nil {
+		return false
+	}
+	beforeStepSets := sets.NewString(trd.Breakpoints.BeforeSteps...)
+	return beforeStepSets.Has(stepName)
+}
+
 // StepNeedsDebug return true if the step is configured to debug
 func (trd *TaskRunDebug) StepNeedsDebug(stepName string) bool {
-	return trd.NeedsDebugOnFailure()
+	return trd.NeedsDebugOnFailure() || trd.NeedsDebugBeforeStep(stepName)
+}
+
+// HaveBeforeSteps return true if have any before steps
+func (trd *TaskRunDebug) HaveBeforeSteps() bool {
+	return trd.Breakpoints != nil && len(trd.Breakpoints.BeforeSteps) > 0
 }
 
 // NeedsDebug return true if defined onfailure or have any before, after steps
 func (trd *TaskRunDebug) NeedsDebug() bool {
-	return trd.NeedsDebugOnFailure()
+	return trd.NeedsDebugOnFailure() || trd.HaveBeforeSteps()
 }
 
 var taskRunCondSet = apis.NewBatchConditionSet()

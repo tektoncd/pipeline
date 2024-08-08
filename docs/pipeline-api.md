@@ -5142,6 +5142,17 @@ string
 failed step will not exit</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>beforeSteps</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.TaskKind">TaskKind
@@ -14924,6 +14935,17 @@ string
 <em>(Optional)</em>
 <p>if enabled, pause TaskRun on failure of a step
 failed step will not exit</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>beforeSteps</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>

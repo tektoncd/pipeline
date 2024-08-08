@@ -264,6 +264,13 @@ func validateDebug(db *TaskRunDebug) (errs *apis.FieldError) {
 	if db.Breakpoints.OnFailure != "" && db.Breakpoints.OnFailure != EnabledOnFailureBreakpoint {
 		errs = errs.Also(apis.ErrInvalidValue(db.Breakpoints.OnFailure+" is not a valid onFailure breakpoint value, onFailure breakpoint is only allowed to be set as enabled", "breakpoints.onFailure"))
 	}
+	beforeSteps := sets.NewString()
+	for i, step := range db.Breakpoints.BeforeSteps {
+		if beforeSteps.Has(step) {
+			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("before step must be unique, the same step: %s is defined multiple times at", step), fmt.Sprintf("breakpoints.beforeSteps[%d]", i)))
+		}
+		beforeSteps.Insert(step)
+	}
 	return errs
 }
 
