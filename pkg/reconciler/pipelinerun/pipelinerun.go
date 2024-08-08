@@ -1359,6 +1359,7 @@ func getTaskrunLabels(pr *v1.PipelineRun, pipelineTaskName string, includePipeli
 		}
 	}
 	labels[pipeline.PipelineRunLabelKey] = pr.Name
+	labels[pipeline.PipelineRunUIDLabelKey] = string(pr.UID)
 	if pipelineTaskName != "" {
 		labels[pipeline.PipelineTaskLabelKey] = pipelineTaskName
 	}
