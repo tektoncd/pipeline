@@ -88,6 +88,11 @@ func cancelTaskRun(ctx context.Context, taskRunName string, namespace string, cl
 		// still be able to cancel the PipelineRun
 		return nil
 	}
+	if errors.IsBadRequest(err) && strings.Contains(err.Error(), "no updates are allowed") {
+		// The TaskRun may have completed and the spec field is immutable, we should ignore this error.
+		// validation code: https://github.com/tektoncd/pipeline/blob/v0.62.0/pkg/apis/pipeline/v1/taskrun_validation.go#L136-L138
+		return nil
+	}
 	return err
 }
 
