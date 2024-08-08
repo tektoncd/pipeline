@@ -31,6 +31,7 @@ data:
   trusted-resources-verification-no-match-policy: "fail"
   enable-provenance-in-status: "false"
   set-security-context: "true"
+  set-security-context-read-only-root-filesystem: "true"
   keep-pod-on-cancel: "true"
   enable-cel-in-whenexpression: "true"
   enable-step-actions: "true"
