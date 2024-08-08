@@ -2161,7 +2161,7 @@ _EOF_
 						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
 						{Name: "tekton-internal-run-0", ReadOnly: true, MountPath: "/tekton/run/0"},
 					}, implicitVolumeMounts...),
-					SecurityContext: linuxSecurityContext,
+					SecurityContext: LinuxSecurityContext,
 				}},
 				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -2402,7 +2402,7 @@ _EOF_
 						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
 						{Name: "tekton-internal-run-0", ReadOnly: true, MountPath: "/tekton/run/0"},
 					}, implicitVolumeMounts...),
-					SecurityContext: linuxSecurityContext,
+					SecurityContext: LinuxSecurityContext,
 				}},
 				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -3420,7 +3420,7 @@ func TestPrepareInitContainers(t *testing.T) {
 			WorkingDir:      "/",
 			Command:         []string{"/ko-app/entrypoint", "init", "/ko-app/entrypoint", entrypointBinary, "step-foo", "step-bar"},
 			VolumeMounts:    []corev1.VolumeMount{binMount, internalStepsMount},
-			SecurityContext: linuxSecurityContext,
+			SecurityContext: LinuxSecurityContext,
 		},
 	}, {
 		name: "nothing-special-two-steps-windows",
@@ -3452,7 +3452,7 @@ func TestPrepareInitContainers(t *testing.T) {
 			WorkingDir:      "/",
 			Command:         []string{"/ko-app/entrypoint", "init", "/ko-app/entrypoint", entrypointBinary, "step-foo", "step-bar"},
 			VolumeMounts:    []corev1.VolumeMount{binMount, internalStepsMount},
-			SecurityContext: windowsSecurityContext,
+			SecurityContext: WindowsSecurityContext,
 		},
 	}}
 	for _, tc := range tcs {
@@ -3481,13 +3481,13 @@ func TestUsesWindows(t *testing.T) {
 	}, {
 		name: "uses linux",
 		taskRun: &v1.TaskRun{Spec: v1.TaskRunSpec{PodTemplate: &pod.Template{NodeSelector: map[string]string{
-			osSelectorLabel: "linux",
+			OsSelectorLabel: "linux",
 		}}}},
 		want: false,
 	}, {
 		name: "uses windows",
 		taskRun: &v1.TaskRun{Spec: v1.TaskRunSpec{PodTemplate: &pod.Template{NodeSelector: map[string]string{
-			osSelectorLabel: "windows",
+			OsSelectorLabel: "windows",
 		}}}},
 		want: true,
 	}}
