@@ -1,4 +1,4 @@
-go 1.21
+go 1.20
 
 use (
 	.
@@ -59,6 +59,7 @@ use (
 	./datastore
 	./datastream
 	./deploy
+	./developerconnect
 	./dialogflow
 	./discoveryengine
 	./dlp
@@ -100,6 +101,7 @@ use (
 	./logging
 	./longrunning
 	./managedidentities
+	./managedkafka
 	./maps
 	./mediatranslation
 	./memcache
@@ -110,6 +112,7 @@ use (
 	./networkconnectivity
 	./networkmanagement
 	./networksecurity
+	./networkservices
 	./notebooks
 	./optimization
 	./orchestration
