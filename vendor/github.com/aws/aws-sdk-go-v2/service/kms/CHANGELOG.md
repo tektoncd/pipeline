@@ -1,3 +1,46 @@
+# v1.35.3 (2024-07-10.2)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.35.2 (2024-07-10)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.35.1 (2024-06-28)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.35.0 (2024-06-26)
+
+* **Feature**: Support list-of-string endpoint parameter.
+
+# v1.34.1 (2024-06-19)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.34.0 (2024-06-18)
+
+* **Feature**: Track usage of various AWS SDK features in user-agent string.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.33.1 (2024-06-17)
+
+* **Documentation**: Updating SDK example for KMS DeriveSharedSecret API.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.33.0 (2024-06-13)
+
+* **Feature**: This feature allows customers to use their keys stored in KMS to derive a shared secret which can then be used to establish a secured channel for communication, provide proof of possession, or establish trust with other parties.
+
+# v1.32.3 (2024-06-07)
+
+* **Bug Fix**: Add clock skew correction on all service clients
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.32.2 (2024-06-03)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.32.1 (2024-05-23)
 
 * No change notes available for this release.
