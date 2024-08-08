@@ -151,6 +151,7 @@ func (tpl *Template) ToAffinityAssistantTemplate() *AffinityAssistantTemplate {
 		NodeSelector:     tpl.NodeSelector,
 		Tolerations:      tpl.Tolerations,
 		ImagePullSecrets: tpl.ImagePullSecrets,
+		SecurityContext:  tpl.SecurityContext,
 	}
 }
 
@@ -247,6 +248,10 @@ func MergeAAPodTemplateWithDefault(tpl, defaultTpl *AAPodTemplate) *AAPodTemplat
 		if tpl.ImagePullSecrets == nil {
 			tpl.ImagePullSecrets = defaultTpl.ImagePullSecrets
 		}
+		if tpl.SecurityContext == nil {
+			tpl.SecurityContext = defaultTpl.SecurityContext
+		}
+
 		return tpl
 	}
 }

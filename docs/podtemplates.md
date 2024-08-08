@@ -29,7 +29,7 @@ The Pod templates specified in the `TaskRuns` and `PipelineRuns `also apply to
 the [affinity assistant Pods](#./workspaces.md#specifying-workspace-order-in-a-pipeline-and-affinity-assistants)
 that are created when using Workspaces, but only on select fields.
 
-The supported fields are: `tolerations`, `nodeSelector`, and
+The supported fields are: `tolerations`, `nodeSelector`, `securityContext` and
 `imagePullSecrets` (see the table below for more details).
 
 Similarily to Pod templates, you have the option to define a global affinity
