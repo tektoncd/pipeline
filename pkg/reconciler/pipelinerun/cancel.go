@@ -27,6 +27,7 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	listersv1 "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1"
 	"go.uber.org/zap"
 	jsonpatch "gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -91,23 +92,10 @@ func cancelTaskRun(ctx context.Context, taskRunName string, namespace string, cl
 	return err
 }
 
-// cancelPipelineRun marks the PipelineRun as cancelled and any resolved TaskRun(s) too.
+// cancelPipelineRun patch the PipelineRun active children Tasks as cancelled and marks the pipelinerun as cancelling.
 func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1.PipelineRun, clientSet clientset.Interface) error {
 	errs := cancelPipelineTaskRuns(ctx, logger, pr, clientSet)
-
-	// If we successfully cancelled all the TaskRuns and Runs, we can consider the PipelineRun cancelled.
-	if len(errs) == 0 {
-		reason := v1.PipelineRunReasonCancelled
-
-		pr.Status.SetCondition(&apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionFalse,
-			Reason:  reason.String(),
-			Message: fmt.Sprintf("PipelineRun %q was cancelled", pr.Name),
-		})
-		// update pr completed time
-		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
-	} else {
+	if len(errs) > 0 {
 		e := strings.Join(errs, "\n")
 		// Indicate that we failed to cancel the PipelineRun
 		pr.Status.SetCondition(&apis.Condition{
@@ -118,6 +106,15 @@ func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1.Pi
 		})
 		return fmt.Errorf("error(s) from cancelling TaskRun(s) from PipelineRun %s: %s", pr.Name, e)
 	}
+
+	// Mark the PipelineRun as Cancelling
+	pr.Status.SetCondition(&apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionUnknown,
+		Reason:  v1.PipelineRunReasonCancelling.String(),
+		Message: fmt.Sprintf("PipelineRun %q is cancelling", pr.Name),
+	})
+
 	return nil
 }
 
@@ -200,4 +197,45 @@ func gracefullyCancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger,
 		return fmt.Errorf("error(s) from cancelling TaskRun(s) from PipelineRun %s: %s", pr.Name, e)
 	}
 	return nil
+}
+
+func childrenTasksStopped(ctx context.Context, pr *v1.PipelineRun, trLister listersv1.TaskRunNamespaceLister) (bool, error) {
+	trNames, customRunNames, err := getChildObjectsFromPRStatusForTaskNames(ctx, pr.Status, sets.NewString())
+	if err != nil {
+		return false, err
+	}
+
+	for _, trName := range trNames {
+		tr, err := trLister.Get(trName)
+		if err != nil {
+			return false, err
+		}
+
+		if tr.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
+			return false, nil
+		}
+	}
+
+	for _, customRunName := range customRunNames {
+		tr, err := trLister.Get(customRunName)
+		if err != nil {
+			return false, err
+		}
+
+		if tr.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
+func markPipelineRunAsCancelled(pr *v1.PipelineRun) {
+	pr.Status.SetCondition(&apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionFalse,
+		Reason:  v1.PipelineRunReasonCancelled.String(),
+		Message: fmt.Sprintf("PipelineRun %q was cancelled", pr.Name),
+	})
+	pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 }

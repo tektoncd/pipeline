@@ -88,6 +88,12 @@ func (pr *PipelineRun) IsCancelled() bool {
 	return pr.Spec.Status == PipelineRunSpecStatusCancelled
 }
 
+// IsCancelling returns true if the PipelineRun's status indicates it is cancelling.
+func (pr *PipelineRun) IsCancelling() bool {
+	succeededCond := pr.Status.GetCondition(apis.ConditionSucceeded)
+	return succeededCond != nil && succeededCond.Reason == PipelineRunReasonCancelling.String()
+}
+
 // IsGracefullyCancelled returns true if the PipelineRun's spec status is set to CancelledRunFinally state
 func (pr *PipelineRun) IsGracefullyCancelled() bool {
 	return pr.Spec.Status == PipelineRunSpecStatusCancelledRunFinally
@@ -340,6 +346,8 @@ const (
 	// This reason may be found with a corev1.ConditionFalse status, if the cancellation was processed successfully
 	// This reason may be found with a corev1.ConditionUnknown status, if the cancellation is being processed or failed
 	PipelineRunReasonCancelled PipelineRunReason = "Cancelled"
+	// PipelineRunReasonCancelling is the reason set when the PipelineRun is cancelling
+	PipelineRunReasonCancelling PipelineRunReason = "Cancelling"
 	// PipelineRunReasonPending is the reason set when the PipelineRun is in the pending state
 	PipelineRunReasonPending PipelineRunReason = "PipelineRunPending"
 	// PipelineRunReasonTimedOut is the reason set when the PipelineRun has timed out

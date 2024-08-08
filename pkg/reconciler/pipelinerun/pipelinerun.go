@@ -247,9 +247,25 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 	}
 
-	// If the pipelinerun is cancelled, cancel tasks and update status
+	// If the pipelinerun is cancelling, we check if all its child tasks stopped. If so, we change the pipeline status
+	if pr.IsCancelling() {
+		trLister := c.taskRunLister.TaskRuns(pr.Namespace)
+		tasksStopped, err := childrenTasksStopped(ctx, pr, trLister)
+		if err != nil {
+			logger.Errorf("Error checking if pipelinerun is cancelling: %v", err.Error())
+			return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
+		}
+
+		if tasksStopped {
+			markPipelineRunAsCancelled(pr)
+		}
+
+		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
+	}
+
+	// If the pipelinerun is cancelled, cancel all its child tasks
 	if pr.IsCancelled() {
-		err := cancelPipelineRun(ctx, logger, pr, c.PipelineClientSet)
+		err = cancelPipelineRun(ctx, logger, pr, c.PipelineClientSet)
 		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 	}
 
