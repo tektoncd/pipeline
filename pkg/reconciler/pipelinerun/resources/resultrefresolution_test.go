@@ -930,3 +930,53 @@ func TestValidateArrayResultsIndex(t *testing.T) {
 		})
 	}
 }
+
+func TestParamValueFromCustomRunResult(t *testing.T) {
+	type args struct {
+		result string
+	}
+	tests := []struct {
+		name string
+		args args
+		want *v1.ParamValue
+	}{
+		{
+			name: "multiple array elements result",
+			args: args{
+				result: `["amd64", "arm64"]`,
+			},
+			want: &v1.ParamValue{
+				Type:     "array",
+				ArrayVal: []string{"amd64", "arm64"},
+			},
+		},
+		{
+			name: "single array elements result",
+			args: args{
+				result: `[ "amd64" ]`,
+			},
+			want: &v1.ParamValue{
+				Type:     "array",
+				ArrayVal: []string{"amd64"},
+			},
+		},
+		{
+			name: "simple string result",
+			args: args{
+				result: "amd64",
+			},
+			want: &v1.ParamValue{
+				Type:      "string",
+				StringVal: "amd64",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := paramValueFromCustomRunResult(tt.args.result)
+			if d := cmp.Diff(tt.want, got); d != "" {
+				t.Fatalf("paramValueFromCustomRunResult %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
