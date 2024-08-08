@@ -280,6 +280,10 @@ type PipelineRunSpec struct {
 	// +optional
 	// +listType=atomic
 	TaskRunSpecs []PipelineTaskRunSpec `json:"taskRunSpecs,omitempty"`
+
+	// FailFast is an option. When a failed task is found, other parallel tasks can be quickly canceled.
+	// +optional
+	FailFast bool `json:"failFast,omitempty"`
 }
 
 // TimeoutFields allows granular specification of pipeline, task, and finally timeouts
