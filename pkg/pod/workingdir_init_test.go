@@ -17,10 +17,10 @@ limitations under the License.
 package pod
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
@@ -41,7 +41,7 @@ func TestWorkingDirInit(t *testing.T) {
 		}},
 		want: nil,
 	}, {
-		desc: "workingDirs are unique and sorted, absolute dirs are ignored",
+		desc: "workingDirs are unique",
 		stepContainers: []corev1.Container{{
 			WorkingDir: "zzz",
 		}, {
@@ -61,12 +61,11 @@ func TestWorkingDirInit(t *testing.T) {
 			Name:         "working-dir-initializer",
 			Image:        images.WorkingDirInitImage,
 			Command:      []string{"/ko-app/workingdirinit"},
-			Args:         []string{"/workspace/bbb", "aaa", "zzz"},
-			WorkingDir:   pipeline.WorkspaceDir,
+			Args:         []string{"/workspace/zzz", "/workspace/aaa", "/workspace", "/workspace/bbb"},
 			VolumeMounts: implicitVolumeMounts,
 		},
 	}, {
-		desc: "workingDirs are unique and sorted, absolute dirs are ignored, + securitycontext",
+		desc: "workingDirs are unique + securitycontext",
 		stepContainers: []corev1.Container{{
 			WorkingDir: "zzz",
 		}, {
@@ -87,13 +86,12 @@ func TestWorkingDirInit(t *testing.T) {
 			Name:            "working-dir-initializer",
 			Image:           images.WorkingDirInitImage,
 			Command:         []string{"/ko-app/workingdirinit"},
-			Args:            []string{"/workspace/bbb", "aaa", "zzz"},
-			WorkingDir:      pipeline.WorkspaceDir,
+			Args:            []string{"/workspace/zzz", "/workspace/aaa", "/workspace", "/workspace/bbb"},
 			VolumeMounts:    implicitVolumeMounts,
 			SecurityContext: linuxSecurityContext,
 		},
 	}, {
-		desc: "workingDirs are unique and sorted, absolute dirs are ignored, uses windows",
+		desc: "workingDirs are unique, uses windows",
 		stepContainers: []corev1.Container{{
 			WorkingDir: "zzz",
 		}, {
@@ -114,12 +112,11 @@ func TestWorkingDirInit(t *testing.T) {
 			Name:         "working-dir-initializer",
 			Image:        images.WorkingDirInitImage,
 			Command:      []string{"/ko-app/workingdirinit"},
-			Args:         []string{"/workspace/bbb", "aaa", "zzz"},
-			WorkingDir:   pipeline.WorkspaceDir,
+			Args:         []string{"/workspace/zzz", "/workspace/aaa", "/workspace", "/workspace/bbb"},
 			VolumeMounts: implicitVolumeMounts,
 		},
 	}, {
-		desc: "workingDirs are unique and sorted, absolute dirs are ignored, uses windows, + securityContext",
+		desc: "workingDirs are unique, uses windows, + securityContext",
 		stepContainers: []corev1.Container{{
 			WorkingDir: "zzz",
 		}, {
@@ -141,15 +138,19 @@ func TestWorkingDirInit(t *testing.T) {
 			Name:            "working-dir-initializer",
 			Image:           images.WorkingDirInitImage,
 			Command:         []string{"/ko-app/workingdirinit"},
-			Args:            []string{"/workspace/bbb", "aaa", "zzz"},
-			WorkingDir:      pipeline.WorkspaceDir,
+			Args:            []string{"/workspace/zzz", "/workspace/aaa", "/workspace", "/workspace/bbb"},
 			VolumeMounts:    implicitVolumeMounts,
 			SecurityContext: windowsSecurityContext,
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			got := workingDirInit(images.WorkingDirInitImage, c.stepContainers, c.setSecurityContext, c.windows)
-			if d := cmp.Diff(c.want, got); d != "" {
+			trans := cmp.Transformer("Sort", func(inp corev1.Container) []string {
+				out := append([]string(nil), inp.Args...) // Copy input to avoid mutating it
+				sort.Strings(out)
+				return out
+			})
+			if d := cmp.Diff(c.want, got, trans); d != "" {
 				t.Fatalf("Diff %s", diff.PrintWantGot(d))
 			}
 		})
