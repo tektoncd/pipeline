@@ -14,6 +14,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internal/checksum"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -61,6 +62,28 @@ func (s *StepAction) Copy() StepActionObject {
 // GetGroupVersionKind implements kmeta.OwnerRefable.
 func (*StepAction) GetGroupVersionKind() schema.GroupVersionKind {
 	return SchemeGroupVersion.WithKind("StepAction")
+}
+
+// Checksum computes the sha256 checksum of the stepaction object.
+// Prior to computing the checksum, it performs some preprocessing on the
+// metadata of the object where it removes system provided annotations.
+// Only the name, namespace, generateName, user-provided labels and annotations
+// and the taskSpec are included for the checksum computation.
+func (s *StepAction) Checksum() ([]byte, error) {
+	objectMeta := checksum.PrepareObjectMeta(s)
+	preprocessedStepaction := StepAction{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1beta1",
+			Kind:       "StepAction",
+		},
+		ObjectMeta: objectMeta,
+		Spec:       s.Spec,
+	}
+	sha256Checksum, err := checksum.ComputeSha256Checksum(preprocessedStepaction)
+	if err != nil {
+		return nil, err
+	}
+	return sha256Checksum, nil
 }
 
 // StepActionList contains a list of StepActions
