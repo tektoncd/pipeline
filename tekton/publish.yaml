@@ -61,7 +61,7 @@ spec:
   steps:
 
   - name: container-registry-auth
-    image: cgr.dev/chainguard/crane:latest-dev@sha256:50cefdf2e3ee1e55875ab9ad497c97bcb600fd321c4ad11e185607f94e1742f1
+    image: cgr.dev/chainguard/crane:latest-dev@sha256:453f16905d017ca0571627bd8a0c284719219b6b97065ee2545e565bac290882
     script: |
       #!/bin/sh
       set -ex
@@ -80,7 +80,7 @@ spec:
       cp ${DOCKER_CONFIG} /workspace/docker-config.json
 
   - name: create-ko-yaml
-    image: cgr.dev/chainguard/go:latest-dev@sha256:3a551901778b450f06ab4aece6e17c68279dbd1d94b4165b3307b486c8b9133f
+    image: cgr.dev/chainguard/go:latest-dev@sha256:0bc010063f10e6c1e20ac73215d972ddf8b4132cb487b578aa88874f3c806383
     script: |
       #!/bin/sh
       set -ex
@@ -115,7 +115,7 @@ spec:
       cat /workspace/.ko.yaml
 
   - name: run-ko
-    image: gcr.io/tekton-releases/dogfooding/ko@sha256:55a12272e054f96580342464c504142379310201384d354dbf0d3cdf355865cf
+    image: gcr.io/tekton-releases/dogfooding/ko@sha256:cbc146ffe483fabccfc87b3c2e9e4dc1286ba8a1f05e15f1dd69a47466e94edf
     env:
     - name: KO_DOCKER_REPO
       value: $(params.imageRegistry)/$(params.imageRegistryPath)
@@ -169,7 +169,7 @@ spec:
       sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/release.yaml
       sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/release.notags.yaml
   - name: koparse
-    image: gcr.io/tekton-releases/dogfooding/koparse@sha256:fc371865236c903c332f2c4ace6018346565c497e8be2da84ac208165c0f95ff
+    image: gcr.io/tekton-releases/dogfooding/koparse@sha256:8ae939de42e5e4c39518bad5f9a563889729aa033bac584e3f6484d5632518cb
     script: |
       set -ex
 
@@ -187,7 +187,7 @@ spec:
 
 
   - name: tag-images
-    image: cgr.dev/chainguard/crane:latest-dev@sha256:50cefdf2e3ee1e55875ab9ad497c97bcb600fd321c4ad11e185607f94e1742f1
+    image: cgr.dev/chainguard/crane:latest-dev@sha256:453f16905d017ca0571627bd8a0c284719219b6b97065ee2545e565bac290882
     script: |
       #!/bin/sh
       set -ex
