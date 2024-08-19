@@ -778,11 +778,25 @@ func schema_pkg_apis_pipeline_v1_IncludeParams(ref common.ReferenceCallback) com
 							},
 						},
 					},
+					"when": {
+						SchemaProps: spec.SchemaProps{
+							Description: "When is a list of when expressions that need to be true for the matrix task to run",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression"),
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression"},
 	}
 }
 
