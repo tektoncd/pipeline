@@ -1721,6 +1721,20 @@ Params
 The names of the <code>params</code> must match the names of the <code>params</code> in the underlying <code>Task</code></p>
 </td>
 </tr>
+<tr>
+<td>
+<code>when</code><br/>
+<em>
+<a href="#tekton.dev/v1.WhenExpressions">
+WhenExpressions
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>When is a list of when expressions that need to be true for the matrix task to run</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.Matrix">Matrix
@@ -6527,7 +6541,7 @@ More info about CEL syntax: <a href="https://github.com/google/cel-spec/blob/mas
 <h3 id="tekton.dev/v1.WhenExpressions">WhenExpressions
 (<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression</code> alias)</h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.IncludeParams">IncludeParams</a>, <a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>)
 </p>
 <div>
 <p>WhenExpressions are used to specify whether a Task should be executed or skipped
@@ -10889,6 +10903,20 @@ Params
 <td>
 <p>Params takes only <code>Parameters</code> of type <code>&quot;string&quot;</code>
 The names of the <code>params</code> must match the names of the <code>params</code> in the underlying <code>Task</code></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>when</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.WhenExpressions">
+WhenExpressions
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>When is a list of when expressions that need to be true for the matrix task to run</p>
 </td>
 </tr>
 </tbody>
@@ -16625,7 +16653,7 @@ More info about CEL syntax: <a href="https://github.com/google/cel-spec/blob/mas
 <h3 id="tekton.dev/v1beta1.WhenExpressions">WhenExpressions
 (<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WhenExpression</code> alias)</h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.IncludeParams">IncludeParams</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>)
 </p>
 <div>
 <p>WhenExpressions are used to specify whether a Task should be executed or skipped

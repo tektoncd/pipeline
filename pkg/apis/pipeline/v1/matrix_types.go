@@ -50,6 +50,21 @@ type IncludeParams struct {
 	// Params takes only `Parameters` of type `"string"`
 	// The names of the `params` must match the names of the `params` in the underlying `Task`
 	Params Params `json:"params,omitempty"`
+
+	// When is a list of when expressions that need to be true for the matrix task to run
+	// +optional
+	When WhenExpressions `json:"when,omitempty"`
+}
+
+// validIncludeParams returns only the IncludeParams whose When expressions allow execution.
+func (i IncludeParamsList) validIncludeParams() IncludeParamsList {
+	validIncludes := make(IncludeParamsList, 0, len(i))
+	for _, include := range i {
+		if include.When.AllowsExecution(nil) {
+			validIncludes = append(validIncludes, include)
+		}
+	}
+	return validIncludes
 }
 
 // Combination is a map, mainly defined to hold a single combination from a Matrix with key as param.Name and value as param.Value
@@ -164,8 +179,8 @@ func (cs Combinations) fanOutMatrixParams(param Param) Combinations {
 // getIncludeCombinations generates combinations based on Matrix Include Parameters
 func (m *Matrix) getIncludeCombinations() Combinations {
 	var combinations Combinations
-	for i := range m.Include {
-		includeParams := m.Include[i].Params
+	for _, include := range m.Include.validIncludeParams() {
+		includeParams := include.Params
 		newCombination := make(Combination)
 		for _, param := range includeParams {
 			newCombination[param.Name] = param.Value.StringVal
@@ -248,11 +263,11 @@ func (m *Matrix) countNewCombinationsFromInclude() int {
 		return 0
 	}
 	if !m.HasParams() {
-		return len(m.Include)
+		return len(m.Include.validIncludeParams())
 	}
 	count := 0
 	matrixParamMap := m.Params.extractParamMapArrVals()
-	for _, include := range m.Include {
+	for _, include := range m.Include.validIncludeParams() {
 		for _, param := range include.Params {
 			if val, exist := matrixParamMap[param.Name]; exist {
 				// If the Matrix Include param values does not exist, a new Combination will be generated
