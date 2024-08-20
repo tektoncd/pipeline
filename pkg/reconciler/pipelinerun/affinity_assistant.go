@@ -29,6 +29,7 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
 	aa "github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
+	pipelinePod "github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	appsv1 "k8s.io/api/apps/v1"
@@ -139,7 +140,18 @@ func (c *Reconciler) createOrUpdateAffinityAssistant(ctx context.Context, affini
 		if err != nil {
 			return []error{err}
 		}
-		affinityAssistantStatefulSet := affinityAssistantStatefulSet(aaBehavior, affinityAssistantName, pr, claimTemplates, claimNames, c.Images.NopImage, cfg.Defaults.DefaultAAPodTemplate)
+
+		securityContextConfig := pipelinePod.SecurityContextConfig{
+			SetSecurityContext:        cfg.FeatureFlags.SetSecurityContext,
+			SetReadOnlyRootFilesystem: cfg.FeatureFlags.SetSecurityContextReadOnlyRootFilesystem,
+		}
+
+		containerConfig := aa.ContainerConfig{
+			Image:                 c.Images.NopImage,
+			SecurityContextConfig: securityContextConfig,
+		}
+
+		affinityAssistantStatefulSet := affinityAssistantStatefulSet(aaBehavior, affinityAssistantName, pr, claimTemplates, claimNames, containerConfig, cfg.Defaults.DefaultAAPodTemplate)
 		_, err = c.KubeClientSet.AppsV1().StatefulSets(pr.Namespace).Create(ctx, affinityAssistantStatefulSet, metav1.CreateOptions{})
 		if err != nil {
 			errs = append(errs, fmt.Errorf("failed to create StatefulSet %s: %w", affinityAssistantName, err))
@@ -281,7 +293,7 @@ func getStatefulSetLabels(pr *v1.PipelineRun, affinityAssistantName string) map[
 // with the given AffinityAssistantTemplate applied to the StatefulSet PodTemplateSpec.
 // The VolumeClaimTemplates and Volume of StatefulSet reference the PipelineRun WorkspaceBinding VolumeClaimTempalte and the PVCs respectively.
 // The PVs created by the StatefulSet are scheduled to the same availability zone which avoids PV scheduling conflict.
-func affinityAssistantStatefulSet(aaBehavior aa.AffinityAssistantBehavior, name string, pr *v1.PipelineRun, claimTemplates []corev1.PersistentVolumeClaim, claimNames []string, affinityAssistantImage string, defaultAATpl *pod.AffinityAssistantTemplate) *appsv1.StatefulSet {
+func affinityAssistantStatefulSet(aaBehavior aa.AffinityAssistantBehavior, name string, pr *v1.PipelineRun, claimTemplates []corev1.PersistentVolumeClaim, claimNames []string, containerConfig aa.ContainerConfig, defaultAATpl *pod.AffinityAssistantTemplate) *appsv1.StatefulSet {
 	// We want a singleton pod
 	replicas := int32(1)
 
@@ -296,9 +308,9 @@ func affinityAssistantStatefulSet(aaBehavior aa.AffinityAssistantBehavior, name 
 		mounts = append(mounts, corev1.VolumeMount{Name: claimTemplate.Name, MountPath: claimTemplate.Name})
 	}
 
-	containers := []corev1.Container{{
+	container := corev1.Container{
 		Name:  "affinity-assistant",
-		Image: affinityAssistantImage,
+		Image: containerConfig.Image,
 		Args:  []string{"tekton_run_indefinitely"},
 
 		// Set requests == limits to get QoS class _Guaranteed_.
@@ -315,7 +327,12 @@ func affinityAssistantStatefulSet(aaBehavior aa.AffinityAssistantBehavior, name 
 			},
 		},
 		VolumeMounts: mounts,
-	}}
+	}
+
+	if containerConfig.SecurityContextConfig.SetSecurityContext {
+		isWindows := tpl.NodeSelector[pipelinePod.OsSelectorLabel] == "windows"
+		container.SecurityContext = containerConfig.SecurityContextConfig.GetSecurityContext(isWindows)
+	}
 
 	var volumes []corev1.Volume
 	for i, claimName := range claimNames {
@@ -357,7 +374,7 @@ func affinityAssistantStatefulSet(aaBehavior aa.AffinityAssistantBehavior, name 
 					Labels: getStatefulSetLabels(pr, name),
 				},
 				Spec: corev1.PodSpec{
-					Containers: containers,
+					Containers: []corev1.Container{container},
 
 					Tolerations:      tpl.Tolerations,
 					NodeSelector:     tpl.NodeSelector,

@@ -29,11 +29,12 @@ import (
 func TestWorkingDirInit(t *testing.T) {
 	names.TestingSeed()
 	for _, c := range []struct {
-		desc               string
-		stepContainers     []corev1.Container
-		windows            bool
-		setSecurityContext bool
-		want               *corev1.Container
+		desc                           string
+		stepContainers                 []corev1.Container
+		windows                        bool
+		setSecurityContext             bool
+		setSecurityContextReadOnlyRoot bool
+		want                           *corev1.Container
 	}{{
 		desc: "no workingDirs",
 		stepContainers: []corev1.Container{{
@@ -82,7 +83,8 @@ func TestWorkingDirInit(t *testing.T) {
 			// to /workspace, so we need to create it.
 			WorkingDir: "/workspace/bbb",
 		}},
-		setSecurityContext: true,
+		setSecurityContext:             true,
+		setSecurityContextReadOnlyRoot: true,
 		want: &corev1.Container{
 			Name:            "working-dir-initializer",
 			Image:           images.WorkingDirInitImage,
@@ -90,7 +92,7 @@ func TestWorkingDirInit(t *testing.T) {
 			Args:            []string{"/workspace/bbb", "aaa", "zzz"},
 			WorkingDir:      pipeline.WorkspaceDir,
 			VolumeMounts:    implicitVolumeMounts,
-			SecurityContext: linuxSecurityContext,
+			SecurityContext: SecurityContextConfig{SetSecurityContext: true, SetReadOnlyRootFilesystem: true}.GetSecurityContext(false),
 		},
 	}, {
 		desc: "workingDirs are unique and sorted, absolute dirs are ignored, uses windows",
@@ -135,8 +137,9 @@ func TestWorkingDirInit(t *testing.T) {
 			// to /workspace, so we need to create it.
 			WorkingDir: "/workspace/bbb",
 		}},
-		windows:            true,
-		setSecurityContext: true,
+		windows:                        true,
+		setSecurityContext:             true,
+		setSecurityContextReadOnlyRoot: true,
 		want: &corev1.Container{
 			Name:            "working-dir-initializer",
 			Image:           images.WorkingDirInitImage,
@@ -144,11 +147,15 @@ func TestWorkingDirInit(t *testing.T) {
 			Args:            []string{"/workspace/bbb", "aaa", "zzz"},
 			WorkingDir:      pipeline.WorkspaceDir,
 			VolumeMounts:    implicitVolumeMounts,
-			SecurityContext: windowsSecurityContext,
+			SecurityContext: WindowsSecurityContext,
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			got := workingDirInit(images.WorkingDirInitImage, c.stepContainers, c.setSecurityContext, c.windows)
+			securityContextConfig := SecurityContextConfig{
+				SetSecurityContext:        c.setSecurityContext,
+				SetReadOnlyRootFilesystem: c.setSecurityContextReadOnlyRoot,
+			}
+			got := workingDirInit(images.WorkingDirInitImage, c.stepContainers, securityContextConfig, c.windows)
 			if d := cmp.Diff(c.want, got); d != "" {
 				t.Fatalf("Diff %s", diff.PrintWantGot(d))
 			}
