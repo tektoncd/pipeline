@@ -173,6 +173,78 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 		beforeCondition:  nil,
 		countWithReason:  false,
 	}, {
+		name: "for succeeded taskrun ref cluster task",
+		taskRun: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "taskrun-1", Namespace: "ns", Labels: map[string]string{
+				pipeline.PipelineTaskLabelKey: "task-1",
+			}},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{},
+			},
+			Status: v1.TaskRunStatus{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}},
+				},
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					StartTime:      &startTime,
+					CompletionTime: &completionTime,
+				},
+			},
+		},
+		metricName: "taskrun_duration_seconds",
+		expectedDurationTags: map[string]string{
+			"task":      "task-1",
+			"taskrun":   "taskrun-1",
+			"namespace": "ns",
+			"status":    "success",
+		},
+		expectedCountTags: map[string]string{
+			"status": "success",
+		},
+		expectedDuration: 60,
+		expectedCount:    1,
+		beforeCondition:  nil,
+		countWithReason:  false,
+	}, {
+		name: "for succeeded taskrun create by pipelinerun",
+		taskRun: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "taskrun-1", Namespace: "ns", Labels: map[string]string{
+				pipeline.ClusterTaskLabelKey: "task-1",
+			}},
+			Spec: v1.TaskRunSpec{
+				TaskRef: &v1.TaskRef{Kind: v1.ClusterTaskRefKind},
+			},
+			Status: v1.TaskRunStatus{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}},
+				},
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					StartTime:      &startTime,
+					CompletionTime: &completionTime,
+				},
+			},
+		},
+		metricName: "taskrun_duration_seconds",
+		expectedDurationTags: map[string]string{
+			"task":      "task-1",
+			"taskrun":   "taskrun-1",
+			"namespace": "ns",
+			"status":    "success",
+		},
+		expectedCountTags: map[string]string{
+			"status": "success",
+		},
+		expectedDuration: 60,
+		expectedCount:    1,
+		beforeCondition:  nil,
+		countWithReason:  false,
+	}, {
 		name: "for succeeded taskrun with before condition",
 		taskRun: &v1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "taskrun-1", Namespace: "ns"},
