@@ -451,7 +451,7 @@ func TestArrayReference(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		if d := cmp.Diff(tt.expectedResult, v1beta1.ArrayReference(tt.p)); d != "" {
-			t.Errorf(diff.PrintWantGot(d))
+			t.Error(diff.PrintWantGot(d))
 		}
 	}
 }
@@ -482,7 +482,7 @@ func TestArrayOrString(t *testing.T) {
 		}
 
 		if d := cmp.Diff(tt.expected, expected); d != "" {
-			t.Errorf(diff.PrintWantGot(d))
+			t.Error(diff.PrintWantGot(d))
 		}
 	}
 }
@@ -529,7 +529,7 @@ func TestExtractNames(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		if d := cmp.Diff(tt.want, v1beta1.Params.ExtractNames(tt.params)); d != "" {
-			t.Errorf(diff.PrintWantGot(d))
+			t.Error(diff.PrintWantGot(d))
 		}
 	}
 }
@@ -592,7 +592,7 @@ func TestParams_ReplaceVariables(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.ps.ReplaceVariables(tt.stringReplacements, tt.arrayReplacements, tt.objectReplacements)
 			if d := cmp.Diff(tt.want, got); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}

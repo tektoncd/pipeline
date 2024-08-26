@@ -201,7 +201,7 @@ func TestGetTaskData_ResolutionSuccess(t *testing.T) {
 	}
 
 	if d := cmp.Diff(sourceSpec, *resolvedSpec); d != "" {
-		t.Errorf(diff.PrintWantGot(d))
+		t.Error(diff.PrintWantGot(d))
 	}
 }
 
@@ -297,7 +297,7 @@ func TestGetTaskData_VerificationResult(t *testing.T) {
 		t.Fatalf("Did not expect error but got: %s", err)
 	}
 	if d := cmp.Diff(verificationResult, r.VerificationResult, cmpopts.EquateErrors()); d != "" {
-		t.Errorf(diff.PrintWantGot(d))
+		t.Error(diff.PrintWantGot(d))
 	}
 }
 

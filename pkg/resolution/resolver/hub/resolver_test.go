@@ -346,7 +346,7 @@ func TestResolveConstraint(t *testing.T) {
 					ret = tt.resultTask
 				}
 				output, _ := json.Marshal(ret)
-				fmt.Fprintf(w, string(output))
+				fmt.Fprint(w, string(output))
 			}))
 
 			resolver := &Resolver{
@@ -582,7 +582,7 @@ func TestResolve(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprintf(w, tc.input)
+				fmt.Fprint(w, tc.input)
 			}))
 
 			resolver := &Resolver{

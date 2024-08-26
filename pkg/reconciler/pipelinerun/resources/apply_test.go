@@ -3387,19 +3387,19 @@ func TestContext(t *testing.T) {
 			}
 			got := resources.ApplyContexts(&orig.Spec, orig.Name, tc.pr)
 			if d := cmp.Diff(tc.expected, got.Tasks[0].Params[0]); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 			if d := cmp.Diff(tc.expected, got.Finally[0].Params[0]); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 			if d := cmp.Diff(tc.expected, got.Tasks[0].Matrix.Params[0]); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 			if d := cmp.Diff(tc.expectedDisplayName, got.Tasks[0].DisplayName); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 			if d := cmp.Diff(tc.expectedDisplayName, got.Finally[0].DisplayName); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -3651,7 +3651,7 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			got := resources.ApplyPipelineTaskContexts(&tc.pt, tc.prstatus, tc.facts)
 			if d := cmp.Diff(&tc.want, got); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -3821,7 +3821,7 @@ func TestApplyFinallyResultsToPipelineResults(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			received, _ := resources.ApplyTaskResultsToPipelineResults(context.Background(), tc.results, tc.taskResults, tc.runResults, nil /* skippedTasks */)
 			if d := cmp.Diff(tc.expected, received); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -4157,7 +4157,7 @@ func TestApplyTaskResultsToPipelineResults_Success(t *testing.T) {
 				t.Errorf("Got unecpected error:%v", err)
 			}
 			if d := cmp.Diff(tc.expectedResults, received); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -4379,7 +4379,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 			}
 
 			if d := cmp.Diff(tc.expectedResults, received); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -4767,7 +4767,8 @@ func TestPropagateArtifacts(t *testing.T) {
 			expectedResolvedTask: &resources.ResolvedPipelineTask{
 				ResolvedTask: nil,
 			},
-		}, {
+		},
+		{
 			name: "not propagate artifact when taskSpec is nil",
 			resolvedTask: &resources.ResolvedPipelineTask{
 				ResolvedTask: &taskresources.ResolvedTask{
