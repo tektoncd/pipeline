@@ -109,7 +109,7 @@ func TestEmit(t *testing.T) {
 		recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
 		events.Emit(ctx, nil, after, object)
 		if err := k8sevent.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
-			t.Fatalf(err.Error())
+			t.Fatal(err.Error())
 		}
 		fakeClient.CheckCloudEventsUnordered(t, tc.name, tc.wantCloudEvents)
 	}

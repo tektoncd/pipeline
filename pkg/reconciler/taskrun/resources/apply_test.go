@@ -551,12 +551,14 @@ var (
 
 	arrayTaskRun0Elements = &v1.TaskRun{
 		Spec: v1.TaskRunSpec{
-			Params: []v1.Param{{
-				Name: "array-param",
-				Value: v1.ParamValue{
-					Type:     v1.ParamTypeArray,
-					ArrayVal: []string{},
-				}},
+			Params: []v1.Param{
+				{
+					Name: "array-param",
+					Value: v1.ParamValue{
+						Type:     v1.ParamTypeArray,
+						ArrayVal: []string{},
+					},
+				},
 			},
 		},
 	}
@@ -1101,13 +1103,15 @@ func TestApplyWorkspaces(t *testing.T) {
 						Name: "$(workspaces.myws.volume)",
 					},
 				},
-			}}, {
+			},
+		}, {
 			Name: "some-secret",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: "$(workspaces.myws.volume)",
 				},
-			}}, {
+			},
+		}, {
 			Name: "some-pvc",
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
@@ -1479,7 +1483,7 @@ func TestContext(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			got := resources.ApplyContexts(&tc.spec, tc.taskName, &tc.tr)
 			if d := cmp.Diff(&tc.want, got); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -1488,12 +1492,14 @@ func TestContext(t *testing.T) {
 func TestTaskResults(t *testing.T) {
 	names.TestingSeed()
 	ts := &v1.TaskSpec{
-		Results: []v1.TaskResult{{
-			Name:        "current.date.unix.timestamp",
-			Description: "The current date in unix timestamp format",
-		}, {
-			Name:        "current-date-human-readable",
-			Description: "The current date in humand readable format"},
+		Results: []v1.TaskResult{
+			{
+				Name:        "current.date.unix.timestamp",
+				Description: "The current date in unix timestamp format",
+			}, {
+				Name:        "current-date-human-readable",
+				Description: "The current date in humand readable format",
+			},
 		},
 		Steps: []v1.Step{{
 			Name:   "print-date-unix-timestamp",
@@ -1630,7 +1636,7 @@ func TestApplyCredentialsPath(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			got := resources.ApplyCredentialsPath(&tc.spec, tc.path)
 			if d := cmp.Diff(&tc.want, got); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -1788,10 +1794,11 @@ func TestApplyParametersToWorkspaceBindings(t *testing.T) {
 							},
 						},
 					},
-					Params: v1.Params{{Name: "secret-name", Value: v1.ParamValue{
-						Type:      v1.ParamTypeString,
-						StringVal: "secret-value",
-					}},
+					Params: v1.Params{
+						{Name: "secret-name", Value: v1.ParamValue{
+							Type:      v1.ParamTypeString,
+							StringVal: "secret-value",
+						}},
 					},
 				},
 			},
@@ -2021,14 +2028,15 @@ func TestApplyParametersToWorkspaceBindings(t *testing.T) {
 
 func TestArtifacts(t *testing.T) {
 	ts := &v1.TaskSpec{
-		Steps: []v1.Step{{
-			Name:  "name1",
-			Image: "bash:latest",
-			Args: []string{
-				"$(step.artifacts.path)",
+		Steps: []v1.Step{
+			{
+				Name:  "name1",
+				Image: "bash:latest",
+				Args: []string{
+					"$(step.artifacts.path)",
+				},
+				Script: "#!/usr/bin/env bash\n echo -n $(step.artifacts.path)",
 			},
-			Script: "#!/usr/bin/env bash\n echo -n $(step.artifacts.path)",
-		},
 		},
 	}
 

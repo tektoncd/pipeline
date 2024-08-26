@@ -2707,7 +2707,7 @@ spec:
 			prt.Test.Logf("Getting events")
 			// Check generated events match what's expected
 			if err := k8sevent.CheckEventsOrdered(prt.Test, prt.TestAssets.Recorder.Events, "test-pipeline-run-with-timeout", wantEvents); err != nil {
-				prt.Test.Errorf(err.Error())
+				prt.Test.Error(err.Error())
 			}
 
 			// The PipelineRun should be timed out.
@@ -3490,7 +3490,7 @@ spec:
 			}
 			err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, prName, wantEvents)
 			if err != nil {
-				t.Errorf(err.Error())
+				t.Error(err.Error())
 			}
 
 			// Turn off failing reactor and retry reconciliation
@@ -3608,7 +3608,7 @@ spec:
 	}
 	err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, prName, wantEvents)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err.Error())
 	}
 
 	// Turn off failing reactor and retry reconciliation
@@ -6835,7 +6835,7 @@ metadata:
 				t.Errorf("storePipelineSpec() error = %v", err)
 			}
 			if d := cmp.Diff(tc.wantPipelineRun, pr); d != "" {
-				t.Fatalf(diff.PrintWantGot(d))
+				t.Fatal(diff.PrintWantGot(d))
 			}
 
 			// mock second reconcile
@@ -6843,7 +6843,7 @@ metadata:
 				t.Errorf("storePipelineSpec() error = %v", err)
 			}
 			if d := cmp.Diff(tc.wantPipelineRun, pr); d != "" {
-				t.Fatalf(diff.PrintWantGot(d))
+				t.Fatal(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -6867,10 +6867,10 @@ func Test_storePipelineSpec_metadata(t *testing.T) {
 		t.Errorf("storePipelineSpecAndMergeMeta error = %v", err)
 	}
 	if d := cmp.Diff(wantedlabels, pr.ObjectMeta.Labels); d != "" {
-		t.Fatalf(diff.PrintWantGot(d))
+		t.Fatal(diff.PrintWantGot(d))
 	}
 	if d := cmp.Diff(wantedannotations, pr.ObjectMeta.Annotations); d != "" {
-		t.Fatalf(diff.PrintWantGot(d))
+		t.Fatal(diff.PrintWantGot(d))
 	}
 }
 
@@ -8370,7 +8370,7 @@ func (prt PipelineRunTest) reconcileRun(namespace, pipelineRunName string, wantE
 	// Check generated events match what's expected
 	if len(wantEvents) > 0 {
 		if err := k8sevent.CheckEventsOrdered(prt.Test, prt.TestAssets.Recorder.Events, pipelineRunName, wantEvents); err != nil {
-			prt.Test.Errorf(err.Error())
+			prt.Test.Error(err.Error())
 		}
 	}
 

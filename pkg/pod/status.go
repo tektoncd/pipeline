@@ -571,6 +571,7 @@ func extractExitCodeFromResults(results []result.RunResult) (*int32, error) {
 			if err != nil {
 				return nil, fmt.Errorf("could not parse int value %q in ExitCode field: %w", result.Value, err)
 			}
+			//nolint: gosec
 			exitCode := int32(i)
 			return &exitCode, nil
 		}
