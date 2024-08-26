@@ -80,7 +80,7 @@ func TestLookForResults_FanOutAndWait(t *testing.T) {
 			sort.Slice(wantResults, func(i int, j int) bool { return wantResults[i] < wantResults[j] })
 			sort.Slice(got.Bytes(), func(i int, j int) bool { return got.Bytes()[i] < got.Bytes()[j] })
 			if d := cmp.Diff(wantResults, got.Bytes()); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -143,7 +143,7 @@ func TestLookForResults(t *testing.T) {
 				t.Fatalf("Did not expect any error but got: %v", err)
 			}
 			if d := cmp.Diff(want, got.Bytes()); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -213,7 +213,7 @@ func TestLookForStepResults(t *testing.T) {
 				t.Fatalf("Did not expect any error but got: %v", err)
 			}
 			if d := cmp.Diff(want, got.Bytes()); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -285,27 +285,33 @@ func TestParseResults(t *testing.T) {
 			Name:  "result1",
 			Value: "foo",
 			Type:  "task",
-		}, {
+		},
+		{
 			Name:  "result2",
 			Value: `{"IMAGE_URL":"ar.com", "IMAGE_DIGEST":"sha234"}`,
 			Type:  "task",
-		}, {
+		},
+		{
 			Name:  "result3",
 			Value: `["hello","world"]`,
 			Type:  "task",
-		}, {
+		},
+		{
 			Name:  "step-foo.result1",
 			Value: "foo",
 			Type:  "step",
-		}, {
+		},
+		{
 			Name:  "step-foo.result2",
 			Value: `{"IMAGE_URL":"ar.com", "IMAGE_DIGEST":"sha234"}`,
 			Type:  "step",
-		}, {
+		},
+		{
 			Name:  "step-foo.result3",
 			Value: `["hello","world"]`,
 			Type:  "step",
-		}, {
+		},
+		{
 			Name: "step-artifacts-result",
 			Value: `{
             "inputs":[
@@ -605,7 +611,7 @@ func TestExtractStepAndResultFromSidecarResultName_Error(t *testing.T) {
 
 func TestLookForArtifacts(t *testing.T) {
 	base := basicArtifacts()
-	var modified = base.DeepCopy()
+	modified := base.DeepCopy()
 	modified.Outputs[0].Name = "tests"
 	type Arg struct {
 		stepName      string
@@ -626,7 +632,8 @@ func TestLookForArtifacts(t *testing.T) {
 				Type:  stepArtifactType,
 				Value: mustJSON(&base),
 			}},
-		}, {
+		},
+		{
 			desc: "two step produce artifacts, read success",
 			args: []Arg{{stepName: "first", artifacts: &base}, {stepName: "second", artifacts: modified}},
 			expected: []SidecarLogResult{{
@@ -707,7 +714,7 @@ func TestLookForArtifacts(t *testing.T) {
 			got := buf.String()
 
 			if d := cmp.Diff(want, got); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}

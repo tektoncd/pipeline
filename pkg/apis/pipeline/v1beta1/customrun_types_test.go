@@ -376,7 +376,7 @@ func TestRunGetTimeOut(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			result := tc.customRun.GetTimeout()
 			if d := cmp.Diff(tc.expectedValue, result); d != "" {
-				t.Fatalf(diff.PrintWantGot(d))
+				t.Fatal(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -399,7 +399,8 @@ func TestRunHasTimedOut(t *testing.T) {
 				CustomRunStatusFields: v1beta1.CustomRunStatusFields{
 					StartTime: &metav1.Time{Time: now},
 				},
-			}},
+			},
+		},
 		expectedValue: false,
 	}, {
 		name: "runWithStartTimeNoTimeout2",
@@ -409,7 +410,8 @@ func TestRunHasTimedOut(t *testing.T) {
 				CustomRunStatusFields: v1beta1.CustomRunStatusFields{
 					StartTime: &metav1.Time{Time: now.Add(-1 * (apisconfig.DefaultTimeoutMinutes + 1) * time.Minute)},
 				},
-			}},
+			},
+		},
 		expectedValue: true,
 	}, {
 		name: "runWithStartTimeAndTimeout",
@@ -418,7 +420,8 @@ func TestRunHasTimedOut(t *testing.T) {
 			Spec:     v1beta1.CustomRunSpec{Timeout: &metav1.Duration{Duration: 10 * time.Second}},
 			Status: v1beta1.CustomRunStatus{CustomRunStatusFields: v1beta1.CustomRunStatusFields{
 				StartTime: &metav1.Time{Time: now.Add(-1 * (apisconfig.DefaultTimeoutMinutes + 1) * time.Minute)},
-			}}},
+			}},
+		},
 		expectedValue: true,
 	}, {
 		name: "runWithNoStartTimeAndTimeout",
@@ -434,7 +437,8 @@ func TestRunHasTimedOut(t *testing.T) {
 			Spec:     v1beta1.CustomRunSpec{Timeout: &metav1.Duration{Duration: 10 * time.Second}},
 			Status: v1beta1.CustomRunStatus{CustomRunStatusFields: v1beta1.CustomRunStatusFields{
 				StartTime: &metav1.Time{Time: now},
-			}}},
+			}},
+		},
 		expectedValue: false,
 	}}
 
@@ -442,7 +446,7 @@ func TestRunHasTimedOut(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			result := tc.customRun.HasTimedOut(testClock)
 			if d := cmp.Diff(tc.expectedValue, result); d != "" {
-				t.Fatalf(diff.PrintWantGot(d))
+				t.Fatal(diff.PrintWantGot(d))
 			}
 		})
 	}

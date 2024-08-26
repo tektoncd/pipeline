@@ -92,9 +92,9 @@ func header(t *testing.T, text string) {
 	right := " ###"
 	txt := left + text + right
 	bar := strings.Repeat("#", len(txt))
-	t.Logf(bar)
-	t.Logf(txt)
-	t.Logf(bar)
+	t.Log(bar)
+	t.Log(txt)
+	t.Log(bar)
 }
 
 func tearDown(ctx context.Context, t *testing.T, cs *clients, namespace string) {

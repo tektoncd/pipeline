@@ -106,7 +106,7 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 			ceClient.CheckCloudEventsUnordered(t, tc.name, tc.wantCEvents)
 			recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
 			if err := k8sevent.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
-				t.Fatalf(err.Error())
+				t.Fatal(err.Error())
 			}
 		})
 	}
@@ -223,7 +223,7 @@ func TestEmitCloudEvents(t *testing.T) {
 		recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
 		cloudevent.EmitCloudEvents(ctx, object)
 		if err := k8sevent.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
-			t.Fatalf(err.Error())
+			t.Fatal(err.Error())
 		}
 		fakeClient.CheckCloudEventsUnordered(t, tc.name, tc.wantCloudEvents)
 	}
