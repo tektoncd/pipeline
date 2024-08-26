@@ -47,14 +47,15 @@ func TestSetTaskRunStatusBasedOnStepStatus(t *testing.T) {
 		ContainerStatuses []corev1.ContainerStatus
 	}{{
 		desc: "test result with large pipeline result",
-		ContainerStatuses: []corev1.ContainerStatus{{
-			Name: "step-bar-0",
-			State: corev1.ContainerState{
-				Terminated: &corev1.ContainerStateTerminated{
-					Message: `[{"key":"resultName","value":"resultValue", "type":1}, {"key":"digest","value":"sha256:1234","resourceName":"source-image"}]`,
+		ContainerStatuses: []corev1.ContainerStatus{
+			{
+				Name: "step-bar-0",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						Message: `[{"key":"resultName","value":"resultValue", "type":1}, {"key":"digest","value":"sha256:1234","resourceName":"source-image"}]`,
+					},
 				},
 			},
-		},
 			{
 				Name: "step-bar1",
 				State: corev1.ContainerState{
@@ -70,7 +71,8 @@ func TestSetTaskRunStatusBasedOnStepStatus(t *testing.T) {
 						Message: `[{"key":"resultName","value":"resultValue", "type":1}, {"key":"digest","value":"sha256:1234` + strings.Repeat("a", 3072) + `","resourceName":"source-image"}]`,
 					},
 				},
-			}},
+			},
+		},
 	}, {
 		desc: "The ExitCode in the result cannot modify the original ExitCode",
 		ContainerStatuses: []corev1.ContainerStatus{{
@@ -299,7 +301,8 @@ func TestMakeTaskRunStatus_StepResults(t *testing.T) {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							Message: `[{"key":"uri","value":"https://foo.bar\n","type":4}]`,
-						}},
+						},
+					},
 					Name:      "one",
 					Container: "step-one",
 					Results: []v1.TaskRunStepResult{{
@@ -363,7 +366,8 @@ func TestMakeTaskRunStatus_StepResults(t *testing.T) {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							Message: `[{"key":"array","value":"[\"hello\",\"world\"]","type":4}]`,
-						}},
+						},
+					},
 					Name:      "one",
 					Container: "step-one",
 					Results: []v1.TaskRunStepResult{{
@@ -430,7 +434,8 @@ func TestMakeTaskRunStatus_StepResults(t *testing.T) {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							Message: `[{"key":"digest","value":"sha256:1234","type":4},{"key":"resultName","value":"resultValue","type":4}]`,
-						}},
+						},
+					},
 					Name:      "one",
 					Container: "step-one",
 					Results: []v1.TaskRunStepResult{{
@@ -702,29 +707,32 @@ func TestMakeTaskRunStatus_StepArtifacts(t *testing.T) {
 						ContainerState: corev1.ContainerState{
 							Terminated: &corev1.ContainerStateTerminated{
 								Message: `[{"key":"/tekton/run/0/status/artifacts/provenance.json","value":"{\n  \"inputs\":[\n    {\n      \"name\":\"input-artifacts\",\n      \"values\":[\n        {\n          \"uri\":\"git:jjjsss\",\n          \"digest\":{\n            \"sha256\":\"b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0\"\n          }\n        }\n      ]\n    }\n  ],\n  \"outputs\":[\n    {\n      \"name\":\"build-results\",\n      \"values\":[\n        {\n          \"uri\":\"pkg:balba\",\n          \"digest\":{\n            \"sha256\":\"df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48\",\n            \"sha1\":\"95588b8f34c31eb7d62c92aaa4e6506639b06ef2\"\n          }\n        }\n      ]\n    }\n  ]\n}\n","type":5}]`,
-							}},
+							},
+						},
 						Name:      "one",
 						Container: "step-one",
 						Inputs: []v1.Artifact{
 							{
 								Name: "input-artifacts",
-								Values: []v1.ArtifactValue{{
-									Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"},
-									Uri:    "git:jjjsss",
-								},
+								Values: []v1.ArtifactValue{
+									{
+										Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"},
+										Uri:    "git:jjjsss",
+									},
 								},
 							},
 						},
 						Outputs: []v1.Artifact{
 							{
 								Name: "build-results",
-								Values: []v1.ArtifactValue{{
-									Digest: map[v1.Algorithm]string{
-										"sha1":   "95588b8f34c31eb7d62c92aaa4e6506639b06ef2",
-										"sha256": "df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48",
+								Values: []v1.ArtifactValue{
+									{
+										Digest: map[v1.Algorithm]string{
+											"sha1":   "95588b8f34c31eb7d62c92aaa4e6506639b06ef2",
+											"sha256": "df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48",
+										},
+										Uri: "pkg:balba",
 									},
-									Uri: "pkg:balba",
-								},
 								},
 							},
 						},
@@ -734,23 +742,25 @@ func TestMakeTaskRunStatus_StepArtifacts(t *testing.T) {
 						Inputs: []v1.Artifact{
 							{
 								Name: "input-artifacts",
-								Values: []v1.ArtifactValue{{
-									Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"},
-									Uri:    "git:jjjsss",
-								},
+								Values: []v1.ArtifactValue{
+									{
+										Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"},
+										Uri:    "git:jjjsss",
+									},
 								},
 							},
 						},
 						Outputs: []v1.Artifact{
 							{
 								Name: "build-results",
-								Values: []v1.ArtifactValue{{
-									Digest: map[v1.Algorithm]string{
-										"sha1":   "95588b8f34c31eb7d62c92aaa4e6506639b06ef2",
-										"sha256": "df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48",
+								Values: []v1.ArtifactValue{
+									{
+										Digest: map[v1.Algorithm]string{
+											"sha1":   "95588b8f34c31eb7d62c92aaa4e6506639b06ef2",
+											"sha256": "df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48",
+										},
+										Uri: "pkg:balba",
 									},
-									Uri: "pkg:balba",
-								},
 								},
 							},
 						},
@@ -838,7 +848,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							ExitCode: 123,
-						}},
+						},
+					},
 					Name:      "state-name",
 					Container: "step-state-name",
 				}},
@@ -872,7 +883,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							ExitCode: 123,
-						}},
+						},
+					},
 					Name:      "state-name",
 					Container: "step-state-name",
 					ImageID:   "image-id",
@@ -901,7 +913,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							ExitCode: 0,
-						}},
+						},
+					},
 					Name:      "step-push",
 					Container: "step-step-push",
 					ImageID:   "image-id",
@@ -960,7 +973,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							ExitCode: 123,
-						}},
+						},
+					},
 
 					Name:      "failure",
 					Container: "step-failure",
@@ -1008,7 +1022,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 						Terminated: &corev1.ContainerStateTerminated{
 							Reason:   "OOMKilled",
 							ExitCode: 0,
-						}},
+						},
+					},
 					Name:      "step-push",
 					Container: "step-step-push",
 					ImageID:   "image-id",
@@ -1284,7 +1299,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							Message: `[{"key":"digest","value":"sha256:12345","resourceName":"source-image"}]`,
-						}},
+						},
+					},
 					Name:      "foo",
 					Container: "step-foo",
 				}},
@@ -1313,7 +1329,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							Message: `[{"key":"digest","value":"sha256:1234","resourceName":"source-image"},{"key":"resultName","value":"resultValue","type":1}]`,
-						}},
+						},
+					},
 					Name:      "bar",
 					Container: "step-bar",
 				}},
@@ -1347,7 +1364,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							Message: `[{"key":"digest","value":"sha256:1234","resourceName":"source-image"},{"key":"resultName","value":"resultValue","type":1}]`,
-						}},
+						},
+					},
 					Name:      "banana",
 					Container: "step-banana",
 				}},
@@ -1388,14 +1406,16 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							Message: `[{"key":"resultNameOne","value":"resultValueOne","type":1},{"key":"resultNameTwo","value":"resultValueTwo","type":1}]`,
-						}},
+						},
+					},
 					Name:      "one",
 					Container: "step-one",
 				}, {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							Message: `[{"key":"resultNameOne","value":"resultValueThree","type":1},{"key":"resultNameTwo","value":"resultValueTwo","type":1}]`,
-						}},
+						},
+					},
 					Name:      "two",
 					Container: "step-two",
 				}},
@@ -1463,7 +1483,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			TaskRunStatusFields: v1.TaskRunStatusFields{
 				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
-						Terminated: &corev1.ContainerStateTerminated{}},
+						Terminated: &corev1.ContainerStateTerminated{},
+					},
 					Name:      "mango",
 					Container: "step-mango",
 				}},
@@ -1490,7 +1511,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			TaskRunStatusFields: v1.TaskRunStatusFields{
 				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
-						Terminated: &corev1.ContainerStateTerminated{}},
+						Terminated: &corev1.ContainerStateTerminated{},
+					},
 					Name:      "pineapple",
 					Container: "step-pineapple",
 				}},
@@ -1507,7 +1529,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Name: "step-pear",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
-						Message: `[{"key":"resultNameOne","value":"","type":3}, {"key":"resultNameThree","value":"","type":1}]`},
+						Message: `[{"key":"resultNameOne","value":"","type":3}, {"key":"resultNameThree","value":"","type":1}]`,
+					},
 				},
 			}},
 		},
@@ -1518,7 +1541,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							Message: `[{"key":"resultNameThree","value":"","type":1}]`,
-						}},
+						},
+					},
 					Name:      "pear",
 					Container: "step-pear",
 				}},
@@ -1552,7 +1576,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							Message: `[{"key":"resultNameThree","value":"","type":1}]`,
-						}},
+						},
+					},
 					Name:      "pear",
 					Container: "step-pear",
 				}},
@@ -1626,22 +1651,26 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Container: "step-first",
 				}, {
 					ContainerState: corev1.ContainerState{
-						Terminated: &corev1.ContainerStateTerminated{}},
+						Terminated: &corev1.ContainerStateTerminated{},
+					},
 					Name:      "second",
 					Container: "step-second",
 				}, {
 					ContainerState: corev1.ContainerState{
-						Terminated: &corev1.ContainerStateTerminated{}},
+						Terminated: &corev1.ContainerStateTerminated{},
+					},
 					Name:      "third",
 					Container: "step-third",
 				}, {
 					ContainerState: corev1.ContainerState{
-						Terminated: &corev1.ContainerStateTerminated{}},
+						Terminated: &corev1.ContainerStateTerminated{},
+					},
 					Name:      "",
 					Container: "step-",
 				}, {
 					ContainerState: corev1.ContainerState{
-						Terminated: &corev1.ContainerStateTerminated{}},
+						Terminated: &corev1.ContainerStateTerminated{},
+					},
 					Name:      "fourth",
 					Container: "step-fourth",
 				}},
@@ -1696,7 +1725,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							ExitCode: 0,
-						}},
+						},
+					},
 					Name:      "second",
 					Container: "step-second",
 				}},
@@ -1768,7 +1798,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					State: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							ExitCode: 1,
-						}},
+						},
+					},
 				}},
 				ContainerStatuses: []corev1.ContainerStatus{{
 					Name:    "step-A",
@@ -1817,15 +1848,17 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Phase:   corev1.PodFailed,
 				Reason:  "Evicted",
 				Message: `Usage of EmptyDir volume "ws-b6dfk" exceeds the limit "10Gi".`,
-				ContainerStatuses: []corev1.ContainerStatus{{
-					Name: "step-A",
-					State: corev1.ContainerState{
-						Terminated: &corev1.ContainerStateTerminated{
-							ExitCode: 137,
+				ContainerStatuses: []corev1.ContainerStatus{
+					{
+						Name: "step-A",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 137,
+							},
 						},
 					},
 				},
-				}},
+			},
 		},
 		want: v1.TaskRunStatus{
 			Status: statusFailure(v1.TaskRunReasonFailed.String(), "Usage of EmptyDir volume \"ws-b6dfk\" exceeds the limit \"10Gi\"."),
@@ -1834,7 +1867,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							ExitCode: 137,
-						}},
+						},
+					},
 					Name:      "A",
 					Container: "step-A",
 				}},
@@ -2130,7 +2164,8 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							Message: `[{"key":"digest","value":"sha256:1234","resourceName":"source-image"},{"key":"resultName","value":"","type":1}]`,
-						}},
+						},
+					},
 					Name:      "bar",
 					Container: "step-bar",
 				}},
@@ -2172,7 +2207,8 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							Message: `[{"key":"digest","value":"sha256:1234","resourceName":"source-image"},{"key":"resultName","value":"hello","type":1}]`,
-						}},
+						},
+					},
 					Name:      "bar",
 					Container: "step-bar",
 				}},
@@ -2214,7 +2250,8 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							Message: `[{"key":"digest","value":"sha256:1234","resourceName":"source-image"},{"key":"resultName","value":"[\"hello\",\"world\"]","type":1}]`,
-						}},
+						},
+					},
 					Name:      "bar",
 					Container: "step-bar",
 				}},
@@ -2256,7 +2293,8 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							Message: `[{"key":"digest","value":"sha256:1234","resourceName":"source-image"},{"key":"resultName","value":"{\"hello\":\"world\"}","type":1}]`,
-						}},
+						},
+					},
 					Name:      "bar",
 					Container: "step-bar",
 				}},
@@ -2302,7 +2340,8 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							Message: `[{"key":"resultName","value":"{\"hello\":\"world\"}","type":1},{"key":"resultName2","value":"[\"hello\",\"world\"]","type":1}]`,
-						}},
+						},
+					},
 					Name:      "bar",
 					Container: "step-bar",
 				}},
@@ -2436,28 +2475,32 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 1,
 						Message:  "this is a non-json termination message. dont panic!",
-					}},
+					},
+				},
 				Name:      "non-json",
 				Container: "step-non-json",
 				Results:   []v1.TaskRunResult{},
 				ImageID:   "image",
 			}, {
 				ContainerState: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{}},
+					Terminated: &corev1.ContainerStateTerminated{},
+				},
 				Name:      "after-non-json",
 				Container: "step-after-non-json",
 				Results:   []v1.TaskRunResult{},
 				ImageID:   "image",
 			}, {
 				ContainerState: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{}},
+					Terminated: &corev1.ContainerStateTerminated{},
+				},
 				Name:      "this-step-might-panic",
 				Container: "step-this-step-might-panic",
 				Results:   []v1.TaskRunResult{},
 				ImageID:   "image",
 			}, {
 				ContainerState: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{}},
+					Terminated: &corev1.ContainerStateTerminated{},
+				},
 				Name:      "foo",
 				Container: "step-foo",
 				Results:   []v1.TaskRunResult{},
@@ -2654,10 +2697,12 @@ func TestIsPodArchived(t *testing.T) {
 	}, {
 		name:    "Pod is in the retriesStatus",
 		podName: "pod",
-		retriesStatus: []v1.TaskRunStatus{{
-			TaskRunStatusFields: v1.TaskRunStatusFields{
-				PodName: "pod",
-			}},
+		retriesStatus: []v1.TaskRunStatus{
+			{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					PodName: "pod",
+				},
+			},
 		},
 		want: true,
 	}} {
@@ -2806,7 +2851,7 @@ func TestGetStepResultsFromSidecarLogs(t *testing.T) {
 		t.Errorf("did not expect an error but got: %v", err)
 	}
 	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf(diff.PrintWantGot(d))
+		t.Error(diff.PrintWantGot(d))
 	}
 }
 
@@ -2821,7 +2866,7 @@ func TestGetStepResultsFromSidecarLogs_Error(t *testing.T) {
 	_, err := getStepResultsFromSidecarLogs(sidecarLogResults, stepName)
 	wantErr := fmt.Errorf("invalid string %s-%s : expected somtthing that looks like <stepName>.<resultName>", stepName, resultName)
 	if d := cmp.Diff(wantErr.Error(), err.Error()); d != "" {
-		t.Errorf(diff.PrintWantGot(d))
+		t.Error(diff.PrintWantGot(d))
 	}
 }
 
@@ -3045,6 +3090,6 @@ func TestGetTaskResultsFromSidecarLogs(t *testing.T) {
 	}}
 	got := getTaskResultsFromSidecarLogs(sidecarLogResults)
 	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf(diff.PrintWantGot(d))
+		t.Error(diff.PrintWantGot(d))
 	}
 }

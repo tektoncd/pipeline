@@ -29,32 +29,38 @@ func TestRunResult_UnmarshalJSON(t *testing.T) {
 		name string
 		data string
 		pr   RunResult
-	}{{
-		name: "type defined as string - TaskRunResult",
-		data: "{\"key\":\"resultName\",\"value\":\"resultValue\", \"type\": \"TaskRunResult\"}",
-		pr:   RunResult{Key: "resultName", Value: "resultValue", ResultType: TaskRunResultType},
-	}, {
-		name: "type defined as string - StepResult",
-		data: "{\"key\":\"resultName\",\"value\":\"resultValue\", \"type\": \"StepResult\"}",
-		pr:   RunResult{Key: "resultName", Value: "resultValue", ResultType: StepResultType},
-	},
+	}{
+		{
+			name: "type defined as string - TaskRunResult",
+			data: "{\"key\":\"resultName\",\"value\":\"resultValue\", \"type\": \"TaskRunResult\"}",
+			pr:   RunResult{Key: "resultName", Value: "resultValue", ResultType: TaskRunResultType},
+		},
+		{
+			name: "type defined as string - StepResult",
+			data: "{\"key\":\"resultName\",\"value\":\"resultValue\", \"type\": \"StepResult\"}",
+			pr:   RunResult{Key: "resultName", Value: "resultValue", ResultType: StepResultType},
+		},
 		{
 			name: "type defined as string - InternalTektonResult",
 			data: "{\"key\":\"resultName\",\"value\":\"\", \"type\": \"InternalTektonResult\"}",
 			pr:   RunResult{Key: "resultName", Value: "", ResultType: InternalTektonResultType},
-		}, {
+		},
+		{
 			name: "type defined as string - StepArtifactsResultType",
 			data: "{\"key\":\"resultName\",\"value\":\"\", \"type\": \"StepArtifactsResult\"}",
 			pr:   RunResult{Key: "resultName", Value: "", ResultType: StepArtifactsResultType},
-		}, {
+		},
+		{
 			name: "type defined as string - TaskRunArtifactResult",
 			data: "{\"key\":\"resultName\",\"value\":\"\", \"type\": \"TaskRunArtifactsResult\"}",
 			pr:   RunResult{Key: "resultName", Value: "", ResultType: TaskRunArtifactsResultType},
-		}, {
+		},
+		{
 			name: "type defined as int",
 			data: "{\"key\":\"resultName\",\"value\":\"\", \"type\": 1}",
 			pr:   RunResult{Key: "resultName", Value: "", ResultType: TaskRunResultType},
-		}}
+		},
+	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -63,7 +69,7 @@ func TestRunResult_UnmarshalJSON(t *testing.T) {
 				t.Errorf("Unexpected error when unmarshalling the json into RunResult")
 			}
 			if d := cmp.Diff(tc.pr, pipRes); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}

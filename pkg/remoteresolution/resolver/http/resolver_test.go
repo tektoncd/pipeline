@@ -155,7 +155,7 @@ func TestResolve(t *testing.T) {
 				if tc.expectedStatus != 0 {
 					w.WriteHeader(tc.expectedStatus)
 				}
-				fmt.Fprintf(w, tc.input)
+				fmt.Fprint(w, tc.input)
 			}))
 			params := []pipelinev1.Param{}
 			if tc.paramSet {
@@ -328,7 +328,7 @@ func TestResolverReconcileBasicAuth(t *testing.T) {
 			resolver := &Resolver{}
 			ctx, _ := ttesting.SetupFakeContext(t)
 			svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprintf(w, tt.taskContent)
+				fmt.Fprint(w, tt.taskContent)
 			}))
 			p := tt.params
 			if p == nil {
