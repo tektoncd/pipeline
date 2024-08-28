@@ -311,7 +311,8 @@ func TestMakeTaskRunStatus_StepResults(t *testing.T) {
 						Value: *v1.NewStructuredValues("https://foo.bar\n"),
 					}},
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				Results: []v1.TaskRunResult{{
 					Name:  "task-result",
 					Type:  v1.ResultsTypeString,
@@ -376,7 +377,8 @@ func TestMakeTaskRunStatus_StepResults(t *testing.T) {
 						Value: *v1.NewStructuredValues("hello", "world"),
 					}},
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				Results: []v1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1.ResultsTypeArray,
@@ -448,7 +450,8 @@ func TestMakeTaskRunStatus_StepResults(t *testing.T) {
 						Value: *v1.NewStructuredValues("resultValue"),
 					}},
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				Results: []v1.TaskRunResult{{
 					Name:  "resultDigest",
 					Type:  v1.ResultsTypeString,
@@ -553,7 +556,8 @@ func TestMakeTaskRunStatus_StepProvenance(t *testing.T) {
 						Digest: map[string]string{"sha256": "digest"},
 					}},
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -624,7 +628,8 @@ func TestMakeTaskRunStatus_StepProvenance(t *testing.T) {
 					Container: "step-two",
 					Results:   []v1.TaskRunResult{},
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -738,7 +743,7 @@ func TestMakeTaskRunStatus_StepArtifacts(t *testing.T) {
 						},
 						Results: []v1.TaskRunResult{},
 					}},
-					Artifacts: v1.Artifacts{
+					Artifacts: &v1.Artifacts{
 						Inputs: []v1.Artifact{
 							{
 								Name: "input-artifacts",
@@ -853,7 +858,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Name:      "state-name",
 					Container: "step-state-name",
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -891,7 +897,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Container: "step-state-name",
 					ImageID:   "image-id",
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -923,7 +930,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Container: "step-step-push",
 					ImageID:   "image-id",
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -984,7 +992,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Container: "step-failure",
 					ImageID:   "image-id",
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -998,7 +1007,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 		want: v1.TaskRunStatus{
 			Status: statusFailure(v1.TaskRunReasonFailed.String(), "boom"),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -1032,7 +1042,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Container: "step-step-push",
 					ImageID:   "image-id",
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -1043,7 +1054,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 		want: v1.TaskRunStatus{
 			Status: statusFailure(v1.TaskRunReasonFailed.String(), "build failed for unspecified reasons."),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -1146,7 +1158,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 		want: v1.TaskRunStatus{
 			Status: statusFailure(ReasonCreateContainerConfigError, "Failed to create pod due to config error"),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 			},
 		},
 	}, {
@@ -1308,7 +1321,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Name:      "foo",
 					Container: "step-foo",
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -1338,7 +1352,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Name:      "bar",
 					Container: "step-bar",
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				Results: []v1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1.ResultsTypeString,
@@ -1373,7 +1388,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Name:      "banana",
 					Container: "step-banana",
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				Results: []v1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1.ResultsTypeString,
@@ -1423,7 +1439,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Name:      "two",
 					Container: "step-two",
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				Results: []v1.TaskRunResult{{
 					Name:  "resultNameOne",
 					Type:  v1.ResultsTypeString,
@@ -1463,6 +1480,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Container: "step-task-result",
 				}},
 				Sidecars:       []v1.SidecarState{},
+				Artifacts:      &v1.Artifacts{},
 				CompletionTime: &metav1.Time{Time: time.Now()},
 				Results: []v1.TaskRunResult{{
 					Name:  "resultName",
@@ -1492,7 +1510,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Name:      "mango",
 					Container: "step-mango",
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -1520,7 +1539,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Name:      "pineapple",
 					Container: "step-pineapple",
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -1550,7 +1570,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Name:      "pear",
 					Container: "step-pear",
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				Results: []v1.TaskRunResult{{
 					Name:  "resultNameThree",
 					Type:  v1.ResultsTypeString,
@@ -1585,7 +1606,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Name:      "pear",
 					Container: "step-pear",
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				Results: []v1.TaskRunResult{{
 					Name:  "resultNameThree",
 					Type:  v1.ResultsTypeString,
@@ -1678,7 +1700,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Name:      "fourth",
 					Container: "step-fourth",
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -1734,7 +1757,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Name:      "second",
 					Container: "step-second",
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -1830,6 +1854,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ImageID:   "image-id-A",
 				}},
 				Sidecars:       []v1.SidecarState{},
+				Artifacts:      &v1.Artifacts{},
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
 		},
@@ -1877,6 +1902,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Container: "step-A",
 				}},
 				Sidecars:       []v1.SidecarState{},
+				Artifacts:      &v1.Artifacts{},
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
 		},
@@ -2173,7 +2199,8 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					Name:      "bar",
 					Container: "step-bar",
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				Results: []v1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1.ResultsTypeString,
@@ -2216,7 +2243,8 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					Name:      "bar",
 					Container: "step-bar",
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				Results: []v1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1.ResultsTypeString,
@@ -2259,7 +2287,8 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					Name:      "bar",
 					Container: "step-bar",
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				Results: []v1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1.ResultsTypeArray,
@@ -2302,7 +2331,8 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					Name:      "bar",
 					Container: "step-bar",
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				Results: []v1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1.ResultsTypeObject,
@@ -2349,7 +2379,8 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					Name:      "bar",
 					Container: "step-bar",
 				}},
-				Sidecars: []v1.SidecarState{},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
 				Results: []v1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1.ResultsTypeString,
@@ -2510,7 +2541,8 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 				Results:   []v1.TaskRunResult{},
 				ImageID:   "image",
 			}},
-			Sidecars: []v1.SidecarState{},
+			Sidecars:  []v1.SidecarState{},
+			Artifacts: &v1.Artifacts{},
 			// We don't actually care about the time, just that it's not nil
 			CompletionTime: &metav1.Time{Time: time.Now()},
 		},

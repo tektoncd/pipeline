@@ -215,6 +215,7 @@ spec:
         script: echo Hello World!
 status:
    podName: propagated-parameters-fully-echo-hello-pod
+   artifacts: {}
    steps:
      - name: echo
        container: step-echo
@@ -236,6 +237,7 @@ spec:
         image: mirror.gcr.io/ubuntu
         script: echo Hello World!
 status:
+   artifacts: {}
    podName: propagated-parameters-fully-echo-hello-finally-pod
    steps:
      - name: echo
@@ -320,6 +322,7 @@ spec:
         image: mirror.gcr.io/ubuntu
         script: echo Hello World!
 status:
+  artifacts: {}
   podName: propagated-parameters-task-level-echo-hello-pod
   steps:
     - name: echo
@@ -408,6 +411,7 @@ spec:
         image: mirror.gcr.io/ubuntu
         script: echo Hello World!
 status:
+  artifacts: {}
   podName: propagated-parameters-default-task-level-echo-hello-pod
   steps:
     - name: echo

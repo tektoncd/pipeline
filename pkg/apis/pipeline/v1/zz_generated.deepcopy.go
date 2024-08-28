@@ -1939,7 +1939,11 @@ func (in *TaskRunStatusFields) DeepCopyInto(out *TaskRunStatusFields) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	in.Artifacts.DeepCopyInto(&out.Artifacts)
+	if in.Artifacts != nil {
+		in, out := &in.Artifacts, &out.Artifacts
+		*out = new(Artifacts)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Sidecars != nil {
 		in, out := &in.Sidecars, &out.Sidecars
 		*out = make([]SidecarState, len(*in))

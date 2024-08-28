@@ -450,24 +450,26 @@ func PropagateArtifacts(rpt *ResolvedPipelineTask, runStates PipelineRunState) e
 	}
 	stringReplacements := map[string]string{}
 	for taskName, artifacts := range runStates.GetTaskRunsArtifacts() {
-		for i, input := range artifacts.Inputs {
-			ib, err := json.Marshal(input.Values)
-			if err != nil {
-				return err
+		if artifacts != nil {
+			for i, input := range artifacts.Inputs {
+				ib, err := json.Marshal(input.Values)
+				if err != nil {
+					return err
+				}
+				stringReplacements[fmt.Sprintf("tasks.%s.inputs.%s", taskName, input.Name)] = string(ib)
+				if i == 0 {
+					stringReplacements[fmt.Sprintf("tasks.%s.inputs", taskName)] = string(ib)
+				}
 			}
-			stringReplacements[fmt.Sprintf("tasks.%s.inputs.%s", taskName, input.Name)] = string(ib)
-			if i == 0 {
-				stringReplacements[fmt.Sprintf("tasks.%s.inputs", taskName)] = string(ib)
-			}
-		}
-		for i, output := range artifacts.Outputs {
-			ob, err := json.Marshal(output.Values)
-			if err != nil {
-				return err
-			}
-			stringReplacements[fmt.Sprintf("tasks.%s.outputs.%s", taskName, output.Name)] = string(ob)
-			if i == 0 {
-				stringReplacements[fmt.Sprintf("tasks.%s.outputs", taskName)] = string(ob)
+			for i, output := range artifacts.Outputs {
+				ob, err := json.Marshal(output.Values)
+				if err != nil {
+					return err
+				}
+				stringReplacements[fmt.Sprintf("tasks.%s.outputs.%s", taskName, output.Name)] = string(ob)
+				if i == 0 {
+					stringReplacements[fmt.Sprintf("tasks.%s.outputs", taskName)] = string(ob)
+				}
 			}
 		}
 	}
