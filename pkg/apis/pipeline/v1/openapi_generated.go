@@ -4239,7 +4239,6 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatus(ref common.ReferenceCallback) com
 						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Artifacts are the list of artifacts written out by the task's containers",
-							Default:     map[string]interface{}{},
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifacts"),
 						},
 					},
@@ -4391,7 +4390,6 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatusFields(ref common.ReferenceCallbac
 						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Artifacts are the list of artifacts written out by the task's containers",
-							Default:     map[string]interface{}{},
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifacts"),
 						},
 					},

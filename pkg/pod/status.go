@@ -260,7 +260,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 			logger.Errorf("Failed to set artifacts value from sidecar logs: %v", err)
 			merr = multierror.Append(merr, err)
 		} else {
-			trs.Artifacts = tras
+			trs.Artifacts = &tras
 		}
 	}
 
@@ -343,8 +343,8 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 						logger.Errorf("error setting step artifacts in taskrun %q: %v", tr.Name, err)
 						merr = multierror.Append(merr, err)
 					}
-					trs.Artifacts.Merge(tras)
-					trs.Artifacts.Merge(sas)
+					trs.Artifacts.Merge(&tras)
+					trs.Artifacts.Merge(&sas)
 				}
 				msg, err = createMessageFromResults(filteredResults)
 				if err != nil {

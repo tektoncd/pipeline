@@ -176,8 +176,8 @@ func (state PipelineRunState) GetTaskRunsResults() map[string][]v1.TaskRunResult
 
 // GetTaskRunsArtifacts returns a map of all successfully completed TaskRuns in the state, with the pipeline task name as
 // the key and the artifacts from the corresponding TaskRun as the value. It only includes tasks which have completed successfully.
-func (state PipelineRunState) GetTaskRunsArtifacts() map[string]v1.Artifacts {
-	results := make(map[string]v1.Artifacts)
+func (state PipelineRunState) GetTaskRunsArtifacts() map[string]*v1.Artifacts {
+	results := make(map[string]*v1.Artifacts)
 	for _, rpt := range state {
 		if rpt.IsCustomTask() {
 			continue
@@ -190,7 +190,7 @@ func (state PipelineRunState) GetTaskRunsArtifacts() map[string]v1.Artifacts {
 			for _, tr := range rpt.TaskRuns {
 				ars.Merge(tr.Status.Artifacts)
 			}
-			results[rpt.PipelineTask.Name] = ars
+			results[rpt.PipelineTask.Name] = &ars
 		} else {
 			results[rpt.PipelineTask.Name] = rpt.TaskRuns[0].Status.Artifacts
 		}

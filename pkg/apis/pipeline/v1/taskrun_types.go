@@ -300,7 +300,7 @@ type TaskRunStatusFields struct {
 	// Artifacts are the list of artifacts written out by the task's containers
 	// +optional
 	// +listType=atomic
-	Artifacts Artifacts `json:"artifacts,omitempty"`
+	Artifacts *Artifacts `json:"artifacts,omitempty"`
 
 	// The list has one entry per sidecar in the manifest. Each entry is
 	// represents the imageid of the corresponding sidecar.

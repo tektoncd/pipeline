@@ -362,6 +362,7 @@ spec:
       name: add-map-uid
   timeout: 1h0m0s
 status:
+  artifacts: {}
   podName: propagated-all-type-results-make-uid-pod
   results:
   - name: strUid
@@ -453,6 +454,7 @@ spec:
       name: show-map-uid
   timeout: 1h0m0s
 status:
+  artifacts: {}
   podName: propagated-all-type-results-show-uid-pod
   steps:
   - container: step-show-str-uid
