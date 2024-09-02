@@ -206,6 +206,9 @@ spec:
 				Reason:  "Succeeded",
 				Message: "All Steps have completed executing",
 			}}},
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Artifacts: &v1.Artifacts{},
+			},
 		},
 	}, {
 		ObjectMeta: metav1.ObjectMeta{
@@ -235,6 +238,9 @@ spec:
 				Reason:  "Succeeded",
 				Message: "All Steps have completed executing",
 			}}},
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Artifacts: &v1.Artifacts{},
+			},
 		},
 	}, {
 		ObjectMeta: metav1.ObjectMeta{
@@ -261,6 +267,9 @@ spec:
 				Reason:  "Succeeded",
 				Message: "All Steps have completed executing",
 			}}},
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Artifacts: &v1.Artifacts{},
+			},
 		},
 	}, {
 		ObjectMeta: metav1.ObjectMeta{
@@ -287,6 +296,9 @@ spec:
 				Reason:  "Succeeded",
 				Message: "All Steps have completed executing",
 			}}},
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Artifacts: &v1.Artifacts{},
+			},
 		},
 	}, {
 		ObjectMeta: metav1.ObjectMeta{
@@ -307,6 +319,9 @@ spec:
 				Reason:  "Succeeded",
 				Message: "All Steps have completed executing",
 			}}},
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Artifacts: &v1.Artifacts{},
+			},
 		},
 	}, {
 		ObjectMeta: metav1.ObjectMeta{
@@ -323,6 +338,7 @@ spec:
 					Type:  "array",
 					Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"linux/amd64", "linux/ppc64le"}},
 				}},
+				Artifacts: &v1.Artifacts{},
 			},
 			Status: duckv1.Status{Conditions: []apis.Condition{{
 				Type:    apis.ConditionSucceeded,
@@ -346,6 +362,7 @@ spec:
 					Type:  "array",
 					Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"go1.17", "go1.18.1"}},
 				}},
+				Artifacts: &v1.Artifacts{},
 			},
 			Status: duckv1.Status{Conditions: []apis.Condition{{
 				Type:    apis.ConditionSucceeded,

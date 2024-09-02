@@ -437,6 +437,7 @@ status:
   sidecars:
     - name: tekton-log-results
       container: sidecar-tekton-log-results
+  artifacts: {}
 `, namespace, strings.Repeat("a", 2000), strings.Repeat("b", 2000), strings.Repeat("a", 2000), strings.Repeat("b", 2000), strings.Repeat("a", 2000), strings.Repeat("b", 2000)))
 	taskRun2 := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
@@ -490,6 +491,7 @@ status:
   sidecars:
     - name: tekton-log-results
       container: sidecar-tekton-log-results
+  artifacts: {}
 `, namespace, strings.Repeat("d", 2000), strings.Repeat("c", 2000), strings.Repeat("d", 2000), strings.Repeat("c", 2000), strings.Repeat("d", 2000)))
 	taskRun3 := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
@@ -552,6 +554,7 @@ status:
   sidecars:
     - name: tekton-log-results
       container: sidecar-tekton-log-results
+  artifacts: {}
 `, namespace, strings.Repeat("a", 2000), strings.Repeat("d", 2000), strings.Repeat("a", 2000), strings.Repeat("d", 2000), strings.Repeat("a", 2000), strings.Repeat("d", 2000)))
 	taskRun4 := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
@@ -604,6 +607,7 @@ status:
   sidecars:
     - name: tekton-log-results
       container: sidecar-tekton-log-results
+  artifacts: {}
 `, namespace, strings.Repeat("e", 2000), strings.Repeat("f", 2000), strings.Repeat("e", 2000), strings.Repeat("f", 2000), strings.Repeat("e", 2000), strings.Repeat("f", 2000)))
 	return pipelineRun, expectedPipelineRun, []*v1.TaskRun{taskRun1, taskRun2, taskRun3, taskRun4}
 }

@@ -4813,7 +4813,7 @@ func TestPropagateArtifacts(t *testing.T) {
 									},
 								},
 								TaskRunStatusFields: v1.TaskRunStatusFields{
-									Artifacts: v1.Artifacts{
+									Artifacts: &v1.Artifacts{
 										Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
 										Outputs: nil,
 									},
@@ -4869,7 +4869,7 @@ func TestPropagateArtifacts(t *testing.T) {
 									},
 								},
 								TaskRunStatusFields: v1.TaskRunStatusFields{
-									Artifacts: v1.Artifacts{
+									Artifacts: &v1.Artifacts{
 										Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
 										Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
 									},

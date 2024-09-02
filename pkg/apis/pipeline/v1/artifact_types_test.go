@@ -182,7 +182,7 @@ func TestArtifactsMerge(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.a1.Merge(tc.a2)
+			tc.a1.Merge(&tc.a2)
 			got := tc.a1
 			if d := cmp.Diff(tc.expected, got, cmpopts.SortSlices(func(a, b Artifact) bool { return a.Name > b.Name })); d != "" {
 				t.Errorf("TestArtifactsMerge() did not produce expected artifacts for test %s: %s", tc.name, diff.PrintWantGot(d))

@@ -52,29 +52,30 @@ type Artifacts struct {
 	Outputs []Artifact `json:"outputs,omitempty"`
 }
 
-func (a *Artifacts) Merge(another Artifacts) {
+func (a *Artifacts) Merge(another *Artifacts) {
 	inputMap := make(map[string][]ArtifactValue)
 	var newInputs []Artifact
 
 	for _, v := range a.Inputs {
 		inputMap[v.Name] = v.Values
 	}
-
-	for _, v := range another.Inputs {
-		_, ok := inputMap[v.Name]
-		if !ok {
-			inputMap[v.Name] = []ArtifactValue{}
-		}
-		for _, vv := range v.Values {
-			exists := false
-			for _, av := range inputMap[v.Name] {
-				if cmp.Equal(vv, av) {
-					exists = true
-					break
-				}
+	if another != nil {
+		for _, v := range another.Inputs {
+			_, ok := inputMap[v.Name]
+			if !ok {
+				inputMap[v.Name] = []ArtifactValue{}
 			}
-			if !exists {
-				inputMap[v.Name] = append(inputMap[v.Name], vv)
+			for _, vv := range v.Values {
+				exists := false
+				for _, av := range inputMap[v.Name] {
+					if cmp.Equal(vv, av) {
+						exists = true
+						break
+					}
+				}
+				if !exists {
+					inputMap[v.Name] = append(inputMap[v.Name], vv)
+				}
 			}
 		}
 	}
@@ -92,30 +93,32 @@ func (a *Artifacts) Merge(another Artifacts) {
 		outputMap[v.Name] = v
 	}
 
-	for _, v := range another.Outputs {
-		_, ok := outputMap[v.Name]
-		if !ok {
-			outputMap[v.Name] = Artifact{Name: v.Name, Values: []ArtifactValue{}, BuildOutput: v.BuildOutput}
-		}
-		// only update buildOutput to true.
-		// Do not convert to false if it was true before.
-		if v.BuildOutput {
-			art := outputMap[v.Name]
-			art.BuildOutput = v.BuildOutput
-			outputMap[v.Name] = art
-		}
-		for _, vv := range v.Values {
-			exists := false
-			for _, av := range outputMap[v.Name].Values {
-				if cmp.Equal(vv, av) {
-					exists = true
-					break
-				}
+	if another != nil {
+		for _, v := range another.Outputs {
+			_, ok := outputMap[v.Name]
+			if !ok {
+				outputMap[v.Name] = Artifact{Name: v.Name, Values: []ArtifactValue{}, BuildOutput: v.BuildOutput}
 			}
-			if !exists {
+			// only update buildOutput to true.
+			// Do not convert to false if it was true before.
+			if v.BuildOutput {
 				art := outputMap[v.Name]
-				art.Values = append(art.Values, vv)
+				art.BuildOutput = v.BuildOutput
 				outputMap[v.Name] = art
+			}
+			for _, vv := range v.Values {
+				exists := false
+				for _, av := range outputMap[v.Name].Values {
+					if cmp.Equal(vv, av) {
+						exists = true
+						break
+					}
+				}
+				if !exists {
+					art := outputMap[v.Name]
+					art.Values = append(art.Values, vv)
+					outputMap[v.Name] = art
+				}
 			}
 		}
 	}

@@ -35,7 +35,7 @@ import (
 var (
 	filterLabels                   = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "Labels")
 	filterAnnotations              = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "Annotations")
-	filterV1TaskRunStatus          = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "StartTime", "CompletionTime")
+	filterV1TaskRunStatus          = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "StartTime", "CompletionTime", "Artifacts")
 	filterV1PipelineRunStatus      = cmpopts.IgnoreFields(v1.PipelineRunStatusFields{}, "StartTime", "CompletionTime")
 	filterV1beta1TaskRunStatus     = cmpopts.IgnoreFields(v1beta1.TaskRunStatusFields{}, "StartTime", "CompletionTime")
 	filterV1beta1PipelineRunStatus = cmpopts.IgnoreFields(v1beta1.PipelineRunStatusFields{}, "StartTime", "CompletionTime")

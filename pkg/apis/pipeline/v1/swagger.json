@@ -2125,7 +2125,6 @@
         },
         "artifacts": {
           "description": "Artifacts are the list of artifacts written out by the task's containers",
-          "default": {},
           "$ref": "#/definitions/v1.Artifacts",
           "x-kubernetes-list-type": "atomic"
         },
@@ -2220,7 +2219,6 @@
       "properties": {
         "artifacts": {
           "description": "Artifacts are the list of artifacts written out by the task's containers",
-          "default": {},
           "$ref": "#/definitions/v1.Artifacts",
           "x-kubernetes-list-type": "atomic"
         },

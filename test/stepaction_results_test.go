@@ -189,6 +189,7 @@ status:
       status: "True"
       reason: "Succeeded"
   podName: step-results-task-run-pod
+  artifacts: {}
   taskSpec:
     steps:
       - name: step1

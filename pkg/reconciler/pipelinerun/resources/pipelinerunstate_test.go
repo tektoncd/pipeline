@@ -3167,7 +3167,7 @@ func TestPipelineRunState_GetTaskRunsArtifacts(t *testing.T) {
 	testCases := []struct {
 		name              string
 		state             PipelineRunState
-		expectedArtifacts map[string]v1.Artifacts
+		expectedArtifacts map[string]*v1.Artifacts
 	}{
 		{
 			name: "successful-task-with-artifacts",
@@ -3183,14 +3183,14 @@ func TestPipelineRunState_GetTaskRunsArtifacts(t *testing.T) {
 							Status: corev1.ConditionTrue,
 						}}},
 						TaskRunStatusFields: v1.TaskRunStatusFields{
-							Artifacts: v1.Artifacts{
+							Artifacts: &v1.Artifacts{
 								Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
 								Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
 							},
 						}},
 				}},
 			}},
-			expectedArtifacts: map[string]v1.Artifacts{"successful-task-with-artifacts-1": {
+			expectedArtifacts: map[string]*v1.Artifacts{"successful-task-with-artifacts-1": {
 				Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
 				Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
 			}},
@@ -3209,7 +3209,7 @@ func TestPipelineRunState_GetTaskRunsArtifacts(t *testing.T) {
 							Status: corev1.ConditionTrue,
 						}}},
 						TaskRunStatusFields: v1.TaskRunStatusFields{
-							Artifacts: v1.Artifacts{
+							Artifacts: &v1.Artifacts{
 								Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
 								Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
 							},
@@ -3227,14 +3227,14 @@ func TestPipelineRunState_GetTaskRunsArtifacts(t *testing.T) {
 							Status: corev1.ConditionTrue,
 						}}},
 						TaskRunStatusFields: v1.TaskRunStatusFields{
-							Artifacts: v1.Artifacts{
+							Artifacts: &v1.Artifacts{
 								Inputs:  []v1.Artifact{{Name: "source2", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
 								Outputs: []v1.Artifact{{Name: "image2", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
 							},
 						}},
 				}},
 			}},
-			expectedArtifacts: map[string]v1.Artifacts{"successful-task-with-artifacts-1": {
+			expectedArtifacts: map[string]*v1.Artifacts{"successful-task-with-artifacts-1": {
 				Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
 				Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
 			}, "successful-task-with-artifacts-2": {
@@ -3256,14 +3256,14 @@ func TestPipelineRunState_GetTaskRunsArtifacts(t *testing.T) {
 							Status: corev1.ConditionFalse,
 						}}},
 						TaskRunStatusFields: v1.TaskRunStatusFields{
-							Artifacts: v1.Artifacts{
+							Artifacts: &v1.Artifacts{
 								Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
 								Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
 							},
 						}},
 				}},
 			}},
-			expectedArtifacts: map[string]v1.Artifacts{},
+			expectedArtifacts: map[string]*v1.Artifacts{},
 		},
 		{
 			name: "One successful task and one failed task, only retrieving artifacts from the successful one",
@@ -3280,7 +3280,7 @@ func TestPipelineRunState_GetTaskRunsArtifacts(t *testing.T) {
 								Status: corev1.ConditionTrue,
 							}}},
 							TaskRunStatusFields: v1.TaskRunStatusFields{
-								Artifacts: v1.Artifacts{
+								Artifacts: &v1.Artifacts{
 									Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
 									Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
 								},
@@ -3299,14 +3299,14 @@ func TestPipelineRunState_GetTaskRunsArtifacts(t *testing.T) {
 								Status: corev1.ConditionFalse,
 							}}},
 							TaskRunStatusFields: v1.TaskRunStatusFields{
-								Artifacts: v1.Artifacts{
+								Artifacts: &v1.Artifacts{
 									Inputs:  []v1.Artifact{{Name: "source0", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
 									Outputs: []v1.Artifact{{Name: "image0", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
 								},
 							}},
 					}},
 				}},
-			expectedArtifacts: map[string]v1.Artifacts{"successful-task-with-artifacts-1": {
+			expectedArtifacts: map[string]*v1.Artifacts{"successful-task-with-artifacts-1": {
 				Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
 				Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
 			}},
@@ -3342,7 +3342,7 @@ func TestPipelineRunState_GetTaskRunsArtifacts(t *testing.T) {
 								Status: corev1.ConditionTrue,
 							}}},
 							TaskRunStatusFields: v1.TaskRunStatusFields{
-								Artifacts: v1.Artifacts{
+								Artifacts: &v1.Artifacts{
 									Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
 									Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
 								},
@@ -3350,7 +3350,7 @@ func TestPipelineRunState_GetTaskRunsArtifacts(t *testing.T) {
 					}},
 				},
 			},
-			expectedArtifacts: map[string]v1.Artifacts{"successful-task-with-artifacts-1": {
+			expectedArtifacts: map[string]*v1.Artifacts{"successful-task-with-artifacts-1": {
 				Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
 				Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
 			}},
@@ -3390,7 +3390,7 @@ func TestPipelineRunState_GetTaskRunsArtifacts(t *testing.T) {
 							Reason: v1.TaskRunReasonSuccessful.String(),
 						}}},
 						TaskRunStatusFields: v1.TaskRunStatusFields{
-							Artifacts: v1.Artifacts{
+							Artifacts: &v1.Artifacts{
 								Inputs:  []v1.Artifact{{Name: "source1", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
 								Outputs: []v1.Artifact{{Name: "image1", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
 							},
@@ -3405,7 +3405,7 @@ func TestPipelineRunState_GetTaskRunsArtifacts(t *testing.T) {
 							Reason: v1.TaskRunReasonSuccessful.String(),
 						}}},
 						TaskRunStatusFields: v1.TaskRunStatusFields{
-							Artifacts: v1.Artifacts{
+							Artifacts: &v1.Artifacts{
 								Inputs:  []v1.Artifact{{Name: "source2", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
 								Outputs: []v1.Artifact{{Name: "image2", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
 							},
@@ -3420,7 +3420,7 @@ func TestPipelineRunState_GetTaskRunsArtifacts(t *testing.T) {
 							Reason: v1.TaskRunReasonSuccessful.String(),
 						}}},
 						TaskRunStatusFields: v1.TaskRunStatusFields{
-							Artifacts: v1.Artifacts{
+							Artifacts: &v1.Artifacts{
 								Inputs:  []v1.Artifact{{Name: "source3", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
 								Outputs: []v1.Artifact{{Name: "image3", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
 							},
@@ -3435,14 +3435,14 @@ func TestPipelineRunState_GetTaskRunsArtifacts(t *testing.T) {
 							Reason: v1.TaskRunReasonSuccessful.String(),
 						}}},
 						TaskRunStatusFields: v1.TaskRunStatusFields{
-							Artifacts: v1.Artifacts{
+							Artifacts: &v1.Artifacts{
 								Inputs:  []v1.Artifact{{Name: "source4", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
 								Outputs: []v1.Artifact{{Name: "image4", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
 							},
 						}},
 				}},
 			}},
-			expectedArtifacts: map[string]v1.Artifacts{"matrixed-task-with-artifacts": {
+			expectedArtifacts: map[string]*v1.Artifacts{"matrixed-task-with-artifacts": {
 				Inputs:  []v1.Artifact{{Name: "source1", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}, {Name: "source2", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}, {Name: "source3", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}, {Name: "source4", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
 				Outputs: []v1.Artifact{{Name: "image1", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}, {Name: "image2", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}, {Name: "image3", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}, {Name: "image4", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
 			}},
