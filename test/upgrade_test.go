@@ -155,6 +155,7 @@ status:
     terminationReason: Completed
     terminated:
       reason: Completed
+  artifacts: {}
 `
 
 	expectedSimplePipelineRunYaml = `
