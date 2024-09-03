@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -86,6 +87,10 @@ func cancelTaskRun(ctx context.Context, taskRunName string, namespace string, cl
 	if errors.IsNotFound(err) {
 		// The resource may have been deleted in the meanwhile, but we should
 		// still be able to cancel the PipelineRun
+		return nil
+	}
+	if pipelineErrors.IsImmutableTaskRunSpecError(err) {
+		// The TaskRun may have completed and the spec field is immutable, we should ignore this error.
 		return nil
 	}
 	return err
