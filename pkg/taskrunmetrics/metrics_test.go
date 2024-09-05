@@ -81,49 +81,109 @@ func TestUninitializedMetrics(t *testing.T) {
 }
 
 func TestOnStore(t *testing.T) {
-	log := zap.NewExample()
-	defer log.Sync()
-	logger := log.Sugar()
+	unregisterMetrics()
+	log := zap.NewExample().Sugar()
 
+	// 1. Initial state
+	initialCfg := &config.Config{Metrics: &config.Metrics{
+		TaskrunLevel:        config.TaskrunLevelAtTaskrun,
+		PipelinerunLevel:    config.PipelinerunLevelAtPipelinerun,
+		DurationTaskrunType: config.DurationTaskrunTypeLastValue,
+	}}
+	ctx := config.ToContext(t.Context(), initialCfg)
+	r, err := NewRecorder(ctx)
+	if err != nil {
+		t.Fatalf("NewRecorder failed: %v", err)
+	}
+	onStoreCallback := OnStore(log, r)
+
+	// Check initial state
+	if reflect.ValueOf(r.insertTaskTag).Pointer() != reflect.ValueOf(taskrunInsertTag).Pointer() {
+		t.Fatalf("Initial insertTaskTag function is incorrect")
+	}
+	initialHash := r.hash
+
+	// 2. Call with wrong name - should not change anything
+	onStoreCallback("wrong-name", &config.Metrics{TaskrunLevel: config.TaskrunLevelAtNS})
+	if r.hash != initialHash {
+		t.Errorf("Hash changed after call with wrong name")
+	}
+	if reflect.ValueOf(r.insertTaskTag).Pointer() != reflect.ValueOf(taskrunInsertTag).Pointer() {
+		t.Errorf("insertTaskTag changed after call with wrong name")
+	}
+
+	// 3. Call with wrong type - should log an error and not change anything
+	onStoreCallback(config.GetMetricsConfigName(), &config.Store{})
+	if r.hash != initialHash {
+		t.Errorf("Hash changed after call with wrong type")
+	}
+	if reflect.ValueOf(r.insertTaskTag).Pointer() != reflect.ValueOf(taskrunInsertTag).Pointer() {
+		t.Errorf("insertTaskTag changed after call with wrong type")
+	}
+
+	// 4. Call with a valid new config - should change
+	newCfg := &config.Metrics{
+		TaskrunLevel:        config.TaskrunLevelAtNS,
+		PipelinerunLevel:    config.PipelinerunLevelAtNS,
+		DurationTaskrunType: config.DurationTaskrunTypeLastValue,
+	}
+	onStoreCallback(config.GetMetricsConfigName(), newCfg)
+	if r.hash == initialHash {
+		t.Errorf("Hash did not change after valid config update")
+	}
+	if reflect.ValueOf(r.insertTaskTag).Pointer() != reflect.ValueOf(nilInsertTag).Pointer() {
+		t.Errorf("insertTaskTag did not change after valid config update")
+	}
+	newHash := r.hash
+
+	// 5. Call with the same config again - should not change
+	onStoreCallback(config.GetMetricsConfigName(), newCfg)
+	if r.hash != newHash {
+		t.Errorf("Hash changed after second call with same config")
+	}
+	if reflect.ValueOf(r.insertTaskTag).Pointer() != reflect.ValueOf(nilInsertTag).Pointer() {
+		t.Errorf("insertTaskTag changed after second call with same config")
+	}
+
+	// 6. Call with an invalid config - should update hash but not insertTag
+	invalidCfg := &config.Metrics{TaskrunLevel: "invalid-level"}
+	onStoreCallback(config.GetMetricsConfigName(), invalidCfg)
+	if r.hash == newHash {
+		t.Errorf("Hash did not change after invalid config update")
+	}
+	// Because viewRegister fails, the insertTag function should not be updated and should remain `nilInsertTag` from the previous step.
+	if reflect.ValueOf(r.insertTaskTag).Pointer() != reflect.ValueOf(nilInsertTag).Pointer() {
+		t.Errorf("insertTag changed after invalid config update")
+	}
+}
+
+func TestUpdateConfig(t *testing.T) {
+	// Test that the config is updated when it changes, and not when it doesn't.
 	ctx := getConfigContext(false, false)
-	metrics, err := NewRecorder(ctx)
+	r, err := NewRecorder(ctx)
 	if err != nil {
 		t.Fatalf("NewRecorder: %v", err)
 	}
 
-	// We check that there's no change when incorrect config is passed
-	OnStore(logger, metrics)(config.GetMetricsConfigName(), &config.Store{})
-	// Comparing function assign to struct with the one which should yield same value
-	if reflect.ValueOf(metrics.insertTaskTag).Pointer() != reflect.ValueOf(taskrunInsertTag).Pointer() {
-		t.Fatalf("metrics recorder shouldn't change during this OnStore call")
+	// First, update with a new config.
+	newConfig := &config.Metrics{
+		TaskrunLevel: config.TaskrunLevelAtTask,
+	}
+	if !r.updateConfig(newConfig) {
+		t.Error("updateConfig should have returned true, but returned false")
 	}
 
-	// Config shouldn't change when incorrect config map is pass
-	cfg := &config.Metrics{
-		TaskrunLevel:            "foo",
-		PipelinerunLevel:        "bar",
-		DurationTaskrunType:     config.DurationTaskrunTypeHistogram,
-		DurationPipelinerunType: config.DurationPipelinerunTypeLastValue,
+	// Then, update with the same config.
+	if r.updateConfig(newConfig) {
+		t.Error("updateConfig should have returned false, but returned true")
 	}
 
-	// We test that there's no change when incorrect values in configmap is passed
-	OnStore(logger, metrics)(config.GetMetricsConfigName(), cfg)
-	// Comparing function assign to struct with the one which should yield same value
-	if reflect.ValueOf(metrics.insertTaskTag).Pointer() != reflect.ValueOf(taskrunInsertTag).Pointer() {
-		t.Fatalf("metrics recorder shouldn't change during this OnStore call")
+	// Finally, update with a different config.
+	differentConfig := &config.Metrics{
+		TaskrunLevel: config.TaskrunLevelAtNS,
 	}
-
-	// We test when we pass correct config
-	cfg = &config.Metrics{
-		TaskrunLevel:            config.TaskrunLevelAtNS,
-		PipelinerunLevel:        config.PipelinerunLevelAtNS,
-		DurationTaskrunType:     config.DurationTaskrunTypeHistogram,
-		DurationPipelinerunType: config.DurationPipelinerunTypeLastValue,
-	}
-
-	OnStore(logger, metrics)(config.GetMetricsConfigName(), cfg)
-	if reflect.ValueOf(metrics.insertTaskTag).Pointer() != reflect.ValueOf(nilInsertTag).Pointer() {
-		t.Fatalf("metrics recorder didn't change during OnStore call")
+	if !r.updateConfig(differentConfig) {
+		t.Error("updateConfig should have returned true, but returned false")
 	}
 }
 
