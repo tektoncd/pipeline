@@ -213,6 +213,7 @@ func viewRegister(cfg *config.Metrics) error {
 		Description: runningPRs.Description(),
 		Measure:     runningPRs,
 		Aggregation: view.LastValue(),
+		TagKeys:     append([]tag.Key{namespaceTag}, prunTag...),
 	}
 
 	runningPRsWaitingOnPipelineResolutionCountView = &view.View{
@@ -396,9 +397,22 @@ func (r *Recorder) RunningPipelineRuns(lister listers.PipelineRunLister) error {
 	var runningPipelineRuns int
 	var trsWaitResolvingTaskRef int
 	var prsWaitResolvingPipelineRef int
+	countMap := map[string]int{}
 
 	for _, pr := range prs {
+		pipelineName := getPipelineTagName(pr)
+		pipelineRunKey := pr.Namespace + "#" + pipelineName
+		mutators := []tag.Mutator{
+			tag.Insert(namespaceTag, pr.Namespace),
+			tag.Insert(pipelineTag, pipelineName),
+		}
+		ctx_, err_ := tag.New(context.Background(), mutators...)
+		if err_ != nil {
+			return err
+		}
 		if !pr.IsDone() {
+			countMap[pipelineRunKey]++
+			metrics.Record(ctx_, runningPRs.M(float64(countMap[pipelineRunKey])))
 			runningPipelineRuns++
 			succeedCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
 			if succeedCondition != nil && succeedCondition.Status == corev1.ConditionUnknown {
@@ -408,6 +422,13 @@ func (r *Recorder) RunningPipelineRuns(lister listers.PipelineRunLister) error {
 				case v1.PipelineRunReasonResolvingPipelineRef.String():
 					prsWaitResolvingPipelineRef++
 				}
+			}
+		} else {
+			// If all PipelineRuns for a Pipeline are completed then record it with 0
+			// set the key to 0 so that we do not record further completed PipelineRuns  for same Pipeline
+			if _, exists := countMap[pipelineRunKey]; !exists {
+				countMap[pipelineRunKey] = 0
+				metrics.Record(ctx_, runningPRs.M(0))
 			}
 		}
 	}
@@ -421,8 +442,6 @@ func (r *Recorder) RunningPipelineRuns(lister listers.PipelineRunLister) error {
 	metrics.Record(ctx, runningPRsWaitingOnTaskResolutionCount.M(float64(trsWaitResolvingTaskRef)))
 	metrics.Record(ctx, runningPRsWaitingOnTaskResolution.M(float64(trsWaitResolvingTaskRef)))
 	metrics.Record(ctx, runningPRsCount.M(float64(runningPipelineRuns)))
-	metrics.Record(ctx, runningPRs.M(float64(runningPipelineRuns)))
-
 	return nil
 }
 
