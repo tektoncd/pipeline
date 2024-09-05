@@ -18,6 +18,7 @@ package pipelinerunmetrics
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sync"
@@ -31,6 +32,7 @@ import (
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/blake2b"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/labels"
@@ -118,6 +120,8 @@ type Recorder struct {
 		pipelinerun string) []tag.Mutator
 
 	ReportingPeriod time.Duration
+
+	hash string
 }
 
 // We cannot register the view multiple times, so NewRecorder lazily
@@ -292,7 +296,10 @@ func OnStore(logger *zap.SugaredLogger, r *Recorder) func(name string,
 				logger.Error("Failed to do type insertion for extracting metrics config")
 				return
 			}
-			r.updateConfig(cfg)
+			updated := r.updateConfig(cfg)
+			if !updated {
+				return
+			}
 			// Update metrics according to configuration
 			viewUnregister()
 			err := viewRegister(cfg)
@@ -337,11 +344,24 @@ func getPipelineTagName(pr *v1.PipelineRun) string {
 	return pipelineName
 }
 
-func (r *Recorder) updateConfig(cfg *config.Metrics) {
+func (r *Recorder) updateConfig(cfg *config.Metrics) bool {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
+	var hash string
+	if cfg != nil {
+		s := fmt.Sprintf("%v", *cfg)
+		sum := blake2b.Sum256([]byte(s))
+		hash = hex.EncodeToString(sum[:])
+	}
+
+	if r.hash == hash {
+		return false
+	}
 
 	r.cfg = cfg
+	r.hash = hash
+
+	return true
 }
 
 // DurationAndCount logs the duration of PipelineRun execution and
