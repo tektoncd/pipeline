@@ -46,6 +46,9 @@ spec:
     description: The path to the service account file within the release-secret workspace
   - name: serviceAccountImagesPath
     description: The path to the service account file or credentials within the release-images-secret workspace
+  - name: runTests
+    description: If set to something other than "true", skip the build and test tasks
+    default: "true"
   workspaces:
     - name: workarea
       description: The workspace where the repo will be cloned.
@@ -107,6 +110,8 @@ spec:
           subpath: git
     - name: unit-tests
       runAfter: [precheck]
+      when:
+        - cel: "'$(params.runTests)' == 'true'"
       taskRef:
         resolver: bundles
         params:
@@ -127,6 +132,8 @@ spec:
           subpath: git
     - name: build
       runAfter: [precheck]
+      when:
+        - cel: "'$(params.runTests)' == 'true'"
       taskRef:
         resolver: bundles
         params:
