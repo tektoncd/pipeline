@@ -16,6 +16,9 @@ spec:
   - name: imageRegistryPath
     description: The path (project) in the image registry
     default: tekton-releases
+  - name: imageRegistryRegions
+    description: The target image registry regions
+    default: "us eu asia"
   - name: versionTag
     description: The X.Y.Z version that the artifacts should be tagged with
   - name: releaseBucket
@@ -154,6 +157,8 @@ spec:
           value: $(params.imageRegistry)
         - name: imageRegistryPath
           value: $(params.imageRegistryPath)
+        - name: imageRegistryRegions
+          value: $(params.imageRegistryRegions)
         - name: releaseAsLatest
           value: $(params.releaseAsLatest)
         - name: serviceAccountPath
