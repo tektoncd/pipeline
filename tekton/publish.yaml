@@ -197,8 +197,6 @@ spec:
       mkdir -p ${DOCKER_CONFIG}
       cp /workspace/docker-config.json ${DOCKER_CONFIG}/config.json
 
-      REGIONS="us eu asia"
-
       # Tag the images and put them in all the regions
       for IMAGE in $(cat /workspace/built_images)
       do
