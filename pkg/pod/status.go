@@ -567,12 +567,11 @@ func extractExitCodeFromResults(results []result.RunResult) (*int32, error) {
 	for _, result := range results {
 		if result.Key == "ExitCode" {
 			// We could just pass the string through but this provides extra validation
-			i, err := strconv.ParseUint(result.Value, 10, 32)
+			i, err := strconv.ParseInt(result.Value, 10, 32)
 			if err != nil {
 				return nil, fmt.Errorf("could not parse int value %q in ExitCode field: %w", result.Value, err)
 			}
-			//nolint: gosec
-			exitCode := int32(i)
+			exitCode := int32(i) // #nosec G115: ParseInt was called with bit size 32, so this is safe
 			return &exitCode, nil
 		}
 	}
