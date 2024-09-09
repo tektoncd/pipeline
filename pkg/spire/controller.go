@@ -231,10 +231,15 @@ func (sc *spireControllerAPIClient) CreateEntries(ctx context.Context, tr *v1bet
 	var errCodes []int32
 
 	for _, r := range resp.GetResults() {
-		if codes.Code(r.GetStatus().GetCode()) != codes.AlreadyExists &&
-			codes.Code(r.GetStatus().GetCode()) != codes.OK {
+		statusCode := r.GetStatus().GetCode()
+		if statusCode < 0 {
+			return fmt.Errorf("statusCode overflows uint32: %d", statusCode)
+		}
+		code := codes.Code(statusCode)
+
+		if code != codes.AlreadyExists && code != codes.OK {
 			errPaths = append(errPaths, r.GetEntry().GetSpiffeId().GetPath())
-			errCodes = append(errCodes, r.GetStatus().GetCode())
+			errCodes = append(errCodes, statusCode)
 		}
 	}
 
@@ -296,10 +301,15 @@ func (sc *spireControllerAPIClient) DeleteEntry(ctx context.Context, tr *v1beta1
 	var errCodes []int32
 
 	for _, r := range resp.GetResults() {
-		if codes.Code(r.GetStatus().GetCode()) != codes.NotFound &&
-			codes.Code(r.GetStatus().GetCode()) != codes.OK {
+		statusCode := r.GetStatus().GetCode()
+		if statusCode < 0 {
+			return fmt.Errorf("statusCode overflows uint32: %d", statusCode)
+		}
+		code := codes.Code(statusCode)
+
+		if code != codes.NotFound && code != codes.OK {
 			errIds = append(errIds, r.GetId())
-			errCodes = append(errCodes, r.GetStatus().GetCode())
+			errCodes = append(errCodes, statusCode)
 		}
 	}
 
