@@ -19,6 +19,9 @@ spec:
   - name: imageRegistryRegions
     description: The target image registry regions
     default: "us eu asia"
+  - name: imageRegistryUser
+    description: The user for the image registry credentials
+    default: _json_key
   - name: versionTag
     description: The X.Y.Z version that the artifacts should be tagged with
   - name: releaseBucket
@@ -38,11 +41,15 @@ spec:
     default: linux/amd64,linux/arm,linux/arm64,linux/s390x,linux/ppc64le,windows/amd64
   - name: serviceAccountPath
     description: The path to the service account file within the release-secret workspace
+  - name: serviceAccountImagesPath
+    description: The path to the service account file or credentials within the release-images-secret workspace
   workspaces:
     - name: workarea
       description: The workspace where the repo will be cloned.
     - name: release-secret
-      description: The secret that contains a service account authorized to push to the imageRegistry and to the output bucket
+      description: The secret that contains a service account authorized to push to the output bucket
+    - name: release-images-secret
+      description: The secret that contains a service account authorized to push to the imageRegistry
   results:
     - name: commit-sha
       description: the sha of the commit that was released
@@ -157,12 +164,12 @@ spec:
           value: $(params.imageRegistry)
         - name: imageRegistryPath
           value: $(params.imageRegistryPath)
-        - name: imageRegistryRegions
-          value: $(params.imageRegistryRegions)
+        - name: imageRegistryUser
+          value: $(params.registryUser)
         - name: releaseAsLatest
           value: $(params.releaseAsLatest)
         - name: serviceAccountPath
-          value: $(params.serviceAccountPath)
+          value: $(params.serviceAccountImagesPath)
         - name: platforms
           value: $(params.publishPlatforms)
       workspaces:
@@ -173,7 +180,7 @@ spec:
           workspace: workarea
           subpath: bucket
         - name: release-secret
-          workspace: release-secret
+          workspace: release-images-secret
       timeout: 2h
     - name: publish-to-bucket
       runAfter: [publish-images]

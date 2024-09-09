@@ -30,6 +30,9 @@ spec:
       default: linux/amd64,linux/arm,linux/arm64,linux/s390x,linux/ppc64le,windows/amd64
     - name: serviceAccountPath
       description: The name of the service account path within the release-secret workspace
+    - name: registryUser
+      description: Username to be used to login to the container registry
+      default: "_json_key"
   workspaces:
     - name: source
       description: >-
@@ -50,6 +53,8 @@ spec:
         value: "$(workspaces.release-secret.path)/$(params.serviceAccountPath)"
       - name: CONTAINER_REGISTRY
         value: "$(params.imageRegistry)/$(params.imageRegistryPath)"
+      - name: CONTAINER_REGISTRY_USER
+        value: "$(params.registryUser)"
       - name: REGIONS
         value: "$(params.imageRegistryRegions)"
       - name: OUTPUT_RELEASE_DIR
@@ -68,7 +73,7 @@ spec:
 
       # Login to the container registry
       DOCKER_CONFIG=$(cat ${CONTAINER_REGISTRY_CREDENTIALS} | \
-        crane auth login -u _json_key --password-stdin $(params.imageRegistry) 2>&1 | \
+        crane auth login -u ${CONTAINER_REGISTRY_USER} --password-stdin $(params.imageRegistry) 2>&1 | \
         sed 's,^.*logged in via \(.*\)$,\1,g')
 
       # Auth with account credentials for all regions.
