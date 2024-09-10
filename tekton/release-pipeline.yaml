@@ -165,7 +165,7 @@ spec:
         - name: imageRegistryPath
           value: $(params.imageRegistryPath)
         - name: imageRegistryUser
-          value: $(params.registryUser)
+          value: $(params.imageRegistryUser)
         - name: releaseAsLatest
           value: $(params.releaseAsLatest)
         - name: serviceAccountPath
