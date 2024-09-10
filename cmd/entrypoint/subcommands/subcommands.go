@@ -88,7 +88,6 @@ func Process(args []string) error {
 			return OK{message: "Decoded script " + src}
 		}
 	case StepInitCommand:
-		//nolint: gosec
 		if err := stepInit(args[1:]); err != nil {
 			return SubcommandError{subcommand: StepInitCommand, message: err.Error()}
 		}

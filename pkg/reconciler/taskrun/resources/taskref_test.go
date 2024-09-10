@@ -1430,7 +1430,7 @@ func TestGetTaskFunc_V1beta1Task_VerifyNoError(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx = test.SetupTrustedResourceConfig(ctx, tc.verificationNoMatchPolicy)
+			ctx := test.SetupTrustedResourceConfig(context.Background(), tc.verificationNoMatchPolicy)
 			tr := &v1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
 				Spec: v1.TaskRunSpec{
@@ -1558,7 +1558,7 @@ func TestGetTaskFunc_V1beta1Task_VerifyError(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx = test.SetupTrustedResourceConfig(ctx, tc.verificationNoMatchPolicy)
+			ctx := test.SetupTrustedResourceConfig(ctx, tc.verificationNoMatchPolicy)
 			tr := &v1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
 				Spec: v1.TaskRunSpec{
@@ -1694,7 +1694,7 @@ func TestGetTaskFunc_V1Task_VerifyNoError(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx = test.SetupTrustedResourceConfig(ctx, tc.verificationNoMatchPolicy)
+			ctx := test.SetupTrustedResourceConfig(ctx, tc.verificationNoMatchPolicy)
 			tr := &v1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
 				Spec: v1.TaskRunSpec{
@@ -1820,7 +1820,7 @@ func TestGetTaskFunc_V1Task_VerifyError(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx = test.SetupTrustedResourceConfig(ctx, tc.verificationNoMatchPolicy)
+			ctx := test.SetupTrustedResourceConfig(ctx, tc.verificationNoMatchPolicy)
 			tr := &v1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
 				Spec: v1.TaskRunSpec{
@@ -1892,7 +1892,7 @@ func TestGetTaskFunc_GetFuncError(t *testing.T) {
 				},
 			}
 			store.OnConfigChanged(featureflags)
-			ctx = store.ToContext(ctx)
+			ctx := store.ToContext(ctx)
 
 			fn := resources.GetTaskFunc(ctx, k8sclient, tektonclient, tc.requester, &tc.taskrun, tc.taskrun.Spec.TaskRef, "", "default", "default", vps)
 
