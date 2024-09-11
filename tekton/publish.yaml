@@ -12,6 +12,9 @@ spec:
     - name: images
       description: List of cmd/* paths to be published as images
       default: "controller webhook entrypoint nop workingdirinit resolvers sidecarlogresults events"
+    - name: koExtraArgs
+      description: Extra args to be passed to ko
+      default: "--preserve-import-paths"
     - name: versionTag
       description: The vX.Y.Z version that the artifacts should be tagged with (including `v`)
     - name: imageRegistry
@@ -59,6 +62,8 @@ spec:
         value: "$(params.imageRegistryRegions)"
       - name: OUTPUT_RELEASE_DIR
         value: "$(workspaces.output.path)/$(params.versionTag)"
+      - name: KO_EXTRA_ARGS
+        value: "$(params.koExtraArgs)"
   results:
   # IMAGES result is picked up by Tekton Chains to sign the release.
   # See https://github.com/tektoncd/plumbing/blob/main/docs/signing.md for more info.
@@ -164,15 +169,20 @@ spec:
       # The real "tagging" will happen with the "create-release" pipeline.
       git tag $(params.versionTag)
 
-      ko resolve --platform=$(params.platforms) --preserve-import-paths -t $(params.versionTag) -R -f ${PROJECT_ROOT}/config/ > $OUTPUT_RELEASE_DIR/release.yaml
+      ko resolve \
+        --image-label=org.opencontainers.image.source=https://$(params.package) \
+        --platform=$(params.platforms) \
+        -t $(params.versionTag) \
+        -R ${KO_EXTRA_ARGS} \
+        -f ${PROJECT_ROOT}/config/ > $OUTPUT_RELEASE_DIR/release.yaml
       # Publish images and create release.notags.yaml
       # This is useful if your container runtime doesn't support the `image-reference:tag@digest` notation
       # This is currently the case for `cri-o` (and most likely others)
       ko resolve \
         --image-label=org.opencontainers.image.source=https://$(params.package) \
         --platform=$(params.platforms) \
-        --preserve-import-paths \
-        -R -f ${PROJECT_ROOT}/config/ > $OUTPUT_RELEASE_DIR/release.notags.yaml
+        -R ${KO_EXTRA_ARGS} \
+        -f ${PROJECT_ROOT}/config/ > $OUTPUT_RELEASE_DIR/release.notags.yaml
 
       # Rewrite "devel" to params.versionTag
       sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/release.yaml
