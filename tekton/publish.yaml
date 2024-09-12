@@ -192,7 +192,22 @@ spec:
     script: |
       set -ex
 
-      IMAGES_PATH=${CONTAINER_REGISTRY}/$(params.package)
+      IMAGES_PATH=${CONTAINER_REGISTRY}
+
+      # Find "--preserve-import-paths" in a list of args
+      function find_preserve_import_path() {
+        for arg in $@; do
+          if [[ "$arg" == "--preserve-import-paths" ]]; then
+            return 0
+          fi
+        done
+        return 1
+      }
+
+      # If "--preserve-import-paths" is used, include "package" in the expected path
+      find_preserve_import_path \
+        $(echo $KO_EXTRA_ARGS) && \
+        IMAGES_PATH=${IMAGES_PATH}/$(params.package) || true
 
       for cmd in $(params.images)
       do
