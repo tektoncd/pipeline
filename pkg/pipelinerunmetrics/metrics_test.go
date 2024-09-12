@@ -501,7 +501,7 @@ func TestRecordRunningPipelineRunsCount(t *testing.T) {
 		t.Errorf("RunningPipelineRuns: %v", err)
 	}
 	metricstest.CheckLastValueData(t, "running_pipelineruns_count", map[string]string{}, 1)
-	metricstest.CheckLastValueData(t, "running_pipelineruns", map[string]string{}, 1)
+	metricstest.CheckLastValueData(t, "running_pipelineruns", map[string]string{"pipeline": "anonymous"}, 1)
 }
 
 func TestRecordRunningPipelineRunsResolutionWaitCounts(t *testing.T) {
