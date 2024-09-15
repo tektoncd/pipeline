@@ -166,8 +166,8 @@ func Resolve(params []pipelinev1.Param, forParam map[string]*FakeResolvedResourc
 var _ TimedResolution = &FakeResolver{}
 
 // GetResolutionTimeout returns the configured timeout for the reconciler, or the default time.Duration if not configured.
-func (r *FakeResolver) GetResolutionTimeout(ctx context.Context, defaultTimeout time.Duration) time.Duration {
-	return GetResolutionTimeout(r.Timeout, defaultTimeout)
+func (r *FakeResolver) GetResolutionTimeout(ctx context.Context, defaultTimeout time.Duration, params map[string]string) (time.Duration, error) {
+	return GetResolutionTimeout(r.Timeout, defaultTimeout), nil
 }
 
 // GetResolutionTimeout returns the input timeout if set to something greater than 0 or the default time.Duration if not configured.
