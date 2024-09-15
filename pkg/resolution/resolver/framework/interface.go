@@ -90,7 +90,7 @@ type TimedResolution interface {
 	// object, which includes any request-scoped data like
 	// resolver config and the request's originating namespace,
 	// along with a default.
-	GetResolutionTimeout(ctx context.Context, timeout time.Duration) time.Duration
+	GetResolutionTimeout(ctx context.Context, timeout time.Duration, params map[string]string) (time.Duration, error)
 }
 
 // ResolvedResource returns the data and annotations of a successful
