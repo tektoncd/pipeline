@@ -68,7 +68,7 @@ func (ss *StepActionSpec) Validate(ctx context.Context) (errs *apis.FieldError) 
 	errs = errs.Also(validateUsageOfDeclaredParameters(ctx, *ss))
 	errs = errs.Also(v1.ValidateParameterTypes(ctx, ss.Params).ViaField("params"))
 	errs = errs.Also(validateParameterVariables(ctx, *ss, ss.Params))
-	errs = errs.Also(v1.ValidateStepResultsVariables(ctx, ss.Results, ss.Script))
+	errs = errs.Also(v1.ValidateStepActionResultsVariables(ctx, ss.Results, ss.Script))
 	errs = errs.Also(v1.ValidateStepResults(ctx, ss.Results).ViaField("results"))
 	errs = errs.Also(validateVolumeMounts(ss.VolumeMounts, ss.Params).ViaField("volumeMounts"))
 	return errs

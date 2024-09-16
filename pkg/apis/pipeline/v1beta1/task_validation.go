@@ -95,7 +95,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 		})
 	}
 
-	errs = errs.Also(validateSteps(ctx, mergedSteps).ViaField("steps"))
+	errs = errs.Also(validateSteps(ctx, mergedSteps, ts.Results).ViaField("steps"))
 	errs = errs.Also(validateSidecarNames(ts.Sidecars))
 	errs = errs.Also(ValidateParameterTypes(ctx, ts.Params).ViaField("params"))
 	errs = errs.Also(ValidateParameterVariables(ctx, ts.Steps, ts.Params))
@@ -240,19 +240,34 @@ func ValidateVolumes(volumes []corev1.Volume) (errs *apis.FieldError) {
 	return errs
 }
 
-func validateSteps(ctx context.Context, steps []Step) (errs *apis.FieldError) {
+func validateSteps(ctx context.Context, steps []Step, taskResults []TaskResult) (errs *apis.FieldError) {
 	// Task must not have duplicate step names.
 	names := sets.NewString()
 	for idx, s := range steps {
 		errs = errs.Also(validateStep(ctx, s, names).ViaIndex(idx))
 		if s.Results != nil {
-			errs = errs.Also(v1.ValidateStepResultsVariables(ctx, s.Results, s.Script).ViaIndex(idx))
+			errs = errs.Also(ValidateStepResultsVariables(ctx, s.Results, taskResults, s.Script).ViaIndex(idx))
 			errs = errs.Also(v1.ValidateStepResults(ctx, s.Results).ViaIndex(idx).ViaField("results"))
 		}
 		if len(s.When) > 0 {
 			errs = errs.Also(s.When.validate(ctx).ViaIndex(idx))
 		}
 	}
+	return errs
+}
+
+// ValidateStepResultsVariables validates if the StepResults referenced in step script are defined in step's results or in task's results
+func ValidateStepResultsVariables(ctx context.Context, results []v1.StepResult, taskResults []TaskResult, script string) (errs *apis.FieldError) {
+	resultsNames := sets.NewString()
+	taskResultsNames := sets.NewString()
+	for _, r := range results {
+		resultsNames.Insert(r.Name)
+	}
+	for _, r := range taskResults {
+		taskResultsNames.Insert(r.Name)
+	}
+	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(script, "step.results", resultsNames).ViaField("script"))
+	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(script, "results", taskResultsNames).ViaField("script"))
 	return errs
 }
 

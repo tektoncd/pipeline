@@ -1,0 +1,46 @@
+apiVersion: tekton.dev/v1alpha1
+kind: StepAction
+metadata:
+  name: step-action
+spec:
+  params:
+    - name: message
+      type: string
+  env:
+    - name: message
+      value: $(params.message)
+  image: mirror.gcr.io/bash
+  script: |
+    #!/usr/bin/env bash
+    echo ${message}
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: reference-step-result-in-step-
+spec:
+  taskSpec:
+    description: |
+      A simple task to demonstrate how to reference a step result in another step when used alongside with task result
+    results:
+    - name: resultsDir
+      type: string
+    steps:
+    - name: collect
+      image: mirror.gcr.io/bash
+      results:
+        - name: message
+          type: string
+      script: |
+        #!/usr/bin/env sh
+        set -x
+        message="scott"
+
+        echo -n "${message}" > $(step.results.message.path)
+        echo -n "tom" > $(results.resultsDir.path)
+    - name: reduce
+      params:
+        - name: message
+          value: $(steps.collect.results.message)
+      ref:
+        name: step-action
