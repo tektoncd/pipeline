@@ -240,6 +240,48 @@ func TestMergeStepsWithStepTemplate(t *testing.T) {
 				},
 			}},
 		}},
+	}, {
+		name: "isolated workspaces",
+		template: &v1.StepTemplate{
+			Env: []corev1.EnvVar{{
+				Name:  "KEEP_THIS",
+				Value: "A_VALUE",
+			}},
+		},
+		steps: []v1.Step{{
+			Image: "some-image",
+			Workspaces: []v1.WorkspaceUsage{{
+				Name:      "foo",
+				MountPath: "/foo/bar",
+			}},
+		}, {
+			Image: "some-image",
+			Workspaces: []v1.WorkspaceUsage{{
+				Name:      "bar",
+				MountPath: "/bar/baz",
+			}},
+		}},
+		expected: []v1.Step{{
+			Image: "some-image",
+			Env: []corev1.EnvVar{{
+				Name:  "KEEP_THIS",
+				Value: "A_VALUE",
+			}},
+			Workspaces: []v1.WorkspaceUsage{{
+				Name:      "foo",
+				MountPath: "/foo/bar",
+			}},
+		}, {
+			Image: "some-image",
+			Env: []corev1.EnvVar{{
+				Name:  "KEEP_THIS",
+				Value: "A_VALUE",
+			}},
+			Workspaces: []v1.WorkspaceUsage{{
+				Name:      "bar",
+				MountPath: "/bar/baz",
+			}},
+		}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			result, err := v1.MergeStepsWithStepTemplate(tc.template, tc.steps)
