@@ -41,26 +41,31 @@ A sample config-map has been provided as [config-observability](./../config/conf
     metrics.taskrun.level: "task"
     metrics.taskrun.duration-type: "histogram"
     metrics.pipelinerun.level: "pipeline"
+    metrics.running-pipelinerun.level: ""
     metrics.pipelinerun.duration-type: "histogram"
     metrics.count.enable-reason: "false"
 ```
 
 Following values are available in the configmap:
 
-| configmap data | value | description |
-| -- | ----------- | ----------- |
-| metrics.taskrun.level | `taskrun` | Level of metrics is taskrun |
-| metrics.taskrun.level | `task` | Level of metrics is task and taskrun label isn't present in the metrics |
-| metrics.taskrun.level | `namespace` | Level of metrics is namespace, and task and taskrun label isn't present in the metrics
-| metrics.pipelinerun.level | `pipelinerun` | Level of metrics is pipelinerun |
-| metrics.pipelinerun.level | `pipeline` | Level of metrics is pipeline and pipelinerun label isn't present in the metrics |
-| metrics.pipelinerun.level | `namespace` | Level of metrics is namespace, pipeline and pipelinerun label isn't present in the metrics |
-| metrics.taskrun.duration-type | `histogram` | `tekton_pipelines_controller_pipelinerun_taskrun_duration_seconds` and `tekton_pipelines_controller_taskrun_duration_seconds` is of type histogram |
+| configmap data | value | description                                                                                                                                                  |
+| -- | ----------- |--------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| metrics.taskrun.level | `taskrun` | Level of metrics is taskrun                                                                                                                                  |
+| metrics.taskrun.level | `task` | Level of metrics is task and taskrun label isn't present in the metrics                                                                                      |
+| metrics.taskrun.level | `namespace` | Level of metrics is namespace, and task and taskrun label isn't present in the metrics                                                                       
+| metrics.pipelinerun.level | `pipelinerun` | Level of metrics is pipelinerun                                                                                                                              |
+| metrics.pipelinerun.level | `pipeline` | Level of metrics is pipeline and pipelinerun label isn't present in the metrics                                                                              |
+| metrics.pipelinerun.level | `namespace` | Level of metrics is namespace, pipeline and pipelinerun label isn't present in the metrics                                                                   |
+| metrics.running-pipelinerun.level | `pipelinerun` | Level of running-pipelinerun metrics is pipelinerun                                                                                                          |
+| metrics.running-pipelinerun.level | `pipeline` | Level of running-pipelinerun metrics is pipeline and pipelinerun label isn't present in the metrics                                                          |
+| metrics.running-pipelinerun.level | `namespace` | Level of running-pipelinerun metrics is namespace, pipeline and pipelinerun label isn't present in the metrics                                               |
+| metrics.running-pipelinerun.level | `` | Level of running-pipelinerun metrics is cluster, namespace, pipeline and pipelinerun label isn't present in the metrics.                                     |
+| metrics.taskrun.duration-type | `histogram` | `tekton_pipelines_controller_pipelinerun_taskrun_duration_seconds` and `tekton_pipelines_controller_taskrun_duration_seconds` is of type histogram           |
 | metrics.taskrun.duration-type | `lastvalue` | `tekton_pipelines_controller_pipelinerun_taskrun_duration_seconds` and  `tekton_pipelines_controller_taskrun_duration_seconds` is of type gauge or lastvalue |
-| metrics.pipelinerun.duration-type | `histogram` | `tekton_pipelines_controller_pipelinerun_duration_seconds` is of type histogram |
-| metrics.pipelinerun.duration-type | `lastvalue` | `tekton_pipelines_controller_pipelinerun_duration_seconds` is of type gauge or lastvalue |
-| metrics.count.enable-reason | `false` | Sets if the `reason` label should be included on count metrics |
-| metrics.taskrun.throttle.enable-namespace | `false` | Sets if the `namespace` label should be included on the `tekton_pipelines_controller_running_taskruns_throttled_by_quota` metric |
+| metrics.pipelinerun.duration-type | `histogram` | `tekton_pipelines_controller_pipelinerun_duration_seconds` is of type histogram                                                                              |
+| metrics.pipelinerun.duration-type | `lastvalue` | `tekton_pipelines_controller_pipelinerun_duration_seconds` is of type gauge or lastvalue                                                                     |
+| metrics.count.enable-reason | `false` | Sets if the `reason` label should be included on count metrics                                                                                               |
+| metrics.taskrun.throttle.enable-namespace | `false` | Sets if the `namespace` label should be included on the `tekton_pipelines_controller_running_taskruns_throttled_by_quota` metric                             |
 
 Histogram value isn't available when pipelinerun or taskrun labels are selected. The Lastvalue or Gauge will be provided. Histogram would serve no purpose because it would generate a single bar. TaskRun and PipelineRun level metrics aren't recommended because they lead to an unbounded cardinality which degrades the observability database.
 

@@ -27,4 +27,5 @@ data:
   metrics.taskrun.level: "namespace"
   metrics.taskrun.duration-type: "histogram"
   metrics.pipelinerun.level: "namespace"
+  metrics.running-pipelinerun.level: "namespace"
   metrics.pipelinerun.duration-type: "lastvalue"

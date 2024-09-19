@@ -39,6 +39,13 @@ import (
 	"knative.dev/pkg/metrics"
 )
 
+const (
+	runningPRLevelPipelinerun = "pipelinerun"
+	runningPRLevelPipeline    = "pipeline"
+	runningPRLevelNamespace   = "namespace"
+	runningPRLevelCluster     = ""
+)
+
 var (
 	pipelinerunTag = tag.MustNewKey("pipelinerun")
 	pipelineTag    = tag.MustNewKey("pipeline")
@@ -134,6 +141,7 @@ func NewRecorder(ctx context.Context) (*Recorder, error) {
 		}
 
 		cfg := config.FromContextOrDefaults(ctx)
+		r.cfg = cfg.Metrics
 		errRegistering = viewRegister(cfg.Metrics)
 		if errRegistering != nil {
 			r.initialized = false
@@ -149,7 +157,6 @@ func viewRegister(cfg *config.Metrics) error {
 	defer r.mutex.Unlock()
 
 	var prunTag []tag.Key
-
 	switch cfg.PipelinerunLevel {
 	case config.PipelinerunLevelAtPipelinerun:
 		prunTag = []tag.Key{pipelinerunTag, pipelineTag}
@@ -162,6 +169,18 @@ func viewRegister(cfg *config.Metrics) error {
 		r.insertTag = nilInsertTag
 	default:
 		return errors.New("invalid config for PipelinerunLevel: " + cfg.PipelinerunLevel)
+	}
+
+	var runningPRTag []tag.Key
+	switch cfg.RunningPipelinerunLevel {
+	case config.PipelinerunLevelAtPipelinerun:
+		runningPRTag = []tag.Key{pipelinerunTag, pipelineTag, namespaceTag}
+	case config.PipelinerunLevelAtPipeline:
+		runningPRTag = []tag.Key{pipelineTag, namespaceTag}
+	case config.PipelinerunLevelAtNS:
+		runningPRTag = []tag.Key{namespaceTag}
+	default:
+		runningPRTag = []tag.Key{}
 	}
 
 	distribution := view.Distribution(10, 30, 60, 300, 900, 1800, 3600, 5400, 10800, 21600, 43200, 86400)
@@ -213,6 +232,7 @@ func viewRegister(cfg *config.Metrics) error {
 		Description: runningPRs.Description(),
 		Measure:     runningPRs,
 		Aggregation: view.LastValue(),
+		TagKeys:     runningPRTag,
 	}
 
 	runningPRsWaitingOnPipelineResolutionCountView = &view.View{
@@ -326,7 +346,7 @@ func (r *Recorder) updateConfig(cfg *config.Metrics) {
 
 // DurationAndCount logs the duration of PipelineRun execution and
 // count for number of PipelineRuns succeed or failed
-// returns an error if its failed to log the metrics
+// returns an error if it fails to log the metrics
 func (r *Recorder) DurationAndCount(pr *v1.PipelineRun, beforeCondition *apis.Condition) error {
 	if !r.initialized {
 		return fmt.Errorf("ignoring the metrics recording for %s , failed to initialize the metrics recorder", pr.Name)
@@ -379,11 +399,10 @@ func (r *Recorder) DurationAndCount(pr *v1.PipelineRun, beforeCondition *apis.Co
 }
 
 // RunningPipelineRuns logs the number of PipelineRuns running right now
-// returns an error if its failed to log the metrics
+// returns an error if it fails to log the metrics
 func (r *Recorder) RunningPipelineRuns(lister listers.PipelineRunLister) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-
 	if !r.initialized {
 		return errors.New("ignoring the metrics recording, failed to initialize the metrics recorder")
 	}
@@ -396,9 +415,38 @@ func (r *Recorder) RunningPipelineRuns(lister listers.PipelineRunLister) error {
 	var runningPipelineRuns int
 	var trsWaitResolvingTaskRef int
 	var prsWaitResolvingPipelineRef int
+	countMap := map[string]int{}
 
 	for _, pr := range prs {
+		pipelineName := getPipelineTagName(pr)
+		pipelineRunKey := ""
+		mutators := []tag.Mutator{
+			tag.Insert(namespaceTag, pr.Namespace),
+			tag.Insert(pipelineTag, pipelineName),
+			tag.Insert(pipelinerunTag, pr.Name),
+		}
+		if r.cfg != nil {
+			switch r.cfg.RunningPipelinerunLevel {
+			case runningPRLevelPipelinerun:
+				pipelineRunKey = pipelineRunKey + "#" + pr.Name
+				fallthrough
+			case runningPRLevelPipeline:
+				pipelineRunKey = pipelineRunKey + "#" + pipelineName
+				fallthrough
+			case runningPRLevelNamespace:
+				pipelineRunKey = pipelineRunKey + "#" + pr.Namespace
+			case runningPRLevelCluster:
+			default:
+				return fmt.Errorf("RunningPipelineRunLevel value \"%s\" is not valid ", r.cfg.RunningPipelinerunLevel)
+			}
+		}
+		ctx_, err_ := tag.New(context.Background(), mutators...)
+		if err_ != nil {
+			return err
+		}
 		if !pr.IsDone() {
+			countMap[pipelineRunKey]++
+			metrics.Record(ctx_, runningPRs.M(float64(countMap[pipelineRunKey])))
 			runningPipelineRuns++
 			succeedCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
 			if succeedCondition != nil && succeedCondition.Status == corev1.ConditionUnknown {
@@ -408,6 +456,13 @@ func (r *Recorder) RunningPipelineRuns(lister listers.PipelineRunLister) error {
 				case v1.PipelineRunReasonResolvingPipelineRef.String():
 					prsWaitResolvingPipelineRef++
 				}
+			}
+		} else {
+			// In case there are no running PipelineRuns for the pipelineRunKey, set the metric value to 0 to ensure
+			//  the metric is set for the key.
+			if _, exists := countMap[pipelineRunKey]; !exists {
+				countMap[pipelineRunKey] = 0
+				metrics.Record(ctx_, runningPRs.M(0))
 			}
 		}
 	}
@@ -421,7 +476,6 @@ func (r *Recorder) RunningPipelineRuns(lister listers.PipelineRunLister) error {
 	metrics.Record(ctx, runningPRsWaitingOnTaskResolutionCount.M(float64(trsWaitResolvingTaskRef)))
 	metrics.Record(ctx, runningPRsWaitingOnTaskResolution.M(float64(trsWaitResolvingTaskRef)))
 	metrics.Record(ctx, runningPRsCount.M(float64(runningPipelineRuns)))
-	metrics.Record(ctx, runningPRs.M(float64(runningPipelineRuns)))
 
 	return nil
 }

@@ -36,6 +36,7 @@ func TestNewMetricsFromConfigMap(t *testing.T) {
 			expectedConfig: &config.Metrics{
 				TaskrunLevel:            config.TaskrunLevelAtTaskrun,
 				PipelinerunLevel:        config.PipelinerunLevelAtPipelinerun,
+				RunningPipelinerunLevel: config.DefaultRunningPipelinerunLevel,
 				DurationTaskrunType:     config.DurationPipelinerunTypeHistogram,
 				DurationPipelinerunType: config.DurationPipelinerunTypeHistogram,
 				CountWithReason:         false,
@@ -47,6 +48,7 @@ func TestNewMetricsFromConfigMap(t *testing.T) {
 			expectedConfig: &config.Metrics{
 				TaskrunLevel:            config.TaskrunLevelAtNS,
 				PipelinerunLevel:        config.PipelinerunLevelAtNS,
+				RunningPipelinerunLevel: config.PipelinerunLevelAtNS,
 				DurationTaskrunType:     config.DurationTaskrunTypeHistogram,
 				DurationPipelinerunType: config.DurationPipelinerunTypeLastValue,
 				CountWithReason:         false,
@@ -58,6 +60,7 @@ func TestNewMetricsFromConfigMap(t *testing.T) {
 			expectedConfig: &config.Metrics{
 				TaskrunLevel:            config.TaskrunLevelAtNS,
 				PipelinerunLevel:        config.PipelinerunLevelAtNS,
+				RunningPipelinerunLevel: config.DefaultRunningPipelinerunLevel,
 				DurationTaskrunType:     config.DurationTaskrunTypeHistogram,
 				DurationPipelinerunType: config.DurationPipelinerunTypeLastValue,
 				CountWithReason:         true,
@@ -69,6 +72,7 @@ func TestNewMetricsFromConfigMap(t *testing.T) {
 			expectedConfig: &config.Metrics{
 				TaskrunLevel:            config.TaskrunLevelAtNS,
 				PipelinerunLevel:        config.PipelinerunLevelAtNS,
+				RunningPipelinerunLevel: config.PipelinerunLevelAtPipeline,
 				DurationTaskrunType:     config.DurationTaskrunTypeHistogram,
 				DurationPipelinerunType: config.DurationPipelinerunTypeLastValue,
 				CountWithReason:         true,
@@ -88,6 +92,7 @@ func TestNewMetricsFromEmptyConfigMap(t *testing.T) {
 	expectedConfig := &config.Metrics{
 		TaskrunLevel:            config.TaskrunLevelAtTask,
 		PipelinerunLevel:        config.PipelinerunLevelAtPipeline,
+		RunningPipelinerunLevel: config.DefaultRunningPipelinerunLevel,
 		DurationTaskrunType:     config.DurationPipelinerunTypeHistogram,
 		DurationPipelinerunType: config.DurationPipelinerunTypeHistogram,
 		CountWithReason:         false,
