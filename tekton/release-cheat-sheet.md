@@ -62,9 +62,11 @@ the pipelines repo, a terminal window and a text editor.
       --serviceaccount=release-right-meow \
       --param=gitRevision="${TEKTON_RELEASE_GIT_SHA}" \
       --param=serviceAccountPath=release.json \
+      --param=serviceAccountImagesPath=release.json \
       --param=versionTag="${TEKTON_VERSION}" \
       --param=releaseBucket=gs://tekton-releases/pipeline \
       --workspace name=release-secret,secret=release-secret \
+      --workspace name=release-images-secret,secret=release-secret \
       --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml \
       --tasks-timeout 2h \
       --pipeline-timeout 3h
