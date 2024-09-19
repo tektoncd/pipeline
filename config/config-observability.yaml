@@ -59,3 +59,4 @@ data:
     metrics.pipelinerun.level: "pipeline"
     metrics.pipelinerun.duration-type: "histogram"
     metrics.count.enable-reason: "false"
+    metrics.running-pipelinerun.level: ""
