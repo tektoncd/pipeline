@@ -52,6 +52,11 @@ func (in *AffinityAssistantTemplate) DeepCopyInto(out *AffinityAssistantTemplate
 		*out = new(v1.PodSecurityContext)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.PriorityClassName != nil {
+		in, out := &in.PriorityClassName, &out.PriorityClassName
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 

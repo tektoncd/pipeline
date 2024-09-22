@@ -778,6 +778,7 @@ func TestDefaultPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 			},
 		},
 	}
+	priorityClassName := "test-priority"
 
 	defaultTpl := &pod.AffinityAssistantTemplate{
 		Tolerations: []corev1.Toleration{{
@@ -796,6 +797,7 @@ func TestDefaultPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 			RunAsNonRoot:   ptr.Bool(true),
 			SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 		},
+		PriorityClassName: &priorityClassName,
 	}
 
 	stsWithOverridenTemplateFields := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithCustomPodTemplate, []corev1.PersistentVolumeClaim{}, []string{}, containerConfigWithoutSecurityContext, defaultTpl)
@@ -814,6 +816,10 @@ func TestDefaultPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 
 	if stsWithOverridenTemplateFields.Spec.Template.Spec.SecurityContext == nil {
 		t.Errorf("expected SecurityContext in the StatefulSet")
+	}
+
+	if stsWithOverridenTemplateFields.Spec.Template.Spec.PriorityClassName == "" {
+		t.Errorf("expected PriorityClassName in the StatefulSet")
 	}
 }
 

@@ -311,6 +311,11 @@ func affinityAssistantStatefulSet(aaBehavior aa.AffinityAssistantBehavior, name 
 		}
 	}
 
+	var priorityClassName string
+	if tpl.PriorityClassName != nil {
+		priorityClassName = *tpl.PriorityClassName
+	}
+
 	containers := []corev1.Container{{
 		Name:  "affinity-assistant",
 		Image: containerConfig.Image,
@@ -375,10 +380,11 @@ func affinityAssistantStatefulSet(aaBehavior aa.AffinityAssistantBehavior, name 
 				Spec: corev1.PodSpec{
 					Containers: containers,
 
-					Tolerations:      tpl.Tolerations,
-					NodeSelector:     tpl.NodeSelector,
-					ImagePullSecrets: tpl.ImagePullSecrets,
-					SecurityContext:  tpl.SecurityContext,
+					Tolerations:       tpl.Tolerations,
+					NodeSelector:      tpl.NodeSelector,
+					ImagePullSecrets:  tpl.ImagePullSecrets,
+					SecurityContext:   tpl.SecurityContext,
+					PriorityClassName: priorityClassName,
 
 					Affinity: getAssistantAffinityMergedWithPodTemplateAffinity(pr, aaBehavior),
 					Volumes:  volumes,

@@ -148,10 +148,11 @@ func (tpl *Template) ToAffinityAssistantTemplate() *AffinityAssistantTemplate {
 	}
 
 	return &AffinityAssistantTemplate{
-		NodeSelector:     tpl.NodeSelector,
-		Tolerations:      tpl.Tolerations,
-		ImagePullSecrets: tpl.ImagePullSecrets,
-		SecurityContext:  tpl.SecurityContext,
+		NodeSelector:      tpl.NodeSelector,
+		Tolerations:       tpl.Tolerations,
+		ImagePullSecrets:  tpl.ImagePullSecrets,
+		SecurityContext:   tpl.SecurityContext,
+		PriorityClassName: tpl.PriorityClassName,
 	}
 }
 
@@ -250,6 +251,9 @@ func MergeAAPodTemplateWithDefault(tpl, defaultTpl *AAPodTemplate) *AAPodTemplat
 		}
 		if tpl.SecurityContext == nil {
 			tpl.SecurityContext = defaultTpl.SecurityContext
+		}
+		if tpl.PriorityClassName == nil {
+			tpl.PriorityClassName = defaultTpl.PriorityClassName
 		}
 
 		return tpl

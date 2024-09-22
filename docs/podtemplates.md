@@ -23,20 +23,6 @@ See the following for examples of specifying a Pod template:
 - [Specifying a Pod template for a `TaskRun`](./taskruns.md#specifying-a-pod-template)
 - [Specifying a Pod template for a `PipelineRun`](./pipelineruns.md#specifying-a-pod-template)
 
-## Affinity Assistant Pod templates
-
-The Pod templates specified in the `TaskRuns` and `PipelineRuns `also apply to
-the [affinity assistant Pods](#./workspaces.md#specifying-workspace-order-in-a-pipeline-and-affinity-assistants)
-that are created when using Workspaces, but only on select fields.
-
-The supported fields are: `tolerations`, `nodeSelector`, `securityContext` and
-`imagePullSecrets` (see the table below for more details).
-
-Similarily to Pod templates, you have the option to define a global affinity
-assistant Pod template [in your Tekton config](./additional-configs.md#customizing-basic-execution-parameters)
-using the key `default-affinity-assistant-pod-template`. The merge strategy is
-the same as the one described above.
-
 ## Supported fields
 
 Pod templates support fields listed in the table below.
@@ -155,6 +141,20 @@ roleRef:
   name: creds-getter
   apiGroup: rbac.authorization.k8s.io
 ```
+
+# Affinity Assistant Pod templates
+
+The Pod templates specified in the `TaskRuns` and `PipelineRuns `also apply to
+the [affinity assistant Pods](#./workspaces.md#specifying-workspace-order-in-a-pipeline-and-affinity-assistants)
+that are created when using Workspaces, but only on selected fields.
+
+The supported fields for affinity assistant pods are: `tolerations`, `nodeSelector`, `securityContext`, 
+`priorityClassName` and `imagePullSecrets` (see the table above for more details about the fields).
+
+Similarly to global Pod Template, you have the option to define a global affinity
+assistant Pod template [in your Tekton config](./additional-configs.md#customizing-basic-execution-parameters)
+using the key `default-affinity-assistant-pod-template`. The merge strategy is
+the same as the one described above for the supported fields.
 
 ---
 
