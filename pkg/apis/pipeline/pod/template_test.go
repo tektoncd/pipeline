@@ -163,7 +163,62 @@ func TestMergePodTemplateWithDefault(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			result := MergePodTemplateWithDefault(tc.tpl, tc.defaultTpl)
 			if !reflect.DeepEqual(result, tc.expected) {
-				t.Errorf("mergeByName(%v, %v) = %v, want %v", tc.tpl, tc.defaultTpl, result, tc.expected)
+				t.Errorf("mergePodTemplateWithDefault%v, %v) = %v, want %v", tc.tpl, tc.defaultTpl, result, tc.expected)
+			}
+		})
+	}
+}
+
+func TestMergeAAPodTemplateWithDefault(t *testing.T) {
+	priority1 := "low-priority"
+	priority2 := "high-priority"
+	type testCase struct {
+		name       string
+		tpl        *AAPodTemplate
+		defaultTpl *AAPodTemplate
+		expected   *AAPodTemplate
+	}
+
+	testCases := []testCase{
+		{
+			name: "defaultTpl is nil",
+			tpl: &AAPodTemplate{
+				NodeSelector: map[string]string{"foo": "bar"},
+			},
+			defaultTpl: nil,
+			expected: &AAPodTemplate{
+				NodeSelector: map[string]string{"foo": "bar"},
+			},
+		},
+		{
+			name: "tpl is nil",
+			tpl:  nil,
+			defaultTpl: &AAPodTemplate{
+				NodeSelector: map[string]string{"foo": "bar"},
+			},
+			expected: &AAPodTemplate{
+				NodeSelector: map[string]string{"foo": "bar"},
+			},
+		},
+		{
+			name: "override default priorityClassName",
+			tpl: &AAPodTemplate{
+				PriorityClassName: &priority2,
+			},
+			defaultTpl: &AAPodTemplate{
+				PriorityClassName: &priority1,
+			},
+			expected: &AAPodTemplate{
+				PriorityClassName: &priority2,
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := MergeAAPodTemplateWithDefault(tc.tpl, tc.defaultTpl)
+			if !reflect.DeepEqual(result, tc.expected) {
+				t.Errorf("mergeAAPodTemplateWithDefault(%v, %v) = %v, want %v", tc.tpl, tc.defaultTpl, result, tc.expected)
 			}
 		})
 	}
