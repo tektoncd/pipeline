@@ -56,6 +56,8 @@ spec:
         value: "$(workspaces.release-secret.path)/$(params.serviceAccountPath)"
       - name: CONTAINER_REGISTRY
         value: "$(params.imageRegistry)/$(params.imageRegistryPath)"
+      - name: IMAGE_REGISTRY_PATH
+        value: "$(params.imageRegistryPath)"
       - name: CONTAINER_REGISTRY_USER
         value: "$(params.imageRegistryUser)"
       - name: REGIONS
@@ -103,13 +105,21 @@ spec:
       # Change to directory with vendor/
       cd ${PROJECT_ROOT}
 
+      COMBINED_BASE_IMAGE_BASE=${CONTAINER_REGISTRY}
+      # If the IMAGE_REGISTRY_PATH does not already includes the package, add it
+      # Package looks like github.com/<org>/<repo>
+      # Path may look like "tekton-releases" or "tektoncd/pipeline"
+      if [[ ! "$(params.package)" == "github.com/${IMAGE_REGISTRY_PATH}" ]]; then
+        COMBINED_BASE_IMAGE_BASE=${COMBINED_BASE_IMAGE_BASE}/${IMAGE_REGISTRY_PATH}
+      fi
+
       # Combine Distroless with a Windows base image, used for the entrypoint image.
       # Distroless is pinned to the last version based on Alpine 3.18. Newer versions are based on Alpine 3.19_alpha20230901.
       COMBINED_BASE_IMAGE=$(go run ./vendor/github.com/tektoncd/plumbing/cmd/combine/main.go \
         cgr.dev/chainguard/static@sha256:67a1b00e0134e2b3a614c7198a26f7deed9d11b7acad4d52c79c0cfd47a2eae7 \
         mcr.microsoft.com/windows/nanoserver:ltsc2019 \
         mcr.microsoft.com/windows/nanoserver:ltsc2022 \
-        ${CONTAINER_REGISTRY}/$(params.package)/combined-base-image:latest)
+        ${COMBINED_BASE_IMAGE_BASE}/combined-base-image:latest)
 
       # NOTE: Make sure this list of images to use the combined base image is in sync with what's in test/presubmit-tests.sh's 'ko_resolve' function.
       cat <<EOF > /workspace/.ko.yaml
