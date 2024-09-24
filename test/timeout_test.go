@@ -560,3 +560,102 @@ spec:
 	}
 	wg.Wait()
 }
+
+// TestPipelineRunTimeoutWithCompletedTaskRuns tests the case where a PipelineRun is timeout and has completed TaskRuns.
+func TestPipelineRunTimeoutWithCompletedTaskRuns(t *testing.T) {
+	t.Parallel()
+	// cancel the context after we have waited a suitable buffer beyond the given deadline.
+	ctx, cancel := context.WithTimeout(context.Background(), timeout+2*time.Minute)
+	defer cancel()
+	c, namespace := setup(ctx, t)
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(context.Background(), t, c, namespace) }, t.Logf)
+	defer tearDown(context.Background(), t, c, namespace)
+
+	t.Logf("Creating Task in namespace %s", namespace)
+	task := parse.MustParseV1Task(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  params:
+  - name: sleep
+    default: "1"
+  steps:
+  - image: mirror.gcr.io/busybox
+    command: ['/bin/sh']
+    args: ['-c', 'sleep $(params.sleep)']
+`, helpers.ObjectNameForTest(t), namespace))
+	if _, err := c.V1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create Task `%s`: %s", task.Name, err)
+	}
+
+	pipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  tasks:
+  - name: fast-task
+    params:
+    - name: sleep
+      value: "1"
+    taskRef:
+      name: %s
+  - name: slow-task
+    params:
+    - name: sleep
+      value: "120"
+    taskRef:
+      name: %s
+`, helpers.ObjectNameForTest(t), namespace, task.Name, task.Name))
+	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: %s
+  timeouts:
+    pipeline: 30s
+    tasks: 30s
+`, helpers.ObjectNameForTest(t), namespace, pipeline.Name))
+	if _, err := c.V1PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create Pipeline `%s`: %s", pipeline.Name, err)
+	}
+	if _, err := c.V1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create PipelineRun `%s`: %s", pipelineRun.Name, err)
+	}
+
+	t.Logf("Waiting for PipelineRun %s in namespace %s to be timed out", pipelineRun.Name, namespace)
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason(v1.PipelineRunReasonTimedOut.String(), pipelineRun.Name), "PipelineRunTimedOut", v1Version); err != nil {
+		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
+	}
+
+	taskrunList, err := c.V1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
+	if err != nil {
+		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
+	}
+
+	t.Logf("Waiting for TaskRuns from PipelineRun %s in namespace %s to time out and be cancelled", pipelineRun.Name, namespace)
+	var wg sync.WaitGroup
+	for _, taskrunItem := range taskrunList.Items {
+		wg.Add(1)
+		go func(name string) {
+			defer wg.Done()
+			if strings.Contains(name, "fast-task") {
+				// fast-task should have completed, not timed out
+				return
+			}
+			err := WaitForTaskRunState(ctx, c, name, FailedWithReason(v1.TaskRunReasonCancelled.String(), name), v1.TaskRunReasonCancelled.String(), v1Version)
+			if err != nil {
+				t.Errorf("Error waiting for TaskRun %s to timeout: %s", name, err)
+			}
+		}(taskrunItem.Name)
+	}
+	wg.Wait()
+
+	if _, err := c.V1PipelineRunClient.Get(ctx, pipelineRun.Name, metav1.GetOptions{}); err != nil {
+		t.Fatalf("Failed to get PipelineRun `%s`: %s", pipelineRun.Name, err)
+	}
+}

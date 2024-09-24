@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -125,6 +126,10 @@ func timeoutPipelineTasksForTaskNames(ctx context.Context, logger *zap.SugaredLo
 		logger.Infof("patching TaskRun %s for timeout", taskRunName)
 
 		if err := timeoutTaskRun(ctx, taskRunName, pr.Namespace, clientSet); err != nil {
+			if pipelineErrors.IsImmutableTaskRunSpecError(err) {
+				// The TaskRun may have completed and the spec field is immutable, we should ignore this error.
+				continue
+			}
 			errs = append(errs, fmt.Errorf("failed to patch TaskRun `%s` with timeout: %w", taskRunName, err).Error())
 			continue
 		}

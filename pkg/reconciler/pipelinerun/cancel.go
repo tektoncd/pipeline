@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -88,9 +89,8 @@ func cancelTaskRun(ctx context.Context, taskRunName string, namespace string, cl
 		// still be able to cancel the PipelineRun
 		return nil
 	}
-	if errors.IsBadRequest(err) && strings.Contains(err.Error(), "no updates are allowed") {
+	if pipelineErrors.IsImmutableTaskRunSpecError(err) {
 		// The TaskRun may have completed and the spec field is immutable, we should ignore this error.
-		// validation code: https://github.com/tektoncd/pipeline/blob/v0.62.0/pkg/apis/pipeline/v1/taskrun_validation.go#L136-L138
 		return nil
 	}
 	return err
