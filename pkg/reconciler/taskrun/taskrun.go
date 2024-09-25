@@ -733,6 +733,12 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1.TaskRun, reason v1.
 		return nil
 	}
 
+	// When the TaskRun is failed, we mark all running/waiting steps as failed
+	// This is regardless of what happens with the Pod, which may be cancelled,
+	// deleted, non existing or fail to delete
+	// See https://github.com/tektoncd/pipeline/issues/8293 for more details.
+	terminateStepsInPod(tr, reason)
+
 	var err error
 	if reason == v1.TaskRunReasonCancelled && (config.FromContextOrDefaults(ctx).FeatureFlags.EnableKeepPodOnCancel) {
 		logger.Infof("canceling task run %q by entrypoint", tr.Name)
@@ -746,14 +752,19 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1.TaskRun, reason v1.
 	}
 
 	// Update step states for TaskRun on TaskRun object since pod has been deleted for cancel or timeout
+	return nil
+}
+
+// terminateStepsInPod updates step states for TaskRun on TaskRun object since pod has been deleted for cancel or timeout
+func terminateStepsInPod(tr *v1.TaskRun, taskRunReason v1.TaskRunReason) {
 	for i, step := range tr.Status.Steps {
 		// If running, include StartedAt for when step began running
 		if step.Running != nil {
 			step.Terminated = &corev1.ContainerStateTerminated{
 				ExitCode:   1,
 				StartedAt:  step.Running.StartedAt,
-				FinishedAt: completionTime,
-				Reason:     reason.String(),
+				FinishedAt: *tr.Status.CompletionTime,
+				Reason:     taskRunReason.String(),
 			}
 			step.Running = nil
 			tr.Status.Steps[i] = step
@@ -762,15 +773,13 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1.TaskRun, reason v1.
 		if step.Waiting != nil {
 			step.Terminated = &corev1.ContainerStateTerminated{
 				ExitCode:   1,
-				FinishedAt: completionTime,
-				Reason:     reason.String(),
+				FinishedAt: *tr.Status.CompletionTime,
+				Reason:     taskRunReason.String(),
 			}
 			step.Waiting = nil
 			tr.Status.Steps[i] = step
 		}
 	}
-
-	return nil
 }
 
 // createPod creates a Pod based on the Task's configuration, with pvcName as a volumeMount
