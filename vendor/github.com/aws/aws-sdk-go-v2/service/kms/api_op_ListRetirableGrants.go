@@ -179,6 +179,12 @@ func (c *Client) addOperationListRetirableGrantsMiddlewares(stack *middleware.St
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpListRetirableGrantsValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -202,14 +208,6 @@ func (c *Client) addOperationListRetirableGrantsMiddlewares(stack *middleware.St
 	}
 	return nil
 }
-
-// ListRetirableGrantsAPIClient is a client that implements the
-// ListRetirableGrants operation.
-type ListRetirableGrantsAPIClient interface {
-	ListRetirableGrants(context.Context, *ListRetirableGrantsInput, ...func(*Options)) (*ListRetirableGrantsOutput, error)
-}
-
-var _ ListRetirableGrantsAPIClient = (*Client)(nil)
 
 // ListRetirableGrantsPaginatorOptions is the paginator options for
 // ListRetirableGrants
@@ -280,6 +278,9 @@ func (p *ListRetirableGrantsPaginator) NextPage(ctx context.Context, optFns ...f
 	}
 	params.Limit = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListRetirableGrants(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -298,6 +299,14 @@ func (p *ListRetirableGrantsPaginator) NextPage(ctx context.Context, optFns ...f
 
 	return result, nil
 }
+
+// ListRetirableGrantsAPIClient is a client that implements the
+// ListRetirableGrants operation.
+type ListRetirableGrantsAPIClient interface {
+	ListRetirableGrants(context.Context, *ListRetirableGrantsInput, ...func(*Options)) (*ListRetirableGrantsOutput, error)
+}
+
+var _ ListRetirableGrantsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListRetirableGrants(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
