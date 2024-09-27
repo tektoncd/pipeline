@@ -76,28 +76,13 @@ var (
 		"The pipelinerun's taskrun execution time in seconds",
 		stats.UnitDimensionless)
 
-	trCount = stats.Float64("taskrun_count",
-		"number of taskruns",
-		stats.UnitDimensionless)
-
 	trTotal = stats.Float64("taskrun_total",
 		"Number of taskruns",
 		stats.UnitDimensionless)
 
-	runningTRsCount = stats.Float64("running_taskruns_count",
-		"Number of taskruns executing currently",
-		stats.UnitDimensionless)
 
 	runningTRs = stats.Float64("running_taskruns",
 		"Number of taskruns executing currently",
-		stats.UnitDimensionless)
-
-	runningTRsThrottledByQuotaCount = stats.Float64("running_taskruns_throttled_by_quota_count",
-		"Number of taskruns executing currently, but whose underlying Pods or Containers are suspended by k8s because of defined ResourceQuotas.  Such suspensions can occur as part of initial scheduling of the Pod, or scheduling of any of the subsequent Container(s) in the Pod after the first Container is started",
-		stats.UnitDimensionless)
-
-	runningTRsThrottledByNodeCount = stats.Float64("running_taskruns_throttled_by_node_count",
-		"Number of taskruns executing currently, but whose underlying Pods or Containers are suspended by k8s because of Node level constraints. Such suspensions can occur as part of initial scheduling of the Pod, or scheduling of any of the subsequent Container(s) in the Pod after the first Container is started",
 		stats.UnitDimensionless)
 
 	runningTRsWaitingOnTaskResolutionCount = stats.Float64("running_taskruns_waiting_on_task_resolution_count",
@@ -296,12 +281,8 @@ func viewRegister(cfg *config.Metrics) error {
 	return view.Register(
 		trDurationView,
 		prTRDurationView,
-		trCountView,
 		trTotalView,
-		runningTRsCountView,
 		runningTRsView,
-		runningTRsThrottledByQuotaCountView,
-		runningTRsThrottledByNodeCountView,
 		runningTRsWaitingOnTaskResolutionCountView,
 		runningTRsThrottledByQuotaView,
 		runningTRsThrottledByNodeView,
@@ -313,12 +294,8 @@ func viewUnregister() {
 	view.Unregister(
 		trDurationView,
 		prTRDurationView,
-		trCountView,
 		trTotalView,
-		runningTRsCountView,
 		runningTRsView,
-		runningTRsThrottledByQuotaCountView,
-		runningTRsThrottledByNodeCountView,
 		runningTRsWaitingOnTaskResolutionCountView,
 		runningTRsThrottledByQuotaView,
 		runningTRsThrottledByNodeView,
@@ -451,7 +428,6 @@ func (r *Recorder) DurationAndCount(ctx context.Context, tr *v1.TaskRun, beforeC
 	}
 
 	metrics.Record(ctx, durationStat.M(duration.Seconds()))
-	metrics.Record(ctx, trCount.M(1))
 	metrics.Record(ctx, trTotal.M(1))
 
 	return nil
@@ -476,9 +452,7 @@ func (r *Recorder) RunningTaskRuns(ctx context.Context, lister listers.TaskRunLi
 
 	var runningTrs int
 	trsThrottledByQuota := map[string]int{}
-	trsThrottledByQuotaCount := 0
 	trsThrottledByNode := map[string]int{}
-	trsThrottledByNodeCount := 0
 	var trsWaitResolvingTaskRef int
 	for _, pr := range trs {
 		// initialize metrics with namespace tag to zero if unset; will then update as needed below
@@ -519,10 +493,8 @@ func (r *Recorder) RunningTaskRuns(ctx context.Context, lister listers.TaskRunLi
 	if err != nil {
 		return err
 	}
-	metrics.Record(ctx, runningTRsCount.M(float64(runningTrs)))
 	metrics.Record(ctx, runningTRs.M(float64(runningTrs)))
 	metrics.Record(ctx, runningTRsWaitingOnTaskResolutionCount.M(float64(trsWaitResolvingTaskRef)))
-	metrics.Record(ctx, runningTRsThrottledByQuotaCount.M(float64(trsThrottledByQuotaCount)))
 	metrics.Record(ctx, runningTRsThrottledByNodeCount.M(float64(trsThrottledByNodeCount)))
 
 	for ns, cnt := range trsThrottledByQuota {
