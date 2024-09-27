@@ -556,11 +556,9 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 				t.Errorf("DurationAndCount: %v", err)
 			}
 			if c.expectedCountTags != nil {
-				metricstest.CheckCountData(t, "taskrun_count", c.expectedCountTags, c.expectedCount)
 				delete(c.expectedCountTags, "reason")
 				metricstest.CheckCountData(t, "taskrun_total", c.expectedCountTags, c.expectedCount)
 			} else {
-				metricstest.CheckStatsNotReported(t, "taskrun_count")
 				metricstest.CheckStatsNotReported(t, "taskrun_total")
 			}
 			if c.expectedDurationTags != nil {
@@ -610,7 +608,6 @@ func TestRecordRunningTaskRunsCount(t *testing.T) {
 	if err := metrics.RunningTaskRuns(ctx, informer.Lister()); err != nil {
 		t.Errorf("RunningTaskRuns: %v", err)
 	}
-	metricstest.CheckLastValueData(t, "running_taskruns_count", map[string]string{}, 1)
 }
 
 func TestRecordRunningTaskRunsThrottledCounts(t *testing.T) {
@@ -727,13 +724,11 @@ func TestRecordRunningTaskRunsThrottledCounts(t *testing.T) {
 		if err := metrics.RunningTaskRuns(ctx, informer.Lister()); err != nil {
 			t.Errorf("RunningTaskRuns: %v", err)
 		}
-		metricstest.CheckLastValueData(t, "running_taskruns_throttled_by_quota_count", map[string]string{}, tc.quotaCount)
 		nsMap := map[string]string{}
 		if tc.addNS {
 			nsMap = map[string]string{namespaceTag.Name(): "test"}
 		}
 		metricstest.CheckLastValueData(t, "running_taskruns_throttled_by_quota", nsMap, tc.quotaCount)
-		metricstest.CheckLastValueData(t, "running_taskruns_throttled_by_node_count", map[string]string{}, tc.nodeCount)
 		metricstest.CheckLastValueData(t, "running_taskruns_throttled_by_node", nsMap, tc.nodeCount)
 		metricstest.CheckLastValueData(t, "running_taskruns_waiting_on_task_resolution_count", map[string]string{}, tc.waitCount)
 	}
@@ -928,7 +923,7 @@ func TestTaskRunIsOfPipelinerun(t *testing.T) {
 }
 
 func unregisterMetrics() {
-	metricstest.Unregister("taskrun_duration_seconds", "pipelinerun_taskrun_duration_seconds", "taskrun_count", "running_taskruns_count", "running_taskruns_throttled_by_quota_count", "running_taskruns_throttled_by_node_count", "running_taskruns_waiting_on_task_resolution_count", "taskruns_pod_latency_milliseconds", "taskrun_total", "running_taskruns", "running_taskruns_throttled_by_quota", "running_taskruns_throttled_by_node", "running_taskruns_waiting_on_task_resolution")
+	metricstest.Unregister("taskrun_duration_seconds", "pipelinerun_taskrun_duration_seconds", "running_taskruns_waiting_on_task_resolution_count", "taskruns_pod_latency_milliseconds", "taskrun_total", "running_taskruns", "running_taskruns_throttled_by_quota", "running_taskruns_throttled_by_node")
 
 	// Allow the recorder singleton to be recreated.
 	once = sync.Once{}
