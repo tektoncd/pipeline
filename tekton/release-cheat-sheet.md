@@ -60,17 +60,22 @@ the pipelines repo, a terminal window and a text editor.
     ```bash
     tkn --context dogfooding pipeline start pipeline-release \
       --serviceaccount=release-right-meow \
-      --param=gitRevision="${TEKTON_RELEASE_GIT_SHA}" \
-      --param=serviceAccountPath=release.json \
-      --param=serviceAccountImagesPath=release.json \
-      --param=versionTag="${TEKTON_VERSION}" \
-      --param=releaseBucket=gs://tekton-releases/pipeline \
+      --param package=github.com/tektoncd/pipeline \
+      --param gitRevision="${TEKTON_RELEASE_GIT_SHA}" \
+      --param imageRegistry=ghcr.io \
+      --param imageRegistryPath=tektoncd/pipeline \
+      --param imageRegistryRegions="" \
+      --param imageRegistryUser=tekton-robot \
+      --param serviceAccountPath=release.json \
+      --param serviceAccountImagesPath=credentials \
+      --param versionTag="${TEKTON_VERSION}" \
+      --param releaseBucket=gs://tekton-releases/pipeline \
+      --param koExtraArgs="" \
       --workspace name=release-secret,secret=release-secret \
-      --workspace name=release-images-secret,secret=release-secret \
+      --workspace name=release-images-secret,secret=ghcr-creds \
       --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml \
       --tasks-timeout 2h \
       --pipeline-timeout 3h
-    ```
 
     Accept the default values of the parameters (except for "releaseAsLatest" if backporting).
 
