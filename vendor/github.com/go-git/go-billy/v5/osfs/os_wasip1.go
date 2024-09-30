@@ -1,27 +1,23 @@
-//go:build !plan9 && !windows && !wasm
-// +build !plan9,!windows,!wasm
+//go:build wasip1
+// +build wasip1
 
 package osfs
 
 import (
 	"os"
 	"syscall"
-
-	"golang.org/x/sys/unix"
 )
 
 func (f *file) Lock() error {
 	f.m.Lock()
 	defer f.m.Unlock()
-
-	return unix.Flock(int(f.File.Fd()), unix.LOCK_EX)
+	return nil
 }
 
 func (f *file) Unlock() error {
 	f.m.Lock()
 	defer f.m.Unlock()
-
-	return unix.Flock(int(f.File.Fd()), unix.LOCK_UN)
+	return nil
 }
 
 func rename(from, to string) error {
