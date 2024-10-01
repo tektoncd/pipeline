@@ -194,16 +194,17 @@ spec:
 ### Specifying Configuration for Multiple Git Providers
 
 It is possible to specify configurations for multiple providers and even multiple configurations for same provider to use in 
-different tekton resources. You need to first add details in configmap with your unique identifier key prefix.
+different tekton resources. Firstly, details need to be added in configmap with the unique identifier key prefix.
 To use them in tekton resources, pass the unique key mentioned in configmap as an extra param to resolver with key 
-`configKey` and value your unique key. If no `configKey` param is passed, `default` will be used. You can specify 
-default configuration in configmap either by mentioning no unique identifier or by using default identifier `default`
+`configKey` and value will be the unique key. If no `configKey` param is passed, `default` will be used. Default 
+configuration to be used for git resolver can be specified in configmap by either mentioning no unique identifier or 
+using identifier `default`
 
 **Note**: `configKey` should not contain `.` while specifying configurations in configmap
 
 ### Example Configmap
 
-You can add multiple configuration to `git-resolver-configmap` like this. All keys mentioned above are supported.
+Multiple configurations can be specified in `git-resolver-config` configmap like this. All keys mentioned above are supported.
 
 ```yaml
 apiVersion: v1
@@ -253,7 +254,7 @@ data:
 #### Task Resolution
 
 A specific configurations from the configMap can be selected by passing the parameter `configKey` with the value 
-matching one of the configuration keys used in the configMaps.
+matching one of the configuration keys used in the configMap.
 
 ```yaml
 apiVersion: tekton.dev/v1beta1
