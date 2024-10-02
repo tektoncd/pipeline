@@ -858,7 +858,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Results: []v1beta1.TaskResult{{Name: "a-result"}},
 		},
 		expectedError: apis.FieldError{
-			Message: `non-existent variable in "\n\t\t\t\t#!/usr/bin/env bash\n\t\t\t\tdate | tee $(results.non-exist.path)"`,
+			Message: `non-existent variable ` + "`non-exist`" + ` in "\n\t\t\t\t#!/usr/bin/env bash\n\t\t\t\tdate | tee $(results.non-exist.path)"`,
 			Paths:   []string{"steps[0].script"},
 		},
 	}, {
@@ -1417,7 +1417,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 			}},
 		},
 		expectedError: apis.FieldError{
-			Message: `non-existent variable in "\n\t\t\t\t#!/usr/bin/env  bash\n\t\t\t\thello \"$(context.task.missing)\""`,
+			Message: `non-existent variable ` + "`missing`" + ` in "\n\t\t\t\t#!/usr/bin/env  bash\n\t\t\t\thello \"$(context.task.missing)\""`,
 			Paths:   []string{"steps[0].script"},
 		},
 	}, {
@@ -2566,7 +2566,7 @@ func TestTaskSpecValidate_StepResults_Error(t *testing.T) {
 			Results: []v1.StepResult{{Name: "a-result"}},
 		},
 		expectedError: apis.FieldError{
-			Message: `non-existent variable in "\n\t\t\t#!/usr/bin/env bash\n\t\t\tdate | tee $(results.non-exist.path)"`,
+			Message: "non-existent variable `non-exist` in \"\\n\\t\\t\\t#!/usr/bin/env bash\\n\\t\\t\\tdate | tee $(results.non-exist.path)\": steps[0].script\nnon-existent variable in \"\\n\\t\\t\\t#!/usr/bin/env bash\\n\\t\\t\\tdate | tee $(results.non-exist.path)\"",
 			Paths:   []string{"steps[0].script"},
 		},
 		enableStepActions: true,
