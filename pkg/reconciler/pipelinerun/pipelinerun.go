@@ -831,20 +831,35 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 	recorder := controller.GetEventRecorder(ctx)
 
 	// nextRpts holds a list of pipeline tasks which should be executed next
-	nextRpts, err := pipelineRunFacts.DAGExecutionQueue()
+	// tmpNextRpts holds the nextRpts temporarily,
+	// tmpNextRpts is later filtered to check for the missing result reference
+	// if the pipelineTask is valid then it is added to the nextRpts
+	tmpNextRpts, err := pipelineRunFacts.DAGExecutionQueue()
 	if err != nil {
 		logger.Errorf("Error getting potential next tasks for valid pipelinerun %s: %v", pr.Name, err)
 		return controller.NewPermanentError(err)
 	}
 
-	// Check for Missing Result References
-	err = resources.CheckMissingResultReferences(pipelineRunFacts.State, nextRpts)
-	if err != nil {
-		logger.Infof("Failed to resolve task result reference for %q with error %v", pr.Name, err)
-		pr.Status.MarkFailed(v1.PipelineRunReasonInvalidTaskResultReference.String(), err.Error())
-		return controller.NewPermanentError(err)
+	var nextRpts resources.PipelineRunState
+	for _, nextRpt := range tmpNextRpts {
+		// Check for Missing Result References and
+		// store the faulty task in missingRefTask
+		missingRefTask, err := resources.CheckMissingResultReferences(pipelineRunFacts.State, nextRpt)
+		if err != nil {
+			logger.Infof("Failed to resolve task result reference for %q with error %v", pr.Name, err)
+			pr.Status.MarkFailed(v1.PipelineRunReasonInvalidTaskResultReference.String(), err.Error())
+			// check if pipeline contains finally tasks
+			// return the permanent error only if there is no finally task
+			fTaskNames := pipelineRunFacts.GetFinalTaskNames()
+			pipelineRunFacts.ValidationFailedTask = append(pipelineRunFacts.ValidationFailedTask, missingRefTask)
+			if len(fTaskNames) == 0 {
+				return controller.NewPermanentError(err)
+			}
+		} else {
+			// if task is valid then add it to nextRpts for the further execution
+			nextRpts = append(nextRpts, nextRpt)
+		}
 	}
-
 	// GetFinalTasks only returns final tasks when a DAG is complete
 	fNextRpts := pipelineRunFacts.GetFinalTasks()
 	if len(fNextRpts) != 0 {
