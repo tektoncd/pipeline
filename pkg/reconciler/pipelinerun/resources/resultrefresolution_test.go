@@ -815,7 +815,13 @@ func TestCheckMissingResultReferences(t *testing.T) {
 		wantErr: "Result reference error: Internal result ref \"lTask\" has zero-length TaskRuns",
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
-			err := CheckMissingResultReferences(tt.pipelineRunState, tt.targets)
+			var err error
+			for _, target := range tt.targets {
+				_, tmpErr := CheckMissingResultReferences(tt.pipelineRunState, target)
+				if tmpErr != nil {
+					err = tmpErr
+				}
+			}
 			if (err != nil) && err.Error() != tt.wantErr {
 				t.Errorf("CheckMissingResultReferences() error = %v, wantErr %v", err, tt.wantErr)
 				return
