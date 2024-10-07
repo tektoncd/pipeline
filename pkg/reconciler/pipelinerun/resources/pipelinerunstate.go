@@ -69,6 +69,12 @@ type PipelineRunFacts struct {
 	// The skip data is sensitive to changes in the state. The ResetSkippedCache method
 	// can be used to clean the cache and force re-computation when needed.
 	SkipCache map[string]TaskSkipStatus
+
+	// ValidationFailedTask are the tasks for which taskrun is not created as they
+	// never got added to the execution i.e. they failed in the validation step. One of
+	// the case of failing at the validation is during CheckMissingResultReferences method
+	// Tasks in ValidationFailedTask is added in method runNextSchedulableTask
+	ValidationFailedTask []*ResolvedPipelineTask
 }
 
 // PipelineRunTimeoutsState records information about start times and timeouts for the PipelineRun, so that the PipelineRunFacts
@@ -706,6 +712,8 @@ func (facts *PipelineRunFacts) getPipelineTasksCount() pipelineRunStatusCount {
 			} else {
 				s.Failed++
 			}
+		case t.isValidationFailed(facts.ValidationFailedTask):
+			s.Failed++
 		// increment skipped and skipped due to timeout counters since the task was skipped due to the pipeline, tasks, or finally timeout being reached before the task was launched
 		case t.Skip(facts).SkippingReason == v1.PipelineTimedOutSkip ||
 			t.Skip(facts).SkippingReason == v1.TasksTimedOutSkip ||
