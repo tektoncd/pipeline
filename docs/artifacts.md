@@ -25,6 +25,7 @@ Artifacts fall into two categories:
 
  - Inputs: Artifacts downloaded and used by the Step/Task.
  - Outputs: Artifacts created and uploaded by the Step/Task.
+
 Example Structure:
 ```json
 {
