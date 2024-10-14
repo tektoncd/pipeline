@@ -237,7 +237,9 @@ func (m *Matrix) countGeneratedCombinationsFromParams() int {
 	}
 	count := 1
 	for _, param := range m.Params {
-		count *= len(param.Value.ArrayVal)
+		if len(param.Value.ArrayVal) > 0 {
+			count *= len(param.Value.ArrayVal)
+		}
 	}
 	return count
 }
