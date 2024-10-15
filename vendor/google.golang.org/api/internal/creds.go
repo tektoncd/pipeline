@@ -42,6 +42,26 @@ func Creds(ctx context.Context, ds *DialSettings) (*google.Credentials, error) {
 	return creds, nil
 }
 
+// GetOAuth2Configuration determines configurations for the OAuth2 transport, which is separate from the API transport.
+// The OAuth2 transport and endpoint will be configured for mTLS if applicable.
+func GetOAuth2Configuration(ctx context.Context, settings *DialSettings) (string, *http.Client, error) {
+	clientCertSource, err := getClientCertificateSource(settings)
+	if err != nil {
+		return "", nil, err
+	}
+	tokenURL := oAuth2Endpoint(clientCertSource)
+	var oauth2Client *http.Client
+	if clientCertSource != nil {
+		tlsConfig := &tls.Config{
+			GetClientCertificate: clientCertSource,
+		}
+		oauth2Client = customHTTPClient(tlsConfig)
+	} else {
+		oauth2Client = oauth2.NewClient(ctx, nil)
+	}
+	return tokenURL, oauth2Client, nil
+}
+
 func credsNewAuth(ctx context.Context, settings *DialSettings) (*google.Credentials, error) {
 	// Preserve old options behavior
 	if settings.InternalCredentials != nil {
@@ -86,7 +106,6 @@ func credsNewAuth(ctx context.Context, settings *DialSettings) (*google.Credenti
 		CredentialsFile:  settings.CredentialsFile,
 		CredentialsJSON:  settings.CredentialsJSON,
 		UseSelfSignedJWT: useSelfSignedJWT,
-		Client:           oauth2.NewClient(ctx, nil),
 	})
 	if err != nil {
 		return nil, err
@@ -102,7 +121,7 @@ func baseCreds(ctx context.Context, ds *DialSettings) (*google.Credentials, erro
 	if ds.Credentials != nil {
 		return ds.Credentials, nil
 	}
-	if ds.CredentialsJSON != nil {
+	if len(ds.CredentialsJSON) > 0 {
 		return credentialsFromJSON(ctx, ds.CredentialsJSON, ds)
 	}
 	if ds.CredentialsFile != "" {
@@ -147,19 +166,12 @@ func credentialsFromJSON(ctx context.Context, data []byte, ds *DialSettings) (*g
 	var params google.CredentialsParams
 	params.Scopes = ds.GetScopes()
 
-	// Determine configurations for the OAuth2 transport, which is separate from the API transport.
-	// The OAuth2 transport and endpoint will be configured for mTLS if applicable.
-	clientCertSource, err := getClientCertificateSource(ds)
+	tokenURL, oauth2Client, err := GetOAuth2Configuration(ctx, ds)
 	if err != nil {
 		return nil, err
 	}
-	params.TokenURL = oAuth2Endpoint(clientCertSource)
-	if clientCertSource != nil {
-		tlsConfig := &tls.Config{
-			GetClientCertificate: clientCertSource,
-		}
-		ctx = context.WithValue(ctx, oauth2.HTTPClient, customHTTPClient(tlsConfig))
-	}
+	params.TokenURL = tokenURL
+	ctx = context.WithValue(ctx, oauth2.HTTPClient, oauth2Client)
 
 	// By default, a standard OAuth 2.0 token source is created
 	cred, err := google.CredentialsFromJSONWithParams(ctx, data, params)
@@ -283,15 +295,4 @@ func baseTransport() *http.Transport {
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	}
-}
-
-// ErrUniverseNotMatch composes an error string from the provided universe
-// domain sources (DialSettings and Credentials, respectively).
-func ErrUniverseNotMatch(settingsUD, credsUD string) error {
-	return fmt.Errorf(
-		"the configured universe domain (%q) does not match the universe "+
-			"domain found in the credentials (%q). If you haven't configured "+
-			"WithUniverseDomain explicitly, \"googleapis.com\" is the default",
-		settingsUD,
-		credsUD)
 }
