@@ -110,7 +110,6 @@ Apply the tasks from the `pipeline` repo:
 # Apply the Tasks and Pipelines we use from this repo
 kubectl apply -f tekton/publish.yaml
 kubectl apply -f tekton/release-pipeline.yaml
-kubectl apply -f tekton/release-pipeline-nightly.yaml
 
 # Apply the resources - note that when manually releasing you'll re-apply these
 kubectl apply -f tekton/resources.yaml
