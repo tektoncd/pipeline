@@ -46,7 +46,7 @@ consumers of a project. In that case we'll make a patch release. To make one:
 
 ## Nightly releases
 
-[The nightly release pipeline](release-pipeline-nightly.yaml) is
+[The nightly release pipeline](release-pipeline.yaml) is
 [triggered nightly by Tekton](https://github.com/tektoncd/plumbing/tree/main/tekton).
 
 This Pipeline uses:
@@ -110,7 +110,6 @@ Apply the tasks from the `pipeline` repo:
 # Apply the Tasks and Pipelines we use from this repo
 kubectl apply -f tekton/publish.yaml
 kubectl apply -f tekton/release-pipeline.yaml
-kubectl apply -f tekton/release-pipeline-nightly.yaml
 
 # Apply the resources - note that when manually releasing you'll re-apply these
 kubectl apply -f tekton/resources.yaml
