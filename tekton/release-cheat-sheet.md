@@ -10,9 +10,7 @@ the pipelines repo, a terminal window and a text editor.
 
 1. `cd` to root of Pipelines git checkout.
 
-1. Select the commit you would like to build the release from (NOTE: the commit is full (40-digit) hash.)
-    - Select the most recent commit on the ***main branch*** if you are cutting a major or minor release i.e. `x.0.0` or `0.x.0`
-    - Select the most recent commit on the ***`release-<version number>x` branch***, e.g. [`release-v0.47.x`](https://github.com/tektoncd/pipeline/tree/release-v0.47.x) if you are patching a release i.e. `v0.47.2`.
+1. [Install kustomize](https://kubectl.docs.kubernetes.io/installation/kustomize) if you haven't already.
 
 1. Ensure the correct version of the release pipeline is installed on the cluster:
 
@@ -24,6 +22,13 @@ the pipelines repo, a terminal window and a text editor.
 
     ```bash
     TEKTON_VERSION=# Example: v0.21.0
+    ```
+
+    - Select the commit you would like to build the release from (NOTE: the commit is full (40-digit) hash.)
+        - Select the most recent commit on the ***main branch*** if you are cutting a major or minor release i.e. `x.0.0` or `0.x.0`
+        - Select the most recent commit on the ***`release-<version number>x` branch***, e.g. [`release-v0.47.x`](https://github.com/tektoncd/pipeline/tree/release-v0.47.x) if you are patching a release i.e. `v0.47.2`.
+
+    ```bash
     TEKTON_RELEASE_GIT_SHA=# SHA of the release to be released
     ```
 
@@ -47,21 +52,30 @@ the pipelines repo, a terminal window and a text editor.
    ```
 
 1. Execute the release pipeline (takes ~45 mins).
+    
+    **The minimum required tkn version is v0.30.0 or later**
 
     **If you are back-porting include this flag: `--param=releaseAsLatest="false"`**
 
     ```bash
     tkn --context dogfooding pipeline start pipeline-release \
       --serviceaccount=release-right-meow \
-      --param=gitRevision="${TEKTON_RELEASE_GIT_SHA}" \
-      --param=serviceAccountPath=release.json \
-      --param=versionTag="${TEKTON_VERSION}" \
-      --param=releaseBucket=gs://tekton-releases/pipeline \
+      --param package=github.com/tektoncd/pipeline \
+      --param gitRevision="${TEKTON_RELEASE_GIT_SHA}" \
+      --param imageRegistry=ghcr.io \
+      --param imageRegistryPath=tektoncd/pipeline \
+      --param imageRegistryRegions="" \
+      --param imageRegistryUser=tekton-robot \
+      --param serviceAccountPath=release.json \
+      --param serviceAccountImagesPath=credentials \
+      --param versionTag="${TEKTON_VERSION}" \
+      --param releaseBucket=gs://tekton-releases/pipeline \
+      --param koExtraArgs="" \
       --workspace name=release-secret,secret=release-secret \
+      --workspace name=release-images-secret,secret=ghcr-creds \
       --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml \
       --tasks-timeout 2h \
       --pipeline-timeout 3h
-    ```
 
     Accept the default values of the parameters (except for "releaseAsLatest" if backporting).
 
