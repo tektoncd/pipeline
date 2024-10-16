@@ -41,11 +41,18 @@ echo "> Starting the release pipeline"
 tkn pipeline start pipeline-release \
   --serviceaccount=release-right-meow \
   --param=gitRevision="${TEKTON_RELEASE_GIT_SHA}" \
+  --param=imageRegistry=ghcr.io \
+  --param=imageRegistryRegions="" \
+  --param=imageRegistryPath=tektoncd/pipeline \
+  --param=imageRegistryUser=tekton-robot \
   --param=serviceAccountPath=release.json \
+  --param serviceAccountImagesPath=credentials \
   --param=versionTag="${TEKTON_VERSION}" \
   --param=releaseBucket=gs://tekton-releases/pipeline \
+  --param=koExtraArgs=" " \
   --param=releaseAsLatest="false" \
   --workspace name=release-secret,secret=release-secret \
+  --workspace name=release-images-secret,secret=ghcr-creds \
   --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml --use-param-defaults --pipeline-timeout 3h --showlog
 
 RELEASE_FILE=https://storage.googleapis.com/tekton-releases/pipeline/previous/${TEKTON_VERSION}/release.yaml
