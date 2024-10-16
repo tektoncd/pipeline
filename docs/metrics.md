@@ -15,17 +15,11 @@ We expose several kinds of exporters, including Prometheus, Google Stackdriver, 
 |-----------------------------------------------------------------------------------------| ----------- |-------------------------------------------------| ----------- |
 | `tekton_pipelines_controller_pipelinerun_duration_seconds_[bucket, sum, count]`         | Histogram/LastValue(Gauge) | `*pipeline`=&lt;pipeline_name&gt; <br> `*pipelinerun`=&lt;pipelinerun_name&gt; <br> `status`=&lt;status&gt; <br> `namespace`=&lt;pipelinerun-namespace&gt; | experimental |
 | `tekton_pipelines_controller_pipelinerun_taskrun_duration_seconds_[bucket, sum, count]` | Histogram/LastValue(Gauge) | `*pipeline`=&lt;pipeline_name&gt; <br> `*pipelinerun`=&lt;pipelinerun_name&gt; <br> `status`=&lt;status&gt; <br> `*task`=&lt;task_name&gt; <br> `*taskrun`=&lt;taskrun_name&gt;<br> `namespace`=&lt;pipelineruns-taskruns-namespace&gt;  <br> `*reason`=&lt;reason&gt; | experimental |
-| `tekton_pipelines_controller_pipelinerun_count` | Counter | `status`=&lt;status&gt;  <br> `*reason`=&lt;reason&gt; | deprecate |
 | `tekton_pipelines_controller_pipelinerun_total` | Counter | `status`=&lt;status&gt;                         | experimental |
-| `tekton_pipelines_controller_running_pipelineruns_count` | Gauge |                                                 | deprecate |
 | `tekton_pipelines_controller_running_pipelineruns` | Gauge |                                                 | experimental |
 | `tekton_pipelines_controller_taskrun_duration_seconds_[bucket, sum, count]` | Histogram/LastValue(Gauge) | `status`=&lt;status&gt; <br> `*task`=&lt;task_name&gt; <br> `*taskrun`=&lt;taskrun_name&gt;<br> `namespace`=&lt;pipelineruns-taskruns-namespace&gt; <br> `*reason`=&lt;reason&gt; | experimental |
-| `tekton_pipelines_controller_taskrun_count` | Counter | `status`=&lt;status&gt; <br> `*reason`=&lt;reason&gt; | deprecate |
 | `tekton_pipelines_controller_taskrun_total` | Counter | `status`=&lt;status&gt;                         | experimental |
-| `tekton_pipelines_controller_running_taskruns_count` | Gauge |                                                 | deprecate |
 | `tekton_pipelines_controller_running_taskruns` | Gauge |                                                 | experimental |
-| `tekton_pipelines_controller_running_taskruns_throttled_by_quota_count` | Gauge | <br> `namespace`=&lt;pipelinerun-namespace&gt;  | deprecate |
-| `tekton_pipelines_controller_running_taskruns_throttled_by_node_count`  | Gauge | <br> `namespace`=&lt;pipelinerun-namespace&gt;  | deprecate |
 | `tekton_pipelines_controller_running_taskruns_throttled_by_quota` | Gauge | <br> `namespace`=&lt;pipelinerun-namespace&gt; | experimental |
 | `tekton_pipelines_controller_running_taskruns_throttled_by_node`  | Gauge | <br> `namespace`=&lt;pipelinerun-namespace&gt; | experimental |
 | `tekton_pipelines_controller_client_latency_[bucket, sum, count]` | Histogram |                                                 | experimental |
