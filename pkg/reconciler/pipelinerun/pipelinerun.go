@@ -853,6 +853,16 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 			// be added to the nextRpts
 			nextRpts = nil
 			pipelineRunFacts.ValidationFailedTask = append(pipelineRunFacts.ValidationFailedTask, rpt)
+			fTaskNames := pipelineRunFacts.GetFinalTaskNames()
+			if len(fTaskNames) == 0 {
+				// If finally is not present, we should mark pipelinerun as
+				// failed so that no further execution happens. Also,
+				// this will set the completion time of the pipelineRun.
+				// NewPermanentError should also be returned so that
+				// reconcilation stops here
+				pr.Status.MarkFailed(v1.PipelineRunReasonInvalidTaskResultReference.String(), err.Error())
+				return controller.NewPermanentError(err)
+			}
 		}
 	}
 	// GetFinalTasks only returns final tasks when a DAG is complete
