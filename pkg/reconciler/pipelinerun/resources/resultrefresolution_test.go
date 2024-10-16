@@ -817,7 +817,7 @@ func TestCheckMissingResultReferences(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var err error
 			for _, target := range tt.targets {
-				_, tmpErr := CheckMissingResultReferences(tt.pipelineRunState, target)
+				tmpErr := CheckMissingResultReferences(tt.pipelineRunState, target)
 				if tmpErr != nil {
 					err = tmpErr
 				}
