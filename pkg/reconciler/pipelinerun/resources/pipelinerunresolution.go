@@ -835,33 +835,33 @@ func isCustomRunCancelledByPipelineRunTimeout(cr *v1beta1.CustomRun) bool {
 // CheckMissingResultReferences returns an error if it is missing any result references.
 // Missing result references can occur if task fails to produce a result but has
 // OnError: continue (ie TestMissingResultWhenStepErrorIsIgnored)
-func CheckMissingResultReferences(pipelineRunState PipelineRunState, target *ResolvedPipelineTask) (*ResolvedPipelineTask, error) {
+func CheckMissingResultReferences(pipelineRunState PipelineRunState, target *ResolvedPipelineTask) error {
 	for _, resultRef := range v1.PipelineTaskResultRefs(target.PipelineTask) {
 		referencedPipelineTask, ok := pipelineRunState.ToMap()[resultRef.PipelineTask]
 		if !ok {
-			return target, fmt.Errorf("Result reference error: Could not find ref \"%s\" in internal pipelineRunState", resultRef.PipelineTask)
+			return fmt.Errorf("Result reference error: Could not find ref \"%s\" in internal pipelineRunState", resultRef.PipelineTask)
 		}
 		if referencedPipelineTask.IsCustomTask() {
 			if len(referencedPipelineTask.CustomRuns) == 0 {
-				return target, fmt.Errorf("Result reference error: Internal result ref \"%s\" has zero-length CustomRuns", resultRef.PipelineTask)
+				return fmt.Errorf("Result reference error: Internal result ref \"%s\" has zero-length CustomRuns", resultRef.PipelineTask)
 			}
 			customRun := referencedPipelineTask.CustomRuns[0]
 			_, err := findRunResultForParam(customRun, resultRef)
 			if err != nil {
-				return target, err
+				return err
 			}
 		} else {
 			if len(referencedPipelineTask.TaskRuns) == 0 {
-				return target, fmt.Errorf("Result reference error: Internal result ref \"%s\" has zero-length TaskRuns", resultRef.PipelineTask)
+				return fmt.Errorf("Result reference error: Internal result ref \"%s\" has zero-length TaskRuns", resultRef.PipelineTask)
 			}
 			taskRun := referencedPipelineTask.TaskRuns[0]
 			_, err := findTaskResultForParam(taskRun, resultRef)
 			if err != nil {
-				return target, err
+				return err
 			}
 		}
 	}
-	return target, nil
+	return nil
 }
 
 // createResultsCacheMatrixedTaskRuns creates a cache of results that have been fanned out from a
