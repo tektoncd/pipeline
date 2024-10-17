@@ -1,0 +1,9 @@
+{
+	"name": "Tekton pipeline",
+	"image": "mcr.microsoft.com/vscode/devcontainers/go:1.22",
+	"features": {
+		"ghcr.io/devcontainers-contrib/features/pre-commit:2.0.17": {
+			"version": "3.6.2"
+		}
+	}
+}
