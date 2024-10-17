@@ -332,7 +332,6 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 }
 
 func TestGetVerificationNoMatchPolicy(t *testing.T) {
-	ctx := context.Background()
 	tcs := []struct {
 		name, noMatchPolicy, expected string
 	}{{
@@ -351,6 +350,7 @@ func TestGetVerificationNoMatchPolicy(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
 			store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
 			featureflags := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
