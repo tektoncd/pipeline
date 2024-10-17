@@ -2124,6 +2124,13 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunSpec(ref common.ReferenceCallba
 							},
 						},
 					},
+					"failFast": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FailFast is an option. When a failed task is found, other parallel tasks can be quickly canceled.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
