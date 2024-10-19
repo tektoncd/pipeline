@@ -859,6 +859,5 @@ func ValidateStepResultsVariables(ctx context.Context, results []StepResult, scr
 		resultsNames.Insert(r.Name)
 	}
 	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(script, "step.results", resultsNames).ViaField("script"))
-	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(script, "results", resultsNames).ViaField("script"))
 	return errs
 }
