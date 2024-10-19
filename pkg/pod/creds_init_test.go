@@ -335,8 +335,8 @@ func TestCredsInit(t *testing.T) {
 			eventObj := &corev1.Event{}
 			kubeclient := fakek8s.NewSimpleClientset(c.objs...)
 			recorder := record.NewFakeRecorder(1000)
-			c.ctx = controller.WithEventRecorder(c.ctx, recorder)
-			args, volumes, volumeMounts, err := credsInit(c.ctx, eventObj, serviceAccountName, namespace, kubeclient)
+			ctx := controller.WithEventRecorder(c.ctx, recorder)
+			args, volumes, volumeMounts, err := credsInit(ctx, eventObj, serviceAccountName, namespace, kubeclient)
 			if err != nil {
 				t.Fatalf("credsInit: %v", err)
 			}
