@@ -609,6 +609,18 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	default:
 	}
 
+	// find first failed task and cancel PipelineRun if FailFast is set
+	if pr.Spec.FailFast && !pr.IsCancelled() {
+		for _, resolvedTask := range pipelineRunState {
+			if resolvedTask.IsFailure() {
+				if err := cancelPipelineRun(ctx, logger, pr, c.PipelineClientSet); err != nil {
+					return err
+				}
+				break
+			}
+		}
+	}
+
 	// Second iteration
 	pipelineRunState, err = c.resolvePipelineState(ctx, notStartedTasks, pipelineMeta.ObjectMeta, pr, pipelineRunState)
 	switch {
