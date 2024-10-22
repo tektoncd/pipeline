@@ -1268,8 +1268,8 @@ status:
           image: busybox
           script: 'exit 0'
   conditions:
-  - message: "Invalid task result reference: Could not find result with name result2 for task task1"
-    reason: InvalidTaskResultReference
+  - message: "Tasks Completed: 2 (Failed: 1, Cancelled 0), Skipped: 0"
+    reason: Failed
     status: "False"
     type: Succeeded
   childReferences:
@@ -1285,15 +1285,15 @@ status:
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
-	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-missing-results", []string{}, true)
+	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-missing-results", []string{}, false)
 	if reconciledRun.Status.CompletionTime == nil {
 		t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
 	}
 
-	// The PipelineRun should be marked as failed due to InvalidTaskResultReference.
+	// The PipelineRun should be marked as failed
 	if d := cmp.Diff(expectedPipelineRun, reconciledRun, ignoreResourceVersion, ignoreLastTransitionTime, ignoreTypeMeta,
 		ignoreStartTime, ignoreCompletionTime, ignoreProvenance); d != "" {
-		t.Errorf("Expected to see PipelineRun run marked as failed with the reason: InvalidTaskResultReference. Diff %s", diff.PrintWantGot(d))
+		t.Errorf("Expected to see PipelineRun run marked as failed. Diff %s", diff.PrintWantGot(d))
 	}
 
 	// Check that the expected TaskRun was created
