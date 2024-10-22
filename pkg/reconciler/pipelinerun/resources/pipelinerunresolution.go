@@ -349,7 +349,7 @@ func (t *ResolvedPipelineTask) skip(facts *PipelineRunFacts) TaskSkipStatus {
 	var skippingReason v1.SkippingReason
 
 	switch {
-	case facts.isFinalTask(t.PipelineTask.Name) || t.isScheduled():
+	case facts.isFinalTask(t.PipelineTask.Name) || t.isScheduled() || t.isValidationFailed(facts.ValidationFailedTask):
 		skippingReason = v1.None
 	case facts.IsStopping():
 		skippingReason = v1.StoppingSkip
