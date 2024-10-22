@@ -849,20 +849,11 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 			logger.Infof("Failed to resolve task result reference for %q with error %v", pr.Name, err)
 			// If there is an error encountered, no new task
 			// will be scheduled, hence nextRpts should be empty
-			// if finally tasks are found, then those tasks will
+			// If finally tasks are found, then those tasks will
 			// be added to the nextRpts
 			nextRpts = nil
+			logger.Infof("Adding the task %q to the validation failed list", rpt.ResolvedTask)
 			pipelineRunFacts.ValidationFailedTask = append(pipelineRunFacts.ValidationFailedTask, rpt)
-			fTaskNames := pipelineRunFacts.GetFinalTaskNames()
-			if len(fTaskNames) == 0 {
-				// If finally is not present, we should mark pipelinerun as
-				// failed so that no further execution happens. Also,
-				// this will set the completion time of the pipelineRun.
-				// NewPermanentError should also be returned so that
-				// reconcilation stops here
-				pr.Status.MarkFailed(v1.PipelineRunReasonInvalidTaskResultReference.String(), err.Error())
-				return controller.NewPermanentError(err)
-			}
 		}
 	}
 	// GetFinalTasks only returns final tasks when a DAG is complete
