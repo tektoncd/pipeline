@@ -139,8 +139,8 @@ var (
 	// DefaultEnableKeepPodOnCancel is the default PerFeatureFlag value for "keep-pod-on-cancel"
 	DefaultEnableKeepPodOnCancel = PerFeatureFlag{
 		Name:      KeepPodOnCancel,
-		Stability: AlphaAPIFields,
-		Enabled:   DefaultAlphaFeatureEnabled,
+		Stability: BetaAPIFields,
+		Enabled:   DefaultBetaFeatureEnabled,
 	}
 
 	// DefaultEnableCELInWhenExpression is the default PerFeatureFlag value for EnableCELInWhenExpression
