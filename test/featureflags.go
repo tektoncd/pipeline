@@ -120,6 +120,7 @@ func getFeatureFlagsBaseOnAPIFlag(t *testing.T) *config.FeatureFlags {
 		"enable-artifacts":               "true",
 		"enable-concise-resolver-syntax": "true",
 		"enable-kubernetes-sidecar":      "true",
+		"keep-pod-on-cancel":             "true",
 	})
 	if err != nil {
 		t.Fatalf("error creating alpha feature flags configmap: %v", err)
@@ -128,6 +129,7 @@ func getFeatureFlagsBaseOnAPIFlag(t *testing.T) *config.FeatureFlags {
 		"results-from":        "sidecar-logs",
 		"enable-api-fields":   "beta",
 		"enable-step-actions": "true",
+		"keep-pod-on-cancel":  "true",
 	})
 	if err != nil {
 		t.Fatalf("error creating beta feature flags configmap: %v", err)
