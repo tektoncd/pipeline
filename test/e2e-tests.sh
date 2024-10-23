@@ -29,6 +29,7 @@ E2E_GO_TEST_TIMEOUT=${E2E_GO_TEST_TIMEOUT:="20m"}
 RUN_FEATUREFLAG_TESTS=${RUN_FEATUREFLAG_TESTS:="false"}
 RESULTS_FROM=${RESULTS_FROM:-termination-message}
 ENABLE_STEP_ACTIONS=${ENABLE_STEP_ACTIONS:="false"}
+KEEP_POD_ON_CANCEL=${KEEP_POD_ON_CANCEL:="false"}
 ENABLE_CEL_IN_WHENEXPRESSION=${ENABLE_CEL_IN_WHENEXPRESSION:="false"}
 ENABLE_PARAM_ENUM=${ENABLE_PARAM_ENUM:="false"}
 ENABLE_ARTIFACTS=${ENABLE_ARTIFACTS:="false"}
@@ -97,6 +98,18 @@ function set_enable_step_actions() {
   jsonpatch=$(printf "{\"data\": {\"enable-step-actions\": \"%s\"}}" $1)
   echo "feature-flags ConfigMap patch: ${jsonpatch}"
   kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
+}
+
+function set_keep_pod_on_cancel() {
+    local method="$1"
+    if [ "$method" != "false" ] && [ "$method" != "true" ]; then
+      printf "Invalid value for keep-pod-on-cancel %s\n" ${method}
+      exit 255
+    fi
+    printf "Setting keep-pod-on-cancel to %s\n", ${method}
+    jsonpatch=$(printf "{\"data\": {\"keep-pod-on-cancel\": \"%s\"}}" $1)
+    echo "feature-flags ConfigMap patch: ${jsonpatch}"
+    kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
 }
 
 function set_cel_in_whenexpression() {
@@ -182,6 +195,7 @@ add_spire "$PIPELINE_FEATURE_GATE"
 set_feature_gate "$PIPELINE_FEATURE_GATE"
 set_result_extraction_method "$RESULTS_FROM"
 set_enable_step_actions "$ENABLE_STEP_ACTIONS"
+set_keep_pod_on_cancel "$KEEP_POD_ON_CANCEL"
 set_cel_in_whenexpression "$ENABLE_CEL_IN_WHENEXPRESSION"
 set_enable_param_enum "$ENABLE_PARAM_ENUM"
 set_enable_artifacts "$ENABLE_ARTIFACTS"
