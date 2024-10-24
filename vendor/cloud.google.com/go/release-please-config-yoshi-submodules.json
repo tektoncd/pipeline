@@ -153,6 +153,9 @@
         "deploy": {
             "component": "deploy"
         },
+        "developerconnect": {
+            "component": "developerconnect"
+        },
         "dialogflow": {
             "component": "dialogflow"
         },
@@ -234,6 +237,9 @@
         "managedidentities": {
             "component": "managedidentities"
         },
+        "managedkafka": {
+            "component": "managedkafka"
+        },
         "maps": {
             "component": "maps"
         },
@@ -263,6 +269,9 @@
         },
         "networksecurity": {
             "component": "networksecurity"
+        },
+        "networkservices": {
+            "component": "networkservices"
         },
         "notebooks": {
             "component": "notebooks"
@@ -296,6 +305,9 @@
         },
         "privatecatalog": {
             "component": "privatecatalog"
+        },
+        "privilegedaccessmanager": {
+            "component": "privilegedaccessmanager"
         },
         "rapidmigrationassessment": {
             "component": "rapidmigrationassessment"
