@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"flag"
 	"os"
 	"strings"
 
@@ -28,17 +29,35 @@ import (
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/http"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/hub"
 	hubresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/hub"
+	"k8s.io/client-go/rest"
 	filteredinformerfactory "knative.dev/pkg/client/injection/kube/informers/factory/filtered"
+	"knative.dev/pkg/controller"
+	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
 	"knative.dev/pkg/signals"
 )
 
 func main() {
+	flag.IntVar(&controller.DefaultThreadsPerController, "threads-per-controller", controller.DefaultThreadsPerController, "Threads (goroutines) to create per controller")
+
 	ctx := filteredinformerfactory.WithSelectors(signals.NewContext(), v1alpha1.ManagedByLabelKey)
 	tektonHubURL := buildHubURL(os.Getenv("TEKTON_HUB_API"), "")
 	artifactHubURL := buildHubURL(os.Getenv("ARTIFACT_HUB_API"), hubresolution.DefaultArtifactHubURL)
 
-	sharedmain.MainWithContext(ctx, "controller",
+	// This parses flags.
+	cfg := injection.ParseAndGetRESTConfigOrDie()
+
+	if cfg.QPS == 0 {
+		cfg.QPS = 2 * rest.DefaultQPS
+	}
+	if cfg.Burst == 0 {
+		cfg.Burst = rest.DefaultBurst
+	}
+	// multiply by no of controllers being created
+	cfg.QPS = 5 * cfg.QPS
+	cfg.Burst = 5 * cfg.Burst
+
+	sharedmain.MainWithConfig(ctx, "controller", cfg,
 		framework.NewController(ctx, &git.Resolver{}),
 		framework.NewController(ctx, &hub.Resolver{TektonHubURL: tektonHubURL, ArtifactHubURL: artifactHubURL}),
 		framework.NewController(ctx, &bundle.Resolver{}),
