@@ -119,7 +119,7 @@ func (t *ResolvedPipelineTask) EvaluateCEL() error {
 
 // isDone returns true only if the task is skipped, succeeded or failed
 func (t ResolvedPipelineTask) isDone(facts *PipelineRunFacts) bool {
-	return t.Skip(facts).IsSkipped || t.isSuccessful() || t.isFailure()
+	return t.Skip(facts).IsSkipped || t.isSuccessful() || t.isFailure() || t.isValidationFailed(facts.ValidationFailedTask)
 }
 
 // IsRunning returns true only if the task is neither succeeded, cancelled nor failed
@@ -216,6 +216,16 @@ func (t ResolvedPipelineTask) isFailure() bool {
 		isDone = isDone && taskRun.IsDone()
 	}
 	return t.haveAnyTaskRunsFailed() && isDone
+}
+
+// isValidationFailed return true if the task is failed at the validation step
+func (t ResolvedPipelineTask) isValidationFailed(ftasks []*ResolvedPipelineTask) bool {
+	for _, ftask := range ftasks {
+		if ftask.ResolvedTask == t.ResolvedTask {
+			return true
+		}
+	}
+	return false
 }
 
 // isCancelledForTimeOut returns true only if the run is cancelled due to PipelineRun-controlled timeout
@@ -339,7 +349,7 @@ func (t *ResolvedPipelineTask) skip(facts *PipelineRunFacts) TaskSkipStatus {
 	var skippingReason v1.SkippingReason
 
 	switch {
-	case facts.isFinalTask(t.PipelineTask.Name) || t.isScheduled():
+	case facts.isFinalTask(t.PipelineTask.Name) || t.isScheduled() || t.isValidationFailed(facts.ValidationFailedTask):
 		skippingReason = v1.None
 	case facts.IsStopping():
 		skippingReason = v1.StoppingSkip
@@ -825,31 +835,29 @@ func isCustomRunCancelledByPipelineRunTimeout(cr *v1beta1.CustomRun) bool {
 // CheckMissingResultReferences returns an error if it is missing any result references.
 // Missing result references can occur if task fails to produce a result but has
 // OnError: continue (ie TestMissingResultWhenStepErrorIsIgnored)
-func CheckMissingResultReferences(pipelineRunState PipelineRunState, targets PipelineRunState) error {
-	for _, target := range targets {
-		for _, resultRef := range v1.PipelineTaskResultRefs(target.PipelineTask) {
-			referencedPipelineTask, ok := pipelineRunState.ToMap()[resultRef.PipelineTask]
-			if !ok {
-				return fmt.Errorf("Result reference error: Could not find ref \"%s\" in internal pipelineRunState", resultRef.PipelineTask)
+func CheckMissingResultReferences(pipelineRunState PipelineRunState, target *ResolvedPipelineTask) error {
+	for _, resultRef := range v1.PipelineTaskResultRefs(target.PipelineTask) {
+		referencedPipelineTask, ok := pipelineRunState.ToMap()[resultRef.PipelineTask]
+		if !ok {
+			return fmt.Errorf("Result reference error: Could not find ref \"%s\" in internal pipelineRunState", resultRef.PipelineTask)
+		}
+		if referencedPipelineTask.IsCustomTask() {
+			if len(referencedPipelineTask.CustomRuns) == 0 {
+				return fmt.Errorf("Result reference error: Internal result ref \"%s\" has zero-length CustomRuns", resultRef.PipelineTask)
 			}
-			if referencedPipelineTask.IsCustomTask() {
-				if len(referencedPipelineTask.CustomRuns) == 0 {
-					return fmt.Errorf("Result reference error: Internal result ref \"%s\" has zero-length CustomRuns", resultRef.PipelineTask)
-				}
-				customRun := referencedPipelineTask.CustomRuns[0]
-				_, err := findRunResultForParam(customRun, resultRef)
-				if err != nil {
-					return err
-				}
-			} else {
-				if len(referencedPipelineTask.TaskRuns) == 0 {
-					return fmt.Errorf("Result reference error: Internal result ref \"%s\" has zero-length TaskRuns", resultRef.PipelineTask)
-				}
-				taskRun := referencedPipelineTask.TaskRuns[0]
-				_, err := findTaskResultForParam(taskRun, resultRef)
-				if err != nil {
-					return err
-				}
+			customRun := referencedPipelineTask.CustomRuns[0]
+			_, err := findRunResultForParam(customRun, resultRef)
+			if err != nil {
+				return err
+			}
+		} else {
+			if len(referencedPipelineTask.TaskRuns) == 0 {
+				return fmt.Errorf("Result reference error: Internal result ref \"%s\" has zero-length TaskRuns", resultRef.PipelineTask)
+			}
+			taskRun := referencedPipelineTask.TaskRuns[0]
+			_, err := findTaskResultForParam(taskRun, resultRef)
+			if err != nil {
+				return err
 			}
 		}
 	}

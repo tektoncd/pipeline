@@ -840,14 +840,22 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 		return controller.NewPermanentError(err)
 	}
 
-	// Check for Missing Result References
-	err = resources.CheckMissingResultReferences(pipelineRunFacts.State, nextRpts)
-	if err != nil {
-		logger.Infof("Failed to resolve task result reference for %q with error %v", pr.Name, err)
-		pr.Status.MarkFailed(v1.PipelineRunReasonInvalidTaskResultReference.String(), err.Error())
-		return controller.NewPermanentError(err)
+	for _, rpt := range nextRpts {
+		// Check for Missing Result References
+		// if error found, present rpt will be
+		// added to the validationFailedTask list
+		err := resources.CheckMissingResultReferences(pipelineRunFacts.State, rpt)
+		if err != nil {
+			logger.Infof("Failed to resolve task result reference for %q with error %v", pr.Name, err)
+			// If there is an error encountered, no new task
+			// will be scheduled, hence nextRpts should be empty
+			// If finally tasks are found, then those tasks will
+			// be added to the nextRpts
+			nextRpts = nil
+			logger.Infof("Adding the task %q to the validation failed list", rpt.ResolvedTask)
+			pipelineRunFacts.ValidationFailedTask = append(pipelineRunFacts.ValidationFailedTask, rpt)
+		}
 	}
-
 	// GetFinalTasks only returns final tasks when a DAG is complete
 	fNextRpts := pipelineRunFacts.GetFinalTasks()
 	if len(fNextRpts) != 0 {
