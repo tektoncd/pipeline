@@ -81,6 +81,7 @@ func (prs PipelineRunSpec) ConvertTo(ctx context.Context, sink *v1.PipelineRunSp
 	sink.TaskRunTemplate.PodTemplate = prs.PodTemplate
 	sink.TaskRunTemplate.ServiceAccountName = prs.ServiceAccountName
 	sink.Workspaces = nil
+	sink.FailFast = prs.FailFast
 	for _, w := range prs.Workspaces {
 		new := v1.WorkspaceBinding{}
 		w.convertTo(ctx, &new)

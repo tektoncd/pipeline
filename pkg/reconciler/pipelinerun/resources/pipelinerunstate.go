@@ -358,7 +358,7 @@ func (state PipelineRunState) getNextTasks(candidateTasks sets.String) []*Resolv
 func (facts *PipelineRunFacts) IsStopping() bool {
 	for _, t := range facts.State {
 		if facts.isDAGTask(t.PipelineTask.Name) {
-			if t.isFailure() && t.PipelineTask.OnError != v1.PipelineTaskContinue {
+			if t.IsFailure() && t.PipelineTask.OnError != v1.PipelineTaskContinue {
 				return true
 			}
 		}
@@ -726,7 +726,7 @@ func (facts *PipelineRunFacts) getPipelineTasksCount() pipelineRunStatusCount {
 		case t.isCancelled():
 			s.Cancelled++
 		// increment failure counter based on Task OnError type since the task has failed
-		case t.isFailure():
+		case t.IsFailure():
 			if t.PipelineTask.OnError == v1.PipelineTaskContinue {
 				s.IgnoredFailed++
 			} else {

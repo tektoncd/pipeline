@@ -36,6 +36,7 @@ weight: 204
   - [Cancelling a <code>PipelineRun</code>](#cancelling-a-pipelinerun)
   - [Gracefully cancelling a <code>PipelineRun</code>](#gracefully-cancelling-a-pipelinerun)
   - [Gracefully stopping a <code>PipelineRun</code>](#gracefully-stopping-a-pipelinerun)
+  - [Fast-fail a <code>PipelineRun</code>](#fast-fail-a-pipelinerun)
   - [Pending <code>PipelineRuns</code>](#pending-pipelineruns)
 <!-- /toc -->
 
@@ -78,6 +79,7 @@ A `PipelineRun` definition supports the following fields:
   - [`timeouts`](#configuring-a-failure-timeout) - Specifies the timeout before the `PipelineRun` fails. `timeouts` allows more granular timeout configuration, at the pipeline, tasks, and finally levels
   - [`podTemplate`](#specifying-a-pod-template) - Specifies a [`Pod` template](./podtemplates.md) to use as the basis for the configuration of the `Pod` that executes each `Task`.
   - [`workspaces`](#specifying-workspaces) - Specifies a set of workspace bindings which must match the names of workspaces declared in the pipeline being used.
+  - [`fail-fast`](#fast-fail-a-pipelinerun) - Specifies whether to fail the `PipelineRun` as soon as a `Task` fails.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -1606,6 +1608,50 @@ spec:
   # […]
   status: "StoppedRunFinally"
 ```
+
+## Fast fail a `PipelineRun`
+Usually a pipeline may have several tasks running concurrently. When one of the tasks fails, 
+you may want to stop the entire pipeline immediately and quickly cancel other parallel tasks. 
+you can use `fastFail` to achieve this goal.
+
+For example:
+```yaml
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: pipeline-run
+spec:
+  failFast: true
+  pipelineSpec:
+    tasks:
+    - name: fail-task
+      taskSpec:
+        steps:
+          - name: fail-task
+            image: busybox
+            command: ["/bin/sh", "-c"]
+            args:
+              - exit 1
+    - name: success1
+      taskSpec:
+        steps:
+          - name: success1
+            image: busybox
+            command: ["/bin/sh", "-c"]
+            args:
+              - sleep 360
+    - name: success2
+      taskSpec:
+        steps:
+          - name: success2
+            image: busybox
+            command: ["/bin/sh", "-c"]
+            args:
+              - sleep 360
+```
+The above `PipelineRun` will fast cancel the execution of `success1` and `success2` immediately when `fail-task` failed.
+For specific execution of cancel task status, please refer to[cancelling-a-taskrun](taskruns.md#cancelling-a-taskrun).
+
 
 ## Pending `PipelineRuns`
 
