@@ -806,6 +806,12 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1.TaskRun, reason v1.
 		return nil
 	}
 
+	// When the TaskRun is failed, we mark all running/waiting steps as failed
+	// This is regardless of what happens with the Pod, which may be cancelled,
+	// deleted, non existing or fail to delete
+	// See https://github.com/tektoncd/pipeline/issues/8293 for more details.
+	terminateStepsInPod(tr, reason)
+
 	var err error
 	if reason == v1.TaskRunReasonCancelled && (config.FromContextOrDefaults(ctx).FeatureFlags.EnableKeepPodOnCancel) {
 		logger.Infof("Canceling task run %q by entrypoint", tr.Name)
@@ -818,7 +824,6 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1.TaskRun, reason v1.
 		return err
 	}
 
-	terminateStepsInPod(tr, reason)
 	return nil
 }
 
