@@ -104,6 +104,8 @@ type pipelineRunStatusCount struct {
 	Incomplete int
 	// count of tasks skipped due to the relevant timeout having elapsed before the task is launched
 	SkippedDueToTimeout int
+	// count of validation failed task and taskrun not created
+	ValidationFailed int
 }
 
 // ResetSkippedCache resets the skipped cache in the facts map
@@ -473,7 +475,8 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 	// report the count in PipelineRun Status
 	// get the count of successful tasks, failed tasks, cancelled tasks, skipped task, and incomplete tasks
 	s := facts.getPipelineTasksCount()
-	// completed task is a collection of successful, failed, cancelled tasks (skipped tasks are reported separately)
+	// completed task is a collection of successful, failed, cancelled tasks
+	// (skipped tasks and validation failed tasks are reported separately)
 	cmTasks := s.Succeeded + s.Failed + s.Cancelled + s.IgnoredFailed
 	totalFailedTasks := s.Failed + s.IgnoredFailed
 
@@ -493,12 +496,19 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 			message = fmt.Sprintf("Tasks Completed: %d (Failed: %d, Cancelled %d), Skipped: %d",
 				cmTasks, totalFailedTasks, s.Cancelled, s.Skipped)
 		}
+		// append validation failed count in the message
+		if s.ValidationFailed > 0 {
+			message += fmt.Sprintf(", Failed Validation: %d", s.ValidationFailed)
+		}
 		// Set reason to ReasonCompleted - At least one is skipped
 		if s.Skipped > 0 {
 			reason = v1.PipelineRunReasonCompleted.String()
 		}
 
 		switch {
+		case s.ValidationFailed > 0:
+			reason = v1.PipelineRunReasonFailedValidation.String()
+			status = corev1.ConditionFalse
 		case s.Failed > 0 || s.SkippedDueToTimeout > 0:
 			// Set reason to ReasonFailed - At least one failed
 			reason = v1.PipelineRunReasonFailed.String()
@@ -693,6 +703,7 @@ func (facts *PipelineRunFacts) getPipelineTasksCount() pipelineRunStatusCount {
 		Incomplete:          0,
 		SkippedDueToTimeout: 0,
 		IgnoredFailed:       0,
+		ValidationFailed:    0,
 	}
 	for _, t := range facts.State {
 		switch {
@@ -713,7 +724,7 @@ func (facts *PipelineRunFacts) getPipelineTasksCount() pipelineRunStatusCount {
 				s.Failed++
 			}
 		case t.isValidationFailed(facts.ValidationFailedTask):
-			s.Failed++
+			s.ValidationFailed++
 		// increment skipped and skipped due to timeout counters since the task was skipped due to the pipeline, tasks, or finally timeout being reached before the task was launched
 		case t.Skip(facts).SkippingReason == v1.PipelineTimedOutSkip ||
 			t.Skip(facts).SkippingReason == v1.TasksTimedOutSkip ||
