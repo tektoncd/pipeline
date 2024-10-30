@@ -1284,8 +1284,8 @@ status:
           image: busybox
           script: 'exit 0'
   conditions:
-  - message: "Tasks Completed: 2 (Failed: 1, Cancelled 0), Skipped: 0"
-    reason: Failed
+  - message: "Tasks Completed: 1 (Failed: 0, Cancelled 0), Skipped: 0, Failed Validation: 1"
+    reason: PipelineValidationFailed
     status: "False"
     type: Succeeded
   childReferences:
