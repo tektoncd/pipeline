@@ -711,3 +711,32 @@ func pushToRegistry(t *testing.T, registry, imageName string, data []runtime.Obj
 		hex:  hex,
 	}
 }
+
+func TestGetResolutionTimeoutDefault(t *testing.T) {
+	resolver := bundle.Resolver{}
+	defaultTimeout := 30 * time.Minute
+	timeout, err := resolver.GetResolutionTimeout(context.Background(), defaultTimeout, map[string]string{})
+	if err != nil {
+		t.Fatalf("couldn't get default-timeout: %v", err)
+	}
+	if timeout != defaultTimeout {
+		t.Fatalf("expected default timeout to be returned")
+	}
+}
+
+func TestGetResolutionTimeoutCustom(t *testing.T) {
+	resolver := bundle.Resolver{}
+	defaultTimeout := 30 * time.Minute
+	configTimeout := 5 * time.Second
+	config := map[string]string{
+		bundle.ConfigTimeoutKey: configTimeout.String(),
+	}
+	ctx := framework.InjectResolverConfigToContext(context.Background(), config)
+	timeout, err := resolver.GetResolutionTimeout(ctx, defaultTimeout, map[string]string{})
+	if err != nil {
+		t.Fatalf("couldn't get default-timeout: %v", err)
+	}
+	if timeout != configTimeout {
+		t.Fatalf("expected timeout from config to be returned")
+	}
+}
