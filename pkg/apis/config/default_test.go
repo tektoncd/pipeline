@@ -45,6 +45,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultMaxMatrixCombinationsCount: 256,
 				DefaultResolverType:               "git",
 				DefaultImagePullBackOffTimeout:    time.Duration(5) * time.Second,
+				DefaultMaximumResolutionTimeout:   1 * time.Minute,
 			},
 			fileName: config.GetDefaultsConfigName(),
 		},
@@ -65,6 +66,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				},
 				DefaultMaxMatrixCombinationsCount: 256,
 				DefaultImagePullBackOffTimeout:    0,
+				DefaultMaximumResolutionTimeout:   1 * time.Minute,
 			},
 			fileName: "config-defaults-with-pod-template",
 		},
@@ -88,6 +90,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultPodTemplate:                &pod.Template{},
 				DefaultMaxMatrixCombinationsCount: 256,
 				DefaultImagePullBackOffTimeout:    0,
+				DefaultMaximumResolutionTimeout:   1 * time.Minute,
 			},
 		},
 		{
@@ -100,6 +103,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultAAPodTemplate:              &pod.AffinityAssistantTemplate{},
 				DefaultMaxMatrixCombinationsCount: 256,
 				DefaultImagePullBackOffTimeout:    0,
+				DefaultMaximumResolutionTimeout:   1 * time.Minute,
 			},
 		},
 		{
@@ -115,6 +119,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultServiceAccount:             "default",
 				DefaultManagedByLabelValue:        config.DefaultManagedByLabelValue,
 				DefaultImagePullBackOffTimeout:    0,
+				DefaultMaximumResolutionTimeout:   1 * time.Minute,
 			},
 		},
 		{
@@ -127,6 +132,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultManagedByLabelValue:        "tekton-pipelines",
 				DefaultForbiddenEnv:               []string{"TEKTON_POWER_MODE", "TEST_ENV", "TEST_TEKTON"},
 				DefaultImagePullBackOffTimeout:    time.Duration(15) * time.Second,
+				DefaultMaximumResolutionTimeout:   1 * time.Minute,
 			},
 		},
 		{
@@ -139,6 +145,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultMaxMatrixCombinationsCount:    256,
 				DefaultContainerResourceRequirements: map[string]corev1.ResourceRequirements{},
 				DefaultImagePullBackOffTimeout:       0,
+				DefaultMaximumResolutionTimeout:      1 * time.Minute,
 			},
 		},
 		{
@@ -154,6 +161,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultManagedByLabelValue:        "tekton-pipelines",
 				DefaultMaxMatrixCombinationsCount: 256,
 				DefaultImagePullBackOffTimeout:    0,
+				DefaultMaximumResolutionTimeout:   1 * time.Minute,
 				DefaultContainerResourceRequirements: map[string]corev1.ResourceRequirements{
 					config.ResourceRequirementDefaultContainerKey: {
 						Requests: corev1.ResourceList{
@@ -210,6 +218,7 @@ func TestNewDefaultsFromEmptyConfigMap(t *testing.T) {
 		DefaultServiceAccount:             "default",
 		DefaultMaxMatrixCombinationsCount: 256,
 		DefaultImagePullBackOffTimeout:    0,
+		DefaultMaximumResolutionTimeout:   1 * time.Minute,
 	}
 	verifyConfigFileWithExpectedConfig(t, DefaultsConfigEmptyName, expectedConfig)
 }
@@ -374,6 +383,25 @@ func TestEquals(t *testing.T) {
 			},
 			right: &config.Defaults{
 				DefaultImagePullBackOffTimeout: 20,
+			},
+			expected: true,
+		},
+		{
+			name: "different default maximum resolution timeout",
+			left: &config.Defaults{
+				DefaultMaximumResolutionTimeout: 10 * time.Minute,
+			},
+			right: &config.Defaults{
+				DefaultMaximumResolutionTimeout: 20 * time.Minute,
+			},
+			expected: false,
+		}, {
+			name: "same default maximum resolution timeout",
+			left: &config.Defaults{
+				DefaultMaximumResolutionTimeout: 10 * time.Minute,
+			},
+			right: &config.Defaults{
+				DefaultMaximumResolutionTimeout: 10 * time.Minute,
 			},
 			expected: true,
 		},
