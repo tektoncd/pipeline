@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
@@ -50,6 +51,8 @@ const (
 )
 
 var _ framework.Resolver = &Resolver{}
+
+var supportedKinds = []string{"task", "pipeline", "stepaction"}
 
 // Resolver implements a framework.Resolver that can fetch resources from other namespaces.
 //
@@ -229,7 +232,7 @@ func populateParamsWithDefaults(ctx context.Context, origParams []pipelinev1.Par
 	} else {
 		params[KindParam] = pKind.StringVal
 	}
-	if kindVal, ok := params[KindParam]; ok && kindVal != "task" && kindVal != "pipeline" {
+	if kindVal, ok := params[KindParam]; ok && !isSupportedKind(kindVal) {
 		return nil, fmt.Errorf("unknown or unsupported resource kind '%s'", kindVal)
 	}
 
@@ -363,4 +366,8 @@ func fetchPipeline(ctx context.Context, groupVersion string, pipeline *pipelinev
 		return "", nil, nil, nil, err
 	}
 	return uid, data, sha256Checksum, spec, nil
+}
+
+func isSupportedKind(kindValue string) bool {
+	return slices.Contains[[]string, string](supportedKinds, kindValue)
 }

@@ -13,11 +13,11 @@ This Resolver responds to type `cluster`.
 
 ## Parameters
 
-| Param Name  | Description                                           | Example Value                |
-|-------------|-------------------------------------------------------|------------------------------|
-| `kind`      | The kind of resource to fetch.                        | `task`, `pipeline`           |
-| `name`      | The name of the resource to fetch.                    | `some-pipeline`, `some-task` |
-| `namespace` | The namespace in the cluster containing the resource. | `default`, `other-namespace` |
+| Param Name  | Description                                           | Example Value                    |
+|-------------|-------------------------------------------------------|----------------------------------|
+| `kind`      | The kind of resource to fetch.                        | `task`, `pipeline`, `stepaction` |
+| `name`      | The name of the resource to fetch.                    | `some-pipeline`, `some-task`     |
+| `namespace` | The namespace in the cluster containing the resource. | `default`, `other-namespace`     |
 
 ## Requirements
 
@@ -37,7 +37,7 @@ for the name, namespace and defaults that the resolver ships with.
 
 | Option Name          | Description                                                                                                                                         | Example Values                     |
 |----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------|
-| `default-kind`       | The default resource kind to fetch if not specified in parameters.                                                                                  | `task`, `pipeline`                 |
+| `default-kind`       | The default resource kind to fetch if not specified in parameters.                                                                                  | `task`, `pipeline`, `stepaction`   |
 | `default-namespace`  | The default namespace to fetch resources from if not specified in parameters.                                                                       | `default`, `some-namespace`        |
 | `allowed-namespaces` | An optional comma-separated list of namespaces which the resolver is allowed to access. Defaults to empty, meaning all namespaces are allowed.      | `default,some-namespace`, (empty)  |
 | `blocked-namespaces` | An optional comma-separated list of namespaces which the resolver is blocked from accessing. If the value is a `*` all namespaces will be disallowed and allowed namespace will need to be explicitely listed in `allowed-namespaces`. Defaults to empty, meaning all namespaces are allowed. | `default,other-namespace`, `*`, (empty) |
@@ -61,6 +61,27 @@ spec:
       value: some-task
     - name: namespace
       value: namespace-containing-task
+```
+
+### StepAction Resolution
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: remote-stepaction-reference
+spec:
+  steps:
+  - name: step-action-example
+    ref
+      resolver: cluster
+      params:
+      - name: kind
+        value: stepaction
+      - name: name
+        value: some-stepaction
+      - name: namespace
+        value: namespace-containing-stepaction
 ```
 
 ### Pipeline resolution
