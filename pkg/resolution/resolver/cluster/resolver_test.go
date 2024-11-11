@@ -279,6 +279,28 @@ func TestResolve(t *testing.T) {
 		t.Fatalf("couldn't marshal pipeline: %v", err)
 	}
 
+	exampleStepAction := &pipelinev1beta1.StepAction{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "example-stepaction",
+			Namespace:       "stepaction-ns",
+			ResourceVersion: "00003",
+			UID:             "c123",
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "StepAction",
+			APIVersion: "tekton.dev/v1beta1",
+		},
+		Spec: pipelinev1beta1.StepActionSpec{},
+	}
+	stepActionChecksum, err := exampleStepAction.Checksum()
+	if err != nil {
+		t.Fatalf("couldn't checksum stepaction: %v", err)
+	}
+	stepActionAsYAML, err := yaml.Marshal(exampleStepAction)
+	if err != nil {
+		t.Fatalf("couldn't marshal stepaction: %v", err)
+	}
+
 	testCases := []struct {
 		name              string
 		kind              string
@@ -319,6 +341,23 @@ func TestResolve(t *testing.T) {
 						URI: "/apis/tekton.dev/v1/namespaces/pipeline-ns/pipeline/example-pipeline@b123",
 						Digest: map[string]string{
 							"sha256": hex.EncodeToString(pipelineChecksum),
+						},
+					},
+				},
+			},
+		}, {
+			name:         "successful stepaction",
+			kind:         "stepaction",
+			resourceName: exampleStepAction.Name,
+			namespace:    exampleStepAction.Namespace,
+			expectedStatus: &v1beta1.ResolutionRequestStatus{
+				Status: duckv1.Status{},
+				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
+					Data: base64.StdEncoding.Strict().EncodeToString(stepActionAsYAML),
+					RefSource: &pipelinev1.RefSource{
+						URI: "/apis/tekton.dev/v1/namespaces/stepaction-ns/stepaction/example-stepaction@c123",
+						Digest: map[string]string{
+							"sha256": hex.EncodeToString(stepActionChecksum),
 						},
 					},
 				},
@@ -427,6 +466,7 @@ func TestResolve(t *testing.T) {
 				Pipelines:          []*pipelinev1.Pipeline{examplePipeline},
 				ResolutionRequests: []*v1beta1.ResolutionRequest{request},
 				Tasks:              []*pipelinev1.Task{exampleTask},
+				StepActions:        []*pipelinev1beta1.StepAction{exampleStepAction},
 			}
 
 			resolver := &cluster.Resolver{}
