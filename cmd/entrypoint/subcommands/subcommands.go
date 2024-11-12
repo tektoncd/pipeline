@@ -29,18 +29,8 @@ func (err OK) Error() string {
 	return err.message
 }
 
-// SubcommandSuccessful is an alias for the OK type.
-//
-// Deprecated: replace usage with OK type.
-type SubcommandSuccessful = OK
-
-var (
-	// Compile-time check that OK is an error type.
-	_ error = OK{}
-	// Compile-time check that objects of type OK are cast to deprecated
-	// SubcommandSuccessful type.
-	_ SubcommandSuccessful = OK{}
-)
+// Compile-time check that OK is an error type.
+var _ error = OK{}
 
 // SubcommandError is returned for failed subcommand executions.
 type SubcommandError struct {
