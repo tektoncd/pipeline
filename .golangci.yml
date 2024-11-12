@@ -87,8 +87,8 @@ linters:
   - godox
   - err113
   - gofumpt
-  - gomnd
   - gomoddirectives
+  - iface
   - ireturn
   - lll
   - mnd
@@ -98,6 +98,7 @@ linters:
   - paralleltest
   - prealloc
   - predeclared
+  - recvcheck
   - revive
   - staticcheck
   - stylecheck
