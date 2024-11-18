@@ -194,7 +194,7 @@ func readTarLayer(layer v1.Layer) ([]byte, error) {
 	}
 
 	contents := make([]byte, header.Size)
-	if _, err := treader.Read(contents); err != nil && !errors.Is(err, io.EOF) {
+	if _, err := io.ReadFull(treader, contents); err != nil && err != io.EOF {
 		// We only allow 1 resource per layer so this tar bundle should have one and only one file.
 		return nil, fmt.Errorf("failed to read tar bundle: %w", err)
 	}
