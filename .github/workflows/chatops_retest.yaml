@@ -32,7 +32,7 @@ jobs:
         echo '::group:: Get the PT commit sha'
         # Get the sha of the HEAD commit in the PR
         GITHUB_COMMIT_SHA=$(gh api $(echo ${GITHUB_PULL_URL#https://api.github.com/}) | \
-          | jq -r .head.sha)
+            jq -r .head.sha)
         echo '::endgroup::'
 
         echo '::group:: Get the list of run IDs'
