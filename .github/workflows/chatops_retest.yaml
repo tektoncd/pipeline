@@ -29,11 +29,20 @@ jobs:
       run: 'cat $GITHUB_EVENT_PATH || true'
     - name: Rerun Failed Actions
       run: |
+        echo '::group:: Get the PT commit sha'
+        # Get the sha of the HEAD commit in the PR
+        GITHUB_COMMIT_SHA=$(gh api $(echo ${GITHUB_PULL_URL#https://api.github.com/}) | \
+          | jq -r .head.sha)
+        echo '::endgroup::'
+
+        echo '::group:: Get the list of run IDs'
         # Get a list of run IDs
         RUN_IDS=$(gh api repos/${GITHUB_REPO}/commits/${GITHUB_COMMIT_SHA}/check-runs | \
             jq -r '.check_runs[] | select(.name != "Rerun Failed Actions") | .html_url | capture("/runs/(?<number>[0-9]+)/job") | .number' | \
             sort -u)
+        echo '::endgroup::'
 
+        echo '::group:: Rerun failed runs'
         # For each run, retrigger faild jobs
         for runid in ${RUN_IDS}; do
             gh run \
@@ -41,10 +50,11 @@ jobs:
                 rerun ${runid} \
                 --failed
         done
+        echo '::endgroup::'
       env:
         GITHUB_TOKEN: ${{ secrets.CHATOPS_TOKEN }}
         GITHUB_REPO: ${{ github.event.client_payload.github.payload.repository.full_name }}
-        GITHUB_COMMIT_SHA: ${{ github.event.client_payload.github.payload.commit.sha }}
+        GITHUB_PULL_URL: ${{ github.event.client_payload.github.payload.issue.pull_request.url }}
 
     - name: Create comment
       if: ${{ failure() && steps.landStack.outcome == 'failure' }}
