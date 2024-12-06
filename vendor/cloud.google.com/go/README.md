@@ -34,7 +34,6 @@ releases. They are currently compatible with:
 - Go 1.22
 - Go 1.21
 - Go 1.20
-- Go 1.19
 
 ## Authorization
 

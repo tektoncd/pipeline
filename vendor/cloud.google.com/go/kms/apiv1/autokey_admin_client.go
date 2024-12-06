@@ -189,7 +189,8 @@ type internalAutokeyAdminClient interface {
 // AutokeyAdminClient is a client for interacting with Cloud Key Management Service (KMS) API.
 // Methods, except Close, may be called concurrently. However, fields must not be modified concurrently with method calls.
 //
-// Provides interfaces for managing Cloud KMS Autokey folder-level
+// Provides interfaces for managing Cloud KMS
+// Autokey (at https://cloud.google.com/kms/help/autokey) folder-level
 // configurations. A configuration is inherited by all descendent projects. A
 // configuration at one folder overrides any other configurations in its
 // ancestry. Setting a configuration on a folder is a prerequisite for Cloud KMS
@@ -316,7 +317,8 @@ type autokeyAdminGRPCClient struct {
 // NewAutokeyAdminClient creates a new autokey admin client based on gRPC.
 // The returned client must be Closed when it is done being used to clean up its underlying connections.
 //
-// Provides interfaces for managing Cloud KMS Autokey folder-level
+// Provides interfaces for managing Cloud KMS
+// Autokey (at https://cloud.google.com/kms/help/autokey) folder-level
 // configurations. A configuration is inherited by all descendent projects. A
 // configuration at one folder overrides any other configurations in its
 // ancestry. Setting a configuration on a folder is a prerequisite for Cloud KMS
@@ -396,7 +398,8 @@ type autokeyAdminRESTClient struct {
 
 // NewAutokeyAdminRESTClient creates a new autokey admin rest client.
 //
-// Provides interfaces for managing Cloud KMS Autokey folder-level
+// Provides interfaces for managing Cloud KMS
+// Autokey (at https://cloud.google.com/kms/help/autokey) folder-level
 // configurations. A configuration is inherited by all descendent projects. A
 // configuration at one folder overrides any other configurations in its
 // ancestry. Setting a configuration on a folder is a prerequisite for Cloud KMS
@@ -672,11 +675,11 @@ func (c *autokeyAdminRESTClient) UpdateAutokeyConfig(ctx context.Context, req *k
 	params := url.Values{}
 	params.Add("$alt", "json;enum-encoding=int")
 	if req.GetUpdateMask() != nil {
-		updateMask, err := protojson.Marshal(req.GetUpdateMask())
+		field, err := protojson.Marshal(req.GetUpdateMask())
 		if err != nil {
 			return nil, err
 		}
-		params.Add("updateMask", string(updateMask[1:len(updateMask)-1]))
+		params.Add("updateMask", string(field[1:len(field)-1]))
 	}
 
 	baseUrl.RawQuery = params.Encode()
