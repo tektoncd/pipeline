@@ -263,6 +263,16 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 	}
 }
 
+// ApplyMatrixIncludeWhenExpressions replaces param variables referring to matrix when include
+func ApplyMatrixIncludeWhenExpressions(pt *v1.PipelineTask, pr *v1.PipelineRun) {
+	stringReplacements, arrayReplacements, _ := paramsFromPipelineRun(context.TODO(), pr)
+	for i := range pt.Matrix.Include {
+		if pt.Matrix.Include[i].When != nil {
+			pt.Matrix.Include[i].When = pt.Matrix.Include[i].When.ReplaceVariables(stringReplacements, arrayReplacements)
+		}
+	}
+}
+
 // ApplyPipelineTaskStateContext replaces context variables referring to execution status with the specified status
 func ApplyPipelineTaskStateContext(state PipelineRunState, replacements map[string]string) {
 	for _, resolvedPipelineRunTask := range state {
@@ -308,6 +318,9 @@ func ApplyReplacements(p *v1.PipelineSpec, replacements map[string]string, array
 			p.Tasks[i].Matrix.Params = p.Tasks[i].Matrix.Params.ReplaceVariables(replacements, arrayReplacements, nil)
 			for j := range p.Tasks[i].Matrix.Include {
 				p.Tasks[i].Matrix.Include[j].Params = p.Tasks[i].Matrix.Include[j].Params.ReplaceVariables(replacements, nil, nil)
+				if p.Tasks[i].Matrix.Include[j].When != nil {
+					p.Tasks[i].Matrix.Include[j].When = p.Tasks[i].Matrix.Include[j].When.ReplaceVariables(replacements, arrayReplacements)
+				}
 			}
 		} else {
 			p.Tasks[i].DisplayName = substitution.ApplyReplacements(p.Tasks[i].DisplayName, replacements)
@@ -331,6 +344,9 @@ func ApplyReplacements(p *v1.PipelineSpec, replacements map[string]string, array
 			p.Finally[i].Matrix.Params = p.Finally[i].Matrix.Params.ReplaceVariables(replacements, arrayReplacements, nil)
 			for j := range p.Finally[i].Matrix.Include {
 				p.Finally[i].Matrix.Include[j].Params = p.Finally[i].Matrix.Include[j].Params.ReplaceVariables(replacements, nil, nil)
+				if p.Finally[i].Matrix.Include[j].When != nil {
+					p.Finally[i].Matrix.Include[j].When = p.Finally[i].Matrix.Include[j].When.ReplaceVariables(replacements, arrayReplacements)
+				}
 			}
 		} else {
 			p.Finally[i].DisplayName = substitution.ApplyReplacements(p.Finally[i].DisplayName, replacements)
