@@ -29,10 +29,11 @@ jobs:
       run: 'cat $GITHUB_EVENT_PATH || true'
     - name: Rerun Failed Actions
       run: |
-        echo '::group:: Get the PT commit sha'
+        echo '::group:: Get the PR commit sha'
         # Get the sha of the HEAD commit in the PR
         GITHUB_COMMIT_SHA=$(gh api $(echo ${GITHUB_PULL_URL#https://api.github.com/}) | \
             jq -r .head.sha)
+        echo GITHUB_COMMIT_SHA=${GITHUB_COMMIT_SHA}
         echo '::endgroup::'
 
         echo '::group:: Get the list of run IDs'
@@ -40,15 +41,17 @@ jobs:
         RUN_IDS=$(gh api repos/${GITHUB_REPO}/commits/${GITHUB_COMMIT_SHA}/check-runs | \
             jq -r '.check_runs[] | select(.name != "Rerun Failed Actions") | .html_url | capture("/runs/(?<number>[0-9]+)/job") | .number' | \
             sort -u)
+        echo RUN_IDS=${RUN_IDS}
         echo '::endgroup::'
 
         echo '::group:: Rerun failed runs'
         # For each run, retrigger faild jobs
         for runid in ${RUN_IDS}; do
+            echo Restarting run ${runid} for commit ${GITHUB_COMMIT_SHA}
             gh run \
                 --repo ${GITHUB_REPO} \
                 rerun ${runid} \
-                --failed
+                --failed || true
         done
         echo '::endgroup::'
       env:
