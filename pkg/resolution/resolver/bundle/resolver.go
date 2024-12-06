@@ -19,6 +19,7 @@ package bundle
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
@@ -34,17 +35,25 @@ import (
 const (
 	disabledError = "cannot handle resolution request, enable-bundles-resolver feature flag not true"
 
-	// TODO(sbwsg): This should be exposed as a configurable option for
-	// admins (e.g. via ConfigMap)
-	timeoutDuration = time.Minute
-
 	// LabelValueBundleResolverType is the value to use for the
 	// resolution.tekton.dev/type label on resource requests
 	LabelValueBundleResolverType string = "bundles"
 
 	// BundleResolverName is the name that the bundle resolver should be associated with.
 	BundleResolverName = "bundleresolver"
+
+	// ConfigMapName is the bundle resolver's config map
+	ConfigMapName = "bundleresolver-config"
 )
+
+var _ framework.ConfigWatcher = &Resolver{}
+
+// GetConfigName returns the name of the git resolver's configmap.
+func (r *Resolver) GetConfigName(context.Context) string {
+	return ConfigMapName
+}
+
+var _ framework.TimedResolution = &Resolver{}
 
 // Resolver implements a framework.Resolver that can fetch files from OCI bundles.
 //
@@ -62,11 +71,6 @@ func (r *Resolver) Initialize(ctx context.Context) error {
 // GetName returns a string name to refer to this Resolver by.
 func (r *Resolver) GetName(context.Context) string {
 	return BundleResolverName
-}
-
-// GetConfigName returns the name of the bundle resolver's configmap.
-func (r *Resolver) GetConfigName(context.Context) string {
-	return ConfigMapName
 }
 
 // GetSelector returns a map of labels to match requests to this Resolver.
@@ -108,8 +112,6 @@ func ResolveRequest(ctx context.Context, kubeClientSet kubernetes.Interface, req
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancelFn := context.WithTimeout(ctx, timeoutDuration)
-	defer cancelFn()
 	return GetEntry(ctx, kc, opts)
 }
 
@@ -126,4 +128,22 @@ func ValidateParams(ctx context.Context, params []v1.Param) error {
 func isDisabled(ctx context.Context) bool {
 	cfg := resolverconfig.FromContextOrDefaults(ctx)
 	return !cfg.FeatureFlags.EnableBundleResolver
+}
+
+// GetResolutionTimeout returns a time.Duration for the amount of time a
+// single bundle fetch may take. This can be configured with the
+// fetch-timeout field in the bundle-resolver-config ConfigMap.
+func (r *Resolver) GetResolutionTimeout(ctx context.Context, defaultTimeout time.Duration, params map[string]string) (time.Duration, error) {
+	conf := framework.GetResolverConfigFromContext(ctx)
+
+	timeout := defaultTimeout
+	if v, ok := conf[ConfigTimeoutKey]; ok {
+		var err error
+		timeout, err = time.ParseDuration(v)
+		if err != nil {
+			return time.Duration(0), fmt.Errorf("error parsing bundle timeout value %s: %w", v, err)
+		}
+	}
+
+	return timeout, nil
 }
