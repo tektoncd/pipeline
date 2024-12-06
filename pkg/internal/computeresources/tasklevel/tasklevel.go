@@ -51,6 +51,10 @@ func computeAverageRequests(requests corev1.ResourceList, steps int) corev1.Reso
 	}
 	averageRequests := corev1.ResourceList{}
 	for k, v := range requests {
+		if k == corev1.ResourceMemory || k == corev1.ResourceEphemeralStorage {
+			averageRequests[k] = *resource.NewQuantity(v.Value()/int64(steps), requests[k].Format)
+			continue
+		}
 		averageRequests[k] = *resource.NewMilliQuantity(v.MilliValue()/int64(steps), requests[k].Format)
 	}
 	return averageRequests
