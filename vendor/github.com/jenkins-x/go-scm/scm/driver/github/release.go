@@ -66,6 +66,9 @@ func (s *releaseService) Create(ctx context.Context, repo string, input *scm.Rel
 		Prerelease:  input.Prerelease,
 		Tag:         input.Tag,
 	}
+	if !(in.Prerelease || in.Draft) {
+		in.MakeLatest = "true"
+	}
 	out := new(release)
 	res, err := s.client.do(ctx, "POST", path, in, out)
 	return convertRelease(out), res, err
