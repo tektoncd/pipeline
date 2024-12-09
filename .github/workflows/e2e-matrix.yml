@@ -16,16 +16,27 @@ jobs:
     strategy:
       fail-fast: false # Keep running if one leg fails.
       matrix:
-        k8s-version:
-        - v1.28.x
-        - v1.29.x
+        k8s-name:
+        - k8s-oldest
+        - k8s-plus-one
 
         feature-flags:
-        - prow
-        - prow-beta
-        - prow-alpha
+        - stable
+        - beta
+        - alpha
         # - prow-feature-flags  - this is tested today as a periodic job, but we could integrate it here
 
+        include:
+        - k8s-name: k8s-oldest
+          k8s-version: v1.28.x
+        - k8s-name: k8s-plus-one
+          k8s-version: v1.29.x
+        - feature-flags: stable
+          env-file: prow
+        - feature-flags: alpha
+          env-file: prow-alpha
+        - feature-flags: beta
+          env-file: prow-beta
     env:
       GOPATH: ${{ github.workspace }}
       GO111MODULE: on
@@ -73,7 +84,7 @@ jobs:
           --nodes 3 \
           --k8s-version ${{ matrix.k8s-version }} \
           --e2e-script ./test/e2e-tests.sh \
-          --e2e-env ./test/e2e-tests-kind-${{ matrix.feature-flags }}.env
+          --e2e-env ./test/e2e-tests-kind-${{ matrix.env-file }}.env
 
     - name: Upload test results
       uses: actions/upload-artifact@v4
