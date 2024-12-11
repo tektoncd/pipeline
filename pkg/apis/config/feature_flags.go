@@ -188,7 +188,7 @@ type FeatureFlags struct {
 	DisableCredsInit                 bool
 	RunningInEnvWithInjectedSidecars bool
 	RequireGitSSHSecretKnownHosts    bool
-	// EnableTektonOCIBundles           bool // Deprecated: this is now ignored
+	EnableTektonOCIBundles           *bool // Deprecated: this is now ignored, keeping here as bool pointer to fix GH issue: 8359
 	// ScopeWhenExpressionsToTask       bool // Deprecated: this is now ignored
 	EnableAPIFields          string
 	SendCloudEventsForRuns   bool
