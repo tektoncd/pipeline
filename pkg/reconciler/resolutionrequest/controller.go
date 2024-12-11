@@ -19,6 +19,7 @@ package resolutionrequest
 import (
 	"context"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	resolutionrequestinformer "github.com/tektoncd/pipeline/pkg/client/resolution/injection/informers/resolution/v1beta1/resolutionrequest"
 	resolutionrequestreconciler "github.com/tektoncd/pipeline/pkg/client/resolution/injection/reconciler/resolution/v1beta1/resolutionrequest"
 	"k8s.io/utils/clock"
@@ -31,10 +32,19 @@ import (
 // ResolutionRequest objects.
 func NewController(clock clock.PassiveClock) func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+		logger := logging.FromContext(ctx)
+
+		configStore := config.NewStore(logger.Named("config-store"))
+		configStore.WatchConfigs(cmw)
+
 		r := &Reconciler{
 			clock: clock,
 		}
-		impl := resolutionrequestreconciler.NewImpl(ctx, r)
+		impl := resolutionrequestreconciler.NewImpl(ctx, r, func(impl *controller.Impl) controller.Options {
+			return controller.Options{
+				ConfigStore: configStore,
+			}
+		})
 
 		reqinformer := resolutionrequestinformer.Get(ctx)
 		if _, err := reqinformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
