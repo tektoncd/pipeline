@@ -272,7 +272,7 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 			},
 		},
 		expectedError: apis.FieldError{
-			Message: `non-existent variable in "$(params.doesnotexist)"`,
+			Message: "non-existent variable `doesnotexist` in \"$(params.doesnotexist)\"",
 			Paths:   []string{"spec.tasks[0].steps[0].script"},
 		},
 	}, {
@@ -303,7 +303,7 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 			},
 		},
 		expectedError: apis.FieldError{
-			Message: `non-existent variable in "$(params.doesnotexist)"`,
+			Message: "non-existent variable `doesnotexist` in \"$(params.doesnotexist)\"",
 			Paths:   []string{"spec.finally[0].steps[0].script"},
 		},
 	}, {
