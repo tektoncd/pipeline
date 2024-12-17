@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package httptransport provides functionality for managing HTTP client
+// connections to Google Cloud services.
 package httptransport
 
 import (
@@ -33,7 +35,7 @@ type ClientCertProvider = func(*tls.CertificateRequestInfo) (*tls.Certificate, e
 
 // Options used to configure a [net/http.Client] from [NewClient].
 type Options struct {
-	// DisableTelemetry disables default telemetry (OpenCensus). An example
+	// DisableTelemetry disables default telemetry (OpenTelemetry). An example
 	// reason to do so would be to bind custom telemetry that overrides the
 	// defaults.
 	DisableTelemetry bool
@@ -116,6 +118,13 @@ func (o *Options) resolveDetectOptions() *detect.DetectOptions {
 	if len(do.Scopes) == 0 && do.Audience == "" && io != nil {
 		do.Audience = o.InternalOptions.DefaultAudience
 	}
+	if o.ClientCertProvider != nil {
+		tlsConfig := &tls.Config{
+			GetClientCertificate: o.ClientCertProvider,
+		}
+		do.Client = transport.DefaultHTTPClientWithTLS(tlsConfig)
+		do.TokenURL = detect.GoogleMTLSTokenURL
+	}
 	return do
 }
 
@@ -138,26 +147,39 @@ type InternalOptions struct {
 	// service.
 	DefaultScopes []string
 	// SkipValidation bypasses validation on Options. It should only be used
-	// internally for clients that needs more control over their transport.
+	// internally for clients that need more control over their transport.
 	SkipValidation bool
+	// SkipUniverseDomainValidation skips the verification that the universe
+	// domain configured for the client matches the universe domain configured
+	// for the credentials. It should only be used internally for clients that
+	// need more control over their transport. The default is false.
+	SkipUniverseDomainValidation bool
 }
 
 // AddAuthorizationMiddleware adds a middleware to the provided client's
 // transport that sets the Authorization header with the value produced by the
 // provided [cloud.google.com/go/auth.Credentials]. An error is returned only
 // if client or creds is nil.
+//
+// This function does not support setting a universe domain value on the client.
 func AddAuthorizationMiddleware(client *http.Client, creds *auth.Credentials) error {
 	if client == nil || creds == nil {
 		return fmt.Errorf("httptransport: client and tp must not be nil")
 	}
 	base := client.Transport
 	if base == nil {
-		base = http.DefaultTransport.(*http.Transport).Clone()
+		if dt, ok := http.DefaultTransport.(*http.Transport); ok {
+			base = dt.Clone()
+		} else {
+			// Directly reuse the DefaultTransport if the application has
+			// replaced it with an implementation of RoundTripper other than
+			// http.Transport.
+			base = http.DefaultTransport
+		}
 	}
 	client.Transport = &authTransport{
 		creds: creds,
 		base:  base,
-		// TODO(quartzmo): Somehow set clientUniverseDomain from impersonate calls.
 	}
 	return nil
 }
@@ -188,6 +210,8 @@ func NewClient(opts *Options) (*http.Client, error) {
 	if baseRoundTripper == nil {
 		baseRoundTripper = defaultBaseTransport(clientCertProvider, dialTLSContext)
 	}
+	// Ensure the token exchange transport uses the same ClientCertProvider as the API transport.
+	opts.ClientCertProvider = clientCertProvider
 	trans, err := newTransport(baseRoundTripper, opts)
 	if err != nil {
 		return nil, err
