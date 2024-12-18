@@ -446,8 +446,9 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		if err != nil {
 			return nil, err
 		}
-		svMinorInt, _ := strconv.Atoi(sv.Minor)
+		svMinor := strings.TrimSuffix(sv.Minor, "+") // Remove '+' if present
 		svMajorInt, _ := strconv.Atoi(sv.Major)
+		svMinorInt, _ := strconv.Atoi(svMinor)
 		if svMajorInt >= 1 && svMinorInt >= SidecarK8sMinorVersionCheck {
 			// Add RestartPolicy and Merge into initContainer
 			useTektonSidecar = false
