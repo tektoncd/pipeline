@@ -3767,3 +3767,75 @@ func TestPodBuildWithK8s129(t *testing.T) {
 		t.Errorf("Sidecar does not have RestartPolicy Always: %s", diff.PrintWantGot(d))
 	}
 }
+func TestIsNativeSidecarSupport(t *testing.T) {
+	tests := []struct {
+		name          string
+		serverVersion *version.Info
+		want          bool
+	}{
+		{
+			name: "Kubernetes version 1.29",
+			serverVersion: &version.Info{
+				Major: "1",
+				Minor: "29",
+			},
+			want: true,
+		},
+		{
+			name: "Kubernetes version 1.30",
+			serverVersion: &version.Info{
+				Major: "1",
+				Minor: "30",
+			},
+			want: true,
+		},
+		{
+			name: "Kubernetes version 2.0",
+			serverVersion: &version.Info{
+				Major: "2",
+				Minor: "0",
+			},
+			want: true,
+		},
+		{
+			name: "Kubernetes version 1.28",
+			serverVersion: &version.Info{
+				Major: "1",
+				Minor: "28",
+			},
+			want: false,
+		},
+		{
+			name: "Kubernetes version 1.29+",
+			serverVersion: &version.Info{
+				Major: "1",
+				Minor: "29+",
+			},
+			want: true,
+		},
+		{
+			name: "Kubernetes version 1.28+",
+			serverVersion: &version.Info{
+				Major: "1",
+				Minor: "28+",
+			},
+			want: false,
+		},
+		{
+			name: "Kubernetes version 0.29",
+			serverVersion: &version.Info{
+				Major: "0",
+				Minor: "29",
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsNativeSidecarSupport(tt.serverVersion); got != tt.want {
+				t.Errorf("IsNativeSidecarSupport() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
