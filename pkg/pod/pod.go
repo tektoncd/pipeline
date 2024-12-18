@@ -37,6 +37,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/strings/slices"
 	"knative.dev/pkg/changeset"
@@ -433,10 +434,6 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	mergedPodContainers := stepContainers
 	mergedPodInitContainers := initContainers
 
-	// Check if current k8s version is less than 1.29
-	// Since Kubernetes Major version cannot be 0 and if it's 2 then sidecar will be in
-	// we are only concerned about major version 1 and if the minor is less than 29 then
-	// we need to do the current logic
 	useTektonSidecar := true
 	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableKubernetesSidecar {
 		// Go through the logic for enable-kubernetes feature flag
@@ -446,9 +443,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		if err != nil {
 			return nil, err
 		}
-		svMinorInt, _ := strconv.Atoi(sv.Minor)
-		svMajorInt, _ := strconv.Atoi(sv.Major)
-		if svMajorInt >= 1 && svMinorInt >= SidecarK8sMinorVersionCheck {
+		if IsNativeSidecarSupport(sv) {
 			// Add RestartPolicy and Merge into initContainer
 			useTektonSidecar = false
 			for i := range sidecarContainers {
@@ -732,6 +727,19 @@ func artifactPathReferencedInStep(step v1.Step) bool {
 		if strings.Contains(e.Value, path) || strings.Contains(e.Value, unresolvedPath) {
 			return true
 		}
+	}
+	return false
+}
+
+// isNativeSidecarSupport returns true if k8s api has native sidecar support
+// based on the k8s version (1.29+).
+// See https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/ for more info.
+func IsNativeSidecarSupport(serverVersion *version.Info) bool {
+	minor := strings.TrimSuffix(serverVersion.Minor, "+") // Remove '+' if present
+	majorInt, _ := strconv.Atoi(serverVersion.Major)
+	minorInt, _ := strconv.Atoi(minor)
+	if (majorInt == 1 && minorInt >= SidecarK8sMinorVersionCheck) || majorInt > 1 {
+		return true
 	}
 	return false
 }
