@@ -35,7 +35,7 @@ After reading the developer docs, you may find it useful to return to these `Tek
 -   Install via
     [official installation docs](https://github.com/tektoncd/pipeline/blob/main/docs/install.md)
     or continue through [getting started for development](#getting-started)
--   [Tekton Pipeline "Hello World" tutorial](https://github.com/tektoncd/pipeline/blob/main/docs/tutorial.md) -
+-   [Tekton Pipeline "Hello World" tutorial](https://tekton.dev/docs/getting-started/pipelines) -
     Define `Tasks` and `Pipelines` (i.e., Tekton CRDs), and see what happens when they are run
 
 ---
