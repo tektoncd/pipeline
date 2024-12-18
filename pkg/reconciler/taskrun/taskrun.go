@@ -164,9 +164,10 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 			if err != nil {
 				return err
 			}
+			svMinor := strings.TrimSuffix(sv.Minor, "+") // Remove '+' if present
 			svMajorInt, _ := strconv.Atoi(sv.Major)
-			svMinorInt, _ := strconv.Atoi(sv.Minor)
-			if svMajorInt >= 1 && svMinorInt >= 29 {
+			svMinorInt, _ := strconv.Atoi(svMinor)
+			if svMajorInt >= 1 && svMinorInt >= podconvert.SidecarK8sMinorVersionCheck {
 				useTektonSidecar = false
 				logger.Infof("Using Kubernetes Native Sidecars \n")
 			}
