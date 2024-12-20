@@ -4671,6 +4671,24 @@ func Test_validateMatrix(t *testing.T) {
 			}},
 		}},
 		wantErrs: apis.ErrInvalidValue("Matrixed PipelineTasks emitting results must have an underlying type string, but result array-result has type array in pipelineTask", ""),
+	}, {
+		name: "cel in matrix include when expression",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Include: IncludeParamsList{
+					{
+						When: WhenExpressions{
+							{
+								CEL: "platform == 'linux'",
+							},
+						},
+					},
+				},
+			},
+		}},
+		wantErrs: apis.ErrDisallowedFields("[0].matrix.include.when.cel"),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
