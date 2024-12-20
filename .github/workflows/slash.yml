@@ -1,0 +1,41 @@
+# The slash workflow handles slash commands
+#
+# Slash commands are given through comments on pull requests
+# and may be used only by individuals with "write" access to
+# the repository (i.e. maintainers).
+#
+# Slash commands must be placed at the very beginning of the
+# first line of a comment. More details are available in the
+# action docs: https://github.com/peter-evans/slash-command-dispatch/tree/main?tab=readme-ov-file#how-comments-are-parsed-for-slash-commands
+#
+# The workflow looks for and dispatches to another workflow
+# named <command>-command which must exist in the repository.
+#
+# Supported commands:
+# - /land: invokes the land-command workflow, to land (merge) PRs
+#          stacked through ghstack
+#
+# When a command is recognised, the rocket and eyes emojis are added
+
+name: Slash Command Routing
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  check_comments:
+    runs-on: ubuntu-latest
+    steps:
+    - name: route-land
+      uses: peter-evans/slash-command-dispatch@v4
+      with:
+        token: ${{ secrets.CHATOPS_TOKEN }}
+        config: >
+          [
+            {
+              "command": "retest",
+              "permission": "write",
+              "issue_type": "pull-request",
+              "repository": "tektoncd/pipeline"
+            }
+          ]
