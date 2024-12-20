@@ -133,7 +133,7 @@ func (c *Cache[K, V]) set(key K, value V, ttl time.Duration) *Item[K, V] {
 		ttl = c.options.ttl
 	}
 
-	elem := c.get(key, false)
+	elem := c.get(key, false, true)
 	if elem != nil {
 		// update/overwrite an existing item
 		item := elem.Value.(*Item[K, V])
@@ -176,14 +176,14 @@ func (c *Cache[K, V]) set(key K, value V, ttl time.Duration) *Item[K, V] {
 // It returns nil if the item is not found or is expired.
 // Not safe for concurrent use by multiple goroutines without additional
 // locking.
-func (c *Cache[K, V]) get(key K, touch bool) *list.Element {
+func (c *Cache[K, V]) get(key K, touch bool, includeExpired bool) *list.Element {
 	elem := c.items.values[key]
 	if elem == nil {
 		return nil
 	}
 
 	item := elem.Value.(*Item[K, V])
-	if item.isExpiredUnsafe() {
+	if !includeExpired && item.isExpiredUnsafe() {
 		return nil
 	}
 
@@ -218,7 +218,7 @@ func (c *Cache[K, V]) getWithOpts(key K, lockAndLoad bool, opts ...Option[K, V])
 		c.items.mu.Lock()
 	}
 
-	elem := c.get(key, !getOpts.disableTouchOnHit)
+	elem := c.get(key, !getOpts.disableTouchOnHit, false)
 
 	if lockAndLoad {
 		c.items.mu.Unlock()
@@ -339,8 +339,8 @@ func (c *Cache[K, V]) Has(key K) bool {
 	c.items.mu.RLock()
 	defer c.items.mu.RUnlock()
 
-	_, ok := c.items.values[key]
-	return ok
+	elem, ok := c.items.values[key]
+	return ok && !elem.Value.(*Item[K, V]).isExpiredUnsafe()
 }
 
 // GetOrSet retrieves an item from the cache by the provided key.
@@ -436,26 +436,66 @@ func (c *Cache[K, V]) DeleteExpired() {
 // If the item is not found, the method is no-op.
 func (c *Cache[K, V]) Touch(key K) {
 	c.items.mu.Lock()
-	c.get(key, true)
+	c.get(key, true, false)
 	c.items.mu.Unlock()
 }
 
-// Len returns the total number of items in the cache.
+// Len returns the number of unexpired items in the cache.
 func (c *Cache[K, V]) Len() int {
 	c.items.mu.RLock()
 	defer c.items.mu.RUnlock()
 
-	return len(c.items.values)
+	total := c.items.expQueue.Len()
+	if total == 0 {
+		return 0
+	}
+
+	// search the heap-based expQueue by BFS
+	countExpired := func() int {
+		var (
+			q   []int
+			res int
+		)
+
+		item := c.items.expQueue[0].Value.(*Item[K, V])
+		if !item.isExpiredUnsafe() {
+			return res
+		}
+
+		q = append(q, 0)
+		for len(q) > 0 {
+			pop := q[0]
+			q = q[1:]
+			res++
+
+			for i := 1; i <= 2; i++ {
+				idx := 2*pop + i
+				if idx >= total {
+					break
+				}
+
+				item = c.items.expQueue[idx].Value.(*Item[K, V])
+				if item.isExpiredUnsafe() {
+					q = append(q, idx)
+				}
+			}
+		}
+		return res
+	}
+
+	return total - countExpired()
 }
 
-// Keys returns all keys currently present in the cache.
+// Keys returns all unexpired keys in the cache.
 func (c *Cache[K, V]) Keys() []K {
 	c.items.mu.RLock()
 	defer c.items.mu.RUnlock()
 
-	res := make([]K, 0, len(c.items.values))
-	for k := range c.items.values {
-		res = append(res, k)
+	res := make([]K, 0)
+	for k, elem := range c.items.values {
+		if !elem.Value.(*Item[K, V]).isExpiredUnsafe() {
+			res = append(res, k)
+		}
 	}
 
 	return res
@@ -467,18 +507,18 @@ func (c *Cache[K, V]) Items() map[K]*Item[K, V] {
 	c.items.mu.RLock()
 	defer c.items.mu.RUnlock()
 
-	items := make(map[K]*Item[K, V], len(c.items.values))
-	for k := range c.items.values {
-		item := c.get(k, false)
-		if item != nil {
-			items[k] = item.Value.(*Item[K, V])
+	items := make(map[K]*Item[K, V])
+	for k, elem := range c.items.values {
+		item := elem.Value.(*Item[K, V])
+		if item != nil && !item.isExpiredUnsafe() {
+			items[k] = item
 		}
 	}
 
 	return items
 }
 
-// Range calls fn for each item present in the cache. If fn returns false,
+// Range calls fn for each unexpired item in the cache. If fn returns false,
 // Range stops the iteration.
 func (c *Cache[K, V]) Range(fn func(item *Item[K, V]) bool) {
 	c.items.mu.RLock()
@@ -491,13 +531,40 @@ func (c *Cache[K, V]) Range(fn func(item *Item[K, V]) bool) {
 
 	for item := c.items.lru.Front(); item != c.items.lru.Back().Next(); item = item.Next() {
 		i := item.Value.(*Item[K, V])
+		expired := i.isExpiredUnsafe()
 		c.items.mu.RUnlock()
 
-		if !fn(i) {
+		if !expired && !fn(i) {
 			return
 		}
 
 		if item.Next() != nil {
+			c.items.mu.RLock()
+		}
+	}
+}
+
+// RangeBackwards calls fn for each unexpired item in the cache in reverse order.
+// If fn returns false, RangeBackwards stops the iteration.
+func (c *Cache[K, V]) RangeBackwards(fn func(item *Item[K, V]) bool) {
+	c.items.mu.RLock()
+
+	// Check if cache is empty
+	if c.items.lru.Len() == 0 {
+		c.items.mu.RUnlock()
+		return
+	}
+
+	for item := c.items.lru.Back(); item != c.items.lru.Front().Prev(); item = item.Prev() {
+		i := item.Value.(*Item[K, V])
+		expired := i.isExpiredUnsafe()
+		c.items.mu.RUnlock()
+
+		if !expired && !fn(i) {
+			return
+		}
+
+		if item.Prev() != nil {
 			c.items.mu.RLock()
 		}
 	}
