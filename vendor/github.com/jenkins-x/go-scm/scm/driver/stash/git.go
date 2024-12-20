@@ -253,10 +253,11 @@ func convertDiffstats(from *diffstats) []*scm.Change {
 
 func convertDiffstat(from *diffstat) *scm.Change {
 	to := &scm.Change{
-		Path:    from.Path.ToString,
-		Added:   from.Type == "ADD",
-		Renamed: from.Type == "MOVE",
-		Deleted: from.Type == "DELETE",
+		Path:     from.Path.ToString,
+		Added:    from.Type == "ADD",
+		Modified: from.Type == "MODIFY",
+		Renamed:  from.Type == "MOVE",
+		Deleted:  from.Type == "DELETE",
 	}
 	if from.SrcPath != nil {
 		to.PreviousPath = from.SrcPath.ToString
