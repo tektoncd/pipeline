@@ -1,9 +1,7 @@
 name: Tekton Integration
 # Adapted from https://github.com/mattmoor/mink/blob/master/.github/workflows/minkind.yaml
 
-on:
-  pull_request:
-    branches: [ main ]
+on: [ pull_request ]
 
 defaults:
   run:
