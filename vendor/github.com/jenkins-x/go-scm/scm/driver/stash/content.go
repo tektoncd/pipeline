@@ -33,7 +33,18 @@ func (s *contentService) List(ctx context.Context, repo, path, ref string) ([]*s
 }
 
 func (s *contentService) Create(ctx context.Context, repo, path string, params *scm.ContentParams) (*scm.Response, error) {
-	return nil, scm.ErrNotSupported
+	namespace, repoName := scm.Split(repo)
+	endpoint := fmt.Sprintf("rest/api/1.0/projects/%s/repos/%s/browse/%s", namespace, repoName, path)
+	message := params.Message
+	if params.Signature.Name != "" && params.Signature.Email != "" {
+		message = fmt.Sprintf("%s\nSigned-off-by: %s <%s>", params.Message, params.Signature.Name, params.Signature.Email)
+	}
+	in := &contentCreateUpdate{
+		Message: message,
+		Branch:  params.Branch,
+		Content: params.Data,
+	}
+	return s.client.do(ctx, "PUT", endpoint, in, nil)
 }
 
 func (s *contentService) Update(ctx context.Context, repo, path string, params *scm.ContentParams) (*scm.Response, error) {
@@ -42,4 +53,11 @@ func (s *contentService) Update(ctx context.Context, repo, path string, params *
 
 func (s *contentService) Delete(ctx context.Context, repo, path string, params *scm.ContentParams) (*scm.Response, error) {
 	return nil, scm.ErrNotSupported
+}
+
+type contentCreateUpdate struct {
+	Branch  string `json:"branch"`
+	Message string `json:"message"`
+	Content []byte `json:"content"`
+	Sha     string `json:"sourceCommitId"`
 }
