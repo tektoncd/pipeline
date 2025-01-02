@@ -179,7 +179,8 @@ golangci-lint-check: | $(GOLANGCILINT) ; $(info $(M) Testing if golint has been 
 	$Q $(GOLANGCILINT) run -j 1 --color=never
 
 GOIMPORTS = $(BIN)/goimports
-$(BIN)/goimports: PACKAGE=golang.org/x/tools/cmd/goimports
+$(BIN)/goimports: | $(BIN) ; $(info $(M) building goimports…)
+	GOBIN=$(BIN) go install golang.org/x/tools/cmd/goimports@latest
 
 .PHONY: goimports
 goimports: | $(GOIMPORTS) ; $(info $(M) running goimports…) ## Run goimports
