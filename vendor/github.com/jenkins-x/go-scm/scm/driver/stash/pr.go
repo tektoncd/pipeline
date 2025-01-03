@@ -305,6 +305,21 @@ func (s *pullService) ClearMilestone(ctx context.Context, repo string, prID int)
 	return nil, scm.ErrNotSupported
 }
 
+func (s *pullService) DeletePullRequest(ctx context.Context, repo string, prID int) (*scm.Response, error) {
+	namespace, name := scm.Split(repo)
+	// in Bitbucket server (stash) to delete a pull request `version` of the pull request
+	// must be provided in body of the request so it's worth fetching pull request via rest api
+	// to get latest version of the pull request.
+	path := fmt.Sprintf("rest/api/1.0/projects/%s/repos/%s/pull-requests/%d", namespace, name, prID)
+	out := new(pullRequest)
+	_, err := s.client.do(ctx, http.MethodGet, path, nil, out)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pull request. err: %v", err)
+	}
+	in := map[string]int{"version": out.Version}
+	return s.client.do(ctx, http.MethodDelete, path, &in, nil)
+}
+
 type createPRInput struct {
 	Title       string           `json:"title,omitempty"`
 	Description string           `json:"description,omitempty"`
