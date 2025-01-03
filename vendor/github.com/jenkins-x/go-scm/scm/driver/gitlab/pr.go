@@ -266,6 +266,10 @@ func (s *pullService) ClearMilestone(ctx context.Context, repo string, prID int)
 	return res, err
 }
 
+func (s *pullService) DeletePullRequest(ctx context.Context, repo string, prID int) (*scm.Response, error) {
+	return nil, scm.ErrNotSupported
+}
+
 type updateMergeRequestOptions struct {
 	Title              *string `json:"title,omitempty"`
 	Description        *string `json:"description,omitempty"`
