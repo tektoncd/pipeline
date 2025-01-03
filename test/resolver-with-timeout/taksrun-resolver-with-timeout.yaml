@@ -1,0 +1,7 @@
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: resolver-with-timeout
+spec:
+  taskRef:
+    resolver: resolver-with-timeout
