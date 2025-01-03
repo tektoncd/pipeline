@@ -1,0 +1,81 @@
+# The _chatops_retest workflow reruns failed GHA for a PR
+#
+# This workflow is triggered by leaving a "/retest" comment on
+# a pull request. If the required preconditions are met, it will
+# rerun failed GitHub actions checks on that PR
+#
+# Condition for the "/retest" command are:
+# - either the issuer is a maintainer
+# - or the issuer is the owner the PR
+
+name: Rerun Failed Actions
+on:
+  repository_dispatch:
+    types: [retest-command]
+
+jobs:
+  retest:
+    name: Rerun Failed Actions
+    runs-on: ubuntu-latest
+    steps:
+    - name: Show Environment Variables
+      run: env
+    - name: Show Github Object
+      run: |
+        cat <<'EOF'
+        ${{ toJson(github) }}
+        EOF
+    - name: Show Github Event Path Json
+      run: 'cat $GITHUB_EVENT_PATH || true'
+    - name: Rerun Failed Actions
+      run: |
+        echo '::group:: Get the PR commit sha'
+        # Get the sha of the HEAD commit in the PR
+        GITHUB_COMMIT_SHA=$(gh api $(echo ${GITHUB_PULL_URL#https://api.github.com/}) | \
+            jq -r .head.sha)
+        echo GITHUB_COMMIT_SHA=${GITHUB_COMMIT_SHA}
+        echo '::endgroup::'
+
+        echo '::group:: Get the list of run IDs'
+        # Get a list of run IDs
+        RUN_IDS=$(gh api repos/${GITHUB_REPO}/commits/${GITHUB_COMMIT_SHA}/check-runs | \
+            jq -r '.check_runs[] | select(.name != "Rerun Failed Actions") | .html_url | capture("/runs/(?<number>[0-9]+)/job") | .number' | \
+            sort -u)
+        echo RUN_IDS=${RUN_IDS}
+        echo '::endgroup::'
+
+        echo '::group:: Rerun failed runs'
+        # For each run, retrigger faild jobs
+        for runid in ${RUN_IDS}; do
+            echo Restarting run ${runid} for commit ${GITHUB_COMMIT_SHA}
+            gh run \
+                --repo ${GITHUB_REPO} \
+                rerun ${runid} \
+                --failed || true
+        done
+        echo '::endgroup::'
+      env:
+        GITHUB_TOKEN: ${{ secrets.CHATOPS_TOKEN }}
+        GITHUB_REPO: ${{ github.event.client_payload.github.payload.repository.full_name }}
+        GITHUB_PULL_URL: ${{ github.event.client_payload.github.payload.issue.pull_request.url }}
+
+    - name: Create comment
+      if: ${{ failure() && steps.landStack.outcome == 'failure' }}
+      uses: peter-evans/create-or-update-comment@v4
+      with:
+        token: ${{ secrets.CHATOPS_TOKEN }}
+        repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
+        issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
+        body: |
+          Something went wrong with your `/${{ github.event.client_payload.slash_command.command }}` command: [please check the logs][1].
+
+          [1]: ${{ steps.vars.outputs.run-url }}
+
+    - name: Add reaction
+      if: ${{ success() }}
+      uses: peter-evans/create-or-update-comment@v4
+      with:
+        token: ${{ secrets.CHATOPS_TOKEN }}
+        repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
+        comment-id: ${{ github.event.client_payload.github.payload.comment.id }}
+        reactions: hooray
