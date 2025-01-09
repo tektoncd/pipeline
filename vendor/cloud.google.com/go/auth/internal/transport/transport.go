@@ -17,7 +17,11 @@
 package transport
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net"
+	"net/http"
+	"time"
 
 	"cloud.google.com/go/auth/credentials"
 )
@@ -45,15 +49,16 @@ func CloneDetectOptions(oldDo *credentials.DetectOptions) *credentials.DetectOpt
 		// These fields are are pointer types that we just want to use exactly
 		// as the user set, copy the ref
 		Client:             oldDo.Client,
+		Logger:             oldDo.Logger,
 		AuthHandlerOptions: oldDo.AuthHandlerOptions,
 	}
 
 	// Smartly size this memory and copy below.
-	if oldDo.CredentialsJSON != nil {
+	if len(oldDo.CredentialsJSON) > 0 {
 		newDo.CredentialsJSON = make([]byte, len(oldDo.CredentialsJSON))
 		copy(newDo.CredentialsJSON, oldDo.CredentialsJSON)
 	}
-	if oldDo.Scopes != nil {
+	if len(oldDo.Scopes) > 0 {
 		newDo.Scopes = make([]string, len(oldDo.Scopes))
 		copy(newDo.Scopes, oldDo.Scopes)
 	}
@@ -73,4 +78,29 @@ func ValidateUniverseDomain(clientUniverseDomain, credentialsUniverseDomain stri
 			credentialsUniverseDomain)
 	}
 	return nil
+}
+
+// DefaultHTTPClientWithTLS constructs an HTTPClient using the provided tlsConfig, to support mTLS.
+func DefaultHTTPClientWithTLS(tlsConfig *tls.Config) *http.Client {
+	trans := BaseTransport()
+	trans.TLSClientConfig = tlsConfig
+	return &http.Client{Transport: trans}
+}
+
+// BaseTransport returns a default [http.Transport] which can be used if
+// [http.DefaultTransport] has been overwritten.
+func BaseTransport() *http.Transport {
+	return &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+			DualStack: true,
+		}).DialContext,
+		MaxIdleConns:          100,
+		MaxIdleConnsPerHost:   100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
 }

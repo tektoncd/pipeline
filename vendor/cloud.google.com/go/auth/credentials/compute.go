@@ -37,15 +37,20 @@ var (
 
 // computeTokenProvider creates a [cloud.google.com/go/auth.TokenProvider] that
 // uses the metadata service to retrieve tokens.
-func computeTokenProvider(earlyExpiry time.Duration, scope ...string) auth.TokenProvider {
-	return auth.NewCachedTokenProvider(computeProvider{scopes: scope}, &auth.CachedTokenProviderOptions{
-		ExpireEarly: earlyExpiry,
+func computeTokenProvider(opts *DetectOptions, client *metadata.Client) auth.TokenProvider {
+	return auth.NewCachedTokenProvider(&computeProvider{
+		scopes: opts.Scopes,
+		client: client,
+	}, &auth.CachedTokenProviderOptions{
+		ExpireEarly:         opts.EarlyTokenRefresh,
+		DisableAsyncRefresh: opts.DisableAsyncRefresh,
 	})
 }
 
 // computeProvider fetches tokens from the google cloud metadata service.
 type computeProvider struct {
 	scopes []string
+	client *metadata.Client
 }
 
 type metadataTokenResp struct {
@@ -54,7 +59,7 @@ type metadataTokenResp struct {
 	TokenType    string `json:"token_type"`
 }
 
-func (cs computeProvider) Token(ctx context.Context) (*auth.Token, error) {
+func (cs *computeProvider) Token(ctx context.Context) (*auth.Token, error) {
 	tokenURI, err := url.Parse(computeTokenURI)
 	if err != nil {
 		return nil, err
@@ -64,9 +69,9 @@ func (cs computeProvider) Token(ctx context.Context) (*auth.Token, error) {
 		v.Set("scopes", strings.Join(cs.scopes, ","))
 		tokenURI.RawQuery = v.Encode()
 	}
-	tokenJSON, err := metadata.Get(tokenURI.String())
+	tokenJSON, err := cs.client.GetWithContext(ctx, tokenURI.String())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("credentials: cannot fetch token: %w", err)
 	}
 	var res metadataTokenResp
 	if err := json.NewDecoder(strings.NewReader(tokenJSON)).Decode(&res); err != nil {

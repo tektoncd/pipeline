@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
+	"log/slog"
 	"math"
 	"net/http"
 	"net/url"
@@ -30,7 +30,6 @@ import (
 	kmspb "cloud.google.com/go/kms/apiv1/kmspb"
 	longrunningpb "cloud.google.com/go/longrunning/autogen/longrunningpb"
 	gax "github.com/googleapis/gax-go/v2"
-	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	"google.golang.org/api/option/internaloption"
@@ -189,7 +188,8 @@ type internalAutokeyAdminClient interface {
 // AutokeyAdminClient is a client for interacting with Cloud Key Management Service (KMS) API.
 // Methods, except Close, may be called concurrently. However, fields must not be modified concurrently with method calls.
 //
-// Provides interfaces for managing Cloud KMS Autokey folder-level
+// Provides interfaces for managing Cloud KMS
+// Autokey (at https://cloud.google.com/kms/help/autokey) folder-level
 // configurations. A configuration is inherited by all descendent projects. A
 // configuration at one folder overrides any other configurations in its
 // ancestry. Setting a configuration on a folder is a prerequisite for Cloud KMS
@@ -311,12 +311,15 @@ type autokeyAdminGRPCClient struct {
 
 	// The x-goog-* metadata to be sent with each request.
 	xGoogHeaders []string
+
+	logger *slog.Logger
 }
 
 // NewAutokeyAdminClient creates a new autokey admin client based on gRPC.
 // The returned client must be Closed when it is done being used to clean up its underlying connections.
 //
-// Provides interfaces for managing Cloud KMS Autokey folder-level
+// Provides interfaces for managing Cloud KMS
+// Autokey (at https://cloud.google.com/kms/help/autokey) folder-level
 // configurations. A configuration is inherited by all descendent projects. A
 // configuration at one folder overrides any other configurations in its
 // ancestry. Setting a configuration on a folder is a prerequisite for Cloud KMS
@@ -343,6 +346,7 @@ func NewAutokeyAdminClient(ctx context.Context, opts ...option.ClientOption) (*A
 		connPool:           connPool,
 		autokeyAdminClient: kmspb.NewAutokeyAdminClient(connPool),
 		CallOptions:        &client.CallOptions,
+		logger:             internaloption.GetLogger(opts),
 		operationsClient:   longrunningpb.NewOperationsClient(connPool),
 		iamPolicyClient:    iampb.NewIAMPolicyClient(connPool),
 		locationsClient:    locationpb.NewLocationsClient(connPool),
@@ -392,11 +396,14 @@ type autokeyAdminRESTClient struct {
 
 	// Points back to the CallOptions field of the containing AutokeyAdminClient
 	CallOptions **AutokeyAdminCallOptions
+
+	logger *slog.Logger
 }
 
 // NewAutokeyAdminRESTClient creates a new autokey admin rest client.
 //
-// Provides interfaces for managing Cloud KMS Autokey folder-level
+// Provides interfaces for managing Cloud KMS
+// Autokey (at https://cloud.google.com/kms/help/autokey) folder-level
 // configurations. A configuration is inherited by all descendent projects. A
 // configuration at one folder overrides any other configurations in its
 // ancestry. Setting a configuration on a folder is a prerequisite for Cloud KMS
@@ -415,6 +422,7 @@ func NewAutokeyAdminRESTClient(ctx context.Context, opts ...option.ClientOption)
 		endpoint:    endpoint,
 		httpClient:  httpClient,
 		CallOptions: &callOpts,
+		logger:      internaloption.GetLogger(opts),
 	}
 	c.setGoogleClientInfo()
 
@@ -467,7 +475,7 @@ func (c *autokeyAdminGRPCClient) UpdateAutokeyConfig(ctx context.Context, req *k
 	var resp *kmspb.AutokeyConfig
 	err := gax.Invoke(ctx, func(ctx context.Context, settings gax.CallSettings) error {
 		var err error
-		resp, err = c.autokeyAdminClient.UpdateAutokeyConfig(ctx, req, settings.GRPC...)
+		resp, err = executeRPC(ctx, c.autokeyAdminClient.UpdateAutokeyConfig, req, settings.GRPC, c.logger, "UpdateAutokeyConfig")
 		return err
 	}, opts...)
 	if err != nil {
@@ -485,7 +493,7 @@ func (c *autokeyAdminGRPCClient) GetAutokeyConfig(ctx context.Context, req *kmsp
 	var resp *kmspb.AutokeyConfig
 	err := gax.Invoke(ctx, func(ctx context.Context, settings gax.CallSettings) error {
 		var err error
-		resp, err = c.autokeyAdminClient.GetAutokeyConfig(ctx, req, settings.GRPC...)
+		resp, err = executeRPC(ctx, c.autokeyAdminClient.GetAutokeyConfig, req, settings.GRPC, c.logger, "GetAutokeyConfig")
 		return err
 	}, opts...)
 	if err != nil {
@@ -503,7 +511,7 @@ func (c *autokeyAdminGRPCClient) ShowEffectiveAutokeyConfig(ctx context.Context,
 	var resp *kmspb.ShowEffectiveAutokeyConfigResponse
 	err := gax.Invoke(ctx, func(ctx context.Context, settings gax.CallSettings) error {
 		var err error
-		resp, err = c.autokeyAdminClient.ShowEffectiveAutokeyConfig(ctx, req, settings.GRPC...)
+		resp, err = executeRPC(ctx, c.autokeyAdminClient.ShowEffectiveAutokeyConfig, req, settings.GRPC, c.logger, "ShowEffectiveAutokeyConfig")
 		return err
 	}, opts...)
 	if err != nil {
@@ -521,7 +529,7 @@ func (c *autokeyAdminGRPCClient) GetLocation(ctx context.Context, req *locationp
 	var resp *locationpb.Location
 	err := gax.Invoke(ctx, func(ctx context.Context, settings gax.CallSettings) error {
 		var err error
-		resp, err = c.locationsClient.GetLocation(ctx, req, settings.GRPC...)
+		resp, err = executeRPC(ctx, c.locationsClient.GetLocation, req, settings.GRPC, c.logger, "GetLocation")
 		return err
 	}, opts...)
 	if err != nil {
@@ -550,7 +558,7 @@ func (c *autokeyAdminGRPCClient) ListLocations(ctx context.Context, req *locatio
 		}
 		err := gax.Invoke(ctx, func(ctx context.Context, settings gax.CallSettings) error {
 			var err error
-			resp, err = c.locationsClient.ListLocations(ctx, req, settings.GRPC...)
+			resp, err = executeRPC(ctx, c.locationsClient.ListLocations, req, settings.GRPC, c.logger, "ListLocations")
 			return err
 		}, opts...)
 		if err != nil {
@@ -585,7 +593,7 @@ func (c *autokeyAdminGRPCClient) GetIamPolicy(ctx context.Context, req *iampb.Ge
 	var resp *iampb.Policy
 	err := gax.Invoke(ctx, func(ctx context.Context, settings gax.CallSettings) error {
 		var err error
-		resp, err = c.iamPolicyClient.GetIamPolicy(ctx, req, settings.GRPC...)
+		resp, err = executeRPC(ctx, c.iamPolicyClient.GetIamPolicy, req, settings.GRPC, c.logger, "GetIamPolicy")
 		return err
 	}, opts...)
 	if err != nil {
@@ -603,7 +611,7 @@ func (c *autokeyAdminGRPCClient) SetIamPolicy(ctx context.Context, req *iampb.Se
 	var resp *iampb.Policy
 	err := gax.Invoke(ctx, func(ctx context.Context, settings gax.CallSettings) error {
 		var err error
-		resp, err = c.iamPolicyClient.SetIamPolicy(ctx, req, settings.GRPC...)
+		resp, err = executeRPC(ctx, c.iamPolicyClient.SetIamPolicy, req, settings.GRPC, c.logger, "SetIamPolicy")
 		return err
 	}, opts...)
 	if err != nil {
@@ -621,7 +629,7 @@ func (c *autokeyAdminGRPCClient) TestIamPermissions(ctx context.Context, req *ia
 	var resp *iampb.TestIamPermissionsResponse
 	err := gax.Invoke(ctx, func(ctx context.Context, settings gax.CallSettings) error {
 		var err error
-		resp, err = c.iamPolicyClient.TestIamPermissions(ctx, req, settings.GRPC...)
+		resp, err = executeRPC(ctx, c.iamPolicyClient.TestIamPermissions, req, settings.GRPC, c.logger, "TestIamPermissions")
 		return err
 	}, opts...)
 	if err != nil {
@@ -639,7 +647,7 @@ func (c *autokeyAdminGRPCClient) GetOperation(ctx context.Context, req *longrunn
 	var resp *longrunningpb.Operation
 	err := gax.Invoke(ctx, func(ctx context.Context, settings gax.CallSettings) error {
 		var err error
-		resp, err = c.operationsClient.GetOperation(ctx, req, settings.GRPC...)
+		resp, err = executeRPC(ctx, c.operationsClient.GetOperation, req, settings.GRPC, c.logger, "GetOperation")
 		return err
 	}, opts...)
 	if err != nil {
@@ -672,11 +680,11 @@ func (c *autokeyAdminRESTClient) UpdateAutokeyConfig(ctx context.Context, req *k
 	params := url.Values{}
 	params.Add("$alt", "json;enum-encoding=int")
 	if req.GetUpdateMask() != nil {
-		updateMask, err := protojson.Marshal(req.GetUpdateMask())
+		field, err := protojson.Marshal(req.GetUpdateMask())
 		if err != nil {
 			return nil, err
 		}
-		params.Add("updateMask", string(updateMask[1:len(updateMask)-1]))
+		params.Add("updateMask", string(field[1:len(field)-1]))
 	}
 
 	baseUrl.RawQuery = params.Encode()
@@ -701,17 +709,7 @@ func (c *autokeyAdminRESTClient) UpdateAutokeyConfig(ctx context.Context, req *k
 		httpReq = httpReq.WithContext(ctx)
 		httpReq.Header = headers
 
-		httpRsp, err := c.httpClient.Do(httpReq)
-		if err != nil {
-			return err
-		}
-		defer httpRsp.Body.Close()
-
-		if err = googleapi.CheckResponse(httpRsp); err != nil {
-			return err
-		}
-
-		buf, err := io.ReadAll(httpRsp.Body)
+		buf, err := executeHTTPRequest(ctx, c.httpClient, httpReq, c.logger, jsonReq, "UpdateAutokeyConfig")
 		if err != nil {
 			return err
 		}
@@ -762,17 +760,7 @@ func (c *autokeyAdminRESTClient) GetAutokeyConfig(ctx context.Context, req *kmsp
 		httpReq = httpReq.WithContext(ctx)
 		httpReq.Header = headers
 
-		httpRsp, err := c.httpClient.Do(httpReq)
-		if err != nil {
-			return err
-		}
-		defer httpRsp.Body.Close()
-
-		if err = googleapi.CheckResponse(httpRsp); err != nil {
-			return err
-		}
-
-		buf, err := io.ReadAll(httpRsp.Body)
+		buf, err := executeHTTPRequest(ctx, c.httpClient, httpReq, c.logger, nil, "GetAutokeyConfig")
 		if err != nil {
 			return err
 		}
@@ -822,17 +810,7 @@ func (c *autokeyAdminRESTClient) ShowEffectiveAutokeyConfig(ctx context.Context,
 		httpReq = httpReq.WithContext(ctx)
 		httpReq.Header = headers
 
-		httpRsp, err := c.httpClient.Do(httpReq)
-		if err != nil {
-			return err
-		}
-		defer httpRsp.Body.Close()
-
-		if err = googleapi.CheckResponse(httpRsp); err != nil {
-			return err
-		}
-
-		buf, err := io.ReadAll(httpRsp.Body)
+		buf, err := executeHTTPRequest(ctx, c.httpClient, httpReq, c.logger, nil, "ShowEffectiveAutokeyConfig")
 		if err != nil {
 			return err
 		}
@@ -882,17 +860,7 @@ func (c *autokeyAdminRESTClient) GetLocation(ctx context.Context, req *locationp
 		httpReq = httpReq.WithContext(ctx)
 		httpReq.Header = headers
 
-		httpRsp, err := c.httpClient.Do(httpReq)
-		if err != nil {
-			return err
-		}
-		defer httpRsp.Body.Close()
-
-		if err = googleapi.CheckResponse(httpRsp); err != nil {
-			return err
-		}
-
-		buf, err := io.ReadAll(httpRsp.Body)
+		buf, err := executeHTTPRequest(ctx, c.httpClient, httpReq, c.logger, nil, "GetLocation")
 		if err != nil {
 			return err
 		}
@@ -957,21 +925,10 @@ func (c *autokeyAdminRESTClient) ListLocations(ctx context.Context, req *locatio
 			}
 			httpReq.Header = headers
 
-			httpRsp, err := c.httpClient.Do(httpReq)
+			buf, err := executeHTTPRequest(ctx, c.httpClient, httpReq, c.logger, nil, "ListLocations")
 			if err != nil {
 				return err
 			}
-			defer httpRsp.Body.Close()
-
-			if err = googleapi.CheckResponse(httpRsp); err != nil {
-				return err
-			}
-
-			buf, err := io.ReadAll(httpRsp.Body)
-			if err != nil {
-				return err
-			}
-
 			if err := unm.Unmarshal(buf, resp); err != nil {
 				return err
 			}
@@ -1038,17 +995,7 @@ func (c *autokeyAdminRESTClient) GetIamPolicy(ctx context.Context, req *iampb.Ge
 		httpReq = httpReq.WithContext(ctx)
 		httpReq.Header = headers
 
-		httpRsp, err := c.httpClient.Do(httpReq)
-		if err != nil {
-			return err
-		}
-		defer httpRsp.Body.Close()
-
-		if err = googleapi.CheckResponse(httpRsp); err != nil {
-			return err
-		}
-
-		buf, err := io.ReadAll(httpRsp.Body)
+		buf, err := executeHTTPRequest(ctx, c.httpClient, httpReq, c.logger, nil, "GetIamPolicy")
 		if err != nil {
 			return err
 		}
@@ -1108,17 +1055,7 @@ func (c *autokeyAdminRESTClient) SetIamPolicy(ctx context.Context, req *iampb.Se
 		httpReq = httpReq.WithContext(ctx)
 		httpReq.Header = headers
 
-		httpRsp, err := c.httpClient.Do(httpReq)
-		if err != nil {
-			return err
-		}
-		defer httpRsp.Body.Close()
-
-		if err = googleapi.CheckResponse(httpRsp); err != nil {
-			return err
-		}
-
-		buf, err := io.ReadAll(httpRsp.Body)
+		buf, err := executeHTTPRequest(ctx, c.httpClient, httpReq, c.logger, jsonReq, "SetIamPolicy")
 		if err != nil {
 			return err
 		}
@@ -1180,17 +1117,7 @@ func (c *autokeyAdminRESTClient) TestIamPermissions(ctx context.Context, req *ia
 		httpReq = httpReq.WithContext(ctx)
 		httpReq.Header = headers
 
-		httpRsp, err := c.httpClient.Do(httpReq)
-		if err != nil {
-			return err
-		}
-		defer httpRsp.Body.Close()
-
-		if err = googleapi.CheckResponse(httpRsp); err != nil {
-			return err
-		}
-
-		buf, err := io.ReadAll(httpRsp.Body)
+		buf, err := executeHTTPRequest(ctx, c.httpClient, httpReq, c.logger, jsonReq, "TestIamPermissions")
 		if err != nil {
 			return err
 		}
@@ -1240,17 +1167,7 @@ func (c *autokeyAdminRESTClient) GetOperation(ctx context.Context, req *longrunn
 		httpReq = httpReq.WithContext(ctx)
 		httpReq.Header = headers
 
-		httpRsp, err := c.httpClient.Do(httpReq)
-		if err != nil {
-			return err
-		}
-		defer httpRsp.Body.Close()
-
-		if err = googleapi.CheckResponse(httpRsp); err != nil {
-			return err
-		}
-
-		buf, err := io.ReadAll(httpRsp.Body)
+		buf, err := executeHTTPRequest(ctx, c.httpClient, httpReq, c.logger, nil, "GetOperation")
 		if err != nil {
 			return err
 		}
