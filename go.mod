@@ -1,7 +1,6 @@
 module github.com/tektoncd/pipeline
 
-go 1.22
-toolchain go1.22.5
+go 1.23
 
 require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
@@ -230,7 +229,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/mod v0.17.0 // indirect
-	golang.org/x/net v0.28.0 // indirect
+	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sync v0.10.0
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/term v0.27.0 // indirect
