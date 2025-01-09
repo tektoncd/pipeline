@@ -50,17 +50,17 @@ cosign verify --key azurekms://[Key Vault Name].vault.azure.net/[Key Name] [Cont
 
 ## Authentication
 
-There are multiple authentication methods supported for Azure Key Vault and by default they will be evaluated in the following order:
+This module uses the [`DefaultCredential` type](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azidentity#DefaultAzureCredential)
+to authenticate. This type supports the following authentication methods:
 
-1. Client credentials (FromEnvironment)
-1. Client certificate (FromEnvironment)
-1. Username password (FromEnvironment)
-1. MSI (FromEnvironment)
-1. CLI (FromCLI)
+1. Environment variables
+1. Workload identity
+1. Managed identity
+1. Azure CLI
+1. Azure Developer CLI
 
-You can force either `FromEnvironment` or `FromCLI` by configuring the environment variable `AZURE_AUTH_METHOD` to either `environment` or `cli`.
-
-For backward compatibility, if you configure `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` and `AZURE_CLIENT_SECRET`, `FromEnvironment` will be used.
+See the [official documentation](
+https://learn.microsoft.com/en-us/azure/developer/go/azure-sdk-authentication?tabs=bash) for more information.
 
 If you would like to use a cloud other than the Azure public cloud, configure `AZURE_ENVIRONMENT`. The following values are accepted:
 - `AZUREUSGOVERNMENT`, `AZUREUSGOVERNMENTCLOUD` uses the Azure US Government Cloud
