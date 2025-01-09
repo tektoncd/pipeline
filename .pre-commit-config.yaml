@@ -32,3 +32,7 @@ repos:
     language: system
     types: [go]
     pass_filenames: false
+- repo: https://github.com/python-jsonschema/check-jsonschema
+  rev: 0.28.0
+  hooks:
+  - id: check-github-actions
