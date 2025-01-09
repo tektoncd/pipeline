@@ -3405,6 +3405,103 @@ func TestContext(t *testing.T) {
 	}
 }
 
+func TestApplyMatrixIncludeWhenExpressions(t *testing.T) {
+	for _, tc := range []struct {
+		description string
+		pt          *v1.PipelineTask
+		pr          *v1.PipelineRun
+		want        v1.IncludeParamsList
+	}{
+		{
+			description: "string replacement",
+			pt: &v1.PipelineTask{
+				Matrix: &v1.Matrix{
+					Include: v1.IncludeParamsList{
+						{
+							When: v1.WhenExpressions{
+								{
+									Input:    "arm64",
+									Operator: selection.In,
+									Values:   []string{"$(params.platform)"},
+								},
+							},
+						},
+					},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: v1.Params{
+						{
+							Name:  "platform",
+							Value: *v1.NewStructuredValues("arm64"),
+						},
+					},
+				},
+			},
+			want: v1.IncludeParamsList{
+				{
+					When: v1.WhenExpressions{
+						{
+							Input:    "arm64",
+							Operator: selection.In,
+							Values:   []string{"arm64"},
+						},
+					},
+				},
+			},
+		}, {
+			description: "array replacement",
+			pt: &v1.PipelineTask{
+				Matrix: &v1.Matrix{
+					Include: v1.IncludeParamsList{
+						{
+							When: v1.WhenExpressions{
+								{
+									Input:    "arm64",
+									Operator: selection.In,
+									Values:   []string{"$(params.platform[*])"},
+								},
+							},
+						},
+					},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: v1.Params{
+						{
+							Name: "platform",
+							Value: v1.ParamValue{
+								Type:     v1.ParamTypeArray,
+								ArrayVal: []string{"arm64", "amd64"},
+							},
+						},
+					},
+				},
+			},
+			want: v1.IncludeParamsList{
+				{
+					When: v1.WhenExpressions{
+						{
+							Input:    "arm64",
+							Operator: selection.In,
+							Values:   []string{"arm64", "amd64"},
+						},
+					},
+				},
+			},
+		},
+	} {
+		t.Run(tc.description, func(t *testing.T) {
+			resources.ApplyMatrixIncludeWhenExpressions(tc.pt, tc.pr)
+			if d := cmp.Diff(tc.want, tc.pt.Matrix.Include); d != "" {
+				t.Errorf(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestApplyPipelineTaskContexts(t *testing.T) {
 	for _, tc := range []struct {
 		description string
