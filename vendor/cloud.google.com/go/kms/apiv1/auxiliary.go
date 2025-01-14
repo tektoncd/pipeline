@@ -111,7 +111,7 @@ type CryptoKeyIterator struct {
 	InternalFetch func(pageSize int, pageToken string) (results []*kmspb.CryptoKey, nextPageToken string, err error)
 }
 
-// PageInfo supports pagination. See the google.golang.org/api/iterator package for details.
+// PageInfo supports pagination. See the [google.golang.org/api/iterator] package for details.
 func (it *CryptoKeyIterator) PageInfo() *iterator.PageInfo {
 	return it.pageInfo
 }
@@ -158,7 +158,7 @@ type CryptoKeyVersionIterator struct {
 	InternalFetch func(pageSize int, pageToken string) (results []*kmspb.CryptoKeyVersion, nextPageToken string, err error)
 }
 
-// PageInfo supports pagination. See the google.golang.org/api/iterator package for details.
+// PageInfo supports pagination. See the [google.golang.org/api/iterator] package for details.
 func (it *CryptoKeyVersionIterator) PageInfo() *iterator.PageInfo {
 	return it.pageInfo
 }
@@ -205,7 +205,7 @@ type EkmConnectionIterator struct {
 	InternalFetch func(pageSize int, pageToken string) (results []*kmspb.EkmConnection, nextPageToken string, err error)
 }
 
-// PageInfo supports pagination. See the google.golang.org/api/iterator package for details.
+// PageInfo supports pagination. See the [google.golang.org/api/iterator] package for details.
 func (it *EkmConnectionIterator) PageInfo() *iterator.PageInfo {
 	return it.pageInfo
 }
@@ -252,7 +252,7 @@ type ImportJobIterator struct {
 	InternalFetch func(pageSize int, pageToken string) (results []*kmspb.ImportJob, nextPageToken string, err error)
 }
 
-// PageInfo supports pagination. See the google.golang.org/api/iterator package for details.
+// PageInfo supports pagination. See the [google.golang.org/api/iterator] package for details.
 func (it *ImportJobIterator) PageInfo() *iterator.PageInfo {
 	return it.pageInfo
 }
@@ -279,6 +279,53 @@ func (it *ImportJobIterator) takeBuf() interface{} {
 	return b
 }
 
+// KeyHandleIterator manages a stream of *kmspb.KeyHandle.
+type KeyHandleIterator struct {
+	items    []*kmspb.KeyHandle
+	pageInfo *iterator.PageInfo
+	nextFunc func() error
+
+	// Response is the raw response for the current page.
+	// It must be cast to the RPC response type.
+	// Calling Next() or InternalFetch() updates this value.
+	Response interface{}
+
+	// InternalFetch is for use by the Google Cloud Libraries only.
+	// It is not part of the stable interface of this package.
+	//
+	// InternalFetch returns results from a single call to the underlying RPC.
+	// The number of results is no greater than pageSize.
+	// If there are no more results, nextPageToken is empty and err is nil.
+	InternalFetch func(pageSize int, pageToken string) (results []*kmspb.KeyHandle, nextPageToken string, err error)
+}
+
+// PageInfo supports pagination. See the [google.golang.org/api/iterator] package for details.
+func (it *KeyHandleIterator) PageInfo() *iterator.PageInfo {
+	return it.pageInfo
+}
+
+// Next returns the next result. Its second return value is iterator.Done if there are no more
+// results. Once Next returns Done, all subsequent calls will return Done.
+func (it *KeyHandleIterator) Next() (*kmspb.KeyHandle, error) {
+	var item *kmspb.KeyHandle
+	if err := it.nextFunc(); err != nil {
+		return item, err
+	}
+	item = it.items[0]
+	it.items = it.items[1:]
+	return item, nil
+}
+
+func (it *KeyHandleIterator) bufLen() int {
+	return len(it.items)
+}
+
+func (it *KeyHandleIterator) takeBuf() interface{} {
+	b := it.items
+	it.items = nil
+	return b
+}
+
 // KeyRingIterator manages a stream of *kmspb.KeyRing.
 type KeyRingIterator struct {
 	items    []*kmspb.KeyRing
@@ -299,7 +346,7 @@ type KeyRingIterator struct {
 	InternalFetch func(pageSize int, pageToken string) (results []*kmspb.KeyRing, nextPageToken string, err error)
 }
 
-// PageInfo supports pagination. See the google.golang.org/api/iterator package for details.
+// PageInfo supports pagination. See the [google.golang.org/api/iterator] package for details.
 func (it *KeyRingIterator) PageInfo() *iterator.PageInfo {
 	return it.pageInfo
 }
@@ -346,7 +393,7 @@ type LocationIterator struct {
 	InternalFetch func(pageSize int, pageToken string) (results []*locationpb.Location, nextPageToken string, err error)
 }
 
-// PageInfo supports pagination. See the google.golang.org/api/iterator package for details.
+// PageInfo supports pagination. See the [google.golang.org/api/iterator] package for details.
 func (it *LocationIterator) PageInfo() *iterator.PageInfo {
 	return it.pageInfo
 }
