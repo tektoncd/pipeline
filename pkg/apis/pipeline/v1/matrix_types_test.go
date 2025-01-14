@@ -782,7 +782,8 @@ func TestPipelineTask_CountCombinations(t *testing.T) {
 	}{{
 		name: "combinations count is zero",
 		matrix: &v1.Matrix{
-			Params: v1.Params{{}}},
+			Params: v1.Params{},
+		},
 		want: 0,
 	}, {
 		name: "combinations count is one from one parameter",
@@ -915,11 +916,20 @@ func TestPipelineTask_CountCombinations(t *testing.T) {
 				}},
 			}},
 		want: 7,
+	}, {
+		name: "matrix params with string value containing variable reference",
+		matrix: &v1.Matrix{
+			Params: v1.Params{{
+				Name: "GOARCH", Value: v1.ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+			}, {
+				Name: "version", Value: v1.ParamValue{StringVal: "$(tasks.platforms.results.str[*])"}},
+			}},
+		want: 3,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if d := cmp.Diff(tt.want, tt.matrix.CountCombinations()); d != "" {
-				t.Errorf("Matrix.CountCombinations() errors diff %s", diff.PrintWantGot(d))
+				t.Errorf("%s Matrix.CountCombinations() errors diff %s", tt.name, diff.PrintWantGot(d))
 			}
 		})
 	}
