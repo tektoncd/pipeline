@@ -215,7 +215,7 @@ func encodeScript(script string) string {
 // placeDebugScriptInContainers inserts debug scripts into containers. It capsules those scripts to files in initContainer,
 // then executes those scripts in target containers.
 func placeDebugScriptInContainers(containers []corev1.Container, initContainer *corev1.Container) {
-	for i := range len(containers) {
+	for i := range containers {
 		debugInfoVolumeMount := corev1.VolumeMount{
 			Name:      debugInfoVolumeName,
 			MountPath: filepath.Join(debugInfoDir, strconv.Itoa(i)),
