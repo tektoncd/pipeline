@@ -49,10 +49,10 @@ require (
 	github.com/sigstore/sigstore/pkg/signature/kms/azure v1.8.4
 	github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.8.12
 	github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.8.4
-	go.opentelemetry.io/otel v1.29.0
+	go.opentelemetry.io/otel v1.33.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.27.0
 	go.opentelemetry.io/otel/sdk v1.29.0
-	go.opentelemetry.io/otel/trace v1.29.0
+	go.opentelemetry.io/otel/trace v1.33.0
 	k8s.io/utils v0.0.0-20240102154912-e7106e64919e
 )
 
@@ -129,10 +129,11 @@ require (
 	github.com/stoewer/go-strcase v1.2.0 // indirect
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 // indirect
 	github.com/zeebo/errs v1.3.0 // indirect
+	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.54.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.54.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.27.0 // indirect
-	go.opentelemetry.io/otel/metric v1.29.0 // indirect
+	go.opentelemetry.io/otel/metric v1.33.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.2.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241118233622-e639e219e697 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241209162323-e6fa225c2576 // indirect
