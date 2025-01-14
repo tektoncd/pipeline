@@ -154,6 +154,9 @@ func (c *Client) addOperationListKeyRotationsMiddlewares(stack *middleware.Stack
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -164,6 +167,12 @@ func (c *Client) addOperationListKeyRotationsMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListKeyRotationsValidationMiddleware(stack); err != nil {
@@ -187,16 +196,20 @@ func (c *Client) addOperationListKeyRotationsMiddlewares(stack *middleware.Stack
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListKeyRotationsAPIClient is a client that implements the ListKeyRotations
-// operation.
-type ListKeyRotationsAPIClient interface {
-	ListKeyRotations(context.Context, *ListKeyRotationsInput, ...func(*Options)) (*ListKeyRotationsOutput, error)
-}
-
-var _ ListKeyRotationsAPIClient = (*Client)(nil)
 
 // ListKeyRotationsPaginatorOptions is the paginator options for ListKeyRotations
 type ListKeyRotationsPaginatorOptions struct {
@@ -266,6 +279,9 @@ func (p *ListKeyRotationsPaginator) NextPage(ctx context.Context, optFns ...func
 	}
 	params.Limit = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListKeyRotations(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -284,6 +300,14 @@ func (p *ListKeyRotationsPaginator) NextPage(ctx context.Context, optFns ...func
 
 	return result, nil
 }
+
+// ListKeyRotationsAPIClient is a client that implements the ListKeyRotations
+// operation.
+type ListKeyRotationsAPIClient interface {
+	ListKeyRotations(context.Context, *ListKeyRotationsInput, ...func(*Options)) (*ListKeyRotationsOutput, error)
+}
+
+var _ ListKeyRotationsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListKeyRotations(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
