@@ -8942,8 +8942,14 @@ spec:
            script: |
              echo "$(params.platform)"
     - name: b-task
-      taskRef:
-        name: mytask
+      taskSpec:
+        params:
+          - name: platform
+        steps:
+         - name: echo
+           image: alpine
+           script: |
+             echo "$(params.platform)"
       matrix:
         params:
           - name: platform
