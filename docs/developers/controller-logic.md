@@ -40,7 +40,7 @@ All Tekton CRDs use validating [admission webhooks](https://kubernetes.io/docs/r
 to validate instances of CRDs. Some CRDs also use mutating admission webhooks to set default values for some fields.
 Validation and defaulting code is found in the [apis folder](../../pkg/apis/pipeline/v1).
 For a useful overview and tutorial on admission webhooks, see
-[In-depth introduction to Kubernetes admission webhooks](https://banzaicloud.com/blog/k8s-admission-webhooks/).
+[In-depth introduction to Kubernetes admission webhooks](https://web.archive.org/web/20230928184501/https://banzaicloud.com/blog/k8s-admission-webhooks/).
 
 ### Generated Code
 
