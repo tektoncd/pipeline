@@ -14,7 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-fed/httpsig"
+	"github.com/42wim/httpsig"
+	legacyhttpsig "github.com/go-fed/httpsig"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -174,7 +175,17 @@ func (c *Client) SignRequest(r *http.Request) error {
 	}
 
 	// create a signer for the request and headers, the signature will be valid for 10 seconds
-	signer, _, err := httpsig.NewSSHSigner(c.httpsigner.Signer, httpsig.DigestSha512, headersToSign, httpsig.Signature, 10)
+	var (
+		signer httpsig.SSHSigner
+		err    error
+	)
+
+	// use legacyhttpsig to sign with RSA-SHA1 on older gitea releases
+	if err = c.checkServerVersionGreaterThanOrEqual(version1_23_0); err != nil {
+		signer, _, err = legacyhttpsig.NewSSHSigner(c.httpsigner.Signer, httpsig.DigestSha512, headersToSign, legacyhttpsig.Signature, 10)
+	} else {
+		signer, _, err = httpsig.NewSSHSigner(c.httpsigner.Signer, httpsig.DigestSha512, headersToSign, httpsig.Signature, 10)
+	}
 	if err != nil {
 		return fmt.Errorf("httpsig.NewSSHSigner failed: %s", err)
 	}

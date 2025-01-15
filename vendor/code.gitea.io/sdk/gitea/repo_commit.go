@@ -8,6 +8,7 @@ package gitea
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 	"time"
 )
 
@@ -87,6 +88,14 @@ type ListCommitOptions struct {
 	SHA string
 	// Path indicates that only commits that include the path's file/dir should be returned.
 	Path string
+	// Stat includes diff stats for every commit (disable for speedup)
+	Stat bool
+	// Verification includes verification for every commit (disable for speedup)
+	Verification bool
+	// Files includes a list of affected files for every commit (disable for speedup)
+	Files bool
+	// Not is a string used such that commits that match the given specifier will not be listed.
+	Not string
 }
 
 // QueryEncode turns options into querystring argument
@@ -97,6 +106,12 @@ func (opt *ListCommitOptions) QueryEncode() string {
 	}
 	if opt.Path != "" {
 		query.Add("path", opt.Path)
+	}
+	query.Add("stat", strconv.FormatBool(opt.Stat))
+	query.Add("verification", strconv.FormatBool(opt.Verification))
+	query.Add("files", strconv.FormatBool(opt.Files))
+	if opt.Not != "" {
+		query.Add("not", opt.Not)
 	}
 	return query.Encode()
 }
