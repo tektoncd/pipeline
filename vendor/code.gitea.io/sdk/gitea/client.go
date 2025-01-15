@@ -410,8 +410,7 @@ func statusCodeToErr(resp *Response) (body []byte, err error) {
 		// plain string, so we try to return a helpful error anyway
 		path := resp.Request.URL.Path
 		method := resp.Request.Method
-		header := resp.Request.Header
-		return data, fmt.Errorf("Unknown API Error: %d\nRequest: '%s' with '%s' method '%s' header and '%s' body", resp.StatusCode, path, method, header, string(data))
+		return data, fmt.Errorf("Unknown API Error: %d\nRequest: '%s' with '%s' method and '%s' body", resp.StatusCode, path, method, string(data))
 	}
 
 	if msg, ok := errMap["message"]; ok {
