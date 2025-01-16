@@ -248,6 +248,8 @@ type PipelineTask struct {
 	// Specifying PipelineSpec can be disabled by setting
 	// `disable-inline-spec` feature flag..
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	PipelineSpec *PipelineSpec `json:"pipelineSpec,omitempty"`
 
 	// OnError defines the exiting behavior of a PipelineRun on error
