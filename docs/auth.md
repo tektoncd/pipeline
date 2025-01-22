@@ -267,9 +267,10 @@ specified in the `Secret`.
 
    In the above example, the value for `tekton.dev/git-0` specifies the URL for which Tekton will use this `Secret`,
    as described in [Understanding credential selection](#understanding-credential-selection).
+   
    You can view your private key with `cat ~/.ssh/<key-name>` and get GitHub's public key with `ssh-keyscan github.com`
 
-4. In `serviceaccount.yaml`, associate the `Secret` with the desired `ServiceAccount`:
+5. In `serviceaccount.yaml`, associate the `Secret` with the desired `ServiceAccount`:
 
    ```yaml
    apiVersion: v1
@@ -280,7 +281,7 @@ specified in the `Secret`.
      - name: ssh-key
    ```
 
-5. In `run.yaml`, associate the `ServiceAccount` with your `Run` by doing one of the following:
+6. In `run.yaml`, associate the `ServiceAccount` with your `Run` by doing one of the following:
 
    - Associate the `ServiceAccount` with your `TaskRun`:
 
@@ -309,7 +310,7 @@ specified in the `Secret`.
        name: demo-pipeline
    ```
 
-6. Execute the `Run`:
+7. Execute the `Run`:
 
    ```shell
    kubectl apply --filename secret.yaml,serviceaccount.yaml,run.yaml
