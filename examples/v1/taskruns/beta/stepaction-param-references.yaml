@@ -1,0 +1,72 @@
+apiVersion: tekton.dev/v1beta1
+kind: StepAction
+metadata:
+  name: step-action
+spec:
+  params:
+    - name: message
+      default: "hello"
+    - name: greeting
+      default: "$(params.message) world"
+    - name: values
+      type: array
+      default:
+        - "first"
+        - "second"
+        - "third"
+    - name: config
+      properties:
+        key1:
+          type: string
+        key2:
+          type: string
+      default:
+        key1: "value1"
+        key2: "value2"
+  image: mirror.gcr.io/ubuntu
+  env:
+    - name: MESSAGE
+      value: $(params.message)
+    - name: GREETING
+      value: $(params.greeting)
+    - name: VALUE_1
+      value: $(params.values[0])
+    - name: VALUE_2
+      value: $(params.values[1])
+    - name: VALUE_3
+      value: $(params.values[2])
+    - name: CONFIG_KEY1
+      value: $(params.config.key1)
+    - name: CONFIG_KEY2
+      value: $(params.config.key2)
+  script: |
+    #!/usr/bin/env bash
+    echo "Message: ${MESSAGE}"
+    echo "Greeting: ${GREETING}"
+    echo "Values: ${VALUE_1}, ${VALUE_2}, ${VALUE_3}"
+    echo "Config key1: ${CONFIG_KEY1}"
+    echo "Config key2: ${CONFIG_KEY2}"
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: param-reference-example-
+spec:
+  taskSpec:
+    steps:
+      - name: show-params
+        ref:
+          name: step-action
+        params:
+          - name: message
+            value: "hi"
+          # greeting will use default with substituted message: "hi world"
+          - name: values
+            value:
+              - "one"
+              - "two"
+              - "three"
+          - name: config
+            value:
+              key1: "custom1"
+              key2: "custom2"

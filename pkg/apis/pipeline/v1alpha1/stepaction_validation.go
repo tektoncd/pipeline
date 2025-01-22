@@ -15,6 +15,7 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -128,7 +129,33 @@ func validateParameterVariables(ctx context.Context, sas StepActionSpec, params 
 	stringParameterNames := sets.NewString(stringParams.GetNames()...)
 	arrayParameterNames := sets.NewString(arrayParams.GetNames()...)
 	errs = errs.Also(v1.ValidateNameFormat(stringParameterNames.Insert(arrayParameterNames.List()...), objectParams))
-	return errs.Also(validateStepActionArrayUsage(sas, "params", arrayParameterNames))
+	errs = errs.Also(validateStepActionArrayUsage(sas, "params", arrayParameterNames))
+	return errs.Also(validateDefaultParameterReferences(params))
+}
+
+// validateDefaultParameterReferences ensures that parameters referenced in default values are defined
+func validateDefaultParameterReferences(params v1.ParamSpecs) *apis.FieldError {
+	var errs *apis.FieldError
+	allParams := sets.NewString(params.GetNames()...)
+
+	for _, p := range params {
+		if p.Default != nil {
+			// check if default value references any parameters
+			matches, _ := substitution.ExtractVariableExpressions(p.Default.StringVal, "params")
+			// validate each referenced parameter exists
+			for _, match := range matches {
+				paramName := strings.TrimSuffix(strings.TrimPrefix(match, "$(params."), ")")
+				if !allParams.Has(paramName) {
+					errs = errs.Also(&apis.FieldError{
+						Message: fmt.Sprintf("param %q default value references param %q which is not defined", p.Name, paramName),
+						Paths:   []string{"params"},
+					})
+				}
+			}
+		}
+	}
+
+	return errs
 }
 
 // validateObjectUsage validates the usage of individual attributes of an object param and the usage of the entire object

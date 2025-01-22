@@ -593,6 +593,20 @@ func TestStepActionSpecValidateError(t *testing.T) {
 			Paths:   []string{"Image"},
 		},
 	}, {
+		name: "param default value references undefined param",
+		fields: fields{
+			Image: "myimage",
+			Params: []v1.ParamSpec{{
+				Name:    "param2",
+				Type:    v1.ParamTypeString,
+				Default: v1.NewStructuredValues("$(params.param1)"),
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `param "param2" default value references param "param1" which is not defined`,
+			Paths:   []string{"params"},
+		},
+	}, {
 		name: "command and script both used.",
 		fields: fields{
 			Image:   "my-image",
