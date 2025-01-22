@@ -22,7 +22,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sigstore/sigstore v1.8.12
 	github.com/spiffe/go-spiffe/v2 v2.4.0
-	github.com/spiffe/spire-api-sdk v1.10.0
+	github.com/spiffe/spire-api-sdk v1.11.1
 	github.com/tektoncd/plumbing v0.0.0-20220817140952-3da8ce01aeeb
 	go.opencensus.io v0.24.0
 	go.uber.org/zap v1.27.0
