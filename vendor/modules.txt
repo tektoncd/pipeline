@@ -1,3 +1,6 @@
+# cel.dev/expr v0.18.0
+## explicit; go 1.21.1
+cel.dev/expr
 # cloud.google.com/go v0.116.0
 ## explicit; go 1.21
 cloud.google.com/go
@@ -554,8 +557,8 @@ github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/timestamp
-# github.com/google/cel-go v0.20.1
-## explicit; go 1.18
+# github.com/google/cel-go v0.22.1
+## explicit; go 1.21.1
 github.com/google/cel-go/cel
 github.com/google/cel-go/checker
 github.com/google/cel-go/checker/decls
@@ -1153,7 +1156,6 @@ golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-golang.org/x/text/width
 # golang.org/x/time v0.8.0
 ## explicit; go 1.18
 golang.org/x/time/rate
