@@ -236,7 +236,7 @@ This section describes how to configure an `ssh-auth` type `Secret` for use with
 before executing any `Steps` in the `Run`, Tekton creates a `~/.ssh/config` file containing the SSH key
 specified in the `Secret`.
 
-1. Generate a new SSH key with `ssh-keygen` command (optionally specify the file path in which the key will be saved, default is ~/.ssh/<key-name>)
+1. Generate a new SSH key with `ssh-keygen` command (optionally specify the file path in which the key will be saved, default is `~/.ssh/<key-name>`)
 
 2. View public key with `cat ~/.ssh/<key-name>.pub` and add it to GitHub (under Settings > SSH and GPG Keys > New SSH key)
 
