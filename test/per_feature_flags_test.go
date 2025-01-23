@@ -70,8 +70,8 @@ func TestPerFeatureFlagOptInAlpha(t *testing.T) {
 	}
 }
 
-// TestPerFeatureFlagOptInBeta tests the behavior with all beta Per-feature
-// flags enabled. It first turns ON all beta per-feature flags by default and
+// TestFeatureFlagOptInBeta tests the behavior with all beta feature
+// flags enabled. It first turns ON all beta feature flags by default and
 // turns ON one alpha feature flag at a time to mock opt-in beta test env.
 func TestFeatureFlagOptInBeta(t *testing.T) {
 	configMapData := createExpectedConfigMap(t, false)
