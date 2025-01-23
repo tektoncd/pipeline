@@ -5211,6 +5211,29 @@ func TestValidateParamEnumSubset_Valid(t *testing.T) {
 					},
 				},
 			},
+		}, {
+			name: "rt is nil - pass",
+			params: []v1.Param{
+				{
+					Name: "resolved-task-p1",
+					Value: v1.ParamValue{
+						StringVal: "$(params.p1) and $(params.p2)",
+					},
+				},
+			},
+			pipelinePs: []v1.ParamSpec{
+				{
+					Name: "p1",
+					Type: v1.ParamTypeString,
+					Enum: []string{"v1", "v2"},
+				},
+				{
+					Name: "p2",
+					Type: v1.ParamTypeString,
+					Enum: []string{"v3", "v4"},
+				},
+			},
+			rt: nil,
 		},
 	}
 
@@ -5295,7 +5318,8 @@ func TestValidateParamEnumSubset_Invalid(t *testing.T) {
 				},
 			},
 		},
-		wantErr: fmt.Errorf("unexpected error in ExtractVariablesFromString: Invalid referencing of parameters in \"$(params.p1.aaa.bbb)\"! Only two dot-separated components after the prefix \"params\" are allowed."),
+		rt:      &resources.ResolvedTask{},
+		wantErr: errors.New("unexpected error in ExtractVariablesFromString: Invalid referencing of parameters in \"$(params.p1.aaa.bbb)\"! Only two dot-separated components after the prefix \"params\" are allowed."),
 	}}
 
 	for _, tc := range tcs {
