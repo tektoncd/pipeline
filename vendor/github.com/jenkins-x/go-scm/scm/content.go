@@ -43,7 +43,7 @@ type (
 		Find(ctx context.Context, repo, path, ref string) (*Content, *Response, error)
 
 		// List the files or directories at the given path
-		List(ctx context.Context, repo, path, ref string) ([]*FileEntry, *Response, error)
+		List(ctx context.Context, repo, path, ref string, opts *ListOptions) ([]*FileEntry, *Response, error)
 
 		// Create creates a new repository file.
 		Create(ctx context.Context, repo, path string, params *ContentParams) (*Response, error)

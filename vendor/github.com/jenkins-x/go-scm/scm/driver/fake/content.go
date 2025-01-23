@@ -43,7 +43,7 @@ func (c contentService) Find(_ context.Context, repo, path, ref string) (*scm.Co
 	}, nil, nil
 }
 
-func (c contentService) List(_ context.Context, repo, path, ref string) ([]*scm.FileEntry, *scm.Response, error) {
+func (c contentService) List(_ context.Context, repo, path, ref string, opts *scm.ListOptions) ([]*scm.FileEntry, *scm.Response, error) {
 	dir, err := c.path(repo, path, ref)
 	if err != nil {
 		return nil, nil, err
