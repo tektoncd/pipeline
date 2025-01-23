@@ -52,7 +52,7 @@
       "type": "object",
       "properties": {
         "affinity": {
-          "description": "If specified, the pod's scheduling constraints",
+          "description": "If specified, the pod's scheduling constraints. See Pod.spec.affinity (API version: v1)",
           "$ref": "#/definitions/v1.Affinity"
         },
         "automountServiceAccountToken": {
@@ -147,7 +147,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "volumes": {
-          "description": "List of volumes that can be mounted by containers belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes",
+          "description": "List of volumes that can be mounted by containers belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes See Pod.spec.volumes (API version: v1)",
           "type": "array",
           "items": {
             "default": {},
@@ -563,7 +563,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "volumes": {
-          "description": "Volumes is a collection of volumes that are available to mount into the steps of the build.",
+          "description": "Volumes is a collection of volumes that are available to mount into the steps of the build. See Pod.spec.volumes (API version: v1)",
           "type": "array",
           "items": {
             "default": {},
@@ -1018,7 +1018,7 @@
           "$ref": "#/definitions/v1beta1.PipelineRef"
         },
         "pipelineSpec": {
-          "description": "Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag..",
+          "description": "Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag. See Pipeline.spec (API version: tekton.dev/v1beta1)",
           "$ref": "#/definitions/v1beta1.PipelineSpec"
         },
         "podTemplate": {
@@ -1123,7 +1123,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "pipelineSpec": {
-          "description": "PipelineRunSpec contains the exact spec used to instantiate the run",
+          "description": "PipelineSpec contains the exact spec used to instantiate the run. See Pipeline.spec (API version: tekton.dev/v1beta1)",
           "$ref": "#/definitions/v1beta1.PipelineSpec"
         },
         "provenance": {
@@ -1198,7 +1198,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "pipelineSpec": {
-          "description": "PipelineRunSpec contains the exact spec used to instantiate the run",
+          "description": "PipelineSpec contains the exact spec used to instantiate the run. See Pipeline.spec (API version: tekton.dev/v1beta1)",
           "$ref": "#/definitions/v1beta1.PipelineSpec"
         },
         "provenance": {
@@ -1371,7 +1371,7 @@
           "$ref": "#/definitions/v1beta1.PipelineRef"
         },
         "pipelineSpec": {
-          "description": "PipelineSpec is a specification of a pipeline Note: PipelineSpec is in preview mode and not yet supported Specifying TaskSpec can be disabled by setting `disable-inline-spec` feature flag..",
+          "description": "PipelineSpec is a specification of a pipeline Note: PipelineSpec is in preview mode and not yet supported Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag. See Pipeline.spec (API version: tekton.dev/v1beta1)",
           "$ref": "#/definitions/v1beta1.PipelineSpec"
         },
         "resources": {
@@ -1397,7 +1397,7 @@
           "$ref": "#/definitions/v1beta1.TaskRef"
         },
         "taskSpec": {
-          "description": "TaskSpec is a specification of a task Specifying TaskSpec can be disabled by setting `disable-inline-spec` feature flag..",
+          "description": "TaskSpec is a specification of a task Specifying TaskSpec can be disabled by setting `disable-inline-spec` feature flag. See Task.spec (API version: tekton.dev/v1beta1)",
           "$ref": "#/definitions/v1beta1.EmbeddedTask"
         },
         "timeout": {
@@ -3061,7 +3061,7 @@
           "$ref": "#/definitions/v1beta1.TaskRef"
         },
         "taskSpec": {
-          "description": "Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag..",
+          "description": "Specifying TaskSpec can be disabled by setting `disable-inline-spec` feature flag. See Task.spec (API version: tekton.dev/v1beta1)",
           "$ref": "#/definitions/v1beta1.TaskSpec"
         },
         "timeout": {
@@ -3141,7 +3141,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "retriesStatus": {
-          "description": "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.",
+          "description": "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant. See TaskRun.status (API version: tekton.dev/v1beta1)",
           "type": "array",
           "items": {
             "default": {},
@@ -3189,7 +3189,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "taskSpec": {
-          "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.",
+          "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun. See Task.spec (API version tekton.dev/v1beta1)",
           "$ref": "#/definitions/v1beta1.TaskSpec"
         }
       }
@@ -3233,7 +3233,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "retriesStatus": {
-          "description": "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.",
+          "description": "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant. See TaskRun.status (API version: tekton.dev/v1beta1)",
           "type": "array",
           "items": {
             "default": {},
@@ -3281,7 +3281,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "taskSpec": {
-          "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.",
+          "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun. See Task.spec (API version tekton.dev/v1beta1)",
           "$ref": "#/definitions/v1beta1.TaskSpec"
         }
       }
@@ -3363,7 +3363,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "volumes": {
-          "description": "Volumes is a collection of volumes that are available to mount into the steps of the build.",
+          "description": "Volumes is a collection of volumes that are available to mount into the steps of the build. See Pod.spec.volumes (API version: v1)",
           "type": "array",
           "items": {
             "default": {},
@@ -3468,7 +3468,7 @@
           "type": "string"
         },
         "volumeClaimTemplate": {
-          "description": "VolumeClaimTemplate is a template for a claim that will be created in the same namespace. The PipelineRun controller is responsible for creating a unique claim for each instance of PipelineRun.",
+          "description": "VolumeClaimTemplate is a template for a claim that will be created in the same namespace. The PipelineRun controller is responsible for creating a unique claim for each instance of PipelineRun. See PersistentVolumeClaim (API version: v1)",
           "$ref": "#/definitions/v1.PersistentVolumeClaim"
         }
       }

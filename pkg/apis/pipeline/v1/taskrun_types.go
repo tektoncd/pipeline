@@ -46,7 +46,7 @@ type TaskRunSpec struct {
 	TaskRef *TaskRef `json:"taskRef,omitempty"`
 	// Specifying TaskSpec can be disabled by setting
 	// `disable-inline-spec` feature flag.
-	// Please, refer to the schema of Task for details.
+	// See Task.spec (API version: tekton.dev/v1)
 	// +optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
@@ -291,6 +291,7 @@ type TaskRunStatusFields struct {
 
 	// RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures.
 	// All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.
+	// FIXME
 	// +optional
 	// +listType=atomic
 	// +kubebuilder:pruning:PreserveUnknownFields

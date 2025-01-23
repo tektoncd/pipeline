@@ -51,7 +51,7 @@ type TaskRunSpec struct {
 	TaskRef *TaskRef `json:"taskRef,omitempty"`
 	// Specifying TaskSpec can be disabled by setting
 	// `disable-inline-spec` feature flag.
-	// Please, refer to the schema of Task for details.
+	// See Task.spec (API version: tekton.dev/v1beta1)
 	// +optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
@@ -297,6 +297,7 @@ type TaskRunStatusFields struct {
 
 	// RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures.
 	// All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.
+	// See TaskRun.status (API version: tekton.dev/v1beta1)
 	// +optional
 	// +listType=atomic
 	// +kubebuilder:pruning:PreserveUnknownFields
@@ -321,6 +322,9 @@ type TaskRunStatusFields struct {
 	Sidecars []SidecarState `json:"sidecars,omitempty"`
 
 	// TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.
+	// See Task.spec (API version tekton.dev/v1beta1)
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
 
 	// Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).

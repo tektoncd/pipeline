@@ -251,7 +251,7 @@ type PipelineRunSpec struct {
 	PipelineRef *PipelineRef `json:"pipelineRef,omitempty"`
 	// Specifying PipelineSpec can be disabled by setting
 	// `disable-inline-spec` feature flag.
-	// Please, refer to the schema of Pipeline for details.
+	// See Pipeline.spec (API version: tekton.dev/v1)
 	// +optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
@@ -516,7 +516,10 @@ type PipelineRunStatusFields struct {
 	// +listType=atomic
 	Results []PipelineRunResult `json:"results,omitempty"`
 
-	// PipelineRunSpec contains the exact spec used to instantiate the run
+	// PipelineSpec contains the exact spec used to instantiate the run.
+	// See Pipeline.spec (API version: tekton.dev/v1)
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	PipelineSpec *PipelineSpec `json:"pipelineSpec,omitempty"`
 
 	// list of tasks that were skipped due to when expressions evaluating to false
