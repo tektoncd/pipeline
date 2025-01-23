@@ -66,16 +66,22 @@ var (
 	}
 )
 
-// applyStepActionParameters applies the params from the Task and the underlying Step to the referenced StepAction.
+// applyStepActionParameters applies the params from the task and the underlying step to the referenced stepaction.
+// substitution order:
+// 1. taskrun parameter values in step parameters
+// 2. set params from StepAction defaults
+// 3. set and overwrite params with the ones from the step
+// 4. set step result replacements last
 func applyStepActionParameters(step *v1.Step, spec *v1.TaskSpec, tr *v1.TaskRun, stepParams v1.Params, defaults []v1.ParamSpec) (*v1.Step, error) {
+	// 1. taskrun parameter substitutions to step parameters
 	if stepParams != nil {
 		stringR, arrayR, objectR := getTaskParameters(spec, tr, spec.Params...)
 		stepParams = stepParams.ReplaceVariables(stringR, arrayR, objectR)
 	}
-	// Set params from StepAction defaults
+	// 2. set params from stepaction defaults
 	stringReplacements, arrayReplacements, _ := replacementsFromDefaultParams(defaults)
 
-	// Set and overwrite params with the ones from the Step
+	// 3. set and overwrite params with the ones from the step
 	stepStrings, stepArrays, _ := replacementsFromParams(stepParams)
 	for k, v := range stepStrings {
 		stringReplacements[k] = v
@@ -84,17 +90,18 @@ func applyStepActionParameters(step *v1.Step, spec *v1.TaskSpec, tr *v1.TaskRun,
 		arrayReplacements[k] = v
 	}
 
-	stepResultReplacements, _ := replacementsFromStepResults(step, stepParams, defaults)
-	for k, v := range stepResultReplacements {
-		stringReplacements[k] = v
-	}
-
-	// Check if there are duplicate keys in the replacements
-	// If the same key is present in both stringReplacements and arrayReplacements, it means
+	// check if there are duplicate keys in the replacements
+	// if the same key is present in both stringReplacements and arrayReplacements, it means
 	// that the default value and the passed value have different types.
 	err := checkForDuplicateKeys(stringReplacements, arrayReplacements)
 	if err != nil {
 		return nil, err
+	}
+
+	// 4. set step result replacements last
+	stepResultReplacements, _ := replacementsFromStepResults(step, stepParams, defaults)
+	for k, v := range stepResultReplacements {
+		stringReplacements[k] = v
 	}
 
 	container.ApplyStepReplacements(step, stringReplacements, arrayReplacements)
@@ -165,8 +172,9 @@ func replacementsArrayIdxStepResults(step *v1.Step, paramName string, stepName s
 func replacementsFromStepResults(step *v1.Step, stepParams v1.Params, defaults []v1.ParamSpec) (map[string]string, error) {
 	stringReplacements := map[string]string{}
 	for _, sp := range stepParams {
-		if sp.Value.StringVal != "" {
-			//  $(params.p1) --> $(steps.step1.results.foo) (normal substitution)
+		if sp.Value.StringVal != "" && strings.HasPrefix(sp.Value.StringVal, "$(steps.") {
+			// eg: when parameter p1 references a step result, replace:
+			// $(params.p1) with $(steps.step1.results.foo)
 			value := strings.TrimSuffix(strings.TrimPrefix(sp.Value.StringVal, "$("), ")")
 			pr, err := resultref.ParseStepExpression(value)
 			if err != nil {
@@ -180,19 +188,26 @@ func replacementsFromStepResults(step *v1.Step, stepParams v1.Params, defaults [
 							stringReplacements[fmt.Sprintf("params.%s.%s", d.Name, k)] = fmt.Sprintf("$(steps.%s.results.%s.%s)", pr.ResourceName, pr.ResultName, k)
 						}
 					case v1.ParamTypeArray:
-						//  $(params.p1[*]) --> $(steps.step1.results.foo)
+						// with star notation, replace:
+						// $(params.p1[*]) with $(steps.step1.results.foo[*])
 						for _, pattern := range paramPatterns {
 							stringReplacements[fmt.Sprintf(pattern+"[*]", d.Name)] = fmt.Sprintf("$(steps.%s.results.%s[*])", pr.ResourceName, pr.ResultName)
 						}
-						//  $(params.p1[idx]) --> $(steps.step1.results.foo[idx])
+						// with index notation, replace:
+						// $(params.p1[idx]) with $(steps.step1.results.foo[idx])
 						for k, v := range replacementsArrayIdxStepResults(step, d.Name, pr.ResourceName, pr.ResultName) {
 							stringReplacements[k] = v
 						}
-					// This is handled by normal param substitution.
-					// $(params.p1.key) --> $(steps.step1.results.foo)
 					case v1.ParamTypeString:
-					// Since String is the default, This is handled by normal param substitution.
+						fallthrough
 					default:
+						// for string parameters and default case,
+						// replace any reference to the parameter with the step result reference
+						// since both use simple value substitution
+						// eg: replace $(params.p1) with $(steps.step1.results.foo)
+						for _, pattern := range paramPatterns {
+							stringReplacements[fmt.Sprintf(pattern, d.Name)] = sp.Value.StringVal
+						}
 					}
 				}
 			}
