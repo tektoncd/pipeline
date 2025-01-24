@@ -99,7 +99,10 @@ func applyStepActionParameters(step *v1.Step, spec *v1.TaskSpec, tr *v1.TaskRun,
 	}
 
 	// 4. set step result replacements last
-	stepResultReplacements, _ := replacementsFromStepResults(step, stepParams, defaults)
+	stepResultReplacements, err := replacementsFromStepResults(step, stepParams, defaults)
+	if err != nil {
+		return nil, err
+	}
 	for k, v := range stepResultReplacements {
 		stringReplacements[k] = v
 	}
