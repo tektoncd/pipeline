@@ -58,7 +58,7 @@ jobs:
     - name: Setup go
       uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5
       with:
-        go-version: '1.22.x'
+        go-version-file: go.mod
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
