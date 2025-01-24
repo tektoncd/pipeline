@@ -1625,3 +1625,50 @@ func TestGetStepActionsData_Error(t *testing.T) {
 		}
 	}
 }
+
+func TestGetStepActionsData_InvalidStepResultReference(t *testing.T) {
+	tr := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mytaskrun",
+			Namespace: "default",
+		},
+		Spec: v1.TaskRunSpec{
+			TaskSpec: &v1.TaskSpec{
+				Steps: []v1.Step{{
+					Name: "step1",
+					Ref: &v1.Ref{
+						Name: "stepAction",
+					},
+					Params: v1.Params{{
+						Name: "param1",
+						Value: v1.ParamValue{
+							Type:      v1.ParamTypeString,
+							StringVal: "$(steps.invalid.step)",
+						},
+					}},
+				}},
+			},
+		},
+	}
+
+	stepAction := &v1beta1.StepAction{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "stepAction",
+			Namespace: "default",
+		},
+		Spec: v1beta1.StepActionSpec{
+			Image: "myimage",
+			Params: v1.ParamSpecs{{
+				Name: "param1",
+				Type: v1.ParamTypeString,
+			}},
+		},
+	}
+
+	ctx := context.Background()
+	tektonclient := fake.NewSimpleClientset(stepAction)
+	_, err := resources.GetStepActionsData(ctx, *tr.Spec.TaskSpec, tr, tektonclient, nil, nil)
+	if err == nil {
+		t.Error("Expected error due to invalid step result reference, but got nil")
+	}
+}
