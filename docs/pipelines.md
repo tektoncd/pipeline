@@ -1202,6 +1202,10 @@ format. For example, valid values are `1h30m`, `1h`, `1m`, and `60s`.
 
 **Note:** If you do not specify a `Timeout` value, Tekton instead honors the timeout for the [`PipelineRun`](pipelineruns.md#configuring-a-pipelinerun).
 
+**Note:** If the specified `Task` timeout is greater than the Pipeline timeout as configured in the [`PipelineRun`](pipelineruns.md#configuring-a-failure-timeout), the Pipeline will time-out first causing the `Task` to timeout before its configured timeout.
+For example, if the `PipelineRun` sets `timeouts.pipeline = 1h` and the `Pipeline` sets `tasks[0].timeout = 3h`, the task will still timeout after `1h`.
+See [`PipelineRun - Configuring a failure timeout`](pipelineruns.md#configuring-a-failure-timeout) for details.
+
 In the example below, the `build-the-image` `Task` is configured to time out after 90 seconds:
 
 ```yaml

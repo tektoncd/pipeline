@@ -64,6 +64,17 @@ func TestParseMessage(t *testing.T) {
 			Value: "last",
 		}},
 	}, {
+		desc: "duplicate keys with incorrect result",
+		msg: `[
+		{"key":"foo","value":"first"},
+		{},
+		{"key":"foo","value":"middle"},
+		{"key":"foo","value":"last"}]`,
+		want: []result.RunResult{{
+			Key:   "foo",
+			Value: "last",
+		}},
+	}, {
 		desc: "sorted by key",
 		msg: `[
 		{"key":"zzz","value":"last"},

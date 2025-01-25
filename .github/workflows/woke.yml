@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        uses: step-security/harden-runner@cb605e52c26070c328afc4562f0b4ada7618a84e # v2.10.4
         with:
           egress-policy: audit
       - name: 'Checkout'
@@ -19,7 +19,7 @@ jobs:
         
       - name: Get changed files
         id: changed-files
-        uses: tj-actions/changed-files@4edd678ac3f81e2dc578756871e4d00c19191daf # v45.0.4
+        uses: tj-actions/changed-files@d6e91a2266cdb9d62096cebf1e8546899c6aa18f # v45.0.6
         with:
           write_output_files: true
           files: |

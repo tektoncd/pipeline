@@ -530,18 +530,12 @@ func getSCMTypeAndServerURL(ctx context.Context, params map[string]string) (stri
 	}
 	if scmType == "" {
 		scmType = conf.SCMType
-		if scmType == "" {
-			return "", "", fmt.Errorf("missing or empty %s value in configmap", SCMTypeKey)
-		}
 	}
 	if key, ok := params[ServerURLParam]; ok {
 		serverURL = key
 	}
 	if serverURL == "" {
 		serverURL = conf.ServerURL
-		if serverURL == "" {
-			return "", "", fmt.Errorf("missing or empty %s value in configmap", ServerURLKey)
-		}
 	}
 	return scmType, serverURL, nil
 }

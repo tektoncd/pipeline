@@ -70,6 +70,7 @@ var (
 	version1_16_0 = version.Must(version.NewVersion("1.16.0"))
 	version1_17_0 = version.Must(version.NewVersion("1.17.0"))
 	version1_22_0 = version.Must(version.NewVersion("1.22.0"))
+	version1_23_0 = version.Must(version.NewVersion("1.23.0"))
 )
 
 // ErrUnknownVersion is an unknown version from the API

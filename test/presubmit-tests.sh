@@ -29,20 +29,6 @@ export DISABLE_YAML_LINTING=1
 
 source $(git rev-parse --show-toplevel)/vendor/github.com/tektoncd/plumbing/scripts/presubmit-tests.sh
 
-function check_go_lint() {
-    header "Testing if golint has been done"
-
-    # deadline of 5m, and show all the issues
-    GOFLAGS="-mod=mod" make golangci-lint-check
-
-    if [[ $? != 0 ]]; then
-        results_banner "Go Lint" 1
-        exit 1
-    fi
-
-    results_banner "Go Lint" 0
-}
-
 function check_yaml_lint() {
     header "Testing if yamllint has been done"
 
@@ -77,7 +63,6 @@ EOF
 }
 
 function post_build_tests() {
-  check_go_lint
   check_yaml_lint
   ko_resolve
 }

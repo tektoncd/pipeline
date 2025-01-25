@@ -19,8 +19,6 @@ weight: 201
   - [Referencing a StepAction](#referencing-a-stepaction)
     - [Specifying Remote StepActions](#specifying-remote-stepactions)
   - [Controlling Step Execution with when Expressions](#controlling-step-execution-with-when-expressions)
-- [Known Limitations](#known-limitations)
-  - [Cannot pass Step Results between Steps](#cannot-pass-step-results-between-steps)
 
 ## Overview
 > :seedling: **`StepActions` is an [beta](additional-configs.md#beta-features) feature.**

@@ -645,9 +645,9 @@ func TestResolve(t *testing.T) {
 			gitresolution.APISecretKeyKey:       "token",
 			gitresolution.APISecretNamespaceKey: system.Namespace(),
 		},
-		apiToken:       "some-token",
-		expectedStatus: resolution.CreateResolutionRequestFailureStatus(),
-		expectedErr:    createError("missing or empty scm-type value in configmap"),
+		apiToken:          "some-token",
+		expectedCommitSHA: commitSHAsInSCMRepo[0],
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData(mainPipelineYAML),
 	}}
 
 	for _, tc := range testCases {

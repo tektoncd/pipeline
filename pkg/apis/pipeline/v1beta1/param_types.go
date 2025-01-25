@@ -137,7 +137,7 @@ func (ps ParamSpecs) validateNoDuplicateNames() *apis.FieldError {
 	return errs
 }
 
-// validateParamEnum validates feature flag, duplication and allowed types for Param Enum
+// validateParamEnums validates feature flag, duplication and allowed types for Param Enum
 func (ps ParamSpecs) validateParamEnums(ctx context.Context) *apis.FieldError {
 	var errs *apis.FieldError
 	for _, p := range ps {
