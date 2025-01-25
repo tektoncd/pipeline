@@ -136,6 +136,21 @@ spec:
 
 **Note:** If a `Step` declares `params` for an `inlined Step`, it will also lead to a validation error. This is because an `inlined Step` gets its `params` from the `TaskRun`.
 
+#### Parameter Substitution Precedence
+
+When applying parameters to a StepAction, the substitutions are applied in the following order:
+
+1. TaskRun parameter values in step parameters
+2. Parameters from StepAction defaults
+3. Parameters from the step (overwriting any defaults)
+4. Step result replacements
+
+This order ensures that:
+- Step parameters can reference TaskRun parameters
+- StepAction defaults provide fallback values
+- Step-specific parameters take precedence over defaults
+- Step result references are resolved last to allow referencing results from previous steps
+
 ### Emitting Results
 
 A `StepAction` also declares the results that it will emit.
