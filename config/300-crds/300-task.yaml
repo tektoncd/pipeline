@@ -90,7 +90,7 @@ spec:
                           Default is the value a parameter takes if no input value is supplied. If
                           default is set, a Task may be executed without a supplied value for the
                           parameter.
-                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       description:
                         description: |-
                           Description is a user-facing description of the parameter that may be
@@ -123,6 +123,7 @@ spec:
                           Type is the user-specified type of the parameter. The possible types
                           are currently "string", "array" and "object", and "string" is the default.
                         type: string
+                  x-kubernetes-list-type: atomic
                 resources:
                   description: |-
                     Resources is a list input and output resource to run the task
@@ -258,7 +259,7 @@ spec:
                         type: string
                       value:
                         description: Value the expression used to retrieve the value of the result from an underlying Step.
-                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
                   x-kubernetes-list-type: atomic
                 sidecars:
                   description: |-
@@ -3371,11 +3372,8 @@ spec:
                             name:
                               type: string
                             value:
-                              description: |-
-                                ParamValue is a type that can hold a single string or string array.
-                                Used in JSON unmarshalling so that a single JSON field can accept
-                                either an individual string or an array of strings.
-                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                        x-kubernetes-list-type: atomic
                       ports:
                         description: |-
                           List of ports to expose from the Step's container. Exposing a port here gives
@@ -3602,11 +3600,8 @@ spec:
                                 name:
                                   type: string
                                 value:
-                                  description: |-
-                                    ParamValue is a type that can hold a single string or string array.
-                                    Used in JSON unmarshalling so that a single JSON field can accept
-                                    either an individual string or an array of strings.
-                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
+                            x-kubernetes-list-type: atomic
                           resolver:
                             description: |-
                               Resolver is the name of the resolver that should perform
@@ -4314,7 +4309,7 @@ spec:
                           Default is the value a parameter takes if no input value is supplied. If
                           default is set, a Task may be executed without a supplied value for the
                           parameter.
-                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       description:
                         description: |-
                           Description is a user-facing description of the parameter that may be
@@ -4347,6 +4342,7 @@ spec:
                           Type is the user-specified type of the parameter. The possible types
                           are currently "string", "array" and "object", and "string" is the default.
                         type: string
+                  x-kubernetes-list-type: atomic
                 results:
                   description: Results are values that this Task can output
                   type: array
@@ -4381,7 +4377,7 @@ spec:
                         type: string
                       value:
                         description: Value the expression used to retrieve the value of the result from an underlying Step.
-                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
                   x-kubernetes-list-type: atomic
                 sidecars:
                   description: |-
@@ -6425,11 +6421,8 @@ spec:
                             name:
                               type: string
                             value:
-                              description: |-
-                                ParamValue is a type that can hold a single string, string array, or string map.
-                                Used in JSON unmarshalling so that a single JSON field can accept
-                                either an individual string or an array of strings.
-                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                        x-kubernetes-list-type: atomic
                       ref:
                         description: Contains the reference to an existing StepAction.
                         type: object
@@ -6454,11 +6447,8 @@ spec:
                                 name:
                                   type: string
                                 value:
-                                  description: |-
-                                    ParamValue is a type that can hold a single string, string array, or string map.
-                                    Used in JSON unmarshalling so that a single JSON field can accept
-                                    either an individual string or an array of strings.
-                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
+                            x-kubernetes-list-type: atomic
                           resolver:
                             description: |-
                               Resolver is the name of the resolver that should perform

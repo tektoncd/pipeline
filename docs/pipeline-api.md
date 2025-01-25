@@ -5946,8 +5946,7 @@ Kubernetes meta/v1.Time
 <td>
 <em>(Optional)</em>
 <p>RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures.
-All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.
-FIXME</p>
+All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.</p>
 </td>
 </tr>
 <tr>

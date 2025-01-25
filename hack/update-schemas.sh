@@ -28,7 +28,7 @@ do
   cp -p $FILENAME $TEMP_DIR/.
   LOG_FILE=$TEMP_DIR_LOGS/log-schema-generation-$(basename $FILENAME)
     
-  counter=0 limit=5
+  counter=0 limit=10
   while [ "$counter" -lt "$limit" ]; do
     # FIXME:(burigolucas): controller-gen return status 1 with message "Error: not all generators ran successfully"
     go run sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.1 \

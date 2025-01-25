@@ -485,6 +485,11 @@ func schema_pkg_apis_pipeline_v1_Artifacts(ref common.ReferenceCallback) common.
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"inputs": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"array"},
 							Items: &spec.SchemaOrArray{
@@ -498,6 +503,11 @@ func schema_pkg_apis_pipeline_v1_Artifacts(ref common.ReferenceCallback) common.
 						},
 					},
 					"outputs": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"array"},
 							Items: &spec.SchemaOrArray{
@@ -4207,7 +4217,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatus(ref common.ReferenceCallback) com
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant. FIXME",
+							Description: "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -4358,7 +4368,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatusFields(ref common.ReferenceCallbac
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant. FIXME",
+							Description: "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{

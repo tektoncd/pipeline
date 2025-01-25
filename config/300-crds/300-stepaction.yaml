@@ -217,7 +217,7 @@ spec:
                           Default is the value a parameter takes if no input value is supplied. If
                           default is set, a Task may be executed without a supplied value for the
                           parameter.
-                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       description:
                         description: |-
                           Description is a user-facing description of the parameter that may be
@@ -250,6 +250,7 @@ spec:
                           Type is the user-specified type of the parameter. The possible types
                           are currently "string", "array" and "object", and "string" is the default.
                         type: string
+                  x-kubernetes-list-type: atomic
                 results:
                   description: Results are values that this StepAction can output
                   type: array
@@ -701,7 +702,7 @@ spec:
                           Default is the value a parameter takes if no input value is supplied. If
                           default is set, a Task may be executed without a supplied value for the
                           parameter.
-                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       description:
                         description: |-
                           Description is a user-facing description of the parameter that may be
@@ -734,6 +735,7 @@ spec:
                           Type is the user-specified type of the parameter. The possible types
                           are currently "string", "array" and "object", and "string" is the default.
                         type: string
+                  x-kubernetes-list-type: atomic
                 results:
                   description: Results are values that this StepAction can output
                   type: array

@@ -50,7 +50,7 @@ spec:
     - name: objectparam
       value:
         key2: "pipelinerun key2"
-  PipelineSpec:
+  pipelineSpec:
     tasks:
       - name: run-action
         taskSpec:

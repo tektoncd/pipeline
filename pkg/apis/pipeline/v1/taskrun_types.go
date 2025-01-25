@@ -291,7 +291,6 @@ type TaskRunStatusFields struct {
 
 	// RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures.
 	// All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.
-	// FIXME
 	// +optional
 	// +listType=atomic
 	// +kubebuilder:pruning:PreserveUnknownFields

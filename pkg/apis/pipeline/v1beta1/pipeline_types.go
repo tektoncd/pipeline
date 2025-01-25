@@ -157,6 +157,8 @@ type PipelineResult struct {
 	Description string `json:"description"`
 
 	// Value the expression used to retrieve the value
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	Value ResultValue `json:"value"`
 }
 

@@ -97,11 +97,8 @@ spec:
                           name:
                             type: string
                           value:
-                            description: |-
-                              ParamValue is a type that can hold a single string or string array.
-                              Used in JSON unmarshalling so that a single JSON field can accept
-                              either an individual string or an array of strings.
-                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                      x-kubernetes-list-type: atomic
                     resolver:
                       description: |-
                         Resolver is the name of the resolver that should perform
@@ -144,11 +141,8 @@ spec:
                       name:
                         type: string
                       value:
-                        description: |-
-                          ParamValue is a type that can hold a single string or string array.
-                          Used in JSON unmarshalling so that a single JSON field can accept
-                          either an individual string or an array of strings.
-                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                  x-kubernetes-list-type: atomic
                 retries:
                   description: Used for propagating retries count to custom tasks
                   type: integer

@@ -592,6 +592,8 @@ type PipelineRunResult struct {
 	Name string `json:"name"`
 
 	// Value is the result returned from the execution of this PipelineRun
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	Value ResultValue `json:"value"`
 }
 

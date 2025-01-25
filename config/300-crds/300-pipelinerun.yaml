@@ -74,11 +74,8 @@ spec:
                       name:
                         type: string
                       value:
-                        description: |-
-                          ParamValue is a type that can hold a single string or string array.
-                          Used in JSON unmarshalling so that a single JSON field can accept
-                          either an individual string or an array of strings.
-                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                  x-kubernetes-list-type: atomic
                 pipelineRef:
                   description: PipelineRef can be used to refer to a specific instance of a Pipeline.
                   type: object
@@ -113,11 +110,8 @@ spec:
                           name:
                             type: string
                           value:
-                            description: |-
-                              ParamValue is a type that can hold a single string or string array.
-                              Used in JSON unmarshalling so that a single JSON field can accept
-                              either an individual string or an array of strings.
-                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                      x-kubernetes-list-type: atomic
                     resolver:
                       description: |-
                         Resolver is the name of the resolver that should perform
@@ -2378,7 +2372,7 @@ spec:
                         type: string
                       value:
                         description: Value is the result returned from the execution of this PipelineRun
-                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
                   x-kubernetes-list-type: atomic
                 pipelineSpec:
                   description: |-
@@ -2414,6 +2408,51 @@ spec:
                     featureFlags:
                       description: FeatureFlags identifies the feature flags that were used during the task/pipeline run
                       type: object
+                      properties:
+                        awaitSidecarReadiness:
+                          type: boolean
+                        coschedule:
+                          type: string
+                        disableAffinityAssistant:
+                          type: boolean
+                        disableCredsInit:
+                          type: boolean
+                        disableInlineSpec:
+                          type: string
+                        enableAPIFields:
+                          type: string
+                        enableArtifacts:
+                          type: boolean
+                        enableCELInWhenExpression:
+                          type: boolean
+                        enableConciseResolverSyntax:
+                          type: boolean
+                        enableKeepPodOnCancel:
+                          type: boolean
+                        enableKubernetesSidecar:
+                          type: boolean
+                        enableParamEnum:
+                          type: boolean
+                        enableProvenanceInStatus:
+                          type: boolean
+                        enableStepActions:
+                          type: boolean
+                        enforceNonfalsifiability:
+                          type: string
+                        maxResultSize:
+                          type: integer
+                        requireGitSSHSecretKnownHosts:
+                          type: boolean
+                        resultExtractionMethod:
+                          type: string
+                        runningInEnvWithInjectedSidecars:
+                          type: boolean
+                        sendCloudEventsForRuns:
+                          type: boolean
+                        setSecurityContext:
+                          type: boolean
+                        verificationNoMatchPolicy:
+                          type: string
                     refSource:
                       description: RefSource identifies the source where a remote task/pipeline came from.
                       type: object
@@ -2776,6 +2815,51 @@ spec:
                               featureFlags:
                                 description: FeatureFlags identifies the feature flags that were used during the task/pipeline run
                                 type: object
+                                properties:
+                                  awaitSidecarReadiness:
+                                    type: boolean
+                                  coschedule:
+                                    type: string
+                                  disableAffinityAssistant:
+                                    type: boolean
+                                  disableCredsInit:
+                                    type: boolean
+                                  disableInlineSpec:
+                                    type: string
+                                  enableAPIFields:
+                                    type: string
+                                  enableArtifacts:
+                                    type: boolean
+                                  enableCELInWhenExpression:
+                                    type: boolean
+                                  enableConciseResolverSyntax:
+                                    type: boolean
+                                  enableKeepPodOnCancel:
+                                    type: boolean
+                                  enableKubernetesSidecar:
+                                    type: boolean
+                                  enableParamEnum:
+                                    type: boolean
+                                  enableProvenanceInStatus:
+                                    type: boolean
+                                  enableStepActions:
+                                    type: boolean
+                                  enforceNonfalsifiability:
+                                    type: string
+                                  maxResultSize:
+                                    type: integer
+                                  requireGitSSHSecretKnownHosts:
+                                    type: boolean
+                                  resultExtractionMethod:
+                                    type: string
+                                  runningInEnvWithInjectedSidecars:
+                                    type: boolean
+                                  sendCloudEventsForRuns:
+                                    type: boolean
+                                  setSecurityContext:
+                                    type: boolean
+                                  verificationNoMatchPolicy:
+                                    type: string
                               refSource:
                                 description: RefSource identifies the source where a remote task/pipeline came from.
                                 type: object
@@ -3011,6 +3095,51 @@ spec:
                                     featureFlags:
                                       description: FeatureFlags identifies the feature flags that were used during the task/pipeline run
                                       type: object
+                                      properties:
+                                        awaitSidecarReadiness:
+                                          type: boolean
+                                        coschedule:
+                                          type: string
+                                        disableAffinityAssistant:
+                                          type: boolean
+                                        disableCredsInit:
+                                          type: boolean
+                                        disableInlineSpec:
+                                          type: string
+                                        enableAPIFields:
+                                          type: string
+                                        enableArtifacts:
+                                          type: boolean
+                                        enableCELInWhenExpression:
+                                          type: boolean
+                                        enableConciseResolverSyntax:
+                                          type: boolean
+                                        enableKeepPodOnCancel:
+                                          type: boolean
+                                        enableKubernetesSidecar:
+                                          type: boolean
+                                        enableParamEnum:
+                                          type: boolean
+                                        enableProvenanceInStatus:
+                                          type: boolean
+                                        enableStepActions:
+                                          type: boolean
+                                        enforceNonfalsifiability:
+                                          type: string
+                                        maxResultSize:
+                                          type: integer
+                                        requireGitSSHSecretKnownHosts:
+                                          type: boolean
+                                        resultExtractionMethod:
+                                          type: string
+                                        runningInEnvWithInjectedSidecars:
+                                          type: boolean
+                                        sendCloudEventsForRuns:
+                                          type: boolean
+                                        setSecurityContext:
+                                          type: boolean
+                                        verificationNoMatchPolicy:
+                                          type: string
                                     refSource:
                                       description: RefSource identifies the source where a remote task/pipeline came from.
                                       type: object
@@ -3052,7 +3181,7 @@ spec:
                                         type: string
                                       value:
                                         description: Value the given value of the result
-                                        type: object
+                                        x-kubernetes-preserve-unknown-fields: true
                                 running:
                                   description: Details about a running container
                                   type: object
@@ -3123,7 +3252,7 @@ spec:
                                   type: string
                                 value:
                                   description: Value the given value of the result
-                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
                             x-kubernetes-list-type: atomic
                           taskSpec:
                             description: |-
@@ -3224,11 +3353,8 @@ spec:
                       name:
                         type: string
                       value:
-                        description: |-
-                          ParamValue is a type that can hold a single string, string array, or string map.
-                          Used in JSON unmarshalling so that a single JSON field can accept
-                          either an individual string or an array of strings.
-                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                  x-kubernetes-list-type: atomic
                 pipelineRef:
                   description: PipelineRef can be used to refer to a specific instance of a Pipeline.
                   type: object
@@ -3256,11 +3382,8 @@ spec:
                           name:
                             type: string
                           value:
-                            description: |-
-                              ParamValue is a type that can hold a single string, string array, or string map.
-                              Used in JSON unmarshalling so that a single JSON field can accept
-                              either an individual string or an array of strings.
-                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                      x-kubernetes-list-type: atomic
                     resolver:
                       description: |-
                         Resolver is the name of the resolver that should perform
@@ -5421,6 +5544,51 @@ spec:
                     featureFlags:
                       description: FeatureFlags identifies the feature flags that were used during the task/pipeline run
                       type: object
+                      properties:
+                        awaitSidecarReadiness:
+                          type: boolean
+                        coschedule:
+                          type: string
+                        disableAffinityAssistant:
+                          type: boolean
+                        disableCredsInit:
+                          type: boolean
+                        disableInlineSpec:
+                          type: string
+                        enableAPIFields:
+                          type: string
+                        enableArtifacts:
+                          type: boolean
+                        enableCELInWhenExpression:
+                          type: boolean
+                        enableConciseResolverSyntax:
+                          type: boolean
+                        enableKeepPodOnCancel:
+                          type: boolean
+                        enableKubernetesSidecar:
+                          type: boolean
+                        enableParamEnum:
+                          type: boolean
+                        enableProvenanceInStatus:
+                          type: boolean
+                        enableStepActions:
+                          type: boolean
+                        enforceNonfalsifiability:
+                          type: string
+                        maxResultSize:
+                          type: integer
+                        requireGitSSHSecretKnownHosts:
+                          type: boolean
+                        resultExtractionMethod:
+                          type: string
+                        runningInEnvWithInjectedSidecars:
+                          type: boolean
+                        sendCloudEventsForRuns:
+                          type: boolean
+                        setSecurityContext:
+                          type: boolean
+                        verificationNoMatchPolicy:
+                          type: string
                     refSource:
                       description: RefSource identifies the source where a remote task/pipeline came from.
                       type: object
@@ -5458,7 +5626,7 @@ spec:
                         type: string
                       value:
                         description: Value is the result returned from the execution of this PipelineRun
-                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
                   x-kubernetes-list-type: atomic
                 skippedTasks:
                   description: list of tasks that were skipped due to when expressions evaluating to false
