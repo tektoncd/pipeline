@@ -90,14 +90,6 @@ func applyStepActionParameters(step *v1.Step, spec *v1.TaskSpec, tr *v1.TaskRun,
 		arrayReplacements[k] = v
 	}
 
-	// check if there are duplicate keys in the replacements
-	// if the same key is present in both stringReplacements and arrayReplacements, it means
-	// that the default value and the passed value have different types.
-	err := checkForDuplicateKeys(stringReplacements, arrayReplacements)
-	if err != nil {
-		return nil, err
-	}
-
 	// 4. set step result replacements last
 	stepResultReplacements, err := replacementsFromStepResults(step, stepParams, defaults)
 	if err != nil {
@@ -105,6 +97,14 @@ func applyStepActionParameters(step *v1.Step, spec *v1.TaskSpec, tr *v1.TaskRun,
 	}
 	for k, v := range stepResultReplacements {
 		stringReplacements[k] = v
+	}
+
+	// check if there are duplicate keys in the replacements
+	// if the same key is present in both stringReplacements and arrayReplacements, it means
+	// that the default value and the passed value have different types.
+	err = checkForDuplicateKeys(stringReplacements, arrayReplacements)
+	if err != nil {
+		return nil, err
 	}
 
 	container.ApplyStepReplacements(step, stringReplacements, arrayReplacements)
