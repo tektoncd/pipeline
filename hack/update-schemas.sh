@@ -1,9 +1,28 @@
-#!/bin/sh
+#!/usr/bin/env bash
+
+# Copyright 2019 The Tekton Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+OLDGOFLAGS="${GOFLAGS:-}"
+GOFLAGS=""
 
 CRD_PATH=$(dirname "${0}")/../config/300-crds
 API_PATH=$(dirname "${0}")/../pkg/apis
-OLDGOFLAGS="${GOFLAGS:-}"
-GOFLAGS=""
 
 TEMP_DIR_LOGS=$(mktemp -d)
 
@@ -21,8 +40,6 @@ do
   else
     API_SUBDIR=${GROUP%".tekton.dev"}
   fi
-  #echo "GROUP: $GROUP"
-  #echo "API_SUBDIR: $API_SUBDIR"
 
   TEMP_DIR=$(mktemp -d)
   cp -p $FILENAME $TEMP_DIR/.
@@ -30,12 +47,17 @@ do
     
   counter=0 limit=10
   while [ "$counter" -lt "$limit" ]; do
+    # FIXME:(burigolucas): add schema for fields with generic type once supported by controller-tools
+    # FIXME:(burigolucas): add schema for recursive fields once supported by controller-tools
+    # FIXME:(burigolucas): add reference for dependent external/internal schemas once supported in CRD specification
     # FIXME:(burigolucas): controller-gen return status 1 with message "Error: not all generators ran successfully"
+    set +e
     go run sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.1 \
       schemapatch:manifests=$TEMP_DIR,generateEmbeddedObjectMeta=false \
       output:dir=$CRD_PATH \
       paths=$API_PATH/$API_SUBDIR/... > $LOG_FILE 2>&1
     rc=$?
+    set -e
     if [ $rc -eq 0 ]; then
       break
     fi
@@ -49,26 +71,6 @@ do
       exit 1
     fi
   done
-
-#   # NOTE: the controller-gen removes the field 'x-kubernetes-preserve-unknown-fields: true'
-#   # The command below restores the field.
-#   cat >$TEMP_DIR/tmp-fix <<EOF
-# # One can use x-kubernetes-preserve-unknown-fields: true
-# # at the root of the schema (and inside any properties, additionalProperties)
-# # to get the traditional CRD behaviour that nothing is pruned, despite
-# # setting spec.preserveUnknownProperties: false.
-# #
-# # See https://kubernetes.io/blog/2019/06/20/crd-structural-schema/
-# # See issue: https://github.com/knative/serving/issues/912
-# x-kubernetes-preserve-unknown-fields: true
-# EOF
-#   FIELD_IDENTATION="$(grep 'openAPIV3Schema:' $FILENAME | head -1)"
-#   FIELD_IDENTATION="${FIELD_IDENTATION%openAPIV3Schema:}  "
-#   sed -i "s/^/$FIELD_IDENTATION/" $TEMP_DIR/tmp-fix
-
-#   if ! grep -qF "$(head -n1 $TEMP_DIR/tmp-fix)" $FILENAME; then
-#     sed -i "/        openAPIV3Schema:/r $TEMP_DIR/tmp-fix" $FILENAME
-#   fi
 
   rm -rf $TEMP_DIR
 done
