@@ -62,6 +62,7 @@ type ScmConfig struct {
 	Org                string `json:"default-org"`
 	ServerURL          string `json:"server-url"`
 	SCMType            string `json:"scm-type"`
+	GitToken           string `json:"git-token"`
 	APISecretName      string `json:"api-token-secret-name"`
 	APISecretKey       string `json:"api-token-secret-key"`
 	APISecretNamespace string `json:"api-token-secret-namespace"`
