@@ -41,22 +41,24 @@ var taskrunsKind = v1beta1.SchemeGroupVersion.WithKind("TaskRun")
 
 // Get takes name of the taskRun, and returns the corresponding taskRun object, and an error if there is any.
 func (c *FakeTaskRuns) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.TaskRun, err error) {
+	emptyResult := &v1beta1.TaskRun{}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(taskrunsResource, c.ns, name), &v1beta1.TaskRun{})
+		Invokes(testing.NewGetActionWithOptions(taskrunsResource, c.ns, name, options), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1beta1.TaskRun), err
 }
 
 // List takes label and field selectors, and returns the list of TaskRuns that match those selectors.
 func (c *FakeTaskRuns) List(ctx context.Context, opts v1.ListOptions) (result *v1beta1.TaskRunList, err error) {
+	emptyResult := &v1beta1.TaskRunList{}
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(taskrunsResource, taskrunsKind, c.ns, opts), &v1beta1.TaskRunList{})
+		Invokes(testing.NewListActionWithOptions(taskrunsResource, taskrunsKind, c.ns, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 
 	label, _, _ := testing.ExtractFromListOptions(opts)
@@ -75,40 +77,43 @@ func (c *FakeTaskRuns) List(ctx context.Context, opts v1.ListOptions) (result *v
 // Watch returns a watch.Interface that watches the requested taskRuns.
 func (c *FakeTaskRuns) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(taskrunsResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchActionWithOptions(taskrunsResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a taskRun and creates it.  Returns the server's representation of the taskRun, and an error, if there is any.
 func (c *FakeTaskRuns) Create(ctx context.Context, taskRun *v1beta1.TaskRun, opts v1.CreateOptions) (result *v1beta1.TaskRun, err error) {
+	emptyResult := &v1beta1.TaskRun{}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(taskrunsResource, c.ns, taskRun), &v1beta1.TaskRun{})
+		Invokes(testing.NewCreateActionWithOptions(taskrunsResource, c.ns, taskRun, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1beta1.TaskRun), err
 }
 
 // Update takes the representation of a taskRun and updates it. Returns the server's representation of the taskRun, and an error, if there is any.
 func (c *FakeTaskRuns) Update(ctx context.Context, taskRun *v1beta1.TaskRun, opts v1.UpdateOptions) (result *v1beta1.TaskRun, err error) {
+	emptyResult := &v1beta1.TaskRun{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(taskrunsResource, c.ns, taskRun), &v1beta1.TaskRun{})
+		Invokes(testing.NewUpdateActionWithOptions(taskrunsResource, c.ns, taskRun, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1beta1.TaskRun), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeTaskRuns) UpdateStatus(ctx context.Context, taskRun *v1beta1.TaskRun, opts v1.UpdateOptions) (*v1beta1.TaskRun, error) {
+func (c *FakeTaskRuns) UpdateStatus(ctx context.Context, taskRun *v1beta1.TaskRun, opts v1.UpdateOptions) (result *v1beta1.TaskRun, err error) {
+	emptyResult := &v1beta1.TaskRun{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(taskrunsResource, "status", c.ns, taskRun), &v1beta1.TaskRun{})
+		Invokes(testing.NewUpdateSubresourceActionWithOptions(taskrunsResource, "status", c.ns, taskRun, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1beta1.TaskRun), err
 }
@@ -123,7 +128,7 @@ func (c *FakeTaskRuns) Delete(ctx context.Context, name string, opts v1.DeleteOp
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeTaskRuns) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(taskrunsResource, c.ns, listOpts)
+	action := testing.NewDeleteCollectionActionWithOptions(taskrunsResource, c.ns, opts, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1beta1.TaskRunList{})
 	return err
@@ -131,11 +136,12 @@ func (c *FakeTaskRuns) DeleteCollection(ctx context.Context, opts v1.DeleteOptio
 
 // Patch applies the patch and returns the patched taskRun.
 func (c *FakeTaskRuns) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.TaskRun, err error) {
+	emptyResult := &v1beta1.TaskRun{}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(taskrunsResource, c.ns, name, pt, data, subresources...), &v1beta1.TaskRun{})
+		Invokes(testing.NewPatchSubresourceActionWithOptions(taskrunsResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1beta1.TaskRun), err
 }

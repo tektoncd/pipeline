@@ -20,8 +20,8 @@ package v1beta1
 
 import (
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/listers"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -38,25 +38,17 @@ type ResolutionRequestLister interface {
 
 // resolutionRequestLister implements the ResolutionRequestLister interface.
 type resolutionRequestLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*v1beta1.ResolutionRequest]
 }
 
 // NewResolutionRequestLister returns a new ResolutionRequestLister.
 func NewResolutionRequestLister(indexer cache.Indexer) ResolutionRequestLister {
-	return &resolutionRequestLister{indexer: indexer}
-}
-
-// List lists all ResolutionRequests in the indexer.
-func (s *resolutionRequestLister) List(selector labels.Selector) (ret []*v1beta1.ResolutionRequest, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1beta1.ResolutionRequest))
-	})
-	return ret, err
+	return &resolutionRequestLister{listers.New[*v1beta1.ResolutionRequest](indexer, v1beta1.Resource("resolutionrequest"))}
 }
 
 // ResolutionRequests returns an object that can list and get ResolutionRequests.
 func (s *resolutionRequestLister) ResolutionRequests(namespace string) ResolutionRequestNamespaceLister {
-	return resolutionRequestNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return resolutionRequestNamespaceLister{listers.NewNamespaced[*v1beta1.ResolutionRequest](s.ResourceIndexer, namespace)}
 }
 
 // ResolutionRequestNamespaceLister helps list and get ResolutionRequests.
@@ -74,26 +66,5 @@ type ResolutionRequestNamespaceLister interface {
 // resolutionRequestNamespaceLister implements the ResolutionRequestNamespaceLister
 // interface.
 type resolutionRequestNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all ResolutionRequests in the indexer for a given namespace.
-func (s resolutionRequestNamespaceLister) List(selector labels.Selector) (ret []*v1beta1.ResolutionRequest, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1beta1.ResolutionRequest))
-	})
-	return ret, err
-}
-
-// Get retrieves the ResolutionRequest from the indexer for a given namespace and name.
-func (s resolutionRequestNamespaceLister) Get(name string) (*v1beta1.ResolutionRequest, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1beta1.Resource("resolutionrequest"), name)
-	}
-	return obj.(*v1beta1.ResolutionRequest), nil
+	listers.ResourceIndexer[*v1beta1.ResolutionRequest]
 }

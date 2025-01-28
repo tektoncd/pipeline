@@ -41,22 +41,24 @@ var pipelineresourcesKind = v1alpha1.SchemeGroupVersion.WithKind("PipelineResour
 
 // Get takes name of the pipelineResource, and returns the corresponding pipelineResource object, and an error if there is any.
 func (c *FakePipelineResources) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.PipelineResource, err error) {
+	emptyResult := &v1alpha1.PipelineResource{}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(pipelineresourcesResource, c.ns, name), &v1alpha1.PipelineResource{})
+		Invokes(testing.NewGetActionWithOptions(pipelineresourcesResource, c.ns, name, options), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.PipelineResource), err
 }
 
 // List takes label and field selectors, and returns the list of PipelineResources that match those selectors.
 func (c *FakePipelineResources) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.PipelineResourceList, err error) {
+	emptyResult := &v1alpha1.PipelineResourceList{}
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(pipelineresourcesResource, pipelineresourcesKind, c.ns, opts), &v1alpha1.PipelineResourceList{})
+		Invokes(testing.NewListActionWithOptions(pipelineresourcesResource, pipelineresourcesKind, c.ns, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 
 	label, _, _ := testing.ExtractFromListOptions(opts)
@@ -75,28 +77,30 @@ func (c *FakePipelineResources) List(ctx context.Context, opts v1.ListOptions) (
 // Watch returns a watch.Interface that watches the requested pipelineResources.
 func (c *FakePipelineResources) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(pipelineresourcesResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchActionWithOptions(pipelineresourcesResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a pipelineResource and creates it.  Returns the server's representation of the pipelineResource, and an error, if there is any.
 func (c *FakePipelineResources) Create(ctx context.Context, pipelineResource *v1alpha1.PipelineResource, opts v1.CreateOptions) (result *v1alpha1.PipelineResource, err error) {
+	emptyResult := &v1alpha1.PipelineResource{}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(pipelineresourcesResource, c.ns, pipelineResource), &v1alpha1.PipelineResource{})
+		Invokes(testing.NewCreateActionWithOptions(pipelineresourcesResource, c.ns, pipelineResource, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.PipelineResource), err
 }
 
 // Update takes the representation of a pipelineResource and updates it. Returns the server's representation of the pipelineResource, and an error, if there is any.
 func (c *FakePipelineResources) Update(ctx context.Context, pipelineResource *v1alpha1.PipelineResource, opts v1.UpdateOptions) (result *v1alpha1.PipelineResource, err error) {
+	emptyResult := &v1alpha1.PipelineResource{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(pipelineresourcesResource, c.ns, pipelineResource), &v1alpha1.PipelineResource{})
+		Invokes(testing.NewUpdateActionWithOptions(pipelineresourcesResource, c.ns, pipelineResource, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.PipelineResource), err
 }
@@ -111,7 +115,7 @@ func (c *FakePipelineResources) Delete(ctx context.Context, name string, opts v1
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakePipelineResources) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(pipelineresourcesResource, c.ns, listOpts)
+	action := testing.NewDeleteCollectionActionWithOptions(pipelineresourcesResource, c.ns, opts, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.PipelineResourceList{})
 	return err
@@ -119,11 +123,12 @@ func (c *FakePipelineResources) DeleteCollection(ctx context.Context, opts v1.De
 
 // Patch applies the patch and returns the patched pipelineResource.
 func (c *FakePipelineResources) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.PipelineResource, err error) {
+	emptyResult := &v1alpha1.PipelineResource{}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(pipelineresourcesResource, c.ns, name, pt, data, subresources...), &v1alpha1.PipelineResource{})
+		Invokes(testing.NewPatchSubresourceActionWithOptions(pipelineresourcesResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.PipelineResource), err
 }

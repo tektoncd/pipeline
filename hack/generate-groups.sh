@@ -18,7 +18,6 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-
 # generate-groups generates everything for a project with external types only, e.g. a project based
 # on CustomResourceDefinitions.
 
@@ -40,6 +39,7 @@ fi
 
 GENS="$1"
 OUTPUT_PKG="$2"
+OUTPUT_PATH=".${OUTPUT_PKG#github.com/tektoncd/pipeline}"
 APIS_PKG="$3"
 GROUPS_WITH_VERSIONS="$4"
 shift 4
@@ -68,25 +68,25 @@ done
 
 if [ "${GENS}" = "all" ] || grep -qw "deepcopy" <<<"${GENS}"; then
   echo "Generating deepcopy funcs for ${GROUPS_WITH_VERSIONS}"
-  "${PREFIX}/deepcopy-gen" --input-dirs "$(codegen::join , "${FQ_APIS[@]}")" -O zz_generated.deepcopy --bounding-dirs "${APIS_PKG}" "$@"
+  "${PREFIX}/deepcopy-gen" --output-file zz_generated.deepcopy.go --bounding-dirs "${APIS_PKG}" "$@" $(codegen::join " " "${FQ_APIS[@]}")
 fi
 
 if [ "${GENS}" = "all" ] || grep -qw "client" <<<"${GENS}"; then
   echo "Generating clientset for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}/${CLIENTSET_PKG_NAME:-clientset}"
-  "${PREFIX}/client-gen" --clientset-name "${CLIENTSET_NAME_VERSIONED:-versioned}" --input-base "" --input "$(codegen::join , "${FQ_APIS[@]}")" --output-package "${OUTPUT_PKG}/${CLIENTSET_PKG_NAME:-clientset}" "$@"
+  "${PREFIX}/client-gen" --clientset-name "${CLIENTSET_NAME_VERSIONED:-versioned}" --input-base "" --input "$(codegen::join , "${FQ_APIS[@]}")" --output-pkg "${OUTPUT_PKG}/${CLIENTSET_PKG_NAME:-clientset}" --output-dir "${OUTPUT_PATH}/${CLIENTSET_PKG_NAME:-clientset}" "$@"
 fi
 
 if [ "${GENS}" = "all" ] || grep -qw "lister" <<<"${GENS}"; then
   echo "Generating listers for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}/listers"
-  "${PREFIX}/lister-gen" --input-dirs "$(codegen::join , "${FQ_APIS[@]}")" --output-package "${OUTPUT_PKG}/listers" "$@"
+  "${PREFIX}/lister-gen" --output-pkg "${OUTPUT_PKG}/listers" --output-dir "${OUTPUT_PATH}/listers" "$@" $(codegen::join " " "${FQ_APIS[@]}")
 fi
 
 if [ "${GENS}" = "all" ] || grep -qw "informer" <<<"${GENS}"; then
   echo "Generating informers for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}/informers"
   "${PREFIX}/informer-gen" \
-           --input-dirs "$(codegen::join , "${FQ_APIS[@]}")" \
            --versioned-clientset-package "${OUTPUT_PKG}/${CLIENTSET_PKG_NAME:-clientset}/${CLIENTSET_NAME_VERSIONED:-versioned}" \
            --listers-package "${OUTPUT_PKG}/listers" \
-           --output-package "${OUTPUT_PKG}/informers" \
-           "$@"
+           --output-pkg "${OUTPUT_PKG}/informers" \
+           --output-dir "${OUTPUT_PATH}/informers" \
+           "$@" $(codegen::join " " "${FQ_APIS[@]}")
 fi

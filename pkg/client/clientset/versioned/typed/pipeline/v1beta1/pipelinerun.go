@@ -20,14 +20,13 @@ package v1beta1
 
 import (
 	"context"
-	"time"
 
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	scheme "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
-	rest "k8s.io/client-go/rest"
+	gentype "k8s.io/client-go/gentype"
 )
 
 // PipelineRunsGetter has a method to return a PipelineRunInterface.
@@ -40,6 +39,7 @@ type PipelineRunsGetter interface {
 type PipelineRunInterface interface {
 	Create(ctx context.Context, pipelineRun *v1beta1.PipelineRun, opts v1.CreateOptions) (*v1beta1.PipelineRun, error)
 	Update(ctx context.Context, pipelineRun *v1beta1.PipelineRun, opts v1.UpdateOptions) (*v1beta1.PipelineRun, error)
+	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 	UpdateStatus(ctx context.Context, pipelineRun *v1beta1.PipelineRun, opts v1.UpdateOptions) (*v1beta1.PipelineRun, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
@@ -52,144 +52,18 @@ type PipelineRunInterface interface {
 
 // pipelineRuns implements PipelineRunInterface
 type pipelineRuns struct {
-	client rest.Interface
-	ns     string
+	*gentype.ClientWithList[*v1beta1.PipelineRun, *v1beta1.PipelineRunList]
 }
 
 // newPipelineRuns returns a PipelineRuns
 func newPipelineRuns(c *TektonV1beta1Client, namespace string) *pipelineRuns {
 	return &pipelineRuns{
-		client: c.RESTClient(),
-		ns:     namespace,
+		gentype.NewClientWithList[*v1beta1.PipelineRun, *v1beta1.PipelineRunList](
+			"pipelineruns",
+			c.RESTClient(),
+			scheme.ParameterCodec,
+			namespace,
+			func() *v1beta1.PipelineRun { return &v1beta1.PipelineRun{} },
+			func() *v1beta1.PipelineRunList { return &v1beta1.PipelineRunList{} }),
 	}
-}
-
-// Get takes name of the pipelineRun, and returns the corresponding pipelineRun object, and an error if there is any.
-func (c *pipelineRuns) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.PipelineRun, err error) {
-	result = &v1beta1.PipelineRun{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("pipelineruns").
-		Name(name).
-		VersionedParams(&options, scheme.ParameterCodec).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// List takes label and field selectors, and returns the list of PipelineRuns that match those selectors.
-func (c *pipelineRuns) List(ctx context.Context, opts v1.ListOptions) (result *v1beta1.PipelineRunList, err error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	result = &v1beta1.PipelineRunList{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("pipelineruns").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Watch returns a watch.Interface that watches the requested pipelineRuns.
-func (c *pipelineRuns) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	opts.Watch = true
-	return c.client.Get().
-		Namespace(c.ns).
-		Resource("pipelineruns").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch(ctx)
-}
-
-// Create takes the representation of a pipelineRun and creates it.  Returns the server's representation of the pipelineRun, and an error, if there is any.
-func (c *pipelineRuns) Create(ctx context.Context, pipelineRun *v1beta1.PipelineRun, opts v1.CreateOptions) (result *v1beta1.PipelineRun, err error) {
-	result = &v1beta1.PipelineRun{}
-	err = c.client.Post().
-		Namespace(c.ns).
-		Resource("pipelineruns").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(pipelineRun).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Update takes the representation of a pipelineRun and updates it. Returns the server's representation of the pipelineRun, and an error, if there is any.
-func (c *pipelineRuns) Update(ctx context.Context, pipelineRun *v1beta1.PipelineRun, opts v1.UpdateOptions) (result *v1beta1.PipelineRun, err error) {
-	result = &v1beta1.PipelineRun{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("pipelineruns").
-		Name(pipelineRun.Name).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(pipelineRun).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *pipelineRuns) UpdateStatus(ctx context.Context, pipelineRun *v1beta1.PipelineRun, opts v1.UpdateOptions) (result *v1beta1.PipelineRun, err error) {
-	result = &v1beta1.PipelineRun{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("pipelineruns").
-		Name(pipelineRun.Name).
-		SubResource("status").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(pipelineRun).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Delete takes name of the pipelineRun and deletes it. Returns an error if one occurs.
-func (c *pipelineRuns) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("pipelineruns").
-		Name(name).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *pipelineRuns) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
-	}
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("pipelineruns").
-		VersionedParams(&listOpts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// Patch applies the patch and returns the patched pipelineRun.
-func (c *pipelineRuns) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.PipelineRun, err error) {
-	result = &v1beta1.PipelineRun{}
-	err = c.client.Patch(pt).
-		Namespace(c.ns).
-		Resource("pipelineruns").
-		Name(name).
-		SubResource(subresources...).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(data).
-		Do(ctx).
-		Into(result)
-	return
 }
