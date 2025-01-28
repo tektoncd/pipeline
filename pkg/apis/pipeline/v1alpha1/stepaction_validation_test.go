@@ -81,6 +81,38 @@ func TestStepActionSpecValidate(t *testing.T) {
 			Args:    []string{"-lh"},
 		},
 	}, {
+		name: "valid param default value references defined param",
+		fields: fields{
+			Image: "myimage",
+			Params: []v1.ParamSpec{{
+				Name:    "param1",
+				Type:    v1.ParamTypeString,
+				Default: v1.NewStructuredValues("hello"),
+			}, {
+				Name:    "param2",
+				Type:    v1.ParamTypeString,
+				Default: v1.NewStructuredValues("$(params.param1) world"),
+			}},
+		},
+	}, {
+		name: "multiple param references in default value",
+		fields: fields{
+			Image: "myimage",
+			Params: []v1.ParamSpec{{
+				Name:    "param1",
+				Type:    v1.ParamTypeString,
+				Default: v1.NewStructuredValues("hello"),
+			}, {
+				Name:    "param2",
+				Type:    v1.ParamTypeString,
+				Default: v1.NewStructuredValues("hi"),
+			}, {
+				Name:    "param3",
+				Type:    v1.ParamTypeString,
+				Default: v1.NewStructuredValues("$(params.param1) $(params.param2)"),
+			}},
+		},
+	}, {
 		name: "step action with script",
 		fields: fields{
 			Image:  "myimage",
@@ -591,6 +623,20 @@ func TestStepActionSpecValidateError(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: `missing field(s)`,
 			Paths:   []string{"Image"},
+		},
+	}, {
+		name: "param default value references undefined param",
+		fields: fields{
+			Image: "myimage",
+			Params: []v1.ParamSpec{{
+				Name:    "param2",
+				Type:    v1.ParamTypeString,
+				Default: v1.NewStructuredValues("$(params.param1)"),
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `param "param2" default value references param "param1" which is not defined`,
+			Paths:   []string{"params"},
 		},
 	}, {
 		name: "command and script both used.",

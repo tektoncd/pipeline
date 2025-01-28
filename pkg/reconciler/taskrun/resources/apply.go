@@ -18,6 +18,7 @@ package resources
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"regexp"
@@ -69,31 +70,168 @@ var (
 // applyStepActionParameters applies the params from the task and the underlying step to the referenced stepaction.
 // substitution order:
 // 1. taskrun parameter values in step parameters
-// 2. set params from StepAction defaults
-// 3. set and overwrite params with the ones from the step
-// 4. set step result replacements last
+// 2. step-provided parameter values
+// 3. default values that reference other parameters
+// 4. simple default values
+// 5. step result references
 func applyStepActionParameters(step *v1.Step, spec *v1.TaskSpec, tr *v1.TaskRun, stepParams v1.Params, defaults []v1.ParamSpec) (*v1.Step, error) {
 	// 1. taskrun parameter substitutions to step parameters
 	if stepParams != nil {
 		stringR, arrayR, objectR := getTaskParameters(spec, tr, spec.Params...)
 		stepParams = stepParams.ReplaceVariables(stringR, arrayR, objectR)
 	}
-	// 2. set params from stepaction defaults
-	stringReplacements, arrayReplacements, _ := replacementsFromDefaultParams(defaults)
 
-	// 3. set and overwrite params with the ones from the step
-	stepStrings, stepArrays, _ := replacementsFromParams(stepParams)
-	for k, v := range stepStrings {
+	// 2. step provided parameters
+	stepProvidedParams := make(map[string]v1.ParamValue)
+	for _, sp := range stepParams {
+		stepProvidedParams[sp.Name] = sp.Value
+	}
+	// 3,4. get replacements from default params (both referenced and simple)
+	stringReplacements, arrayReplacements, objectReplacements := replacementsFromDefaultParams(defaults)
+	// process parameter values in order of substitution (2,3,4)
+	processedParams := make([]v1.Param, 0, len(defaults))
+	// keep track of parameters that need resolution and their references
+	paramsNeedingResolution := make(map[string]bool)
+	paramReferenceMap := make(map[string][]string) // maps param name to names of params it references
+
+	// collect parameter references and handle parameters without references
+	for _, p := range defaults {
+		// 2. step provided parameters
+		if value, exists := stepProvidedParams[p.Name]; exists {
+			// parameter provided by step, add it to processed
+			processedParams = append(processedParams, v1.Param{
+				Name:  p.Name,
+				Value: value,
+			})
+			continue
+		}
+
+		// 3. default params
+		if p.Default != nil {
+			if !strings.Contains(p.Default.StringVal, "$(params.") {
+				// parameter has no references, add it to processed
+				processedParams = append(processedParams, v1.Param{
+					Name:  p.Name,
+					Value: *p.Default,
+				})
+				continue
+			}
+
+			// parameter has references to other parameters, track them >:(
+			paramsNeedingResolution[p.Name] = true
+			matches, _ := substitution.ExtractVariableExpressions(p.Default.StringVal, "params")
+			referencedParams := make([]string, 0, len(matches))
+			for _, match := range matches {
+				paramName := strings.TrimSuffix(strings.TrimPrefix(match, "$(params."), ")")
+				referencedParams = append(referencedParams, paramName)
+			}
+			paramReferenceMap[p.Name] = referencedParams
+		}
+	}
+
+	// process parameters until no more can be resolved
+	for len(paramsNeedingResolution) > 0 {
+		paramWasResolved := false
+		// track unresolved params and their references
+		unresolvedParams := make(map[string][]string)
+
+		for paramName := range paramsNeedingResolution {
+			canResolveParam := true
+			for _, referencedParam := range paramReferenceMap[paramName] {
+				// Check if referenced parameter is processed
+				isReferenceResolved := false
+				for _, pp := range processedParams {
+					if pp.Name == referencedParam {
+						isReferenceResolved = true
+						break
+					}
+				}
+				if !isReferenceResolved {
+					canResolveParam = false
+					unresolvedParams[paramName] = append(unresolvedParams[paramName], referencedParam)
+					break
+				}
+			}
+
+			if canResolveParam {
+				// process this parameter as all its references have been resolved
+				for _, p := range defaults {
+					if p.Name == paramName {
+						defaultValue := *p.Default
+						resolvedValue := defaultValue.StringVal
+						// hydrate parameter references
+						for _, referencedParam := range paramReferenceMap[paramName] {
+							for _, pp := range processedParams {
+								if pp.Name == referencedParam {
+									resolvedValue = strings.ReplaceAll(
+										resolvedValue,
+										fmt.Sprintf("$(params.%s)", referencedParam),
+										pp.Value.StringVal,
+									)
+									break
+								}
+							}
+						}
+						defaultValue.StringVal = resolvedValue
+						processedParams = append(processedParams, v1.Param{
+							Name:  paramName,
+							Value: defaultValue,
+						})
+						delete(paramsNeedingResolution, paramName)
+						paramWasResolved = true
+						break
+					}
+				}
+			}
+		}
+
+		// unresolvable parameters or circular dependencies
+		if !paramWasResolved {
+			// check parameter references to a non-existent parameter
+			for param, unresolvedRefs := range unresolvedParams {
+				// check referenced parameters in defaults
+				for _, ref := range unresolvedRefs {
+					exists := false
+					for _, p := range defaults {
+						if p.Name == ref {
+							exists = true
+							break
+						}
+					}
+					if !exists {
+						return nil, fmt.Errorf("parameter %q references non-existent parameter %q", param, ref)
+					}
+				}
+				// parameters exist but can't be resolved hence it's a circular dependency
+				return nil, errors.New("circular dependency detected in parameter references")
+			}
+		}
+	}
+
+	// apply the processed parameters and merge all replacements (2,3,4)
+	procStringReplacements, procArrayReplacements, procObjectReplacements := replacementsFromParams(processedParams)
+	// merge replacements from defaults and processed params
+	for k, v := range procStringReplacements {
 		stringReplacements[k] = v
 	}
-	for k, v := range stepArrays {
+	for k, v := range procArrayReplacements {
 		arrayReplacements[k] = v
 	}
+	for k, v := range procObjectReplacements {
+		if objectReplacements[k] == nil {
+			objectReplacements[k] = v
+		} else {
+			for key, val := range v {
+				objectReplacements[k][key] = val
+			}
+		}
+	}
 
-	// 4. set step result replacements last
+	// 5. set step result replacements last
 	if stepResultReplacements, err := replacementsFromStepResults(step, stepParams, defaults); err != nil {
 		return nil, err
 	} else {
+		// merge step result replacements into string replacements last
 		for k, v := range stepResultReplacements {
 			stringReplacements[k] = v
 		}
@@ -107,6 +245,7 @@ func applyStepActionParameters(step *v1.Step, spec *v1.TaskSpec, tr *v1.TaskRun,
 	}
 
 	container.ApplyStepReplacements(step, stringReplacements, arrayReplacements)
+
 	return step, nil
 }
 
@@ -190,6 +329,8 @@ func replacementsFromStepResults(step *v1.Step, stepParams v1.Params, defaults [
 							stringReplacements[fmt.Sprintf("params.%s.%s", d.Name, k)] = fmt.Sprintf("$(steps.%s.results.%s.%s)", pr.ResourceName, pr.ResultName, k)
 						}
 					case v1.ParamTypeArray:
+						// for array parameters
+
 						// with star notation, replace:
 						// $(params.p1[*]) with $(steps.step1.results.foo[*])
 						for _, pattern := range paramPatterns {
@@ -243,6 +384,7 @@ func getTaskParameters(spec *v1.TaskSpec, tr *v1.TaskRun, defaults ...v1.ParamSp
 			}
 		}
 	}
+
 	return stringReplacements, arrayReplacements, objectReplacements
 }
 
@@ -257,9 +399,9 @@ func replacementsFromDefaultParams(defaults v1.ParamSpecs) (map[string]string, m
 	arrayReplacements := map[string][]string{}
 	objectReplacements := map[string]map[string]string{}
 
-	// Set all the default stringReplacements
+	// First pass: collect all non-reference default values
 	for _, p := range defaults {
-		if p.Default != nil {
+		if p.Default != nil && !strings.Contains(p.Default.StringVal, "$(params.") {
 			switch p.Default.Type {
 			case v1.ParamTypeArray:
 				for _, pattern := range paramPatterns {
@@ -284,6 +426,32 @@ func replacementsFromDefaultParams(defaults v1.ParamSpecs) (map[string]string, m
 			}
 		}
 	}
+
+	// Second pass: handle parameter references in default values
+	for _, p := range defaults {
+		if p.Default != nil && strings.Contains(p.Default.StringVal, "$(params.") {
+			// extract referenced parameter name
+			matches, _ := substitution.ExtractVariableExpressions(p.Default.StringVal, "params")
+			for _, match := range matches {
+				paramName := strings.TrimPrefix(match, "$(params.")
+				paramName = strings.TrimSuffix(paramName, ")")
+
+				// find referenced parameter value
+				for _, pattern := range paramPatterns {
+					key := fmt.Sprintf(pattern, paramName)
+					if value, exists := stringReplacements[key]; exists {
+						// Apply the value to this parameter's default
+						resolvedValue := strings.ReplaceAll(p.Default.StringVal, match, value)
+						for _, pattern := range paramPatterns {
+							stringReplacements[fmt.Sprintf(pattern, p.Name)] = resolvedValue
+						}
+						break
+					}
+				}
+			}
+		}
+	}
+
 	return stringReplacements, arrayReplacements, objectReplacements
 }
 
