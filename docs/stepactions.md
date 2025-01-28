@@ -141,14 +141,15 @@ spec:
 When applying parameters to a StepAction, the substitutions are applied in the following order:
 
 1. TaskRun parameter values in step parameters
-2. Parameters from StepAction defaults
-3. Parameters from the step (overwriting any defaults)
-4. Step result replacements
+2. Step-provided parameter values 
+3. Default values that reference other parameters
+4. Simple default values
+5. Step result references
 
 This order ensures that:
-- Step parameters can reference TaskRun parameters
-- StepAction defaults provide fallback values
-- Step-specific parameters take precedence over defaults
+- TaskRun parameters are available for step parameter substitution
+- Step-provided values take precedence over defaults
+- Parameter references in defaults are resolved before simple defaults
 - Step result references are resolved last to allow referencing results from previous steps
 
 ### Emitting Results
