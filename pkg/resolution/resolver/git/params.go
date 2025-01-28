@@ -33,6 +33,10 @@ const (
 	TokenParam string = "token"
 	// TokenKeyParam is an optional reference to a key in the TokenParam secret for SCM API authentication
 	TokenKeyParam string = "tokenKey"
+	// GitTokenParam is an optional reference to a secret name when using go-git for git authentication
+	GitTokenParam string = "gitToken"
+	// GitTokenParam is an optional reference to a secret name when using go-git for git authentication
+	GitTokenKeyParam string = "gitTokenKey"
 	// DefaultTokenKeyParam is the default key in the TokenParam secret for SCM API authentication
 	DefaultTokenKeyParam string = "token"
 	// scmTypeParam is an optional string overriding the scm-type configuration (ie: github, gitea, gitlab etc..)
