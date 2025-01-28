@@ -1665,10 +1665,10 @@ func TestGetStepActionsData_InvalidStepResultReference(t *testing.T) {
 		},
 	}
 
+	expectedError := `must be one of the form 1). "steps.<stepName>.results.<resultName>"; 2). "steps.<stepName>.results.<objectResultName>.<individualAttribute>"`
 	ctx := context.Background()
 	tektonclient := fake.NewSimpleClientset(stepAction)
-	_, err := resources.GetStepActionsData(ctx, *tr.Spec.TaskSpec, tr, tektonclient, nil, nil)
-	if err == nil {
-		t.Error("Expected error due to invalid step result reference, but got nil")
+	if _, err := resources.GetStepActionsData(ctx, *tr.Spec.TaskSpec, tr, tektonclient, nil, nil); err.Error() != expectedError {
+		t.Errorf("Expected error message %s but got %s", expectedError, err.Error())
 	}
 }
