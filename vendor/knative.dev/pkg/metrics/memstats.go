@@ -19,6 +19,7 @@ package metrics
 import (
 	"context"
 	"log"
+	"math"
 	"runtime"
 	"time"
 
@@ -379,76 +380,76 @@ func (msp *MemStatsProvider) Start(ctx context.Context, period time.Duration) {
 				ms := runtime.MemStats{}
 				runtime.ReadMemStats(&ms)
 				if msp.Alloc != nil {
-					Record(ctx, msp.Alloc.M(int64(ms.Alloc)))
+					Record(ctx, msp.Alloc.M(safeint64(ms.Alloc)))
 				}
 				if msp.TotalAlloc != nil {
-					Record(ctx, msp.TotalAlloc.M(int64(ms.TotalAlloc)))
+					Record(ctx, msp.TotalAlloc.M(safeint64(ms.TotalAlloc)))
 				}
 				if msp.Sys != nil {
-					Record(ctx, msp.Sys.M(int64(ms.Sys)))
+					Record(ctx, msp.Sys.M(safeint64(ms.Sys)))
 				}
 				if msp.Lookups != nil {
-					Record(ctx, msp.Lookups.M(int64(ms.Lookups)))
+					Record(ctx, msp.Lookups.M(safeint64(ms.Lookups)))
 				}
 				if msp.Mallocs != nil {
-					Record(ctx, msp.Mallocs.M(int64(ms.Mallocs)))
+					Record(ctx, msp.Mallocs.M(safeint64(ms.Mallocs)))
 				}
 				if msp.Frees != nil {
-					Record(ctx, msp.Frees.M(int64(ms.Frees)))
+					Record(ctx, msp.Frees.M(safeint64(ms.Frees)))
 				}
 				if msp.HeapAlloc != nil {
-					Record(ctx, msp.HeapAlloc.M(int64(ms.HeapAlloc)))
+					Record(ctx, msp.HeapAlloc.M(safeint64(ms.HeapAlloc)))
 				}
 				if msp.HeapSys != nil {
-					Record(ctx, msp.HeapSys.M(int64(ms.HeapSys)))
+					Record(ctx, msp.HeapSys.M(safeint64(ms.HeapSys)))
 				}
 				if msp.HeapIdle != nil {
-					Record(ctx, msp.HeapIdle.M(int64(ms.HeapIdle)))
+					Record(ctx, msp.HeapIdle.M(safeint64(ms.HeapIdle)))
 				}
 				if msp.HeapInuse != nil {
-					Record(ctx, msp.HeapInuse.M(int64(ms.HeapInuse)))
+					Record(ctx, msp.HeapInuse.M(safeint64(ms.HeapInuse)))
 				}
 				if msp.HeapReleased != nil {
-					Record(ctx, msp.HeapReleased.M(int64(ms.HeapReleased)))
+					Record(ctx, msp.HeapReleased.M(safeint64(ms.HeapReleased)))
 				}
 				if msp.HeapObjects != nil {
-					Record(ctx, msp.HeapObjects.M(int64(ms.HeapObjects)))
+					Record(ctx, msp.HeapObjects.M(safeint64(ms.HeapObjects)))
 				}
 				if msp.StackInuse != nil {
-					Record(ctx, msp.StackInuse.M(int64(ms.StackInuse)))
+					Record(ctx, msp.StackInuse.M(safeint64(ms.StackInuse)))
 				}
 				if msp.StackSys != nil {
-					Record(ctx, msp.StackSys.M(int64(ms.StackSys)))
+					Record(ctx, msp.StackSys.M(safeint64(ms.StackSys)))
 				}
 				if msp.MSpanInuse != nil {
-					Record(ctx, msp.MSpanInuse.M(int64(ms.MSpanInuse)))
+					Record(ctx, msp.MSpanInuse.M(safeint64(ms.MSpanInuse)))
 				}
 				if msp.MSpanSys != nil {
-					Record(ctx, msp.MSpanSys.M(int64(ms.MSpanSys)))
+					Record(ctx, msp.MSpanSys.M(safeint64(ms.MSpanSys)))
 				}
 				if msp.MCacheInuse != nil {
-					Record(ctx, msp.MCacheInuse.M(int64(ms.MCacheInuse)))
+					Record(ctx, msp.MCacheInuse.M(safeint64(ms.MCacheInuse)))
 				}
 				if msp.MCacheSys != nil {
-					Record(ctx, msp.MCacheSys.M(int64(ms.MCacheSys)))
+					Record(ctx, msp.MCacheSys.M(safeint64(ms.MCacheSys)))
 				}
 				if msp.BuckHashSys != nil {
-					Record(ctx, msp.BuckHashSys.M(int64(ms.BuckHashSys)))
+					Record(ctx, msp.BuckHashSys.M(safeint64(ms.BuckHashSys)))
 				}
 				if msp.GCSys != nil {
-					Record(ctx, msp.GCSys.M(int64(ms.GCSys)))
+					Record(ctx, msp.GCSys.M(safeint64(ms.GCSys)))
 				}
 				if msp.OtherSys != nil {
-					Record(ctx, msp.OtherSys.M(int64(ms.OtherSys)))
+					Record(ctx, msp.OtherSys.M(safeint64(ms.OtherSys)))
 				}
 				if msp.NextGC != nil {
-					Record(ctx, msp.NextGC.M(int64(ms.NextGC)))
+					Record(ctx, msp.NextGC.M(safeint64(ms.NextGC)))
 				}
 				if msp.LastGC != nil {
-					Record(ctx, msp.LastGC.M(int64(ms.LastGC)))
+					Record(ctx, msp.LastGC.M(safeint64(ms.LastGC)))
 				}
 				if msp.PauseTotalNs != nil {
-					Record(ctx, msp.PauseTotalNs.M(int64(ms.PauseTotalNs)))
+					Record(ctx, msp.PauseTotalNs.M(safeint64(ms.PauseTotalNs)))
 				}
 				if msp.NumGC != nil {
 					Record(ctx, msp.NumGC.M(int64(ms.NumGC)))
@@ -548,4 +549,12 @@ func (msp *MemStatsProvider) DefaultViews() (views []*view.View) {
 		views = append(views, measureView(m, view.LastValue()))
 	}
 	return
+}
+
+func safeint64(val uint64) int64 {
+	if val > math.MaxInt64 {
+		return math.MaxInt64
+	}
+
+	return int64(val)
 }

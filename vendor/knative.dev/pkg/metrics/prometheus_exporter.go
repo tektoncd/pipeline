@@ -42,7 +42,6 @@ func (emptyPromExporter) ExportView(viewData *view.Data) {
 	// a signal to enrich the internal Meters with Resource information.
 }
 
-// nolint: unparam // False positive of flagging the second result of this function unused.
 func newPrometheusExporter(config *metricsConfig, logger *zap.SugaredLogger) (view.Exporter, ResourceExporterFactory, error) {
 	e, err := prom.NewExporter(prom.Options{Namespace: config.component})
 	if err != nil {
@@ -86,7 +85,7 @@ func startNewPromSrv(e *prom.Exporter, host string, port int) *http.Server {
 	curPromSrv = &http.Server{
 		Addr:              host + ":" + strconv.Itoa(port),
 		Handler:           sm,
-		ReadHeaderTimeout: time.Minute, //https://medium.com/a-journey-with-go/go-understand-and-mitigate-slowloris-attack-711c1b1403f6
+		ReadHeaderTimeout: time.Minute, // https://medium.com/a-journey-with-go/go-understand-and-mitigate-slowloris-attack-711c1b1403f6
 	}
 	return curPromSrv
 }

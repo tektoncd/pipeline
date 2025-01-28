@@ -20,6 +20,20 @@ import "context"
 
 // ConfigStore is used to attach the frozen configuration to the context.
 type ConfigStore interface {
-	// ConfigStore is used to attach the frozen configuration to the context.
+	// ToContext is used to attach the frozen configuration to the context.
 	ToContext(ctx context.Context) context.Context
+}
+
+// ConfigStores is used to combine multiple ConfigStore and attach multiple frozen configurations
+// to the context.
+type ConfigStores []ConfigStore
+
+// ConfigStores implements ConfigStore interface.
+var _ ConfigStore = ConfigStores{}
+
+func (stores ConfigStores) ToContext(ctx context.Context) context.Context {
+	for _, s := range stores {
+		ctx = s.ToContext(ctx) //nolint:fatcontext
+	}
+	return ctx
 }

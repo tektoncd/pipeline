@@ -89,7 +89,6 @@ func NewConversionController(
 	kinds map[schema.GroupKind]GroupKindConversion,
 	withContext func(context.Context) context.Context,
 ) *controller.Impl {
-
 	opts := []OptionFunc{
 		WithPath(path),
 		WithWrapContext(withContext),

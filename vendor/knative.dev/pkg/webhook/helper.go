@@ -29,8 +29,8 @@ import (
 // adds all knative-keys not yet there.
 func EnsureLabelSelectorExpressions(
 	current *metav1.LabelSelector,
-	want *metav1.LabelSelector) *metav1.LabelSelector {
-
+	want *metav1.LabelSelector,
+) *metav1.LabelSelector {
 	if current == nil {
 		return want
 	}
@@ -56,8 +56,8 @@ func EnsureLabelSelectorExpressions(
 
 func ensureLabelSelectorRequirements(
 	current []metav1.LabelSelectorRequirement,
-	want []metav1.LabelSelectorRequirement) []metav1.LabelSelectorRequirement {
-
+	want []metav1.LabelSelectorRequirement,
+) []metav1.LabelSelectorRequirement {
 	nonKnative := make([]metav1.LabelSelectorRequirement, 0, len(current))
 	for _, r := range current {
 		if !strings.Contains(r.Key, "knative.dev") {

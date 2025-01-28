@@ -32,6 +32,8 @@ const (
 	secretNameEnvKey = "WEBHOOK_SECRET_NAME" //nolint:gosec // This is not a hardcoded credential
 
 	tlsMinVersionEnvKey = "WEBHOOK_TLS_MIN_VERSION"
+
+	disableNamespaceOwnershipEnvKey = "WEBHOOK_DISABLE_NAMESPACE_OWNERSHIP"
 )
 
 // PortFromEnv returns the webhook port set by portEnvKey, or default port if env var is not set.
@@ -81,4 +83,16 @@ func TLSMinVersionFromEnv(defaultTLSMinVersion uint16) uint16 {
 	default:
 		panic(fmt.Sprintf("the environment variable %q has to be either '1.2' or '1.3'", tlsMinVersionEnvKey))
 	}
+}
+
+func DisableNamespaceOwnershipFromEnv() *bool {
+	disableNamespaceOwnership := os.Getenv(disableNamespaceOwnershipEnvKey)
+	if disableNamespaceOwnership == "" {
+		return nil
+	}
+	disableNamespaceOwnershipBool, err := strconv.ParseBool(disableNamespaceOwnership)
+	if err != nil {
+		panic(fmt.Sprintf("failed to convert the environment variable %q : %v", disableNamespaceOwnershipEnvKey, err))
+	}
+	return &disableNamespaceOwnershipBool
 }

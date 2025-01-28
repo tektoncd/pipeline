@@ -29,12 +29,10 @@ import (
 	"knative.dev/pkg/test/logging"
 )
 
-var (
-	// Flags holds the command line flags or defaults for settings in the user's environment.
-	// See EnvironmentFlags for a list of supported fields.
-	// Deprecated: use test/flags.Flags()
-	Flags = initializeFlags()
-)
+// Flags holds the command line flags or defaults for settings in the user's environment.
+// See EnvironmentFlags for a list of supported fields.
+// Deprecated: use test/flags.Flags()
+var Flags = initializeFlags()
 
 // EnvironmentFlags define the flags that are needed to run the e2e tests.
 // Deprecated: use test/flags.Flags() or injection.Flags()

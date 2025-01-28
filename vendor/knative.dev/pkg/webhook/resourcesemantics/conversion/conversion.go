@@ -39,7 +39,6 @@ func (r *reconciler) Convert(
 	ctx context.Context,
 	req *apixv1.ConversionRequest,
 ) *apixv1.ConversionResponse {
-
 	if r.withContext != nil {
 		ctx = r.withContext(ctx)
 	}

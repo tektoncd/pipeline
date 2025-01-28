@@ -33,7 +33,7 @@ const (
 	// NOTE: If you are changing this line, please also update the minimum kubernetes
 	// version listed here:
 	// https://github.com/knative/docs/blob/main/docs/snippets/prerequisites.md
-	defaultMinimumVersion = "v1.28.0"
+	defaultMinimumVersion = "v1.30.0"
 )
 
 func getMinimumVersion() string {

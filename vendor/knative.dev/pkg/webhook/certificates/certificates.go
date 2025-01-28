@@ -48,8 +48,10 @@ type reconciler struct {
 	serviceName  string
 }
 
-var _ controller.Reconciler = (*reconciler)(nil)
-var _ pkgreconciler.LeaderAware = (*reconciler)(nil)
+var (
+	_ controller.Reconciler     = (*reconciler)(nil)
+	_ pkgreconciler.LeaderAware = (*reconciler)(nil)
+)
 
 // Reconcile implements controller.Reconciler
 func (r *reconciler) Reconcile(ctx context.Context, key string) error {

@@ -194,7 +194,6 @@ func (r *reporter) ReportReconcile(duration time.Duration, success string, key t
 		tag.Insert(successTagKey, success),
 		tag.Insert(NamespaceTagKey, key.Namespace),
 	)
-
 	if err != nil {
 		return err
 	}

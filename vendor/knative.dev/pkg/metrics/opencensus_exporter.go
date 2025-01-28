@@ -64,7 +64,9 @@ func getFactory(defaultExporter view.Exporter, stored []ocagent.ExporterOption) 
 			// Don't create duplicate exporters for the default exporter.
 			return defaultExporter, nil
 		}
-		opts := append(stored, ocagent.WithResourceDetector(
+		opts := make([]ocagent.ExporterOption, 0, len(stored)+1)
+		opts = append(opts, stored...)
+		opts = append(opts, ocagent.WithResourceDetector(
 			func(context.Context) (*resource.Resource, error) {
 				return r, nil
 			}))
