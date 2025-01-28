@@ -20,8 +20,8 @@ package v1
 
 import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/listers"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -38,25 +38,17 @@ type TaskLister interface {
 
 // taskLister implements the TaskLister interface.
 type taskLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*v1.Task]
 }
 
 // NewTaskLister returns a new TaskLister.
 func NewTaskLister(indexer cache.Indexer) TaskLister {
-	return &taskLister{indexer: indexer}
-}
-
-// List lists all Tasks in the indexer.
-func (s *taskLister) List(selector labels.Selector) (ret []*v1.Task, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.Task))
-	})
-	return ret, err
+	return &taskLister{listers.New[*v1.Task](indexer, v1.Resource("task"))}
 }
 
 // Tasks returns an object that can list and get Tasks.
 func (s *taskLister) Tasks(namespace string) TaskNamespaceLister {
-	return taskNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return taskNamespaceLister{listers.NewNamespaced[*v1.Task](s.ResourceIndexer, namespace)}
 }
 
 // TaskNamespaceLister helps list and get Tasks.
@@ -74,26 +66,5 @@ type TaskNamespaceLister interface {
 // taskNamespaceLister implements the TaskNamespaceLister
 // interface.
 type taskNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all Tasks in the indexer for a given namespace.
-func (s taskNamespaceLister) List(selector labels.Selector) (ret []*v1.Task, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.Task))
-	})
-	return ret, err
-}
-
-// Get retrieves the Task from the indexer for a given namespace and name.
-func (s taskNamespaceLister) Get(name string) (*v1.Task, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1.Resource("task"), name)
-	}
-	return obj.(*v1.Task), nil
+	listers.ResourceIndexer[*v1.Task]
 }

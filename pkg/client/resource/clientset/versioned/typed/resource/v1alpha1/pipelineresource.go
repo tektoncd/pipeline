@@ -20,14 +20,13 @@ package v1alpha1
 
 import (
 	"context"
-	"time"
 
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	scheme "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
-	rest "k8s.io/client-go/rest"
+	gentype "k8s.io/client-go/gentype"
 )
 
 // PipelineResourcesGetter has a method to return a PipelineResourceInterface.
@@ -51,128 +50,18 @@ type PipelineResourceInterface interface {
 
 // pipelineResources implements PipelineResourceInterface
 type pipelineResources struct {
-	client rest.Interface
-	ns     string
+	*gentype.ClientWithList[*v1alpha1.PipelineResource, *v1alpha1.PipelineResourceList]
 }
 
 // newPipelineResources returns a PipelineResources
 func newPipelineResources(c *TektonV1alpha1Client, namespace string) *pipelineResources {
 	return &pipelineResources{
-		client: c.RESTClient(),
-		ns:     namespace,
+		gentype.NewClientWithList[*v1alpha1.PipelineResource, *v1alpha1.PipelineResourceList](
+			"pipelineresources",
+			c.RESTClient(),
+			scheme.ParameterCodec,
+			namespace,
+			func() *v1alpha1.PipelineResource { return &v1alpha1.PipelineResource{} },
+			func() *v1alpha1.PipelineResourceList { return &v1alpha1.PipelineResourceList{} }),
 	}
-}
-
-// Get takes name of the pipelineResource, and returns the corresponding pipelineResource object, and an error if there is any.
-func (c *pipelineResources) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.PipelineResource, err error) {
-	result = &v1alpha1.PipelineResource{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("pipelineresources").
-		Name(name).
-		VersionedParams(&options, scheme.ParameterCodec).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// List takes label and field selectors, and returns the list of PipelineResources that match those selectors.
-func (c *pipelineResources) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.PipelineResourceList, err error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	result = &v1alpha1.PipelineResourceList{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("pipelineresources").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Watch returns a watch.Interface that watches the requested pipelineResources.
-func (c *pipelineResources) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	opts.Watch = true
-	return c.client.Get().
-		Namespace(c.ns).
-		Resource("pipelineresources").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch(ctx)
-}
-
-// Create takes the representation of a pipelineResource and creates it.  Returns the server's representation of the pipelineResource, and an error, if there is any.
-func (c *pipelineResources) Create(ctx context.Context, pipelineResource *v1alpha1.PipelineResource, opts v1.CreateOptions) (result *v1alpha1.PipelineResource, err error) {
-	result = &v1alpha1.PipelineResource{}
-	err = c.client.Post().
-		Namespace(c.ns).
-		Resource("pipelineresources").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(pipelineResource).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Update takes the representation of a pipelineResource and updates it. Returns the server's representation of the pipelineResource, and an error, if there is any.
-func (c *pipelineResources) Update(ctx context.Context, pipelineResource *v1alpha1.PipelineResource, opts v1.UpdateOptions) (result *v1alpha1.PipelineResource, err error) {
-	result = &v1alpha1.PipelineResource{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("pipelineresources").
-		Name(pipelineResource.Name).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(pipelineResource).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Delete takes name of the pipelineResource and deletes it. Returns an error if one occurs.
-func (c *pipelineResources) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("pipelineresources").
-		Name(name).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *pipelineResources) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
-	}
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("pipelineresources").
-		VersionedParams(&listOpts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// Patch applies the patch and returns the patched pipelineResource.
-func (c *pipelineResources) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.PipelineResource, err error) {
-	result = &v1alpha1.PipelineResource{}
-	err = c.client.Patch(pt).
-		Namespace(c.ns).
-		Resource("pipelineresources").
-		Name(name).
-		SubResource(subresources...).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(data).
-		Do(ctx).
-		Into(result)
-	return
 }
