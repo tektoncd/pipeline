@@ -45,7 +45,6 @@ func NewAdmissionControllerWithConfig(
 	disallowUnknownFields bool,
 	callbacks map[schema.GroupVersionKind]Callback,
 ) *controller.Impl {
-
 	opts := []OptionFunc{
 		WithPath(path),
 		WithTypes(handlers),
@@ -71,6 +70,12 @@ func newController(ctx context.Context, name string, optsFunc ...OptionFunc) *co
 		f(opts)
 	}
 
+	// if this environment variable is set, it overrides the value in the Options
+	disableNamespaceOwnership := webhook.DisableNamespaceOwnershipFromEnv()
+	if disableNamespaceOwnership != nil {
+		woptions.DisableNamespaceOwnership = *disableNamespaceOwnership
+	}
+
 	wh := &reconciler{
 		LeaderAwareFuncs: pkgreconciler.LeaderAwareFuncs{
 			// Have this reconciler enqueue our singleton whenever it becomes leader.
@@ -87,9 +92,10 @@ func newController(ctx context.Context, name string, optsFunc ...OptionFunc) *co
 		handlers:  opts.types,
 		callbacks: opts.callbacks,
 
-		withContext:           opts.wc,
-		disallowUnknownFields: opts.DisallowUnknownFields(),
-		secretName:            woptions.SecretName,
+		withContext:               opts.wc,
+		disallowUnknownFields:     opts.DisallowUnknownFields(),
+		secretName:                woptions.SecretName,
+		disableNamespaceOwnership: woptions.DisableNamespaceOwnership,
 
 		client:       client,
 		vwhlister:    vwhInformer.Lister(),
@@ -122,7 +128,6 @@ func newController(ctx context.Context, name string, optsFunc ...OptionFunc) *co
 	})
 
 	return c
-
 }
 
 // NewAdmissionController constructs a reconciler

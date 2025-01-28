@@ -35,7 +35,7 @@ const (
 
 	// universe represents the possible range of angles [0, universe).
 	// We want to have universe divide total range evenly to reduce bias.
-	universe = (1 << 11)
+	universe uint64 = (1 << 11)
 )
 
 // computeAngle returns a uint64 number which represents
@@ -51,13 +51,13 @@ func computeHash(n []byte, h hash.Hash64) uint64 {
 
 type hashData struct {
 	// The set of all hashes for fast lookup and to name mapping
-	nameLookup map[int]string
+	nameLookup map[uint64]string
 	// Sorted set of hashes for selection algorithm.
-	hashPool []int
+	hashPool []uint64
 	// start angle
-	start int
+	start uint64
 	// step angle
-	step int
+	step uint64
 }
 
 func (hd *hashData) fromIndexSet(s sets.Set[int]) sets.Set[string] {
@@ -85,13 +85,13 @@ func buildHashes(in sets.Set[string], target string) *hashData {
 	buf.WriteString(startSalt)
 	hasher := fnv.New64a()
 	hd := &hashData{
-		nameLookup: make(map[int]string, len(from)),
-		hashPool:   make([]int, len(from)),
-		start:      int(computeHash(buf.Bytes(), hasher) % universe),
+		nameLookup: make(map[uint64]string, len(from)),
+		hashPool:   make([]uint64, len(from)),
+		start:      computeHash(buf.Bytes(), hasher) % universe,
 	}
 	buf.Truncate(len(target)) // Discard the angle salt.
 	buf.WriteString(stepSalt)
-	hd.step = int(computeHash(buf.Bytes(), hasher) % universe)
+	hd.step = computeHash(buf.Bytes(), hasher) % universe
 
 	for i, f := range from {
 		buf.Reset() // This retains the storage.
@@ -99,7 +99,7 @@ func buildHashes(in sets.Set[string], target string) *hashData {
 		buf.WriteString(f)
 		buf.WriteString(target)
 		h := computeHash(buf.Bytes(), hasher)
-		hs := int(h % universe)
+		hs := h % universe
 		// Two values slotted to the same bucket.
 		// On average should happen with 1/universe probability.
 		_, ok := hd.nameLookup[hs]
@@ -107,7 +107,7 @@ func buildHashes(in sets.Set[string], target string) *hashData {
 			// Feed the hash as salt.
 			buf.WriteString(strconv.FormatUint(h, 16 /*append hex strings for shortness*/))
 			h = computeHash(buf.Bytes(), hasher)
-			hs = int(h % universe)
+			hs = h % universe
 			_, ok = hd.nameLookup[hs]
 		}
 

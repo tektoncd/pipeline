@@ -23,7 +23,7 @@ import (
 	"strings"
 )
 
-const allUsersFullPermission = 0777
+const allUsersFullPermission = 0o777
 
 // CreateDir creates dir if does not exist.
 // The created dir will have the permission bits as 0777, which means everyone can read/write/execute it.

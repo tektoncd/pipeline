@@ -151,7 +151,6 @@ var (
 // In addition to the MainWithConfig flow, it defines a `disabled-controllers` flag that allows disabling controllers
 // by name.
 func MainNamed(ctx context.Context, component string, ctors ...injection.NamedControllerConstructor) {
-
 	disabledControllers := flag.String("disable-controllers", "", "Comma-separated list of disabled controllers.")
 
 	// HACK: This parses flags, so the above should be set once this runs.
@@ -456,8 +455,8 @@ func SecretFetcher(ctx context.Context) metrics.SecretFetcher {
 // of the webhooks created from the given constructors.
 func ControllersAndWebhooksFromCtors(ctx context.Context,
 	cmw *cminformer.InformedWatcher,
-	ctors ...injection.ControllerConstructor) ([]*controller.Impl, []interface{}) {
-
+	ctors ...injection.ControllerConstructor,
+) ([]*controller.Impl, []interface{}) {
 	// Check whether the context has been infused with a leader elector builder.
 	// If it has, then every reconciler we plan to start MUST implement LeaderAware.
 	leEnabled := leaderelection.HasLeaderElection(ctx)

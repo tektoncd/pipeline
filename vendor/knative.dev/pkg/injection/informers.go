@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+//nolint:fatcontext
 package injection
 
 import (
@@ -93,7 +94,6 @@ func (i *impl) SetupInformers(ctx context.Context, cfg *rest.Config) (context.Co
 	for _, fii := range i.GetFilteredInformers() {
 		ctx, filteredinfs = fii(ctx)
 		informers = append(informers, filteredinfs...)
-
 	}
 	return ctx, informers
 }

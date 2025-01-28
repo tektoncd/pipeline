@@ -74,9 +74,9 @@ func CoreV1ObjectReference(kind, apiversion, name string) *corev1.ObjectReferenc
 func NginxPod(namespace string) *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        nginxName,
-			Namespace:   namespace,
-			Annotations: map[string]string{"sidecar.istio.io/inject": "true"},
+			Name:      nginxName,
+			Namespace: namespace,
+			Labels:    map[string]string{"sidecar.istio.io/inject": "true"},
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{

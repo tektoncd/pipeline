@@ -156,7 +156,6 @@ func (s *logSource) watchPods() error {
 							s.startForPod(p)
 						}
 					}
-
 				}
 			}
 		}()

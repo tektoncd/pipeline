@@ -66,8 +66,10 @@ var (
 	resultCodeKey        = tag.MustNewKey("result_code")
 )
 
-type admissionToValue func(*admissionv1.AdmissionRequest, *admissionv1.AdmissionResponse) string
-type conversionToValue func(*apixv1.ConversionRequest, *apixv1.ConversionResponse) string
+type (
+	admissionToValue  func(*admissionv1.AdmissionRequest, *admissionv1.AdmissionResponse) string
+	conversionToValue func(*apixv1.ConversionRequest, *apixv1.ConversionResponse) string
+)
 
 var (
 	allAdmissionTags = map[tag.Key]admissionToValue{

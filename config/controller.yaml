@@ -89,6 +89,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: KUBERNETES_MIN_VERSION
+          value: "v1.28.0"
         # If you are changing these names, you will also need to update
         # the controller's Role in 200-role.yaml to include the new
         # values in the "configmaps" "get" rule.

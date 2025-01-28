@@ -125,9 +125,7 @@ type resultMetric struct {
 	measure *stats.Int64Measure
 }
 
-var (
-	_ metrics.ResultMetric = (*resultMetric)(nil)
-)
+var _ metrics.ResultMetric = (*resultMetric)(nil)
 
 // Increment implements ResultMetric
 func (m resultMetric) Increment(ctx context.Context, code, method, host string) {

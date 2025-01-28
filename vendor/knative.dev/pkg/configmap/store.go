@@ -81,8 +81,8 @@ func NewUntypedStore(
 	name string,
 	logger Logger,
 	constructors Constructors,
-	onAfterStore ...func(name string, value interface{})) *UntypedStore {
-
+	onAfterStore ...func(name string, value interface{}),
+) *UntypedStore {
 	store := &UntypedStore{
 		name:         name,
 		logger:       logger,

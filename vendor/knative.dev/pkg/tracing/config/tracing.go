@@ -135,12 +135,12 @@ func JSONToTracingConfig(jsonCfg string) (*Config, error) {
 
 	cfg, err := NewTracingConfigFromMap(configMap)
 	if err != nil {
-		return NoopConfig(), nil
+		return NoopConfig(), nil //nolint:nilerr
 	}
 	return cfg, nil
 }
 
-func TracingConfigToJSON(cfg *Config) (string, error) { //nolint // for backcompat.
+func TracingConfigToJSON(cfg *Config) (string, error) {
 	if cfg == nil {
 		return "", nil
 	}
@@ -150,7 +150,7 @@ func TracingConfigToJSON(cfg *Config) (string, error) { //nolint // for backcomp
 	if cfg.ZipkinEndpoint != "" {
 		out[zipkinEndpointKey] = cfg.ZipkinEndpoint
 	}
-	out[debugKey] = fmt.Sprint(cfg.Debug)
+	out[debugKey] = strconv.FormatBool(cfg.Debug)
 	out[sampleRateKey] = fmt.Sprint(cfg.SampleRate)
 
 	jsonCfg, err := json.Marshal(out)

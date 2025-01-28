@@ -88,7 +88,7 @@ func admissionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c Admi
 			<-synced
 		}
 
-		var ttStart = time.Now()
+		ttStart := time.Now()
 		logger := rootLogger
 		logger.Infof("Webhook ServeHTTP request=%#v", r)
 

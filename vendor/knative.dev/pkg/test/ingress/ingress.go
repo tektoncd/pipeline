@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -59,8 +60,8 @@ func GetIngressEndpoint(ctx context.Context, kubeClientset kubernetes.Interface,
 	if endpointOverride != "" {
 		return endpointOverride, func(port string) string {
 			for _, sp := range ingress.Spec.Ports {
-				if fmt.Sprint(sp.Port) == port {
-					return fmt.Sprint(sp.NodePort)
+				if strconv.Itoa(int(sp.Port)) == port {
+					return strconv.Itoa(int(sp.NodePort))
 				}
 			}
 			return port
