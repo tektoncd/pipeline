@@ -1349,6 +1349,127 @@ func TestGetStepActionsData(t *testing.T) {
 			Args:   []string{"Hello, I am of type list"},
 			Script: "echo $@",
 		}},
+	}, {
+		name: "step result reference in parameter",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							Name: "stepAction",
+						},
+						Params: v1.Params{{
+							Name:  "message",
+							Value: *v1.NewStructuredValues("$(steps.step1.results.output)"),
+						}},
+					}},
+				},
+			},
+		},
+		stepAction: &v1beta1.StepAction{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "stepAction",
+				Namespace: "default",
+			},
+			Spec: v1beta1.StepActionSpec{
+				Image: "myimage",
+				Args:  []string{"$(params.message)"},
+				Params: v1.ParamSpecs{{
+					Name: "message",
+					Type: v1.ParamTypeString,
+				}},
+			},
+		},
+		want: []v1.Step{{
+			Image: "myimage",
+			Args:  []string{"$(steps.step1.results.output)"},
+		}},
+	}, {
+		name: "step result reference with array type",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							Name: "stepAction",
+						},
+						Params: v1.Params{{
+							Name:  "items",
+							Value: *v1.NewStructuredValues("$(steps.step1.results.items)"),
+						}},
+					}},
+				},
+			},
+		},
+		stepAction: &v1beta1.StepAction{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "stepAction",
+				Namespace: "default",
+			},
+			Spec: v1beta1.StepActionSpec{
+				Image: "myimage",
+				Args:  []string{"$(params.items[*])", "$(params.items[0])"},
+				Params: v1.ParamSpecs{{
+					Name: "items",
+					Type: v1.ParamTypeArray,
+				}},
+			},
+		},
+		want: []v1.Step{{
+			Image: "myimage",
+			Args:  []string{"$(steps.step1.results.items[*])", "$(steps.step1.results.items[0])"},
+		}},
+	}, {
+		name: "step result reference with object type",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							Name: "stepAction",
+						},
+						Params: v1.Params{{
+							Name:  "config",
+							Value: *v1.NewStructuredValues("$(steps.step1.results.config)"),
+						}},
+					}},
+				},
+			},
+		},
+		stepAction: &v1beta1.StepAction{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "stepAction",
+				Namespace: "default",
+			},
+			Spec: v1beta1.StepActionSpec{
+				Image: "myimage",
+				Args:  []string{"$(params.config.key1)", "$(params.config.key2)"},
+				Params: v1.ParamSpecs{{
+					Name: "config",
+					Type: v1.ParamTypeObject,
+					Properties: map[string]v1.PropertySpec{
+						"key1": {Type: v1.ParamTypeString},
+						"key2": {Type: v1.ParamTypeString},
+					},
+				}},
+			},
+		},
+		want: []v1.Step{{
+			Image: "myimage",
+			Args:  []string{"$(steps.step1.results.config.key1)", "$(steps.step1.results.config.key2)"},
+		}},
 	}}
 	for _, tt := range tests {
 		ctx := context.Background()
@@ -1502,5 +1623,52 @@ func TestGetStepActionsData_Error(t *testing.T) {
 		if d := cmp.Diff(tt.expectedError.Error(), err.Error()); d != "" {
 			t.Errorf("the expected error did not match what was received: %s", diff.PrintWantGot(d))
 		}
+	}
+}
+
+func TestGetStepActionsData_InvalidStepResultReference(t *testing.T) {
+	tr := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mytaskrun",
+			Namespace: "default",
+		},
+		Spec: v1.TaskRunSpec{
+			TaskSpec: &v1.TaskSpec{
+				Steps: []v1.Step{{
+					Name: "step1",
+					Ref: &v1.Ref{
+						Name: "stepAction",
+					},
+					Params: v1.Params{{
+						Name: "param1",
+						Value: v1.ParamValue{
+							Type:      v1.ParamTypeString,
+							StringVal: "$(steps.invalid.step)",
+						},
+					}},
+				}},
+			},
+		},
+	}
+
+	stepAction := &v1beta1.StepAction{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "stepAction",
+			Namespace: "default",
+		},
+		Spec: v1beta1.StepActionSpec{
+			Image: "myimage",
+			Params: v1.ParamSpecs{{
+				Name: "param1",
+				Type: v1.ParamTypeString,
+			}},
+		},
+	}
+
+	expectedError := `must be one of the form 1). "steps.<stepName>.results.<resultName>"; 2). "steps.<stepName>.results.<objectResultName>.<individualAttribute>"`
+	ctx := context.Background()
+	tektonclient := fake.NewSimpleClientset(stepAction)
+	if _, err := resources.GetStepActionsData(ctx, *tr.Spec.TaskSpec, tr, tektonclient, nil, nil); err.Error() != expectedError {
+		t.Errorf("Expected error message %s but got %s", expectedError, err.Error())
 	}
 }
