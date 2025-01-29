@@ -43,7 +43,7 @@ require (
 	code.gitea.io/sdk/gitea v0.20.0
 	github.com/go-jose/go-jose/v3 v3.0.3
 	github.com/goccy/kpoward v0.1.0
-	github.com/google/cel-go v0.22.1
+	github.com/google/cel-go v0.23.1
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20240108195214-a0658aa1d0cc
 	github.com/sigstore/sigstore/pkg/signature/kms/aws v1.8.12
 	github.com/sigstore/sigstore/pkg/signature/kms/azure v1.8.12
@@ -69,7 +69,7 @@ require (
 )
 
 require (
-	cel.dev/expr v0.19.0 // indirect
+	cel.dev/expr v0.19.1 // indirect
 	cloud.google.com/go v0.116.0 // indirect
 	cloud.google.com/go/auth v0.13.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.6 // indirect
