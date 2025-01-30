@@ -23,8 +23,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tektoncd/pipeline/pkg/credentials"
-	corev1 "k8s.io/api/core/v1"
+	"github.com/tektoncd/pipeline/pkg/credentials/common"
+	credmatcher "github.com/tektoncd/pipeline/pkg/credentials/matcher"
 )
 
 // As the flag is read, this status is populated.
@@ -121,15 +121,15 @@ func (be *basicEntry) escapedUsername() string {
 }
 
 func newBasicEntry(u, secret string) (*basicEntry, error) {
-	secretPath := credentials.VolumeName(secret)
+	secretPath := credmatcher.VolumeName(secret)
 
-	ub, err := os.ReadFile(filepath.Join(secretPath, corev1.BasicAuthUsernameKey))
+	ub, err := os.ReadFile(filepath.Join(secretPath, common.BasicAuthUsernameKey))
 	if err != nil {
 		return nil, err
 	}
 	username := string(ub)
 
-	pb, err := os.ReadFile(filepath.Join(secretPath, corev1.BasicAuthPasswordKey))
+	pb, err := os.ReadFile(filepath.Join(secretPath, common.BasicAuthPasswordKey))
 	if err != nil {
 		return nil, err
 	}

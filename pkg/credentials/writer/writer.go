@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2024 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package credentials
+package writer
 
 import (
 	"fmt"
@@ -27,7 +27,6 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -44,24 +43,10 @@ const (
 // helper (aka "creds-init") can write to /tekton/creds.
 var CredsInitCredentials = []string{".docker", ".gitconfig", ".git-credentials", ".ssh"}
 
-// VolumePath is the path where build secrets are written.
-// It is mutable and exported for testing.
-var VolumePath = "/tekton/creds-secrets"
-
-// Builder is the interface for a credential initializer of any type.
-type Builder interface {
-	// MatchingAnnotations extracts flags for the credential
-	// helper from the supplied secret and returns a slice (of
-	// length 0 or greater) of applicable domains.
-	MatchingAnnotations(secret *corev1.Secret) []string
-
+// Writer is the interface for a credential initializer of any type.
+type Writer interface {
 	// Write writes the credentials to the provided directory.
 	Write(folder string) error
-}
-
-// VolumeName returns the full path to the secret, inside the VolumePath.
-func VolumeName(secretName string) string {
-	return fmt.Sprintf("%s/%s", VolumePath, secretName)
 }
 
 // SortAnnotations return sorted array of strings which has annotationPrefix
