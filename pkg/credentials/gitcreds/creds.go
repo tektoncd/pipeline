@@ -53,8 +53,8 @@ type gitBuilder struct{}
 
 // NewBuilder returns a new builder for Git credentials.
 func NewBuilder() interface {
-	credmatcher.Builder
-	credwriter.Builder
+	credmatcher.Matcher
+	credwriter.Writer
 } {
 	return &gitBuilder{}
 }

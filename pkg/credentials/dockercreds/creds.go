@@ -145,8 +145,8 @@ type basicDockerBuilder struct{}
 
 // NewBuilder returns a new builder for Docker credentials.
 func NewBuilder() interface {
-	credmatcher.Builder
-	credwriter.Builder
+	credmatcher.Matcher
+	credwriter.Writer
 } {
 	return &basicDockerBuilder{}
 }

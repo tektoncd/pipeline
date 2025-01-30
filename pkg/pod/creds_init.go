@@ -76,8 +76,8 @@ func credsInit(ctx context.Context, obj runtime.Object, serviceAccountName, name
 	}
 
 	builders := []interface {
-		credmatcher.Builder
-		credwriter.Builder
+		credmatcher.Matcher
+		credwriter.Writer
 	}{dockercreds.NewBuilder(), gitcreds.NewBuilder()}
 
 	var volumeMounts []corev1.VolumeMount

@@ -43,8 +43,8 @@ const (
 // helper (aka "creds-init") can write to /tekton/creds.
 var CredsInitCredentials = []string{".docker", ".gitconfig", ".git-credentials", ".ssh"}
 
-// Builder is the interface for a credential initializer of any type.
-type Builder interface {
+// Writer is the interface for a credential initializer of any type.
+type Writer interface {
 	// Write writes the credentials to the provided directory.
 	Write(folder string) error
 }

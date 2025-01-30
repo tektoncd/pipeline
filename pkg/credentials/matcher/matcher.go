@@ -26,8 +26,8 @@ import (
 // It is mutable and exported for testing.
 var VolumePath = "/tekton/creds-secrets"
 
-// Builder is the interface for a credential initializer of any type.
-type Builder interface {
+// Matcher is the interface for a credential initializer of any type.
+type Matcher interface {
 	// MatchingAnnotations extracts flags for the credential
 	// helper from the supplied secret and returns a slice (of
 	// length 0 or greater) of applicable domains.

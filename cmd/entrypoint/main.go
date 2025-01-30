@@ -96,7 +96,7 @@ func main() {
 	// from secret volume mounts to /tekton/creds. This is done to support the expansion
 	// of a variable, $(credentials.path), that resolves to a single place with all the
 	// stored credentials.
-	builders := []credwriter.Builder{dockercreds.NewBuilder(), gitcreds.NewBuilder()}
+	builders := []credwriter.Writer{dockercreds.NewBuilder(), gitcreds.NewBuilder()}
 	for _, c := range builders {
 		if err := c.Write(pipeline.CredsDir); err != nil {
 			log.Printf("Error initializing credentials: %s", err)
