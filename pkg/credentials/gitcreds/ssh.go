@@ -23,8 +23,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tektoncd/pipeline/pkg/credentials"
-	corev1 "k8s.io/api/core/v1"
+	"github.com/tektoncd/pipeline/pkg/credentials/common"
+	credmatcher "github.com/tektoncd/pipeline/pkg/credentials/matcher"
 )
 
 const sshKnownHosts = "known_hosts"
@@ -140,9 +140,9 @@ func (be *sshEntry) Write(sshDir string) error {
 }
 
 func newSSHEntry(url, secretName string) (*sshEntry, error) {
-	secretPath := credentials.VolumeName(secretName)
+	secretPath := credmatcher.VolumeName(secretName)
 
-	pk, err := os.ReadFile(filepath.Join(secretPath, corev1.SSHAuthPrivateKey))
+	pk, err := os.ReadFile(filepath.Join(secretPath, common.SSHAuthPrivateKey))
 	if err != nil {
 		return nil, err
 	}
