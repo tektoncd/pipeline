@@ -25,7 +25,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tektoncd/pipeline/pkg/credentials"
+	credmatcher "github.com/tektoncd/pipeline/pkg/credentials/matcher"
+	credwriter "github.com/tektoncd/pipeline/pkg/credentials/writer"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -117,7 +118,7 @@ type entry struct {
 }
 
 func newEntry(secret string) (*entry, error) {
-	secretPath := credentials.VolumeName(secret)
+	secretPath := credmatcher.VolumeName(secret)
 
 	ub, err := os.ReadFile(filepath.Join(secretPath, corev1.BasicAuthUsernameKey))
 	if err != nil {
@@ -143,7 +144,12 @@ func newEntry(secret string) (*entry, error) {
 type basicDockerBuilder struct{}
 
 // NewBuilder returns a new builder for Docker credentials.
-func NewBuilder() credentials.Builder { return &basicDockerBuilder{} }
+func NewBuilder() interface {
+	credmatcher.Builder
+	credwriter.Builder
+} {
+	return &basicDockerBuilder{}
+}
 
 // MatchingAnnotations extracts flags for the credential helper
 // from the supplied secret and returns a slice (of length 0 or
@@ -152,7 +158,7 @@ func (*basicDockerBuilder) MatchingAnnotations(secret *corev1.Secret) []string {
 	var flags []string
 	switch secret.Type {
 	case corev1.SecretTypeBasicAuth:
-		for _, v := range credentials.SortAnnotations(secret.Annotations, annotationPrefix) {
+		for _, v := range credwriter.SortAnnotations(secret.Annotations, annotationPrefix) {
 			flags = append(flags, fmt.Sprintf("-basic-docker=%s=%s", secret.Name, v))
 		}
 	case corev1.SecretTypeDockerConfigJson:
@@ -218,7 +224,7 @@ func (*basicDockerBuilder) Write(directory string) error {
 }
 
 func authsFromDockerCfg(secret string) (map[string]entry, error) {
-	secretPath := credentials.VolumeName(secret)
+	secretPath := credmatcher.VolumeName(secret)
 	m := make(map[string]entry)
 	data, err := os.ReadFile(filepath.Join(secretPath, corev1.DockerConfigKey))
 	if err != nil {
@@ -229,7 +235,7 @@ func authsFromDockerCfg(secret string) (map[string]entry, error) {
 }
 
 func authsFromDockerConfig(secret string) (map[string]entry, error) {
-	secretPath := credentials.VolumeName(secret)
+	secretPath := credmatcher.VolumeName(secret)
 	m := make(map[string]entry)
 	c := configFile{}
 	data, err := os.ReadFile(filepath.Join(secretPath, corev1.DockerConfigJsonKey))

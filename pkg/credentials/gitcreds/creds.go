@@ -20,7 +20,8 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/credentials"
+	credmatcher "github.com/tektoncd/pipeline/pkg/credentials/matcher"
+	credwriter "github.com/tektoncd/pipeline/pkg/credentials/writer"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -48,23 +49,31 @@ func flags(fs *flag.FlagSet) {
 	fs.Var(&sshConfig, sshFlag, "List of secret=url pairs.")
 }
 
-type gitConfigBuilder struct{}
+type gitBuilder struct{}
 
 // NewBuilder returns a new builder for Git credentials.
-func NewBuilder() credentials.Builder { return &gitConfigBuilder{} }
+func NewBuilder() interface {
+	credmatcher.Builder
+	credwriter.Builder
+} {
+	return &gitBuilder{}
+}
 
 // MatchingAnnotations extracts flags for the credential helper
 // from the supplied secret and returns a slice (of length 0 or
 // greater) of applicable domains.
-func (*gitConfigBuilder) MatchingAnnotations(secret *corev1.Secret) []string {
-	var flagName string
+func (*gitBuilder) MatchingAnnotations(secret *corev1.Secret) []string {
 	var flags []string
 	switch secret.Type {
 	case corev1.SecretTypeBasicAuth:
-		flagName = basicAuthFlag
+		for _, v := range credwriter.SortAnnotations(secret.Annotations, annotationPrefix) {
+			flags = append(flags, fmt.Sprintf("-%s=%s=%s", basicAuthFlag, secret.Name, v))
+		}
 
 	case corev1.SecretTypeSSHAuth:
-		flagName = sshFlag
+		for _, v := range credwriter.SortAnnotations(secret.Annotations, annotationPrefix) {
+			flags = append(flags, fmt.Sprintf("-%s=%s=%s", sshFlag, secret.Name, v))
+		}
 
 	case corev1.SecretTypeOpaque, corev1.SecretTypeServiceAccountToken, corev1.SecretTypeDockercfg, corev1.SecretTypeDockerConfigJson, corev1.SecretTypeTLS, corev1.SecretTypeBootstrapToken:
 		return flags
@@ -72,14 +81,10 @@ func (*gitConfigBuilder) MatchingAnnotations(secret *corev1.Secret) []string {
 	default:
 		return flags
 	}
-
-	for _, v := range credentials.SortAnnotations(secret.Annotations, annotationPrefix) {
-		flags = append(flags, fmt.Sprintf("-%s=%s=%s", flagName, secret.Name, v))
-	}
 	return flags
 }
 
-func (*gitConfigBuilder) Write(directory string) error {
+func (*gitBuilder) Write(directory string) error {
 	if err := basicConfig.Write(directory); err != nil {
 		return err
 	}

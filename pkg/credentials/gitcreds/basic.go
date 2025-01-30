@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tektoncd/pipeline/pkg/credentials"
+	credmatcher "github.com/tektoncd/pipeline/pkg/credentials/matcher"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -121,7 +121,7 @@ func (be *basicEntry) escapedUsername() string {
 }
 
 func newBasicEntry(u, secret string) (*basicEntry, error) {
-	secretPath := credentials.VolumeName(secret)
+	secretPath := credmatcher.VolumeName(secret)
 
 	ub, err := os.ReadFile(filepath.Join(secretPath, corev1.BasicAuthUsernameKey))
 	if err != nil {
