@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Tekton Authors
+Copyright 2025 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package credentials
+package writer
 
 import (
 	"os"
@@ -23,6 +23,19 @@ import (
 )
 
 const credContents string = "hello, world!"
+
+func writeFakeCred(t *testing.T, dir, name, contents string) string {
+	t.Helper()
+	flags := os.O_RDWR | os.O_CREATE | os.O_TRUNC
+	path := filepath.Join(dir, name)
+	cred, err := os.OpenFile(path, flags, 0o600)
+	if err != nil {
+		t.Fatalf("unexpected error writing fake credential: %v", err)
+	}
+	_, _ = cred.WriteString(contents)
+	_ = cred.Close()
+	return path
+}
 
 func TestTryCopyCredDir(t *testing.T) {
 	dir := t.TempDir()
@@ -87,17 +100,4 @@ func TestTryCopyCredFileMissing(t *testing.T) {
 	if !os.IsNotExist(err) {
 		t.Fatalf("destination file exists but should not have been copied: %v", err)
 	}
-}
-
-func writeFakeCred(t *testing.T, dir, name, contents string) string {
-	t.Helper()
-	flags := os.O_RDWR | os.O_CREATE | os.O_TRUNC
-	path := filepath.Join(dir, name)
-	cred, err := os.OpenFile(path, flags, 0o600)
-	if err != nil {
-		t.Fatalf("unexpected error writing fake credential: %v", err)
-	}
-	_, _ = cred.WriteString(contents)
-	_ = cred.Close()
-	return path
 }

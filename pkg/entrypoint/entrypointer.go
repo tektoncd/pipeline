@@ -61,6 +61,11 @@ const (
 	downwardMountCancelFile = "cancel"
 	stepPrefix              = "step-"
 )
+const (
+	// CredsDir is the directory where credentials are placed to meet the legacy credentials
+	// helpers image (aka "creds-init") contract
+	CredsDir = "/tekton/creds" // #nosec
+)
 
 var DownwardMountCancelFile string
 

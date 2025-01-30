@@ -23,14 +23,14 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/credentials"
+	credmatcher "github.com/tektoncd/pipeline/pkg/credentials/matcher"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestFlagHandling(t *testing.T) {
-	credentials.VolumePath = t.TempDir()
-	dir := credentials.VolumeName("foo")
+	credmatcher.VolumePath = t.TempDir()
+	dir := credmatcher.VolumeName("foo")
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", dir, err)
 	}
@@ -50,12 +50,12 @@ func TestFlagHandling(t *testing.T) {
 		t.Fatalf("flag.CommandLine.Parse() = %v", err)
 	}
 
-	t.Setenv("HOME", credentials.VolumePath)
-	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
+	t.Setenv("HOME", credmatcher.VolumePath)
+	if err := NewBuilder().Write(credmatcher.VolumePath); err != nil {
 		t.Fatalf("Write() = %v", err)
 	}
 
-	b, err := os.ReadFile(filepath.Join(credentials.VolumePath, ".docker", "config.json"))
+	b, err := os.ReadFile(filepath.Join(credmatcher.VolumePath, ".docker", "config.json"))
 	if err != nil {
 		t.Fatalf("os.ReadFile(.docker/config.json) = %v", err)
 	}
@@ -68,8 +68,8 @@ func TestFlagHandling(t *testing.T) {
 }
 
 func TestFlagHandlingTwice(t *testing.T) {
-	credentials.VolumePath = t.TempDir()
-	fooDir := credentials.VolumeName("foo")
+	credmatcher.VolumePath = t.TempDir()
+	fooDir := credmatcher.VolumeName("foo")
 	if err := os.MkdirAll(fooDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", fooDir, err)
 	}
@@ -79,7 +79,7 @@ func TestFlagHandlingTwice(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(fooDir, corev1.BasicAuthPasswordKey), []byte("blah"), 0o777); err != nil {
 		t.Fatalf("os.WriteFile(password) = %v", err)
 	}
-	barDir := credentials.VolumeName("bar")
+	barDir := credmatcher.VolumeName("bar")
 	if err := os.MkdirAll(barDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", barDir, err)
 	}
@@ -100,12 +100,12 @@ func TestFlagHandlingTwice(t *testing.T) {
 		t.Fatalf("flag.CommandLine.Parse() = %v", err)
 	}
 
-	t.Setenv("HOME", credentials.VolumePath)
-	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
+	t.Setenv("HOME", credmatcher.VolumePath)
+	if err := NewBuilder().Write(credmatcher.VolumePath); err != nil {
 		t.Fatalf("Write() = %v", err)
 	}
 
-	b, err := os.ReadFile(filepath.Join(credentials.VolumePath, ".docker", "config.json"))
+	b, err := os.ReadFile(filepath.Join(credmatcher.VolumePath, ".docker", "config.json"))
 	if err != nil {
 		t.Fatalf("os.ReadFile(.docker/config.json) = %v", err)
 	}
@@ -118,8 +118,8 @@ func TestFlagHandlingTwice(t *testing.T) {
 }
 
 func TestFlagHandlingMissingFiles(t *testing.T) {
-	credentials.VolumePath = t.TempDir()
-	dir := credentials.VolumeName("not-found")
+	credmatcher.VolumePath = t.TempDir()
+	dir := credmatcher.VolumeName("not-found")
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", dir, err)
 	}
@@ -132,8 +132,8 @@ func TestFlagHandlingMissingFiles(t *testing.T) {
 }
 
 func TestFlagHandlingURLCollision(t *testing.T) {
-	credentials.VolumePath = t.TempDir()
-	dir := credentials.VolumeName("foo")
+	credmatcher.VolumePath = t.TempDir()
+	dir := credmatcher.VolumeName("foo")
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", dir, err)
 	}
@@ -244,8 +244,8 @@ func TestMatchingAnnotations(t *testing.T) {
 }
 
 func TestMultipleFlagHandling(t *testing.T) {
-	credentials.VolumePath = t.TempDir()
-	fooDir := credentials.VolumeName("foo")
+	credmatcher.VolumePath = t.TempDir()
+	fooDir := credmatcher.VolumeName("foo")
 	if err := os.MkdirAll(fooDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", fooDir, err)
 	}
@@ -256,7 +256,7 @@ func TestMultipleFlagHandling(t *testing.T) {
 		t.Fatalf("os.WriteFile(password) = %v", err)
 	}
 
-	barDir := credentials.VolumeName("bar")
+	barDir := credmatcher.VolumeName("bar")
 	if err := os.MkdirAll(barDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", barDir, err)
 	}
@@ -264,7 +264,7 @@ func TestMultipleFlagHandling(t *testing.T) {
 		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
 
-	blubbDir := credentials.VolumeName("blubb")
+	blubbDir := credmatcher.VolumeName("blubb")
 	if err := os.MkdirAll(blubbDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", blubbDir, err)
 	}
@@ -272,7 +272,7 @@ func TestMultipleFlagHandling(t *testing.T) {
 		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
 
-	bazDir := credentials.VolumeName("baz")
+	bazDir := credmatcher.VolumeName("baz")
 	if err := os.MkdirAll(bazDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", bazDir, err)
 	}
@@ -280,7 +280,7 @@ func TestMultipleFlagHandling(t *testing.T) {
 		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
 
-	blaDir := credentials.VolumeName("bla")
+	blaDir := credmatcher.VolumeName("bla")
 	if err := os.MkdirAll(blaDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", blaDir, err)
 	}
@@ -301,12 +301,12 @@ func TestMultipleFlagHandling(t *testing.T) {
 		t.Fatalf("flag.CommandLine.Parse() = %v", err)
 	}
 
-	t.Setenv("HOME", credentials.VolumePath)
-	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
+	t.Setenv("HOME", credmatcher.VolumePath)
+	if err := NewBuilder().Write(credmatcher.VolumePath); err != nil {
 		t.Fatalf("Write() = %v", err)
 	}
 
-	b, err := os.ReadFile(filepath.Join(credentials.VolumePath, ".docker", "config.json"))
+	b, err := os.ReadFile(filepath.Join(credmatcher.VolumePath, ".docker", "config.json"))
 	if err != nil {
 		t.Fatalf("os.ReadFile(.docker/config.json) = %v", err)
 	}
@@ -321,8 +321,8 @@ func TestMultipleFlagHandling(t *testing.T) {
 // TestNoAuthProvided confirms that providing zero secrets results in no docker
 // credential file being written to disk.
 func TestNoAuthProvided(t *testing.T) {
-	credentials.VolumePath = t.TempDir()
-	fooDir := credentials.VolumeName("foo")
+	credmatcher.VolumePath = t.TempDir()
+	fooDir := credmatcher.VolumeName("foo")
 	if err := os.MkdirAll(fooDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", fooDir, err)
 	}
@@ -333,11 +333,11 @@ func TestNoAuthProvided(t *testing.T) {
 	if err != nil {
 		t.Fatalf("flag.CommandLine.Parse() = %v", err)
 	}
-	t.Setenv("HOME", credentials.VolumePath)
-	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
+	t.Setenv("HOME", credmatcher.VolumePath)
+	if err := NewBuilder().Write(credmatcher.VolumePath); err != nil {
 		t.Fatalf("Write() = %v", err)
 	}
-	_, err = os.ReadFile(filepath.Join(credentials.VolumePath, ".docker", "config.json"))
+	_, err = os.ReadFile(filepath.Join(credmatcher.VolumePath, ".docker", "config.json"))
 	if err == nil || !os.IsNotExist(err) {
 		t.Errorf("expected does not exist error but received: %v", err)
 	}
