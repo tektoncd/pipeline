@@ -57,7 +57,7 @@ the pipelines repo, a terminal window and a text editor.
 
     **If you are back-porting include this flag: `--param=releaseAsLatest="false"`**
 
-    ```bash
+   ```bash
     tkn --context dogfooding pipeline start pipeline-release \
       --serviceaccount=release-right-meow \
       --param package=github.com/tektoncd/pipeline \
@@ -76,6 +76,7 @@ the pipelines repo, a terminal window and a text editor.
       --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml \
       --tasks-timeout 2h \
       --pipeline-timeout 3h
+   ```
 
     Accept the default values of the parameters (except for "releaseAsLatest" if backporting).
 
