@@ -29,7 +29,6 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/cmd/entrypoint/subcommands"
-	featureFlags "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/credentials"
@@ -37,8 +36,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
 	"github.com/tektoncd/pipeline/pkg/entrypoint"
 	"github.com/tektoncd/pipeline/pkg/platforms"
-	"github.com/tektoncd/pipeline/pkg/spire"
-	"github.com/tektoncd/pipeline/pkg/spire/config"
 	"github.com/tektoncd/pipeline/pkg/termination"
 )
 
@@ -59,9 +56,7 @@ var (
 	onError             = flag.String("on_error", "", "Set to \"continue\" to ignore an error and continue when a container terminates with a non-zero exit code."+
 		" Set to \"stopAndFail\" to declare a failure with a step error and stop executing the rest of the steps.")
 	stepMetadataDir        = flag.String("step_metadata_dir", "", "If specified, create directory to store the step metadata e.g. /tekton/steps/<step-name>/")
-	enableSpire            = flag.Bool("enable_spire", false, "If specified by configmap, this enables spire signing and verification")
-	socketPath             = flag.String("spire_socket_path", "unix:///spiffe-workload-api/spire-agent.sock", "Experimental: The SPIRE agent socket for SPIFFE workload API.")
-	resultExtractionMethod = flag.String("result_from", featureFlags.ResultExtractionMethodTerminationMessage, "The method using which to extract results from tasks. Default is using the termination message.")
+	resultExtractionMethod = flag.String("result_from", entrypoint.ResultExtractionMethodTerminationMessage, "The method using which to extract results from tasks. Default is using the termination message.")
 )
 
 const (
@@ -131,13 +126,7 @@ func main() {
 		}
 	}
 
-	var spireWorkloadAPI spire.EntrypointerAPIClient
-	if enableSpire != nil && *enableSpire && socketPath != nil && *socketPath != "" {
-		spireConfig := config.SpireConfig{
-			SocketPath: *socketPath,
-		}
-		spireWorkloadAPI = spire.NewEntrypointerAPIClient(&spireConfig)
-	}
+	spireWorkloadAPI := initializeSpireAPI()
 
 	e := entrypoint.Entrypointer{
 		Command:         append(cmd, commandArgs...),
