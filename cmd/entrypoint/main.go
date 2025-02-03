@@ -31,7 +31,6 @@ import (
 	"github.com/containerd/containerd/platforms"
 	"github.com/tektoncd/pipeline/cmd/entrypoint/subcommands"
 	featureFlags "github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
 	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
@@ -98,7 +97,7 @@ func main() {
 	// stored credentials.
 	builders := []credwriter.Writer{dockercreds.NewBuilder(), gitcreds.NewBuilder()}
 	for _, c := range builders {
-		if err := c.Write(pipeline.CredsDir); err != nil {
+		if err := c.Write(entrypoint.CredsDir); err != nil {
 			log.Printf("Error initializing credentials: %s", err)
 		}
 	}
