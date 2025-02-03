@@ -196,6 +196,10 @@ var (
 	taskSidecar = &v1.Task{
 		ObjectMeta: objectMeta("test-task-sidecar", "foo"),
 		Spec: v1.TaskSpec{
+			Steps: []v1.Step{{
+				Name:  "step1",
+				Image: "foo",
+			}},
 			Sidecars: []v1.Sidecar{{
 				Name:  "sidecar1",
 				Image: "image-id",
@@ -205,6 +209,10 @@ var (
 	taskMultipleSidecars = &v1.Task{
 		ObjectMeta: objectMeta("test-task-sidecar", "foo"),
 		Spec: v1.TaskSpec{
+			Steps: []v1.Step{{
+				Name:  "step1",
+				Image: "foo",
+			}},
 			Sidecars: []v1.Sidecar{
 				{
 					Name:  "sidecar",
@@ -4283,10 +4291,12 @@ func TestReconcile_Single_SidecarState(t *testing.T) {
 	taskRun := parse.MustParseV1TaskRun(t, `
 metadata:
   name: test-taskrun-sidecars
+  namespace: foo
 spec:
   taskRef:
     name: test-task-sidecar
 status:
+  podName: test-taskrun-sidecars
   sidecars:
   - container: sidecar-sidecar
     imageID: image-id
@@ -4295,16 +4305,34 @@ status:
       startedAt: "2022-01-01T00:00:00Z"
 `)
 
+	pod := &corev1.Pod{
+		ObjectMeta: objectMeta("test-taskrun-sidecars", "foo"),
+		Status: corev1.PodStatus{
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name:    "sidecar-sidecar",
+				ImageID: "image-id",
+				State: corev1.ContainerState{
+					Running: &runningState,
+				},
+			}},
+		},
+	}
+
 	d := test.Data{
 		TaskRuns: []*v1.TaskRun{taskRun},
 		Tasks:    []*v1.Task{taskSidecar},
+		Pods:     []*corev1.Pod{pod},
 	}
 
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
 	clients := testAssets.Clients
 
-	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+	createServiceAccount(t, testAssets, "default", taskRun.Namespace)
+
+	err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun))
+	isRequeued, _ := controller.IsRequeueKey(err)
+	if err != nil && !isRequeued {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
 	}
 
@@ -4321,6 +4349,7 @@ status:
 			Running: &runningState,
 		},
 	}
+	t.Logf("status: %v", getTaskRun.Status.Sidecars)
 
 	if c := cmp.Diff(expected, getTaskRun.Status.Sidecars[0]); c != "" {
 		t.Errorf("TestReconcile_Single_SidecarState %s", diff.PrintWantGot(c))
@@ -4333,10 +4362,12 @@ func TestReconcile_Multiple_SidecarStates(t *testing.T) {
 	taskRun := parse.MustParseV1TaskRun(t, `
 metadata:
   name: test-taskrun-sidecars
+  namespace: foo
 spec:
   taskRef:
     name: test-task-sidecar
 status:
+  podName: test-taskrun-sidecars
   sidecars:
   - container: sidecar-sidecar1
     imageID: image-id
@@ -4349,17 +4380,40 @@ status:
     waiting:
       reason: PodInitializing
 `)
+	pod := &corev1.Pod{
+		ObjectMeta: objectMeta("test-taskrun-sidecars", "foo"),
+		Status: corev1.PodStatus{
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name:    "sidecar-sidecar1",
+				ImageID: "image-id",
+				State: corev1.ContainerState{
+					Running: &runningState,
+				},
+			}, {
+				Name:    "sidecar-sidecar2",
+				ImageID: "image-id",
+				State: corev1.ContainerState{
+					Waiting: &waitingState,
+				},
+			}},
+		},
+	}
 
 	d := test.Data{
 		TaskRuns: []*v1.TaskRun{taskRun},
 		Tasks:    []*v1.Task{taskMultipleSidecars},
+		Pods:     []*corev1.Pod{pod},
 	}
 
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
 	clients := testAssets.Clients
 
-	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+	createServiceAccount(t, testAssets, "default", taskRun.Namespace)
+
+	err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun))
+	isRequeued, _ := controller.IsRequeueKey(err)
+	if err != nil && !isRequeued {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
 	}
 
@@ -4387,6 +4441,7 @@ status:
 		},
 	}
 
+	t.Logf("status: %v", getTaskRun.Status.Sidecars)
 	for i, sc := range getTaskRun.Status.Sidecars {
 		if c := cmp.Diff(expected[i], sc); c != "" {
 			t.Errorf("TestReconcile_Multiple_SidecarStates sidecar%d %s", i+1, diff.PrintWantGot(c))
