@@ -66,3 +66,7 @@ func (s *gitService) CompareCommits(ctx context.Context, repo, ref1, ref2 string
 func (s *gitService) ListTags(ctx context.Context, repo string, opts *scm.ListOptions) ([]*scm.Reference, *scm.Response, error) {
 	panic("implement me")
 }
+
+func (s *gitService) GetDefaultBranch(ctx context.Context, repo string) (*scm.Reference, *scm.Response, error) {
+	return nil, nil, scm.ErrNotSupported
+}
