@@ -41,39 +41,38 @@ Further documentation available:
 
 ## Release
 
-### v0.66
-- **Latest Release**: [v0.66.0][v0.66-0] (2024-12-04) ([docs][v0.66-0-docs], [examples][v0.66-0-examples])
-- **Initial Release**: [v0.66.0][v0.66-0] (2024-12-04)
-- **Estimated End of Life**: 2024-12-28
-- **Patch Releases**: [v0.66.0][v0.66-0]
+### v0.68 (LTS)
+- **Latest Release**: [v0.68.0][v0.68-0] (2025-01-30) ([docs][v0.68-0-docs], [examples][v0.68-0-examples])
+- **Initial Release**: [v0.68.0][v0.68-0] (2025-01-30)
+- **End of Life**: 2026-01-30
+- **Patch Releases**: [v0.68.0][v0.68-0]
 
 ### v0.65 (LTS)
 - **Latest Release**: [v0.65.0][v0.65-0] (2024-10-28) ([docs][v0.65-0-docs], [examples][v0.65-0-examples])
 - **Initial Release**: [v0.65.0][v0.65-0] (2024-10-28)
 - **End of Life**: 2025-10-28
-- **Patch Releases**: [v0.65.0][v0.65-0]
+- **Patch Releases**: [v0.65.0][v0.65-0], [v0.65.1][v0.65-1], [v0.65.2][v0.65-2], [v0.65.3][v0.65-3], [v0.65.4][v0.65-4], [v0.65.5][v0.65-5], [v0.65.0][v0.65-6]
 
 ### v0.62 (LTS)
 - **Latest Release**: [v0.62.2][v0.62-2] (2024-08-23) ([docs][v0.62-2-docs], [examples][v0.62-2-examples])
 - **Initial Release**: [v0.62.0][v0.62-0] (2024-07-23)
 - **End of Life**: 2025-07-23
-- **Patch Releases**: [v0.62.0][v0.62-0], [v0.62.1][v0.62-1], [v0.62.2][v0.62-2]
+- **Patch Releases**: [v0.62.0][v0.62-0], [v0.62.1][v0.62-1], [v0.62.2][v0.62-2], [v0.62.3][v0.62-3], [v0.62.4][v0.62-4], [v0.62.5][v0.62-5], [v0.62.6][v0.62-6], [v0.62.7][v0.62-7], [v0.62.8][v0.62-8]
 
 ### v0.59 (LTS)
 
 - **Latest Release**: [v0.59.2][v0.59-2] (2024-07-04) ([docs][v0.59-2-docs], [examples][v0.59-2-examples])
 - **Initial Release**: [v0.59.0][v0.59-0] (2024-04-25)
 - **Estimated End of Life**: 2025-04-24
-- **Patch Releases**: [v0.59.0][v0.59-0], [v0.59.1][v0.59-1], [v0.59.2][v0.59-2]
-
-### v0.56 (LTS)
-
-- **Latest Release**: [v0.56.3][v0.56-3] (2024-03-26) ([docs][v0.56-3-docs], [examples][v0.56-3-examples])
-- **Initial Release**: [v0.56.0][v0.56-0] (2024-01-19)
-- **Estimated End of Life**: 2025-01-19
-- **Patch Releases**: [v0.56.0][v0.56-0], [v0.56.1][v0.56-1], [v0.56.2][v0.56-2], [v0.56.3][v0.56-3]
+- **Patch Releases**: [v0.59.0][v0.59-0], [v0.59.1][v0.59-1], [v0.59.2][v0.59-2], [v0.59.3][v0.59-3], [v0.59.4][v0.59-4], [v0.59.5][v0.59-5]
 
 ## End of Life Releases
+
+### v0.66
+- **Latest Release**: [v0.66.0][v0.66-0] (2024-12-04) ([docs][v0.66-0-docs], [examples][v0.66-0-examples])
+- **Initial Release**: [v0.66.0][v0.66-0] (2024-12-04)
+- **Estimated End of Life**: 2025-01-31
+- **Patch Releases**: [v0.66.0][v0.66-0]
 
 ### v0.64
 - **Latest Release**: [v0.64.0][v0.64-0] (2024-08-30) ([docs][v0.64-0-docs], [examples][v0.64-0-examples])
@@ -112,6 +111,13 @@ Further documentation available:
 - **Initial Release**: [v0.57.0][v0.57-0] (2024-02-20)
 - **Estimated End of Life**: 2024-03-20
 - **Patch Releases**: [v0.57.0][v0.57-0]
+
+### v0.56
+
+- **Latest Release**: [v0.56.3][v0.56-3] (2024-03-26) ([docs][v0.56-3-docs], [examples][v0.56-3-examples])
+- **Initial Release**: [v0.56.0][v0.56-0] (2024-01-19)
+- **Estimated End of Life**: 2025-01-19
+- **Patch Releases**: [v0.56.0][v0.56-0], [v0.56.1][v0.56-1], [v0.56.2][v0.56-2], [v0.56.3][v0.56-3]
 
 ### v0.54
 
