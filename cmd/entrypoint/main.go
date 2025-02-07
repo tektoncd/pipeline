@@ -30,13 +30,12 @@ import (
 
 	"github.com/containerd/containerd/platforms"
 	"github.com/tektoncd/pipeline/cmd/entrypoint/subcommands"
-	featureFlags "github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1/types"
 	"github.com/tektoncd/pipeline/pkg/credentials"
 	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
 	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
 	"github.com/tektoncd/pipeline/pkg/entrypoint"
+	"github.com/tektoncd/pipeline/pkg/entrypoint/pipeline"
 	"github.com/tektoncd/pipeline/pkg/spire"
 	"github.com/tektoncd/pipeline/pkg/spire/config"
 	"github.com/tektoncd/pipeline/pkg/termination"
@@ -61,7 +60,7 @@ var (
 	stepMetadataDir        = flag.String("step_metadata_dir", "", "If specified, create directory to store the step metadata e.g. /tekton/steps/<step-name>/")
 	enableSpire            = flag.Bool("enable_spire", false, "If specified by configmap, this enables spire signing and verification")
 	socketPath             = flag.String("spire_socket_path", "unix:///spiffe-workload-api/spire-agent.sock", "Experimental: The SPIRE agent socket for SPIFFE workload API.")
-	resultExtractionMethod = flag.String("result_from", featureFlags.ResultExtractionMethodTerminationMessage, "The method using which to extract results from tasks. Default is using the termination message.")
+	resultExtractionMethod = flag.String("result_from", entrypoint.ResultExtractionMethodTerminationMessage, "The method using which to extract results from tasks. Default is using the termination message.")
 )
 
 const (
