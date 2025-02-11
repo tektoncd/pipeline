@@ -101,12 +101,10 @@ func ValidateOptionalWorkspaces(pipelineWorkspaces []v1.PipelineWorkspaceDeclara
 
 	for _, rpt := range state {
 		for _, pws := range rpt.PipelineTask.Workspaces {
-			if optionalWorkspaces.Has(pws.Workspace) {
+			if rpt.ResolvedTask != nil && rpt.ResolvedTask.TaskSpec != nil && optionalWorkspaces.Has(pws.Workspace) {
 				for _, tws := range rpt.ResolvedTask.TaskSpec.Workspaces {
-					if tws.Name == pws.Name {
-						if !tws.Optional {
-							return fmt.Errorf("pipeline workspace %q is marked optional but pipeline task %q requires it be provided", pws.Workspace, rpt.PipelineTask.Name)
-						}
+					if tws.Name == pws.Name && !tws.Optional {
+						return fmt.Errorf("pipeline workspace %q is marked optional but pipeline task %q requires it be provided", pws.Workspace, rpt.PipelineTask.Name)
 					}
 				}
 			}
