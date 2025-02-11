@@ -422,6 +422,23 @@ func TestValidateOptionalWorkspaces_ValidStates(t *testing.T) {
 				},
 			},
 		}},
+	}, {
+		desc: "pipeline with optional workspace combined with customrun",
+		workspaces: []v1.PipelineWorkspaceDeclaration{{
+			Name:     "ws1",
+			Optional: true,
+		}},
+		state: prresources.PipelineRunState{{
+			PipelineTask: &v1.PipelineTask{
+				Name: "pt1",
+				Workspaces: []v1.WorkspacePipelineTaskBinding{{
+					Name:      "foo",
+					Workspace: "ws1",
+				}},
+			},
+			ResolvedTask: nil,
+			CustomTask:   true,
+		}},
 	}} {
 		t.Run(tc.desc, func(t *testing.T) {
 			if err := prresources.ValidateOptionalWorkspaces(tc.workspaces, tc.state); err != nil {
