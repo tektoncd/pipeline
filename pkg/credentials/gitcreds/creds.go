@@ -19,10 +19,9 @@ package gitcreds
 import (
 	"flag"
 	"fmt"
-
+	"github.com/tektoncd/pipeline/pkg/credentials/common"
 	credmatcher "github.com/tektoncd/pipeline/pkg/credentials/matcher"
 	credwriter "github.com/tektoncd/pipeline/pkg/credentials/writer"
-	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -42,10 +41,15 @@ func AddFlags(flagSet *flag.FlagSet) {
 }
 
 func flags(fs *flag.FlagSet) {
-	basicConfig = basicGitConfig{entries: make(map[string]basicEntry)}
+	basicConfig = basicGitConfig{
+		entries: make(map[string]basicEntry),
+		order:   []string{},
+	}
+	sshConfig = sshGitConfig{
+		entries: make(map[string][]sshEntry),
+		order:   []string{},
+	}
 	fs.Var(&basicConfig, basicAuthFlag, "List of secret=url pairs.")
-
-	sshConfig = sshGitConfig{entries: make(map[string][]sshEntry)}
 	fs.Var(&sshConfig, sshFlag, "List of secret=url pairs.")
 }
 
@@ -62,28 +66,28 @@ func NewBuilder() interface {
 // MatchingAnnotations extracts flags for the credential helper
 // from the supplied secret and returns a slice (of length 0 or
 // greater) of applicable domains.
-func (*gitBuilder) MatchingAnnotations(secret *corev1.Secret) []string {
+func (*gitBuilder) MatchingAnnotations(secret credmatcher.Secret) []string {
+	var flagName string
 	var flags []string
-	switch secret.Type {
-	case corev1.SecretTypeBasicAuth:
-		for _, v := range credwriter.SortAnnotations(secret.Annotations, annotationPrefix) {
-			flags = append(flags, fmt.Sprintf("-%s=%s=%s", basicAuthFlag, secret.Name, v))
-		}
-
-	case corev1.SecretTypeSSHAuth:
-		for _, v := range credwriter.SortAnnotations(secret.Annotations, annotationPrefix) {
-			flags = append(flags, fmt.Sprintf("-%s=%s=%s", sshFlag, secret.Name, v))
-		}
-
-	case corev1.SecretTypeOpaque, corev1.SecretTypeServiceAccountToken, corev1.SecretTypeDockercfg, corev1.SecretTypeDockerConfigJson, corev1.SecretTypeTLS, corev1.SecretTypeBootstrapToken:
-		return flags
-
+	switch credmatcher.GetSecretType(secret) {
+	case common.SecretTypeBasicAuth:
+		flagName = basicAuthFlag
+	case common.SecretTypeSSHAuth:
+		flagName = sshFlag
+	case common.SecretTypeOpaque, common.SecretTypeServiceAccountToken, common.SecretTypeDockercfg, common.SecretTypeDockerConfigJson, common.SecretTypeTLS, common.SecretTypeBootstrapToken:
+		fallthrough
 	default:
 		return flags
 	}
+
+	for _, v := range credwriter.SortAnnotations(secret.GetAnnotations(), annotationPrefix) {
+		flags = append(flags, fmt.Sprintf("-%s=%s=%s", flagName, secret.GetName(), v))
+	}
+
 	return flags
 }
 
+// Write writes the credentials to the provided directory.
 func (*gitBuilder) Write(directory string) error {
 	if err := basicConfig.Write(directory); err != nil {
 		return err

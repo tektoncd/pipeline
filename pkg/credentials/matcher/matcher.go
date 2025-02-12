@@ -18,23 +18,43 @@ package matcher
 
 import (
 	"fmt"
-
-	corev1 "k8s.io/api/core/v1"
+	"reflect"
 )
 
 // VolumePath is the path where build secrets are written.
 // It is mutable and exported for testing.
 var VolumePath = "/tekton/creds-secrets"
 
+// Secret is the minimal interface needed for credential matching
+type Secret interface {
+	GetName() string
+	GetAnnotations() map[string]string
+}
+
 // Matcher is the interface for a credential initializer of any type.
 type Matcher interface {
 	// MatchingAnnotations extracts flags for the credential
 	// helper from the supplied secret and returns a slice (of
 	// length 0 or greater) of applicable domains.
-	MatchingAnnotations(secret *corev1.Secret) []string
+	MatchingAnnotations(secret Secret) []string
 }
 
 // VolumeName returns the full path to the secret, inside the VolumePath.
 func VolumeName(secretName string) string {
 	return fmt.Sprintf("%s/%s", VolumePath, secretName)
+}
+
+// GetSecretType returns secret type from secret interface using reflection
+func GetSecretType(secret Secret) string {
+	v := reflect.ValueOf(secret)
+	// If it's a pointer, unwrap it
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	// Grab the field by name
+	f := v.FieldByName("Type")
+	if !f.IsValid() || !f.CanInterface() {
+		return ""
+	}
+	return fmt.Sprintf("%v", f.Interface())
 }
