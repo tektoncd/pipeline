@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -738,5 +739,43 @@ func TestGetResolutionTimeoutCustom(t *testing.T) {
 	}
 	if timeout != configTimeout {
 		t.Fatalf("expected timeout from config to be returned")
+	}
+}
+
+func TestGetResolutionBackoffCustom(t *testing.T) {
+	// resolver := bundle.Resolver{}
+	// defaultTimeout := 30 * time.Minute
+	configBackoffDuration := 7.0 * time.Second
+	configBackoffFactor := 7.0
+	configBackoffJitter := 0.5
+	configBackoffSteps := 3
+	configBackoffCap := 20 * time.Second
+	config := map[string]string{
+		bundle.ConfigBackoffDuration: configBackoffDuration.String(),
+		bundle.ConfigBackoffFactor:   strconv.FormatFloat(configBackoffFactor, 'f', -1, 64),
+		bundle.ConfigBackoffJitter:   strconv.FormatFloat(configBackoffJitter, 'f', -1, 64),
+		bundle.ConfigBackoffSteps:    strconv.Itoa(configBackoffSteps),
+		bundle.ConfigBackoffCap:      configBackoffCap.String(),
+	}
+	ctx := framework.InjectResolverConfigToContext(context.Background(), config)
+	backoffConfig, err := bundle.GetBundleResolverBackoff(ctx)
+	// timeout, err := resolver.GetResolutionTimeout(ctx, defaultTimeout, map[string]string{})
+	if err != nil {
+		t.Fatalf("couldn't get backoff config: %v", err)
+	}
+	if backoffConfig.Duration != configBackoffDuration {
+		t.Fatalf("expected duration from config to be returned")
+	}
+	if backoffConfig.Factor != configBackoffFactor {
+		t.Fatalf("expected backoff from config to be returned")
+	}
+	if backoffConfig.Jitter != configBackoffJitter {
+		t.Fatalf("expected jitter from config to be returned")
+	}
+	if backoffConfig.Steps != configBackoffSteps {
+		t.Fatalf("expected steps from config to be returned")
+	}
+	if backoffConfig.Cap != configBackoffCap {
+		t.Fatalf("expected steps from config to be returned")
 	}
 }
