@@ -2588,7 +2588,7 @@ spec:
   conditions:
   - lastTransitionTime: null
     status: "True"
-    type: Succeeded  
+    type: Succeeded
 `), mustParseTaskRunWithObjectMeta(t, taskRunObjectMeta("test-pipeline-run-with-timeout-with-finally-hello-world-2", "foo", "test-pipeline-run-with-timeout-disabled",
 		"test-pipeline-with-finally", "hello-world-2", false), `
 spec:
@@ -4317,7 +4317,7 @@ spec:
       operator: in
       values:
       - aResultValue
-# f-task is skipped because its parent task e-task is skipped because of missing result reference from a-task
+# f-task not is skipped
   - name: f-task
     runAfter:
     - e-task
@@ -4371,7 +4371,7 @@ spec:
 
 	wantEvents := []string{
 		"Normal Started",
-		"Normal Running Tasks Completed: 0 \\(Failed: 0, Cancelled 0\\), Incomplete: 2, Skipped: 4",
+		"Normal Running Tasks Completed: 0 \\(Failed: 0, Cancelled 0\\), Incomplete: 3, Skipped: 3",
 	}
 	pipelineRun, clients := prt.reconcileRun("foo", "test-pipeline-run-different-service-accs", wantEvents, false)
 
@@ -4426,24 +4426,21 @@ spec:
 			Values:   []string{"bar"},
 		}},
 	}, {
-		// was attempted, but has missing results references
+		// its when expressions evaluate to false
 		Name:   "e-task",
-		Reason: v1.MissingResultsSkip,
+		Reason: v1.WhenExpressionsSkip,
 		WhenExpressions: v1.WhenExpressions{{
 			Input:    "$(tasks.a-task.results.aResult)",
 			Operator: "in",
 			Values:   []string{"aResultValue"},
 		}},
-	}, {
-		Name:   "f-task",
-		Reason: v1.ParentTasksSkip,
 	}}
 	if d := cmp.Diff(expectedSkippedTasks, actualSkippedTasks); d != "" {
 		t.Errorf("expected to find Skipped Tasks %v. Diff %s", expectedSkippedTasks, diff.PrintWantGot(d))
 	}
 
 	// confirm that there are no taskruns created for the skipped tasks
-	skippedTasks := []string{"a-task", "c-task", "e-task", "f-task"}
+	skippedTasks := []string{"a-task", "c-task", "e-task"}
 	for _, skippedTask := range skippedTasks {
 		labelSelector := fmt.Sprintf("tekton.dev/pipelineTask=%s,tekton.dev/pipelineRun=test-pipeline-run-different-service-accs", skippedTask)
 		actualSkippedTask, err := clients.Pipeline.TektonV1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
