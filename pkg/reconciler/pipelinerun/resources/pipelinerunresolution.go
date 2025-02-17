@@ -357,12 +357,12 @@ func (t *ResolvedPipelineTask) skip(facts *PipelineRunFacts) TaskSkipStatus {
 		skippingReason = v1.GracefullyCancelledSkip
 	case facts.IsGracefullyStopped():
 		skippingReason = v1.GracefullyStoppedSkip
+	case t.skipBecauseWhenExpressionsEvaluatedToFalse(facts):
+		skippingReason = v1.WhenExpressionsSkip
 	case t.skipBecauseParentTaskWasSkipped(facts):
 		skippingReason = v1.ParentTasksSkip
 	case t.skipBecauseResultReferencesAreMissing(facts):
 		skippingReason = v1.MissingResultsSkip
-	case t.skipBecauseWhenExpressionsEvaluatedToFalse(facts):
-		skippingReason = v1.WhenExpressionsSkip
 	case t.skipBecausePipelineRunPipelineTimeoutReached(facts):
 		skippingReason = v1.PipelineTimedOutSkip
 	case t.skipBecausePipelineRunTasksTimeoutReached(facts):
