@@ -189,7 +189,7 @@ github.com/ahmetb/gen-crd-api-reference-docs
 # github.com/antlr4-go/antlr/v4 v4.13.0
 ## explicit; go 1.20
 github.com/antlr4-go/antlr/v4
-# github.com/aws/aws-sdk-go-v2 v1.32.7
+# github.com/aws/aws-sdk-go-v2 v1.33.0
 ## explicit; go 1.21
 github.com/aws/aws-sdk-go-v2/aws
 github.com/aws/aws-sdk-go-v2/aws/defaults
@@ -215,10 +215,10 @@ github.com/aws/aws-sdk-go-v2/internal/shareddefaults
 github.com/aws/aws-sdk-go-v2/internal/strings
 github.com/aws/aws-sdk-go-v2/internal/sync/singleflight
 github.com/aws/aws-sdk-go-v2/internal/timeconv
-# github.com/aws/aws-sdk-go-v2/config v1.28.7
+# github.com/aws/aws-sdk-go-v2/config v1.29.1
 ## explicit; go 1.21
 github.com/aws/aws-sdk-go-v2/config
-# github.com/aws/aws-sdk-go-v2/credentials v1.17.48
+# github.com/aws/aws-sdk-go-v2/credentials v1.17.54
 ## explicit; go 1.21
 github.com/aws/aws-sdk-go-v2/credentials
 github.com/aws/aws-sdk-go-v2/credentials/ec2rolecreds
@@ -227,14 +227,14 @@ github.com/aws/aws-sdk-go-v2/credentials/endpointcreds/internal/client
 github.com/aws/aws-sdk-go-v2/credentials/processcreds
 github.com/aws/aws-sdk-go-v2/credentials/ssocreds
 github.com/aws/aws-sdk-go-v2/credentials/stscreds
-# github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.22
+# github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.24
 ## explicit; go 1.21
 github.com/aws/aws-sdk-go-v2/feature/ec2/imds
 github.com/aws/aws-sdk-go-v2/feature/ec2/imds/internal/config
-# github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.26
+# github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.28
 ## explicit; go 1.21
 github.com/aws/aws-sdk-go-v2/internal/configsources
-# github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.26
+# github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.28
 ## explicit; go 1.21
 github.com/aws/aws-sdk-go-v2/internal/endpoints/v2
 # github.com/aws/aws-sdk-go-v2/internal/ini v1.8.1
@@ -253,25 +253,25 @@ github.com/aws/aws-sdk-go-v2/service/ecrpublic/types
 # github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.1
 ## explicit; go 1.21
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding
-# github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.7
+# github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.9
 ## explicit; go 1.21
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url
-# github.com/aws/aws-sdk-go-v2/service/kms v1.37.8
+# github.com/aws/aws-sdk-go-v2/service/kms v1.37.13
 ## explicit; go 1.21
 github.com/aws/aws-sdk-go-v2/service/kms
 github.com/aws/aws-sdk-go-v2/service/kms/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/kms/types
-# github.com/aws/aws-sdk-go-v2/service/sso v1.24.8
+# github.com/aws/aws-sdk-go-v2/service/sso v1.24.11
 ## explicit; go 1.21
 github.com/aws/aws-sdk-go-v2/service/sso
 github.com/aws/aws-sdk-go-v2/service/sso/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/sso/types
-# github.com/aws/aws-sdk-go-v2/service/ssooidc v1.28.7
+# github.com/aws/aws-sdk-go-v2/service/ssooidc v1.28.10
 ## explicit; go 1.21
 github.com/aws/aws-sdk-go-v2/service/ssooidc
 github.com/aws/aws-sdk-go-v2/service/ssooidc/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/ssooidc/types
-# github.com/aws/aws-sdk-go-v2/service/sts v1.33.3
+# github.com/aws/aws-sdk-go-v2/service/sts v1.33.9
 ## explicit; go 1.21
 github.com/aws/aws-sdk-go-v2/service/sts
 github.com/aws/aws-sdk-go-v2/service/sts/internal/endpoints
@@ -894,7 +894,7 @@ github.com/sigstore/sigstore/pkg/signature/kms
 github.com/sigstore/sigstore/pkg/signature/kms/fake
 github.com/sigstore/sigstore/pkg/signature/options
 github.com/sigstore/sigstore/pkg/signature/payload
-# github.com/sigstore/sigstore/pkg/signature/kms/aws v1.8.12
+# github.com/sigstore/sigstore/pkg/signature/kms/aws v1.8.14
 ## explicit; go 1.22.0
 github.com/sigstore/sigstore/pkg/signature/kms/aws
 # github.com/sigstore/sigstore/pkg/signature/kms/azure v1.8.12
