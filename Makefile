@@ -84,9 +84,10 @@ vendor:
 	$Q ./hack/update-deps.sh
 
 ## Tests
-TEST_UNIT_TARGETS := test-unit-verbose test-unit-race
-test-unit-verbose: ARGS=-v
-test-unit-race:    ARGS=-race
+TEST_UNIT_TARGETS := test-unit-verbose test-unit-race test-unit-verbose-and-race
+test-unit-verbose:          ARGS=-v
+test-unit-race:             ARGS=-race
+test-unit-verbose-and-race: ARGS=-v -race
 $(TEST_UNIT_TARGETS): test-unit
 .PHONY: $(TEST_UNIT_TARGETS) test-unit
 test-unit: ## Run unit tests
