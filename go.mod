@@ -1,8 +1,6 @@
 module github.com/tektoncd/pipeline
 
-go 1.22.3
-
-toolchain go1.22.7
+go 1.23
 
 require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
