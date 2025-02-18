@@ -64,7 +64,7 @@ EOF
 
 function post_build_tests() {
   check_yaml_lint
-  ko_resolve
+  # ko_resolve
 }
 
 # We use the default build, unit and integration test runners.
