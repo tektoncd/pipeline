@@ -280,17 +280,19 @@ func TestResolveNotEnabled(t *testing.T) {
 }
 
 type params struct {
-	url        string
-	revision   string
-	pathInRepo string
-	org        string
-	repo       string
-	token      string
-	tokenKey   string
-	namespace  string
-	serverURL  string
-	scmType    string
-	configKey  string
+	url         string
+	revision    string
+	pathInRepo  string
+	org         string
+	repo        string
+	token       string
+	tokenKey    string
+	namespace   string
+	serverURL   string
+	scmType     string
+	configKey   string
+	gitToken    string
+	gitTokenKey string
 }
 
 func TestResolve(t *testing.T) {
@@ -419,6 +421,26 @@ func TestResolve(t *testing.T) {
 			url:        anonFakeRepoURL,
 		},
 		expectedErr: createError(`error opening file "foo/non-exist": file does not exist`),
+	}, {
+		name: "clone: secret for git clone",
+		args: &params{
+			pathInRepo:  "./released",
+			url:         anonFakeRepoURL,
+			gitToken:    "token-secret",
+			gitTokenKey: "token",
+			namespace:   "foo",
+		},
+		expectedCommitSHA: commitSHAsInAnonRepo[2],
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte("released content in main branch and in tag v1")),
+	}, {
+		name: "clone: secret for git clone does not exist",
+		args: &params{
+			pathInRepo:  "./released",
+			url:         anonFakeRepoURL,
+			gitToken:    "non-existent",
+			gitTokenKey: "token",
+		},
+		expectedErr: createError(`cannot get API token, secret non-existent not found in namespace foo`),
 	}, {
 		name: "clone: revision does not exist",
 		args: &params{
@@ -721,8 +743,13 @@ func TestResolve(t *testing.T) {
 				if tc.config[tc.configIdentifer+APISecretNameKey] != "" && tc.config[tc.configIdentifer+APISecretNamespaceKey] != "" && tc.config[tc.configIdentifer+APISecretKeyKey] != "" && tc.apiToken != "" {
 					secretName, secretNameKey, secretNamespace = tc.config[tc.configIdentifer+APISecretNameKey], tc.config[tc.configIdentifer+APISecretKeyKey], tc.config[tc.configIdentifer+APISecretNamespaceKey]
 				}
+
 				if tc.args.token != "" && tc.args.namespace != "" && tc.args.tokenKey != "" {
 					secretName, secretNameKey, secretNamespace = tc.args.token, tc.args.tokenKey, tc.args.namespace
+				}
+
+				if tc.args.gitToken != "" && tc.args.gitTokenKey != "" && tc.args.namespace != "" {
+					secretName, secretNameKey, secretNamespace = tc.args.gitToken, tc.args.gitTokenKey, tc.args.namespace
 				}
 				if secretName == "" || secretNameKey == "" || secretNamespace == "" {
 					return
@@ -754,6 +781,9 @@ func createTestRepo(t *testing.T, commits []commitForRepo) (string, []string) {
 	tempDir := t.TempDir()
 
 	repo, err := git.PlainInit(tempDir, false)
+	if err != nil {
+		t.Fatalf("couldn't create test repo: %v", err)
+	}
 
 	worktree, err := repo.Worktree()
 	if err != nil {
@@ -922,6 +952,16 @@ func createRequest(args *params) *v1beta1.ResolutionRequest {
 			Name:  UrlParam,
 			Value: *pipelinev1.NewStructuredValues(args.url),
 		})
+		if args.gitToken != "" {
+			rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
+				Name:  GitTokenParam,
+				Value: *pipelinev1.NewStructuredValues(args.gitToken),
+			})
+			rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
+				Name:  GitTokenKeyParam,
+				Value: *pipelinev1.NewStructuredValues(args.gitTokenKey),
+			})
+		}
 	} else {
 		rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
 			Name:  RepoParam,
