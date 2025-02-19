@@ -61,6 +61,12 @@ When a TaskRun is created:
 1. The entrypointer receives an x509 SVID, containing the x509 certificate and associated private key. 
 1. The entrypointer signs the results of the TaskRun and emits the signatures and x509 certificate to the TaskRun results for later verification.
 
+## Enable SPIRE during Build
+Users can enable SPIRE support in Tekton Pipelines during the build process by using the following build tag:
+```shell
+CGO_ENABLED=0 go build -tags "!disable_spire" -o bin/entrypoint ./cmd/entrypoint
+```
+
 ## Enabling TaskRun result attestations
 
 To enable TaskRun attestations:
