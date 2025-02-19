@@ -848,6 +848,10 @@ func createResultsCacheMatrixedTaskRuns(rpt *ResolvedPipelineTask) (resultsCache
 // ValidateParamEnumSubset finds the referenced pipeline-level params in the resolved pipelineTask.
 // It then validates if the referenced pipeline-level param enums are subsets of the resolved pipelineTask-level param enums
 func ValidateParamEnumSubset(pipelineTaskParams []v1.Param, pipelineParamSpecs []v1.ParamSpec, rt *resources.ResolvedTask) error {
+	// When the matrix Task has no TaskRun, the rt will be nil, we should skip the validation.
+	if rt == nil {
+		return nil
+	}
 	for _, p := range pipelineTaskParams {
 		// calculate referenced param enums
 		res, present, errString := substitution.ExtractVariablesFromString(p.Value.StringVal, "params")
