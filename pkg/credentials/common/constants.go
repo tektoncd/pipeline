@@ -2,6 +2,8 @@ package common
 
 // Secret key constants used in credential files,
 // so as to avoid reliance on corev1.Secret.
+//
+//nolint:gosec // for known Kubernetes secret-type constants, not real credentials
 const (
 	BasicAuthUsernameKey          = "username"
 	BasicAuthPasswordKey          = "password"

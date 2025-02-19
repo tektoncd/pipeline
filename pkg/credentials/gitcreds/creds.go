@@ -19,6 +19,7 @@ package gitcreds
 import (
 	"flag"
 	"fmt"
+
 	"github.com/tektoncd/pipeline/pkg/credentials/common"
 	credmatcher "github.com/tektoncd/pipeline/pkg/credentials/matcher"
 	credwriter "github.com/tektoncd/pipeline/pkg/credentials/writer"

@@ -1,5 +1,5 @@
 /*
-Copyright 2024 The Tekton Authors
+Copyright 2025 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,8 +34,7 @@ type Secret interface {
 // Matcher is the interface for a credential initializer of any type.
 type Matcher interface {
 	// MatchingAnnotations extracts flags for the credential
-	// helper from the supplied secret and returns a slice (of
-	// length 0 or greater) of applicable domains.
+	// helper from the supplied secret and returns a slice (of length 0 or greater)
 	MatchingAnnotations(secret Secret) []string
 }
 
@@ -51,7 +50,6 @@ func GetSecretType(secret Secret) string {
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
-	// Grab the field by name
 	f := v.FieldByName("Type")
 	if !f.IsValid() || !f.CanInterface() {
 		return ""
