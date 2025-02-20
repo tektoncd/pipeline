@@ -1,0 +1,20 @@
+---
+name: 'devcontainer'
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout (GitHub)
+        uses: actions/checkout@v4.1.1
+
+      - name: Build and run dev container task
+        uses: devcontainers/ci@v0.3.1900000348
+        with:
+          runCmd: pre-commit run --all-files
