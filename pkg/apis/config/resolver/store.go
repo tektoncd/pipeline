@@ -1,3 +1,5 @@
+//go:build !disable_tls
+
 /*
 Copyright 2022 The Tekton Authors
 
