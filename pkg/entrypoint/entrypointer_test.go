@@ -33,7 +33,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1/types"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/result"
