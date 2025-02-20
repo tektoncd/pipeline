@@ -131,6 +131,10 @@ func (s *gitService) CompareCommits(ctx context.Context, repo, source, target st
 	return convertChangeList(changes), res, err
 }
 
+func (s *gitService) GetDefaultBranch(ctx context.Context, repo string) (*scm.Reference, *scm.Response, error) {
+	return nil, nil, scm.ErrNotSupported
+}
+
 type gitRef struct {
 	Name        string `json:"name"`
 	OldObjectID string `json:"oldObjectId"`

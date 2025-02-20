@@ -9,7 +9,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"mime/multipart"
 	"net/url"
 	"strings"
 
@@ -74,13 +76,32 @@ func (c *wrapper) do(ctx context.Context, method, path string, in, out interface
 	// if we are posting or putting data, we need to
 	// write it to the body of the request.
 	if in != nil {
-		buf := new(bytes.Buffer)
-		err := json.NewEncoder(buf).Encode(in) // #nosec
-		if err != nil {
-			return nil, err
+		switch contentInput := in.(type) {
+		case *contentCreateUpdate:
+			var b bytes.Buffer
+			mw := &MultipartWriter{Writer: multipart.NewWriter(&b)}
+			mw.Write("content", string(contentInput.Content))
+			mw.Write("message", contentInput.Message)
+			mw.Write("branch", contentInput.Branch)
+			mw.Write("sourceCommitId", contentInput.Sha)
+			if mw.Error != nil {
+				return nil, fmt.Errorf("error writing multipart-content. err: %s", mw.Error)
+			}
+			mw.Close()
+			req.Body = &b
+			req.Header = map[string][]string{
+				"Content-Type":      {mw.FormDataContentType()},
+				"x-atlassian-token": {"no-check"},
+			}
+		default:
+			buf := new(bytes.Buffer)
+			err := json.NewEncoder(buf).Encode(in) // #nosec
+			if err != nil {
+				return nil, err
+			}
+			req.Header.Add("Content-Type", "application/json")
+			req.Body = buf
 		}
-		req.Header.Add("Content-Type", "application/json")
-		req.Body = buf
 	}
 	req.Header.Add("X-Atlassian-Token", "no-check")
 

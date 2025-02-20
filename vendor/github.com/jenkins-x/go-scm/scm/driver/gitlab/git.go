@@ -123,6 +123,14 @@ func (s *gitService) CompareCommits(ctx context.Context, repo, ref1, ref2 string
 	return convertChangeList(out.Diffs), res, err
 }
 
+func (s *gitService) GetDefaultBranch(ctx context.Context, repo string) (*scm.Reference, *scm.Response, error) {
+	repository, res, err := s.client.Repositories.Find(ctx, repo)
+	if err != nil {
+		return nil, res, err
+	}
+	return s.FindBranch(ctx, repo, repository.Branch)
+}
+
 type compare struct {
 	Diffs []*change `json:"diffs"`
 }

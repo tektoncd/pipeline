@@ -69,6 +69,9 @@ type (
 		// FindBranch finds a git branch by name.
 		FindBranch(ctx context.Context, repo, name string) (*Reference, *Response, error)
 
+		// GetDefaultBranch finds default branch of the repo.
+		GetDefaultBranch(ctx context.Context, repo string) (*Reference, *Response, error)
+
 		// FindCommit finds a git commit by ref.
 		FindCommit(ctx context.Context, repo, ref string) (*Commit, *Response, error)
 
