@@ -17,13 +17,10 @@ limitations under the License.
 package config
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
-
-	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -448,21 +445,6 @@ func setVerificationNoMatchPolicy(cfgMap map[string]string, defaultValue string,
 		return fmt.Errorf("invalid value for feature flag %q: %q", verificationNoMatchPolicy, value)
 	}
 	return nil
-}
-
-// NewFeatureFlagsFromConfigMap returns a Config for the given configmap
-func NewFeatureFlagsFromConfigMap(config *corev1.ConfigMap) (*FeatureFlags, error) {
-	return NewFeatureFlagsFromMap(config.Data)
-}
-
-// GetVerificationNoMatchPolicy returns the "trusted-resources-verification-no-match-policy" value
-func GetVerificationNoMatchPolicy(ctx context.Context) string {
-	return FromContextOrDefaults(ctx).FeatureFlags.VerificationNoMatchPolicy
-}
-
-// IsSpireEnabled checks if non-falsifiable provenance is enforced through SPIRE
-func IsSpireEnabled(ctx context.Context) bool {
-	return FromContextOrDefaults(ctx).FeatureFlags.EnforceNonfalsifiability == EnforceNonfalsifiabilityWithSpire
 }
 
 type PerFeatureFlag struct {
