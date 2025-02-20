@@ -58,8 +58,16 @@ var (
 	podContainerFilter    cmp.Option = cmpopts.IgnoreFields(corev1.Container{}, "Resources", "Args", "VolumeMounts")
 
 	containerConfigWithoutSecurityContext = aa.ContainerConfig{
-		Image:              "nginx",
-		SetSecurityContext: false,
+		Image: "nginx",
+		SecurityContextConfig: pipelinePod.SecurityContextConfig{
+			SetSecurityContext:        false,
+			SetReadOnlyRootFilesystem: false,
+		},
+	}
+
+	securityContextConfigEnabledWithReadOnlyRootFilesystem = pipelinePod.SecurityContextConfig{
+		SetSecurityContext:        true,
+		SetReadOnlyRootFilesystem: true,
 	}
 )
 
@@ -254,7 +262,7 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerPipelineRun(t *testing.T) {
 			},
 		},
 	}, {
-		name: "securityContext feature enabled and os is Windows",
+		name: "set-security-context and set-security-context-read-only-root-filesystem feature enabled and os is Windows",
 		pr:   testPRWithWindowsOs,
 		featureFlags: map[string]string{
 			"set-security-context": "true",
@@ -279,10 +287,11 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerPipelineRun(t *testing.T) {
 			},
 		},
 	}, {
-		name: "securityContext feature enabled and os is Linux",
+		name: "set-security-context and set-security-context-read-only-root-filesystem feature enabled and os is Linux",
 		pr:   testPRWithEmptyDir,
 		featureFlags: map[string]string{
-			"set-security-context": "true",
+			"set-security-context":                           "true",
+			"set-security-context-read-only-root-filesystem": "true",
 		},
 		expectStatefulSetSpec: &appsv1.StatefulSetSpec{
 			Replicas: &replicas,
@@ -297,12 +306,38 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerPipelineRun(t *testing.T) {
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{{
 						Name:            "affinity-assistant",
-						SecurityContext: pipelinePod.LinuxSecurityContext,
+						SecurityContext: securityContextConfigEnabledWithReadOnlyRootFilesystem.GetSecurityContext(false),
 					}},
 				},
 			},
 		},
-	}}
+	},
+		{
+			name: "set-security-context feature enabled and set-security-context-read-only-root-filesystem feature disabled and os is Linux",
+			pr:   testPRWithEmptyDir,
+			featureFlags: map[string]string{
+				"set-security-context":                           "true",
+				"set-security-context-read-only-root-filesystem": "false",
+			},
+			expectStatefulSetSpec: &appsv1.StatefulSetSpec{
+				Replicas: &replicas,
+				Selector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						pipeline.PipelineRunLabelKey: testPRWithEmptyDir.Name,
+						workspace.LabelInstance:      "affinity-assistant-c655a0c8a2",
+						workspace.LabelComponent:     workspace.ComponentNameAffinityAssistant,
+					},
+				},
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{{
+							Name:            "affinity-assistant",
+							SecurityContext: pipelinePod.LinuxSecurityContext,
+						}},
+					},
+				},
+			},
+		}}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

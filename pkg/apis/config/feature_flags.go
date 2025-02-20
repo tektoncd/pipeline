@@ -94,6 +94,8 @@ const (
 	DefaultMaxResultSize = 4096
 	// DefaultSetSecurityContext is the default value for "set-security-context"
 	DefaultSetSecurityContext = false
+	// DefaultSetSecurityContextReadOnlyRootFilesystem is the default value for "set-security-context-read-only-root-filesystem"
+	DefaultSetSecurityContextReadOnlyRootFilesystem = false
 	// DefaultCoschedule is the default value for coschedule
 	DefaultCoschedule = CoscheduleWorkspaces
 	// KeepPodOnCancel is the flag used to enable cancelling a pod using the entrypoint, and keep pod on cancel
@@ -123,15 +125,16 @@ const (
 	awaitSidecarReadinessKey            = "await-sidecar-readiness"
 	requireGitSSHSecretKnownHostsKey    = "require-git-ssh-secret-known-hosts" //nolint:gosec
 	// enableTektonOCIBundles              = "enable-tekton-oci-bundles"
-	enableAPIFields           = "enable-api-fields"
-	sendCloudEventsForRuns    = "send-cloudevents-for-runs"
-	enforceNonfalsifiability  = "enforce-nonfalsifiability"
-	verificationNoMatchPolicy = "trusted-resources-verification-no-match-policy"
-	enableProvenanceInStatus  = "enable-provenance-in-status"
-	resultExtractionMethod    = "results-from"
-	maxResultSize             = "max-result-size"
-	setSecurityContextKey     = "set-security-context"
-	coscheduleKey             = "coschedule"
+	enableAPIFields                             = "enable-api-fields"
+	sendCloudEventsForRuns                      = "send-cloudevents-for-runs"
+	enforceNonfalsifiability                    = "enforce-nonfalsifiability"
+	verificationNoMatchPolicy                   = "trusted-resources-verification-no-match-policy"
+	enableProvenanceInStatus                    = "enable-provenance-in-status"
+	resultExtractionMethod                      = "results-from"
+	maxResultSize                               = "max-result-size"
+	setSecurityContextKey                       = "set-security-context"
+	setSecurityContextReadOnlyRootFilesystemKey = "set-security-context-read-only-root-filesystem"
+	coscheduleKey                               = "coschedule"
 )
 
 // DefaultFeatureFlags holds all the default configurations for the feature flags configmap.
@@ -200,19 +203,20 @@ type FeatureFlags struct {
 	// ignore: skip trusted resources verification when no matching verification policies found
 	// warn: skip trusted resources verification when no matching verification policies found and log a warning
 	// fail: fail the taskrun or pipelines run if no matching verification policies found
-	VerificationNoMatchPolicy   string
-	EnableProvenanceInStatus    bool
-	ResultExtractionMethod      string
-	MaxResultSize               int
-	SetSecurityContext          bool
-	Coschedule                  string
-	EnableCELInWhenExpression   bool
-	EnableStepActions           bool
-	EnableParamEnum             bool
-	EnableArtifacts             bool
-	DisableInlineSpec           string
-	EnableConciseResolverSyntax bool
-	EnableKubernetesSidecar     bool
+	VerificationNoMatchPolicy                string
+	EnableProvenanceInStatus                 bool
+	ResultExtractionMethod                   string
+	MaxResultSize                            int
+	SetSecurityContext                       bool
+	SetSecurityContextReadOnlyRootFilesystem bool
+	Coschedule                               string
+	EnableCELInWhenExpression                bool
+	EnableStepActions                        bool
+	EnableParamEnum                          bool
+	EnableArtifacts                          bool
+	DisableInlineSpec                        string
+	EnableConciseResolverSyntax              bool
+	EnableKubernetesSidecar                  bool
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -293,6 +297,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setFeature(setSecurityContextKey, DefaultSetSecurityContext, &tc.SetSecurityContext); err != nil {
+		return nil, err
+	}
+	if err := setFeature(setSecurityContextReadOnlyRootFilesystemKey, DefaultSetSecurityContextReadOnlyRootFilesystem, &tc.SetSecurityContextReadOnlyRootFilesystem); err != nil {
 		return nil, err
 	}
 	if err := setCoschedule(cfgMap, DefaultCoschedule, tc.DisableAffinityAssistant, &tc.Coschedule); err != nil {

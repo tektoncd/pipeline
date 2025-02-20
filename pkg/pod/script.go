@@ -78,7 +78,7 @@ var (
 //   - debugConfig: the TaskRun's debug configuration
 //   - setSecurityContext: whether the init container should include a security context that will
 //     allow it to run in a namespace with "restricted" pod security admission
-func convertScripts(shellImageLinux string, shellImageWin string, steps []v1.Step, sidecars []v1.Sidecar, debugConfig *v1.TaskRunDebug, setSecurityContext bool) (*corev1.Container, []corev1.Container, []corev1.Container) {
+func convertScripts(shellImageLinux string, shellImageWin string, steps []v1.Step, sidecars []v1.Sidecar, debugConfig *v1.TaskRunDebug, securityContext SecurityContextConfig) (*corev1.Container, []corev1.Container, []corev1.Container) {
 	// Place scripts is an init container used for creating scripts in the
 	// /tekton/scripts directory which would be later used by the step containers
 	// as a Command
@@ -87,13 +87,12 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1.Ste
 	shellImage := shellImageLinux
 	shellCommand := "sh"
 	shellArg := "-c"
-	securityContext := LinuxSecurityContext
+
 	// Set windows variants for Image, Command and Args
 	if requiresWindows {
 		shellImage = shellImageWin
 		shellCommand = "pwsh"
 		shellArg = "-Command"
-		securityContext = WindowsSecurityContext
 	}
 
 	placeScriptsInit := corev1.Container{
@@ -103,8 +102,9 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1.Ste
 		Args:         []string{shellArg, ""},
 		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 	}
-	if setSecurityContext {
-		placeScriptsInit.SecurityContext = securityContext
+
+	if securityContext.SetSecurityContext {
+		placeScriptsInit.SecurityContext = securityContext.GetSecurityContext(requiresWindows)
 	}
 
 	// Add mounts for debug
