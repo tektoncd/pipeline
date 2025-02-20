@@ -144,6 +144,10 @@ func (s *pullService) UnrequestReview(ctx context.Context, repo string, number i
 	return s.UnassignIssue(ctx, repo, number, logins)
 }
 
+func (s *pullService) DeletePullRequest(ctx context.Context, repo string, prID int) (*scm.Response, error) {
+	return nil, scm.ErrNotSupported
+}
+
 //
 // native data structure conversion
 //

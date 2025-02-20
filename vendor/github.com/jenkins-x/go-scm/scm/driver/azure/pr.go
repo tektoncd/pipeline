@@ -169,6 +169,10 @@ func (s *pullService) Create(ctx context.Context, repo string, input *scm.PullRe
 	return convertPullRequest(out), res, err
 }
 
+func (s *pullService) DeletePullRequest(ctx context.Context, repo string, prID int) (*scm.Response, error) {
+	return nil, scm.ErrNotSupported
+}
+
 type prInput struct {
 	SourceRefName string `json:"sourceRefName"`
 	TargetRefName string `json:"targetRefName"`

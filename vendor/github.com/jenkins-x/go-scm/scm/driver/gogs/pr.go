@@ -111,6 +111,10 @@ func (s *pullService) ClearMilestone(ctx context.Context, repo string, prID int)
 	return nil, scm.ErrNotSupported
 }
 
+func (s *pullService) DeletePullRequest(ctx context.Context, repo string, prID int) (*scm.Response, error) {
+	return nil, scm.ErrNotSupported
+}
+
 //
 // native data structures
 //
