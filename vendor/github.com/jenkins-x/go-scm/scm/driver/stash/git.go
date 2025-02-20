@@ -41,11 +41,22 @@ func (s *gitService) FindRef(ctx context.Context, repo, ref string) (string, *sc
 }
 
 func (s *gitService) CreateRef(ctx context.Context, repo, ref, sha string) (*scm.Reference, *scm.Response, error) {
-	return nil, nil, scm.ErrNotSupported
+	namespace, repoName := scm.Split(repo)
+	path := fmt.Sprintf("rest/api/1.0/projects/%s/repos/%s/branches", namespace, repoName)
+	out := new(branch)
+	in := &createBranch{
+		Name:       ref,
+		StartPoint: sha,
+	}
+	resp, err := s.client.do(ctx, "POST", path, in, out)
+	return convertBranch(out), resp, err
 }
 
 func (s *gitService) DeleteRef(ctx context.Context, repo, ref string) (*scm.Response, error) {
-	return nil, scm.ErrNotSupported
+	namespace, name := scm.Split(repo)
+	path := fmt.Sprintf("rest/branch-utils/latest/projects/%s/repos/%s/branches", namespace, name)
+	in := deleteRefInput{Name: ref}
+	return s.client.do(ctx, "DELETE", path, &in, nil)
 }
 
 func (s *gitService) FindBranch(ctx context.Context, repo, branch string) (*scm.Reference, *scm.Response, error) {
@@ -142,6 +153,20 @@ func (s *gitService) CompareCommits(ctx context.Context, repo, ref1, ref2 string
 	return convertDiffstats(out), res, err
 }
 
+func (s *gitService) GetDefaultBranch(ctx context.Context, repo string) (*scm.Reference, *scm.Response, error) {
+	namespace, name := scm.Split(repo)
+	branch := new(branch)
+	pathBranch := fmt.Sprintf("rest/api/1.0/projects/%s/repos/%s/branches/default", namespace, name)
+	resp, err := s.client.do(ctx, "GET", pathBranch, nil, branch)
+	return convertBranch(branch), resp, err
+}
+
+type deleteRefInput struct {
+	DryRun   bool   `json:"dryRun,omitempty"`
+	EndPoint string `json:"endPoint,omitempty"`
+	Name     string `json:"name,omitempty"`
+}
+
 type branch struct {
 	ID              string `json:"id"`
 	DisplayID       string `json:"displayId"`
@@ -149,6 +174,11 @@ type branch struct {
 	LatestCommit    string `json:"latestCommit"`
 	LatestChangeset string `json:"latestChangeset"`
 	IsDefault       bool   `json:"isDefault"`
+}
+
+type createBranch struct {
+	Name       string `json:"name"`
+	StartPoint string `json:"startPoint"`
 }
 
 type branches struct {
@@ -253,10 +283,11 @@ func convertDiffstats(from *diffstats) []*scm.Change {
 
 func convertDiffstat(from *diffstat) *scm.Change {
 	to := &scm.Change{
-		Path:    from.Path.ToString,
-		Added:   from.Type == "ADD",
-		Renamed: from.Type == "MOVE",
-		Deleted: from.Type == "DELETE",
+		Path:     from.Path.ToString,
+		Added:    from.Type == "ADD",
+		Modified: from.Type == "MODIFY",
+		Renamed:  from.Type == "MOVE",
+		Deleted:  from.Type == "DELETE",
 	}
 	if from.SrcPath != nil {
 		to.PreviousPath = from.SrcPath.ToString

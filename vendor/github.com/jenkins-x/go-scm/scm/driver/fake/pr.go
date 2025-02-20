@@ -376,3 +376,7 @@ func (s *pullService) SetMilestone(ctx context.Context, repo string, prID, numbe
 func (s *pullService) ClearMilestone(ctx context.Context, repo string, prID int) (*scm.Response, error) {
 	return nil, scm.ErrNotSupported
 }
+
+func (s *pullService) DeletePullRequest(ctx context.Context, repo string, prID int) (*scm.Response, error) {
+	return nil, scm.ErrNotSupported
+}

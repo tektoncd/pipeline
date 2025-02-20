@@ -39,7 +39,7 @@ func (s *contentService) Find(ctx context.Context, repo, path, ref string) (*scm
 	}, res, err
 }
 
-func (s *contentService) List(ctx context.Context, repo, path, ref string) ([]*scm.FileEntry, *scm.Response, error) {
+func (s *contentService) List(ctx context.Context, repo, path, ref string, opts *scm.ListOptions) ([]*scm.FileEntry, *scm.Response, error) {
 	endpoint := fmt.Sprintf("api/v4/projects/%s/repository/tree?path=%s&ref=%s", encode(repo), path, ref)
 	out := []*entry{}
 	res, err := s.client.do(ctx, "GET", endpoint, nil, &out)
