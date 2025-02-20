@@ -22,7 +22,7 @@ weight: 201
 
 ## Overview
 > :seedling: **`StepActions` is an [beta](additional-configs.md#beta-features) feature.**
-> The `enable-step-actions` feature flag must be set to `"true"` to specify a `StepAction` in a `Step`.
+> Step actions are enabled by default. You can disable them by setting the `enable-step-actions` feature flag to `"false"`.
 
 A `StepAction` is the reusable and scriptable unit of work that is performed by a `Step`.
 
