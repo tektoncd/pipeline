@@ -3800,10 +3800,10 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 		name: "task with matrix - whole array results",
 		pt:   pts[2],
 		want: &ResolvedPipelineTask{
-			TaskRunNames: nil,
+			TaskRunNames: []string{"pipelinerun-pipelinetask-with-whole-array-results"},
 			TaskRuns:     nil,
 			PipelineTask: &pts[2],
-			ResolvedTask: nil,
+			ResolvedTask: rtr,
 		},
 		pst: pipelineRunState,
 	}} {
