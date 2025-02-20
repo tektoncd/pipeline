@@ -11,7 +11,7 @@ spec:
       value: main
     - name: repoUrl
       value: https://github.com/tektoncd/catalog.git
-  TaskSpec:
+  taskSpec:
     steps:
       - name: action-runner
         ref:

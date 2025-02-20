@@ -766,7 +766,8 @@ PipelineSpec
 <td>
 <em>(Optional)</em>
 <p>Specifying PipelineSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+<code>disable-inline-spec</code> feature flag.
+See Pipeline.spec (API version: tekton.dev/v1)</p>
 </td>
 </tr>
 <tr>
@@ -1004,7 +1005,8 @@ source mounted into /workspace.</p>
 </td>
 <td>
 <p>Volumes is a collection of volumes that are available to mount into the
-steps of the build.</p>
+steps of the build.
+See Pod.spec.volumes (API version: v1)</p>
 </td>
 </tr>
 <tr>
@@ -1189,8 +1191,9 @@ TaskSpec
 </td>
 <td>
 <em>(Optional)</em>
-<p>Specifying PipelineSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+<p>Specifying TaskSpec can be disabled by setting
+<code>disable-inline-spec</code> feature flag.
+See Task.spec (API version: tekton.dev/v1)</p>
 </td>
 </tr>
 <tr>
@@ -2401,7 +2404,8 @@ PipelineSpec
 <td>
 <em>(Optional)</em>
 <p>Specifying PipelineSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+<code>disable-inline-spec</code> feature flag.
+See Pipeline.spec (API version: tekton.dev/v1)</p>
 </td>
 </tr>
 <tr>
@@ -2618,7 +2622,8 @@ PipelineSpec
 </em>
 </td>
 <td>
-<p>PipelineRunSpec contains the exact spec used to instantiate the run</p>
+<p>PipelineSpec contains the exact spec used to instantiate the run.
+See Pipeline.spec (API version: tekton.dev/v1)</p>
 </td>
 </tr>
 <tr>
@@ -2942,7 +2947,8 @@ EmbeddedTask
 <em>(Optional)</em>
 <p>TaskSpec is a specification of a task
 Specifying TaskSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+<code>disable-inline-spec</code> feature flag.
+See Task.spec (API version: tekton.dev/v1)</p>
 </td>
 </tr>
 <tr>
@@ -3071,7 +3077,8 @@ PipelineSpec
 <p>PipelineSpec is a specification of a pipeline
 Note: PipelineSpec is in preview mode and not yet supported
 Specifying PipelineSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+<code>disable-inline-spec</code> feature flag.
+See Pipeline.spec (API version: tekton.dev/v1)</p>
 </td>
 </tr>
 <tr>
@@ -5641,8 +5648,9 @@ TaskSpec
 </td>
 <td>
 <em>(Optional)</em>
-<p>Specifying PipelineSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+<p>Specifying TaskSpec can be disabled by setting
+<code>disable-inline-spec</code> feature flag.
+See Task.spec (API version: tekton.dev/v1)</p>
 </td>
 </tr>
 <tr>
@@ -6148,7 +6156,8 @@ source mounted into /workspace.</p>
 </td>
 <td>
 <p>Volumes is a collection of volumes that are available to mount into the
-steps of the build.</p>
+steps of the build.
+See Pod.spec.volumes (API version: v1)</p>
 </td>
 </tr>
 <tr>
@@ -6392,7 +6401,8 @@ Kubernetes core/v1.PersistentVolumeClaim
 <td>
 <em>(Optional)</em>
 <p>VolumeClaimTemplate is a template for a claim that will be created in the same namespace.
-The PipelineRun controller is responsible for creating a unique claim for each instance of PipelineRun.</p>
+The PipelineRun controller is responsible for creating a unique claim for each instance of PipelineRun.
+See PersistentVolumeClaim (API version: v1)</p>
 </td>
 </tr>
 <tr>
@@ -8631,7 +8641,8 @@ source mounted into /workspace.</p>
 </td>
 <td>
 <p>Volumes is a collection of volumes that are available to mount into the
-steps of the build.</p>
+steps of the build.
+See Pod.spec.volumes (API version: v1)</p>
 </td>
 </tr>
 <tr>
@@ -9156,7 +9167,8 @@ PipelineSpec
 <td>
 <em>(Optional)</em>
 <p>Specifying PipelineSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+<code>disable-inline-spec</code> feature flag.
+See Pipeline.spec (API version: tekton.dev/v1beta1)</p>
 </td>
 </tr>
 <tr>
@@ -9689,7 +9701,8 @@ source mounted into /workspace.</p>
 </td>
 <td>
 <p>Volumes is a collection of volumes that are available to mount into the
-steps of the build.</p>
+steps of the build.
+See Pod.spec.volumes (API version: v1)</p>
 </td>
 </tr>
 <tr>
@@ -9889,8 +9902,9 @@ TaskSpec
 </td>
 <td>
 <em>(Optional)</em>
-<p>Specifying PipelineSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+<p>Specifying TaskSpec can be disabled by setting
+<code>disable-inline-spec</code> feature flag.
+See Task.spec (API version: tekton.dev/v1beta1)</p>
 </td>
 </tr>
 <tr>
@@ -11578,7 +11592,8 @@ PipelineSpec
 <td>
 <em>(Optional)</em>
 <p>Specifying PipelineSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+<code>disable-inline-spec</code> feature flag.
+See Pipeline.spec (API version: tekton.dev/v1beta1)</p>
 </td>
 </tr>
 <tr>
@@ -11872,7 +11887,8 @@ PipelineSpec
 </em>
 </td>
 <td>
-<p>PipelineRunSpec contains the exact spec used to instantiate the run</p>
+<p>PipelineSpec contains the exact spec used to instantiate the run.
+See Pipeline.spec (API version: tekton.dev/v1beta1)</p>
 </td>
 </tr>
 <tr>
@@ -12212,7 +12228,8 @@ EmbeddedTask
 <em>(Optional)</em>
 <p>TaskSpec is a specification of a task
 Specifying TaskSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+<code>disable-inline-spec</code> feature flag.
+See Task.spec (API version: tekton.dev/v1beta1)</p>
 </td>
 </tr>
 <tr>
@@ -12354,8 +12371,9 @@ PipelineSpec
 <em>(Optional)</em>
 <p>PipelineSpec is a specification of a pipeline
 Note: PipelineSpec is in preview mode and not yet supported
-Specifying TaskSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+Specifying PipelineSpec can be disabled by setting
+<code>disable-inline-spec</code> feature flag.
+See Pipeline.spec (API version: tekton.dev/v1beta1)</p>
 </td>
 </tr>
 <tr>
@@ -15627,8 +15645,9 @@ TaskSpec
 </td>
 <td>
 <em>(Optional)</em>
-<p>Specifying PipelineSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+<p>Specifying TaskSpec can be disabled by setting
+<code>disable-inline-spec</code> feature flag.
+See Task.spec (API version: tekton.dev/v1beta1)</p>
 </td>
 </tr>
 <tr>
@@ -15924,7 +15943,8 @@ CloudEventResource.</p>
 <td>
 <em>(Optional)</em>
 <p>RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures.
-All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.</p>
+All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.
+See TaskRun.status (API version: tekton.dev/v1beta1)</p>
 </td>
 </tr>
 <tr>
@@ -15979,7 +15999,8 @@ TaskSpec
 </em>
 </td>
 <td>
-<p>TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.</p>
+<p>TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.
+See Task.spec (API version tekton.dev/v1beta1)</p>
 </td>
 </tr>
 <tr>
@@ -16151,7 +16172,8 @@ source mounted into /workspace.</p>
 </td>
 <td>
 <p>Volumes is a collection of volumes that are available to mount into the
-steps of the build.</p>
+steps of the build.
+See Pod.spec.volumes (API version: v1)</p>
 </td>
 </tr>
 <tr>
@@ -16395,7 +16417,8 @@ Kubernetes core/v1.PersistentVolumeClaim
 <td>
 <em>(Optional)</em>
 <p>VolumeClaimTemplate is a template for a claim that will be created in the same namespace.
-The PipelineRun controller is responsible for creating a unique claim for each instance of PipelineRun.</p>
+The PipelineRun controller is responsible for creating a unique claim for each instance of PipelineRun.
+See PersistentVolumeClaim (API version: v1)</p>
 </td>
 </tr>
 <tr>
@@ -16822,7 +16845,8 @@ tasks in a pipeline.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>RetriesStatus contains the history of CustomRunStatus, in case of a retry.</p>
+<p>RetriesStatus contains the history of CustomRunStatus, in case of a retry.
+See CustomRun.status (API version: tekton.dev/v1beta1)</p>
 </td>
 </tr>
 <tr>
