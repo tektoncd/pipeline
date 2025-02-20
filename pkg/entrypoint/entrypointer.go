@@ -35,8 +35,8 @@ import (
 
 	"github.com/google/cel-go/cel"
 	"github.com/tektoncd/pipeline/internal/artifactref"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1/types"
+	"github.com/tektoncd/pipeline/pkg/entrypoint/pipeline"
 	"github.com/tektoncd/pipeline/pkg/internal/resultref"
 	"github.com/tektoncd/pipeline/pkg/result"
 	"github.com/tektoncd/pipeline/pkg/termination"
