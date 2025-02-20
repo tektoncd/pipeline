@@ -3,6 +3,7 @@
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 [![Go Report Card](https://goreportcard.com/badge/tektoncd/pipeline)](https://goreportcard.com/report/tektoncd/pipeline)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/4020/badge)](https://bestpractices.coreinfrastructure.org/projects/4020)
+[![Gurubase](https://img.shields.io/badge/Gurubase-Ask%20Tekton%20Pipelines%20Guru-006BFF)](https://gurubase.io/g/tekton-pipelines)
 
 The Tekton Pipelines project provides k8s-style resources for declaring
 CI/CD-style pipelines.
