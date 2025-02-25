@@ -236,7 +236,7 @@ func (h *hashivaultClient) fetchPublicKey(_ context.Context) (crypto.PublicKey, 
 		// the raw bytes of the key
 		decodedPublicKey, err := base64.StdEncoding.DecodeString(strPublicKey)
 		if err != nil {
-			return nil, fmt.Errorf("failed to base64 decode ed25519 public key: %s", err)
+			return nil, fmt.Errorf("failed to base64 decode ed25519 public key: %w", err)
 		}
 		if keyLen := len(decodedPublicKey); keyLen != ed25519.PublicKeySize {
 			return nil, fmt.Errorf("decoded ed25519 public key length is %d, should be %d", keyLen, ed25519.PublicKeySize)
