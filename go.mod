@@ -18,14 +18,14 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/opencontainers/image-spec v1.1.0 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/sigstore/sigstore v1.8.12
+	github.com/sigstore/sigstore v1.8.15
 	github.com/spiffe/go-spiffe/v2 v2.5.0
 	github.com/spiffe/spire-api-sdk v1.11.1
 	github.com/tektoncd/plumbing v0.0.0-20220817140952-3da8ce01aeeb
 	go.opencensus.io v0.24.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20240808152545-0cdaa3abc0fa
-	golang.org/x/oauth2 v0.25.0 // indirect
+	golang.org/x/oauth2 v0.26.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0
 	k8s.io/api v0.31.6
 	k8s.io/apimachinery v0.31.6
@@ -124,6 +124,7 @@ require (
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/secure-systems-lab/go-securesystemslib v0.9.0 // indirect
+	github.com/sigstore/protobuf-specs v0.4.0 // indirect
 	github.com/skeema/knownhosts v1.3.0 // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 // indirect
