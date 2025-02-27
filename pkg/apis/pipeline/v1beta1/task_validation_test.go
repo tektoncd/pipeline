@@ -33,7 +33,6 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/pointer"
 	"knative.dev/pkg/apis"
@@ -591,11 +590,7 @@ func TestTaskSpecStepActionReferenceValidate(t *testing.T) {
 			ts := &v1beta1.TaskSpec{
 				Steps: tt.Steps,
 			}
-			ctx := config.ToContext(context.Background(), &config.Config{
-				FeatureFlags: &config.FeatureFlags{
-					EnableStepActions: true,
-				},
-			})
+			ctx := context.Background()
 			ts.SetDefaults(ctx)
 			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
@@ -1463,76 +1458,6 @@ func TestTaskSpecValidateError(t *testing.T) {
 	}
 }
 
-func TestTaskSpecValidateErrorWithStepActionRef_CreateUpdateEvent(t *testing.T) {
-	tests := []struct {
-		name          string
-		Steps         []v1beta1.Step
-		isCreate      bool
-		isUpdate      bool
-		expectedError apis.FieldError
-	}{{
-		name: "is create ctx",
-		Steps: []v1beta1.Step{{
-			Ref: &v1beta1.Ref{
-				Name: "stepAction",
-			},
-		}},
-		isCreate: true,
-		isUpdate: false,
-		expectedError: apis.FieldError{
-			Message: "feature flag enable-step-actions should be set to true to reference StepActions in Steps.",
-			Paths:   []string{"steps[0]"},
-		},
-	}, {
-		name: "is update ctx",
-		Steps: []v1beta1.Step{{
-			Ref: &v1beta1.Ref{
-				Name: "stepAction",
-			},
-		}},
-		isCreate: false,
-		isUpdate: true,
-		expectedError: apis.FieldError{
-			Message: "feature flag enable-step-actions should be set to true to reference StepActions in Steps.",
-			Paths:   []string{"steps[0]"},
-		},
-	}, {
-		name: "ctx is not create or update",
-		Steps: []v1beta1.Step{{
-			Ref: &v1beta1.Ref{
-				Name: "stepAction",
-			},
-		}},
-		isCreate:      false,
-		isUpdate:      false,
-		expectedError: apis.FieldError{},
-	},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ts := v1beta1.TaskSpec{
-				Steps: tt.Steps,
-			}
-			ctx := config.ToContext(context.Background(), &config.Config{
-				FeatureFlags: &config.FeatureFlags{
-					EnableStepActions: false,
-				},
-			})
-			if tt.isCreate {
-				ctx = apis.WithinCreate(ctx)
-			}
-			if tt.isUpdate {
-				ctx = apis.WithinUpdate(ctx, apis.GetBaseline(ctx))
-			}
-			ts.SetDefaults(ctx)
-			err := ts.Validate(ctx)
-			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
-				t.Errorf("TaskSpec.Validate() errors diff %s", diff.PrintWantGot(d))
-			}
-		})
-	}
-}
-
 func TestTaskSpecValidateErrorWithStepActionRef(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -1660,11 +1585,7 @@ func TestTaskSpecValidateErrorWithStepActionRef(t *testing.T) {
 			ts := v1beta1.TaskSpec{
 				Steps: tt.Steps,
 			}
-			ctx := config.ToContext(context.Background(), &config.Config{
-				FeatureFlags: &config.FeatureFlags{
-					EnableStepActions: true,
-				},
-			})
+			ctx := context.Background()
 			ts.SetDefaults(ctx)
 			err := ts.Validate(ctx)
 			if err == nil {
@@ -1767,11 +1688,7 @@ func TestTaskSpecValidateErrorWithStepResultRef(t *testing.T) {
 			ts := v1beta1.TaskSpec{
 				Steps: tt.Steps,
 			}
-			ctx := config.ToContext(context.Background(), &config.Config{
-				FeatureFlags: &config.FeatureFlags{
-					EnableStepActions: true,
-				},
-			})
+			ctx := context.Background()
 			ctx = apis.WithinCreate(ctx)
 			ts.SetDefaults(ctx)
 			err := ts.Validate(ctx)
@@ -2468,11 +2385,7 @@ func TestTaskSpecValidate_StepResults(t *testing.T) {
 					Results: tt.fields.Results,
 				}},
 			}
-			ctx := config.ToContext(context.Background(), &config.Config{
-				FeatureFlags: &config.FeatureFlags{
-					EnableStepActions: true,
-				},
-			})
+			ctx := context.Background()
 			ts.SetDefaults(ctx)
 			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
@@ -2488,75 +2401,13 @@ func TestTaskSpecValidate_StepResults_Error(t *testing.T) {
 		Results []v1.StepResult
 	}
 	tests := []struct {
-		name              string
-		fields            fields
-		enableStepActions bool
-		isCreate          bool
-		isUpdate          bool
-		baselineTaskRun   *v1beta1.TaskRun
-		expectedError     apis.FieldError
+		name            string
+		fields          fields
+		isCreate        bool
+		isUpdate        bool
+		baselineTaskRun *v1beta1.TaskRun
+		expectedError   apis.FieldError
 	}{{
-		name: "step result not allowed without enable step actions - create event",
-		fields: fields{
-			Image:   "my-image",
-			Results: []v1.StepResult{{Name: "a-result"}},
-		},
-		enableStepActions: false,
-		isCreate:          true,
-		expectedError: apis.FieldError{
-			Message: "feature flag enable-step-actions should be set to true in order to use Results in Steps.",
-			Paths:   []string{"steps[0]"},
-		},
-	}, {
-		name: "step result not allowed without enable step actions - update and diverged event",
-		fields: fields{
-			Image:   "my-image",
-			Results: []v1.StepResult{{Name: "a-result"}},
-		},
-		enableStepActions: false,
-		isUpdate:          true,
-		baselineTaskRun: &v1beta1.TaskRun{
-			Spec: v1beta1.TaskRunSpec{
-				TaskSpec: &v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{
-						Image:   "my-image",
-						Results: []v1.StepResult{{Name: "b-result"}},
-					}},
-				},
-			},
-		},
-		expectedError: apis.FieldError{
-			Message: "feature flag enable-step-actions should be set to true in order to use Results in Steps.",
-			Paths:   []string{"steps[0]"},
-		},
-	}, {
-		name: "step result allowed without enable step actions - update but not diverged",
-		fields: fields{
-			Image:   "my-image",
-			Results: []v1.StepResult{{Name: "a-result"}},
-		},
-		enableStepActions: false,
-		isUpdate:          true,
-		baselineTaskRun: &v1beta1.TaskRun{
-			Spec: v1beta1.TaskRunSpec{
-				TaskSpec: &v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{
-						Image:   "my-image",
-						Results: []v1.StepResult{{Name: "a-result"}},
-					}},
-				},
-			},
-		},
-		expectedError: apis.FieldError{},
-	}, {
-		name: "step result not allowed withoue enable step actions - neither create nor update",
-		fields: fields{
-			Image:   "my-image",
-			Results: []v1.StepResult{{Name: "a-result"}},
-		},
-		enableStepActions: false,
-		expectedError:     apis.FieldError{},
-	}, {
 		name: "step script refers to nonexistent result",
 		fields: fields{
 			Image: "my-image",
@@ -2569,7 +2420,6 @@ func TestTaskSpecValidate_StepResults_Error(t *testing.T) {
 			Message: "non-existent variable `non-exist` in \"\\n\\t\\t\\t#!/usr/bin/env bash\\n\\t\\t\\tdate | tee $(results.non-exist.path)\": steps[0].script\nnon-existent variable in \"\\n\\t\\t\\t#!/usr/bin/env bash\\n\\t\\t\\tdate | tee $(results.non-exist.path)\"",
 			Paths:   []string{"steps[0].script"},
 		},
-		enableStepActions: true,
 	}, {
 		name: "step script refers to nonexistent stepresult",
 		fields: fields{
@@ -2583,7 +2433,6 @@ func TestTaskSpecValidate_StepResults_Error(t *testing.T) {
 			Message: `non-existent variable in "\n\t\t\t#!/usr/bin/env bash\n\t\t\tdate | tee $(step.results.non-exist.path)"`,
 			Paths:   []string{"steps[0].script"},
 		},
-		enableStepActions: true,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -2594,11 +2443,7 @@ func TestTaskSpecValidate_StepResults_Error(t *testing.T) {
 					Results: tt.fields.Results,
 				}},
 			}
-			ctx := config.ToContext(context.Background(), &config.Config{
-				FeatureFlags: &config.FeatureFlags{
-					EnableStepActions: tt.enableStepActions,
-				},
-			})
+			ctx := context.Background()
 			if tt.isCreate {
 				ctx = apis.WithinCreate(ctx)
 			}
@@ -2683,8 +2528,7 @@ func TestTaskSpecValidateSuccessWithArtifactsRefFlagEnabled(t *testing.T) {
 			}
 			ctx := config.ToContext(context.Background(), &config.Config{
 				FeatureFlags: &config.FeatureFlags{
-					EnableStepActions: true,
-					EnableArtifacts:   true,
+					EnableArtifacts: true,
 				},
 			})
 			ctx = apis.WithinCreate(ctx)
@@ -2788,11 +2632,7 @@ func TestTaskSpecValidateErrorWithArtifactsRefFlagNotEnabled(t *testing.T) {
 			ts := v1beta1.TaskSpec{
 				Steps: tt.Steps,
 			}
-			ctx := config.ToContext(context.Background(), &config.Config{
-				FeatureFlags: &config.FeatureFlags{
-					EnableStepActions: true,
-				},
-			})
+			ctx := context.Background()
 			ctx = apis.WithinCreate(ctx)
 			ts.SetDefaults(ctx)
 			err := ts.Validate(ctx)
@@ -2888,11 +2728,7 @@ func TestTaskSpecValidateErrorWithArtifactsRef(t *testing.T) {
 			ts := v1beta1.TaskSpec{
 				Steps: tt.Steps,
 			}
-			ctx := config.ToContext(context.Background(), &config.Config{
-				FeatureFlags: &config.FeatureFlags{
-					EnableStepActions: true,
-				},
-			})
+			ctx := context.Background()
 			ctx = apis.WithinCreate(ctx)
 			ts.SetDefaults(ctx)
 			err := ts.Validate(ctx)
@@ -2919,46 +2755,11 @@ func TestTaskSpecValidate_StepWhen_Error(t *testing.T) {
 		EnableCEL        bool
 	}{
 		{
-			name: "step when not allowed without enable step actions - create event",
-			ts: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
-				Image: "my-image",
-				When:  v1beta1.StepWhenExpressions{{Input: "foo", Operator: selection.In, Values: []string{"foo"}}},
-			}}},
-			isCreate: true,
-			expectedError: apis.FieldError{
-				Message: "feature flag enable-step-actions should be set to true in order to use When in Steps.",
-				Paths:   []string{"steps[0]"},
-			},
-		},
-		{
-			name: "step when not allowed without enable step actions - update and diverged event",
-			ts: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
-				Image: "my-image",
-				When:  v1beta1.StepWhenExpressions{{Input: "foo", Operator: selection.In, Values: []string{"foo"}}},
-			}}},
-			isUpdate: true,
-			baselineTaskRun: &v1beta1.TaskRun{
-				Spec: v1beta1.TaskRunSpec{
-					TaskSpec: &v1beta1.TaskSpec{
-						Steps: []v1beta1.Step{{
-							Image:   "my-image",
-							Results: []v1.StepResult{{Name: "a-result"}},
-						}},
-					},
-				},
-			},
-			expectedError: apis.FieldError{
-				Message: "feature flag enable-step-actions should be set to true in order to use When in Steps.",
-				Paths:   []string{"steps[0]"},
-			},
-		},
-		{
 			name: "cel not allowed if EnableCELInWhenExpression is false",
 			ts: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
 				Image: "my-image",
 				When:  v1beta1.StepWhenExpressions{{CEL: "'d'=='d'"}},
 			}}},
-			EnableStepAction: true,
 			expectedError: apis.FieldError{
 				Message: `feature flag enable-cel-in-whenexpression should be set to true to use CEL: 'd'=='d' in WhenExpression`,
 				Paths:   []string{"steps[0].when[0]"},
@@ -2969,7 +2770,6 @@ func TestTaskSpecValidate_StepWhen_Error(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := config.ToContext(context.Background(), &config.Config{
 				FeatureFlags: &config.FeatureFlags{
-					EnableStepActions:         tt.EnableStepAction,
 					EnableCELInWhenExpression: tt.EnableCEL,
 				},
 			})

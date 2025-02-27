@@ -426,11 +426,7 @@ func TestEntryPointStepActionResults(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{downwardMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	ctx := config.ToContext(context.Background(), &config.Config{
-		FeatureFlags: &config.FeatureFlags{
-			EnableStepActions: true,
-		},
-	})
+	ctx := context.Background()
 	got, err := orderContainers(ctx, []string{}, steps, &taskSpec, nil, true, false)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)

@@ -24,12 +24,11 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/parse"
-
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/system"
@@ -199,13 +198,10 @@ spec:
 	}
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
-			checkFlagsEnabled := requireAllGates(requireEnableStepActionsGate)
-
 			ctx := context.Background()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			c, namespace := setup(ctx, t)
-			checkFlagsEnabled(ctx, t, c, "")
 
 			knativetest.CleanupOnInterrupt(func() {
 				tearDown(ctx, t, c, namespace)
@@ -405,13 +401,11 @@ spec:
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
 			featureFlags := getFeatureFlagsBaseOnAPIFlag(t)
-			checkFlagsEnabled := requireAllGates(requireEnableStepActionsGate)
 
 			ctx := context.Background()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			c, namespace := setup(ctx, t)
-			checkFlagsEnabled(ctx, t, c, "")
 
 			previous := featureFlags.EnableCELInWhenExpression
 			updateConfigMap(ctx, c.KubeClient, system.Namespace(), config.GetFeatureFlagsConfigName(), map[string]string{
