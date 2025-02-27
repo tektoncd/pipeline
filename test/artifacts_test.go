@@ -217,8 +217,7 @@ func TestConsumeArtifacts(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			featureFlags := getFeatureFlagsBaseOnAPIFlag(t)
 			checkFlagsEnabled := requireAllGates(map[string]string{
-				"enable-artifacts":    "true",
-				"enable-step-actions": "true",
+				"enable-artifacts": "true",
 			})
 
 			ctx := context.Background()
@@ -312,8 +311,7 @@ func TestStepProduceResultsAndArtifacts(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			featureFlags := getFeatureFlagsBaseOnAPIFlag(t)
 			checkFlagsEnabled := requireAllGates(map[string]string{
-				"enable-artifacts":    "true",
-				"enable-step-actions": "true",
+				"enable-artifacts": "true",
 			})
 
 			ctx := context.Background()

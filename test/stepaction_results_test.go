@@ -36,10 +36,7 @@ import (
 )
 
 var (
-	ignoreProvenance             = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "Provenance")
-	requireEnableStepActionsGate = map[string]string{
-		"enable-step-actions": "true",
-	}
+	ignoreProvenance = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "Provenance")
 )
 
 func TestStepResultsStepActions(t *testing.T) {
@@ -239,7 +236,7 @@ status:
 
 func setUpStepActionsResults(ctx context.Context, t *testing.T) (*clients, string) {
 	t.Helper()
-	c, ns := setup(ctx, t, requireAllGates(requireEnableStepActionsGate))
+	c, ns := setup(ctx, t)
 	configMapData := map[string]string{
 		"results-from": "termination-message",
 	}

@@ -113,9 +113,6 @@ data:
   keep-pod-on-cancel: "false"
   # Setting this flag to "true" will enable the CEL evaluation in WhenExpression
   enable-cel-in-whenexpression: "false"
-  # Setting this flag to "true" will enable the use of StepActions in Steps
-  # This feature is in preview mode and not implemented yet. Please check #7259 for updates.
-  enable-step-actions: "false"
   # Setting this flag to "true" will enable the use of Artifacts in Steps
   # This feature is in preview mode and not implemented yet. Please check #7693 for updates.
   enable-artifacts: "false"
@@ -131,3 +128,5 @@ data:
   enable-concise-resolver-syntax: "false"
   # Setthing this flag to "true" will enable native Kubernetes Sidecar support
   enable-kubernetes-sidecar: "false"
+  # Setting this flag to "false" will have no effect since StepActions are a stable feature
+  enable-step-actions: "true"
