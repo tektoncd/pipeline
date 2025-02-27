@@ -1421,7 +1421,6 @@ metadata:
   namespace: foo
 spec:
   taskRef:
-    kind: ClusterTask
     name: taskrun-with-wrong-ref
 `)
 	taskRuns := []*v1.TaskRun{noTaskRun, withWrongRef}
@@ -1734,6 +1733,7 @@ status:
         maxResultSize: 4096
         coschedule: "workspaces"
         disableInlineSpec: ""
+        enableStepActions: true
   provenance:
     featureFlags:
       runningInEnvWithInjectedSidecars: true
@@ -1746,6 +1746,7 @@ status:
       maxResultSize: 4096
       coschedule: "workspaces"
       disableInlineSpec: ""
+      enableStepActions: true
 `, pipelineErrors.UserErrorLabel, pipelineErrors.UserErrorLabel))
 		reconciliatonError = errors.New("1 error occurred:\n\t* Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\"")
 		toBeRetriedTaskRun = parse.MustParseV1TaskRun(t, `
@@ -1800,6 +1801,7 @@ status:
       maxResultSize: 4096
       coschedule: "workspaces"
       disableInlineSpec: ""
+      enableStepActions: true
 `)
 		toBeRetriedWithResultsTaskRun = parse.MustParseV1TaskRun(t, `
 metadata:
@@ -1903,7 +1905,8 @@ status:
 			ConfigMaps: []*corev1.ConfigMap{{
 				ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
 				Data: map[string]string{
-					"enable-api-fields": config.AlphaAPIFields,
+					"enable-step-actions": "true",
+					"enable-api-fields":   config.AlphaAPIFields,
 				},
 			}},
 		},
