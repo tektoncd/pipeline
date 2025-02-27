@@ -298,55 +298,41 @@ func ApplyWorkspaces(p *v1.PipelineSpec, pr *v1.PipelineRun) *v1.PipelineSpec {
 	return ApplyReplacements(p, replacements, map[string][]string{}, map[string]map[string]string{})
 }
 
+// replaceVariablesInPipelineTasks handles variable replacement for a slice of PipelineTasks in-place
+func replaceVariablesInPipelineTasks(tasks []v1.PipelineTask, replacements map[string]string,
+	arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) {
+	for i := range tasks {
+		tasks[i].Params = tasks[i].Params.ReplaceVariables(replacements, arrayReplacements, objectReplacements)
+		if tasks[i].IsMatrixed() {
+			tasks[i].Matrix.Params = tasks[i].Matrix.Params.ReplaceVariables(replacements, arrayReplacements, nil)
+			for j := range tasks[i].Matrix.Include {
+				tasks[i].Matrix.Include[j].Params = tasks[i].Matrix.Include[j].Params.ReplaceVariables(replacements, nil, nil)
+			}
+		} else {
+			tasks[i].DisplayName = substitution.ApplyReplacements(tasks[i].DisplayName, replacements)
+		}
+		for j := range tasks[i].Workspaces {
+			tasks[i].Workspaces[j].SubPath = substitution.ApplyReplacements(tasks[i].Workspaces[j].SubPath, replacements)
+		}
+		tasks[i].When = tasks[i].When.ReplaceVariables(replacements, arrayReplacements)
+		if tasks[i].TaskRef != nil {
+			if tasks[i].TaskRef.Params != nil {
+				tasks[i].TaskRef.Params = tasks[i].TaskRef.Params.ReplaceVariables(replacements, arrayReplacements, objectReplacements)
+			}
+			tasks[i].TaskRef.Name = substitution.ApplyReplacements(tasks[i].TaskRef.Name, replacements)
+		}
+		tasks[i].OnError = v1.PipelineTaskOnErrorType(substitution.ApplyReplacements(string(tasks[i].OnError), replacements))
+		tasks[i] = propagateParams(tasks[i], replacements, arrayReplacements, objectReplacements)
+	}
+}
+
 // ApplyReplacements replaces placeholders for declared parameters with the specified replacements.
 func ApplyReplacements(p *v1.PipelineSpec, replacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) *v1.PipelineSpec {
 	p = p.DeepCopy()
 
-	for i := range p.Tasks {
-		p.Tasks[i].Params = p.Tasks[i].Params.ReplaceVariables(replacements, arrayReplacements, objectReplacements)
-		if p.Tasks[i].IsMatrixed() {
-			p.Tasks[i].Matrix.Params = p.Tasks[i].Matrix.Params.ReplaceVariables(replacements, arrayReplacements, nil)
-			for j := range p.Tasks[i].Matrix.Include {
-				p.Tasks[i].Matrix.Include[j].Params = p.Tasks[i].Matrix.Include[j].Params.ReplaceVariables(replacements, nil, nil)
-			}
-		} else {
-			p.Tasks[i].DisplayName = substitution.ApplyReplacements(p.Tasks[i].DisplayName, replacements)
-		}
-		for j := range p.Tasks[i].Workspaces {
-			p.Tasks[i].Workspaces[j].SubPath = substitution.ApplyReplacements(p.Tasks[i].Workspaces[j].SubPath, replacements)
-		}
-		p.Tasks[i].When = p.Tasks[i].When.ReplaceVariables(replacements, arrayReplacements)
-		if p.Tasks[i].TaskRef != nil {
-			if p.Tasks[i].TaskRef.Params != nil {
-				p.Tasks[i].TaskRef.Params = p.Tasks[i].TaskRef.Params.ReplaceVariables(replacements, arrayReplacements, objectReplacements)
-			}
-			p.Tasks[i].TaskRef.Name = substitution.ApplyReplacements(p.Tasks[i].TaskRef.Name, replacements)
-		}
-		p.Tasks[i] = propagateParams(p.Tasks[i], replacements, arrayReplacements, objectReplacements)
-	}
-
-	for i := range p.Finally {
-		p.Finally[i].Params = p.Finally[i].Params.ReplaceVariables(replacements, arrayReplacements, objectReplacements)
-		if p.Finally[i].IsMatrixed() {
-			p.Finally[i].Matrix.Params = p.Finally[i].Matrix.Params.ReplaceVariables(replacements, arrayReplacements, nil)
-			for j := range p.Finally[i].Matrix.Include {
-				p.Finally[i].Matrix.Include[j].Params = p.Finally[i].Matrix.Include[j].Params.ReplaceVariables(replacements, nil, nil)
-			}
-		} else {
-			p.Finally[i].DisplayName = substitution.ApplyReplacements(p.Finally[i].DisplayName, replacements)
-		}
-		for j := range p.Finally[i].Workspaces {
-			p.Finally[i].Workspaces[j].SubPath = substitution.ApplyReplacements(p.Finally[i].Workspaces[j].SubPath, replacements)
-		}
-		p.Finally[i].When = p.Finally[i].When.ReplaceVariables(replacements, arrayReplacements)
-		if p.Finally[i].TaskRef != nil {
-			if p.Finally[i].TaskRef.Params != nil {
-				p.Finally[i].TaskRef.Params = p.Finally[i].TaskRef.Params.ReplaceVariables(replacements, arrayReplacements, objectReplacements)
-			}
-			p.Finally[i].TaskRef.Name = substitution.ApplyReplacements(p.Finally[i].TaskRef.Name, replacements)
-		}
-		p.Finally[i] = propagateParams(p.Finally[i], replacements, arrayReplacements, objectReplacements)
-	}
+	// Replace variables in Tasks and Finally tasks
+	replaceVariablesInPipelineTasks(p.Tasks, replacements, arrayReplacements, objectReplacements)
+	replaceVariablesInPipelineTasks(p.Finally, replacements, arrayReplacements, objectReplacements)
 
 	return p
 }
