@@ -4680,7 +4680,6 @@ Params
 <td>
 <em>(Optional)</em>
 <p>Results declares StepResults produced by the Step.</p>
-<p>This is field is at an ALPHA stability level and gated by &ldquo;enable-step-actions&rdquo; feature flag.</p>
 <p>It can be used in an inlined Step when used to store Results to $(step.results.resultName.path).
 It cannot be used when referencing StepActions using [v1.Step.Ref].
 The Results declared by the StepActions will be stored here instead.</p>
@@ -4739,7 +4738,6 @@ string
 </p>
 <div>
 <p>StepResult used to describe the Results of a Step.</p>
-<p>This is field is at an BETA stability level and gated by &ldquo;enable-step-actions&rdquo; feature flag.</p>
 </div>
 <table>
 <thead>
@@ -13977,7 +13975,6 @@ Params
 <td>
 <em>(Optional)</em>
 <p>Results declares StepResults produced by the Step.</p>
-<p>This is field is at an ALPHA stability level and gated by &ldquo;enable-step-actions&rdquo; feature flag.</p>
 <p>It can be used in an inlined Step when used to store Results to $(step.results.resultName.path).
 It cannot be used when referencing StepActions using [v1beta1.Step.Ref].
 The Results declared by the StepActions will be stored here instead.</p>
