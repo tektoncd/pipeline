@@ -263,10 +263,7 @@ spec:
                   description: Results are values that this StepAction can output
                   type: array
                   items:
-                    description: |-
-                      StepResult used to describe the Results of a Step.
-
-                      This is field is at an BETA stability level and gated by "enable-step-actions" feature flag.
+                    description: StepResult used to describe the Results of a Step.
                     type: object
                     required:
                       - name
@@ -803,10 +800,7 @@ spec:
                   description: Results are values that this StepAction can output
                   type: array
                   items:
-                    description: |-
-                      StepResult used to describe the Results of a Step.
-
-                      This is field is at an BETA stability level and gated by "enable-step-actions" feature flag.
+                    description: StepResult used to describe the Results of a Step.
                     type: object
                     required:
                       - name
