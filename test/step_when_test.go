@@ -199,7 +199,7 @@ spec:
 	}
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
-			checkFlagsEnabled := requireAllGates(requireEnableStepActionsGate)
+			checkFlagsEnabled := requireAllGates(nil)
 
 			ctx := context.Background()
 			ctx, cancel := context.WithCancel(ctx)
@@ -405,7 +405,7 @@ spec:
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
 			featureFlags := getFeatureFlagsBaseOnAPIFlag(t)
-			checkFlagsEnabled := requireAllGates(requireEnableStepActionsGate)
+			checkFlagsEnabled := requireAllGates(nil)
 
 			ctx := context.Background()
 			ctx, cancel := context.WithCancel(ctx)

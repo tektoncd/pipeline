@@ -391,9 +391,6 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 	}
 
 	if s.Ref != nil {
-		if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions && isCreateOrUpdateAndDiverged(ctx, s) {
-			return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to reference StepActions in Steps.", config.EnableStepActions), "")
-		}
 		errs = errs.Also(s.Ref.Validate(ctx))
 		if s.Image != "" {
 			errs = errs.Also(&apis.FieldError{
@@ -449,16 +446,6 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 				Message: "params cannot be used without Ref",
 				Paths:   []string{"params"},
 			})
-		}
-		if len(s.Results) > 0 {
-			if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions && isCreateOrUpdateAndDiverged(ctx, s) {
-				return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true in order to use Results in Steps.", config.EnableStepActions), "")
-			}
-		}
-		if len(s.When) > 0 {
-			if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions && isCreateOrUpdateAndDiverged(ctx, s) {
-				return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true in order to use When in Steps.", config.EnableStepActions), "")
-			}
 		}
 		if s.Image == "" {
 			errs = errs.Also(apis.ErrMissingField("Image"))
@@ -543,13 +530,33 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 }
 
 func validateArtifactsReferencesInStep(ctx context.Context, s Step) *apis.FieldError {
-	if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableArtifacts {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	cfg := config.FromContextOrDefaults(ctx)
+	if cfg == nil || cfg.FeatureFlags == nil {
+		cfg = &config.Config{
+			FeatureFlags: &config.FeatureFlags{},
+		}
+	}
+
+	if !cfg.FeatureFlags.EnableArtifacts {
 		var t []string
-		t = append(t, s.Script)
-		t = append(t, s.Command...)
-		t = append(t, s.Args...)
-		for _, e := range s.Env {
-			t = append(t, e.Value)
+		if s.Script != "" {
+			t = append(t, s.Script)
+		}
+		if len(s.Command) > 0 {
+			t = append(t, s.Command...)
+		}
+		if len(s.Args) > 0 {
+			t = append(t, s.Args...)
+		}
+		if s.Env != nil {
+			for _, e := range s.Env {
+				if e.Value != "" {
+					t = append(t, e.Value)
+				}
+			}
 		}
 		if slices.ContainsFunc(t, stepArtifactReferenceExists) || slices.ContainsFunc(t, taskArtifactReferenceExists) {
 			return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use artifacts feature.", config.EnableArtifacts), "")
