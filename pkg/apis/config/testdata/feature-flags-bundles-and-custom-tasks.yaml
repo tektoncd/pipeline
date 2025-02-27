@@ -7,3 +7,4 @@ data:
   enable-tekton-oci-bundles: "true"
   enable-custom-tasks: "true"
   enable-api-fields: "stable"
+  enable-step-actions: "true"
