@@ -610,7 +610,9 @@ func TestTaskRunResolveDefaultParameterSubstitutionOnStepAction(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	c, namespace := setup(ctx, t, requireAllGates(requireEnableStepActionsGate))
+	c, namespace := setup(ctx, t, requireAllGates(map[string]string{
+		"enable-api-fields": "beta",
+	}))
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)

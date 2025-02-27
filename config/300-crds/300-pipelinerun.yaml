@@ -2571,6 +2571,9 @@ spec:
                           type: boolean
                         disableInlineSpec:
                           type: string
+                        enable-step-actions:
+                          description: EnableStepActions is a no-op flag since StepActions are stable
+                          type: boolean
                         enableAPIFields:
                           type: string
                         enableArtifacts:
@@ -2586,8 +2589,6 @@ spec:
                         enableParamEnum:
                           type: boolean
                         enableProvenanceInStatus:
-                          type: boolean
-                        enableStepActions:
                           type: boolean
                         enforceNonfalsifiability:
                           type: string
@@ -2985,6 +2986,9 @@ spec:
                                     type: boolean
                                   disableInlineSpec:
                                     type: string
+                                  enable-step-actions:
+                                    description: EnableStepActions is a no-op flag since StepActions are stable
+                                    type: boolean
                                   enableAPIFields:
                                     type: string
                                   enableArtifacts:
@@ -3000,8 +3004,6 @@ spec:
                                   enableParamEnum:
                                     type: boolean
                                   enableProvenanceInStatus:
-                                    type: boolean
-                                  enableStepActions:
                                     type: boolean
                                   enforceNonfalsifiability:
                                     type: string
@@ -3273,6 +3275,9 @@ spec:
                                           type: boolean
                                         disableInlineSpec:
                                           type: string
+                                        enable-step-actions:
+                                          description: EnableStepActions is a no-op flag since StepActions are stable
+                                          type: boolean
                                         enableAPIFields:
                                           type: string
                                         enableArtifacts:
@@ -3288,8 +3293,6 @@ spec:
                                         enableParamEnum:
                                           type: boolean
                                         enableProvenanceInStatus:
-                                          type: boolean
-                                        enableStepActions:
                                           type: boolean
                                         enforceNonfalsifiability:
                                           type: string
@@ -5882,6 +5885,9 @@ spec:
                           type: boolean
                         disableInlineSpec:
                           type: string
+                        enable-step-actions:
+                          description: EnableStepActions is a no-op flag since StepActions are stable
+                          type: boolean
                         enableAPIFields:
                           type: string
                         enableArtifacts:
@@ -5897,8 +5903,6 @@ spec:
                         enableParamEnum:
                           type: boolean
                         enableProvenanceInStatus:
-                          type: boolean
-                        enableStepActions:
                           type: boolean
                         enforceNonfalsifiability:
                           type: string

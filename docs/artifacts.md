@@ -511,7 +511,6 @@ Upon resolution and execution of the `TaskRun`, the `Status` will look something
         "enableKeepPodOnCancel": false,
         "enableParamEnum": false,
         "enableProvenanceInStatus": true,
-        "enableStepActions": true,
         "enableTektonOCIBundles": false,
         "enforceNonfalsifiability": "none",
         "maxResultSize": 4096,

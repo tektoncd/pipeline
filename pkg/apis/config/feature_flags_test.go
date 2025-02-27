@@ -54,7 +54,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
 				EnableKeepPodOnCancel:            config.DefaultEnableKeepPodOnCancel.Enabled,
 				EnableCELInWhenExpression:        config.DefaultEnableCELInWhenExpression.Enabled,
-				EnableStepActions:                config.DefaultEnableStepActions.Enabled,
 				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 				DisableInlineSpec:                config.DefaultDisableInlineSpec,
 				EnableConciseResolverSyntax:      config.DefaultEnableConciseResolverSyntax.Enabled,
@@ -79,7 +78,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				SetSecurityContextReadOnlyRootFilesystem: true,
 				Coschedule:                               config.CoscheduleDisabled,
 				EnableCELInWhenExpression:                true,
-				EnableStepActions:                        true,
 				EnableArtifacts:                          true,
 				EnableParamEnum:                          true,
 				DisableInlineSpec:                        "pipeline,pipelinerun,taskrun",
@@ -108,7 +106,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				Coschedule:                       config.DefaultCoschedule,
 				EnableKeepPodOnCancel:            config.DefaultEnableKeepPodOnCancel.Enabled,
 				EnableCELInWhenExpression:        config.DefaultEnableCELInWhenExpression.Enabled,
-				EnableStepActions:                config.DefaultEnableStepActions.Enabled,
 				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 				EnableArtifacts:                  config.DefaultEnableArtifacts.Enabled,
 				DisableInlineSpec:                config.DefaultDisableInlineSpec,
@@ -171,7 +168,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				Coschedule:                       config.DefaultCoschedule,
 				EnableKeepPodOnCancel:            config.DefaultEnableKeepPodOnCancel.Enabled,
 				EnableCELInWhenExpression:        config.DefaultEnableCELInWhenExpression.Enabled,
-				EnableStepActions:                config.DefaultEnableStepActions.Enabled,
 				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 				DisableInlineSpec:                config.DefaultDisableInlineSpec,
 			},
@@ -191,7 +187,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				Coschedule:                       config.DefaultCoschedule,
 				EnableKeepPodOnCancel:            config.DefaultEnableKeepPodOnCancel.Enabled,
 				EnableCELInWhenExpression:        config.DefaultEnableCELInWhenExpression.Enabled,
-				EnableStepActions:                config.DefaultEnableStepActions.Enabled,
 				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 				DisableInlineSpec:                config.DefaultDisableInlineSpec,
 			},
@@ -227,7 +222,6 @@ func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 		Coschedule:                       config.DefaultCoschedule,
 		EnableKeepPodOnCancel:            config.DefaultEnableKeepPodOnCancel.Enabled,
 		EnableCELInWhenExpression:        config.DefaultEnableCELInWhenExpression.Enabled,
-		EnableStepActions:                config.DefaultEnableStepActions.Enabled,
 		EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 		DisableInlineSpec:                config.DefaultDisableInlineSpec,
 	}
@@ -304,9 +298,6 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 	}, {
 		fileName: "feature-flags-invalid-enable-cel-in-whenexpression",
 		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature enable-cel-in-whenexpression`,
-	}, {
-		fileName: "feature-flags-invalid-enable-step-actions",
-		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature enable-step-actions`,
 	}, {
 		fileName: "feature-flags-invalid-enable-param-enum",
 		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature enable-param-enum`,
