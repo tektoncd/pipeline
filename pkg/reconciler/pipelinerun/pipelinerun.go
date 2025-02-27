@@ -563,6 +563,15 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	// Update pipelinespec of pipelinerun's status field
 	pr.Status.PipelineSpec = pipelineSpec
 
+	// validate pipelineSpec after apply parameters
+	if err := validatePipelineSpecAfterApplyParameters(ctx, pipelineSpec); err != nil {
+		// This Run has failed, so we need to mark it as failed and stop reconciling it
+		pr.Status.MarkFailed(v1.PipelineRunReasonFailedValidation.String(),
+			"Pipeline %s/%s can't be Run; it has an invalid spec: %s",
+			pipelineMeta.Namespace, pipelineMeta.Name, pipelineErrors.WrapUserError(err))
+		return controller.NewPermanentError(err)
+	}
+
 	// pipelineState holds a list of pipeline tasks after fetching their resolved Task specs.
 	// pipelineState also holds a taskRun for each pipeline task after the taskRun is created
 	// pipelineState is instantiated and updated on every reconcile cycle
@@ -1678,4 +1687,20 @@ func conditionFromVerificationResult(verificationResult *trustedresources.Verifi
 		// do nothing
 	}
 	return condition, err
+}
+
+// validatePipelineSpecAfterApplyParameters validates the PipelineSpec after apply parameters
+// Maybe some fields are modified during apply parameters, need to validate again. For example, tasks[].OnError.
+func validatePipelineSpecAfterApplyParameters(ctx context.Context, pipelineSpec *v1.PipelineSpec) (errs *apis.FieldError) {
+	if pipelineSpec == nil {
+		errs = errs.Also(apis.ErrMissingField("PipelineSpec"))
+		return
+	}
+	tasks := make([]v1.PipelineTask, 0, len(pipelineSpec.Tasks)+len(pipelineSpec.Finally))
+	tasks = append(tasks, pipelineSpec.Tasks...)
+	tasks = append(tasks, pipelineSpec.Finally...)
+	for _, t := range tasks {
+		errs = errs.Also(t.ValidateOnError(ctx))
+	}
+	return errs
 }
