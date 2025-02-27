@@ -17994,6 +17994,55 @@ func Test_runNextSchedulableTask(t *testing.T) {
 	}
 }
 
+func TestReconcile_InvalidOnErrorPipeline(t *testing.T) {
+	names.TestingSeed()
+
+	namespace := "foo"
+	prName := "test-pipeline-invalid-onerror"
+
+	prs := []*v1.PipelineRun{
+		parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-invalid-onerror
+  namespace: foo
+spec:
+  params:
+    - name: onerror
+      value: "invalid"
+  pipelineSpec:
+    tasks:
+    - name: echo
+      onError: $(params.onerror)
+      taskSpec:
+        steps:
+        - name: echo
+          image: ubuntu
+          script: |
+            echo "Hello, World!"
+            exit 1
+`),
+	}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		ConfigMaps:   []*corev1.ConfigMap{newFeatureFlagsConfigMap()},
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	wantEvents := []string{
+		"Normal Started",
+		"(?s)Warning Failed .*PipelineTask OnError must be either \"continue\" or \"stopAndFail\"",
+		"(?s)Warning InternalError .*OnError\nPipelineTask OnError must be either \"continue\" or \"stopAndFail\"",
+	}
+	reconciledRun, clients := prt.reconcileRun(namespace, prName, wantEvents, true)
+
+	// Check that the expected TaskRun was not created
+	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
+	validateTaskRunsCount(t, taskRuns, 0)
+	verifyTaskRunStatusesCount(t, reconciledRun.Status, 0)
+}
+
 func getSignedV1Pipeline(unsigned *pipelinev1.Pipeline, signer signature.Signer, name string) (*pipelinev1.Pipeline, error) {
 	signed := unsigned.DeepCopy()
 	signed.Name = name
