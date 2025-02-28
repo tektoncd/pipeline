@@ -48,7 +48,9 @@ type TaskRunStepArtifact = Artifact
 // a task run or a similar process. Artifacts in this context are units of data or resources
 // that the process either consumes as input or produces as output.
 type Artifacts struct {
-	Inputs  []Artifact `json:"inputs,omitempty"`
+	// +listType=atomic
+	Inputs []Artifact `json:"inputs,omitempty"`
+	// +listType=atomic
 	Outputs []Artifact `json:"outputs,omitempty"`
 }
 

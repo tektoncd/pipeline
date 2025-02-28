@@ -841,6 +841,7 @@ func terminateStepsInPod(tr *v1.TaskRun, taskRunReason v1.TaskRunReason) {
 		if step.Waiting != nil {
 			step.Terminated = &corev1.ContainerStateTerminated{
 				ExitCode:   1,
+				StartedAt:  tr.CreationTimestamp, // startedAt cannot be null due to CRD schema validation
 				FinishedAt: *tr.Status.CompletionTime,
 				// TODO(#7385): replace with more pod/container termination reason instead of overloading taskRunReason
 				Reason:  taskRunReason.String(),

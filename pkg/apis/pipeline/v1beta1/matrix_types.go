@@ -41,6 +41,7 @@ type Matrix struct {
 }
 
 // IncludeParamsList is a list of IncludeParams which allows passing in specific combinations of Parameters into the Matrix.
+// +listType=atomic
 type IncludeParamsList []IncludeParams
 
 // IncludeParams allows passing in a specific combinations of Parameters into the Matrix.
