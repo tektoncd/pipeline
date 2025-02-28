@@ -365,7 +365,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 			}
 		}
 		stepState := v1.StepState{
-			ContainerState:    *state,
+			ContainerState:    *state.DeepCopy(),
 			Name:              TrimStepPrefix(s.Name),
 			Container:         s.Name,
 			ImageID:           s.ImageID,

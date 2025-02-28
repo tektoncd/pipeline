@@ -151,9 +151,10 @@ spec:
 		// Simulate a Custom Task controller updating the CustomRun to done/successful.
 		cr.Status = v1beta1.CustomRunStatus{
 			Status: duckv1.Status{
-				Conditions: duckv1.Conditions{{
-					Type:   apis.ConditionSucceeded,
-					Status: corev1.ConditionTrue,
+				Conditions: []apis.Condition{{
+					Type:               apis.ConditionSucceeded,
+					Status:             corev1.ConditionTrue,
+					LastTransitionTime: apis.VolatileTime{Inner: metav1.NewTime(time.Now())},
 				}},
 			},
 			CustomRunStatusFields: v1beta1.CustomRunStatusFields{
@@ -161,6 +162,10 @@ spec:
 					Name:  "runResult",
 					Value: "aResultValue",
 				}},
+				ExtraFields: runtime.RawExtension{
+					// Raw: customTaskRawSpec,
+					Raw: []byte(`{"blah":1,"blub":"value"}`),
+				},
 			},
 		}
 
@@ -331,11 +336,16 @@ spec:
 	cr.Status = v1beta1.CustomRunStatus{
 		CustomRunStatusFields: v1beta1.CustomRunStatusFields{
 			StartTime: &metav1.Time{Time: time.Now()},
+			ExtraFields: runtime.RawExtension{
+				// Raw: customTaskRawSpec,
+				Raw: []byte(`{"blah":1,"blub":"value"}`),
+			},
 		},
 		Status: duckv1.Status{
 			Conditions: []apis.Condition{{
-				Type:   apis.ConditionSucceeded,
-				Status: corev1.ConditionUnknown,
+				Type:               apis.ConditionSucceeded,
+				Status:             corev1.ConditionUnknown,
+				LastTransitionTime: apis.VolatileTime{Inner: metav1.NewTime(time.Now())},
 			}},
 		},
 	}

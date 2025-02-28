@@ -81,6 +81,8 @@ type ResolutionRequestStatusFields struct {
 	Data string `json:"data"`
 	// RefSource is the source reference of the remote data that records where the remote
 	// file came from including the url, digest and the entrypoint.
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	RefSource *pipelinev1.RefSource `json:"refSource"`
 }
 
