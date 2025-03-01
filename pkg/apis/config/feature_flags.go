@@ -60,8 +60,6 @@ const (
 	ResultExtractionMethodTerminationMessage = "termination-message"
 	// ResultExtractionMethodSidecarLogs is the value used for "results-from" as a way to extract results from tasks using sidecar logs.
 	ResultExtractionMethodSidecarLogs = "sidecar-logs"
-	// DefaultDisableAffinityAssistant is the default value for "disable-affinity-assistant".
-	DefaultDisableAffinityAssistant = false
 	// DefaultDisableCredsInit is the default value for "disable-creds-init".
 	DefaultDisableCredsInit = false
 	// DefaultRunningInEnvWithInjectedSidecars is the default value for "running-in-environment-with-injected-sidecars".
@@ -119,7 +117,6 @@ const (
 	// in Taskrun or Pipelinerun
 	DisableInlineSpec = "disable-inline-spec"
 
-	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
 	runningInEnvWithInjectedSidecarsKey = "running-in-environment-with-injected-sidecars"
 	awaitSidecarReadinessKey            = "await-sidecar-readiness"
@@ -188,7 +185,7 @@ var (
 // FeatureFlags holds the features configurations
 // +k8s:deepcopy-gen=true
 type FeatureFlags struct {
-	DisableAffinityAssistant         bool `json:"disableAffinityAssistant,omitempty"`
+	// DisableAffinityAssistant         bool `json:"disableAffinityAssistant,omitempty"`
 	DisableCredsInit                 bool `json:"disableCredsInit,omitempty"`
 	RunningInEnvWithInjectedSidecars bool `json:"runningInEnvWithInjectedSidecars,omitempty"`
 	RequireGitSSHSecretKnownHosts    bool `json:"requireGitSSHSecretKnownHosts,omitempty"`
@@ -259,9 +256,6 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	}
 
 	tc := FeatureFlags{}
-	if err := setFeature(disableAffinityAssistantKey, DefaultDisableAffinityAssistant, &tc.DisableAffinityAssistant); err != nil {
-		return nil, err
-	}
 	if err := setFeature(disableCredsInitKey, DefaultDisableCredsInit, &tc.DisableCredsInit); err != nil {
 		return nil, err
 	}
@@ -304,7 +298,7 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if err := setFeature(setSecurityContextReadOnlyRootFilesystemKey, DefaultSetSecurityContextReadOnlyRootFilesystem, &tc.SetSecurityContextReadOnlyRootFilesystem); err != nil {
 		return nil, err
 	}
-	if err := setCoschedule(cfgMap, DefaultCoschedule, tc.DisableAffinityAssistant, &tc.Coschedule); err != nil {
+	if err := setCoschedule(cfgMap, DefaultCoschedule, &tc.Coschedule); err != nil {
 		return nil, err
 	}
 	if err := setPerFeatureFlag(EnableCELInWhenExpression, DefaultEnableCELInWhenExpression, &tc.EnableCELInWhenExpression); err != nil {
@@ -350,8 +344,7 @@ func setEnabledAPIFields(cfgMap map[string]string, defaultValue string, feature 
 }
 
 // setCoschedule sets the "coschedule" flag based on the content of a given map.
-// If the feature gate is invalid or incompatible with `disable-affinity-assistant`, then an error is returned.
-func setCoschedule(cfgMap map[string]string, defaultValue string, disabledAffinityAssistant bool, feature *string) error {
+func setCoschedule(cfgMap map[string]string, defaultValue string, feature *string) error {
 	value := defaultValue
 	if cfg, ok := cfgMap[coscheduleKey]; ok {
 		value = strings.ToLower(cfg)
@@ -359,11 +352,6 @@ func setCoschedule(cfgMap map[string]string, defaultValue string, disabledAffini
 
 	switch value {
 	case CoscheduleDisabled, CoscheduleWorkspaces, CoschedulePipelineRuns, CoscheduleIsolatePipelineRun:
-		// validate that "coschedule" is compatible with "disable-affinity-assistant"
-		// "coschedule" must be set to "workspaces" when "disable-affinity-assistant" is false
-		if !disabledAffinityAssistant && value != CoscheduleWorkspaces {
-			return fmt.Errorf("coschedule value %v is incompatible with %v setting to false", value, disableAffinityAssistantKey)
-		}
 		*feature = value
 	default:
 		return fmt.Errorf("invalid value for feature flag %q: %q", coscheduleKey, value)

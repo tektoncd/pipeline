@@ -342,8 +342,7 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerPipelineRun(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			featureFlags := map[string]string{
-				"disable-affinity-assistant": "true",
-				"coschedule":                 "pipelineruns",
+				"coschedule": "pipelineruns",
 			}
 
 			for k, v := range tc.featureFlags {
@@ -1020,8 +1019,7 @@ func TestCleanupAffinityAssistants_Success(t *testing.T) {
 		name:       "Affinity Assistant Cleanup - per workspace",
 		aaBehavior: aa.AffinityAssistantPerWorkspace,
 		cfgMap: map[string]string{
-			"disable-affinity-assistant": "false",
-			"coschedule":                 "workspaces",
+			"coschedule": "workspaces",
 		},
 		affinityAssistantNames: []string{"affinity-assistant-9d8b15fa2e", "affinity-assistant-39883fc3b2"},
 		pvcNames:               []string{"pvc-a12c589442", "pvc-5ce7cd98c5"},
@@ -1029,8 +1027,7 @@ func TestCleanupAffinityAssistants_Success(t *testing.T) {
 		name:       "Affinity Assistant Cleanup - per pipelinerun",
 		aaBehavior: aa.AffinityAssistantPerPipelineRun,
 		cfgMap: map[string]string{
-			"disable-affinity-assistant": "true",
-			"coschedule":                 "pipelineruns",
+			"coschedule": "pipelineruns",
 		},
 		affinityAssistantNames: []string{"affinity-assistant-62843d388a"},
 		pvcNames:               []string{"pvc-a12c589442-affinity-assistant-62843d388a-0", "pvc-5ce7cd98c5-affinity-assistant-62843d388a-0"},
@@ -1157,14 +1154,12 @@ func TestCleanupAffinityAssistantsAndPVCs_Failure(t *testing.T) {
 	}
 }
 
-// TestThatCleanupIsAvoidedIfAssistantIsDisabled tests that
-// cleanup of Affinity Assistants is omitted when the
-// Affinity Assistant is disabled
-func TestThatCleanupIsAvoidedIfAssistantIsDisabled(t *testing.T) {
+// TestThatCleanupIsAvoidedtests that cleanup of Affinity Assistants is omitted
+func TestThatCleanupIsAvoided(t *testing.T) {
 	configMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 		Data: map[string]string{
-			featureFlagDisableAffinityAssistantKey: "true",
+			"coschedule": "disabled",
 		},
 	}
 

@@ -18,7 +18,6 @@ metadata:
   name: feature-flags
   namespace: tekton-pipelines
 data:
-  disable-affinity-assistant: "true"
   coschedule: "disabled"
   running-in-environment-with-injected-sidecars: "false"
   await-sidecar-readiness: "false"
