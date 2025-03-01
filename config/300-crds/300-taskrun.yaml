@@ -1948,9 +1948,8 @@ spec:
                           type: boolean
                         coschedule:
                           type: string
-                        disableAffinityAssistant:
-                          type: boolean
                         disableCredsInit:
+                          description: DisableAffinityAssistant         bool `json:"disableAffinityAssistant,omitempty"`
                           type: boolean
                         disableInlineSpec:
                           type: string
@@ -2236,9 +2235,8 @@ spec:
                                 type: boolean
                               coschedule:
                                 type: string
-                              disableAffinityAssistant:
-                                type: boolean
                               disableCredsInit:
+                                description: DisableAffinityAssistant         bool `json:"disableAffinityAssistant,omitempty"`
                                 type: boolean
                               disableInlineSpec:
                                 type: string
@@ -4135,9 +4133,8 @@ spec:
                           type: boolean
                         coschedule:
                           type: string
-                        disableAffinityAssistant:
-                          type: boolean
                         disableCredsInit:
+                          description: DisableAffinityAssistant         bool `json:"disableAffinityAssistant,omitempty"`
                           type: boolean
                         disableInlineSpec:
                           type: string
@@ -4389,9 +4386,8 @@ spec:
                                 type: boolean
                               coschedule:
                                 type: string
-                              disableAffinityAssistant:
-                                type: boolean
                               disableCredsInit:
+                                description: DisableAffinityAssistant         bool `json:"disableAffinityAssistant,omitempty"`
                                 type: boolean
                               disableInlineSpec:
                                 type: string
