@@ -38,7 +38,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 	testCases := []testCase{
 		{
 			expectedConfig: &config.FeatureFlags{
-				DisableAffinityAssistant:         false,
 				RunningInEnvWithInjectedSidecars: true,
 				RequireGitSSHSecretKnownHosts:    false,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
@@ -63,7 +62,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		},
 		{
 			expectedConfig: &config.FeatureFlags{
-				DisableAffinityAssistant:                 true,
 				RunningInEnvWithInjectedSidecars:         false,
 				AwaitSidecarReadiness:                    false,
 				RequireGitSSHSecretKnownHosts:            true,
@@ -94,7 +92,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				// These are prescribed as true by enabling "alpha" API fields, even
 				// if the submitted text value is "false".
 				EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
-				DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
@@ -119,7 +116,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 			expectedConfig: &config.FeatureFlags{
 				EnableAPIFields:                  "stable",
 				EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
-				DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
@@ -140,7 +136,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 			expectedConfig: &config.FeatureFlags{
 				EnableAPIFields:                  "beta",
 				EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
-				DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
@@ -211,7 +206,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 	FeatureFlagsConfigEmptyName := "feature-flags-empty"
 	expectedConfig := &config.FeatureFlags{
-		DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
 		DisableCredsInit:                 config.DefaultDisableCredsInit,
 		RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 		AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
@@ -287,9 +281,6 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 		fileName: "feature-flags-enforce-nonfalsifiability-bad-flag",
 		want:     `invalid value for feature flag "enforce-nonfalsifiability": "bad-value"`,
 	}, {
-		fileName: "feature-flags-invalid-coschedule-affinity-assistant-comb",
-		want:     `coschedule value pipelineruns is incompatible with disable-affinity-assistant setting to false`,
-	}, {
 		fileName: "feature-flags-invalid-coschedule",
 		want:     `invalid value for feature flag "coschedule": "invalid"`,
 	}, {
@@ -298,9 +289,6 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 	}, {
 		fileName: "feature-flags-invalid-running-in-environment-with-injected-sidecars",
 		want:     `failed parsing feature flags config "invalid-boolean": strconv.ParseBool: parsing "invalid-boolean": invalid syntax`,
-	}, {
-		fileName: "feature-flags-invalid-disable-affinity-assistant",
-		want:     `failed parsing feature flags config "truee": strconv.ParseBool: parsing "truee": invalid syntax`,
 	}, {
 		fileName: "feature-flags-invalid-enable-cel-in-whenexpression",
 		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature enable-cel-in-whenexpression`,

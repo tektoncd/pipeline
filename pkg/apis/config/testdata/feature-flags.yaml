@@ -18,6 +18,5 @@ metadata:
   name: feature-flags
   namespace: tekton-pipelines
 data:
-  disable-affinity-assistant: "false"
   running-in-environment-with-injected-sidecars: "true"
   require-git-ssh-secret-known-hosts: "false"

@@ -275,21 +275,6 @@ that are running while the change occurs.
 
 The flags in this ConfigMap are as follows:
 
-- `disable-affinity-assistant` - set this flag to `true` to disable the [Affinity Assistant](./affinityassistants)
-  that is used to provide Node Affinity for `TaskRun` pods that share workspace volume.
-  The Affinity Assistant is incompatible with other affinity rules
-  configured for `TaskRun` pods.
-
-  **Note:** This feature flag is deprecated and will be removed in release `v0.60`. Consider using `coschedule` feature flag to configure Affinity Assistant behavior.
-
-  **Note:** Affinity Assistant use [Inter-pod affinity and anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity)
-  that require substantial amount of processing which can slow down scheduling in large clusters
-  significantly. We do not recommend using them in clusters larger than several hundred nodes
-
-  **Note:** Pod anti-affinity requires nodes to be consistently labelled, in other words every
-  node in the cluster must have an appropriate label matching `topologyKey`. If some or all nodes
-  are missing the specified `topologyKey` label, it can lead to unintended behavior.
-
 - `coschedule`: set this flag determines how PipelineRun Pods are scheduled with [Affinity Assistant](./affinityassistants).
 Acceptable values are "workspaces" (default), "pipelineruns", "isolate-pipelinerun", or "disabled".
 Setting it to "workspaces" will schedule all the taskruns sharing the same PVC-based workspace in a pipelinerun to the same node.

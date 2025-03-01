@@ -4750,15 +4750,13 @@ spec:
 	}{{
 		name: "multiple PVC based Workspaces in per workspace coschedule mode - failure",
 		cfgMap: map[string]string{
-			"disable-affinity-assistant": "false",
-			"coschedule":                 "workspaces",
+			"coschedule": "workspaces",
 		},
 		expectFailureReason: v1.TaskRunReasonFailedValidation.String(),
 	}, {
 		name: "multiple PVC based Workspaces in per pipelinerun coschedule mode - success",
 		cfgMap: map[string]string{
-			"disable-affinity-assistant": "true",
-			"coschedule":                 "pipelineruns",
+			"coschedule": "pipelineruns",
 		},
 	}}
 
