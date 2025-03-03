@@ -52,7 +52,6 @@ var azureSupportedAlgorithms = []string{
 // SignerVerifier creates and verifies digital signatures over a message using Azure KMS service
 type SignerVerifier struct {
 	defaultCtx context.Context
-	hashFunc   crypto.Hash
 	client     *azureVaultClient
 }
 

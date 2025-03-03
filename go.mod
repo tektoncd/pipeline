@@ -44,7 +44,7 @@ require (
 	github.com/google/cel-go v0.23.2
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20240108195214-a0658aa1d0cc
 	github.com/sigstore/sigstore/pkg/signature/kms/aws v1.8.15
-	github.com/sigstore/sigstore/pkg/signature/kms/azure v1.8.12
+	github.com/sigstore/sigstore/pkg/signature/kms/azure v1.8.15
 	github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.8.15
 	github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.8.15
 	go.opentelemetry.io/otel v1.34.0
@@ -78,7 +78,7 @@ require (
 	dario.cat/mergo v1.0.0 // indirect
 	fortio.org/safecast v1.0.0 // indirect
 	github.com/42wim/httpsig v1.2.1 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.16.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.17.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.8.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys v1.3.0 // indirect

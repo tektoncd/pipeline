@@ -63,7 +63,7 @@ github.com/42wim/httpsig
 ## explicit
 github.com/Azure/azure-sdk-for-go/services/preview/containerregistry/runtime/2019-08-15-preview/containerregistry
 github.com/Azure/azure-sdk-for-go/version
-# github.com/Azure/azure-sdk-for-go/sdk/azcore v1.16.0
+# github.com/Azure/azure-sdk-for-go/sdk/azcore v1.17.0
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/azcore
 github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/internal/resource
@@ -897,7 +897,7 @@ github.com/sigstore/sigstore/pkg/signature/payload
 # github.com/sigstore/sigstore/pkg/signature/kms/aws v1.8.15
 ## explicit; go 1.22.0
 github.com/sigstore/sigstore/pkg/signature/kms/aws
-# github.com/sigstore/sigstore/pkg/signature/kms/azure v1.8.12
+# github.com/sigstore/sigstore/pkg/signature/kms/azure v1.8.15
 ## explicit; go 1.22.0
 github.com/sigstore/sigstore/pkg/signature/kms/azure
 # github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.8.15
