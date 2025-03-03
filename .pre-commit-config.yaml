@@ -18,6 +18,11 @@ repos:
     exclude: "(.*_test.go|^examples\/v1\/pipelineruns\/beta\/isolated-workspaces.yaml$)"
 - repo: local
   hooks:
+  - id: lint-yaml
+    name: "Lint YAML files"
+    entry: bash -c 'yamllint -c .yamllint $(find . -path ./vendor -prune -o -type f -regex ".*y[a]ml" -print)'
+    language: system
+    types: [yaml]
   - id: lint-go
     name: "Run make golangci-lint"
     entry: make
