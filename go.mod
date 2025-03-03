@@ -1,7 +1,6 @@
 module github.com/tektoncd/pipeline
 
 go 1.22.7
-
 toolchain go1.23.4
 
 require (
@@ -40,7 +39,7 @@ require (
 
 require (
 	code.gitea.io/sdk/gitea v0.20.0
-	github.com/go-jose/go-jose/v3 v3.0.3
+	github.com/go-jose/go-jose/v3 v3.0.4
 	github.com/goccy/kpoward v0.1.0
 	github.com/google/cel-go v0.23.2
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20240108195214-a0658aa1d0cc
