@@ -517,7 +517,7 @@ func TestNestedReplacements(t *testing.T) {
 	expected := "$(bar)$(bar) is cool"
 
 	// Run this test a lot of times to ensure the behavior is deterministic
-	for i := 0; i <= 1000; i++ {
+	for range 1000 {
 		got := substitution.ApplyReplacements(input, replacements)
 		if d := cmp.Diff(expected, got); d != "" {
 			t.Errorf("ApplyReplacements() output did not match expected value %s", diff.PrintWantGot(d))
@@ -590,23 +590,24 @@ func TestExtractArrayParamsExpressionsExpressions(t *testing.T) {
 		name  string
 		input string
 		want  []string
-	}{{
-		name:  "normal string",
-		input: "hello world",
-		want:  nil,
-	}, {
-		name:  "param reference",
-		input: "$(params.paramName)",
-		want:  nil,
-	}, {
-		name:  "param star reference",
-		input: "$(params.paramName[*])",
-		want:  nil,
-	}, {
-		name:  "param index reference",
-		input: "$(params.paramName[1])",
-		want:  []string{"$(params.paramName[1])"},
-	},
+	}{
+		{
+			name:  "normal string",
+			input: "hello world",
+			want:  nil,
+		}, {
+			name:  "param reference",
+			input: "$(params.paramName)",
+			want:  nil,
+		}, {
+			name:  "param star reference",
+			input: "$(params.paramName[*])",
+			want:  nil,
+		}, {
+			name:  "param index reference",
+			input: "$(params.paramName[1])",
+			want:  []string{"$(params.paramName[1])"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -624,27 +625,28 @@ func TestExtractVariableExpressions(t *testing.T) {
 		input  string
 		prefix string
 		want   []string
-	}{{
-		name:   "normal string",
-		input:  "hello world",
-		prefix: "params",
-		want:   []string{},
-	}, {
-		name:   "param reference",
-		input:  "$(params.paramName)",
-		prefix: "params",
-		want:   []string{"$(params.paramName)"},
-	}, {
-		name:   "param star reference",
-		input:  "$(params.paramName[*])",
-		prefix: "params",
-		want:   []string{"$(params.paramName[*])"},
-	}, {
-		name:   "param index reference",
-		input:  "$(params.paramName[1])",
-		prefix: "params",
-		want:   []string{"$(params.paramName[1])"},
-	},
+	}{
+		{
+			name:   "normal string",
+			input:  "hello world",
+			prefix: "params",
+			want:   []string{},
+		}, {
+			name:   "param reference",
+			input:  "$(params.paramName)",
+			prefix: "params",
+			want:   []string{"$(params.paramName)"},
+		}, {
+			name:   "param star reference",
+			input:  "$(params.paramName[*])",
+			prefix: "params",
+			want:   []string{"$(params.paramName[*])"},
+		}, {
+			name:   "param index reference",
+			input:  "$(params.paramName[1])",
+			prefix: "params",
+			want:   []string{"$(params.paramName[1])"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -661,23 +663,24 @@ func TestExtractIntIndex(t *testing.T) {
 		name  string
 		input string
 		want  string
-	}{{
-		name:  "normal string",
-		input: "hello world",
-		want:  "",
-	}, {
-		name:  "param reference",
-		input: "$(params.paramName)",
-		want:  "",
-	}, {
-		name:  "param star reference",
-		input: "$(params.paramName[*])",
-		want:  "",
-	}, {
-		name:  "param index reference",
-		input: "$(params.paramName[1])",
-		want:  "[1]",
-	},
+	}{
+		{
+			name:  "normal string",
+			input: "hello world",
+			want:  "",
+		}, {
+			name:  "param reference",
+			input: "$(params.paramName)",
+			want:  "",
+		}, {
+			name:  "param star reference",
+			input: "$(params.paramName[*])",
+			want:  "",
+		}, {
+			name:  "param index reference",
+			input: "$(params.paramName[1])",
+			want:  "[1]",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -694,19 +697,20 @@ func TestTrimSquareBrackets(t *testing.T) {
 		name  string
 		input string
 		want  int
-	}{{
-		name:  "normal string",
-		input: "hello world",
-		want:  0,
-	}, {
-		name:  "star in square bracket",
-		input: "[*]",
-		want:  0,
-	}, {
-		name:  "index in square bracket",
-		input: "[1]",
-		want:  1,
-	},
+	}{
+		{
+			name:  "normal string",
+			input: "hello world",
+			want:  0,
+		}, {
+			name:  "star in square bracket",
+			input: "[*]",
+			want:  0,
+		}, {
+			name:  "index in square bracket",
+			input: "[1]",
+			want:  1,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -723,23 +727,24 @@ func TestStripStarVarSubExpression(t *testing.T) {
 		name  string
 		input string
 		want  string
-	}{{
-		name:  "normal string",
-		input: "hello world",
-		want:  "hello world",
-	}, {
-		name:  "result reference",
-		input: "$(tasks.task.results.result)",
-		want:  "tasks.task.results.result",
-	}, {
-		name:  "result star reference",
-		input: "$(tasks.task.results.result[*])",
-		want:  "tasks.task.results.result",
-	}, {
-		name:  "result index reference",
-		input: "$(tasks.task.results.result[1])",
-		want:  "tasks.task.results.result[1]",
-	},
+	}{
+		{
+			name:  "normal string",
+			input: "hello world",
+			want:  "hello world",
+		}, {
+			name:  "result reference",
+			input: "$(tasks.task.results.result)",
+			want:  "tasks.task.results.result",
+		}, {
+			name:  "result star reference",
+			input: "$(tasks.task.results.result[*])",
+			want:  "tasks.task.results.result",
+		}, {
+			name:  "result index reference",
+			input: "$(tasks.task.results.result[1])",
+			want:  "tasks.task.results.result[1]",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
