@@ -383,11 +383,6 @@ func getTaskTagName(tr *v1.TaskRun) string {
 		if hasPipelineTaskTable && len(pipelineTaskTable) > 0 {
 			taskName = pipelineTaskTable
 		}
-	case tr.Spec.TaskRef != nil && tr.Spec.TaskRef.Kind == v1.ClusterTaskRefKind:
-		clusterTaskLabel, hasClusterTaskLabel := tr.Labels[pipeline.ClusterTaskLabelKey]
-		if hasClusterTaskLabel && len(clusterTaskLabel) > 0 {
-			taskName = clusterTaskLabel
-		}
 	default:
 		if len(tr.Labels) > 0 {
 			taskLabel, hasTaskLabel := tr.Labels[pipeline.TaskLabelKey]

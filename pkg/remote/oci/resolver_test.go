@@ -100,24 +100,7 @@ func TestOCIResolver(t *testing.T) {
 			},
 			mapper:       test.DefaultObjectAnnotationMapper,
 			listExpected: []remote.ResolvedObject{{Kind: "task", APIVersion: "v1beta1", Name: "simple-task"}},
-		},
-		{
-			name: "cluster-task",
-			objs: []runtime.Object{
-				&v1beta1.ClusterTask{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "simple-task",
-					},
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "tekton.dev/v1beta1",
-						Kind:       "ClusterTask",
-					},
-				},
-			},
-			mapper:       test.DefaultObjectAnnotationMapper,
-			listExpected: []remote.ResolvedObject{{Kind: "clustertask", APIVersion: "v1beta1", Name: "simple-task"}},
-		},
-		{
+		}, {
 			name: "multiple-tasks",
 			objs: []runtime.Object{
 				&v1beta1.Task{
