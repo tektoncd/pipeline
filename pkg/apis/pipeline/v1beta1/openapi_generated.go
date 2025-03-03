@@ -36,8 +36,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ChildStatusReference":            schema_pkg_apis_pipeline_v1beta1_ChildStatusReference(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CloudEventDelivery":              schema_pkg_apis_pipeline_v1beta1_CloudEventDelivery(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CloudEventDeliveryState":         schema_pkg_apis_pipeline_v1beta1_CloudEventDeliveryState(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ClusterTask":                     schema_pkg_apis_pipeline_v1beta1_ClusterTask(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ClusterTaskList":                 schema_pkg_apis_pipeline_v1beta1_ClusterTaskList(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource":                    schema_pkg_apis_pipeline_v1beta1_ConfigSource(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CustomRun":                       schema_pkg_apis_pipeline_v1beta1_CustomRun(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CustomRunList":                   schema_pkg_apis_pipeline_v1beta1_CustomRunList(ref),
@@ -680,97 +678,6 @@ func schema_pkg_apis_pipeline_v1beta1_CloudEventDeliveryState(ref common.Referen
 		},
 		Dependencies: []string{
 			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
-	}
-}
-
-func schema_pkg_apis_pipeline_v1beta1_ClusterTask(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "ClusterTask is a Task with a cluster scope. ClusterTasks are used to represent Tasks that should be publicly addressable from any namespace in the cluster.\n\nDeprecated: Please use the cluster resolver instead.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"kind": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"apiVersion": {
-						SchemaProps: spec.SchemaProps{
-							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"metadata": {
-						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
-						},
-					},
-					"spec": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Spec holds the desired state of the Task from the client",
-							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskSpec"),
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
-	}
-}
-
-func schema_pkg_apis_pipeline_v1beta1_ClusterTaskList(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "ClusterTaskList contains a list of ClusterTask",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"kind": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"apiVersion": {
-						SchemaProps: spec.SchemaProps{
-							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"metadata": {
-						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
-						},
-					},
-					"items": {
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ClusterTask"),
-									},
-								},
-							},
-						},
-					},
-				},
-				Required: []string{"items"},
-			},
-		},
-		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ClusterTask", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
 	}
 }
 
@@ -4910,7 +4817,7 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRef(ref common.ReferenceCallback) comm
 					},
 					"kind": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TaskKind indicates the Kind of the Task: 1. Namespaced Task when Kind is set to \"Task\". If Kind is \"\", it defaults to \"Task\". 2. Cluster-Scoped Task when Kind is set to \"ClusterTask\" 3. Custom Task when Kind is non-empty and APIVersion is non-empty",
+							Description: "TaskKind indicates the Kind of the Task: 1. Namespaced Task when Kind is set to \"Task\". If Kind is \"\", it defaults to \"Task\". 2. Custom Task when Kind is non-empty and APIVersion is non-empty",
 							Type:        []string{"string"},
 							Format:      "",
 						},

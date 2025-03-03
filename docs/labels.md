@@ -70,12 +70,6 @@ Tekton automatically adds labels to Tekton entities as described in the followin
 			<td>Name of the <code>Task</code> that the <code>TaskRun</code> references.</td>
 		</tr>
 		<tr>
-			<td><code>tekton.dev/clusterTask</code></td>
-			<td><code>TaskRuns</code> that reference an existing <code>ClusterTask</code>.</td>
-			<td><code>Pods</code></td>
-			<td>Name of the <code>ClusterTask</code> that the <code>TaskRun</code> references.</td>
-		</tr>
-		<tr>
 			<td><code>tekton.dev/taskRun</code></td>
 			<td><code>Pods</code></td>
 			<td>No propagation.</td>
@@ -110,12 +104,6 @@ The following command finds all `TaskRuns` that reference a `Task` named `test-t
 
 ```shell
 kubectl get taskruns --all-namespaces -l tekton.dev/task=test-task
-```
-
-The following command finds all `TaskRuns` that reference a `ClusterTask` named `test-clustertask`:
-
-```shell
-kubectl get taskruns --all-namespaces -l tekton.dev/clusterTask=test-clustertask
 ```
 
 ## Annotations propagation

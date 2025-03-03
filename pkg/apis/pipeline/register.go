@@ -22,9 +22,6 @@ const (
 	// GroupName is the Kubernetes resource group name for Pipeline types.
 	GroupName = "tekton.dev"
 
-	// ClusterTaskLabelKey is used as the label identifier for a ClusterTask
-	ClusterTaskLabelKey = GroupName + "/clusterTask"
-
 	// StepActionLabelKey is used as the label identifier for a StepAction
 	StepActionLabelKey = GroupName + "/stepAction"
 
@@ -70,11 +67,6 @@ var (
 	TaskResource = schema.GroupResource{
 		Group:    GroupName,
 		Resource: "tasks",
-	}
-	// ClusterTaskResource represents a Tekton ClusterTask
-	ClusterTaskResource = schema.GroupResource{
-		Group:    GroupName,
-		Resource: "clustertasks",
 	}
 	// TaskRunResource represents a Tekton TaskRun
 	TaskRunResource = schema.GroupResource{

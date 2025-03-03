@@ -42,9 +42,6 @@ type TaskKind string
 const (
 	// NamespacedTaskKind indicates that the task type has a namespaced scope.
 	NamespacedTaskKind TaskKind = "Task"
-	// ClusterTaskRefKind is the task type for a reference to a task with cluster scope.
-	// ClusterTasks are not supported in v1, but v1 types may reference ClusterTasks.
-	ClusterTaskRefKind TaskKind = "ClusterTask"
 )
 
 // IsCustomTask checks whether the reference is to a Custom Task

@@ -28,7 +28,6 @@ import (
 
 type TektonV1beta1Interface interface {
 	RESTClient() rest.Interface
-	ClusterTasksGetter
 	CustomRunsGetter
 	PipelinesGetter
 	PipelineRunsGetter
@@ -40,10 +39,6 @@ type TektonV1beta1Interface interface {
 // TektonV1beta1Client is used to interact with features provided by the tekton.dev group.
 type TektonV1beta1Client struct {
 	restClient rest.Interface
-}
-
-func (c *TektonV1beta1Client) ClusterTasks() ClusterTaskInterface {
-	return newClusterTasks(c)
 }
 
 func (c *TektonV1beta1Client) CustomRuns(namespace string) CustomRunInterface {
