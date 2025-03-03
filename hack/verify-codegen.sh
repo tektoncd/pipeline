@@ -40,17 +40,22 @@ cp -aR "${REPO_ROOT_DIR}/vendor" "${TMP_DIFFROOT}"
 mkdir -p "${TMP_DIFFROOT}/docs"
 cp -aR "${REPO_ROOT_DIR}/docs" "${TMP_DIFFROOT}"
 
+mkdir -p "${TMP_DIFFROOT}/config"
+cp -aR "${REPO_ROOT_DIR}/config" "${TMP_DIFFROOT}"
+
 "${REPO_ROOT_DIR}/hack/update-codegen.sh"
 echo "Diffing ${REPO_ROOT_DIR} against freshly generated codegen"
 ret=0
 diff -Naupr "${REPO_ROOT_DIR}/pkg" "${TMP_DIFFROOT}/pkg" || ret=1
 diff -Naupr "${REPO_ROOT_DIR}/vendor" "${TMP_DIFFROOT}/vendor" || ret=1
 diff -Naupr "${REPO_ROOT_DIR}/docs/pipeline-api.md" "${TMP_DIFFROOT}/docs/pipeline-api.md" || ret=1
+diff -Naupr "${REPO_ROOT_DIR}/config" "${TMP_DIFFROOT}/config" || ret=1
 
 # Restore working tree state
 rm -fr "${REPO_ROOT_DIR}/pkg"
 rm -fr "${REPO_ROOT_DIR}/vendor"
 rm -fr "${REPO_ROOT_DIR}/docs"
+rm -fr "${REPO_ROOT_DIR}/config"
 cp -aR "${TMP_DIFFROOT}"/* "${REPO_ROOT_DIR}"
 
 if [[ $ret -eq 0 ]]
