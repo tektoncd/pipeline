@@ -183,16 +183,6 @@ var (
 		},
 	}
 
-	clustertask = &v1beta1.ClusterTask{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-cluster-task"},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
-				Name:    "simple-step",
-				Image:   "foo",
-				Command: []string{"/mycmd"},
-			}},
-		},
-	}
 	taskSidecar = &v1.Task{
 		ObjectMeta: objectMeta("test-task-sidecar", "foo"),
 		Spec: v1.TaskSpec{
@@ -479,7 +469,7 @@ spec:
 	}{{
 		name:    "success",
 		taskRun: taskRunSuccess,
-		wantPod: expectedPod("test-taskrun-run-success-pod", "test-task", "test-taskrun-run-success", "bar", "foo", defaultSAName, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-run-success-pod", "test-task", "test-taskrun-run-success", "bar", "foo", defaultSAName, nil, []stepForExpectedPod{{
 			image: "foo",
 			name:  "simple-step",
 			cmd:   "/mycmd",
@@ -487,7 +477,7 @@ spec:
 	}, {
 		name:    "serviceaccount",
 		taskRun: taskRunWithSaSuccess,
-		wantPod: expectedPod("test-taskrun-with-sa-run-success-pod", "test-with-sa", "test-taskrun-with-sa-run-success", "bar", "foo", "test-sa", false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-with-sa-run-success-pod", "test-with-sa", "test-taskrun-with-sa-run-success", "bar", "foo", "test-sa", nil, []stepForExpectedPod{{
 			image: "foo",
 			name:  "sa-step",
 			cmd:   "/mycmd",
@@ -709,17 +699,6 @@ spec:
       name: mycontainer
 `)
 
-	taskRunWithClusterTask := parse.MustParseV1TaskRun(t, `
-metadata:
-  name: test-taskrun-with-cluster-task
-  namespace: foo
-  uid: bar
-spec:
-  taskRef:
-    kind: ClusterTask
-    name: test-cluster-task
-`)
-
 	taskRunWithLabels := parse.MustParseV1TaskRun(t, `
 metadata:
   labels:
@@ -798,15 +777,14 @@ spec:
 
 	taskruns := []*v1.TaskRun{
 		taskRunSuccess, taskRunWithSaSuccess, taskRunSubstitution,
-		taskRunWithTaskSpec, taskRunWithClusterTask,
+		taskRunWithTaskSpec,
 		taskRunWithLabels, taskRunWithAnnotations, taskRunWithPod,
 		taskRunWithCredentialsVariable, taskRunBundle,
 	}
 
 	d := test.Data{
-		TaskRuns:     taskruns,
-		Tasks:        []*v1.Task{simpleTask, saTask, templatedTask},
-		ClusterTasks: []*v1beta1.ClusterTask{clustertask},
+		TaskRuns: taskruns,
+		Tasks:    []*v1.Task{simpleTask, saTask, templatedTask},
 	}
 	for _, tc := range []struct {
 		name       string
@@ -820,7 +798,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-run-success-pod", "test-task", "test-taskrun-run-success", "bar", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-run-success-pod", "test-task", "test-taskrun-run-success", "bar", "foo", config.DefaultServiceAccountValue, nil, []stepForExpectedPod{{
 			image: "foo",
 			name:  "simple-step",
 			cmd:   "/mycmd",
@@ -832,7 +810,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-sa-run-success-pod", "test-with-sa", "test-taskrun-with-sa-run-success", "bar", "foo", "test-sa", false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-with-sa-run-success-pod", "test-with-sa", "test-taskrun-with-sa-run-success", "bar", "foo", "test-sa", nil, []stepForExpectedPod{{
 			image: "foo",
 			name:  "sa-step",
 			cmd:   "/mycmd",
@@ -844,7 +822,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-substitution-pod", "test-task-with-substitution", "test-taskrun-substitution", "bar", "foo", config.DefaultServiceAccountValue, false, []corev1.Volume{{
+		wantPod: expectedPod("test-taskrun-substitution-pod", "test-task-with-substitution", "test-taskrun-substitution", "bar", "foo", config.DefaultServiceAccountValue, []corev1.Volume{{
 			Name: "volume-configmap",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -880,7 +858,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-taskspec-pod", "", "test-taskrun-with-taskspec", "bar", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{
+		wantPod: expectedPod("test-taskrun-with-taskspec-pod", "", "test-taskrun-with-taskspec", "bar", "foo", config.DefaultServiceAccountValue, nil, []stepForExpectedPod{
 			{
 				name:  "mycontainer",
 				image: "myimage",
@@ -888,25 +866,13 @@ spec:
 			},
 		}),
 	}, {
-		name:    "success-with-cluster-task",
-		taskRun: taskRunWithClusterTask,
-		wantEvents: []string{
-			"Normal Started ",
-			"Normal Running Not all Steps",
-		},
-		wantPod: expectedPod("test-taskrun-with-cluster-task-pod", "test-cluster-task", "test-taskrun-with-cluster-task", "bar", "foo", config.DefaultServiceAccountValue, true, nil, []stepForExpectedPod{{
-			name:  "simple-step",
-			image: "foo",
-			cmd:   "/mycmd",
-		}}),
-	}, {
 		name:    "taskrun-with-pod",
 		taskRun: taskRunWithPod,
 		wantEvents: []string{
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-pod-pod", "test-task", "test-taskrun-with-pod", "bar", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-with-pod-pod", "test-task", "test-taskrun-with-pod", "bar", "foo", config.DefaultServiceAccountValue, nil, []stepForExpectedPod{{
 			name:  "simple-step",
 			image: "foo",
 			cmd:   "/mycmd",
@@ -918,7 +884,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-credentials-variable-pod", "", "test-taskrun-with-credentials-variable", "bar", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-with-credentials-variable-pod", "", "test-taskrun-with-credentials-variable", "bar", "foo", config.DefaultServiceAccountValue, nil, []stepForExpectedPod{{
 			name:  "mycontainer",
 			image: "myimage",
 			cmd:   "/mycmd /tekton/creds",
@@ -930,7 +896,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-bundle-pod", "test-task", "test-taskrun-bundle", "bar", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-bundle-pod", "test-task", "test-taskrun-bundle", "bar", "foo", config.DefaultServiceAccountValue, nil, []stepForExpectedPod{{
 			name:  "simple-step",
 			image: "foo",
 			cmd:   "/mycmd",
@@ -1044,10 +1010,9 @@ spec:
 		},
 	}}
 	d := test.Data{
-		ConfigMaps:   cms,
-		TaskRuns:     taskruns,
-		Tasks:        []*v1.Task{simpleTask, saTask, templatedTask},
-		ClusterTasks: []*v1beta1.ClusterTask{clustertask},
+		ConfigMaps: cms,
+		TaskRuns:   taskruns,
+		Tasks:      []*v1.Task{simpleTask, saTask, templatedTask},
 	}
 	for _, tc := range []struct {
 		name       string
@@ -1061,7 +1026,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-output-config-pod", "", "test-taskrun-with-output-config", "bar", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-with-output-config-pod", "", "test-taskrun-with-output-config", "bar", "foo", config.DefaultServiceAccountValue, nil, []stepForExpectedPod{{
 			name:       "mycontainer",
 			image:      "myimage",
 			stdoutPath: "stdout.txt",
@@ -1074,19 +1039,17 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: addVolumeMounts(expectedPod("test-taskrun-with-output-config-ws-pod", "", "test-taskrun-with-output-config-ws", "bar", "foo", config.DefaultServiceAccountValue, false,
-			[]corev1.Volume{{
-				Name: "ws-d872e",
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				},
-			}},
-			[]stepForExpectedPod{{
-				name:       "mycontainer",
-				image:      "myimage",
-				stdoutPath: "stdout.txt",
-				cmd:        "/mycmd",
-			}}),
+		wantPod: addVolumeMounts(expectedPod("test-taskrun-with-output-config-ws-pod", "", "test-taskrun-with-output-config-ws", "bar", "foo", config.DefaultServiceAccountValue, []corev1.Volume{{
+			Name: "ws-d872e",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		}}, []stepForExpectedPod{{
+			name:       "mycontainer",
+			image:      "myimage",
+			stdoutPath: "stdout.txt",
+			cmd:        "/mycmd",
+		}}),
 			[]corev1.VolumeMount{{
 				Name:      "ws-d872e",
 				MountPath: "/workspace/data",
@@ -1415,16 +1378,7 @@ spec:
   taskRef:
     name: notask
 `)
-	withWrongRef := parse.MustParseV1TaskRun(t, `
-metadata:
-  name: taskrun-with-wrong-ref
-  namespace: foo
-spec:
-  taskRef:
-    kind: ClusterTask
-    name: taskrun-with-wrong-ref
-`)
-	taskRuns := []*v1.TaskRun{noTaskRun, withWrongRef}
+	taskRuns := []*v1.TaskRun{noTaskRun}
 	tasks := []*v1.Task{simpleTask}
 
 	d := test.Data{
@@ -1440,15 +1394,6 @@ spec:
 	}{{
 		name:    "task run with no task",
 		taskRun: noTaskRun,
-		reason:  podconvert.ReasonFailedResolution,
-		wantEvents: []string{
-			"Normal Started",
-			"Warning Failed",
-			"Warning InternalError",
-		},
-	}, {
-		name:    "task run with wrong ref",
-		taskRun: withWrongRef,
 		reason:  podconvert.ReasonFailedResolution,
 		wantEvents: []string{
 			"Normal Started",
@@ -1989,9 +1934,8 @@ spec:
     name: test-task
 `)
 	d := test.Data{
-		TaskRuns:     []*v1.TaskRun{tr},
-		Tasks:        []*v1.Task{simpleTask},
-		ClusterTasks: []*v1beta1.ClusterTask{},
+		TaskRuns: []*v1.TaskRun{tr},
+		Tasks:    []*v1.Task{simpleTask},
 	}
 	for _, v := range []error{
 		errors.New("etcdserver: leader changed"),
@@ -4472,9 +4416,8 @@ spec:
     name: test-task-with-workspace
 `)
 	d := test.Data{
-		Tasks:        []*v1.Task{taskWithWorkspace},
-		TaskRuns:     []*v1.TaskRun{taskRun},
-		ClusterTasks: nil,
+		Tasks:    []*v1.Task{taskWithWorkspace},
+		TaskRuns: []*v1.TaskRun{taskRun},
 	}
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
@@ -4532,9 +4475,8 @@ spec:
     name: test-task-with-workspace
 `)
 	d := test.Data{
-		Tasks:        []*v1.Task{taskWithWorkspace},
-		TaskRuns:     []*v1.TaskRun{taskRun},
-		ClusterTasks: nil,
+		Tasks:    []*v1.Task{taskWithWorkspace},
+		TaskRuns: []*v1.TaskRun{taskRun},
 	}
 
 	d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
@@ -4596,9 +4538,8 @@ spec:
     name: test-task-with-workspace
 `)
 	d := test.Data{
-		Tasks:        []*v1.Task{taskWithWorkspace},
-		TaskRuns:     []*v1.TaskRun{taskRun},
-		ClusterTasks: nil,
+		Tasks:    []*v1.Task{taskWithWorkspace},
+		TaskRuns: []*v1.TaskRun{taskRun},
 	}
 
 	d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
@@ -4762,9 +4703,8 @@ spec:
 
 	for _, tc := range tcs {
 		d := test.Data{
-			Tasks:        []*v1.Task{taskWithTwoWorkspaces},
-			TaskRuns:     []*v1.TaskRun{taskRun},
-			ClusterTasks: nil,
+			Tasks:    []*v1.Task{taskWithTwoWorkspaces},
+			TaskRuns: []*v1.TaskRun{taskRun},
 			ConfigMaps: []*corev1.ConfigMap{{
 				ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
 				Data:       tc.cfgMap,
@@ -4836,9 +4776,8 @@ spec:
         name: mypvc
 `)
 	d := test.Data{
-		Tasks:        []*v1.Task{taskWithWorkspace},
-		TaskRuns:     []*v1.TaskRun{taskRun},
-		ClusterTasks: nil,
+		Tasks:    []*v1.Task{taskWithWorkspace},
+		TaskRuns: []*v1.TaskRun{taskRun},
 	}
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
@@ -5971,7 +5910,6 @@ func podVolumeMounts(idx, totalSteps int) []corev1.VolumeMount {
 		Name:      "tekton-internal-artifacts",
 		MountPath: "/tekton/artifacts",
 	})
-
 	return mnts
 }
 
@@ -6009,7 +5947,7 @@ func podArgs(cmd string, stdoutPath string, stderrPath string, additionalArgs []
 	return args
 }
 
-func podObjectMeta(name, taskName, taskRunName, taskRunUID, ns string, isClusterTask bool) metav1.ObjectMeta {
+func podObjectMeta(name, taskName, taskRunName, taskRunUID, ns string) metav1.ObjectMeta {
 	trueB := true
 	om := metav1.ObjectMeta{
 		Name:      name,
@@ -6033,11 +5971,7 @@ func podObjectMeta(name, taskName, taskRunName, taskRunUID, ns string, isCluster
 	}
 
 	if taskName != "" {
-		if isClusterTask {
-			om.Labels[pipeline.ClusterTaskLabelKey] = taskName
-		} else {
-			om.Labels[pipeline.TaskLabelKey] = taskName
-		}
+		om.Labels[pipeline.TaskLabelKey] = taskName
 	}
 
 	return om
@@ -6055,13 +5989,13 @@ type stepForExpectedPod struct {
 	stderrPath      string
 }
 
-func expectedPod(podName, taskName, taskRunName, taskRunUID, ns, saName string, isClusterTask bool, extraVolumes []corev1.Volume, steps []stepForExpectedPod) *corev1.Pod {
+func expectedPod(podName, taskName, taskRunName, taskRunUID, ns, saName string, extraVolumes []corev1.Volume, steps []stepForExpectedPod) *corev1.Pod {
 	stepNames := make([]string, 0, len(steps))
 	for _, s := range steps {
 		stepNames = append(stepNames, "step-"+s.name)
 	}
 	p := &corev1.Pod{
-		ObjectMeta: podObjectMeta(podName, taskName, taskRunName, taskRunUID, ns, isClusterTask),
+		ObjectMeta: podObjectMeta(podName, taskName, taskRunName, taskRunUID, ns),
 		Spec: corev1.PodSpec{
 			Volumes: []corev1.Volume{
 				workspaceVolume,

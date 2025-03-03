@@ -49,11 +49,6 @@ func TestDryRunCreate_Valid_DifferentGVKs(t *testing.T) {
 		name:    "v1beta1 stepaction",
 		obj:     &v1beta1.StepAction{},
 		wantObj: &v1beta1.StepAction{},
-	}, {
-		name:    "unsupported gvk",
-		obj:     &v1beta1.ClusterTask{},
-		wantErr: true,
-		wantObj: nil,
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -98,10 +93,6 @@ func TestDryRunCreate_Invalid_DifferentGVKs(t *testing.T) {
 		name:    "v1beta1 stepaction",
 		obj:     &v1beta1.StepAction{},
 		wantErr: apiserver.ErrReferencedObjectValidationFailed,
-	}, {
-		name:    "unsupported gvk",
-		obj:     &v1beta1.ClusterTask{},
-		wantErr: cmpopts.AnyError,
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {

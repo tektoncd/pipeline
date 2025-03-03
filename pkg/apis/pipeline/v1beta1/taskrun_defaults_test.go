@@ -65,16 +65,6 @@ func TestTaskRunSpec_SetDefaults(t *testing.T) {
 			Timeout:            &metav1.Duration{Duration: 500 * time.Millisecond},
 		},
 	}, {
-		desc: "timeout is nil",
-		trs: &v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{Kind: v1beta1.ClusterTaskKind},
-		},
-		want: &v1beta1.TaskRunSpec{
-			TaskRef:            &v1beta1.TaskRef{Kind: v1beta1.ClusterTaskKind},
-			ServiceAccountName: config.DefaultServiceAccountValue,
-			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-		},
-	}, {
 		desc: "pod template is nil",
 		trs:  &v1beta1.TaskRunSpec{},
 		want: &v1beta1.TaskRunSpec{

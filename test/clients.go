@@ -59,7 +59,6 @@ type clients struct {
 	ApixClient apixclient.Interface
 
 	V1beta1PipelineClient            v1beta1.PipelineInterface
-	V1beta1ClusterTaskClient         v1beta1.ClusterTaskInterface
 	V1beta1TaskClient                v1beta1.TaskInterface
 	V1beta1TaskRunClient             v1beta1.TaskRunInterface
 	V1beta1PipelineRunClient         v1beta1.PipelineRunInterface
@@ -107,7 +106,6 @@ func newClients(t *testing.T, configPath, clusterName, namespace string) *client
 		t.Fatalf("failed to create resolution clientset from config file at %s: %s", configPath, err)
 	}
 	c.V1beta1PipelineClient = cs.TektonV1beta1().Pipelines(namespace)
-	c.V1beta1ClusterTaskClient = cs.TektonV1beta1().ClusterTasks()
 	c.V1beta1TaskClient = cs.TektonV1beta1().Tasks(namespace)
 	c.V1beta1TaskRunClient = cs.TektonV1beta1().TaskRuns(namespace)
 	c.V1beta1PipelineRunClient = cs.TektonV1beta1().PipelineRuns(namespace)

@@ -1054,11 +1054,7 @@ func storeTaskSpecAndMergeMeta(ctx context.Context, tr *v1.TaskRun, ts *v1.TaskS
 		// Propagate labels from Task to TaskRun. TaskRun labels take precedences over Task.
 		tr.ObjectMeta.Labels = kmap.Union(meta.Labels, tr.ObjectMeta.Labels)
 		if tr.Spec.TaskRef != nil {
-			if tr.Spec.TaskRef.Kind == v1.ClusterTaskRefKind {
-				tr.ObjectMeta.Labels[pipeline.ClusterTaskLabelKey] = meta.Name
-			} else {
-				tr.ObjectMeta.Labels[pipeline.TaskLabelKey] = meta.Name
-			}
+			tr.ObjectMeta.Labels[pipeline.TaskLabelKey] = meta.Name
 		}
 	}
 

@@ -22,8 +22,7 @@ type TaskRef struct {
 	Name string `json:"name,omitempty"`
 	// TaskKind indicates the Kind of the Task:
 	// 1. Namespaced Task when Kind is set to "Task". If Kind is "", it defaults to "Task".
-	// 2. Cluster-Scoped Task when Kind is set to "ClusterTask"
-	// 3. Custom Task when Kind is non-empty and APIVersion is non-empty
+	// 2. Custom Task when Kind is non-empty and APIVersion is non-empty
 	Kind TaskKind `json:"kind,omitempty"`
 	// API version of the referent
 	// Note: A Task with non-empty APIVersion and Kind is considered a Custom Task
@@ -51,8 +50,6 @@ type TaskKind string
 const (
 	// NamespacedTaskKind indicates that the task type has a namespaced scope.
 	NamespacedTaskKind TaskKind = "Task"
-	// ClusterTaskKind indicates that task type has a cluster scope.
-	ClusterTaskKind TaskKind = "ClusterTask"
 )
 
 // IsCustomTask checks whether the reference is to a Custom Task

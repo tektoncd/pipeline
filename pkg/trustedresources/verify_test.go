@@ -544,16 +544,6 @@ func TestVerifyResource_V1Pipeline_Error(t *testing.T) {
 	}
 }
 
-func TestVerifyResource_TypeNotSupported(t *testing.T) {
-	resource := v1beta1.ClusterTask{}
-	refSource := &v1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"}
-	_, _, k8sclient, vps := test.SetupVerificationPolicies(t)
-	vr := VerifyResource(context.Background(), &resource, k8sclient, refSource, vps)
-	if !errors.Is(vr.Err, ErrResourceNotSupported) {
-		t.Errorf("want:%v got:%v ", ErrResourceNotSupported, vr.Err)
-	}
-}
-
 func signInterface(signer signature.Signer, i interface{}) ([]byte, error) {
 	if signer == nil {
 		return nil, errors.New("signer is nil")
