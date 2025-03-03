@@ -10,7 +10,7 @@ BIN      = $(CURDIR)/.bin
 WOKE 	?= go run -modfile go.mod github.com/get-woke/woke
 
 # Get golangci_version from tools/go.mod
-GOLANGCI_VERSION := $(shell cat tools/go.mod | grep golangci-lint | awk '{ print $$3 }')
+GOLANGCI_VERSION := $(shell yq '.jobs.linting.steps[] | select(.name == "golangci-lint") | .with.version' .github/workflows/ci.yaml)
 WOKE_VERSION     = v0.19.0
 
 GO           = go
@@ -168,11 +168,12 @@ errcheck: | $(ERRCHECK) ; $(info $(M) running errcheck…) ## Run errcheck
 
 GOLANGCILINT = $(BIN)/golangci-lint-$(GOLANGCI_VERSION)
 $(BIN)/golangci-lint-$(GOLANGCI_VERSION): ; $(info $(M) getting golangci-lint $(GOLANGCI_VERSION))
-	cd tools; go mod download github.com/golangci/golangci-lint && go mod tidy 
-	cd tools; go build -o $(BIN)/golangci-lint-$(GOLANGCI_VERSION) github.com/golangci/golangci-lint/cmd/golangci-lint
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BIN) $(GOLANGCI_VERSION)
+	mv $(BIN)/golangci-lint $(BIN)/golangci-lint-$(GOLANGCI_VERSION)
 
 .PHONY: golangci-lint
 golangci-lint: | $(GOLANGCILINT) ; $(info $(M) running golangci-lint…) @ ## Run golangci-lint
+	$Q $(GOLANGCILINT) config verify
 	$Q $(GOLANGCILINT) run --modules-download-mode=vendor --max-issues-per-linter=0 --max-same-issues=0 --timeout 5m
 
 .PHONY: golangci-lint-check
