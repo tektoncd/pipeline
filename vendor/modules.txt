@@ -1102,7 +1102,6 @@ golang.org/x/crypto/ssh/knownhosts
 # golang.org/x/exp v0.0.0-20240808152545-0cdaa3abc0fa
 ## explicit; go 1.20
 golang.org/x/exp/constraints
-golang.org/x/exp/maps
 golang.org/x/exp/slices
 # golang.org/x/mod v0.22.0
 ## explicit; go 1.22.0
