@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -32,7 +33,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/internal/resultref"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 
-	"golang.org/x/exp/slices"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -317,9 +317,11 @@ func errorIfStepResultReferenceinField(value, fieldName string) (errs *apis.Fiel
 func stepArtifactReferenceExists(src string) bool {
 	return len(artifactref.StepArtifactRegex.FindAllStringSubmatch(src, -1)) > 0 || strings.Contains(src, "$("+artifactref.StepArtifactPathPattern+")")
 }
+
 func taskArtifactReferenceExists(src string) bool {
 	return len(artifactref.TaskArtifactRegex.FindAllStringSubmatch(src, -1)) > 0 || strings.Contains(src, "$("+artifactref.TaskArtifactPathPattern+")")
 }
+
 func errorIfStepArtifactReferencedInField(value, fieldName string) (errs *apis.FieldError) {
 	if stepArtifactReferenceExists(value) {
 		errs = errs.Also(&apis.FieldError{
