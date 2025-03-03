@@ -117,17 +117,6 @@ func MustParseV1TaskAndSetDefaults(t *testing.T, yaml string) *v1.Task {
 	return task
 }
 
-// MustParseClusterTask takes YAML and parses it into a *v1beta1.ClusterTask
-func MustParseClusterTask(t *testing.T, yaml string) *v1beta1.ClusterTask {
-	t.Helper()
-	var clusterTask v1beta1.ClusterTask
-	yaml = `apiVersion: tekton.dev/v1beta1
-kind: ClusterTask
-` + yaml
-	mustParseYAML(t, yaml, &clusterTask)
-	return &clusterTask
-}
-
 // MustParseV1beta1PipelineRun takes YAML and parses it into a *v1beta1.PipelineRun
 func MustParseV1beta1PipelineRun(t *testing.T, yaml string) *v1beta1.PipelineRun {
 	t.Helper()
