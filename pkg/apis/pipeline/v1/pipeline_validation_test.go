@@ -81,14 +81,6 @@ func TestPipeline_Validate_Success(t *testing.T) {
 			},
 		},
 	}, {
-		name: "valid reference to clusterTask",
-		p: &Pipeline{
-			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
-			Spec: PipelineSpec{
-				Tasks: []PipelineTask{{Name: "foo", TaskRef: &TaskRef{Name: "bar", Kind: ClusterTaskRefKind}}},
-			},
-		},
-	}, {
 		name: "valid task with pipelineRef",
 		wc:   cfgtesting.EnableAlphaAPIFields,
 		p: &Pipeline{

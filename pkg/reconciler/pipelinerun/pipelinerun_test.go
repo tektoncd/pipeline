@@ -301,7 +301,7 @@ spec:
     retries: 5
     taskRef:
       name: unit-test-task
-  - name: unit-test-cluster-task
+  - name: unit-test-3
     params:
     - name: foo
       value: somethingfun
@@ -312,8 +312,8 @@ spec:
     - name: contextPipelineParam
       value: $(context.pipeline.name)
     taskRef:
-      kind: ClusterTask
-      name: unit-test-cluster-task
+      kind: Task
+      name: unit-test-task-2
 `)}
 	ts := []*v1.Task{
 		parse.MustParseV1Task(t, `
@@ -332,12 +332,10 @@ spec:
     type: string
   - name: contextRetriesParam
     type: string
-`),
-	}
-	clusterTasks := []*v1beta1.ClusterTask{
-		parse.MustParseClusterTask(t, `
+`), parse.MustParseV1Task(t, `
 metadata:
-  name: unit-test-cluster-task
+  name: unit-test-task-2
+  namespace: foo
 spec:
   params:
   - name: foo
@@ -355,7 +353,6 @@ spec:
 		PipelineRuns: prs,
 		Pipelines:    ps,
 		Tasks:        ts,
-		ClusterTasks: clusterTasks,
 		ConfigMaps:   []*corev1.ConfigMap{newFeatureFlagsConfigMap()},
 	}
 	prt := newPipelineRunTest(t, d)
@@ -412,7 +409,7 @@ spec:
 	checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1.PipelineRunReasonRunning.String())
 
 	tr1Name := "test-pipeline-run-success-unit-test-1"
-	tr2Name := "test-pipeline-run-success-unit-test-cluster-task"
+	tr2Name := "test-pipeline-run-success-unit-test-3"
 
 	verifyTaskRunStatusesCount(t, reconciledRun.Status, 2)
 	verifyTaskRunStatusesNames(t, reconciledRun.Status, tr1Name, tr2Name)
@@ -15847,15 +15844,15 @@ spec:
       value: $(params.bar)
     taskRef:
       name: unit-test-task
-  - name: unit-test-cluster-task
+  - name: unit-test-2
     params:
     - name: foo
       value: somethingfun
     - name: bar
       value: $(params.bar)
     taskRef:
-      kind: ClusterTask
-      name: unit-test-cluster-task
+      kind: Task
+      name: unit-test-task-2
 `)}
 	ts := []*v1.Task{
 		parse.MustParseV1Task(t, `
@@ -15866,12 +15863,10 @@ spec:
   params:
   - name: foo
   - name: bar
-`),
-	}
-	clusterTasks := []*v1beta1.ClusterTask{
-		parse.MustParseClusterTask(t, `
+`), parse.MustParseV1Task(t, `
 metadata:
-  name: unit-test-cluster-task
+  name: unit-test-task-2
+  namespace: foo
 spec:
   params:
   - name: foo
@@ -15883,7 +15878,6 @@ spec:
 		PipelineRuns: prs,
 		Pipelines:    ps,
 		Tasks:        ts,
-		ClusterTasks: clusterTasks,
 		ConfigMaps:   []*corev1.ConfigMap{newFeatureFlagsConfigMap()},
 	}
 	prt := newPipelineRunTest(t, d)
@@ -15925,7 +15919,7 @@ spec:
 	checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1.PipelineRunReasonRunning.String())
 
 	tr1Name := "test-pipeline-run-success-unit-test-1"
-	tr2Name := "test-pipeline-run-success-unit-test-cluster-task"
+	tr2Name := "test-pipeline-run-success-unit-test-2"
 
 	verifyTaskRunStatusesCount(t, reconciledRun.Status, 2)
 	verifyTaskRunStatusesNames(t, reconciledRun.Status, tr1Name, tr2Name)

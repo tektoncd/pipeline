@@ -21,7 +21,7 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-// TaskObject is implemented by Task and ClusterTask
+// TaskObject is implemented by Task
 type TaskObject interface {
 	apis.Defaultable
 	TaskMetadata() metav1.ObjectMeta
