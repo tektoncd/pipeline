@@ -59,11 +59,16 @@ type CustomRunStatusFields struct {
 	Results []CustomRunResult `json:"results,omitempty"`
 
 	// RetriesStatus contains the history of CustomRunStatus, in case of a retry.
+	// See CustomRun.status (API version: tekton.dev/v1beta1)
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	RetriesStatus []CustomRunStatus `json:"retriesStatus,omitempty"`
 
 	// ExtraFields holds arbitrary fields provided by the custom task
 	// controller.
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	ExtraFields runtime.RawExtension `json:"extraFields,omitempty"`
 }
 
