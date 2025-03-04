@@ -1462,9 +1462,9 @@ spec:
         name: "$(params.CFGNAME)"
 ```
 
-#### Using a `Secret` as an environment source
+#### Using a `Secret` or `ConfigMap` as an environment source
 
-The example below illustrates how to use a `Secret` as an environment source:
+The example below illustrates how to use a `Secret` (or a `ConfigMap`) as an environment source. Using the `envFrom`-type works well for e.g. secrets with a specified format, like a `kubernetes.io/basic-auth` secret which will allways contain a `username` and `password` variable which you can then use in your script. For a 'free form' `Secret` (or `ConfigMap`), use the `env` style as it allows you to have a param-reference for the `key` which you can then 'remap' to a well-known environment variable in your script:
 
 ```yaml
 apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
@@ -1490,6 +1490,14 @@ spec:
         - goreleaser
       args:
         - release
+      # All variables from the referenced secret / configmap will be injected.
+      envFrom:
+        - secretRef:
+            name: $(params.my-basic-auth-ssh-or-docker-type-secret-name}
+        # Using configMapRef works, but as al ConfigMaps are freeform this is not recommended  
+        - configMapRef:
+            name: $(params.my-configmap-name}
+      # using env allows to 'remap' values to fixed environment variables via the ${params}
       env:
         - name: GOPATH
           value: /workspace
@@ -1497,7 +1505,7 @@ spec:
           valueFrom:
             secretKeyRef:
               name: $(params.github-token-secret)
-              key: bot-token
+              key: $(params.github-token-secret-key)
 ```
 
 #### Using a `Sidecar` in a `Task`
