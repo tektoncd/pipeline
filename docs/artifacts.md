@@ -501,7 +501,6 @@ Upon resolution and execution of the `TaskRun`, the `Status` will look something
       "featureFlags": {
         "AwaitSidecarReadiness": true,
         "Coschedule": "workspaces",
-        "DisableAffinityAssistant": false,
         "DisableCredsInit": false,
         "DisableInlineSpec": "",
         "EnableAPIFields": "beta",
