@@ -1061,6 +1061,19 @@ the steps start and end after the steps complete.</p>
 <p>Results are values that this Task can output</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>podTemplate</code><br/>
+<em>
+<a href="#tekton.dev/unversioned.Template">
+Template
+</a>
+</em>
+</td>
+<td>
+<p>PodTemplate holds pod specific configuration</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -6203,6 +6216,19 @@ the steps start and end after the steps complete.</p>
 </td>
 <td>
 <p>Results are values that this Task can output</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podTemplate</code><br/>
+<em>
+<a href="#tekton.dev/unversioned.Template">
+Template
+</a>
+</em>
+</td>
+<td>
+<p>PodTemplate holds pod specific configuration</p>
 </td>
 </tr>
 </tbody>
