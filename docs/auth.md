@@ -378,7 +378,7 @@ the credentials specified in the `Secret`.
    kind: ServiceAccount
    metadata:
      name: build-bot
-   secrets:
+   imagePullSecrets:
      - name: basic-user-pass
    ```
 
@@ -445,7 +445,7 @@ Kubernetes `Secrets`.
    kind: ServiceAccount
    metadata:
      name: build-bot
-   secrets:
+   imagePullSecrets:
      - name: regcred
    ```
 
