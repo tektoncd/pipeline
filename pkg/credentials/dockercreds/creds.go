@@ -25,8 +25,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tektoncd/pipeline/pkg/credentials"
-	corev1 "k8s.io/api/core/v1"
+	"github.com/tektoncd/pipeline/pkg/credentials/common"
+	credmatcher "github.com/tektoncd/pipeline/pkg/credentials/matcher"
+	credwriter "github.com/tektoncd/pipeline/pkg/credentials/writer"
 )
 
 const annotationPrefix = "tekton.dev/docker-"
@@ -117,15 +118,15 @@ type entry struct {
 }
 
 func newEntry(secret string) (*entry, error) {
-	secretPath := credentials.VolumeName(secret)
+	secretPath := credmatcher.VolumeName(secret)
 
-	ub, err := os.ReadFile(filepath.Join(secretPath, corev1.BasicAuthUsernameKey))
+	ub, err := os.ReadFile(filepath.Join(secretPath, common.BasicAuthUsernameKey))
 	if err != nil {
 		return nil, err
 	}
 	username := string(ub)
 
-	pb, err := os.ReadFile(filepath.Join(secretPath, corev1.BasicAuthPasswordKey))
+	pb, err := os.ReadFile(filepath.Join(secretPath, common.BasicAuthPasswordKey))
 	if err != nil {
 		return nil, err
 	}
@@ -143,25 +144,30 @@ func newEntry(secret string) (*entry, error) {
 type basicDockerBuilder struct{}
 
 // NewBuilder returns a new builder for Docker credentials.
-func NewBuilder() credentials.Builder { return &basicDockerBuilder{} }
+func NewBuilder() interface {
+	credmatcher.Matcher
+	credwriter.Writer
+} {
+	return &basicDockerBuilder{}
+}
 
 // MatchingAnnotations extracts flags for the credential helper
 // from the supplied secret and returns a slice (of length 0 or
 // greater) of applicable domains.
-func (*basicDockerBuilder) MatchingAnnotations(secret *corev1.Secret) []string {
+func (*basicDockerBuilder) MatchingAnnotations(secret credmatcher.Secret) []string {
 	var flags []string
-	switch secret.Type {
-	case corev1.SecretTypeBasicAuth:
-		for _, v := range credentials.SortAnnotations(secret.Annotations, annotationPrefix) {
-			flags = append(flags, fmt.Sprintf("-basic-docker=%s=%s", secret.Name, v))
+	switch credmatcher.GetSecretType(secret) {
+	case common.SecretTypeBasicAuth:
+		for _, v := range credwriter.SortAnnotations(secret.GetAnnotations(), annotationPrefix) {
+			flags = append(flags, fmt.Sprintf("-basic-docker=%s=%s", secret.GetName(), v))
 		}
-	case corev1.SecretTypeDockerConfigJson:
-		flags = append(flags, "-docker-config="+secret.Name)
-	case corev1.SecretTypeDockercfg:
-		flags = append(flags, "-docker-cfg="+secret.Name)
+	case common.SecretTypeDockerConfigJson:
+		flags = append(flags, "-docker-config="+secret.GetName())
+	case common.SecretTypeDockercfg:
+		flags = append(flags, "-docker-cfg="+secret.GetName())
 
-	case corev1.SecretTypeOpaque, corev1.SecretTypeServiceAccountToken, corev1.SecretTypeSSHAuth, corev1.SecretTypeTLS, corev1.SecretTypeBootstrapToken:
-		return flags
+	case common.SecretTypeOpaque, common.SecretTypeServiceAccountToken, common.SecretTypeSSHAuth, common.SecretTypeTLS, common.SecretTypeBootstrapToken:
+		fallthrough
 
 	default:
 		return flags
@@ -218,9 +224,9 @@ func (*basicDockerBuilder) Write(directory string) error {
 }
 
 func authsFromDockerCfg(secret string) (map[string]entry, error) {
-	secretPath := credentials.VolumeName(secret)
+	secretPath := credmatcher.VolumeName(secret)
 	m := make(map[string]entry)
-	data, err := os.ReadFile(filepath.Join(secretPath, corev1.DockerConfigKey))
+	data, err := os.ReadFile(filepath.Join(secretPath, common.DockerConfigKey))
 	if err != nil {
 		return m, err
 	}
@@ -229,10 +235,10 @@ func authsFromDockerCfg(secret string) (map[string]entry, error) {
 }
 
 func authsFromDockerConfig(secret string) (map[string]entry, error) {
-	secretPath := credentials.VolumeName(secret)
+	secretPath := credmatcher.VolumeName(secret)
 	m := make(map[string]entry)
 	c := configFile{}
-	data, err := os.ReadFile(filepath.Join(secretPath, corev1.DockerConfigJsonKey))
+	data, err := os.ReadFile(filepath.Join(secretPath, common.DockerConfigJsonKey))
 	if err != nil {
 		return m, err
 	}
