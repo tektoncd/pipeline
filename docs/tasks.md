@@ -1406,7 +1406,7 @@ spec:
         type: Socket
 ```
 
-#### Mounting multiple `Volumes`
+### Mounting multiple `Volumes`
 
 The example below illustrates mounting multiple `Volumes`:
 
@@ -1434,7 +1434,7 @@ spec:
       emptyDir: {}
 ```
 
-#### Mounting a `ConfigMap` as a `Volume` source
+### Mounting a `ConfigMap` as a `Volume` source
 
 The example below illustrates how to mount a `ConfigMap` to act as a `Volume` source:
 
@@ -1462,10 +1462,12 @@ spec:
         name: "$(params.CFGNAME)"
 ```
 
-#### Using a `Secret` or `ConfigMap` as an environment source
+### Using a `Secret` as an environment source
 
-The example below illustrates how to use a `Secret` (or a `ConfigMap`) as an environment source. Using the `envFrom`-type works well for e.g. secrets with a specified format, like a `kubernetes.io/basic-auth` secret which will allways contain a `username` and `password` variable which you can then use in your script. For a 'free form' `Secret` (or `ConfigMap`), use the `env` style as it allows you to have a param-reference for the `key` which you can then 'remap' to a well-known environment variable in your script:
+The two examples below illustrate how to use a `Secret` as an environment source. 
 
+#### Using `env`
+The secret can be referenced in the `env` section of the `Container`-spec:
 ```yaml
 apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: Task
@@ -1490,14 +1492,6 @@ spec:
         - goreleaser
       args:
         - release
-      # All variables from the referenced secret / configmap will be injected.
-      envFrom:
-        - secretRef:
-            name: $(params.my-basic-auth-ssh-or-docker-type-secret-name}
-        # Using configMapRef works, but as al ConfigMaps are freeform this is not recommended  
-        - configMapRef:
-            name: $(params.my-configmap-name}
-      # using env allows to 'remap' values to fixed environment variables via the ${params}
       env:
         - name: GOPATH
           value: /workspace
@@ -1505,10 +1499,47 @@ spec:
           valueFrom:
             secretKeyRef:
               name: $(params.github-token-secret)
-              key: $(params.github-token-secret-key)
+              key: bot-token
+```
+#### Using `envFrom` 
+All values present in a secret can be mounted in fewer lines by using `envFrom`.
+
+> Note: Using `envFrom` will inject _all_ variables directly as env-variables in the pod running the `Task`, and this may be a source of unexpected behavior.
+> Using `env` rather than `envFrom` will provide more fine-grained control when designing tasks for other developers to (re)use.
+```yaml
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: goreleaser
+spec:
+  params:
+    - name: package
+      type: string
+      description: base package to build in
+    - name: gitea-basic-auth-secret
+      type: string
+      description: name of the secret holding the github-token
+      default: gitea-basic-auth
+  workspaces:
+  - name: source
+  steps:
+    - name: release
+      image: goreleaser/goreleaser
+      workingDir: $(workspaces.source.path)/$(params.package)
+      command:
+        - goreleaser
+      args:
+        - release
+      envFrom:
+        - secretRef:
+            name: $(params.gitea-basic-auth-secret)
+      env:
+        - name: GOPATH
+          value: /workspace
 ```
 
-#### Using a `Sidecar` in a `Task`
+
+### Using a `Sidecar` in a `Task`
 
 The example below illustrates how to use a `Sidecar` in your `Task`:
 
