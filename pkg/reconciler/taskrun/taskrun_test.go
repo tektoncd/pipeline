@@ -1734,6 +1734,7 @@ status:
         MaxResultSize: 4096
         Coschedule: "workspaces"
         DisableInlineSpec: ""
+        EnableStepActions: true
   provenance:
     featureFlags:
       RunningInEnvWithInjectedSidecars: true
@@ -1746,6 +1747,7 @@ status:
       MaxResultSize: 4096
       Coschedule: "workspaces"
       DisableInlineSpec: ""
+      EnableStepActions: true
 `, pipelineErrors.UserErrorLabel, pipelineErrors.UserErrorLabel))
 		reconciliatonError = errors.New("1 error occurred:\n\t* Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\"")
 		toBeRetriedTaskRun = parse.MustParseV1TaskRun(t, `
@@ -1800,6 +1802,7 @@ status:
       MaxResultSize: 4096
       Coschedule: "workspaces"
       DisableInlineSpec: ""
+      EnableStepActions: true
 `)
 		toBeRetriedWithResultsTaskRun = parse.MustParseV1TaskRun(t, `
 metadata:
