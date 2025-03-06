@@ -1,6 +1,8 @@
 name: ci
 
-on: [pull_request] # yamllint disable-line rule:truthy
+on:
+  - pull_request
+  - workflow_dispatch
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull-request.number || github.ref }}
@@ -62,7 +64,7 @@ jobs:
         args: --timeout=10m
     - name: yamllint
       run: |
-        apt update && apt install -y yamllint
+        apt-get update && apt-get install -y yamllint
         yamllint -c .yamllint $(find . -path ./vendor -prune -o -type f -regex ".*y[a]ml" -print | tr '\n' ' ')
     - name: check-license
       run: |
