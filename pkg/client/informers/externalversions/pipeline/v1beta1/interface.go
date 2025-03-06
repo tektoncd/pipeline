@@ -24,8 +24,6 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
-	// ClusterTasks returns a ClusterTaskInformer.
-	ClusterTasks() ClusterTaskInformer
 	// CustomRuns returns a CustomRunInformer.
 	CustomRuns() CustomRunInformer
 	// Pipelines returns a PipelineInformer.
@@ -49,11 +47,6 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
-}
-
-// ClusterTasks returns a ClusterTaskInformer.
-func (v *version) ClusterTasks() ClusterTaskInformer {
-	return &clusterTaskInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // CustomRuns returns a CustomRunInformer.

@@ -38,7 +38,6 @@ import (
 	faketaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1/task/fake"
 	faketaskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1/taskrun/fake"
 	fakeverificationpolicyinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/verificationpolicy/fake"
-	fakeclustertaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/clustertask/fake"
 	fakecustomruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/customrun/fake"
 	fakestepactioninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/stepaction/fake"
 	fakeresolutionclientset "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned/fake"
@@ -75,7 +74,6 @@ type Data struct {
 	TaskRuns                []*v1.TaskRun
 	Tasks                   []*v1.Task
 	StepActions             []*v1beta1.StepAction
-	ClusterTasks            []*v1beta1.ClusterTask
 	CustomRuns              []*v1beta1.CustomRun
 	Pods                    []*corev1.Pod
 	Namespaces              []*corev1.Namespace
@@ -105,7 +103,6 @@ type Informers struct {
 	CustomRun          informersv1beta1.CustomRunInformer
 	Task               informersv1.TaskInformer
 	StepAction         informersv1beta1.StepActionInformer
-	ClusterTask        informersv1beta1.ClusterTaskInformer
 	Pod                coreinformers.PodInformer
 	ConfigMap          coreinformers.ConfigMapInformer
 	ServiceAccount     coreinformers.ServiceAccountInformer
@@ -192,7 +189,6 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		CustomRun:          fakecustomruninformer.Get(ctx),
 		Task:               faketaskinformer.Get(ctx),
 		StepAction:         fakestepactioninformer.Get(ctx),
-		ClusterTask:        fakeclustertaskinformer.Get(ctx),
 		Pod:                fakefilteredpodinformer.Get(ctx, v1.ManagedByLabelKey),
 		ConfigMap:          fakeconfigmapinformer.Get(ctx),
 		ServiceAccount:     fakeserviceaccountinformer.Get(ctx),
@@ -237,13 +233,6 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 	for _, sa := range d.StepActions {
 		sa := sa.DeepCopy() // Avoid assumptions that the informer's copy is modified.
 		if _, err := c.Pipeline.TektonV1beta1().StepActions(sa.Namespace).Create(ctx, sa, metav1.CreateOptions{}); err != nil {
-			t.Fatal(err)
-		}
-	}
-	c.Pipeline.PrependReactor("*", "clustertasks", AddToInformer(t, i.ClusterTask.Informer().GetIndexer()))
-	for _, ct := range d.ClusterTasks {
-		ct := ct.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if _, err := c.Pipeline.TektonV1beta1().ClusterTasks().Create(ctx, ct, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
