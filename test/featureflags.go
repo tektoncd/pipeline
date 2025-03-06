@@ -128,6 +128,7 @@ func getFeatureFlagsBaseOnAPIFlag(t *testing.T) *config.FeatureFlags {
 		"results-from":        "sidecar-logs",
 		"enable-api-fields":   "beta",
 		"enable-step-actions": "true",
+		"enable-param-enum":   "true",
 	})
 	if err != nil {
 		t.Fatalf("error creating beta feature flags configmap: %v", err)
