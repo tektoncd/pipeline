@@ -60,7 +60,7 @@ kind: TaskRun
 metadata:
   name: step-action-run
 spec:
-  TaskSpec:
+  taskSpec:
     steps:
       - name: inline-step
         results:

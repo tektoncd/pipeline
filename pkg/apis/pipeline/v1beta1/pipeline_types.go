@@ -157,6 +157,8 @@ type PipelineResult struct {
 	Description string `json:"description"`
 
 	// Value the expression used to retrieve the value
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	Value ResultValue `json:"value"`
 }
 
@@ -210,8 +212,11 @@ type PipelineTask struct {
 
 	// TaskSpec is a specification of a task
 	// Specifying TaskSpec can be disabled by setting
-	// `disable-inline-spec` feature flag..
+	// `disable-inline-spec` feature flag.
+	// See Task.spec (API version: tekton.dev/v1beta1)
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	TaskSpec *EmbeddedTask `json:"taskSpec,omitempty"`
 
 	// WhenExpressions is a list of when expressions that need to be true for the task to run
@@ -259,9 +264,12 @@ type PipelineTask struct {
 
 	// PipelineSpec is a specification of a pipeline
 	// Note: PipelineSpec is in preview mode and not yet supported
-	// Specifying TaskSpec can be disabled by setting
-	// `disable-inline-spec` feature flag..
+	// Specifying PipelineSpec can be disabled by setting
+	// `disable-inline-spec` feature flag.
+	// See Pipeline.spec (API version: tekton.dev/v1beta1)
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	PipelineSpec *PipelineSpec `json:"pipelineSpec,omitempty"`
 
 	// OnError defines the exiting behavior of a PipelineRun on error

@@ -40,15 +40,111 @@ spec:
         status: {}
       schema:
         openAPIV3Schema:
+          description: |-
+            ResolutionRequest is an object for requesting the content of
+            a Tekton resource like a pipeline.yaml.
           type: object
-          # One can use x-kubernetes-preserve-unknown-fields: true
-          # at the root of the schema (and inside any properties, additionalProperties)
-          # to get the traditional CRD behaviour that nothing is pruned, despite
-          # setting spec.preserveUnknownProperties: false.
-          #
-          # See https://kubernetes.io/blog/2019/06/20/crd-structural-schema/
-          # See issue: https://github.com/knative/serving/issues/912
-          x-kubernetes-preserve-unknown-fields: true
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: Spec holds the information for the request part of the resource request.
+              type: object
+              properties:
+                params:
+                  description: |-
+                    Parameters are the runtime attributes passed to
+                    the resolver to help it figure out how to resolve the
+                    resource being requested. For example: repo URL, commit SHA,
+                    path to file, the kind of authentication to leverage, etc.
+                  type: object
+                  additionalProperties:
+                    type: string
+            status:
+              description: |-
+                Status communicates the state of the request and, ultimately,
+                the content of the resolved resource.
+              type: object
+              required:
+                - data
+                - refSource
+              properties:
+                annotations:
+                  description: |-
+                    Annotations is additional Status fields for the Resource to save some
+                    additional State as well as convey more information to the user. This is
+                    roughly akin to Annotations on any k8s resource, just the reconciler conveying
+                    richer information outwards.
+                  type: object
+                  additionalProperties:
+                    type: string
+                conditions:
+                  description: Conditions the latest available observations of a resource's current state.
+                  type: array
+                  items:
+                    description: |-
+                      Condition defines a readiness condition for a Knative resource.
+                      See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
+                    type: object
+                    required:
+                      - status
+                      - type
+                    properties:
+                      lastTransitionTime:
+                        description: |-
+                          LastTransitionTime is the last time the condition transitioned from one status to another.
+                          We use VolatileTime in place of metav1.Time to exclude this from creating equality.Semantic
+                          differences (all other things held constant).
+                        type: string
+                      message:
+                        description: A human readable message indicating details about the transition.
+                        type: string
+                      reason:
+                        description: The reason for the condition's last transition.
+                        type: string
+                      severity:
+                        description: |-
+                          Severity with which to treat failures of this type of condition.
+                          When this is not specified, it defaults to Error.
+                        type: string
+                      status:
+                        description: Status of the condition, one of True, False, Unknown.
+                        type: string
+                      type:
+                        description: Type of condition.
+                        type: string
+                data:
+                  description: |-
+                    Data is a string representation of the resolved content
+                    of the requested resource in-lined into the ResolutionRequest
+                    object.
+                  type: string
+                observedGeneration:
+                  description: |-
+                    ObservedGeneration is the 'Generation' of the Service that
+                    was last processed by the controller.
+                  type: integer
+                  format: int64
+                refSource:
+                  description: |-
+                    RefSource is the source reference of the remote data that records where the remote
+                    file came from including the url, digest and the entrypoint.
+                  x-kubernetes-preserve-unknown-fields: true
       additionalPrinterColumns:
         - name: Succeeded
           type: string
@@ -63,15 +159,133 @@ spec:
         status: {}
       schema:
         openAPIV3Schema:
+          description: |-
+            ResolutionRequest is an object for requesting the content of
+            a Tekton resource like a pipeline.yaml.
           type: object
-          # One can use x-kubernetes-preserve-unknown-fields: true
-          # at the root of the schema (and inside any properties, additionalProperties)
-          # to get the traditional CRD behaviour that nothing is pruned, despite
-          # setting spec.preserveUnknownProperties: false.
-          #
-          # See https://kubernetes.io/blog/2019/06/20/crd-structural-schema/
-          # See issue: https://github.com/knative/serving/issues/912
-          x-kubernetes-preserve-unknown-fields: true
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: Spec holds the information for the request part of the resource request.
+              type: object
+              properties:
+                params:
+                  description: |-
+                    Parameters are the runtime attributes passed to
+                    the resolver to help it figure out how to resolve the
+                    resource being requested. For example: repo URL, commit SHA,
+                    path to file, the kind of authentication to leverage, etc.
+                  type: array
+                  items:
+                    description: Param declares an ParamValues to use for the parameter called name.
+                    type: object
+                    required:
+                      - name
+                      - value
+                    properties:
+                      name:
+                        type: string
+                      value:
+                        x-kubernetes-preserve-unknown-fields: true
+                  x-kubernetes-list-type: atomic
+                url:
+                  description: |-
+                    URL is the runtime url passed to the resolver
+                    to help it figure out how to resolver the resource being
+                    requested.
+                    This is currently at an ALPHA stability level and subject to
+                    alpha API compatibility policies.
+                  type: string
+            status:
+              description: |-
+                Status communicates the state of the request and, ultimately,
+                the content of the resolved resource.
+              type: object
+              required:
+                - data
+                - refSource
+                - source
+              properties:
+                annotations:
+                  description: |-
+                    Annotations is additional Status fields for the Resource to save some
+                    additional State as well as convey more information to the user. This is
+                    roughly akin to Annotations on any k8s resource, just the reconciler conveying
+                    richer information outwards.
+                  type: object
+                  additionalProperties:
+                    type: string
+                conditions:
+                  description: Conditions the latest available observations of a resource's current state.
+                  type: array
+                  items:
+                    description: |-
+                      Condition defines a readiness condition for a Knative resource.
+                      See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
+                    type: object
+                    required:
+                      - status
+                      - type
+                    properties:
+                      lastTransitionTime:
+                        description: |-
+                          LastTransitionTime is the last time the condition transitioned from one status to another.
+                          We use VolatileTime in place of metav1.Time to exclude this from creating equality.Semantic
+                          differences (all other things held constant).
+                        type: string
+                      message:
+                        description: A human readable message indicating details about the transition.
+                        type: string
+                      reason:
+                        description: The reason for the condition's last transition.
+                        type: string
+                      severity:
+                        description: |-
+                          Severity with which to treat failures of this type of condition.
+                          When this is not specified, it defaults to Error.
+                        type: string
+                      status:
+                        description: Status of the condition, one of True, False, Unknown.
+                        type: string
+                      type:
+                        description: Type of condition.
+                        type: string
+                data:
+                  description: |-
+                    Data is a string representation of the resolved content
+                    of the requested resource in-lined into the ResolutionRequest
+                    object.
+                  type: string
+                observedGeneration:
+                  description: |-
+                    ObservedGeneration is the 'Generation' of the Service that
+                    was last processed by the controller.
+                  type: integer
+                  format: int64
+                refSource:
+                  description: |-
+                    RefSource is the source reference of the remote data that records the url, digest
+                    and the entrypoint.
+                  x-kubernetes-preserve-unknown-fields: true
+                source:
+                  description: 'Deprecated: Use RefSource instead'
+                  x-kubernetes-preserve-unknown-fields: true
       additionalPrinterColumns:
         - name: OwnerKind
           type: string
