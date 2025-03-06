@@ -31,30 +31,23 @@ const (
 	AffinityAssistantPerPipelineRunWithIsolation = AffinityAssistantBehavior("AffinityAssistantPerPipelineRunWithIsolation")
 )
 
-// GetAffinityAssistantBehavior returns an AffinityAssistantBehavior based on the
-// combination of "disable-affinity-assistant" and "coschedule" feature flags
-// TODO(#6740)(WIP): consume this function in the PipelineRun reconciler to determine Affinity Assistant behavior.
+// GetAffinityAssistantBehavior returns an AffinityAssistantBehavior based on the "coschedule" feature flags
 func GetAffinityAssistantBehavior(ctx context.Context) (AffinityAssistantBehavior, error) {
 	cfg := config.FromContextOrDefaults(ctx)
-	disableAA := cfg.FeatureFlags.DisableAffinityAssistant
 	coschedule := cfg.FeatureFlags.Coschedule
-
-	// at this point, we have validated that "coschedule" can only be "workspaces"
-	// when "disable-affinity-assistant" is false
-	if !disableAA {
-		return AffinityAssistantPerWorkspace, nil
-	}
 
 	switch coschedule {
 	case config.CoschedulePipelineRuns:
 		return AffinityAssistantPerPipelineRun, nil
 	case config.CoscheduleIsolatePipelineRun:
 		return AffinityAssistantPerPipelineRunWithIsolation, nil
-	case config.CoscheduleDisabled, config.CoscheduleWorkspaces:
+	case config.CoscheduleWorkspaces:
+		return AffinityAssistantPerWorkspace, nil
+	case config.CoscheduleDisabled:
 		return AffinityAssistantDisabled, nil
 	}
 
-	return "", fmt.Errorf("unknown combination of disable-affinity-assistant: %v and coschedule: %v", disableAA, coschedule)
+	return "", fmt.Errorf("unknown affinity assistant coschedule: %v", coschedule)
 }
 
 // ContainerConfig defines AffinityAssistant container configuration
