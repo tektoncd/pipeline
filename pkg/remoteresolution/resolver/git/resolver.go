@@ -119,11 +119,19 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 			return nil, err
 		}
 
-		if params[git.UrlParam] != "" {
-			return git.ResolveAnonymousGit(ctx, params)
+		g := &git.GitResolver{
+			KubeClient: r.kubeClient,
+			Logger:     r.logger,
+			Cache:      r.cache,
+			TTL:        r.ttl,
+			Params:     params,
 		}
 
-		return git.ResolveAPIGit(ctx, params, r.kubeClient, r.logger, r.cache, r.ttl, r.clientFunc)
+		if params[git.UrlParam] != "" {
+			return g.ResolveGitClone(ctx)
+		}
+
+		return g.ResolveAPIGit(ctx, r.clientFunc)
 	}
 	// Remove this error once resolution of url has been implemented.
 	return nil, errors.New("the Resolve method has not been implemented.")
