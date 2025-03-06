@@ -19,6 +19,7 @@ package v1
 import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internal/checksum"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -119,6 +120,9 @@ type TaskSpec struct {
 	// Results are values that this Task can output
 	// +listType=atomic
 	Results []TaskResult `json:"results,omitempty"`
+
+	// PodTemplate holds pod specific configuration
+	PodTemplate *pod.PodTemplate `json:"podTemplate,omitempty"`
 }
 
 // TaskList contains a list of Task

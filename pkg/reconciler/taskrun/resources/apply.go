@@ -687,6 +687,13 @@ func ApplyReplacements(spec *v1.TaskSpec, stringReplacements map[string]string, 
 		container.ApplyStepTemplateReplacements(spec.StepTemplate, stringReplacements, arrayReplacements)
 	}
 
+	// Apply variable expansion to podTemplate fields.
+	if spec.PodTemplate != nil {
+		for key, value := range spec.PodTemplate.NodeSelector {
+			spec.PodTemplate.NodeSelector[key] = substitution.ApplyReplacements(value, stringReplacements)
+		}
+	}
+
 	// Apply variable expansion to the build's volumes
 	for i, v := range spec.Volumes {
 		spec.Volumes[i].Name = substitution.ApplyReplacements(v.Name, stringReplacements)
