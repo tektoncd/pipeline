@@ -12,24 +12,54 @@ the pipelines repo, a terminal window and a text editor.
 
 1. [Install kustomize](https://kubectl.docs.kubernetes.io/installation/kustomize) if you haven't already.
 
-1. Ensure the correct version of the release pipeline is installed on the cluster:
+1. Select the commit you would like to build the release from (NOTE: the commit is full (40-digit) hash.)
+    - Select the most recent commit on the ***main branch*** if you are cutting a major or minor release i.e. `x.0.0` or `0.x.0`
+    - Select the most recent commit on the ***`release-<version number>x` branch***, e.g. [`release-v0.47.x`](https://github.com/tektoncd/pipeline/tree/release-v0.47.x) if you are patching a release i.e. `v0.47.2`.
+
+1. Ensure the correct version of the release pipeline is installed on the cluster.
+   To do that, the selected commit should be checked-out locally
 
     ```bash
     kustomize build tekton | kubectl --context dogfooding replace -f -
     ```
 
-1. Create environment variables for bash scripts in later steps.
+1. Choose a name for the new release! The usual pattern is "< cat breed > < famous robot >" e.g. "Ragdoll Norby". For LTS releases, add a suffix "LTS" in the name such as "< cat breed > < famous robot > LTS" e.g. "Ragdoll Norby LTS". Use this command to generate a name that has not yet been used:
 
     ```bash
-    TEKTON_VERSION=# Example: v0.21.0
+    go run tekton/release_names.go
     ```
 
-    - Select the commit you would like to build the release from (NOTE: the commit is full (40-digit) hash.)
-        - Select the most recent commit on the ***main branch*** if you are cutting a major or minor release i.e. `x.0.0` or `0.x.0`
-        - Select the most recent commit on the ***`release-<version number>x` branch***, e.g. [`release-v0.47.x`](https://github.com/tektoncd/pipeline/tree/release-v0.47.x) if you are patching a release i.e. `v0.47.2`.
+    It returns something like:
+
+    ```json
+    {
+        "release_name": "Khao Manee KARR",
+        "cat_breed_url": "https://en.wikipedia.org/wiki/Khao_Manee",
+        "robot_url": "https://en.wikipedia.org/wiki/KARR"
+    }
+    ```
+
+    The URLs can be used to find out more about the cat breed and robot selected by the tool.
+    Previous release names can also be found with the following command:
 
     ```bash
-    TEKTON_RELEASE_GIT_SHA=# SHA of the release to be released
+    curl \
+      -H "Accept: application/vnd.github.v3+json" \
+      https://api.github.com/repos/tektoncd/pipeline/releases\?per_page=100 \
+      | jq ".[].name" | cut -d'"' -f 3 | tr -d '\' | sort -u
+    ```
+
+1. Create a `release.env` file with environment variables for bash scripts in later steps, and source it:
+
+    ```bash
+    cat <<EOF > release.env
+    TEKTON_VERSION= # Example: v0.69.0
+    TEKTON_RELEASE_GIT_SHA= # SHA of the release to be released, e.g. 5b082b1106753e093593d12152c82e1c4b0f37e5
+    TEKTON_OLD_VERSION= # Example: v0.68.0
+    TEKTON_RELEASE_NAME="Oriental Longhair Omnibot" # Name of the release
+    TEKTON_PACKAGE=tektoncd/pipeline
+    EOF
+    . ./release.env
     ```
 
 1. Confirm commit SHA matches what you want to release.
@@ -103,15 +133,6 @@ the pipelines repo, a terminal window and a text editor.
 
 1. The YAMLs are now released! Anyone installing Tekton Pipelines will get the new version. Time to create a new GitHub release announcement:
 
-    1. Choose a name for the new release! The usual pattern is "< cat breed > < famous robot >" e.g. "Ragdoll Norby". For LTS releases, add a suffix "LTS" in the name such as "< cat breed > < famous robot > LTS" e.g. "Ragdoll Norby LTS". Browse [the releases page](https://github.com/tektoncd/pipeline/releases) or run this command to check which names have already been used:
-
-    ```bash
-    curl \
-      -H "Accept: application/vnd.github.v3+json" \
-      https://api.github.com/repos/tektoncd/pipeline/releases\?per_page=100 \
-      | jq ".[].name"
-    ```
-
     1. Find the Rekor UUID for the release
 
     ```bash
@@ -119,13 +140,6 @@ the pipelines repo, a terminal window and a text editor.
     CONTROLLER_IMAGE_SHA=$(curl $RELEASE_FILE | egrep 'ghcr.io.*controller' | cut -d'@' -f2)
     REKOR_UUID=$(rekor-cli search --sha $CONTROLLER_IMAGE_SHA | grep -v Found | head -1)
     echo -e "CONTROLLER_IMAGE_SHA: ${CONTROLLER_IMAGE_SHA}\nREKOR_UUID: ${REKOR_UUID}"
-    ```
-
-    1. Create additional environment variables
-
-    ```bash
-    TEKTON_OLD_VERSION=# Example: v0.11.1
-    TEKTON_RELEASE_NAME=# The release name you just chose, e.g.: "Ragdoll Norby"
     ```
 
     1. Execute the Draft Release Pipeline.
