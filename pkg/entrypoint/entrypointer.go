@@ -44,9 +44,10 @@ import (
 
 // RFC3339 with millisecond
 const (
-	timeFormat      = "2006-01-02T15:04:05.000Z07:00"
-	ContinueOnError = "continue"
-	FailOnError     = "stopAndFail"
+	timeFormat             = "2006-01-02T15:04:05.000Z07:00"
+	ContinueOnError        = "continue"
+	StopAndFailOnError     = "stopAndFail"
+	ContinueAndFailOnError = "continueAndFail"
 )
 
 const (
@@ -159,6 +160,7 @@ type Entrypointer struct {
 	// OnError defines exiting behavior of the entrypoint
 	// set it to "stopAndFail" to indicate the entrypoint to exit the taskRun if the container exits with non zero exit code
 	// set it to "continue" to indicate the entrypoint to continue executing the rest of the steps irrespective of the container exit code
+	// set it to "continueAndFail" to indicate the entrypoint to continue executing the rest of the steps irrespective of the container exit code and exit the taskRun if the container exits with non zero exit code
 	OnError string
 	// StepMetadataDir is the directory for a step where the step related metadata can be stored
 	StepMetadataDir string
@@ -305,6 +307,16 @@ func (e Entrypointer) Go() error {
 			ResultType: result.InternalTektonResultType,
 		})
 		e.WritePostFile(e.PostFile, nil)
+		e.WriteExitCodeFile(e.StepMetadataDir, exitCode)
+	case e.OnError == ContinueAndFailOnError && errors.As(err, &ee):
+		// with continueAndFail on error and an ExitError, write non-zero exit code and a post file with the error
+		exitCode := strconv.Itoa(ee.ExitCode())
+		output = append(output, result.RunResult{
+			Key:        "ExitCode",
+			Value:      exitCode,
+			ResultType: result.InternalTektonResultType,
+		})
+		e.WritePostFile(e.PostFile, err)
 		e.WriteExitCodeFile(e.StepMetadataDir, exitCode)
 	case err == nil:
 		// if err is nil, write zero exit code and a post file

@@ -1,4 +1,4 @@
-/*
+/*/
 Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -641,6 +641,10 @@ func TestEntryPointOnError(t *testing.T) {
 		Name:    "passing-step",
 		Image:   "step-2",
 		Command: []string{"cmd"},
+	}, {
+		Name:    "passing-step",
+		Image:   "step-3",
+		Command: []string{"cmd"},
 	}}
 
 	for _, tc := range []struct {
@@ -654,6 +658,8 @@ func TestEntryPointOnError(t *testing.T) {
 				OnError: v1.Continue,
 			}, {
 				OnError: v1.StopAndFail,
+			}, {
+				OnError: v1.ContinueAndFail,
 			}},
 		},
 		wantContainers: []corev1.Container{{
@@ -684,6 +690,19 @@ func TestEntryPointOnError(t *testing.T) {
 				"-entrypoint", "cmd", "--",
 			},
 			TerminationMessagePath: "/tekton/termination",
+		}, {
+			Name:    "passing-step",
+			Image:   "step-3",
+			Command: []string{entrypointBinary},
+			Args: []string{
+				"-wait_file", "/tekton/run/1/out",
+				"-post_file", "/tekton/run/2/out",
+				"-termination_path", "/tekton/termination",
+				"-step_metadata_dir", "/tekton/run/2/status",
+				"-on_error", "continueAndFail",
+				"-entrypoint", "cmd", "--",
+			},
+			TerminationMessagePath: "/tekton/termination",
 		}},
 	}, {
 		taskSpec: v1.TaskSpec{
@@ -691,7 +710,7 @@ func TestEntryPointOnError(t *testing.T) {
 				OnError: "invalid-on-error",
 			}},
 		},
-		err: errors.New("task step onError must be either \"continue\" or \"stopAndFail\" but it is set to an invalid value \"invalid-on-error\""),
+		err: errors.New("task step onError must have one of the following values: \"continue\", \"stopAndFail\" or \"continueAndFail\". But it is set to an invalid value \"invalid-on-error\""),
 	}} {
 		t.Run(tc.desc, func(t *testing.T) {
 			got, err := orderContainers(t.Context(), []string{}, steps, &tc.taskSpec, nil, true, false)

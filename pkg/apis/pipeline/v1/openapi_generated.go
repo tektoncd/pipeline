@@ -3051,7 +3051,7 @@ func schema_pkg_apis_pipeline_v1_Step(ref common.ReferenceCallback) common.OpenA
 					},
 					"onError": {
 						SchemaProps: spec.SchemaProps{
-							Description: "OnError defines the exiting behavior of a container on error can be set to [ continue | stopAndFail ]",
+							Description: "OnError defines the exiting behavior of a container on error can be set to [ continue | stopAndFail | continueAndFail ]",
 							Type:        []string{"string"},
 							Format:      "",
 						},
