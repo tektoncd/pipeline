@@ -501,12 +501,24 @@ func TestEntrypointer_OnError(t *testing.T) {
 		runner:        &fakeExitErrorRunner{},
 		expectedError: true,
 		postFile:      "step-one",
-		onError:       FailOnError,
+		onError:       StopAndFailOnError,
 	}, {
 		desc:          "the step is exiting with 0, treat the step error (but there is none) as failure with onError set to stopAndFail",
 		runner:        &fakeRunner{},
 		postFile:      "step-one",
-		onError:       FailOnError,
+		onError:       StopAndFailOnError,
+		expectedError: false,
+	}, {
+		desc:          "the step is exiting with 1, treat the step error as failure with onError set to continueAndFail",
+		runner:        &fakeExitErrorRunner{},
+		postFile:      "step-one",
+		onError:       ContinueAndFailOnError,
+		expectedError: true,
+	}, {
+		desc:          "the step is exiting with 0, treat the step error (but there is none) as failure with onError set to continueAndFail",
+		runner:        &fakeRunner{},
+		postFile:      "step-one",
+		onError:       ContinueAndFailOnError,
 		expectedError: false,
 	}, {
 		desc:            "the step set debug before step, and before step breakpoint fail-continue",
@@ -566,7 +578,7 @@ func TestEntrypointer_OnError(t *testing.T) {
 				}
 			}
 
-			if c.onError == FailOnError {
+			if c.onError == StopAndFailOnError {
 				switch {
 				case fpw.wrote == nil:
 					t.Error("Wanted post file written, got nil")
@@ -574,6 +586,22 @@ func TestEntrypointer_OnError(t *testing.T) {
 					t.Errorf("Wrote post file %q, want %q", *fpw.wrote, c.postFile+".err")
 				}
 			}
+
+			if c.onError == ContinueAndFailOnError {
+				switch {
+				case fpw.wrote == nil:
+					t.Error("Wanted post file written, got nil")
+				case fpw.exitCodeFile == nil:
+					t.Error("Wanted exitCode file written, got nil")
+				case *fpw.exitCodeFile != "exitCode":
+					t.Errorf("Wrote exitCode file %q, want %q", *fpw.exitCodeFile, "exitCode")
+				case c.expectedError && *fpw.exitCode == "0":
+					t.Errorf("Wrote zero exit code but want non-zero when expecting an error")
+				case c.expectedError && *fpw.wrote != c.postFile+".err":
+					t.Errorf("Wrote post file %q, want %q", *fpw.wrote, c.postFile+".err")
+				}
+			}
+
 		})
 	}
 }
