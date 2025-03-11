@@ -359,8 +359,8 @@ func validateParams(ctx context.Context, paramsMap map[string]string, tektonHubU
 		missingParams = append(missingParams, ParamVersion)
 	}
 	if kind, ok := paramsMap[ParamKind]; ok {
-		if kind != "task" && kind != "pipeline" {
-			return errors.New("kind param must be task or pipeline")
+		if kind != "task" && kind != "pipeline" && kind != "stepaction" {
+			return errors.New("kind param must be either a task, pipeline or a stepaction")
 		}
 	}
 	if hubType, ok := paramsMap[ParamType]; ok {
