@@ -6,12 +6,12 @@ metadata:
 spec:
   params:
     - name: pathInRepo
-      value: basic_step.yaml
+      value: stepaction/git-clone/0.1/git-clone.yaml
     - name: revision
       value: main
     - name: repoUrl
-      value: https://github.com/chitrangpatel/repo1M.git
-  TaskSpec:
+      value: https://github.com/tektoncd/catalog.git
+  taskSpec:
     steps:
       - name: action-runner
         ref:
@@ -23,3 +23,10 @@ spec:
               value: $(params.revision)
             - name: pathInRepo
               value: $(params.pathInRepo)
+        params:
+          - name: url
+            value: https://github.com/kelseyhightower/nocode
+          - name: revision
+            value: master
+          - name: output-path
+            value: /workspace

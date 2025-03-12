@@ -54,6 +54,8 @@ type ParamSpec struct {
 	// default is set, a Task may be executed without a supplied value for the
 	// parameter.
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	Default *ParamValue `json:"default,omitempty"`
 	// Enum declares a set of allowed param input values for tasks/pipelines that can be validated.
 	// If Enum is not set, no input validation is performed for the param.
@@ -62,6 +64,7 @@ type ParamSpec struct {
 }
 
 // ParamSpecs is a list of ParamSpec
+// +listType=atomic
 type ParamSpecs []ParamSpec
 
 // PropertySpec defines the struct for object keys
@@ -137,7 +140,7 @@ func (ps ParamSpecs) validateNoDuplicateNames() *apis.FieldError {
 	return errs
 }
 
-// validateParamEnum validates feature flag, duplication and allowed types for Param Enum
+// validateParamEnums validates feature flag, duplication and allowed types for Param Enum
 func (ps ParamSpecs) validateParamEnums(ctx context.Context) *apis.FieldError {
 	var errs *apis.FieldError
 	for _, p := range ps {
@@ -186,11 +189,14 @@ func (pp *ParamSpec) setDefaultsForProperties() {
 
 // Param declares an ParamValues to use for the parameter called name.
 type Param struct {
-	Name  string     `json:"name"`
+	Name string `json:"name"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	Value ParamValue `json:"value"`
 }
 
 // Params is a list of Param
+// +listType=atomic
 type Params []Param
 
 // ExtractNames returns a set of unique names

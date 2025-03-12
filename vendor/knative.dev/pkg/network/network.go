@@ -59,11 +59,12 @@ const (
 	// KubeletProbeHeaderName is the header name to augment the probes, because
 	// Istio with mTLS rewrites probes, but their probes pass a different
 	// user-agent.
+	//
+	// Deprecated: use knative.dev/networking/pkg/http/header.UserAgentKey
 	KubeletProbeHeaderName = "K-Kubelet-Probe"
 )
 
 // IsKubeletProbe returns true if the request is a Kubernetes probe.
 func IsKubeletProbe(r *http.Request) bool {
-	return strings.HasPrefix(r.Header.Get(UserAgentKey), KubeProbeUAPrefix) ||
-		r.Header.Get(KubeletProbeHeaderName) != ""
+	return strings.HasPrefix(r.Header.Get(UserAgentKey), KubeProbeUAPrefix)
 }

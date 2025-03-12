@@ -46,7 +46,7 @@ func eventsFromChannel(c chan string, wantEvents []string) error {
 	// on the channel forever if fewer than expected events are received
 	timer := time.After(wait.ForeverTestTimeout)
 	foundEvents := []string{}
-	for ii := 0; ii < len(wantEvents); ii++ {
+	for ii := range wantEvents {
 		// We loop over all the events that we expect. Once they are all received
 		// we exit the loop. If we never receive enough events, the timeout takes us
 		// out of the loop.

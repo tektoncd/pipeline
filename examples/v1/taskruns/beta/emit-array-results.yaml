@@ -12,12 +12,12 @@ spec:
       description: The array results
   steps:
     - name: write-array
-      image: bash:latest
+      image: mirror.gcr.io/bash
       script: |
         #!/usr/bin/env bash
         echo -n "[\"hello\",\"world\"]" | tee $(results.array-results.path)
     - name: check-results-array
-      image: ubuntu
+      image: mirror.gcr.io/ubuntu
       script: |
         #!/bin/bash
         VALUE=$(cat $(results.array-results.path))

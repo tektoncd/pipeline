@@ -8,7 +8,7 @@ spec:
     - name: before
       taskSpec:
         steps:
-        - image: busybox
+        - image: mirror.gcr.io/busybox
           script: echo before wait
     - name: wait
       taskRef:
@@ -21,6 +21,6 @@ spec:
     - name: after
       taskSpec:
         steps:
-        - image: busybox
+        - image: mirror.gcr.io/busybox
           script: echo after wait
       runAfter: ['wait']

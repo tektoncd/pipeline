@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
+	"github.com/tektoncd/pipeline/pkg/pod"
 	remoteresource "github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -103,13 +104,39 @@ func GetTaskData(ctx context.Context, taskRun *v1.TaskRun, getTask GetTask) (*re
 // GetStepActionsData extracts the StepActions and merges them with the inlined Step specification.
 func GetStepActionsData(ctx context.Context, taskSpec v1.TaskSpec, taskRun *v1.TaskRun, tekton clientset.Interface, k8s kubernetes.Interface, requester remoteresource.Requester) ([]v1.Step, error) {
 	steps := []v1.Step{}
-	for _, step := range taskSpec.Steps {
+	for i, step := range taskSpec.Steps {
 		s := step.DeepCopy()
 		if step.Ref != nil {
 			getStepAction := GetStepActionFunc(tekton, k8s, requester, taskRun, s)
-			stepAction, _, err := getStepAction(ctx, s.Ref.Name)
+			stepAction, source, err := getStepAction(ctx, s.Ref.Name)
 			if err != nil {
 				return nil, err
+			}
+			// update stepstate with remote origin information
+			if source != nil {
+				found := false
+				for i, st := range taskRun.Status.Steps {
+					if st.Name == s.Name {
+						found = true
+						if st.Provenance != nil {
+							taskRun.Status.Steps[i].Provenance.RefSource = source
+						} else {
+							taskRun.Status.Steps[i].Provenance = &v1.Provenance{RefSource: source}
+						}
+						break
+					}
+				}
+				if !found {
+					stp := v1.StepState{
+						Name:       pod.TrimStepPrefix(pod.StepName(s.Name, i)),
+						Provenance: &v1.Provenance{RefSource: source},
+					}
+					if len(taskRun.Status.Steps) == 0 {
+						taskRun.Status.Steps = []v1.StepState{stp}
+					} else {
+						taskRun.Status.Steps = append(taskRun.Status.Steps, stp)
+					}
+				}
 			}
 			stepActionSpec := stepAction.StepActionSpec()
 			stepActionSpec.SetDefaults(ctx)
@@ -118,7 +145,11 @@ func GetStepActionsData(ctx context.Context, taskSpec v1.TaskSpec, taskRun *v1.T
 			if err := validateStepHasStepActionParameters(s.Params, stepActionSpec.Params); err != nil {
 				return nil, err
 			}
-			stepFromStepAction = applyStepActionParameters(stepFromStepAction, &taskSpec, taskRun, s.Params, stepActionSpec.Params)
+
+			stepFromStepAction, err = applyStepActionParameters(stepFromStepAction, &taskSpec, taskRun, s.Params, stepActionSpec.Params)
+			if err != nil {
+				return nil, err
+			}
 
 			s.Image = stepFromStepAction.Image
 			s.SecurityContext = stepFromStepAction.SecurityContext

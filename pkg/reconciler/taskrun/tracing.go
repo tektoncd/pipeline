@@ -42,7 +42,7 @@ func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, tr *v
 	pro := otel.GetTextMapPropagator()
 
 	// SpanContext was created already
-	if tr.Status.SpanContext != nil && len(tr.Status.SpanContext) > 0 {
+	if len(tr.Status.SpanContext) > 0 {
 		return pro.Extract(ctx, propagation.MapCarrier(tr.Status.SpanContext))
 	}
 

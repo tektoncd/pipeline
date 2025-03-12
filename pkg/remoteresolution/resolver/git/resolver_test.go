@@ -219,7 +219,10 @@ func TestValidateParams_Failure(t *testing.T) {
 func TestGetResolutionTimeoutDefault(t *testing.T) {
 	resolver := Resolver{}
 	defaultTimeout := 30 * time.Minute
-	timeout := resolver.GetResolutionTimeout(context.Background(), defaultTimeout)
+	timeout, err := resolver.GetResolutionTimeout(context.Background(), defaultTimeout, map[string]string{})
+	if err != nil {
+		t.Fatalf("couldn't get default-timeout: %v", err)
+	}
 	if timeout != defaultTimeout {
 		t.Fatalf("expected default timeout to be returned")
 	}
@@ -233,8 +236,30 @@ func TestGetResolutionTimeoutCustom(t *testing.T) {
 		gitresolution.DefaultTimeoutKey: configTimeout.String(),
 	}
 	ctx := resolutionframework.InjectResolverConfigToContext(context.Background(), config)
-	timeout := resolver.GetResolutionTimeout(ctx, defaultTimeout)
+	timeout, err := resolver.GetResolutionTimeout(ctx, defaultTimeout, map[string]string{})
+	if err != nil {
+		t.Fatalf("couldn't get default-timeout: %v", err)
+	}
 	if timeout != configTimeout {
+		t.Fatalf("expected timeout from config to be returned")
+	}
+}
+
+func TestGetResolutionTimeoutCustomIdentifier(t *testing.T) {
+	resolver := Resolver{}
+	defaultTimeout := 30 * time.Minute
+	configTimeout := 5 * time.Second
+	identifierConfigTImeout := 10 * time.Second
+	config := map[string]string{
+		gitresolution.DefaultTimeoutKey:          configTimeout.String(),
+		"foo." + gitresolution.DefaultTimeoutKey: identifierConfigTImeout.String(),
+	}
+	ctx := resolutionframework.InjectResolverConfigToContext(context.Background(), config)
+	timeout, err := resolver.GetResolutionTimeout(ctx, defaultTimeout, map[string]string{"configKey": "foo"})
+	if err != nil {
+		t.Fatalf("couldn't get default-timeout: %v", err)
+	}
+	if timeout != identifierConfigTImeout {
 		t.Fatalf("expected timeout from config to be returned")
 	}
 }
@@ -268,6 +293,7 @@ type params struct {
 	namespace  string
 	serverURL  string
 	scmType    string
+	configKey  string
 }
 
 func TestResolve(t *testing.T) {
@@ -344,6 +370,7 @@ func TestResolve(t *testing.T) {
 		expectedCommitSHA string
 		expectedStatus    *v1beta1.ResolutionRequestStatus
 		expectedErr       error
+		configIdentifer   string
 	}{{
 		name: "clone: default revision main",
 		args: &params{
@@ -436,6 +463,46 @@ func TestResolve(t *testing.T) {
 			gitresolution.APISecretKeyKey:       "token",
 			gitresolution.APISecretNamespaceKey: system.Namespace(),
 		},
+		apiToken:          "some-token",
+		expectedCommitSHA: commitSHAsInSCMRepo[0],
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData(mainTaskYAML),
+	}, {
+		name: "api: successful task from params api information with identifier",
+		args: &params{
+			revision:   "main",
+			pathInRepo: "tasks/example-task.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+			token:      "token-secret",
+			tokenKey:   "token",
+			namespace:  "foo",
+			configKey:  "test",
+		},
+		config: map[string]string{
+			"test." + gitresolution.ServerURLKey: "fake",
+			"test." + gitresolution.SCMTypeKey:   "fake",
+		},
+		configIdentifer:   "test.",
+		apiToken:          "some-token",
+		expectedCommitSHA: commitSHAsInSCMRepo[0],
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData(mainTaskYAML),
+	}, {
+		name: "api: successful task with identifier",
+		args: &params{
+			revision:   "main",
+			pathInRepo: "tasks/example-task.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+			configKey:  "test",
+		},
+		config: map[string]string{
+			"test." + gitresolution.ServerURLKey:          "fake",
+			"test." + gitresolution.SCMTypeKey:            "fake",
+			"test." + gitresolution.APISecretNameKey:      "token-secret",
+			"test." + gitresolution.APISecretKeyKey:       "token",
+			"test." + gitresolution.APISecretNamespaceKey: system.Namespace(),
+		},
+		configIdentifer:   "test.",
 		apiToken:          "some-token",
 		expectedCommitSHA: commitSHAsInSCMRepo[0],
 		expectedStatus:    resolution.CreateResolutionRequestStatusWithData(mainTaskYAML),
@@ -578,9 +645,9 @@ func TestResolve(t *testing.T) {
 			gitresolution.APISecretKeyKey:       "token",
 			gitresolution.APISecretNamespaceKey: system.Namespace(),
 		},
-		apiToken:       "some-token",
-		expectedStatus: resolution.CreateResolutionRequestFailureStatus(),
-		expectedErr:    createError("missing or empty scm-type value in configmap"),
+		apiToken:          "some-token",
+		expectedCommitSHA: commitSHAsInSCMRepo[0],
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData(mainPipelineYAML),
 	}}
 
 	for _, tc := range testCases {
@@ -591,9 +658,9 @@ func TestResolve(t *testing.T) {
 			if cfg == nil {
 				cfg = make(map[string]string)
 			}
-			cfg[gitresolution.DefaultTimeoutKey] = "1m"
-			if cfg[gitresolution.DefaultRevisionKey] == "" {
-				cfg[gitresolution.DefaultRevisionKey] = plumbing.Master.Short()
+			cfg[tc.configIdentifer+gitresolution.DefaultTimeoutKey] = "1m"
+			if cfg[tc.configIdentifer+gitresolution.DefaultRevisionKey] == "" {
+				cfg[tc.configIdentifer+gitresolution.DefaultRevisionKey] = plumbing.Master.Short()
 			}
 
 			request := createRequest(tc.args)
@@ -654,8 +721,8 @@ func TestResolve(t *testing.T) {
 
 			frtesting.RunResolverReconcileTest(ctx, t, d, resolver, request, expectedStatus, tc.expectedErr, func(resolver framework.Resolver, testAssets test.Assets) {
 				var secretName, secretNameKey, secretNamespace string
-				if tc.config[gitresolution.APISecretNameKey] != "" && tc.config[gitresolution.APISecretNamespaceKey] != "" && tc.config[gitresolution.APISecretKeyKey] != "" && tc.apiToken != "" {
-					secretName, secretNameKey, secretNamespace = tc.config[gitresolution.APISecretNameKey], tc.config[gitresolution.APISecretKeyKey], tc.config[gitresolution.APISecretNamespaceKey]
+				if tc.config[tc.configIdentifer+gitresolution.APISecretNameKey] != "" && tc.config[tc.configIdentifer+gitresolution.APISecretNamespaceKey] != "" && tc.config[tc.configIdentifer+gitresolution.APISecretKeyKey] != "" && tc.apiToken != "" {
+					secretName, secretNameKey, secretNamespace = tc.config[tc.configIdentifer+gitresolution.APISecretNameKey], tc.config[tc.configIdentifer+gitresolution.APISecretKeyKey], tc.config[tc.configIdentifer+gitresolution.APISecretNamespaceKey]
 				}
 				if tc.args.token != "" && tc.args.namespace != "" && tc.args.tokenKey != "" {
 					secretName, secretNameKey, secretNamespace = tc.args.token, tc.args.tokenKey, tc.args.namespace
@@ -877,6 +944,13 @@ func createRequest(args *params) *v1beta1.ResolutionRequest {
 				Value: *pipelinev1.NewStructuredValues(args.tokenKey),
 			})
 		}
+	}
+
+	if args.configKey != "" {
+		rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
+			Name:  gitresolution.ConfigKeyParam,
+			Value: *pipelinev1.NewStructuredValues(args.configKey),
+		})
 	}
 
 	return rr

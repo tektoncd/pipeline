@@ -83,7 +83,8 @@ func WaitForEndpointState(
 	inState spoof.ResponseChecker,
 	desc string,
 	resolvable bool,
-	opts ...interface{}) (*spoof.Response, error) {
+	opts ...interface{},
+) (*spoof.Response, error) {
 	return WaitForEndpointStateWithTimeout(ctx, kubeClient, logf, url, inState,
 		desc, resolvable, Flags.SpoofRequestTimeout, opts...)
 }
@@ -103,8 +104,8 @@ func WaitForEndpointStateWithTimeout(
 	desc string,
 	resolvable bool,
 	timeout time.Duration,
-	opts ...interface{}) (*spoof.Response, error) {
-
+	opts ...interface{},
+) (*spoof.Response, error) {
 	client, rOpts, err := makeSpoofClient(ctx, kubeClient, logf, url, resolvable, timeout, opts...)
 	if err != nil {
 		return nil, err
@@ -119,8 +120,8 @@ func makeSpoofClient(
 	url *url.URL,
 	resolvable bool,
 	timeout time.Duration,
-	opts ...interface{}) (*spoof.SpoofingClient, []spoof.RequestOption, error) {
-
+	opts ...interface{},
+) (*spoof.SpoofingClient, []spoof.RequestOption, error) {
 	var tOpts []spoof.TransportOption
 	var rOpts []spoof.RequestOption
 

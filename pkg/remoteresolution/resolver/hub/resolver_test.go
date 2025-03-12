@@ -93,6 +93,7 @@ func TestValidate(t *testing.T) {
 		})
 	}
 }
+
 func TestValidateMissing(t *testing.T) {
 	resolver := Resolver{}
 
@@ -244,7 +245,7 @@ func TestResolve(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprintf(w, tc.input)
+				fmt.Fprint(w, tc.input)
 			}))
 
 			resolver := &Resolver{

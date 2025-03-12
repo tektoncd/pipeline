@@ -51,9 +51,11 @@ type reconciler struct {
 	client       apixclient.Interface
 }
 
-var _ webhook.ConversionController = (*reconciler)(nil)
-var _ controller.Reconciler = (*reconciler)(nil)
-var _ pkgreconciler.LeaderAware = (*reconciler)(nil)
+var (
+	_ webhook.ConversionController = (*reconciler)(nil)
+	_ controller.Reconciler        = (*reconciler)(nil)
+	_ pkgreconciler.LeaderAware    = (*reconciler)(nil)
+)
 
 // Path implements webhook.ConversionController
 func (r *reconciler) Path() string {

@@ -9,7 +9,7 @@ spec:
     enum: ["v1", "v2", "v3"]
   steps:
   - name: build
-    image: bash:latest
+    image: mirror.gcr.io/bash
     script: |
       echo "$(params.message)"
 ---

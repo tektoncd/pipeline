@@ -295,7 +295,6 @@ func TestCancelPipelineRun(t *testing.T) {
 		wantErr: true,
 	}}
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			d := test.Data{
 				PipelineRuns: []*v1.PipelineRun{tc.pipelineRun},
@@ -367,37 +366,38 @@ func TestGetChildObjectsFromPRStatusForTaskNames(t *testing.T) {
 		expectedRunNames       []string
 		expectedCustomRunNames []string
 		hasError               bool
-	}{{
-		name: "beta custom tasks",
-		prStatus: v1.PipelineRunStatus{PipelineRunStatusFields: v1.PipelineRunStatusFields{
-			ChildReferences: []v1.ChildStatusReference{{
-				TypeMeta: runtime.TypeMeta{
-					APIVersion: v1beta1.SchemeGroupVersion.String(),
-					Kind:       customRun,
-				},
-				Name:             "r1",
-				PipelineTaskName: "run-1",
+	}{
+		{
+			name: "beta custom tasks",
+			prStatus: v1.PipelineRunStatus{PipelineRunStatusFields: v1.PipelineRunStatusFields{
+				ChildReferences: []v1.ChildStatusReference{{
+					TypeMeta: runtime.TypeMeta{
+						APIVersion: v1beta1.SchemeGroupVersion.String(),
+						Kind:       customRun,
+					},
+					Name:             "r1",
+					PipelineTaskName: "run-1",
+				}},
 			}},
-		}},
-		expectedCustomRunNames: []string{"r1"},
-		hasError:               false,
-	}, {
-		name: "unknown kind",
-		prStatus: v1.PipelineRunStatus{PipelineRunStatusFields: v1.PipelineRunStatusFields{
-			ChildReferences: []v1.ChildStatusReference{{
-				TypeMeta: runtime.TypeMeta{
-					APIVersion: "v1",
-					Kind:       "UnknownKind",
-				},
-				Name:             "u1",
-				PipelineTaskName: "unknown-1",
+			expectedCustomRunNames: []string{"r1"},
+			hasError:               false,
+		}, {
+			name: "unknown kind",
+			prStatus: v1.PipelineRunStatus{PipelineRunStatusFields: v1.PipelineRunStatusFields{
+				ChildReferences: []v1.ChildStatusReference{{
+					TypeMeta: runtime.TypeMeta{
+						APIVersion: "v1",
+						Kind:       "UnknownKind",
+					},
+					Name:             "u1",
+					PipelineTaskName: "unknown-1",
+				}},
 			}},
-		}},
-		expectedTRNames:        nil,
-		expectedRunNames:       nil,
-		expectedCustomRunNames: nil,
-		hasError:               true,
-	},
+			expectedTRNames:        nil,
+			expectedRunNames:       nil,
+			expectedCustomRunNames: nil,
+			hasError:               true,
+		},
 	}
 
 	for _, tc := range testCases {

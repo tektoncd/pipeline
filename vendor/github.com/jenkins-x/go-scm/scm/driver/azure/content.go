@@ -127,7 +127,7 @@ func (s *contentService) Delete(ctx context.Context, repo, path string, params *
 	return res, err
 }
 
-func (s *contentService) List(ctx context.Context, repo, path, ref string) ([]*scm.FileEntry, *scm.Response, error) {
+func (s *contentService) List(ctx context.Context, repo, path, ref string, opts *scm.ListOptions) ([]*scm.FileEntry, *scm.Response, error) {
 	// https://docs.microsoft.com/en-us/rest/api/azure/devops/git/items/list?view=azure-devops-rest-6.0
 	ro, err := decodeRepo(repo)
 	if err != nil {

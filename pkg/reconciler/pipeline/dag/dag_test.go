@@ -219,7 +219,8 @@ func TestBuild_JoinMultipleRoots(t *testing.T) {
 			"c": nodeC,
 			"x": nodeX,
 			"y": nodeY,
-			"z": nodeZ},
+			"z": nodeZ,
+		},
 	}
 	p := &v1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
@@ -544,75 +545,76 @@ func TestBuild_InvalidDAG(t *testing.T) {
 		name string
 		spec v1.PipelineSpec
 		err  string
-	}{{
-		// a
-		// |
-		// a ("a" uses result of "a" as params)
-		name: "self-link-result",
-		spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{selfLinkResult}},
-		err:  "cycle detected",
-	}, {
-		// a
-		// |
-		// a ("a" runAfter "a")
-		name: "self-link-after",
-		spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{selfLinkAfter}},
-		err:  "cycle detected",
-	}, {
-		// a (also "a" depends on resource from "z")
-		// |
-		// x ("x" depends on resource from "a")
-		// |
-		// z ("z" depends on resource from "x")
-		name: "cycle-from",
-		spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{xDependsOnA, zDependsOnX, aDependsOnZ}},
-		err:  "cycle detected",
-	}, {
-		// a (also "a" runAfter "z")
-		// |
-		// x ("x" runAfter "a")
-		// |
-		// z ("z" runAfter "x")
-		name: "cycle-runAfter",
-		spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{xAfterA, zAfterX, aAfterZ}},
-		err:  "cycle detected",
-	}, {
-		// a (also "a" depends on resource from "z")
-		// |
-		// x ("x" depends on resource from "a")
-		// |
-		// z ("z" runAfter "x")
-		name: "cycle-both",
-		spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{xDependsOnA, zAfterX, aDependsOnZ}},
-		err:  "cycle detected",
-	}, {
-		// This test make sure we detect a cyclic branch in a DAG with multiple branches.
-		// The following DAG is having a cyclic branch with an additional dependency (a runAfter e)
-		//   a
-		//  / \
-		// b   c
-		//  \ /
-		//   d
-		//  / \
-		// e   f
-		//     |
-		//     g
-		name: "multiple-branches-with-one-cyclic-branch",
-		spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{aRunsAfterE, bDependsOnA, cRunsAfterA, dDependsOnBAndC, eRunsAfterD, fRunsAfterD, gDependsOnF}},
-		err:  "cycle detected",
-	}, {
-		name: "duplicate-tasks",
-		spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{a, a}},
-		err:  "duplicate pipeline task",
-	}, {
-		name: "invalid-task-result",
-		spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{invalidTaskResult}},
-		err:  "wasn't present in Pipeline",
-	}, {
-		name: "invalid-task-name-after",
-		spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{invalidTaskAfter}},
-		err:  "wasn't present in Pipeline",
-	},
+	}{
+		{
+			// a
+			// |
+			// a ("a" uses result of "a" as params)
+			name: "self-link-result",
+			spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{selfLinkResult}},
+			err:  "cycle detected",
+		}, {
+			// a
+			// |
+			// a ("a" runAfter "a")
+			name: "self-link-after",
+			spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{selfLinkAfter}},
+			err:  "cycle detected",
+		}, {
+			// a (also "a" depends on resource from "z")
+			// |
+			// x ("x" depends on resource from "a")
+			// |
+			// z ("z" depends on resource from "x")
+			name: "cycle-from",
+			spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{xDependsOnA, zDependsOnX, aDependsOnZ}},
+			err:  "cycle detected",
+		}, {
+			// a (also "a" runAfter "z")
+			// |
+			// x ("x" runAfter "a")
+			// |
+			// z ("z" runAfter "x")
+			name: "cycle-runAfter",
+			spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{xAfterA, zAfterX, aAfterZ}},
+			err:  "cycle detected",
+		}, {
+			// a (also "a" depends on resource from "z")
+			// |
+			// x ("x" depends on resource from "a")
+			// |
+			// z ("z" runAfter "x")
+			name: "cycle-both",
+			spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{xDependsOnA, zAfterX, aDependsOnZ}},
+			err:  "cycle detected",
+		}, {
+			// This test make sure we detect a cyclic branch in a DAG with multiple branches.
+			// The following DAG is having a cyclic branch with an additional dependency (a runAfter e)
+			//   a
+			//  / \
+			// b   c
+			//  \ /
+			//   d
+			//  / \
+			// e   f
+			//     |
+			//     g
+			name: "multiple-branches-with-one-cyclic-branch",
+			spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{aRunsAfterE, bDependsOnA, cRunsAfterA, dDependsOnBAndC, eRunsAfterD, fRunsAfterD, gDependsOnF}},
+			err:  "cycle detected",
+		}, {
+			name: "duplicate-tasks",
+			spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{a, a}},
+			err:  "duplicate pipeline task",
+		}, {
+			name: "invalid-task-result",
+			spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{invalidTaskResult}},
+			err:  "wasn't present in Pipeline",
+		}, {
+			name: "invalid-task-name-after",
+			spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{invalidTaskAfter}},
+			err:  "wasn't present in Pipeline",
+		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -636,7 +638,7 @@ func TestBuildGraphWithHundredsOfTasks_Success(t *testing.T) {
 	// ..
 	// b04 - 000 - 001 - ... - 100
 	nBranches, nTasks := 5, 100
-	for branchIdx := 0; branchIdx < nBranches; branchIdx++ {
+	for branchIdx := range nBranches {
 		var taskDeps []string
 		firstTaskName := fmt.Sprintf("b%02d", branchIdx)
 		firstTask := v1.PipelineTask{
@@ -646,7 +648,7 @@ func TestBuildGraphWithHundredsOfTasks_Success(t *testing.T) {
 		}
 		tasks = append(tasks, firstTask)
 		taskDeps = append(taskDeps, firstTaskName)
-		for taskIdx := 0; taskIdx < nTasks; taskIdx++ {
+		for taskIdx := range nTasks {
 			taskName := fmt.Sprintf("%s-%03d", firstTaskName, taskIdx)
 			task := v1.PipelineTask{
 				Name:     taskName,
@@ -668,7 +670,7 @@ func TestBuildGraphWithHundredsOfTasks_InvalidDAG(t *testing.T) {
 	var tasks []v1.PipelineTask
 	// branches with circular interdependencies
 	nBranches, nTasks := 5, 100
-	for branchIdx := 0; branchIdx < nBranches; branchIdx++ {
+	for branchIdx := range nBranches {
 		depBranchIdx := branchIdx + 1
 		if depBranchIdx == nBranches {
 			depBranchIdx = 0
@@ -682,7 +684,7 @@ func TestBuildGraphWithHundredsOfTasks_InvalidDAG(t *testing.T) {
 		}
 		tasks = append(tasks, firstTask)
 		taskDeps = append(taskDeps, firstTaskName)
-		for taskIdx := 0; taskIdx < nTasks; taskIdx++ {
+		for taskIdx := range nTasks {
 			taskName := fmt.Sprintf("%s-%03d", firstTaskName, taskIdx)
 			task := v1.PipelineTask{
 				Name:     taskName,
@@ -799,37 +801,38 @@ func TestFindCyclesInDependencies(t *testing.T) {
 		name string
 		deps map[string][]string
 		err  string
-	}{{
-		name: "valid-empty-deps",
-		deps: map[string][]string{
-			"a": {},
-			"b": {"c", "d"},
-			"c": {},
-			"d": {},
+	}{
+		{
+			name: "valid-empty-deps",
+			deps: map[string][]string{
+				"a": {},
+				"b": {"c", "d"},
+				"c": {},
+				"d": {},
+			},
+		}, {
+			name: "self-link",
+			deps: map[string][]string{
+				"a": {"a"},
+			},
+			err: `task "a" depends on "a"`,
+		}, {
+			name: "interdependent-tasks",
+			deps: map[string][]string{
+				"a": {"b"},
+				"b": {"a"},
+			},
+			err: `task "a" depends on "b"`,
+		}, {
+			name: "multiple-cycles",
+			deps: map[string][]string{
+				"a": {"b", "c"},
+				"b": {"a"},
+				"c": {"d"},
+				"d": {"a", "b"},
+			},
+			err: `task "a" depends on "b", "c"`,
 		},
-	}, {
-		name: "self-link",
-		deps: map[string][]string{
-			"a": {"a"},
-		},
-		err: `task "a" depends on "a"`,
-	}, {
-		name: "interdependent-tasks",
-		deps: map[string][]string{
-			"a": {"b"},
-			"b": {"a"},
-		},
-		err: `task "a" depends on "b"`,
-	}, {
-		name: "multiple-cycles",
-		deps: map[string][]string{
-			"a": {"b", "c"},
-			"b": {"a"},
-			"c": {"d"},
-			"d": {"a", "b"},
-		},
-		err: `task "a" depends on "b", "c"`,
-	},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {

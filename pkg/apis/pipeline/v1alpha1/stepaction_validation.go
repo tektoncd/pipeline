@@ -15,6 +15,7 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -128,7 +129,80 @@ func validateParameterVariables(ctx context.Context, sas StepActionSpec, params 
 	stringParameterNames := sets.NewString(stringParams.GetNames()...)
 	arrayParameterNames := sets.NewString(arrayParams.GetNames()...)
 	errs = errs.Also(v1.ValidateNameFormat(stringParameterNames.Insert(arrayParameterNames.List()...), objectParams))
-	return errs.Also(validateStepActionArrayUsage(sas, "params", arrayParameterNames))
+	errs = errs.Also(validateStepActionArrayUsage(sas, "params", arrayParameterNames))
+	return errs.Also(validateDefaultParameterReferences(params))
+}
+
+// validateDefaultParameterReferences ensures that parameters referenced in default values are defined
+func validateDefaultParameterReferences(params v1.ParamSpecs) *apis.FieldError {
+	var errs *apis.FieldError
+	allParams := sets.NewString(params.GetNames()...)
+
+	// First pass: collect all parameters that have no references in their default values
+	resolvedParams := sets.NewString()
+	paramsNeedingResolution := make(map[string][]string)
+
+	for _, p := range params {
+		if p.Default != nil {
+			matches, _ := substitution.ExtractVariableExpressions(p.Default.StringVal, "params")
+			if len(matches) == 0 {
+				resolvedParams.Insert(p.Name)
+			} else {
+				// Track which parameters this parameter depends on
+				referencedParams := make([]string, 0, len(matches))
+				hasUndefinedParam := false
+				for _, match := range matches {
+					paramName := strings.TrimSuffix(strings.TrimPrefix(match, "$(params."), ")")
+					if !allParams.Has(paramName) {
+						hasUndefinedParam = true
+						errs = errs.Also(&apis.FieldError{
+							Message: fmt.Sprintf("param %q default value references param %q which is not defined", p.Name, paramName),
+							Paths:   []string{"params"},
+						})
+					}
+					referencedParams = append(referencedParams, paramName)
+				}
+				// Only track dependencies if all referenced parameters exist
+				if !hasUndefinedParam {
+					paramsNeedingResolution[p.Name] = referencedParams
+				}
+			}
+		} else {
+			resolvedParams.Insert(p.Name)
+		}
+	}
+
+	// Second pass: iteratively resolve parameters whose dependencies are satisfied
+	for len(paramsNeedingResolution) > 0 {
+		paramWasResolved := false
+		for paramName, referencedParams := range paramsNeedingResolution {
+			canResolveParam := true
+			for _, referencedParam := range referencedParams {
+				if !resolvedParams.Has(referencedParam) {
+					canResolveParam = false
+					break
+				}
+			}
+			if canResolveParam {
+				resolvedParams.Insert(paramName)
+				delete(paramsNeedingResolution, paramName)
+				paramWasResolved = true
+			}
+		}
+		if !paramWasResolved {
+			// If we couldn't resolve any parameters in this iteration,
+			// we have a circular dependency
+			for paramName := range paramsNeedingResolution {
+				errs = errs.Also(&apis.FieldError{
+					Message: fmt.Sprintf("param %q default value has a circular dependency", paramName),
+					Paths:   []string{"params"},
+				})
+			}
+			break
+		}
+	}
+
+	return errs
 }
 
 // validateObjectUsage validates the usage of individual attributes of an object param and the usage of the entire object

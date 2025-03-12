@@ -17,7 +17,7 @@ limitations under the License.
 package configmap
 
 import (
-	"fmt"
+	"errors"
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
@@ -58,17 +58,17 @@ func ValidateConstructor(constructor interface{}) error {
 	cType := reflect.TypeOf(constructor)
 
 	if cType.Kind() != reflect.Func {
-		return fmt.Errorf("config constructor must be a function")
+		return errors.New("config constructor must be a function")
 	}
 
 	if cType.NumIn() != 1 || cType.In(0) != reflect.TypeOf(&corev1.ConfigMap{}) {
-		return fmt.Errorf("config constructor must be of the type func(*k8s.io/api/core/v1/ConfigMap) (..., error)")
+		return errors.New("config constructor must be of the type func(*k8s.io/api/core/v1/ConfigMap) (..., error)")
 	}
 
 	errorType := reflect.TypeOf((*error)(nil)).Elem()
 
 	if cType.NumOut() != 2 || !cType.Out(1).Implements(errorType) {
-		return fmt.Errorf("config constructor must be of the type func(*k8s.io/api/core/v1/ConfigMap) (..., error)")
+		return errors.New("config constructor must be of the type func(*k8s.io/api/core/v1/ConfigMap) (..., error)")
 	}
 	return nil
 }

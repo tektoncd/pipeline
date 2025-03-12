@@ -38,6 +38,7 @@ import (
 	alphalisters "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
 	"github.com/tektoncd/pipeline/pkg/internal/computeresources"
+	"github.com/tektoncd/pipeline/pkg/internal/defaultresourcerequirements"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
@@ -51,7 +52,6 @@ import (
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/spire"
 	"github.com/tektoncd/pipeline/pkg/taskrunmetrics"
-	_ "github.com/tektoncd/pipeline/pkg/taskrunmetrics/fake" // Make sure the taskrunmetrics are setup
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"go.opentelemetry.io/otel/attribute"
@@ -152,8 +152,22 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 		// and may not have had all of the assumed default specified.
 		tr.SetDefaults(ctx)
 
-		if err := c.stopSidecars(ctx, tr); err != nil {
-			return err
+		useTektonSidecar := true
+		if config.FromContextOrDefaults(ctx).FeatureFlags.EnableKubernetesSidecar {
+			dc := c.KubeClientSet.Discovery()
+			sv, err := dc.ServerVersion()
+			if err != nil {
+				return err
+			}
+			if podconvert.IsNativeSidecarSupport(sv) {
+				useTektonSidecar = false
+				logger.Infof("Using Kubernetes Native Sidecars \n")
+			}
+		}
+		if useTektonSidecar {
+			if err := c.stopSidecars(ctx, tr); err != nil {
+				return err
+			}
 		}
 
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, nil)
@@ -785,6 +799,12 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1.TaskRun, reason v1.
 		return nil
 	}
 
+	// When the TaskRun is failed, we mark all running/waiting steps as failed
+	// This is regardless of what happens with the Pod, which may be cancelled,
+	// deleted, non existing or fail to delete
+	// See https://github.com/tektoncd/pipeline/issues/8293 for more details.
+	terminateStepsInPod(tr, reason)
+
 	var err error
 	if reason == v1.TaskRunReasonCancelled && (config.FromContextOrDefaults(ctx).FeatureFlags.EnableKeepPodOnCancel) {
 		logger.Infof("Canceling task run %q by entrypoint", tr.Name)
@@ -797,7 +817,6 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1.TaskRun, reason v1.
 		return err
 	}
 
-	terminateStepsInPod(tr, reason)
 	return nil
 }
 
@@ -822,6 +841,7 @@ func terminateStepsInPod(tr *v1.TaskRun, taskRunReason v1.TaskRunReason) {
 		if step.Waiting != nil {
 			step.Terminated = &corev1.ContainerStateTerminated{
 				ExitCode:   1,
+				StartedAt:  tr.CreationTimestamp, // startedAt cannot be null due to CRD schema validation
 				FinishedAt: *tr.Status.CompletionTime,
 				// TODO(#7385): replace with more pod/container termination reason instead of overloading taskRunReason
 				Reason:  taskRunReason.String(),
@@ -862,7 +882,6 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 
 	var err error
 	ts, err = workspace.Apply(ctx, *ts, tr.Spec.Workspaces, workspaceVolumes)
-
 	if err != nil {
 		logger.Errorf("Failed to create a pod for taskrun: %s due to workspace error %v", tr.Name, err)
 		return nil, err
@@ -877,6 +896,7 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 		EntrypointCache: c.entrypointCache,
 	}
 	pod, err := podbuilder.Build(ctx, tr, *ts,
+		defaultresourcerequirements.NewTransformer(ctx),
 		computeresources.NewTransformer(ctx, tr.Namespace, c.limitrangeLister),
 		affinityassistant.NewTransformer(ctx, tr.Annotations),
 	)
@@ -1034,7 +1054,7 @@ func storeTaskSpecAndMergeMeta(ctx context.Context, tr *v1.TaskRun, ts *v1.TaskS
 		// Propagate labels from Task to TaskRun. TaskRun labels take precedences over Task.
 		tr.ObjectMeta.Labels = kmap.Union(meta.Labels, tr.ObjectMeta.Labels)
 		if tr.Spec.TaskRef != nil {
-			if tr.Spec.TaskRef.Kind == "ClusterTask" {
+			if tr.Spec.TaskRef.Kind == v1.ClusterTaskRefKind {
 				tr.ObjectMeta.Labels[pipeline.ClusterTaskLabelKey] = meta.Name
 			} else {
 				tr.ObjectMeta.Labels[pipeline.TaskLabelKey] = meta.Name

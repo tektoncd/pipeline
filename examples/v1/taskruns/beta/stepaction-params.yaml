@@ -40,7 +40,7 @@ spec:
       value: $(params.object-param.key2)
     - name: objectparamkey3
       value: $(params.object-param.key3)
-  image: ubuntu
+  image: mirror.gcr.io/ubuntu
   script: |
     #!/bin/bash
     ARRAYVALUE=("${arrayparam0}" "${arrayparam1}" "${arrayparam2}" "${stringparam}" "${objectparamkey1}" "${objectparamkey2}" "${objectparamkey3}")
@@ -73,7 +73,7 @@ spec:
     - name: objectparam
       value:
         key2: "taskrun key2"
-  TaskSpec:
+  taskSpec:
     params:
       - name: objectparam
         properties:

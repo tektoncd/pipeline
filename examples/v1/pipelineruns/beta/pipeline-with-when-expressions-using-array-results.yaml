@@ -18,7 +18,7 @@ spec:
               description: The array results
           steps:
             - name: write-array
-              image: bash:latest
+              image: mirror.gcr.io/bash
               script: |
                 #!/usr/bin/env bash
                 image1="abc.dev/notsofamousimage/image"
@@ -34,7 +34,7 @@ spec:
         taskSpec:
           steps:
             - name: say-hi
-              image: bash:latest
+              image: mirror.gcr.io/bash
               script: |
                 echo "hi"
       - name: task3
@@ -50,7 +50,7 @@ spec:
         taskSpec:
           steps:
             - name: say-hello
-              image: bash:latest
+              image: mirror.gcr.io/bash
               script: |
                 echo "hello"
       - name: task4
@@ -62,7 +62,7 @@ spec:
         taskSpec:
           steps:
             - name: say-hi
-              image: bash:latest
+              image: mirror.gcr.io/bash
               script: |
                 echo "hi"
       - name: task5
@@ -74,7 +74,7 @@ spec:
         taskSpec:
           steps:
             - name: do-not-execute
-              image: bash:latest
+              image: mirror.gcr.io/bash
               script: |
                 exit 1
     finally:
@@ -82,7 +82,7 @@ spec:
         taskSpec:
           steps:
             - name: validate-tasks-section
-              image: bash:latest
+              image: mirror.gcr.io/bash
               script: |
                 if [[ $(context.task2.status) != "Succeeded" ]]; then
                   echo "task2 should have been succeeded but instead has status - $(context.task2.status)"

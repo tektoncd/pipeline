@@ -388,7 +388,7 @@ spec:
     taskSpec:
       steps:
       - name: echo
-        image: ubuntu
+        image: mirror.gcr.io/ubuntu
         script: |
           #!/usr/bin/env bash
           # Sleep for 10s
@@ -533,6 +533,70 @@ spec:
 	}
 }
 
+func TestGitResolver_API_Identifier(t *testing.T) {
+	ctx := context.Background()
+	c, namespace := setup(ctx, t, gitFeatureFlags)
+
+	t.Parallel()
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	giteaClusterHostname, tokenSecretName := setupGitea(ctx, t, c, namespace)
+
+	resovlerNS := resolverconfig.ResolversNamespace(systemNamespace)
+
+	originalConfigMap, err := c.KubeClient.CoreV1().ConfigMaps(resovlerNS).Get(ctx, gitresolution.ConfigMapName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get ConfigMap `%s`: %s", gitresolution.ConfigMapName, err)
+	}
+	originalConfigMapData := originalConfigMap.Data
+
+	t.Logf("Creating ConfigMap %s", gitresolution.ConfigMapName)
+	configMapData := map[string]string{
+		"test." + gitresolution.ServerURLKey:          fmt.Sprint("http://", net.JoinHostPort(giteaClusterHostname, "3000")),
+		"test." + gitresolution.SCMTypeKey:            "gitea",
+		"test." + gitresolution.APISecretNameKey:      tokenSecretName,
+		"test." + gitresolution.APISecretKeyKey:       scmTokenSecretKey,
+		"test." + gitresolution.APISecretNamespaceKey: namespace,
+	}
+	if err := updateConfigMap(ctx, c.KubeClient, resovlerNS, gitresolution.ConfigMapName, configMapData); err != nil {
+		t.Fatal(err)
+	}
+	defer resetConfigMap(ctx, t, c, resovlerNS, gitresolution.ConfigMapName, originalConfigMapData)
+
+	trName := helpers.ObjectNameForTest(t)
+	tr := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  taskRef:
+    resolver: git
+    params:
+    - name: revision
+      value: %s
+    - name: pathInRepo
+      value: %s
+    - name: org
+      value: %s
+    - name: repo
+      value: %s
+    - name: configKey
+      value: test
+`, trName, namespace, scmRemoteBranch, scmRemoteTaskPath, scmRemoteOrg, scmRemoteRepo))
+
+	_, err = c.V1TaskRunClient.Create(ctx, tr, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create TaskRun: %v", err)
+	}
+
+	t.Logf("Waiting for TaskRun %s in namespace %s to complete", trName, namespace)
+	if err := WaitForTaskRunState(ctx, c, trName, TaskRunSucceed(trName), "TaskRunSuccess", v1Version); err != nil {
+		t.Fatalf("Error waiting for TaskRun %s to finish: %s", trName, err)
+	}
+}
+
 // setupGitea reads git-resolver/gitea.yaml, replaces "default" namespace references in "namespace: default" and
 // svc.cluster.local hostnames with the test namespace, calls kubectl create, and waits for the gitea-0 pod to be up
 // and running. At that point, it'll create a test user and token, create a Secret containing that token, create an org
@@ -588,7 +652,7 @@ spec:
     - name: token
       type: string
     steps:
-    - image: alpine/curl
+    - image: docker.io/alpine/curl
       script: |
         #!/bin/ash
         curl -X POST "http://gitea_admin:%s@%s:3000/api/v1/admin/users" -H "accept: application/json" -H "Content-Type: application/json" -d '%s'

@@ -56,14 +56,14 @@ spec:
       - name: my-workspace
       taskSpec:
         steps:
-        - image: busybox
+        - image: mirror.gcr.io/busybox
           script: echo hello foo
     - name: bar
       workspaces:
       - name: my-workspace
       taskSpec:
         steps:
-        - image: busybox
+        - image: mirror.gcr.io/busybox
           script: echo hello bar
   workspaces:
   - name: my-workspace
@@ -151,14 +151,14 @@ spec:
       - name: my-workspace
       taskSpec:
         steps:
-        - image: busybox
+        - image: mirror.gcr.io/busybox
           script: echo hello foo
     - name: bar
       workspaces:
       - name: my-workspace2
       taskSpec:
         steps:
-        - image: busybox
+        - image: mirror.gcr.io/busybox
           script: echo hello bar
     - name: double-ws
       workspaces:
@@ -166,12 +166,12 @@ spec:
       - name: my-workspace2
       taskSpec:
         steps:
-        - image: busybox
+        - image: mirror.gcr.io/busybox
           script: echo double-ws
     - name: no-ws
       taskSpec:
         steps:
-        - image: busybox
+        - image: mirror.gcr.io/busybox
         script: echo no-ws
   workspaces:
   - name: my-workspace

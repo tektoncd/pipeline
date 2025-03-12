@@ -32,6 +32,7 @@ type releaseInput struct {
 	Commitish   string `json:"target_commitish,omitempty"`
 	Draft       bool   `json:"draft"`
 	Prerelease  bool   `json:"prerelease"`
+	MakeLatest  string `json:"make_latest"`
 }
 
 func (s *releaseService) Find(ctx context.Context, repo string, id int) (*scm.Release, *scm.Response, error) {
@@ -65,6 +66,9 @@ func (s *releaseService) Create(ctx context.Context, repo string, input *scm.Rel
 		Prerelease:  input.Prerelease,
 		Tag:         input.Tag,
 	}
+	if !(in.Prerelease || in.Draft) {
+		in.MakeLatest = "true"
+	}
 	out := new(release)
 	res, err := s.client.do(ctx, "POST", path, in, out)
 	return convertRelease(out), res, err
@@ -97,6 +101,9 @@ func (s *releaseService) Update(ctx context.Context, repo string, id int, input 
 	}
 	in.Draft = input.Draft
 	in.Prerelease = input.Prerelease
+	if !(in.Prerelease || in.Draft) {
+		in.MakeLatest = "true"
+	}
 	out := new(release)
 	res, err := s.client.do(ctx, "PATCH", path, in, out)
 	return convertRelease(out), res, err

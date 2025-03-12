@@ -22,14 +22,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
+
+	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/selection"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
 )
@@ -254,6 +256,82 @@ func TestOrderContainersWithDebugOnFailure(t *testing.T) {
 	}
 }
 
+func TestTestOrderContainersWithDebugBeforeStep(t *testing.T) {
+	steps := []corev1.Container{{
+		Name:    "my-task",
+		Image:   "step-1",
+		Command: []string{"cmd"},
+		Args:    []string{"arg1", "arg2"},
+	}}
+	want := []corev1.Container{{
+		Name:    "my-task",
+		Image:   "step-1",
+		Command: []string{entrypointBinary},
+		Args: []string{
+			"-wait_file", "/tekton/downward/ready",
+			"-wait_file_content",
+			"-post_file", "/tekton/run/0/out",
+			"-termination_path", "/tekton/termination",
+			"-step_metadata_dir", "/tekton/run/0/status", "-debug_before_step",
+			"-entrypoint", "cmd", "--",
+			"arg1", "arg2",
+		},
+		VolumeMounts:           []corev1.VolumeMount{downwardMount},
+		TerminationMessagePath: "/tekton/termination",
+	}}
+	taskRunDebugConfig := &v1.TaskRunDebug{
+		Breakpoints: &v1.TaskBreakpoints{
+			BeforeSteps: []string{"my-task"},
+		},
+	}
+	got, err := orderContainers(context.Background(), []string{}, steps, nil, taskRunDebugConfig, true, false)
+	if err != nil {
+		t.Fatalf("orderContainers: %v", err)
+	}
+	if d := cmp.Diff(want, got); d != "" {
+		t.Errorf("Diff %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestTestOrderContainersWithAllBreakpoints(t *testing.T) {
+	steps := []corev1.Container{{
+		Name:    "my-task",
+		Image:   "step-1",
+		Command: []string{"cmd"},
+		Args:    []string{"arg1", "arg2"},
+	}}
+	want := []corev1.Container{{
+		Name:    "my-task",
+		Image:   "step-1",
+		Command: []string{entrypointBinary},
+		Args: []string{
+			"-wait_file", "/tekton/downward/ready",
+			"-wait_file_content",
+			"-post_file", "/tekton/run/0/out",
+			"-termination_path", "/tekton/termination",
+			"-step_metadata_dir", "/tekton/run/0/status",
+			"-breakpoint_on_failure", "-debug_before_step",
+			"-entrypoint", "cmd", "--",
+			"arg1", "arg2",
+		},
+		VolumeMounts:           []corev1.VolumeMount{downwardMount},
+		TerminationMessagePath: "/tekton/termination",
+	}}
+	taskRunDebugConfig := &v1.TaskRunDebug{
+		Breakpoints: &v1.TaskBreakpoints{
+			OnFailure:   "enabled",
+			BeforeSteps: []string{"my-task"},
+		},
+	}
+	got, err := orderContainers(context.Background(), []string{}, steps, nil, taskRunDebugConfig, true, false)
+	if err != nil {
+		t.Fatalf("orderContainers: %v", err)
+	}
+	if d := cmp.Diff(want, got); d != "" {
+		t.Errorf("Diff %s", diff.PrintWantGot(d))
+	}
+}
+
 func TestOrderContainersWithEnabelKeepPodOnCancel(t *testing.T) {
 	steps := []corev1.Container{{
 		Image:   "step-1",
@@ -357,6 +435,46 @@ func TestEntryPointStepActionResults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
+	if d := cmp.Diff(want, got); d != "" {
+		t.Errorf("Diff %s", diff.PrintWantGot(d))
+	}
+}
+func TestEntryPointStepWhen(t *testing.T) {
+	containers := []corev1.Container{{
+		Image:   "step-1",
+		Command: []string{"cmd"},
+		Args:    []string{"arg1", "arg2"},
+	}}
+	ts := v1.TaskSpec{Steps: []v1.Step{
+		{
+			Name:    "Test-When",
+			Image:   "step-1",
+			Command: []string{"cmd"},
+			Args:    []string{"arg1", "arg2"},
+			When:    v1.StepWhenExpressions{{Input: "foo", Operator: selection.In, Values: []string{"foo", "bar"}}},
+		},
+	}}
+	got, err := orderContainers(context.Background(), []string{}, containers, &ts, nil, true, false)
+	if err != nil {
+		t.Fatalf("orderContainers: %v", err)
+	}
+	want := []corev1.Container{{
+		Image:   "step-1",
+		Command: []string{"/tekton/bin/entrypoint"},
+		Args: []string{
+			"-wait_file", "/tekton/downward/ready",
+			"-wait_file_content",
+			"-post_file", "/tekton/run/0/out",
+			"-termination_path", "/tekton/termination",
+			"-step_metadata_dir", "/tekton/run/0/status",
+			"--when_expressions",
+			`[{"input":"foo","operator":"in","values":["foo","bar"]}]`,
+			"-entrypoint", "cmd", "--",
+			"arg1", "arg2",
+		},
+		VolumeMounts:           []corev1.VolumeMount{downwardMount},
+		TerminationMessagePath: "/tekton/termination",
+	}}
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("Diff %s", diff.PrintWantGot(d))
 	}

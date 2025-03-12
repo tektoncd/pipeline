@@ -22,7 +22,7 @@ import (
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
 
-// ValidationRuleApplyConfiguration represents an declarative configuration of the ValidationRule type for use
+// ValidationRuleApplyConfiguration represents a declarative configuration of the ValidationRule type for use
 // with apply.
 type ValidationRuleApplyConfiguration struct {
 	Rule              *string                   `json:"rule,omitempty"`
@@ -30,9 +30,10 @@ type ValidationRuleApplyConfiguration struct {
 	MessageExpression *string                   `json:"messageExpression,omitempty"`
 	Reason            *v1.FieldValueErrorReason `json:"reason,omitempty"`
 	FieldPath         *string                   `json:"fieldPath,omitempty"`
+	OptionalOldSelf   *bool                     `json:"optionalOldSelf,omitempty"`
 }
 
-// ValidationRuleApplyConfiguration constructs an declarative configuration of the ValidationRule type for use with
+// ValidationRuleApplyConfiguration constructs a declarative configuration of the ValidationRule type for use with
 // apply.
 func ValidationRule() *ValidationRuleApplyConfiguration {
 	return &ValidationRuleApplyConfiguration{}
@@ -75,5 +76,13 @@ func (b *ValidationRuleApplyConfiguration) WithReason(value v1.FieldValueErrorRe
 // If called multiple times, the FieldPath field is set to the value of the last call.
 func (b *ValidationRuleApplyConfiguration) WithFieldPath(value string) *ValidationRuleApplyConfiguration {
 	b.FieldPath = &value
+	return b
+}
+
+// WithOptionalOldSelf sets the OptionalOldSelf field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the OptionalOldSelf field is set to the value of the last call.
+func (b *ValidationRuleApplyConfiguration) WithOptionalOldSelf(value bool) *ValidationRuleApplyConfiguration {
+	b.OptionalOldSelf = &value
 	return b
 }

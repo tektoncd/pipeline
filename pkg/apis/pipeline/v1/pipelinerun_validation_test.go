@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
@@ -31,6 +32,7 @@ import (
 	corev1resources "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
 func TestPipelineRun_Invalid(t *testing.T) {
@@ -970,7 +972,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 		wantErr:     apis.ErrMultipleOneOf("taskRunSpecs[0].stepSpecs[1].name"),
 		withContext: cfgtesting.EnableAlphaAPIFields,
 	}, {
-		name: "stepSpecs disallowed without alpha feature gate",
+		name: "stepSpecs disallowed without beta feature gate",
 		spec: v1.PipelineRunSpec{
 			PipelineRef: &v1.PipelineRef{Name: "foo"},
 			TaskRunSpecs: []v1.PipelineTaskRunSpec{
@@ -986,9 +988,9 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			},
 		},
 		withContext: cfgtesting.EnableStableAPIFields,
-		wantErr:     apis.ErrGeneric("stepSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
+		wantErr:     apis.ErrGeneric("stepSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
 	}, {
-		name: "sidecarSpec disallowed without alpha feature gate",
+		name: "sidecarSpec disallowed without beta feature gate",
 		spec: v1.PipelineRunSpec{
 			PipelineRef: &v1.PipelineRef{Name: "foo"},
 			TaskRunSpecs: []v1.PipelineTaskRunSpec{
@@ -1004,7 +1006,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			},
 		},
 		withContext: cfgtesting.EnableStableAPIFields,
-		wantErr:     apis.ErrGeneric("sidecarSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
+		wantErr:     apis.ErrGeneric("sidecarSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
 	}, {
 		name: "missing stepSpecs name",
 		spec: v1.PipelineRunSpec{
@@ -1077,7 +1079,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			"taskRunSpecs[0].stepSpecs.resources",
 			"taskRunSpecs[0].computeResources",
 		),
-		withContext: cfgtesting.EnableAlphaAPIFields,
+		withContext: cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "computeResources disallowed without beta feature gate",
 		spec: v1.PipelineRunSpec{
@@ -1140,7 +1142,7 @@ func TestPipelineRunSpec_Validate(t *testing.T) {
 				},
 			}},
 		},
-		withContext: cfgtesting.EnableAlphaAPIFields,
+		withContext: cfgtesting.EnableBetaAPIFields,
 	}, {
 		name: "valid sidecar and task-level (taskRunSpecs.resources) resource requirements configured",
 		spec: v1.PipelineRunSpec{
@@ -1163,7 +1165,7 @@ func TestPipelineRunSpec_Validate(t *testing.T) {
 				}},
 			}},
 		},
-		withContext: cfgtesting.EnableAlphaAPIFields,
+		withContext: cfgtesting.EnableBetaAPIFields,
 	}}
 
 	for _, ps := range tests {
@@ -1507,6 +1509,183 @@ func TestPipelineRunSpecBetaFeatures(t *testing.T) {
 			ctx = cfgtesting.EnableBetaAPIFields(context.Background())
 			if err := pr.Validate(ctx); err != nil {
 				t.Errorf("unexpected error when using beta field: %s", err)
+			}
+		})
+	}
+}
+
+func TestPipelineRunSpec_ValidateUpdate(t *testing.T) {
+	tests := []struct {
+		name                string
+		isCreate            bool
+		isUpdate            bool
+		baselinePipelineRun *v1.PipelineRun
+		pipelineRun         *v1.PipelineRun
+		expectedError       apis.FieldError
+	}{
+		{
+			name: "is create ctx",
+			pipelineRun: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{},
+			},
+			isCreate:      true,
+			isUpdate:      false,
+			expectedError: apis.FieldError{},
+		}, {
+			name: "is update ctx, no changes",
+			baselinePipelineRun: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Status: "",
+				},
+			},
+			pipelineRun: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Status: "",
+				},
+			},
+			isCreate:      false,
+			isUpdate:      true,
+			expectedError: apis.FieldError{},
+		}, {
+			name:                "is update ctx, baseline is nil, skip validation",
+			baselinePipelineRun: nil,
+			pipelineRun: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Timeouts: &v1.TimeoutFields{
+						Pipeline: &metav1.Duration{Duration: 1},
+					},
+				},
+			},
+			isCreate:      false,
+			isUpdate:      true,
+			expectedError: apis.FieldError{},
+		}, {
+			name: "is update ctx, baseline is unknown, status changes from Empty to Cancelled",
+			baselinePipelineRun: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Status: "",
+				},
+				Status: v1.PipelineRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionUnknown},
+						},
+					},
+				},
+			},
+			pipelineRun: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Status: "Cancelled",
+				},
+			},
+			isCreate:      false,
+			isUpdate:      true,
+			expectedError: apis.FieldError{},
+		}, {
+			name: "is update ctx, baseline is unknown, timeouts changes",
+			baselinePipelineRun: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Status: "",
+					Timeouts: &v1.TimeoutFields{
+						Pipeline: &metav1.Duration{Duration: 0},
+					},
+				},
+				Status: v1.PipelineRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionUnknown},
+						},
+					},
+				},
+			},
+			pipelineRun: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Timeouts: &v1.TimeoutFields{
+						Pipeline: &metav1.Duration{Duration: 1},
+					},
+				},
+			},
+			isCreate: false,
+			isUpdate: true,
+			expectedError: apis.FieldError{
+				Message: `invalid value: Once the PipelineRun has started, only status updates are allowed`,
+				Paths:   []string{""},
+			},
+		}, {
+			name: "is update ctx, baseline is unknown, status changes from PipelineRunPending to Empty, and timeouts changes",
+			baselinePipelineRun: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Status: "PipelineRunPending",
+					Timeouts: &v1.TimeoutFields{
+						Pipeline: &metav1.Duration{Duration: 0},
+					},
+				},
+				Status: v1.PipelineRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionUnknown},
+						},
+					},
+				},
+			},
+			pipelineRun: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Status: "",
+					Timeouts: &v1.TimeoutFields{
+						Pipeline: &metav1.Duration{Duration: 1},
+					},
+				},
+			},
+			isCreate: false,
+			isUpdate: true,
+			expectedError: apis.FieldError{
+				Message: `invalid value: Once the PipelineRun has started, only status updates are allowed`,
+				Paths:   []string{""},
+			},
+		}, {
+			name: "is update ctx, baseline is done, status changes",
+			baselinePipelineRun: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Status: "PipelineRunPending",
+				},
+				Status: v1.PipelineRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+			},
+			pipelineRun: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Status: "TaskRunCancelled",
+				},
+			},
+			isCreate: false,
+			isUpdate: true,
+			expectedError: apis.FieldError{
+				Message: `invalid value: Once the PipelineRun is complete, no updates are allowed`,
+				Paths:   []string{""},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := config.ToContext(context.Background(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{},
+				Defaults:     &config.Defaults{},
+			})
+			if tt.isCreate {
+				ctx = apis.WithinCreate(ctx)
+			}
+			if tt.isUpdate {
+				ctx = apis.WithinUpdate(ctx, tt.baselinePipelineRun)
+			}
+			pr := tt.pipelineRun
+			err := pr.Spec.ValidateUpdate(ctx)
+			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("PipelineRunSpec.ValidateUpdate() errors diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}

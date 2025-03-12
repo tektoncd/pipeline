@@ -25,7 +25,7 @@ spec:
     steps:
       # Test the environment variables are set in the task
       - name: foo
-        image: ubuntu
+        image: mirror.gcr.io/ubuntu
         script: |
           #!/usr/bin/env bash
           [[ $FOO == "foo" ]]
@@ -33,7 +33,7 @@ spec:
         - name: FOO
           value: $(params.FOO)
       - name: foobar
-        image: ubuntu
+        image: mirror.gcr.io/ubuntu
         script: |
           #!/usr/bin/env bash
           [[ $FOOBAR == "foobar" ]]
@@ -41,7 +41,7 @@ spec:
         - name: FOOBAR
           value: $(params.FOOBAR)
       - name: bar
-        image: ubuntu
+        image: mirror.gcr.io/ubuntu
         script: |
           #!/usr/bin/env bash
           [[ $BAR == "bar" ]]
@@ -50,13 +50,13 @@ spec:
           value: $(params.BAR)
       # Use the env var from the stepTemplate
       - name: qux-no-override
-        image: ubuntu
+        image: mirror.gcr.io/ubuntu
         script: |
           #!/usr/bin/env bash
           [[ $QUX == "original" ]]
       # Override the env var in the stepTemplate
       - name: qux-override
-        image: ubuntu
+        image: mirror.gcr.io/ubuntu
         script: |
           #!/usr/bin/env bash
           [[ $QUX == "override" ]]

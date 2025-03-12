@@ -17,10 +17,10 @@ limitations under the License.
 package informer
 
 import (
+	"context"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 // namedWaitGroup is used to increment and decrement a WaitGroup by name
@@ -107,6 +107,6 @@ func (s *syncedCallback) WaitForAllKeys(stopCh <-chan struct{}) error {
 	case <-c:
 		return nil
 	case <-stopCh:
-		return wait.ErrWaitTimeout
+		return context.DeadlineExceeded
 	}
 }

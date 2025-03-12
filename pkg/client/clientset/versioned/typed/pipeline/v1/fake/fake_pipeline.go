@@ -41,22 +41,24 @@ var pipelinesKind = v1.SchemeGroupVersion.WithKind("Pipeline")
 
 // Get takes name of the pipeline, and returns the corresponding pipeline object, and an error if there is any.
 func (c *FakePipelines) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.Pipeline, err error) {
+	emptyResult := &v1.Pipeline{}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(pipelinesResource, c.ns, name), &v1.Pipeline{})
+		Invokes(testing.NewGetActionWithOptions(pipelinesResource, c.ns, name, options), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1.Pipeline), err
 }
 
 // List takes label and field selectors, and returns the list of Pipelines that match those selectors.
 func (c *FakePipelines) List(ctx context.Context, opts metav1.ListOptions) (result *v1.PipelineList, err error) {
+	emptyResult := &v1.PipelineList{}
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(pipelinesResource, pipelinesKind, c.ns, opts), &v1.PipelineList{})
+		Invokes(testing.NewListActionWithOptions(pipelinesResource, pipelinesKind, c.ns, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 
 	label, _, _ := testing.ExtractFromListOptions(opts)
@@ -75,28 +77,30 @@ func (c *FakePipelines) List(ctx context.Context, opts metav1.ListOptions) (resu
 // Watch returns a watch.Interface that watches the requested pipelines.
 func (c *FakePipelines) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(pipelinesResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchActionWithOptions(pipelinesResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a pipeline and creates it.  Returns the server's representation of the pipeline, and an error, if there is any.
 func (c *FakePipelines) Create(ctx context.Context, pipeline *v1.Pipeline, opts metav1.CreateOptions) (result *v1.Pipeline, err error) {
+	emptyResult := &v1.Pipeline{}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(pipelinesResource, c.ns, pipeline), &v1.Pipeline{})
+		Invokes(testing.NewCreateActionWithOptions(pipelinesResource, c.ns, pipeline, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1.Pipeline), err
 }
 
 // Update takes the representation of a pipeline and updates it. Returns the server's representation of the pipeline, and an error, if there is any.
 func (c *FakePipelines) Update(ctx context.Context, pipeline *v1.Pipeline, opts metav1.UpdateOptions) (result *v1.Pipeline, err error) {
+	emptyResult := &v1.Pipeline{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(pipelinesResource, c.ns, pipeline), &v1.Pipeline{})
+		Invokes(testing.NewUpdateActionWithOptions(pipelinesResource, c.ns, pipeline, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1.Pipeline), err
 }
@@ -111,7 +115,7 @@ func (c *FakePipelines) Delete(ctx context.Context, name string, opts metav1.Del
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakePipelines) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(pipelinesResource, c.ns, listOpts)
+	action := testing.NewDeleteCollectionActionWithOptions(pipelinesResource, c.ns, opts, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1.PipelineList{})
 	return err
@@ -119,11 +123,12 @@ func (c *FakePipelines) DeleteCollection(ctx context.Context, opts metav1.Delete
 
 // Patch applies the patch and returns the patched pipeline.
 func (c *FakePipelines) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Pipeline, err error) {
+	emptyResult := &v1.Pipeline{}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(pipelinesResource, c.ns, name, pt, data, subresources...), &v1.Pipeline{})
+		Invokes(testing.NewPatchSubresourceActionWithOptions(pipelinesResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1.Pipeline), err
 }

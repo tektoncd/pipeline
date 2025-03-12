@@ -5,9 +5,9 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: ubuntu
+    - image: mirror.gcr.io/ubuntu
       script: 'true'
-    - image: ubuntu
+    - image: mirror.gcr.io/ubuntu
       script: 'true'
-    - image: ubuntu
+    - image: mirror.gcr.io/ubuntu
       script: 'true'

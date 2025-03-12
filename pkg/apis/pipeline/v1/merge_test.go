@@ -26,6 +26,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 func TestMergeStepsWithStepTemplate(t *testing.T) {
@@ -145,7 +146,8 @@ func TestMergeStepsWithStepTemplate(t *testing.T) {
 			}},
 		}},
 		expected: []v1.Step{{
-			Command: []string{"/somecmd"}, Image: "some-image",
+			Command: []string{"/somecmd"},
+			Image:   "some-image",
 			OnError: "foo",
 			Results: []v1.StepResult{{
 				Name: "result",
@@ -155,11 +157,30 @@ func TestMergeStepsWithStepTemplate(t *testing.T) {
 			}},
 		}},
 	}, {
-		name: "ref-should-not-be-removed",
+		name: "step-ref-should-not-be-merged-with-steptemplate",
 		template: &v1.StepTemplate{
 			SecurityContext: &corev1.SecurityContext{
 				RunAsNonRoot: pointer.Bool(true),
 			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "data",
+				MountPath: "/workspace/data",
+			}},
+			Env: []corev1.EnvVar{{
+				Name:  "KEEP_THIS",
+				Value: "A_VALUE",
+			}, {
+				Name: "SOME_KEY_1",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						Key:                  "A_KEY",
+						LocalObjectReference: corev1.LocalObjectReference{Name: "A_NAME"},
+					},
+				},
+			}, {
+				Name:  "SOME_KEY_2",
+				Value: "VALUE_2",
+			}},
 		},
 		steps: []v1.Step{{
 			Ref:     &v1.Ref{Name: "my-step-action"},
@@ -172,9 +193,6 @@ func TestMergeStepsWithStepTemplate(t *testing.T) {
 			}},
 		}},
 		expected: []v1.Step{{
-			SecurityContext: &corev1.SecurityContext{
-				RunAsNonRoot: pointer.Bool(true),
-			},
 			Ref:     &v1.Ref{Name: "my-step-action"},
 			OnError: "foo",
 			Results: []v1.StepResult{{
@@ -238,6 +256,59 @@ func TestMergeStepsWithStepTemplate(t *testing.T) {
 						LocalObjectReference: corev1.LocalObjectReference{Name: "A_NAME"},
 					},
 				},
+			}},
+		}},
+	}, {
+		name:     "when",
+		template: nil,
+		steps: []v1.Step{{
+			Image: "some-image",
+			When:  v1.StepWhenExpressions{{Input: "foo", Operator: selection.In, Values: []string{"foo", "bar"}}},
+		}},
+		expected: []v1.Step{{
+			Image: "some-image",
+			When:  v1.StepWhenExpressions{{Input: "foo", Operator: selection.In, Values: []string{"foo", "bar"}}},
+		}},
+	}, {
+		name: "isolated workspaces",
+		template: &v1.StepTemplate{
+			Env: []corev1.EnvVar{{
+				Name:  "KEEP_THIS",
+				Value: "A_VALUE",
+			}},
+		},
+		steps: []v1.Step{{
+			Image: "some-image",
+			Workspaces: []v1.WorkspaceUsage{{
+				Name:      "foo",
+				MountPath: "/foo/bar",
+			}},
+		}, {
+			Image: "some-image",
+			Workspaces: []v1.WorkspaceUsage{{
+				Name:      "bar",
+				MountPath: "/bar/baz",
+			}},
+		}},
+		expected: []v1.Step{{
+			Image: "some-image",
+			Env: []corev1.EnvVar{{
+				Name:  "KEEP_THIS",
+				Value: "A_VALUE",
+			}},
+			Workspaces: []v1.WorkspaceUsage{{
+				Name:      "foo",
+				MountPath: "/foo/bar",
+			}},
+		}, {
+			Image: "some-image",
+			Env: []corev1.EnvVar{{
+				Name:  "KEEP_THIS",
+				Value: "A_VALUE",
+			}},
+			Workspaces: []v1.WorkspaceUsage{{
+				Name:      "bar",
+				MountPath: "/bar/baz",
 			}},
 		}},
 	}} {

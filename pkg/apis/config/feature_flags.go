@@ -94,6 +94,8 @@ const (
 	DefaultMaxResultSize = 4096
 	// DefaultSetSecurityContext is the default value for "set-security-context"
 	DefaultSetSecurityContext = false
+	// DefaultSetSecurityContextReadOnlyRootFilesystem is the default value for "set-security-context-read-only-root-filesystem"
+	DefaultSetSecurityContextReadOnlyRootFilesystem = false
 	// DefaultCoschedule is the default value for coschedule
 	DefaultCoschedule = CoscheduleWorkspaces
 	// KeepPodOnCancel is the flag used to enable cancelling a pod using the entrypoint, and keep pod on cancel
@@ -108,6 +110,10 @@ const (
 	EnableParamEnum = "enable-param-enum"
 	// EnableConciseResolverSyntax is the flag to enable concise resolver syntax
 	EnableConciseResolverSyntax = "enable-concise-resolver-syntax"
+	// EnableKubernetesSidecar is the flag to enable kubernetes sidecar support
+	EnableKubernetesSidecar = "enable-kubernetes-sidecar"
+	// DefaultEnableKubernetesSidecar is the default value for EnableKubernetesSidecar
+	DefaultEnableKubernetesSidecar = false
 
 	// DisableInlineSpec is the flag to disable embedded spec
 	// in Taskrun or Pipelinerun
@@ -118,16 +124,18 @@ const (
 	runningInEnvWithInjectedSidecarsKey = "running-in-environment-with-injected-sidecars"
 	awaitSidecarReadinessKey            = "await-sidecar-readiness"
 	requireGitSSHSecretKnownHostsKey    = "require-git-ssh-secret-known-hosts" //nolint:gosec
-	enableTektonOCIBundles              = "enable-tekton-oci-bundles"
-	enableAPIFields                     = "enable-api-fields"
-	sendCloudEventsForRuns              = "send-cloudevents-for-runs"
-	enforceNonfalsifiability            = "enforce-nonfalsifiability"
-	verificationNoMatchPolicy           = "trusted-resources-verification-no-match-policy"
-	enableProvenanceInStatus            = "enable-provenance-in-status"
-	resultExtractionMethod              = "results-from"
-	maxResultSize                       = "max-result-size"
-	setSecurityContextKey               = "set-security-context"
-	coscheduleKey                       = "coschedule"
+	// enableTektonOCIBundles              = "enable-tekton-oci-bundles"
+
+	enableAPIFields                             = "enable-api-fields"
+	sendCloudEventsForRuns                      = "send-cloudevents-for-runs"
+	enforceNonfalsifiability                    = "enforce-nonfalsifiability"
+	verificationNoMatchPolicy                   = "trusted-resources-verification-no-match-policy"
+	enableProvenanceInStatus                    = "enable-provenance-in-status"
+	resultExtractionMethod                      = "results-from"
+	maxResultSize                               = "max-result-size"
+	setSecurityContextKey                       = "set-security-context"
+	setSecurityContextReadOnlyRootFilesystemKey = "set-security-context-read-only-root-filesystem"
+	coscheduleKey                               = "coschedule"
 )
 
 // DefaultFeatureFlags holds all the default configurations for the feature flags configmap.
@@ -180,34 +188,37 @@ var (
 // FeatureFlags holds the features configurations
 // +k8s:deepcopy-gen=true
 type FeatureFlags struct {
-	DisableAffinityAssistant         bool
-	DisableCredsInit                 bool
-	RunningInEnvWithInjectedSidecars bool
-	RequireGitSSHSecretKnownHosts    bool
-	EnableTektonOCIBundles           bool
-	ScopeWhenExpressionsToTask       bool
-	EnableAPIFields                  string
-	SendCloudEventsForRuns           bool
-	AwaitSidecarReadiness            bool
-	EnforceNonfalsifiability         string
-	EnableKeepPodOnCancel            bool
+	DisableAffinityAssistant         bool `json:"disableAffinityAssistant,omitempty"`
+	DisableCredsInit                 bool `json:"disableCredsInit,omitempty"`
+	RunningInEnvWithInjectedSidecars bool `json:"runningInEnvWithInjectedSidecars,omitempty"`
+	RequireGitSSHSecretKnownHosts    bool `json:"requireGitSSHSecretKnownHosts,omitempty"`
+	// EnableTektonOCIBundles           bool // Deprecated: this is now ignored
+	// ScopeWhenExpressionsToTask       bool // Deprecated: this is now ignored
+
+	EnableAPIFields          string `json:"enableAPIFields,omitempty"`
+	SendCloudEventsForRuns   bool   `json:"sendCloudEventsForRuns,omitempty"`
+	AwaitSidecarReadiness    bool   `json:"awaitSidecarReadiness,omitempty"`
+	EnforceNonfalsifiability string `json:"enforceNonfalsifiability,omitempty"`
+	EnableKeepPodOnCancel    bool   `json:"enableKeepPodOnCancel,omitempty"`
 	// VerificationNoMatchPolicy is the feature flag for "trusted-resources-verification-no-match-policy"
 	// VerificationNoMatchPolicy can be set to "ignore", "warn" and "fail" values.
 	// ignore: skip trusted resources verification when no matching verification policies found
 	// warn: skip trusted resources verification when no matching verification policies found and log a warning
 	// fail: fail the taskrun or pipelines run if no matching verification policies found
-	VerificationNoMatchPolicy   string
-	EnableProvenanceInStatus    bool
-	ResultExtractionMethod      string
-	MaxResultSize               int
-	SetSecurityContext          bool
-	Coschedule                  string
-	EnableCELInWhenExpression   bool
-	EnableStepActions           bool
-	EnableParamEnum             bool
-	EnableArtifacts             bool
-	DisableInlineSpec           string
-	EnableConciseResolverSyntax bool
+	VerificationNoMatchPolicy                string `json:"verificationNoMatchPolicy,omitempty"`
+	EnableProvenanceInStatus                 bool   `json:"enableProvenanceInStatus,omitempty"`
+	ResultExtractionMethod                   string `json:"resultExtractionMethod,omitempty"`
+	MaxResultSize                            int    `json:"maxResultSize,omitempty"`
+	SetSecurityContext                       bool   `json:"setSecurityContext,omitempty"`
+	SetSecurityContextReadOnlyRootFilesystem bool   `json:"setSecurityContextReadOnlyRootFilesystem,omitempty"`
+	Coschedule                               string `json:"coschedule,omitempty"`
+	EnableCELInWhenExpression                bool   `json:"enableCELInWhenExpression,omitempty"`
+	EnableStepActions                        bool   `json:"enableStepActions,omitempty"`
+	EnableParamEnum                          bool   `json:"enableParamEnum,omitempty"`
+	EnableArtifacts                          bool   `json:"enableArtifacts,omitempty"`
+	DisableInlineSpec                        string `json:"disableInlineSpec,omitempty"`
+	EnableConciseResolverSyntax              bool   `json:"enableConciseResolverSyntax,omitempty"`
+	EnableKubernetesSidecar                  bool   `json:"enableKubernetesSidecar,omitempty"`
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -290,6 +301,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if err := setFeature(setSecurityContextKey, DefaultSetSecurityContext, &tc.SetSecurityContext); err != nil {
 		return nil, err
 	}
+	if err := setFeature(setSecurityContextReadOnlyRootFilesystemKey, DefaultSetSecurityContextReadOnlyRootFilesystem, &tc.SetSecurityContextReadOnlyRootFilesystem); err != nil {
+		return nil, err
+	}
 	if err := setCoschedule(cfgMap, DefaultCoschedule, tc.DisableAffinityAssistant, &tc.Coschedule); err != nil {
 		return nil, err
 	}
@@ -305,25 +319,17 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if err := setPerFeatureFlag(EnableArtifacts, DefaultEnableArtifacts, &tc.EnableArtifacts); err != nil {
 		return nil, err
 	}
+
 	if err := setFeatureInlineSpec(cfgMap, DisableInlineSpec, DefaultDisableInlineSpec, &tc.DisableInlineSpec); err != nil {
 		return nil, err
 	}
 	if err := setPerFeatureFlag(EnableConciseResolverSyntax, DefaultEnableConciseResolverSyntax, &tc.EnableConciseResolverSyntax); err != nil {
 		return nil, err
 	}
-	// Given that they are alpha features, Tekton Bundles and Custom Tasks should be switched on if
-	// enable-api-fields is "alpha". If enable-api-fields is not "alpha" then fall back to the value of
-	// each feature's individual flag.
-	//
-	// Note: the user cannot enable "alpha" while disabling bundles or custom tasks - that would
-	// defeat the purpose of having a single shared gate for all alpha features.
-	if tc.EnableAPIFields == AlphaAPIFields {
-		tc.EnableTektonOCIBundles = true
-	} else {
-		if err := setFeature(enableTektonOCIBundles, DefaultEnableTektonOciBundles, &tc.EnableTektonOCIBundles); err != nil {
-			return nil, err
-		}
+	if err := setFeature(EnableKubernetesSidecar, DefaultEnableKubernetesSidecar, &tc.EnableKubernetesSidecar); err != nil {
+		return nil, err
 	}
+
 	return &tc, nil
 }
 

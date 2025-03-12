@@ -18,8 +18,7 @@ weight: 201
   - [Declaring VolumeMounts](#declaring-volumemounts)
   - [Referencing a StepAction](#referencing-a-stepaction)
     - [Specifying Remote StepActions](#specifying-remote-stepactions)
-- [Known Limitations](#known-limitations)
-  - [Cannot pass Step Results between Steps](#cannot-pass-step-results-between-steps)
+  - [Controlling Step Execution with when Expressions](#controlling-step-execution-with-when-expressions)
 
 ## Overview
 > :seedling: **`StepActions` is an [beta](additional-configs.md#beta-features) feature.**
@@ -136,6 +135,22 @@ spec:
 ```
 
 **Note:** If a `Step` declares `params` for an `inlined Step`, it will also lead to a validation error. This is because an `inlined Step` gets its `params` from the `TaskRun`.
+
+#### Parameter Substitution Precedence
+
+When applying parameters to a StepAction, the substitutions are applied in the following order:
+
+1. TaskRun parameter values in step parameters
+2. Step-provided parameter values 
+3. Default values that reference other parameters
+4. Simple default values
+5. Step result references
+
+This order ensures that:
+- TaskRun parameters are available for step parameter substitution
+- Step-provided values take precedence over defaults
+- Parameter references in defaults are resolved before simple defaults
+- Step result references are resolved last to allow referencing results from previous steps
 
 ### Emitting Results
 
@@ -521,3 +536,104 @@ spec:
 ```
 
 The default resolver type can be configured by the `default-resolver-type` field in the `config-defaults` ConfigMap (`alpha` feature). See [additional-configs.md](./additional-configs.md) for details.
+
+### Controlling Step Execution with when Expressions
+
+You can define `when` in a `step` to control its execution. 
+
+The components of `when` expressions are `input`, `operator`, `values`, `cel`:
+
+| Component  | Description                                                                                                                                                                                                                                                      | Syntax                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+|------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `input`    | Input for the `when` expression, defaults to an empty string if not provided.                                                                                                                                                                                    | * Static values e.g. `"ubuntu"`<br/> * Variables (parameters or results) e.g. `"$(params.image)"` or `"$(tasks.task1.results.image)"` or `"$(tasks.task1.results.array-results[1])"`                                                                                                                                                                                                                                                                                                                                                       |
+| `operator` | `operator` represents an `input`'s relationship to a set of `values`, a valid `operator` must be provided.                                                                                                                                                       | `in` or `notin`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `values`   | An array of string values, the `values` array must be provided and has to be non-empty.                                                                                                                                                                          | * An array param e.g. `["$(params.images[*])"]`<br/> * An array result of a task `["$(tasks.task1.results.array-results[*])"]`<br/> * An array result of a step`["(steps.step1.results.array-results[*])"]`<br/>* `values` can contain static values e.g. `"ubuntu"`<br/> * `values` can contain variables (parameters or results) or a Workspaces's `bound` state e.g. `["$(params.image)"]` or `["$(steps.step1.results.image)"]` or `["$(tasks.task1.results.array-results[1])"]` or `["$(steps.step1.results.array-results[1])"]` |
+| `cel`      | The Common Expression Language (CEL) implements common semantics for expression evaluation, enabling different applications to more easily interoperate. This is an `alpha` feature, `enable-cel-in-whenexpression` needs to be set to true to use this feature. |  [cel-syntax](https://github.com/google/cel-spec/blob/master/doc/langdef.md#syntax)
+
+The below example shows how to use when expressions to control step executions:
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-pvc-2
+spec:
+  resources:
+    requests:
+      storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: step-when-example
+spec:
+  workspaces:
+    - name: custom
+      persistentVolumeClaim:
+        claimName: my-pvc-2
+  taskSpec:
+    description: |
+      A simple task that shows how to use when determine if a step should be executed
+    steps:
+      - name: should-execute
+        image: bash:latest
+        script: |
+          #!/usr/bin/env bash
+          echo "executed..."
+        when:
+          - input: "$(workspaces.custom.bound)"
+            operator: in
+            values: [ "true" ]
+      - name: should-skip
+        image: bash:latest
+        script: |
+          #!/usr/bin/env bash
+          echo skipskipskip
+        when:
+          - input: "$(workspaces.custom2.bound)"
+            operator: in
+            values: [ "true" ]
+      - name: should-continue
+        image: bash:latest
+        script: |
+          #!/usr/bin/env bash
+          echo blabalbaba
+      - name: produce-step
+        image: alpine
+        results:
+          - name: result2
+            type: string
+        script: |
+          echo -n "foo" | tee $(step.results.result2.path)
+      - name: run-based-on-step-results
+        image: alpine
+        script: |
+          echo "wooooooo"
+        when:
+          - input: "$(steps.produce-step.results.result2)"
+            operator: in
+            values: [ "bar" ]
+    workspaces:
+      - name: custom
+```
+
+The StepState for a skipped step looks like something similar to the below:
+```yaml
+      {
+        "container": "step-run-based-on-step-results",
+        "imageID": "docker.io/library/alpine@sha256:c5b1261d6d3e43071626931fc004f70149baeba2c8ec672bd4f27761f8e1ad6b",
+        "name": "run-based-on-step-results",
+        "terminated": {
+          "containerID": "containerd://bf81162e79cf66a2bbc03e3654942d3464db06ff368c0be263a8a70f363a899b",
+          "exitCode": 0,
+          "finishedAt": "2024-03-26T03:57:47Z",
+          "reason": "Completed",
+          "startedAt": "2024-03-26T03:57:47Z"
+        },
+        "terminationReason": "Skipped"
+      }
+```
+Where `terminated.exitCode` is `0` and `terminationReason` is `Skipped` to indicate the Step exited successfully and was skipped. 

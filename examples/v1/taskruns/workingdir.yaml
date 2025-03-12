@@ -6,14 +6,14 @@ spec:
   taskSpec:
     steps:
     - name: default
-      image: ubuntu
+      image: mirror.gcr.io/ubuntu
       workingDir: /workspace
       script: |
         #!/usr/bin/env bash
         [[ $PWD == /workspace ]]
 
     - name: override
-      image: ubuntu
+      image: mirror.gcr.io/ubuntu
       workingDir: '/a/path/too/far'
       script: |
         #!/usr/bin/env bash

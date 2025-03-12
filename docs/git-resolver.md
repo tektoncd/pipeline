@@ -114,10 +114,6 @@ Note that not all `go-scm` implementations have been tested with the `git` resol
   * BitBucket Server
   * BitBucket Cloud
 
-Fetching from multiple Git providers with different configuration is not
-supported. You can use the [http resolver](./http-resolver.md) to fetch URL
-from another provider with different credentials.
-
 #### Task Resolution
 
 ```yaml
@@ -190,6 +186,118 @@ spec:
       value: main
     - name: pathInRepo
       value: pipeline/simple/0.1/simple.yaml
+  params:
+  - name: name
+    value: Ranni
+```
+
+### Specifying Configuration for Multiple Git Providers
+
+It is possible to specify configurations for multiple providers and even multiple configurations for same provider to use in 
+different tekton resources. Firstly, details need to be added in configmap with the unique identifier key prefix.
+To use them in tekton resources, pass the unique key mentioned in configmap as an extra param to resolver with key 
+`configKey` and value will be the unique key. If no `configKey` param is passed, `default` will be used. Default 
+configuration to be used for git resolver can be specified in configmap by either mentioning no unique identifier or 
+using identifier `default`
+
+**Note**: `configKey` should not contain `.` while specifying configurations in configmap
+
+### Example Configmap
+
+Multiple configurations can be specified in `git-resolver-config` configmap like this. All keys mentioned above are supported.
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: git-resolver-config
+  namespace: tekton-pipelines-resolvers
+  labels:
+    app.kubernetes.io/component: resolvers
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+data:
+  # configuration 1, default one to use if no configKey provided or provided with value default
+  fetch-timeout: "1m"
+  default-url: "https://github.com/tektoncd/catalog.git"
+  default-revision: "main"
+  scm-type: "github"
+  server-url: ""
+  api-token-secret-name: ""
+  api-token-secret-key: ""
+  api-token-secret-namespace: "default"
+  default-org: ""
+
+  # configuration 2, will be used if configKey param passed with value test1
+  test1.fetch-timeout: "5m"
+  test1.default-url: ""
+  test1.default-revision: "stable"
+  test1.scm-type: "github"
+  test1.server-url: "api.internal-github.com"
+  test1.api-token-secret-name: "test1-secret"
+  test1.api-token-secret-key: "token"
+  test1.api-token-secret-namespace: "test1"
+  test1.default-org: "tektoncd"
+
+  # configuration 3, will be used if configKey param passed with value test2
+  test2.fetch-timeout: "10m"
+  test2.default-url: ""
+  test2.default-revision: "stable"
+  test2.scm-type: "gitlab"
+  test2.server-url: "api.internal-gitlab.com"
+  test2.api-token-secret-name: "test2-secret"
+  test2.api-token-secret-key: "pat"
+  test2.api-token-secret-namespace: "test2"
+  test2.default-org: "tektoncd-infra"
+```
+
+#### Task Resolution
+
+A specific configurations from the configMap can be selected by passing the parameter `configKey` with the value 
+matching one of the configuration keys used in the configMap.
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: git-api-demo-tr
+spec:
+  taskRef:
+    resolver: git
+    params:
+    - name: org
+      value: tektoncd
+    - name: repo
+      value: catalog
+    - name: revision
+      value: main
+    - name: pathInRepo
+      value: task/git-clone/0.6/git-clone.yaml
+    - name: configKey
+      value: test1
+```
+
+#### Pipeline resolution
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: git-api-demo-pr
+spec:
+  pipelineRef:
+    resolver: git
+    params:
+    - name: org
+      value: tektoncd
+    - name: repo
+      value: catalog
+    - name: revision
+      value: main
+    - name: pathInRepo
+      value: pipeline/simple/0.1/simple.yaml
+    - name: configKey
+      value: test2
   params:
   - name: name
     value: Ranni

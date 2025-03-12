@@ -26,6 +26,7 @@ import (
 	"go.opencensus.io/tag"
 	admissionv1 "k8s.io/api/admission/v1"
 	apixv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/metrics"
 )
 
@@ -65,19 +66,85 @@ var (
 	resultCodeKey        = tag.MustNewKey("result_code")
 )
 
+type (
+	admissionToValue  func(*admissionv1.AdmissionRequest, *admissionv1.AdmissionResponse) string
+	conversionToValue func(*apixv1.ConversionRequest, *apixv1.ConversionResponse) string
+)
+
+var (
+	allAdmissionTags = map[tag.Key]admissionToValue{
+		requestOperationKey: func(req *admissionv1.AdmissionRequest, _ *admissionv1.AdmissionResponse) string {
+			return string(req.Operation)
+		},
+		kindGroupKey: func(req *admissionv1.AdmissionRequest, _ *admissionv1.AdmissionResponse) string {
+			return req.Kind.Group
+		},
+		kindVersionKey: func(req *admissionv1.AdmissionRequest, _ *admissionv1.AdmissionResponse) string {
+			return req.Kind.Version
+		},
+		kindKindKey: func(req *admissionv1.AdmissionRequest, _ *admissionv1.AdmissionResponse) string {
+			return req.Kind.Kind
+		},
+		resourceGroupKey: func(req *admissionv1.AdmissionRequest, _ *admissionv1.AdmissionResponse) string {
+			return req.Resource.Group
+		},
+		resourceVersionKey: func(req *admissionv1.AdmissionRequest, _ *admissionv1.AdmissionResponse) string {
+			return req.Resource.Version
+		},
+		resourceResourceKey: func(req *admissionv1.AdmissionRequest, _ *admissionv1.AdmissionResponse) string {
+			return req.Resource.Resource
+		},
+		resourceNamespaceKey: func(req *admissionv1.AdmissionRequest, _ *admissionv1.AdmissionResponse) string {
+			return req.Namespace
+		},
+		admissionAllowedKey: func(_ *admissionv1.AdmissionRequest, resp *admissionv1.AdmissionResponse) string {
+			return strconv.FormatBool(resp.Allowed)
+		},
+	}
+	allConversionTags = map[tag.Key]conversionToValue{
+		desiredAPIVersionKey: func(req *apixv1.ConversionRequest, _ *apixv1.ConversionResponse) string {
+			return req.DesiredAPIVersion
+		},
+		resultStatusKey: func(_ *apixv1.ConversionRequest, resp *apixv1.ConversionResponse) string {
+			return resp.Result.Status
+		},
+		resultReasonKey: func(_ *apixv1.ConversionRequest, resp *apixv1.ConversionResponse) string {
+			return string(resp.Result.Reason)
+		},
+		resultCodeKey: func(_ *apixv1.ConversionRequest, resp *apixv1.ConversionResponse) string {
+			return strconv.Itoa(int(resp.Result.Code))
+		},
+	}
+)
+
 // StatsReporter reports webhook metrics
 type StatsReporter interface {
 	ReportAdmissionRequest(request *admissionv1.AdmissionRequest, response *admissionv1.AdmissionResponse, d time.Duration) error
 	ReportConversionRequest(request *apixv1.ConversionRequest, response *apixv1.ConversionResponse, d time.Duration) error
 }
 
+type statsReporterOptions struct {
+	tagsToExclude sets.Set[string]
+}
+
+type StatsReporterOption func(_ *statsReporterOptions)
+
+func WithoutTags(tags ...string) StatsReporterOption {
+	return func(opts *statsReporterOptions) {
+		opts.tagsToExclude.Insert(tags...)
+	}
+}
+
 // reporter implements StatsReporter interface
 type reporter struct {
 	ctx context.Context
+
+	admissionTags  map[tag.Key]admissionToValue
+	conversionTags map[tag.Key]conversionToValue
 }
 
 // NewStatsReporter creates a reporter for webhook metrics
-func NewStatsReporter() (StatsReporter, error) {
+func NewStatsReporter(opts ...StatsReporterOption) (StatsReporter, error) {
 	ctx, err := tag.New(
 		context.Background(),
 	)
@@ -85,23 +152,44 @@ func NewStatsReporter() (StatsReporter, error) {
 		return nil, err
 	}
 
-	return &reporter{ctx: ctx}, nil
+	options := statsReporterOptions{
+		tagsToExclude: sets.New[string](),
+	}
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	admissionTags := make(map[tag.Key]admissionToValue)
+	for key, f := range allAdmissionTags {
+		if options.tagsToExclude.Has(key.Name()) {
+			continue
+		}
+		admissionTags[key] = f
+	}
+	conversionTags := make(map[tag.Key]conversionToValue)
+	for key, f := range allConversionTags {
+		if options.tagsToExclude.Has(key.Name()) {
+			continue
+		}
+		conversionTags[key] = f
+	}
+
+	return &reporter{
+		ctx:            ctx,
+		admissionTags:  admissionTags,
+		conversionTags: conversionTags,
+	}, nil
 }
 
 // Captures req count metric, recording the count and the duration
 func (r *reporter) ReportAdmissionRequest(req *admissionv1.AdmissionRequest, resp *admissionv1.AdmissionResponse, d time.Duration) error {
-	ctx, err := tag.New(
-		r.ctx,
-		tag.Insert(requestOperationKey, string(req.Operation)),
-		tag.Insert(kindGroupKey, req.Kind.Group),
-		tag.Insert(kindVersionKey, req.Kind.Version),
-		tag.Insert(kindKindKey, req.Kind.Kind),
-		tag.Insert(resourceGroupKey, req.Resource.Group),
-		tag.Insert(resourceVersionKey, req.Resource.Version),
-		tag.Insert(resourceResourceKey, req.Resource.Resource),
-		tag.Insert(resourceNamespaceKey, req.Namespace),
-		tag.Insert(admissionAllowedKey, strconv.FormatBool(resp.Allowed)),
-	)
+	mutators := make([]tag.Mutator, 0, len(r.admissionTags))
+
+	for key, f := range r.admissionTags {
+		mutators = append(mutators, tag.Insert(key, f(req, resp)))
+	}
+
+	ctx, err := tag.New(r.ctx, mutators...)
 	if err != nil {
 		return err
 	}
@@ -114,13 +202,13 @@ func (r *reporter) ReportAdmissionRequest(req *admissionv1.AdmissionRequest, res
 
 // Captures req count metric, recording the count and the duration
 func (r *reporter) ReportConversionRequest(req *apixv1.ConversionRequest, resp *apixv1.ConversionResponse, d time.Duration) error {
-	ctx, err := tag.New(
-		r.ctx,
-		tag.Insert(desiredAPIVersionKey, req.DesiredAPIVersion),
-		tag.Insert(resultStatusKey, resp.Result.Status),
-		tag.Insert(resultReasonKey, string(resp.Result.Reason)),
-		tag.Insert(resultCodeKey, strconv.Itoa(int(resp.Result.Code))),
-	)
+	mutators := make([]tag.Mutator, 0, len(r.conversionTags))
+
+	for key, f := range r.conversionTags {
+		mutators = append(mutators, tag.Insert(key, f(req, resp)))
+	}
+
+	ctx, err := tag.New(r.ctx, mutators...)
 	if err != nil {
 		return err
 	}
@@ -131,21 +219,27 @@ func (r *reporter) ReportConversionRequest(req *apixv1.ConversionRequest, resp *
 	return nil
 }
 
-func RegisterMetrics() {
-	tagKeys := []tag.Key{
-		requestOperationKey,
-		kindGroupKey,
-		kindVersionKey,
-		kindKindKey,
-		resourceGroupKey,
-		resourceVersionKey,
-		resourceResourceKey,
-		resourceNamespaceKey,
-		admissionAllowedKey,
-		desiredAPIVersionKey,
-		resultStatusKey,
-		resultReasonKey,
-		resultCodeKey}
+func RegisterMetrics(opts ...StatsReporterOption) {
+	options := statsReporterOptions{
+		tagsToExclude: sets.New[string](),
+	}
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	tagKeys := []tag.Key{}
+	for tag := range allAdmissionTags {
+		if options.tagsToExclude.Has(tag.Name()) {
+			continue
+		}
+		tagKeys = append(tagKeys, tag)
+	}
+	for tag := range allConversionTags {
+		if options.tagsToExclude.Has(tag.Name()) {
+			continue
+		}
+		tagKeys = append(tagKeys, tag)
+	}
 
 	if err := view.Register(
 		&view.View{

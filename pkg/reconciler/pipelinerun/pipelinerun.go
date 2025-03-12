@@ -289,7 +289,8 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 			if taskTimeout.Duration == config.NoTimeoutDuration {
 				waitTime = time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes) * time.Minute
 			}
-		} else if pr.Status.FinallyStartTime != nil && pr.FinallyTimeout() != nil {
+		} else if pr.Status.FinallyStartTime != nil && pr.FinallyTimeout() != nil &&
+			pr.FinallyTimeout().Duration != config.NoTimeoutDuration {
 			finallyWaitTime := pr.FinallyTimeout().Duration - c.Clock.Since(pr.Status.FinallyStartTime.Time)
 			if finallyWaitTime < waitTime {
 				waitTime = finallyWaitTime
@@ -339,7 +340,8 @@ func (c *Reconciler) resolvePipelineState(
 	tasks []v1.PipelineTask,
 	pipelineMeta *metav1.ObjectMeta,
 	pr *v1.PipelineRun,
-	pst resources.PipelineRunState) (resources.PipelineRunState, error) {
+	pst resources.PipelineRunState,
+) (resources.PipelineRunState, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "resolvePipelineState")
 	defer span.End()
 	// Resolve each task individually because they each could have a different reference context (remote or local).
@@ -488,8 +490,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	if err := resources.ValidateRequiredParametersProvided(&pipelineSpec.Params, &pr.Spec.Params); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.MarkFailed(v1.PipelineRunReasonParameterMissing.String(),
-			"PipelineRun %s parameters is missing some parameters required by Pipeline %s's parameters: %s",
-			pr.Namespace, pr.Name, err)
+			"PipelineRun %s/%s is missing some parameters required by Pipeline %s/%s: %s",
+			pr.Namespace, pr.Name, pr.Namespace, pipelineMeta.Name, err)
 		return controller.NewPermanentError(err)
 	}
 
@@ -838,14 +840,22 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 		return controller.NewPermanentError(err)
 	}
 
-	// Check for Missing Result References
-	err = resources.CheckMissingResultReferences(pipelineRunFacts.State, nextRpts)
-	if err != nil {
-		logger.Infof("Failed to resolve task result reference for %q with error %v", pr.Name, err)
-		pr.Status.MarkFailed(v1.PipelineRunReasonInvalidTaskResultReference.String(), err.Error())
-		return controller.NewPermanentError(err)
+	for _, rpt := range nextRpts {
+		// Check for Missing Result References
+		// if error found, present rpt will be
+		// added to the validationFailedTask list
+		err := resources.CheckMissingResultReferences(pipelineRunFacts.State, rpt)
+		if err != nil {
+			logger.Infof("Failed to resolve task result reference for %q with error %v", pr.Name, err)
+			// If there is an error encountered, no new task
+			// will be scheduled, hence nextRpts should be empty
+			// If finally tasks are found, then those tasks will
+			// be added to the nextRpts
+			nextRpts = nil
+			logger.Infof("Adding the task %q to the validation failed list", rpt.ResolvedTask)
+			pipelineRunFacts.ValidationFailedTask = append(pipelineRunFacts.ValidationFailedTask, rpt)
+		}
 	}
-
 	// GetFinalTasks only returns final tasks when a DAG is complete
 	fNextRpts := pipelineRunFacts.GetFinalTasks()
 	if len(fNextRpts) != 0 {
@@ -892,6 +902,13 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 
 		// propagate previous task results
 		resources.PropagateResults(rpt, pipelineRunFacts.State)
+
+		// propagate previous task artifacts
+		err = resources.PropagateArtifacts(rpt, pipelineRunFacts.State)
+		if err != nil {
+			logger.Errorf("Failed to propagate artifacts due to error: %v", err)
+			return controller.NewPermanentError(err)
+		}
 
 		// Validate parameter types in matrix after apply substitutions from Task Results
 		if rpt.PipelineTask.IsMatrixed() {
@@ -1321,6 +1338,20 @@ func propagatePipelineNameLabelToPipelineRun(pr *v1.PipelineRun) error {
 		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pr.Name
 	case pr.Spec.PipelineRef != nil && pr.Spec.PipelineRef.Resolver != "":
 		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pr.Name
+
+		// https://tekton.dev/docs/pipelines/cluster-resolver/#pipeline-resolution
+		var kind, name string
+		for _, param := range pr.Spec.PipelineRef.Params {
+			if param.Name == "kind" {
+				kind = param.Value.StringVal
+			}
+			if param.Name == "name" {
+				name = param.Value.StringVal
+			}
+		}
+		if kind == "pipeline" {
+			pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = name
+		}
 	default:
 		return fmt.Errorf("pipelineRun %s not providing PipelineRef or PipelineSpec", pr.Name)
 	}
@@ -1336,6 +1367,7 @@ func getTaskrunLabels(pr *v1.PipelineRun, pipelineTaskName string, includePipeli
 		}
 	}
 	labels[pipeline.PipelineRunLabelKey] = pr.Name
+	labels[pipeline.PipelineRunUIDLabelKey] = string(pr.UID)
 	if pipelineTaskName != "" {
 		labels[pipeline.PipelineTaskLabelKey] = pipelineTaskName
 	}
@@ -1542,6 +1574,8 @@ func filterCustomRunsForPipelineRunStatus(logger *zap.SugaredLogger, pr *v1.Pipe
 		// We can't just get the gvk from the customRun's TypeMeta because that isn't populated for resources created through the fake client.
 		gvks = append(gvks, v1beta1.SchemeGroupVersion.WithKind(customRun))
 	}
+
+	// NAMES are names
 
 	return names, taskLabels, gvks, statuses
 }

@@ -17,6 +17,7 @@ limitations under the License.
 package resources
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -26,11 +27,9 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
-var (
-	// ErrInvalidTaskResultReference indicates that the reason for the failure status is that there
-	// is an invalid task result reference
-	ErrInvalidTaskResultReference = pipelineErrors.WrapUserError(errors.New("Invalid task result reference"))
-)
+// ErrInvalidTaskResultReference indicates that the reason for the failure status is that there
+// is an invalid task result reference
+var ErrInvalidTaskResultReference = pipelineErrors.WrapUserError(errors.New("Invalid task result reference"))
 
 // ResolvedResultRefs represents all of the ResolvedResultRef for a pipeline task
 type ResolvedResultRefs []*ResolvedResultRef
@@ -134,7 +133,7 @@ func convertToResultRefs(pipelineRunState PipelineRunState, target *ResolvedPipe
 			resolvedResultRefs = append(resolvedResultRefs, resolved)
 		default:
 			// Matrixed referenced Pipeline Task
-			if len(referencedPipelineTask.TaskRuns) > 1 {
+			if referencedPipelineTask.PipelineTask.IsMatrixed() {
 				arrayValues, err := findResultValuesForMatrix(referencedPipelineTask, resultRef)
 				if err != nil {
 					return nil, resultRef.PipelineTask, err
@@ -164,11 +163,26 @@ func resolveCustomResultRef(customRuns []*v1beta1.CustomRun, resultRef *v1.Resul
 		return nil, err
 	}
 	return &ResolvedResultRef{
-		Value:           *v1.NewStructuredValues(runValue),
+		Value:           *paramValueFromCustomRunResult(runValue),
 		FromTaskRun:     "",
 		FromRun:         runName,
 		ResultReference: *resultRef,
 	}, nil
+}
+
+func paramValueFromCustomRunResult(result string) *v1.ParamValue {
+	var arrayResult []string
+	// for fan out array result, which is represented as string, we should make it to array type param value
+	if err := json.Unmarshal([]byte(result), &arrayResult); err == nil && len(arrayResult) > 0 {
+		if len(arrayResult) > 1 {
+			return v1.NewStructuredValues(arrayResult[0], arrayResult[1:]...)
+		}
+		return &v1.ParamValue{
+			Type:     v1.ParamTypeArray,
+			ArrayVal: []string{arrayResult[0]},
+		}
+	}
+	return v1.NewStructuredValues(result)
 }
 
 func resolveResultRef(taskRuns []*v1.TaskRun, resultRef *v1.ResultRef) (*ResolvedResultRef, error) {
@@ -195,6 +209,7 @@ func findRunResultForParam(customRun *v1beta1.CustomRun, reference *v1.ResultRef
 	err := fmt.Errorf("%w: Could not find result with name %s for task %s", ErrInvalidTaskResultReference, reference.Result, reference.PipelineTask)
 	return "", err
 }
+
 func findTaskResultForParam(taskRun *v1.TaskRun, reference *v1.ResultRef) (v1.ResultValue, error) {
 	results := taskRun.Status.TaskRunStatusFields.Results
 	for _, result := range results {
@@ -239,7 +254,7 @@ func (rs ResolvedResultRefs) getStringReplacements() map[string]string {
 	for _, r := range rs {
 		switch r.Value.Type {
 		case v1.ParamTypeArray:
-			for i := 0; i < len(r.Value.ArrayVal); i++ {
+			for i := range len(r.Value.ArrayVal) {
 				for _, target := range r.getReplaceTargetfromArrayIndex(i) {
 					replacements[target] = r.Value.ArrayVal[i]
 				}

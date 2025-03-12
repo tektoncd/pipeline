@@ -30,8 +30,8 @@ func TestDecodeScript(t *testing.T) {
 	decoded := `#!/usr/bin/env sh
 echo "Hello World!"
 `
-	mode := os.FileMode(0600)
-	expectedPermissions := os.FileMode(0600)
+	mode := os.FileMode(0o600)
+	expectedPermissions := os.FileMode(0o600)
 
 	tmp := t.TempDir()
 	src := filepath.Join(tmp, "script.txt")
@@ -84,7 +84,7 @@ func TestDecodeScriptInvalidBase64(t *testing.T) {
 	invalidData := []byte("!")
 	expectedError := base64.CorruptInputError(0)
 
-	src, err := os.CreateTemp("", "decode-script-test-*")
+	src, err := os.CreateTemp(t.TempDir(), "decode-script-test-*")
 	if err != nil {
 		t.Fatalf("error creating temp file: %v", err)
 	}

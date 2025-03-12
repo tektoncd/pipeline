@@ -121,6 +121,7 @@ var (
 type Recorder struct {
 	mutex       sync.Mutex
 	initialized bool
+	cfg         *config.Metrics
 
 	ReportingPeriod time.Duration
 
@@ -144,14 +145,14 @@ var (
 // to log the TaskRun related metrics
 func NewRecorder(ctx context.Context) (*Recorder, error) {
 	once.Do(func() {
+		cfg := config.FromContextOrDefaults(ctx)
 		r = &Recorder{
 			initialized: true,
+			cfg:         cfg.Metrics,
 
 			// Default to reporting metrics every 30s.
 			ReportingPeriod: 30 * time.Second,
 		}
-
-		cfg := config.FromContextOrDefaults(ctx)
 
 		errRegistering = viewRegister(cfg.Metrics)
 		if errRegistering != nil {
@@ -325,9 +326,8 @@ func viewUnregister() {
 	)
 }
 
-// MetricsOnStore returns a function that checks if metrics are configured for a config.Store, and registers it if so
-func MetricsOnStore(logger *zap.SugaredLogger) func(name string,
-	value interface{}) {
+// OnStore returns a function that checks if metrics are configured for a config.Store, and registers it if so
+func OnStore(logger *zap.SugaredLogger, r *Recorder) func(name string, value interface{}) {
 	return func(name string, value interface{}) {
 		if name == config.GetMetricsConfigName() {
 			cfg, ok := value.(*config.Metrics)
@@ -335,6 +335,8 @@ func MetricsOnStore(logger *zap.SugaredLogger) func(name string,
 				logger.Error("Failed to do type insertion for extracting metrics config")
 				return
 			}
+			r.updateConfig(cfg)
+			// Update metrics according to the configuration
 			viewUnregister()
 			err := viewRegister(cfg)
 			if err != nil {
@@ -346,8 +348,10 @@ func MetricsOnStore(logger *zap.SugaredLogger) func(name string,
 }
 
 func pipelinerunInsertTag(pipeline, pipelinerun string) []tag.Mutator {
-	return []tag.Mutator{tag.Insert(pipelineTag, pipeline),
-		tag.Insert(pipelinerunTag, pipelinerun)}
+	return []tag.Mutator{
+		tag.Insert(pipelineTag, pipeline),
+		tag.Insert(pipelinerunTag, pipelinerun),
+	}
 }
 
 func pipelineInsertTag(pipeline, pipelinerun string) []tag.Mutator {
@@ -355,8 +359,10 @@ func pipelineInsertTag(pipeline, pipelinerun string) []tag.Mutator {
 }
 
 func taskrunInsertTag(task, taskrun string) []tag.Mutator {
-	return []tag.Mutator{tag.Insert(taskTag, task),
-		tag.Insert(taskrunTag, taskrun)}
+	return []tag.Mutator{
+		tag.Insert(taskTag, task),
+		tag.Insert(taskrunTag, taskrun),
+	}
 }
 
 func taskInsertTag(task, taskrun string) []tag.Mutator {
@@ -373,6 +379,15 @@ func getTaskTagName(tr *v1.TaskRun) string {
 	case tr.Spec.TaskRef != nil && len(tr.Spec.TaskRef.Name) > 0:
 		taskName = tr.Spec.TaskRef.Name
 	case tr.Spec.TaskSpec != nil:
+		pipelineTaskTable, hasPipelineTaskTable := tr.Labels[pipeline.PipelineTaskLabelKey]
+		if hasPipelineTaskTable && len(pipelineTaskTable) > 0 {
+			taskName = pipelineTaskTable
+		}
+	case tr.Spec.TaskRef != nil && tr.Spec.TaskRef.Kind == v1.ClusterTaskRefKind:
+		clusterTaskLabel, hasClusterTaskLabel := tr.Labels[pipeline.ClusterTaskLabelKey]
+		if hasClusterTaskLabel && len(clusterTaskLabel) > 0 {
+			taskName = clusterTaskLabel
+		}
 	default:
 		if len(tr.Labels) > 0 {
 			taskLabel, hasTaskLabel := tr.Labels[pipeline.TaskLabelKey]
@@ -383,6 +398,13 @@ func getTaskTagName(tr *v1.TaskRun) string {
 	}
 
 	return taskName
+}
+
+func (r *Recorder) updateConfig(cfg *config.Metrics) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	r.cfg = cfg
 }
 
 // DurationAndCount logs the duration of TaskRun execution and
@@ -450,8 +472,7 @@ func (r *Recorder) RunningTaskRuns(ctx context.Context, lister listers.TaskRunLi
 		return err
 	}
 
-	cfg := config.FromContextOrDefaults(ctx)
-	addNamespaceLabelToQuotaThrottleMetric := cfg.Metrics != nil && cfg.Metrics.ThrottleWithNamespace
+	addNamespaceLabelToQuotaThrottleMetric := r.cfg != nil && r.cfg.ThrottleWithNamespace
 
 	var runningTrs int
 	trsThrottledByQuota := map[string]int{}
@@ -509,14 +530,18 @@ func (r *Recorder) RunningTaskRuns(ctx context.Context, lister listers.TaskRunLi
 		if addNamespaceLabelToQuotaThrottleMetric {
 			mutators = []tag.Mutator{tag.Insert(namespaceTag, ns)}
 		}
-		ctx, err = tag.New(ctx, mutators...)
+		ctx, err := tag.New(ctx, mutators...)
 		if err != nil {
 			return err
 		}
 		metrics.Record(ctx, runningTRsThrottledByQuota.M(float64(cnt)))
 	}
 	for ns, cnt := range trsThrottledByNode {
-		ctx, err = tag.New(ctx, []tag.Mutator{tag.Insert(namespaceTag, ns)}...)
+		var mutators []tag.Mutator
+		if addNamespaceLabelToQuotaThrottleMetric {
+			mutators = []tag.Mutator{tag.Insert(namespaceTag, ns)}
+		}
+		ctx, err := tag.New(ctx, mutators...)
 		if err != nil {
 			return err
 		}
@@ -569,8 +594,10 @@ func (r *Recorder) RecordPodLatency(ctx context.Context, pod *corev1.Pod, tr *v1
 
 	ctx, err := tag.New(
 		ctx,
-		append([]tag.Mutator{tag.Insert(namespaceTag, tr.Namespace),
-			tag.Insert(podTag, pod.Name)},
+		append([]tag.Mutator{
+			tag.Insert(namespaceTag, tr.Namespace),
+			tag.Insert(podTag, pod.Name),
+		},
 			r.insertTaskTag(taskName, tr.Name)...)...)
 	if err != nil {
 		return err

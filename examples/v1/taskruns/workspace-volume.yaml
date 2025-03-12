@@ -6,14 +6,14 @@ spec:
   taskSpec:
     steps:
     - name: write
-      image: ubuntu
+      image: mirror.gcr.io/ubuntu
       script: echo some stuff > /workspace/stuff
     - name: read
-      image: ubuntu
+      image: mirror.gcr.io/ubuntu
       script: cat /workspace/stuff
 
     - name: override-workspace
-      image: ubuntu
+      image: mirror.gcr.io/ubuntu
       # /workspace/stuff *doesn't* exist.
       script: |
         #!/usr/bin/env bash

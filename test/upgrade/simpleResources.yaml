@@ -10,18 +10,18 @@ spec:
       default: "response"
   steps:
   - name: echo-param
-    image: alpine
+    image: mirror.gcr.io/alpine
     script: |
       echo "$(params.rsp)"
   - name: check-workspace
-    image: alpine
+    image: mirror.gcr.io/alpine
     script: |
       if [ "$(workspaces.workspace.bound)" == "true" ]; then
         echo "Workspace provided"
       fi
   sidecars:
   - name: server
-    image: alpine:3.12.0
+    image: mirror.gcr.io/alpine
     command: ['/bin/bash']
     workingDir: /foo
     script: echo server
@@ -44,7 +44,7 @@ spec:
           type: string
           default: "1"
       steps:
-        - image: alpine
+        - image: mirror.gcr.io/alpine
           name: check-workspace
           script: |
             if [ "$(workspaces.workspace.bound)" == "true" ]; then
@@ -63,5 +63,5 @@ spec:
           default: "Succeeded"
       steps:
         - name: verify-status
-          image: ubuntu
+          image: mirror.gcr.io/ubuntu
           script: echo $(params.echoStatus)

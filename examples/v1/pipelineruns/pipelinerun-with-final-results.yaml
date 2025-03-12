@@ -58,7 +58,7 @@ spec:
       description: The product of the two provided integers
   steps:
     - name: product
-      image: bash:latest
+      image: mirror.gcr.io/bash
       script: |
         #!/usr/bin/env bash
         echo -n $(( "$(params.a)" * "$(params.b)" )) | tee $(results.product.path)

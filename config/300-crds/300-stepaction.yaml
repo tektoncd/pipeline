@@ -25,47 +25,1091 @@ spec:
   group: tekton.dev
   preserveUnknownFields: false
   versions:
-  - name: v1alpha1
-    served: true
-    storage: false
-    schema:
-      openAPIV3Schema:
-        type: object
-        # One can use x-kubernetes-preserve-unknown-fields: true
-        # at the root of the schema (and inside any properties, additionalProperties)
-        # to get the traditional CRD behaviour that nothing is pruned, despite
-        # setting spec.preserveUnknownProperties: false.
-        #
-        # See https://kubernetes.io/blog/2019/06/20/crd-structural-schema/
-        # See issue: https://github.com/knative/serving/issues/912
-        x-kubernetes-preserve-unknown-fields: true
-    # Opt into the status subresource so metadata.generation
-    # starts to increment
-    subresources:
-      status: {}
-  - name: v1beta1
-    served: true
-    storage: true
-    schema:
-      openAPIV3Schema:
-        type: object
-        # One can use x-kubernetes-preserve-unknown-fields: true
-        # at the root of the schema (and inside any properties, additionalProperties)
-        # to get the traditional CRD behaviour that nothing is pruned, despite
-        # setting spec.preserveUnknownProperties: false.
-        #
-        # See https://kubernetes.io/blog/2019/06/20/crd-structural-schema/
-        # See issue: https://github.com/knative/serving/issues/912
-        x-kubernetes-preserve-unknown-fields: true
-    # Opt into the status subresource so metadata.generation
-    # starts to increment
-    subresources:
-      status: {}
+    - name: v1alpha1
+      served: true
+      storage: false
+      schema:
+        openAPIV3Schema:
+          description: |-
+            StepAction represents the actionable components of Step.
+            The Step can only reference it from the cluster or using remote resolution.
+          type: object
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: Spec holds the desired state of the Step from the client
+              type: object
+              properties:
+                args:
+                  description: |-
+                    Arguments to the entrypoint.
+                    The image's CMD is used if this is not provided.
+                    Variable references $(VAR_NAME) are expanded using the container's environment. If a variable
+                    cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
+                    to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will
+                    produce the string literal "$(VAR_NAME)". Escaped references will never be expanded, regardless
+                    of whether the variable exists or not. Cannot be updated.
+                    More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell
+                  type: array
+                  items:
+                    type: string
+                  x-kubernetes-list-type: atomic
+                command:
+                  description: |-
+                    Entrypoint array. Not executed within a shell.
+                    The image's ENTRYPOINT is used if this is not provided.
+                    Variable references $(VAR_NAME) are expanded using the container's environment. If a variable
+                    cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
+                    to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will
+                    produce the string literal "$(VAR_NAME)". Escaped references will never be expanded, regardless
+                    of whether the variable exists or not. Cannot be updated.
+                    More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell
+                  type: array
+                  items:
+                    type: string
+                  x-kubernetes-list-type: atomic
+                description:
+                  description: |-
+                    Description is a user-facing description of the stepaction that may be
+                    used to populate a UI.
+                  type: string
+                env:
+                  description: |-
+                    List of environment variables to set in the container.
+                    Cannot be updated.
+                  type: array
+                  items:
+                    description: EnvVar represents an environment variable present in a Container.
+                    type: object
+                    required:
+                      - name
+                    properties:
+                      name:
+                        description: Name of the environment variable. Must be a C_IDENTIFIER.
+                        type: string
+                      value:
+                        description: |-
+                          Variable references $(VAR_NAME) are expanded
+                          using the previously defined environment variables in the container and
+                          any service environment variables. If a variable cannot be resolved,
+                          the reference in the input string will be unchanged. Double $$ are reduced
+                          to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e.
+                          "$$(VAR_NAME)" will produce the string literal "$(VAR_NAME)".
+                          Escaped references will never be expanded, regardless of whether the variable
+                          exists or not.
+                          Defaults to "".
+                        type: string
+                      valueFrom:
+                        description: Source for the environment variable's value. Cannot be used if value is not empty.
+                        type: object
+                        properties:
+                          configMapKeyRef:
+                            description: Selects a key of a ConfigMap.
+                            type: object
+                            required:
+                              - key
+                            properties:
+                              key:
+                                description: The key to select.
+                                type: string
+                              name:
+                                description: |-
+                                  Name of the referent.
+                                  This field is effectively required, but due to backwards compatibility is
+                                  allowed to be empty. Instances of this type with an empty value here are
+                                  almost certainly wrong.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                type: string
+                                default: ""
+                              optional:
+                                description: Specify whether the ConfigMap or its key must be defined
+                                type: boolean
+                            x-kubernetes-map-type: atomic
+                          fieldRef:
+                            description: |-
+                              Selects a field of the pod: supports metadata.name, metadata.namespace, `metadata.labels['<KEY>']`, `metadata.annotations['<KEY>']`,
+                              spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs.
+                            type: object
+                            required:
+                              - fieldPath
+                            properties:
+                              apiVersion:
+                                description: Version of the schema the FieldPath is written in terms of, defaults to "v1".
+                                type: string
+                              fieldPath:
+                                description: Path of the field to select in the specified API version.
+                                type: string
+                            x-kubernetes-map-type: atomic
+                          resourceFieldRef:
+                            description: |-
+                              Selects a resource of the container: only resources limits and requests
+                              (limits.cpu, limits.memory, limits.ephemeral-storage, requests.cpu, requests.memory and requests.ephemeral-storage) are currently supported.
+                            type: object
+                            required:
+                              - resource
+                            properties:
+                              containerName:
+                                description: 'Container name: required for volumes, optional for env vars'
+                                type: string
+                              divisor:
+                                description: Specifies the output format of the exposed resources, defaults to "1"
+                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                anyOf:
+                                  - type: integer
+                                  - type: string
+                                x-kubernetes-int-or-string: true
+                              resource:
+                                description: 'Required: resource to select'
+                                type: string
+                            x-kubernetes-map-type: atomic
+                          secretKeyRef:
+                            description: Selects a key of a secret in the pod's namespace
+                            type: object
+                            required:
+                              - key
+                            properties:
+                              key:
+                                description: The key of the secret to select from.  Must be a valid secret key.
+                                type: string
+                              name:
+                                description: |-
+                                  Name of the referent.
+                                  This field is effectively required, but due to backwards compatibility is
+                                  allowed to be empty. Instances of this type with an empty value here are
+                                  almost certainly wrong.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                type: string
+                                default: ""
+                              optional:
+                                description: Specify whether the Secret or its key must be defined
+                                type: boolean
+                            x-kubernetes-map-type: atomic
+                  x-kubernetes-list-type: atomic
+                image:
+                  description: |-
+                    Image reference name to run for this StepAction.
+                    More info: https://kubernetes.io/docs/concepts/containers/images
+                  type: string
+                params:
+                  description: |-
+                    Params is a list of input parameters required to run the stepAction.
+                    Params must be supplied as inputs in Steps unless they declare a defaultvalue.
+                  type: array
+                  items:
+                    description: |-
+                      ParamSpec defines arbitrary parameters needed beyond typed inputs (such as
+                      resources). Parameter values are provided by users as inputs on a TaskRun
+                      or PipelineRun.
+                    type: object
+                    required:
+                      - name
+                    properties:
+                      default:
+                        description: |-
+                          Default is the value a parameter takes if no input value is supplied. If
+                          default is set, a Task may be executed without a supplied value for the
+                          parameter.
+                        x-kubernetes-preserve-unknown-fields: true
+                      description:
+                        description: |-
+                          Description is a user-facing description of the parameter that may be
+                          used to populate a UI.
+                        type: string
+                      enum:
+                        description: |-
+                          Enum declares a set of allowed param input values for tasks/pipelines that can be validated.
+                          If Enum is not set, no input validation is performed for the param.
+                        type: array
+                        items:
+                          type: string
+                      name:
+                        description: Name declares the name by which a parameter is referenced.
+                        type: string
+                      properties:
+                        description: Properties is the JSON Schema properties to support key-value pairs parameter.
+                        type: object
+                        additionalProperties:
+                          description: PropertySpec defines the struct for object keys
+                          type: object
+                          properties:
+                            type:
+                              description: |-
+                                ParamType indicates the type of an input parameter;
+                                Used to distinguish between a single string and an array of strings.
+                              type: string
+                      type:
+                        description: |-
+                          Type is the user-specified type of the parameter. The possible types
+                          are currently "string", "array" and "object", and "string" is the default.
+                        type: string
+                  x-kubernetes-list-type: atomic
+                results:
+                  description: Results are values that this StepAction can output
+                  type: array
+                  items:
+                    description: |-
+                      StepResult used to describe the Results of a Step.
+
+                      This is field is at an BETA stability level and gated by "enable-step-actions" feature flag.
+                    type: object
+                    required:
+                      - name
+                    properties:
+                      description:
+                        description: Description is a human-readable description of the result
+                        type: string
+                      name:
+                        description: Name the given name
+                        type: string
+                      properties:
+                        description: Properties is the JSON Schema properties to support key-value pairs results.
+                        type: object
+                        additionalProperties:
+                          description: PropertySpec defines the struct for object keys
+                          type: object
+                          properties:
+                            type:
+                              description: |-
+                                ParamType indicates the type of an input parameter;
+                                Used to distinguish between a single string and an array of strings.
+                              type: string
+                      type:
+                        description: The possible types are 'string', 'array', and 'object', with 'string' as the default.
+                        type: string
+                  x-kubernetes-list-type: atomic
+                script:
+                  description: |-
+                    Script is the contents of an executable file to execute.
+
+                    If Script is not empty, the Step cannot have an Command and the Args will be passed to the Script.
+                  type: string
+                securityContext:
+                  description: |-
+                    SecurityContext defines the security options the Step should be run with.
+                    If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
+                    More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+                    The value set in StepAction will take precedence over the value from Task.
+                  type: object
+                  properties:
+                    allowPrivilegeEscalation:
+                      description: |-
+                        AllowPrivilegeEscalation controls whether a process can gain more
+                        privileges than its parent process. This bool directly controls if
+                        the no_new_privs flag will be set on the container process.
+                        AllowPrivilegeEscalation is true always when the container is:
+                        1) run as Privileged
+                        2) has CAP_SYS_ADMIN
+                        Note that this field cannot be set when spec.os.name is windows.
+                      type: boolean
+                    appArmorProfile:
+                      description: |-
+                        appArmorProfile is the AppArmor options to use by this container. If set, this profile
+                        overrides the pod's appArmorProfile.
+                        Note that this field cannot be set when spec.os.name is windows.
+                      type: object
+                      required:
+                        - type
+                      properties:
+                        localhostProfile:
+                          description: |-
+                            localhostProfile indicates a profile loaded on the node that should be used.
+                            The profile must be preconfigured on the node to work.
+                            Must match the loaded name of the profile.
+                            Must be set if and only if type is "Localhost".
+                          type: string
+                        type:
+                          description: |-
+                            type indicates which kind of AppArmor profile will be applied.
+                            Valid options are:
+                              Localhost - a profile pre-loaded on the node.
+                              RuntimeDefault - the container runtime's default profile.
+                              Unconfined - no AppArmor enforcement.
+                          type: string
+                    capabilities:
+                      description: |-
+                        The capabilities to add/drop when running containers.
+                        Defaults to the default set of capabilities granted by the container runtime.
+                        Note that this field cannot be set when spec.os.name is windows.
+                      type: object
+                      properties:
+                        add:
+                          description: Added capabilities
+                          type: array
+                          items:
+                            description: Capability represent POSIX capabilities type
+                            type: string
+                          x-kubernetes-list-type: atomic
+                        drop:
+                          description: Removed capabilities
+                          type: array
+                          items:
+                            description: Capability represent POSIX capabilities type
+                            type: string
+                          x-kubernetes-list-type: atomic
+                    privileged:
+                      description: |-
+                        Run container in privileged mode.
+                        Processes in privileged containers are essentially equivalent to root on the host.
+                        Defaults to false.
+                        Note that this field cannot be set when spec.os.name is windows.
+                      type: boolean
+                    procMount:
+                      description: |-
+                        procMount denotes the type of proc mount to use for the containers.
+                        The default value is Default which uses the container runtime defaults for
+                        readonly paths and masked paths.
+                        This requires the ProcMountType feature flag to be enabled.
+                        Note that this field cannot be set when spec.os.name is windows.
+                      type: string
+                    readOnlyRootFilesystem:
+                      description: |-
+                        Whether this container has a read-only root filesystem.
+                        Default is false.
+                        Note that this field cannot be set when spec.os.name is windows.
+                      type: boolean
+                    runAsGroup:
+                      description: |-
+                        The GID to run the entrypoint of the container process.
+                        Uses runtime default if unset.
+                        May also be set in PodSecurityContext.  If set in both SecurityContext and
+                        PodSecurityContext, the value specified in SecurityContext takes precedence.
+                        Note that this field cannot be set when spec.os.name is windows.
+                      type: integer
+                      format: int64
+                    runAsNonRoot:
+                      description: |-
+                        Indicates that the container must run as a non-root user.
+                        If true, the Kubelet will validate the image at runtime to ensure that it
+                        does not run as UID 0 (root) and fail to start the container if it does.
+                        If unset or false, no such validation will be performed.
+                        May also be set in PodSecurityContext.  If set in both SecurityContext and
+                        PodSecurityContext, the value specified in SecurityContext takes precedence.
+                      type: boolean
+                    runAsUser:
+                      description: |-
+                        The UID to run the entrypoint of the container process.
+                        Defaults to user specified in image metadata if unspecified.
+                        May also be set in PodSecurityContext.  If set in both SecurityContext and
+                        PodSecurityContext, the value specified in SecurityContext takes precedence.
+                        Note that this field cannot be set when spec.os.name is windows.
+                      type: integer
+                      format: int64
+                    seLinuxOptions:
+                      description: |-
+                        The SELinux context to be applied to the container.
+                        If unspecified, the container runtime will allocate a random SELinux context for each
+                        container.  May also be set in PodSecurityContext.  If set in both SecurityContext and
+                        PodSecurityContext, the value specified in SecurityContext takes precedence.
+                        Note that this field cannot be set when spec.os.name is windows.
+                      type: object
+                      properties:
+                        level:
+                          description: Level is SELinux level label that applies to the container.
+                          type: string
+                        role:
+                          description: Role is a SELinux role label that applies to the container.
+                          type: string
+                        type:
+                          description: Type is a SELinux type label that applies to the container.
+                          type: string
+                        user:
+                          description: User is a SELinux user label that applies to the container.
+                          type: string
+                    seccompProfile:
+                      description: |-
+                        The seccomp options to use by this container. If seccomp options are
+                        provided at both the pod & container level, the container options
+                        override the pod options.
+                        Note that this field cannot be set when spec.os.name is windows.
+                      type: object
+                      required:
+                        - type
+                      properties:
+                        localhostProfile:
+                          description: |-
+                            localhostProfile indicates a profile defined in a file on the node should be used.
+                            The profile must be preconfigured on the node to work.
+                            Must be a descending path, relative to the kubelet's configured seccomp profile location.
+                            Must be set if type is "Localhost". Must NOT be set for any other type.
+                          type: string
+                        type:
+                          description: |-
+                            type indicates which kind of seccomp profile will be applied.
+                            Valid options are:
+
+                            Localhost - a profile defined in a file on the node should be used.
+                            RuntimeDefault - the container runtime default profile should be used.
+                            Unconfined - no profile should be applied.
+                          type: string
+                    windowsOptions:
+                      description: |-
+                        The Windows specific settings applied to all containers.
+                        If unspecified, the options from the PodSecurityContext will be used.
+                        If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.
+                        Note that this field cannot be set when spec.os.name is linux.
+                      type: object
+                      properties:
+                        gmsaCredentialSpec:
+                          description: |-
+                            GMSACredentialSpec is where the GMSA admission webhook
+                            (https://github.com/kubernetes-sigs/windows-gmsa) inlines the contents of the
+                            GMSA credential spec named by the GMSACredentialSpecName field.
+                          type: string
+                        gmsaCredentialSpecName:
+                          description: GMSACredentialSpecName is the name of the GMSA credential spec to use.
+                          type: string
+                        hostProcess:
+                          description: |-
+                            HostProcess determines if a container should be run as a 'Host Process' container.
+                            All of a Pod's containers must have the same effective HostProcess value
+                            (it is not allowed to have a mix of HostProcess containers and non-HostProcess containers).
+                            In addition, if HostProcess is true then HostNetwork must also be set to true.
+                          type: boolean
+                        runAsUserName:
+                          description: |-
+                            The UserName in Windows to run the entrypoint of the container process.
+                            Defaults to the user specified in image metadata if unspecified.
+                            May also be set in PodSecurityContext. If set in both SecurityContext and
+                            PodSecurityContext, the value specified in SecurityContext takes precedence.
+                          type: string
+                volumeMounts:
+                  description: |-
+                    Volumes to mount into the Step's filesystem.
+                    Cannot be updated.
+                  type: array
+                  items:
+                    description: VolumeMount describes a mounting of a Volume within a container.
+                    type: object
+                    required:
+                      - mountPath
+                      - name
+                    properties:
+                      mountPath:
+                        description: |-
+                          Path within the container at which the volume should be mounted.  Must
+                          not contain ':'.
+                        type: string
+                      mountPropagation:
+                        description: |-
+                          mountPropagation determines how mounts are propagated from the host
+                          to container and the other way around.
+                          When not set, MountPropagationNone is used.
+                          This field is beta in 1.10.
+                          When RecursiveReadOnly is set to IfPossible or to Enabled, MountPropagation must be None or unspecified
+                          (which defaults to None).
+                        type: string
+                      name:
+                        description: This must match the Name of a Volume.
+                        type: string
+                      readOnly:
+                        description: |-
+                          Mounted read-only if true, read-write otherwise (false or unspecified).
+                          Defaults to false.
+                        type: boolean
+                      recursiveReadOnly:
+                        description: |-
+                          RecursiveReadOnly specifies whether read-only mounts should be handled
+                          recursively.
+
+                          If ReadOnly is false, this field has no meaning and must be unspecified.
+
+                          If ReadOnly is true, and this field is set to Disabled, the mount is not made
+                          recursively read-only.  If this field is set to IfPossible, the mount is made
+                          recursively read-only, if it is supported by the container runtime.  If this
+                          field is set to Enabled, the mount is made recursively read-only if it is
+                          supported by the container runtime, otherwise the pod will not be started and
+                          an error will be generated to indicate the reason.
+
+                          If this field is set to IfPossible or Enabled, MountPropagation must be set to
+                          None (or be unspecified, which defaults to None).
+
+                          If this field is not specified, it is treated as an equivalent of Disabled.
+                        type: string
+                      subPath:
+                        description: |-
+                          Path within the volume from which the container's volume should be mounted.
+                          Defaults to "" (volume's root).
+                        type: string
+                      subPathExpr:
+                        description: |-
+                          Expanded path within the volume from which the container's volume should be mounted.
+                          Behaves similarly to SubPath but environment variable references $(VAR_NAME) are expanded using the container's environment.
+                          Defaults to "" (volume's root).
+                          SubPathExpr and SubPath are mutually exclusive.
+                        type: string
+                  x-kubernetes-list-type: atomic
+                workingDir:
+                  description: |-
+                    Step's working directory.
+                    If not specified, the container runtime's default will be used, which
+                    might be configured in the container image.
+                    Cannot be updated.
+                  type: string
+      # Opt into the status subresource so metadata.generation
+      # starts to increment
+      subresources:
+        status: {}
+    - name: v1beta1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          description: |-
+            StepAction represents the actionable components of Step.
+            The Step can only reference it from the cluster or using remote resolution.
+          type: object
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: Spec holds the desired state of the Step from the client
+              type: object
+              properties:
+                args:
+                  description: |-
+                    Arguments to the entrypoint.
+                    The image's CMD is used if this is not provided.
+                    Variable references $(VAR_NAME) are expanded using the container's environment. If a variable
+                    cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
+                    to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will
+                    produce the string literal "$(VAR_NAME)". Escaped references will never be expanded, regardless
+                    of whether the variable exists or not. Cannot be updated.
+                    More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell
+                  type: array
+                  items:
+                    type: string
+                  x-kubernetes-list-type: atomic
+                command:
+                  description: |-
+                    Entrypoint array. Not executed within a shell.
+                    The image's ENTRYPOINT is used if this is not provided.
+                    Variable references $(VAR_NAME) are expanded using the container's environment. If a variable
+                    cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
+                    to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will
+                    produce the string literal "$(VAR_NAME)". Escaped references will never be expanded, regardless
+                    of whether the variable exists or not. Cannot be updated.
+                    More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell
+                  type: array
+                  items:
+                    type: string
+                  x-kubernetes-list-type: atomic
+                description:
+                  description: |-
+                    Description is a user-facing description of the stepaction that may be
+                    used to populate a UI.
+                  type: string
+                env:
+                  description: |-
+                    List of environment variables to set in the container.
+                    Cannot be updated.
+                  type: array
+                  items:
+                    description: EnvVar represents an environment variable present in a Container.
+                    type: object
+                    required:
+                      - name
+                    properties:
+                      name:
+                        description: Name of the environment variable. Must be a C_IDENTIFIER.
+                        type: string
+                      value:
+                        description: |-
+                          Variable references $(VAR_NAME) are expanded
+                          using the previously defined environment variables in the container and
+                          any service environment variables. If a variable cannot be resolved,
+                          the reference in the input string will be unchanged. Double $$ are reduced
+                          to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e.
+                          "$$(VAR_NAME)" will produce the string literal "$(VAR_NAME)".
+                          Escaped references will never be expanded, regardless of whether the variable
+                          exists or not.
+                          Defaults to "".
+                        type: string
+                      valueFrom:
+                        description: Source for the environment variable's value. Cannot be used if value is not empty.
+                        type: object
+                        properties:
+                          configMapKeyRef:
+                            description: Selects a key of a ConfigMap.
+                            type: object
+                            required:
+                              - key
+                            properties:
+                              key:
+                                description: The key to select.
+                                type: string
+                              name:
+                                description: |-
+                                  Name of the referent.
+                                  This field is effectively required, but due to backwards compatibility is
+                                  allowed to be empty. Instances of this type with an empty value here are
+                                  almost certainly wrong.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                type: string
+                                default: ""
+                              optional:
+                                description: Specify whether the ConfigMap or its key must be defined
+                                type: boolean
+                            x-kubernetes-map-type: atomic
+                          fieldRef:
+                            description: |-
+                              Selects a field of the pod: supports metadata.name, metadata.namespace, `metadata.labels['<KEY>']`, `metadata.annotations['<KEY>']`,
+                              spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs.
+                            type: object
+                            required:
+                              - fieldPath
+                            properties:
+                              apiVersion:
+                                description: Version of the schema the FieldPath is written in terms of, defaults to "v1".
+                                type: string
+                              fieldPath:
+                                description: Path of the field to select in the specified API version.
+                                type: string
+                            x-kubernetes-map-type: atomic
+                          resourceFieldRef:
+                            description: |-
+                              Selects a resource of the container: only resources limits and requests
+                              (limits.cpu, limits.memory, limits.ephemeral-storage, requests.cpu, requests.memory and requests.ephemeral-storage) are currently supported.
+                            type: object
+                            required:
+                              - resource
+                            properties:
+                              containerName:
+                                description: 'Container name: required for volumes, optional for env vars'
+                                type: string
+                              divisor:
+                                description: Specifies the output format of the exposed resources, defaults to "1"
+                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                anyOf:
+                                  - type: integer
+                                  - type: string
+                                x-kubernetes-int-or-string: true
+                              resource:
+                                description: 'Required: resource to select'
+                                type: string
+                            x-kubernetes-map-type: atomic
+                          secretKeyRef:
+                            description: Selects a key of a secret in the pod's namespace
+                            type: object
+                            required:
+                              - key
+                            properties:
+                              key:
+                                description: The key of the secret to select from.  Must be a valid secret key.
+                                type: string
+                              name:
+                                description: |-
+                                  Name of the referent.
+                                  This field is effectively required, but due to backwards compatibility is
+                                  allowed to be empty. Instances of this type with an empty value here are
+                                  almost certainly wrong.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                type: string
+                                default: ""
+                              optional:
+                                description: Specify whether the Secret or its key must be defined
+                                type: boolean
+                            x-kubernetes-map-type: atomic
+                  x-kubernetes-list-type: atomic
+                image:
+                  description: |-
+                    Image reference name to run for this StepAction.
+                    More info: https://kubernetes.io/docs/concepts/containers/images
+                  type: string
+                params:
+                  description: |-
+                    Params is a list of input parameters required to run the stepAction.
+                    Params must be supplied as inputs in Steps unless they declare a defaultvalue.
+                  type: array
+                  items:
+                    description: |-
+                      ParamSpec defines arbitrary parameters needed beyond typed inputs (such as
+                      resources). Parameter values are provided by users as inputs on a TaskRun
+                      or PipelineRun.
+                    type: object
+                    required:
+                      - name
+                    properties:
+                      default:
+                        description: |-
+                          Default is the value a parameter takes if no input value is supplied. If
+                          default is set, a Task may be executed without a supplied value for the
+                          parameter.
+                        x-kubernetes-preserve-unknown-fields: true
+                      description:
+                        description: |-
+                          Description is a user-facing description of the parameter that may be
+                          used to populate a UI.
+                        type: string
+                      enum:
+                        description: |-
+                          Enum declares a set of allowed param input values for tasks/pipelines that can be validated.
+                          If Enum is not set, no input validation is performed for the param.
+                        type: array
+                        items:
+                          type: string
+                      name:
+                        description: Name declares the name by which a parameter is referenced.
+                        type: string
+                      properties:
+                        description: Properties is the JSON Schema properties to support key-value pairs parameter.
+                        type: object
+                        additionalProperties:
+                          description: PropertySpec defines the struct for object keys
+                          type: object
+                          properties:
+                            type:
+                              description: |-
+                                ParamType indicates the type of an input parameter;
+                                Used to distinguish between a single string and an array of strings.
+                              type: string
+                      type:
+                        description: |-
+                          Type is the user-specified type of the parameter. The possible types
+                          are currently "string", "array" and "object", and "string" is the default.
+                        type: string
+                  x-kubernetes-list-type: atomic
+                results:
+                  description: Results are values that this StepAction can output
+                  type: array
+                  items:
+                    description: |-
+                      StepResult used to describe the Results of a Step.
+
+                      This is field is at an BETA stability level and gated by "enable-step-actions" feature flag.
+                    type: object
+                    required:
+                      - name
+                    properties:
+                      description:
+                        description: Description is a human-readable description of the result
+                        type: string
+                      name:
+                        description: Name the given name
+                        type: string
+                      properties:
+                        description: Properties is the JSON Schema properties to support key-value pairs results.
+                        type: object
+                        additionalProperties:
+                          description: PropertySpec defines the struct for object keys
+                          type: object
+                          properties:
+                            type:
+                              description: |-
+                                ParamType indicates the type of an input parameter;
+                                Used to distinguish between a single string and an array of strings.
+                              type: string
+                      type:
+                        description: The possible types are 'string', 'array', and 'object', with 'string' as the default.
+                        type: string
+                  x-kubernetes-list-type: atomic
+                script:
+                  description: |-
+                    Script is the contents of an executable file to execute.
+
+                    If Script is not empty, the Step cannot have an Command and the Args will be passed to the Script.
+                  type: string
+                securityContext:
+                  description: |-
+                    SecurityContext defines the security options the Step should be run with.
+                    If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
+                    More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+                    The value set in StepAction will take precedence over the value from Task.
+                  type: object
+                  properties:
+                    allowPrivilegeEscalation:
+                      description: |-
+                        AllowPrivilegeEscalation controls whether a process can gain more
+                        privileges than its parent process. This bool directly controls if
+                        the no_new_privs flag will be set on the container process.
+                        AllowPrivilegeEscalation is true always when the container is:
+                        1) run as Privileged
+                        2) has CAP_SYS_ADMIN
+                        Note that this field cannot be set when spec.os.name is windows.
+                      type: boolean
+                    appArmorProfile:
+                      description: |-
+                        appArmorProfile is the AppArmor options to use by this container. If set, this profile
+                        overrides the pod's appArmorProfile.
+                        Note that this field cannot be set when spec.os.name is windows.
+                      type: object
+                      required:
+                        - type
+                      properties:
+                        localhostProfile:
+                          description: |-
+                            localhostProfile indicates a profile loaded on the node that should be used.
+                            The profile must be preconfigured on the node to work.
+                            Must match the loaded name of the profile.
+                            Must be set if and only if type is "Localhost".
+                          type: string
+                        type:
+                          description: |-
+                            type indicates which kind of AppArmor profile will be applied.
+                            Valid options are:
+                              Localhost - a profile pre-loaded on the node.
+                              RuntimeDefault - the container runtime's default profile.
+                              Unconfined - no AppArmor enforcement.
+                          type: string
+                    capabilities:
+                      description: |-
+                        The capabilities to add/drop when running containers.
+                        Defaults to the default set of capabilities granted by the container runtime.
+                        Note that this field cannot be set when spec.os.name is windows.
+                      type: object
+                      properties:
+                        add:
+                          description: Added capabilities
+                          type: array
+                          items:
+                            description: Capability represent POSIX capabilities type
+                            type: string
+                          x-kubernetes-list-type: atomic
+                        drop:
+                          description: Removed capabilities
+                          type: array
+                          items:
+                            description: Capability represent POSIX capabilities type
+                            type: string
+                          x-kubernetes-list-type: atomic
+                    privileged:
+                      description: |-
+                        Run container in privileged mode.
+                        Processes in privileged containers are essentially equivalent to root on the host.
+                        Defaults to false.
+                        Note that this field cannot be set when spec.os.name is windows.
+                      type: boolean
+                    procMount:
+                      description: |-
+                        procMount denotes the type of proc mount to use for the containers.
+                        The default value is Default which uses the container runtime defaults for
+                        readonly paths and masked paths.
+                        This requires the ProcMountType feature flag to be enabled.
+                        Note that this field cannot be set when spec.os.name is windows.
+                      type: string
+                    readOnlyRootFilesystem:
+                      description: |-
+                        Whether this container has a read-only root filesystem.
+                        Default is false.
+                        Note that this field cannot be set when spec.os.name is windows.
+                      type: boolean
+                    runAsGroup:
+                      description: |-
+                        The GID to run the entrypoint of the container process.
+                        Uses runtime default if unset.
+                        May also be set in PodSecurityContext.  If set in both SecurityContext and
+                        PodSecurityContext, the value specified in SecurityContext takes precedence.
+                        Note that this field cannot be set when spec.os.name is windows.
+                      type: integer
+                      format: int64
+                    runAsNonRoot:
+                      description: |-
+                        Indicates that the container must run as a non-root user.
+                        If true, the Kubelet will validate the image at runtime to ensure that it
+                        does not run as UID 0 (root) and fail to start the container if it does.
+                        If unset or false, no such validation will be performed.
+                        May also be set in PodSecurityContext.  If set in both SecurityContext and
+                        PodSecurityContext, the value specified in SecurityContext takes precedence.
+                      type: boolean
+                    runAsUser:
+                      description: |-
+                        The UID to run the entrypoint of the container process.
+                        Defaults to user specified in image metadata if unspecified.
+                        May also be set in PodSecurityContext.  If set in both SecurityContext and
+                        PodSecurityContext, the value specified in SecurityContext takes precedence.
+                        Note that this field cannot be set when spec.os.name is windows.
+                      type: integer
+                      format: int64
+                    seLinuxOptions:
+                      description: |-
+                        The SELinux context to be applied to the container.
+                        If unspecified, the container runtime will allocate a random SELinux context for each
+                        container.  May also be set in PodSecurityContext.  If set in both SecurityContext and
+                        PodSecurityContext, the value specified in SecurityContext takes precedence.
+                        Note that this field cannot be set when spec.os.name is windows.
+                      type: object
+                      properties:
+                        level:
+                          description: Level is SELinux level label that applies to the container.
+                          type: string
+                        role:
+                          description: Role is a SELinux role label that applies to the container.
+                          type: string
+                        type:
+                          description: Type is a SELinux type label that applies to the container.
+                          type: string
+                        user:
+                          description: User is a SELinux user label that applies to the container.
+                          type: string
+                    seccompProfile:
+                      description: |-
+                        The seccomp options to use by this container. If seccomp options are
+                        provided at both the pod & container level, the container options
+                        override the pod options.
+                        Note that this field cannot be set when spec.os.name is windows.
+                      type: object
+                      required:
+                        - type
+                      properties:
+                        localhostProfile:
+                          description: |-
+                            localhostProfile indicates a profile defined in a file on the node should be used.
+                            The profile must be preconfigured on the node to work.
+                            Must be a descending path, relative to the kubelet's configured seccomp profile location.
+                            Must be set if type is "Localhost". Must NOT be set for any other type.
+                          type: string
+                        type:
+                          description: |-
+                            type indicates which kind of seccomp profile will be applied.
+                            Valid options are:
+
+                            Localhost - a profile defined in a file on the node should be used.
+                            RuntimeDefault - the container runtime default profile should be used.
+                            Unconfined - no profile should be applied.
+                          type: string
+                    windowsOptions:
+                      description: |-
+                        The Windows specific settings applied to all containers.
+                        If unspecified, the options from the PodSecurityContext will be used.
+                        If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.
+                        Note that this field cannot be set when spec.os.name is linux.
+                      type: object
+                      properties:
+                        gmsaCredentialSpec:
+                          description: |-
+                            GMSACredentialSpec is where the GMSA admission webhook
+                            (https://github.com/kubernetes-sigs/windows-gmsa) inlines the contents of the
+                            GMSA credential spec named by the GMSACredentialSpecName field.
+                          type: string
+                        gmsaCredentialSpecName:
+                          description: GMSACredentialSpecName is the name of the GMSA credential spec to use.
+                          type: string
+                        hostProcess:
+                          description: |-
+                            HostProcess determines if a container should be run as a 'Host Process' container.
+                            All of a Pod's containers must have the same effective HostProcess value
+                            (it is not allowed to have a mix of HostProcess containers and non-HostProcess containers).
+                            In addition, if HostProcess is true then HostNetwork must also be set to true.
+                          type: boolean
+                        runAsUserName:
+                          description: |-
+                            The UserName in Windows to run the entrypoint of the container process.
+                            Defaults to the user specified in image metadata if unspecified.
+                            May also be set in PodSecurityContext. If set in both SecurityContext and
+                            PodSecurityContext, the value specified in SecurityContext takes precedence.
+                          type: string
+                volumeMounts:
+                  description: |-
+                    Volumes to mount into the Step's filesystem.
+                    Cannot be updated.
+                  type: array
+                  items:
+                    description: VolumeMount describes a mounting of a Volume within a container.
+                    type: object
+                    required:
+                      - mountPath
+                      - name
+                    properties:
+                      mountPath:
+                        description: |-
+                          Path within the container at which the volume should be mounted.  Must
+                          not contain ':'.
+                        type: string
+                      mountPropagation:
+                        description: |-
+                          mountPropagation determines how mounts are propagated from the host
+                          to container and the other way around.
+                          When not set, MountPropagationNone is used.
+                          This field is beta in 1.10.
+                          When RecursiveReadOnly is set to IfPossible or to Enabled, MountPropagation must be None or unspecified
+                          (which defaults to None).
+                        type: string
+                      name:
+                        description: This must match the Name of a Volume.
+                        type: string
+                      readOnly:
+                        description: |-
+                          Mounted read-only if true, read-write otherwise (false or unspecified).
+                          Defaults to false.
+                        type: boolean
+                      recursiveReadOnly:
+                        description: |-
+                          RecursiveReadOnly specifies whether read-only mounts should be handled
+                          recursively.
+
+                          If ReadOnly is false, this field has no meaning and must be unspecified.
+
+                          If ReadOnly is true, and this field is set to Disabled, the mount is not made
+                          recursively read-only.  If this field is set to IfPossible, the mount is made
+                          recursively read-only, if it is supported by the container runtime.  If this
+                          field is set to Enabled, the mount is made recursively read-only if it is
+                          supported by the container runtime, otherwise the pod will not be started and
+                          an error will be generated to indicate the reason.
+
+                          If this field is set to IfPossible or Enabled, MountPropagation must be set to
+                          None (or be unspecified, which defaults to None).
+
+                          If this field is not specified, it is treated as an equivalent of Disabled.
+                        type: string
+                      subPath:
+                        description: |-
+                          Path within the volume from which the container's volume should be mounted.
+                          Defaults to "" (volume's root).
+                        type: string
+                      subPathExpr:
+                        description: |-
+                          Expanded path within the volume from which the container's volume should be mounted.
+                          Behaves similarly to SubPath but environment variable references $(VAR_NAME) are expanded using the container's environment.
+                          Defaults to "" (volume's root).
+                          SubPathExpr and SubPath are mutually exclusive.
+                        type: string
+                  x-kubernetes-list-type: atomic
+                workingDir:
+                  description: |-
+                    Step's working directory.
+                    If not specified, the container runtime's default will be used, which
+                    might be configured in the container image.
+                    Cannot be updated.
+                  type: string
+      # Opt into the status subresource so metadata.generation
+      # starts to increment
+      subresources:
+        status: {}
   names:
     kind: StepAction
     plural: stepactions
     singular: stepaction
     categories:
-    - tekton
-    - tekton-pipelines
+      - tekton
+      - tekton-pipelines
   scope: Namespaced

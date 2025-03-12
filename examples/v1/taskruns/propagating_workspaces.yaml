@@ -6,7 +6,7 @@ spec:
   taskSpec:
     steps:
       - name: simple-step
-        image: ubuntu
+        image: mirror.gcr.io/ubuntu
         command:
           - echo
         args:

@@ -12,17 +12,28 @@ import (
 )
 
 // Gets a list of all KMS keys in the caller's Amazon Web Services account and
-// Region. Cross-account use: No. You cannot perform this operation on a KMS key in
-// a different Amazon Web Services account. Required permissions: kms:ListKeys (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
-// (IAM policy) Related operations:
-//   - CreateKey
-//   - DescribeKey
-//   - ListAliases
-//   - ListResourceTags
+// Region.
+//
+// Cross-account use: No. You cannot perform this operation on a KMS key in a
+// different Amazon Web Services account.
+//
+// Required permissions: [kms:ListKeys] (IAM policy)
+//
+// Related operations:
+//
+// # CreateKey
+//
+// # DescribeKey
+//
+// # ListAliases
+//
+// # ListResourceTags
 //
 // Eventual consistency: The KMS API follows an eventual consistency model. For
-// more information, see KMS eventual consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
-// .
+// more information, see [KMS eventual consistency].
+//
+// [kms:ListKeys]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
+// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html
 func (c *Client) ListKeys(ctx context.Context, params *ListKeysInput, optFns ...func(*Options)) (*ListKeysOutput, error) {
 	if params == nil {
 		params = &ListKeysInput{}
@@ -42,9 +53,10 @@ type ListKeysInput struct {
 
 	// Use this parameter to specify the maximum number of items to return. When this
 	// value is present, KMS does not return more than the specified number of items,
-	// but it might return fewer. This value is optional. If you include a value, it
-	// must be between 1 and 1000, inclusive. If you do not include a value, it
-	// defaults to 100.
+	// but it might return fewer.
+	//
+	// This value is optional. If you include a value, it must be between 1 and 1000,
+	// inclusive. If you do not include a value, it defaults to 100.
 	Limit *int32
 
 	// Use this parameter in a subsequent request after you receive a response with
@@ -66,7 +78,7 @@ type ListKeysOutput struct {
 
 	// A flag that indicates whether there are more items in the list. When this value
 	// is true, the list in this response is truncated. To get more items, pass the
-	// value of the NextMarker element in thisresponse to the Marker parameter in a
+	// value of the NextMarker element in this response to the Marker parameter in a
 	// subsequent request.
 	Truncated bool
 
@@ -119,6 +131,9 @@ func (c *Client) addOperationListKeysMiddlewares(stack *middleware.Stack, option
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -129,6 +144,12 @@ func (c *Client) addOperationListKeysMiddlewares(stack *middleware.Stack, option
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListKeys(options.Region), middleware.Before); err != nil {
@@ -149,23 +170,29 @@ func (c *Client) addOperationListKeysMiddlewares(stack *middleware.Stack, option
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListKeysAPIClient is a client that implements the ListKeys operation.
-type ListKeysAPIClient interface {
-	ListKeys(context.Context, *ListKeysInput, ...func(*Options)) (*ListKeysOutput, error)
-}
-
-var _ ListKeysAPIClient = (*Client)(nil)
 
 // ListKeysPaginatorOptions is the paginator options for ListKeys
 type ListKeysPaginatorOptions struct {
 	// Use this parameter to specify the maximum number of items to return. When this
 	// value is present, KMS does not return more than the specified number of items,
-	// but it might return fewer. This value is optional. If you include a value, it
-	// must be between 1 and 1000, inclusive. If you do not include a value, it
-	// defaults to 100.
+	// but it might return fewer.
+	//
+	// This value is optional. If you include a value, it must be between 1 and 1000,
+	// inclusive. If you do not include a value, it defaults to 100.
 	Limit int32
 
 	// Set to true if pagination should stop if the service returns a pagination token
@@ -226,6 +253,9 @@ func (p *ListKeysPaginator) NextPage(ctx context.Context, optFns ...func(*Option
 	}
 	params.Limit = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListKeys(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -244,6 +274,13 @@ func (p *ListKeysPaginator) NextPage(ctx context.Context, optFns ...func(*Option
 
 	return result, nil
 }
+
+// ListKeysAPIClient is a client that implements the ListKeys operation.
+type ListKeysAPIClient interface {
+	ListKeys(context.Context, *ListKeysInput, ...func(*Options)) (*ListKeysOutput, error)
+}
+
+var _ ListKeysAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListKeys(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

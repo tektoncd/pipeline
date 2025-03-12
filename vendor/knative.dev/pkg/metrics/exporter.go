@@ -271,8 +271,7 @@ func flushGivenExporter(e view.Exporter) bool {
 	return false
 }
 
-type noneExporter struct {
-}
+type noneExporter struct{}
 
 // NoneExporter implements view.Exporter in the nil case.
 func (*noneExporter) ExportView(*view.Data) {

@@ -106,7 +106,7 @@ spec:
       description: A result message
   steps:
     - name: write
-      image: ubuntu
+      image: mirror.gcr.io/ubuntu
       script: echo $(params.message) | tee $(workspaces.task-ws.path)/message $(results.message.path)
   workspaces:
     - name: task-ws
@@ -127,7 +127,7 @@ spec:
       description: Input message in upper case
   steps:
     - name: to-upper
-      image: ubuntu
+      image: mirror.gcr.io/ubuntu
       script: cat $(workspaces.w.path)/$(params.input-path) | tr '[:lower:]' '[:upper:]' | tee $(workspaces.w.path)/upper $(results.message.path)
   workspaces:
     - name: w
@@ -148,7 +148,7 @@ spec:
       description: Input message in lower case
   steps:
     - name: to-lower
-      image: ubuntu
+      image: mirror.gcr.io/ubuntu
       script: cat $(workspaces.w.path)/$(params.input-path) | tr '[:upper:]' '[:lower:]' | tee $(workspaces.w.path)/lower $(results.message.path)
   workspaces:
     - name: w
@@ -166,7 +166,7 @@ spec:
       type: string
   steps:
     - name: report-result
-      image: ubuntu
+      image: mirror.gcr.io/ubuntu
       script: echo $(params.result-to-report)
 ---
 apiVersion: tekton.dev/v1
@@ -176,10 +176,10 @@ metadata:
 spec:
   steps:
     - name: validate-upper
-      image: ubuntu
+      image: mirror.gcr.io/ubuntu
       script: cat $(workspaces.files.path)/upper | grep HELLO\ TEKTON
     - name: validate-lower
-      image: ubuntu
+      image: mirror.gcr.io/ubuntu
       script: cat $(workspaces.files.path)/lower | grep hello\ tekton
   workspaces:
     - name: files

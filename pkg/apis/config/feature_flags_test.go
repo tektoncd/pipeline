@@ -43,7 +43,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				RequireGitSSHSecretKnownHosts:    false,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
-				EnableTektonOCIBundles:           config.DefaultEnableTektonOciBundles,
 				EnableAPIFields:                  config.DefaultEnableAPIFields,
 				SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
 				VerificationNoMatchPolicy:        config.DefaultNoMatchPolicyConfig,
@@ -64,27 +63,28 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		},
 		{
 			expectedConfig: &config.FeatureFlags{
-				DisableAffinityAssistant:         true,
-				RunningInEnvWithInjectedSidecars: false,
-				AwaitSidecarReadiness:            false,
-				RequireGitSSHSecretKnownHosts:    true,
-				EnableTektonOCIBundles:           true,
-				EnableAPIFields:                  "alpha",
-				SendCloudEventsForRuns:           true,
-				EnforceNonfalsifiability:         "spire",
-				VerificationNoMatchPolicy:        config.FailNoMatchPolicy,
-				EnableProvenanceInStatus:         false,
-				ResultExtractionMethod:           "termination-message",
-				EnableKeepPodOnCancel:            true,
-				MaxResultSize:                    4096,
-				SetSecurityContext:               true,
-				Coschedule:                       config.CoscheduleDisabled,
-				EnableCELInWhenExpression:        true,
-				EnableStepActions:                true,
-				EnableArtifacts:                  true,
-				EnableParamEnum:                  true,
-				DisableInlineSpec:                "pipeline,pipelinerun,taskrun",
-				EnableConciseResolverSyntax:      true,
+				DisableAffinityAssistant:                 true,
+				RunningInEnvWithInjectedSidecars:         false,
+				AwaitSidecarReadiness:                    false,
+				RequireGitSSHSecretKnownHosts:            true,
+				EnableAPIFields:                          "alpha",
+				SendCloudEventsForRuns:                   true,
+				EnforceNonfalsifiability:                 "spire",
+				VerificationNoMatchPolicy:                config.FailNoMatchPolicy,
+				EnableProvenanceInStatus:                 false,
+				ResultExtractionMethod:                   "termination-message",
+				EnableKeepPodOnCancel:                    true,
+				MaxResultSize:                            4096,
+				SetSecurityContext:                       true,
+				SetSecurityContextReadOnlyRootFilesystem: true,
+				Coschedule:                               config.CoscheduleDisabled,
+				EnableCELInWhenExpression:                true,
+				EnableStepActions:                        true,
+				EnableArtifacts:                          true,
+				EnableParamEnum:                          true,
+				DisableInlineSpec:                        "pipeline,pipelinerun,taskrun",
+				EnableConciseResolverSyntax:              true,
+				EnableKubernetesSidecar:                  true,
 			},
 			fileName: "feature-flags-all-flags-set",
 		},
@@ -93,7 +93,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableAPIFields: "alpha",
 				// These are prescribed as true by enabling "alpha" API fields, even
 				// if the submitted text value is "false".
-				EnableTektonOCIBundles:           true,
 				EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
 				DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
@@ -119,7 +118,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		{
 			expectedConfig: &config.FeatureFlags{
 				EnableAPIFields:                  "stable",
-				EnableTektonOCIBundles:           true,
 				EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
 				DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
@@ -141,7 +139,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		{
 			expectedConfig: &config.FeatureFlags{
 				EnableAPIFields:                  "beta",
-				EnableTektonOCIBundles:           config.DefaultEnableTektonOciBundles,
 				EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
 				DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
@@ -164,7 +161,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 			expectedConfig: &config.FeatureFlags{
 				EnableAPIFields:                  config.DefaultEnableAPIFields,
 				EnforceNonfalsifiability:         config.EnforceNonfalsifiabilityWithSpire,
-				EnableTektonOCIBundles:           config.DefaultEnableTektonOciBundles,
 				VerificationNoMatchPolicy:        config.DefaultNoMatchPolicyConfig,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
@@ -220,7 +216,6 @@ func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 		RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 		AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
 		RequireGitSSHSecretKnownHosts:    config.DefaultRequireGitSSHSecretKnownHosts,
-		EnableTektonOCIBundles:           config.DefaultEnableTektonOciBundles,
 		EnableAPIFields:                  config.DefaultEnableAPIFields,
 		SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
 		EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
@@ -321,6 +316,12 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 	}, {
 		fileName: "feature-flags-invalid-enable-concise-resolver-syntax",
 		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature enable-concise-resolver-syntax`,
+	}, {
+		fileName: "feature-flags-invalid-enable-kubernetes-sidecar",
+		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax`,
+	}, {
+		fileName: "feature-flags-invalid-set_security_context_read_only_root_filesystem",
+		want:     `failed parsing feature flags config "invalid read only root filesystem flag": strconv.ParseBool: parsing "invalid read only root filesystem flag": invalid syntax`,
 	}} {
 		t.Run(tc.fileName, func(t *testing.T) {
 			cm := test.ConfigMapFromTestFile(t, tc.fileName)
@@ -335,7 +336,6 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 }
 
 func TestGetVerificationNoMatchPolicy(t *testing.T) {
-	ctx := context.Background()
 	tcs := []struct {
 		name, noMatchPolicy, expected string
 	}{{
@@ -354,6 +354,7 @@ func TestGetVerificationNoMatchPolicy(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
 			store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
 			featureflags := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -417,7 +418,7 @@ func TestIsSpireEnabled(t *testing.T) {
 			Data: tc.configmap,
 		}
 		store.OnConfigChanged(featureflags)
-		ctx = store.ToContext(ctx)
+		ctx := store.ToContext(ctx)
 		got := config.IsSpireEnabled(ctx)
 
 		if tc.want != got {

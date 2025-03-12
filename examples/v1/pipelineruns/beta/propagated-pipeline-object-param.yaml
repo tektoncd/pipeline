@@ -19,7 +19,7 @@ spec:
         taskSpec:
           steps:
             - name: write-result
-              image: bash
+              image: mirror.gcr.io/bash
               args: [
                 "echo",
                 "--url=$(params.gitrepo.url)",

@@ -214,10 +214,18 @@ func (trd *TaskRunDebug) convertFrom(ctx context.Context, source v1.TaskRunDebug
 
 func (tbp TaskBreakpoints) convertTo(ctx context.Context, sink *v1.TaskBreakpoints) {
 	sink.OnFailure = tbp.OnFailure
+	if len(tbp.BeforeSteps) > 0 {
+		sink.BeforeSteps = make([]string, 0)
+		sink.BeforeSteps = append(sink.BeforeSteps, tbp.BeforeSteps...)
+	}
 }
 
 func (tbp *TaskBreakpoints) convertFrom(ctx context.Context, source v1.TaskBreakpoints) {
 	tbp.OnFailure = source.OnFailure
+	if len(source.BeforeSteps) > 0 {
+		tbp.BeforeSteps = make([]string, 0)
+		tbp.BeforeSteps = append(tbp.BeforeSteps, source.BeforeSteps...)
+	}
 }
 
 func (trso TaskRunStepOverride) convertTo(ctx context.Context, sink *v1.TaskRunStepSpec) {
@@ -345,6 +353,12 @@ func (ss StepState) convertTo(ctx context.Context, sink *v1.StepState) {
 	sink.ImageID = ss.ImageID
 	sink.Results = nil
 
+	if ss.Provenance != nil {
+		new := v1.Provenance{}
+		ss.Provenance.convertTo(ctx, &new)
+		sink.Provenance = &new
+	}
+
 	if ss.ContainerState.Terminated != nil {
 		sink.TerminationReason = ss.ContainerState.Terminated.Reason
 	}
@@ -378,6 +392,11 @@ func (ss *StepState) convertFrom(ctx context.Context, source v1.StepState) {
 		new := TaskRunStepResult{}
 		new.convertFrom(ctx, r)
 		ss.Results = append(ss.Results, new)
+	}
+	if source.Provenance != nil {
+		new := Provenance{}
+		new.convertFrom(ctx, *source.Provenance)
+		ss.Provenance = &new
 	}
 	for _, o := range source.Outputs {
 		new := TaskRunStepArtifact{}

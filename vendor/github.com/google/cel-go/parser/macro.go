@@ -170,11 +170,12 @@ type ExprHelper interface {
 	// NewStructField creates a new struct field initializer from the field name and value.
 	NewStructField(field string, init ast.Expr, optional bool) ast.EntryExpr
 
-	// NewComprehension creates a new comprehension instruction.
+	// NewComprehension creates a new one-variable comprehension instruction.
 	//
 	// - iterRange represents the expression that resolves to a list or map where the elements or
 	//   keys (respectively) will be iterated over.
-	// - iterVar is the iteration variable name.
+	// - iterVar is the variable name for the list element value, or the map key, depending on the
+	//   range type.
 	// - accuVar is the accumulation variable name, typically parser.AccumulatorName.
 	// - accuInit is the initial expression whose value will be set for the accuVar prior to
 	//   folding.
@@ -186,11 +187,36 @@ type ExprHelper interface {
 	// environment in the step and condition expressions. Presently, the name __result__ is commonly
 	// used by built-in macros but this may change in the future.
 	NewComprehension(iterRange ast.Expr,
-		iterVar string,
+		iterVar,
 		accuVar string,
-		accuInit ast.Expr,
-		condition ast.Expr,
-		step ast.Expr,
+		accuInit,
+		condition,
+		step,
+		result ast.Expr) ast.Expr
+
+	// NewComprehensionTwoVar creates a new two-variable comprehension instruction.
+	//
+	// - iterRange represents the expression that resolves to a list or map where the elements or
+	//   keys (respectively) will be iterated over.
+	// - iterVar is the iteration variable assigned to the list index or the map key.
+	// - iterVar2 is the iteration variable assigned to the list element value or the map key value.
+	// - accuVar is the accumulation variable name, typically parser.AccumulatorName.
+	// - accuInit is the initial expression whose value will be set for the accuVar prior to
+	//   folding.
+	// - condition is the expression to test to determine whether to continue folding.
+	// - step is the expression to evaluation at the conclusion of a single fold iteration.
+	// - result is the computation to evaluate at the conclusion of the fold.
+	//
+	// The accuVar should not shadow variable names that you would like to reference within the
+	// environment in the step and condition expressions. Presently, the name __result__ is commonly
+	// used by built-in macros but this may change in the future.
+	NewComprehensionTwoVar(iterRange ast.Expr,
+		iterVar,
+		iterVar2,
+		accuVar string,
+		accuInit,
+		condition,
+		step,
 		result ast.Expr) ast.Expr
 
 	// NewIdent creates an identifier Expr value.
@@ -198,6 +224,9 @@ type ExprHelper interface {
 
 	// NewAccuIdent returns an accumulator identifier for use with comprehension results.
 	NewAccuIdent() ast.Expr
+
+	// AccuIdentName returns the name of the accumulator identifier.
+	AccuIdentName() string
 
 	// NewCall creates a function call Expr value for a global (free) function.
 	NewCall(function string, args ...ast.Expr) ast.Expr
@@ -233,7 +262,12 @@ var (
 
 	// ExistsOneMacro expands "range.exists_one(var, predicate)", which is true if for exactly one
 	// element in range the predicate holds.
+	// Deprecated: Use ExistsOneMacroNew
 	ExistsOneMacro = NewReceiverMacro(operators.ExistsOne, 2, MakeExistsOne)
+
+	// ExistsOneMacroNew expands "range.existsOne(var, predicate)", which is true if for exactly one
+	// element in range the predicate holds.
+	ExistsOneMacroNew = NewReceiverMacro("existsOne", 2, MakeExistsOne)
 
 	// MapMacro expands "range.map(var, function)" into a comprehension which applies the function
 	// to each element in the range to produce a new list.
@@ -254,6 +288,7 @@ var (
 		AllMacro,
 		ExistsMacro,
 		ExistsOneMacro,
+		ExistsOneMacroNew,
 		MapMacro,
 		MapFilterMacro,
 		FilterMacro,
@@ -265,6 +300,11 @@ var (
 
 // AccumulatorName is the traditional variable name assigned to the fold accumulator variable.
 const AccumulatorName = "__result__"
+
+// HiddenAccumulatorName is a proposed update to the default fold accumlator variable.
+// @result is not normally accessible from source, preventing accidental or intentional collisions
+// in user expressions.
+const HiddenAccumulatorName = "@result"
 
 type quantifierKind int
 
@@ -310,6 +350,10 @@ func MakeMap(eh ExprHelper, target ast.Expr, args []ast.Expr) (ast.Expr, *common
 	if !found {
 		return nil, eh.NewError(args[0].ID(), "argument is not an identifier")
 	}
+	accu := eh.AccuIdentName()
+	if v == accu || v == AccumulatorName {
+		return nil, eh.NewError(args[0].ID(), "iteration variable overwrites accumulator variable")
+	}
 
 	var fn ast.Expr
 	var filter ast.Expr
@@ -329,7 +373,7 @@ func MakeMap(eh ExprHelper, target ast.Expr, args []ast.Expr) (ast.Expr, *common
 	if filter != nil {
 		step = eh.NewCall(operators.Conditional, filter, step, eh.NewAccuIdent())
 	}
-	return eh.NewComprehension(target, v, AccumulatorName, init, condition, step, eh.NewAccuIdent()), nil
+	return eh.NewComprehension(target, v, accu, init, condition, step, eh.NewAccuIdent()), nil
 }
 
 // MakeFilter expands the input call arguments into a comprehension which produces a list which contains
@@ -340,13 +384,17 @@ func MakeFilter(eh ExprHelper, target ast.Expr, args []ast.Expr) (ast.Expr, *com
 	if !found {
 		return nil, eh.NewError(args[0].ID(), "argument is not an identifier")
 	}
+	accu := eh.AccuIdentName()
+	if v == accu || v == AccumulatorName {
+		return nil, eh.NewError(args[0].ID(), "iteration variable overwrites accumulator variable")
+	}
 
 	filter := args[1]
 	init := eh.NewList()
 	condition := eh.NewLiteral(types.True)
 	step := eh.NewCall(operators.Add, eh.NewAccuIdent(), eh.NewList(args[0]))
 	step = eh.NewCall(operators.Conditional, filter, step, eh.NewAccuIdent())
-	return eh.NewComprehension(target, v, AccumulatorName, init, condition, step, eh.NewAccuIdent()), nil
+	return eh.NewComprehension(target, v, accu, init, condition, step, eh.NewAccuIdent()), nil
 }
 
 // MakeHas expands the input call arguments into a presence test, e.g. has(<operand>.field)
@@ -362,6 +410,10 @@ func makeQuantifier(kind quantifierKind, eh ExprHelper, target ast.Expr, args []
 	v, found := extractIdent(args[0])
 	if !found {
 		return nil, eh.NewError(args[0].ID(), "argument must be a simple name")
+	}
+	accu := eh.AccuIdentName()
+	if v == accu || v == AccumulatorName {
+		return nil, eh.NewError(args[0].ID(), "iteration variable overwrites accumulator variable")
 	}
 
 	var init ast.Expr
@@ -382,17 +434,15 @@ func makeQuantifier(kind quantifierKind, eh ExprHelper, target ast.Expr, args []
 		step = eh.NewCall(operators.LogicalOr, eh.NewAccuIdent(), args[1])
 		result = eh.NewAccuIdent()
 	case quantifierExistsOne:
-		zeroExpr := eh.NewLiteral(types.Int(0))
-		oneExpr := eh.NewLiteral(types.Int(1))
-		init = zeroExpr
+		init = eh.NewLiteral(types.Int(0))
 		condition = eh.NewLiteral(types.True)
 		step = eh.NewCall(operators.Conditional, args[1],
-			eh.NewCall(operators.Add, eh.NewAccuIdent(), oneExpr), eh.NewAccuIdent())
-		result = eh.NewCall(operators.Equals, eh.NewAccuIdent(), oneExpr)
+			eh.NewCall(operators.Add, eh.NewAccuIdent(), eh.NewLiteral(types.Int(1))), eh.NewAccuIdent())
+		result = eh.NewCall(operators.Equals, eh.NewAccuIdent(), eh.NewLiteral(types.Int(1)))
 	default:
 		return nil, eh.NewError(args[0].ID(), fmt.Sprintf("unrecognized quantifier '%v'", kind))
 	}
-	return eh.NewComprehension(target, v, AccumulatorName, init, condition, step, result), nil
+	return eh.NewComprehension(target, v, accu, init, condition, step, result), nil
 }
 
 func extractIdent(e ast.Expr) (string, bool) {

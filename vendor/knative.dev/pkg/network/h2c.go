@@ -32,7 +32,7 @@ func NewServer(addr string, h http.Handler) *http.Server {
 	h1s := &http.Server{
 		Addr:              addr,
 		Handler:           h2c.NewHandler(h, &http2.Server{}),
-		ReadHeaderTimeout: time.Minute, //https://medium.com/a-journey-with-go/go-understand-and-mitigate-slowloris-attack-711c1b1403f6
+		ReadHeaderTimeout: time.Minute, // https://medium.com/a-journey-with-go/go-understand-and-mitigate-slowloris-attack-711c1b1403f6
 	}
 
 	return h1s

@@ -180,7 +180,7 @@ func TestEmitK8sEventsOnConditions(t *testing.T) {
 		k8sevents.EmitK8sEvents(ctx, ts.before, ts.after, tr)
 		err := k8sevents.CheckEventsOrdered(t, recorder.Events, ts.name, ts.wantEvents)
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Error(err.Error())
 		}
 	}
 }
@@ -237,7 +237,7 @@ func TestEmitK8sEvents(t *testing.T) {
 		recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
 		k8sevents.EmitK8sEvents(ctx, nil, after, object)
 		if err := k8sevents.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
-			t.Fatalf(err.Error())
+			t.Fatal(err.Error())
 		}
 	}
 }
@@ -263,7 +263,7 @@ func TestEmitError(t *testing.T) {
 		k8sevents.EmitError(fr, ts.err, tr)
 		err := k8sevents.CheckEventsOrdered(t, fr.Events, ts.name, ts.wantEvents)
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Error(err.Error())
 		}
 	}
 }

@@ -2,7 +2,7 @@
 set -eu -o pipefail
 
 RELEASE_BRANCH=${1:-$(git rev-parse --abbrev-ref HEAD)}
-shift
+LATEST=${LATEST:-false}
 
 echo "> Make sure our remotes are up-to-date"
 git fetch -p --all
@@ -41,15 +41,22 @@ echo "> Starting the release pipeline"
 tkn pipeline start pipeline-release \
   --serviceaccount=release-right-meow \
   --param=gitRevision="${TEKTON_RELEASE_GIT_SHA}" \
+  --param=imageRegistry=ghcr.io \
+  --param=imageRegistryRegions="" \
+  --param=imageRegistryPath=tektoncd/pipeline \
+  --param=imageRegistryUser=tekton-robot \
   --param=serviceAccountPath=release.json \
+  --param serviceAccountImagesPath=credentials \
   --param=versionTag="${TEKTON_VERSION}" \
   --param=releaseBucket=gs://tekton-releases/pipeline \
-  --param=releaseAsLatest="false" \
+  --param=koExtraArgs=" " \
+  --param=releaseAsLatest="${LATEST}" \
   --workspace name=release-secret,secret=release-secret \
+  --workspace name=release-images-secret,secret=ghcr-creds \
   --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml --use-param-defaults --pipeline-timeout 3h --showlog
 
 RELEASE_FILE=https://storage.googleapis.com/tekton-releases/pipeline/previous/${TEKTON_VERSION}/release.yaml
-CONTROLLER_IMAGE_SHA=$(curl $RELEASE_FILE | egrep 'gcr.io.*controller' | cut -d'@' -f2)
+CONTROLLER_IMAGE_SHA=$(curl $RELEASE_FILE | egrep 'ghcr.io.*controller' | cut -d'@' -f2)
 REKOR_UUID=$(rekor-cli search --sha $CONTROLLER_IMAGE_SHA | grep -v Found | head -1)
 echo -e "CONTROLLER_IMAGE_SHA: ${CONTROLLER_IMAGE_SHA}\nREKOR_UUID: ${REKOR_UUID}"
 

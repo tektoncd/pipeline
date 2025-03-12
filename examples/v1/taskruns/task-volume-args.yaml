@@ -17,7 +17,7 @@ spec:
       type: string
     steps:
     - name: read
-      image: ubuntu
+      image: mirror.gcr.io/ubuntu
       script: |
         #!/usr/bin/env bash
         cat /configmap/test.data

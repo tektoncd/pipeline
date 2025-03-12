@@ -13,22 +13,33 @@ import (
 // Deletes key material that was previously imported. This operation makes the
 // specified KMS key temporarily unusable. To restore the usability of the KMS key,
 // reimport the same key material. For more information about importing key
-// material into KMS, see Importing Key Material (https://docs.aws.amazon.com/kms/latest/developerguide/importing-keys.html)
-// in the Key Management Service Developer Guide. When the specified KMS key is in
-// the PendingDeletion state, this operation does not change the KMS key's state.
-// Otherwise, it changes the KMS key's state to PendingImport . The KMS key that
-// you use for this operation must be in a compatible key state. For details, see
-// Key states of KMS keys (https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html)
-// in the Key Management Service Developer Guide. Cross-account use: No. You cannot
-// perform this operation on a KMS key in a different Amazon Web Services account.
-// Required permissions: kms:DeleteImportedKeyMaterial (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
-// (key policy) Related operations:
-//   - GetParametersForImport
-//   - ImportKeyMaterial
+// material into KMS, see [Importing Key Material]in the Key Management Service Developer Guide.
+//
+// When the specified KMS key is in the PendingDeletion state, this operation does
+// not change the KMS key's state. Otherwise, it changes the KMS key's state to
+// PendingImport .
+//
+// The KMS key that you use for this operation must be in a compatible key state.
+// For details, see [Key states of KMS keys]in the Key Management Service Developer Guide.
+//
+// Cross-account use: No. You cannot perform this operation on a KMS key in a
+// different Amazon Web Services account.
+//
+// Required permissions: [kms:DeleteImportedKeyMaterial] (key policy)
+//
+// Related operations:
+//
+// # GetParametersForImport
+//
+// # ImportKeyMaterial
 //
 // Eventual consistency: The KMS API follows an eventual consistency model. For
-// more information, see KMS eventual consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
-// .
+// more information, see [KMS eventual consistency].
+//
+// [Key states of KMS keys]: https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html
+// [kms:DeleteImportedKeyMaterial]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
+// [Importing Key Material]: https://docs.aws.amazon.com/kms/latest/developerguide/importing-keys.html
+// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html
 func (c *Client) DeleteImportedKeyMaterial(ctx context.Context, params *DeleteImportedKeyMaterialInput, optFns ...func(*Options)) (*DeleteImportedKeyMaterialOutput, error) {
 	if params == nil {
 		params = &DeleteImportedKeyMaterialInput{}
@@ -47,12 +58,18 @@ func (c *Client) DeleteImportedKeyMaterial(ctx context.Context, params *DeleteIm
 type DeleteImportedKeyMaterialInput struct {
 
 	// Identifies the KMS key from which you are deleting imported key material. The
-	// Origin of the KMS key must be EXTERNAL . Specify the key ID or key ARN of the
-	// KMS key. For example:
+	// Origin of the KMS key must be EXTERNAL .
+	//
+	// Specify the key ID or key ARN of the KMS key.
+	//
+	// For example:
+	//
 	//   - Key ID: 1234abcd-12ab-34cd-56ef-1234567890ab
+	//
 	//   - Key ARN:
 	//   arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab
-	// To get the key ID and key ARN for a KMS key, use ListKeys or DescribeKey .
+	//
+	// To get the key ID and key ARN for a KMS key, use ListKeys or DescribeKey.
 	//
 	// This member is required.
 	KeyId *string
@@ -110,6 +127,9 @@ func (c *Client) addOperationDeleteImportedKeyMaterialMiddlewares(stack *middlew
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -120,6 +140,12 @@ func (c *Client) addOperationDeleteImportedKeyMaterialMiddlewares(stack *middlew
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteImportedKeyMaterialValidationMiddleware(stack); err != nil {
@@ -141,6 +167,18 @@ func (c *Client) addOperationDeleteImportedKeyMaterialMiddlewares(stack *middlew
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

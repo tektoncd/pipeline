@@ -70,7 +70,7 @@ func requireAnyGate(gates map[string]string) func(context.Context, *testing.T, *
 	}
 }
 
-// requireAllgates returns a setup func that will skip the current
+// requireAllGates returns a setup func that will skip the current
 // test if all of the feature-flags in the given map don't match
 // what's in the feature-flags ConfigMap. It will fatally fail
 // the test if it cannot get the feature-flag configmap.
@@ -119,11 +119,13 @@ func getFeatureFlagsBaseOnAPIFlag(t *testing.T) *config.FeatureFlags {
 		"enable-param-enum":              "true",
 		"enable-artifacts":               "true",
 		"enable-concise-resolver-syntax": "true",
+		"enable-kubernetes-sidecar":      "true",
 	})
 	if err != nil {
 		t.Fatalf("error creating alpha feature flags configmap: %v", err)
 	}
 	betaFeatureFlags, err := config.NewFeatureFlagsFromMap(map[string]string{
+		"results-from":        "sidecar-logs",
 		"enable-api-fields":   "beta",
 		"enable-step-actions": "true",
 	})

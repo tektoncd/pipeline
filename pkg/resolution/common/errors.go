@@ -61,16 +61,9 @@ func NewError(reason string, err error) *Error {
 	}
 }
 
-var (
-	// ErrRequestInProgress is a sentinel value to indicate that
-	// a resource request is still in progress.
-	ErrRequestInProgress = NewError("RequestInProgress", errors.New("Resource request is still in-progress"))
-
-	// ErrorRequestInProgress is an alias to ErrRequestInProgress
-	//
-	// Deprecated: use ErrRequestInProgress instead.
-	ErrorRequestInProgress = ErrRequestInProgress
-)
+// ErrRequestInProgress is a sentinel value to indicate that
+// a resource request is still in progress.
+var ErrRequestInProgress = NewError("RequestInProgress", errors.New("Resource request is still in-progress"))
 
 // InvalidResourceKeyError indicates that a string key given to the
 // Reconcile function does not match the expected "name" or "namespace/name"
@@ -79,11 +72,6 @@ type InvalidResourceKeyError struct {
 	Key      string
 	Original error
 }
-
-// ErrorInvalidResourceKey is an alias to type InvalidResourceKeyError.
-//
-// Deprecated: use type InvalidResourceKeyError instead.
-type ErrorInvalidResourceKey = InvalidResourceKeyError
 
 var _ error = &InvalidResourceKeyError{}
 
@@ -104,11 +92,6 @@ type InvalidRequestError struct {
 	Message              string
 }
 
-// ErrorInvalidRequest is an alias to type InvalidRequestError.
-//
-// Deprecated: use type InvalidRequestError instead.
-type ErrorInvalidRequest = InvalidRequestError
-
 var _ error = &InvalidRequestError{}
 
 func (e *InvalidRequestError) Error() string {
@@ -122,11 +105,6 @@ type GetResourceError struct {
 	Key          string
 	Original     error
 }
-
-// ErrorGettingResource is an alias to type GetResourceError.
-//
-// Deprecated: use type GetResourceError instead.
-type ErrorGettingResource = GetResourceError
 
 var _ error = &GetResourceError{}
 
@@ -145,11 +123,6 @@ type UpdatingRequestError struct {
 	ResolutionRequestKey string
 	Original             error
 }
-
-// ErrorUpdatingRequest is an alias to UpdatingRequestError
-//
-// Deprecated: use UpdatingRequestError instead.
-type ErrorUpdatingRequest = UpdatingRequestError
 
 var _ error = &UpdatingRequestError{}
 

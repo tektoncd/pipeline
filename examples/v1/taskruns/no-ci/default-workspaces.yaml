@@ -7,11 +7,11 @@ spec:
   - name: source
   steps:
   - name: write-file
-    image: ubuntu
+    image: mirror.gcr.io/ubuntu
     script: |
       echo "Hello, world!" > /workspace/source/hello.txt || exit 0
   - name: read-file
-    image: ubuntu
+    image: mirror.gcr.io/ubuntu
     script: |
       grep "Hello, world" /workspace/source/hello.txt
 ---

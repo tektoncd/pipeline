@@ -141,7 +141,7 @@ func (a Action) String() (s string) {
 	case ActionSubmitted:
 		return "submitted"
 	case ActionDismissed:
-		return "dismisssed"
+		return "dismissed"
 	case ActionAssigned:
 		return "assigned"
 	case ActionUnassigned:
@@ -157,7 +157,7 @@ func (a Action) String() (s string) {
 	case ActionCompleted:
 		return "completed"
 	default:
-		return
+		return ""
 	}
 }
 
@@ -205,6 +205,14 @@ func (a *Action) UnmarshalJSON(data []byte) error {
 		*a = ActionDismissed
 	case "edited":
 		*a = ActionEdited
+	case "assigned":
+		*a = ActionAssigned
+	case "unassigned":
+		*a = ActionUnassigned
+	case "review_requested":
+		*a = ActionReviewRequested
+	case "review_request_removed":
+		*a = ActionReviewRequestRemoved
 	}
 	return nil
 }

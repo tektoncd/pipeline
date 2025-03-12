@@ -33,6 +33,7 @@ ENABLE_CEL_IN_WHENEXPRESSION=${ENABLE_CEL_IN_WHENEXPRESSION:="false"}
 ENABLE_PARAM_ENUM=${ENABLE_PARAM_ENUM:="false"}
 ENABLE_ARTIFACTS=${ENABLE_ARTIFACTS:="false"}
 ENABLE_CONCISE_RESOLVER_SYNTAX=${ENABLE_CONCISE_RESOLVER_SYNTAX:="false"}
+ENABLE_KUBERNETES_SIDECAR=${ENABLE_KUBERNETES_SIDECAR:="false"}
 failed=0
 
 # Script entry point.
@@ -43,8 +44,10 @@ fi
 
 header "Setting up environment"
 
+set -x
 install_pipeline_crd
 export SYSTEM_NAMESPACE=tekton-pipelines
+set +x
 
 failed=0
 
@@ -143,6 +146,18 @@ function set_enable_concise_resolver_syntax() {
   kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
 }
 
+function set_enable_kubernetes_sidecar() {
+  local method="$1"
+  if [ "$method" != "false" ] && [ "$method" != "true" ]; then
+    printf "Invalid value for enable-kubernetes-sidecar %s\n" ${method}
+    exit 255
+  fi
+  printf "Setting enable-kubernetes-sidecar to %s\n", ${method}
+  jsonpatch=$(printf "{\"data\": {\"enable-kubernetes-sidecar\": \"%s\"}}" $1)
+  echo "feature-flags ConfigMap patch: ${jsonpatch}"
+  kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
+}
+
 function run_e2e() {
   # Run the integration tests
   header "Running Go e2e tests"
@@ -171,6 +186,7 @@ set_cel_in_whenexpression "$ENABLE_CEL_IN_WHENEXPRESSION"
 set_enable_param_enum "$ENABLE_PARAM_ENUM"
 set_enable_artifacts "$ENABLE_ARTIFACTS"
 set_enable_concise_resolver_syntax "$ENABLE_CONCISE_RESOLVER_SYNTAX"
+set_enable_kubernetes_sidecar "$ENABLE_KUBERNETES_SIDECAR"
 run_e2e
 
 (( failed )) && fail_test

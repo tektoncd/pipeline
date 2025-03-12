@@ -52,7 +52,7 @@ spec:
         - name: result2
         steps:
         - name: failing-step
-          image: busybox
+          image: mirror.gcr.io/busybox
           script: 'echo -n 123 | tee $(results.result1.path); exit 1; echo -n 456 | tee $(results.result2.path)'
     finally:
     - name: finaltask1
@@ -63,7 +63,7 @@ spec:
         params:
         - name: param1
         steps:
-        - image: busybox
+        - image: mirror.gcr.io/busybox
           script: 'exit 0'
     - name: finaltask2
       params:
@@ -73,7 +73,7 @@ spec:
         params:
         - name: param1
         steps:
-        - image: busybox
+        - image: mirror.gcr.io/busybox
           script: exit 0`, helpers.ObjectNameForTest(t)))
 
 	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {

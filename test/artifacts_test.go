@@ -117,7 +117,7 @@ spec:
 			}}, taskrun.Status.Steps[0].Inputs); d != "" {
 				t.Fatalf(`The expected stepState Inputs does not match created taskrun stepState Inputs. Here is the diff: %v`, d)
 			}
-			if d := cmp.Diff([]v1.TaskRunStepArtifact{{Name: "image",
+			if d := cmp.Diff([]v1.TaskRunStepArtifact{{Name: "image", BuildOutput: true,
 				Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2", "sha256": "df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48"},
 					Uri: "pkg:balba",
 				}},
@@ -191,7 +191,7 @@ spec:
 	}}, taskrun.Status.Steps[0].Inputs); d != "" {
 		t.Fatalf(`The expected stepState Inputs does not match created taskrun stepState Inputs. Here is the diff: %v`, d)
 	}
-	if d := cmp.Diff([]v1.TaskRunStepArtifact{{Name: "build-result",
+	if d := cmp.Diff([]v1.TaskRunStepArtifact{{Name: "build-result", BuildOutput: false,
 		Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2", "sha256": "df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48"},
 			Uri: "pkg:balba",
 		}},
@@ -252,10 +252,10 @@ func TestConsumeArtifacts(t *testing.T) {
 			task := simpleArtifactProducerTask(t, namespace, fqImageName)
 			task.Spec.Steps = append(task.Spec.Steps,
 				v1.Step{Name: "consume-outputs", Image: fqImageName,
-					Command: []string{"sh", "-c", "echo -n $(steps.hello.outputs) >> $(step.results.result1.path)"},
+					Command: []string{"sh", "-c", "echo -n $(steps.hello.outputs.image) >> $(step.results.result1.path)"},
 					Results: []v1.StepResult{{Name: "result1", Type: v1.ResultsTypeString}}},
 				v1.Step{Name: "consume-inputs", Image: fqImageName,
-					Command: []string{"sh", "-c", "echo -n $(steps.hello.inputs) >> $(step.results.result2.path)"},
+					Command: []string{"sh", "-c", "echo -n $(steps.hello.inputs.source) >> $(step.results.result2.path)"},
 					Results: []v1.StepResult{{Name: "result2", Type: v1.ResultsTypeString}}},
 			)
 			if _, err := c.V1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
@@ -425,6 +425,7 @@ spec:
             "outputs":[
               {
                 "name":"image",
+                "buildOutput":true,
                 "values":[
                   {
                     "uri":"pkg:balba",
@@ -523,6 +524,7 @@ spec:
             "outputs":[
               {
                 "name":"build-result",
+                "buildOutput":false,
                 "values":[
                   {
                     "uri":"pkg:balba",

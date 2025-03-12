@@ -61,13 +61,13 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: busybox
+  - image: mirror.gcr.io/busybox
     command: ['/bin/sh']
     args: ['-c', 'echo hello']
-  - image: busybox
+  - image: mirror.gcr.io/busybox
     command: ['/bin/sh']
     args: ['-c', 'exit 1']
-  - image: busybox
+  - image: mirror.gcr.io/busybox
     command: ['/bin/sh']
     args: ['-c', 'sleep 30s']
 `, helpers.ObjectNameForTest(t), namespace))
@@ -127,10 +127,33 @@ spec:
 		Name:              "unnamed-2",
 		Container:         "step-unnamed-2",
 	}}
+	expectedStepNumber := len(expectedStepState)
+	if len(taskrun.Status.Steps) < expectedStepNumber {
+		t.Fatalf("expected at least %d steps, got %d", expectedStepNumber, len(taskrun.Status.Steps))
+	}
 	ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
-	ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID")
-	if d := cmp.Diff(taskrun.Status.Steps, expectedStepState, ignoreTerminatedFields, ignoreStepFields); d != "" {
-		t.Fatalf("-got, +want: %v", d)
+	ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "Running")
+	lastStepIndex := len(expectedStepState) - 1
+	for i := range lastStepIndex {
+		if d := cmp.Diff(taskrun.Status.Steps[i], expectedStepState[i], ignoreTerminatedFields, ignoreStepFields); d != "" {
+			t.Fatalf("taskrun.Status.Steps[%d]:\n-got, +want: %v", i, d)
+		}
+	}
+
+	// Sometimes, the state of the last container in the Pod is still running,
+	// and the state content of the final step is not skipped.
+	// In this case, we should compare the state of the last step with the normal state.
+	otherLatestExpectedStepState := v1.StepState{
+		Name:      "unnamed-2",
+		Container: "step-unnamed-2",
+	}
+
+	if d := cmp.Diff(taskrun.Status.Steps[lastStepIndex], expectedStepState[lastStepIndex], ignoreTerminatedFields, ignoreStepFields); d != "" {
+		t.Logf("taskrun.Status.Steps[%d]:\n-got, +want: %v", lastStepIndex, d)
+		// try to compare the state of the last step with the other state
+		if d := cmp.Diff(taskrun.Status.Steps[lastStepIndex], otherLatestExpectedStepState, ignoreTerminatedFields, ignoreStepFields); d != "" {
+			t.Fatalf("taskrun.Status.Steps[%d]:\n-got, +want: %v", lastStepIndex, d)
+		}
 	}
 
 	releaseAnnotation, ok := taskrun.Annotations[pod.ReleaseAnnotation]
@@ -512,7 +535,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: busybox
+  - image: mirror.gcr.io/busybox
     command: ['/bin/sh']
     args: ['-c', 'exit 1']
     volumeMounts:

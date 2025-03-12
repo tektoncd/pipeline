@@ -119,7 +119,7 @@ func (t *ResolvedPipelineTask) EvaluateCEL() error {
 
 // isDone returns true only if the task is skipped, succeeded or failed
 func (t ResolvedPipelineTask) isDone(facts *PipelineRunFacts) bool {
-	return t.Skip(facts).IsSkipped || t.isSuccessful() || t.isFailure()
+	return t.Skip(facts).IsSkipped || t.isSuccessful() || t.isFailure() || t.isValidationFailed(facts.ValidationFailedTask)
 }
 
 // IsRunning returns true only if the task is neither succeeded, cancelled nor failed
@@ -136,6 +136,37 @@ func (t ResolvedPipelineTask) IsRunning() bool {
 // IsCustomTask returns true if the PipelineTask references a Custom Task.
 func (t ResolvedPipelineTask) IsCustomTask() bool {
 	return t.CustomTask
+}
+
+// getReason returns the latest reason if the run has completed successfully
+// If the PipelineTask has a Matrix, getReason returns the failure reason for any failure
+// otherwise, it returns an empty string
+func (t ResolvedPipelineTask) getReason() string {
+	if t.IsCustomTask() {
+		if len(t.CustomRuns) == 0 {
+			return ""
+		}
+		for _, run := range t.CustomRuns {
+			if !run.IsSuccessful() && len(run.Status.Conditions) >= 1 {
+				return run.Status.Conditions[0].Reason
+			}
+		}
+		if len(t.CustomRuns) >= 1 && len(t.CustomRuns[0].Status.Conditions) >= 1 {
+			return t.CustomRuns[0].Status.Conditions[0].Reason
+		}
+	}
+	if len(t.TaskRuns) == 0 {
+		return ""
+	}
+	for _, taskRun := range t.TaskRuns {
+		if !taskRun.IsSuccessful() && len(taskRun.Status.Conditions) >= 1 {
+			return taskRun.Status.Conditions[0].Reason
+		}
+	}
+	if len(t.TaskRuns) >= 1 && len(t.TaskRuns[0].Status.Conditions) >= 1 {
+		return t.TaskRuns[0].Status.Conditions[0].Reason
+	}
+	return ""
 }
 
 // isSuccessful returns true only if the run has completed successfully
@@ -185,6 +216,16 @@ func (t ResolvedPipelineTask) isFailure() bool {
 		isDone = isDone && taskRun.IsDone()
 	}
 	return t.haveAnyTaskRunsFailed() && isDone
+}
+
+// isValidationFailed return true if the task is failed at the validation step
+func (t ResolvedPipelineTask) isValidationFailed(ftasks []*ResolvedPipelineTask) bool {
+	for _, ftask := range ftasks {
+		if ftask.ResolvedTask == t.ResolvedTask {
+			return true
+		}
+	}
+	return false
 }
 
 // isCancelledForTimeOut returns true only if the run is cancelled due to PipelineRun-controlled timeout
@@ -308,7 +349,7 @@ func (t *ResolvedPipelineTask) skip(facts *PipelineRunFacts) TaskSkipStatus {
 	var skippingReason v1.SkippingReason
 
 	switch {
-	case facts.isFinalTask(t.PipelineTask.Name) || t.isScheduled():
+	case facts.isFinalTask(t.PipelineTask.Name) || t.isScheduled() || t.isValidationFailed(facts.ValidationFailedTask):
 		skippingReason = v1.None
 	case facts.IsStopping():
 		skippingReason = v1.StoppingSkip
@@ -316,12 +357,12 @@ func (t *ResolvedPipelineTask) skip(facts *PipelineRunFacts) TaskSkipStatus {
 		skippingReason = v1.GracefullyCancelledSkip
 	case facts.IsGracefullyStopped():
 		skippingReason = v1.GracefullyStoppedSkip
+	case t.skipBecauseWhenExpressionsEvaluatedToFalse(facts):
+		skippingReason = v1.WhenExpressionsSkip
 	case t.skipBecauseParentTaskWasSkipped(facts):
 		skippingReason = v1.ParentTasksSkip
 	case t.skipBecauseResultReferencesAreMissing(facts):
 		skippingReason = v1.MissingResultsSkip
-	case t.skipBecauseWhenExpressionsEvaluatedToFalse(facts):
-		skippingReason = v1.WhenExpressionsSkip
 	case t.skipBecausePipelineRunPipelineTimeoutReached(facts):
 		skippingReason = v1.PipelineTimedOutSkip
 	case t.skipBecausePipelineRunTasksTimeoutReached(facts):
@@ -713,7 +754,7 @@ func getNewRunNames(ptName, prName string, numberOfRuns int) []string {
 		return append(taskRunNames, taskRunName)
 	}
 	// For a matrix we append i to then end of the fanned out TaskRuns "matrixed-pr-taskrun-0"
-	for i := 0; i < numberOfRuns; i++ {
+	for i := range numberOfRuns {
 		taskRunName := kmeta.ChildName(prName, fmt.Sprintf("-%s-%d", ptName, i))
 		// check if the taskRun name ends with a matrix instance count
 		if !strings.HasSuffix(taskRunName, fmt.Sprintf("-%d", i)) {
@@ -794,22 +835,29 @@ func isCustomRunCancelledByPipelineRunTimeout(cr *v1beta1.CustomRun) bool {
 // CheckMissingResultReferences returns an error if it is missing any result references.
 // Missing result references can occur if task fails to produce a result but has
 // OnError: continue (ie TestMissingResultWhenStepErrorIsIgnored)
-func CheckMissingResultReferences(pipelineRunState PipelineRunState, targets PipelineRunState) error {
-	for _, target := range targets {
-		for _, resultRef := range v1.PipelineTaskResultRefs(target.PipelineTask) {
-			referencedPipelineTask := pipelineRunState.ToMap()[resultRef.PipelineTask]
-			if referencedPipelineTask.IsCustomTask() {
-				customRun := referencedPipelineTask.CustomRuns[0]
-				_, err := findRunResultForParam(customRun, resultRef)
-				if err != nil {
-					return err
-				}
-			} else {
-				taskRun := referencedPipelineTask.TaskRuns[0]
-				_, err := findTaskResultForParam(taskRun, resultRef)
-				if err != nil {
-					return err
-				}
+func CheckMissingResultReferences(pipelineRunState PipelineRunState, target *ResolvedPipelineTask) error {
+	for _, resultRef := range v1.PipelineTaskResultRefs(target.PipelineTask) {
+		referencedPipelineTask, ok := pipelineRunState.ToMap()[resultRef.PipelineTask]
+		if !ok {
+			return fmt.Errorf("Result reference error: Could not find ref \"%s\" in internal pipelineRunState", resultRef.PipelineTask)
+		}
+		if referencedPipelineTask.IsCustomTask() {
+			if len(referencedPipelineTask.CustomRuns) == 0 {
+				return fmt.Errorf("Result reference error: Internal result ref \"%s\" has zero-length CustomRuns", resultRef.PipelineTask)
+			}
+			customRun := referencedPipelineTask.CustomRuns[0]
+			_, err := findRunResultForParam(customRun, resultRef)
+			if err != nil {
+				return err
+			}
+		} else {
+			if len(referencedPipelineTask.TaskRuns) == 0 {
+				return fmt.Errorf("Result reference error: Internal result ref \"%s\" has zero-length TaskRuns", resultRef.PipelineTask)
+			}
+			taskRun := referencedPipelineTask.TaskRuns[0]
+			_, err := findTaskResultForParam(taskRun, resultRef)
+			if err != nil {
+				return err
 			}
 		}
 	}
@@ -838,6 +886,10 @@ func createResultsCacheMatrixedTaskRuns(rpt *ResolvedPipelineTask) (resultsCache
 // ValidateParamEnumSubset finds the referenced pipeline-level params in the resolved pipelineTask.
 // It then validates if the referenced pipeline-level param enums are subsets of the resolved pipelineTask-level param enums
 func ValidateParamEnumSubset(pipelineTaskParams []v1.Param, pipelineParamSpecs []v1.ParamSpec, rt *resources.ResolvedTask) error {
+	// When the matrix Task has no TaskRun, the rt will be nil, we should skip the validation.
+	if rt == nil {
+		return nil
+	}
 	for _, p := range pipelineTaskParams {
 		// calculate referenced param enums
 		res, present, errString := substitution.ExtractVariablesFromString(p.Value.StringVal, "params")

@@ -43,6 +43,7 @@ const (
 	PipelineTaskStatusPrefix = "tasks."
 	// PipelineTaskStatusSuffix is a suffix of the param representing execution state of pipelineTask
 	PipelineTaskStatusSuffix = ".status"
+	PipelineTaskReasonSuffix = ".reason"
 )
 
 // PipelineRunState is a slice of ResolvedPipelineRunTasks the represents the current execution
@@ -69,6 +70,12 @@ type PipelineRunFacts struct {
 	// The skip data is sensitive to changes in the state. The ResetSkippedCache method
 	// can be used to clean the cache and force re-computation when needed.
 	SkipCache map[string]TaskSkipStatus
+
+	// ValidationFailedTask are the tasks for which taskrun is not created as they
+	// never got added to the execution i.e. they failed in the validation step. One of
+	// the case of failing at the validation is during CheckMissingResultReferences method
+	// Tasks in ValidationFailedTask is added in method runNextSchedulableTask
+	ValidationFailedTask []*ResolvedPipelineTask
 }
 
 // PipelineRunTimeoutsState records information about start times and timeouts for the PipelineRun, so that the PipelineRunFacts
@@ -98,6 +105,8 @@ type pipelineRunStatusCount struct {
 	Incomplete int
 	// count of tasks skipped due to the relevant timeout having elapsed before the task is launched
 	SkippedDueToTimeout int
+	// count of validation failed task and taskrun not created
+	ValidationFailed int
 }
 
 // ResetSkippedCache resets the skipped cache in the facts map
@@ -168,6 +177,30 @@ func (state PipelineRunState) GetTaskRunsResults() map[string][]v1.TaskRunResult
 			}
 		} else {
 			results[rpt.PipelineTask.Name] = rpt.TaskRuns[0].Status.Results
+		}
+	}
+	return results
+}
+
+// GetTaskRunsArtifacts returns a map of all successfully completed TaskRuns in the state, with the pipeline task name as
+// the key and the artifacts from the corresponding TaskRun as the value. It only includes tasks which have completed successfully.
+func (state PipelineRunState) GetTaskRunsArtifacts() map[string]*v1.Artifacts {
+	results := make(map[string]*v1.Artifacts)
+	for _, rpt := range state {
+		if rpt.IsCustomTask() {
+			continue
+		}
+		if !rpt.isSuccessful() {
+			continue
+		}
+		if rpt.PipelineTask.IsMatrixed() {
+			var ars v1.Artifacts
+			for _, tr := range rpt.TaskRuns {
+				ars.Merge(tr.Status.Artifacts)
+			}
+			results[rpt.PipelineTask.Name] = &ars
+		} else {
+			results[rpt.PipelineTask.Name] = rpt.TaskRuns[0].Status.Artifacts
 		}
 	}
 	return results
@@ -333,7 +366,7 @@ func (state PipelineRunState) getNextTasks(candidateTasks sets.String) []*Resolv
 func (facts *PipelineRunFacts) IsStopping() bool {
 	for _, t := range facts.State {
 		if facts.isDAGTask(t.PipelineTask.Name) {
-			if t.isFailure() && t.PipelineTask.OnError != v1.PipelineTaskContinue {
+			if (t.isFailure() || t.isValidationFailed(facts.ValidationFailedTask)) && t.PipelineTask.OnError != v1.PipelineTaskContinue {
 				return true
 			}
 		}
@@ -467,7 +500,8 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 	// report the count in PipelineRun Status
 	// get the count of successful tasks, failed tasks, cancelled tasks, skipped task, and incomplete tasks
 	s := facts.getPipelineTasksCount()
-	// completed task is a collection of successful, failed, cancelled tasks (skipped tasks are reported separately)
+	// completed task is a collection of successful, failed, cancelled tasks
+	// (skipped tasks and validation failed tasks are reported separately)
 	cmTasks := s.Succeeded + s.Failed + s.Cancelled + s.IgnoredFailed
 	totalFailedTasks := s.Failed + s.IgnoredFailed
 
@@ -487,12 +521,19 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 			message = fmt.Sprintf("Tasks Completed: %d (Failed: %d, Cancelled %d), Skipped: %d",
 				cmTasks, totalFailedTasks, s.Cancelled, s.Skipped)
 		}
+		// append validation failed count in the message
+		if s.ValidationFailed > 0 {
+			message += fmt.Sprintf(", Failed Validation: %d", s.ValidationFailed)
+		}
 		// Set reason to ReasonCompleted - At least one is skipped
 		if s.Skipped > 0 {
 			reason = v1.PipelineRunReasonCompleted.String()
 		}
 
 		switch {
+		case s.ValidationFailed > 0:
+			reason = v1.PipelineRunReasonFailedValidation.String()
+			status = corev1.ConditionFalse
 		case s.Failed > 0 || s.SkippedDueToTimeout > 0:
 			// Set reason to ReasonFailed - At least one failed
 			reason = v1.PipelineRunReasonFailed.String()
@@ -589,6 +630,7 @@ func (facts *PipelineRunFacts) GetPipelineTaskStatus() map[string]string {
 				s = PipelineTaskStateNone
 			}
 			tStatus[PipelineTaskStatusPrefix+t.PipelineTask.Name+PipelineTaskStatusSuffix] = s
+			tStatus[PipelineTaskStatusPrefix+t.PipelineTask.Name+PipelineTaskReasonSuffix] = t.getReason()
 		}
 	}
 	// initialize aggregate status of all dag tasks to None
@@ -616,7 +658,7 @@ func (facts *PipelineRunFacts) GetPipelineTaskStatus() map[string]string {
 	return tStatus
 }
 
-// GetPipelineTaskStatus returns the status of a PipelineFinalTask depending on its taskRun
+// GetPipelineFinalTaskStatus returns the status of a PipelineFinalTask depending on its taskRun
 func (facts *PipelineRunFacts) GetPipelineFinalTaskStatus() map[string]string {
 	// construct a map of tasks.<pipelineTask>.status and its state
 	tStatus := make(map[string]string)
@@ -687,6 +729,7 @@ func (facts *PipelineRunFacts) getPipelineTasksCount() pipelineRunStatusCount {
 		Incomplete:          0,
 		SkippedDueToTimeout: 0,
 		IgnoredFailed:       0,
+		ValidationFailed:    0,
 	}
 	for _, t := range facts.State {
 		switch {
@@ -706,6 +749,8 @@ func (facts *PipelineRunFacts) getPipelineTasksCount() pipelineRunStatusCount {
 			} else {
 				s.Failed++
 			}
+		case t.isValidationFailed(facts.ValidationFailedTask):
+			s.ValidationFailed++
 		// increment skipped and skipped due to timeout counters since the task was skipped due to the pipeline, tasks, or finally timeout being reached before the task was launched
 		case t.Skip(facts).SkippingReason == v1.PipelineTimedOutSkip ||
 			t.Skip(facts).SkippingReason == v1.TasksTimedOutSkip ||

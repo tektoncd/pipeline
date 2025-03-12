@@ -8,7 +8,7 @@ spec:
       type: string
   steps:
     - name: echo
-      image: alpine
+      image: mirror.gcr.io/alpine
       script: |
         echo "$(params.url)"
 ---
@@ -22,7 +22,7 @@ spec:
       type: array
   steps:
     - name: validate
-      image: ubuntu
+      image: mirror.gcr.io/ubuntu
       args: ["$(params.url[*])"]
       script: |
         #!/usr/bin/env bash
@@ -60,7 +60,7 @@ spec:
       type: string
   steps:
     - name: produce-report-url
-      image: alpine
+      image: mirror.gcr.io/alpine
       script: |
         echo "Running tests on $(params.platform)-$(params.browser)"
         echo -n "https://api.example/get-report/$(params.platform)-$(params.browser)" | tee $(results.report-url.path)

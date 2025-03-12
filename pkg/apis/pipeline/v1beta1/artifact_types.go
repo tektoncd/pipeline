@@ -6,8 +6,12 @@ type Algorithm string
 // Artifact represents an artifact within a system, potentially containing multiple values
 // associated with it.
 type Artifact struct {
-	Name   string          `json:"name,omitempty"`   // The artifact's identifying category name
-	Values []ArtifactValue `json:"values,omitempty"` // A collection of values related to the artifact
+	// The artifact's identifying category name
+	Name string `json:"name,omitempty"`
+	// A collection of values related to the artifact
+	Values []ArtifactValue `json:"values,omitempty"`
+	// Indicate if the artifact is a build output or a by-product
+	BuildOutput bool `json:"buildOutput,omitempty"`
 }
 
 // ArtifactValue represents a specific value or data element within an Artifact.

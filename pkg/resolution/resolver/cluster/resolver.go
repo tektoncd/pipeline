@@ -21,10 +21,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	common "github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -49,6 +51,8 @@ const (
 )
 
 var _ framework.Resolver = &Resolver{}
+
+var supportedKinds = []string{"task", "pipeline", "stepaction"}
 
 // Resolver implements a framework.Resolver that can fetch resources from other namespaces.
 //
@@ -109,6 +113,16 @@ func ResolveFromParams(ctx context.Context, origParams []pipelinev1.Param, pipel
 	groupVersion := pipelinev1.SchemeGroupVersion.String()
 
 	switch params[KindParam] {
+	case "stepaction":
+		stepaction, err := pipelineClientSet.TektonV1beta1().StepActions(params[NamespaceParam]).Get(ctx, params[NameParam], metav1.GetOptions{})
+		if err != nil {
+			logger.Infof("failed to load stepaction %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
+			return nil, err
+		}
+		uid, data, sha256Checksum, spec, err = fetchStepaction(ctx, pipelinev1beta1.SchemeGroupVersion.String(), stepaction, params)
+		if err != nil {
+			return nil, err
+		}
 	case "task":
 		task, err := pipelineClientSet.TektonV1().Tasks(params[NamespaceParam]).Get(ctx, params[NameParam], metav1.GetOptions{})
 		if err != nil {
@@ -218,7 +232,7 @@ func populateParamsWithDefaults(ctx context.Context, origParams []pipelinev1.Par
 	} else {
 		params[KindParam] = pKind.StringVal
 	}
-	if kindVal, ok := params[KindParam]; ok && kindVal != "task" && kindVal != "pipeline" {
+	if kindVal, ok := params[KindParam]; ok && !isSupportedKind(kindVal) {
 		return nil, fmt.Errorf("unknown or unsupported resource kind '%s'", kindVal)
 	}
 
@@ -269,6 +283,7 @@ func isInCommaSeparatedList(checkVal string, commaList string) bool {
 	}
 	return false
 }
+
 func isDisabled(ctx context.Context) bool {
 	cfg := resolverconfig.FromContextOrDefaults(ctx)
 	return !cfg.FeatureFlags.EnableClusterResolver
@@ -281,6 +296,29 @@ func ValidateParams(ctx context.Context, params []pipelinev1.Param) error {
 
 	_, err := populateParamsWithDefaults(ctx, params)
 	return err
+}
+
+func fetchStepaction(ctx context.Context, groupVersion string, stepaction *pipelinev1beta1.StepAction, params map[string]string) (string, []byte, []byte, []byte, error) {
+	logger := logging.FromContext(ctx)
+	uid := string(stepaction.UID)
+	stepaction.Kind = "StepAction"
+	stepaction.APIVersion = groupVersion
+	data, err := yaml.Marshal(stepaction)
+	if err != nil {
+		logger.Infof("failed to marshal stepaction %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
+		return "", nil, nil, nil, err
+	}
+	sha256Checksum, err := stepaction.Checksum()
+	if err != nil {
+		return "", nil, nil, nil, err
+	}
+
+	spec, err := yaml.Marshal(stepaction.Spec)
+	if err != nil {
+		logger.Infof("failed to marshal the spec of the task %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
+		return "", nil, nil, nil, err
+	}
+	return uid, data, sha256Checksum, spec, nil
 }
 
 func fetchTask(ctx context.Context, groupVersion string, task *pipelinev1.Task, params map[string]string) (string, []byte, []byte, []byte, error) {
@@ -305,6 +343,7 @@ func fetchTask(ctx context.Context, groupVersion string, task *pipelinev1.Task, 
 	}
 	return uid, data, sha256Checksum, spec, nil
 }
+
 func fetchPipeline(ctx context.Context, groupVersion string, pipeline *pipelinev1.Pipeline, params map[string]string) (string, []byte, []byte, []byte, error) {
 	logger := logging.FromContext(ctx)
 	uid := string(pipeline.UID)
@@ -327,4 +366,8 @@ func fetchPipeline(ctx context.Context, groupVersion string, pipeline *pipelinev
 		return "", nil, nil, nil, err
 	}
 	return uid, data, sha256Checksum, spec, nil
+}
+
+func isSupportedKind(kindValue string) bool {
+	return slices.Contains[[]string, string](supportedKinds, kindValue)
 }

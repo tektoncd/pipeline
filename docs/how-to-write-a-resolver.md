@@ -54,7 +54,7 @@ You'll also need the following:
 - A computer with
   [`kubectl`](https://kubernetes.io/docs/tasks/tools/#kubectl) and
   [`ko`](https://github.com/google/ko) installed.
-- A Kubernetes cluster running at least Kubernetes 1.27. A [`kind`
+- A Kubernetes cluster running at least Kubernetes 1.28. A [`kind`
   cluster](https://kind.sigs.k8s.io/docs/user/quick-start/#installation)
   should work fine for following the guide on your local machine.
 - An image registry that you can push images to. If you're using `kind`

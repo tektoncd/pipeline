@@ -10,19 +10,29 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Updates the description of a KMS key. To see the description of a KMS key, use
-// DescribeKey . The KMS key that you use for this operation must be in a
-// compatible key state. For details, see Key states of KMS keys (https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html)
-// in the Key Management Service Developer Guide. Cross-account use: No. You cannot
-// perform this operation on a KMS key in a different Amazon Web Services account.
-// Required permissions: kms:UpdateKeyDescription (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
-// (key policy) Related operations
-//   - CreateKey
-//   - DescribeKey
+// Updates the description of a KMS key. To see the description of a KMS key, use DescribeKey
+// .
+//
+// The KMS key that you use for this operation must be in a compatible key state.
+// For details, see [Key states of KMS keys]in the Key Management Service Developer Guide.
+//
+// Cross-account use: No. You cannot perform this operation on a KMS key in a
+// different Amazon Web Services account.
+//
+// Required permissions: [kms:UpdateKeyDescription] (key policy)
+//
+// # Related operations
+//
+// # CreateKey
+//
+// # DescribeKey
 //
 // Eventual consistency: The KMS API follows an eventual consistency model. For
-// more information, see KMS eventual consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
-// .
+// more information, see [KMS eventual consistency].
+//
+// [Key states of KMS keys]: https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html
+// [kms:UpdateKeyDescription]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
+// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html
 func (c *Client) UpdateKeyDescription(ctx context.Context, params *UpdateKeyDescriptionInput, optFns ...func(*Options)) (*UpdateKeyDescriptionOutput, error) {
 	if params == nil {
 		params = &UpdateKeyDescriptionInput{}
@@ -40,19 +50,26 @@ func (c *Client) UpdateKeyDescription(ctx context.Context, params *UpdateKeyDesc
 
 type UpdateKeyDescriptionInput struct {
 
-	// New description for the KMS key. Do not include confidential or sensitive
-	// information in this field. This field may be displayed in plaintext in
-	// CloudTrail logs and other output.
+	// New description for the KMS key.
+	//
+	// Do not include confidential or sensitive information in this field. This field
+	// may be displayed in plaintext in CloudTrail logs and other output.
 	//
 	// This member is required.
 	Description *string
 
-	// Updates the description of the specified KMS key. Specify the key ID or key ARN
-	// of the KMS key. For example:
+	// Updates the description of the specified KMS key.
+	//
+	// Specify the key ID or key ARN of the KMS key.
+	//
+	// For example:
+	//
 	//   - Key ID: 1234abcd-12ab-34cd-56ef-1234567890ab
+	//
 	//   - Key ARN:
 	//   arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab
-	// To get the key ID and key ARN for a KMS key, use ListKeys or DescribeKey .
+	//
+	// To get the key ID and key ARN for a KMS key, use ListKeys or DescribeKey.
 	//
 	// This member is required.
 	KeyId *string
@@ -110,6 +127,9 @@ func (c *Client) addOperationUpdateKeyDescriptionMiddlewares(stack *middleware.S
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -120,6 +140,12 @@ func (c *Client) addOperationUpdateKeyDescriptionMiddlewares(stack *middleware.S
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpUpdateKeyDescriptionValidationMiddleware(stack); err != nil {
@@ -141,6 +167,18 @@ func (c *Client) addOperationUpdateKeyDescriptionMiddlewares(stack *middleware.S
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

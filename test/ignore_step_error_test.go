@@ -53,7 +53,7 @@ spec:
     steps:
       - name: failing-step
         onError: continue
-        image: busybox
+        image: mirror.gcr.io/busybox
         script: 'echo -n 123 | tee $(results.result1.path); exit 1; echo -n 456 | tee $(results.result2.path)'
 `, taskRunName, namespace))
 

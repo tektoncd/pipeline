@@ -171,13 +171,26 @@ func orderContainers(ctx context.Context, commonExtraEntrypointArgs []string, st
 				}
 				// add step results
 				stepResultArgs := stepResultArgument(taskSpec.Steps[i].Results)
+
 				argsForEntrypoint = append(argsForEntrypoint, stepResultArgs...)
+				if len(taskSpec.Steps[i].When) > 0 {
+					// marshal and pass to the entrypoint and unmarshal it there.
+					marshal, err := json.Marshal(taskSpec.Steps[i].When)
+
+					if err != nil {
+						return nil, fmt.Errorf("faile to resolve when %w", err)
+					}
+					argsForEntrypoint = append(argsForEntrypoint, "--when_expressions", string(marshal))
+				}
 			}
 			argsForEntrypoint = append(argsForEntrypoint, resultArgument(steps, taskSpec.Results)...)
 		}
 
 		if breakpointConfig != nil && breakpointConfig.NeedsDebugOnFailure() {
 			argsForEntrypoint = append(argsForEntrypoint, "-breakpoint_on_failure")
+		}
+		if breakpointConfig != nil && breakpointConfig.NeedsDebugBeforeStep(s.Name) {
+			argsForEntrypoint = append(argsForEntrypoint, "-debug_before_step")
 		}
 
 		cmd, args := s.Command, s.Args
@@ -342,8 +355,8 @@ func IsContainerStep(name string) bool { return strings.HasPrefix(name, stepPref
 // represents a sidecar.
 func IsContainerSidecar(name string) bool { return strings.HasPrefix(name, sidecarPrefix) }
 
-// trimStepPrefix returns the container name, stripped of its step prefix.
-func trimStepPrefix(name string) string { return strings.TrimPrefix(name, stepPrefix) }
+// TrimStepPrefix returns the container name, stripped of its step prefix.
+func TrimStepPrefix(name string) string { return strings.TrimPrefix(name, stepPrefix) }
 
 // TrimSidecarPrefix returns the container name, stripped of its sidecar
 // prefix.

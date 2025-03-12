@@ -44,8 +44,11 @@ type Template struct {
 	// +listType=atomic
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
-	// If specified, the pod's scheduling constraints
+	// If specified, the pod's scheduling constraints.
+	// See Pod.spec.affinity (API version: v1)
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 
 	// SecurityContext holds pod-level security attributes and common container settings.
@@ -55,10 +58,13 @@ type Template struct {
 
 	// List of volumes that can be mounted by containers belonging to the pod.
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes
+	// See Pod.spec.volumes (API version: v1)
 	// +optional
 	// +patchMergeKey=name
 	// +patchStrategy=merge,retainKeys
 	// +listType=atomic
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	Volumes []corev1.Volume `json:"volumes,omitempty" patchMergeKey:"name" patchStrategy:"merge,retainKeys" protobuf:"bytes,1,rep,name=volumes"`
 
 	// RuntimeClassName refers to a RuntimeClass object in the node.k8s.io
@@ -148,9 +154,11 @@ func (tpl *Template) ToAffinityAssistantTemplate() *AffinityAssistantTemplate {
 	}
 
 	return &AffinityAssistantTemplate{
-		NodeSelector:     tpl.NodeSelector,
-		Tolerations:      tpl.Tolerations,
-		ImagePullSecrets: tpl.ImagePullSecrets,
+		NodeSelector:      tpl.NodeSelector,
+		Tolerations:       tpl.Tolerations,
+		ImagePullSecrets:  tpl.ImagePullSecrets,
+		SecurityContext:   tpl.SecurityContext,
+		PriorityClassName: tpl.PriorityClassName,
 	}
 }
 
@@ -247,6 +255,13 @@ func MergeAAPodTemplateWithDefault(tpl, defaultTpl *AAPodTemplate) *AAPodTemplat
 		if tpl.ImagePullSecrets == nil {
 			tpl.ImagePullSecrets = defaultTpl.ImagePullSecrets
 		}
+		if tpl.SecurityContext == nil {
+			tpl.SecurityContext = defaultTpl.SecurityContext
+		}
+		if tpl.PriorityClassName == nil {
+			tpl.PriorityClassName = defaultTpl.PriorityClassName
+		}
+
 		return tpl
 	}
 }

@@ -17,7 +17,6 @@ package interpreter
 import (
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/google/cel-go/common/types/ref"
 )
@@ -157,6 +156,11 @@ type PartialActivation interface {
 	UnknownAttributePatterns() []*AttributePattern
 }
 
+// partialActivationConverter indicates whether an Activation implementation supports conversion to a PartialActivation
+type partialActivationConverter interface {
+	asPartialActivation() (PartialActivation, bool)
+}
+
 // partActivation is the default implementations of the PartialActivation interface.
 type partActivation struct {
 	Activation
@@ -168,34 +172,19 @@ func (a *partActivation) UnknownAttributePatterns() []*AttributePattern {
 	return a.unknowns
 }
 
-// varActivation represents a single mutable variable binding.
-//
-// This activation type should only be used within folds as the fold loop controls the object
-// life-cycle.
-type varActivation struct {
-	parent Activation
-	name   string
-	val    ref.Val
+// asPartialActivation returns the partActivation as a PartialActivation interface.
+func (a *partActivation) asPartialActivation() (PartialActivation, bool) {
+	return a, true
 }
 
-// Parent implements the Activation interface method.
-func (v *varActivation) Parent() Activation {
-	return v.parent
-}
-
-// ResolveName implements the Activation interface method.
-func (v *varActivation) ResolveName(name string) (any, bool) {
-	if name == v.name {
-		return v.val, true
+func asPartialActivation(vars Activation) (PartialActivation, bool) {
+	// Only internal activation instances may implement this interface
+	if pv, ok := vars.(partialActivationConverter); ok {
+		return pv.asPartialActivation()
 	}
-	return v.parent.ResolveName(name)
-}
-
-var (
-	// pool of var activations to reduce allocations during folds.
-	varActivationPool = &sync.Pool{
-		New: func() any {
-			return &varActivation{}
-		},
+	// Since Activations may be hierarchical, test whether a parent converts to a PartialActivation
+	if vars.Parent() != nil {
+		return asPartialActivation(vars.Parent())
 	}
-)
+	return nil, false
+}

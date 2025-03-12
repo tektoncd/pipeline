@@ -42,7 +42,7 @@ import (
 )
 
 func init() {
-	sigkms.AddProvider(ReferenceScheme, func(ctx context.Context, keyResourceID string, _ crypto.Hash, opts ...signature.RPCOption) (sigkms.SignerVerifier, error) {
+	sigkms.AddProvider(ReferenceScheme, func(ctx context.Context, keyResourceID string, _ crypto.Hash, _ ...signature.RPCOption) (sigkms.SignerVerifier, error) {
 		return LoadSignerVerifier(ctx, keyResourceID)
 	})
 }
@@ -415,6 +415,9 @@ func (g *gcpClient) createKeyRing(ctx context.Context) error {
 		KeyRingId: g.keyRing,
 	}
 	result, err := g.kmsClient.CreateKeyRing(ctx, createKeyRingRequest)
+	if err != nil {
+		return fmt.Errorf("creating keyring: %w", err)
+	}
 	log.Printf("Created key ring %s in GCP KMS.\n", result.GetName())
-	return err
+	return nil
 }

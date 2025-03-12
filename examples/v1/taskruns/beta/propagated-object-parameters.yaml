@@ -11,7 +11,7 @@ spec:
   taskSpec:
     steps:
       - name: echo-object-params
-        image: bash
+        image: mirror.gcr.io/bash
         args: [
           "echo",
           "--url=$(params.gitrepo.url)",

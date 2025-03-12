@@ -21,17 +21,9 @@ import (
 	"fmt"
 )
 
-var (
-	// ErrNilResource is returned when remote resolution
-	// appears to have succeeded but the resolved resource is nil.
-	ErrNilResource = errors.New("unknown error occurred: requested resource is nil")
-
-	// ErrorRequestedResourceIsNil is a deprecated alias for ErrNilResource and will
-	// be removed in a future release.
-	//
-	// Deprecated: use ErrNilResource instead.
-	ErrorRequestedResourceIsNil = ErrNilResource
-)
+// ErrNilResource is returned when remote resolution
+// appears to have succeeded but the resolved resource is nil.
+var ErrNilResource = errors.New("unknown error occurred: requested resource is nil")
 
 // InvalidRuntimeObjectError is returned when remote resolution
 // succeeded but the returned data is not a valid runtime.Object.
@@ -39,15 +31,7 @@ type InvalidRuntimeObjectError struct {
 	Original error
 }
 
-// ErrorInvalidRuntimeObject is an alias to InvalidRuntimeObjectError.
-//
-// Deprecated: use InvalidRuntimeObjectError instead.
-type ErrorInvalidRuntimeObject = InvalidRuntimeObjectError
-
-var (
-	_ error = &InvalidRuntimeObjectError{}
-	_ error = &ErrorInvalidRuntimeObject{}
-)
+var _ error = &InvalidRuntimeObjectError{}
 
 // Error returns the string representation of this error.
 func (e *InvalidRuntimeObjectError) Error() string {
@@ -71,15 +55,7 @@ type DataAccessError struct {
 	Original error
 }
 
-// ErrorAccessingData is an alias to DataAccessError
-//
-// Deprecated: use DataAccessError instead.
-type ErrorAccessingData = DataAccessError
-
-var (
-	_ error = &DataAccessError{}
-	_ error = &ErrorAccessingData{}
-)
+var _ error = &DataAccessError{}
 
 // Error returns the string representation of this error.
 func (e *DataAccessError) Error() string {

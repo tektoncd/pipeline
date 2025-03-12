@@ -16,10 +16,10 @@ package v1
 import (
 	"context"
 	"fmt"
+	"maps"
 	"sort"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"golang.org/x/exp/maps"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/strings/slices"
 	"knative.dev/pkg/apis"
@@ -41,6 +41,7 @@ type Matrix struct {
 }
 
 // IncludeParamsList is a list of IncludeParams which allows passing in specific combinations of Parameters into the Matrix.
+// +listType=atomic
 type IncludeParamsList []IncludeParams
 
 // IncludeParams allows passing in a specific combinations of Parameters into the Matrix.

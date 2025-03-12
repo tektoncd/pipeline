@@ -35,7 +35,7 @@ After reading the developer docs, you may find it useful to return to these `Tek
 -   Install via
     [official installation docs](https://github.com/tektoncd/pipeline/blob/main/docs/install.md)
     or continue through [getting started for development](#getting-started)
--   [Tekton Pipeline "Hello World" tutorial](https://github.com/tektoncd/pipeline/blob/main/docs/tutorial.md) -
+-   [Tekton Pipeline "Hello World" tutorial](https://tekton.dev/docs/getting-started/pipelines) -
     Define `Tasks` and `Pipelines` (i.e., Tekton CRDs), and see what happens when they are run
 
 ---
@@ -283,7 +283,7 @@ as follows.
 
 The recommended minimum development configuration is:
 
-- Kubernetes version 1.27 or later
+- Kubernetes version 1.28 or later
 - 4 (virtual) CPU nodes
   - 8 GB of (actual or virtualized) platform memory
 - Node autoscaling, up to 3 nodes
@@ -341,7 +341,7 @@ optional: As a convenience, the [Tekton plumbing project](https://github.com/tek
      --region=us-central1 \
      --machine-type=e2-standard-4 \
      --num-nodes=1 \
-     --cluster-version=1.27
+     --cluster-version=1.28
     ```
 
     > **Note**: The recommended [GCE machine type](https://cloud.google.com/compute/docs/machine-types) is `'e2-standard-4'`.

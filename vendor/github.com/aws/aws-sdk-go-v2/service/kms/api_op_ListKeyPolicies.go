@@ -11,17 +11,26 @@ import (
 )
 
 // Gets the names of the key policies that are attached to a KMS key. This
-// operation is designed to get policy names that you can use in a GetKeyPolicy
-// operation. However, the only valid policy name is default . Cross-account use:
-// No. You cannot perform this operation on a KMS key in a different Amazon Web
-// Services account. Required permissions: kms:ListKeyPolicies (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
-// (key policy) Related operations:
-//   - GetKeyPolicy
-//   - PutKeyPolicy (https://docs.aws.amazon.com/kms/latest/APIReference/API_PutKeyPolicy.html)
+// operation is designed to get policy names that you can use in a GetKeyPolicyoperation.
+// However, the only valid policy name is default .
+//
+// Cross-account use: No. You cannot perform this operation on a KMS key in a
+// different Amazon Web Services account.
+//
+// Required permissions: [kms:ListKeyPolicies] (key policy)
+//
+// Related operations:
+//
+// # GetKeyPolicy
+//
+// [PutKeyPolicy]
 //
 // Eventual consistency: The KMS API follows an eventual consistency model. For
-// more information, see KMS eventual consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
-// .
+// more information, see [KMS eventual consistency].
+//
+// [kms:ListKeyPolicies]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
+// [PutKeyPolicy]: https://docs.aws.amazon.com/kms/latest/APIReference/API_PutKeyPolicy.html
+// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html
 func (c *Client) ListKeyPolicies(ctx context.Context, params *ListKeyPoliciesInput, optFns ...func(*Options)) (*ListKeyPoliciesOutput, error) {
 	if params == nil {
 		params = &ListKeyPoliciesInput{}
@@ -39,21 +48,30 @@ func (c *Client) ListKeyPolicies(ctx context.Context, params *ListKeyPoliciesInp
 
 type ListKeyPoliciesInput struct {
 
-	// Gets the names of key policies for the specified KMS key. Specify the key ID or
-	// key ARN of the KMS key. For example:
+	// Gets the names of key policies for the specified KMS key.
+	//
+	// Specify the key ID or key ARN of the KMS key.
+	//
+	// For example:
+	//
 	//   - Key ID: 1234abcd-12ab-34cd-56ef-1234567890ab
+	//
 	//   - Key ARN:
 	//   arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab
-	// To get the key ID and key ARN for a KMS key, use ListKeys or DescribeKey .
+	//
+	// To get the key ID and key ARN for a KMS key, use ListKeys or DescribeKey.
 	//
 	// This member is required.
 	KeyId *string
 
 	// Use this parameter to specify the maximum number of items to return. When this
 	// value is present, KMS does not return more than the specified number of items,
-	// but it might return fewer. This value is optional. If you include a value, it
-	// must be between 1 and 1000, inclusive. If you do not include a value, it
-	// defaults to 100. Only one policy can be attached to a key.
+	// but it might return fewer.
+	//
+	// This value is optional. If you include a value, it must be between 1 and 1000,
+	// inclusive. If you do not include a value, it defaults to 100.
+	//
+	// Only one policy can be attached to a key.
 	Limit *int32
 
 	// Use this parameter in a subsequent request after you receive a response with
@@ -75,7 +93,7 @@ type ListKeyPoliciesOutput struct {
 
 	// A flag that indicates whether there are more items in the list. When this value
 	// is true, the list in this response is truncated. To get more items, pass the
-	// value of the NextMarker element in thisresponse to the Marker parameter in a
+	// value of the NextMarker element in this response to the Marker parameter in a
 	// subsequent request.
 	Truncated bool
 
@@ -128,6 +146,9 @@ func (c *Client) addOperationListKeyPoliciesMiddlewares(stack *middleware.Stack,
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -138,6 +159,12 @@ func (c *Client) addOperationListKeyPoliciesMiddlewares(stack *middleware.Stack,
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListKeyPoliciesValidationMiddleware(stack); err != nil {
@@ -161,24 +188,31 @@ func (c *Client) addOperationListKeyPoliciesMiddlewares(stack *middleware.Stack,
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListKeyPoliciesAPIClient is a client that implements the ListKeyPolicies
-// operation.
-type ListKeyPoliciesAPIClient interface {
-	ListKeyPolicies(context.Context, *ListKeyPoliciesInput, ...func(*Options)) (*ListKeyPoliciesOutput, error)
-}
-
-var _ ListKeyPoliciesAPIClient = (*Client)(nil)
 
 // ListKeyPoliciesPaginatorOptions is the paginator options for ListKeyPolicies
 type ListKeyPoliciesPaginatorOptions struct {
 	// Use this parameter to specify the maximum number of items to return. When this
 	// value is present, KMS does not return more than the specified number of items,
-	// but it might return fewer. This value is optional. If you include a value, it
-	// must be between 1 and 1000, inclusive. If you do not include a value, it
-	// defaults to 100. Only one policy can be attached to a key.
+	// but it might return fewer.
+	//
+	// This value is optional. If you include a value, it must be between 1 and 1000,
+	// inclusive. If you do not include a value, it defaults to 100.
+	//
+	// Only one policy can be attached to a key.
 	Limit int32
 
 	// Set to true if pagination should stop if the service returns a pagination token
@@ -239,6 +273,9 @@ func (p *ListKeyPoliciesPaginator) NextPage(ctx context.Context, optFns ...func(
 	}
 	params.Limit = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListKeyPolicies(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -257,6 +294,14 @@ func (p *ListKeyPoliciesPaginator) NextPage(ctx context.Context, optFns ...func(
 
 	return result, nil
 }
+
+// ListKeyPoliciesAPIClient is a client that implements the ListKeyPolicies
+// operation.
+type ListKeyPoliciesAPIClient interface {
+	ListKeyPolicies(context.Context, *ListKeyPoliciesInput, ...func(*Options)) (*ListKeyPoliciesOutput, error)
+}
+
+var _ ListKeyPoliciesAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListKeyPolicies(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

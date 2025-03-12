@@ -43,7 +43,8 @@ func TestPropagatedResults(t *testing.T) {
 	ignorePipelineRunStatusFields := cmpopts.IgnoreFields(v1.PipelineRunStatusFields{}, "Provenance")
 	ignoreTaskRunStatus := cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "StartTime", "CompletionTime", "Sidecars", "Provenance")
 	requireAlphaFeatureFlag = requireAnyGate(map[string]string{
-		"enable-api-fields": "alpha"})
+		"enable-api-fields": "alpha",
+	})
 
 	type tests struct {
 		name            string
@@ -58,7 +59,6 @@ func TestPropagatedResults(t *testing.T) {
 	}}
 
 	for _, td := range tds {
-		td := td
 		t.Run(td.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
@@ -151,17 +151,17 @@ spec:
                 }
           steps:
             - name: add-str-uid
-              image: busybox
+              image: mirror.gcr.io/busybox
               command: ["/bin/sh", "-c"]
               args:
                 - echo "1001" | tee $(results.strUid.path)
             - name: add-array-uid
-              image: busybox
+              image: mirror.gcr.io/busybox
               command: ["/bin/sh", "-c"]
               args:
                 - echo "[\"1002\", \"1003\"]" | tee $(results.arrayUid.path)
             - name: add-map-uid
-              image: busybox
+              image: mirror.gcr.io/busybox
               command: ["/bin/sh", "-c"]
               args:
                 - echo -n "{\"uid\":\"1004\"}" | tee $(results.mapUid.path)
@@ -169,19 +169,19 @@ spec:
         taskSpec:
           steps:
             - name: show-str-uid
-              image: busybox
+              image: mirror.gcr.io/busybox
               command: ["/bin/sh", "-c"]
               args:
                 - echo
                 - $(tasks.make-uid.results.strUid)
             - name: show-array-uid
-              image: busybox
+              image: mirror.gcr.io/busybox
               command: ["/bin/sh", "-c"]
               args:
                 - echo
                 - $(tasks.make-uid.results.arrayUid[*])
             - name: show-map-uid
-              image: busybox
+              image: mirror.gcr.io/busybox
               command: ["/bin/sh", "-c"]
               args:
                 - echo
@@ -212,21 +212,21 @@ spec:
           command:
           - /bin/sh
           - -c
-          image: busybox
+          image: mirror.gcr.io/busybox
           name: add-str-uid
         - args:
           - echo "[\"1002\", \"1003\"]" | tee $(results.arrayUid.path)
           command:
           - /bin/sh
           - -c
-          image: busybox
+          image: mirror.gcr.io/busybox
           name: add-array-uid
         - args:
           - echo -n "{\"uid\":\"1004\"}" | tee $(results.mapUid.path)
           command:
           - /bin/sh
           - -c
-          image: busybox
+          image: mirror.gcr.io/busybox
           name: add-map-uid
     - name: show-uid
       taskSpec:
@@ -237,7 +237,7 @@ spec:
           command:
           - /bin/sh
           - -c
-          image: busybox
+          image: mirror.gcr.io/busybox
           name: show-str-uid
         - args:
           - echo
@@ -245,7 +245,7 @@ spec:
           command:
           - /bin/sh
           - -c
-          image: busybox
+          image: mirror.gcr.io/busybox
           name: show-array-uid
         - args:
           - echo
@@ -253,7 +253,7 @@ spec:
           command:
           - /bin/sh
           - -c
-          image: busybox
+          image: mirror.gcr.io/busybox
           name: show-map-uid
   timeouts:
     pipeline: 1h0m0s
@@ -278,21 +278,21 @@ status:
           command:
           - /bin/sh
           - -c
-          image: busybox
+          image: mirror.gcr.io/busybox
           name: add-str-uid
         - args:
           - echo "[\"1002\", \"1003\"]" | tee $(results.arrayUid.path)
           command:
           - /bin/sh
           - -c
-          image: busybox
+          image: mirror.gcr.io/busybox
           name: add-array-uid
         - args:
           - echo -n "{\"uid\":\"1004\"}" | tee $(results.mapUid.path)
           command:
           - /bin/sh
           - -c
-          image: busybox
+          image: mirror.gcr.io/busybox
           name: add-map-uid
     - name: show-uid
       taskSpec:
@@ -303,7 +303,7 @@ status:
           command:
           - /bin/sh
           - -c
-          image: busybox
+          image: mirror.gcr.io/busybox
           name: show-str-uid
         - args:
           - echo
@@ -311,7 +311,7 @@ status:
           command:
           - /bin/sh
           - -c
-          image: busybox
+          image: mirror.gcr.io/busybox
           name: show-array-uid
         - args:
           - echo
@@ -319,7 +319,7 @@ status:
           command:
           - /bin/sh
           - -c
-          image: busybox
+          image: mirror.gcr.io/busybox
           name: show-map-uid
 `, namespace))
 	makeUidTaskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
@@ -344,24 +344,25 @@ spec:
       command:
       - /bin/sh
       - -c
-      image: busybox
+      image: mirror.gcr.io/busybox
       name: add-str-uid
     - args:
       - echo "[\"1002\", \"1003\"]" | tee $(results.arrayUid.path)
       command:
       - /bin/sh
       - -c
-      image: busybox
+      image: mirror.gcr.io/busybox
       name: add-array-uid
     - args:
       - echo -n "{\"uid\":\"1004\"}" | tee $(results.mapUid.path)
       command:
       - /bin/sh
       - -c
-      image: busybox
+      image: mirror.gcr.io/busybox
       name: add-map-uid
   timeout: 1h0m0s
 status:
+  artifacts: {}
   podName: propagated-all-type-results-make-uid-pod
   results:
   - name: strUid
@@ -401,21 +402,21 @@ status:
       command:
       - /bin/sh
       - -c
-      image: busybox
+      image: mirror.gcr.io/busybox
       name: add-str-uid
     - args:
       - echo "[\"1002\", \"1003\"]" | tee /tekton/results/arrayUid
       command:
       - /bin/sh
       - -c
-      image: busybox
+      image: mirror.gcr.io/busybox
       name: add-array-uid
     - args:
       - echo -n "{\"uid\":\"1004\"}" | tee /tekton/results/mapUid
       command:
       - /bin/sh
       - -c
-      image: busybox
+      image: mirror.gcr.io/busybox
       name: add-map-uid
 `, namespace))
 	showUidTaskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
@@ -432,7 +433,7 @@ spec:
       command:
       - /bin/sh
       - -c
-      image: busybox
+      image: mirror.gcr.io/busybox
       name: show-str-uid
     - args:
       - echo
@@ -441,7 +442,7 @@ spec:
       command:
       - /bin/sh
       - -c
-      image: busybox
+      image: mirror.gcr.io/busybox
       name: show-array-uid
     - args:
       - echo
@@ -449,10 +450,11 @@ spec:
       command:
       - /bin/sh
       - -c
-      image: busybox
+      image: mirror.gcr.io/busybox
       name: show-map-uid
   timeout: 1h0m0s
 status:
+  artifacts: {}
   podName: propagated-all-type-results-show-uid-pod
   steps:
   - container: step-show-str-uid
@@ -470,7 +472,7 @@ status:
       command:
       - /bin/sh
       - -c
-      image: busybox
+      image: mirror.gcr.io/busybox
       name: show-str-uid
     - args:
       - echo
@@ -479,7 +481,7 @@ status:
       command:
       - /bin/sh
       - -c
-      image: busybox
+      image: mirror.gcr.io/busybox
       name: show-array-uid
     - args:
       - echo
@@ -487,7 +489,7 @@ status:
       command:
       - /bin/sh
       - -c
-      image: busybox
+      image: mirror.gcr.io/busybox
       name: show-map-uid
 `, namespace))
 	return pipelineRun, expectedPipelineRun, []*v1.TaskRun{makeUidTaskRun, showUidTaskRun}

@@ -15,7 +15,7 @@ spec:
           type: string
         IMAGE_DIGEST:
           type: string
-  image: bash:3.2
+  image: mirror.gcr.io/bash
   env:
     - name: STRINGPARAM
       value: $(params.param2)
@@ -60,7 +60,7 @@ kind: TaskRun
 metadata:
   name: step-action-run
 spec:
-  TaskSpec:
+  taskSpec:
     steps:
       - name: inline-step
         results:
@@ -75,7 +75,7 @@ spec:
                 type: string
               IMAGE_DIGEST:
                 type: string
-        image: alpine
+        image: mirror.gcr.io/alpine
         script: |
           echo -n "[\"image1\", \"image2\", \"image3\"]" | tee $(step.results.result1.path)
           echo -n "foo" | tee $(step.results.result2.path)

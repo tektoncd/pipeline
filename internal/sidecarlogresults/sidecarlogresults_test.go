@@ -80,7 +80,7 @@ func TestLookForResults_FanOutAndWait(t *testing.T) {
 			sort.Slice(wantResults, func(i int, j int) bool { return wantResults[i] < wantResults[j] })
 			sort.Slice(got.Bytes(), func(i int, j int) bool { return got.Bytes()[i] < got.Bytes()[j] })
 			if d := cmp.Diff(wantResults, got.Bytes()); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -143,7 +143,7 @@ func TestLookForResults(t *testing.T) {
 				t.Fatalf("Did not expect any error but got: %v", err)
 			}
 			if d := cmp.Diff(want, got.Bytes()); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -213,7 +213,7 @@ func TestLookForStepResults(t *testing.T) {
 				t.Fatalf("Did not expect any error but got: %v", err)
 			}
 			if d := cmp.Diff(want, got.Bytes()); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -285,27 +285,33 @@ func TestParseResults(t *testing.T) {
 			Name:  "result1",
 			Value: "foo",
 			Type:  "task",
-		}, {
+		},
+		{
 			Name:  "result2",
 			Value: `{"IMAGE_URL":"ar.com", "IMAGE_DIGEST":"sha234"}`,
 			Type:  "task",
-		}, {
+		},
+		{
 			Name:  "result3",
 			Value: `["hello","world"]`,
 			Type:  "task",
-		}, {
+		},
+		{
 			Name:  "step-foo.result1",
 			Value: "foo",
 			Type:  "step",
-		}, {
+		},
+		{
 			Name:  "step-foo.result2",
 			Value: `{"IMAGE_URL":"ar.com", "IMAGE_DIGEST":"sha234"}`,
 			Type:  "step",
-		}, {
+		},
+		{
 			Name:  "step-foo.result3",
 			Value: `["hello","world"]`,
 			Type:  "step",
-		}, {
+		},
+		{
 			Name: "step-artifacts-result",
 			Value: `{
             "inputs":[
@@ -337,6 +343,39 @@ func TestParseResults(t *testing.T) {
             ]
           }`,
 			Type: "stepArtifact",
+		},
+		{
+			Name: "task-run-artifacts-result",
+			Value: `{
+            "inputs":[
+              {
+                "name":"input-artifacts",
+                "values":[
+                  {
+                    "uri":"pkg:example.github.com/inputs",
+                    "digest":{
+                      "sha256":"b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"
+                    }
+                  }
+                ]
+              }
+            ],
+            "outputs":[
+              {
+                "name":"image",
+                "values":[
+                  {
+                    "uri":"pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c",
+                    "digest":{
+                      "sha256":"df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48",
+                      "sha1":"95588b8f34c31eb7d62c92aaa4e6506639b06ef2"
+                    }
+                  }
+                ]
+              }
+            ]
+          }`,
+			Type: "taskArtifact",
 		},
 	}
 	podLogs := []string{}
@@ -400,6 +439,38 @@ func TestParseResults(t *testing.T) {
             ]
           }`,
 		ResultType: result.StepArtifactsResultType,
+	}, {
+		Key: "task-run-artifacts-result",
+		Value: `{
+            "inputs":[
+              {
+                "name":"input-artifacts",
+                "values":[
+                  {
+                    "uri":"pkg:example.github.com/inputs",
+                    "digest":{
+                      "sha256":"b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"
+                    }
+                  }
+                ]
+              }
+            ],
+            "outputs":[
+              {
+                "name":"image",
+                "values":[
+                  {
+                    "uri":"pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c",
+                    "digest":{
+                      "sha256":"df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48",
+                      "sha1":"95588b8f34c31eb7d62c92aaa4e6506639b06ef2"
+                    }
+                  }
+                ]
+              }
+            ]
+          }`,
+		ResultType: result.TaskRunArtifactsResultType,
 	}}
 	stepResults := []result.RunResult{}
 	for _, plog := range podLogs {
@@ -540,7 +611,7 @@ func TestExtractStepAndResultFromSidecarResultName_Error(t *testing.T) {
 
 func TestLookForArtifacts(t *testing.T) {
 	base := basicArtifacts()
-	var modified = base.DeepCopy()
+	modified := base.DeepCopy()
 	modified.Outputs[0].Name = "tests"
 	type Arg struct {
 		stepName      string
@@ -561,7 +632,8 @@ func TestLookForArtifacts(t *testing.T) {
 				Type:  stepArtifactType,
 				Value: mustJSON(&base),
 			}},
-		}, {
+		},
+		{
 			desc: "two step produce artifacts, read success",
 			args: []Arg{{stepName: "first", artifacts: &base}, {stepName: "second", artifacts: modified}},
 			expected: []SidecarLogResult{{
@@ -642,7 +714,7 @@ func TestLookForArtifacts(t *testing.T) {
 			got := buf.String()
 
 			if d := cmp.Diff(want, got); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}

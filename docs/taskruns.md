@@ -120,10 +120,6 @@ A `Tekton Bundle` is an OCI artifact that contains Tekton resources like `Tasks`
 
 You can reference a `Tekton bundle` in a `TaskRef` in both `v1` and `v1beta1` using [remote resolution](./bundle-resolver.md#pipeline-resolution). The example syntax shown below for `v1` uses remote resolution and requires enabling [beta features](./additional-configs.md#beta-features).
 
-In `v1beta1`, you can also reference a `Tekton bundle` using OCI bundle syntax, which has been deprecated in favor of remote resolution. The example shown below for `v1beta1` uses OCI bundle syntax, and requires enabling `enable-tekton-oci-bundles: "true"` feature flag.
-
-{{< tabs >}}
-{{% tab "v1 & v1beta1" %}}
 ```yaml
 spec:
   taskRef:
@@ -136,25 +132,9 @@ spec:
     - name: kind
       value: Task
 ```
-{{% /tab %}}
-
-{{% tab "v1beta1" %}}
-```yaml
-spec:
-taskRef:
-  name: echo-task
-  bundle: docker.io/myrepo/mycatalog
-```
-{{% /tab %}}
-{{< /tabs >}}
-
-Here, the `bundle` field is the full reference url to the artifact. The name is the
-`metadata.name` field of the `Task`.
 
 You may also specify a `tag` as you would with a Docker image which will give you a repeatable reference to a `Task`.
 
-{{< tabs >}}
-{{% tab "v1 & v1beta1" %}}
 ```yaml
 spec:
   taskRef:
@@ -167,22 +147,9 @@ spec:
     - name: kind
       value: Task
 ```
-{{% /tab %}}
-
-{{% tab "v1beta1" %}}
-```yaml
-spec:
-taskRef:
-  name: echo-task
-  bundle: docker.io/myrepo/mycatalog:v1.0.1
-```
-{{% /tab %}}
-{{< /tabs >}}
 
 You may also specify a fixed digest instead of a tag which ensures the referenced task is constant.
 
-{{< tabs >}}
-{{% tab "v1 & v1beta1" %}}
 ```yaml
 spec:
   taskRef:
@@ -195,17 +162,6 @@ spec:
     - name: kind
       value: Task
 ```
-{{% /tab %}}
-
-{{% tab "v1beta1" %}}
-```yaml
-spec:
-taskRef:
-  name: echo-task
-  bundle: docker.io/myrepo/mycatalog@sha256:abc123
-```
-{{% /tab %}}
-{{< /tabs >}}
 
 A working example can be found [here](../examples/v1beta1/taskruns/no-ci/tekton-bundles.yaml).
 
@@ -418,7 +374,7 @@ may be overridden by a TaskRun's StepSpecs and SidecarSpecs.
 
 ### Specifying Task-level `ComputeResources`
 
-**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/additional-configs.md#alpha-features))**
+**([beta only](https://github.com/tektoncd/pipeline/blob/main/docs/additional-configs.md#beta-features))**
 
 Task-level compute resources can be configured in `TaskRun.ComputeResources`, or `PipelineRun.TaskRunSpecs.ComputeResources`.
 
@@ -643,7 +599,7 @@ and reasons.
 
 ### Configuring Task Steps and Sidecars in a TaskRun
 
-**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/additional-configs.md#alpha-features))**
+**([beta only](https://github.com/tektoncd/pipeline/blob/main/docs/additional-configs.md#beta-features))**
 
 A TaskRun can specify `StepSpecs` or `SidecarSpecs` to configure Step or Sidecar
 specified in a Task. Only named Steps and Sidecars may be configured.
@@ -846,20 +802,21 @@ steps:
 
 The following tables shows how to read the overall status of a `TaskRun`:
 
-`status` | `reason`               | `message`                                                         | `completionTime` is set |                                                                                       Description
-:--------|:-----------------------|:------------------------------------------------------------------|:-----------------------:|-------------------------------------------------------------------------------------------------:
-Unknown  | Started                | n/a                                                               |           No            |                                            The TaskRun has just been picked up by the controller.
-Unknown  | Pending                | n/a                                                               |           No            |                                                The TaskRun is waiting on a Pod in status Pending.
-Unknown  | Running                | n/a                                                               |           No            |                                   The TaskRun has been validated and started to perform its work.
-Unknown  | TaskRunCancelled       | n/a                                                               |           No            |               The user requested the TaskRun to be cancelled. Cancellation has not been done yet.
-True     | Succeeded              | n/a                                                               |           Yes           |                                                               The TaskRun completed successfully.
-False    | Failed                 | n/a                                                               |           Yes           |                                               The TaskRun failed because one of the steps failed.
-False    | \[Error message\]      | n/a                                                               |           No            | The TaskRun encountered a non-permanent error, and it's still running. It may ultimately succeed.
-False    | \[Error message\]      | n/a                                                               |           Yes           |                                   The TaskRun failed with a permanent error (usually validation).
-False    | TaskRunCancelled       | n/a                                                               |           Yes           |                                                           The TaskRun was cancelled successfully.
-False    | TaskRunCancelled       | TaskRun cancelled as the PipelineRun it belongs to has timed out. |           Yes           |                                      The TaskRun was cancelled because the PipelineRun timed out.
-False    | TaskRunTimeout         | n/a                                                               |           Yes           |                                                                            The TaskRun timed out.
-False    | TaskRunImagePullFailed | n/a                                                               |           Yes           |                      The TaskRun failed due to one of its steps not being able to pull the image.
+| `status` | `reason`               | `message`                                                         | `completionTime` is set |                                                                                       Description |
+|:---------|:-----------------------|:------------------------------------------------------------------|:-----------------------:|--------------------------------------------------------------------------------------------------:|
+| Unknown  | Started                | n/a                                                               |           No            |                                            The TaskRun has just been picked up by the controller. |
+| Unknown  | Pending                | n/a                                                               |           No            |                                                The TaskRun is waiting on a Pod in status Pending. |
+| Unknown  | Running                | n/a                                                               |           No            |                                   The TaskRun has been validated and started to perform its work. |
+| Unknown  | TaskRunCancelled       | n/a                                                               |           No            |               The user requested the TaskRun to be cancelled. Cancellation has not been done yet. |
+| True     | Succeeded              | n/a                                                               |           Yes           |                                                               The TaskRun completed successfully. |
+| False    | Failed                 | n/a                                                               |           Yes           |                                               The TaskRun failed because one of the steps failed. |
+| False    | \[Error message\]      | n/a                                                               |           No            | The TaskRun encountered a non-permanent error, and it's still running. It may ultimately succeed. |
+| False    | \[Error message\]      | n/a                                                               |           Yes           |                                   The TaskRun failed with a permanent error (usually validation). |
+| False    | TaskRunCancelled       | n/a                                                               |           Yes           |                                                           The TaskRun was cancelled successfully. |
+| False    | TaskRunCancelled       | TaskRun cancelled as the PipelineRun it belongs to has timed out. |           Yes           |                                      The TaskRun was cancelled because the PipelineRun timed out. |
+| False    | TaskRunTimeout         | n/a                                                               |           Yes           |                                                                            The TaskRun timed out. |
+| False    | TaskRunImagePullFailed | n/a                                                               |           Yes           |                      The TaskRun failed due to one of its steps not being able to pull the image. |
+| False    | FailureIgnored         | n/a                                                               |           Yes           |                                                   The TaskRun failed but the failure was ignored. |
 
 When a `TaskRun` changes status, [events](events.md#taskruns) are triggered accordingly.
 
@@ -952,6 +909,18 @@ spec:
       onFailure: "enabled"
 ```
 
+### Breakpoint before step
+
+If you want to set a breakpoint before the step is executed, you can add the step name to the `beforeSteps` field in the following way:
+
+```yaml
+spec:
+  debug:
+    breakpoints:
+      beforeSteps: 
+        - {{ stepName }}
+```
+
 Upon failure of a step, the TaskRun Pod execution is halted. If this TaskRun Pod continues to run without any lifecycle
 change done by the user (running the debug-continue or debug-fail-continue script) the TaskRun would be subject to
 [TaskRunTimeout](#configuring-the-failure-timeout).
@@ -973,6 +942,10 @@ perform :-
 `debug-continue`: Mark the step as a success and exit the breakpoint.
 
 `debug-fail-continue`: Mark the step as a failure and exit the breakpoint.
+
+`debug-beforestep-continue`: Mark the step continue to execute
+
+`debug-beforestep-fail-continue`: Mark the step not continue to execute
 
 *More information on the inner workings of debug can be found in the [Debug documentation](debug.md)*
 

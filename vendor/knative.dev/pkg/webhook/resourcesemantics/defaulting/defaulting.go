@@ -69,8 +69,9 @@ type reconciler struct {
 	mwhlister    admissionlisters.MutatingWebhookConfigurationLister
 	secretlister corelisters.SecretLister
 
-	disallowUnknownFields bool
-	secretName            string
+	disallowUnknownFields     bool
+	secretName                string
+	disableNamespaceOwnership bool
 }
 
 // CallbackFunc is the function to be invoked.
@@ -104,10 +105,12 @@ func NewCallback(function func(context.Context, *unstructured.Unstructured) erro
 	return Callback{function: function, supportedVerbs: m}
 }
 
-var _ controller.Reconciler = (*reconciler)(nil)
-var _ pkgreconciler.LeaderAware = (*reconciler)(nil)
-var _ webhook.AdmissionController = (*reconciler)(nil)
-var _ webhook.StatelessAdmissionController = (*reconciler)(nil)
+var (
+	_ controller.Reconciler                = (*reconciler)(nil)
+	_ pkgreconciler.LeaderAware            = (*reconciler)(nil)
+	_ webhook.AdmissionController          = (*reconciler)(nil)
+	_ webhook.StatelessAdmissionController = (*reconciler)(nil)
+)
 
 // Reconcile implements controller.Reconciler
 func (ac *reconciler) Reconcile(ctx context.Context, key string) error {
@@ -216,12 +219,14 @@ func (ac *reconciler) reconcileMutatingWebhook(ctx context.Context, caCert []byt
 
 	current := configuredWebhook.DeepCopy()
 
-	ns, err := ac.client.CoreV1().Namespaces().Get(ctx, system.Namespace(), metav1.GetOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to fetch namespace: %w", err)
+	if !ac.disableNamespaceOwnership {
+		ns, err := ac.client.CoreV1().Namespaces().Get(ctx, system.Namespace(), metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to fetch namespace: %w", err)
+		}
+		nsRef := *metav1.NewControllerRef(ns, corev1.SchemeGroupVersion.WithKind("Namespace"))
+		current.OwnerReferences = []metav1.OwnerReference{nsRef}
 	}
-	nsRef := *metav1.NewControllerRef(ns, corev1.SchemeGroupVersion.WithKind("Namespace"))
-	current.OwnerReferences = []metav1.OwnerReference{nsRef}
 
 	for i, wh := range current.Webhooks {
 		if wh.Name != current.Name {

@@ -48,15 +48,17 @@ type meterExporter struct {
 // for each observed Resource. This is needed because OpenCensus support for
 // Resources is a bit tacked-on rather than being a first-class component like
 // Tags are.
-type ResourceExporterFactory func(*resource.Resource) (view.Exporter, error)
-type meters struct {
-	meters         map[string]*meterExporter
-	factory        ResourceExporterFactory
-	lock           sync.Mutex
-	clock          clock.WithTicker
-	ticker         clock.Ticker
-	tickerStopChan chan struct{}
-}
+type (
+	ResourceExporterFactory func(*resource.Resource) (view.Exporter, error)
+	meters                  struct {
+		meters         map[string]*meterExporter
+		factory        ResourceExporterFactory
+		lock           sync.Mutex
+		clock          clock.WithTicker
+		ticker         clock.Ticker
+		tickerStopChan chan struct{}
+	}
+)
 
 // Lock regime: lock allMeters before resourceViews. The critical path is in
 // optionForResource, which must lock allMeters, but only needs to lock
@@ -305,7 +307,7 @@ func optionForResource(r *resource.Resource) (stats.Options, error) {
 			// If we can't create exporters but we have a Meter, return that.
 			return mE.o, nil
 		}
-		return nil, fmt.Errorf("whoops, allMeters.factory is nil")
+		return nil, errors.New("whoops, allMeters.factory is nil")
 	}
 	exporter, err := allMeters.factory(r)
 	if err != nil {
@@ -421,15 +423,19 @@ func (*defaultMeterImpl) Find(name string) *view.View {
 func (*defaultMeterImpl) Register(views ...*view.View) error {
 	return view.Register(views...)
 }
+
 func (*defaultMeterImpl) Unregister(views ...*view.View) {
 	view.Unregister(views...)
 }
+
 func (*defaultMeterImpl) SetReportingPeriod(t time.Duration) {
 	view.SetReportingPeriod(t)
 }
+
 func (*defaultMeterImpl) RegisterExporter(e view.Exporter) {
 	view.RegisterExporter(e)
 }
+
 func (*defaultMeterImpl) UnregisterExporter(e view.Exporter) {
 	view.UnregisterExporter(e)
 }
@@ -438,6 +444,7 @@ func (*defaultMeterImpl) Stop()  {}
 func (*defaultMeterImpl) RetrieveData(viewName string) ([]*view.Row, error) {
 	return view.RetrieveData(viewName)
 }
+
 func (*defaultMeterImpl) SetResource(*resource.Resource) {
 }
 

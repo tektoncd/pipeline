@@ -150,7 +150,6 @@ func (sc *spireControllerAPIClient) CheckSpireVerifiedFlag(tr *v1beta1.TaskRun) 
 	return false
 }
 
-//nolint:musttag
 func hashTaskrunStatusInternal(tr *v1beta1.TaskRun) (string, error) {
 	s, err := json.Marshal(tr.Status.TaskRunStatusFields)
 	if err != nil {

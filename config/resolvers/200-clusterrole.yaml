@@ -26,9 +26,9 @@ rules:
     resources: ["resolutionrequests", "resolutionrequests/status"]
     verbs: ["get", "list", "watch", "update", "patch"]
   - apiGroups: ["tekton.dev"]
-    resources: ["tasks", "pipelines"]
+    resources: ["tasks", "pipelines", "stepactions"]
     verbs: ["get", "list"]
   # Read-only access to these.
   - apiGroups: [""]
-    resources: ["secrets"]
+    resources: ["secrets", "serviceaccounts"]
     verbs: ["get", "list", "watch"]

@@ -25,7 +25,7 @@ spec:
         key1: "step-action default key1"
         key2: "step-action default key2"
         key3: "step-action default key3"
-  image: bash:3.2
+  image: mirror.gcr.io/bash
   args: [
     "echo",
     "$(params.array-param[*])",
@@ -50,7 +50,7 @@ spec:
     - name: objectparam
       value:
         key2: "pipelinerun key2"
-  PipelineSpec:
+  pipelineSpec:
     tasks:
       - name: run-action
         taskSpec:

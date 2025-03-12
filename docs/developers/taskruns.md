@@ -285,3 +285,53 @@ There are known issues with the existing implementation of sidecars:
   using `kubectl` to get the pods of a TaskRun, not when describing the Pod
   using `kubectl describe pod ...` nor when looking at the TaskRun, but can be
   quite confusing.
+
+## Breakpoint on Failure
+
+Halting a TaskRun execution on Failure of a step.
+
+### Failure of a Step
+
+The entrypoint binary is used to manage the lifecycle of a step. Steps are aligned beforehand by the TaskRun controller
+allowing each step to run in a particular order. This is done using `-wait_file` and the `-post_file` flags. The former
+let's the entrypoint binary know that it has to wait on creation of a particular file before starting execution of the step.
+And the latter provides information on the step number and signal the next step on completion of the step.
+
+On success of a step, the `-post-file` is written as is, signalling the next step which would have the same argument given
+for `-wait_file` to resume the entrypoint process and move ahead with the step.
+
+On failure of a step, the `-post_file` is written with appending `.err` to it denoting that the previous step has failed with
+and error. The subsequent steps are skipped in this case as well, marking the TaskRun as a failure.
+
+### Halting a Step on failure
+
+The failed step writes `<step-no>.err` to `/tekton/run` and stops running completely. To be able to debug a step we would
+need it to continue running (not exit), not skip the next steps and signal health of the step. By disabling step skipping,
+stopping write of the `<step-no>.err` file and waiting on a signal by the user to disable the halt, we would be simulating a
+"breakpoint".
+
+In this breakpoint, which is essentially a limbo state the TaskRun finds itself in, the user can interact with the step
+environment using a CLI or an IDE.
+
+### Exiting onfailure breakpoint
+
+To exit a step which has been paused upon failure, the step would wait on a file similar to `<step-no>.breakpointexit` which
+would unpause and exit the step container. eg: Step 0 fails and is paused. Writing `0.breakpointexit` in `/tekton/run`
+would unpause and exit the step container.
+
+## Breakpoint before step
+
+TaskRun will be stuck waiting for user debugging before the step execution.
+
+### Halting a Step before execution
+
+The step program will be executed after all the `-wait_file` monitoring ends. If want the user to enter the debugging before the step is executed,
+need to pass a parameter `debug_before_step` to `entrypoint`,
+and `entrypoint` will end the monitoring of `waitFiles` back pause,
+waiting to listen to the `/tekton/run/0/out.beforestepexit` file
+
+### Exiting before step breakpoint
+
+`entrypoint` listening `/tekton/run/{{ stepID }}/out.beforestepexit` or `/tekton/run/{{ stepID }}/out.beforestepexit.err` to
+decide whether to proceed this step, `out.beforestepexit` means continue with step,
+`out.beforestepexit.err` means do not continue with the step.

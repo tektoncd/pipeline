@@ -15,7 +15,7 @@ spec:
         taskSpec:
           steps:
             - name: echo
-              image: ubuntu
+              image: mirror.gcr.io/ubuntu
               script: |
                 #!/usr/bin/env bash
                 echo "$(params.HELLO)"
@@ -27,7 +27,7 @@ spec:
         taskSpec:
           steps:
             - name: echo
-              image: ubuntu
+              image: mirror.gcr.io/ubuntu
               script: |
                 #!/usr/bin/env bash
                 echo "And finally.. $(params.HELLO)"

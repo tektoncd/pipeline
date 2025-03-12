@@ -74,7 +74,7 @@ func GetLoggingConfig(ctx context.Context) (*logging.Config, error) {
 	// These timeout and retry interval are set by heuristics.
 	// e.g. istio sidecar needs a few seconds to configure the pod network.
 	var lastErr error
-	if err := wait.PollImmediate(1*time.Second, 5*time.Second, func() (bool, error) {
+	if err := wait.PollUntilContextTimeout(ctx, 1*time.Second, 5*time.Second, true, func(ctx context.Context) (bool, error) {
 		loggingConfigMap, lastErr = kubeclient.Get(ctx).CoreV1().ConfigMaps(system.Namespace()).Get(ctx, logging.ConfigMapName(), metav1.GetOptions{})
 		return lastErr == nil || apierrors.IsNotFound(lastErr), nil
 	}); err != nil {
@@ -151,7 +151,6 @@ var (
 // In addition to the MainWithConfig flow, it defines a `disabled-controllers` flag that allows disabling controllers
 // by name.
 func MainNamed(ctx context.Context, component string, ctors ...injection.NamedControllerConstructor) {
-
 	disabledControllers := flag.String("disable-controllers", "", "Comma-separated list of disabled controllers.")
 
 	// HACK: This parses flags, so the above should be set once this runs.
@@ -290,7 +289,12 @@ func MainWithConfig(ctx context.Context, component string, cfg *rest.Config, cto
 	var wh *webhook.Webhook
 	if len(webhooks) > 0 {
 		// Register webhook metrics
-		webhook.RegisterMetrics()
+		opts := webhook.GetOptions(ctx)
+		if opts != nil {
+			webhook.RegisterMetrics(opts.StatsReporterOptions...)
+		} else {
+			webhook.RegisterMetrics()
+		}
 
 		wh, err = webhook.New(ctx, webhooks)
 		if err != nil {
@@ -451,8 +455,8 @@ func SecretFetcher(ctx context.Context) metrics.SecretFetcher {
 // of the webhooks created from the given constructors.
 func ControllersAndWebhooksFromCtors(ctx context.Context,
 	cmw *cminformer.InformedWatcher,
-	ctors ...injection.ControllerConstructor) ([]*controller.Impl, []interface{}) {
-
+	ctors ...injection.ControllerConstructor,
+) ([]*controller.Impl, []interface{}) {
 	// Check whether the context has been infused with a leader elector builder.
 	// If it has, then every reconciler we plan to start MUST implement LeaderAware.
 	leEnabled := leaderelection.HasLeaderElection(ctx)

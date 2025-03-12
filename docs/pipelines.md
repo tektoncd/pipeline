@@ -624,45 +624,24 @@ There is currently a hard limit of 20 objects in a bundle.
 
 You can reference a `Tekton bundle` in a `TaskRef` in both `v1` and `v1beta1` using [remote resolution](./bundle-resolver.md#pipeline-resolution). The example syntax shown below for `v1` uses remote resolution and requires enabling [beta features](./additional-configs.md#beta-features).
 
-In `v1beta1`, you can also reference a `Tekton bundle` using OCI bundle syntax, which has been deprecated in favor of remote resolution. The example shown below for `v1beta1` uses OCI bundle syntax, and requires enabling `enable-tekton-oci-bundles: "true"` feature flag.
-
-
-{{< tabs >}}
-{{% tab "v1 & v1beta1" %}}
-```yaml
-spec:
-  taskRef:
-    resolver: bundles
-    params:
-    - name: bundle
-      value: docker.io/myrepo/mycatalog
-    - name: name
-      value: echo-task
-    - name: kind
-      value: Task
-```
-{{% /tab %}}
-
-{{% tab "v1beta1" %}}
 ```yaml
 spec:
   tasks:
     - name: hello-world
       taskRef:
-        name: echo-task
-        bundle: docker.com/myrepo/mycatalog
+        resolver: bundles
+        params:
+        - name: bundle
+          value: docker.io/myrepo/mycatalog
+        - name: name
+          value: echo-task
+        - name: kind
+          value: Task
 ```
-{{% /tab %}}
-{{< /tabs >}}
-
-Here, the `bundle` field is the full reference url to the artifact. The name is the
-`metadata.name` field of the `Task`.
 
 You may also specify a `tag` as you would with a Docker image which will give you a fixed,
 repeatable reference to a `Task`.
 
-{{< tabs >}}
-{{% tab "v1 & v1beta1" %}}
 ```yaml
 spec:
   taskRef:
@@ -675,24 +654,9 @@ spec:
     - name: kind
       value: Task
 ```
-{{% /tab %}}
-
-{{% tab "v1beta1" %}}
-```yaml
-spec:
-  tasks:
-    - name: hello-world
-      taskRef:
-        name: echo-task
-        bundle: docker.com/myrepo/mycatalog:v1.0.1
-```
-{{% /tab %}}
-{{< /tabs >}}
 
 You may also specify a fixed digest instead of a tag.
 
-{{< tabs >}}
-{{% tab "v1 & v1beta1" %}}
 ```yaml
 spec:
   taskRef:
@@ -705,19 +669,6 @@ spec:
     - name: kind
       value: Task
 ```
-{{% /tab %}}
-
-{{% tab "v1beta1" %}}
-```yaml
-spec:
-  tasks:
-    - name: hello-world
-      taskRef:
-        name: echo-task
-        bundle: docker.io/myrepo/mycatalog@sha256:abc123
-```
-{{% /tab %}}
-{{< /tabs >}}
 
 Any of the above options will fetch the image using the `ImagePullSecrets` attached to the
 `ServiceAccount` specified in the `PipelineRun`.
@@ -789,8 +740,6 @@ tasks:
 ```
 
 ### Using the `onError` field
-
-> :seedling: **Specifying `onError` in `PipelineTasks` is an [alpha](additional-configs.md#alpha-features) feature.** The `enable-api-fields` feature flag must be set to `"alpha"` to specify `onError`  in a `PipelineTask`.
 
 When a `PipelineTask` fails, the rest of the `PipelineTasks` are skipped and the `PipelineRun` is declared a failure. If you would like to
 ignore such `PipelineTask` failure and continue executing the rest of the `PipelineTasks`, you can specify `onError` for such a `PipelineTask`.
@@ -1253,6 +1202,10 @@ format. For example, valid values are `1h30m`, `1h`, `1m`, and `60s`.
 
 **Note:** If you do not specify a `Timeout` value, Tekton instead honors the timeout for the [`PipelineRun`](pipelineruns.md#configuring-a-pipelinerun).
 
+**Note:** If the specified `Task` timeout is greater than the Pipeline timeout as configured in the [`PipelineRun`](pipelineruns.md#configuring-a-failure-timeout), the Pipeline will time-out first causing the `Task` to timeout before its configured timeout.
+For example, if the `PipelineRun` sets `timeouts.pipeline = 1h` and the `Pipeline` sets `tasks[0].timeout = 3h`, the task will still timeout after `1h`.
+See [`PipelineRun - Configuring a failure timeout`](pipelineruns.md#configuring-a-failure-timeout) for details.
+
 In the example below, the `build-the-image` `Task` is configured to time out after 90 seconds:
 
 ```yaml
@@ -1315,6 +1268,10 @@ Tasks can emit [`Results`](tasks.md#emitting-results) when they execute. A Pipel
 
 1. A Pipeline can pass the `Result` of a `Task` into the `Parameters` or `when` expressions of another.
 2. A Pipeline can itself emit `Results` and include data from the `Results` of its Tasks.
+
+> **Note** Tekton does not enforce that results are produced at Task level. If a pipeline attempts to
+> consume a result that was declared by a Task, but not produced, it will fail. [TEP-0048](https://github.com/tektoncd/community/blob/main/teps/0048-task-results-without-results.md)
+> propopses introducing default values for results to help Pipeline authors manage this case.
 
 ### Passing one Task's `Results` into the `Parameters` or `when` expressions of another
 

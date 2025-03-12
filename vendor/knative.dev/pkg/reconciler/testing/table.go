@@ -20,6 +20,7 @@ import (
 	"context"
 	"path"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -168,7 +169,8 @@ func (r *TableRow) Test(t *testing.T, factory Factory) {
 		t.Errorf("Error capturing actions by verb: %q", err)
 	}
 
-	effectiveOpts := append(r.CmpOpts, defaultCmpOpts...)
+	effectiveOpts := slices.Concat(r.CmpOpts, defaultCmpOpts)
+
 	// Previous state is used to diff resource expected state for update requests that were missed.
 	objPrevState := make(map[string]runtime.Object, len(r.Objects))
 	for _, o := range r.Objects {
@@ -363,7 +365,8 @@ func (r *TableRow) Test(t *testing.T, factory Factory) {
 
 func filterUpdatesWithSubresource(
 	subresource string,
-	actions []clientgotesting.UpdateAction) (result []clientgotesting.UpdateAction) {
+	actions []clientgotesting.UpdateAction,
+) (result []clientgotesting.UpdateAction) {
 	for _, action := range actions {
 		if action.GetSubresource() == subresource {
 			result = append(result, action)

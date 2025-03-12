@@ -12,7 +12,7 @@ spec:
               app: "example"
           steps:
             - name: echo
-              image: ubuntu
+              image: mirror.gcr.io/ubuntu
               script: |
                 #!/usr/bin/env bash
                 echo "Good Morning!"
@@ -38,7 +38,7 @@ spec:
             default: "Hello World!"
           steps:
             - name: echo
-              image: ubuntu
+              image: mirror.gcr.io/ubuntu
               script: |
                 #!/usr/bin/env bash
                 echo "$(params.MESSAGE)"
@@ -70,7 +70,7 @@ spec:
             default: "Hello World!"
           steps:
             - name: echo
-              image: ubuntu
+              image: mirror.gcr.io/ubuntu
               script: |
                 #!/usr/bin/env bash
                 echo "$(params.MESSAGE)"

@@ -55,7 +55,7 @@ spec:
       retries: %d
       taskSpec:
         steps:
-        - image: busybox
+        - image: mirror.gcr.io/busybox
           script: exit 1
 `, pipelineRunName, numRetries)), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun %q: %v", pipelineRunName, err)

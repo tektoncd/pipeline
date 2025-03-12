@@ -12,29 +12,45 @@ import (
 )
 
 // Gets a list of aliases in the caller's Amazon Web Services account and region.
-// For more information about aliases, see CreateAlias . By default, the
-// ListAliases operation returns all aliases in the account and region. To get only
-// the aliases associated with a particular KMS key, use the KeyId parameter. The
-// ListAliases response can include aliases that you created and associated with
-// your customer managed keys, and aliases that Amazon Web Services created and
-// associated with Amazon Web Services managed keys in your account. You can
+// For more information about aliases, see CreateAlias.
+//
+// By default, the ListAliases operation returns all aliases in the account and
+// region. To get only the aliases associated with a particular KMS key, use the
+// KeyId parameter.
+//
+// The ListAliases response can include aliases that you created and associated
+// with your customer managed keys, and aliases that Amazon Web Services created
+// and associated with Amazon Web Services managed keys in your account. You can
 // recognize Amazon Web Services aliases because their names have the format aws/ ,
-// such as aws/dynamodb . The response might also include aliases that have no
-// TargetKeyId field. These are predefined aliases that Amazon Web Services has
-// created but has not yet associated with a KMS key. Aliases that Amazon Web
-// Services creates in your account, including predefined aliases, do not count
-// against your KMS aliases quota (https://docs.aws.amazon.com/kms/latest/developerguide/limits.html#aliases-limit)
-// . Cross-account use: No. ListAliases does not return aliases in other Amazon
-// Web Services accounts. Required permissions: kms:ListAliases (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
-// (IAM policy) For details, see Controlling access to aliases (https://docs.aws.amazon.com/kms/latest/developerguide/kms-alias.html#alias-access)
-// in the Key Management Service Developer Guide. Related operations:
-//   - CreateAlias
-//   - DeleteAlias
-//   - UpdateAlias
+// such as aws/dynamodb .
+//
+// The response might also include aliases that have no TargetKeyId field. These
+// are predefined aliases that Amazon Web Services has created but has not yet
+// associated with a KMS key. Aliases that Amazon Web Services creates in your
+// account, including predefined aliases, do not count against your [KMS aliases quota].
+//
+// Cross-account use: No. ListAliases does not return aliases in other Amazon Web
+// Services accounts.
+//
+// Required permissions: [kms:ListAliases] (IAM policy)
+//
+// For details, see [Controlling access to aliases] in the Key Management Service Developer Guide.
+//
+// Related operations:
+//
+// # CreateAlias
+//
+// # DeleteAlias
+//
+// # UpdateAlias
 //
 // Eventual consistency: The KMS API follows an eventual consistency model. For
-// more information, see KMS eventual consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
-// .
+// more information, see [KMS eventual consistency].
+//
+// [KMS aliases quota]: https://docs.aws.amazon.com/kms/latest/developerguide/limits.html#aliases-limit
+// [kms:ListAliases]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
+// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html
+// [Controlling access to aliases]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-alias.html#alias-access
 func (c *Client) ListAliases(ctx context.Context, params *ListAliasesInput, optFns ...func(*Options)) (*ListAliasesOutput, error) {
 	if params == nil {
 		params = &ListAliasesInput{}
@@ -53,20 +69,29 @@ func (c *Client) ListAliases(ctx context.Context, params *ListAliasesInput, optF
 type ListAliasesInput struct {
 
 	// Lists only aliases that are associated with the specified KMS key. Enter a KMS
-	// key in your Amazon Web Services account. This parameter is optional. If you omit
-	// it, ListAliases returns all aliases in the account and Region. Specify the key
-	// ID or key ARN of the KMS key. For example:
+	// key in your Amazon Web Services account.
+	//
+	// This parameter is optional. If you omit it, ListAliases returns all aliases in
+	// the account and Region.
+	//
+	// Specify the key ID or key ARN of the KMS key.
+	//
+	// For example:
+	//
 	//   - Key ID: 1234abcd-12ab-34cd-56ef-1234567890ab
+	//
 	//   - Key ARN:
 	//   arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab
-	// To get the key ID and key ARN for a KMS key, use ListKeys or DescribeKey .
+	//
+	// To get the key ID and key ARN for a KMS key, use ListKeys or DescribeKey.
 	KeyId *string
 
 	// Use this parameter to specify the maximum number of items to return. When this
 	// value is present, KMS does not return more than the specified number of items,
-	// but it might return fewer. This value is optional. If you include a value, it
-	// must be between 1 and 100, inclusive. If you do not include a value, it defaults
-	// to 50.
+	// but it might return fewer.
+	//
+	// This value is optional. If you include a value, it must be between 1 and 100,
+	// inclusive. If you do not include a value, it defaults to 50.
 	Limit *int32
 
 	// Use this parameter in a subsequent request after you receive a response with
@@ -88,7 +113,7 @@ type ListAliasesOutput struct {
 
 	// A flag that indicates whether there are more items in the list. When this value
 	// is true, the list in this response is truncated. To get more items, pass the
-	// value of the NextMarker element in thisresponse to the Marker parameter in a
+	// value of the NextMarker element in this response to the Marker parameter in a
 	// subsequent request.
 	Truncated bool
 
@@ -141,6 +166,9 @@ func (c *Client) addOperationListAliasesMiddlewares(stack *middleware.Stack, opt
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -151,6 +179,12 @@ func (c *Client) addOperationListAliasesMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListAliases(options.Region), middleware.Before); err != nil {
@@ -171,23 +205,29 @@ func (c *Client) addOperationListAliasesMiddlewares(stack *middleware.Stack, opt
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListAliasesAPIClient is a client that implements the ListAliases operation.
-type ListAliasesAPIClient interface {
-	ListAliases(context.Context, *ListAliasesInput, ...func(*Options)) (*ListAliasesOutput, error)
-}
-
-var _ ListAliasesAPIClient = (*Client)(nil)
 
 // ListAliasesPaginatorOptions is the paginator options for ListAliases
 type ListAliasesPaginatorOptions struct {
 	// Use this parameter to specify the maximum number of items to return. When this
 	// value is present, KMS does not return more than the specified number of items,
-	// but it might return fewer. This value is optional. If you include a value, it
-	// must be between 1 and 100, inclusive. If you do not include a value, it defaults
-	// to 50.
+	// but it might return fewer.
+	//
+	// This value is optional. If you include a value, it must be between 1 and 100,
+	// inclusive. If you do not include a value, it defaults to 50.
 	Limit int32
 
 	// Set to true if pagination should stop if the service returns a pagination token
@@ -248,6 +288,9 @@ func (p *ListAliasesPaginator) NextPage(ctx context.Context, optFns ...func(*Opt
 	}
 	params.Limit = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListAliases(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -266,6 +309,13 @@ func (p *ListAliasesPaginator) NextPage(ctx context.Context, optFns ...func(*Opt
 
 	return result, nil
 }
+
+// ListAliasesAPIClient is a client that implements the ListAliases operation.
+type ListAliasesAPIClient interface {
+	ListAliases(context.Context, *ListAliasesInput, ...func(*Options)) (*ListAliasesOutput, error)
+}
+
+var _ ListAliasesAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListAliases(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

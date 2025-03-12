@@ -3,7 +3,7 @@ kind: StepAction
 metadata:
   name: step-action
 spec:
-  image: alpine
+  image: mirror.gcr.io/alpine
   results:
     - name: result1
     - name: result2
@@ -16,7 +16,7 @@ kind: TaskRun
 metadata:
   name: step-action-run
 spec:
-  TaskSpec:
+  taskSpec:
     results:
       - name: step-result
         value: $(steps.action-runner.results.result1)

@@ -38,7 +38,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/internal/resolution"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
-	common "github.com/tektoncd/pipeline/pkg/resolution/common"
+	"github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	frtesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
 	"github.com/tektoncd/pipeline/test"
@@ -216,7 +216,10 @@ func TestValidateParams_Failure(t *testing.T) {
 func TestGetResolutionTimeoutDefault(t *testing.T) {
 	resolver := Resolver{}
 	defaultTimeout := 30 * time.Minute
-	timeout := resolver.GetResolutionTimeout(context.Background(), defaultTimeout)
+	timeout, err := resolver.GetResolutionTimeout(context.Background(), defaultTimeout, map[string]string{})
+	if err != nil {
+		t.Fatalf("couldn't get default-timeout: %v", err)
+	}
 	if timeout != defaultTimeout {
 		t.Fatalf("expected default timeout to be returned")
 	}
@@ -230,8 +233,30 @@ func TestGetResolutionTimeoutCustom(t *testing.T) {
 		DefaultTimeoutKey: configTimeout.String(),
 	}
 	ctx := framework.InjectResolverConfigToContext(context.Background(), config)
-	timeout := resolver.GetResolutionTimeout(ctx, defaultTimeout)
+	timeout, err := resolver.GetResolutionTimeout(ctx, defaultTimeout, map[string]string{})
+	if err != nil {
+		t.Fatalf("couldn't get default-timeout: %v", err)
+	}
 	if timeout != configTimeout {
+		t.Fatalf("expected timeout from config to be returned")
+	}
+}
+
+func TestGetResolutionTimeoutCustomIdentifier(t *testing.T) {
+	resolver := Resolver{}
+	defaultTimeout := 30 * time.Minute
+	configTimeout := 5 * time.Second
+	identifierConfigTImeout := 10 * time.Second
+	config := map[string]string{
+		DefaultTimeoutKey:          configTimeout.String(),
+		"foo." + DefaultTimeoutKey: identifierConfigTImeout.String(),
+	}
+	ctx := framework.InjectResolverConfigToContext(context.Background(), config)
+	timeout, err := resolver.GetResolutionTimeout(ctx, defaultTimeout, map[string]string{"configKey": "foo"})
+	if err != nil {
+		t.Fatalf("couldn't get default-timeout: %v", err)
+	}
+	if timeout != identifierConfigTImeout {
 		t.Fatalf("expected timeout from config to be returned")
 	}
 }
@@ -265,6 +290,7 @@ type params struct {
 	namespace  string
 	serverURL  string
 	scmType    string
+	configKey  string
 }
 
 func TestResolve(t *testing.T) {
@@ -341,6 +367,7 @@ func TestResolve(t *testing.T) {
 		expectedCommitSHA string
 		expectedStatus    *v1beta1.ResolutionRequestStatus
 		expectedErr       error
+		configIdentifer   string
 	}{{
 		name: "clone: default revision main",
 		args: &params{
@@ -433,6 +460,46 @@ func TestResolve(t *testing.T) {
 			APISecretKeyKey:       "token",
 			APISecretNamespaceKey: system.Namespace(),
 		},
+		apiToken:          "some-token",
+		expectedCommitSHA: commitSHAsInSCMRepo[0],
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData(mainTaskYAML),
+	}, {
+		name: "api: successful task from params api information with identifier",
+		args: &params{
+			revision:   "main",
+			pathInRepo: "tasks/example-task.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+			token:      "token-secret",
+			tokenKey:   "token",
+			namespace:  "foo",
+			configKey:  "test",
+		},
+		config: map[string]string{
+			"test." + ServerURLKey: "fake",
+			"test." + SCMTypeKey:   "fake",
+		},
+		configIdentifer:   "test.",
+		apiToken:          "some-token",
+		expectedCommitSHA: commitSHAsInSCMRepo[0],
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData(mainTaskYAML),
+	}, {
+		name: "api: successful task with identifier",
+		args: &params{
+			revision:   "main",
+			pathInRepo: "tasks/example-task.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+			configKey:  "test",
+		},
+		config: map[string]string{
+			"test." + ServerURLKey:          "fake",
+			"test." + SCMTypeKey:            "fake",
+			"test." + APISecretNameKey:      "token-secret",
+			"test." + APISecretKeyKey:       "token",
+			"test." + APISecretNamespaceKey: system.Namespace(),
+		},
+		configIdentifer:   "test.",
 		apiToken:          "some-token",
 		expectedCommitSHA: commitSHAsInSCMRepo[0],
 		expectedStatus:    resolution.CreateResolutionRequestStatusWithData(mainTaskYAML),
@@ -575,9 +642,9 @@ func TestResolve(t *testing.T) {
 			APISecretKeyKey:       "token",
 			APISecretNamespaceKey: system.Namespace(),
 		},
-		apiToken:       "some-token",
-		expectedStatus: resolution.CreateResolutionRequestFailureStatus(),
-		expectedErr:    createError("missing or empty scm-type value in configmap"),
+		apiToken:          "some-token",
+		expectedCommitSHA: commitSHAsInSCMRepo[0],
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData(mainPipelineYAML),
 	}}
 
 	for _, tc := range testCases {
@@ -588,9 +655,9 @@ func TestResolve(t *testing.T) {
 			if cfg == nil {
 				cfg = make(map[string]string)
 			}
-			cfg[DefaultTimeoutKey] = "1m"
-			if cfg[DefaultRevisionKey] == "" {
-				cfg[DefaultRevisionKey] = plumbing.Master.Short()
+			cfg[tc.configIdentifer+DefaultTimeoutKey] = "1m"
+			if cfg[tc.configIdentifer+DefaultRevisionKey] == "" {
+				cfg[tc.configIdentifer+DefaultRevisionKey] = plumbing.Master.Short()
 			}
 
 			request := createRequest(tc.args)
@@ -651,8 +718,8 @@ func TestResolve(t *testing.T) {
 
 			frtesting.RunResolverReconcileTest(ctx, t, d, resolver, request, expectedStatus, tc.expectedErr, func(resolver framework.Resolver, testAssets test.Assets) {
 				var secretName, secretNameKey, secretNamespace string
-				if tc.config[APISecretNameKey] != "" && tc.config[APISecretNamespaceKey] != "" && tc.config[APISecretKeyKey] != "" && tc.apiToken != "" {
-					secretName, secretNameKey, secretNamespace = tc.config[APISecretNameKey], tc.config[APISecretKeyKey], tc.config[APISecretNamespaceKey]
+				if tc.config[tc.configIdentifer+APISecretNameKey] != "" && tc.config[tc.configIdentifer+APISecretNamespaceKey] != "" && tc.config[tc.configIdentifer+APISecretKeyKey] != "" && tc.apiToken != "" {
+					secretName, secretNameKey, secretNamespace = tc.config[tc.configIdentifer+APISecretNameKey], tc.config[tc.configIdentifer+APISecretKeyKey], tc.config[tc.configIdentifer+APISecretNamespaceKey]
 				}
 				if tc.args.token != "" && tc.args.namespace != "" && tc.args.tokenKey != "" {
 					secretName, secretNameKey, secretNamespace = tc.args.token, tc.args.tokenKey, tc.args.namespace
@@ -876,6 +943,13 @@ func createRequest(args *params) *v1beta1.ResolutionRequest {
 		}
 	}
 
+	if args.configKey != "" {
+		rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
+			Name:  ConfigKeyParam,
+			Value: *pipelinev1.NewStructuredValues(args.configKey),
+		})
+	}
+
 	return rr
 }
 
@@ -902,4 +976,186 @@ func toParams(m map[string]string) []pipelinev1.Param {
 	}
 
 	return params
+}
+
+func TestGetScmConfigForParamConfigKey(t *testing.T) {
+	tests := []struct {
+		name           string
+		wantErr        bool
+		expectedErr    string
+		config         map[string]string
+		expectedConfig ScmConfig
+		params         map[string]string
+	}{
+		{
+			name:           "no config",
+			config:         map[string]string{},
+			expectedConfig: ScmConfig{},
+		},
+		{
+			name: "default config",
+			config: map[string]string{
+				DefaultURLKey:      "https://github.com",
+				DefaultRevisionKey: "main",
+				DefaultOrgKey:      "tektoncd",
+			},
+			expectedConfig: ScmConfig{
+				URL:      "https://github.com",
+				Revision: "main",
+				Org:      "tektoncd",
+			},
+		},
+		{
+			name: "default config with default key",
+			config: map[string]string{
+				"default." + DefaultURLKey:      "https://github.com",
+				"default." + DefaultRevisionKey: "main",
+			},
+			expectedConfig: ScmConfig{
+				URL:      "https://github.com",
+				Revision: "main",
+			},
+		},
+		{
+			name: "default config with default key and default param",
+			config: map[string]string{
+				"default." + DefaultURLKey:      "https://github.com",
+				"default." + DefaultRevisionKey: "main",
+			},
+			expectedConfig: ScmConfig{
+				URL:      "https://github.com",
+				Revision: "main",
+			},
+			params: map[string]string{
+				ConfigKeyParam: "default",
+			},
+		},
+		{
+			name: "config with custom key",
+			config: map[string]string{
+				"test." + DefaultURLKey:      "https://github.com",
+				"test." + DefaultRevisionKey: "main",
+			},
+			expectedConfig: ScmConfig{
+				URL:      "https://github.com",
+				Revision: "main",
+			},
+			params: map[string]string{
+				ConfigKeyParam: "test",
+			},
+		},
+		{
+			name: "config with custom key and no param",
+			config: map[string]string{
+				"test." + DefaultURLKey:      "https://github.com",
+				"test." + DefaultRevisionKey: "main",
+			},
+			expectedConfig: ScmConfig{},
+		},
+		{
+			name: "config with custom key and no key and param default",
+			config: map[string]string{
+				DefaultURLKey:                "https://github.com",
+				DefaultRevisionKey:           "main",
+				"test." + DefaultURLKey:      "https://github1.com",
+				"test." + DefaultRevisionKey: "main1",
+			},
+			expectedConfig: ScmConfig{
+				URL:      "https://github.com",
+				Revision: "main",
+			},
+			params: map[string]string{
+				ConfigKeyParam: "default",
+			},
+		},
+		{
+			name: "config with custom key and no key and param test",
+			config: map[string]string{
+				DefaultURLKey:                "https://github.com",
+				DefaultRevisionKey:           "main",
+				"test." + DefaultURLKey:      "https://github1.com",
+				"test." + DefaultRevisionKey: "main1",
+			},
+			expectedConfig: ScmConfig{
+				URL:      "https://github1.com",
+				Revision: "main1",
+			},
+			params: map[string]string{
+				ConfigKeyParam: "test",
+			},
+		},
+		{
+			name: "config with both default and custom key and param default",
+			config: map[string]string{
+				DefaultURLKey:                "https://github.com",
+				DefaultRevisionKey:           "main",
+				"test." + DefaultURLKey:      "https://github1.com",
+				"test." + DefaultRevisionKey: "main1",
+			},
+			expectedConfig: ScmConfig{
+				URL:      "https://github.com",
+				Revision: "main",
+			},
+			params: map[string]string{
+				ConfigKeyParam: "default",
+			},
+		},
+		{
+			name: "config with both default and custom key and param test",
+			config: map[string]string{
+				DefaultURLKey:                "https://github.com",
+				DefaultRevisionKey:           "main",
+				"test." + DefaultURLKey:      "https://github1.com",
+				"test." + DefaultRevisionKey: "main1",
+			},
+			expectedConfig: ScmConfig{
+				URL:      "https://github1.com",
+				Revision: "main1",
+			},
+			params: map[string]string{
+				ConfigKeyParam: "test",
+			},
+		},
+		{
+			name: "config with both default and custom key and param test2",
+			config: map[string]string{
+				DefaultURLKey:                "https://github.com",
+				DefaultRevisionKey:           "main",
+				"test." + DefaultURLKey:      "https://github1.com",
+				"test." + DefaultRevisionKey: "main1",
+			},
+			expectedConfig: ScmConfig{},
+			params: map[string]string{
+				ConfigKeyParam: "test2",
+			},
+			wantErr:     true,
+			expectedErr: "no git resolver configuration found for configKey test2",
+		},
+		{
+			name: "config with invalid format",
+			config: map[string]string{
+				"default.." + DefaultURLKey: "https://github.com",
+			},
+			wantErr:        true,
+			expectedErr:    "key default..default-url passed in git resolver configmap is invalid",
+			expectedConfig: ScmConfig{},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := framework.InjectResolverConfigToContext(context.Background(), tc.config)
+			gitResolverConfig, err := GetScmConfigForParamConfigKey(ctx, tc.params)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("unexpected error parsing git resolver config: %v", err)
+				}
+				if d := cmp.Diff(tc.expectedErr, err.Error()); d != "" {
+					t.Errorf("unexpected error: %s", diff.PrintWantGot(d))
+				}
+			}
+			if d := cmp.Diff(tc.expectedConfig, gitResolverConfig); d != "" {
+				t.Errorf("expected config: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
 }

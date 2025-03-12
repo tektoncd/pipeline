@@ -41,22 +41,24 @@ var pipelinerunsKind = v1.SchemeGroupVersion.WithKind("PipelineRun")
 
 // Get takes name of the pipelineRun, and returns the corresponding pipelineRun object, and an error if there is any.
 func (c *FakePipelineRuns) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.PipelineRun, err error) {
+	emptyResult := &v1.PipelineRun{}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(pipelinerunsResource, c.ns, name), &v1.PipelineRun{})
+		Invokes(testing.NewGetActionWithOptions(pipelinerunsResource, c.ns, name, options), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1.PipelineRun), err
 }
 
 // List takes label and field selectors, and returns the list of PipelineRuns that match those selectors.
 func (c *FakePipelineRuns) List(ctx context.Context, opts metav1.ListOptions) (result *v1.PipelineRunList, err error) {
+	emptyResult := &v1.PipelineRunList{}
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(pipelinerunsResource, pipelinerunsKind, c.ns, opts), &v1.PipelineRunList{})
+		Invokes(testing.NewListActionWithOptions(pipelinerunsResource, pipelinerunsKind, c.ns, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 
 	label, _, _ := testing.ExtractFromListOptions(opts)
@@ -75,40 +77,43 @@ func (c *FakePipelineRuns) List(ctx context.Context, opts metav1.ListOptions) (r
 // Watch returns a watch.Interface that watches the requested pipelineRuns.
 func (c *FakePipelineRuns) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(pipelinerunsResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchActionWithOptions(pipelinerunsResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a pipelineRun and creates it.  Returns the server's representation of the pipelineRun, and an error, if there is any.
 func (c *FakePipelineRuns) Create(ctx context.Context, pipelineRun *v1.PipelineRun, opts metav1.CreateOptions) (result *v1.PipelineRun, err error) {
+	emptyResult := &v1.PipelineRun{}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(pipelinerunsResource, c.ns, pipelineRun), &v1.PipelineRun{})
+		Invokes(testing.NewCreateActionWithOptions(pipelinerunsResource, c.ns, pipelineRun, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1.PipelineRun), err
 }
 
 // Update takes the representation of a pipelineRun and updates it. Returns the server's representation of the pipelineRun, and an error, if there is any.
 func (c *FakePipelineRuns) Update(ctx context.Context, pipelineRun *v1.PipelineRun, opts metav1.UpdateOptions) (result *v1.PipelineRun, err error) {
+	emptyResult := &v1.PipelineRun{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(pipelinerunsResource, c.ns, pipelineRun), &v1.PipelineRun{})
+		Invokes(testing.NewUpdateActionWithOptions(pipelinerunsResource, c.ns, pipelineRun, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1.PipelineRun), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakePipelineRuns) UpdateStatus(ctx context.Context, pipelineRun *v1.PipelineRun, opts metav1.UpdateOptions) (*v1.PipelineRun, error) {
+func (c *FakePipelineRuns) UpdateStatus(ctx context.Context, pipelineRun *v1.PipelineRun, opts metav1.UpdateOptions) (result *v1.PipelineRun, err error) {
+	emptyResult := &v1.PipelineRun{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(pipelinerunsResource, "status", c.ns, pipelineRun), &v1.PipelineRun{})
+		Invokes(testing.NewUpdateSubresourceActionWithOptions(pipelinerunsResource, "status", c.ns, pipelineRun, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1.PipelineRun), err
 }
@@ -123,7 +128,7 @@ func (c *FakePipelineRuns) Delete(ctx context.Context, name string, opts metav1.
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakePipelineRuns) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(pipelinerunsResource, c.ns, listOpts)
+	action := testing.NewDeleteCollectionActionWithOptions(pipelinerunsResource, c.ns, opts, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1.PipelineRunList{})
 	return err
@@ -131,11 +136,12 @@ func (c *FakePipelineRuns) DeleteCollection(ctx context.Context, opts metav1.Del
 
 // Patch applies the patch and returns the patched pipelineRun.
 func (c *FakePipelineRuns) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.PipelineRun, err error) {
+	emptyResult := &v1.PipelineRun{}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(pipelinerunsResource, c.ns, name, pt, data, subresources...), &v1.PipelineRun{})
+		Invokes(testing.NewPatchSubresourceActionWithOptions(pipelinerunsResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1.PipelineRun), err
 }

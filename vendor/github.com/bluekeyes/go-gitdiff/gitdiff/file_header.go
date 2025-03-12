@@ -57,7 +57,7 @@ func (p *parser) ParseNextFileHeader() (*File, string, error) {
 			return nil, "", err
 		}
 	}
-	return nil, "", nil
+	return nil, preamble.String(), nil
 }
 
 func (p *parser) ParseGitFileHeader() (*File, error) {

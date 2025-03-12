@@ -20,6 +20,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+
 	"github.com/tektoncd/pipeline/pkg/remote"
 	"github.com/tektoncd/pipeline/pkg/remote/resolution"
 	remoteresource "github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
@@ -42,7 +44,7 @@ spec:
     taskSpec:
       steps:
       - name: step1
-        image: ubuntu
+        image: docker.io/library/ubuntu
         script: |
           echo "hello world!"
 `)
@@ -142,12 +144,18 @@ func TestBuildRequestV2(t *testing.T) {
 		name            string
 		targetName      string
 		targetNamespace string
+		url             string
 	}{{
 		name: "just owner",
 	}, {
 		name:            "with target name and namespace",
 		targetName:      "some-object",
 		targetNamespace: "some-ns",
+	}, {
+		name:            "with target name, namespace, and url",
+		targetName:      "some-object",
+		targetNamespace: "some-ns",
+		url:             "scheme://value",
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			owner := &v1beta1.PipelineRun{
@@ -158,6 +166,7 @@ func TestBuildRequestV2(t *testing.T) {
 			}
 
 			rr := &remoteresource.ResolverPayload{Name: tc.targetName, Namespace: tc.targetNamespace}
+			rr.ResolutionSpec = &resv1beta1.ResolutionRequestSpec{URL: tc.url}
 			req, err := buildRequest("git", owner, rr)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)

@@ -51,7 +51,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: alpine
+  - image: mirror.gcr.io/alpine
     script: 'echo foo > /workspace/test/file'
   workspaces:
   - name: test
@@ -129,7 +129,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: alpine
+  - image: mirror.gcr.io/alpine
     script: 'cat /workspace/test/file'
   workspaces:
   - name: test
@@ -199,7 +199,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: alpine
+  - image: mirror.gcr.io/alpine
     script: 'cat /workspace/test/file'
   workspaces:
   - name: test
@@ -268,7 +268,7 @@ metadata:
   namespace: %s
 spec:
   steps:
-  - image: alpine
+  - image: mirror.gcr.io/alpine
     name: foo
     command: ['echo']
     args: ['$(workspaces.test.volume)']
