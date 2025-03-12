@@ -138,7 +138,7 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 // It also requires a kubeclient, tektonclient, requester in case it needs to find that task in
 // cluster or authorize against an external repository. It will figure out whether it needs to look in the cluster or in
 // a remote location to fetch the reference.
-func GetStepActionFunc(tekton clientset.Interface, k8s kubernetes.Interface, requester remoteresource.Requester, tr *v1.TaskRun, step *v1.Step) GetStepAction {
+func GetStepActionFunc(tekton clientset.Interface, k8s kubernetes.Interface, requester remoteresource.Requester, tr *v1.TaskRun, taskSpec v1.TaskSpec, step *v1.Step) GetStepAction {
 	trName := tr.Name
 	namespace := tr.Namespace
 	if step.Ref != nil && step.Ref.Resolver != "" && requester != nil {
@@ -146,7 +146,7 @@ func GetStepActionFunc(tekton clientset.Interface, k8s kubernetes.Interface, req
 		// casting it to a StepAction.
 		return func(ctx context.Context, name string) (*v1beta1.StepAction, *v1.RefSource, error) {
 			// Perform params replacements for StepAction resolver params
-			ApplyParameterSubstitutionInResolverParams(tr, step)
+			ApplyParameterSubstitutionInResolverParams(tr, taskSpec, step)
 			resolverPayload := remoteresource.ResolverPayload{
 				Name:      trName,
 				Namespace: namespace,
@@ -167,14 +167,14 @@ func GetStepActionFunc(tekton clientset.Interface, k8s kubernetes.Interface, req
 }
 
 // ApplyParameterSubstitutionInResolverParams applies parameter substitutions in resolver params for Step Ref.
-func ApplyParameterSubstitutionInResolverParams(tr *v1.TaskRun, step *v1.Step) {
+func ApplyParameterSubstitutionInResolverParams(tr *v1.TaskRun, taskSpec v1.TaskSpec, step *v1.Step) {
 	stringReplacements := make(map[string]string)
 	arrayReplacements := make(map[string][]string)
 	objectReplacements := make(map[string]map[string]string)
-	if tr.Spec.TaskSpec != nil {
-		defaultSR, defaultAR, defaultOR := replacementsFromDefaultParams(tr.Spec.TaskSpec.Params)
-		stringReplacements, arrayReplacements, objectReplacements = extendReplacements(stringReplacements, arrayReplacements, objectReplacements, defaultSR, defaultAR, defaultOR)
-	}
+
+	defaultSR, defaultAR, defaultOR := replacementsFromDefaultParams(taskSpec.Params)
+	stringReplacements, arrayReplacements, objectReplacements = extendReplacements(stringReplacements, arrayReplacements, objectReplacements, defaultSR, defaultAR, defaultOR)
+
 	paramSR, paramAR, paramOR := replacementsFromParams(tr.Spec.Params)
 	stringReplacements, arrayReplacements, objectReplacements = extendReplacements(stringReplacements, arrayReplacements, objectReplacements, paramSR, paramAR, paramOR)
 	step.Ref.Params = step.Ref.Params.ReplaceVariables(stringReplacements, arrayReplacements, objectReplacements)

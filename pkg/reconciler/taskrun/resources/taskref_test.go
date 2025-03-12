@@ -347,6 +347,7 @@ func TestStepActionResolverParamReplacements(t *testing.T) {
 		name      string
 		namespace string
 		taskrun   *v1.TaskRun
+		taskSpec  *v1.TaskSpec
 		want      *v1.Step
 	}{{
 		name:      "default taskspec parms",
@@ -585,11 +586,53 @@ func TestStepActionResolverParamReplacements(t *testing.T) {
 				},
 			},
 		},
+	}, {
+		name:      "defaults from remote task",
+		namespace: "default",
+		taskrun: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "some-tr"},
+			Spec: v1.TaskRunSpec{
+				TaskRef: &v1.TaskRef{
+					Name: "resolved-task-name",
+				},
+			},
+		},
+		taskSpec: &v1.TaskSpec{
+			Params: []v1.ParamSpec{{
+				Name:    "resolver-param",
+				Default: v1.NewStructuredValues("foo/bar"),
+			}},
+			Steps: []v1.Step{{
+				Ref: &v1.Ref{
+					ResolverRef: v1.ResolverRef{
+						Resolver: "git",
+						Params: []v1.Param{{
+							Name:  "pathInRepo",
+							Value: *v1.NewStructuredValues("$(params.resolver-param)"),
+						}},
+					},
+				},
+			}},
+		},
+		want: &v1.Step{
+			Ref: &v1.Ref{
+				ResolverRef: v1.ResolverRef{
+					Resolver: "git",
+					Params: []v1.Param{{
+						Name:  "pathInRepo",
+						Value: *v1.NewStructuredValues("foo/bar"),
+					}},
+				},
+			},
+		},
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			step := &tc.taskrun.Spec.TaskSpec.Steps[0]
-			resources.ApplyParameterSubstitutionInResolverParams(tc.taskrun, step)
+			if tc.taskSpec == nil {
+				tc.taskSpec = tc.taskrun.Spec.TaskSpec
+			}
+			step := &tc.taskSpec.Steps[0]
+			resources.ApplyParameterSubstitutionInResolverParams(tc.taskrun, *tc.taskSpec, step)
 			if d := cmp.Diff(tc.want, step); tc.want != nil && d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
@@ -861,7 +904,7 @@ func TestGetStepActionFunc_Local(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			tektonclient := fake.NewSimpleClientset(tc.localStepActions...)
-			fn := resources.GetStepActionFunc(tektonclient, nil, nil, tc.taskRun, &tc.taskRun.Spec.TaskSpec.Steps[0])
+			fn := resources.GetStepActionFunc(tektonclient, nil, nil, tc.taskRun, *tc.taskRun.Spec.TaskSpec, &tc.taskRun.Spec.TaskSpec.Steps[0])
 
 			stepAction, refSource, err := fn(ctx, tc.taskRun.Spec.TaskSpec.Steps[0].Ref.Name)
 			if err != nil {
@@ -922,7 +965,7 @@ func TestGetStepActionFunc_RemoteResolution_Success(t *testing.T) {
 				},
 			}
 			tektonclient := fake.NewSimpleClientset()
-			fn := resources.GetStepActionFunc(tektonclient, nil, requester, tr, &tr.Spec.TaskSpec.Steps[0])
+			fn := resources.GetStepActionFunc(tektonclient, nil, requester, tr, *tr.Spec.TaskSpec, &tr.Spec.TaskSpec.Steps[0])
 
 			resolvedStepAction, resolvedRefSource, err := fn(ctx, tr.Spec.TaskSpec.Steps[0].Ref.Name)
 			if tc.wantErr {
@@ -983,7 +1026,7 @@ func TestGetStepActionFunc_RemoteResolution_Error(t *testing.T) {
 				},
 			}
 			tektonclient := fake.NewSimpleClientset()
-			fn := resources.GetStepActionFunc(tektonclient, nil, requester, tr, &tr.Spec.TaskSpec.Steps[0])
+			fn := resources.GetStepActionFunc(tektonclient, nil, requester, tr, *tr.Spec.TaskSpec, &tr.Spec.TaskSpec.Steps[0])
 			if _, _, err := fn(ctx, tr.Spec.TaskSpec.Steps[0].Ref.Name); err == nil {
 				t.Fatalf("expected error due to invalid pipeline data but saw none")
 			}
