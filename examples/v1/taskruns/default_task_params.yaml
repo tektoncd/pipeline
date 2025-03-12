@@ -1,0 +1,27 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  # This has to be explicit instead of `generateName`, since it will be referenced
+  # by the TaskRun
+  name: example-default-task-param
+spec:
+  params:
+    - name: input
+      default: "No input provided, but that's okay!"
+  steps:
+    - name: echo-input
+      image: mirror.gcr.io/ubuntu
+      script: |
+        echo "$(params.input)"
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: default-task-params-run-
+spec:
+  taskRef:
+    name: example-default-task-param
+    # # Uncomment this block to override the default param value!
+    # params:
+    #   - name: input
+    #     value: "You can supply the param from the TaskRun if the default not what you want"
