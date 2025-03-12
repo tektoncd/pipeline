@@ -142,3 +142,6 @@ data:
   enable-concise-resolver-syntax: "false"
   # Setthing this flag to "true" will enable native Kubernetes Sidecar support
   enable-kubernetes-sidecar: "false"
+  # Setting this flag to "true" will enable users to set the value of a PipelineRun/TaskRun Param
+  # from a source (like a ConfigMap)
+  enable-valuefrom-in-param: "false"

@@ -119,6 +119,10 @@ const (
 	// in Taskrun or Pipelinerun
 	DisableInlineSpec = "disable-inline-spec"
 
+	// EnableValueFromInParam is the flag to enable support
+	// for getting values of a taskrun or a pipelinerun parameter from a predefined source (example: configmap)
+	EnableValueFromInParam = "enable-valuefrom-in-param"
+
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
 	runningInEnvWithInjectedSidecarsKey = "running-in-environment-with-injected-sidecars"
@@ -166,6 +170,13 @@ var (
 	// DefaultEnableArtifacts is the default PerFeatureFlag value for EnableArtifacts
 	DefaultEnableArtifacts = PerFeatureFlag{
 		Name:      EnableArtifacts,
+		Stability: AlphaAPIFields,
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
+
+	// DefaultEnableValueFromInParam is the default PerFeatureFlag value for EnableValueFromInParam
+	DefaultEnableValueFromInParam = PerFeatureFlag{
+		Name:      EnableValueFromInParam,
 		Stability: AlphaAPIFields,
 		Enabled:   DefaultAlphaFeatureEnabled,
 	}
@@ -219,6 +230,7 @@ type FeatureFlags struct {
 	DisableInlineSpec                        string `json:"disableInlineSpec,omitempty"`
 	EnableConciseResolverSyntax              bool   `json:"enableConciseResolverSyntax,omitempty"`
 	EnableKubernetesSidecar                  bool   `json:"enableKubernetesSidecar,omitempty"`
+	EnableValueFromInParam                   bool   `json:"enableValueFromInParam,omitempty"`
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -317,6 +329,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setPerFeatureFlag(EnableArtifacts, DefaultEnableArtifacts, &tc.EnableArtifacts); err != nil {
+		return nil, err
+	}
+	if err := setPerFeatureFlag(EnableValueFromInParam, DefaultEnableValueFromInParam, &tc.EnableValueFromInParam); err != nil {
 		return nil, err
 	}
 

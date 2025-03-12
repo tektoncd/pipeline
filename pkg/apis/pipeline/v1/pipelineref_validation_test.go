@@ -94,7 +94,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 			Name: "https://foo/bar",
 			ResolverRef: v1.ResolverRef{
 				Resolver: "git",
-				Params:   v1.Params{{Name: "foo", Value: v1.ParamValue{StringVal: "bar"}}},
+				Params:   v1.Params{{Name: "foo", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "bar"}}},
 			},
 		},
 		wantErr:     apis.ErrMultipleOneOf("name", "params"),

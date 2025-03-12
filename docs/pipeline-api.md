@@ -1796,6 +1796,26 @@ ParamValue
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>If the <code>enable-valuefrom-in-param</code> feature flag is not enabled, this field is manadatory
+If the <code>enable-valuefrom-in-param</code> feature flag is enabled, exactly one of Value or ValueFrom (not both) must be defined by the user</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>valueFrom</code><br/>
+<em>
+<a href="#tekton.dev/v1.ValueSource">
+ValueSource
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Available only with the <code>enable-valuefrom-in-param</code> feature flag
+Exactly one of the Value and ValueFrom (not both) fields must be defined by the user
+ValueFrom represents a source for the value of a parameter
+The value will be obtained from the source during the TaskRun or PipelineRun initialization</p>
 </td>
 </tr>
 </tbody>
@@ -2183,6 +2203,9 @@ all of the running TaskRuns as timed out failed.</p>
 </tr><tr><td><p>&#34;PipelineValidationFailed&#34;</p></td>
 <td><p>ReasonFailedValidation indicates that the reason for failure status is
 that pipelinerun failed runtime validation</p>
+</td>
+</tr><tr><td><p>&#34;FetchingValueSourceFailed&#34;</p></td>
+<td><p>PipelineRunReasonFetchingValueSourceFailed indicates a failure at fetching a value source</p>
 </td>
 </tr><tr><td><p>&#34;InvalidPipelineResourceBindings&#34;</p></td>
 <td><p>ReasonInvalidBindings indicates that the reason for the failure status is that the
@@ -5434,6 +5457,9 @@ that taskrun failed runtime validation</p>
 <td><p>TaskRunReasonFailureIgnored is the reason set when the Taskrun has failed due to pod execution error and the failure is ignored for the owning PipelineRun.
 TaskRuns failed due to reconciler/validation error should not use this reason.</p>
 </td>
+</tr><tr><td><p>&#34;FetchingValueSourceFailed&#34;</p></td>
+<td><p>TaskRunReasonFetchingValueSourceFailed indicates a failure at fetching a value source</p>
+</td>
 </tr><tr><td><p>&#34;TaskRunImagePullFailed&#34;</p></td>
 <td><p>TaskRunReasonImagePullFailed is the reason set when the step of a task fails due to image not being pulled</p>
 </td>
@@ -6269,6 +6295,36 @@ Kubernetes meta/v1.Duration
 </td>
 <td>
 <p>Finally sets the maximum allowed duration of this pipeline&rsquo;s finally</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.ValueSource">ValueSource
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.Param">Param</a>)
+</p>
+<div>
+<p>ValueSource represents a source to fetch the value from</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>configMapKeyRef</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#configmapkeyselector-v1-core">
+Kubernetes core/v1.ConfigMapKeySelector
+</a>
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>

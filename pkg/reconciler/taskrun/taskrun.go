@@ -226,6 +226,14 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 		return err
 	}
 
+	// This feature flag guard is only for performance. Otherwise, a new trace
+	// will be created needlessly
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableValueFromInParam {
+		if _, err = c.patchTaskRunIfValueSourceResolved(ctx, tr); err != nil {
+			return err
+		}
+	}
+
 	if tr.Status.StartTime != nil {
 		// Compute the time since the task started.
 		elapsed := c.Clock.Since(tr.Status.StartTime.Time)
@@ -495,6 +503,17 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		Kind:     resources.GetTaskKind(tr),
 	}
 
+	// This feature flag guard is only for performance. Otherwise, a new trace
+	// will be created needlessly
+	// This is needed before ValidateResolvedTask
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableValueFromInParam {
+		if err := resources.ValidateAndResolveValueSourceInParams(ctx, c.KubeClientSet, tr.Namespace, &tr.Spec.Params); err != nil {
+			logger.Errorf("TaskRun %s/%s can't be Run; it has failed fetching value sources for one of the parameters: %s",
+				tr.Namespace, tr.Name, err)
+			tr.Status.MarkResourceFailed(v1.TaskRunReasonFetchingValueSourceFailed, err)
+			return nil, nil, controller.NewPermanentError(err)
+		}
+	}
 	if err := validateTaskSpecRequestResources(taskSpec); err != nil {
 		logger.Errorf("TaskRun %s taskSpec request resources are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
@@ -717,6 +736,23 @@ func (c *Reconciler) updateTaskRunWithDefaultWorkspaces(ctx context.Context, tr 
 		}
 	}
 	return nil
+}
+
+func (c *Reconciler) patchTaskRunIfValueSourceResolved(ctx context.Context, tr *v1.TaskRun) (*v1.TaskRun, error) {
+	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "patchTaskRunIfValueSourceResolved")
+	defer span.End()
+	baselineTr, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
+	if err != nil {
+		return nil, fmt.Errorf("error getting TaskRun %s when patching TaskRun after value source resolution: %w", tr.Name, err)
+	}
+	if v1.IsDifferentOnlyByValueSourceResolution(tr.Spec.Params, baselineTr.Spec.Params) {
+		// Note that this uses Update vs. Patch because the former is significantly easier to test.
+		// If we want to switch this to Patch, then we will need to teach the utilities in test/controller.go
+		// to deal with Patch (setting resourceVersion, and optimistic concurrency checks).
+		// The method *TaskRunSpec.ValidateUpdate guards against other updates/patches once TaskRun has started
+		return c.PipelineClientSet.TektonV1().TaskRuns(tr.Namespace).Update(ctx, tr.DeepCopy(), metav1.UpdateOptions{})
+	}
+	return tr, nil
 }
 
 func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, tr *v1.TaskRun) (*v1.TaskRun, error) {

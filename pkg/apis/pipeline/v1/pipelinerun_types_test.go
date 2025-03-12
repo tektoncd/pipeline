@@ -782,3 +782,49 @@ func TestPipelineRunMarkFailedCondition(t *testing.T) {
 		})
 	}
 }
+
+func TestPipelineRunSpecIsDifferentFromDesiredStateOnlyByValueSourceResolutionInParams(t *testing.T) {
+	valueSource := v1.ValueSource{ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+		LocalObjectReference: corev1.LocalObjectReference{Name: "name"},
+		Key:                  "key",
+	}}
+	paramFooWithValueSource := v1.Param{Name: "foo", ValueFrom: &valueSource}
+	paramFooWithValue := v1.Param{Name: "foo", Value: v1.ParamValue{StringVal: "a", Type: v1.ParamTypeString}}
+	paramBarWithValueSource := v1.Param{Name: "bar", ValueFrom: &valueSource}
+	tcs := []struct {
+		name     string
+		baseline *v1.PipelineRunSpec
+		new      *v1.PipelineRunSpec
+		want     bool
+	}{
+		{
+			name:     "nil newTaskRunSpec",
+			baseline: &v1.PipelineRunSpec{},
+			new:      nil,
+			want:     false,
+		}, {
+			name:     "DeepCopy PipelineRunSpecs",
+			baseline: &v1.PipelineRunSpec{Params: v1.Params{paramFooWithValue}},
+			new:      &v1.PipelineRunSpec{Params: v1.Params{paramFooWithValue}},
+			want:     false,
+		}, {
+			name:     "Difference only in value source resolution",
+			baseline: &v1.PipelineRunSpec{Params: v1.Params{paramFooWithValueSource, paramBarWithValueSource}},
+			new:      &v1.PipelineRunSpec{Params: v1.Params{paramFooWithValue, paramBarWithValueSource}},
+			want:     true,
+		}, {
+			name:     "Difference outside of Params",
+			baseline: &v1.PipelineRunSpec{Params: v1.Params{paramFooWithValueSource, paramBarWithValueSource}, Timeouts: &v1.TimeoutFields{}},
+			new:      &v1.PipelineRunSpec{Params: v1.Params{paramFooWithValue, paramBarWithValueSource}},
+			want:     false,
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			result := tc.baseline.IsDifferentFromDesiredStateOnlyByValueSourceResolutionInParams(tc.new)
+			if d := cmp.Diff(tc.want, result); d != "" {
+				t.Fatal(diff.PrintWantGot(d))
+			}
+		})
+	}
+}

@@ -27,6 +27,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
@@ -327,7 +328,7 @@ func TestParamValues_UnmarshalJSON(t *testing.T) {
 		},
 		{
 			input:  map[string]interface{}{"val": nil},
-			result: v1.ParamValue{Type: v1.ParamTypeString, ArrayVal: nil},
+			result: v1.ParamValue{},
 		},
 		{
 			input:  map[string]interface{}{"val": []string{}},
@@ -378,6 +379,7 @@ func TestParamValues_UnmarshalJSON_Directly(t *testing.T) {
 		input    string
 		expected v1.ParamValue
 	}{
+		{desc: "null value", input: `null`, expected: v1.ParamValue{}},
 		{desc: "empty value", input: ``, expected: *v1.NewStructuredValues("")},
 		{desc: "int value", input: `1`, expected: *v1.NewStructuredValues("1")},
 		{desc: "int array", input: `[1,2,3]`, expected: *v1.NewStructuredValues("[1,2,3]")},
@@ -424,6 +426,7 @@ func TestParamValues_MarshalJSON(t *testing.T) {
 		{*v1.NewStructuredValues("123", "1234"), "{\"val\":[\"123\",\"1234\"]}"},
 		{*v1.NewStructuredValues("a", "a", "a"), "{\"val\":[\"a\",\"a\",\"a\"]}"},
 		{*v1.NewObject(map[string]string{"key1": "var1", "key2": "var2"}), "{\"val\":{\"key1\":\"var1\",\"key2\":\"var2\"}}"},
+		{v1.ParamValue{}, "{\"val\":null}"},
 	}
 
 	for _, c := range cases {
@@ -804,6 +807,169 @@ func TestValidateNoDuplicateNames(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got := tc.params.ValidateNoDuplicateNames()
 			if d := cmp.Diff(tc.expectedError.Error(), got.Error()); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestValidateValueAndValueSourceInEachParam(t *testing.T) {
+	properValueSource := v1.ValueSource{ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+		LocalObjectReference: corev1.LocalObjectReference{Name: "name"},
+		Key:                  "key",
+	}}
+	paramWithProperValueSource := v1.Param{Name: "foo", ValueFrom: &properValueSource}
+	paramWithValueSourceAndValue := v1.Param{Name: "bar", ValueFrom: &properValueSource, Value: v1.ParamValue{StringVal: "abc", Type: v1.ParamTypeString}}
+	paramWithNoValueSourceOrValue := v1.Param{Name: "x"}
+	paramWithValue := v1.Param{Name: "x", Value: v1.ParamValue{StringVal: "abc", Type: v1.ParamTypeString}}
+	paramWithInvalidValueSource := v1.Param{Name: "foo", ValueFrom: &v1.ValueSource{}}
+
+	tcs := []struct {
+		name          string
+		params        v1.Params
+		boolFlag      bool
+		expectedError *apis.FieldError
+	}{{
+		name:     "ValueSource defined with feature flag disabled",
+		params:   v1.Params{paramWithProperValueSource, paramWithValue},
+		boolFlag: false,
+		expectedError: &apis.FieldError{
+			Message: `The feature flag to enable valueFrom in param is not enabled`,
+		},
+	}, {
+		name:          "No validation failures with feature flag enabled",
+		params:        v1.Params{paramWithProperValueSource, paramWithValue},
+		boolFlag:      true,
+		expectedError: nil,
+	}, {
+		name:          "No validation failures with feature flag disabled",
+		params:        v1.Params{paramWithValue},
+		boolFlag:      false,
+		expectedError: nil,
+	}, {
+		name:     "Multiple validation failures",
+		params:   v1.Params{paramWithValueSourceAndValue, paramWithNoValueSourceOrValue, paramWithInvalidValueSource},
+		boolFlag: true,
+		expectedError: (&apis.FieldError{
+			Message: `Exactly one of value and valueFrom must be passed by the user at the same time`,
+		}).Also(
+			(&apis.FieldError{
+				Message: `Exactly one of value and valueFrom must be passed by the user at the same time`,
+			}).Also(
+				&apis.FieldError{
+					Message: `valueFrom must have configMapKeyRef defined`,
+				},
+			),
+		),
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.params.ValidateValueAndValueSourceInEachParam(tc.boolFlag)
+			if d := cmp.Diff(tc.expectedError.Error(), got.Error()); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestValidateValueSource(t *testing.T) {
+	tcs := []struct {
+		name          string
+		ValueSource   v1.ValueSource
+		expectedError *apis.FieldError
+	}{{
+		name:        "no ConfigMapKeyRef",
+		ValueSource: v1.ValueSource{},
+		expectedError: &apis.FieldError{
+			Message: `valueFrom must have configMapKeyRef defined`,
+		},
+	}, {
+		name: "ConfigMapKeyRef with no key",
+		ValueSource: v1.ValueSource{ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{Name: "name"},
+		}},
+		expectedError: &apis.FieldError{
+			Message: `ConfigMapKeyRef must have a key and a name`,
+		},
+	}, {
+		name: "Proper ConfigMapKeyRef",
+		ValueSource: v1.ValueSource{ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{Name: "name"},
+			Key:                  "key",
+		}},
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.ValueSource.Validate()
+			if d := cmp.Diff(tc.expectedError.Error(), got.Error()); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestPotentialNonStringParamValue(t *testing.T) {
+	tcs := []struct {
+		name              string
+		marshalledByteArr []byte
+		expectedBool      bool
+	}{{
+		name:              "A string",
+		marshalledByteArr: []byte("\"aString\""),
+		expectedBool:      false,
+	}, {
+		name:              "A map",
+		marshalledByteArr: []byte("{\"a\":\"ccc\"}"),
+		expectedBool:      true,
+	}, {
+		name:              "An array",
+		marshalledByteArr: []byte("[\"a\",\"b\"]"),
+		expectedBool:      true,
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			got := v1.PotentialNonStringParamValue(tc.marshalledByteArr)
+			if d := cmp.Diff(tc.expectedBool, got); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestIsDifferentOnlyByValueSourceResolution(t *testing.T) {
+	valueFromParamVal := v1.Param{Name: "foo", ValueFrom: &v1.ValueSource{}}
+	stringParamVal := v1.Param{Name: "foo", Value: v1.ParamValue{StringVal: "abc", Type: v1.ParamTypeString}}
+	anotherStringParamVal := v1.Param{Name: "bar", Value: v1.ParamValue{StringVal: "abc", Type: v1.ParamTypeString}}
+	tcs := []struct {
+		name           string
+		newParams      v1.Params
+		baselineParams v1.Params
+		expectedBool   bool
+	}{{
+		name:           "Different lengths",
+		newParams:      v1.Params{},
+		baselineParams: v1.Params{stringParamVal},
+		expectedBool:   false,
+	}, {
+		name:           "No difference in value source resolution",
+		newParams:      v1.Params{stringParamVal},
+		baselineParams: v1.Params{stringParamVal},
+		expectedBool:   false,
+	}, {
+		name:           "Difference in an unrelated ParamValue",
+		newParams:      v1.Params{stringParamVal, stringParamVal},
+		baselineParams: v1.Params{valueFromParamVal, anotherStringParamVal},
+		expectedBool:   false,
+	}, {
+		name:           "Difference only in value source resolution",
+		newParams:      v1.Params{stringParamVal, anotherStringParamVal},
+		baselineParams: v1.Params{valueFromParamVal, anotherStringParamVal},
+		expectedBool:   true,
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			got := v1.IsDifferentOnlyByValueSourceResolution(tc.newParams, tc.baselineParams)
+			if d := cmp.Diff(tc.expectedBool, got); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
 		})

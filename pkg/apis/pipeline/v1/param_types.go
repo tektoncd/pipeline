@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -190,9 +191,24 @@ func findDups(vals []string) sets.String {
 // Param declares an ParamValues to use for the parameter called name.
 type Param struct {
 	Name string `json:"name"`
+
+	// If the `enable-valuefrom-in-param` feature flag is not enabled, this field is manadatory
+	// If the `enable-valuefrom-in-param` feature flag is enabled, exactly one of Value or ValueFrom (not both) must be defined by the user
+	// +optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
 	Value ParamValue `json:"value"`
+	// Available only with the `enable-valuefrom-in-param` feature flag
+	// Exactly one of the Value and ValueFrom (not both) fields must be defined by the user
+	// ValueFrom represents a source for the value of a parameter
+	// The value will be obtained from the source during the TaskRun or PipelineRun initialization
+	// +optional
+	ValueFrom *ValueSource `json:"valueFrom,omitempty"`
+}
+
+// ValueSource represents a source to fetch the value from
+type ValueSource struct {
+	ConfigMapKeyRef *corev1.ConfigMapKeySelector `json:"configMapKeyRef,omitempty"`
 }
 
 // GetVarSubstitutionExpressions extracts all the value between "$(" and ")"" for a Parameter
@@ -503,26 +519,35 @@ func (paramValues *ParamValue) UnmarshalJSON(value []byte) error {
 		paramValues.Type = ParamTypeString
 		return nil
 	}
-	if value[0] == '[' {
-		// We're trying to Unmarshal to []string, but for cases like []int or other types
-		// of nested array which we don't support yet, we should continue and Unmarshal
-		// it to String. If the Type being set doesn't match what it actually should be,
-		// it will be captured by validation in reconciler.
-		// if failed to unmarshal to array, we will convert the value to string and marshal it to string
-		var a []string
-		if err := json.Unmarshal(value, &a); err == nil {
-			paramValues.Type = ParamTypeArray
-			paramValues.ArrayVal = a
-			return nil
-		}
+
+	// See MarshalJSON for how "null" is obtained during marshalling
+	if marshalledNil, err := json.Marshal(nil); err == nil && string(value) == string(marshalledNil) {
+		// in this case, we want to keep paramValue.Type as "" and not as ParamTypeString("string")
+		return nil
 	}
-	if value[0] == '{' {
-		// if failed to unmarshal to map, we will convert the value to string and marshal it to string
-		var m map[string]string
-		if err := json.Unmarshal(value, &m); err == nil {
-			paramValues.Type = ParamTypeObject
-			paramValues.ObjectVal = m
-			return nil
+
+	if PotentialNonStringParamValue(value) {
+		if value[0] == '[' {
+			// We're trying to Unmarshal to []string, but for cases like []int or other types
+			// of nested array which we don't support yet, we should continue and Unmarshal
+			// it to String. If the Type being set doesn't match what it actually should be,
+			// it will be captured by validation in reconciler.
+			// if failed to unmarshal to array, we will convert the value to string and marshal it to string
+			var a []string
+			if err := json.Unmarshal(value, &a); err == nil {
+				paramValues.Type = ParamTypeArray
+				paramValues.ArrayVal = a
+				return nil
+			}
+		}
+		if value[0] == '{' {
+			// if failed to unmarshal to map, we will convert the value to string and marshal it to string
+			var m map[string]string
+			if err := json.Unmarshal(value, &m); err == nil {
+				paramValues.Type = ParamTypeObject
+				paramValues.ObjectVal = m
+				return nil
+			}
 		}
 	}
 
@@ -545,6 +570,10 @@ func (paramValues ParamValue) MarshalJSON() ([]byte, error) {
 		return json.Marshal(paramValues.ArrayVal)
 	case ParamTypeObject:
 		return json.Marshal(paramValues.ObjectVal)
+	case "":
+		// This occurs during roundtrip patching (before webhook validation) , when the user has not passed "value" to the param and instead has passed valueFrom
+		// This case can be removed if omitzero (available in go 1.24+) is added to `Value ParamValue` in the `Param` struct
+		return json.Marshal(nil)
 	default:
 		return []byte{}, fmt.Errorf("impossible ParamValues.Type: %q", paramValues.Type)
 	}
@@ -698,4 +727,86 @@ func validateObjectVariable(value, prefix string, objectParamNameKeys map[string
 	}
 
 	return errs.Also(substitution.ValidateNoReferencesToEntireProhibitedVariables(value, prefix, objectNames))
+}
+
+// validates the structure of valueFrom in each Param
+func (params Params) ValidateValueAndValueSourceInEachParam(enableValueFromInParam bool) (errs *apis.FieldError) {
+	for _, param := range params {
+		errs = errs.Also(validateValueAndValueSource(param, enableValueFromInParam).ViaKey(param.Name))
+	}
+	return errs
+}
+
+// validates the strucuture of valueFrom
+func validateValueAndValueSource(param Param, enableValueFromInParam bool) (errs *apis.FieldError) {
+	errs = errs.Also(validateValueSourceNotDefinedWhileFlagDisabled(param.ValueFrom, enableValueFromInParam))
+	errs = errs.Also(validateOnlyOneOfValueAndValueSourceIsPassed(param))
+	if param.ValueFrom != nil {
+		errs = errs.Also(param.ValueFrom.Validate().ViaField("valueFrom"))
+	}
+	return errs
+}
+
+func validateOnlyOneOfValueAndValueSourceIsPassed(param Param) *apis.FieldError {
+	// Eventually param.Value will be populated based on the ValueSource so we are using
+	if (param.ValueFrom != nil && param.Value.Type != "") || (param.ValueFrom == nil && param.Value.Type == "") {
+		return &apis.FieldError{
+			Message: "Exactly one of value and valueFrom must be passed by the user at the same time",
+		}
+	}
+	return nil
+}
+
+func validateValueSourceNotDefinedWhileFlagDisabled(valueFrom *ValueSource, enableValueFromInParam bool) *apis.FieldError {
+	if valueFrom != nil && !enableValueFromInParam {
+		return &apis.FieldError{
+			Message: "The feature flag to enable valueFrom in param is not enabled",
+		}
+	}
+	return nil
+}
+
+// validates the structure of valueFrom to ensure exactly one source reference is passed
+func (valueFrom *ValueSource) Validate() *apis.FieldError {
+	// Eventually when secretKeyRef is supported, this function will need to ensure exactly one of ConfigMapKeyRef and SecretKeyRef
+	// is defined
+	if valueFrom.ConfigMapKeyRef == nil {
+		return &apis.FieldError{
+			Message: "valueFrom must have configMapKeyRef defined",
+		}
+	}
+	if valueFrom.ConfigMapKeyRef.Name == "" || valueFrom.ConfigMapKeyRef.Key == "" {
+		return &apis.FieldError{
+			Message: "ConfigMapKeyRef must have a key and a name",
+		}
+	}
+	return nil
+}
+
+// this function was added to be used in *ParamValue.UnMarshalJSON() and other functions in the project whose implementation
+// depend on the implementation of *ParamValue.UnMarshalJSON()
+func PotentialNonStringParamValue(byteArr []byte) bool {
+	if len(byteArr) > 0 && (byteArr[0] == '[' || byteArr[0] == '{') {
+		return true
+	}
+	return false
+}
+
+// returns true if the baseline Params and the new Params only differ with the value source resolution
+func IsDifferentOnlyByValueSourceResolution(newParams Params, baselineParams Params) bool {
+	if newParams == nil || baselineParams == nil || len(newParams) != len(baselineParams) {
+		return false
+	}
+	var valueSourceResolved bool
+	for i := range baselineParams {
+		baselineParam := baselineParams[i]
+		newParam := newParams[i]
+		if baselineParam.ValueFrom != nil && newParam.Value.Type != "" && newParam.Name == baselineParam.Name {
+			valueSourceResolved = true
+		} else if !reflect.DeepEqual(baselineParam, newParam) {
+			return false
+		}
+	}
+
+	return valueSourceResolved
 }
