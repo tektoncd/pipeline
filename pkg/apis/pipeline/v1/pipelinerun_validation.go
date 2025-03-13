@@ -103,6 +103,23 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 			defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
 			errs = errs.Also(ps.validatePipelineTimeout(defaultTimeout, "should be <= default timeout duration"))
 		}
+
+		if len(ps.TaskRunSpecs) > 0 {
+			pipelineTimeout := ps.Timeouts.Pipeline
+			if pipelineTimeout == nil {
+				pipelineTimeout = &metav1.Duration{Duration: time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes) * time.Minute}
+			}
+			for _, taskRunSpec := range ps.TaskRunSpecs {
+				if taskRunSpec.Timeout != nil {
+					if taskRunSpec.Timeout.Duration < 0 {
+						errs = errs.Also(apis.ErrInvalidValue(taskRunSpec.Timeout.Duration.String(), "should be >= 0"))
+					}
+					if taskRunSpec.Timeout.Duration > pipelineTimeout.Duration && pipelineTimeout.Duration != config.NoTimeoutDuration {
+						errs = errs.Also(apis.ErrInvalidValue(taskRunSpec.Timeout.Duration.String(), "should be <= pipeline duration"))
+					}
+				}
+			}
+		}
 	}
 
 	errs = errs.Also(validateSpecStatus(ps.Status))
