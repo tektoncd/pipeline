@@ -18,6 +18,8 @@ package resources_test
 
 import (
 	"context"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -28,6 +30,8 @@ import (
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	fakek8s "k8s.io/client-go/kubernetes/fake"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -2047,5 +2051,97 @@ func TestArtifacts(t *testing.T) {
 	got := resources.ApplyArtifacts(ts)
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("ApplyArtifacts() got diff %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestValidateAndResolveValueSourceInParams(t *testing.T) {
+	configMapName := "aConfigMapName"
+	nameSpaceName := "aNamespace"
+	keyInConfigMap := "aKey"
+	valueInConfigMap := "aValue"
+	kubeclient := fakek8s.NewSimpleClientset(&corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: configMapName, Namespace: nameSpaceName},
+		Data:       map[string]string{keyInConfigMap: valueInConfigMap},
+	})
+	properValueSource := v1.ValueSource{ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+		LocalObjectReference: corev1.LocalObjectReference{Name: configMapName},
+		Key:                  keyInConfigMap,
+	}}
+	tcs := []struct {
+		name                   string
+		params                 v1.Params
+		k8s                    kubernetes.Interface
+		namespace              string
+		expectedErrorString    string
+		expectedResolvedParams v1.Params
+	}{
+		{
+			name:                "A different namespace",
+			k8s:                 kubeclient,
+			namespace:           "wrongNamespace",
+			params:              v1.Params{v1.Param{Name: "foo", ValueFrom: &properValueSource}},
+			expectedErrorString: "encountered an error while trying to get the configmap 'aConfigMapName' in the namespace 'wrongNamespace'",
+		},
+		{
+			name:      "ConfigMap does not exist in namespace",
+			k8s:       kubeclient,
+			namespace: nameSpaceName,
+			params: v1.Params{v1.Param{Name: "foo",
+				ValueFrom: &v1.ValueSource{ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "wrongconfig"},
+					Key:                  "keyInConfigMap",
+				}}}},
+			expectedErrorString: "encountered an error while trying to get the configmap 'wrongconfig' in the namespace 'aNamespace'",
+		},
+		{
+			name:      "Key does not exist in ConfigMap",
+			k8s:       kubeclient,
+			namespace: nameSpaceName,
+			params: v1.Params{v1.Param{Name: "foo",
+				ValueFrom: &v1.ValueSource{ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: configMapName},
+					Key:                  "wrongKey",
+					Optional:             new(bool),
+				}}}},
+			expectedErrorString: "the key 'wrongKey' does not exist in the configmap 'aConfigMapName' as expected",
+		},
+		{
+			name:      "Key exists in ConfigMap and value is resolved as a string",
+			k8s:       kubeclient,
+			namespace: nameSpaceName,
+			params: v1.Params{v1.Param{Name: "foo",
+				ValueFrom: &properValueSource}},
+			expectedResolvedParams: v1.Params{v1.Param{Name: "foo",
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: valueInConfigMap}}},
+		},
+		{
+			name: "Key exists in ConfigMap and value is resolved as an object",
+			k8s: fakek8s.NewSimpleClientset(&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: configMapName, Namespace: nameSpaceName},
+				Data:       map[string]string{keyInConfigMap: "{\"A\":\"B\"}"},
+			}),
+			namespace: nameSpaceName,
+			params: v1.Params{v1.Param{Name: "foo",
+				ValueFrom: &properValueSource}},
+			expectedResolvedParams: v1.Params{v1.Param{Name: "foo",
+				Value: v1.ParamValue{Type: v1.ParamTypeObject, ObjectVal: map[string]string{"A": "B"}}}},
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			got := resources.ValidateAndResolveValueSourceInParams(context.Background(), tc.k8s, tc.namespace, &tc.params)
+			if tc.expectedErrorString != "" {
+				if !strings.Contains(got.Error(), tc.expectedErrorString) {
+					t.Errorf("ValidateAndResolveValueSourceInParams() %v, Expecte error to contain %s \n Got %s", tc.name, tc.expectedErrorString, got)
+				}
+			} else {
+				param := tc.params[0]
+				expectedParam := tc.expectedResolvedParams[0]
+				if !reflect.DeepEqual(expectedParam, param) {
+					t.Errorf("ValidateAndResolveValueSourceInParams() %v, Error in resolution. Expected: %v\n. Got: %v", tc.name, expectedParam, param)
+				}
+			}
+		})
 	}
 }

@@ -20,6 +20,7 @@ weight: 204
         - [Scope and Precedence](#scope-and-precedence)
         - [Default Values](#default-values)
         - [Object Parameters](#object-parameters)
+      - [Using value source for params in PipelineRun or TaskRun](#using-value-source-for-params-in-pipelinerun-or-taskrun)
     - [Specifying custom <code>ServiceAccount</code> credentials](#specifying-custom-serviceaccount-credentials)
     - [Mapping <code>ServiceAccount</code> credentials to <code>Tasks</code>](#mapping-serviceaccount-credentials-to-tasks)
     - [Specifying a <code>Pod</code> template](#specifying-a-pod-template)
@@ -677,6 +678,42 @@ status:
             - --branch=main
             image: bash
             name: write-result
+```
+
+#### Using value source for params in PipelineRun or TaskRun
+> :seedling: **This is an [alpha](additional-configs.md#alpha-features) feature.** The `enable-valuefrom-in-param` feature flag must be set to `"true"` to enable this feature.
+
+Instead of a hardcoded value of param in PipelineRun or TaskRun, the param's value can be fetched (at the start of PipelineRun/TaskRun) from a configmap (in the same namespace as the PipleineRun/TaskRun).
+```yaml
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: pipeline-valuefrom-in-param
+spec:
+  params:
+  - name: message
+  tasks:
+  - name: task1
+    params:
+      - name: message
+        value: $(params.message)
+    taskRef:
+      name: task-valuefrom-in-param
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: pipelinerun-valuefrom-in-param
+spec:
+  pipelineRef:
+    name: pipeline-valuefrom-in-param
+  params:
+    - name: message
+      valueFrom:
+        configMapKeyRef:
+          name: valuesource-configmap
+          key: mykey
 ```
 
 ### Specifying custom `ServiceAccount` credentials

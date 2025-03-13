@@ -40,3 +40,4 @@ data:
   disable-inline-spec: "pipeline,pipelinerun,taskrun"
   enable-concise-resolver-syntax: "true"
   enable-kubernetes-sidecar: "true"
+  enable-valuefrom-in-param: "true"

@@ -3841,7 +3841,7 @@ func TestContextInvalid(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validatePipelineContextVariables(tt.tasks)
 			if err == nil {
-				t.Errorf("Pipeline.validatePipelineContextVariables() did not return error for invalid pipeline parameters: %s", tt.tasks[0].Params)
+				t.Errorf("Pipeline.validatePipelineContextVariables() did not return error for invalid pipeline parameters: %v", tt.tasks[0].Params)
 			}
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("PipelineSpec.Validate() errors diff %s", diff.PrintWantGot(d))
@@ -4097,7 +4097,7 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 				}
 			} else {
 				if err == nil {
-					t.Errorf("Pipeline.validateExecutionStatusVariables() did not return error for invalid pipeline parameters accessing execution status: %s, %s", tt.name, tt.tasks[0].Params)
+					t.Errorf("Pipeline.validateExecutionStatusVariables() did not return error for invalid pipeline parameters accessing execution status: %s, %v", tt.name, tt.tasks[0].Params)
 				}
 				if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 					t.Errorf("PipelineSpec.Validate() errors diff %s", diff.PrintWantGot(d))
@@ -4718,7 +4718,7 @@ func TestPipelineWithBetaFields(t *testing.T) {
 		spec: PipelineSpec{
 			Tasks: []PipelineTask{{
 				Name:    "uses-resolver-params",
-				TaskRef: &TaskRef{ResolverRef: ResolverRef{Resolver: "bar", Params: Params{{}}}},
+				TaskRef: &TaskRef{ResolverRef: ResolverRef{Resolver: "bar", Params: Params{}}},
 			}},
 		},
 	}, {
@@ -4742,7 +4742,7 @@ func TestPipelineWithBetaFields(t *testing.T) {
 			}},
 			Finally: []PipelineTask{{
 				Name:    "uses-resolver-params",
-				TaskRef: &TaskRef{ResolverRef: ResolverRef{Resolver: "bar", Params: Params{{}}}},
+				TaskRef: &TaskRef{ResolverRef: ResolverRef{Resolver: "bar", Params: Params{}}},
 			}},
 		},
 	}}

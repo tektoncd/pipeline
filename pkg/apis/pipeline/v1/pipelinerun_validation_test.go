@@ -1468,7 +1468,7 @@ func TestPipelineRunSpecBetaFeatures(t *testing.T) {
 		spec: v1.PipelineSpec{
 			Tasks: []v1.PipelineTask{{
 				Name:    "uses-resolver-params",
-				TaskRef: &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "bar", Params: v1.Params{{}}}},
+				TaskRef: &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "bar", Params: v1.Params{}}},
 			}},
 		},
 	}, {
@@ -1492,7 +1492,7 @@ func TestPipelineRunSpecBetaFeatures(t *testing.T) {
 			}},
 			Finally: []v1.PipelineTask{{
 				Name:    "uses-resolver-params",
-				TaskRef: &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "bar", Params: v1.Params{{}}}},
+				TaskRef: &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "bar", Params: v1.Params{}}},
 			}},
 		},
 	}}
@@ -1665,6 +1665,30 @@ func TestPipelineRunSpec_ValidateUpdate(t *testing.T) {
 			isUpdate: true,
 			expectedError: apis.FieldError{
 				Message: `invalid value: Once the PipelineRun is complete, no updates are allowed`,
+				Paths:   []string{""},
+			},
+		}, {
+			name: "is update ctx, changes in PipelineRunSpec in valuesource resolution only",
+			baselinePipelineRun: &v1.PipelineRun{Spec: v1.PipelineRunSpec{Params: v1.Params{
+				v1.Param{Name: "foo", ValueFrom: &v1.ValueSource{}},
+			}}},
+			pipelineRun: &v1.PipelineRun{Spec: v1.PipelineRunSpec{Params: v1.Params{
+				v1.Param{Name: "foo", Value: v1.ParamValue{StringVal: "a", Type: v1.ParamTypeString}},
+			}}},
+			isCreate: false,
+			isUpdate: true,
+		}, {
+			name: "is update ctx, changes in PipelineRunSpec outside of Params",
+			baselinePipelineRun: &v1.PipelineRun{Spec: v1.PipelineRunSpec{Params: v1.Params{
+				v1.Param{Name: "foo", ValueFrom: &v1.ValueSource{}},
+			}}},
+			pipelineRun: &v1.PipelineRun{Spec: v1.PipelineRunSpec{Timeouts: &v1.TimeoutFields{}, Params: v1.Params{
+				v1.Param{Name: "foo", ValueFrom: &v1.ValueSource{}},
+			}}},
+			isCreate: false,
+			isUpdate: true,
+			expectedError: apis.FieldError{
+				Message: `invalid value: Once the PipelineRun has started, only status updates are allowed`,
 				Paths:   []string{""},
 			},
 		},

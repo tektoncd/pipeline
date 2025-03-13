@@ -1107,6 +1107,30 @@ func TestTaskRunSpec_ValidateUpdate(t *testing.T) {
 				Message: `invalid value: Once the TaskRun is complete, no updates are allowed`,
 				Paths:   []string{""},
 			},
+		}, {
+			name: "is update ctx, changes in TaskRunSpec in valuesource resolution only",
+			baselineTaskRun: &v1.TaskRun{Spec: v1.TaskRunSpec{Params: v1.Params{
+				v1.Param{Name: "foo", ValueFrom: &v1.ValueSource{}},
+			}}},
+			taskRun: &v1.TaskRun{Spec: v1.TaskRunSpec{Params: v1.Params{
+				v1.Param{Name: "foo", Value: v1.ParamValue{StringVal: "a", Type: v1.ParamTypeString}},
+			}}},
+			isCreate: false,
+			isUpdate: true,
+		}, {
+			name: "is update ctx, changes in TaskRunSpec outside of Params",
+			baselineTaskRun: &v1.TaskRun{Spec: v1.TaskRunSpec{Params: v1.Params{
+				v1.Param{Name: "foo", ValueFrom: &v1.ValueSource{}},
+			}}},
+			taskRun: &v1.TaskRun{Spec: v1.TaskRunSpec{Retries: 2, Params: v1.Params{
+				v1.Param{Name: "foo", ValueFrom: &v1.ValueSource{}},
+			}}},
+			isCreate: false,
+			isUpdate: true,
+			expectedError: apis.FieldError{
+				Message: `invalid value: Once the TaskRun has started, only status and statusMessage updates are allowed`,
+				Paths:   []string{""},
+			},
 		},
 	}
 
@@ -1126,6 +1150,45 @@ func TestTaskRunSpec_ValidateUpdate(t *testing.T) {
 			err := tr.Spec.ValidateUpdate(ctx)
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("TaskRunSpec.ValidateUpdate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestValidateParameters(t *testing.T) {
+	properValueSource := v1.ValueSource{ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+		LocalObjectReference: corev1.LocalObjectReference{Name: "name"},
+		Key:                  "key",
+	}}
+	params := v1.Params{v1.Param{Name: "foo", ValueFrom: &properValueSource}}
+	tcs := []struct {
+		name                   string
+		enableValueFromInParam bool
+		params                 v1.Params
+		expectedError          *apis.FieldError
+	}{
+		{
+			name:                   "Validation failure when valueSource is passed and the feature flag is disabled",
+			enableValueFromInParam: false,
+			params:                 params,
+			expectedError: &apis.FieldError{
+				Message: `The feature flag to enable valueFrom in param is not enabled`,
+			},
+		}, {
+			name:                   "Validation success when valueSource is passed and the feature flag is enabled",
+			enableValueFromInParam: true,
+			params:                 params,
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := config.ToContext(context.Background(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{EnableValueFromInParam: tc.enableValueFromInParam},
+				Defaults:     &config.Defaults{},
+			})
+			err := v1.ValidateParameters(ctx, tc.params)
+			if d := cmp.Diff(tc.expectedError.Error(), err.Error()); d != "" {
+				t.Errorf("ValidateParameters errors diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}

@@ -144,6 +144,9 @@ func (ts *TaskRunSpec) ValidateUpdate(ctx context.Context) (errs *apis.FieldErro
 	}
 
 	if !equality.Semantic.DeepEqual(old, ts) {
+		if old.IsDifferentFromDesiredStateOnlyByValueSourceResolutionInParams(ts) {
+			return
+		}
 		errs = errs.Also(apis.ErrInvalidValue(tips, ""))
 	}
 
@@ -287,6 +290,8 @@ func ValidateWorkspaceBindings(ctx context.Context, wb []WorkspaceBinding) (errs
 
 // ValidateParameters makes sure the params for the Task are valid.
 func ValidateParameters(ctx context.Context, params Params) (errs *apis.FieldError) {
+	errs = errs.Also(params.ValidateValueAndValueSourceInEachParam(config.FromContextOrDefaults(ctx).FeatureFlags.EnableValueFromInParam))
+
 	var names []string
 	for _, p := range params {
 		names = append(names, p.Name)

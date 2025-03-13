@@ -1972,6 +1972,8 @@ spec:
                           type: boolean
                         enableStepActions:
                           type: boolean
+                        enableValueFromInParam:
+                          type: boolean
                         enforceNonfalsifiability:
                           type: string
                         maxResultSize:
@@ -2260,6 +2262,8 @@ spec:
                                 type: boolean
                               enableStepActions:
                                 type: boolean
+                              enableValueFromInParam:
+                                type: boolean
                               enforceNonfalsifiability:
                                 type: string
                               maxResultSize:
@@ -2537,12 +2541,44 @@ spec:
                     type: object
                     required:
                       - name
-                      - value
                     properties:
                       name:
                         type: string
                       value:
+                        description: |-
+                          If the `enable-valuefrom-in-param` feature flag is not enabled, this field is manadatory
+                          If the `enable-valuefrom-in-param` feature flag is enabled, exactly one of Value or ValueFrom (not both) must be defined by the user
                         x-kubernetes-preserve-unknown-fields: true
+                      valueFrom:
+                        description: |-
+                          Available only with the `enable-valuefrom-in-param` feature flag
+                          Exactly one of the Value and ValueFrom (not both) fields must be defined by the user
+                          ValueFrom represents a source for the value of a parameter
+                          The value will be obtained from the source during the TaskRun or PipelineRun initialization
+                        type: object
+                        properties:
+                          configMapKeyRef:
+                            description: Selects a key from a ConfigMap.
+                            type: object
+                            required:
+                              - key
+                            properties:
+                              key:
+                                description: The key to select.
+                                type: string
+                              name:
+                                description: |-
+                                  Name of the referent.
+                                  This field is effectively required, but due to backwards compatibility is
+                                  allowed to be empty. Instances of this type with an empty value here are
+                                  almost certainly wrong.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                type: string
+                                default: ""
+                              optional:
+                                description: Specify whether the ConfigMap or its key must be defined
+                                type: boolean
+                            x-kubernetes-map-type: atomic
                   x-kubernetes-list-type: atomic
                 podTemplate:
                   description: PodTemplate holds pod specific configuration
@@ -3418,12 +3454,44 @@ spec:
                         type: object
                         required:
                           - name
-                          - value
                         properties:
                           name:
                             type: string
                           value:
+                            description: |-
+                              If the `enable-valuefrom-in-param` feature flag is not enabled, this field is manadatory
+                              If the `enable-valuefrom-in-param` feature flag is enabled, exactly one of Value or ValueFrom (not both) must be defined by the user
                             x-kubernetes-preserve-unknown-fields: true
+                          valueFrom:
+                            description: |-
+                              Available only with the `enable-valuefrom-in-param` feature flag
+                              Exactly one of the Value and ValueFrom (not both) fields must be defined by the user
+                              ValueFrom represents a source for the value of a parameter
+                              The value will be obtained from the source during the TaskRun or PipelineRun initialization
+                            type: object
+                            properties:
+                              configMapKeyRef:
+                                description: Selects a key from a ConfigMap.
+                                type: object
+                                required:
+                                  - key
+                                properties:
+                                  key:
+                                    description: The key to select.
+                                    type: string
+                                  name:
+                                    description: |-
+                                      Name of the referent.
+                                      This field is effectively required, but due to backwards compatibility is
+                                      allowed to be empty. Instances of this type with an empty value here are
+                                      almost certainly wrong.
+                                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                    type: string
+                                    default: ""
+                                  optional:
+                                    description: Specify whether the ConfigMap or its key must be defined
+                                    type: boolean
+                                x-kubernetes-map-type: atomic
                       x-kubernetes-list-type: atomic
                     resolver:
                       description: |-
@@ -4159,6 +4227,8 @@ spec:
                           type: boolean
                         enableStepActions:
                           type: boolean
+                        enableValueFromInParam:
+                          type: boolean
                         enforceNonfalsifiability:
                           type: string
                         maxResultSize:
@@ -4412,6 +4482,8 @@ spec:
                               enableProvenanceInStatus:
                                 type: boolean
                               enableStepActions:
+                                type: boolean
+                              enableValueFromInParam:
                                 type: boolean
                               enforceNonfalsifiability:
                                 type: string
@@ -6842,12 +6914,44 @@ spec:
                               type: object
                               required:
                                 - name
-                                - value
                               properties:
                                 name:
                                   type: string
                                 value:
+                                  description: |-
+                                    If the `enable-valuefrom-in-param` feature flag is not enabled, this field is manadatory
+                                    If the `enable-valuefrom-in-param` feature flag is enabled, exactly one of Value or ValueFrom (not both) must be defined by the user
                                   x-kubernetes-preserve-unknown-fields: true
+                                valueFrom:
+                                  description: |-
+                                    Available only with the `enable-valuefrom-in-param` feature flag
+                                    Exactly one of the Value and ValueFrom (not both) fields must be defined by the user
+                                    ValueFrom represents a source for the value of a parameter
+                                    The value will be obtained from the source during the TaskRun or PipelineRun initialization
+                                  type: object
+                                  properties:
+                                    configMapKeyRef:
+                                      description: Selects a key from a ConfigMap.
+                                      type: object
+                                      required:
+                                        - key
+                                      properties:
+                                        key:
+                                          description: The key to select.
+                                          type: string
+                                        name:
+                                          description: |-
+                                            Name of the referent.
+                                            This field is effectively required, but due to backwards compatibility is
+                                            allowed to be empty. Instances of this type with an empty value here are
+                                            almost certainly wrong.
+                                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          type: string
+                                          default: ""
+                                        optional:
+                                          description: Specify whether the ConfigMap or its key must be defined
+                                          type: boolean
+                                      x-kubernetes-map-type: atomic
                             x-kubernetes-list-type: atomic
                           ref:
                             description: Contains the reference to an existing StepAction.
@@ -6868,12 +6972,44 @@ spec:
                                   type: object
                                   required:
                                     - name
-                                    - value
                                   properties:
                                     name:
                                       type: string
                                     value:
+                                      description: |-
+                                        If the `enable-valuefrom-in-param` feature flag is not enabled, this field is manadatory
+                                        If the `enable-valuefrom-in-param` feature flag is enabled, exactly one of Value or ValueFrom (not both) must be defined by the user
                                       x-kubernetes-preserve-unknown-fields: true
+                                    valueFrom:
+                                      description: |-
+                                        Available only with the `enable-valuefrom-in-param` feature flag
+                                        Exactly one of the Value and ValueFrom (not both) fields must be defined by the user
+                                        ValueFrom represents a source for the value of a parameter
+                                        The value will be obtained from the source during the TaskRun or PipelineRun initialization
+                                      type: object
+                                      properties:
+                                        configMapKeyRef:
+                                          description: Selects a key from a ConfigMap.
+                                          type: object
+                                          required:
+                                            - key
+                                          properties:
+                                            key:
+                                              description: The key to select.
+                                              type: string
+                                            name:
+                                              description: |-
+                                                Name of the referent.
+                                                This field is effectively required, but due to backwards compatibility is
+                                                allowed to be empty. Instances of this type with an empty value here are
+                                                almost certainly wrong.
+                                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                              type: string
+                                              default: ""
+                                            optional:
+                                              description: Specify whether the ConfigMap or its key must be defined
+                                              type: boolean
+                                          x-kubernetes-map-type: atomic
                                 x-kubernetes-list-type: atomic
                               resolver:
                                 description: |-

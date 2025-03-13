@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: valuesource-configmap
+data:
+  mykey: A1
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: task-valuefrom-in-param
+spec:
+  params:
+  - name: message
+  steps:
+  - name: build
+    image: mirror.gcr.io/bash
+    script: |
+      echo "$(params.message)"
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: taskrun-valuefrom-in-param
+spec:
+  taskRef:
+    name: task-valuefrom-in-param
+  params:
+    - name: message
+      valueFrom:
+        configMapKeyRef:
+          name: valuesource-configmap
+          key: mykey

@@ -1,12 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: valuesource-configmap
+data:
+  mykey: A1
+---
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: task-param-enum
+  name: task-valuefrom-in-param
 spec:
   params:
   - name: message
-    type: string
-    enum: ["v1", "v2", "v3"]
   steps:
   - name: build
     image: mirror.gcr.io/bash
@@ -16,7 +21,7 @@ spec:
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: pipeline-param-enum
+  name: pipeline-valuefrom-in-param
 spec:
   params:
   - name: message
@@ -26,15 +31,18 @@ spec:
       - name: message
         value: $(params.message)
     taskRef:
-      name: task-param-enum
+      name: task-valuefrom-in-param
 ---
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  name: pipelinerun-param-enum
+  name: pipelinerun-valuefrom-in-param
 spec:
   pipelineRef:
-    name: pipeline-param-enum
+    name: pipeline-valuefrom-in-param
   params:
     - name: message
-      value: "v1"
+      valueFrom:
+        configMapKeyRef:
+          name: valuesource-configmap
+          key: mykey
