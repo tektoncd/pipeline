@@ -4552,6 +4552,24 @@ func Test_validateMatrix(t *testing.T) {
 		}},
 		wantErrs: apis.ErrGeneric("A matrixed pipelineTask can only be consumed in aggregate using [*] notation, but is currently set to tasks.matrix-emitting-results-embedded.results.report-url[0]"),
 	}, {
+		name: "cel in matrix include when expression",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Include: IncludeParamsList{
+					{
+						When: WhenExpressions{
+							{
+								CEL: "platform == 'linux'",
+							},
+						},
+					},
+				},
+			},
+		}},
+		wantErrs: apis.ErrDisallowedFields("[0].matrix.include.when.cel"),
+	}, {
 		name: "invalid matrix emitting array results consumed in aggregate by another pipelineTask",
 		tasks: PipelineTaskList{{
 			Name:    "matrix-emitting-results",
