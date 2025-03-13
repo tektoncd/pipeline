@@ -18,7 +18,6 @@ package config
 
 import (
 	corev1 "k8s.io/api/core/v1"
-	"knative.dev/pkg/metrics"
 )
 
 const (
@@ -107,12 +106,6 @@ type Metrics struct {
 	DurationPipelinerunType string
 	CountWithReason         bool
 	ThrottleWithNamespace   bool
-}
-
-// GetMetricsConfigName returns the name of the configmap containing all
-// customizations for the storage bucket.
-func GetMetricsConfigName() string {
-	return metrics.ConfigMapName()
 }
 
 // Equals returns true if two Configs are identical
