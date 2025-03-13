@@ -1949,7 +1949,6 @@ spec:
                         coschedule:
                           type: string
                         disableCredsInit:
-                          description: DisableAffinityAssistant         bool `json:"disableAffinityAssistant,omitempty"`
                           type: boolean
                         disableInlineSpec:
                           type: string
@@ -2236,7 +2235,6 @@ spec:
                               coschedule:
                                 type: string
                               disableCredsInit:
-                                description: DisableAffinityAssistant         bool `json:"disableAffinityAssistant,omitempty"`
                                 type: boolean
                               disableInlineSpec:
                                 type: string
@@ -4134,7 +4132,6 @@ spec:
                         coschedule:
                           type: string
                         disableCredsInit:
-                          description: DisableAffinityAssistant         bool `json:"disableAffinityAssistant,omitempty"`
                           type: boolean
                         disableInlineSpec:
                           type: string
@@ -4387,7 +4384,6 @@ spec:
                               coschedule:
                                 type: string
                               disableCredsInit:
-                                description: DisableAffinityAssistant         bool `json:"disableAffinityAssistant,omitempty"`
                                 type: boolean
                               disableInlineSpec:
                                 type: string
