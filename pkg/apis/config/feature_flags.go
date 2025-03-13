@@ -182,12 +182,9 @@ var (
 // FeatureFlags holds the features configurations
 // +k8s:deepcopy-gen=true
 type FeatureFlags struct {
-	// DisableAffinityAssistant         bool `json:"disableAffinityAssistant,omitempty"`
 	DisableCredsInit                 bool `json:"disableCredsInit,omitempty"`
 	RunningInEnvWithInjectedSidecars bool `json:"runningInEnvWithInjectedSidecars,omitempty"`
 	RequireGitSSHSecretKnownHosts    bool `json:"requireGitSSHSecretKnownHosts,omitempty"`
-	// EnableTektonOCIBundles           bool // Deprecated: this is now ignored
-	// ScopeWhenExpressionsToTask       bool // Deprecated: this is now ignored
 
 	EnableAPIFields          string `json:"enableAPIFields,omitempty"`
 	SendCloudEventsForRuns   bool   `json:"sendCloudEventsForRuns,omitempty"`
