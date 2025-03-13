@@ -25,9 +25,12 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
+	apixv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
 )
@@ -651,6 +654,42 @@ status:
       pipelineTaskName: hello-task
 `
 )
+
+// TestCRDConversionStrategy tests if webhook conversion strategy is
+// set to versioned CRDs.
+func TestCRDConversionStrategy(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	t.Parallel()
+
+	c, namespace := setup(ctx, t)
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	kinds := []schema.GroupKind{
+		v1beta1.Kind("stepactions"),
+		v1.Kind("tasks"),
+		v1.Kind("pipelines"),
+		v1.Kind("taskruns"),
+		v1.Kind("pipelineruns"),
+		resolutionv1beta1.Kind("resolutionrequests"),
+	}
+	for _, kind := range kinds {
+		gotCRD, err := c.ApixClient.ApiextensionsV1().CustomResourceDefinitions().Get(context.Background(), kind.String(), metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("Couldn't get expected CRD %s: %s", kind, err)
+		}
+
+		if gotCRD.Spec.Conversion == nil {
+			t.Errorf("Expected custom resource %q to have conversion strategy", kind)
+		}
+		if gotCRD.Spec.Conversion.Strategy != apixv1.WebhookConverter {
+			t.Errorf("Expected custom resource %q to have conversion strategy %s, got %s", kind, apixv1.WebhookConverter, gotCRD.Spec.Conversion.Strategy)
+		}
+	}
+}
 
 // TestTaskCRDConversion first creates a v1beta1 Task CRD using v1beta1Clients and
 // requests it by v1Clients to compare with v1 if the conversion has been correctly
