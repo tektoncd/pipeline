@@ -62,7 +62,16 @@ func TestValidateParams(t *testing.T) {
 			version:      "bar",
 			catalog:      "baz",
 			hubType:      ArtifactHubType,
-		}, {
+		},
+		{
+			testName:     "stepaction validation",
+			kind:         "stepaction",
+			resourceName: "foo",
+			version:      "bar",
+			catalog:      "baz",
+			hubType:      ArtifactHubType,
+		},
+		{
 			testName:     "tekton type validation",
 			kind:         "task",
 			resourceName: "foo",
@@ -148,7 +157,7 @@ func TestValidateParamsConflictingKindName(t *testing.T) {
 		hubType string
 	}{
 		{
-			kind:    "not-taskpipeline",
+			kind:    "not-taskpipelineorstepaction",
 			name:    "foo",
 			version: "bar",
 			catalog: "baz",
