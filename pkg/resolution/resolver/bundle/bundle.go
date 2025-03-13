@@ -142,8 +142,10 @@ func retrieveImage(ctx context.Context, keychain authn.Keychain, ref string) (st
 	if err != nil {
 		return "", nil, fmt.Errorf("%s is an unparseable image reference: %w", ref, err)
 	}
+	customRetryBackoff := &remote.Backoff{GetBundleResolverBackoff(ctx)}
 
-	img, err := remote.Image(imgRef, remote.WithAuthFromKeychain(keychain), remote.WithContext(ctx))
+	img, err := remote.Image(imgRef, remote.WithAuthFromKeychain(keychain), remote.WithContext(ctx),
+		remote.WithRetryBackoff(*customRetryBackoff))
 	return imgRef.Context().Name(), img, err
 }
 
