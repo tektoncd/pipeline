@@ -77,8 +77,8 @@ A `TaskRun` definition supports the following fields:
   - [`workspaces`](#specifying-workspaces) - Specifies the physical volumes to use for the
     [`Workspaces`](workspaces.md#using-workspaces-in-tasks) declared by a `Task`.
   - [`debug`](#debugging-a-taskrun)- Specifies any breakpoints and debugging configuration for the `Task` execution.
-  - [`stepOverrides`](#overriding-task-steps-and-sidecars) - Specifies configuration to use to override the `Task`'s `Step`s.
-  - [`sidecarOverrides`](#overriding-task-steps-and-sidecars) - Specifies configuration to use to override the `Task`'s `Sidecar`s.
+  - [`stepSpecs`](#configuring-task-steps-and-sidecars-in-a-taskrun) - Specifies configuration to use to override the `Task`'s `Step`s.
+  - [`sidecarSpecs`](#configuring-task-steps-and-sidecars-in-a-taskrun) - Specifies configuration to use to override the `Task`'s `Sidecar`s.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
