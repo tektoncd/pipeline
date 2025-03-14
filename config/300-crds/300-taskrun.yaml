@@ -1948,8 +1948,6 @@ spec:
                           type: boolean
                         coschedule:
                           type: string
-                        disableAffinityAssistant:
-                          type: boolean
                         disableCredsInit:
                           type: boolean
                         disableInlineSpec:
@@ -2236,8 +2234,6 @@ spec:
                                 type: boolean
                               coschedule:
                                 type: string
-                              disableAffinityAssistant:
-                                type: boolean
                               disableCredsInit:
                                 type: boolean
                               disableInlineSpec:
@@ -4135,8 +4131,6 @@ spec:
                           type: boolean
                         coschedule:
                           type: string
-                        disableAffinityAssistant:
-                          type: boolean
                         disableCredsInit:
                           type: boolean
                         disableInlineSpec:
@@ -4389,8 +4383,6 @@ spec:
                                 type: boolean
                               coschedule:
                                 type: string
-                              disableAffinityAssistant:
-                                type: boolean
                               disableCredsInit:
                                 type: boolean
                               disableInlineSpec:

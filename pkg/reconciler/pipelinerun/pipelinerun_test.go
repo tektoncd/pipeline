@@ -123,7 +123,6 @@ const (
 	apiFieldsFeatureFlag           = "enable-api-fields"
 	ociBundlesFeatureFlag          = "enable-tekton-oci-bundles"
 	maxMatrixCombinationsCountFlag = "default-max-matrix-combinations-count"
-	disableAffinityAssistantFlag   = "disable-affinity-assistant"
 )
 
 type PipelineRunTest struct {
@@ -1492,12 +1491,6 @@ func withEnabledAlphaAPIFields(cm *corev1.ConfigMap) *corev1.ConfigMap {
 func withMaxMatrixCombinationsCount(cm *corev1.ConfigMap, count int) *corev1.ConfigMap {
 	newCM := cm.DeepCopy()
 	newCM.Data[maxMatrixCombinationsCountFlag] = strconv.Itoa(count)
-	return newCM
-}
-
-func withoutAffinityAssistant(cm *corev1.ConfigMap) *corev1.ConfigMap {
-	newCM := cm.DeepCopy()
-	newCM.Data[disableAffinityAssistantFlag] = "true"
 	return newCM
 }
 
@@ -5341,7 +5334,7 @@ spec:
         name: myclaim
 `)}
 	ts := []*v1.Task{simpleHelloWorldTask}
-	cms := []*corev1.ConfigMap{withoutAffinityAssistant(newFeatureFlagsConfigMap())}
+	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -5983,7 +5976,6 @@ status:
 		name       string
 		prs        []*v1.PipelineRun
 		expectedTr *v1.TaskRun
-		disableAA  bool
 	}{
 		{
 			name: "pcv success",
@@ -6001,10 +5993,11 @@ spec:
       persistentVolumeClaim:
         claimName: $(tasks.a-task.results.aResult)
 `)},
-			disableAA: true,
 			expectedTr: mustParseTaskRunWithObjectMeta(t,
-				taskRunObjectMeta("test-pipeline-run-variable-substitution-b-task", "foo",
-					"test-pipeline-run-variable-substitution", "test-pipeline", "b-task", false),
+				taskRunObjectMetaWithAnnotations("test-pipeline-run-variable-substitution-b-task", "foo",
+					"test-pipeline-run-variable-substitution", "test-pipeline", "b-task", false, map[string]string{
+						"pipeline.tekton.dev/affinity-assistant": "affinity-assistant-0358aabfa2",
+					}),
 				`spec:
   serviceAccountName: test-sa-0
   taskRef:
@@ -6252,11 +6245,6 @@ spec:
 				Pipelines:    ps,
 				Tasks:        ts,
 				TaskRuns:     trs,
-			}
-			if tt.disableAA {
-				configMap := newFeatureFlagsConfigMap()
-				configMap.Data["disable-affinity-assistant"] = "true"
-				d.ConfigMaps = []*corev1.ConfigMap{configMap}
 			}
 
 			prt := newPipelineRunTest(t, d)
