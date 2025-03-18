@@ -65,7 +65,7 @@ jobs:
     - name: yamllint
       run: |
         apt-get update && apt-get install -y yamllint
-        yamllint -c .yamllint $(find . -path ./vendor -prune -o -type f -regex ".*y[a]ml" -print | tr '\n' ' ')
+        make yamllint
     - name: check-license
       run: |
         go install github.com/google/go-licenses@v1.0.0
