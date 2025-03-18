@@ -201,11 +201,9 @@ woke: | $(WOKE) ; $(info $(M) running woke...) @ ## Run woke
 	$Q $(WOKE) -c https://github.com/canonical/Inclusive-naming/raw/main/config.yml
 
 .PHONY: yamlint
-yamllint: $(BIN)/yamllint.log
-
 YAMLLINT := $(shell find . -path ./vendor -prune -o -type f -regex ".*y[a]ml" -print) 
-$(BIN)/yamllint.log: $(YAMLLINT) | $(BIN) ; $(info $(M) running yamlint…)
-	yamllint -c .yamllint $? 2>&1 | tee $(BIN)/yamllint.log
+yamllint: | $(BIN) ; $(info $(M) running yamlint…)
+	yamllint -c .yamllint $(YAMLLINT)
 
 # Misc
 
