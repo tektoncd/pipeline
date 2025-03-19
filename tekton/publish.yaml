@@ -33,7 +33,7 @@ spec:
       default: "true"
     - name: platforms
       description: Platforms to publish for the images (e.g. linux/amd64,linux/arm64)
-      default: linux/amd64,linux/arm,linux/arm64,linux/s390x,linux/ppc64le,windows/amd64
+      default: linux/amd64,linux/arm64,linux/s390x,linux/ppc64le,windows/amd64
     - name: serviceAccountPath
       description: The name of the service account path within the release-secret workspace
   workspaces:
