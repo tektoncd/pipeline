@@ -32,13 +32,13 @@ spec:
     default: "true"
   - name: buildPlatforms
     description: Platforms to build images for (e.g. linux/amd64,linux/arm64)
-    default: linux/amd64,linux/arm,linux/arm64,linux/s390x,linux/ppc64le
+    default: linux/amd64,linux/arm64,linux/s390x,linux/ppc64le
   - name: publishPlatforms
     description: |
       Platforms to publish images for (e.g. linux/amd64,linux/arm64,windows/amd64). This
       can differ from buildPlatforms due to the fact that a windows-compatible base image
       is constructed for the publishing phase.
-    default: linux/amd64,linux/arm,linux/arm64,linux/s390x,linux/ppc64le,windows/amd64
+    default: linux/amd64,linux/arm64,linux/s390x,linux/ppc64le,windows/amd64
   - name: koExtraArgs
     description: Extra args to be passed to ko
     default: "--preserve-import-paths"
@@ -195,7 +195,7 @@ spec:
           subpath: bucket
         - name: release-secret
           workspace: release-images-secret
-      timeout: 2h
+      timeout: 3h
     - name: publish-to-bucket
       runAfter: [publish-images]
       taskRef:
