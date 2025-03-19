@@ -465,7 +465,6 @@ The controller and webhook components are currently built for:
 
 - linux/amd64
 - linux/arm64
-- linux/arm (Arm v7)
 - linux/ppc64le (PowerPC)
 - linux/s390x (IBM Z)
 
