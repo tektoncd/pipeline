@@ -117,8 +117,23 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 			wsNames[ws.Name] = idx
 		}
 	}
+
+	// Validate task-specific timeouts in taskRunSpecs
+	for _, trs := range ps.TaskRunSpecs {
+		if trs.Timeout != nil {
+			if trs.Timeout.Duration < 0 {
+				errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", trs.Timeout.Duration.String()), fmt.Sprintf("taskRunSpecs[%s].timeout", trs.PipelineTaskName)))
+			}
+			if ps.Timeouts != nil && ps.Timeouts.Pipeline != nil && trs.Timeout.Duration > ps.Timeouts.Pipeline.Duration {
+				errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be <= pipeline duration", trs.Timeout.Duration.String()), fmt.Sprintf("taskRunSpecs[%s].timeout", trs.PipelineTaskName)))
+			}
+		}
+	}
+
 	for idx, trs := range ps.TaskRunSpecs {
-		errs = errs.Also(validateTaskRunSpec(ctx, trs).ViaIndex(idx).ViaField("taskRunSpecs"))
+		if err := validateTaskRunSpec(ctx, trs); err != nil {
+			errs = errs.Also(err.ViaFieldIndex("taskRunSpecs", idx))
+		}
 	}
 
 	if ps.TaskRunTemplate.PodTemplate != nil {
@@ -310,6 +325,16 @@ func (ps *PipelineRunSpec) validatePipelineTimeout(timeout time.Duration, errorM
 			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s + %s %s", ps.Timeouts.Tasks.Duration.String(), ps.Timeouts.Finally.Duration.String(), errorMsg), "timeouts.finally"))
 		}
 	}
+
+	// Validate task-specific timeouts in taskRunSpecs
+	for _, trs := range ps.TaskRunSpecs {
+		if trs.Timeout != nil {
+			if trs.Timeout.Duration > timeout && timeout != config.NoTimeoutDuration {
+				errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be <= pipeline duration", trs.Timeout.Duration.String()), fmt.Sprintf("taskRunSpecs[%s].timeout", trs.PipelineTaskName)))
+			}
+		}
+	}
+
 	return errs
 }
 
