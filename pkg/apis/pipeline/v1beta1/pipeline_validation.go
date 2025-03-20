@@ -193,7 +193,6 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	taskKinds := map[TaskKind]bool{
 		"":                 true,
 		NamespacedTaskKind: true,
-		ClusterTaskKind:    true,
 	}
 
 	if pt.OnError != "" {

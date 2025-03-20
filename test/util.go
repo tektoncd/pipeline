@@ -201,15 +201,6 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		output = append(output, bs...)
 	}
 
-	v1beta1ClusterTasks, err := cs.V1beta1ClusterTaskClient.List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("could not get v1beta1 clustertasks: %w", err)
-	}
-	for _, i := range v1beta1ClusterTasks.Items {
-		i.SetManagedFields(nil)
-		printOrAdd(i)
-	}
-
 	v1Tasks, err := cs.V1TaskClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get v1 tasks: %w", err)
