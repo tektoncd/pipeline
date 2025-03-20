@@ -91,6 +91,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepSpec":              schema_pkg_apis_pipeline_v1_TaskRunStepSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskSpec":                     schema_pkg_apis_pipeline_v1_TaskSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TimeoutFields":                schema_pkg_apis_pipeline_v1_TimeoutFields(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ValueSource":                  schema_pkg_apis_pipeline_v1_ValueSource(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression":               schema_pkg_apis_pipeline_v1_WhenExpression(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceBinding":             schema_pkg_apis_pipeline_v1_WorkspaceBinding(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceDeclaration":         schema_pkg_apis_pipeline_v1_WorkspaceDeclaration(ref),
@@ -876,15 +877,22 @@ func schema_pkg_apis_pipeline_v1_Param(ref common.ReferenceCallback) common.Open
 					},
 					"value": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue"),
+							Description: "If the `enable-valuefrom-in-param` feature flag is not enabled, this field is manadatory If the `enable-valuefrom-in-param` feature flag is enabled, exactly one of Value or ValueFrom (not both) must be defined by the user",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue"),
+						},
+					},
+					"valueFrom": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Available only with the `enable-valuefrom-in-param` feature flag Exactly one of the Value and ValueFrom (not both) fields must be defined by the user ValueFrom represents a source for the value of a parameter The value will be obtained from the source during the TaskRun or PipelineRun initialization",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ValueSource"),
 						},
 					},
 				},
-				Required: []string{"name", "value"},
+				Required: []string{"name"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ValueSource"},
 	}
 }
 
@@ -4674,6 +4682,26 @@ func schema_pkg_apis_pipeline_v1_TimeoutFields(ref common.ReferenceCallback) com
 		},
 		Dependencies: []string{
 			"k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1_ValueSource(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ValueSource represents a source to fetch the value from",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"configMapKeyRef": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("k8s.io/api/core/v1.ConfigMapKeySelector"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.ConfigMapKeySelector"},
 	}
 }
 

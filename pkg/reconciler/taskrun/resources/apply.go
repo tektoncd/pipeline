@@ -18,6 +18,7 @@ package resources
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -35,7 +36,9 @@ import (
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/client-go/kubernetes"
 )
 
 const (
@@ -743,4 +746,78 @@ func ApplyReplacements(spec *v1.TaskSpec, stringReplacements map[string]string, 
 	}
 
 	return spec
+}
+
+func ValidateAndResolveValueSourceInParams(ctx context.Context, k8s kubernetes.Interface, namespace string, params *v1.Params) error {
+	for i, p := range *params {
+		if p.ValueFrom != nil {
+			var newParam *v1.Param
+			var err error
+			// This condition will always occur (otherwise the validation in the webhook would have failed)
+			// In the future, we can add more if-statements for SecretKeyRef
+			if p.ValueFrom.ConfigMapKeyRef != nil {
+				newParam, err = validateAndResolveConfigMapRefInParam(ctx, k8s, namespace, &p)
+				if err != nil {
+					return fmt.Errorf("encountered an error while fetching the value for parameter '%s' from the configMap '%s' expected to exist in the namespace '%s' (associated to the Run): %s", p.Name, p.ValueFrom.ConfigMapKeyRef.Name, namespace, err.Error())
+				}
+			}
+			(*params)[i] = *newParam
+		}
+	}
+	return nil
+}
+
+func validateAndResolveConfigMapRefInParam(ctx context.Context, k8s kubernetes.Interface, namespace string, param *v1.Param) (*v1.Param, error) {
+	configMap, err := getConfigMap(ctx, k8s, namespace, param.ValueFrom.ConfigMapKeyRef.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	valInConfigMap, err := getValFromConfigMap(configMap, param.ValueFrom.ConfigMapKeyRef)
+	if err != nil {
+		return nil, err
+	}
+
+	newParamValue, err := getParamValue(valInConfigMap)
+	if err != nil {
+		return nil, err
+	}
+
+	return newParamWithValueInsteadOfValueSource(param, *newParamValue), nil
+}
+
+func newParamWithValueInsteadOfValueSource(p *v1.Param, newParamValue v1.ParamValue) *v1.Param {
+	newParam := p.DeepCopy()
+	newParam.Value = newParamValue
+	newParam.ValueFrom = nil
+	return newParam
+}
+
+func getParamValue(valInConfigMap string) (*v1.ParamValue, error) {
+	var newParamValue v1.ParamValue
+	stringToUnmarshal := "\"" + valInConfigMap + "\""
+
+	if v1.PotentialNonStringParamValue([]byte(valInConfigMap)) {
+		stringToUnmarshal = valInConfigMap
+	}
+	if err := json.Unmarshal([]byte(stringToUnmarshal), &newParamValue); err != nil {
+		return nil, fmt.Errorf("encountered an error while converting the value '%s' obtained from the value source to a ParamValue: %w", valInConfigMap, err)
+	}
+	return &newParamValue, nil
+}
+
+func getValFromConfigMap(configMap *corev1.ConfigMap, configMapKeyRef *corev1.ConfigMapKeySelector) (string, error) {
+	valInConfigMap, ok := configMap.Data[configMapKeyRef.Key]
+	if !ok && (configMapKeyRef.Optional == nil || !*configMapKeyRef.Optional) {
+		return "", fmt.Errorf("the key '%s' does not exist in the configmap '%s' as expected", configMapKeyRef.Key, configMapKeyRef.Name)
+	}
+	return valInConfigMap, nil
+}
+
+func getConfigMap(ctx context.Context, k8s kubernetes.Interface, namespace string, configMapName string) (*corev1.ConfigMap, error) {
+	configMap, err := k8s.CoreV1().ConfigMaps(namespace).Get(ctx, configMapName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("encountered an error while trying to get the configmap '%s' in the namespace '%s': %w", configMapName, namespace, err)
+	}
+	return configMap, nil
 }

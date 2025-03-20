@@ -58,6 +58,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 				DisableInlineSpec:                config.DefaultDisableInlineSpec,
 				EnableConciseResolverSyntax:      config.DefaultEnableConciseResolverSyntax.Enabled,
+				EnableValueFromInParam:           config.DefaultEnableValueFromInParam.Enabled,
 			},
 			fileName: config.GetFeatureFlagsConfigName(),
 		},
@@ -85,6 +86,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				DisableInlineSpec:                        "pipeline,pipelinerun,taskrun",
 				EnableConciseResolverSyntax:              true,
 				EnableKubernetesSidecar:                  true,
+				EnableValueFromInParam:                   true,
 			},
 			fileName: "feature-flags-all-flags-set",
 		},
@@ -112,6 +114,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 				EnableArtifacts:                  config.DefaultEnableArtifacts.Enabled,
 				DisableInlineSpec:                config.DefaultDisableInlineSpec,
+				EnableValueFromInParam:           config.DefaultEnableValueFromInParam.Enabled,
 			},
 			fileName: "feature-flags-enable-api-fields-overrides-bundles-and-custom-tasks",
 		},
@@ -133,6 +136,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				Coschedule:                       config.DefaultCoschedule,
 				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 				DisableInlineSpec:                config.DefaultDisableInlineSpec,
+				EnableValueFromInParam:           config.DefaultEnableValueFromInParam.Enabled,
 			},
 			fileName: "feature-flags-bundles-and-custom-tasks",
 		},
@@ -154,6 +158,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				Coschedule:                       config.DefaultCoschedule,
 				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 				DisableInlineSpec:                config.DefaultDisableInlineSpec,
+				EnableValueFromInParam:           config.DefaultEnableValueFromInParam.Enabled,
 			},
 			fileName: "feature-flags-beta-api-fields",
 		},
@@ -230,6 +235,7 @@ func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 		EnableStepActions:                config.DefaultEnableStepActions.Enabled,
 		EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 		DisableInlineSpec:                config.DefaultDisableInlineSpec,
+		EnableValueFromInParam:           config.DefaultEnableValueFromInParam.Enabled,
 	}
 	verifyConfigFileWithExpectedFeatureFlagsConfig(t, FeatureFlagsConfigEmptyName, expectedConfig)
 }
@@ -316,6 +322,9 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 	}, {
 		fileName: "feature-flags-invalid-enable-concise-resolver-syntax",
 		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature enable-concise-resolver-syntax`,
+	}, {
+		fileName: "feature-flags-invalid-enable-valuefrom-in-param",
+		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature enable-valuefrom-in-param`,
 	}, {
 		fileName: "feature-flags-invalid-enable-kubernetes-sidecar",
 		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax`,
