@@ -36,9 +36,14 @@ for the name, namespace and defaults that the resolver ships with.
 
 ### Options
 
-| Option Name               | Description                                                  | Example Values        |
-|---------------------------|--------------------------------------------------------------|-----------------------|
-| `default-kind`            | The default layer kind in the bundle image.                  | `task`, `pipeline`    |
+| Option Name          | Description                                                       | Example Values        |
+|----------------------|-------------------------------------------------------------------|-----------------------|
+| `backoff-duration`   | The initial duration for a backoff.                               | `500ms`, `2s`         |
+| `backoff-factor`     | The factor by which the sleep duration increases every step.      | `2.5`, `4.0`          |
+| `backoff-jitter`     | A random amount of additioan sleep between 0 andduration * jitter.| `0.1`, `0.5`          |
+| `backoff-steps`      | The number of backoffs to attempt.                                | `3`, `7`              |
+| `backoff-cap`        | The maxumum backoff duration. If reached, remaining steps are zeroed.| `10s`, `20s`       |
+| `default-kind`       | The default layer kind in the bundle image.                       | `task`, `pipeline`    |
 
 ## Usage
 
