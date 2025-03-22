@@ -5,3 +5,4 @@ metadata:
   namespace: tekton-pipelines
 data:
   enable-api-fields: "beta"
+  enable-step-actions: "true"
