@@ -145,7 +145,7 @@ For example:
 
         ```shell
         # format: ${localhost:port}/{}
-        export KO_DOCKER_REPO=`localhost:5000/mypipelineimages`
+        export KO_DOCKER_REPO='localhost:5000/mypipelineimages'
         ```
 
 1. Optionally, add `$HOME/go/bin` to your system `PATH` so that any tooling installed via `go get` will work properly. For example:
@@ -303,17 +303,24 @@ The recommended minimum development configuration is:
 3. Create cluster:
 
    ```sh
-   $ kind create cluster
+   kind create cluster
    ```
 
 4. Configure [ko](https://kind.sigs.k8s.io/):
 
    ```sh
-   $ export KO_DOCKER_REPO="localhost:5000"
-   $ export KIND_CLUSTER_NAME="kind"  # only needed if you used a custom name in the previous step
+   export KO_DOCKER_REPO="kind.local"
+   export KIND_CLUSTER_NAME="kind"  # only needed if you used a custom name in the previous step
    ```
 
 optional: As a convenience, the [Tekton plumbing project](https://github.com/tektoncd/plumbing) provides a script named ['tekton_in_kind.sh'](https://github.com/tektoncd/plumbing/tree/main/hack#tekton_in_kindsh) that leverages `kind` to create a cluster and install Tekton Pipeline, [Tekton Triggers](https://github.com/tektoncd/triggers) and [Tekton Dashboard](https://github.com/tektoncd/dashboard) components into it.
+
+If you used the ['tekton_in_kind.sh'](https://github.com/tektoncd/plumbing/tree/main/hack#tekton_in_kindsh) plumbing script to deploy your `kind` cluster, you need to tell `ko` to use the local registry as mentioned [here](#configure-environment).
+
+
+```sh
+export KO_DOCKER_REPO="localhost:5000"
+```
 
 #### Using MiniKube
 
