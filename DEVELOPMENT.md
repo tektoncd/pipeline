@@ -96,6 +96,12 @@ You must install these tools:
 1. [`go-licenses`](https://github.com/google/go-licenses) is used in e2e tests.
 
 1. (Optional)
+   [`yamllint`](https://github.com/adrienverge/yamllint?tab=readme-ov-file#installation)
+   is run against every PR as part of `pre-commit`. You may want to install this tool
+   so that `pre-commit` can use it, otherwise it will show a `failed` message for
+   when linting yaml files.
+
+1. (Optional)
    [`golangci-lint`](https://golangci-lint.run/welcome/install/#local-installation)
    is run against every PR. You may want to install and [run this tool
    locally](https://golangci-lint.run/welcome/quick-start) to iterate quickly on
@@ -303,7 +309,7 @@ The recommended minimum development configuration is:
 4. Configure [ko](https://kind.sigs.k8s.io/):
 
    ```sh
-   $ export KO_DOCKER_REPO="kind.local"
+   $ export KO_DOCKER_REPO="localhost:5000"
    $ export KIND_CLUSTER_NAME="kind"  # only needed if you used a custom name in the previous step
    ```
 

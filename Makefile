@@ -9,7 +9,6 @@ TESTPKGS = $(shell env GO111MODULE=on $(GO) list -f \
 BIN      = $(CURDIR)/.bin
 WOKE 	?= go run -modfile go.mod github.com/get-woke/woke
 
-# Get golangci_version from tools/go.mod
 GOLANGCI_VERSION := $(shell yq '.jobs.linting.steps[] | select(.name == "golangci-lint") | .with.version' .github/workflows/ci.yaml)
 WOKE_VERSION     = v0.19.0
 
