@@ -410,7 +410,7 @@ via the sections for `tektoncd/pipeline`.
 
 The presubmit integration tests entrypoint will run:
 
-- [The integration tests](#integration-tests)
+- [The integration tests](#end-to-end-tests)
 - A test of [our example CRDs](../examples/README.md#testing-the-examples)
 
 When run using Prow, integration tests will try to get a new cluster using
