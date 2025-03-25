@@ -91,7 +91,7 @@ func validateUsageOfDeclaredParameters(ctx context.Context, sas StepActionSpec) 
 	params := sas.Params
 	var errs *apis.FieldError
 	_, _, objectParams := params.SortByType()
-	allParameterNames := sets.NewString(params.GetNames()...)
+	allParameterNames := sets.New(params.GetNames()...)
 	errs = errs.Also(validateStepActionVariables(ctx, sas, "params", allParameterNames))
 	errs = errs.Also(ValidateObjectUsage(ctx, sas, objectParams))
 	errs = errs.Also(v1.ValidateObjectParamsHaveProperties(ctx, params))
@@ -102,7 +102,7 @@ func validateVolumeMounts(volumeMounts []corev1.VolumeMount, params v1.ParamSpec
 	if len(volumeMounts) == 0 {
 		return
 	}
-	paramNames := sets.String{}
+	paramNames := sets.Set[string]{}
 	for _, p := range params {
 		paramNames.Insert(p.Name)
 	}
@@ -125,21 +125,21 @@ func validateParameterVariables(ctx context.Context, sas StepActionSpec, params 
 	var errs *apis.FieldError
 	errs = errs.Also(params.ValidateNoDuplicateNames())
 	stringParams, arrayParams, objectParams := params.SortByType()
-	stringParameterNames := sets.NewString(stringParams.GetNames()...)
-	arrayParameterNames := sets.NewString(arrayParams.GetNames()...)
-	errs = errs.Also(v1.ValidateNameFormat(stringParameterNames.Insert(arrayParameterNames.List()...), objectParams))
+	stringParameterNames := sets.New(stringParams.GetNames()...)
+	arrayParameterNames := sets.New(arrayParams.GetNames()...)
+	errs = errs.Also(v1.ValidateNameFormat(stringParameterNames.Insert(sets.List(arrayParameterNames)...), objectParams))
 	return errs.Also(validateStepActionArrayUsage(sas, "params", arrayParameterNames))
 }
 
 // ValidateObjectUsage validates the usage of individual attributes of an object param and the usage of the entire object
 func ValidateObjectUsage(ctx context.Context, sas StepActionSpec, params v1.ParamSpecs) (errs *apis.FieldError) {
-	objectParameterNames := sets.NewString()
+	objectParameterNames := sets.New[string]()
 	for _, p := range params {
 		// collect all names of object type params
 		objectParameterNames.Insert(p.Name)
 
 		// collect all keys for this object param
-		objectKeys := sets.NewString()
+		objectKeys := sets.New[string]()
 		for key := range p.Properties {
 			objectKeys.Insert(key)
 		}
@@ -152,7 +152,7 @@ func ValidateObjectUsage(ctx context.Context, sas StepActionSpec, params v1.Para
 }
 
 // validateStepActionObjectUsageAsWhole returns an error if the StepAction contains references to the entire input object params in fields where these references are prohibited
-func validateStepActionObjectUsageAsWhole(sas StepActionSpec, prefix string, vars sets.String) *apis.FieldError {
+func validateStepActionObjectUsageAsWhole(sas StepActionSpec, prefix string, vars sets.Set[string]) *apis.FieldError {
 	errs := substitution.ValidateNoReferencesToEntireProhibitedVariables(sas.Image, prefix, vars).ViaField("image")
 	errs = errs.Also(substitution.ValidateNoReferencesToEntireProhibitedVariables(sas.Script, prefix, vars).ViaField("script"))
 	for i, cmd := range sas.Command {
@@ -171,7 +171,7 @@ func validateStepActionObjectUsageAsWhole(sas StepActionSpec, prefix string, var
 }
 
 // validateStepActionArrayUsage returns an error if the Step contains references to the input array params in fields where these references are prohibited
-func validateStepActionArrayUsage(sas StepActionSpec, prefix string, arrayParamNames sets.String) *apis.FieldError {
+func validateStepActionArrayUsage(sas StepActionSpec, prefix string, arrayParamNames sets.Set[string]) *apis.FieldError {
 	errs := substitution.ValidateNoReferencesToProhibitedVariables(sas.Image, prefix, arrayParamNames).ViaField("image")
 	errs = errs.Also(substitution.ValidateNoReferencesToProhibitedVariables(sas.Script, prefix, arrayParamNames).ViaField("script"))
 	for i, cmd := range sas.Command {
@@ -190,7 +190,7 @@ func validateStepActionArrayUsage(sas StepActionSpec, prefix string, arrayParamN
 }
 
 // validateStepActionVariables returns an error if the StepAction contains references to any unknown variables
-func validateStepActionVariables(ctx context.Context, sas StepActionSpec, prefix string, vars sets.String) *apis.FieldError {
+func validateStepActionVariables(ctx context.Context, sas StepActionSpec, prefix string, vars sets.Set[string]) *apis.FieldError {
 	errs := substitution.ValidateNoReferencesToUnknownVariables(sas.Image, prefix, vars).ViaField("image")
 	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(sas.Script, prefix, vars).ViaField("script"))
 	for i, cmd := range sas.Command {

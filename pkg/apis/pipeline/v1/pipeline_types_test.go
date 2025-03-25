@@ -739,7 +739,7 @@ func TestPipelineTaskList_Names(t *testing.T) {
 		{Name: "task-1"},
 		{Name: "task-2"},
 	}
-	expectedTaskNames := sets.String{}
+	expectedTaskNames := sets.Set[string]{}
 	expectedTaskNames.Insert("task-1")
 	expectedTaskNames.Insert("task-2")
 	actualTaskNames := PipelineTaskList(tasks).Names()

@@ -4766,7 +4766,7 @@ func TestGetIndexingReferencesToArrayParams(t *testing.T) {
 	for _, tt := range []struct {
 		name string
 		spec PipelineSpec
-		want sets.String
+		want sets.Set[string]
 	}{
 		{
 			name: "references in task params",
@@ -4783,7 +4783,7 @@ func TestGetIndexingReferencesToArrayParams(t *testing.T) {
 					},
 				}},
 			},
-			want: sets.NewString("$(params.first-param[1])", "$(params.second-param[0])"),
+			want: sets.New("$(params.first-param[1])", "$(params.second-param[0])"),
 		}, {
 			name: "references in when expression",
 			spec: PipelineSpec{
@@ -4799,7 +4799,7 @@ func TestGetIndexingReferencesToArrayParams(t *testing.T) {
 					}},
 				}},
 			},
-			want: sets.NewString("$(params.first-param[1])", "$(params.second-param[0])"),
+			want: sets.New("$(params.first-param[1])", "$(params.second-param[0])"),
 		}, {
 			name: "nested references in task params",
 			spec: PipelineSpec{
@@ -4814,7 +4814,7 @@ func TestGetIndexingReferencesToArrayParams(t *testing.T) {
 					},
 				}},
 			},
-			want: sets.NewString("$(params.first-param[0])", "$(params.second-param[1])"),
+			want: sets.New("$(params.first-param[0])", "$(params.second-param[1])"),
 		}, {
 			name: "array parameter",
 			spec: PipelineSpec{
@@ -4829,7 +4829,7 @@ func TestGetIndexingReferencesToArrayParams(t *testing.T) {
 					},
 				}},
 			},
-			want: sets.NewString("$(params.second-param[0])"),
+			want: sets.New("$(params.second-param[0])"),
 		}, {
 			name: "references in finally params",
 			spec: PipelineSpec{
@@ -4844,7 +4844,7 @@ func TestGetIndexingReferencesToArrayParams(t *testing.T) {
 					},
 				}},
 			},
-			want: sets.NewString("$(params.first-param[0])", "$(params.second-param[1])"),
+			want: sets.New("$(params.first-param[0])", "$(params.second-param[1])"),
 		}, {
 			name: "references in finally when expressions",
 			spec: PipelineSpec{
@@ -4860,7 +4860,7 @@ func TestGetIndexingReferencesToArrayParams(t *testing.T) {
 					}},
 				}},
 			},
-			want: sets.NewString("$(params.first-param[0])", "$(params.second-param[1])"),
+			want: sets.New("$(params.first-param[0])", "$(params.second-param[1])"),
 		}, {
 			name: "parameter references with bracket notation and special characters",
 			spec: PipelineSpec{
@@ -4880,7 +4880,7 @@ func TestGetIndexingReferencesToArrayParams(t *testing.T) {
 					},
 				}},
 			},
-			want: sets.NewString(`$(params["first.param"][0])`, `$(params["second.param"][0])`, `$(params['third.param'][1])`, `$(params['fourth/param'][1])`),
+			want: sets.New(`$(params["first.param"][0])`, `$(params["second.param"][0])`, `$(params['third.param'][1])`, `$(params['fourth/param'][1])`),
 		}, {
 			name: "single parameter in workspace subpath",
 			spec: PipelineSpec{
@@ -4902,7 +4902,7 @@ func TestGetIndexingReferencesToArrayParams(t *testing.T) {
 					},
 				}},
 			},
-			want: sets.NewString("$(params.first-param[0])", "$(params.second-param[1])"),
+			want: sets.New("$(params.first-param[0])", "$(params.second-param[1])"),
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

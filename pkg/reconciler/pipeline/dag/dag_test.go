@@ -36,43 +36,43 @@ func TestGetSchedulable(t *testing.T) {
 	tcs := []struct {
 		name          string
 		finished      []string
-		expectedTasks sets.String
+		expectedTasks sets.Set[string]
 	}{{
 		name:          "nothing-done",
 		finished:      []string{},
-		expectedTasks: sets.NewString("a", "b"),
+		expectedTasks: sets.New("a", "b"),
 	}, {
 		name:          "a-done",
 		finished:      []string{"a"},
-		expectedTasks: sets.NewString("b", "x"),
+		expectedTasks: sets.New("b", "x"),
 	}, {
 		name:          "b-done",
 		finished:      []string{"b"},
-		expectedTasks: sets.NewString("a"),
+		expectedTasks: sets.New("a"),
 	}, {
 		name:          "a-and-b-done",
 		finished:      []string{"a", "b"},
-		expectedTasks: sets.NewString("x"),
+		expectedTasks: sets.New("x"),
 	}, {
 		name:          "a-x-done",
 		finished:      []string{"a", "x"},
-		expectedTasks: sets.NewString("b", "y", "z"),
+		expectedTasks: sets.New("b", "y", "z"),
 	}, {
 		name:          "a-x-b-done",
 		finished:      []string{"a", "x", "b"},
-		expectedTasks: sets.NewString("y", "z"),
+		expectedTasks: sets.New("y", "z"),
 	}, {
 		name:          "a-x-y-done",
 		finished:      []string{"a", "x", "y"},
-		expectedTasks: sets.NewString("b", "z"),
+		expectedTasks: sets.New("b", "z"),
 	}, {
 		name:          "a-x-y-done",
 		finished:      []string{"a", "x", "y"},
-		expectedTasks: sets.NewString("b", "z"),
+		expectedTasks: sets.New("b", "z"),
 	}, {
 		name:          "a-x-y-b-done",
 		finished:      []string{"a", "x", "y", "b"},
-		expectedTasks: sets.NewString("w", "z"),
+		expectedTasks: sets.New("w", "z"),
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {

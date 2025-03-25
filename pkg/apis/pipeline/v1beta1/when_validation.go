@@ -70,7 +70,7 @@ func (we *WhenExpression) validateWhenExpressionFields(ctx context.Context) *api
 	if equality.Semantic.DeepEqual(we, &WhenExpression{}) || we == nil {
 		return apis.ErrMissingField(apis.CurrentField)
 	}
-	if !sets.NewString(validWhenOperators...).Has(string(we.Operator)) {
+	if !sets.New(validWhenOperators...).Has(string(we.Operator)) {
 		message := fmt.Sprintf("operator %q is not recognized. valid operators: %s", we.Operator, strings.Join(validWhenOperators, ","))
 		return apis.ErrInvalidValue(message, apis.CurrentField)
 	}
@@ -80,7 +80,7 @@ func (we *WhenExpression) validateWhenExpressionFields(ctx context.Context) *api
 	return nil
 }
 
-func (wes WhenExpressions) validatePipelineParametersVariables(prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
+func (wes WhenExpressions) validatePipelineParametersVariables(prefix string, paramNames sets.Set[string], arrayParamNames sets.Set[string], objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
 	for idx, we := range wes {
 		errs = errs.Also(validateStringVariable(we.Input, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaField("input").ViaFieldIndex("when", idx))
 		for _, val := range we.Values {

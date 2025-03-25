@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	utiljson "k8s.io/apimachinery/pkg/util/json"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 // LabelSelectorAsSelector converts the LabelSelector api type into a struct that implements
@@ -145,7 +146,7 @@ func ParseToLabelSelector(selector string) (*LabelSelector, error) {
 		labelSelector.MatchExpressions = append(labelSelector.MatchExpressions, LabelSelectorRequirement{
 			Key:      req.Key(),
 			Operator: op,
-			Values:   req.Values().List(),
+			Values:   sets.List(req.Values()),
 		})
 	}
 	return labelSelector, nil

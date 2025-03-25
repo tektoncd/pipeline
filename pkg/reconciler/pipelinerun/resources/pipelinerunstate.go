@@ -349,7 +349,7 @@ func (t *ResolvedPipelineTask) getChildRefForTaskRun(taskRun *v1.TaskRun) v1.Chi
 // getNextTasks returns a list of tasks which should be executed next i.e.
 // a list of tasks from candidateTasks which aren't yet indicated in state to be running and
 // a list of cancelled/failed tasks from candidateTasks which haven't exhausted their retries
-func (state PipelineRunState) getNextTasks(candidateTasks sets.String) []*ResolvedPipelineTask {
+func (state PipelineRunState) getNextTasks(candidateTasks sets.Set[string]) []*ResolvedPipelineTask {
 	tasks := []*ResolvedPipelineTask{}
 	for _, t := range state {
 		if _, ok := candidateTasks[t.PipelineTask.Name]; ok {
@@ -422,8 +422,8 @@ func (facts *PipelineRunFacts) DAGExecutionQueue() (PipelineRunState, error) {
 }
 
 // GetFinalTaskNames returns a list of all final task names
-func (facts *PipelineRunFacts) GetFinalTaskNames() sets.String {
-	names := sets.NewString()
+func (facts *PipelineRunFacts) GetFinalTaskNames() sets.Set[string] {
+	names := sets.New[string]()
 	// return list of tasks with all final tasks
 	for _, t := range facts.State {
 		if facts.isFinalTask(t.PipelineTask.Name) {
@@ -434,8 +434,8 @@ func (facts *PipelineRunFacts) GetFinalTaskNames() sets.String {
 }
 
 // GetTaskNames returns a list of all non-final task names
-func (facts *PipelineRunFacts) GetTaskNames() sets.String {
-	names := sets.NewString()
+func (facts *PipelineRunFacts) GetTaskNames() sets.Set[string] {
+	names := sets.New[string]()
 	// return list of tasks with all final tasks
 	for _, t := range facts.State {
 		if !facts.isFinalTask(t.PipelineTask.Name) {
@@ -449,7 +449,7 @@ func (facts *PipelineRunFacts) GetTaskNames() sets.String {
 // GetFinalTasks returns final tasks only when all DAG tasks have finished executing or have been skipped
 func (facts *PipelineRunFacts) GetFinalTasks() PipelineRunState {
 	tasks := PipelineRunState{}
-	finalCandidates := sets.NewString()
+	finalCandidates := sets.New[string]()
 	// check either pipeline has finished executing all DAG pipelineTasks,
 	// where "finished executing" means succeeded, failed, or skipped.
 	if facts.checkDAGTasksDone() {
