@@ -248,7 +248,7 @@ func ValidateStepResults(ctx context.Context, results []StepResult) (errs *apis.
 
 // ValidateStepResultsVariables validates if the StepResults referenced in step script are defined in step's results.
 func ValidateStepResultsVariables(ctx context.Context, results []StepResult, script string) (errs *apis.FieldError) {
-	resultsNames := sets.NewString()
+	resultsNames := sets.New[string]()
 	for _, r := range results {
 		resultsNames.Insert(r.Name)
 	}
