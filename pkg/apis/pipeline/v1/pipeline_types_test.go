@@ -552,7 +552,7 @@ func TestPipelineTask_ValidateRegularTask_Success(t *testing.T) {
 	}, {
 		name: "pipeline task - use of resolver params with the feature flag set",
 		tasks: PipelineTask{
-			TaskRef: &TaskRef{ResolverRef: ResolverRef{Resolver: "bar", Params: Params{{}}}},
+			TaskRef: &TaskRef{ResolverRef: ResolverRef{Resolver: "bar", Params: Params{}}},
 		},
 		configMap: map[string]string{"enable-api-field": "beta"},
 	}}
@@ -649,7 +649,7 @@ func TestPipelineTask_ValidateRegularTask_Failure(t *testing.T) {
 		name: "pipeline task - taskRef with name and params",
 		task: PipelineTask{
 			Name:    "foo",
-			TaskRef: &TaskRef{Name: "https://foo/bar", ResolverRef: ResolverRef{Resolver: "git", Params: Params{{Name: "foo", Value: ParamValue{StringVal: "bar"}}}}},
+			TaskRef: &TaskRef{Name: "https://foo/bar", ResolverRef: ResolverRef{Resolver: "git", Params: Params{{Name: "foo", Value: ParamValue{Type: ParamTypeString, StringVal: "bar"}}}}},
 		},
 		expectedError: apis.FieldError{
 			Message: `expected exactly one, got both`,
@@ -660,7 +660,7 @@ func TestPipelineTask_ValidateRegularTask_Failure(t *testing.T) {
 		name: "pipeline task - taskRef with resolver params but no resolver",
 		task: PipelineTask{
 			Name:    "foo",
-			TaskRef: &TaskRef{ResolverRef: ResolverRef{Params: Params{{Name: "foo", Value: ParamValue{StringVal: "bar"}}}}},
+			TaskRef: &TaskRef{ResolverRef: ResolverRef{Params: Params{{Name: "foo", Value: ParamValue{Type: ParamTypeString, StringVal: "bar"}}}}},
 		},
 		expectedError: apis.FieldError{
 			Message: `missing field(s)`,

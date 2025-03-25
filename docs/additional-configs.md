@@ -389,6 +389,7 @@ Features currently in "alpha" are:
 | [keep pod on cancel](./taskruns.md#cancelling-a-taskrun)                                                     | N/A                                                                                                                  | [v0.52.0](https://github.com/tektoncd/pipeline/releases/tag/v0.52.0) | `keep-pod-on-cancel`                             |
 | [CEL in WhenExpression](./pipelines.md#use-cel-expression-in-whenexpression)                                                  | [TEP-0145](https://github.com/tektoncd/community/blob/main/teps/0145-cel-in-whenexpression.md)                       | [v0.53.0](https://github.com/tektoncd/pipeline/releases/tag/v0.53.0) | `enable-cel-in-whenexpression`                   |
 | [Param Enum](./taskruns.md#parameter-enums)                                                                  | [TEP-0144](https://github.com/tektoncd/community/blob/main/teps/0144-param-enum.md)                                  | [v0.54.0](https://github.com/tektoncd/pipeline/releases/tag/v0.54.0) | `enable-param-enum`                              |
+| [ConfigMap as a value source for params](./pipelineruns.md##using-value-source-for-params-in-pipelinerun-or-taskrun) | TBD | TBD | `enable-valuefrom-in-param`
 
 ### Beta Features
 

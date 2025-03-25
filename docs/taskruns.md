@@ -17,6 +17,7 @@ weight: 202
     - [Propagated Parameters](#propagated-parameters)
     - [Propagated Object Parameters](#propagated-object-parameters)
     - [Extra Parameters](#extra-parameters)
+    - [Using value source for params in PipelineRun or TaskRun](#using-value-source-for-params-in-pipelinerun-or-taskrun)
   - [Specifying `Resource` limits](#specifying-resource-limits)
   - [Specifying Task-level `ComputeResources`](#specifying-task-level-computeresources)
   - [Specifying a `Pod` template](#specifying-a-pod-template)
@@ -365,6 +366,10 @@ If a `Parameter` is guarded by `Enum` in the `Task`, you can only provide `Param
 You can also specify `Enum` for [`TaskRun` with an embedded `Task`](#example-taskrun-with-an-embedded-task). The same param validation will be executed in this scenario.
 
 See more details in [Param.Enum](./tasks.md#param-enum).
+
+#### Using value source for params in PipelineRun or TaskRun
+
+Documentation in the [PipelineRuns page](./pipelineruns.md##using-value-source-for-params-in-pipelinerun-or-taskrun)
 
 ### Specifying `Resource` limits
 

@@ -23,6 +23,7 @@ import (
 	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -228,6 +229,8 @@ const (
 	// TaskRunReasonFailureIgnored is the reason set when the Taskrun has failed due to pod execution error and the failure is ignored for the owning PipelineRun.
 	// TaskRuns failed due to reconciler/validation error should not use this reason.
 	TaskRunReasonFailureIgnored TaskRunReason = "FailureIgnored"
+	// TaskRunReasonFetchingValueSourceFailed indicates a failure at fetching a value source
+	TaskRunReasonFetchingValueSourceFailed TaskRunReason = "FetchingValueSourceFailed"
 )
 
 func (t TaskRunReason) String() string {
@@ -523,4 +526,22 @@ func (tr *TaskRun) HasVolumeClaimTemplate() bool {
 		}
 	}
 	return false
+}
+
+// returns true if the RunSpecs are different in params (by value source resolution only) and deeply eual otherwise
+func (baseline *TaskRunSpec) IsDifferentFromDesiredStateOnlyByValueSourceResolutionInParams(new *TaskRunSpec) bool {
+	if baseline == nil || new == nil {
+		return false
+	}
+	baselineCopy := baseline.DeepCopy()
+	newCopy := new.DeepCopy()
+
+	emptyParams := Params{}
+	baselineCopy.Params = emptyParams
+	newCopy.Params = emptyParams
+	if !equality.Semantic.DeepEqual(baselineCopy, newCopy) {
+		return false
+	}
+
+	return IsDifferentOnlyByValueSourceResolution(new.Params, baseline.Params)
 }

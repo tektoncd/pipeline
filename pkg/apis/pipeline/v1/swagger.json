@@ -386,8 +386,7 @@
       "description": "Param declares an ParamValues to use for the parameter called name.",
       "type": "object",
       "required": [
-        "name",
-        "value"
+        "name"
       ],
       "properties": {
         "name": {
@@ -395,7 +394,12 @@
           "default": ""
         },
         "value": {
+          "description": "If the `enable-valuefrom-in-param` feature flag is not enabled, this field is manadatory If the `enable-valuefrom-in-param` feature flag is enabled, exactly one of Value or ValueFrom (not both) must be defined by the user",
           "$ref": "#/definitions/v1.ParamValue"
+        },
+        "valueFrom": {
+          "description": "Available only with the `enable-valuefrom-in-param` feature flag Exactly one of the Value and ValueFrom (not both) fields must be defined by the user ValueFrom represents a source for the value of a parameter The value will be obtained from the source during the TaskRun or PipelineRun initialization",
+          "$ref": "#/definitions/v1.ValueSource"
         }
       }
     },
@@ -2414,6 +2418,15 @@
         "tasks": {
           "description": "Tasks sets the maximum allowed duration of this pipeline's tasks",
           "$ref": "#/definitions/v1.Duration"
+        }
+      }
+    },
+    "v1.ValueSource": {
+      "description": "ValueSource represents a source to fetch the value from",
+      "type": "object",
+      "properties": {
+        "configMapKeyRef": {
+          "$ref": "#/definitions/v1.ConfigMapKeySelector"
         }
       }
     },

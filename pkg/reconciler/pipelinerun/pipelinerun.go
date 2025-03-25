@@ -60,6 +60,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
+	jsonpatch "gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -67,6 +68,7 @@ import (
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/clock"
@@ -269,6 +271,14 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 
 	if err = c.finishReconcileUpdateEmitEvents(ctx, pr, before, err); err != nil {
 		return err
+	}
+
+	// This feature flag guard is only for performance. Otherwise, a new trace
+	// will be created needlessly
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableValueFromInParam {
+		if _, err = c.patchPipelineRunIfValueSourceResolved(ctx, pr); err != nil {
+			return err
+		}
 	}
 
 	if pr.Status.StartTime != nil {
@@ -484,6 +494,18 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 			"Pipeline %s/%s can't be Run; it has an invalid spec: %s",
 			pipelineMeta.Namespace, pipelineMeta.Name, pipelineErrors.WrapUserError(err))
 		return controller.NewPermanentError(err)
+	}
+
+	// This feature flag guard is only for performance. Otherwise, a new trace
+	// will be created needlessly
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableValueFromInParam {
+		if err := tresources.ValidateAndResolveValueSourceInParams(ctx, c.KubeClientSet, pr.Namespace, &pr.Spec.Params); err != nil {
+			// This Run has failed, so we need to mark it as failed and stop reconciling it
+			pr.Status.MarkFailed(v1.PipelineRunReasonFetchingValueSourceFailed.String(),
+				"PipelineRun %s/%s can't be Run; it has failed fetching value sources for one of the parameters: %s",
+				pr.Namespace, pr.Name, err)
+			return controller.NewPermanentError(err)
+		}
 	}
 
 	// Ensure that the PipelineRun provides all the parameters required by the Pipeline
@@ -1432,6 +1454,32 @@ func addMetadataByPrecedence(metadata map[string]string, addedMetadata map[strin
 			metadata[key] = value
 		}
 	}
+}
+
+func (c *Reconciler) patchPipelineRunIfValueSourceResolved(ctx context.Context, pr *v1.PipelineRun) (*v1.PipelineRun, error) {
+	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "patchPipelineRunIfValueSourceResolved")
+	defer span.End()
+	baselinePr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
+	if err != nil {
+		return nil, fmt.Errorf("error getting PipelineRun %s when patching PipelineRun after value source resolution: %w", pr.Name, err)
+	}
+	if v1.IsDifferentOnlyByValueSourceResolution(pr.Spec.Params, baselinePr.Spec.Params) {
+		// Patch is preferred because PipelineRunSpecs are outside Status of PipelineRun so we want to be surgical
+		// about the change.
+		// The method *PipelineRunSpec.ValidateUpdate guards against other updates/patches once PipelineRun has started
+		patchParamBytes, err := json.Marshal([]jsonpatch.JsonPatchOperation{
+			{
+				Operation: "replace",
+				Path:      "/spec/params",
+				Value:     pr.Spec.Params,
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal Params patch bytes: %w", err)
+		}
+		return c.PipelineClientSet.TektonV1().PipelineRuns(pr.Namespace).Patch(ctx, pr.Name, types.JSONPatchType, patchParamBytes, metav1.PatchOptions{}, "")
+	}
+	return pr, nil
 }
 
 func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, pr *v1.PipelineRun) (*v1.PipelineRun, error) {

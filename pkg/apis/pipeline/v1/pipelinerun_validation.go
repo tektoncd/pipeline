@@ -147,6 +147,9 @@ func (ps *PipelineRunSpec) ValidateUpdate(ctx context.Context) (errs *apis.Field
 		tips = "Once the PipelineRun has started, only status updates are allowed"
 	}
 	if !equality.Semantic.DeepEqual(old, ps) {
+		if old.IsDifferentFromDesiredStateOnlyByValueSourceResolutionInParams(ps) {
+			return
+		}
 		errs = errs.Also(apis.ErrInvalidValue(tips, ""))
 	}
 
