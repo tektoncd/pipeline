@@ -120,9 +120,9 @@ func ValidateFinalizerName(stringValue string, fldPath *field.Path) field.ErrorL
 // ValidateNoNewFinalizers validates the new finalizers has no new finalizers compare to old finalizers.
 func ValidateNoNewFinalizers(newFinalizers []string, oldFinalizers []string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-	extra := sets.NewString(newFinalizers...).Difference(sets.NewString(oldFinalizers...))
+	extra := sets.New(newFinalizers...).Difference(sets.New(oldFinalizers...))
 	if len(extra) != 0 {
-		allErrs = append(allErrs, field.Forbidden(fldPath, fmt.Sprintf("no new finalizers can be added if the object is being deleted, found new finalizers %#v", extra.List())))
+		allErrs = append(allErrs, field.Forbidden(fldPath, fmt.Sprintf("no new finalizers can be added if the object is being deleted, found new finalizers %#v", sets.List(extra))))
 	}
 	return allErrs
 }

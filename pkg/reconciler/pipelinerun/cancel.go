@@ -128,11 +128,11 @@ func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1.Pi
 
 // cancelPipelineTaskRuns patches `TaskRun` and `Run` with canceled status
 func cancelPipelineTaskRuns(ctx context.Context, logger *zap.SugaredLogger, pr *v1.PipelineRun, clientSet clientset.Interface) []string {
-	return cancelPipelineTaskRunsForTaskNames(ctx, logger, pr, clientSet, sets.NewString())
+	return cancelPipelineTaskRunsForTaskNames(ctx, logger, pr, clientSet, sets.New[string]())
 }
 
 // cancelPipelineTaskRunsForTaskNames patches `TaskRun`s and `Run`s for the given task names, or all if no task names are given, with canceled status
-func cancelPipelineTaskRunsForTaskNames(ctx context.Context, logger *zap.SugaredLogger, pr *v1.PipelineRun, clientSet clientset.Interface, taskNames sets.String) []string {
+func cancelPipelineTaskRunsForTaskNames(ctx context.Context, logger *zap.SugaredLogger, pr *v1.PipelineRun, clientSet clientset.Interface, taskNames sets.Set[string]) []string {
 	errs := []string{}
 
 	trNames, customRunNames, err := getChildObjectsFromPRStatusForTaskNames(ctx, pr.Status, taskNames)
@@ -162,7 +162,7 @@ func cancelPipelineTaskRunsForTaskNames(ctx context.Context, logger *zap.Sugared
 
 // getChildObjectsFromPRStatusForTaskNames returns taskruns and customruns in the PipelineRunStatus's ChildReferences,
 // based on the given set of PipelineTask names. If that set is empty, all are returned.
-func getChildObjectsFromPRStatusForTaskNames(ctx context.Context, prs v1.PipelineRunStatus, taskNames sets.String) ([]string, []string, error) {
+func getChildObjectsFromPRStatusForTaskNames(ctx context.Context, prs v1.PipelineRunStatus, taskNames sets.Set[string]) ([]string, []string, error) {
 	var trNames []string
 	var customRunNames []string
 	unknownChildKinds := make(map[string]string)

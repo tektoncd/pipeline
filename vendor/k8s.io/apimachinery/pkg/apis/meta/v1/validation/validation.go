@@ -224,24 +224,24 @@ func ValidateFieldManager(fieldManager string, fldPath *field.Path) field.ErrorL
 	return allErrs
 }
 
-var allowedDryRunValues = sets.NewString(metav1.DryRunAll)
+var allowedDryRunValues = sets.New(metav1.DryRunAll)
 
 // ValidateDryRun validates that a dryRun query param only contains allowed values.
 func ValidateDryRun(fldPath *field.Path, dryRun []string) field.ErrorList {
 	allErrs := field.ErrorList{}
 	if !allowedDryRunValues.HasAll(dryRun...) {
-		allErrs = append(allErrs, field.NotSupported(fldPath, dryRun, allowedDryRunValues.List()))
+		allErrs = append(allErrs, field.NotSupported(fldPath, dryRun, sets.List(allowedDryRunValues)))
 	}
 	return allErrs
 }
 
-var allowedFieldValidationValues = sets.NewString("", metav1.FieldValidationIgnore, metav1.FieldValidationWarn, metav1.FieldValidationStrict)
+var allowedFieldValidationValues = sets.New("", metav1.FieldValidationIgnore, metav1.FieldValidationWarn, metav1.FieldValidationStrict)
 
 // ValidateFieldValidation validates that a fieldValidation query param only contains allowed values.
 func ValidateFieldValidation(fldPath *field.Path, fieldValidation string) field.ErrorList {
 	allErrs := field.ErrorList{}
 	if !allowedFieldValidationValues.Has(fieldValidation) {
-		allErrs = append(allErrs, field.NotSupported(fldPath, fieldValidation, allowedFieldValidationValues.List()))
+		allErrs = append(allErrs, field.NotSupported(fldPath, fieldValidation, sets.List(allowedFieldValidationValues)))
 	}
 	return allErrs
 
@@ -301,7 +301,7 @@ func ValidateConditions(conditions []metav1.Condition, fldPath *field.Path) fiel
 }
 
 // validConditionStatuses is used internally to check validity and provide a good message
-var validConditionStatuses = sets.NewString(string(metav1.ConditionTrue), string(metav1.ConditionFalse), string(metav1.ConditionUnknown))
+var validConditionStatuses = sets.New(string(metav1.ConditionTrue), string(metav1.ConditionFalse), string(metav1.ConditionUnknown))
 
 const (
 	maxReasonLen  = 1 * 1024
@@ -316,7 +316,7 @@ func ValidateCondition(condition metav1.Condition, fldPath *field.Path) field.Er
 
 	// status is set and is an accepted value
 	if !validConditionStatuses.Has(string(condition.Status)) {
-		allErrs = append(allErrs, field.NotSupported(fldPath.Child("status"), condition.Status, validConditionStatuses.List()))
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("status"), condition.Status, sets.List(validConditionStatuses)))
 	}
 
 	if condition.ObservedGeneration < 0 {

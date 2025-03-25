@@ -171,7 +171,7 @@ func (c *Reconciler) createOrUpdateAffinityAssistant(ctx context.Context, affini
 			if err != nil {
 				errs = append(errs, fmt.Errorf("could not get the list of nodes, err: %w", err))
 			}
-			unschedulableNodes = sets.Set[string]{}
+			unschedulableNodes = sets.New[string]()
 			// maintain the list of nodes which are unschedulable
 			for _, n := range ns.Items {
 				unschedulableNodes.Insert(n.Name)

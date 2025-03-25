@@ -29,7 +29,7 @@ import (
 // In general these should be errors that indicate a server is overloaded.
 // These shouldn't be configured by any user, we set them based on conventions
 // described in
-var serverIsOverloadedSet = sets.NewInt(429)
+var serverIsOverloadedSet = sets.New[int](429)
 var maxResponseCode = 499
 
 type BackoffManager interface {

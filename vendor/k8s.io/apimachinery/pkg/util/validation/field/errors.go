@@ -293,7 +293,7 @@ func (list ErrorList) ToAggregate() utilerrors.Aggregate {
 		return nil
 	}
 	errs := make([]error, 0, len(list))
-	errorMsgs := sets.NewString()
+	errorMsgs := sets.New[string]()
 	for _, err := range list {
 		msg := fmt.Sprintf("%v", err)
 		if errorMsgs.Has(msg) {

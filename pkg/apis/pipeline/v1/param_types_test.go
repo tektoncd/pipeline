@@ -461,11 +461,11 @@ func TestExtractNames(t *testing.T) {
 	tests := []struct {
 		name   string
 		params v1.Params
-		want   sets.String
+		want   sets.Set[string]
 	}{{
 		name:   "no params",
 		params: v1.Params{{}},
-		want:   sets.NewString(""),
+		want:   sets.New(""),
 	}, {
 		name: "extract param names from ParamTypeString",
 		params: v1.Params{{
@@ -473,13 +473,13 @@ func TestExtractNames(t *testing.T) {
 		}, {
 			Name: "DOCKERFILE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/Dockerfile1"},
 		}},
-		want: sets.NewString("IMAGE", "DOCKERFILE"),
+		want: sets.New("IMAGE", "DOCKERFILE"),
 	}, {
 		name: "extract param names from ParamTypeArray",
 		params: v1.Params{{
 			Name: "GOARCH", Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
 		}},
-		want: sets.NewString("GOARCH"),
+		want: sets.New("GOARCH"),
 	}, {
 		name: "extract param names from ParamTypeString and ParamTypeArray",
 		params: v1.Params{{
@@ -487,7 +487,7 @@ func TestExtractNames(t *testing.T) {
 		}, {
 			Name: "IMAGE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "image-1"},
 		}},
-		want: sets.NewString("GOARCH", "IMAGE"),
+		want: sets.New("GOARCH", "IMAGE"),
 	}, {
 		name: "extract param name from duplicate params",
 		params: v1.Params{{
@@ -495,7 +495,7 @@ func TestExtractNames(t *testing.T) {
 		}, {
 			Name: "duplicate", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "image-1"},
 		}},
-		want: sets.NewString("duplicate"),
+		want: sets.New("duplicate"),
 	}}
 	for _, tt := range tests {
 		if d := cmp.Diff(tt.want, v1.Params.ExtractNames(tt.params)); d != "" {

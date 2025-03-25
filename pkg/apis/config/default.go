@@ -184,12 +184,12 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		tc.DefaultMaxMatrixCombinationsCount = int(matrixCombinationsCount)
 	}
 	if defaultForbiddenEnvString, ok := cfgMap[defaultForbiddenEnv]; ok {
-		tmpString := sets.NewString()
+		tmpString := sets.New[string]()
 		fEnvs := strings.Split(defaultForbiddenEnvString, ",")
 		for _, fEnv := range fEnvs {
 			tmpString.Insert(strings.TrimSpace(fEnv))
 		}
-		tc.DefaultForbiddenEnv = tmpString.List()
+		tc.DefaultForbiddenEnv = sets.List(tmpString)
 	}
 
 	if defaultResolverType, ok := cfgMap[defaultResolverTypeKey]; ok {
