@@ -1,7 +1,6 @@
 module github.com/tektoncd/pipeline
 
 go 1.22.7
-
 toolchain go1.23.4
 
 require (
