@@ -75,7 +75,9 @@ The differences between the two modes are:
 
 ### Git Clone with git clone
 
-Git clone with `git clone` is supported for anonymous and authenticated cloning.
+Git clone with `git clone` is supported for anonymous and authenticated cloning
+This mode shallow-clones the git repo before shallow-fetching and checking
+out the provided revision.
 
 #### Task Resolution
 
