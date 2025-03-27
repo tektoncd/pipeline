@@ -59,7 +59,7 @@ The `git` resolver has two modes: cloning a repository anonymously, or fetching 
 
 ### Anonymous Cloning
 
-Anonymous cloning is supported only for public repositories. This mode clones the full git repo.
+Anonymous cloning is supported only for public repositories. This mode shallow-clones the git repo before shallow-fetching and checking out the provided revision.
 
 #### Task Resolution
 

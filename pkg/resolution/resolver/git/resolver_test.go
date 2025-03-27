@@ -426,7 +426,7 @@ func TestResolve(t *testing.T) {
 			pathInRepo: "foo/new",
 			url:        anonFakeRepoURL,
 		},
-		expectedErr: createError("revision error: reference not found"),
+		expectedErr: createError("error resolving repository: git fetch error: fatal: couldn't find remote ref non-existent-revision: exit status 128"),
 	}, {
 		name: "api: successful task from params api information",
 		args: &params{
