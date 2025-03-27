@@ -135,7 +135,7 @@ spec:
       cat /workspace/.ko.yaml
 
   - name: run-ko
-    image: gcr.io/tekton-releases/dogfooding/ko@sha256:a91cdc055ee8727860d35b1aa31940b3552395e5f5d273b698ef6fcb0fa786c1
+    image: ghcr.io/tektoncd/plumbing/ko@sha256:a91cdc055ee8727860d35b1aa31940b3552395e5f5d273b698ef6fcb0fa786c1
     env:
     - name: KO_DOCKER_REPO
       value: $(params.imageRegistry)/$(params.imageRegistryPath)
@@ -198,7 +198,7 @@ spec:
       sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/release.yaml
       sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/release.notags.yaml
   - name: koparse
-    image: gcr.io/tekton-releases/dogfooding/koparse@sha256:194c2ab9dce5f778ed757af13c626d6b85f15452e2c2902c79b0d0f5a0adf4d1
+    image: ghcr.io/tektoncd/plumbing/koparse@sha256:194c2ab9dce5f778ed757af13c626d6b85f15452e2c2902c79b0d0f5a0adf4d1
     script: |
       set -ex
 
