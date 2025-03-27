@@ -282,7 +282,7 @@ func TestGitResolver_Clone_Failure(t *testing.T) {
 		}, {
 			name:        "commit does not exist",
 			commit:      "abcd0123",
-			expectedErr: "revision error: reference not found",
+			expectedErr: "git fetch error: fatal: couldn't find remote ref abcd0123: exit status 128",
 		},
 	}
 
