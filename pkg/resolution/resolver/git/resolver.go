@@ -17,23 +17,14 @@ limitations under the License.
 package git
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 
-	"github.com/go-git/go-billy/v5/memfs"
-	"github.com/go-git/go-git/v5"
-	gitcfg "github.com/go-git/go-git/v5/config"
-	"github.com/go-git/go-git/v5/plumbing"
-	plumbTransport "github.com/go-git/go-git/v5/plumbing/transport"
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
-	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/factory"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
@@ -180,8 +171,8 @@ func (g *GitResolver) ResolveGitClone(ctx context.Context) (framework.ResolvedRe
 	if err != nil {
 		return nil, err
 	}
-	repo := g.Params[UrlParam]
-	if repo == "" {
+	repoURL := g.Params[UrlParam]
+	if repoURL == "" {
 		urlString := conf.URL
 		if urlString == "" {
 			return nil, errors.New("default Git Repo Url was not set during installation of the git resolver")
@@ -195,9 +186,8 @@ func (g *GitResolver) ResolveGitClone(ctx context.Context) (framework.ResolvedRe
 		}
 	}
 
-	cloneOpts := &git.CloneOptions{
-		URL: repo,
-	}
+	var username string
+	var password string
 
 	secretRef := &secretCacheKey{
 		name: g.Params[GitTokenParam],
@@ -212,73 +202,43 @@ func (g *GitResolver) ResolveGitClone(ctx context.Context) (framework.ResolvedRe
 		secretRef = nil
 	}
 
-	auth := plumbTransport.AuthMethod(nil)
 	if secretRef != nil {
 		gitToken, err := g.getAPIToken(ctx, secretRef, GitTokenKeyParam)
 		if err != nil {
 			return nil, err
 		}
-		auth = &http.BasicAuth{
-			Username: "git",
-			Password: string(gitToken),
-		}
-		cloneOpts.Auth = auth
-	}
-
-	filesystem := memfs.New()
-	repository, err := git.Clone(memory.NewStorage(), filesystem, cloneOpts)
-	if err != nil {
-		return nil, fmt.Errorf("clone error: %w", err)
-	}
-
-	// try fetch the branch when the given revision refers to a branch name
-	refSpec := gitcfg.RefSpec(fmt.Sprintf("+refs/heads/%s:refs/remotes/%s", revision, revision))
-	err = repository.Fetch(&git.FetchOptions{
-		RefSpecs: []gitcfg.RefSpec{refSpec},
-		Auth:     auth,
-	})
-	if err != nil {
-		var fetchErr git.NoMatchingRefSpecError
-		if !errors.As(err, &fetchErr) {
-			return nil, fmt.Errorf("unexpected fetch error: %w", err)
-		}
-	}
-
-	w, err := repository.Worktree()
-	if err != nil {
-		return nil, fmt.Errorf("worktree error: %w", err)
-	}
-
-	h, err := repository.ResolveRevision(plumbing.Revision(revision))
-	if err != nil {
-		return nil, fmt.Errorf("revision error: %w", err)
-	}
-
-	err = w.Checkout(&git.CheckoutOptions{
-		Hash: *h,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("checkout error: %w", err)
+		username = "git"
+		password = string(gitToken)
 	}
 
 	path := g.Params[PathParam]
 
-	f, err := filesystem.Open(path)
+	repo, cleanupFunc, err := remote{url: repoURL, username: username, password: password}.clone(ctx)
+	defer cleanupFunc()
+	if err != nil {
+		return nil, fmt.Errorf("error resolving repository: %w", err)
+	}
+
+	err = repo.checkout(ctx, revision)
+	if err != nil {
+		return nil, err
+	}
+
+	fullRevision, err := repo.currentRevision(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	fileContents, err := repo.getFileContent(path)
 	if err != nil {
 		return nil, fmt.Errorf("error opening file %q: %w", path, err)
 	}
 
-	buf := &bytes.Buffer{}
-	_, err = io.Copy(buf, f)
-	if err != nil {
-		return nil, fmt.Errorf("error reading file %q: %w", path, err)
-	}
-
 	return &resolvedGitResource{
-		Revision: h.String(),
-		Content:  buf.Bytes(),
-		URL:      g.Params[UrlParam],
-		Path:     g.Params[PathParam],
+		Revision: fullRevision,
+		Content:  fileContents,
+		URL:      repo.url,
+		Path:     path,
 	}, nil
 }
 

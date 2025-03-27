@@ -1,0 +1,2 @@
+baseImageOverrides:
+  github.com/tektoncd/pipeline/cmd/resolvers: cgr.dev/chainguard/git@sha256:566235a8ef752f37d285042ee05fc37dbb04293e50f116a231984080fb835693

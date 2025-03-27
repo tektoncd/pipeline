@@ -76,6 +76,15 @@ The differences between the two modes are:
 ### Git Clone with git clone
 
 Git clone with `git clone` is supported for anonymous and authenticated cloning.
+This mode shallow clones the git repo before fetching and checking out the
+provided revision.
+
+**Note**: if the revision is a commit SHA which is not pointed-at by a Branch
+or Tag ref, the revision might not be able to be fetched, depending on the
+git provider's [uploadpack.allowReachableSHA1InWant](https://git-scm.com/docs/protocol-capabilities#_allow_reachable_sha1_in_want)
+setting. This is not an issue for major git providers such as Github and
+Gitlab, but may be of note for smaller or self-hosted providers such as
+Gitea.
 
 #### Task Resolution
 
