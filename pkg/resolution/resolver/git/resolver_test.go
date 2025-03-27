@@ -26,9 +26,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/google/go-cmp/cmp"
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/driver/fake"
@@ -448,7 +445,7 @@ func TestResolve(t *testing.T) {
 			pathInRepo: "foo/new",
 			url:        anonFakeRepoURL,
 		},
-		expectedErr: createError("revision error: reference not found"),
+		expectedErr: createError("git fetch error: fatal: couldn't find remote ref non-existent-revision: exit status 128"),
 	}, {
 		name: "api: successful task from params api information",
 		args: &params{
@@ -679,7 +676,7 @@ func TestResolve(t *testing.T) {
 			}
 			cfg[tc.configIdentifer+DefaultTimeoutKey] = "1m"
 			if cfg[tc.configIdentifer+DefaultRevisionKey] == "" {
-				cfg[tc.configIdentifer+DefaultRevisionKey] = plumbing.Master.Short()
+				cfg[tc.configIdentifer+DefaultRevisionKey] = "main"
 			}
 
 			request := createRequest(tc.args)
@@ -770,131 +767,6 @@ func TestResolve(t *testing.T) {
 			})
 		})
 	}
-}
-
-// createTestRepo is used to instantiate a local test repository with the desired commits.
-func createTestRepo(t *testing.T, commits []commitForRepo) (string, []string) {
-	t.Helper()
-	commitSHAs := []string{}
-
-	t.Helper()
-	tempDir := t.TempDir()
-
-	repo, err := git.PlainInit(tempDir, false)
-	if err != nil {
-		t.Fatalf("couldn't create test repo: %v", err)
-	}
-
-	worktree, err := repo.Worktree()
-	if err != nil {
-		t.Fatalf("getting test worktree: %v", err)
-	}
-	if worktree == nil {
-		t.Fatal("test worktree not created")
-	}
-
-	startingHash := writeAndCommitToTestRepo(t, worktree, tempDir, "", "README", []byte("This is a test"))
-
-	hashesByBranch := make(map[string][]string)
-
-	// Iterate over the commits and add them.
-	for _, cmt := range commits {
-		branch := cmt.Branch
-		if branch == "" {
-			branch = plumbing.Master.Short()
-		}
-
-		// If we're given a revision, check out that revision.
-		coOpts := &git.CheckoutOptions{
-			Branch: plumbing.NewBranchReferenceName(branch),
-		}
-
-		if _, ok := hashesByBranch[branch]; !ok && branch != plumbing.Master.Short() {
-			coOpts.Hash = plumbing.NewHash(startingHash.String())
-			coOpts.Create = true
-		}
-
-		if err := worktree.Checkout(coOpts); err != nil {
-			t.Fatalf("couldn't do checkout of %s: %v", branch, err)
-		}
-
-		hash := writeAndCommitToTestRepo(t, worktree, tempDir, cmt.Dir, cmt.Filename, []byte(cmt.Content))
-		commitSHAs = append(commitSHAs, hash.String())
-
-		if _, ok := hashesByBranch[branch]; !ok {
-			hashesByBranch[branch] = []string{hash.String()}
-		} else {
-			hashesByBranch[branch] = append(hashesByBranch[branch], hash.String())
-		}
-
-		if cmt.Tag != "" {
-			_, err = repo.CreateTag(cmt.Tag, hash, &git.CreateTagOptions{
-				Message: cmt.Tag,
-				Tagger: &object.Signature{
-					Name:  "Someone",
-					Email: "someone@example.com",
-					When:  time.Now(),
-				},
-			})
-		}
-		if err != nil {
-			t.Fatalf("couldn't add tag for %s: %v", cmt.Tag, err)
-		}
-	}
-
-	return tempDir, commitSHAs
-}
-
-// commitForRepo provides the directory, filename, content and revision for a test commit.
-type commitForRepo struct {
-	Dir      string
-	Filename string
-	Content  string
-	Branch   string
-	Tag      string
-}
-
-func writeAndCommitToTestRepo(t *testing.T, worktree *git.Worktree, repoDir string, subPath string, filename string, content []byte) plumbing.Hash {
-	t.Helper()
-
-	targetDir := repoDir
-	if subPath != "" {
-		targetDir = filepath.Join(targetDir, subPath)
-		fi, err := os.Stat(targetDir)
-		if os.IsNotExist(err) {
-			if err := os.MkdirAll(targetDir, 0o700); err != nil {
-				t.Fatalf("couldn't create directory %s in worktree: %v", targetDir, err)
-			}
-		} else if err != nil {
-			t.Fatalf("checking if directory %s in worktree exists: %v", targetDir, err)
-		}
-		if fi != nil && !fi.IsDir() {
-			t.Fatalf("%s already exists but is not a directory", targetDir)
-		}
-	}
-
-	outfile := filepath.Join(targetDir, filename)
-	if err := os.WriteFile(outfile, content, 0o600); err != nil {
-		t.Fatalf("couldn't write content to file %s: %v", outfile, err)
-	}
-
-	_, err := worktree.Add(filepath.Join(subPath, filename))
-	if err != nil {
-		t.Fatalf("couldn't add file %s to git: %v", outfile, err)
-	}
-
-	hash, err := worktree.Commit("adding file for test", &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  "Someone",
-			Email: "someone@example.com",
-			When:  time.Now(),
-		},
-	})
-	if err != nil {
-		t.Fatalf("couldn't perform commit for test: %v", err)
-	}
-
-	return hash
 }
 
 // withTemporaryGitConfig resets the .gitconfig for the duration of the test.
