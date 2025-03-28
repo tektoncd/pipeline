@@ -39,7 +39,7 @@ import (
 	"knative.dev/pkg/kmeta"
 )
 
-// GetTaskKind returns the referenced Task kind (Task, ClusterTask, ...) if the TaskRun is using TaskRef.
+// GetTaskKind returns the referenced Task kind (Task, ...) if the TaskRun is using TaskRef.
 func GetTaskKind(taskrun *v1.TaskRun) v1.TaskKind {
 	kind := v1.NamespacedTaskKind
 	if taskrun.Spec.TaskRef != nil && taskrun.Spec.TaskRef.Kind != "" {
@@ -212,7 +212,7 @@ func extendObjectReplacements(objectReplacements map[string]map[string]string, o
 // A VerificationResult is returned if trusted resources is enabled, VerificationResult contains the result type and err.
 // or the returned data isn't a valid *v1beta1.Task.
 func resolveTask(ctx context.Context, resolver remote.Resolver, name, namespace string, kind v1.TaskKind, k8s kubernetes.Interface, tekton clientset.Interface, verificationPolicies []*v1alpha1.VerificationPolicy) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
-	// Because the resolver will only return references with the same kind (eg ClusterTask), this will ensure we
+	// Because the resolver will only return references with the same kind, this will ensure we
 	// don't accidentally return a Task with the same name but different kind.
 	obj, refSource, err := resolver.Get(ctx, strings.TrimSuffix(strings.ToLower(string(kind)), "s"), name)
 	if err != nil {
@@ -273,7 +273,7 @@ func resolveStepAction(ctx context.Context, resolver remote.Resolver, name, name
 // readRuntimeObjectAsTask tries to convert a generic runtime.Object
 // into a *v1.Task type so that its meta and spec fields
 // can be read. v1beta1 object will be converted to v1 and returned.
-// An error is returned if the given object is not a Task nor a ClusterTask
+// An error is returned if the given object is not a Task
 // or if there is an error validating or upgrading an older TaskObject into
 // its v1beta1 equivalent.
 // A VerificationResult is returned if trusted resources is enabled, VerificationResult contains the result type and err.
@@ -307,25 +307,6 @@ func readRuntimeObjectAsTask(ctx context.Context, namespace string, obj runtime.
 			}
 			return t, &vr, nil
 		}
-	case *v1beta1.ClusterTask:
-		obj.SetDefaults(ctx)
-		// Cleanup object from things we don't care about
-		// FIXME: extract this in a function
-		obj.ObjectMeta.OwnerReferences = nil
-		t, err := convertClusterTaskToTask(ctx, *obj)
-		if err != nil {
-			return nil, nil, err
-		}
-		// Issue a dry-run request to create the remote Task, so that it can undergo validation from validating admission webhooks
-		// without actually creating the Task on the cluster
-		o, err := apiserver.DryRunValidate(ctx, namespace, t, tekton)
-		if err != nil {
-			return nil, nil, err
-		}
-		if mutatedTask, ok := o.(*v1.Task); ok {
-			mutatedTask.ObjectMeta = obj.ObjectMeta
-			return mutatedTask, nil, nil
-		}
 	case *v1.Task:
 		// This SetDefaults is currently not necessary, but for consistency, it is recommended to add it.
 		// Avoid forgetting to add it in the future when there is a v2 version, causing similar problems.
@@ -355,19 +336,10 @@ type LocalTaskRefResolver struct {
 	Tektonclient clientset.Interface
 }
 
-// GetTask will resolve either a Task or ClusterTask from the local cluster using a versioned Tekton client. It will
+// GetTask will resolve a Task from the local cluster using a versioned Tekton client. It will
 // return an error if it can't find an appropriate Task for any reason.
 // TODO(#6666): support local task verification
 func (l *LocalTaskRefResolver) GetTask(ctx context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
-	if l.Kind == v1.ClusterTaskRefKind {
-		task, err := l.Tektonclient.TektonV1beta1().ClusterTasks().Get(ctx, name, metav1.GetOptions{})
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		v1task, err := convertClusterTaskToTask(ctx, *task)
-		return v1task, nil, nil, err
-	}
-
 	// If we are going to resolve this reference locally, we need a namespace scope.
 	if l.Namespace == "" {
 		return nil, nil, nil, fmt.Errorf("must specify namespace to resolve reference to task %s", name)
@@ -397,35 +369,4 @@ func (l *LocalStepActionRefResolver) GetStepAction(ctx context.Context, name str
 		return nil, nil, err
 	}
 	return stepAction, nil, nil
-}
-
-// convertClusterTaskToTask converts deprecated v1beta1 ClusterTasks to Tasks for
-// the rest of reconciling process since GetTask func and its upstream callers only
-// fetches the task spec and stores it in the taskrun status while the kind info
-// is not being used.
-func convertClusterTaskToTask(ctx context.Context, ct v1beta1.ClusterTask) (*v1.Task, error) {
-	t := &v1beta1.Task{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Task",
-			APIVersion: "tekton.dev/v1beta1",
-		},
-		// We need to keep ObjectMeta to keep consistent with the existing Task logic.
-		// TaskRun will inherit the original Annotations and Labels information.
-		ObjectMeta: ct.ObjectMeta,
-	}
-
-	t.Spec = ct.Spec
-
-	v1Task := &v1.Task{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Task",
-			APIVersion: "tekton.dev/v1",
-		},
-	}
-
-	if err := t.ConvertTo(ctx, v1Task); err != nil {
-		return nil, err
-	}
-
-	return v1Task, nil
 }
