@@ -28,15 +28,6 @@ extends:
     ServiceDirectory: 'security/keyvault/azkeys'
     RunLiveTests: true
     UsePipelineProxy: false
-    SupportedClouds: 'Public,UsGov,China'
-    CloudConfig:
-      Public:
-      UsGov:
-        MatrixFilters:
-         - ArmTemplateParameters=^(?!.*enableHsm.*true)
-      China:
-        MatrixFilters:
-         - ArmTemplateParameters=^(?!.*enableHsm.*true)
 
     # Due to the high cost of Managed HSMs, we only want to test using them weekly.
     ${{ if contains(variables['Build.DefinitionName'], 'weekly') }}:
