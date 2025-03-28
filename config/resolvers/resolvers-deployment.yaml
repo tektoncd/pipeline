@@ -106,6 +106,9 @@ spec:
           value: "https://artifacthub.io/"
         - name: TEKTON_HUB_API
           value: "https://api.hub.tekton.dev/"
+        volumeMounts:
+          - name: tmp-clone-volume
+            mountPath: "/tmp"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -115,3 +118,7 @@ spec:
             - "ALL"
           seccompProfile:
             type: RuntimeDefault
+      volumes:
+        - name: tmp-clone-volume
+          emptyDir:
+            sizeLimit: 4Gi
