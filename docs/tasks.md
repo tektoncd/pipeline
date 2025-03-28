@@ -19,7 +19,8 @@ weight: 201
     - [Accessing Step's `exitCode` in subsequent `Steps`](#accessing-steps-exitcode-in-subsequent-steps)
     - [Produce a task result with `onError`](#produce-a-task-result-with-onerror)
     - [Breakpoint on failure with `onError`](#breakpoint-on-failure-with-onerror)
-    - [Redirecting step output streams with `stdoutConfig` and `stderrConfig`](#redirecting-step-output-streams-with-stdoutConfig-and-stderrConfig)
+    - [Redirecting step output streams with `stdoutConfig` and `stderrConfig`](#redirecting-step-output-streams-with-stdoutconfig-and-stderrconfig)
+    - [Guarding `Step` execution using `when` expressions](#guarding-step-execution-using-when-expressions)
   - [Specifying `Parameters`](#specifying-parameters)
   - [Specifying `Workspaces`](#specifying-workspaces)
   - [Emitting `Results`](#emitting-results)
@@ -552,6 +553,107 @@ spec:
 > - If the intent is to share output between `Step`s via a file, the user must ensure that the paths provided are shared between the `Step`s (e.g via `volumes`).
 > - There is currently a limit on the overall size of the `Task` results. If the stdout/stderr of a step is set to the path of a `Task` result and the step prints too many data, the result manifest would become too large. Currently the entrypoint binary will fail if that happens.
 > - If the stdout/stderr of a `Step` is set to the path of a `Task` result, e.g. `$(results.empty.path)`, but that result is not defined for the `Task`, the `Step` will run but the output will be captured in a file named `$(results.empty.path)` in the current working directory. Similarly, any stubstition that is not valid, e.g. `$(some.invalid.path)/out.txt`, will be left as-is and will result in a file path `$(some.invalid.path)/out.txt` relative to the current working directory.
+
+#### Guarding `Step` execution using `when` expressions
+
+You can define `when` in a `step` to control its execution. 
+
+The components of `when` expressions are `input`, `operator`, `values`, `cel`:
+
+| Component  | Description                                                                                                                                                                                                                                                      | Syntax                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+|------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `input`    | Input for the `when` expression, defaults to an empty string if not provided.                                                                                                                                                                                    | * Static values e.g. `"ubuntu"`<br/> * Variables (parameters or results) e.g. `"$(params.image)"` or `"$(tasks.task1.results.image)"` or `"$(tasks.task1.results.array-results[1])"`                                                                                                                                                                                                                                                                                                                                                       |
+| `operator` | `operator` represents an `input`'s relationship to a set of `values`, a valid `operator` must be provided.                                                                                                                                                       | `in` or `notin`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `values`   | An array of string values, the `values` array must be provided and has to be non-empty.                                                                                                                                                                          | * An array param e.g. `["$(params.images[*])"]`<br/> * An array result of a task `["$(tasks.task1.results.array-results[*])"]`<br/> * An array result of a step`["(steps.step1.results.array-results[*])"]`<br/>* `values` can contain static values e.g. `"ubuntu"`<br/> * `values` can contain variables (parameters or results) or a Workspaces's `bound` state e.g. `["$(params.image)"]` or `["$(steps.step1.results.image)"]` or `["$(tasks.task1.results.array-results[1])"]` or `["$(steps.step1.results.array-results[1])"]` |
+| `cel`      | The Common Expression Language (CEL) implements common semantics for expression evaluation, enabling different applications to more easily interoperate. This is an `alpha` feature, `enable-cel-in-whenexpression` needs to be set to true to use this feature. |  [cel-syntax](https://github.com/google/cel-spec/blob/master/doc/langdef.md#syntax)
+
+The below example shows how to use when expressions to control step executions:
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-pvc-2
+spec:
+  resources:
+    requests:
+      storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: step-when-example
+spec:
+  workspaces:
+    - name: custom
+      persistentVolumeClaim:
+        claimName: my-pvc-2
+  taskSpec:
+    description: |
+      A simple task that shows how to use when determine if a step should be executed
+    steps:
+      - name: should-execute
+        image: bash:latest
+        script: |
+          #!/usr/bin/env bash
+          echo "executed..."
+        when:
+          - input: "$(workspaces.custom.bound)"
+            operator: in
+            values: [ "true" ]
+      - name: should-skip
+        image: bash:latest
+        script: |
+          #!/usr/bin/env bash
+          echo skipskipskip
+        when:
+          - input: "$(workspaces.custom2.bound)"
+            operator: in
+            values: [ "true" ]
+      - name: should-continue
+        image: bash:latest
+        script: |
+          #!/usr/bin/env bash
+          echo blabalbaba
+      - name: produce-step
+        image: alpine
+        results:
+          - name: result2
+            type: string
+        script: |
+          echo -n "foo" | tee $(step.results.result2.path)
+      - name: run-based-on-step-results
+        image: alpine
+        script: |
+          echo "wooooooo"
+        when:
+          - input: "$(steps.produce-step.results.result2)"
+            operator: in
+            values: [ "bar" ]
+    workspaces:
+      - name: custom
+```
+
+The StepState for a skipped step looks like something similar to the below:
+```yaml
+      {
+        "container": "step-run-based-on-step-results",
+        "imageID": "docker.io/library/alpine@sha256:c5b1261d6d3e43071626931fc004f70149baeba2c8ec672bd4f27761f8e1ad6b",
+        "name": "run-based-on-step-results",
+        "terminated": {
+          "containerID": "containerd://bf81162e79cf66a2bbc03e3654942d3464db06ff368c0be263a8a70f363a899b",
+          "exitCode": 0,
+          "finishedAt": "2024-03-26T03:57:47Z",
+          "reason": "Completed",
+          "startedAt": "2024-03-26T03:57:47Z"
+        },
+        "terminationReason": "Skipped"
+      }
+```
+Where `terminated.exitCode` is `0` and `terminationReason` is `Skipped` to indicate the Step exited successfully and was skipped. 
 
 ### Specifying `Parameters`
 
