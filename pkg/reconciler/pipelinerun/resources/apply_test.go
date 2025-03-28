@@ -1771,6 +1771,26 @@ func TestApplyParameters(t *testing.T) {
 				}},
 			},
 		},
+		{
+			name: "parameter in onError",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "onerror", Type: v1.ParamTypeString},
+				},
+				Tasks: []v1.PipelineTask{{
+					OnError: v1.PipelineTaskOnErrorType("$(params.onerror)"),
+				}},
+			},
+			params: v1.Params{{Name: "onerror", Value: *v1.NewStructuredValues("new-onerror-value")}},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "onerror", Type: v1.ParamTypeString},
+				},
+				Tasks: []v1.PipelineTask{{
+					OnError: v1.PipelineTaskOnErrorType("new-onerror-value"),
+				}},
+			},
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
