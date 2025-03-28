@@ -104,7 +104,7 @@ type NoKindMatchError struct {
 }
 
 func (e *NoKindMatchError) Error() string {
-	searchedVersions := sets.NewString()
+	searchedVersions := sets.New[string]()
 	for _, v := range e.SearchedVersions {
 		searchedVersions.Insert(schema.GroupVersion{Group: e.GroupKind.Group, Version: v}.String())
 	}
@@ -113,9 +113,9 @@ func (e *NoKindMatchError) Error() string {
 	case 0:
 		return fmt.Sprintf("no matches for kind %q in group %q", e.GroupKind.Kind, e.GroupKind.Group)
 	case 1:
-		return fmt.Sprintf("no matches for kind %q in version %q", e.GroupKind.Kind, searchedVersions.List()[0])
+		return fmt.Sprintf("no matches for kind %q in version %q", e.GroupKind.Kind, sets.List(searchedVersions)[0])
 	default:
-		return fmt.Sprintf("no matches for kind %q in versions %q", e.GroupKind.Kind, searchedVersions.List())
+		return fmt.Sprintf("no matches for kind %q in versions %q", e.GroupKind.Kind, sets.List(searchedVersions))
 	}
 }
 

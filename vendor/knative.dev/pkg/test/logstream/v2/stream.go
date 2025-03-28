@@ -129,7 +129,7 @@ func (s *logSource) watchPods() error {
 
 		go func() {
 			defer wi.Stop()
-			watchedPods := sets.NewString()
+			watchedPods := sets.New[string]()
 
 			for {
 				select {
@@ -244,7 +244,7 @@ const (
 // Names of well known containers that do not produce nicely formatted logs that
 // could be easily filtered and parsed by handleLine. Logs from these containers
 // are captured without filtering.
-var wellKnownContainers = sets.NewString(ChaosDuck, QueueProxy)
+var wellKnownContainers = sets.New(ChaosDuck, QueueProxy)
 
 func (s *logSource) handleLine(l []byte, pod string, _ string) {
 	// This holds the standard structure of our logs.

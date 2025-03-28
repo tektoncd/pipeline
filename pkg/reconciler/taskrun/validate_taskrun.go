@@ -55,8 +55,8 @@ func validateParams(ctx context.Context, paramSpecs []v1.ParamSpec, params v1.Pa
 }
 
 // neededParamsNamesAndTypes returns the needed parameter names and types based on the paramSpec
-func neededParamsNamesAndTypes(paramSpecs []v1.ParamSpec) (sets.String, map[string]v1.ParamType) {
-	neededParamsNames := sets.String{}
+func neededParamsNamesAndTypes(paramSpecs []v1.ParamSpec) (sets.Set[string], map[string]v1.ParamType) {
+	neededParamsNames := sets.Set[string]{}
 	neededParamsTypes := make(map[string]v1.ParamType)
 	for _, inputResourceParam := range paramSpecs {
 		neededParamsNames.Insert(inputResourceParam.Name)
@@ -67,7 +67,7 @@ func neededParamsNamesAndTypes(paramSpecs []v1.ParamSpec) (sets.String, map[stri
 
 // missingParamsNames returns a slice of missing parameter names that have not been declared with a default value
 // in the paramSpec
-func missingParamsNames(neededParams sets.String, providedParams sets.String, paramSpecs []v1.ParamSpec) []string {
+func missingParamsNames(neededParams sets.Set[string], providedParams sets.Set[string], paramSpecs []v1.ParamSpec) []string {
 	missingParamsNames := neededParams.Difference(providedParams)
 	var missingParamsNamesWithNoDefaults []string
 	for _, inputResourceParam := range paramSpecs {
@@ -238,7 +238,7 @@ func validateOverrides(ts *v1.TaskSpec, trs *v1.TaskRunSpec) error {
 
 func validateStepOverrides(ts *v1.TaskSpec, trs *v1.TaskRunSpec) error {
 	var err error
-	stepNames := sets.NewString()
+	stepNames := sets.New[string]()
 	for _, step := range ts.Steps {
 		stepNames.Insert(step.Name)
 	}
@@ -252,7 +252,7 @@ func validateStepOverrides(ts *v1.TaskSpec, trs *v1.TaskRunSpec) error {
 
 func validateSidecarOverrides(ts *v1.TaskSpec, trs *v1.TaskRunSpec) error {
 	var err error
-	sidecarNames := sets.NewString()
+	sidecarNames := sets.New[string]()
 	for _, sidecar := range ts.Sidecars {
 		sidecarNames.Insert(sidecar.Name)
 	}

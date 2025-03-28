@@ -736,7 +736,7 @@ func TestPipelineTaskList_Names(t *testing.T) {
 		{Name: "task-1"},
 		{Name: "task-2"},
 	}
-	expectedTaskNames := sets.String{}
+	expectedTaskNames := sets.Set[string]{}
 	expectedTaskNames.Insert("task-1")
 	expectedTaskNames.Insert("task-2")
 	actualTaskNames := PipelineTaskList(tasks).Names()
@@ -882,7 +882,7 @@ func TestPipelineTaskList_Validate(t *testing.T) {
 			if tt.wc != nil {
 				ctx = tt.wc(ctx)
 			}
-			taskNames := sets.String{}
+			taskNames := sets.Set[string]{}
 			err := tt.tasks.Validate(ctx, taskNames, tt.path)
 			if tt.expectedError != nil && err == nil {
 				t.Error("PipelineTaskList.Validate() did not return error for invalid pipeline tasks")

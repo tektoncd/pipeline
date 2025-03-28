@@ -264,7 +264,7 @@ func validateDebug(db *TaskRunDebug) (errs *apis.FieldError) {
 	if db.Breakpoints.OnFailure != "" && db.Breakpoints.OnFailure != EnabledOnFailureBreakpoint {
 		errs = errs.Also(apis.ErrInvalidValue(db.Breakpoints.OnFailure+" is not a valid onFailure breakpoint value, onFailure breakpoint is only allowed to be set as enabled", "breakpoints.onFailure"))
 	}
-	beforeSteps := sets.NewString()
+	beforeSteps := sets.New[string]()
 	for i, step := range db.Breakpoints.BeforeSteps {
 		if beforeSteps.Has(step) {
 			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("before step must be unique, the same step: %s is defined multiple times at", step), fmt.Sprintf("breakpoints.beforeSteps[%d]", i)))
@@ -337,7 +337,7 @@ func validateSidecarSpecs(specs []TaskRunSidecarSpec) (errs *apis.FieldError) {
 // Case insensitive.
 // If byIndex is true, the error will be reported by index instead of by key.
 func validateNoDuplicateNames(names []string, byIndex bool) (errs *apis.FieldError) {
-	seen := sets.NewString()
+	seen := sets.New[string]()
 	for i, n := range names {
 		if seen.Has(strings.ToLower(n)) {
 			if byIndex {

@@ -319,7 +319,7 @@ func (m *Matrix) validateUniqueParams() (errs *apis.FieldError) {
 
 // validatePipelineParametersVariablesInMatrixParameters validates all pipeline parameter variables including Matrix.Params and Matrix.Include.Params
 // that may contain the reference(s) to other params to make sure those references are used appropriately.
-func (m *Matrix) validatePipelineParametersVariablesInMatrixParameters(prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
+func (m *Matrix) validatePipelineParametersVariablesInMatrixParameters(prefix string, paramNames sets.Set[string], arrayParamNames sets.Set[string], objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
 	if m.HasInclude() {
 		for _, include := range m.Include {
 			for idx, param := range include.Params {
