@@ -244,8 +244,11 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	// By default, use an empty pod template and take the one defined in the task run spec if any
 	podTemplate := pod.Template{}
 
+	// if a podTemplate is defined in the Task, pick that up here. podTemplate values from the TaskRun take precedence.
 	if taskRun.Spec.PodTemplate != nil {
 		podTemplate = *taskRun.Spec.PodTemplate
+	} else if taskSpec.PodTemplate != nil {
+		podTemplate = *taskSpec.PodTemplate
 	}
 
 	// Resolve entrypoint for any steps that don't specify command.
