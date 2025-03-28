@@ -25,6 +25,19 @@ spec:
         key1: "step-action default key1"
         key2: "step-action default key2"
         key3: "step-action default key3"
+    - name: enum-param
+      type: object
+      properties:
+        v1:
+          type: string
+        v2:
+          type: string
+        v3:
+          type: string
+      default:
+        v1: "enum1"
+        v2: "enum2"
+        v3: "enum3"
   env:
     - name: arrayparam0
       value: $(params.array-param[0])
@@ -40,11 +53,17 @@ spec:
       value: $(params.object-param.key2)
     - name: objectparamkey3
       value: $(params.object-param.key3)
+    - name: enumparamkey1
+      value: $(params.enum-param.v1)
+    - name: enumparamkey2
+      value: $(params.enum-param.v2)
+    - name: enumparamkey3
+      value: $(params.enum-param.v3)
   image: mirror.gcr.io/ubuntu
   script: |
     #!/bin/bash
-    ARRAYVALUE=("${arrayparam0}" "${arrayparam1}" "${arrayparam2}" "${stringparam}" "${objectparamkey1}" "${objectparamkey2}" "${objectparamkey3}")
-    ARRAYEXPECTED=("taskrun" "array" "param" "taskrun stringparam" "taskspec default key1" "taskrun key2" "step-action default key3")
+    ARRAYVALUE=("${arrayparam0}" "${arrayparam1}" "${arrayparam2}" "${stringparam}" "${objectparamkey1}" "${objectparamkey2}" "${objectparamkey3}" "${enumparamkey1}" "${enumparamkey2}" "${enumparamkey3}")
+    ARRAYEXPECTED=("taskrun" "array" "param" "taskrun stringparam" "taskspec default key1" "taskrun key2" "step-action default key3" "enum1" "enum2" "enum3")
     for i in "${!ARRAYVALUE[@]}"; do
         VALUE="${ARRAYVALUE[i]}"
         EXPECTED="${ARRAYEXPECTED[i]}"
@@ -73,6 +92,9 @@ spec:
     - name: objectparam
       value:
         key2: "taskrun key2"
+    - name: enumparam
+      value: "enum1"
+
   taskSpec:
     params:
       - name: objectparam
@@ -95,3 +117,5 @@ spec:
             value: $(params.arrayparam[*])
           - name: object-param
             value: $(params.objectparam[*])
+          - name: enum-param
+            value: $(params.enumparam[*])
