@@ -109,8 +109,9 @@ data:
   # Setting this flag to "true" will set readOnlyRootFilesystem in securityContext for all containers used in TaskRuns and AffinityAssistant.
   set-security-context-read-only-root-filesystem: "false"
   # Setting this flag to "true" will keep pod on cancellation
-  # allowing examination of the logs on the pods from cancelled taskruns
-  keep-pod-on-cancel: "false"
+  # Allowing examination of the logs on the pods from cancelled taskruns
+  # To disable populating this field, set this flag to `"false"`
+  keep-pod-on-cancel: "true"
   # Setting this flag to "true" will enable the CEL evaluation in WhenExpression
   enable-cel-in-whenexpression: "false"
   # Setting this flag to "true" will enable the use of StepActions in Steps
