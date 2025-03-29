@@ -1,0 +1,45 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: pipeline-with-timeouts
+spec:
+  tasks:
+    - name: task-with-timeout
+      timeout: "1h0m0s"
+      taskSpec:
+        steps:
+          - name: sleep
+            image: ubuntu
+            script: |
+              echo "Starting task..."
+              sleep 30
+              echo "Task completed!"
+
+    - name: another-task-with-timeout
+      timeout: "30m0s"
+      runAfter:
+        - task-with-timeout
+      taskSpec:
+        steps:
+          - name: sleep
+            image: ubuntu
+            script: |
+              echo "Starting another task..."
+              sleep 30
+              echo "Another task completed!"
+
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: pipeline-timeout-override-run
+spec:
+  pipelineRef:
+    name: pipeline-with-timeouts
+  timeouts:
+    pipeline: "3h0m0s"  # overall pipeline timeout
+  taskRunSpecs:
+    - pipelineTaskName: task-with-timeout
+      timeout: "2h0m0s"  # override timeout to 2 hours
+    - pipelineTaskName: another-task-with-timeout
+      timeout: "1h0m0s"  # override timeout to 1 hour
