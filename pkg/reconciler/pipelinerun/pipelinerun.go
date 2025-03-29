@@ -1064,7 +1064,10 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 		tr.Annotations[v1.PipelineTaskOnErrorAnnotation] = string(v1.PipelineTaskContinue)
 	}
 
-	if rpt.PipelineTask.Timeout != nil {
+	// TaskRunSpec timeout takes precedence over PipelineTask timeout
+	if taskRunSpec.Timeout != nil {
+		tr.Spec.Timeout = taskRunSpec.Timeout
+	} else if rpt.PipelineTask.Timeout != nil {
 		tr.Spec.Timeout = rpt.PipelineTask.Timeout
 	}
 
@@ -1167,7 +1170,13 @@ func (c *Reconciler) createCustomRun(ctx context.Context, runName string, params
 	taskRunSpec := pr.GetTaskRunSpec(rpt.PipelineTask.Name)
 	params = append(params, rpt.PipelineTask.Params...)
 
-	taskTimeout := rpt.PipelineTask.Timeout
+	// TaskRunSpec timeout takes precedence over PipelineTask timeout
+	var taskTimeout *metav1.Duration
+	if taskRunSpec.Timeout != nil {
+		taskTimeout = taskRunSpec.Timeout
+	} else {
+		taskTimeout = rpt.PipelineTask.Timeout
+	}
 	var pipelinePVCWorkspaceName string
 	var err error
 	var workspaces []v1.WorkspaceBinding
