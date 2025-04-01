@@ -2894,20 +2894,21 @@ status:
 		defer prt.Cancel()
 
 		wantEvents := []string{
-			"Normal Started",
+			"Warning Failed PipelineRun",
 		}
 		reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-with-timeout", wantEvents, false)
 
-		if reconciledRun.Status.CompletionTime != nil {
-			t.Errorf("Expected nil CompletionTime on PipelineRun but was %s", reconciledRun.Status.CompletionTime)
+		if reconciledRun.Status.CompletionTime == nil {
+			t.Errorf("Expected CompletionTime on PipelineRun but was %s", reconciledRun.Status.CompletionTime)
 		}
 
-		// The PipelineRun should be running.
-		if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != v1.PipelineRunReasonRunning.String() {
-			t.Errorf("Expected PipelineRun to be running, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason)
+		// The PipelineRun should be timeout.
+		if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != v1.PipelineRunReasonTimedOut.String() {
+			t.Errorf("Expected PipelineRun to be timeout, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason)
 		}
 
 		// Check that there is a skipped task for the expected reason
+
 		if len(reconciledRun.Status.SkippedTasks) != 1 {
 			t.Errorf("expected one skipped task, found %d", len(reconciledRun.Status.SkippedTasks))
 		} else if reconciledRun.Status.SkippedTasks[0].Reason != v1.TasksTimedOutSkip {
@@ -3034,7 +3035,7 @@ spec:
   pipelineRef:
     name: test-pipeline-with-finally
   timeouts:
-    tasks: 5m
+    tasks: 25m
     pipeline: 20m
 status:
   finallyStartTime: "2021-12-31T23:44:59Z"
@@ -3262,7 +3263,7 @@ spec:
   pipelineRef:
     name: test-pipeline-with-finally
   timeouts:
-    tasks: 5m
+    tasks: 25m
     pipeline: 20m
 status:
   startTime: "2021-12-31T23:40:00Z"
@@ -3311,7 +3312,7 @@ spec:
   pipelineRef:
     name: test-pipeline-with-finally
   timeouts:
-    tasks: 5m
+    tasks: 25m
     pipeline: 20m
 status:
   startTime: "2021-12-31T23:40:00Z"
@@ -3351,7 +3352,7 @@ spec:
   pipelineRef:
     name: test-pipeline-with-finally
   timeouts:
-    tasks: 5m
+    tasks: 25m
     pipeline: 20m
 status:
   startTime: "2021-12-31T23:40:00Z"
