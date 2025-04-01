@@ -55,17 +55,17 @@ var intIndexRegex = regexp.MustCompile(intIndex)
 // - value: a string containing a reference to a variable that can be substituted, e.g. "echo $(params.foo)"
 // - prefix: the prefix of the substitutable variable, e.g. "params" or "context.pipeline"
 // - vars: names of known variables
-func ValidateNoReferencesToUnknownVariables(value, prefix string, vars sets.String) *apis.FieldError {
+func ValidateNoReferencesToUnknownVariables(value, prefix string, vars sets.Set[string]) *apis.FieldError {
 	return validateNoReferencesToUnknownVariables(value, prefix, vars, false)
 }
 
 // ValidateNoReferencesToUnknownVariablesWithDetail same as ValidateNoReferencesToUnknownVariables
 // but with more prefix detailed error message
-func ValidateNoReferencesToUnknownVariablesWithDetail(value, prefix string, vars sets.String) *apis.FieldError {
+func ValidateNoReferencesToUnknownVariablesWithDetail(value, prefix string, vars sets.Set[string]) *apis.FieldError {
 	return validateNoReferencesToUnknownVariables(value, prefix, vars, true)
 }
 
-func validateNoReferencesToUnknownVariables(value, prefix string, vars sets.String, withDetail bool) *apis.FieldError {
+func validateNoReferencesToUnknownVariables(value, prefix string, vars sets.Set[string], withDetail bool) *apis.FieldError {
 	if vs, present, errString := ExtractVariablesFromString(value, prefix); present {
 		if errString != "" {
 			return &apis.FieldError{
@@ -100,7 +100,7 @@ func validateNoReferencesToUnknownVariables(value, prefix string, vars sets.Stri
 // - value: a string containing a reference to a variable that can be substituted, e.g. "echo $(params.foo)"
 // - prefix: the prefix of the substitutable variable, e.g. "params" or "context.pipeline"
 // - vars: names of known variables
-func ValidateNoReferencesToProhibitedVariables(value, prefix string, vars sets.String) *apis.FieldError {
+func ValidateNoReferencesToProhibitedVariables(value, prefix string, vars sets.Set[string]) *apis.FieldError {
 	if vs, present, errString := ExtractVariablesFromString(value, prefix); present {
 		if errString != "" {
 			return &apis.FieldError{
@@ -129,7 +129,7 @@ func ValidateNoReferencesToProhibitedVariables(value, prefix string, vars sets.S
 // - value: a string containing a reference to a variable that can be substituted, e.g. "echo $(params.foo)"
 // - prefix: the prefix of the substitutable variable, e.g. "params" or "context.pipeline"
 // - vars: names of known variables
-func ValidateNoReferencesToEntireProhibitedVariables(value, prefix string, vars sets.String) *apis.FieldError {
+func ValidateNoReferencesToEntireProhibitedVariables(value, prefix string, vars sets.Set[string]) *apis.FieldError {
 	paths := []string{""} // Empty path is required to make the `ViaField`, … work
 	vs, err := extractEntireVariablesFromString(value, prefix)
 	if err != nil {
@@ -158,7 +158,7 @@ func ValidateNoReferencesToEntireProhibitedVariables(value, prefix string, vars 
 // - value: a string containing a reference to a variable that can be substituted, e.g. "echo $(params.foo)"
 // - prefix: the prefix of the substitutable variable, e.g. "params" or "context.pipeline"
 // - vars: names of known variables
-func ValidateVariableReferenceIsIsolated(value, prefix string, vars sets.String) *apis.FieldError {
+func ValidateVariableReferenceIsIsolated(value, prefix string, vars sets.Set[string]) *apis.FieldError {
 	paths := []string{""} // Empty path is required to make the `ViaField`, … work
 	if vs, present, errString := ExtractVariablesFromString(value, prefix); present {
 		if errString != "" {
@@ -192,7 +192,7 @@ func ValidateVariableReferenceIsIsolated(value, prefix string, vars sets.String)
 // ValidateWholeArrayOrObjectRefInStringVariable validates if a single string field uses references to the whole array/object appropriately
 // valid example: "$(params.myObject[*])"
 // invalid example: "$(params.name-not-exist[*])"
-func ValidateWholeArrayOrObjectRefInStringVariable(name, value, prefix string, vars sets.String) (isIsolated bool, errs *apis.FieldError) {
+func ValidateWholeArrayOrObjectRefInStringVariable(name, value, prefix string, vars sets.Set[string]) (isIsolated bool, errs *apis.FieldError) {
 	nameSubstitution := `[_a-zA-Z0-9.-]+\[\*\]`
 
 	// a regex to check if the stringValue is an isolated reference to the whole array/object param without extra string literal.

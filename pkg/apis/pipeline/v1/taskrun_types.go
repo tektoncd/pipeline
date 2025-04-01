@@ -143,7 +143,7 @@ func (trd *TaskRunDebug) NeedsDebugBeforeStep(stepName string) bool {
 	if trd.Breakpoints == nil {
 		return false
 	}
-	beforeStepSets := sets.NewString(trd.Breakpoints.BeforeSteps...)
+	beforeStepSets := sets.New(trd.Breakpoints.BeforeSteps...)
 	return beforeStepSets.Has(stepName)
 }
 

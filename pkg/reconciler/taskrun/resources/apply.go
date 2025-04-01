@@ -512,7 +512,7 @@ func ApplyContexts(spec *v1.TaskSpec, taskName string, tr *v1.TaskRun) *v1.TaskS
 func ApplyWorkspaces(ctx context.Context, spec *v1.TaskSpec, declarations []v1.WorkspaceDeclaration, bindings []v1.WorkspaceBinding, vols map[string]corev1.Volume) *v1.TaskSpec {
 	stringReplacements := map[string]string{}
 
-	bindNames := sets.NewString()
+	bindNames := sets.New[string]()
 	for _, binding := range bindings {
 		bindNames.Insert(binding.Name)
 	}

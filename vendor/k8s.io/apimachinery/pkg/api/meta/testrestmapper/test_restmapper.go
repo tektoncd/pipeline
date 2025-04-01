@@ -32,7 +32,7 @@ import (
 // TODO the things being tested are related to whether various cases are handled, not tied to the particular types being checked.
 func TestOnlyStaticRESTMapper(scheme *runtime.Scheme, versionPatterns ...schema.GroupVersion) meta.RESTMapper {
 	unionMapper := meta.MultiRESTMapper{}
-	unionedGroups := sets.NewString()
+	unionedGroups := sets.New[string]()
 	for _, enabledVersion := range scheme.PrioritizedVersionsAllGroups() {
 		if !unionedGroups.Has(enabledVersion.Group) {
 			unionedGroups.Insert(enabledVersion.Group)
@@ -54,15 +54,15 @@ func TestOnlyStaticRESTMapper(scheme *runtime.Scheme, versionPatterns ...schema.
 	prioritizedGroups := []string{"", "extensions", "metrics"}
 	resourcePriority, kindPriority := prioritiesForGroups(scheme, prioritizedGroups...)
 
-	prioritizedGroupsSet := sets.NewString(prioritizedGroups...)
-	remainingGroups := sets.String{}
+	prioritizedGroupsSet := sets.New(prioritizedGroups...)
+	remainingGroups := sets.Set[string]{}
 	for _, enabledVersion := range scheme.PrioritizedVersionsAllGroups() {
 		if !prioritizedGroupsSet.Has(enabledVersion.Group) {
 			remainingGroups.Insert(enabledVersion.Group)
 		}
 	}
 
-	remainingResourcePriority, remainingKindPriority := prioritiesForGroups(scheme, remainingGroups.List()...)
+	remainingResourcePriority, remainingKindPriority := prioritiesForGroups(scheme, sets.List(remainingGroups)...)
 	resourcePriority = append(resourcePriority, remainingResourcePriority...)
 	kindPriority = append(kindPriority, remainingKindPriority...)
 
@@ -151,7 +151,7 @@ var rootScopedKinds = map[schema.GroupKind]bool{
 }
 
 // hardcoded is good enough for the test we're running
-var ignoredKinds = sets.NewString(
+var ignoredKinds = sets.New(
 	"ListOptions",
 	"DeleteOptions",
 	"Status",

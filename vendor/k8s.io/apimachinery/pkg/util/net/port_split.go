@@ -22,7 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-var validSchemes = sets.NewString("http", "https", "")
+var validSchemes = sets.New("http", "https", "")
 
 // SplitSchemeNamePort takes a string of the following forms:
 //   - "<name>",                 returns "",        "<name>","",      true

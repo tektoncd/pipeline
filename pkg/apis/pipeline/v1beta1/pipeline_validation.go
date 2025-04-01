@@ -130,7 +130,7 @@ func (pt *PipelineTask) validateBetaFields(ctx context.Context) *apis.FieldError
 // ValidatePipelineTasks ensures that pipeline tasks has unique label, pipeline tasks has specified one of
 // taskRef or taskSpec, and in case of a pipeline task with taskRef, it has a reference to a valid task (task name)
 func ValidatePipelineTasks(ctx context.Context, tasks []PipelineTask, finalTasks []PipelineTask) *apis.FieldError {
-	taskNames := sets.NewString()
+	taskNames := sets.New[string]()
 	var errs *apis.FieldError
 	errs = errs.Also(PipelineTaskList(tasks).Validate(ctx, taskNames, "tasks"))
 	errs = errs.Also(PipelineTaskList(finalTasks).Validate(ctx, taskNames, "finally"))
@@ -138,7 +138,7 @@ func ValidatePipelineTasks(ctx context.Context, tasks []PipelineTask, finalTasks
 }
 
 // Validate a list of pipeline tasks including custom task and bundles
-func (l PipelineTaskList) Validate(ctx context.Context, taskNames sets.String, path string) (errs *apis.FieldError) {
+func (l PipelineTaskList) Validate(ctx context.Context, taskNames sets.Set[string], path string) (errs *apis.FieldError) {
 	for i, t := range l {
 		// validate pipeline task name
 		errs = errs.Also(t.ValidateName().ViaFieldIndex(path, i))
@@ -272,8 +272,8 @@ func (pt PipelineTask) validateEmbeddedOrType() (errs *apis.FieldError) {
 	return
 }
 
-func (pt *PipelineTask) validateWorkspaces(workspaceNames sets.String) (errs *apis.FieldError) {
-	workspaceBindingNames := sets.NewString()
+func (pt *PipelineTask) validateWorkspaces(workspaceNames sets.Set[string]) (errs *apis.FieldError) {
+	workspaceBindingNames := sets.New[string]()
 	for i, ws := range pt.Workspaces {
 		if workspaceBindingNames.Has(ws.Name) {
 			errs = errs.Also(apis.ErrGeneric(
@@ -368,7 +368,7 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 // empty string,
 func validatePipelineWorkspacesDeclarations(wss []PipelineWorkspaceDeclaration) (errs *apis.FieldError) {
 	// Workspace names must be non-empty and unique.
-	wsTable := sets.NewString()
+	wsTable := sets.New[string]()
 	for i, ws := range wss {
 		if ws.Name == "" {
 			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("workspace %d has empty name", i),
@@ -394,9 +394,9 @@ func (ps *PipelineSpec) validatePipelineParameterUsage(ctx context.Context) (err
 
 // validatePipelineTaskParameterUsage validates that parameters referenced in the Pipeline Tasks are declared by the Pipeline
 func validatePipelineTaskParameterUsage(tasks []PipelineTask, params ParamSpecs) (errs *apis.FieldError) {
-	allParamNames := sets.NewString(params.getNames()...)
+	allParamNames := sets.New(params.getNames()...)
 	_, arrayParams, objectParams := params.sortByType()
-	arrayParamNames := sets.NewString(arrayParams.getNames()...)
+	arrayParamNames := sets.New(arrayParams.getNames()...)
 	objectParameterNameKeys := map[string][]string{}
 	for _, p := range objectParams {
 		for k := range p.Properties {
@@ -420,7 +420,7 @@ func (ps *PipelineSpec) validatePipelineWorkspacesUsage() (errs *apis.FieldError
 // validatePipelineTasksWorkspacesUsage validates that all the referenced workspaces (by pipeline tasks) are specified in
 // the pipeline
 func validatePipelineTasksWorkspacesUsage(wss []PipelineWorkspaceDeclaration, pts []PipelineTask) (errs *apis.FieldError) {
-	workspaceNames := sets.NewString()
+	workspaceNames := sets.New[string]()
 	for _, ws := range wss {
 		workspaceNames.Insert(ws.Name)
 	}
@@ -445,7 +445,7 @@ func ValidatePipelineParameterVariables(ctx context.Context, tasks []PipelineTas
 	return errs
 }
 
-func validatePipelineParametersVariables(tasks []PipelineTask, prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
+func validatePipelineParametersVariables(tasks []PipelineTask, prefix string, paramNames sets.Set[string], arrayParamNames sets.Set[string], objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
 	for idx, task := range tasks {
 		errs = errs.Also(validatePipelineParametersVariablesInTaskParameters(task.Params, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
 		if task.IsMatrixed() {
@@ -457,15 +457,15 @@ func validatePipelineParametersVariables(tasks []PipelineTask, prefix string, pa
 }
 
 func validatePipelineContextVariables(tasks []PipelineTask) *apis.FieldError {
-	pipelineRunContextNames := sets.NewString().Insert(
+	pipelineRunContextNames := sets.New[string]().Insert(
 		"name",
 		"namespace",
 		"uid",
 	)
-	pipelineContextNames := sets.NewString().Insert(
+	pipelineContextNames := sets.New[string]().Insert(
 		"name",
 	)
-	pipelineTaskContextNames := sets.NewString().Insert(
+	pipelineTaskContextNames := sets.New[string]().Insert(
 		"retries",
 	)
 	var paramValues []string
@@ -523,7 +523,7 @@ func validateExecutionStatusVariablesInTasks(tasks []PipelineTask) (errs *apis.F
 
 // validate finally tasks accessing execution status of a dag task specified in the pipeline
 // $(tasks.pipelineTask.status) is invalid if pipelineTask is not defined as a dag task
-func validateExecutionStatusVariablesInFinally(tasksNames sets.String, finally []PipelineTask) (errs *apis.FieldError) {
+func validateExecutionStatusVariablesInFinally(tasksNames sets.Set[string], finally []PipelineTask) (errs *apis.FieldError) {
 	for idx, t := range finally {
 		errs = errs.Also(t.validateExecutionStatusVariablesAllowed(tasksNames).ViaIndex(idx))
 	}
@@ -568,7 +568,7 @@ func containsExecutionStatusReferences(expressions []string) bool {
 	return false
 }
 
-func (pt *PipelineTask) validateExecutionStatusVariablesAllowed(ptNames sets.String) (errs *apis.FieldError) {
+func (pt *PipelineTask) validateExecutionStatusVariablesAllowed(ptNames sets.Set[string]) (errs *apis.FieldError) {
 	for _, param := range pt.Params {
 		if expressions, ok := GetVarSubstitutionExpressionsForParam(param); ok {
 			errs = errs.Also(validateExecutionStatusVariablesExpressions(expressions, ptNames, "value").
@@ -584,7 +584,7 @@ func (pt *PipelineTask) validateExecutionStatusVariablesAllowed(ptNames sets.Str
 	return errs
 }
 
-func validateExecutionStatusVariablesExpressions(expressions []string, ptNames sets.String, fieldPath string) (errs *apis.FieldError) {
+func validateExecutionStatusVariablesExpressions(expressions []string, ptNames sets.Set[string], fieldPath string) (errs *apis.FieldError) {
 	// validate tasks.pipelineTask.status if this expression is not a result reference
 	if !LooksLikeContainsResultRefs(expressions) {
 		for _, expression := range expressions {
@@ -613,7 +613,7 @@ func validateExecutionStatusVariablesExpressions(expressions []string, ptNames s
 	return errs
 }
 
-func validatePipelineContextVariablesInParamValues(paramValues []string, prefix string, contextNames sets.String) (errs *apis.FieldError) {
+func validatePipelineContextVariablesInParamValues(paramValues []string, prefix string, contextNames sets.Set[string]) (errs *apis.FieldError) {
 	for _, paramValue := range paramValues {
 		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(paramValue, prefix, contextNames).ViaField("value"))
 	}
@@ -663,8 +663,8 @@ func validatePipelineResults(results []PipelineResult, tasks []PipelineTask, fin
 }
 
 // put task names in a set
-func getPipelineTasksNames(pipelineTasks []PipelineTask) sets.String {
-	pipelineTaskNames := make(sets.String)
+func getPipelineTasksNames(pipelineTasks []PipelineTask) sets.Set[string] {
+	pipelineTaskNames := sets.New[string]()
 	for _, pipelineTask := range pipelineTasks {
 		pipelineTaskNames.Insert(pipelineTask.Name)
 	}
@@ -674,7 +674,7 @@ func getPipelineTasksNames(pipelineTasks []PipelineTask) sets.String {
 
 // taskContainsResult ensures the result value is referenced within the
 // task names
-func taskContainsResult(resultExpression string, pipelineTaskNames sets.String, pipelineFinallyTaskNames sets.String) bool {
+func taskContainsResult(resultExpression string, pipelineTaskNames sets.Set[string], pipelineFinallyTaskNames sets.Set[string]) bool {
 	// split incase of multiple resultExpressions in the same result.Value string
 	// i.e "$(task.<task-name).result.<result-name>) - $(task2.<task2-name).result2.<result2-name>)"
 	split := strings.Split(resultExpression, "$")
@@ -719,7 +719,7 @@ func validateFinalTasks(tasks []PipelineTask, finalTasks []PipelineTask) (errs *
 	return errs
 }
 
-func validateTaskResultReferenceInFinallyTasks(finalTasks []PipelineTask, ts sets.String, fts sets.String) (errs *apis.FieldError) {
+func validateTaskResultReferenceInFinallyTasks(finalTasks []PipelineTask, ts sets.Set[string], fts sets.Set[string]) (errs *apis.FieldError) {
 	for idx, t := range finalTasks {
 		for _, p := range t.Params {
 			if expressions, ok := GetVarSubstitutionExpressionsForParam(p); ok {
@@ -737,7 +737,7 @@ func validateTaskResultReferenceInFinallyTasks(finalTasks []PipelineTask, ts set
 	return errs
 }
 
-func validateResultsVariablesExpressionsInFinally(expressions []string, pipelineTasksNames sets.String, finalTasksNames sets.String, fieldPath string) (errs *apis.FieldError) {
+func validateResultsVariablesExpressionsInFinally(expressions []string, pipelineTasksNames sets.Set[string], finalTasksNames sets.Set[string], fieldPath string) (errs *apis.FieldError) {
 	if LooksLikeContainsResultRefs(expressions) {
 		resultRefs := NewResultRefs(expressions)
 		for _, resultRef := range resultRefs {
@@ -905,7 +905,7 @@ func validateArtifactReference(ctx context.Context, tasks []PipelineTask, finalT
 // from parameters, workspaces, and when expressions defined in the Pipeline's Tasks and Finally Tasks.
 // For example, if a Task in the Pipeline has a parameter with a value "$(params.array-param-name[1])",
 // this would be one of the strings returned.
-func (ps *PipelineSpec) GetIndexingReferencesToArrayParams() sets.String {
+func (ps *PipelineSpec) GetIndexingReferencesToArrayParams() sets.Set[string] {
 	paramsRefs := []string{}
 	for i := range ps.Tasks {
 		paramsRefs = append(paramsRefs, ps.Tasks[i].Params.extractValues()...)
@@ -935,5 +935,5 @@ func (ps *PipelineSpec) GetIndexingReferencesToArrayParams() sets.String {
 	for _, p := range paramsRefs {
 		arrayIndexParamRefs = append(arrayIndexParamRefs, extractArrayIndexingParamRefs(p)...)
 	}
-	return sets.NewString(arrayIndexParamRefs...)
+	return sets.New(arrayIndexParamRefs...)
 }

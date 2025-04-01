@@ -42,10 +42,10 @@ func (s *issueService) ListLabels(ctx context.Context, repo string, number int, 
 	f := s.data
 	re := regexp.MustCompile(fmt.Sprintf(`^%s#%d:(.*)$`, repo, number))
 	la := []*scm.Label{}
-	allLabels := sets.NewString(f.IssueLabelsExisting...)
+	allLabels := sets.New(f.IssueLabelsExisting...)
 	allLabels.Insert(f.IssueLabelsAdded...)
 	allLabels.Delete(f.IssueLabelsRemoved...)
-	for _, l := range allLabels.List() {
+	for _, l := range sets.List(allLabels) {
 		groups := re.FindStringSubmatch(l)
 		if groups != nil {
 			la = append(la, &scm.Label{Name: groups[1]})
@@ -57,7 +57,7 @@ func (s *issueService) ListLabels(ctx context.Context, repo string, number int, 
 func (s *issueService) AddLabel(ctx context.Context, repo string, number int, label string) (*scm.Response, error) {
 	f := s.data
 	labelString := fmt.Sprintf("%s#%d:%s", repo, number, label)
-	if sets.NewString(f.IssueLabelsAdded...).Has(labelString) {
+	if sets.New(f.IssueLabelsAdded...).Has(labelString) {
 		return nil, fmt.Errorf("cannot add %v to %s/#%d", label, repo, number)
 	}
 	if f.RepoLabelsExisting == nil {
@@ -77,7 +77,7 @@ func (s *issueService) AddLabel(ctx context.Context, repo string, number int, la
 func (s *issueService) DeleteLabel(ctx context.Context, repo string, number int, label string) (*scm.Response, error) {
 	f := s.data
 	labelString := fmt.Sprintf("%s#%d:%s", repo, number, label)
-	if !sets.NewString(f.IssueLabelsRemoved...).Has(labelString) {
+	if !sets.New(f.IssueLabelsRemoved...).Has(labelString) {
 		f.IssueLabelsRemoved = append(f.IssueLabelsRemoved, labelString)
 		return nil, nil
 	}

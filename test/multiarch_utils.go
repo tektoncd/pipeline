@@ -78,10 +78,10 @@ func initImageNames() map[int]string {
 }
 
 // initExcludedTests provides list of excluded tests for e2e and exanples tests
-func initExcludedTests() sets.String {
+func initExcludedTests() sets.Set[string] {
 	switch getTestArch() {
 	case "s390x":
-		return sets.NewString(
+		return sets.New(
 			// Git resolver test using local Gitea instance
 			"TestGitResolver_API",
 			// examples
@@ -90,7 +90,7 @@ func initExcludedTests() sets.String {
 			"TestExamples/v1beta1/taskruns/creds-init-only-mounts-provided-credentials",
 		)
 	case "ppc64le":
-		return sets.NewString(
+		return sets.New(
 			// Git resolver test using local Gitea instance
 			"TestGitResolver_API",
 			// examples
@@ -99,7 +99,7 @@ func initExcludedTests() sets.String {
 		)
 	}
 
-	return sets.NewString()
+	return sets.New[string]()
 }
 
 // getTestImage gets test image based on unique id

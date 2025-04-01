@@ -361,7 +361,7 @@ func TestGetChildObjectsFromPRStatusForTaskNames(t *testing.T) {
 	testCases := []struct {
 		name                   string
 		prStatus               v1.PipelineRunStatus
-		taskNames              sets.String
+		taskNames              sets.Set[string]
 		expectedTRNames        []string
 		expectedRunNames       []string
 		expectedCustomRunNames []string
