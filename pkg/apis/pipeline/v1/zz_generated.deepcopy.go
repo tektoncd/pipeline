@@ -2046,6 +2046,11 @@ func (in *TaskSpec) DeepCopyInto(out *TaskSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.PodTemplate != nil {
+		in, out := &in.PodTemplate, &out.PodTemplate
+		*out = new(pod.Template)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
