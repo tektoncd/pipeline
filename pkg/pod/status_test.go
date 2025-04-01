@@ -3165,3 +3165,141 @@ func TestGetTaskResultsFromSidecarLogs(t *testing.T) {
 		t.Error(diff.PrintWantGot(d))
 	}
 }
+
+func TestIsSubPathDirectoryError(t *testing.T) {
+	tests := []struct {
+		name     string
+		pod      *corev1.Pod
+		expected bool
+	}{
+		{
+			name: "container has subPath directory error",
+			pod: &corev1.Pod{
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							State: corev1.ContainerState{
+								Waiting: &corev1.ContainerStateWaiting{
+									Reason:  "CreateContainerConfigError",
+									Message: "failed to create subPath directory",
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "container has different config error",
+			pod: &corev1.Pod{
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							State: corev1.ContainerState{
+								Waiting: &corev1.ContainerStateWaiting{
+									Reason:  "CreateContainerConfigError",
+									Message: "some other error",
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "container is running normally",
+			pod: &corev1.Pod{
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							State: corev1.ContainerState{
+								Running: &corev1.ContainerStateRunning{},
+							},
+						},
+					},
+				},
+			},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isSubPathDirectoryError(tt.pod)
+			if got != tt.expected {
+				t.Errorf("isSubPathDirectoryError() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestUpdateIncompleteTaskRunStatus_SubPathError(t *testing.T) {
+	tests := []struct {
+		name     string
+		pod      *corev1.Pod
+		trs      *v1.TaskRunStatus
+		expected *apis.Condition
+	}{
+		{
+			name: "subPath directory error should mark as running",
+			pod: &corev1.Pod{
+				Status: corev1.PodStatus{
+					Phase: corev1.PodPending,
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							State: corev1.ContainerState{
+								Waiting: &corev1.ContainerStateWaiting{
+									Reason:  "CreateContainerConfigError",
+									Message: "failed to create subPath directory",
+								},
+							},
+						},
+					},
+				},
+			},
+			trs: &v1.TaskRunStatus{},
+			expected: &apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionUnknown,
+				Reason:  "Pending",
+				Message: "Waiting for subPath directory creation to complete",
+			},
+		},
+		{
+			name: "other config error should mark as failure",
+			pod: &corev1.Pod{
+				Status: corev1.PodStatus{
+					Phase: corev1.PodPending,
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							State: corev1.ContainerState{
+								Waiting: &corev1.ContainerStateWaiting{
+									Reason:  "CreateContainerConfigError",
+									Message: "some other config error",
+								},
+							},
+						},
+					},
+				},
+			},
+			trs: &v1.TaskRunStatus{},
+			expected: &apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  "CreateContainerConfigError",
+				Message: "Failed to create pod due to config error",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			updateIncompleteTaskRunStatus(tt.trs, tt.pod)
+			if d := cmp.Diff(tt.expected, tt.trs.GetCondition(apis.ConditionSucceeded), cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")); d != "" {
+				t.Errorf("Unexpected status: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
