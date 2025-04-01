@@ -2586,6 +2586,7 @@ spec:
                         enableProvenanceInStatus:
                           type: boolean
                         enableStepActions:
+                          description: EnableStepActions is a no-op flag since StepActions are stable
                           type: boolean
                         enforceNonfalsifiability:
                           type: string
@@ -2998,6 +2999,7 @@ spec:
                                   enableProvenanceInStatus:
                                     type: boolean
                                   enableStepActions:
+                                    description: EnableStepActions is a no-op flag since StepActions are stable
                                     type: boolean
                                   enforceNonfalsifiability:
                                     type: string
@@ -3284,6 +3286,7 @@ spec:
                                         enableProvenanceInStatus:
                                           type: boolean
                                         enableStepActions:
+                                          description: EnableStepActions is a no-op flag since StepActions are stable
                                           type: boolean
                                         enforceNonfalsifiability:
                                           type: string
@@ -5891,6 +5894,7 @@ spec:
                         enableProvenanceInStatus:
                           type: boolean
                         enableStepActions:
+                          description: EnableStepActions is a no-op flag since StepActions are stable
                           type: boolean
                         enforceNonfalsifiability:
                           type: string
