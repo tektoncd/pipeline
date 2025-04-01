@@ -224,6 +224,20 @@ func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldErr
 		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "matrix", config.BetaAPIFields))
 		errs = errs.Also(pt.Matrix.validateCombinationsCount(ctx))
 		errs = errs.Also(pt.Matrix.validateUniqueParams())
+		if pt.Matrix.HasInclude() {
+			for i := range pt.Matrix.Include {
+				if pt.Matrix.Include[i].When != nil {
+					for _, we := range pt.Matrix.Include[i].When {
+						if we.CEL != "" {
+							// CEL is not allowed in matrix.include.when
+							errs = errs.Also(apis.ErrDisallowedFields("matrix.include.when.cel"))
+							return errs
+						}
+					}
+					errs = errs.Also(pt.Matrix.Include[i].When.validateWhenExpressionsFields(ctx).ViaFieldIndex("matrix.include", i))
+				}
+			}
+		}
 	}
 	errs = errs.Also(pt.Matrix.validateParameterInOneOfMatrixOrParams(pt.Params))
 	return errs

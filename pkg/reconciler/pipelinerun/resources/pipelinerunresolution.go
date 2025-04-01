@@ -611,6 +611,7 @@ func ResolvePipelineTask(
 	ApplyTaskResults(PipelineRunState{&rpt}, resolvedResultRefs)
 
 	if rpt.PipelineTask.IsMatrixed() {
+		ApplyMatrixIncludeWhenExpressions(rpt.PipelineTask, &pipelineRun)
 		numCombinations = rpt.PipelineTask.Matrix.CountCombinations()
 	}
 	if rpt.IsCustomTask() {

@@ -19,7 +19,6 @@ package v1beta1
 import (
 	"context"
 	"fmt"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -280,6 +279,14 @@ func (m *Matrix) convertTo(ctx context.Context, sink *v1.Matrix) {
 	}
 	for i, include := range m.Include {
 		sink.Include = append(sink.Include, v1.IncludeParams{Name: include.Name})
+		if m.Include[i].When != nil {
+			sink.Include[i].When = v1.WhenExpressions{}
+			for _, we := range m.Include[i].When {
+				newWe := v1.WhenExpression{}
+				we.convertTo(ctx, &newWe)
+				sink.Include[i].When = append(sink.Include[i].When, newWe)
+			}
+		}
 		for _, param := range include.Params {
 			newIncludeParam := v1.Param{}
 			param.convertTo(ctx, &newIncludeParam)
@@ -297,6 +304,14 @@ func (m *Matrix) convertFrom(ctx context.Context, source v1.Matrix) {
 
 	for i, include := range source.Include {
 		m.Include = append(m.Include, IncludeParams{Name: include.Name})
+		if source.Include[i].When != nil {
+			m.Include[i].When = WhenExpressions{}
+			for _, we := range source.Include[i].When {
+				newWe := WhenExpression{}
+				newWe.convertFrom(ctx, we)
+				m.Include[i].When = append(m.Include[i].When, newWe)
+			}
+		}
 		for _, p := range include.Params {
 			new := Param{}
 			new.ConvertFrom(ctx, p)
