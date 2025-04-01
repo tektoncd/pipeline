@@ -116,7 +116,7 @@ spec:
         resolver: bundles
         params:
           - name: bundle
-            value: gcr.io/tekton-releases/catalog/upstream/golang-test:0.2
+            value: ghcr.io/tektoncd/catalog/upstream/tasks/golang-test:0.2
           - name: name
             value: golang-test
           - name: kind
@@ -138,7 +138,7 @@ spec:
         resolver: bundles
         params:
           - name: bundle
-            value: gcr.io/tekton-releases/catalog/upstream/golang-build:0.3
+            value: ghcr.io/tektoncd/catalog/upstream/tasks/golang-build:0.3
           - name: name
             value: golang-build
           - name: kind
@@ -202,7 +202,7 @@ spec:
         resolver: bundles
         params:
           - name: bundle
-            value: gcr.io/tekton-releases/catalog/upstream/gcs-upload:0.3
+            value: ghcr.io/tektoncd/catalog/upstream/tasks/gcs-upload:0.3
           - name: name
             value: gcs-upload
           - name: kind
@@ -230,7 +230,7 @@ spec:
         resolver: bundles
         params:
           - name: bundle
-            value: gcr.io/tekton-releases/catalog/upstream/gcs-upload:0.3
+            value: ghcr.io/tektoncd/catalog/upstream/tasks/gcs-upload:0.3
           - name: name
             value: gcs-upload
           - name: kind
