@@ -32,7 +32,7 @@ rules:
     # Controller needs cluster access to all of the CRDs that it is responsible for
     # managing.
   - apiGroups: ["tekton.dev"]
-    resources: ["tasks", "clustertasks", "taskruns", "pipelines", "pipelineruns", "customruns", "stepactions"]
+    resources: ["tasks", "taskruns", "pipelines", "pipelineruns", "customruns", "stepactions"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   - apiGroups: ["tekton.dev"]
     resources: ["verificationpolicies"]
@@ -41,7 +41,7 @@ rules:
     resources: ["taskruns/finalizers", "pipelineruns/finalizers", "customruns/finalizers"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   - apiGroups: ["tekton.dev"]
-    resources: ["tasks/status", "clustertasks/status", "taskruns/status", "pipelines/status", "pipelineruns/status", "customruns/status", "verificationpolicies/status", "stepactions/status"]
+    resources: ["tasks/status", "taskruns/status", "pipelines/status", "pipelineruns/status", "customruns/status", "verificationpolicies/status", "stepactions/status"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   # resolution.tekton.dev
   - apiGroups: ["resolution.tekton.dev"]
@@ -93,7 +93,6 @@ rules:
       - pipelines.tekton.dev
       - pipelineruns.tekton.dev
       - tasks.tekton.dev
-      - clustertasks.tekton.dev
       - taskruns.tekton.dev
       - resolutionrequests.resolution.tekton.dev
       - customruns.tekton.dev
@@ -148,5 +147,5 @@ metadata:
     app.kubernetes.io/part-of: tekton-pipelines
 rules:
   - apiGroups: ["tekton.dev"]
-    resources: ["tasks", "clustertasks", "taskruns", "pipelines", "pipelineruns", "customruns"]
+    resources: ["tasks", "taskruns", "pipelines", "pipelineruns", "customruns"]
     verbs: ["get", "list", "watch"]

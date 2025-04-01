@@ -153,7 +153,7 @@ function uninstall_pipeline_crd_version() {
 }
 
 function delete_tekton_resources() {
-  for res in tasks clustertasks pipelines taskruns pipelineruns; do
+  for res in tasks pipelines taskruns pipelineruns; do
     echo ">> Deleting ${res}"
     kubectl delete --ignore-not-found=true ${res}.tekton.dev --all
   done
