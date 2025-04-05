@@ -18,11 +18,14 @@ package v1_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"knative.dev/pkg/apis"
@@ -163,6 +166,81 @@ func TestRef_Invalid(t *testing.T) {
 			err := ts.ref.Validate(ctx)
 			if d := cmp.Diff(ts.wantErr.Error(), err.Error()); d != "" {
 				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestSidecarValidate(t *testing.T) {
+	tests := []struct {
+		name    string
+		sidecar v1.Sidecar
+	}{{
+		name: "valid sidecar",
+		sidecar: v1.Sidecar{
+			Name:  "my-sidecar",
+			Image: "my-image",
+		},
+	}}
+
+	for _, sct := range tests {
+		t.Run(sct.name, func(t *testing.T) {
+			err := sct.sidecar.Validate(context.Background())
+			if err != nil {
+				t.Errorf("Sidecar.Validate() returned error for valid Sidecar: %v", err)
+			}
+		})
+	}
+}
+
+func TestSidecarValidateError(t *testing.T) {
+	tests := []struct {
+		name          string
+		sidecar       v1.Sidecar
+		expectedError apis.FieldError
+	}{{
+		name: "cannot use reserved sidecar name",
+		sidecar: v1.Sidecar{
+			Name:  "tekton-log-results",
+			Image: "my-image",
+		},
+		expectedError: apis.FieldError{
+			Message: fmt.Sprintf("Invalid: cannot use reserved sidecar name %v ", pipeline.ReservedResultsSidecarName),
+			Paths:   []string{"name"},
+		},
+	}, {
+		name: "missing image",
+		sidecar: v1.Sidecar{
+			Name: "tekton-invalid-side-car",
+		},
+		expectedError: apis.FieldError{
+			Message: "missing field(s)",
+			Paths:   []string{"image"},
+		},
+	}, {
+		name: "invalid command with script",
+		sidecar: v1.Sidecar{
+			Name:    "tekton-invalid-side-car",
+			Image:   "ubuntu",
+			Command: []string{"command foo"},
+			Script: `
+				#!/usr/bin/env  bash
+				echo foo`,
+		},
+		expectedError: apis.FieldError{
+			Message: "script cannot be used with command",
+			Paths:   []string{"script"},
+		},
+	}}
+
+	for _, sct := range tests {
+		t.Run(sct.name, func(t *testing.T) {
+			err := sct.sidecar.Validate(context.Background())
+			if err == nil {
+				t.Fatalf("Expected an error, got nothing for %v", sct.sidecar)
+			}
+			if d := cmp.Diff(sct.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("Sidecar.Validate() errors diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}
