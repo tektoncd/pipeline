@@ -132,3 +132,6 @@ type TaskList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Task `json:"items"`
 }
+
+// SidecarList is a list of Sidecars
+type SidecarList []Sidecar
