@@ -48,7 +48,7 @@ func TestRef_Valid(t *testing.T) {
 		name: "simple ref",
 		ref:  &v1.Ref{Name: "refname"},
 	}, {
-		name: "ref name - consice syntax",
+		name: "ref name - concise syntax",
 		ref:  &v1.Ref{Name: "foo://baz:ver", ResolverRef: v1.ResolverRef{Resolver: "git"}},
 		wc:   enableConciseResolverSyntax,
 	}, {
