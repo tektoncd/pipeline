@@ -21,12 +21,27 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
+	"time"
 
+	"github.com/tektoncd/pipeline/internal/artifactref"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/internal/resultref"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
 )
+
+// Validate ensures that a supplied Ref field is populated
+// correctly. No errors are returned for a nil Ref.
+func (ref *Ref) Validate(ctx context.Context) (errs *apis.FieldError) {
+	if ref == nil {
+		return errs
+	}
+	return validateRef(ctx, ref.Name, ref.Resolver, ref.Params)
+}
 
 func validateRef(ctx context.Context, refName string, refResolver ResolverName, refParams Params) (errs *apis.FieldError) {
 	switch {
@@ -80,15 +95,6 @@ func validateRef(ctx context.Context, refName string, refResolver ResolverName, 
 	return errs
 }
 
-// Validate ensures that a supplied Ref field is populated
-// correctly. No errors are returned for a nil Ref.
-func (ref *Ref) Validate(ctx context.Context) (errs *apis.FieldError) {
-	if ref == nil {
-		return errs
-	}
-	return validateRef(ctx, ref.Name, ref.Resolver, ref.Params)
-}
-
 // RefNameLikeUrl checks if the name is url parsable and returns an error if it isn't.
 func RefNameLikeUrl(name string) error {
 	schemeRegex := regexp.MustCompile(`[\w-]+:\/\/*`)
@@ -96,4 +102,292 @@ func RefNameLikeUrl(name string) error {
 		return errors.New("invalid URI for request")
 	}
 	return nil
+}
+
+func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.FieldError) {
+	if err := validateArtifactsReferencesInStep(ctx, s); err != nil {
+		return err
+	}
+
+	if s.Ref != nil {
+		errs = errs.Also(s.Ref.Validate(ctx))
+		if s.Image != "" {
+			errs = errs.Also(&apis.FieldError{
+				Message: "image cannot be used with Ref",
+				Paths:   []string{"image"},
+			})
+		}
+		if len(s.Command) > 0 {
+			errs = errs.Also(&apis.FieldError{
+				Message: "command cannot be used with Ref",
+				Paths:   []string{"command"},
+			})
+		}
+		if len(s.Args) > 0 {
+			errs = errs.Also(&apis.FieldError{
+				Message: "args cannot be used with Ref",
+				Paths:   []string{"args"},
+			})
+		}
+		if s.Script != "" {
+			errs = errs.Also(&apis.FieldError{
+				Message: "script cannot be used with Ref",
+				Paths:   []string{"script"},
+			})
+		}
+		if s.WorkingDir != "" {
+			errs = errs.Also(&apis.FieldError{
+				Message: "working dir cannot be used with Ref",
+				Paths:   []string{"workingDir"},
+			})
+		}
+		if s.Env != nil {
+			errs = errs.Also(&apis.FieldError{
+				Message: "env cannot be used with Ref",
+				Paths:   []string{"env"},
+			})
+		}
+		if len(s.VolumeMounts) > 0 {
+			errs = errs.Also(&apis.FieldError{
+				Message: "volumeMounts cannot be used with Ref",
+				Paths:   []string{"volumeMounts"},
+			})
+		}
+		if len(s.Results) > 0 {
+			errs = errs.Also(&apis.FieldError{
+				Message: "results cannot be used with Ref",
+				Paths:   []string{"results"},
+			})
+		}
+	} else {
+		if len(s.Params) > 0 {
+			errs = errs.Also(&apis.FieldError{
+				Message: "params cannot be used without Ref",
+				Paths:   []string{"params"},
+			})
+		}
+		if s.Image == "" {
+			errs = errs.Also(apis.ErrMissingField("Image"))
+		}
+
+		if s.Script != "" {
+			if len(s.Command) > 0 {
+				errs = errs.Also(&apis.FieldError{
+					Message: "script cannot be used with command",
+					Paths:   []string{"script"},
+				})
+			}
+		}
+	}
+
+	if s.Name != "" {
+		if names.Has(s.Name) {
+			errs = errs.Also(apis.ErrInvalidValue(s.Name, "name"))
+		}
+		if e := validation.IsDNS1123Label(s.Name); len(e) > 0 {
+			errs = errs.Also(&apis.FieldError{
+				Message: fmt.Sprintf("invalid value %q", s.Name),
+				Paths:   []string{"name"},
+				Details: "Task step name must be a valid DNS Label, For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+			})
+		}
+		names.Insert(s.Name)
+	}
+
+	if s.Timeout != nil {
+		if s.Timeout.Duration < time.Duration(0) {
+			return apis.ErrInvalidValue(s.Timeout.Duration, "negative timeout")
+		}
+	}
+
+	for j, vm := range s.VolumeMounts {
+		if strings.HasPrefix(vm.MountPath, "/tekton/") &&
+			!strings.HasPrefix(vm.MountPath, "/tekton/home") {
+			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("volumeMount cannot be mounted under /tekton/ (volumeMount %q mounted at %q)", vm.Name, vm.MountPath), "mountPath").ViaFieldIndex("volumeMounts", j))
+		}
+		if strings.HasPrefix(vm.Name, "tekton-internal-") {
+			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf(`volumeMount name %q cannot start with "tekton-internal-"`, vm.Name), "name").ViaFieldIndex("volumeMounts", j))
+		}
+	}
+
+	if s.OnError != "" {
+		if !isParamRefs(string(s.OnError)) && s.OnError != Continue && s.OnError != StopAndFail {
+			errs = errs.Also(&apis.FieldError{
+				Message: fmt.Sprintf("invalid value: \"%v\"", s.OnError),
+				Paths:   []string{"onError"},
+				Details: "Task step onError must be either \"continue\" or \"stopAndFail\"",
+			})
+		}
+	}
+
+	if s.Script != "" {
+		cleaned := strings.TrimSpace(s.Script)
+		if strings.HasPrefix(cleaned, "#!win") {
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "windows script support", config.AlphaAPIFields).ViaField("script"))
+		}
+	}
+
+	// StdoutConfig is an alpha feature and will fail validation if it's used in a task spec
+	// when the enable-api-fields feature gate is not "alpha".
+	if s.StdoutConfig != nil {
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "step stdout stream support", config.AlphaAPIFields).ViaField("stdoutconfig"))
+	}
+	// StderrConfig is an alpha feature and will fail validation if it's used in a task spec
+	// when the enable-api-fields feature gate is not "alpha".
+	if s.StderrConfig != nil {
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "step stderr stream support", config.AlphaAPIFields).ViaField("stderrconfig"))
+	}
+
+	// Validate usage of step result reference.
+	// Referencing previous step's results are only allowed in `env`, `command` and `args`.
+	errs = errs.Also(validateStepResultReference(s))
+
+	// Validate usage of step artifacts output reference
+	// Referencing previous step's results are only allowed in `env`, `command` and `args`, `script`.
+	errs = errs.Also(validateStepArtifactsReference(s))
+	return errs
+}
+
+// isParamRefs attempts to check if a specified string looks like it contains any parameter reference
+// This is useful to make sure the specified value looks like a Parameter Reference before performing any strict validation
+func isParamRefs(s string) bool {
+	return strings.HasPrefix(s, "$("+ParamsPrefix)
+}
+
+func validateArtifactsReferencesInStep(ctx context.Context, s Step) *apis.FieldError {
+	cfg := config.FromContextOrDefaults(ctx)
+	if cfg == nil || cfg.FeatureFlags == nil {
+		cfg = &config.Config{
+			FeatureFlags: &config.FeatureFlags{},
+		}
+	}
+
+	if !cfg.FeatureFlags.EnableArtifacts {
+		var t []string
+		if s.Script != "" {
+			t = append(t, s.Script)
+		}
+		if len(s.Command) > 0 {
+			t = append(t, s.Command...)
+		}
+		if len(s.Args) > 0 {
+			t = append(t, s.Args...)
+		}
+		if s.Env != nil {
+			for _, e := range s.Env {
+				if e.Value != "" {
+					t = append(t, e.Value)
+				}
+			}
+		}
+		if slices.ContainsFunc(t, stepArtifactReferenceExists) || slices.ContainsFunc(t, taskArtifactReferenceExists) {
+			return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use artifacts feature.", config.EnableArtifacts), "")
+		}
+	}
+	return nil
+}
+
+func stepArtifactReferenceExists(src string) bool {
+	return len(artifactref.StepArtifactRegex.FindAllStringSubmatch(src, -1)) > 0 || strings.Contains(src, "$("+artifactref.StepArtifactPathPattern+")")
+}
+
+func taskArtifactReferenceExists(src string) bool {
+	return len(artifactref.TaskArtifactRegex.FindAllStringSubmatch(src, -1)) > 0 || strings.Contains(src, "$("+artifactref.TaskArtifactPathPattern+")")
+}
+
+func validateStepResultReference(s Step) (errs *apis.FieldError) {
+	errs = errs.Also(errorIfStepResultReferenceinField(s.Name, "name"))
+	errs = errs.Also(errorIfStepResultReferenceinField(s.Image, "image"))
+	errs = errs.Also(errorIfStepResultReferenceinField(s.Script, "script"))
+	errs = errs.Also(errorIfStepResultReferenceinField(string(s.ImagePullPolicy), "imagePullPoliicy"))
+	errs = errs.Also(errorIfStepResultReferenceinField(s.WorkingDir, "workingDir"))
+	for _, e := range s.EnvFrom {
+		errs = errs.Also(errorIfStepResultReferenceinField(e.Prefix, "envFrom.prefix"))
+		if e.ConfigMapRef != nil {
+			errs = errs.Also(errorIfStepResultReferenceinField(e.ConfigMapRef.LocalObjectReference.Name, "envFrom.configMapRef"))
+		}
+		if e.SecretRef != nil {
+			errs = errs.Also(errorIfStepResultReferenceinField(e.SecretRef.LocalObjectReference.Name, "envFrom.secretRef"))
+		}
+	}
+	for _, v := range s.VolumeMounts {
+		errs = errs.Also(errorIfStepResultReferenceinField(v.Name, "volumeMounts.name"))
+		errs = errs.Also(errorIfStepResultReferenceinField(v.MountPath, "volumeMounts.mountPath"))
+		errs = errs.Also(errorIfStepResultReferenceinField(v.SubPath, "volumeMounts.subPath"))
+	}
+	for _, v := range s.VolumeDevices {
+		errs = errs.Also(errorIfStepResultReferenceinField(v.Name, "volumeDevices.name"))
+		errs = errs.Also(errorIfStepResultReferenceinField(v.DevicePath, "volumeDevices.devicePath"))
+	}
+	return errs
+}
+
+func errorIfStepResultReferenceinField(value, fieldName string) (errs *apis.FieldError) {
+	matches := resultref.StepResultRegex.FindAllStringSubmatch(value, -1)
+	if len(matches) > 0 {
+		errs = errs.Also(&apis.FieldError{
+			Message: "stepResult substitutions are only allowed in env, command and args. Found usage in",
+			Paths:   []string{fieldName},
+		})
+	}
+	return errs
+}
+
+func validateStepArtifactsReference(s Step) (errs *apis.FieldError) {
+	errs = errs.Also(errorIfStepArtifactReferencedInField(s.Name, "name"))
+	errs = errs.Also(errorIfStepArtifactReferencedInField(s.Image, "image"))
+	errs = errs.Also(errorIfStepArtifactReferencedInField(string(s.ImagePullPolicy), "imagePullPolicy"))
+	errs = errs.Also(errorIfStepArtifactReferencedInField(s.WorkingDir, "workingDir"))
+	for _, e := range s.EnvFrom {
+		errs = errs.Also(errorIfStepArtifactReferencedInField(e.Prefix, "envFrom.prefix"))
+		if e.ConfigMapRef != nil {
+			errs = errs.Also(errorIfStepArtifactReferencedInField(e.ConfigMapRef.LocalObjectReference.Name, "envFrom.configMapRef"))
+		}
+		if e.SecretRef != nil {
+			errs = errs.Also(errorIfStepArtifactReferencedInField(e.SecretRef.LocalObjectReference.Name, "envFrom.secretRef"))
+		}
+	}
+	for _, v := range s.VolumeMounts {
+		errs = errs.Also(errorIfStepArtifactReferencedInField(v.Name, "volumeMounts.name"))
+		errs = errs.Also(errorIfStepArtifactReferencedInField(v.MountPath, "volumeMounts.mountPath"))
+		errs = errs.Also(errorIfStepArtifactReferencedInField(v.SubPath, "volumeMounts.subPath"))
+	}
+	for _, v := range s.VolumeDevices {
+		errs = errs.Also(errorIfStepArtifactReferencedInField(v.Name, "volumeDevices.name"))
+		errs = errs.Also(errorIfStepArtifactReferencedInField(v.DevicePath, "volumeDevices.devicePath"))
+	}
+	return errs
+}
+
+func errorIfStepArtifactReferencedInField(value, fieldName string) (errs *apis.FieldError) {
+	if stepArtifactReferenceExists(value) {
+		errs = errs.Also(&apis.FieldError{
+			Message: "stepArtifact substitutions are only allowed in env, command, args and script. Found usage in",
+			Paths:   []string{fieldName},
+		})
+	}
+	return errs
+}
+
+func validateSidecar(errs *apis.FieldError, sc Sidecar) *apis.FieldError {
+	if sc.Name == pipeline.ReservedResultsSidecarName {
+		errs = errs.Also(&apis.FieldError{
+			Message: fmt.Sprintf("Invalid: cannot use reserved sidecar name %v ", sc.Name),
+			Paths:   []string{"name"},
+		})
+	}
+
+	if sc.Image == "" {
+		errs = errs.Also(apis.ErrMissingField("image"))
+	}
+
+	if sc.Script != "" {
+		if len(sc.Command) > 0 {
+			errs = errs.Also(&apis.FieldError{
+				Message: "script cannot be used with command",
+				Paths:   []string{"script"},
+			})
+		}
+	}
+	return errs
 }
