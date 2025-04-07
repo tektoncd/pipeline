@@ -125,7 +125,6 @@ type StepActionSpec struct {
 	// Params is a list of input parameters required to run the stepAction.
 	// Params must be supplied as inputs in Steps unless they declare a defaultvalue.
 	// +optional
-	// +listType=atomic
 	Params v1.ParamSpecs `json:"params,omitempty"`
 	// Results are values that this StepAction can output
 	// +optional

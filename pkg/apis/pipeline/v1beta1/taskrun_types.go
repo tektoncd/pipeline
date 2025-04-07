@@ -39,7 +39,6 @@ type TaskRunSpec struct {
 	// +optional
 	Debug *TaskRunDebug `json:"debug,omitempty"`
 	// +optional
-	// +listType=atomic
 	Params Params `json:"params,omitempty"`
 	// Deprecated: Unused, preserved only for backwards compatibility
 	// +optional
@@ -268,6 +267,9 @@ func (trs *TaskRunStatus) MarkResourceFailed(reason TaskRunReason, err error) {
 	trs.CompletionTime = &succeeded.LastTransitionTime.Inner
 }
 
+// +listType=atomic
+type RetriesStatus []TaskRunStatus
+
 // TaskRunStatusFields holds the fields of TaskRun's status.  This is defined
 // separately and inlined so that other types can readily consume these fields
 // via duck typing.
@@ -299,10 +301,9 @@ type TaskRunStatusFields struct {
 	// All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.
 	// See TaskRun.status (API version: tekton.dev/v1beta1)
 	// +optional
-	// +listType=atomic
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
-	RetriesStatus []TaskRunStatus `json:"retriesStatus,omitempty"`
+	RetriesStatus RetriesStatus `json:"retriesStatus,omitempty"`
 
 	// Results from Resources built during the TaskRun.
 	// This is tomb-stoned along with the removal of pipelineResources
