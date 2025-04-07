@@ -410,6 +410,7 @@ type SidecarState struct {
 // used to run the steps in a Task.
 //
 // +k8s:openapi-gen=true
+// +kubebuilder:storageversion
 type TaskRun struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
