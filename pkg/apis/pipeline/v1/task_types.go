@@ -36,6 +36,7 @@ import (
 // output resources the Task requires.
 //
 // +k8s:openapi-gen=true
+// +kubebuilder:storageversion
 type Task struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
