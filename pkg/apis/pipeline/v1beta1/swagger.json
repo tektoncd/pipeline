@@ -153,7 +153,6 @@
             "default": {},
             "$ref": "#/definitions/v1.Volume"
           },
-          "x-kubernetes-list-type": "atomic",
           "x-kubernetes-patch-merge-key": "name",
           "x-kubernetes-patch-strategy": "merge,retainKeys"
         }
@@ -386,8 +385,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.Param"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "retries": {
           "description": "Used for propagating retries count to custom tasks",
@@ -469,8 +467,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.ParamSpec"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "resources": {
           "description": "Resources is a list input and output resource to run the task Resources are represented in TaskRuns as bindings to instances of PipelineResources.\n\nDeprecated: Unused, preserved only for backwards compatibility",
@@ -517,8 +514,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.Volume"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "workspaces": {
           "description": "Workspaces are the volumes that this Task requires.",
@@ -545,8 +541,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.Param"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         }
       }
     },
@@ -595,8 +590,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.IncludeParams"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "params": {
           "description": "Params is a list of parameters used to fan out the pipelineTask Params takes only `Parameters` of type `\"array\"` Each array element is supplied to the `PipelineTask` by substituting `params` of type `\"string\"` in the underlying `Task`. The names of the `params` in the `Matrix` must match the names of the `params` in the underlying `Task` that they will be substituting.",
@@ -604,8 +598,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.Param"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         }
       }
     },
@@ -960,8 +953,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.Param"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "pipelineRef": {
           "$ref": "#/definitions/v1beta1.PipelineRef"
@@ -1241,8 +1233,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.ParamSpec"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "resources": {
           "description": "Deprecated: Unused, preserved only for backwards compatibility",
@@ -1312,8 +1303,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.Param"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "pipelineRef": {
           "description": "PipelineRef is a reference to a pipeline definition Note: PipelineRef is in preview mode and not yet supported",
@@ -1767,8 +1757,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.Param"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "resolver": {
           "description": "Resolver is the name of the resolver that should perform resolution of the referenced Tekton resource, such as \"git\".",
@@ -2099,8 +2088,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.Param"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "ports": {
           "description": "List of ports to expose from the Step's container. Exposing a port here gives the system additional information about the network connections a container uses, but is primarily informational. Not specifying a port here DOES NOT prevent that port from being exposed. Any port which is listening on the default \"0.0.0.0\" address inside a container will be accessible from the network. Cannot be updated.\n\nDeprecated: This field will be removed in a future release.",
@@ -2288,8 +2276,7 @@
           "items": {
             "type": "string",
             "default": ""
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "command": {
           "description": "Entrypoint array. Not executed within a shell. The image's ENTRYPOINT is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. \"$$(VAR_NAME)\" will produce the string literal \"$(VAR_NAME)\". Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
@@ -2325,8 +2312,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.ParamSpec"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "results": {
           "description": "Results are values that this StepAction can output",
@@ -2959,8 +2945,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.Param"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "podTemplate": {
           "description": "PodTemplate holds pod specific configuration",
@@ -3095,8 +3080,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.TaskRunStatus"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "sidecars": {
           "description": "The list has one entry per sidecar in the manifest. Each entry is represents the imageid of the corresponding sidecar.",
@@ -3187,8 +3171,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.TaskRunStatus"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "sidecars": {
           "description": "The list has one entry per sidecar in the manifest. Each entry is represents the imageid of the corresponding sidecar.",
@@ -3273,8 +3256,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.ParamSpec"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "resources": {
           "description": "Resources is a list input and output resource to run the task Resources are represented in TaskRuns as bindings to instances of PipelineResources.\n\nDeprecated: Unused, preserved only for backwards compatibility",
@@ -3317,8 +3299,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.Volume"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "workspaces": {
           "description": "Workspaces are the volumes that this Task requires.",
