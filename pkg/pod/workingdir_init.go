@@ -37,7 +37,7 @@ import (
 // so that the correct security context can be applied.
 func workingDirInit(workingdirinitImage string, stepContainers []corev1.Container, securityContext SecurityContextConfig, windows bool) *corev1.Container {
 	// Gather all unique workingDirs.
-	workingDirs := sets.NewString()
+	workingDirs := sets.New[string]()
 	for _, step := range stepContainers {
 		if step.WorkingDir != "" {
 			workingDirs.Insert(step.WorkingDir)
@@ -49,7 +49,7 @@ func workingDirInit(workingdirinitImage string, stepContainers []corev1.Containe
 
 	// Clean and append each relative workingDir.
 	var relativeDirs []string
-	for _, wd := range workingDirs.List() {
+	for _, wd := range sets.List(workingDirs) {
 		p := filepath.Clean(wd)
 		if !filepath.IsAbs(p) || strings.HasPrefix(p, "/workspace/") {
 			relativeDirs = append(relativeDirs, p)

@@ -110,11 +110,11 @@ func timeoutTaskRun(ctx context.Context, taskRunName string, namespace string, c
 
 // timeoutPipelineTaskRuns patches `TaskRun` and `Run` with canceled status and an appropriate message
 func timeoutPipelineTasks(ctx context.Context, logger *zap.SugaredLogger, pr *v1.PipelineRun, clientSet clientset.Interface) []string {
-	return timeoutPipelineTasksForTaskNames(ctx, logger, pr, clientSet, sets.NewString())
+	return timeoutPipelineTasksForTaskNames(ctx, logger, pr, clientSet, sets.New[string]())
 }
 
 // timeoutPipelineTasksForTaskNames patches `TaskRun`s and `Run`s for the given task names, or all if no task names are given, with canceled status and appropriate message
-func timeoutPipelineTasksForTaskNames(ctx context.Context, logger *zap.SugaredLogger, pr *v1.PipelineRun, clientSet clientset.Interface, taskNames sets.String) []string {
+func timeoutPipelineTasksForTaskNames(ctx context.Context, logger *zap.SugaredLogger, pr *v1.PipelineRun, clientSet clientset.Interface, taskNames sets.Set[string]) []string {
 	errs := []string{}
 
 	trNames, customRunNames, err := getChildObjectsFromPRStatusForTaskNames(ctx, pr.Status, taskNames)
