@@ -82,20 +82,6 @@ var (
 			}},
 		},
 	}
-	simpleClusterTask = &v1beta1.ClusterTask{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "simple",
-		},
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1beta1",
-			Kind:       "ClusterTask",
-		},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
-				Image: "something",
-			}},
-		},
-	}
 	sampleRefSource = &v1.RefSource{
 		URI: "abc.com",
 		Digest: map[string]string{
@@ -225,48 +211,6 @@ func TestLocalTaskRef(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name:      "local-clustertask",
-			namespace: "default",
-			tasks: []runtime.Object{
-				&v1beta1.ClusterTask{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "cluster-task",
-						Annotations: map[string]string{
-							"foo": "bar",
-						},
-						Labels: map[string]string{
-							"foo": "bar",
-						},
-					},
-				},
-				&v1beta1.ClusterTask{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "sample-task",
-					},
-				},
-			},
-			ref: &v1.TaskRef{
-				Name: "cluster-task",
-				Kind: "ClusterTask",
-			},
-			expected: &v1.Task{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "tekton.dev/v1",
-					Kind:       "Task",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-task",
-					Annotations: map[string]string{
-						"foo": "bar",
-					},
-					Labels: map[string]string{
-						"foo": "bar",
-					},
-				},
-			},
-			wantErr: nil,
-		},
-		{
 			name:      "task-not-found",
 			namespace: "default",
 			tasks:     []runtime.Object{},
@@ -275,17 +219,6 @@ func TestLocalTaskRef(t *testing.T) {
 			},
 			expected: nil,
 			wantErr:  errors.New(`tasks.tekton.dev "simple" not found`),
-		},
-		{
-			name:      "clustertask-not-found",
-			namespace: "default",
-			tasks:     []runtime.Object{},
-			ref: &v1.TaskRef{
-				Name: "cluster-task",
-				Kind: "ClusterTask",
-			},
-			expected: nil,
-			wantErr:  errors.New(`clustertasks.tekton.dev "cluster-task" not found`),
 		},
 		{
 			name:      "local-task-missing-namespace",
@@ -800,38 +733,6 @@ func TestGetTaskFunc_Local(t *testing.T) {
 			},
 			expected:     simpleNamespacedTask,
 			expectedKind: v1.NamespacedTaskKind,
-		}, {
-			name:       "local-cluster-task",
-			localTasks: []runtime.Object{simpleClusterTask},
-			remoteTasks: []runtime.Object{
-				&v1beta1.ClusterTask{
-					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1alpha1", Kind: "ClusterTask"},
-					ObjectMeta: metav1.ObjectMeta{Name: "simple"},
-				},
-				&v1beta1.ClusterTask{
-					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1alpha1", Kind: "ClusterTask"},
-					ObjectMeta: metav1.ObjectMeta{Name: "sample"},
-				},
-			},
-			ref: &v1.TaskRef{
-				Name: "simple",
-				Kind: v1.ClusterTaskRefKind,
-			},
-			expected: &v1.Task{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "simple",
-				},
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "tekton.dev/v1",
-					Kind:       "Task",
-				},
-				Spec: v1.TaskSpec{
-					Steps: []v1.Step{{
-						Image: "something",
-					}},
-				},
-			},
-			expectedKind: v1.NamespacedTaskKind,
 		},
 	}
 
@@ -1118,14 +1019,6 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 		}, "\n"),
 		wantTask: parse.MustParseV1TaskAndSetDefaults(t, taskYAMLString),
 	}, {
-		name: "v1beta1 cluster task",
-		taskYAML: strings.Join([]string{
-			"kind: ClusterTask",
-			"apiVersion: tekton.dev/v1beta1",
-			taskYAMLString,
-		}, "\n"),
-		wantTask: parse.MustParseV1TaskAndSetDefaults(t, taskYAMLString),
-	}, {
 		name: "v1 task",
 		taskYAML: strings.Join([]string{
 			"kind: Task",
@@ -1191,13 +1084,6 @@ func TestGetTaskFunc_RemoteResolution_ValidationFailure(t *testing.T) {
 		name: "invalid v1beta1 task",
 		taskYAML: strings.Join([]string{
 			"kind: Task",
-			"apiVersion: tekton.dev/v1beta1",
-			taskYAMLString,
-		}, "\n"),
-	}, {
-		name: "invalid v1beta1 clustertask",
-		taskYAML: strings.Join([]string{
-			"kind: ClusterTask",
 			"apiVersion: tekton.dev/v1beta1",
 			taskYAMLString,
 		}, "\n"),

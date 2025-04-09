@@ -65,7 +65,7 @@ var pts = []v1.PipelineTask{{
 	TaskRef: &v1.TaskRef{Name: "task"},
 }, {
 	Name:    "mytask3",
-	TaskRef: &v1.TaskRef{Name: "clustertask"},
+	TaskRef: &v1.TaskRef{Name: "task"},
 }, {
 	Name:    "mytask4",
 	TaskRef: &v1.TaskRef{Name: "task"},
