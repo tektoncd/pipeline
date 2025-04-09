@@ -44,6 +44,7 @@ func (*realPostWriter) Write(file string, content string) {
 	if err != nil {
 		log.Fatalf("Creating %q: %v", file, err)
 	}
+	defer f.Close()
 
 	if content != "" {
 		if _, err := f.WriteString(content); err != nil {
