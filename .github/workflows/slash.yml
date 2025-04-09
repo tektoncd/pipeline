@@ -34,7 +34,7 @@ jobs:
           [
             {
               "command": "retest",
-              "permission": "write",
+              "permission": "read",
               "issue_type": "pull-request",
               "repository": "tektoncd/pipeline"
             }
