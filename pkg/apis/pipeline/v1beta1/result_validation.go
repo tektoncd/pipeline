@@ -17,7 +17,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
@@ -67,14 +66,11 @@ func validateObjectResult(tr TaskResult) (errs *apis.FieldError) {
 }
 
 // validateValue validates the value of the TaskResult.
-// It requires that enable-step-actions is true, the value is of type string
+// It requires the value is of type string
 // and format $(steps.<stepName>.results.<resultName>)
 func (tr TaskResult) validateValue(ctx context.Context) (errs *apis.FieldError) {
 	if tr.Value == nil {
 		return nil
-	}
-	if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions {
-		return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to fetch Results from Steps using StepActions.", config.EnableStepActions))
 	}
 	if tr.Value.Type != ParamTypeString {
 		return &apis.FieldError{

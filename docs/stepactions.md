@@ -20,8 +20,7 @@ weight: 201
     - [Specifying Remote StepActions](#specifying-remote-stepactions)
 
 ## Overview
-> :seedling: **`StepActions` is an [beta](additional-configs.md#beta-features) feature.**
-> The `enable-step-actions` feature flag must be set to `"true"` to specify a `StepAction` in a `Step`.
+> **`StepActions` is a stable feature.**
 
 A `StepAction` is the reusable and scriptable unit of work that is performed by a `Step`.
 
@@ -417,7 +416,6 @@ status:
   podName: step-action-run-pod
   provenance:
     featureFlags:
-      EnableStepActions: true
       ...
   startTime: "2023-10-24T20:28:32Z"
   steps:

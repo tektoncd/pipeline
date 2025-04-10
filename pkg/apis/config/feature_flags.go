@@ -97,8 +97,6 @@ const (
 	KeepPodOnCancel = "keep-pod-on-cancel"
 	// EnableCELInWhenExpression is the flag to enabled CEL in WhenExpression
 	EnableCELInWhenExpression = "enable-cel-in-whenexpression"
-	// EnableStepActions is the flag to enable the use of StepActions in Steps
-	EnableStepActions = "enable-step-actions"
 	// EnableArtifacts is the flag to enable the use of Artifacts in Steps
 	EnableArtifacts = "enable-artifacts"
 	// EnableParamEnum is the flag to enabled enum in params
@@ -109,6 +107,8 @@ const (
 	EnableKubernetesSidecar = "enable-kubernetes-sidecar"
 	// DefaultEnableKubernetesSidecar is the default value for EnableKubernetesSidecar
 	DefaultEnableKubernetesSidecar = false
+	// EnableStepActions is the flag to enable step actions (no-op since it's stable)
+	EnableStepActions = "enable-step-actions"
 
 	// DisableInlineSpec is the flag to disable embedded spec
 	// in Taskrun or Pipelinerun
@@ -148,13 +148,6 @@ var (
 		Name:      EnableCELInWhenExpression,
 		Stability: AlphaAPIFields,
 		Enabled:   DefaultAlphaFeatureEnabled,
-	}
-
-	// DefaultEnableStepActions is the default PerFeatureFlag value for EnableStepActions
-	DefaultEnableStepActions = PerFeatureFlag{
-		Name:      EnableStepActions,
-		Stability: BetaAPIFields,
-		Enabled:   DefaultBetaFeatureEnabled,
 	}
 
 	// DefaultEnableArtifacts is the default PerFeatureFlag value for EnableArtifacts
@@ -204,12 +197,13 @@ type FeatureFlags struct {
 	SetSecurityContextReadOnlyRootFilesystem bool   `json:"setSecurityContextReadOnlyRootFilesystem,omitempty"`
 	Coschedule                               string `json:"coschedule,omitempty"`
 	EnableCELInWhenExpression                bool   `json:"enableCELInWhenExpression,omitempty"`
-	EnableStepActions                        bool   `json:"enableStepActions,omitempty"`
-	EnableParamEnum                          bool   `json:"enableParamEnum,omitempty"`
-	EnableArtifacts                          bool   `json:"enableArtifacts,omitempty"`
-	DisableInlineSpec                        string `json:"disableInlineSpec,omitempty"`
-	EnableConciseResolverSyntax              bool   `json:"enableConciseResolverSyntax,omitempty"`
-	EnableKubernetesSidecar                  bool   `json:"enableKubernetesSidecar,omitempty"`
+	// EnableStepActions is a no-op flag since StepActions are stable
+	EnableStepActions           bool   `json:"enableStepActions,omitempty"`
+	EnableParamEnum             bool   `json:"enableParamEnum,omitempty"`
+	EnableArtifacts             bool   `json:"enableArtifacts,omitempty"`
+	DisableInlineSpec           string `json:"disableInlineSpec,omitempty"`
+	EnableConciseResolverSyntax bool   `json:"enableConciseResolverSyntax,omitempty"`
+	EnableKubernetesSidecar     bool   `json:"enableKubernetesSidecar,omitempty"`
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -296,9 +290,6 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setPerFeatureFlag(EnableCELInWhenExpression, DefaultEnableCELInWhenExpression, &tc.EnableCELInWhenExpression); err != nil {
-		return nil, err
-	}
-	if err := setPerFeatureFlag(EnableStepActions, DefaultEnableStepActions, &tc.EnableStepActions); err != nil {
 		return nil, err
 	}
 	if err := setPerFeatureFlag(EnableParamEnum, DefaultEnableParamEnum, &tc.EnableParamEnum); err != nil {

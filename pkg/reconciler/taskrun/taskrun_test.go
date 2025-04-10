@@ -1421,7 +1421,6 @@ metadata:
   namespace: foo
 spec:
   taskRef:
-    kind: ClusterTask
     name: taskrun-with-wrong-ref
 `)
 	taskRuns := []*v1.TaskRun{noTaskRun, withWrongRef}
@@ -2155,9 +2154,6 @@ spec:
 		ConfigMaps: []*corev1.ConfigMap{
 			{
 				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-				Data: map[string]string{
-					"enable-step-actions": "true",
-				},
 			},
 		},
 		ResolutionRequests: []*resolutionv1beta1.ResolutionRequest{&stepActionReq},
@@ -2270,9 +2266,6 @@ spec:
 			ConfigMaps: []*corev1.ConfigMap{
 				{
 					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-					Data: map[string]string{
-						"enable-step-actions": "true",
-					},
 				},
 			},
 		}
@@ -3609,9 +3602,6 @@ spec:
 		ConfigMaps: []*corev1.ConfigMap{
 			{
 				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-				Data: map[string]string{
-					"enable-step-actions": "true",
-				},
 			},
 		},
 	}
@@ -3660,9 +3650,6 @@ spec:
 		ConfigMaps: []*corev1.ConfigMap{
 			{
 				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-				Data: map[string]string{
-					"enable-step-actions": "true",
-				},
 			},
 		},
 	}
@@ -3955,14 +3942,6 @@ spec:
 			d := test.Data{
 				TaskRuns:    []*v1.TaskRun{tt.taskRun},
 				StepActions: []*v1beta1.StepAction{tt.stepAction},
-				ConfigMaps: []*corev1.ConfigMap{
-					{
-						ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-						Data: map[string]string{
-							"enable-step-actions": "true",
-						},
-					},
-				},
 			}
 			testAssets, cancel := getTaskRunController(t, d)
 			defer cancel()
