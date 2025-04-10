@@ -30,7 +30,7 @@ If you do not specify a `command` value, the Pipelines controller performs a loo
 the `entrypoint` value in the associated remote container registry. If the image is in
 a private registry, you must include an [`ImagePullSecret`](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#add-imagepullsecrets-to-a-service-account)
 value in the service account definition used by the `Task`.
-The Pipelines controller uses this value unless the service account is not 
+The Pipelines controller uses this value unless the service account is not
 defined, at which point it assumes the value of `default`.
 
 The final fallback occurs to the Docker config specified in the `$HOME/.docker/config.json` file.
@@ -39,16 +39,18 @@ controller performs an anonymous lookup of the image.
 
 For example, consider the following `Task`, which uses two images named
 `gcr.io/cloud-builders/gcloud` and `gcr.io/cloud-builders/docker`. In this example, the
-Pipelines controller retrieves the `entrypoint` value from the registry, which allows
-the `Task` to execute the `gcloud` and `docker` commands, respectively.
+Pipelines controller retrieves the `entrypoint` value from the registry, which means
+the container will execute using the default `entrypoint` defined in the image.
 
 ```yaml
 spec:
   steps:
     - image: gcr.io/cloud-builders/gcloud
-      command: [gcloud]
+      # No command specified, so the default entrypoint `/builder/notice.sh` from the image will be used
+      # command: ["/builder/notice.sh"]
     - image: gcr.io/cloud-builders/docker
-      command: [docker]
+      # No command specified, so the default entrypoint `/usr/bin/docker` from the image will be used
+      # command: ["/usr/bin/docker"]
 ```
 
 However, if you specify a custom `command` value, the controller uses that value instead:
