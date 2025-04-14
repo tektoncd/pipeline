@@ -283,7 +283,7 @@ spec:
 			},
 		},
 		{
-			description:   "termination continued",
+			description:   "termination continued (continue)",
 			shouldSucceed: true,
 			taskRun: `
 metadata:
@@ -305,6 +305,50 @@ spec:
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							ExitCode: 1,
+							Reason:   "Completed",
+						},
+					},
+				},
+			},
+		},
+		{
+			description:   "termination continued (continueAndFail)",
+			shouldSucceed: false,
+			taskRun: `
+metadata:
+  name: %v
+  namespace: %v
+spec:
+  taskSpec:
+    steps:
+    - image: %v
+      onError: continueAndFail
+      name: first
+      command: ['/bin/sh']
+      args: ['-c', 'echo hello; exit 1']
+    - image: %v
+      name: second
+      command: ['/bin/sh']
+      args: ['-c', 'echo hello']`,
+			expectedStepStatus: []v1.StepState{
+				{
+					Container:         "step-first",
+					Name:              "first",
+					TerminationReason: "Continued",
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 1,
+							Reason:   "Error",
+						},
+					},
+				},
+				{
+					Container:         "step-second",
+					Name:              "second",
+					TerminationReason: "Completed",
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 0,
 							Reason:   "Completed",
 						},
 					},
