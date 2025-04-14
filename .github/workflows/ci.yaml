@@ -101,7 +101,7 @@ jobs:
     - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b  # v5.4.0
       with:
         go-version-file: "go.mod"
-    - uses: ko-build/setup-ko@v0.8
+    - uses: ko-build/setup-ko@v0.9
     - name: ko-resolve
       run: |
           cat <<EOF > .ko.yaml
