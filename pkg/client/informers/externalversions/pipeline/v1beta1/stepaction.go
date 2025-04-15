@@ -19,13 +19,13 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	apispipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	versioned "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/internalinterfaces"
-	v1beta1 "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // StepActions.
 type StepActionInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1beta1.StepActionLister
+	Lister() pipelinev1beta1.StepActionLister
 }
 
 type stepActionInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredStepActionInformer(client versioned.Interface, namespace string,
 				return client.TektonV1beta1().StepActions(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&pipelinev1beta1.StepAction{},
+		&apispipelinev1beta1.StepAction{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *stepActionInformer) defaultInformer(client versioned.Interface, resyncP
 }
 
 func (f *stepActionInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&pipelinev1beta1.StepAction{}, f.defaultInformer)
+	return f.factory.InformerFor(&apispipelinev1beta1.StepAction{}, f.defaultInformer)
 }
 
-func (f *stepActionInformer) Lister() v1beta1.StepActionLister {
-	return v1beta1.NewStepActionLister(f.Informer().GetIndexer())
+func (f *stepActionInformer) Lister() pipelinev1beta1.StepActionLister {
+	return pipelinev1beta1.NewStepActionLister(f.Informer().GetIndexer())
 }

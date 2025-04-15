@@ -19,129 +19,30 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeRuns implements RunInterface
-type FakeRuns struct {
+// fakeRuns implements RunInterface
+type fakeRuns struct {
+	*gentype.FakeClientWithList[*v1alpha1.Run, *v1alpha1.RunList]
 	Fake *FakeTektonV1alpha1
-	ns   string
 }
 
-var runsResource = v1alpha1.SchemeGroupVersion.WithResource("runs")
-
-var runsKind = v1alpha1.SchemeGroupVersion.WithKind("Run")
-
-// Get takes name of the run, and returns the corresponding run object, and an error if there is any.
-func (c *FakeRuns) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Run, err error) {
-	emptyResult := &v1alpha1.Run{}
-	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithOptions(runsResource, c.ns, name, options), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
+func newFakeRuns(fake *FakeTektonV1alpha1, namespace string) pipelinev1alpha1.RunInterface {
+	return &fakeRuns{
+		gentype.NewFakeClientWithList[*v1alpha1.Run, *v1alpha1.RunList](
+			fake.Fake,
+			namespace,
+			v1alpha1.SchemeGroupVersion.WithResource("runs"),
+			v1alpha1.SchemeGroupVersion.WithKind("Run"),
+			func() *v1alpha1.Run { return &v1alpha1.Run{} },
+			func() *v1alpha1.RunList { return &v1alpha1.RunList{} },
+			func(dst, src *v1alpha1.RunList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.RunList) []*v1alpha1.Run { return gentype.ToPointerSlice(list.Items) },
+			func(list *v1alpha1.RunList, items []*v1alpha1.Run) { list.Items = gentype.FromPointerSlice(items) },
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.Run), err
-}
-
-// List takes label and field selectors, and returns the list of Runs that match those selectors.
-func (c *FakeRuns) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.RunList, err error) {
-	emptyResult := &v1alpha1.RunList{}
-	obj, err := c.Fake.
-		Invokes(testing.NewListActionWithOptions(runsResource, runsKind, c.ns, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.RunList{ListMeta: obj.(*v1alpha1.RunList).ListMeta}
-	for _, item := range obj.(*v1alpha1.RunList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested runs.
-func (c *FakeRuns) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchActionWithOptions(runsResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a run and creates it.  Returns the server's representation of the run, and an error, if there is any.
-func (c *FakeRuns) Create(ctx context.Context, run *v1alpha1.Run, opts v1.CreateOptions) (result *v1alpha1.Run, err error) {
-	emptyResult := &v1alpha1.Run{}
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithOptions(runsResource, c.ns, run, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.Run), err
-}
-
-// Update takes the representation of a run and updates it. Returns the server's representation of the run, and an error, if there is any.
-func (c *FakeRuns) Update(ctx context.Context, run *v1alpha1.Run, opts v1.UpdateOptions) (result *v1alpha1.Run, err error) {
-	emptyResult := &v1alpha1.Run{}
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithOptions(runsResource, c.ns, run, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.Run), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeRuns) UpdateStatus(ctx context.Context, run *v1alpha1.Run, opts v1.UpdateOptions) (result *v1alpha1.Run, err error) {
-	emptyResult := &v1alpha1.Run{}
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithOptions(runsResource, "status", c.ns, run, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.Run), err
-}
-
-// Delete takes name of the run and deletes it. Returns an error if one occurs.
-func (c *FakeRuns) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(runsResource, c.ns, name, opts), &v1alpha1.Run{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeRuns) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionActionWithOptions(runsResource, c.ns, opts, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.RunList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched run.
-func (c *FakeRuns) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Run, err error) {
-	emptyResult := &v1alpha1.Run{}
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithOptions(runsResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.Run), err
 }

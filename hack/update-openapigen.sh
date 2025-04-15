@@ -42,8 +42,6 @@ do
     input_dirs="${input_dirs} ./pkg/apis/resolution/v1beta1"
   fi
 
-  set -x
-
   echo "Generating OpenAPI specification for ${APIVERSION} ..."
   GOFLAGS="-mod=mod" go run k8s.io/kube-openapi/cmd/openapi-gen \
      --output-pkg github.com/tektoncd/pipeline/pkg/apis/pipeline/${APIVERSION} \

@@ -19,9 +19,9 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
+	context "context"
 
-	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	scheme "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,31 +37,32 @@ type PipelinesGetter interface {
 
 // PipelineInterface has methods to work with Pipeline resources.
 type PipelineInterface interface {
-	Create(ctx context.Context, pipeline *v1beta1.Pipeline, opts v1.CreateOptions) (*v1beta1.Pipeline, error)
-	Update(ctx context.Context, pipeline *v1beta1.Pipeline, opts v1.UpdateOptions) (*v1beta1.Pipeline, error)
+	Create(ctx context.Context, pipeline *pipelinev1beta1.Pipeline, opts v1.CreateOptions) (*pipelinev1beta1.Pipeline, error)
+	Update(ctx context.Context, pipeline *pipelinev1beta1.Pipeline, opts v1.UpdateOptions) (*pipelinev1beta1.Pipeline, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1beta1.Pipeline, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1beta1.PipelineList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*pipelinev1beta1.Pipeline, error)
+	List(ctx context.Context, opts v1.ListOptions) (*pipelinev1beta1.PipelineList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.Pipeline, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *pipelinev1beta1.Pipeline, err error)
 	PipelineExpansion
 }
 
 // pipelines implements PipelineInterface
 type pipelines struct {
-	*gentype.ClientWithList[*v1beta1.Pipeline, *v1beta1.PipelineList]
+	*gentype.ClientWithList[*pipelinev1beta1.Pipeline, *pipelinev1beta1.PipelineList]
 }
 
 // newPipelines returns a Pipelines
 func newPipelines(c *TektonV1beta1Client, namespace string) *pipelines {
 	return &pipelines{
-		gentype.NewClientWithList[*v1beta1.Pipeline, *v1beta1.PipelineList](
+		gentype.NewClientWithList[*pipelinev1beta1.Pipeline, *pipelinev1beta1.PipelineList](
 			"pipelines",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1beta1.Pipeline { return &v1beta1.Pipeline{} },
-			func() *v1beta1.PipelineList { return &v1beta1.PipelineList{} }),
+			func() *pipelinev1beta1.Pipeline { return &pipelinev1beta1.Pipeline{} },
+			func() *pipelinev1beta1.PipelineList { return &pipelinev1beta1.PipelineList{} },
+		),
 	}
 }

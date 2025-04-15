@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // RunLister helps list Runs.
@@ -30,7 +30,7 @@ import (
 type RunLister interface {
 	// List lists all Runs in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.Run, err error)
+	List(selector labels.Selector) (ret []*pipelinev1alpha1.Run, err error)
 	// Runs returns an object that can list and get Runs.
 	Runs(namespace string) RunNamespaceLister
 	RunListerExpansion
@@ -38,17 +38,17 @@ type RunLister interface {
 
 // runLister implements the RunLister interface.
 type runLister struct {
-	listers.ResourceIndexer[*v1alpha1.Run]
+	listers.ResourceIndexer[*pipelinev1alpha1.Run]
 }
 
 // NewRunLister returns a new RunLister.
 func NewRunLister(indexer cache.Indexer) RunLister {
-	return &runLister{listers.New[*v1alpha1.Run](indexer, v1alpha1.Resource("run"))}
+	return &runLister{listers.New[*pipelinev1alpha1.Run](indexer, pipelinev1alpha1.Resource("run"))}
 }
 
 // Runs returns an object that can list and get Runs.
 func (s *runLister) Runs(namespace string) RunNamespaceLister {
-	return runNamespaceLister{listers.NewNamespaced[*v1alpha1.Run](s.ResourceIndexer, namespace)}
+	return runNamespaceLister{listers.NewNamespaced[*pipelinev1alpha1.Run](s.ResourceIndexer, namespace)}
 }
 
 // RunNamespaceLister helps list and get Runs.
@@ -56,15 +56,15 @@ func (s *runLister) Runs(namespace string) RunNamespaceLister {
 type RunNamespaceLister interface {
 	// List lists all Runs in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.Run, err error)
+	List(selector labels.Selector) (ret []*pipelinev1alpha1.Run, err error)
 	// Get retrieves the Run from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.Run, error)
+	Get(name string) (*pipelinev1alpha1.Run, error)
 	RunNamespaceListerExpansion
 }
 
 // runNamespaceLister implements the RunNamespaceLister
 // interface.
 type runNamespaceLister struct {
-	listers.ResourceIndexer[*v1alpha1.Run]
+	listers.ResourceIndexer[*pipelinev1alpha1.Run]
 }

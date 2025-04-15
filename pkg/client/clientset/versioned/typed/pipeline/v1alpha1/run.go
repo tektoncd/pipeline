@@ -19,9 +19,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	scheme "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,33 +37,34 @@ type RunsGetter interface {
 
 // RunInterface has methods to work with Run resources.
 type RunInterface interface {
-	Create(ctx context.Context, run *v1alpha1.Run, opts v1.CreateOptions) (*v1alpha1.Run, error)
-	Update(ctx context.Context, run *v1alpha1.Run, opts v1.UpdateOptions) (*v1alpha1.Run, error)
+	Create(ctx context.Context, run *pipelinev1alpha1.Run, opts v1.CreateOptions) (*pipelinev1alpha1.Run, error)
+	Update(ctx context.Context, run *pipelinev1alpha1.Run, opts v1.UpdateOptions) (*pipelinev1alpha1.Run, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, run *v1alpha1.Run, opts v1.UpdateOptions) (*v1alpha1.Run, error)
+	UpdateStatus(ctx context.Context, run *pipelinev1alpha1.Run, opts v1.UpdateOptions) (*pipelinev1alpha1.Run, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.Run, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.RunList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*pipelinev1alpha1.Run, error)
+	List(ctx context.Context, opts v1.ListOptions) (*pipelinev1alpha1.RunList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Run, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *pipelinev1alpha1.Run, err error)
 	RunExpansion
 }
 
 // runs implements RunInterface
 type runs struct {
-	*gentype.ClientWithList[*v1alpha1.Run, *v1alpha1.RunList]
+	*gentype.ClientWithList[*pipelinev1alpha1.Run, *pipelinev1alpha1.RunList]
 }
 
 // newRuns returns a Runs
 func newRuns(c *TektonV1alpha1Client, namespace string) *runs {
 	return &runs{
-		gentype.NewClientWithList[*v1alpha1.Run, *v1alpha1.RunList](
+		gentype.NewClientWithList[*pipelinev1alpha1.Run, *pipelinev1alpha1.RunList](
 			"runs",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha1.Run { return &v1alpha1.Run{} },
-			func() *v1alpha1.RunList { return &v1alpha1.RunList{} }),
+			func() *pipelinev1alpha1.Run { return &pipelinev1alpha1.Run{} },
+			func() *pipelinev1alpha1.RunList { return &pipelinev1alpha1.RunList{} },
+		),
 	}
 }

@@ -19,10 +19,10 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // PipelineRunLister helps list PipelineRuns.
@@ -30,7 +30,7 @@ import (
 type PipelineRunLister interface {
 	// List lists all PipelineRuns in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.PipelineRun, err error)
+	List(selector labels.Selector) (ret []*pipelinev1.PipelineRun, err error)
 	// PipelineRuns returns an object that can list and get PipelineRuns.
 	PipelineRuns(namespace string) PipelineRunNamespaceLister
 	PipelineRunListerExpansion
@@ -38,17 +38,17 @@ type PipelineRunLister interface {
 
 // pipelineRunLister implements the PipelineRunLister interface.
 type pipelineRunLister struct {
-	listers.ResourceIndexer[*v1.PipelineRun]
+	listers.ResourceIndexer[*pipelinev1.PipelineRun]
 }
 
 // NewPipelineRunLister returns a new PipelineRunLister.
 func NewPipelineRunLister(indexer cache.Indexer) PipelineRunLister {
-	return &pipelineRunLister{listers.New[*v1.PipelineRun](indexer, v1.Resource("pipelinerun"))}
+	return &pipelineRunLister{listers.New[*pipelinev1.PipelineRun](indexer, pipelinev1.Resource("pipelinerun"))}
 }
 
 // PipelineRuns returns an object that can list and get PipelineRuns.
 func (s *pipelineRunLister) PipelineRuns(namespace string) PipelineRunNamespaceLister {
-	return pipelineRunNamespaceLister{listers.NewNamespaced[*v1.PipelineRun](s.ResourceIndexer, namespace)}
+	return pipelineRunNamespaceLister{listers.NewNamespaced[*pipelinev1.PipelineRun](s.ResourceIndexer, namespace)}
 }
 
 // PipelineRunNamespaceLister helps list and get PipelineRuns.
@@ -56,15 +56,15 @@ func (s *pipelineRunLister) PipelineRuns(namespace string) PipelineRunNamespaceL
 type PipelineRunNamespaceLister interface {
 	// List lists all PipelineRuns in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.PipelineRun, err error)
+	List(selector labels.Selector) (ret []*pipelinev1.PipelineRun, err error)
 	// Get retrieves the PipelineRun from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.PipelineRun, error)
+	Get(name string) (*pipelinev1.PipelineRun, error)
 	PipelineRunNamespaceListerExpansion
 }
 
 // pipelineRunNamespaceLister implements the PipelineRunNamespaceLister
 // interface.
 type pipelineRunNamespaceLister struct {
-	listers.ResourceIndexer[*v1.PipelineRun]
+	listers.ResourceIndexer[*pipelinev1.PipelineRun]
 }
