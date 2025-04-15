@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Knative Authors.
+Copyright 2019 The Knative Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,37 +19,44 @@ package main
 import (
 	"flag"
 
-	"k8s.io/klog/v2"
-
 	"github.com/spf13/pflag"
-	generatorargs "knative.dev/pkg/codegen/cmd/injection-gen/args"
+
+	"knative.dev/pkg/codegen/cmd/injection-gen/args"
 	"knative.dev/pkg/codegen/cmd/injection-gen/generators"
+	"knative.dev/pkg/codegen/cmd/injection-gen/namer"
+
+	"k8s.io/code-generator/pkg/util"
+	"k8s.io/gengo/v2"
+	"k8s.io/gengo/v2/generator"
+	"k8s.io/klog/v2"
 )
 
 func main() {
 	klog.InitFlags(nil)
-	genericArgs, customArgs := generatorargs.NewDefaults()
+	args := args.New()
 
-	// Override defaults.
-	genericArgs.OutputPackagePath = "k8s.io/kubernetes/pkg/client/injection/informers/informers_generated"
-
-	genericArgs.AddFlags(pflag.CommandLine)
-	customArgs.AddFlags(pflag.CommandLine)
+	args.AddFlags(pflag.CommandLine)
 	flag.Set("logtostderr", "true")
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
 
-	if err := generatorargs.Validate(genericArgs); err != nil {
+	if err := args.Validate(); err != nil {
 		klog.Fatal("Error: ", err)
 	}
 
+	myTargets := func(context *generator.Context) []generator.Target {
+		return generators.Targets(context, args)
+	}
+
 	// Run it.
-	if err := genericArgs.Execute(
-		generators.NameSystems(),
-		generators.DefaultNameSystem(),
-		generators.Packages,
+	if err := gengo.Execute(
+		namer.NameSystems(util.PluralExceptionListToMapOrDie(args.PluralExceptions)),
+		namer.DefaultNameSystem(),
+		myTargets,
+		gengo.StdBuildTag,
+		args.InputDirs,
 	); err != nil {
-		klog.Fatal("Error: ", err)
+		klog.Fatalf("Error: %v", err)
 	}
 	klog.V(2).Info("Completed successfully.")
 }

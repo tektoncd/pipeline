@@ -19,116 +19,34 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned/typed/resource/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakePipelineResources implements PipelineResourceInterface
-type FakePipelineResources struct {
+// fakePipelineResources implements PipelineResourceInterface
+type fakePipelineResources struct {
+	*gentype.FakeClientWithList[*v1alpha1.PipelineResource, *v1alpha1.PipelineResourceList]
 	Fake *FakeTektonV1alpha1
-	ns   string
 }
 
-var pipelineresourcesResource = v1alpha1.SchemeGroupVersion.WithResource("pipelineresources")
-
-var pipelineresourcesKind = v1alpha1.SchemeGroupVersion.WithKind("PipelineResource")
-
-// Get takes name of the pipelineResource, and returns the corresponding pipelineResource object, and an error if there is any.
-func (c *FakePipelineResources) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.PipelineResource, err error) {
-	emptyResult := &v1alpha1.PipelineResource{}
-	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithOptions(pipelineresourcesResource, c.ns, name, options), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
+func newFakePipelineResources(fake *FakeTektonV1alpha1, namespace string) resourcev1alpha1.PipelineResourceInterface {
+	return &fakePipelineResources{
+		gentype.NewFakeClientWithList[*v1alpha1.PipelineResource, *v1alpha1.PipelineResourceList](
+			fake.Fake,
+			namespace,
+			v1alpha1.SchemeGroupVersion.WithResource("pipelineresources"),
+			v1alpha1.SchemeGroupVersion.WithKind("PipelineResource"),
+			func() *v1alpha1.PipelineResource { return &v1alpha1.PipelineResource{} },
+			func() *v1alpha1.PipelineResourceList { return &v1alpha1.PipelineResourceList{} },
+			func(dst, src *v1alpha1.PipelineResourceList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.PipelineResourceList) []*v1alpha1.PipelineResource {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1alpha1.PipelineResourceList, items []*v1alpha1.PipelineResource) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.PipelineResource), err
-}
-
-// List takes label and field selectors, and returns the list of PipelineResources that match those selectors.
-func (c *FakePipelineResources) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.PipelineResourceList, err error) {
-	emptyResult := &v1alpha1.PipelineResourceList{}
-	obj, err := c.Fake.
-		Invokes(testing.NewListActionWithOptions(pipelineresourcesResource, pipelineresourcesKind, c.ns, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.PipelineResourceList{ListMeta: obj.(*v1alpha1.PipelineResourceList).ListMeta}
-	for _, item := range obj.(*v1alpha1.PipelineResourceList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested pipelineResources.
-func (c *FakePipelineResources) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchActionWithOptions(pipelineresourcesResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a pipelineResource and creates it.  Returns the server's representation of the pipelineResource, and an error, if there is any.
-func (c *FakePipelineResources) Create(ctx context.Context, pipelineResource *v1alpha1.PipelineResource, opts v1.CreateOptions) (result *v1alpha1.PipelineResource, err error) {
-	emptyResult := &v1alpha1.PipelineResource{}
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithOptions(pipelineresourcesResource, c.ns, pipelineResource, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.PipelineResource), err
-}
-
-// Update takes the representation of a pipelineResource and updates it. Returns the server's representation of the pipelineResource, and an error, if there is any.
-func (c *FakePipelineResources) Update(ctx context.Context, pipelineResource *v1alpha1.PipelineResource, opts v1.UpdateOptions) (result *v1alpha1.PipelineResource, err error) {
-	emptyResult := &v1alpha1.PipelineResource{}
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithOptions(pipelineresourcesResource, c.ns, pipelineResource, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.PipelineResource), err
-}
-
-// Delete takes name of the pipelineResource and deletes it. Returns an error if one occurs.
-func (c *FakePipelineResources) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(pipelineresourcesResource, c.ns, name, opts), &v1alpha1.PipelineResource{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakePipelineResources) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionActionWithOptions(pipelineresourcesResource, c.ns, opts, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.PipelineResourceList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched pipelineResource.
-func (c *FakePipelineResources) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.PipelineResource, err error) {
-	emptyResult := &v1alpha1.PipelineResource{}
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithOptions(pipelineresourcesResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.PipelineResource), err
 }

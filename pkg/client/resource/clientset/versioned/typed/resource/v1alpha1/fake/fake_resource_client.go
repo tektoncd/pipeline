@@ -29,7 +29,7 @@ type FakeTektonV1alpha1 struct {
 }
 
 func (c *FakeTektonV1alpha1) PipelineResources(namespace string) v1alpha1.PipelineResourceInterface {
-	return &FakePipelineResources{c, namespace}
+	return newFakePipelineResources(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

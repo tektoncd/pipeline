@@ -29,27 +29,27 @@ type FakeTektonV1beta1 struct {
 }
 
 func (c *FakeTektonV1beta1) CustomRuns(namespace string) v1beta1.CustomRunInterface {
-	return &FakeCustomRuns{c, namespace}
+	return newFakeCustomRuns(c, namespace)
 }
 
 func (c *FakeTektonV1beta1) Pipelines(namespace string) v1beta1.PipelineInterface {
-	return &FakePipelines{c, namespace}
+	return newFakePipelines(c, namespace)
 }
 
 func (c *FakeTektonV1beta1) PipelineRuns(namespace string) v1beta1.PipelineRunInterface {
-	return &FakePipelineRuns{c, namespace}
+	return newFakePipelineRuns(c, namespace)
 }
 
 func (c *FakeTektonV1beta1) StepActions(namespace string) v1beta1.StepActionInterface {
-	return &FakeStepActions{c, namespace}
+	return newFakeStepActions(c, namespace)
 }
 
 func (c *FakeTektonV1beta1) Tasks(namespace string) v1beta1.TaskInterface {
-	return &FakeTasks{c, namespace}
+	return newFakeTasks(c, namespace)
 }
 
 func (c *FakeTektonV1beta1) TaskRuns(namespace string) v1beta1.TaskRunInterface {
-	return &FakeTaskRuns{c, namespace}
+	return newFakeTaskRuns(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

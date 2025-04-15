@@ -19,129 +19,30 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeTaskRuns implements TaskRunInterface
-type FakeTaskRuns struct {
+// fakeTaskRuns implements TaskRunInterface
+type fakeTaskRuns struct {
+	*gentype.FakeClientWithList[*v1.TaskRun, *v1.TaskRunList]
 	Fake *FakeTektonV1
-	ns   string
 }
 
-var taskrunsResource = v1.SchemeGroupVersion.WithResource("taskruns")
-
-var taskrunsKind = v1.SchemeGroupVersion.WithKind("TaskRun")
-
-// Get takes name of the taskRun, and returns the corresponding taskRun object, and an error if there is any.
-func (c *FakeTaskRuns) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.TaskRun, err error) {
-	emptyResult := &v1.TaskRun{}
-	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithOptions(taskrunsResource, c.ns, name, options), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
+func newFakeTaskRuns(fake *FakeTektonV1, namespace string) pipelinev1.TaskRunInterface {
+	return &fakeTaskRuns{
+		gentype.NewFakeClientWithList[*v1.TaskRun, *v1.TaskRunList](
+			fake.Fake,
+			namespace,
+			v1.SchemeGroupVersion.WithResource("taskruns"),
+			v1.SchemeGroupVersion.WithKind("TaskRun"),
+			func() *v1.TaskRun { return &v1.TaskRun{} },
+			func() *v1.TaskRunList { return &v1.TaskRunList{} },
+			func(dst, src *v1.TaskRunList) { dst.ListMeta = src.ListMeta },
+			func(list *v1.TaskRunList) []*v1.TaskRun { return gentype.ToPointerSlice(list.Items) },
+			func(list *v1.TaskRunList, items []*v1.TaskRun) { list.Items = gentype.FromPointerSlice(items) },
+		),
+		fake,
 	}
-	return obj.(*v1.TaskRun), err
-}
-
-// List takes label and field selectors, and returns the list of TaskRuns that match those selectors.
-func (c *FakeTaskRuns) List(ctx context.Context, opts metav1.ListOptions) (result *v1.TaskRunList, err error) {
-	emptyResult := &v1.TaskRunList{}
-	obj, err := c.Fake.
-		Invokes(testing.NewListActionWithOptions(taskrunsResource, taskrunsKind, c.ns, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1.TaskRunList{ListMeta: obj.(*v1.TaskRunList).ListMeta}
-	for _, item := range obj.(*v1.TaskRunList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested taskRuns.
-func (c *FakeTaskRuns) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchActionWithOptions(taskrunsResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a taskRun and creates it.  Returns the server's representation of the taskRun, and an error, if there is any.
-func (c *FakeTaskRuns) Create(ctx context.Context, taskRun *v1.TaskRun, opts metav1.CreateOptions) (result *v1.TaskRun, err error) {
-	emptyResult := &v1.TaskRun{}
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithOptions(taskrunsResource, c.ns, taskRun, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1.TaskRun), err
-}
-
-// Update takes the representation of a taskRun and updates it. Returns the server's representation of the taskRun, and an error, if there is any.
-func (c *FakeTaskRuns) Update(ctx context.Context, taskRun *v1.TaskRun, opts metav1.UpdateOptions) (result *v1.TaskRun, err error) {
-	emptyResult := &v1.TaskRun{}
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithOptions(taskrunsResource, c.ns, taskRun, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1.TaskRun), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeTaskRuns) UpdateStatus(ctx context.Context, taskRun *v1.TaskRun, opts metav1.UpdateOptions) (result *v1.TaskRun, err error) {
-	emptyResult := &v1.TaskRun{}
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithOptions(taskrunsResource, "status", c.ns, taskRun, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1.TaskRun), err
-}
-
-// Delete takes name of the taskRun and deletes it. Returns an error if one occurs.
-func (c *FakeTaskRuns) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(taskrunsResource, c.ns, name, opts), &v1.TaskRun{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeTaskRuns) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
-	action := testing.NewDeleteCollectionActionWithOptions(taskrunsResource, c.ns, opts, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1.TaskRunList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched taskRun.
-func (c *FakeTaskRuns) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.TaskRun, err error) {
-	emptyResult := &v1.TaskRun{}
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithOptions(taskrunsResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1.TaskRun), err
 }

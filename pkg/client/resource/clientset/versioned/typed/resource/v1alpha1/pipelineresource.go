@@ -19,9 +19,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	scheme "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,31 +37,32 @@ type PipelineResourcesGetter interface {
 
 // PipelineResourceInterface has methods to work with PipelineResource resources.
 type PipelineResourceInterface interface {
-	Create(ctx context.Context, pipelineResource *v1alpha1.PipelineResource, opts v1.CreateOptions) (*v1alpha1.PipelineResource, error)
-	Update(ctx context.Context, pipelineResource *v1alpha1.PipelineResource, opts v1.UpdateOptions) (*v1alpha1.PipelineResource, error)
+	Create(ctx context.Context, pipelineResource *resourcev1alpha1.PipelineResource, opts v1.CreateOptions) (*resourcev1alpha1.PipelineResource, error)
+	Update(ctx context.Context, pipelineResource *resourcev1alpha1.PipelineResource, opts v1.UpdateOptions) (*resourcev1alpha1.PipelineResource, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.PipelineResource, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.PipelineResourceList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*resourcev1alpha1.PipelineResource, error)
+	List(ctx context.Context, opts v1.ListOptions) (*resourcev1alpha1.PipelineResourceList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.PipelineResource, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *resourcev1alpha1.PipelineResource, err error)
 	PipelineResourceExpansion
 }
 
 // pipelineResources implements PipelineResourceInterface
 type pipelineResources struct {
-	*gentype.ClientWithList[*v1alpha1.PipelineResource, *v1alpha1.PipelineResourceList]
+	*gentype.ClientWithList[*resourcev1alpha1.PipelineResource, *resourcev1alpha1.PipelineResourceList]
 }
 
 // newPipelineResources returns a PipelineResources
 func newPipelineResources(c *TektonV1alpha1Client, namespace string) *pipelineResources {
 	return &pipelineResources{
-		gentype.NewClientWithList[*v1alpha1.PipelineResource, *v1alpha1.PipelineResourceList](
+		gentype.NewClientWithList[*resourcev1alpha1.PipelineResource, *resourcev1alpha1.PipelineResourceList](
 			"pipelineresources",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha1.PipelineResource { return &v1alpha1.PipelineResource{} },
-			func() *v1alpha1.PipelineResourceList { return &v1alpha1.PipelineResourceList{} }),
+			func() *resourcev1alpha1.PipelineResource { return &resourcev1alpha1.PipelineResource{} },
+			func() *resourcev1alpha1.PipelineResourceList { return &resourcev1alpha1.PipelineResourceList{} },
+		),
 	}
 }

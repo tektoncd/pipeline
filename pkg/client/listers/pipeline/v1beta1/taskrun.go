@@ -19,10 +19,10 @@ limitations under the License.
 package v1beta1
 
 import (
-	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // TaskRunLister helps list TaskRuns.
@@ -30,7 +30,7 @@ import (
 type TaskRunLister interface {
 	// List lists all TaskRuns in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1beta1.TaskRun, err error)
+	List(selector labels.Selector) (ret []*pipelinev1beta1.TaskRun, err error)
 	// TaskRuns returns an object that can list and get TaskRuns.
 	TaskRuns(namespace string) TaskRunNamespaceLister
 	TaskRunListerExpansion
@@ -38,17 +38,17 @@ type TaskRunLister interface {
 
 // taskRunLister implements the TaskRunLister interface.
 type taskRunLister struct {
-	listers.ResourceIndexer[*v1beta1.TaskRun]
+	listers.ResourceIndexer[*pipelinev1beta1.TaskRun]
 }
 
 // NewTaskRunLister returns a new TaskRunLister.
 func NewTaskRunLister(indexer cache.Indexer) TaskRunLister {
-	return &taskRunLister{listers.New[*v1beta1.TaskRun](indexer, v1beta1.Resource("taskrun"))}
+	return &taskRunLister{listers.New[*pipelinev1beta1.TaskRun](indexer, pipelinev1beta1.Resource("taskrun"))}
 }
 
 // TaskRuns returns an object that can list and get TaskRuns.
 func (s *taskRunLister) TaskRuns(namespace string) TaskRunNamespaceLister {
-	return taskRunNamespaceLister{listers.NewNamespaced[*v1beta1.TaskRun](s.ResourceIndexer, namespace)}
+	return taskRunNamespaceLister{listers.NewNamespaced[*pipelinev1beta1.TaskRun](s.ResourceIndexer, namespace)}
 }
 
 // TaskRunNamespaceLister helps list and get TaskRuns.
@@ -56,15 +56,15 @@ func (s *taskRunLister) TaskRuns(namespace string) TaskRunNamespaceLister {
 type TaskRunNamespaceLister interface {
 	// List lists all TaskRuns in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1beta1.TaskRun, err error)
+	List(selector labels.Selector) (ret []*pipelinev1beta1.TaskRun, err error)
 	// Get retrieves the TaskRun from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1beta1.TaskRun, error)
+	Get(name string) (*pipelinev1beta1.TaskRun, error)
 	TaskRunNamespaceListerExpansion
 }
 
 // taskRunNamespaceLister implements the TaskRunNamespaceLister
 // interface.
 type taskRunNamespaceLister struct {
-	listers.ResourceIndexer[*v1beta1.TaskRun]
+	listers.ResourceIndexer[*pipelinev1beta1.TaskRun]
 }

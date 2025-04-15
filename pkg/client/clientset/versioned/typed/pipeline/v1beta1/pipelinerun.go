@@ -19,9 +19,9 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
+	context "context"
 
-	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	scheme "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,33 +37,34 @@ type PipelineRunsGetter interface {
 
 // PipelineRunInterface has methods to work with PipelineRun resources.
 type PipelineRunInterface interface {
-	Create(ctx context.Context, pipelineRun *v1beta1.PipelineRun, opts v1.CreateOptions) (*v1beta1.PipelineRun, error)
-	Update(ctx context.Context, pipelineRun *v1beta1.PipelineRun, opts v1.UpdateOptions) (*v1beta1.PipelineRun, error)
+	Create(ctx context.Context, pipelineRun *pipelinev1beta1.PipelineRun, opts v1.CreateOptions) (*pipelinev1beta1.PipelineRun, error)
+	Update(ctx context.Context, pipelineRun *pipelinev1beta1.PipelineRun, opts v1.UpdateOptions) (*pipelinev1beta1.PipelineRun, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, pipelineRun *v1beta1.PipelineRun, opts v1.UpdateOptions) (*v1beta1.PipelineRun, error)
+	UpdateStatus(ctx context.Context, pipelineRun *pipelinev1beta1.PipelineRun, opts v1.UpdateOptions) (*pipelinev1beta1.PipelineRun, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1beta1.PipelineRun, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1beta1.PipelineRunList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*pipelinev1beta1.PipelineRun, error)
+	List(ctx context.Context, opts v1.ListOptions) (*pipelinev1beta1.PipelineRunList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.PipelineRun, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *pipelinev1beta1.PipelineRun, err error)
 	PipelineRunExpansion
 }
 
 // pipelineRuns implements PipelineRunInterface
 type pipelineRuns struct {
-	*gentype.ClientWithList[*v1beta1.PipelineRun, *v1beta1.PipelineRunList]
+	*gentype.ClientWithList[*pipelinev1beta1.PipelineRun, *pipelinev1beta1.PipelineRunList]
 }
 
 // newPipelineRuns returns a PipelineRuns
 func newPipelineRuns(c *TektonV1beta1Client, namespace string) *pipelineRuns {
 	return &pipelineRuns{
-		gentype.NewClientWithList[*v1beta1.PipelineRun, *v1beta1.PipelineRunList](
+		gentype.NewClientWithList[*pipelinev1beta1.PipelineRun, *pipelinev1beta1.PipelineRunList](
 			"pipelineruns",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1beta1.PipelineRun { return &v1beta1.PipelineRun{} },
-			func() *v1beta1.PipelineRunList { return &v1beta1.PipelineRunList{} }),
+			func() *pipelinev1beta1.PipelineRun { return &pipelinev1beta1.PipelineRun{} },
+			func() *pipelinev1beta1.PipelineRunList { return &pipelinev1beta1.PipelineRunList{} },
+		),
 	}
 }

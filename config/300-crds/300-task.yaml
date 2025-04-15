@@ -491,7 +491,7 @@ spec:
                             type: object
                             properties:
                               exec:
-                                description: Exec specifies the action to take.
+                                description: Exec specifies a command to execute in the container.
                                 type: object
                                 properties:
                                   command:
@@ -506,7 +506,7 @@ spec:
                                       type: string
                                     x-kubernetes-list-type: atomic
                               httpGet:
-                                description: HTTPGet specifies the http request to perform.
+                                description: HTTPGet specifies an HTTP GET request to perform.
                                 type: object
                                 required:
                                   - port
@@ -553,7 +553,7 @@ spec:
                                       Defaults to HTTP.
                                     type: string
                               sleep:
-                                description: Sleep represents the duration that the container should sleep before being terminated.
+                                description: Sleep represents a duration that the container should sleep.
                                 type: object
                                 required:
                                   - seconds
@@ -565,8 +565,8 @@ spec:
                               tcpSocket:
                                 description: |-
                                   Deprecated. TCPSocket is NOT supported as a LifecycleHandler and kept
-                                  for the backward compatibility. There are no validation of this field and
-                                  lifecycle hooks will fail in runtime when tcp handler is specified.
+                                  for backward compatibility. There is no validation of this field and
+                                  lifecycle hooks will fail at runtime when it is specified.
                                 type: object
                                 required:
                                   - port
@@ -597,7 +597,7 @@ spec:
                             type: object
                             properties:
                               exec:
-                                description: Exec specifies the action to take.
+                                description: Exec specifies a command to execute in the container.
                                 type: object
                                 properties:
                                   command:
@@ -612,7 +612,7 @@ spec:
                                       type: string
                                     x-kubernetes-list-type: atomic
                               httpGet:
-                                description: HTTPGet specifies the http request to perform.
+                                description: HTTPGet specifies an HTTP GET request to perform.
                                 type: object
                                 required:
                                   - port
@@ -659,7 +659,7 @@ spec:
                                       Defaults to HTTP.
                                     type: string
                               sleep:
-                                description: Sleep represents the duration that the container should sleep before being terminated.
+                                description: Sleep represents a duration that the container should sleep.
                                 type: object
                                 required:
                                   - seconds
@@ -671,8 +671,8 @@ spec:
                               tcpSocket:
                                 description: |-
                                   Deprecated. TCPSocket is NOT supported as a LifecycleHandler and kept
-                                  for the backward compatibility. There are no validation of this field and
-                                  lifecycle hooks will fail in runtime when tcp handler is specified.
+                                  for backward compatibility. There is no validation of this field and
+                                  lifecycle hooks will fail at runtime when it is specified.
                                 type: object
                                 required:
                                   - port
@@ -698,7 +698,7 @@ spec:
                         type: object
                         properties:
                           exec:
-                            description: Exec specifies the action to take.
+                            description: Exec specifies a command to execute in the container.
                             type: object
                             properties:
                               command:
@@ -719,7 +719,7 @@ spec:
                             type: integer
                             format: int32
                           grpc:
-                            description: GRPC specifies an action involving a GRPC port.
+                            description: GRPC specifies a GRPC HealthCheckRequest.
                             type: object
                             required:
                               - port
@@ -737,7 +737,7 @@ spec:
                                 type: string
                                 default: ""
                           httpGet:
-                            description: HTTPGet specifies the http request to perform.
+                            description: HTTPGet specifies an HTTP GET request to perform.
                             type: object
                             required:
                               - port
@@ -802,7 +802,7 @@ spec:
                             type: integer
                             format: int32
                           tcpSocket:
-                            description: TCPSocket specifies an action involving a TCP port.
+                            description: TCPSocket specifies a connection to a TCP port.
                             type: object
                             required:
                               - port
@@ -904,7 +904,7 @@ spec:
                         type: object
                         properties:
                           exec:
-                            description: Exec specifies the action to take.
+                            description: Exec specifies a command to execute in the container.
                             type: object
                             properties:
                               command:
@@ -925,7 +925,7 @@ spec:
                             type: integer
                             format: int32
                           grpc:
-                            description: GRPC specifies an action involving a GRPC port.
+                            description: GRPC specifies a GRPC HealthCheckRequest.
                             type: object
                             required:
                               - port
@@ -943,7 +943,7 @@ spec:
                                 type: string
                                 default: ""
                           httpGet:
-                            description: HTTPGet specifies the http request to perform.
+                            description: HTTPGet specifies an HTTP GET request to perform.
                             type: object
                             required:
                               - port
@@ -1008,7 +1008,7 @@ spec:
                             type: integer
                             format: int32
                           tcpSocket:
-                            description: TCPSocket specifies an action involving a TCP port.
+                            description: TCPSocket specifies a connection to a TCP port.
                             type: object
                             required:
                               - port
@@ -1321,7 +1321,7 @@ spec:
                         type: object
                         properties:
                           exec:
-                            description: Exec specifies the action to take.
+                            description: Exec specifies a command to execute in the container.
                             type: object
                             properties:
                               command:
@@ -1342,7 +1342,7 @@ spec:
                             type: integer
                             format: int32
                           grpc:
-                            description: GRPC specifies an action involving a GRPC port.
+                            description: GRPC specifies a GRPC HealthCheckRequest.
                             type: object
                             required:
                               - port
@@ -1360,7 +1360,7 @@ spec:
                                 type: string
                                 default: ""
                           httpGet:
-                            description: HTTPGet specifies the http request to perform.
+                            description: HTTPGet specifies an HTTP GET request to perform.
                             type: object
                             required:
                               - port
@@ -1425,7 +1425,7 @@ spec:
                             type: integer
                             format: int32
                           tcpSocket:
-                            description: TCPSocket specifies an action involving a TCP port.
+                            description: TCPSocket specifies a connection to a TCP port.
                             type: object
                             required:
                               - port
@@ -1854,7 +1854,7 @@ spec:
                           type: object
                           properties:
                             exec:
-                              description: Exec specifies the action to take.
+                              description: Exec specifies a command to execute in the container.
                               type: object
                               properties:
                                 command:
@@ -1869,7 +1869,7 @@ spec:
                                     type: string
                                   x-kubernetes-list-type: atomic
                             httpGet:
-                              description: HTTPGet specifies the http request to perform.
+                              description: HTTPGet specifies an HTTP GET request to perform.
                               type: object
                               required:
                                 - port
@@ -1916,7 +1916,7 @@ spec:
                                     Defaults to HTTP.
                                   type: string
                             sleep:
-                              description: Sleep represents the duration that the container should sleep before being terminated.
+                              description: Sleep represents a duration that the container should sleep.
                               type: object
                               required:
                                 - seconds
@@ -1928,8 +1928,8 @@ spec:
                             tcpSocket:
                               description: |-
                                 Deprecated. TCPSocket is NOT supported as a LifecycleHandler and kept
-                                for the backward compatibility. There are no validation of this field and
-                                lifecycle hooks will fail in runtime when tcp handler is specified.
+                                for backward compatibility. There is no validation of this field and
+                                lifecycle hooks will fail at runtime when it is specified.
                               type: object
                               required:
                                 - port
@@ -1960,7 +1960,7 @@ spec:
                           type: object
                           properties:
                             exec:
-                              description: Exec specifies the action to take.
+                              description: Exec specifies a command to execute in the container.
                               type: object
                               properties:
                                 command:
@@ -1975,7 +1975,7 @@ spec:
                                     type: string
                                   x-kubernetes-list-type: atomic
                             httpGet:
-                              description: HTTPGet specifies the http request to perform.
+                              description: HTTPGet specifies an HTTP GET request to perform.
                               type: object
                               required:
                                 - port
@@ -2022,7 +2022,7 @@ spec:
                                     Defaults to HTTP.
                                   type: string
                             sleep:
-                              description: Sleep represents the duration that the container should sleep before being terminated.
+                              description: Sleep represents a duration that the container should sleep.
                               type: object
                               required:
                                 - seconds
@@ -2034,8 +2034,8 @@ spec:
                             tcpSocket:
                               description: |-
                                 Deprecated. TCPSocket is NOT supported as a LifecycleHandler and kept
-                                for the backward compatibility. There are no validation of this field and
-                                lifecycle hooks will fail in runtime when tcp handler is specified.
+                                for backward compatibility. There is no validation of this field and
+                                lifecycle hooks will fail at runtime when it is specified.
                               type: object
                               required:
                                 - port
@@ -2063,7 +2063,7 @@ spec:
                       type: object
                       properties:
                         exec:
-                          description: Exec specifies the action to take.
+                          description: Exec specifies a command to execute in the container.
                           type: object
                           properties:
                             command:
@@ -2084,7 +2084,7 @@ spec:
                           type: integer
                           format: int32
                         grpc:
-                          description: GRPC specifies an action involving a GRPC port.
+                          description: GRPC specifies a GRPC HealthCheckRequest.
                           type: object
                           required:
                             - port
@@ -2102,7 +2102,7 @@ spec:
                               type: string
                               default: ""
                         httpGet:
-                          description: HTTPGet specifies the http request to perform.
+                          description: HTTPGet specifies an HTTP GET request to perform.
                           type: object
                           required:
                             - port
@@ -2167,7 +2167,7 @@ spec:
                           type: integer
                           format: int32
                         tcpSocket:
-                          description: TCPSocket specifies an action involving a TCP port.
+                          description: TCPSocket specifies a connection to a TCP port.
                           type: object
                           required:
                             - port
@@ -2275,7 +2275,7 @@ spec:
                       type: object
                       properties:
                         exec:
-                          description: Exec specifies the action to take.
+                          description: Exec specifies a command to execute in the container.
                           type: object
                           properties:
                             command:
@@ -2296,7 +2296,7 @@ spec:
                           type: integer
                           format: int32
                         grpc:
-                          description: GRPC specifies an action involving a GRPC port.
+                          description: GRPC specifies a GRPC HealthCheckRequest.
                           type: object
                           required:
                             - port
@@ -2314,7 +2314,7 @@ spec:
                               type: string
                               default: ""
                         httpGet:
-                          description: HTTPGet specifies the http request to perform.
+                          description: HTTPGet specifies an HTTP GET request to perform.
                           type: object
                           required:
                             - port
@@ -2379,7 +2379,7 @@ spec:
                           type: integer
                           format: int32
                         tcpSocket:
-                          description: TCPSocket specifies an action involving a TCP port.
+                          description: TCPSocket specifies a connection to a TCP port.
                           type: object
                           required:
                             - port
@@ -2681,7 +2681,7 @@ spec:
                       type: object
                       properties:
                         exec:
-                          description: Exec specifies the action to take.
+                          description: Exec specifies a command to execute in the container.
                           type: object
                           properties:
                             command:
@@ -2702,7 +2702,7 @@ spec:
                           type: integer
                           format: int32
                         grpc:
-                          description: GRPC specifies an action involving a GRPC port.
+                          description: GRPC specifies a GRPC HealthCheckRequest.
                           type: object
                           required:
                             - port
@@ -2720,7 +2720,7 @@ spec:
                               type: string
                               default: ""
                         httpGet:
-                          description: HTTPGet specifies the http request to perform.
+                          description: HTTPGet specifies an HTTP GET request to perform.
                           type: object
                           required:
                             - port
@@ -2785,7 +2785,7 @@ spec:
                           type: integer
                           format: int32
                         tcpSocket:
-                          description: TCPSocket specifies an action involving a TCP port.
+                          description: TCPSocket specifies a connection to a TCP port.
                           type: object
                           required:
                             - port
@@ -3178,7 +3178,7 @@ spec:
                             type: object
                             properties:
                               exec:
-                                description: Exec specifies the action to take.
+                                description: Exec specifies a command to execute in the container.
                                 type: object
                                 properties:
                                   command:
@@ -3193,7 +3193,7 @@ spec:
                                       type: string
                                     x-kubernetes-list-type: atomic
                               httpGet:
-                                description: HTTPGet specifies the http request to perform.
+                                description: HTTPGet specifies an HTTP GET request to perform.
                                 type: object
                                 required:
                                   - port
@@ -3240,7 +3240,7 @@ spec:
                                       Defaults to HTTP.
                                     type: string
                               sleep:
-                                description: Sleep represents the duration that the container should sleep before being terminated.
+                                description: Sleep represents a duration that the container should sleep.
                                 type: object
                                 required:
                                   - seconds
@@ -3252,8 +3252,8 @@ spec:
                               tcpSocket:
                                 description: |-
                                   Deprecated. TCPSocket is NOT supported as a LifecycleHandler and kept
-                                  for the backward compatibility. There are no validation of this field and
-                                  lifecycle hooks will fail in runtime when tcp handler is specified.
+                                  for backward compatibility. There is no validation of this field and
+                                  lifecycle hooks will fail at runtime when it is specified.
                                 type: object
                                 required:
                                   - port
@@ -3284,7 +3284,7 @@ spec:
                             type: object
                             properties:
                               exec:
-                                description: Exec specifies the action to take.
+                                description: Exec specifies a command to execute in the container.
                                 type: object
                                 properties:
                                   command:
@@ -3299,7 +3299,7 @@ spec:
                                       type: string
                                     x-kubernetes-list-type: atomic
                               httpGet:
-                                description: HTTPGet specifies the http request to perform.
+                                description: HTTPGet specifies an HTTP GET request to perform.
                                 type: object
                                 required:
                                   - port
@@ -3346,7 +3346,7 @@ spec:
                                       Defaults to HTTP.
                                     type: string
                               sleep:
-                                description: Sleep represents the duration that the container should sleep before being terminated.
+                                description: Sleep represents a duration that the container should sleep.
                                 type: object
                                 required:
                                   - seconds
@@ -3358,8 +3358,8 @@ spec:
                               tcpSocket:
                                 description: |-
                                   Deprecated. TCPSocket is NOT supported as a LifecycleHandler and kept
-                                  for the backward compatibility. There are no validation of this field and
-                                  lifecycle hooks will fail in runtime when tcp handler is specified.
+                                  for backward compatibility. There is no validation of this field and
+                                  lifecycle hooks will fail at runtime when it is specified.
                                 type: object
                                 required:
                                   - port
@@ -3387,7 +3387,7 @@ spec:
                         type: object
                         properties:
                           exec:
-                            description: Exec specifies the action to take.
+                            description: Exec specifies a command to execute in the container.
                             type: object
                             properties:
                               command:
@@ -3408,7 +3408,7 @@ spec:
                             type: integer
                             format: int32
                           grpc:
-                            description: GRPC specifies an action involving a GRPC port.
+                            description: GRPC specifies a GRPC HealthCheckRequest.
                             type: object
                             required:
                               - port
@@ -3426,7 +3426,7 @@ spec:
                                 type: string
                                 default: ""
                           httpGet:
-                            description: HTTPGet specifies the http request to perform.
+                            description: HTTPGet specifies an HTTP GET request to perform.
                             type: object
                             required:
                               - port
@@ -3491,7 +3491,7 @@ spec:
                             type: integer
                             format: int32
                           tcpSocket:
-                            description: TCPSocket specifies an action involving a TCP port.
+                            description: TCPSocket specifies a connection to a TCP port.
                             type: object
                             required:
                               - port
@@ -3616,7 +3616,7 @@ spec:
                         type: object
                         properties:
                           exec:
-                            description: Exec specifies the action to take.
+                            description: Exec specifies a command to execute in the container.
                             type: object
                             properties:
                               command:
@@ -3637,7 +3637,7 @@ spec:
                             type: integer
                             format: int32
                           grpc:
-                            description: GRPC specifies an action involving a GRPC port.
+                            description: GRPC specifies a GRPC HealthCheckRequest.
                             type: object
                             required:
                               - port
@@ -3655,7 +3655,7 @@ spec:
                                 type: string
                                 default: ""
                           httpGet:
-                            description: HTTPGet specifies the http request to perform.
+                            description: HTTPGet specifies an HTTP GET request to perform.
                             type: object
                             required:
                               - port
@@ -3720,7 +3720,7 @@ spec:
                             type: integer
                             format: int32
                           tcpSocket:
-                            description: TCPSocket specifies an action involving a TCP port.
+                            description: TCPSocket specifies a connection to a TCP port.
                             type: object
                             required:
                               - port
@@ -4100,7 +4100,7 @@ spec:
                         type: object
                         properties:
                           exec:
-                            description: Exec specifies the action to take.
+                            description: Exec specifies a command to execute in the container.
                             type: object
                             properties:
                               command:
@@ -4121,7 +4121,7 @@ spec:
                             type: integer
                             format: int32
                           grpc:
-                            description: GRPC specifies an action involving a GRPC port.
+                            description: GRPC specifies a GRPC HealthCheckRequest.
                             type: object
                             required:
                               - port
@@ -4139,7 +4139,7 @@ spec:
                                 type: string
                                 default: ""
                           httpGet:
-                            description: HTTPGet specifies the http request to perform.
+                            description: HTTPGet specifies an HTTP GET request to perform.
                             type: object
                             required:
                               - port
@@ -4204,7 +4204,7 @@ spec:
                             type: integer
                             format: int32
                           tcpSocket:
-                            description: TCPSocket specifies an action involving a TCP port.
+                            description: TCPSocket specifies a connection to a TCP port.
                             type: object
                             required:
                               - port
@@ -4908,7 +4908,7 @@ spec:
                             type: object
                             properties:
                               exec:
-                                description: Exec specifies the action to take.
+                                description: Exec specifies a command to execute in the container.
                                 type: object
                                 properties:
                                   command:
@@ -4923,7 +4923,7 @@ spec:
                                       type: string
                                     x-kubernetes-list-type: atomic
                               httpGet:
-                                description: HTTPGet specifies the http request to perform.
+                                description: HTTPGet specifies an HTTP GET request to perform.
                                 type: object
                                 required:
                                   - port
@@ -4970,7 +4970,7 @@ spec:
                                       Defaults to HTTP.
                                     type: string
                               sleep:
-                                description: Sleep represents the duration that the container should sleep before being terminated.
+                                description: Sleep represents a duration that the container should sleep.
                                 type: object
                                 required:
                                   - seconds
@@ -4982,8 +4982,8 @@ spec:
                               tcpSocket:
                                 description: |-
                                   Deprecated. TCPSocket is NOT supported as a LifecycleHandler and kept
-                                  for the backward compatibility. There are no validation of this field and
-                                  lifecycle hooks will fail in runtime when tcp handler is specified.
+                                  for backward compatibility. There is no validation of this field and
+                                  lifecycle hooks will fail at runtime when it is specified.
                                 type: object
                                 required:
                                   - port
@@ -5014,7 +5014,7 @@ spec:
                             type: object
                             properties:
                               exec:
-                                description: Exec specifies the action to take.
+                                description: Exec specifies a command to execute in the container.
                                 type: object
                                 properties:
                                   command:
@@ -5029,7 +5029,7 @@ spec:
                                       type: string
                                     x-kubernetes-list-type: atomic
                               httpGet:
-                                description: HTTPGet specifies the http request to perform.
+                                description: HTTPGet specifies an HTTP GET request to perform.
                                 type: object
                                 required:
                                   - port
@@ -5076,7 +5076,7 @@ spec:
                                       Defaults to HTTP.
                                     type: string
                               sleep:
-                                description: Sleep represents the duration that the container should sleep before being terminated.
+                                description: Sleep represents a duration that the container should sleep.
                                 type: object
                                 required:
                                   - seconds
@@ -5088,8 +5088,8 @@ spec:
                               tcpSocket:
                                 description: |-
                                   Deprecated. TCPSocket is NOT supported as a LifecycleHandler and kept
-                                  for the backward compatibility. There are no validation of this field and
-                                  lifecycle hooks will fail in runtime when tcp handler is specified.
+                                  for backward compatibility. There is no validation of this field and
+                                  lifecycle hooks will fail at runtime when it is specified.
                                 type: object
                                 required:
                                   - port
@@ -5115,7 +5115,7 @@ spec:
                         type: object
                         properties:
                           exec:
-                            description: Exec specifies the action to take.
+                            description: Exec specifies a command to execute in the container.
                             type: object
                             properties:
                               command:
@@ -5136,7 +5136,7 @@ spec:
                             type: integer
                             format: int32
                           grpc:
-                            description: GRPC specifies an action involving a GRPC port.
+                            description: GRPC specifies a GRPC HealthCheckRequest.
                             type: object
                             required:
                               - port
@@ -5154,7 +5154,7 @@ spec:
                                 type: string
                                 default: ""
                           httpGet:
-                            description: HTTPGet specifies the http request to perform.
+                            description: HTTPGet specifies an HTTP GET request to perform.
                             type: object
                             required:
                               - port
@@ -5219,7 +5219,7 @@ spec:
                             type: integer
                             format: int32
                           tcpSocket:
-                            description: TCPSocket specifies an action involving a TCP port.
+                            description: TCPSocket specifies a connection to a TCP port.
                             type: object
                             required:
                               - port
@@ -5321,7 +5321,7 @@ spec:
                         type: object
                         properties:
                           exec:
-                            description: Exec specifies the action to take.
+                            description: Exec specifies a command to execute in the container.
                             type: object
                             properties:
                               command:
@@ -5342,7 +5342,7 @@ spec:
                             type: integer
                             format: int32
                           grpc:
-                            description: GRPC specifies an action involving a GRPC port.
+                            description: GRPC specifies a GRPC HealthCheckRequest.
                             type: object
                             required:
                               - port
@@ -5360,7 +5360,7 @@ spec:
                                 type: string
                                 default: ""
                           httpGet:
-                            description: HTTPGet specifies the http request to perform.
+                            description: HTTPGet specifies an HTTP GET request to perform.
                             type: object
                             required:
                               - port
@@ -5425,7 +5425,7 @@ spec:
                             type: integer
                             format: int32
                           tcpSocket:
-                            description: TCPSocket specifies an action involving a TCP port.
+                            description: TCPSocket specifies a connection to a TCP port.
                             type: object
                             required:
                               - port
@@ -5676,7 +5676,7 @@ spec:
                         type: object
                         properties:
                           exec:
-                            description: Exec specifies the action to take.
+                            description: Exec specifies a command to execute in the container.
                             type: object
                             properties:
                               command:
@@ -5697,7 +5697,7 @@ spec:
                             type: integer
                             format: int32
                           grpc:
-                            description: GRPC specifies an action involving a GRPC port.
+                            description: GRPC specifies a GRPC HealthCheckRequest.
                             type: object
                             required:
                               - port
@@ -5715,7 +5715,7 @@ spec:
                                 type: string
                                 default: ""
                           httpGet:
-                            description: HTTPGet specifies the http request to perform.
+                            description: HTTPGet specifies an HTTP GET request to perform.
                             type: object
                             required:
                               - port
@@ -5780,7 +5780,7 @@ spec:
                             type: integer
                             format: int32
                           tcpSocket:
-                            description: TCPSocket specifies an action involving a TCP port.
+                            description: TCPSocket specifies a connection to a TCP port.
                             type: object
                             required:
                               - port
