@@ -19,129 +19,34 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	resolutionv1alpha1 "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned/typed/resolution/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeResolutionRequests implements ResolutionRequestInterface
-type FakeResolutionRequests struct {
+// fakeResolutionRequests implements ResolutionRequestInterface
+type fakeResolutionRequests struct {
+	*gentype.FakeClientWithList[*v1alpha1.ResolutionRequest, *v1alpha1.ResolutionRequestList]
 	Fake *FakeResolutionV1alpha1
-	ns   string
 }
 
-var resolutionrequestsResource = v1alpha1.SchemeGroupVersion.WithResource("resolutionrequests")
-
-var resolutionrequestsKind = v1alpha1.SchemeGroupVersion.WithKind("ResolutionRequest")
-
-// Get takes name of the resolutionRequest, and returns the corresponding resolutionRequest object, and an error if there is any.
-func (c *FakeResolutionRequests) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ResolutionRequest, err error) {
-	emptyResult := &v1alpha1.ResolutionRequest{}
-	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithOptions(resolutionrequestsResource, c.ns, name, options), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
+func newFakeResolutionRequests(fake *FakeResolutionV1alpha1, namespace string) resolutionv1alpha1.ResolutionRequestInterface {
+	return &fakeResolutionRequests{
+		gentype.NewFakeClientWithList[*v1alpha1.ResolutionRequest, *v1alpha1.ResolutionRequestList](
+			fake.Fake,
+			namespace,
+			v1alpha1.SchemeGroupVersion.WithResource("resolutionrequests"),
+			v1alpha1.SchemeGroupVersion.WithKind("ResolutionRequest"),
+			func() *v1alpha1.ResolutionRequest { return &v1alpha1.ResolutionRequest{} },
+			func() *v1alpha1.ResolutionRequestList { return &v1alpha1.ResolutionRequestList{} },
+			func(dst, src *v1alpha1.ResolutionRequestList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.ResolutionRequestList) []*v1alpha1.ResolutionRequest {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1alpha1.ResolutionRequestList, items []*v1alpha1.ResolutionRequest) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.ResolutionRequest), err
-}
-
-// List takes label and field selectors, and returns the list of ResolutionRequests that match those selectors.
-func (c *FakeResolutionRequests) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ResolutionRequestList, err error) {
-	emptyResult := &v1alpha1.ResolutionRequestList{}
-	obj, err := c.Fake.
-		Invokes(testing.NewListActionWithOptions(resolutionrequestsResource, resolutionrequestsKind, c.ns, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.ResolutionRequestList{ListMeta: obj.(*v1alpha1.ResolutionRequestList).ListMeta}
-	for _, item := range obj.(*v1alpha1.ResolutionRequestList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested resolutionRequests.
-func (c *FakeResolutionRequests) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchActionWithOptions(resolutionrequestsResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a resolutionRequest and creates it.  Returns the server's representation of the resolutionRequest, and an error, if there is any.
-func (c *FakeResolutionRequests) Create(ctx context.Context, resolutionRequest *v1alpha1.ResolutionRequest, opts v1.CreateOptions) (result *v1alpha1.ResolutionRequest, err error) {
-	emptyResult := &v1alpha1.ResolutionRequest{}
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithOptions(resolutionrequestsResource, c.ns, resolutionRequest, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.ResolutionRequest), err
-}
-
-// Update takes the representation of a resolutionRequest and updates it. Returns the server's representation of the resolutionRequest, and an error, if there is any.
-func (c *FakeResolutionRequests) Update(ctx context.Context, resolutionRequest *v1alpha1.ResolutionRequest, opts v1.UpdateOptions) (result *v1alpha1.ResolutionRequest, err error) {
-	emptyResult := &v1alpha1.ResolutionRequest{}
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithOptions(resolutionrequestsResource, c.ns, resolutionRequest, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.ResolutionRequest), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeResolutionRequests) UpdateStatus(ctx context.Context, resolutionRequest *v1alpha1.ResolutionRequest, opts v1.UpdateOptions) (result *v1alpha1.ResolutionRequest, err error) {
-	emptyResult := &v1alpha1.ResolutionRequest{}
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithOptions(resolutionrequestsResource, "status", c.ns, resolutionRequest, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.ResolutionRequest), err
-}
-
-// Delete takes name of the resolutionRequest and deletes it. Returns an error if one occurs.
-func (c *FakeResolutionRequests) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(resolutionrequestsResource, c.ns, name, opts), &v1alpha1.ResolutionRequest{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeResolutionRequests) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionActionWithOptions(resolutionrequestsResource, c.ns, opts, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.ResolutionRequestList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched resolutionRequest.
-func (c *FakeResolutionRequests) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ResolutionRequest, err error) {
-	emptyResult := &v1alpha1.ResolutionRequest{}
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithOptions(resolutionrequestsResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.ResolutionRequest), err
 }

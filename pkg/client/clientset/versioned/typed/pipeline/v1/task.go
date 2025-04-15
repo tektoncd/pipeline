@@ -19,9 +19,9 @@ limitations under the License.
 package v1
 
 import (
-	"context"
+	context "context"
 
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	scheme "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,31 +37,32 @@ type TasksGetter interface {
 
 // TaskInterface has methods to work with Task resources.
 type TaskInterface interface {
-	Create(ctx context.Context, task *v1.Task, opts metav1.CreateOptions) (*v1.Task, error)
-	Update(ctx context.Context, task *v1.Task, opts metav1.UpdateOptions) (*v1.Task, error)
+	Create(ctx context.Context, task *pipelinev1.Task, opts metav1.CreateOptions) (*pipelinev1.Task, error)
+	Update(ctx context.Context, task *pipelinev1.Task, opts metav1.UpdateOptions) (*pipelinev1.Task, error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Task, error)
-	List(ctx context.Context, opts metav1.ListOptions) (*v1.TaskList, error)
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*pipelinev1.Task, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*pipelinev1.TaskList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Task, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *pipelinev1.Task, err error)
 	TaskExpansion
 }
 
 // tasks implements TaskInterface
 type tasks struct {
-	*gentype.ClientWithList[*v1.Task, *v1.TaskList]
+	*gentype.ClientWithList[*pipelinev1.Task, *pipelinev1.TaskList]
 }
 
 // newTasks returns a Tasks
 func newTasks(c *TektonV1Client, namespace string) *tasks {
 	return &tasks{
-		gentype.NewClientWithList[*v1.Task, *v1.TaskList](
+		gentype.NewClientWithList[*pipelinev1.Task, *pipelinev1.TaskList](
 			"tasks",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1.Task { return &v1.Task{} },
-			func() *v1.TaskList { return &v1.TaskList{} }),
+			func() *pipelinev1.Task { return &pipelinev1.Task{} },
+			func() *pipelinev1.TaskList { return &pipelinev1.TaskList{} },
+		),
 	}
 }

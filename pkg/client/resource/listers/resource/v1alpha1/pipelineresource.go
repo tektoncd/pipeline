@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // PipelineResourceLister helps list PipelineResources.
@@ -30,7 +30,7 @@ import (
 type PipelineResourceLister interface {
 	// List lists all PipelineResources in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.PipelineResource, err error)
+	List(selector labels.Selector) (ret []*resourcev1alpha1.PipelineResource, err error)
 	// PipelineResources returns an object that can list and get PipelineResources.
 	PipelineResources(namespace string) PipelineResourceNamespaceLister
 	PipelineResourceListerExpansion
@@ -38,17 +38,17 @@ type PipelineResourceLister interface {
 
 // pipelineResourceLister implements the PipelineResourceLister interface.
 type pipelineResourceLister struct {
-	listers.ResourceIndexer[*v1alpha1.PipelineResource]
+	listers.ResourceIndexer[*resourcev1alpha1.PipelineResource]
 }
 
 // NewPipelineResourceLister returns a new PipelineResourceLister.
 func NewPipelineResourceLister(indexer cache.Indexer) PipelineResourceLister {
-	return &pipelineResourceLister{listers.New[*v1alpha1.PipelineResource](indexer, v1alpha1.Resource("pipelineresource"))}
+	return &pipelineResourceLister{listers.New[*resourcev1alpha1.PipelineResource](indexer, resourcev1alpha1.Resource("pipelineresource"))}
 }
 
 // PipelineResources returns an object that can list and get PipelineResources.
 func (s *pipelineResourceLister) PipelineResources(namespace string) PipelineResourceNamespaceLister {
-	return pipelineResourceNamespaceLister{listers.NewNamespaced[*v1alpha1.PipelineResource](s.ResourceIndexer, namespace)}
+	return pipelineResourceNamespaceLister{listers.NewNamespaced[*resourcev1alpha1.PipelineResource](s.ResourceIndexer, namespace)}
 }
 
 // PipelineResourceNamespaceLister helps list and get PipelineResources.
@@ -56,15 +56,15 @@ func (s *pipelineResourceLister) PipelineResources(namespace string) PipelineRes
 type PipelineResourceNamespaceLister interface {
 	// List lists all PipelineResources in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.PipelineResource, err error)
+	List(selector labels.Selector) (ret []*resourcev1alpha1.PipelineResource, err error)
 	// Get retrieves the PipelineResource from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.PipelineResource, error)
+	Get(name string) (*resourcev1alpha1.PipelineResource, error)
 	PipelineResourceNamespaceListerExpansion
 }
 
 // pipelineResourceNamespaceLister implements the PipelineResourceNamespaceLister
 // interface.
 type pipelineResourceNamespaceLister struct {
-	listers.ResourceIndexer[*v1alpha1.PipelineResource]
+	listers.ResourceIndexer[*resourcev1alpha1.PipelineResource]
 }

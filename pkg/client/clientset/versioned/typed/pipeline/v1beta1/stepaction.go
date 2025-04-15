@@ -19,9 +19,9 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
+	context "context"
 
-	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	scheme "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,31 +37,32 @@ type StepActionsGetter interface {
 
 // StepActionInterface has methods to work with StepAction resources.
 type StepActionInterface interface {
-	Create(ctx context.Context, stepAction *v1beta1.StepAction, opts v1.CreateOptions) (*v1beta1.StepAction, error)
-	Update(ctx context.Context, stepAction *v1beta1.StepAction, opts v1.UpdateOptions) (*v1beta1.StepAction, error)
+	Create(ctx context.Context, stepAction *pipelinev1beta1.StepAction, opts v1.CreateOptions) (*pipelinev1beta1.StepAction, error)
+	Update(ctx context.Context, stepAction *pipelinev1beta1.StepAction, opts v1.UpdateOptions) (*pipelinev1beta1.StepAction, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1beta1.StepAction, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1beta1.StepActionList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*pipelinev1beta1.StepAction, error)
+	List(ctx context.Context, opts v1.ListOptions) (*pipelinev1beta1.StepActionList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.StepAction, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *pipelinev1beta1.StepAction, err error)
 	StepActionExpansion
 }
 
 // stepActions implements StepActionInterface
 type stepActions struct {
-	*gentype.ClientWithList[*v1beta1.StepAction, *v1beta1.StepActionList]
+	*gentype.ClientWithList[*pipelinev1beta1.StepAction, *pipelinev1beta1.StepActionList]
 }
 
 // newStepActions returns a StepActions
 func newStepActions(c *TektonV1beta1Client, namespace string) *stepActions {
 	return &stepActions{
-		gentype.NewClientWithList[*v1beta1.StepAction, *v1beta1.StepActionList](
+		gentype.NewClientWithList[*pipelinev1beta1.StepAction, *pipelinev1beta1.StepActionList](
 			"stepactions",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1beta1.StepAction { return &v1beta1.StepAction{} },
-			func() *v1beta1.StepActionList { return &v1beta1.StepActionList{} }),
+			func() *pipelinev1beta1.StepAction { return &pipelinev1beta1.StepAction{} },
+			func() *pipelinev1beta1.StepActionList { return &pipelinev1beta1.StepActionList{} },
+		),
 	}
 }

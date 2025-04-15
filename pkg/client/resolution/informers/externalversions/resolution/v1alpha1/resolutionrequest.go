@@ -19,13 +19,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	resolutionv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
+	apisresolutionv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	versioned "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned"
 	internalinterfaces "github.com/tektoncd/pipeline/pkg/client/resolution/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/tektoncd/pipeline/pkg/client/resolution/listers/resolution/v1alpha1"
+	resolutionv1alpha1 "github.com/tektoncd/pipeline/pkg/client/resolution/listers/resolution/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // ResolutionRequests.
 type ResolutionRequestInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.ResolutionRequestLister
+	Lister() resolutionv1alpha1.ResolutionRequestLister
 }
 
 type resolutionRequestInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredResolutionRequestInformer(client versioned.Interface, namespace 
 				return client.ResolutionV1alpha1().ResolutionRequests(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&resolutionv1alpha1.ResolutionRequest{},
+		&apisresolutionv1alpha1.ResolutionRequest{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *resolutionRequestInformer) defaultInformer(client versioned.Interface, 
 }
 
 func (f *resolutionRequestInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&resolutionv1alpha1.ResolutionRequest{}, f.defaultInformer)
+	return f.factory.InformerFor(&apisresolutionv1alpha1.ResolutionRequest{}, f.defaultInformer)
 }
 
-func (f *resolutionRequestInformer) Lister() v1alpha1.ResolutionRequestLister {
-	return v1alpha1.NewResolutionRequestLister(f.Informer().GetIndexer())
+func (f *resolutionRequestInformer) Lister() resolutionv1alpha1.ResolutionRequestLister {
+	return resolutionv1alpha1.NewResolutionRequestLister(f.Informer().GetIndexer())
 }

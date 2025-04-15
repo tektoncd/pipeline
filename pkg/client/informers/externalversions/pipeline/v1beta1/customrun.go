@@ -19,13 +19,13 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	apispipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	versioned "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/internalinterfaces"
-	v1beta1 "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // CustomRuns.
 type CustomRunInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1beta1.CustomRunLister
+	Lister() pipelinev1beta1.CustomRunLister
 }
 
 type customRunInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredCustomRunInformer(client versioned.Interface, namespace string, 
 				return client.TektonV1beta1().CustomRuns(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&pipelinev1beta1.CustomRun{},
+		&apispipelinev1beta1.CustomRun{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *customRunInformer) defaultInformer(client versioned.Interface, resyncPe
 }
 
 func (f *customRunInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&pipelinev1beta1.CustomRun{}, f.defaultInformer)
+	return f.factory.InformerFor(&apispipelinev1beta1.CustomRun{}, f.defaultInformer)
 }
 
-func (f *customRunInformer) Lister() v1beta1.CustomRunLister {
-	return v1beta1.NewCustomRunLister(f.Informer().GetIndexer())
+func (f *customRunInformer) Lister() pipelinev1beta1.CustomRunLister {
+	return pipelinev1beta1.NewCustomRunLister(f.Informer().GetIndexer())
 }

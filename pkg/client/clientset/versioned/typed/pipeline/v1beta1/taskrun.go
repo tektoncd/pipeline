@@ -19,9 +19,9 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
+	context "context"
 
-	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	scheme "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,33 +37,34 @@ type TaskRunsGetter interface {
 
 // TaskRunInterface has methods to work with TaskRun resources.
 type TaskRunInterface interface {
-	Create(ctx context.Context, taskRun *v1beta1.TaskRun, opts v1.CreateOptions) (*v1beta1.TaskRun, error)
-	Update(ctx context.Context, taskRun *v1beta1.TaskRun, opts v1.UpdateOptions) (*v1beta1.TaskRun, error)
+	Create(ctx context.Context, taskRun *pipelinev1beta1.TaskRun, opts v1.CreateOptions) (*pipelinev1beta1.TaskRun, error)
+	Update(ctx context.Context, taskRun *pipelinev1beta1.TaskRun, opts v1.UpdateOptions) (*pipelinev1beta1.TaskRun, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, taskRun *v1beta1.TaskRun, opts v1.UpdateOptions) (*v1beta1.TaskRun, error)
+	UpdateStatus(ctx context.Context, taskRun *pipelinev1beta1.TaskRun, opts v1.UpdateOptions) (*pipelinev1beta1.TaskRun, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1beta1.TaskRun, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1beta1.TaskRunList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*pipelinev1beta1.TaskRun, error)
+	List(ctx context.Context, opts v1.ListOptions) (*pipelinev1beta1.TaskRunList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.TaskRun, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *pipelinev1beta1.TaskRun, err error)
 	TaskRunExpansion
 }
 
 // taskRuns implements TaskRunInterface
 type taskRuns struct {
-	*gentype.ClientWithList[*v1beta1.TaskRun, *v1beta1.TaskRunList]
+	*gentype.ClientWithList[*pipelinev1beta1.TaskRun, *pipelinev1beta1.TaskRunList]
 }
 
 // newTaskRuns returns a TaskRuns
 func newTaskRuns(c *TektonV1beta1Client, namespace string) *taskRuns {
 	return &taskRuns{
-		gentype.NewClientWithList[*v1beta1.TaskRun, *v1beta1.TaskRunList](
+		gentype.NewClientWithList[*pipelinev1beta1.TaskRun, *pipelinev1beta1.TaskRunList](
 			"taskruns",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1beta1.TaskRun { return &v1beta1.TaskRun{} },
-			func() *v1beta1.TaskRunList { return &v1beta1.TaskRunList{} }),
+			func() *pipelinev1beta1.TaskRun { return &pipelinev1beta1.TaskRun{} },
+			func() *pipelinev1beta1.TaskRunList { return &pipelinev1beta1.TaskRunList{} },
+		),
 	}
 }

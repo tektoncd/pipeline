@@ -19,10 +19,10 @@ limitations under the License.
 package v1beta1
 
 import (
-	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // StepActionLister helps list StepActions.
@@ -30,7 +30,7 @@ import (
 type StepActionLister interface {
 	// List lists all StepActions in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1beta1.StepAction, err error)
+	List(selector labels.Selector) (ret []*pipelinev1beta1.StepAction, err error)
 	// StepActions returns an object that can list and get StepActions.
 	StepActions(namespace string) StepActionNamespaceLister
 	StepActionListerExpansion
@@ -38,17 +38,17 @@ type StepActionLister interface {
 
 // stepActionLister implements the StepActionLister interface.
 type stepActionLister struct {
-	listers.ResourceIndexer[*v1beta1.StepAction]
+	listers.ResourceIndexer[*pipelinev1beta1.StepAction]
 }
 
 // NewStepActionLister returns a new StepActionLister.
 func NewStepActionLister(indexer cache.Indexer) StepActionLister {
-	return &stepActionLister{listers.New[*v1beta1.StepAction](indexer, v1beta1.Resource("stepaction"))}
+	return &stepActionLister{listers.New[*pipelinev1beta1.StepAction](indexer, pipelinev1beta1.Resource("stepaction"))}
 }
 
 // StepActions returns an object that can list and get StepActions.
 func (s *stepActionLister) StepActions(namespace string) StepActionNamespaceLister {
-	return stepActionNamespaceLister{listers.NewNamespaced[*v1beta1.StepAction](s.ResourceIndexer, namespace)}
+	return stepActionNamespaceLister{listers.NewNamespaced[*pipelinev1beta1.StepAction](s.ResourceIndexer, namespace)}
 }
 
 // StepActionNamespaceLister helps list and get StepActions.
@@ -56,15 +56,15 @@ func (s *stepActionLister) StepActions(namespace string) StepActionNamespaceList
 type StepActionNamespaceLister interface {
 	// List lists all StepActions in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1beta1.StepAction, err error)
+	List(selector labels.Selector) (ret []*pipelinev1beta1.StepAction, err error)
 	// Get retrieves the StepAction from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1beta1.StepAction, error)
+	Get(name string) (*pipelinev1beta1.StepAction, error)
 	StepActionNamespaceListerExpansion
 }
 
 // stepActionNamespaceLister implements the StepActionNamespaceLister
 // interface.
 type stepActionNamespaceLister struct {
-	listers.ResourceIndexer[*v1beta1.StepAction]
+	listers.ResourceIndexer[*pipelinev1beta1.StepAction]
 }

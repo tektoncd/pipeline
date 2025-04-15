@@ -19,10 +19,10 @@ limitations under the License.
 package v1beta1
 
 import (
-	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // TaskLister helps list Tasks.
@@ -30,7 +30,7 @@ import (
 type TaskLister interface {
 	// List lists all Tasks in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1beta1.Task, err error)
+	List(selector labels.Selector) (ret []*pipelinev1beta1.Task, err error)
 	// Tasks returns an object that can list and get Tasks.
 	Tasks(namespace string) TaskNamespaceLister
 	TaskListerExpansion
@@ -38,17 +38,17 @@ type TaskLister interface {
 
 // taskLister implements the TaskLister interface.
 type taskLister struct {
-	listers.ResourceIndexer[*v1beta1.Task]
+	listers.ResourceIndexer[*pipelinev1beta1.Task]
 }
 
 // NewTaskLister returns a new TaskLister.
 func NewTaskLister(indexer cache.Indexer) TaskLister {
-	return &taskLister{listers.New[*v1beta1.Task](indexer, v1beta1.Resource("task"))}
+	return &taskLister{listers.New[*pipelinev1beta1.Task](indexer, pipelinev1beta1.Resource("task"))}
 }
 
 // Tasks returns an object that can list and get Tasks.
 func (s *taskLister) Tasks(namespace string) TaskNamespaceLister {
-	return taskNamespaceLister{listers.NewNamespaced[*v1beta1.Task](s.ResourceIndexer, namespace)}
+	return taskNamespaceLister{listers.NewNamespaced[*pipelinev1beta1.Task](s.ResourceIndexer, namespace)}
 }
 
 // TaskNamespaceLister helps list and get Tasks.
@@ -56,15 +56,15 @@ func (s *taskLister) Tasks(namespace string) TaskNamespaceLister {
 type TaskNamespaceLister interface {
 	// List lists all Tasks in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1beta1.Task, err error)
+	List(selector labels.Selector) (ret []*pipelinev1beta1.Task, err error)
 	// Get retrieves the Task from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1beta1.Task, error)
+	Get(name string) (*pipelinev1beta1.Task, error)
 	TaskNamespaceListerExpansion
 }
 
 // taskNamespaceLister implements the TaskNamespaceLister
 // interface.
 type taskNamespaceLister struct {
-	listers.ResourceIndexer[*v1beta1.Task]
+	listers.ResourceIndexer[*pipelinev1beta1.Task]
 }
