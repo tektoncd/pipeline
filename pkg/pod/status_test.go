@@ -1468,7 +1468,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			}},
 		},
 		want: v1.TaskRunStatus{
-			Status: statusFailure(v1.TaskRunReasonFailed.String(), "\"step-one\" exited with code 137"),
+			Status: statusFailure(v1.TaskRunReasonFailed.String(), "\"step-one\" exited with code 137: OOMKilled"),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
 				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
