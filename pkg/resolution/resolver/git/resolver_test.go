@@ -316,8 +316,6 @@ func TestResolve(t *testing.T) {
 
 	// local repo set up for scm cloning
 	// ----
-	withTemporaryGitConfig(t)
-
 	testOrg := "test-org"
 	testRepo := "test-repo"
 
@@ -767,14 +765,6 @@ func TestResolve(t *testing.T) {
 			})
 		})
 	}
-}
-
-// withTemporaryGitConfig resets the .gitconfig for the duration of the test.
-func withTemporaryGitConfig(t *testing.T) {
-	t.Helper()
-	gitConfigDir := t.TempDir()
-	key := "GIT_CONFIG_GLOBAL"
-	t.Setenv(key, filepath.Join(gitConfigDir, "config"))
 }
 
 func createRequest(args *params) *v1beta1.ResolutionRequest {
