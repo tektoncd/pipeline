@@ -22,13 +22,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/google/go-cmp/cmp"
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/driver/fake"
@@ -320,8 +319,6 @@ func TestResolve(t *testing.T) {
 
 	// local repo set up for scm cloning
 	// ----
-	withTemporaryGitConfig(t)
-
 	testOrg := "test-org"
 	testRepo := "test-repo"
 
@@ -660,7 +657,7 @@ func TestResolve(t *testing.T) {
 			}
 			cfg[tc.configIdentifer+gitresolution.DefaultTimeoutKey] = "1m"
 			if cfg[tc.configIdentifer+gitresolution.DefaultRevisionKey] == "" {
-				cfg[tc.configIdentifer+gitresolution.DefaultRevisionKey] = plumbing.Master.Short()
+				cfg[tc.configIdentifer+gitresolution.DefaultRevisionKey] = defaultBranch
 			}
 
 			request := createRequest(tc.args)
@@ -748,25 +745,36 @@ func TestResolve(t *testing.T) {
 	}
 }
 
+const defaultBranch string = "main"
+
+func getGitCmd(t *testing.T, dir string) func(...string) *exec.Cmd {
+	t.Helper()
+	withTemporaryGitConfig(t)
+	return func(args ...string) *exec.Cmd {
+		args = append(
+			[]string{
+				"-C", dir,
+				"-c", "user.email=test@test.com",
+				"-c", "user.name=PipelinesTests",
+			},
+			args...)
+		return exec.Command("git", args...)
+	}
+}
+
 // createTestRepo is used to instantiate a local test repository with the desired commits.
 func createTestRepo(t *testing.T, commits []commitForRepo) (string, []string) {
 	t.Helper()
 	commitSHAs := []string{}
 
-	t.Helper()
 	tempDir := t.TempDir()
-
-	repo, err := git.PlainInit(tempDir, false)
-
-	worktree, err := repo.Worktree()
+	gitCmd := getGitCmd(t, tempDir)
+	err := gitCmd("init", "-b", "main").Run()
 	if err != nil {
-		t.Fatalf("getting test worktree: %v", err)
-	}
-	if worktree == nil {
-		t.Fatal("test worktree not created")
+		t.Fatalf("couldn't create test repo: %v", err)
 	}
 
-	startingHash := writeAndCommitToTestRepo(t, worktree, tempDir, "", "README", []byte("This is a test"))
+	writeAndCommitToTestRepo(t, tempDir, "", "README", []byte("This is a test"))
 
 	hashesByBranch := make(map[string][]string)
 
@@ -774,44 +782,34 @@ func createTestRepo(t *testing.T, commits []commitForRepo) (string, []string) {
 	for _, cmt := range commits {
 		branch := cmt.Branch
 		if branch == "" {
-			branch = plumbing.Master.Short()
+			branch = defaultBranch
 		}
 
 		// If we're given a revision, check out that revision.
-		coOpts := &git.CheckoutOptions{
-			Branch: plumbing.NewBranchReferenceName(branch),
+		checkoutCmd := gitCmd("checkout")
+		if _, ok := hashesByBranch[branch]; !ok && branch != defaultBranch {
+			checkoutCmd.Args = append(checkoutCmd.Args, "-b")
 		}
+		checkoutCmd.Args = append(checkoutCmd.Args, branch)
 
-		if _, ok := hashesByBranch[branch]; !ok && branch != plumbing.Master.Short() {
-			coOpts.Hash = plumbing.NewHash(startingHash.String())
-			coOpts.Create = true
-		}
-
-		if err := worktree.Checkout(coOpts); err != nil {
+		if err := checkoutCmd.Run(); err != nil {
 			t.Fatalf("couldn't do checkout of %s: %v", branch, err)
 		}
 
-		hash := writeAndCommitToTestRepo(t, worktree, tempDir, cmt.Dir, cmt.Filename, []byte(cmt.Content))
-		commitSHAs = append(commitSHAs, hash.String())
+		hash := writeAndCommitToTestRepo(t, tempDir, cmt.Dir, cmt.Filename, []byte(cmt.Content))
+		commitSHAs = append(commitSHAs, hash)
 
 		if _, ok := hashesByBranch[branch]; !ok {
-			hashesByBranch[branch] = []string{hash.String()}
+			hashesByBranch[branch] = []string{hash}
 		} else {
-			hashesByBranch[branch] = append(hashesByBranch[branch], hash.String())
+			hashesByBranch[branch] = append(hashesByBranch[branch], hash)
 		}
 
 		if cmt.Tag != "" {
-			_, err = repo.CreateTag(cmt.Tag, hash, &git.CreateTagOptions{
-				Message: cmt.Tag,
-				Tagger: &object.Signature{
-					Name:  "Someone",
-					Email: "someone@example.com",
-					When:  time.Now(),
-				},
-			})
-		}
-		if err != nil {
-			t.Fatalf("couldn't add tag for %s: %v", cmt.Tag, err)
+			err = gitCmd("tag", cmt.Tag).Run()
+			if err != nil {
+				t.Fatalf("couldn't add tag for %s: %v", cmt.Tag, err)
+			}
 		}
 	}
 
@@ -827,8 +825,10 @@ type commitForRepo struct {
 	Tag      string
 }
 
-func writeAndCommitToTestRepo(t *testing.T, worktree *git.Worktree, repoDir string, subPath string, filename string, content []byte) plumbing.Hash {
+func writeAndCommitToTestRepo(t *testing.T, repoDir string, subPath string, filename string, content []byte) string {
 	t.Helper()
+
+	gitCmd := getGitCmd(t, repoDir)
 
 	targetDir := repoDir
 	if subPath != "" {
@@ -851,23 +851,22 @@ func writeAndCommitToTestRepo(t *testing.T, worktree *git.Worktree, repoDir stri
 		t.Fatalf("couldn't write content to file %s: %v", outfile, err)
 	}
 
-	_, err := worktree.Add(filepath.Join(subPath, filename))
+	err := gitCmd("add", outfile).Run()
 	if err != nil {
 		t.Fatalf("couldn't add file %s to git: %v", outfile, err)
 	}
 
-	hash, err := worktree.Commit("adding file for test", &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  "Someone",
-			Email: "someone@example.com",
-			When:  time.Now(),
-		},
-	})
+	err = gitCmd("commit", "-m", "adding file for test").Run()
 	if err != nil {
 		t.Fatalf("couldn't perform commit for test: %v", err)
 	}
 
-	return hash
+	out, err := gitCmd("rev-parse", "HEAD").Output()
+	if err != nil {
+		t.Fatalf("couldn't parse HEAD revision: %v", err)
+	}
+
+	return strings.TrimSpace(string(out))
 }
 
 // withTemporaryGitConfig resets the .gitconfig for the duration of the test.
