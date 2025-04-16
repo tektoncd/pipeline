@@ -28,10 +28,25 @@ import (
 
 const defaultBranch string = "main"
 
+// withTemporaryGitConfig resets the .gitconfig for the duration of the test.
+func withTemporaryGitConfig(t *testing.T) {
+	t.Helper()
+	gitConfigDir := t.TempDir()
+	key := "GIT_CONFIG_GLOBAL"
+	t.Setenv(key, filepath.Join(gitConfigDir, "config"))
+}
+
 func getGitCmd(t *testing.T, dir string) func(...string) *exec.Cmd {
 	t.Helper()
+	withTemporaryGitConfig(t)
 	return func(args ...string) *exec.Cmd {
-		args = append([]string{"-C", dir}, args...)
+		args = append(
+			[]string{
+				"-C", dir,
+				"-c", "user.email=test@test.com",
+				"-c", "user.name=PipelinesTests",
+			},
+			args...)
 		return exec.Command("git", args...)
 	}
 }
@@ -130,7 +145,7 @@ func writeAndCommitToTestRepo(t *testing.T, repoDir string, subPath string, file
 	}
 
 	if out, err := gitCmd("commit", "-m", "adding file for test").Output(); err != nil {
-		t.Fatalf("couldn't perform commit for test: %q: %v", string(out), err)
+		t.Fatalf("couldn't perform commit for test: %q: %v", out, err)
 	}
 
 	out, err := gitCmd("rev-parse", "HEAD").Output()
