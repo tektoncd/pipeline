@@ -30,7 +30,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/internal/resultref"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
 )
@@ -105,7 +104,8 @@ func RefNameLikeUrl(name string) error {
 	return nil
 }
 
-func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.FieldError) {
+// Validate implements apis.Validatable
+func (s *Step) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if err := validateArtifactsReferencesInStep(ctx, s); err != nil {
 		return err
 	}
@@ -195,9 +195,6 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 	}
 
 	if s.Name != "" {
-		if names.Has(s.Name) {
-			errs = errs.Also(apis.ErrInvalidValue(s.Name, "name"))
-		}
 		if e := validation.IsDNS1123Label(s.Name); len(e) > 0 {
 			errs = errs.Also(&apis.FieldError{
 				Message: fmt.Sprintf("invalid value %q", s.Name),
@@ -205,7 +202,6 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 				Details: "Task step name must be a valid DNS Label, For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
 			})
 		}
-		names.Insert(s.Name)
 	}
 
 	if s.Timeout != nil {
@@ -268,7 +264,7 @@ func isParamRefs(s string) bool {
 	return strings.HasPrefix(s, "$("+ParamsPrefix)
 }
 
-func validateArtifactsReferencesInStep(ctx context.Context, s Step) *apis.FieldError {
+func validateArtifactsReferencesInStep(ctx context.Context, s *Step) *apis.FieldError {
 	if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableArtifacts {
 		var t []string
 		t = append(t, s.Script)
@@ -296,7 +292,7 @@ func taskArtifactReferenceExists(src string) bool {
 // if create, it returns true.
 // if update, it checks if the step results have diverged and returns if diverged.
 // if neither, it returns false.
-func isCreateOrUpdateAndDiverged(ctx context.Context, s Step) bool {
+func isCreateOrUpdateAndDiverged(ctx context.Context, s *Step) bool {
 	if apis.IsInCreate(ctx) {
 		return true
 	}
@@ -328,7 +324,7 @@ func isCreateOrUpdateAndDiverged(ctx context.Context, s Step) bool {
 	return false
 }
 
-func validateStepResultReference(s Step) (errs *apis.FieldError) {
+func validateStepResultReference(s *Step) (errs *apis.FieldError) {
 	errs = errs.Also(errorIfStepResultReferencedInField(s.Name, "name"))
 	errs = errs.Also(errorIfStepResultReferencedInField(s.Image, "image"))
 	errs = errs.Also(errorIfStepResultReferencedInField(s.Script, "script"))
@@ -366,7 +362,7 @@ func errorIfStepResultReferencedInField(value, fieldName string) (errs *apis.Fie
 	return errs
 }
 
-func validateStepArtifactsReference(s Step) (errs *apis.FieldError) {
+func validateStepArtifactsReference(s *Step) (errs *apis.FieldError) {
 	errs = errs.Also(errorIfStepArtifactReferencedInField(s.Name, "name"))
 	errs = errs.Also(errorIfStepArtifactReferencedInField(s.Image, "image"))
 	errs = errs.Also(errorIfStepArtifactReferencedInField(string(s.ImagePullPolicy), "imagePullPolicy"))

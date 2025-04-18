@@ -132,3 +132,6 @@ type TaskList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Task `json:"items"`
 }
+
+// StepList is a list of Steps
+type StepList []Step
