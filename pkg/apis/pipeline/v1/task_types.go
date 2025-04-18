@@ -133,5 +133,8 @@ type TaskList struct {
 	Items           []Task `json:"items"`
 }
 
+// StepList is a list of Steps
+type StepList []Step
+
 // SidecarList is a list of Sidecars
 type SidecarList []Sidecar
