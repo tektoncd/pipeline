@@ -508,6 +508,145 @@ func TestStepValidateErrorWithArtifactsRefFlagNotEnabled(t *testing.T) {
 	}
 }
 
+func TestStepValidateErrorWithStepActionRef(t *testing.T) {
+	tests := []struct {
+		name          string
+		Step          v1.Step
+		expectedError apis.FieldError
+	}{
+		{
+			name: "Cannot use image with Ref",
+			Step: v1.Step{
+				Ref: &v1.Ref{
+					Name: "stepAction",
+				},
+				Image: "foo",
+			},
+			expectedError: apis.FieldError{
+				Message: "image cannot be used with Ref",
+				Paths:   []string{"image"},
+			},
+		}, {
+			name: "Cannot use command with Ref",
+			Step: v1.Step{
+				Ref: &v1.Ref{
+					Name: "stepAction",
+				},
+				Command: []string{"foo"},
+			},
+			expectedError: apis.FieldError{
+				Message: "command cannot be used with Ref",
+				Paths:   []string{"command"},
+			},
+		}, {
+			name: "Cannot use args with Ref",
+			Step: v1.Step{
+				Ref: &v1.Ref{
+					Name: "stepAction",
+				},
+				Args: []string{"foo"},
+			},
+			expectedError: apis.FieldError{
+				Message: "args cannot be used with Ref",
+				Paths:   []string{"args"},
+			},
+		}, {
+			name: "Cannot use script with Ref",
+			Step: v1.Step{
+				Ref: &v1.Ref{
+					Name: "stepAction",
+				},
+				Script: "echo hi",
+			},
+			expectedError: apis.FieldError{
+				Message: "script cannot be used with Ref",
+				Paths:   []string{"script"},
+			},
+		}, {
+			name: "Cannot use workingDir with Ref",
+			Step: v1.Step{
+				Ref: &v1.Ref{
+					Name: "stepAction",
+				},
+				WorkingDir: "/workspace",
+			},
+			expectedError: apis.FieldError{
+				Message: "working dir cannot be used with Ref",
+				Paths:   []string{"workingDir"},
+			},
+		}, {
+			name: "Cannot use env with Ref",
+			Step: v1.Step{
+				Ref: &v1.Ref{
+					Name: "stepAction",
+				},
+				Env: []corev1.EnvVar{{
+					Name:  "env1",
+					Value: "value1",
+				}},
+			},
+			expectedError: apis.FieldError{
+				Message: "env cannot be used with Ref",
+				Paths:   []string{"env"},
+			},
+		}, {
+			name: "Cannot use params without Ref",
+			Step: v1.Step{
+				Image: "my-image",
+				Params: v1.Params{{
+					Name: "param",
+				}},
+			},
+			expectedError: apis.FieldError{
+				Message: "params cannot be used without Ref",
+				Paths:   []string{"params"},
+			},
+		}, {
+			name: "Cannot use volumeMounts with Ref",
+			Step: v1.Step{
+				Ref: &v1.Ref{
+					Name: "stepAction",
+				},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "$(params.foo)",
+					MountPath: "/registry-config",
+				}},
+			},
+			expectedError: apis.FieldError{
+				Message: "volumeMounts cannot be used with Ref",
+				Paths:   []string{"volumeMounts"},
+			},
+		}, {
+			name: "Cannot use results with Ref",
+			Step: v1.Step{
+				Ref: &v1.Ref{
+					Name: "stepAction",
+				},
+				Results: []v1.StepResult{{
+					Name: "result",
+				}},
+			},
+			expectedError: apis.FieldError{
+				Message: "results cannot be used with Ref",
+				Paths:   []string{"results"},
+			},
+		},
+	}
+	for _, st := range tests {
+		t.Run(st.name, func(t *testing.T) {
+			ctx := t.Context()
+			ctx = apis.WithinCreate(ctx)
+			err := st.Step.Validate(ctx)
+			if err == nil {
+				t.Fatalf("Expected an error, got nothing for %v", st.Step)
+			}
+			if d := cmp.Diff(st.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("Step.Validate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestSidecarValidate(t *testing.T) {
 	tests := []struct {
 		name    string
