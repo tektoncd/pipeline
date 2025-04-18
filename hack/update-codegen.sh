@@ -18,11 +18,6 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-source $(git rev-parse --show-toplevel)/hack/setup-temporary-gopath.sh
-shim_gopath
-trap shim_gopath_clean EXIT
-
-# source $(git rev-parse --show-toplevel)/vendor/github.com/tektoncd/plumbing/scripts/library.sh
 source $(git rev-parse --show-toplevel)/vendor/knative.dev/hack/codegen-library.sh
 
 PREFIX=${GOBIN:-${GOPATH}/bin}
