@@ -287,7 +287,7 @@ func errorIfStepArtifactReferencedInField(value, fieldName string) (errs *apis.F
 func validateStepArtifactsReference(s Step) (errs *apis.FieldError) {
 	errs = errs.Also(errorIfStepArtifactReferencedInField(s.Name, "name"))
 	errs = errs.Also(errorIfStepArtifactReferencedInField(s.Image, "image"))
-	errs = errs.Also(errorIfStepArtifactReferencedInField(string(s.ImagePullPolicy), "imagePullPoliicy"))
+	errs = errs.Also(errorIfStepArtifactReferencedInField(string(s.ImagePullPolicy), "imagePullPolicy"))
 	errs = errs.Also(errorIfStepArtifactReferencedInField(s.WorkingDir, "workingDir"))
 	for _, e := range s.EnvFrom {
 		errs = errs.Also(errorIfStepArtifactReferencedInField(e.Prefix, "envFrom.prefix"))
@@ -314,7 +314,7 @@ func validateStepResultReference(s Step) (errs *apis.FieldError) {
 	errs = errs.Also(errorIfStepResultReferenceinField(s.Name, "name"))
 	errs = errs.Also(errorIfStepResultReferenceinField(s.Image, "image"))
 	errs = errs.Also(errorIfStepResultReferenceinField(s.Script, "script"))
-	errs = errs.Also(errorIfStepResultReferenceinField(string(s.ImagePullPolicy), "imagePullPoliicy"))
+	errs = errs.Also(errorIfStepResultReferenceinField(string(s.ImagePullPolicy), "imagePullPolicy"))
 	errs = errs.Also(errorIfStepResultReferenceinField(s.WorkingDir, "workingDir"))
 	for _, e := range s.EnvFrom {
 		errs = errs.Also(errorIfStepResultReferenceinField(e.Prefix, "envFrom.prefix"))
