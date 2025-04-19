@@ -250,7 +250,7 @@ func isParamRefs(s string) bool {
 	return strings.HasPrefix(s, "$("+ParamsPrefix)
 }
 
-func validateArtifactsReferencesInStep(ctx context.Context, s Step) *apis.FieldError {
+func validateArtifactsReferencesInStep(ctx context.Context, s *Step) *apis.FieldError {
 	cfg := config.FromContextOrDefaults(ctx)
 	if cfg == nil || cfg.FeatureFlags == nil {
 		cfg = &config.Config{
@@ -291,7 +291,7 @@ func taskArtifactReferenceExists(src string) bool {
 	return len(artifactref.TaskArtifactRegex.FindAllStringSubmatch(src, -1)) > 0 || strings.Contains(src, "$("+artifactref.TaskArtifactPathPattern+")")
 }
 
-func validateStepResultReference(s Step) (errs *apis.FieldError) {
+func validateStepResultReference(s *Step) (errs *apis.FieldError) {
 	errs = errs.Also(errorIfStepResultReferencedInField(s.Name, "name"))
 	errs = errs.Also(errorIfStepResultReferencedInField(s.Image, "image"))
 	errs = errs.Also(errorIfStepResultReferencedInField(s.Script, "script"))
