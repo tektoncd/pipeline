@@ -304,6 +304,210 @@ func TestStepValidateError(t *testing.T) {
 	}
 }
 
+func TestStepValidateSuccessWithArtifactsRefFlagEnabled(t *testing.T) {
+	tests := []struct {
+		name string
+		Step v1.Step
+	}{
+		{
+			name: "reference step artifacts in Env",
+			Step: v1.Step{
+				Image: "busybox",
+				Env:   []corev1.EnvVar{{Name: "AAA", Value: "$(steps.aaa.outputs.image)"}},
+			},
+		},
+		{
+			name: "reference step artifacts path in Env",
+			Step: v1.Step{
+				Image: "busybox",
+				Env:   []corev1.EnvVar{{Name: "AAA", Value: "$(step.artifacts.path)"}},
+			},
+		},
+		{
+			name: "reference step artifacts in Script",
+			Step: v1.Step{
+				Image:  "busybox",
+				Script: "echo $(steps.aaa.inputs.bbb)",
+			},
+		},
+		{
+			name: "reference step artifacts path in Script",
+			Step: v1.Step{
+				Image:  "busybox",
+				Script: "echo 123 >> $(step.artifacts.path)",
+			},
+		},
+		{
+			name: "reference step artifacts in Command",
+			Step: v1.Step{
+				Image:   "busybox",
+				Command: []string{"echo", "$(steps.aaa.outputs.bbbb)"},
+			},
+		},
+		{
+			name: "reference step artifacts path in Command",
+			Step: v1.Step{
+				Image:   "busybox",
+				Command: []string{"echo", "$(step.artifacts.path)"},
+			},
+		},
+		{
+			name: "reference step artifacts in Args",
+			Step: v1.Step{
+				Image: "busybox",
+				Args:  []string{"echo", "$(steps.aaa.outputs.bbbb)"},
+			},
+		},
+		{
+			name: "reference step artifacts path in Args",
+			Step: v1.Step{
+				Image: "busybox",
+				Args:  []string{"echo", "$(step.artifacts.path)"},
+			},
+		},
+	}
+	for _, st := range tests {
+		t.Run(st.name, func(t *testing.T) {
+			ctx := config.ToContext(t.Context(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					EnableStepActions: true,
+					EnableArtifacts:   true,
+				},
+			})
+			ctx = apis.WithinCreate(ctx)
+			err := st.Step.Validate(ctx)
+			if err != nil {
+				t.Fatalf("Expected no errors, got err for %v", err)
+			}
+		})
+	}
+}
+
+func TestStepValidateSuccessWithArtifactsRefFlagNotEnabled(t *testing.T) {
+	tests := []struct {
+		name string
+		Step v1.Step
+	}{
+		{
+			name: "script without reference to a step artifact",
+			Step: v1.Step{
+				Image:  "busybox",
+				Script: "echo 123",
+			},
+		},
+	}
+	for _, st := range tests {
+		t.Run(st.name, func(t *testing.T) {
+			ctx := config.ToContext(t.Context(), &config.Config{
+				FeatureFlags: nil,
+			})
+			ctx = apis.WithinCreate(ctx)
+			err := st.Step.Validate(ctx)
+			if err != nil {
+				t.Fatalf("Expected no errors, got err for %v", err)
+			}
+		})
+	}
+}
+
+func TestStepValidateErrorWithArtifactsRefFlagNotEnabled(t *testing.T) {
+	tests := []struct {
+		name          string
+		Step          v1.Step
+		expectedError apis.FieldError
+	}{
+		{
+			name: "Cannot reference step artifacts in Env without setting enable-artifacts to true",
+			Step: v1.Step{
+				Env: []corev1.EnvVar{{Name: "AAA", Value: "$(steps.aaa.outputs.image)"}},
+			},
+			expectedError: apis.FieldError{
+				Message: fmt.Sprintf("feature flag %s should be set to true to use artifacts feature.", config.EnableArtifacts),
+			},
+		},
+		{
+			name: "Cannot reference step artifacts path in Env without setting enable-artifacts to true",
+			Step: v1.Step{
+				Env: []corev1.EnvVar{{Name: "AAA", Value: "$(step.artifacts.path)"}},
+			},
+			expectedError: apis.FieldError{
+				Message: fmt.Sprintf("feature flag %s should be set to true to use artifacts feature.", config.EnableArtifacts),
+			},
+		},
+		{
+			name: "Cannot reference step artifacts in Script without setting enable-artifacts to true",
+			Step: v1.Step{
+				Script: "echo $(steps.aaa.inputs.bbb)",
+			},
+			expectedError: apis.FieldError{
+				Message: fmt.Sprintf("feature flag %s should be set to true to use artifacts feature.", config.EnableArtifacts),
+			},
+		},
+		{
+			name: "Cannot reference step artifacts path in Script without setting enable-artifacts to true",
+			Step: v1.Step{
+				Script: "echo 123 >> $(step.artifacts.path)",
+			},
+			expectedError: apis.FieldError{
+				Message: fmt.Sprintf("feature flag %s should be set to true to use artifacts feature.", config.EnableArtifacts),
+			},
+		},
+		{
+			name: "Cannot reference step artifacts in Command without setting enable-artifacts to true",
+			Step: v1.Step{
+				Command: []string{"echo", "$(steps.aaa.outputs.bbbb)"},
+			},
+			expectedError: apis.FieldError{
+				Message: fmt.Sprintf("feature flag %s should be set to true to use artifacts feature.", config.EnableArtifacts),
+			},
+		},
+		{
+			name: "Cannot reference step artifacts path in Command without setting enable-artifacts to true",
+			Step: v1.Step{
+				Command: []string{"echo", "$(step.artifacts.path)"},
+			},
+			expectedError: apis.FieldError{
+				Message: fmt.Sprintf("feature flag %s should be set to true to use artifacts feature.", config.EnableArtifacts),
+			},
+		},
+		{
+			name: "Cannot reference step artifacts in Args without setting enable-artifacts to true",
+			Step: v1.Step{
+				Args: []string{"echo", "$(steps.aaa.outputs.bbbb)"},
+			},
+			expectedError: apis.FieldError{
+				Message: fmt.Sprintf("feature flag %s should be set to true to use artifacts feature.", config.EnableArtifacts),
+			},
+		},
+		{
+			name: "Cannot reference step artifacts path in Args without setting enable-artifacts to true",
+			Step: v1.Step{
+				Args: []string{"echo", "$(step.artifacts.path)"},
+			},
+			expectedError: apis.FieldError{
+				Message: fmt.Sprintf("feature flag %s should be set to true to use artifacts feature.", config.EnableArtifacts),
+			},
+		},
+	}
+	for _, st := range tests {
+		t.Run(st.name, func(t *testing.T) {
+			ctx := config.ToContext(t.Context(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					EnableStepActions: true,
+				},
+			})
+			ctx = apis.WithinCreate(ctx)
+			err := st.Step.Validate(ctx)
+			if err == nil {
+				t.Fatalf("Expected an error, got nothing for %v", st.Step)
+			}
+			if d := cmp.Diff(st.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("Step.Validate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestSidecarValidate(t *testing.T) {
 	tests := []struct {
 		name    string
