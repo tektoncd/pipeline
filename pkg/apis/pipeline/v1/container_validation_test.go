@@ -647,6 +647,148 @@ func TestStepValidateErrorWithStepActionRef(t *testing.T) {
 	}
 }
 
+func TestStepOnError(t *testing.T) {
+	tests := []struct {
+		name          string
+		params        []v1.ParamSpec
+		step          v1.Step
+		expectedError *apis.FieldError
+	}{{
+		name: "valid step - valid onError usage - set to continue",
+		step: v1.Step{
+			OnError: v1.Continue,
+			Image:   "image",
+			Args:    []string{"arg"},
+		},
+	}, {
+		name: "valid step - valid onError usage - set to stopAndFail",
+		step: v1.Step{
+			OnError: v1.StopAndFail,
+			Image:   "image",
+			Args:    []string{"arg"},
+		},
+	}, {
+		name: "valid step - valid onError usage - set to a task parameter",
+		params: []v1.ParamSpec{{
+			Name:    "CONTINUE",
+			Default: &v1.ParamValue{Type: v1.ParamTypeString, StringVal: string(v1.Continue)},
+		}},
+		step: v1.Step{
+			OnError: "$(params.CONTINUE)",
+			Image:   "image",
+			Args:    []string{"arg"},
+		},
+	}, {
+		name: "invalid step - onError set to invalid value",
+		step: v1.Step{
+			OnError: "onError",
+			Image:   "image",
+			Args:    []string{"arg"},
+		},
+		expectedError: &apis.FieldError{
+			Message: `invalid value: "onError"`,
+			Paths:   []string{"onError"},
+			Details: `Task step onError must be either "continue" or "stopAndFail"`,
+		},
+	}}
+	for _, st := range tests {
+		t.Run(st.name, func(t *testing.T) {
+			ctx := t.Context()
+			err := st.step.Validate(ctx)
+			if st.expectedError == nil && err != nil {
+				t.Errorf("No error expected from Step.Validate() but got = %v", err)
+			} else if st.expectedError != nil {
+				if err == nil {
+					t.Errorf("Expected error from Step.Validate() = %v, but got none", st.expectedError)
+				} else if d := cmp.Diff(st.expectedError.Error(), err.Error()); d != "" {
+					t.Errorf("returned error from Step.Validate() does not match with the expected error: %s", diff.PrintWantGot(d))
+				}
+			}
+		})
+	}
+}
+
+// TestStepIncompatibleAPIVersions exercises validation of fields in a Step
+// that require a specific feature gate version in order to work.
+func TestStepIncompatibleAPIVersions(t *testing.T) {
+	versions := []string{"alpha", "beta", "stable"}
+	isStricterThen := func(first, second string) bool {
+		// assume values are in order alpha (less strict), beta, stable (strictest)
+		// return true if first is stricter then second
+		switch first {
+		case second, "alpha":
+			return false
+		case "stable":
+			return true
+		default:
+			// first is beta, true is second is alpha, false is second is stable
+			return second == "alpha"
+		}
+	}
+
+	for _, st := range []struct {
+		name            string
+		requiredVersion string
+		step            v1.Step
+	}{
+		{
+			name:            "windows script support requires alpha",
+			requiredVersion: "alpha",
+			step: v1.Step{
+				Image: "my-image",
+				Script: `
+				#!win powershell -File
+				script-1`,
+			},
+		}, {
+			name:            "stdout stream support requires alpha",
+			requiredVersion: "alpha",
+			step: v1.Step{
+				Image: "foo",
+				StdoutConfig: &v1.StepOutputConfig{
+					Path: "/tmp/stdout.txt",
+				},
+			},
+		}, {
+			name:            "stderr stream support requires alpha",
+			requiredVersion: "alpha",
+			step: v1.Step{
+				Image: "foo",
+				StderrConfig: &v1.StepOutputConfig{
+					Path: "/tmp/stderr.txt",
+				},
+			},
+		},
+	} {
+		for _, version := range versions {
+			testName := fmt.Sprintf("(using %s) %s", version, st.name)
+			t.Run(testName, func(t *testing.T) {
+				ctx := t.Context()
+				if version == "alpha" {
+					ctx = cfgtesting.EnableAlphaAPIFields(ctx)
+				}
+				if version == "beta" {
+					ctx = cfgtesting.EnableBetaAPIFields(ctx)
+				}
+				if version == "stable" {
+					ctx = cfgtesting.EnableStableAPIFields(ctx)
+				}
+				err := st.step.Validate(ctx)
+
+				// If the configured version is stricter than the required one, we expect an error
+				if isStricterThen(version, st.requiredVersion) && err == nil {
+					t.Fatalf("no error received even though version required is %q while feature gate is %q", st.requiredVersion, version)
+				}
+
+				// If the configured version is more permissive than the required one, we expect no error
+				if isStricterThen(st.requiredVersion, version) && err != nil {
+					t.Fatalf("error received despite required version and feature gate matching %q: %v", version, err)
+				}
+			})
+		}
+	}
+}
+
 func TestSidecarValidate(t *testing.T) {
 	tests := []struct {
 		name    string
