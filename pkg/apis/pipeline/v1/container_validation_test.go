@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -28,6 +29,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
 
@@ -166,6 +169,136 @@ func TestRef_Invalid(t *testing.T) {
 			err := ts.ref.Validate(ctx)
 			if d := cmp.Diff(ts.wantErr.Error(), err.Error()); d != "" {
 				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestStepValidate(t *testing.T) {
+	tests := []struct {
+		name string
+		Step v1.Step
+	}{{
+		name: "unnamed step",
+		Step: v1.Step{
+			Image: "myimage",
+		},
+	}, {
+		name: "valid step with script",
+		Step: v1.Step{
+			Image: "my-image",
+			Script: `
+				#!/usr/bin/env bash
+				hello world`,
+		},
+	}, {
+		name: "valid step with script and args",
+		Step: v1.Step{
+			Image: "my-image",
+			Args:  []string{"arg"},
+			Script: `
+				#!/usr/bin/env  bash
+				hello $1`,
+		},
+	}, {
+		name: "valid step with volumeMount under /tekton/home",
+		Step: v1.Step{
+			Image: "myimage",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "foo",
+				MountPath: "/tekton/home",
+			}},
+		},
+	}}
+	for _, st := range tests {
+		t.Run(st.name, func(t *testing.T) {
+			ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
+			if err := st.Step.Validate(ctx); err != nil {
+				t.Errorf("Step.Validate() = %v", err)
+			}
+		})
+	}
+}
+
+func TestStepValidateError(t *testing.T) {
+	tests := []struct {
+		name          string
+		Step          v1.Step
+		expectedError apis.FieldError
+	}{{
+		name: "invalid step with missing Image",
+		Step: v1.Step{},
+		expectedError: apis.FieldError{
+			Message: "missing field(s)",
+			Paths:   []string{"Image"},
+		},
+	}, {
+		name: "invalid step name",
+		Step: v1.Step{
+			Name:  "replaceImage",
+			Image: "myimage",
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value "replaceImage"`,
+			Paths:   []string{"name"},
+			Details: "Task step name must be a valid DNS Label, For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+		},
+	}, {
+		name: "step with script and command",
+		Step: v1.Step{
+			Image:   "myimage",
+			Command: []string{"command"},
+			Script:  "script",
+		},
+		expectedError: apis.FieldError{
+			Message: "script cannot be used with command",
+			Paths:   []string{"script"},
+		},
+	}, {
+		name: "step volume mounts under /tekton/",
+		Step: v1.Step{
+			Image: "myimage",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "foo",
+				MountPath: "/tekton/foo",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/foo")`,
+			Paths:   []string{"volumeMounts[0].mountPath"},
+		},
+	}, {
+		name: "step volume mount name starts with tekton-internal-",
+		Step: v1.Step{
+			Image: "myimage",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "tekton-internal-foo",
+				MountPath: "/this/is/fine",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `volumeMount name "tekton-internal-foo" cannot start with "tekton-internal-"`,
+			Paths:   []string{"volumeMounts[0].name"},
+		},
+	}, {
+		name: "negative timeout string",
+		Step: v1.Step{
+			Timeout: &metav1.Duration{Duration: -10 * time.Second},
+		},
+		expectedError: apis.FieldError{
+			Message: "invalid value: -10s",
+			Paths:   []string{"negative timeout"},
+		},
+	}}
+	for _, st := range tests {
+		t.Run(st.name, func(t *testing.T) {
+			ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
+			err := st.Step.Validate(ctx)
+			if err == nil {
+				t.Fatalf("Expected an error, got nothing for %v", st.Step)
+			}
+			if d := cmp.Diff(st.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("Step.Validate() errors diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}
