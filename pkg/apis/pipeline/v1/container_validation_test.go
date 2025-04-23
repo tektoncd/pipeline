@@ -130,7 +130,7 @@ func TestRef_Invalid(t *testing.T) {
 		wantErr: apis.ErrMissingField("resolver"),
 		wc:      enableConciseResolverSyntax,
 	}, {
-		name: "ref params disallowed in conjunction with pipelineref name",
+		name: "ref params disallowed in conjunction with pipelineRef name",
 		ref: &v1.Ref{
 			Name: "https://foo/bar",
 			ResolverRef: v1.ResolverRef{
@@ -786,6 +786,202 @@ func TestStepIncompatibleAPIVersions(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestStepValidateErrorWithStepResultRef(t *testing.T) {
+	tests := []struct {
+		name          string
+		Step          v1.Step
+		expectedError apis.FieldError
+	}{{
+		name: "Cannot reference step results in image",
+		Step: v1.Step{
+			Image: "$(steps.prevStep.results.resultName)",
+		},
+		expectedError: apis.FieldError{
+			Message: "stepResult substitutions are only allowed in env, command and args. Found usage in",
+			Paths:   []string{"image"},
+		},
+	}, {
+		name: "Cannot reference step results in script",
+		Step: v1.Step{
+			Image:  "my-img",
+			Script: "echo $(steps.prevStep.results.resultName)",
+		},
+		expectedError: apis.FieldError{
+			Message: "stepResult substitutions are only allowed in env, command and args. Found usage in",
+			Paths:   []string{"script"},
+		},
+	}, {
+		name: "Cannot reference step results in workingDir",
+		Step: v1.Step{
+			Image:      "my-img",
+			WorkingDir: "$(steps.prevStep.results.resultName)",
+		},
+		expectedError: apis.FieldError{
+			Message: "stepResult substitutions are only allowed in env, command and args. Found usage in",
+			Paths:   []string{"workingDir"},
+		},
+	}, {
+		name: "Cannot reference step results in envFrom",
+		Step: v1.Step{
+			Image: "my-img",
+			EnvFrom: []corev1.EnvFromSource{{
+				Prefix: "$(steps.prevStep.results.resultName)",
+				ConfigMapRef: &corev1.ConfigMapEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "$(steps.prevStep.results.resultName)",
+					},
+				},
+				SecretRef: &corev1.SecretEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "$(steps.prevStep.results.resultName)",
+					},
+				},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "stepResult substitutions are only allowed in env, command and args. Found usage in",
+			Paths:   []string{"envFrom.configMapRef", "envFrom.prefix", "envFrom.secretRef"},
+		},
+	}, {
+		name: "Cannot reference step results in VolumeMounts",
+		Step: v1.Step{
+			Image: "my-img",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "$(steps.prevStep.results.resultName)",
+				MountPath: "$(steps.prevStep.results.resultName)",
+				SubPath:   "$(steps.prevStep.results.resultName)",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "stepResult substitutions are only allowed in env, command and args. Found usage in",
+			Paths:   []string{"volumeMounts.name", "volumeMounts.mountPath", "volumeMounts.subPath"},
+		},
+	}, {
+		name: "Cannot reference step results in VolumeDevices",
+		Step: v1.Step{
+			Image: "my-img",
+			VolumeDevices: []corev1.VolumeDevice{{
+				Name:       "$(steps.prevStep.results.resultName)",
+				DevicePath: "$(steps.prevStep.results.resultName)",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "stepResult substitutions are only allowed in env, command and args. Found usage in",
+			Paths:   []string{"volumeDevices.name", "volumeDevices.devicePath"},
+		},
+	}}
+	for _, st := range tests {
+		t.Run(st.name, func(t *testing.T) {
+			ctx := config.ToContext(t.Context(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					EnableStepActions: true,
+				},
+			})
+			ctx = apis.WithinCreate(ctx)
+			err := st.Step.Validate(ctx)
+			if err == nil {
+				t.Fatalf("Expected an error, got nothing for %v", st.Step)
+			}
+			if d := cmp.Diff(st.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("Step.Validate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestStepValidateErrorWithArtifactsRef(t *testing.T) {
+	tests := []struct {
+		name          string
+		Step          v1.Step
+		expectedError apis.FieldError
+	}{{
+		name: "Cannot reference step artifacts in image",
+		Step: v1.Step{
+			Image: "$(steps.prevStep.outputs.aaa)",
+		},
+		expectedError: apis.FieldError{
+			Message: "stepArtifact substitutions are only allowed in env, command, args and script. Found usage in",
+			Paths:   []string{"image"},
+		},
+	}, {
+		name: "Cannot reference step artifacts in workingDir",
+		Step: v1.Step{
+			Image:      "my-img",
+			WorkingDir: "$(steps.prevStep.outputs.aaa)",
+		},
+		expectedError: apis.FieldError{
+			Message: "stepArtifact substitutions are only allowed in env, command, args and script. Found usage in",
+			Paths:   []string{"workingDir"},
+		},
+	}, {
+		name: "Cannot reference step artifacts in envFrom",
+		Step: v1.Step{
+			Image: "my-img",
+			EnvFrom: []corev1.EnvFromSource{{
+				Prefix: "$(steps.prevStep.outputs.aaa)",
+				ConfigMapRef: &corev1.ConfigMapEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "$(steps.prevStep.outputs.aaa)",
+					},
+				},
+				SecretRef: &corev1.SecretEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "$(steps.prevStep.outputs.aaa)",
+					},
+				},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "stepArtifact substitutions are only allowed in env, command, args and script. Found usage in",
+			Paths:   []string{"envFrom.configMapRef", "envFrom.prefix", "envFrom.secretRef"},
+		},
+	}, {
+		name: "Cannot reference step artifacts in VolumeMounts",
+		Step: v1.Step{
+			Image: "my-img",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "$(steps.prevStep.outputs.aaa)",
+				MountPath: "$(steps.prevStep.outputs.aaa)",
+				SubPath:   "$(steps.prevStep.outputs.aaa)",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "stepArtifact substitutions are only allowed in env, command, args and script. Found usage in",
+			Paths:   []string{"volumeMounts.name", "volumeMounts.mountPath", "volumeMounts.subPath"},
+		},
+	}, {
+		name: "Cannot reference step artifacts in VolumeDevices",
+		Step: v1.Step{
+			Image: "my-img",
+			VolumeDevices: []corev1.VolumeDevice{{
+				Name:       "$(steps.prevStep.outputs.aaa)",
+				DevicePath: "$(steps.prevStep.outputs.aaa)",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "stepArtifact substitutions are only allowed in env, command, args and script. Found usage in",
+			Paths:   []string{"volumeDevices.name", "volumeDevices.devicePath"},
+		},
+	}}
+	for _, st := range tests {
+		t.Run(st.name, func(t *testing.T) {
+			ctx := config.ToContext(t.Context(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					EnableStepActions: true,
+				},
+			})
+			ctx = apis.WithinCreate(ctx)
+			err := st.Step.Validate(ctx)
+			if err == nil {
+				t.Fatalf("Expected an error, got nothing for %v", st.Step)
+			}
+			if d := cmp.Diff(st.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("Step.Validate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 
