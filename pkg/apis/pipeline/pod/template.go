@@ -53,7 +53,10 @@ type Template struct {
 
 	// SecurityContext holds pod-level security attributes and common container settings.
 	// Optional: Defaults to empty.  See type description for default values of each field.
+	// See Pod.spec.securityContext (API version: v1)
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	SecurityContext *corev1.PodSecurityContext `json:"securityContext,omitempty"`
 
 	// List of volumes that can be mounted by containers belonging to the pod.
