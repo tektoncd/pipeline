@@ -985,6 +985,43 @@ func TestStepValidateErrorWithArtifactsRef(t *testing.T) {
 	}
 }
 
+func TestStepWithStepActionReferenceValidate(t *testing.T) {
+	tests := []struct {
+		name string
+		Step v1.Step
+	}{{
+		name: "valid stepAction ref",
+		Step: v1.Step{
+			Name: "mystep",
+			Ref: &v1.Ref{
+				Name: "stepAction",
+			},
+		},
+	}, {
+		name: "valid use of params with Ref",
+		Step: v1.Step{
+			Ref: &v1.Ref{
+				Name: "stepAction",
+			},
+			Params: v1.Params{{
+				Name: "param",
+			}},
+		},
+	}}
+	for _, st := range tests {
+		t.Run(st.name, func(t *testing.T) {
+			ctx := config.ToContext(t.Context(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					EnableStepActions: true,
+				},
+			})
+			if err := st.Step.Validate(ctx); err != nil {
+				t.Errorf("Step.Validate() = %v", err)
+			}
+		})
+	}
+}
+
 func TestSidecarValidate(t *testing.T) {
 	tests := []struct {
 		name    string
