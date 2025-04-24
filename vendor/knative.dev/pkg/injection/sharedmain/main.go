@@ -161,7 +161,7 @@ func MainNamed(ctx context.Context, component string, ctors ...injection.NamedCo
 }
 
 func enabledControllers(disabledControllers []string, ctors []injection.NamedControllerConstructor) []injection.NamedControllerConstructor {
-	disabledControllersSet := sets.NewString(disabledControllers...)
+	disabledControllersSet := sets.New(disabledControllers...)
 	activeCtors := make([]injection.NamedControllerConstructor, 0, len(ctors))
 	for _, ctor := range ctors {
 		if disabledControllersSet.Has(ctor.Name) {

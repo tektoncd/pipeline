@@ -117,14 +117,14 @@ func Apply(ctx context.Context, ts v1.TaskSpec, wb []v1.WorkspaceBinding, v map[
 		return &ts, nil
 	}
 
-	addedVolumes := sets.NewString()
+	addedVolumes := sets.New[string]()
 
 	// Initialize StepTemplate if it hasn't been already
 	if ts.StepTemplate == nil {
 		ts.StepTemplate = &v1.StepTemplate{}
 	}
 
-	isolatedWorkspaces := sets.NewString()
+	isolatedWorkspaces := sets.New[string]()
 
 	for _, step := range ts.Steps {
 		for _, workspaceUsage := range step.Workspaces {
@@ -230,8 +230,8 @@ func AddSidecarVolumeMount(sidecar *v1.Sidecar, volumeMount corev1.VolumeMount) 
 	sidecar.VolumeMounts = append(sidecar.VolumeMounts, volumeMount)
 }
 
-func findWorkspaceSubstitutionLocationsInSidecars(sidecars []v1.Sidecar) sets.String {
-	locationsToCheck := sets.NewString()
+func findWorkspaceSubstitutionLocationsInSidecars(sidecars []v1.Sidecar) sets.Set[string] {
+	locationsToCheck := sets.New[string]()
 	for _, sidecar := range sidecars {
 		locationsToCheck.Insert(sidecar.Script)
 
@@ -250,8 +250,8 @@ func findWorkspaceSubstitutionLocationsInSidecars(sidecars []v1.Sidecar) sets.St
 	return locationsToCheck
 }
 
-func findWorkspaceSubstitutionLocationsInSteps(steps []v1.Step) sets.String {
-	locationsToCheck := sets.NewString()
+func findWorkspaceSubstitutionLocationsInSteps(steps []v1.Step) sets.Set[string] {
+	locationsToCheck := sets.New[string]()
 	for _, step := range steps {
 		locationsToCheck.Insert(step.Script)
 
@@ -278,8 +278,8 @@ func findWorkspaceSubstitutionLocationsInSteps(steps []v1.Step) sets.String {
 	return locationsToCheck
 }
 
-func findWorkspaceSubstitutionLocationsInStepTemplate(stepTemplate *v1.StepTemplate) sets.String {
-	locationsToCheck := sets.NewString()
+func findWorkspaceSubstitutionLocationsInStepTemplate(stepTemplate *v1.StepTemplate) sets.Set[string] {
+	locationsToCheck := sets.New[string]()
 
 	if stepTemplate != nil {
 		for i := range stepTemplate.Args {
@@ -298,12 +298,12 @@ func findWorkspaceSubstitutionLocationsInStepTemplate(stepTemplate *v1.StepTempl
 }
 
 // FindWorkspacesUsedByTask returns a set of all the workspaces that the TaskSpec uses.
-func FindWorkspacesUsedByTask(ts v1.TaskSpec) (sets.String, error) {
-	locationsToCheck := sets.NewString()
-	locationsToCheck.Insert(findWorkspaceSubstitutionLocationsInSteps(ts.Steps).List()...)
-	locationsToCheck.Insert(findWorkspaceSubstitutionLocationsInSidecars(ts.Sidecars).List()...)
-	locationsToCheck.Insert(findWorkspaceSubstitutionLocationsInStepTemplate(ts.StepTemplate).List()...)
-	workspacesUsedInSteps := sets.NewString()
+func FindWorkspacesUsedByTask(ts v1.TaskSpec) (sets.Set[string], error) {
+	locationsToCheck := sets.New[string]()
+	locationsToCheck.Insert(sets.List(findWorkspaceSubstitutionLocationsInSteps(ts.Steps))...)
+	locationsToCheck.Insert(sets.List(findWorkspaceSubstitutionLocationsInSidecars(ts.Sidecars))...)
+	locationsToCheck.Insert(sets.List(findWorkspaceSubstitutionLocationsInStepTemplate(ts.StepTemplate))...)
+	workspacesUsedInSteps := sets.New[string]()
 	for item := range locationsToCheck {
 		workspacesUsed, _, errString := substitution.ExtractVariablesFromString(item, "workspaces")
 		if errString != "" {

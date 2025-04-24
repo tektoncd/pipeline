@@ -2625,7 +2625,7 @@ func TestGetArrayIndexParamRefs(t *testing.T) {
 	tcs := []struct {
 		name     string
 		taskspec *v1.TaskSpec
-		want     sets.String
+		want     sets.Set[string]
 	}{
 		{
 			name: "steps reference",
@@ -2681,7 +2681,7 @@ func TestGetArrayIndexParamRefs(t *testing.T) {
 					Image: "$(params.array-params[27])",
 				},
 			},
-			want: sets.NewString("$(params.array-params[10])", "$(params.array-params[11])", "$(params.array-params[12])", "$(params.array-params[13])", "$(params.array-params[14])",
+			want: sets.New("$(params.array-params[10])", "$(params.array-params[11])", "$(params.array-params[12])", "$(params.array-params[13])", "$(params.array-params[14])",
 				"$(params.array-params[15])", "$(params.array-params[16])", "$(params.array-params[17])", "$(params.array-params[18])", "$(params.array-params[19])", "$(params.array-params[20])",
 				"$(params.array-params[21])", "$(params.array-params[22])", "$(params.array-params[23])", "$(params.array-params[24])", "$(params.array-params[25])", "$(params.array-params[26])", "$(params.array-params[27])"),
 		}, {
@@ -2695,7 +2695,7 @@ func TestGetArrayIndexParamRefs(t *testing.T) {
 					Image: "$(params.array-params[3])",
 				},
 			},
-			want: sets.NewString("$(params.array-params[3])"),
+			want: sets.New("$(params.array-params[3])"),
 		}, {
 			name: "volumes references",
 			taskspec: &v1.TaskSpec{
@@ -2755,7 +2755,7 @@ func TestGetArrayIndexParamRefs(t *testing.T) {
 					},
 				},
 			},
-			want: sets.NewString("$(params.array-params[10])", "$(params.array-params[11])", "$(params.array-params[12])", "$(params.array-params[13])", "$(params.array-params[14])",
+			want: sets.New("$(params.array-params[10])", "$(params.array-params[11])", "$(params.array-params[12])", "$(params.array-params[13])", "$(params.array-params[14])",
 				"$(params.array-params[15])", "$(params.array-params[16])", "$(params.array-params[17])", "$(params.array-params[18])", "$(params.array-params[19])", "$(params.array-params[20])",
 				"$(params.array-params[21])", "$(params.array-params[22])"),
 		}, {
@@ -2769,7 +2769,7 @@ func TestGetArrayIndexParamRefs(t *testing.T) {
 					MountPath: "$(params.array-params[3])",
 				}},
 			},
-			want: sets.NewString("$(params.array-params[3])"),
+			want: sets.New("$(params.array-params[3])"),
 		}, {
 			name: "sidecar references",
 			taskspec: &v1.TaskSpec{
@@ -2783,7 +2783,7 @@ func TestGetArrayIndexParamRefs(t *testing.T) {
 					},
 				},
 			},
-			want: sets.NewString("$(params.array-params[3])"),
+			want: sets.New("$(params.array-params[3])"),
 		},
 	}
 	for _, tc := range tcs {

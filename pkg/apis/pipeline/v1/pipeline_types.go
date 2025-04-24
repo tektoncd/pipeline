@@ -289,7 +289,7 @@ func (pt PipelineTask) HashKey() string {
 // Deps returns all other PipelineTask dependencies of this PipelineTask, based on resource usage or ordering
 func (pt PipelineTask) Deps() []string {
 	// hold the list of dependencies in a set to avoid duplicates
-	deps := sets.NewString()
+	deps := sets.New[string]()
 
 	// add any new dependents from result references - resource dependency
 	for _, ref := range PipelineTaskResultRefs(&pt) {
@@ -301,7 +301,7 @@ func (pt PipelineTask) Deps() []string {
 		deps.Insert(runAfter)
 	}
 
-	return deps.List()
+	return sets.List(deps)
 }
 
 // PipelineTaskList is a list of PipelineTasks
@@ -331,8 +331,8 @@ func (l PipelineTaskList) Items() []dag.Task {
 }
 
 // Names returns a set of pipeline task names from the given list of pipeline tasks
-func (l PipelineTaskList) Names() sets.String {
-	names := sets.String{}
+func (l PipelineTaskList) Names() sets.Set[string] {
+	names := sets.Set[string]{}
 	for _, pt := range l {
 		names.Insert(pt.Name)
 	}

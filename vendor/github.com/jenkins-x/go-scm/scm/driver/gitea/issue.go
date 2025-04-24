@@ -31,7 +31,7 @@ func (s *issueService) AssignIssue(ctx context.Context, repo string, number int,
 	if issue == nil {
 		return res, fmt.Errorf("couldn't find issue %d in repository %s", number, repo)
 	}
-	assignees := sets.NewString(logins...)
+	assignees := sets.New(logins...)
 	for k := range issue.Assignees {
 		assignees.Insert(issue.Assignees[k].Login)
 	}
@@ -39,7 +39,7 @@ func (s *issueService) AssignIssue(ctx context.Context, repo string, number int,
 	namespace, name := scm.Split(repo)
 	in := gitea.EditIssueOption{
 		Title:     issue.Title,
-		Assignees: assignees.List(),
+		Assignees: sets.List(assignees),
 	}
 	_, giteaResp, err := s.client.GiteaClient.EditIssue(namespace, name, int64(number), in)
 	return toSCMResponse(giteaResp), err
@@ -53,7 +53,7 @@ func (s *issueService) UnassignIssue(ctx context.Context, repo string, number in
 	if issue == nil {
 		return res, fmt.Errorf("couldn't find issue %d in repository %s", number, repo)
 	}
-	assignees := sets.NewString()
+	assignees := sets.New[string]()
 	for k := range issue.Assignees {
 		assignees.Insert(issue.Assignees[k].Login)
 	}
@@ -62,7 +62,7 @@ func (s *issueService) UnassignIssue(ctx context.Context, repo string, number in
 	namespace, name := scm.Split(repo)
 	in := gitea.EditIssueOption{
 		Title:     issue.Title,
-		Assignees: assignees.List(),
+		Assignees: sets.List(assignees),
 	}
 	_, giteaResp, err := s.client.GiteaClient.EditIssue(namespace, name, int64(number), in)
 	return toSCMResponse(giteaResp), err

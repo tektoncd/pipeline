@@ -20,20 +20,19 @@ import (
 	"reflect"
 	"strings"
 
-	"k8s.io/kube-openapi/pkg/util/sets"
-
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/gengo/v2/types"
 )
 
 var (
 	// Blacklist of JSON tags that should skip match evaluation
-	jsonTagBlacklist = sets.NewString(
+	jsonTagBlacklist = sets.New(
 		// Omitted field is ignored by the package
 		"-",
 	)
 
 	// Blacklist of JSON names that should skip match evaluation
-	jsonNameBlacklist = sets.NewString(
+	jsonNameBlacklist = sets.New(
 		// Empty name is used for inline struct field (e.g. metav1.TypeMeta)
 		"",
 		// Special case for object and list meta
@@ -41,7 +40,7 @@ var (
 	)
 
 	// List of substrings that aren't allowed in Go name and JSON name
-	disallowedNameSubstrings = sets.NewString(
+	disallowedNameSubstrings = sets.New(
 		// Underscore is not allowed in either name
 		"_",
 		// Dash is not allowed in either name. Note that since dash is a valid JSON tag, this should be checked

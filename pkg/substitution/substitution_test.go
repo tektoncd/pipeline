@@ -32,7 +32,7 @@ func TestValidateNoReferencesToUnknownVariables(t *testing.T) {
 	type args struct {
 		input  string
 		prefix string
-		vars   sets.String
+		vars   sets.Set[string]
 	}
 	for _, tc := range []struct {
 		name          string
@@ -43,7 +43,7 @@ func TestValidateNoReferencesToUnknownVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(inputs.params.baz)",
 			prefix: "inputs.params",
-			vars:   sets.NewString("baz"),
+			vars:   sets.New("baz"),
 		},
 		expectedError: nil,
 	}, {
@@ -51,7 +51,7 @@ func TestValidateNoReferencesToUnknownVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(inputs.params[\"baz\"])",
 			prefix: "inputs.params",
-			vars:   sets.NewString("baz"),
+			vars:   sets.New("baz"),
 		},
 		expectedError: nil,
 	}, {
@@ -59,7 +59,7 @@ func TestValidateNoReferencesToUnknownVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(inputs.params['baz'])",
 			prefix: "inputs.params",
-			vars:   sets.NewString("baz"),
+			vars:   sets.New("baz"),
 		},
 		expectedError: nil,
 	}, {
@@ -67,7 +67,7 @@ func TestValidateNoReferencesToUnknownVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(params[\"foo.bar.baz\"])",
 			prefix: "params",
-			vars:   sets.NewString("foo.bar.baz"),
+			vars:   sets.New("foo.bar.baz"),
 		},
 		expectedError: nil,
 	}, {
@@ -75,7 +75,7 @@ func TestValidateNoReferencesToUnknownVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(params['foo.bar.baz'])",
 			prefix: "params",
-			vars:   sets.NewString("foo.bar.baz"),
+			vars:   sets.New("foo.bar.baz"),
 		},
 		expectedError: nil,
 	}, {
@@ -83,7 +83,7 @@ func TestValidateNoReferencesToUnknownVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(params.foo.bar.baz)",
 			prefix: "params",
-			vars:   sets.NewString("foo.bar.baz"),
+			vars:   sets.New("foo.bar.baz"),
 		},
 		expectedError: &apis.FieldError{
 			Message: fmt.Sprintf(`Invalid referencing of parameters in "%s"! Only two dot-separated components after the prefix "%s" are allowed.`, "--flag=$(params.foo.bar.baz)", "params"),
@@ -94,7 +94,7 @@ func TestValidateNoReferencesToUnknownVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(resources.inputs.foo.bar)",
 			prefix: "resources.(?:inputs|outputs)",
-			vars:   sets.NewString("foo"),
+			vars:   sets.New("foo"),
 		},
 		expectedError: nil,
 	}, {
@@ -102,7 +102,7 @@ func TestValidateNoReferencesToUnknownVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(resources.inputs.foo.bar.baz)",
 			prefix: "resources.(?:inputs|outputs)",
-			vars:   sets.NewString("foo.bar"),
+			vars:   sets.New("foo.bar"),
 		},
 		expectedError: &apis.FieldError{
 			Message: fmt.Sprintf(`Invalid referencing of parameters in "%s"! Only two dot-separated components after the prefix "%s" are allowed.`, "--flag=$(resources.inputs.foo.bar.baz)", "resources.(?:inputs|outputs)"),
@@ -113,7 +113,7 @@ func TestValidateNoReferencesToUnknownVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(inputs.params['ba-_9z'])",
 			prefix: "inputs.params",
-			vars:   sets.NewString("ba-_9z"),
+			vars:   sets.New("ba-_9z"),
 		},
 		expectedError: nil,
 	}, {
@@ -121,7 +121,7 @@ func TestValidateNoReferencesToUnknownVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(context.taskRun.uid)",
 			prefix: "context.taskRun",
-			vars:   sets.NewString("uid"),
+			vars:   sets.New("uid"),
 		},
 		expectedError: nil,
 	}, {
@@ -129,7 +129,7 @@ func TestValidateNoReferencesToUnknownVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(inputs.params.baz) $(inputs.params.foo)",
 			prefix: "inputs.params",
-			vars:   sets.NewString("baz", "foo"),
+			vars:   sets.New("baz", "foo"),
 		},
 		expectedError: nil,
 	}, {
@@ -137,7 +137,7 @@ func TestValidateNoReferencesToUnknownVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(params.objectParam.key1)",
 			prefix: "params.objectParam",
-			vars:   sets.NewString("key1", "key2"),
+			vars:   sets.New("key1", "key2"),
 		},
 		expectedError: nil,
 	}, {
@@ -145,7 +145,7 @@ func TestValidateNoReferencesToUnknownVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(params.objectParam.key1) $(params.objectParam.key2)",
 			prefix: "params.objectParam",
-			vars:   sets.NewString("key1", "key2"),
+			vars:   sets.New("key1", "key2"),
 		},
 		expectedError: nil,
 	}, {
@@ -153,7 +153,7 @@ func TestValidateNoReferencesToUnknownVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(something.baz)",
 			prefix: "something",
-			vars:   sets.NewString("baz"),
+			vars:   sets.New("baz"),
 		},
 		expectedError: nil,
 	}, {
@@ -161,7 +161,7 @@ func TestValidateNoReferencesToUnknownVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(inputs.params.baz)",
 			prefix: "inputs.params",
-			vars:   sets.NewString("foo"),
+			vars:   sets.New("foo"),
 		},
 		expectedError: &apis.FieldError{
 			Message: `non-existent variable in "--flag=$(inputs.params.baz)"`,
@@ -172,7 +172,7 @@ func TestValidateNoReferencesToUnknownVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(params.objectParam.key3)",
 			prefix: "params.objectParam",
-			vars:   sets.NewString("key1", "key2"),
+			vars:   sets.New("key1", "key2"),
 		},
 		expectedError: &apis.FieldError{
 			Message: `non-existent variable in "--flag=$(params.objectParam.key3)"`,
@@ -193,7 +193,7 @@ func TestValidateNoReferencesToUnknownVariablesWithDetail(t *testing.T) {
 	type args struct {
 		input  string
 		prefix string
-		vars   sets.String
+		vars   sets.Set[string]
 	}
 	for _, tc := range []struct {
 		name          string
@@ -204,7 +204,7 @@ func TestValidateNoReferencesToUnknownVariablesWithDetail(t *testing.T) {
 		args: args{
 			input:  "--flag=$(inputs.params.baz)",
 			prefix: "inputs.params",
-			vars:   sets.NewString("foo"),
+			vars:   sets.New("foo"),
 		},
 		expectedError: &apis.FieldError{
 			Message: `non-existent variable ` + "`baz`" + ` in "--flag=$(inputs.params.baz)"`,
@@ -215,7 +215,7 @@ func TestValidateNoReferencesToUnknownVariablesWithDetail(t *testing.T) {
 		args: args{
 			input:  "--flag=$(params.objectParam.key3)",
 			prefix: "params.objectParam",
-			vars:   sets.NewString("key1", "key2"),
+			vars:   sets.New("key1", "key2"),
 		},
 		expectedError: &apis.FieldError{
 			Message: `non-existent variable ` + "`key3`" + ` in "--flag=$(params.objectParam.key3)"`,
@@ -236,7 +236,7 @@ func TestValidateNoReferencesToProhibitedVariables(t *testing.T) {
 	type args struct {
 		input  string
 		prefix string
-		vars   sets.String
+		vars   sets.Set[string]
 	}
 	for _, tc := range []struct {
 		name    string
@@ -247,7 +247,7 @@ func TestValidateNoReferencesToProhibitedVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(params.foo)",
 			prefix: "params",
-			vars:   sets.NewString(),
+			vars:   sets.New[string](),
 		},
 		wantErr: false,
 	}, {
@@ -255,7 +255,7 @@ func TestValidateNoReferencesToProhibitedVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(params.foo)",
 			prefix: "params",
-			vars:   sets.NewString("bar"),
+			vars:   sets.New("bar"),
 		},
 		wantErr: false,
 	}, {
@@ -263,7 +263,7 @@ func TestValidateNoReferencesToProhibitedVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(params.foo)",
 			prefix: "params",
-			vars:   sets.NewString("foo"),
+			vars:   sets.New("foo"),
 		},
 		wantErr: true,
 	}, {
@@ -271,7 +271,7 @@ func TestValidateNoReferencesToProhibitedVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(params.foo[*])",
 			prefix: "params",
-			vars:   sets.NewString("foo"),
+			vars:   sets.New("foo"),
 		},
 		wantErr: true,
 	}, {
@@ -279,7 +279,7 @@ func TestValidateNoReferencesToProhibitedVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(params.arrayParam[1])",
 			prefix: "params",
-			vars:   sets.NewString("arrayParam"),
+			vars:   sets.New("arrayParam"),
 		},
 		wantErr: false,
 	}, {
@@ -287,7 +287,7 @@ func TestValidateNoReferencesToProhibitedVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(params.objectParam.key1)",
 			prefix: "params",
-			vars:   sets.NewString("objectParam"),
+			vars:   sets.New("objectParam"),
 		},
 		wantErr: true,
 	}} {
@@ -304,7 +304,7 @@ func TestValidateValidateNoReferencesToEntireProhibitedVariables(t *testing.T) {
 	type args struct {
 		input  string
 		prefix string
-		vars   sets.String
+		vars   sets.Set[string]
 	}
 	for _, tc := range []struct {
 		name          string
@@ -315,7 +315,7 @@ func TestValidateValidateNoReferencesToEntireProhibitedVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(params.objectParam.key1)",
 			prefix: "params",
-			vars:   sets.NewString("objectParam"),
+			vars:   sets.New("objectParam"),
 		},
 		expectedError: nil,
 	}, {
@@ -323,7 +323,7 @@ func TestValidateValidateNoReferencesToEntireProhibitedVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(params.objectParam.key1)",
 			prefix: `???`,
-			vars:   sets.NewString("objectParam"),
+			vars:   sets.New("objectParam"),
 		},
 		expectedError: &apis.FieldError{
 			Message: "extractEntireVariablesFromString failed : failed to parse regex pattern: error parsing regexp: invalid nested repetition operator: `???`",
@@ -334,7 +334,7 @@ func TestValidateValidateNoReferencesToEntireProhibitedVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(params.objectParam)",
 			prefix: "params",
-			vars:   sets.NewString("objectParam"),
+			vars:   sets.New("objectParam"),
 		},
 		expectedError: &apis.FieldError{
 			Message: `variable type invalid in "--flag=$(params.objectParam)"`,
@@ -345,7 +345,7 @@ func TestValidateValidateNoReferencesToEntireProhibitedVariables(t *testing.T) {
 		args: args{
 			input:  "--flag=$(params.objectParam[*])",
 			prefix: "params",
-			vars:   sets.NewString("objectParam"),
+			vars:   sets.New("objectParam"),
 		},
 		expectedError: &apis.FieldError{
 			Message: `variable type invalid in "--flag=$(params.objectParam[*])"`,
@@ -366,7 +366,7 @@ func TestValidateVariableReferenceIsIsolated(t *testing.T) {
 	type args struct {
 		input  string
 		prefix string
-		vars   sets.String
+		vars   sets.Set[string]
 	}
 	for _, tc := range []struct {
 		name    string
@@ -377,7 +377,7 @@ func TestValidateVariableReferenceIsIsolated(t *testing.T) {
 		args: args{
 			input:  "--flag=$(params.foo)",
 			prefix: "params",
-			vars:   sets.NewString(),
+			vars:   sets.New[string](),
 		},
 		wantErr: false,
 	}, {
@@ -385,7 +385,7 @@ func TestValidateVariableReferenceIsIsolated(t *testing.T) {
 		args: args{
 			input:  "$(params.foo)",
 			prefix: "params",
-			vars:   sets.NewString("foo"),
+			vars:   sets.New("foo"),
 		},
 		wantErr: false,
 	}, {
@@ -393,7 +393,7 @@ func TestValidateVariableReferenceIsIsolated(t *testing.T) {
 		args: args{
 			input:  "--flag=$(params.foo)",
 			prefix: "params",
-			vars:   sets.NewString("foo"),
+			vars:   sets.New("foo"),
 		},
 		wantErr: true,
 	}, {
@@ -401,7 +401,7 @@ func TestValidateVariableReferenceIsIsolated(t *testing.T) {
 		args: args{
 			input:  "$(params.foo)-12345",
 			prefix: "params",
-			vars:   sets.NewString("foo"),
+			vars:   sets.New("foo"),
 		},
 		wantErr: true,
 	}, {
@@ -409,7 +409,7 @@ func TestValidateVariableReferenceIsIsolated(t *testing.T) {
 		args: args{
 			input:  "$(params.foo[1])",
 			prefix: "params",
-			vars:   sets.NewString("foo"),
+			vars:   sets.New("foo"),
 		},
 		wantErr: false,
 	}, {
@@ -417,7 +417,7 @@ func TestValidateVariableReferenceIsIsolated(t *testing.T) {
 		args: args{
 			input:  "$(params.foo[*])",
 			prefix: "params",
-			vars:   sets.NewString("foo"),
+			vars:   sets.New("foo"),
 		},
 		wantErr: false,
 	}, {
@@ -425,7 +425,7 @@ func TestValidateVariableReferenceIsIsolated(t *testing.T) {
 		args: args{
 			input:  "$(params.foo)",
 			prefix: "params",
-			vars:   sets.NewString("bar"),
+			vars:   sets.New("bar"),
 		},
 		wantErr: false,
 	}, {
@@ -433,7 +433,7 @@ func TestValidateVariableReferenceIsIsolated(t *testing.T) {
 		args: args{
 			input:  "1234-$(params.foo)",
 			prefix: "params",
-			vars:   sets.NewString("bar"),
+			vars:   sets.New("bar"),
 		},
 		wantErr: false,
 	}} {

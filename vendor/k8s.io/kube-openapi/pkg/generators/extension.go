@@ -21,9 +21,9 @@ import (
 	"sort"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/gengo/v2"
 	"k8s.io/gengo/v2/types"
-	"k8s.io/kube-openapi/pkg/util/sets"
 )
 
 const extensionPrefix = "x-kubernetes-"
@@ -32,7 +32,7 @@ const extensionPrefix = "x-kubernetes-"
 type extensionAttributes struct {
 	xName         string
 	kind          types.Kind
-	allowedValues sets.String
+	allowedValues sets.Set[string]
 	enforceArray  bool
 }
 
@@ -45,7 +45,7 @@ var tagToExtension = map[string]extensionAttributes{
 	"patchStrategy": {
 		xName:         "x-kubernetes-patch-strategy",
 		kind:          types.Slice,
-		allowedValues: sets.NewString("merge", "retainKeys"),
+		allowedValues: sets.New("merge", "retainKeys"),
 	},
 	"listMapKey": {
 		xName:        "x-kubernetes-list-map-keys",
@@ -55,17 +55,17 @@ var tagToExtension = map[string]extensionAttributes{
 	"listType": {
 		xName:         "x-kubernetes-list-type",
 		kind:          types.Slice,
-		allowedValues: sets.NewString("atomic", "set", "map"),
+		allowedValues: sets.New("atomic", "set", "map"),
 	},
 	"mapType": {
 		xName:         "x-kubernetes-map-type",
 		kind:          types.Map,
-		allowedValues: sets.NewString("atomic", "granular"),
+		allowedValues: sets.New("atomic", "granular"),
 	},
 	"structType": {
 		xName:         "x-kubernetes-map-type",
 		kind:          types.Struct,
-		allowedValues: sets.NewString("atomic", "granular"),
+		allowedValues: sets.New("atomic", "granular"),
 	},
 	"validations": {
 		xName: "x-kubernetes-validations",
@@ -84,7 +84,7 @@ func (e extension) hasAllowedValues() bool {
 	return tagToExtension[e.idlTag].allowedValues.Len() > 0
 }
 
-func (e extension) allowedValues() sets.String {
+func (e extension) allowedValues() sets.Set[string] {
 	return tagToExtension[e.idlTag].allowedValues
 }
 
@@ -109,7 +109,7 @@ func (e extension) validateAllowedValues() error {
 	allowedValues := e.allowedValues()
 	if !allowedValues.HasAll(e.values...) {
 		return fmt.Errorf("%v not allowed for %s. Allowed values: %v",
-			e.values, e.idlTag, allowedValues.List())
+			e.values, e.idlTag, sets.List(allowedValues))
 	}
 	return nil
 }

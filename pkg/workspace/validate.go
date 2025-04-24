@@ -37,8 +37,8 @@ func ValidateBindings(ctx context.Context, decls []v1.WorkspaceDeclaration, bind
 		}
 	}
 
-	declNames := sets.NewString()
-	bindNames := sets.NewString()
+	declNames := sets.New[string]()
+	bindNames := sets.New[string]()
 	for _, decl := range decls {
 		declNames.Insert(decl.Name)
 	}
