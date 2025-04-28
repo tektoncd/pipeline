@@ -1,5 +1,36 @@
 # Release History
 
+## 1.9.0 (2025-04-08)
+
+### Features Added
+* `GetToken()` sets `AccessToken.RefreshOn` when the token provider specifies a value
+
+### Other Changes
+* `NewManagedIdentityCredential` logs the configured user-assigned identity, if any
+* Deprecated `UsernamePasswordCredential` because it can't support multifactor
+  authentication (MFA), which Microsoft Entra ID requires for most tenants. See
+  https://aka.ms/azsdk/identity/mfa for migration guidance.
+* Updated dependencies
+
+## 1.8.2 (2025-02-12)
+
+### Other Changes
+* Upgraded dependencies
+
+## 1.8.1 (2025-01-15)
+
+### Bugs Fixed
+* User credential types inconsistently log access token scopes
+* `DefaultAzureCredential` skips managed identity in Azure Container Instances
+* Credentials having optional tenant IDs such as `AzureCLICredential` and
+  `InteractiveBrowserCredential` require setting `AdditionallyAllowedTenants`
+  when used with some clients
+
+### Other Changes
+* `ChainedTokenCredential` and `DefaultAzureCredential` continue to their next
+  credential after `ManagedIdentityCredential` receives an unexpected response
+  from IMDS, indicating the response is from something else such as a proxy
+
 ## 1.8.0 (2024-10-08)
 
 ### Other Changes

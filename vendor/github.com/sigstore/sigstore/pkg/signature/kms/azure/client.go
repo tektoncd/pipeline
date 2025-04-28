@@ -34,7 +34,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 
-	"github.com/go-jose/go-jose/v3"
+	"github.com/go-jose/go-jose/v4"
 	"github.com/jellydator/ttlcache/v3"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
