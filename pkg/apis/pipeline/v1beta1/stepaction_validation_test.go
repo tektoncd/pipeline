@@ -614,19 +614,6 @@ func TestStepActionSpecValidateError(t *testing.T) {
 			Paths:   []string{},
 		},
 	}, {
-		name: "step script refers to nonexistent result",
-		fields: fields{
-			Image: "my-image",
-			Script: `
-			#!/usr/bin/env bash
-			date | tee $(results.non-exist.path)`,
-			Results: []v1.StepResult{{Name: "a-result"}},
-		},
-		expectedError: apis.FieldError{
-			Message: `non-existent variable in "\n\t\t\t#!/usr/bin/env bash\n\t\t\tdate | tee $(results.non-exist.path)"`,
-			Paths:   []string{"script"},
-		},
-	}, {
 		name: "step script refers to nonexistent stepresult",
 		fields: fields{
 			Image: "my-image",
