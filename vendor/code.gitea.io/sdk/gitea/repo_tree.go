@@ -28,16 +28,26 @@ type GitTreeResponse struct {
 	TotalCount int        `json:"total_count"`
 }
 
-// GetTrees downloads a file of repository, ref can be branch/tag/commit.
-// e.g.: ref -> master, tree -> macaron.go(no leading slash)
-func (c *Client) GetTrees(user, repo, ref string, recursive bool) (*GitTreeResponse, *Response, error) {
-	if err := escapeValidatePathSegments(&user, &repo, &ref); err != nil {
+type ListTreeOptions struct {
+	ListOptions
+	// Ref can be branch/tag/commit. required
+	// e.g.: "master"
+	Ref string
+	// Recursive if true will return the tree in a recursive fashion
+	Recursive bool
+}
+
+// GetTrees get trees of repository,
+func (c *Client) GetTrees(user, repo string, opt ListTreeOptions) (*GitTreeResponse, *Response, error) {
+	if err := escapeValidatePathSegments(&user, &repo, &opt.Ref); err != nil {
 		return nil, nil, err
 	}
 	trees := new(GitTreeResponse)
-	path := fmt.Sprintf("/repos/%s/%s/git/trees/%s", user, repo, ref)
-	if recursive {
-		path += "?recursive=1"
+	opt.setDefaults()
+	path := fmt.Sprintf("/repos/%s/%s/git/trees/%s?%s", user, repo, opt.Ref, opt.getURLQuery().Encode())
+
+	if opt.Recursive {
+		path += "&recursive=1"
 	}
 	resp, err := c.getParsedResponse("GET", path, nil, nil, trees)
 	return trees, resp, err
