@@ -48,56 +48,72 @@ type ExternalWiki struct {
 	ExternalWikiURL string `json:"external_wiki_url"`
 }
 
+// ProjectsMode is used specify which kinds of projects to show for a repository
+type ProjectsMode string
+
+const (
+	// ProjectsModeRepo only allow repo-level projects
+	ProjectsModeRepo ProjectsMode = "repo"
+	// ProjectsModeOwner only allow owner projects
+	ProjectsModeOwner ProjectsMode = "owner"
+	// ProjectsModeAll only allow all projects
+	ProjectsModeAll ProjectsMode = "all"
+)
+
 // Repository represents a repository
 type Repository struct {
-	ID                        int64            `json:"id"`
-	Owner                     *User            `json:"owner"`
-	Name                      string           `json:"name"`
-	FullName                  string           `json:"full_name"`
-	Description               string           `json:"description"`
-	Empty                     bool             `json:"empty"`
-	Private                   bool             `json:"private"`
-	Fork                      bool             `json:"fork"`
-	Template                  bool             `json:"template"`
-	Parent                    *Repository      `json:"parent"`
-	Mirror                    bool             `json:"mirror"`
-	Size                      int              `json:"size"`
-	HTMLURL                   string           `json:"html_url"`
-	SSHURL                    string           `json:"ssh_url"`
-	CloneURL                  string           `json:"clone_url"`
-	OriginalURL               string           `json:"original_url"`
-	Website                   string           `json:"website"`
-	Stars                     int              `json:"stars_count"`
-	Forks                     int              `json:"forks_count"`
-	Watchers                  int              `json:"watchers_count"`
-	OpenIssues                int              `json:"open_issues_count"`
-	OpenPulls                 int              `json:"open_pr_counter"`
-	Releases                  int              `json:"release_counter"`
-	DefaultBranch             string           `json:"default_branch"`
-	Archived                  bool             `json:"archived"`
-	Created                   time.Time        `json:"created_at"`
-	Updated                   time.Time        `json:"updated_at"`
-	Permissions               *Permission      `json:"permissions,omitempty"`
-	HasIssues                 bool             `json:"has_issues"`
-	InternalTracker           *InternalTracker `json:"internal_tracker,omitempty"`
-	ExternalTracker           *ExternalTracker `json:"external_tracker,omitempty"`
-	HasWiki                   bool             `json:"has_wiki"`
-	ExternalWiki              *ExternalWiki    `json:"external_wiki,omitempty"`
-	HasPullRequests           bool             `json:"has_pull_requests"`
-	HasProjects               bool             `json:"has_projects"`
-	HasReleases               bool             `json:"has_releases,omitempty"`
-	HasPackages               bool             `json:"has_packages,omitempty"`
-	HasActions                bool             `json:"has_actions,omitempty"`
-	IgnoreWhitespaceConflicts bool             `json:"ignore_whitespace_conflicts"`
-	AllowMerge                bool             `json:"allow_merge_commits"`
-	AllowRebase               bool             `json:"allow_rebase"`
-	AllowRebaseMerge          bool             `json:"allow_rebase_explicit"`
-	AllowSquash               bool             `json:"allow_squash_merge"`
-	AvatarURL                 string           `json:"avatar_url"`
-	Internal                  bool             `json:"internal"`
-	MirrorInterval            string           `json:"mirror_interval"`
-	MirrorUpdated             time.Time        `json:"mirror_updated,omitempty"`
-	DefaultMergeStyle         MergeStyle       `json:"default_merge_style"`
+	ID                            int64            `json:"id"`
+	Owner                         *User            `json:"owner"`
+	Name                          string           `json:"name"`
+	FullName                      string           `json:"full_name"`
+	Description                   string           `json:"description"`
+	Empty                         bool             `json:"empty"`
+	Private                       bool             `json:"private"`
+	Fork                          bool             `json:"fork"`
+	Template                      bool             `json:"template"`
+	Parent                        *Repository      `json:"parent"`
+	Mirror                        bool             `json:"mirror"`
+	Size                          int              `json:"size"`
+	HTMLURL                       string           `json:"html_url"`
+	SSHURL                        string           `json:"ssh_url"`
+	CloneURL                      string           `json:"clone_url"`
+	OriginalURL                   string           `json:"original_url"`
+	Website                       string           `json:"website"`
+	Stars                         int              `json:"stars_count"`
+	Forks                         int              `json:"forks_count"`
+	Watchers                      int              `json:"watchers_count"`
+	OpenIssues                    int              `json:"open_issues_count"`
+	OpenPulls                     int              `json:"open_pr_counter"`
+	Releases                      int              `json:"release_counter"`
+	DefaultBranch                 string           `json:"default_branch"`
+	Archived                      bool             `json:"archived"`
+	Created                       time.Time        `json:"created_at"`
+	Updated                       time.Time        `json:"updated_at"`
+	Permissions                   *Permission      `json:"permissions,omitempty"`
+	HasIssues                     bool             `json:"has_issues"`
+	InternalTracker               *InternalTracker `json:"internal_tracker,omitempty"`
+	ExternalTracker               *ExternalTracker `json:"external_tracker,omitempty"`
+	HasWiki                       bool             `json:"has_wiki"`
+	ExternalWiki                  *ExternalWiki    `json:"external_wiki,omitempty"`
+	HasPullRequests               bool             `json:"has_pull_requests"`
+	HasProjects                   bool             `json:"has_projects"`
+	HasReleases                   bool             `json:"has_releases,omitempty"`
+	HasPackages                   bool             `json:"has_packages,omitempty"`
+	HasActions                    bool             `json:"has_actions,omitempty"`
+	IgnoreWhitespaceConflicts     bool             `json:"ignore_whitespace_conflicts"`
+	AllowFastForwardOnlyMerge     bool             `json:"allow_fast_forward_only_merge"`
+	AllowMerge                    bool             `json:"allow_merge_commits"`
+	AllowRebase                   bool             `json:"allow_rebase"`
+	AllowRebaseMerge              bool             `json:"allow_rebase_explicit"`
+	AllowSquash                   bool             `json:"allow_squash_merge"`
+	AvatarURL                     string           `json:"avatar_url"`
+	Internal                      bool             `json:"internal"`
+	MirrorInterval                string           `json:"mirror_interval"`
+	MirrorUpdated                 time.Time        `json:"mirror_updated,omitempty"`
+	DefaultMergeStyle             MergeStyle       `json:"default_merge_style"`
+	ProjectsMode                  *ProjectsMode    `json:"projects_mode"`
+	DefaultDeleteBranchAfterMerge bool             `json:"default_delete_branch_after_merge"`
+	ObjectFormatName              string           `json:"object_format_name"`
 }
 
 // RepoType represent repo type
@@ -324,6 +340,8 @@ type CreateRepoOption struct {
 	DefaultBranch string `json:"default_branch"`
 	// TrustModel of the repository
 	TrustModel TrustModel `json:"trust_model"`
+	// ObjectFormatName of the repository, could be sha1 or sha256, depends on Gitea version
+	ObjectFormatName string `json:"object_format_name"`
 }
 
 // Validate the CreateRepoOption struct
@@ -345,6 +363,11 @@ func (opt CreateRepoOption) Validate(c *Client) error {
 			return err
 		}
 	}
+	if len(opt.ObjectFormatName) != 0 {
+		if opt.ObjectFormatName != "sha1" && opt.ObjectFormatName != "sha256" {
+			return fmt.Errorf("object format must be sha1 or sha256")
+		}
+	}
 	return nil
 }
 
@@ -352,6 +375,10 @@ func (opt CreateRepoOption) Validate(c *Client) error {
 func (c *Client) CreateRepo(opt CreateRepoOption) (*Repository, *Response, error) {
 	if err := opt.Validate(c); err != nil {
 		return nil, nil, err
+	}
+	// object_format_name is only supported on gitea >= 1.22.0
+	if c.checkServerVersionGreaterThanOrEqual(version1_22_0) != nil {
+		opt.ObjectFormatName = ""
 	}
 	body, err := json.Marshal(&opt)
 	if err != nil {
@@ -434,6 +461,8 @@ type EditRepoOption struct {
 	HasActions *bool `json:"has_actions,omitempty"`
 	// either `true` to ignore whitespace for conflicts, or `false` to not ignore whitespace. `has_pull_requests` must be `true`.
 	IgnoreWhitespaceConflicts *bool `json:"ignore_whitespace_conflicts,omitempty"`
+	// either `true` to allow merging pull requests with fast-forward only strategy, or `false` to prevent merging pull requests with a fast-forward only strategy. `has_pull_requests` must be `true`.
+	AllowFastForwardOnlyMerge *bool `json:"allow_fast_forward_only_merge"`
 	// either `true` to allow merging pull requests with a merge commit, or `false` to prevent merging pull requests with merge commits. `has_pull_requests` must be `true`.
 	AllowMerge *bool `json:"allow_merge_commits,omitempty"`
 	// either `true` to allow rebase-merging pull requests, or `false` to prevent rebase-merging. `has_pull_requests` must be `true`.
@@ -452,7 +481,10 @@ type EditRepoOption struct {
 	AutodetectManualMerge *bool `json:"autodetect_manual_merge,omitempty"`
 	// set to a merge style to be used by this repository: "merge", "rebase", "rebase-merge", or "squash". `has_pull_requests` must be `true`.
 	DefaultMergeStyle *MergeStyle `json:"default_merge_style,omitempty"`
-	// set to `true` to archive this repository.
+	// set to a projects mode to be used by this repository, to specify which kinds of projects to show: "repo" to only allow repo-level projects, "owner" to only allow owner projects, "all" to allow all projects. `has_projects` must be `true`.
+	ProjectsMode *ProjectsMode `json:"projects_mode"`
+	// set to `true` to delete the pull request branch after merge by default. `has_pull_requests` must be `true`.
+	DefaultDeleteBranchAfterMerge *bool `json:"default_delete_branch_after_merge"`
 }
 
 // EditRepo edit the properties of a repository

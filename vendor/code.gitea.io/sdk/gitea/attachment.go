@@ -78,7 +78,7 @@ func (c *Client) CreateReleaseAttachment(user, repo string, release int64, file 
 	attachment := new(Attachment)
 	resp, err := c.getParsedResponse("POST",
 		fmt.Sprintf("/repos/%s/%s/releases/%d/assets", user, repo, release),
-		http.Header{"Content-Type": {writer.FormDataContentType()}}, body, &attachment)
+		http.Header{"Content-Type": []string{writer.FormDataContentType()}}, body, &attachment)
 	return attachment, resp, err
 }
 
