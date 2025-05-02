@@ -31,6 +31,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/remote"
+	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resource"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -684,7 +685,7 @@ func resolveTask(
 			// Instead, the child TaskRun's status will be the place recording the RefSource of individual task.
 			t, _, vr, err := getTask(ctx, pipelineTask.TaskRef.Name)
 			switch {
-			case errors.Is(err, remote.ErrRequestInProgress):
+			case errors.Is(err, remote.ErrRequestInProgress) || (err != nil && resolutioncommon.IsErrTransient(err)):
 				return rt, err
 			case err != nil:
 				// some of the resolvers obtain the name from the parameters instead of from the TaskRef.Name field,
