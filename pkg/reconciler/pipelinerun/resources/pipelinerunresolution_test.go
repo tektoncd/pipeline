@@ -32,10 +32,12 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
+	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -2568,6 +2570,27 @@ func TestResolvePipelineRun_VerificationFailed(t *testing.T) {
 		if d := cmp.Diff(verificationResult, rt.ResolvedTask.VerificationResult, cmpopts.EquateErrors()); d != "" {
 			t.Error(diff.PrintWantGot(d))
 		}
+	}
+}
+
+func TestResolvePipelineRun_TransientError(t *testing.T) {
+	pt := v1.PipelineTask{
+		Name:    "mytask1",
+		TaskRef: &v1.TaskRef{Name: "task"},
+	}
+
+	getTask := func(ctx context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+		return task, nil, nil, apierrors.NewTimeoutError("some dang ol' timeout", 5)
+	}
+	getTaskRun := func(name string) (*v1.TaskRun, error) { return nil, nil } //nolint:nilnil
+	pr := v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun",
+		},
+	}
+	_, err := ResolvePipelineTask(context.Background(), pr, getTask, getTaskRun, nopGetCustomRun, pt, nil)
+	if !resolutioncommon.IsErrTransient(err) {
+		t.Error("Transient error while getting Task did not result in a transient error")
 	}
 }
 

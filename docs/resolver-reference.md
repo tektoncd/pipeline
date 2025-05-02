@@ -31,7 +31,7 @@ configuration for the framework to get a resolver running.
 | GetName | Use this method to return a name to refer to your Resolver by. e.g. `"Git"` |
 | GetSelector | Use this method to specify the labels that a resolution request must have to be routed to your resolver. |
 | Validate | Use this method to validate the resolution Spec given to your resolver. |
-| Resolve | Use this method to perform get the resource based on the ResolutionRequestSpec as input and return it, along with any metadata about it in annotations |
+| Resolve | Use this method to perform get the resource based on the ResolutionRequestSpec as input and return it, along with any metadata about it in annotations. Errors returned by this method mark the ResolutionRequest as Failed, unless the error type is considered transient (e.g. a Kubernetes request timeout or etcd leader changes). |
 
 {{% /tab %}}
 
