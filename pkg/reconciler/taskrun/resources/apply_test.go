@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/workspace"
@@ -28,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -173,6 +175,248 @@ var (
 				},
 			},
 		}},
+		PodTemplate: &pod.PodTemplate{
+			NodeSelector: map[string]string{"key-$(params.FOO)": "value-$(params.FOO)"},
+			Tolerations: []corev1.Toleration{{
+				Key:      "key-$(params.FOO)",
+				Value:    "value-$(params.FOO)",
+				Effect:   corev1.TaintEffect("effect-$(params.FOO)"),
+				Operator: corev1.TolerationOperator("operator-$(params.FOO)"),
+			}},
+			SchedulerName: "name-$(params.FOO)",
+			Env: []corev1.EnvVar{{
+				Name:  "$(params.FOO)",
+				Value: "$(params.FOO)",
+				ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						Key: "$(params.FOO)",
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "$(params.FOO)",
+						},
+					},
+					FieldRef: &corev1.ObjectFieldSelector{
+						APIVersion: "$(params.FOO)",
+						FieldPath:  "$(params.FOO)",
+					},
+					ResourceFieldRef: &corev1.ResourceFieldSelector{
+						ContainerName: "$(params.FOO)",
+						Resource:      "$(params.FOO)",
+					},
+					SecretKeyRef: &corev1.SecretKeySelector{
+						Key: "$(params.FOO)",
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "$(params.FOO)",
+						},
+					},
+				},
+			}},
+			Affinity: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{{
+						Preference: corev1.NodeSelectorTerm{
+							MatchExpressions: []corev1.NodeSelectorRequirement{{
+								Key:      "$(params.FOO)",
+								Operator: corev1.NodeSelectorOperator("$(params.FOO)"),
+								Values:   []string{"$(params.FOO)"},
+							}},
+							MatchFields: []corev1.NodeSelectorRequirement{{
+								Key:      "$(params.FOO)",
+								Operator: corev1.NodeSelectorOperator("$(params.FOO)"),
+								Values:   []string{"$(params.FOO)"},
+							}},
+						},
+					}},
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+							MatchExpressions: []corev1.NodeSelectorRequirement{{
+								Key:      "$(params.FOO)",
+								Operator: corev1.NodeSelectorOperator("$(params.FOO)"),
+								Values:   []string{"$(params.FOO)"},
+							}},
+							MatchFields: []corev1.NodeSelectorRequirement{{
+								Key:      "$(params.FOO)",
+								Operator: corev1.NodeSelectorOperator("$(params.FOO)"),
+								Values:   []string{"$(params.FOO)"},
+							}},
+						}},
+					},
+				},
+				PodAffinity: &corev1.PodAffinity{
+					PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
+						PodAffinityTerm: corev1.PodAffinityTerm{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"$(params.FOO)": "$(params.FOO)",
+								},
+								MatchExpressions: []metav1.LabelSelectorRequirement{{
+									Key:      "$(params.FOO)",
+									Operator: metav1.LabelSelectorOperator("$(params.FOO)"),
+									Values:   []string{"$(params.FOO)"},
+								}},
+							},
+							MatchLabelKeys:    []string{"$(params.FOO)"},
+							MismatchLabelKeys: []string{"$(params.FOO)"},
+							NamespaceSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"$(params.FOO)": "$(params.FOO)",
+								},
+								MatchExpressions: []metav1.LabelSelectorRequirement{{
+									Key:      "$(params.FOO)",
+									Operator: metav1.LabelSelectorOperator("$(params.FOO)"),
+									Values:   []string{"$(params.FOO)"},
+								}},
+							},
+							Namespaces:  []string{"$(params.FOO)"},
+							TopologyKey: "$(params.FOO)",
+						},
+					}},
+					RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"$(params.FOO)": "$(params.FOO)",
+							},
+							MatchExpressions: []metav1.LabelSelectorRequirement{{
+								Key:      "$(params.FOO)",
+								Operator: metav1.LabelSelectorOperator("$(params.FOO)"),
+								Values:   []string{"$(params.FOO)"},
+							}},
+						},
+						MatchLabelKeys:    []string{"$(params.FOO)"},
+						MismatchLabelKeys: []string{"$(params.FOO)"},
+						NamespaceSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"$(params.FOO)": "$(params.FOO)",
+							},
+							MatchExpressions: []metav1.LabelSelectorRequirement{{
+								Key:      "$(params.FOO)",
+								Operator: metav1.LabelSelectorOperator("$(params.FOO)"),
+								Values:   []string{"$(params.FOO)"},
+							}},
+						},
+						Namespaces:  []string{"$(params.FOO)"},
+						TopologyKey: "$(params.FOO)",
+					}},
+				},
+				PodAntiAffinity: &corev1.PodAntiAffinity{
+					PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
+						PodAffinityTerm: corev1.PodAffinityTerm{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"$(params.FOO)": "$(params.FOO)",
+								},
+								MatchExpressions: []metav1.LabelSelectorRequirement{{
+									Key:      "$(params.FOO)",
+									Operator: metav1.LabelSelectorOperator("$(params.FOO)"),
+									Values:   []string{"$(params.FOO)"},
+								}},
+							},
+							MatchLabelKeys:    []string{"$(params.FOO)"},
+							MismatchLabelKeys: []string{"$(params.FOO)"},
+							NamespaceSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"$(params.FOO)": "$(params.FOO)",
+								},
+								MatchExpressions: []metav1.LabelSelectorRequirement{{
+									Key:      "$(params.FOO)",
+									Operator: metav1.LabelSelectorOperator("$(params.FOO)"),
+									Values:   []string{"$(params.FOO)"},
+								}},
+							},
+							Namespaces:  []string{"$(params.FOO)"},
+							TopologyKey: "$(params.FOO)",
+						},
+					}},
+					RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"$(params.FOO)": "$(params.FOO)",
+							},
+							MatchExpressions: []metav1.LabelSelectorRequirement{{
+								Key:      "$(params.FOO)",
+								Operator: metav1.LabelSelectorOperator("$(params.FOO)"),
+								Values:   []string{"$(params.FOO)"},
+							}},
+						},
+						MatchLabelKeys:    []string{"$(params.FOO)"},
+						MismatchLabelKeys: []string{"$(params.FOO)"},
+						NamespaceSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"$(params.FOO)": "$(params.FOO)",
+							},
+							MatchExpressions: []metav1.LabelSelectorRequirement{{
+								Key:      "$(params.FOO)",
+								Operator: metav1.LabelSelectorOperator("$(params.FOO)"),
+								Values:   []string{"$(params.FOO)"},
+							}},
+						},
+						Namespaces:  []string{"$(params.FOO)"},
+						TopologyKey: "$(params.FOO)",
+					}},
+				},
+			},
+			SecurityContext: &corev1.PodSecurityContext{
+				SELinuxOptions: &corev1.SELinuxOptions{
+					User:  "$(params.FOO)",
+					Role:  "$(params.FOO)",
+					Type:  "$(params.FOO)",
+					Level: "$(params.FOO)",
+				},
+				WindowsOptions: &corev1.WindowsSecurityContextOptions{
+					RunAsUserName:          ptr.To("$(params.FOO)"),
+					GMSACredentialSpecName: ptr.To("$(params.FOO)"),
+					GMSACredentialSpec:     ptr.To("$(params.FOO)"),
+				},
+				SupplementalGroupsPolicy: ptr.To(corev1.SupplementalGroupsPolicy("$(params.FOO)")),
+				Sysctls: []corev1.Sysctl{{
+					Name:  "$(params.FOO)",
+					Value: "$(params.FOO)",
+				}},
+				FSGroupChangePolicy: ptr.To(corev1.PodFSGroupChangePolicy("$(params.FOO)")),
+				SeccompProfile: &corev1.SeccompProfile{
+					LocalhostProfile: ptr.To("$(params.FOO)"),
+					Type:             corev1.SeccompProfileType("$(params.FOO)"),
+				},
+				AppArmorProfile: &corev1.AppArmorProfile{
+					LocalhostProfile: ptr.To("$(params.FOO)"),
+					Type:             corev1.AppArmorProfileType("$(params.FOO)"),
+				},
+			},
+			RuntimeClassName: ptr.To("$(params.FOO)"),
+			DNSPolicy:        ptr.To(corev1.DNSPolicy("$(params.FOO)")),
+			DNSConfig: &corev1.PodDNSConfig{
+				Nameservers: []string{"$(params.FOO)"},
+				Searches:    []string{"$(params.FOO)"},
+				Options: []corev1.PodDNSConfigOption{{
+					Name:  "$(params.FOO)",
+					Value: ptr.To("$(params.FOO)"),
+				}},
+			},
+			PriorityClassName: ptr.To("$(params.FOO)"),
+			ImagePullSecrets: []corev1.LocalObjectReference{{
+				Name: "$(params.FOO)",
+			}},
+			HostAliases: []corev1.HostAlias{{
+				IP:        "$(params.FOO)",
+				Hostnames: []string{"$(params.FOO)"},
+			}},
+			TopologySpreadConstraints: []corev1.TopologySpreadConstraint{{
+				TopologyKey:       "$(params.FOO)",
+				WhenUnsatisfiable: corev1.UnsatisfiableConstraintAction("$(params.FOO)"),
+				LabelSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"$(params.FOO)": "$(params.FOO)",
+					},
+					MatchExpressions: []metav1.LabelSelectorRequirement{{
+						Key:      "$(params.FOO)",
+						Operator: metav1.LabelSelectorOperator("$(params.FOO)"),
+						Values:   []string{"$(params.FOO)"},
+					}},
+				},
+				NodeAffinityPolicy: ptr.To(corev1.NodeInclusionPolicy("$(params.FOO)")),
+				NodeTaintsPolicy:   ptr.To(corev1.NodeInclusionPolicy("$(params.FOO)")),
+				MatchLabelKeys:     []string{"$(params.FOO)"},
+			}},
+		},
 	}
 
 	stepParamTaskSpec = &v1.TaskSpec{
@@ -333,6 +577,248 @@ var (
 				},
 			},
 		}},
+		PodTemplate: &pod.PodTemplate{
+			NodeSelector: map[string]string{"$(params.myObject.key1)": "$(params.myObject.key2)"},
+			Tolerations: []corev1.Toleration{{
+				Key:      "$(params.myObject.key1)",
+				Value:    "$(params.myObject.key1)",
+				Effect:   corev1.TaintEffect("$(params.myObject.key2)"),
+				Operator: corev1.TolerationOperator("$(params.myObject.key2)"),
+			}},
+			SchedulerName: "$(params.myObject.key1)",
+			Env: []corev1.EnvVar{{
+				Name:  "$(params.myObject.key1)",
+				Value: "$(params.myObject.key1)",
+				ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						Key: "$(params.myObject.key1)",
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "$(params.myObject.key1)",
+						},
+					},
+					FieldRef: &corev1.ObjectFieldSelector{
+						APIVersion: "$(params.myObject.key1)",
+						FieldPath:  "$(params.myObject.key1)",
+					},
+					ResourceFieldRef: &corev1.ResourceFieldSelector{
+						ContainerName: "$(params.myObject.key1)",
+						Resource:      "$(params.myObject.key1)",
+					},
+					SecretKeyRef: &corev1.SecretKeySelector{
+						Key: "$(params.myObject.key1)",
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "$(params.myObject.key1)",
+						},
+					},
+				},
+			}},
+			Affinity: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{{
+						Preference: corev1.NodeSelectorTerm{
+							MatchExpressions: []corev1.NodeSelectorRequirement{{
+								Key:      "$(params.myObject.key1)",
+								Operator: corev1.NodeSelectorOperator("$(params.myObject.key1)"),
+								Values:   []string{"$(params.myObject.key1)"},
+							}},
+							MatchFields: []corev1.NodeSelectorRequirement{{
+								Key:      "$(params.myObject.key1)",
+								Operator: corev1.NodeSelectorOperator("$(params.myObject.key1)"),
+								Values:   []string{"$(params.myObject.key1)"},
+							}},
+						},
+					}},
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+							MatchExpressions: []corev1.NodeSelectorRequirement{{
+								Key:      "$(params.myObject.key1)",
+								Operator: corev1.NodeSelectorOperator("$(params.myObject.key1)"),
+								Values:   []string{"$(params.myObject.key1)"},
+							}},
+							MatchFields: []corev1.NodeSelectorRequirement{{
+								Key:      "$(params.myObject.key1)",
+								Operator: corev1.NodeSelectorOperator("$(params.myObject.key1)"),
+								Values:   []string{"$(params.myObject.key1)"},
+							}},
+						}},
+					},
+				},
+				PodAffinity: &corev1.PodAffinity{
+					PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
+						PodAffinityTerm: corev1.PodAffinityTerm{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"$(params.myObject.key1)": "$(params.myObject.key1)",
+								},
+								MatchExpressions: []metav1.LabelSelectorRequirement{{
+									Key:      "$(params.myObject.key1)",
+									Operator: metav1.LabelSelectorOperator("$(params.myObject.key1)"),
+									Values:   []string{"$(params.myObject.key1)"},
+								}},
+							},
+							MatchLabelKeys:    []string{"$(params.myObject.key1)"},
+							MismatchLabelKeys: []string{"$(params.myObject.key1)"},
+							NamespaceSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"$(params.myObject.key1)": "$(params.myObject.key1)",
+								},
+								MatchExpressions: []metav1.LabelSelectorRequirement{{
+									Key:      "$(params.myObject.key1)",
+									Operator: metav1.LabelSelectorOperator("$(params.myObject.key1)"),
+									Values:   []string{"$(params.myObject.key1)"},
+								}},
+							},
+							Namespaces:  []string{"$(params.myObject.key1)"},
+							TopologyKey: "$(params.myObject.key1)",
+						},
+					}},
+					RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"$(params.myObject.key1)": "$(params.myObject.key1)",
+							},
+							MatchExpressions: []metav1.LabelSelectorRequirement{{
+								Key:      "$(params.myObject.key1)",
+								Operator: metav1.LabelSelectorOperator("$(params.myObject.key1)"),
+								Values:   []string{"$(params.myObject.key1)"},
+							}},
+						},
+						MatchLabelKeys:    []string{"$(params.myObject.key1)"},
+						MismatchLabelKeys: []string{"$(params.myObject.key1)"},
+						NamespaceSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"$(params.myObject.key1)": "$(params.myObject.key1)",
+							},
+							MatchExpressions: []metav1.LabelSelectorRequirement{{
+								Key:      "$(params.myObject.key1)",
+								Operator: metav1.LabelSelectorOperator("$(params.myObject.key1)"),
+								Values:   []string{"$(params.myObject.key1)"},
+							}},
+						},
+						Namespaces:  []string{"$(params.myObject.key1)"},
+						TopologyKey: "$(params.myObject.key1)",
+					}},
+				},
+				PodAntiAffinity: &corev1.PodAntiAffinity{
+					PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
+						PodAffinityTerm: corev1.PodAffinityTerm{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"$(params.myObject.key1)": "$(params.myObject.key1)",
+								},
+								MatchExpressions: []metav1.LabelSelectorRequirement{{
+									Key:      "$(params.myObject.key1)",
+									Operator: metav1.LabelSelectorOperator("$(params.myObject.key1)"),
+									Values:   []string{"$(params.myObject.key1)"},
+								}},
+							},
+							MatchLabelKeys:    []string{"$(params.myObject.key1)"},
+							MismatchLabelKeys: []string{"$(params.myObject.key1)"},
+							NamespaceSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"$(params.myObject.key1)": "$(params.myObject.key1)",
+								},
+								MatchExpressions: []metav1.LabelSelectorRequirement{{
+									Key:      "$(params.myObject.key1)",
+									Operator: metav1.LabelSelectorOperator("$(params.myObject.key1)"),
+									Values:   []string{"$(params.myObject.key1)"},
+								}},
+							},
+							Namespaces:  []string{"$(params.myObject.key1)"},
+							TopologyKey: "$(params.myObject.key1)",
+						},
+					}},
+					RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"$(params.myObject.key1)": "$(params.myObject.key1)",
+							},
+							MatchExpressions: []metav1.LabelSelectorRequirement{{
+								Key:      "$(params.myObject.key1)",
+								Operator: metav1.LabelSelectorOperator("$(params.myObject.key1)"),
+								Values:   []string{"$(params.myObject.key1)"},
+							}},
+						},
+						MatchLabelKeys:    []string{"$(params.myObject.key1)"},
+						MismatchLabelKeys: []string{"$(params.myObject.key1)"},
+						NamespaceSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"$(params.myObject.key1)": "$(params.myObject.key1)",
+							},
+							MatchExpressions: []metav1.LabelSelectorRequirement{{
+								Key:      "$(params.myObject.key1)",
+								Operator: metav1.LabelSelectorOperator("$(params.myObject.key1)"),
+								Values:   []string{"$(params.myObject.key1)"},
+							}},
+						},
+						Namespaces:  []string{"$(params.myObject.key1)"},
+						TopologyKey: "$(params.myObject.key1)",
+					}},
+				},
+			},
+			SecurityContext: &corev1.PodSecurityContext{
+				SELinuxOptions: &corev1.SELinuxOptions{
+					User:  "$(params.myObject.key1)",
+					Role:  "$(params.myObject.key1)",
+					Type:  "$(params.myObject.key1)",
+					Level: "$(params.myObject.key1)",
+				},
+				WindowsOptions: &corev1.WindowsSecurityContextOptions{
+					RunAsUserName:          ptr.To("$(params.myObject.key1)"),
+					GMSACredentialSpecName: ptr.To("$(params.myObject.key1)"),
+					GMSACredentialSpec:     ptr.To("$(params.myObject.key1)"),
+				},
+				SupplementalGroupsPolicy: ptr.To(corev1.SupplementalGroupsPolicy("$(params.myObject.key1)")),
+				Sysctls: []corev1.Sysctl{{
+					Name:  "$(params.myObject.key1)",
+					Value: "$(params.myObject.key1)",
+				}},
+				FSGroupChangePolicy: ptr.To(corev1.PodFSGroupChangePolicy("$(params.myObject.key1)")),
+				SeccompProfile: &corev1.SeccompProfile{
+					LocalhostProfile: ptr.To("$(params.myObject.key1)"),
+					Type:             corev1.SeccompProfileType("$(params.myObject.key1)"),
+				},
+				AppArmorProfile: &corev1.AppArmorProfile{
+					LocalhostProfile: ptr.To("$(params.myObject.key1)"),
+					Type:             corev1.AppArmorProfileType("$(params.myObject.key1)"),
+				},
+			},
+			RuntimeClassName: ptr.To("$(params.myObject.key1)"),
+			DNSPolicy:        ptr.To(corev1.DNSPolicy("$(params.myObject.key1)")),
+			DNSConfig: &corev1.PodDNSConfig{
+				Nameservers: []string{"$(params.myObject.key1)"},
+				Searches:    []string{"$(params.myObject.key1)"},
+				Options: []corev1.PodDNSConfigOption{{
+					Name:  "$(params.myObject.key1)",
+					Value: ptr.To("$(params.myObject.key1)"),
+				}},
+			},
+			PriorityClassName: ptr.To("$(params.myObject.key1)"),
+			ImagePullSecrets: []corev1.LocalObjectReference{{
+				Name: "$(params.myObject.key1)",
+			}},
+			HostAliases: []corev1.HostAlias{{
+				IP:        "$(params.myObject.key1)",
+				Hostnames: []string{"$(params.myObject.key1)"},
+			}},
+			TopologySpreadConstraints: []corev1.TopologySpreadConstraint{{
+				TopologyKey:       "$(params.myObject.key1)",
+				WhenUnsatisfiable: corev1.UnsatisfiableConstraintAction("$(params.myObject.key1)"),
+				LabelSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"$(params.myObject.key1)": "$(params.myObject.key1)",
+					},
+					MatchExpressions: []metav1.LabelSelectorRequirement{{
+						Key:      "$(params.myObject.key1)",
+						Operator: metav1.LabelSelectorOperator("$(params.myObject.key1)"),
+						Values:   []string{"$(params.myObject.key1)"},
+					}},
+				},
+				NodeAffinityPolicy: ptr.To(corev1.NodeInclusionPolicy("$(params.myObject.key1)")),
+				NodeTaintsPolicy:   ptr.To(corev1.NodeInclusionPolicy("$(params.myObject.key1)")),
+				MatchLabelKeys:     []string{"$(params.myObject.key1)"},
+			}},
+		},
 	}
 
 	simpleTaskSpecArrayIndexing = &v1.TaskSpec{
@@ -475,6 +961,248 @@ var (
 				},
 			},
 		}},
+		PodTemplate: &pod.PodTemplate{
+			NodeSelector: map[string]string{"key2-$(params.FOO[1])": "value2-$(params.FOO[1])"},
+			Tolerations: []corev1.Toleration{{
+				Key:      "key2-$(params.FOO[1])",
+				Value:    "value2-$(params.FOO[1])",
+				Effect:   corev1.TaintEffect("effect2-$(params.FOO[1])"),
+				Operator: corev1.TolerationOperator("operator2-$(params.FOO[1])"),
+			}},
+			SchedulerName: "name2-$(params.FOO[1])",
+			Env: []corev1.EnvVar{{
+				Name:  "$(params.FOO[1])",
+				Value: "$(params.FOO[1])",
+				ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						Key: "$(params.FOO[1])",
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "$(params.FOO[1])",
+						},
+					},
+					FieldRef: &corev1.ObjectFieldSelector{
+						APIVersion: "$(params.FOO[1])",
+						FieldPath:  "$(params.FOO[1])",
+					},
+					ResourceFieldRef: &corev1.ResourceFieldSelector{
+						ContainerName: "$(params.FOO[1])",
+						Resource:      "$(params.FOO[1])",
+					},
+					SecretKeyRef: &corev1.SecretKeySelector{
+						Key: "$(params.FOO[1])",
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "$(params.FOO[1])",
+						},
+					},
+				},
+			}},
+			Affinity: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{{
+						Preference: corev1.NodeSelectorTerm{
+							MatchExpressions: []corev1.NodeSelectorRequirement{{
+								Key:      "$(params.FOO[1])",
+								Operator: corev1.NodeSelectorOperator("$(params.FOO[1])"),
+								Values:   []string{"$(params.FOO[1])"},
+							}},
+							MatchFields: []corev1.NodeSelectorRequirement{{
+								Key:      "$(params.FOO[1])",
+								Operator: corev1.NodeSelectorOperator("$(params.FOO[1])"),
+								Values:   []string{"$(params.FOO[1])"},
+							}},
+						},
+					}},
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+							MatchExpressions: []corev1.NodeSelectorRequirement{{
+								Key:      "$(params.FOO[1])",
+								Operator: corev1.NodeSelectorOperator("$(params.FOO[1])"),
+								Values:   []string{"$(params.FOO[1])"},
+							}},
+							MatchFields: []corev1.NodeSelectorRequirement{{
+								Key:      "$(params.FOO[1])",
+								Operator: corev1.NodeSelectorOperator("$(params.FOO[1])"),
+								Values:   []string{"$(params.FOO[1])"},
+							}},
+						}},
+					},
+				},
+				PodAffinity: &corev1.PodAffinity{
+					PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
+						PodAffinityTerm: corev1.PodAffinityTerm{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"$(params.FOO[1])": "$(params.FOO[1])",
+								},
+								MatchExpressions: []metav1.LabelSelectorRequirement{{
+									Key:      "$(params.FOO[1])",
+									Operator: metav1.LabelSelectorOperator("$(params.FOO[1])"),
+									Values:   []string{"$(params.FOO[1])"},
+								}},
+							},
+							MatchLabelKeys:    []string{"$(params.FOO[1])"},
+							MismatchLabelKeys: []string{"$(params.FOO[1])"},
+							NamespaceSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"$(params.FOO[1])": "$(params.FOO[1])",
+								},
+								MatchExpressions: []metav1.LabelSelectorRequirement{{
+									Key:      "$(params.FOO[1])",
+									Operator: metav1.LabelSelectorOperator("$(params.FOO[1])"),
+									Values:   []string{"$(params.FOO[1])"},
+								}},
+							},
+							Namespaces:  []string{"$(params.FOO[1])"},
+							TopologyKey: "$(params.FOO[1])",
+						},
+					}},
+					RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"$(params.FOO[1])": "$(params.FOO[1])",
+							},
+							MatchExpressions: []metav1.LabelSelectorRequirement{{
+								Key:      "$(params.FOO[1])",
+								Operator: metav1.LabelSelectorOperator("$(params.FOO[1])"),
+								Values:   []string{"$(params.FOO[1])"},
+							}},
+						},
+						MatchLabelKeys:    []string{"$(params.FOO[1])"},
+						MismatchLabelKeys: []string{"$(params.FOO[1])"},
+						NamespaceSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"$(params.FOO[1])": "$(params.FOO[1])",
+							},
+							MatchExpressions: []metav1.LabelSelectorRequirement{{
+								Key:      "$(params.FOO[1])",
+								Operator: metav1.LabelSelectorOperator("$(params.FOO[1])"),
+								Values:   []string{"$(params.FOO[1])"},
+							}},
+						},
+						Namespaces:  []string{"$(params.FOO[1])"},
+						TopologyKey: "$(params.FOO[1])",
+					}},
+				},
+				PodAntiAffinity: &corev1.PodAntiAffinity{
+					PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
+						PodAffinityTerm: corev1.PodAffinityTerm{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"$(params.FOO[1])": "$(params.FOO[1])",
+								},
+								MatchExpressions: []metav1.LabelSelectorRequirement{{
+									Key:      "$(params.FOO[1])",
+									Operator: metav1.LabelSelectorOperator("$(params.FOO[1])"),
+									Values:   []string{"$(params.FOO[1])"},
+								}},
+							},
+							MatchLabelKeys:    []string{"$(params.FOO[1])"},
+							MismatchLabelKeys: []string{"$(params.FOO[1])"},
+							NamespaceSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"$(params.FOO[1])": "$(params.FOO[1])",
+								},
+								MatchExpressions: []metav1.LabelSelectorRequirement{{
+									Key:      "$(params.FOO[1])",
+									Operator: metav1.LabelSelectorOperator("$(params.FOO[1])"),
+									Values:   []string{"$(params.FOO[1])"},
+								}},
+							},
+							Namespaces:  []string{"$(params.FOO[1])"},
+							TopologyKey: "$(params.FOO[1])",
+						},
+					}},
+					RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"$(params.FOO[1])": "$(params.FOO[1])",
+							},
+							MatchExpressions: []metav1.LabelSelectorRequirement{{
+								Key:      "$(params.FOO[1])",
+								Operator: metav1.LabelSelectorOperator("$(params.FOO[1])"),
+								Values:   []string{"$(params.FOO[1])"},
+							}},
+						},
+						MatchLabelKeys:    []string{"$(params.FOO[1])"},
+						MismatchLabelKeys: []string{"$(params.FOO[1])"},
+						NamespaceSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"$(params.FOO[1])": "$(params.FOO[1])",
+							},
+							MatchExpressions: []metav1.LabelSelectorRequirement{{
+								Key:      "$(params.FOO[1])",
+								Operator: metav1.LabelSelectorOperator("$(params.FOO[1])"),
+								Values:   []string{"$(params.FOO[1])"},
+							}},
+						},
+						Namespaces:  []string{"$(params.FOO[1])"},
+						TopologyKey: "$(params.FOO[1])",
+					}},
+				},
+			},
+			SecurityContext: &corev1.PodSecurityContext{
+				SELinuxOptions: &corev1.SELinuxOptions{
+					User:  "$(params.FOO[1])",
+					Role:  "$(params.FOO[1])",
+					Type:  "$(params.FOO[1])",
+					Level: "$(params.FOO[1])",
+				},
+				WindowsOptions: &corev1.WindowsSecurityContextOptions{
+					RunAsUserName:          ptr.To("$(params.FOO[1])"),
+					GMSACredentialSpecName: ptr.To("$(params.FOO[1])"),
+					GMSACredentialSpec:     ptr.To("$(params.FOO[1])"),
+				},
+				SupplementalGroupsPolicy: ptr.To(corev1.SupplementalGroupsPolicy("$(params.FOO[1])")),
+				Sysctls: []corev1.Sysctl{{
+					Name:  "$(params.FOO[1])",
+					Value: "$(params.FOO[1])",
+				}},
+				FSGroupChangePolicy: ptr.To(corev1.PodFSGroupChangePolicy("$(params.FOO[1])")),
+				SeccompProfile: &corev1.SeccompProfile{
+					LocalhostProfile: ptr.To("$(params.FOO[1])"),
+					Type:             corev1.SeccompProfileType("$(params.FOO[1])"),
+				},
+				AppArmorProfile: &corev1.AppArmorProfile{
+					LocalhostProfile: ptr.To("$(params.FOO[1])"),
+					Type:             corev1.AppArmorProfileType("$(params.FOO[1])"),
+				},
+			},
+			RuntimeClassName: ptr.To("$(params.FOO[1])"),
+			DNSPolicy:        ptr.To(corev1.DNSPolicy("$(params.FOO[1])")),
+			DNSConfig: &corev1.PodDNSConfig{
+				Nameservers: []string{"$(params.FOO[1])"},
+				Searches:    []string{"$(params.FOO[1])"},
+				Options: []corev1.PodDNSConfigOption{{
+					Name:  "$(params.FOO[1])",
+					Value: ptr.To("$(params.FOO[1])"),
+				}},
+			},
+			PriorityClassName: ptr.To("$(params.FOO[1])"),
+			ImagePullSecrets: []corev1.LocalObjectReference{{
+				Name: "$(params.FOO[1])",
+			}},
+			HostAliases: []corev1.HostAlias{{
+				IP:        "$(params.FOO[1])",
+				Hostnames: []string{"$(params.FOO[1])"},
+			}},
+			TopologySpreadConstraints: []corev1.TopologySpreadConstraint{{
+				TopologyKey:       "$(params.FOO[1])",
+				WhenUnsatisfiable: corev1.UnsatisfiableConstraintAction("$(params.FOO[1])"),
+				LabelSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"$(params.FOO[1])": "$(params.FOO[1])",
+					},
+					MatchExpressions: []metav1.LabelSelectorRequirement{{
+						Key:      "$(params.FOO[1])",
+						Operator: metav1.LabelSelectorOperator("$(params.FOO[1])"),
+						Values:   []string{"$(params.FOO[1])"},
+					}},
+				},
+				NodeAffinityPolicy: ptr.To(corev1.NodeInclusionPolicy("$(params.FOO[1])")),
+				NodeTaintsPolicy:   ptr.To(corev1.NodeInclusionPolicy("$(params.FOO[1])")),
+				MatchLabelKeys:     []string{"$(params.FOO[1])"},
+			}},
+		},
 	}
 
 	arrayParamTaskSpec = &v1.TaskSpec{
@@ -834,6 +1562,136 @@ func TestApplyParameters(t *testing.T) {
 
 		spec.Sidecars[0].Image = "bar"
 		spec.Sidecars[0].Env[0].Value = "world"
+
+		spec.PodTemplate.NodeSelector = map[string]string{"key-world": "value-world"}
+
+		spec.PodTemplate.Tolerations[0].Effect = "effect-world"
+		spec.PodTemplate.Tolerations[0].Operator = "operator-world"
+		spec.PodTemplate.Tolerations[0].Key = "key-world"
+		spec.PodTemplate.Tolerations[0].Value = "value-world"
+
+		spec.PodTemplate.SchedulerName = "name-world"
+
+		spec.PodTemplate.Env[0].Name = "world"
+		spec.PodTemplate.Env[0].Value = "world"
+		spec.PodTemplate.Env[0].ValueFrom.ConfigMapKeyRef.Key = "world"
+		spec.PodTemplate.Env[0].ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name = "world"
+		spec.PodTemplate.Env[0].ValueFrom.FieldRef.APIVersion = "world"
+		spec.PodTemplate.Env[0].ValueFrom.FieldRef.FieldPath = "world"
+		spec.PodTemplate.Env[0].ValueFrom.ResourceFieldRef.ContainerName = "world"
+		spec.PodTemplate.Env[0].ValueFrom.ResourceFieldRef.Resource = "world"
+		spec.PodTemplate.Env[0].ValueFrom.SecretKeyRef.Key = "world"
+		spec.PodTemplate.Env[0].ValueFrom.SecretKeyRef.LocalObjectReference.Name = "world"
+
+		spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Key = "world"
+		spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Operator = "world"
+		spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Values[0] = "world"
+		spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchFields[0].Key = "world"
+		spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchFields[0].Operator = "world"
+		spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchFields[0].Values[0] = "world"
+
+		spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Key = "world"
+		spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Operator = "world"
+		spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Values[0] = "world"
+		spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchFields[0].Key = "world"
+		spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchFields[0].Operator = "world"
+		spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchFields[0].Values[0] = "world"
+
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchLabels = map[string]string{"world": "world"}
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Key = "world"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Operator = "world"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Values[0] = "world"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.MatchLabelKeys[0] = "world"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.MismatchLabelKeys[0] = "world"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchLabels = map[string]string{"world": "world"}
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchExpressions[0].Key = "world"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchExpressions[0].Operator = "world"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchExpressions[0].Values[0] = "world"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.Namespaces[0] = "world"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.TopologyKey = "world"
+
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchLabels = map[string]string{"world": "world"}
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Key = "world"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Operator = "world"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Values[0] = "world"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].MatchLabelKeys[0] = "world"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].MismatchLabelKeys[0] = "world"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchLabels = map[string]string{"world": "world"}
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchExpressions[0].Key = "world"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchExpressions[0].Operator = "world"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchExpressions[0].Values[0] = "world"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].Namespaces[0] = "world"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].TopologyKey = "world"
+
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchLabels = map[string]string{"world": "world"}
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Key = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Operator = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Values[0] = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.MatchLabelKeys[0] = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.MismatchLabelKeys[0] = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchLabels = map[string]string{"world": "world"}
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchExpressions[0].Key = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchExpressions[0].Operator = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchExpressions[0].Values[0] = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.Namespaces[0] = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.TopologyKey = "world"
+
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchLabels = map[string]string{"world": "world"}
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Key = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Operator = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Values[0] = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].MatchLabelKeys[0] = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].MismatchLabelKeys[0] = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchLabels = map[string]string{"world": "world"}
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchExpressions[0].Key = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchExpressions[0].Operator = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchExpressions[0].Values[0] = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].Namespaces[0] = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].TopologyKey = "world"
+
+		spec.PodTemplate.SecurityContext.SELinuxOptions.User = "world"
+		spec.PodTemplate.SecurityContext.SELinuxOptions.Role = "world"
+		spec.PodTemplate.SecurityContext.SELinuxOptions.Type = "world"
+		spec.PodTemplate.SecurityContext.SELinuxOptions.Level = "world"
+
+		spec.PodTemplate.SecurityContext.WindowsOptions.RunAsUserName = ptr.To("world")
+		spec.PodTemplate.SecurityContext.WindowsOptions.GMSACredentialSpecName = ptr.To("world")
+		spec.PodTemplate.SecurityContext.WindowsOptions.GMSACredentialSpec = ptr.To("world")
+
+		spec.PodTemplate.SecurityContext.SupplementalGroupsPolicy = ptr.To(corev1.SupplementalGroupsPolicy("world"))
+		spec.PodTemplate.SecurityContext.Sysctls[0].Name = "world"
+		spec.PodTemplate.SecurityContext.Sysctls[0].Value = "world"
+		spec.PodTemplate.SecurityContext.FSGroupChangePolicy = ptr.To(corev1.PodFSGroupChangePolicy("world"))
+		spec.PodTemplate.SecurityContext.SeccompProfile.LocalhostProfile = ptr.To("world")
+		spec.PodTemplate.SecurityContext.SeccompProfile.Type = "world"
+		spec.PodTemplate.SecurityContext.AppArmorProfile.LocalhostProfile = ptr.To("world")
+		spec.PodTemplate.SecurityContext.AppArmorProfile.Type = "world"
+
+		spec.PodTemplate.RuntimeClassName = ptr.To("world")
+
+		spec.PodTemplate.DNSPolicy = ptr.To(corev1.DNSPolicy("world"))
+
+		spec.PodTemplate.DNSConfig.Nameservers[0] = "world"
+		spec.PodTemplate.DNSConfig.Searches[0] = "world"
+		spec.PodTemplate.DNSConfig.Options[0].Name = "world"
+		spec.PodTemplate.DNSConfig.Options[0].Value = ptr.To("world")
+
+		spec.PodTemplate.PriorityClassName = ptr.To("world")
+
+		spec.PodTemplate.ImagePullSecrets[0].Name = "world"
+
+		spec.PodTemplate.HostAliases[0].IP = "world"
+		spec.PodTemplate.HostAliases[0].Hostnames[0] = "world"
+
+		spec.PodTemplate.TopologySpreadConstraints[0].TopologyKey = "world"
+		spec.PodTemplate.TopologySpreadConstraints[0].WhenUnsatisfiable = "world"
+		spec.PodTemplate.TopologySpreadConstraints[0].LabelSelector.MatchLabels = map[string]string{"world": "world"}
+		spec.PodTemplate.TopologySpreadConstraints[0].LabelSelector.MatchExpressions[0].Key = "world"
+		spec.PodTemplate.TopologySpreadConstraints[0].LabelSelector.MatchExpressions[0].Operator = "world"
+		spec.PodTemplate.TopologySpreadConstraints[0].LabelSelector.MatchExpressions[0].Values[0] = "world"
+		spec.PodTemplate.TopologySpreadConstraints[0].NodeAffinityPolicy = ptr.To(corev1.NodeInclusionPolicy("world"))
+		spec.PodTemplate.TopologySpreadConstraints[0].NodeTaintsPolicy = ptr.To(corev1.NodeInclusionPolicy("world"))
+		spec.PodTemplate.TopologySpreadConstraints[0].MatchLabelKeys[0] = "world"
 	})
 	got := resources.ApplyParameters(simpleTaskSpec, tr, dp...)
 	if d := cmp.Diff(want, got); d != "" {
@@ -900,6 +1758,135 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 
 		spec.Sidecars[0].Image = "bar"
 		spec.Sidecars[0].Env[0].Value = "world"
+
+		spec.PodTemplate.NodeSelector = map[string]string{"key2-world": "value2-world"}
+		spec.PodTemplate.Tolerations[0].Effect = "effect2-world"
+		spec.PodTemplate.Tolerations[0].Operator = "operator2-world"
+		spec.PodTemplate.Tolerations[0].Key = "key2-world"
+		spec.PodTemplate.Tolerations[0].Value = "value2-world"
+		spec.PodTemplate.SchedulerName = "name2-world"
+
+		spec.PodTemplate.Env[0].Name = "world"
+		spec.PodTemplate.Env[0].Value = "world"
+		spec.PodTemplate.Env[0].ValueFrom.ConfigMapKeyRef.Key = "world"
+		spec.PodTemplate.Env[0].ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name = "world"
+		spec.PodTemplate.Env[0].ValueFrom.FieldRef.APIVersion = "world"
+		spec.PodTemplate.Env[0].ValueFrom.FieldRef.FieldPath = "world"
+		spec.PodTemplate.Env[0].ValueFrom.ResourceFieldRef.ContainerName = "world"
+		spec.PodTemplate.Env[0].ValueFrom.ResourceFieldRef.Resource = "world"
+		spec.PodTemplate.Env[0].ValueFrom.SecretKeyRef.Key = "world"
+		spec.PodTemplate.Env[0].ValueFrom.SecretKeyRef.LocalObjectReference.Name = "world"
+
+		spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Key = "world"
+		spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Operator = "world"
+		spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Values[0] = "world"
+		spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchFields[0].Key = "world"
+		spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchFields[0].Operator = "world"
+		spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchFields[0].Values[0] = "world"
+
+		spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Key = "world"
+		spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Operator = "world"
+		spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Values[0] = "world"
+		spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchFields[0].Key = "world"
+		spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchFields[0].Operator = "world"
+		spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchFields[0].Values[0] = "world"
+
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchLabels = map[string]string{"world": "world"}
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Key = "world"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Operator = "world"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Values[0] = "world"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.MatchLabelKeys[0] = "world"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.MismatchLabelKeys[0] = "world"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchLabels = map[string]string{"world": "world"}
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchExpressions[0].Key = "world"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchExpressions[0].Operator = "world"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchExpressions[0].Values[0] = "world"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.Namespaces[0] = "world"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.TopologyKey = "world"
+
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchLabels = map[string]string{"world": "world"}
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Key = "world"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Operator = "world"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Values[0] = "world"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].MatchLabelKeys[0] = "world"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].MismatchLabelKeys[0] = "world"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchLabels = map[string]string{"world": "world"}
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchExpressions[0].Key = "world"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchExpressions[0].Operator = "world"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchExpressions[0].Values[0] = "world"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].Namespaces[0] = "world"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].TopologyKey = "world"
+
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchLabels = map[string]string{"world": "world"}
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Key = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Operator = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Values[0] = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.MatchLabelKeys[0] = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.MismatchLabelKeys[0] = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchLabels = map[string]string{"world": "world"}
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchExpressions[0].Key = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchExpressions[0].Operator = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchExpressions[0].Values[0] = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.Namespaces[0] = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.TopologyKey = "world"
+
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchLabels = map[string]string{"world": "world"}
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Key = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Operator = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Values[0] = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].MatchLabelKeys[0] = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].MismatchLabelKeys[0] = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchLabels = map[string]string{"world": "world"}
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchExpressions[0].Key = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchExpressions[0].Operator = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchExpressions[0].Values[0] = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].Namespaces[0] = "world"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].TopologyKey = "world"
+
+		spec.PodTemplate.SecurityContext.SELinuxOptions.User = "world"
+		spec.PodTemplate.SecurityContext.SELinuxOptions.Role = "world"
+		spec.PodTemplate.SecurityContext.SELinuxOptions.Type = "world"
+		spec.PodTemplate.SecurityContext.SELinuxOptions.Level = "world"
+
+		spec.PodTemplate.SecurityContext.WindowsOptions.RunAsUserName = ptr.To("world")
+		spec.PodTemplate.SecurityContext.WindowsOptions.GMSACredentialSpecName = ptr.To("world")
+		spec.PodTemplate.SecurityContext.WindowsOptions.GMSACredentialSpec = ptr.To("world")
+
+		spec.PodTemplate.SecurityContext.SupplementalGroupsPolicy = ptr.To(corev1.SupplementalGroupsPolicy("world"))
+		spec.PodTemplate.SecurityContext.Sysctls[0].Name = "world"
+		spec.PodTemplate.SecurityContext.Sysctls[0].Value = "world"
+		spec.PodTemplate.SecurityContext.FSGroupChangePolicy = ptr.To(corev1.PodFSGroupChangePolicy("world"))
+		spec.PodTemplate.SecurityContext.SeccompProfile.LocalhostProfile = ptr.To("world")
+		spec.PodTemplate.SecurityContext.SeccompProfile.Type = "world"
+		spec.PodTemplate.SecurityContext.AppArmorProfile.LocalhostProfile = ptr.To("world")
+		spec.PodTemplate.SecurityContext.AppArmorProfile.Type = "world"
+
+		spec.PodTemplate.RuntimeClassName = ptr.To("world")
+
+		spec.PodTemplate.DNSPolicy = ptr.To(corev1.DNSPolicy("world"))
+
+		spec.PodTemplate.DNSConfig.Nameservers[0] = "world"
+		spec.PodTemplate.DNSConfig.Searches[0] = "world"
+		spec.PodTemplate.DNSConfig.Options[0].Name = "world"
+		spec.PodTemplate.DNSConfig.Options[0].Value = ptr.To("world")
+
+		spec.PodTemplate.PriorityClassName = ptr.To("world")
+
+		spec.PodTemplate.ImagePullSecrets[0].Name = "world"
+
+		spec.PodTemplate.HostAliases[0].IP = "world"
+		spec.PodTemplate.HostAliases[0].Hostnames[0] = "world"
+
+		spec.PodTemplate.TopologySpreadConstraints[0].TopologyKey = "world"
+		spec.PodTemplate.TopologySpreadConstraints[0].WhenUnsatisfiable = "world"
+		spec.PodTemplate.TopologySpreadConstraints[0].LabelSelector.MatchLabels = map[string]string{"world": "world"}
+		spec.PodTemplate.TopologySpreadConstraints[0].LabelSelector.MatchExpressions[0].Key = "world"
+		spec.PodTemplate.TopologySpreadConstraints[0].LabelSelector.MatchExpressions[0].Operator = "world"
+		spec.PodTemplate.TopologySpreadConstraints[0].LabelSelector.MatchExpressions[0].Values[0] = "world"
+		spec.PodTemplate.TopologySpreadConstraints[0].NodeAffinityPolicy = ptr.To(corev1.NodeInclusionPolicy("world"))
+		spec.PodTemplate.TopologySpreadConstraints[0].NodeTaintsPolicy = ptr.To(corev1.NodeInclusionPolicy("world"))
+		spec.PodTemplate.TopologySpreadConstraints[0].MatchLabelKeys[0] = "world"
+
 	})
 	got := resources.ApplyParameters(simpleTaskSpecArrayIndexing, tr, dp...)
 	if d := cmp.Diff(want, got); d != "" {
@@ -966,6 +1953,135 @@ func TestApplyObjectParameters(t *testing.T) {
 		spec.Volumes[2].VolumeSource.Projected.Sources[0].ServiceAccountToken.Audience = "taskrun-value-for-key2"
 		spec.Volumes[3].VolumeSource.CSI.VolumeAttributes["secretProviderClass"] = "taskrun-value-for-key1"
 		spec.Volumes[3].VolumeSource.CSI.NodePublishSecretRef.Name = "taskrun-value-for-key1"
+
+		spec.PodTemplate.NodeSelector = map[string]string{"taskrun-value-for-key1": "taskrun-value-for-key2"}
+		spec.PodTemplate.Tolerations[0].Effect = "taskrun-value-for-key2"
+		spec.PodTemplate.Tolerations[0].Operator = "taskrun-value-for-key2"
+		spec.PodTemplate.Tolerations[0].Key = "taskrun-value-for-key1"
+		spec.PodTemplate.Tolerations[0].Value = "taskrun-value-for-key1"
+		spec.PodTemplate.SchedulerName = "taskrun-value-for-key1"
+
+		spec.PodTemplate.Env[0].Name = "taskrun-value-for-key1"
+		spec.PodTemplate.Env[0].Value = "taskrun-value-for-key1"
+		spec.PodTemplate.Env[0].ValueFrom.ConfigMapKeyRef.Key = "taskrun-value-for-key1"
+		spec.PodTemplate.Env[0].ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name = "taskrun-value-for-key1"
+		spec.PodTemplate.Env[0].ValueFrom.FieldRef.APIVersion = "taskrun-value-for-key1"
+		spec.PodTemplate.Env[0].ValueFrom.FieldRef.FieldPath = "taskrun-value-for-key1"
+		spec.PodTemplate.Env[0].ValueFrom.ResourceFieldRef.ContainerName = "taskrun-value-for-key1"
+		spec.PodTemplate.Env[0].ValueFrom.ResourceFieldRef.Resource = "taskrun-value-for-key1"
+		spec.PodTemplate.Env[0].ValueFrom.SecretKeyRef.Key = "taskrun-value-for-key1"
+		spec.PodTemplate.Env[0].ValueFrom.SecretKeyRef.LocalObjectReference.Name = "taskrun-value-for-key1"
+
+		spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Key = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Operator = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Values[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchFields[0].Key = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchFields[0].Operator = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchFields[0].Values[0] = "taskrun-value-for-key1"
+
+		spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Key = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Operator = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Values[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchFields[0].Key = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchFields[0].Operator = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchFields[0].Values[0] = "taskrun-value-for-key1"
+
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchLabels = map[string]string{"taskrun-value-for-key1": "taskrun-value-for-key1"}
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Key = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Operator = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Values[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.MatchLabelKeys[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.MismatchLabelKeys[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchLabels = map[string]string{"taskrun-value-for-key1": "taskrun-value-for-key1"}
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchExpressions[0].Key = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchExpressions[0].Operator = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchExpressions[0].Values[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.Namespaces[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.TopologyKey = "taskrun-value-for-key1"
+
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchLabels = map[string]string{"taskrun-value-for-key1": "taskrun-value-for-key1"}
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Key = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Operator = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Values[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].MatchLabelKeys[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].MismatchLabelKeys[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchLabels = map[string]string{"taskrun-value-for-key1": "taskrun-value-for-key1"}
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchExpressions[0].Key = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchExpressions[0].Operator = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchExpressions[0].Values[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].Namespaces[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].TopologyKey = "taskrun-value-for-key1"
+
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchLabels = map[string]string{"taskrun-value-for-key1": "taskrun-value-for-key1"}
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Key = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Operator = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Values[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.MatchLabelKeys[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.MismatchLabelKeys[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchLabels = map[string]string{"taskrun-value-for-key1": "taskrun-value-for-key1"}
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchExpressions[0].Key = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchExpressions[0].Operator = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.NamespaceSelector.MatchExpressions[0].Values[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.Namespaces[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.TopologyKey = "taskrun-value-for-key1"
+
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchLabels = map[string]string{"taskrun-value-for-key1": "taskrun-value-for-key1"}
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Key = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Operator = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Values[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].MatchLabelKeys[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].MismatchLabelKeys[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchLabels = map[string]string{"taskrun-value-for-key1": "taskrun-value-for-key1"}
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchExpressions[0].Key = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchExpressions[0].Operator = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].NamespaceSelector.MatchExpressions[0].Values[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].Namespaces[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].TopologyKey = "taskrun-value-for-key1"
+
+		spec.PodTemplate.SecurityContext.SELinuxOptions.User = "taskrun-value-for-key1"
+		spec.PodTemplate.SecurityContext.SELinuxOptions.Role = "taskrun-value-for-key1"
+		spec.PodTemplate.SecurityContext.SELinuxOptions.Type = "taskrun-value-for-key1"
+		spec.PodTemplate.SecurityContext.SELinuxOptions.Level = "taskrun-value-for-key1"
+
+		spec.PodTemplate.SecurityContext.WindowsOptions.RunAsUserName = ptr.To("taskrun-value-for-key1")
+		spec.PodTemplate.SecurityContext.WindowsOptions.GMSACredentialSpecName = ptr.To("taskrun-value-for-key1")
+		spec.PodTemplate.SecurityContext.WindowsOptions.GMSACredentialSpec = ptr.To("taskrun-value-for-key1")
+
+		spec.PodTemplate.SecurityContext.SupplementalGroupsPolicy = ptr.To(corev1.SupplementalGroupsPolicy("taskrun-value-for-key1"))
+		spec.PodTemplate.SecurityContext.Sysctls[0].Name = "taskrun-value-for-key1"
+		spec.PodTemplate.SecurityContext.Sysctls[0].Value = "taskrun-value-for-key1"
+		spec.PodTemplate.SecurityContext.FSGroupChangePolicy = ptr.To(corev1.PodFSGroupChangePolicy("taskrun-value-for-key1"))
+		spec.PodTemplate.SecurityContext.SeccompProfile.LocalhostProfile = ptr.To("taskrun-value-for-key1")
+		spec.PodTemplate.SecurityContext.SeccompProfile.Type = "taskrun-value-for-key1"
+		spec.PodTemplate.SecurityContext.AppArmorProfile.LocalhostProfile = ptr.To("taskrun-value-for-key1")
+		spec.PodTemplate.SecurityContext.AppArmorProfile.Type = "taskrun-value-for-key1"
+
+		spec.PodTemplate.RuntimeClassName = ptr.To("taskrun-value-for-key1")
+
+		spec.PodTemplate.DNSPolicy = ptr.To(corev1.DNSPolicy("taskrun-value-for-key1"))
+
+		spec.PodTemplate.DNSConfig.Nameservers[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.DNSConfig.Searches[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.DNSConfig.Options[0].Name = "taskrun-value-for-key1"
+		spec.PodTemplate.DNSConfig.Options[0].Value = ptr.To("taskrun-value-for-key1")
+
+		spec.PodTemplate.PriorityClassName = ptr.To("taskrun-value-for-key1")
+
+		spec.PodTemplate.ImagePullSecrets[0].Name = "taskrun-value-for-key1"
+
+		spec.PodTemplate.HostAliases[0].IP = "taskrun-value-for-key1"
+		spec.PodTemplate.HostAliases[0].Hostnames[0] = "taskrun-value-for-key1"
+
+		spec.PodTemplate.TopologySpreadConstraints[0].TopologyKey = "taskrun-value-for-key1"
+		spec.PodTemplate.TopologySpreadConstraints[0].WhenUnsatisfiable = "taskrun-value-for-key1"
+		spec.PodTemplate.TopologySpreadConstraints[0].LabelSelector.MatchLabels = map[string]string{"taskrun-value-for-key1": "taskrun-value-for-key1"}
+		spec.PodTemplate.TopologySpreadConstraints[0].LabelSelector.MatchExpressions[0].Key = "taskrun-value-for-key1"
+		spec.PodTemplate.TopologySpreadConstraints[0].LabelSelector.MatchExpressions[0].Operator = "taskrun-value-for-key1"
+		spec.PodTemplate.TopologySpreadConstraints[0].LabelSelector.MatchExpressions[0].Values[0] = "taskrun-value-for-key1"
+		spec.PodTemplate.TopologySpreadConstraints[0].NodeAffinityPolicy = ptr.To(corev1.NodeInclusionPolicy("taskrun-value-for-key1"))
+		spec.PodTemplate.TopologySpreadConstraints[0].NodeTaintsPolicy = ptr.To(corev1.NodeInclusionPolicy("taskrun-value-for-key1"))
+		spec.PodTemplate.TopologySpreadConstraints[0].MatchLabelKeys[0] = "taskrun-value-for-key1"
+
 	})
 	got := resources.ApplyParameters(objectParamTaskSpec, tr, dp...)
 	if d := cmp.Diff(want, got); d != "" {

@@ -1,0 +1,18 @@
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: podtemplate-task-run
+spec:
+  taskSpec:
+    params:
+      - name: arch
+        value: amd64
+    podTemplate:
+      nodeSelector:
+        kubernetes.io/arch: $(params.arch)
+    steps:
+      - name: echo
+        image: mirror.gcr.io/ubuntu
+        script: |
+          #!/usr/bin/env bash
+          echo "Hello World"
