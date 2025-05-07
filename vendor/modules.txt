@@ -1,5 +1,5 @@
-# cel.dev/expr v0.20.0
-## explicit; go 1.21.1
+# cel.dev/expr v0.23.1
+## explicit; go 1.22.0
 cel.dev/expr
 # cloud.google.com/go v0.120.0
 ## explicit; go 1.23.0
@@ -432,8 +432,8 @@ github.com/golang/groupcache/lru
 ## explicit; go 1.17
 github.com/golang/protobuf/proto
 github.com/golang/protobuf/ptypes/timestamp
-# github.com/google/cel-go v0.24.1
-## explicit; go 1.21.1
+# github.com/google/cel-go v0.25.0
+## explicit; go 1.22.0
 github.com/google/cel-go/cel
 github.com/google/cel-go/checker
 github.com/google/cel-go/checker/decls
