@@ -112,19 +112,7 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 			errs = errs.Also(ps.validatePipelineTimeout(defaultTimeout, "should be <= default timeout duration"))
 		}
 
-		if len(ps.TaskRunSpecs) > 0 {
-			pipelineTimeout := ps.Timeouts.Pipeline
-			if pipelineTimeout == nil {
-				pipelineTimeout = &metav1.Duration{Duration: time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes) * time.Minute}
-			}
-			for _, taskRunSpec := range ps.TaskRunSpecs {
-				if taskRunSpec.Timeout != nil {
-					if taskRunSpec.Timeout.Duration > pipelineTimeout.Duration && pipelineTimeout.Duration != config.NoTimeoutDuration {
-						errs = errs.Also(apis.ErrInvalidValue(taskRunSpec.Timeout.Duration.String()+" should be <= pipeline duration", "taskRunSpecs["+taskRunSpec.PipelineTaskName+"].timeout"))
-					}
-				}
-			}
-		}
+		errs = errs.Also(validatePipelineTaskRunSpecTimeouts(ps, ctx))
 	}
 
 	errs = errs.Also(validateSpecStatus(ps.Status))
@@ -351,5 +339,35 @@ func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec) (errs *ap
 	if trs.PodTemplate != nil {
 		errs = errs.Also(validatePodTemplateEnv(ctx, *trs.PodTemplate))
 	}
+	return errs
+}
+
+// validatePipelineTaskRunSpecTimeouts validates timeouts for TaskRunSpecs in a PipelineRun
+func validatePipelineTaskRunSpecTimeouts(ps *PipelineRunSpec, ctx context.Context) *apis.FieldError {
+	var errs *apis.FieldError
+
+	if len(ps.TaskRunSpecs) == 0 {
+		return errs
+	}
+
+	pipelineTimeout := ps.Timeouts.Pipeline
+	if pipelineTimeout == nil {
+		pipelineTimeout = &metav1.Duration{Duration: time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes) * time.Minute}
+	}
+
+	if pipelineTimeout.Duration == config.NoTimeoutDuration {
+		return errs
+	}
+
+	for _, taskRunSpec := range ps.TaskRunSpecs {
+		if taskRunSpec.Timeout == nil {
+			continue
+		}
+
+		if taskRunSpec.Timeout.Duration > pipelineTimeout.Duration {
+			errs = errs.Also(apis.ErrInvalidValue(taskRunSpec.Timeout.Duration.String()+" should be <= pipeline duration", "taskRunSpecs["+taskRunSpec.PipelineTaskName+"].timeout"))
+		}
+	}
+
 	return errs
 }
