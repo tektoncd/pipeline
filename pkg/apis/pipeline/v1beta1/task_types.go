@@ -90,6 +90,9 @@ func (t *Task) Checksum() ([]byte, error) {
 	return sha256Checksum, nil
 }
 
+// +listType=atomic
+type Volumes []corev1.Volume
+
 // TaskSpec defines the desired state of Task.
 type TaskSpec struct {
 	// Resources is a list input and output resource to run the task
@@ -104,7 +107,6 @@ type TaskSpec struct {
 	// must be supplied as inputs in TaskRuns unless they declare a default
 	// value.
 	// +optional
-	// +listType=atomic
 	Params ParamSpecs `json:"params,omitempty"`
 
 	// DisplayName is a user-facing name of the task that may be
@@ -125,7 +127,6 @@ type TaskSpec struct {
 	// Volumes is a collection of volumes that are available to mount into the
 	// steps of the build.
 	// See Pod.spec.volumes (API version: v1)
-	// +listType=atomic
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
