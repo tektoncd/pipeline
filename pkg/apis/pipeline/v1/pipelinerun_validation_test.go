@@ -1126,7 +1126,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 				ctx = ps.withContext(ctx)
 			}
 			err := ps.spec.Validate(ctx)
-			if d := cmp.Diff(ps.wantErr.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+			if d := cmp.Diff(ps.wantErr.Error(), err.Error()); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
 		})
@@ -1411,13 +1411,37 @@ func TestPipelineRun_InvalidTimeouts(t *testing.T) {
 			},
 		},
 		want: apis.ErrInvalidValue("2h0m0s should be <= pipeline duration", "spec.taskRunSpecs[task1].timeout"),
+	}, {
+		name: "when pipeline timeout is no timeout (0s), task timeouts can exceed it without error",
+		pr: v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1.PipelineRunSpec{
+				PipelineRef: &v1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: config.NoTimeoutDuration},
+				},
+				TaskRunSpecs: []v1.PipelineTaskRunSpec{{
+					PipelineTaskName: "task1",
+					Timeout:          &metav1.Duration{Duration: 10 * time.Hour},
+				}},
+			},
+		},
+		want: nil, // no error expected when pipeline has no timeout
 	}}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 			err := tc.pr.Validate(ctx)
-			if d := cmp.Diff(tc.want.Error(), err.Error()); d != "" {
+			if tc.want == nil {
+				if err != nil {
+					t.Errorf("Expected no error but got: %v", err)
+				}
+			} else if d := cmp.Diff(tc.want.Error(), err.Error()); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
 		})
