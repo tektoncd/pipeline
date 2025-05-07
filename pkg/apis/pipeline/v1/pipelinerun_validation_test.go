@@ -805,6 +805,28 @@ func TestPipelineRun_Validate(t *testing.T) {
 			},
 		},
 		wc: cfgtesting.EnableAlphaAPIFields,
+	}, {
+		name: "valid task-specific timeouts",
+		pr: v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1.PipelineRunSpec{
+				PipelineRef: &v1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 1 * time.Hour},
+				},
+				TaskRunSpecs: []v1.PipelineTaskRunSpec{{
+					PipelineTaskName: "task1",
+					Timeout:          &metav1.Duration{Duration: 30 * time.Minute},
+				}, {
+					PipelineTaskName: "task2",
+					Timeout:          &metav1.Duration{Duration: 45 * time.Minute},
+				}},
+			},
+		},
 	}}
 
 	for _, ts := range tests {
@@ -1203,6 +1225,23 @@ func TestPipelineRun_InvalidTimeouts(t *testing.T) {
 		},
 		want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeouts.pipeline"),
 	}, {
+		name: "negative task-specific timeout",
+		pr: v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1.PipelineRunSpec{
+				PipelineRef: &v1.PipelineRef{
+					Name: "prname",
+				},
+				TaskRunSpecs: []v1.PipelineTaskRunSpec{{
+					PipelineTaskName: "task1",
+					Timeout:          &metav1.Duration{Duration: -1 * time.Hour},
+				}},
+			},
+		},
+		want: apis.ErrInvalidValue("-1h0m0s should be >= 0", "spec.taskRunSpecs[task1].timeout"),
+	}, {
 		name: "negative pipeline tasks Timeout",
 		pr: v1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
@@ -1352,13 +1391,57 @@ func TestPipelineRun_InvalidTimeouts(t *testing.T) {
 			},
 		},
 		want: apis.ErrInvalidValue(`0s (no timeout) should be <= pipeline duration`, "spec.timeouts.finally"),
+	}, {
+		name: "task-specific timeout exceeds pipeline timeout",
+		pr: v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1.PipelineRunSpec{
+				PipelineRef: &v1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 1 * time.Hour},
+				},
+				TaskRunSpecs: []v1.PipelineTaskRunSpec{{
+					PipelineTaskName: "task1",
+					Timeout:          &metav1.Duration{Duration: 2 * time.Hour},
+				}},
+			},
+		},
+		want: apis.ErrInvalidValue("2h0m0s should be <= pipeline duration", "spec.taskRunSpecs[task1].timeout"),
+	}, {
+		name: "when pipeline timeout is no timeout (0s), task timeouts can exceed it without error",
+		pr: v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1.PipelineRunSpec{
+				PipelineRef: &v1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: config.NoTimeoutDuration},
+				},
+				TaskRunSpecs: []v1.PipelineTaskRunSpec{{
+					PipelineTaskName: "task1",
+					Timeout:          &metav1.Duration{Duration: 10 * time.Hour},
+				}},
+			},
+		},
+		want: nil, // no error expected when pipeline has no timeout
 	}}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 			err := tc.pr.Validate(ctx)
-			if d := cmp.Diff(tc.want.Error(), err.Error()); d != "" {
+			if tc.want == nil {
+				if err != nil {
+					t.Errorf("Expected no error but got: %v", err)
+				}
+			} else if d := cmp.Diff(tc.want.Error(), err.Error()); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
 		})
