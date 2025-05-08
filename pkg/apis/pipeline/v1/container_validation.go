@@ -182,7 +182,7 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 
 	if s.Name != "" {
 		if names.Has(s.Name) {
-			errs = errs.Also(apis.ErrInvalidValue(s.Name, "name"))
+			errs = errs.Also(apis.ErrMultipleOneOf("name"))
 		}
 		if e := validation.IsDNS1123Label(s.Name); len(e) > 0 {
 			errs = errs.Also(&apis.FieldError{
