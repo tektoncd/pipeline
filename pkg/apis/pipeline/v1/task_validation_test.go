@@ -1049,7 +1049,19 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Details: "Task step name must be a valid DNS Label, For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
 		},
 	}, {
-		name: "array used in unaccepted field",
+		name: "duplicate step name",
+		fields: fields{
+			Steps: []v1.Step{
+				{Name: "mystep", Image: "myimage"},
+				{Name: "mystep", Image: "myimage"},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `expected exactly one, got both`,
+			Paths:   []string{"steps[1].name"},
+		},
+	}, {
+		name: "array used in a string field",
 		fields: fields{
 			Params: []v1.ParamSpec{{
 				Name: "baz",
@@ -1071,7 +1083,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"steps[0].image"},
 		},
 	}, {
-		name: "array star used in unaccepted field",
+		name: "array star used in a string field",
 		fields: fields{
 			Params: []v1.ParamSpec{{
 				Name: "baz",
@@ -1093,7 +1105,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"steps[0].image"},
 		},
 	}, {
-		name: "array star used illegaly in script field",
+		name: "array star used illegally in script field",
 		fields: fields{
 			Params: []v1.ParamSpec{{
 				Name: "baz",
@@ -1114,6 +1126,23 @@ func TestTaskSpecValidateError(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: `variable type invalid in "$(params.baz[*])"`,
 			Paths:   []string{"steps[0].script"},
+		},
+	}, {
+		name: "array param used in step env value field that can accept string type",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name: "baz",
+				Type: v1.ParamTypeArray,
+			}},
+			Steps: []v1.Step{{
+				Name:  "mystep",
+				Image: "my-image",
+				Env:   []corev1.EnvVar{{Name: "URL", Value: "$(params.baz)"}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.baz)"`,
+			Paths:   []string{"steps[0].env[URL]"},
 		},
 	}, {
 		name: "array not properly isolated",
@@ -2450,6 +2479,25 @@ func TestTaskSpecValidateUsageOfDeclaredParams(t *testing.T) {
 			Paths:   []string{"steps[0].args[0]"},
 		},
 	}, {
+		name: "object param used in step env value field that can accept string type",
+		Params: []v1.ParamSpec{{
+			Name: "gitrepo",
+			Type: v1.ParamTypeObject,
+			Properties: map[string]v1.PropertySpec{
+				"url":    {},
+				"commit": {},
+			},
+		}},
+		Steps: []v1.Step{{
+			Name:  "do-the-clone",
+			Image: "some-git-image",
+			Env:   []corev1.EnvVar{{Name: "URL", Value: "$(params.gitrepo)"}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.gitrepo)"`,
+			Paths:   []string{"steps[0].env[URL]"},
+		},
+	}, {
 		name: "non-existent individual key of an object param is used in task step",
 		Params: []v1.ParamSpec{{
 			Name: "gitrepo",
@@ -2470,7 +2518,7 @@ func TestTaskSpecValidateUsageOfDeclaredParams(t *testing.T) {
 			Paths:   []string{"steps[0].args[0]"},
 		},
 	}, {
-		name: "Inexistent param variable in volumeMount with existing",
+		name: "inexistent param variable in volumeMount with existing",
 		Params: []v1.ParamSpec{
 			{
 				Name:        "foo",
@@ -2490,7 +2538,7 @@ func TestTaskSpecValidateUsageOfDeclaredParams(t *testing.T) {
 			Paths:   []string{"steps[0].volumeMount[0].name"},
 		},
 	}, {
-		name: "Inexistent param variable with existing",
+		name: "inexistent param variable with existing",
 		Params: []v1.ParamSpec{{
 			Name:        "foo",
 			Description: "param",
@@ -2504,6 +2552,17 @@ func TestTaskSpecValidateUsageOfDeclaredParams(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: `non-existent variable in "$(params.foo) && $(params.inexistent)"`,
 			Paths:   []string{"steps[0].args[0]"},
+		},
+	}, {
+		name: "object param variable with non-existent properties",
+		Params: []v1.ParamSpec{{
+			Name: "foo",
+			Type: v1.ParamTypeObject,
+		}},
+		Steps: validSteps,
+		expectedError: apis.FieldError{
+			Message: "missing field(s)",
+			Paths:   []string{"foo.properties"},
 		},
 	}}
 	for _, tt := range tests {
