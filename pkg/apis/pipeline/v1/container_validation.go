@@ -296,33 +296,33 @@ func taskArtifactReferenceExists(src string) bool {
 }
 
 func validateStepResultReference(s Step) (errs *apis.FieldError) {
-	errs = errs.Also(errorIfStepResultReferenceinField(s.Name, "name"))
-	errs = errs.Also(errorIfStepResultReferenceinField(s.Image, "image"))
-	errs = errs.Also(errorIfStepResultReferenceinField(s.Script, "script"))
-	errs = errs.Also(errorIfStepResultReferenceinField(string(s.ImagePullPolicy), "imagePullPoliicy"))
-	errs = errs.Also(errorIfStepResultReferenceinField(s.WorkingDir, "workingDir"))
+	errs = errs.Also(errorIfStepResultReferencedInField(s.Name, "name"))
+	errs = errs.Also(errorIfStepResultReferencedInField(s.Image, "image"))
+	errs = errs.Also(errorIfStepResultReferencedInField(s.Script, "script"))
+	errs = errs.Also(errorIfStepResultReferencedInField(string(s.ImagePullPolicy), "imagePullPoliicy"))
+	errs = errs.Also(errorIfStepResultReferencedInField(s.WorkingDir, "workingDir"))
 	for _, e := range s.EnvFrom {
-		errs = errs.Also(errorIfStepResultReferenceinField(e.Prefix, "envFrom.prefix"))
+		errs = errs.Also(errorIfStepResultReferencedInField(e.Prefix, "envFrom.prefix"))
 		if e.ConfigMapRef != nil {
-			errs = errs.Also(errorIfStepResultReferenceinField(e.ConfigMapRef.LocalObjectReference.Name, "envFrom.configMapRef"))
+			errs = errs.Also(errorIfStepResultReferencedInField(e.ConfigMapRef.LocalObjectReference.Name, "envFrom.configMapRef"))
 		}
 		if e.SecretRef != nil {
-			errs = errs.Also(errorIfStepResultReferenceinField(e.SecretRef.LocalObjectReference.Name, "envFrom.secretRef"))
+			errs = errs.Also(errorIfStepResultReferencedInField(e.SecretRef.LocalObjectReference.Name, "envFrom.secretRef"))
 		}
 	}
 	for _, v := range s.VolumeMounts {
-		errs = errs.Also(errorIfStepResultReferenceinField(v.Name, "volumeMounts.name"))
-		errs = errs.Also(errorIfStepResultReferenceinField(v.MountPath, "volumeMounts.mountPath"))
-		errs = errs.Also(errorIfStepResultReferenceinField(v.SubPath, "volumeMounts.subPath"))
+		errs = errs.Also(errorIfStepResultReferencedInField(v.Name, "volumeMounts.name"))
+		errs = errs.Also(errorIfStepResultReferencedInField(v.MountPath, "volumeMounts.mountPath"))
+		errs = errs.Also(errorIfStepResultReferencedInField(v.SubPath, "volumeMounts.subPath"))
 	}
 	for _, v := range s.VolumeDevices {
-		errs = errs.Also(errorIfStepResultReferenceinField(v.Name, "volumeDevices.name"))
-		errs = errs.Also(errorIfStepResultReferenceinField(v.DevicePath, "volumeDevices.devicePath"))
+		errs = errs.Also(errorIfStepResultReferencedInField(v.Name, "volumeDevices.name"))
+		errs = errs.Also(errorIfStepResultReferencedInField(v.DevicePath, "volumeDevices.devicePath"))
 	}
 	return errs
 }
 
-func errorIfStepResultReferenceinField(value, fieldName string) (errs *apis.FieldError) {
+func errorIfStepResultReferencedInField(value, fieldName string) (errs *apis.FieldError) {
 	matches := resultref.StepResultRegex.FindAllStringSubmatch(value, -1)
 	if len(matches) > 0 {
 		errs = errs.Also(&apis.FieldError{
@@ -369,7 +369,7 @@ func errorIfStepArtifactReferencedInField(value, fieldName string) (errs *apis.F
 	return errs
 }
 
-func validateSidecar(errs *apis.FieldError, sc Sidecar) *apis.FieldError {
+func (sc *Sidecar) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if sc.Name == pipeline.ReservedResultsSidecarName {
 		errs = errs.Also(&apis.FieldError{
 			Message: fmt.Sprintf("Invalid: cannot use reserved sidecar name %v ", sc.Name),

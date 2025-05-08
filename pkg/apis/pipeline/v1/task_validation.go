@@ -88,7 +88,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 
 	errs = errs.Also(validateSteps(ctx, mergedSteps).ViaField("steps"))
-	errs = errs.Also(validateSidecars(ts.Sidecars).ViaField("sidecars"))
+	errs = errs.Also(SidecarList(ts.Sidecars).Validate(ctx).ViaField("sidecars"))
 	errs = errs.Also(ValidateParameterTypes(ctx, ts.Params).ViaField("params"))
 	errs = errs.Also(ValidateParameterVariables(ctx, ts.Steps, ts.Params))
 	errs = errs.Also(validateTaskContextVariables(ctx, ts.Steps))
@@ -248,9 +248,9 @@ func ValidateStepResultsVariables(ctx context.Context, results []StepResult, scr
 	return errs
 }
 
-func validateSidecars(sidecars []Sidecar) (errs *apis.FieldError) {
-	for _, sc := range sidecars {
-		errs = validateSidecar(errs, sc)
+func (l SidecarList) Validate(ctx context.Context) (errs *apis.FieldError) {
+	for _, sc := range l {
+		errs = errs.Also(sc.Validate(ctx))
 	}
 	return errs
 }
