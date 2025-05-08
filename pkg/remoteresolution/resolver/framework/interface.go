@@ -48,6 +48,10 @@ type Resolver interface {
 	// to include in the response. If resolution fails then an error
 	// should be returned instead. If a resolution.Error
 	// is returned then its Reason and Message are used as part of the
-	// response to the request.
+	// response to the request. If an error is returned which is transient,
+	// such as a kubernetes timeout or too many requests error, the
+	// ResolutionRequest will not be updated with a failed status.
+	// See github.com/tektoncd/pipeline/pkg/resolution/common/errors.go for
+	// the definition of a transient error.
 	Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (framework.ResolvedResource, error)
 }
