@@ -784,7 +784,8 @@ func extractContainerFailureMessage(logger *zap.SugaredLogger, status corev1.Con
 			}
 		}
 		if term.ExitCode != 0 {
-			return fmt.Sprintf("%q exited with code %d", status.Name, term.ExitCode)
+			// Include the termination reason to add clarity for causes such as external signals, e.g. OOM
+			return fmt.Sprintf("%q exited with code %d: %s", status.Name, term.ExitCode, term.Reason)
 		}
 	}
 
