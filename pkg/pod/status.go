@@ -781,12 +781,12 @@ func extractContainerFailureMessage(logger *zap.SugaredLogger, status corev1.Con
 			}
 		}
 		if term.ExitCode != 0 {
-			// Include the termination reason
+			// Include the termination reason to add clarity for causes such as external signals, e.g. OOM
 			return fmt.Sprintf("%q exited with code %d: %s", status.Name, term.ExitCode, term.Reason)
 		}
 	}
 
-	return "" 
+	return ""
 }
 
 // IsPodExceedingNodeResources returns true if the Pod's status indicates there
