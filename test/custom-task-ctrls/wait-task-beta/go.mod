@@ -1,6 +1,6 @@
 module github.com/tektoncd/pipeline/test/wait-task-beta
 
-go 1.21
+go 1.23.0
 
 require (
 	github.com/google/go-cmp v0.7.0
@@ -70,13 +70,13 @@ require (
 	go.uber.org/multierr v1.10.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/exp v0.0.0-20230307190834-24139beb5833 // indirect
-	golang.org/x/mod v0.14.0 // indirect
-	golang.org/x/net v0.23.0 // indirect
+	golang.org/x/mod v0.17.0 // indirect
+	golang.org/x/net v0.40.0 // indirect
 	golang.org/x/oauth2 v0.13.0 // indirect
-	golang.org/x/sync v0.5.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
-	golang.org/x/term v0.18.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/sync v0.14.0 // indirect
+	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/term v0.32.0 // indirect
+	golang.org/x/text v0.25.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/api v0.147.0 // indirect
