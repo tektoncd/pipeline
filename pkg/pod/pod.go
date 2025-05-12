@@ -241,11 +241,11 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		initContainers = append(initContainers, *workingDirInit)
 	}
 
-	// By default, use an empty pod template and take the one defined in the task run spec if any
+	// By default, use an empty pod template and take the merged values of the taskRun/taskSpec specs, if they are defined.
 	podTemplate := pod.Template{}
 
-	if taskRun.Spec.PodTemplate != nil {
-		podTemplate = *taskRun.Spec.PodTemplate
+	if taskRun.Spec.PodTemplate != nil || taskSpec.PodTemplate != nil {
+		podTemplate = *pod.MergePodTemplateWithDefault(taskRun.Spec.PodTemplate, taskSpec.PodTemplate)
 	}
 
 	// Resolve entrypoint for any steps that don't specify command.
