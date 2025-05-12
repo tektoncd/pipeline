@@ -73,7 +73,7 @@ spec:
   steps:
 
   - name: container-registry-auth
-    image: cgr.dev/chainguard/crane:latest-dev@sha256:f6e1a9bcb6fa6dc4cae4dadbe65ab870121b1cf4da183170fc4a5f0a155f7fa3
+    image: cgr.dev/chainguard/crane:latest-dev@sha256:98f856ac6fc822330e991c49d98da584184c09b3fba8b43816c18e6d07e91e7f
     script: |
       #!/bin/sh
       set -ex
@@ -92,7 +92,7 @@ spec:
       cp ${DOCKER_CONFIG} /workspace/docker-config.json
 
   - name: create-ko-yaml
-    image: cgr.dev/chainguard/go:latest-dev@sha256:34241a01d7c45c735367c5bbf06c96e3422d3b7f199d57935a24036d9623f25c
+    image: cgr.dev/chainguard/go:latest-dev@sha256:d90fe0a2c9da1c9f7c3424a6931a34a43f248229491275e8863b2dc0662e89b1
     script: |
       #!/bin/sh
       set -ex
@@ -136,7 +136,7 @@ spec:
       cat /workspace/.ko.yaml
 
   - name: run-ko
-    image: ghcr.io/tektoncd/plumbing/ko@sha256:3fa0c9b48753e918fbfc1991ec3ca29a8684056c87180bd94cde99072c08cd37
+    image: ghcr.io/tektoncd/plumbing/ko@sha256:dbbd225b46d149752d627a06a0db2abf305f8311877879d33ea1636ee1a5095a
     env:
     - name: KO_DOCKER_REPO
       value: $(params.imageRegistry)/$(params.imageRegistryPath)
@@ -199,7 +199,7 @@ spec:
       sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/release.yaml
       sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/release.notags.yaml
   - name: koparse
-    image: ghcr.io/tektoncd/plumbing/koparse@sha256:9b835edcead5af0b0739fb88cc3940b8a4a72eab1b30c677e6c391fff36240f8
+    image: ghcr.io/tektoncd/plumbing/koparse@sha256:062569a20142059160bd030927d787be8f25689a81c5f8116246bc67d063139e
     script: |
       set -ex
 
@@ -233,7 +233,7 @@ spec:
         ${PRESERVE_IMPORT_PATH} > /workspace/built_images
 
   - name: tag-images
-    image: cgr.dev/chainguard/crane:latest-dev@sha256:f6e1a9bcb6fa6dc4cae4dadbe65ab870121b1cf4da183170fc4a5f0a155f7fa3
+    image: cgr.dev/chainguard/crane:latest-dev@sha256:98f856ac6fc822330e991c49d98da584184c09b3fba8b43816c18e6d07e91e7f
     script: |
       #!/bin/sh
       set -ex
