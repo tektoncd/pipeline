@@ -19,7 +19,10 @@ jobs:
       matrix:
         k8s-name:
         - k8s-oldest
-        - k8s-plus-one
+        - k8s-1.29
+        - k8s-1.30
+        - k8s
+        - k8s-latest
 
         feature-flags:
         - stable
@@ -30,8 +33,14 @@ jobs:
         include:
         - k8s-name: k8s-oldest
           k8s-version: v1.28.x
-        - k8s-name: k8s-plus-one
+        - k8s-name: k8s-1.29
           k8s-version: v1.29.x
+        - k8s-name: k8s-1.30
+          k8s-version: v1.30.x
+        - k8s-name: k8s
+          k8s-version: v1.31.x
+        - k8s-name: k8s-latest
+          k8s-version: v1.32.x
         - feature-flags: stable
           env-file: prow
         - feature-flags: alpha
