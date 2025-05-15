@@ -25,7 +25,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/mitchellh/go-homedir"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 )
 
@@ -71,7 +70,7 @@ func CopyCredsToHome(credPaths []string) error {
 		return nil //nolint:nilerr // safe to ignore error; no credentials available to copy
 	}
 
-	homepath, err := homedir.Dir()
+	homepath, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("error getting the user's home directory: %w", err)
 	}
