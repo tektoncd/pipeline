@@ -39,7 +39,7 @@ const (
 	// - Must begin with a letter or an underscore (_)
 	stringAndArrayVariableNameFormat = "^[_a-zA-Z][_a-zA-Z0-9.-]*$"
 
-	// objectVariableNameFormat is the regext used to validate object name and key names format
+	// objectVariableNameFormat is the regex used to validate object name and key names format
 	// The difference with the array or string name format is that object variable names shouldn't contain dots.
 	objectVariableNameFormat = "^[_a-zA-Z][_a-zA-Z0-9-]*$"
 )
@@ -87,8 +87,8 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 		})
 	}
 
-	errs = errs.Also(validateSteps(ctx, mergedSteps).ViaField("steps"))
 	errs = errs.Also(SidecarList(ts.Sidecars).Validate(ctx).ViaField("sidecars"))
+	errs = errs.Also(StepList(mergedSteps).Validate(ctx).ViaField("steps"))
 	errs = errs.Also(ValidateParameterTypes(ctx, ts.Params).ViaField("params"))
 	errs = errs.Also(ValidateParameterVariables(ctx, ts.Steps, ts.Params))
 	errs = errs.Also(validateTaskContextVariables(ctx, ts.Steps))
@@ -213,11 +213,20 @@ func ValidateVolumes(volumes []corev1.Volume) (errs *apis.FieldError) {
 	return errs
 }
 
-func validateSteps(ctx context.Context, steps []Step) (errs *apis.FieldError) {
+// Validate implements apis.Validatable
+func (l StepList) Validate(ctx context.Context) (errs *apis.FieldError) {
 	// Task must not have duplicate step names.
 	names := sets.NewString()
-	for idx, s := range steps {
-		errs = errs.Also(validateStep(ctx, s, names).ViaIndex(idx))
+	for idx, s := range l {
+		// names cannot be duplicated - checking that Step names are unique
+		if s.Name != "" {
+			if names.Has(s.Name) {
+				errs = errs.Also(apis.ErrMultipleOneOf("name").ViaIndex(idx))
+			}
+			names.Insert(s.Name)
+		}
+
+		errs = errs.Also(s.Validate(ctx).ViaIndex(idx))
 		if s.Results != nil {
 			errs = errs.Also(ValidateStepResultsVariables(ctx, s.Results, s.Script).ViaIndex(idx))
 			errs = errs.Also(ValidateStepResults(ctx, s.Results).ViaIndex(idx).ViaField("results"))
