@@ -38,7 +38,6 @@ import (
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
 	"github.com/spiffe/go-spiffe/v2/svid/jwtsvid"
 	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
-	"github.com/stretchr/testify/require"
 	"github.com/tektoncd/pipeline/pkg/spire/test/x509util"
 )
 
@@ -123,13 +122,19 @@ func (ca *CA) CreateJWTSVID(id spiffeid.ID, audience []string) *jwtsvid.SVID {
 		},
 		new(jose.SignerOptions).WithType("JWT"),
 	)
-	require.NoError(ca.tb, err)
+	if err != nil {
+		ca.tb.Fatalf("failed to convert claims to Struct: %v", err)
+	}
 
 	signedToken, err := jwt.Signed(jwtSigner).Claims(claims).CompactSerialize()
-	require.NoError(ca.tb, err)
+	if err != nil {
+		ca.tb.Fatalf("failed to convert claims to Struct: %v", err)
+	}
 
 	svid, err := jwtsvid.ParseInsecure(signedToken, audience)
-	require.NoError(ca.tb, err)
+	if err != nil {
+		ca.tb.Fatalf("failed to convert claims to Struct: %v", err)
+	}
 	return svid
 }
 
@@ -220,9 +225,13 @@ func CreateX509SVID(tb testing.TB, parent *x509.Certificate, parentKey crypto.Si
 
 func CreateCertificate(tb testing.TB, tmpl, parent *x509.Certificate, pub, priv interface{}) *x509.Certificate {
 	certDER, err := x509.CreateCertificate(rand.Reader, tmpl, parent, pub, priv)
-	require.NoError(tb, err)
+	if err != nil {
+		tb.Fatalf("failed to create listener: %v", err)
+	}
 	cert, err := x509.ParseCertificate(certDER)
-	require.NoError(tb, err)
+	if err != nil {
+		tb.Fatalf("failed to create listener: %v", err)
+	}
 	return cert
 }
 
@@ -242,7 +251,9 @@ func CreateWebCredentials(t testing.TB) (*x509.CertPool, *tls.Certificate) {
 func NewSerial(tb testing.TB) *big.Int {
 	b := make([]byte, 8)
 	_, err := rand.Read(b)
-	require.NoError(tb, err)
+	if err != nil {
+		tb.Fatalf("failed to create listener: %v", err)
+	}
 	return new(big.Int).SetBytes(b)
 }
 
