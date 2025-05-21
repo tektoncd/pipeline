@@ -25,7 +25,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/tektoncd/pipeline/internal/sidecarlogresults"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -370,7 +369,10 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 	// Send k8s events and cloud events (when configured)
 	events.Emit(ctx, beforeCondition, afterCondition, tr)
 
-	merr := multierror.Append(previousError).ErrorOrNil()
+	var errs []error
+	if previousError != nil {
+		errs = append(errs, previousError)
+	}
 
 	// If the Run has been completed before and remains so at present,
 	// no need to update the labels and annotations
@@ -380,14 +382,14 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 		if err != nil {
 			logger.Warn("Failed to update TaskRun labels/annotations", zap.Error(err))
 			events.EmitError(controller.GetEventRecorder(ctx), err, tr)
+			errs = append(errs, err)
 		}
-		merr = multierror.Append(merr, err).ErrorOrNil()
 	}
-
+	joinedErr:=errors.Join(errs...)
 	if controller.IsPermanentError(previousError) {
-		return controller.NewPermanentError(merr)
+		return controller.NewPermanentError(joinedErr)
 	}
-	return merr
+	return joinedErr
 }
 
 // `prepare` fetches resources the taskrun depends on, runs validation and conversion

@@ -19,12 +19,12 @@ package pod
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/tektoncd/pipeline/internal/sidecarlogresults"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -156,16 +156,16 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.Tas
 		}
 	}
 
-	var merr *multierror.Error
+	var errs []error
 	if err := setTaskRunStatusBasedOnStepStatus(ctx, logger, stepStatuses, &tr, pod.Status.Phase, kubeclient, ts); err != nil {
-		merr = multierror.Append(merr, err)
+		errs = append(errs, err)
 	}
 
 	setTaskRunStatusBasedOnSidecarStatus(sidecarStatuses, trs)
 
 	trs.Results = removeDuplicateResults(trs.Results)
 
-	return *trs, merr.ErrorOrNil()
+	return *trs, errors.Join(errs...)
 }
 
 func createTaskResultsFromStepResults(stepRunRes []v1.TaskRunStepResult, neededStepResults map[string]string) []v1.TaskRunResult {
@@ -220,9 +220,9 @@ func getStepResultsFromSidecarLogs(sidecarLogResults []result.RunResult, contain
 	return stepResultsFromSidecarLogs, nil
 }
 
-func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredLogger, stepStatuses []corev1.ContainerStatus, tr *v1.TaskRun, podPhase corev1.PodPhase, kubeclient kubernetes.Interface, ts *v1.TaskSpec) *multierror.Error {
+func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredLogger, stepStatuses []corev1.ContainerStatus, tr *v1.TaskRun, podPhase corev1.PodPhase, kubeclient kubernetes.Interface, ts *v1.TaskSpec) error {
 	trs := &tr.Status
-	var merr *multierror.Error
+	var errs []error
 
 	// collect results from taskrun spec and taskspec
 	specResults := []v1.TaskResult{}
@@ -244,7 +244,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 		if tr.Status.TaskSpec.Results != nil || artifactsSidecarCreated {
 			slr, err := sidecarlogresults.GetResultsFromSidecarLogs(ctx, kubeclient, tr.Namespace, tr.Status.PodName, pipeline.ReservedResultsSidecarContainerName, podPhase)
 			if err != nil {
-				merr = multierror.Append(merr, err)
+				errs = append(errs, err)
 			}
 			sidecarLogResults = append(sidecarLogResults, slr...)
 		}
@@ -258,7 +258,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 		err := setTaskRunArtifactsFromRunResult(sidecarLogResults, &tras)
 		if err != nil {
 			logger.Errorf("Failed to set artifacts value from sidecar logs: %v", err)
-			merr = multierror.Append(merr, err)
+			errs = append(errs, err)
 		} else {
 			trs.Artifacts = &tras
 		}
@@ -282,13 +282,13 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 		// Identify StepResults needed by the Task Results
 		neededStepResults, err := findStepResultsFetchedByTask(s.Name, specResults)
 		if err != nil {
-			merr = multierror.Append(merr, err)
+			errs = append(errs, err)
 		}
 
 		// populate step results from sidecar logs
 		stepResultsFromSidecarLogs, err := getStepResultsFromSidecarLogs(sidecarLogResults, s.Name)
 		if err != nil {
-			merr = multierror.Append(merr, err)
+			errs = append(errs, err)
 		}
 		_, stepRunRes, _ := filterResults(stepResultsFromSidecarLogs, specResults, stepResults)
 		if tr.IsDone() {
@@ -301,7 +301,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 		err = setStepArtifactsValueFromSidecarLogResult(sidecarLogResults, s.Name, &sas)
 		if err != nil {
 			logger.Errorf("Failed to set artifacts value from sidecar logs: %v", err)
-			merr = multierror.Append(merr, err)
+			errs = append(errs, err)
 		}
 
 		// Parse termination messages
@@ -312,22 +312,22 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 			results, err := termination.ParseMessage(logger, msg)
 			if err != nil {
 				logger.Errorf("termination message could not be parsed sas JSON: %v", err)
-				merr = multierror.Append(merr, err)
+				errs = append(errs, err)
 			} else {
 				err := setStepArtifactsValueFromTerminationMessageRunResult(results, &sas)
 				if err != nil {
 					logger.Errorf("error setting step artifacts of step %q in taskrun %q: %v", s.Name, tr.Name, err)
-					merr = multierror.Append(merr, err)
+					errs = append(errs, err)
 				}
 				time, err := extractStartedAtTimeFromResults(results)
 				if err != nil {
 					logger.Errorf("error setting the start time of step %q in taskrun %q: %v", s.Name, tr.Name, err)
-					merr = multierror.Append(merr, err)
+					errs = append(errs, err)
 				}
 				exitCode, err := extractExitCodeFromResults(results)
 				if err != nil {
 					logger.Errorf("error extracting the exit code of step %q in taskrun %q: %v", s.Name, tr.Name, err)
-					merr = multierror.Append(merr, err)
+					errs = append(errs, err)
 				}
 
 				taskResults, stepRunRes, filteredResults := filterResults(results, specResults, stepResults)
@@ -341,7 +341,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 					err := setTaskRunArtifactsFromRunResult(filteredResults, &tras)
 					if err != nil {
 						logger.Errorf("error setting step artifacts in taskrun %q: %v", tr.Name, err)
-						merr = multierror.Append(merr, err)
+						errs = append(errs, err)
 					}
 					trs.Artifacts.Merge(&tras)
 					trs.Artifacts.Merge(&sas)
@@ -349,7 +349,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 				msg, err = createMessageFromResults(filteredResults)
 				if err != nil {
 					logger.Errorf("%v", err)
-					merr = multierror.Append(merr, err)
+					errs = append(errs, err)
 				} else {
 					state.Terminated.Message = msg
 				}
@@ -388,7 +388,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 		}
 	}
 
-	return merr
+	return errors.Join(errs...)
 }
 
 func setStepArtifactsValueFromSidecarLogResult(results []result.RunResult, name string, artifacts *v1.Artifacts) error {
