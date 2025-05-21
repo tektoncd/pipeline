@@ -27,7 +27,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
@@ -326,11 +325,11 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, pr *v1
 		events.EmitError(controller.GetEventRecorder(ctx), err, pr)
 	}
 
-	merr := multierror.Append(previousError, err).ErrorOrNil()
+	errs := errors.Join(previousError, err)
 	if controller.IsPermanentError(previousError) {
-		return controller.NewPermanentError(merr)
+		return controller.NewPermanentError(errs)
 	}
-	return merr
+	return errs
 }
 
 // resolvePipelineState will attempt to resolve each referenced task in the pipeline's spec and all of the resources
@@ -1536,7 +1535,7 @@ func validateChildObjectsInPipelineRunStatus(ctx context.Context, prs v1.Pipelin
 		case taskRun, customRun:
 			continue
 		default:
-			err = multierror.Append(err, fmt.Errorf("child with name %s has unknown kind %s", cr.Name, cr.Kind))
+			err = errors.Join(err, fmt.Errorf("child with name %s has unknown kind %s", cr.Name, cr.Kind))
 		}
 	}
 
