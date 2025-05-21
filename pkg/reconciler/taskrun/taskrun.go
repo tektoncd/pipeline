@@ -385,7 +385,7 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 			errs = append(errs, err)
 		}
 	}
-	joinedErr:=errors.Join(errs...)
+	joinedErr := errors.Join(errs...)
 	if controller.IsPermanentError(previousError) {
 		return controller.NewPermanentError(joinedErr)
 	}
