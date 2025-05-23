@@ -89,7 +89,7 @@ func (ts *TaskSpec) ConvertTo(ctx context.Context, sink *v1.TaskSpec, meta *meta
 		s.convertTo(ctx, &new)
 		sink.Steps = append(sink.Steps, new)
 	}
-	sink.Volumes = ts.Volumes
+	sink.Volumes = v1.Volumes(ts.Volumes)
 	if ts.StepTemplate != nil {
 		new := v1.StepTemplate{}
 		ts.StepTemplate.convertTo(ctx, &new)
@@ -149,7 +149,7 @@ func (ts *TaskSpec) ConvertFrom(ctx context.Context, source *v1.TaskSpec, meta *
 		new.convertFrom(ctx, s)
 		ts.Steps = append(ts.Steps, new)
 	}
-	ts.Volumes = source.Volumes
+	ts.Volumes = Volumes(source.Volumes)
 	if source.StepTemplate != nil {
 		new := StepTemplate{}
 		new.convertFrom(ctx, source.StepTemplate)
