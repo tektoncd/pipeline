@@ -1,6 +1,7 @@
 module resolver_with_timeout
 
-go 1.22.8
+go 1.23.0
+
 toolchain go1.24.1
 
 require (
