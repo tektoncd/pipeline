@@ -1,6 +1,9 @@
 name: ci
 
-on: [pull_request] # yamllint disable-line rule:truthy
+on:
+  pull_request:
+    paths-ignore:
+      - 'docs/**' # If the PR only modifies the documentation, there is no need to run builds and code tests
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull-request.number || github.ref }}
