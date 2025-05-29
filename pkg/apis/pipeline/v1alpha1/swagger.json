@@ -153,7 +153,6 @@
             "default": {},
             "$ref": "#/definitions/v1.Volume"
           },
-          "x-kubernetes-list-type": "atomic",
           "x-kubernetes-patch-merge-key": "name",
           "x-kubernetes-patch-strategy": "merge,retainKeys"
         }
@@ -438,8 +437,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.ParamSpec"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "results": {
           "description": "Results are values that this StepAction can output",

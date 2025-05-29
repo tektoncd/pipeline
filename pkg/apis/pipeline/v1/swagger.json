@@ -153,7 +153,6 @@
             "default": {},
             "$ref": "#/definitions/v1.Volume"
           },
-          "x-kubernetes-list-type": "atomic",
           "x-kubernetes-patch-merge-key": "name",
           "x-kubernetes-patch-strategy": "merge,retainKeys"
         }
@@ -281,8 +280,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.ParamSpec"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "results": {
           "description": "Results are values that this Task can output",
@@ -325,8 +323,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.Volume"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "workspaces": {
           "description": "Workspaces are the volumes that this Task requires.",
@@ -353,8 +350,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.Param"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         }
       }
     },
@@ -368,8 +364,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.IncludeParams"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "params": {
           "description": "Params is a list of parameters used to fan out the pipelineTask Params takes only `Parameters` of type `\"array\"` Each array element is supplied to the `PipelineTask` by substituting `params` of type `\"string\"` in the underlying `Task`. The names of the `params` in the `Matrix` must match the names of the `params` in the underlying `Task` that they will be substituting.",
@@ -377,8 +372,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.Param"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         }
       }
     },
@@ -673,8 +667,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.Param"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "pipelineRef": {
           "$ref": "#/definitions/v1.PipelineRef"
@@ -911,8 +904,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.ParamSpec"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "results": {
           "description": "Results are values that this pipeline can output once run",
@@ -973,8 +965,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.Param"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "pipelineRef": {
           "description": "PipelineRef is a reference to a pipeline definition Note: PipelineRef is in preview mode and not yet supported",
@@ -1213,8 +1204,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.Param"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "resolver": {
           "description": "Resolver is the name of the resolver that should perform resolution of the referenced Tekton resource, such as \"git\".",
@@ -1542,8 +1532,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.Param"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "ref": {
           "description": "Contains the reference to an existing StepAction.",
@@ -2061,8 +2050,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.Param"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "podTemplate": {
           "description": "PodTemplate holds pod specific configuration",
@@ -2143,8 +2131,7 @@
         },
         "artifacts": {
           "description": "Artifacts are the list of artifacts written out by the task's containers",
-          "$ref": "#/definitions/v1.Artifacts",
-          "x-kubernetes-list-type": "atomic"
+          "$ref": "#/definitions/v1.Artifacts"
         },
         "completionTime": {
           "description": "CompletionTime is the time the build completed.",
@@ -2189,8 +2176,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.TaskRunStatus"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "sidecars": {
           "description": "The list has one entry per sidecar in the manifest. Each entry is represents the imageid of the corresponding sidecar.",
@@ -2237,8 +2223,7 @@
       "properties": {
         "artifacts": {
           "description": "Artifacts are the list of artifacts written out by the task's containers",
-          "$ref": "#/definitions/v1.Artifacts",
-          "x-kubernetes-list-type": "atomic"
+          "$ref": "#/definitions/v1.Artifacts"
         },
         "completionTime": {
           "description": "CompletionTime is the time the build completed.",
@@ -2268,8 +2253,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.TaskRunStatus"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "sidecars": {
           "description": "The list has one entry per sidecar in the manifest. Each entry is represents the imageid of the corresponding sidecar.",
@@ -2345,8 +2329,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.ParamSpec"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "results": {
           "description": "Results are values that this Task can output",
@@ -2385,8 +2368,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.Volume"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "workspaces": {
           "description": "Workspaces are the volumes that this Task requires.",

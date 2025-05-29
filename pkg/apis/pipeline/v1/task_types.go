@@ -36,6 +36,7 @@ import (
 // output resources the Task requires.
 //
 // +k8s:openapi-gen=true
+// +kubebuilder:storageversion
 type Task struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
@@ -74,13 +75,15 @@ func (t *Task) Checksum() ([]byte, error) {
 	return sha256Checksum, nil
 }
 
+// +listType=atomic
+type Volumes []corev1.Volume
+
 // TaskSpec defines the desired state of Task.
 type TaskSpec struct {
 	// Params is a list of input parameters required to run the task. Params
 	// must be supplied as inputs in TaskRuns unless they declare a default
 	// value.
 	// +optional
-	// +listType=atomic
 	Params ParamSpecs `json:"params,omitempty"`
 
 	// DisplayName is a user-facing name of the task that may be
@@ -101,10 +104,9 @@ type TaskSpec struct {
 	// Volumes is a collection of volumes that are available to mount into the
 	// steps of the build.
 	// See Pod.spec.volumes (API version: v1)
-	// +listType=atomic
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
-	Volumes []corev1.Volume `json:"volumes,omitempty"`
+	Volumes Volumes `json:"volumes,omitempty"`
 
 	// StepTemplate can be used as the basis for all step containers within the
 	// Task, so that the steps inherit settings on the base container.
