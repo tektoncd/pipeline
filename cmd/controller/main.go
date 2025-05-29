@@ -28,7 +28,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/resolutionrequest"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/rest"
 	"k8s.io/utils/clock"
 	filteredinformerfactory "knative.dev/pkg/client/injection/kube/informers/factory/filtered"
 	"knative.dev/pkg/controller"
@@ -43,6 +42,13 @@ const (
 )
 
 func main() {
+	// To avoid dependency on "k8s.io/client-go/rest" we are defining the
+	// constants being used from the package over here
+	// the names of the constants are the same in the package as well.
+	const (
+		DefaultQPS   float32 = 5.0
+		DefaultBurst int     = 10
+	)
 	flag.IntVar(&controller.DefaultThreadsPerController, "threads-per-controller", controller.DefaultThreadsPerController, "Threads (goroutines) to create per controller")
 	namespace := flag.String("namespace", corev1.NamespaceAll, "Namespace to restrict informer to. Optional, defaults to all namespaces.")
 	disableHighAvailability := flag.Bool("disable-ha", false, "Whether to disable high-availability functionality for this component.  This flag will be deprecated "+
@@ -64,11 +70,12 @@ func main() {
 	if err := opts.Images.Validate(); err != nil {
 		log.Fatal(err)
 	}
+
 	if cfg.QPS == 0 {
-		cfg.QPS = 2 * rest.DefaultQPS
+		cfg.QPS = 2 * DefaultQPS
 	}
 	if cfg.Burst == 0 {
-		cfg.Burst = rest.DefaultBurst
+		cfg.Burst = DefaultBurst
 	}
 	// FIXME(vdemeester): this is here to not break current behavior
 	// multiply by 2, no of controllers being created
