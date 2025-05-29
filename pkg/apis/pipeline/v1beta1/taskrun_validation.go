@@ -27,6 +27,7 @@ import (
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/strings/slices"
 	"knative.dev/pkg/apis"
@@ -107,15 +108,12 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 		}
 	}
 
-	if ts.Timeout != nil {
-		// timeout should be a valid duration of at least 0.
-		if ts.Timeout.Duration < 0 {
-			errs = errs.Also(apis.ErrInvalidValue(ts.Timeout.Duration.String()+" should be >= 0", "timeout"))
-		}
-	}
 	if ts.PodTemplate != nil {
 		errs = errs.Also(validatePodTemplateEnv(ctx, *ts.PodTemplate))
 	}
+
+	errs = errs.Also(validateTaskRunSpecTimeouts(ts.Timeout))
+
 	if ts.Resources != nil {
 		errs = errs.Also(apis.ErrDisallowedFields("resources"))
 	}
@@ -349,4 +347,17 @@ func validateNoDuplicateNames(names []string, byIndex bool) (errs *apis.FieldErr
 		seen.Insert(strings.ToLower(n))
 	}
 	return errs
+}
+
+// validateTaskRunSpecTimeouts validates that the timeout is a valid duration and is not negative.
+func validateTaskRunSpecTimeouts(timeout *metav1.Duration) (errs *apis.FieldError) {
+	if timeout == nil {
+		return nil
+	}
+
+	if timeout.Duration < 0 {
+		return errs.Also(apis.ErrInvalidValue(timeout.Duration.String()+" should be >= 0", "timeout"))
+	}
+
+	return nil
 }
