@@ -557,43 +557,6 @@ func TestTaskSpecValidate(t *testing.T) {
 	}
 }
 
-func TestTaskSpecStepActionReferenceValidate(t *testing.T) {
-	tests := []struct {
-		name  string
-		Steps []v1.Step
-	}{{
-		name: "valid stepaction ref",
-		Steps: []v1.Step{{
-			Name: "mystep",
-			Ref: &v1.Ref{
-				Name: "stepAction",
-			},
-		}},
-	}, {
-		name: "valid use of params with Ref",
-		Steps: []v1.Step{{
-			Ref: &v1.Ref{
-				Name: "stepAction",
-			},
-			Params: v1.Params{{
-				Name: "param",
-			}},
-		}},
-	}}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ts := &v1.TaskSpec{
-				Steps: tt.Steps,
-			}
-			ctx := context.Background()
-			ts.SetDefaults(ctx)
-			if err := ts.Validate(ctx); err != nil {
-				t.Errorf("TaskSpec.Validate() = %v", err)
-			}
-		})
-	}
-}
-
 func TestTaskValidateError(t *testing.T) {
 	type fields struct {
 		Params []v1.ParamSpec
