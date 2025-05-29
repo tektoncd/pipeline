@@ -138,9 +138,8 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 // It also requires a kubeclient, tektonclient, requester in case it needs to find that task in
 // cluster or authorize against an external repository. It will figure out whether it needs to look in the cluster or in
 // a remote location to fetch the reference.
-func GetStepActionFunc(tekton clientset.Interface, k8s kubernetes.Interface, requester remoteresource.Requester, tr *v1.TaskRun, taskSpec v1.TaskSpec, step *v1.Step) GetStepAction {
+func GetStepActionFunc(tekton clientset.Interface, k8s kubernetes.Interface, requester remoteresource.Requester, tr *v1.TaskRun, taskSpec v1.TaskSpec, step *v1.Step, taskNamespace string) GetStepAction {
 	trName := tr.Name
-	namespace := tr.Namespace
 	if step.Ref != nil && step.Ref.Resolver != "" && requester != nil {
 		// Return an inline function that implements GetStepAction by calling Resolver.Get with the specified StepAction type and
 		// casting it to a StepAction.
@@ -149,18 +148,18 @@ func GetStepActionFunc(tekton clientset.Interface, k8s kubernetes.Interface, req
 			ApplyParameterSubstitutionInResolverParams(tr, taskSpec, step)
 			resolverPayload := remoteresource.ResolverPayload{
 				Name:      trName,
-				Namespace: namespace,
+				Namespace: taskNamespace,
 				ResolutionSpec: &resolutionV1beta1.ResolutionRequestSpec{
 					Params: step.Ref.Params,
 					URL:    step.Ref.Name,
 				},
 			}
 			resolver := resolution.NewResolver(requester, tr, string(step.Ref.Resolver), resolverPayload)
-			return resolveStepAction(ctx, resolver, name, namespace, k8s, tekton)
+			return resolveStepAction(ctx, resolver, name, taskNamespace, k8s, tekton)
 		}
 	}
 	local := &LocalStepActionRefResolver{
-		Namespace:    namespace,
+		Namespace:    taskNamespace,
 		Tektonclient: tekton,
 	}
 	return local.GetStepAction
