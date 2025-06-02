@@ -17,7 +17,6 @@ limitations under the License.
 package pod
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -105,7 +104,7 @@ func TestSetTaskRunStatusBasedOnStepStatus(t *testing.T) {
 			for _, cs := range c.ContainerStatuses {
 				originalStatuses = append(originalStatuses, *cs.DeepCopy())
 			}
-			merr := setTaskRunStatusBasedOnStepStatus(context.Background(), logger, c.ContainerStatuses, &tr, corev1.PodRunning, kubeclient, &v1.TaskSpec{})
+			merr := setTaskRunStatusBasedOnStepStatus(t.Context(), logger, c.ContainerStatuses, &tr, corev1.PodRunning, kubeclient, &v1.TaskSpec{})
 			if merr != nil {
 				t.Errorf("setTaskRunStatusBasedOnStepStatus: %s", merr)
 			}
@@ -222,7 +221,7 @@ func TestSetTaskRunStatusBasedOnStepStatus_sidecar_logs(t *testing.T) {
 					Phase: corev1.PodRunning,
 				},
 			}
-			pod, err := kubeclient.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+			pod, err := kubeclient.CoreV1().Pods(pod.Namespace).Create(t.Context(), pod, metav1.CreateOptions{})
 			if err != nil {
 				t.Errorf("Error occurred while creating pod %s: %s", pod.Name, err.Error())
 			}
@@ -235,7 +234,7 @@ func TestSetTaskRunStatusBasedOnStepStatus_sidecar_logs(t *testing.T) {
 				featureFlags.EnableArtifacts = true
 				ts.Steps = []v1.Step{{Name: "name", Script: `echo aaa >> /tekton/steps/step-name/artifacts/provenance.json`}}
 			}
-			ctx := config.ToContext(context.Background(), &config.Config{
+			ctx := config.ToContext(t.Context(), &config.Config{
 				FeatureFlags: featureFlags,
 			})
 			var wantErr *multierror.Error
@@ -477,7 +476,7 @@ func TestMakeTaskRunStatus_StepResults(t *testing.T) {
 
 			logger, _ := logging.NewLogger("", "status")
 			kubeclient := fakek8s.NewSimpleClientset()
-			got, err := MakeTaskRunStatus(context.Background(), logger, c.tr, &c.pod, kubeclient, c.tr.Spec.TaskSpec)
+			got, err := MakeTaskRunStatus(t.Context(), logger, c.tr, &c.pod, kubeclient, c.tr.Spec.TaskSpec)
 			if err != nil {
 				t.Errorf("MakeTaskRunResult: %s", err)
 			}
@@ -650,7 +649,7 @@ func TestMakeTaskRunStatus_StepProvenance(t *testing.T) {
 
 			logger, _ := logging.NewLogger("", "status")
 			kubeclient := fakek8s.NewSimpleClientset()
-			got, err := MakeTaskRunStatus(context.Background(), logger, c.tr, &c.pod, kubeclient, c.tr.Spec.TaskSpec)
+			got, err := MakeTaskRunStatus(t.Context(), logger, c.tr, &c.pod, kubeclient, c.tr.Spec.TaskSpec)
 			if err != nil {
 				t.Errorf("MakeTaskRunResult: %s", err)
 			}
@@ -792,7 +791,7 @@ func TestMakeTaskRunStatus_StepArtifacts(t *testing.T) {
 
 			logger, _ := logging.NewLogger("", "status")
 			kubeclient := fakek8s.NewSimpleClientset()
-			got, err := MakeTaskRunStatus(context.Background(), logger, c.tr, &c.pod, kubeclient, c.tr.Spec.TaskSpec)
+			got, err := MakeTaskRunStatus(t.Context(), logger, c.tr, &c.pod, kubeclient, c.tr.Spec.TaskSpec)
 			if err != nil {
 				t.Errorf("MakeTaskRunResult: %s", err)
 			}
@@ -1970,7 +1969,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			}
 			logger, _ := logging.NewLogger("", "status")
 			kubeclient := fakek8s.NewSimpleClientset()
-			got, err := MakeTaskRunStatus(context.Background(), logger, tr, &c.pod, kubeclient, &v1.TaskSpec{})
+			got, err := MakeTaskRunStatus(t.Context(), logger, tr, &c.pod, kubeclient, &v1.TaskSpec{})
 			if err != nil {
 				t.Errorf("MakeTaskRunResult: %s", err)
 			}
@@ -2057,7 +2056,7 @@ func TestMakeRunStatus_OnError(t *testing.T) {
 
 			logger, _ := logging.NewLogger("", "status")
 			kubeclient := fakek8s.NewSimpleClientset()
-			got, err := MakeTaskRunStatus(context.Background(), logger, tr, &pod, kubeclient, &v1.TaskSpec{})
+			got, err := MakeTaskRunStatus(t.Context(), logger, tr, &pod, kubeclient, &v1.TaskSpec{})
 			if err != nil {
 				t.Errorf("Unexpected err in MakeTaskRunResult: %s", err)
 			}
@@ -2181,7 +2180,7 @@ func TestMakeTaskRunStatus_SidecarNotCompleted(t *testing.T) {
 			}
 			logger, _ := logging.NewLogger("", "status")
 			kubeclient := fakek8s.NewSimpleClientset()
-			ctx := config.ToContext(context.Background(), &config.Config{
+			ctx := config.ToContext(t.Context(), &config.Config{
 				FeatureFlags: &config.FeatureFlags{
 					ResultExtractionMethod: config.ResultExtractionMethodSidecarLogs,
 					MaxResultSize:          1024,
@@ -2458,7 +2457,7 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 			}
 			logger, _ := logging.NewLogger("", "status")
 			kubeclient := fakek8s.NewSimpleClientset()
-			got, err := MakeTaskRunStatus(context.Background(), logger, tr, &c.pod, kubeclient, &c.taskSpec)
+			got, err := MakeTaskRunStatus(t.Context(), logger, tr, &c.pod, kubeclient, &c.taskSpec)
 			if err != nil {
 				t.Errorf("MakeTaskRunResult: %s", err)
 			}
@@ -2592,7 +2591,7 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 
 	logger, _ := logging.NewLogger("", "status")
 	kubeclient := fakek8s.NewSimpleClientset()
-	gotTr, err := MakeTaskRunStatus(context.Background(), logger, tr, pod, kubeclient, &v1.TaskSpec{})
+	gotTr, err := MakeTaskRunStatus(t.Context(), logger, tr, pod, kubeclient, &v1.TaskSpec{})
 	if err == nil {
 		t.Error("Expected error, got nil")
 	}
@@ -3126,7 +3125,7 @@ func TestGetStepTerminationReasonFromContainerStatus(t *testing.T) {
 			logger, _ := logging.NewLogger("", "status")
 			kubeclient := fakek8s.NewSimpleClientset()
 
-			trs, err := MakeTaskRunStatus(context.Background(), logger, tr, &test.pod, kubeclient, &v1.TaskSpec{})
+			trs, err := MakeTaskRunStatus(t.Context(), logger, tr, &test.pod, kubeclient, &v1.TaskSpec{})
 			if err != nil {
 				t.Errorf("MakeTaskRunResult: %s", err)
 			}

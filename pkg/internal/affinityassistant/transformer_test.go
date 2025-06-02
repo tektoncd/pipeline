@@ -16,7 +16,6 @@ limitations under the License.
 package affinityassistant_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -76,7 +75,7 @@ func TestNewTransformer(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			f := affinityassistant.NewTransformer(ctx, tc.annotations)
 			got, err := f(&corev1.Pod{})
 			if err != nil {
@@ -228,7 +227,7 @@ func TestNewTransformerWithNodeAffinity(t *testing.T) {
 	},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			f := affinityassistant.NewTransformer(ctx, tc.annotations)
 			got, err := f(tc.pod)
 			if err != nil {

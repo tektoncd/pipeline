@@ -17,7 +17,6 @@ limitations under the License.
 package v1_test
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -64,7 +63,7 @@ func TestResultsValidate(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if err := tt.Result.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
 			}
@@ -115,7 +114,7 @@ func TestResultsValidateError(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.Result.Validate(context.Background())
+			err := tt.Result.Validate(t.Context())
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing for %v", tt.Result)
 			}
@@ -144,7 +143,7 @@ func TestResultsValidateValue(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if err := tt.Result.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
 			}
@@ -236,7 +235,7 @@ func TestResultsValidateValueError(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			err := tt.Result.Validate(ctx)
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing for %v", tt.Result)
@@ -337,7 +336,7 @@ func TestStepResultsValidate(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if err := tt.Result.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
 			}
@@ -400,7 +399,7 @@ func TestStepResultsValidateError(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.Result.Validate(context.Background())
+			err := tt.Result.Validate(t.Context())
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing for %v", tt.Result)
 			}

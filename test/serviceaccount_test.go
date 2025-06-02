@@ -32,7 +32,7 @@ import (
 )
 
 func TestPipelineRunWithServiceAccounts(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -194,7 +194,7 @@ spec:
 }
 
 func TestPipelineRunWithServiceAccountNameAndTaskRunSpec(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 

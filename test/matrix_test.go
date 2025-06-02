@@ -46,7 +46,7 @@ var requireAlphaFeatureFlag = requireAnyGate(map[string]string{
 // and whole array replacements by consuming results produced by other PipelineTasks.
 func TestPipelineRunMatrixed(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t, requireAlphaFeatureFlag)
@@ -584,7 +584,7 @@ spec:
 // which will cause the entire PipelineRun to fail.
 func TestPipelineRunMatrixedFailed(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t, requireAlphaFeatureFlag)

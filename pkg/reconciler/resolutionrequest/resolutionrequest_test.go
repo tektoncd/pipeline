@@ -131,7 +131,7 @@ func TestReconcile(t *testing.T) {
 						Type:    apis.ConditionSucceeded,
 						Status:  corev1.ConditionFalse,
 						Reason:  resolutioncommon.ReasonResolutionTimedOut,
-						Message: timeoutMessage(config.FromContextOrDefaults(context.TODO()).Defaults.DefaultMaximumResolutionTimeout),
+						Message: timeoutMessage(config.FromContextOrDefaults(t.Context()).Defaults.DefaultMaximumResolutionTimeout),
 					}},
 				},
 				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{},

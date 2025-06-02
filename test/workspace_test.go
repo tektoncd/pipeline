@@ -34,7 +34,7 @@ import (
 )
 
 func TestWorkspaceReadOnlyDisallowsWrite(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)
@@ -111,7 +111,7 @@ spec:
 }
 
 func TestWorkspacePipelineRunDuplicateWorkspaceEntriesInvalid(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)
@@ -181,7 +181,7 @@ spec:
 }
 
 func TestWorkspacePipelineRunMissingWorkspaceInvalid(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)
@@ -251,7 +251,7 @@ spec:
 // randomized volume name matches the workspaces.<name>.volume variable injected into
 // a user's task specs.
 func TestWorkspaceVolumeNameMatchesVolumeVariableReplacement(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)

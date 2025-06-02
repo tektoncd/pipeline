@@ -17,7 +17,6 @@ limitations under the License.
 package v1
 
 import (
-	"context"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -56,7 +55,7 @@ func TestWhenExpressions_Valid(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.wes.validate(context.Background()); err != nil {
+			if err := tt.wes.validate(t.Context()); err != nil {
 				t.Errorf("WhenExpressions.validate() returned an error for valid when expressions: %s", tt.wes)
 			}
 		})
@@ -99,7 +98,7 @@ func TestWhenExpressions_Invalid(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.wes.validate(context.Background()); err == nil {
+			if err := tt.wes.validate(t.Context()); err == nil {
 				t.Errorf("WhenExpressions.validate() did not return error for invalid when expressions: %s, %s", tt.wes, err)
 			}
 		})
@@ -107,7 +106,7 @@ func TestWhenExpressions_Invalid(t *testing.T) {
 }
 
 func TestCELinWhenExpressions_Valid(t *testing.T) {
-	ctx := config.ToContext(context.Background(), &config.Config{
+	ctx := config.ToContext(t.Context(), &config.Config{
 		FeatureFlags: &config.FeatureFlags{
 			EnableCELInWhenExpression: true,
 		},
@@ -190,7 +189,7 @@ func TestCELWhenExpressions_Invalid(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := config.ToContext(context.Background(), &config.Config{
+			ctx := config.ToContext(t.Context(), &config.Config{
 				FeatureFlags: &config.FeatureFlags{
 					EnableCELInWhenExpression: tt.enableCELInWhenExpression,
 				},

@@ -33,11 +33,11 @@ func (c *convertible) ConvertFrom(ctx context.Context, source apis.Convertible) 
 func TestTaskConversionBadType(t *testing.T) {
 	good, bad := &v1.Task{}, &convertible{}
 
-	if err := good.ConvertTo(context.Background(), bad); err == nil {
+	if err := good.ConvertTo(t.Context(), bad); err == nil {
 		t.Errorf("ConvertTo() = %#v, wanted error", bad)
 	}
 
-	if err := good.ConvertFrom(context.Background(), bad); err == nil {
+	if err := good.ConvertFrom(t.Context(), bad); err == nil {
 		t.Errorf("ConvertFrom() = %#v, wanted error", good)
 	}
 }

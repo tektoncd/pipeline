@@ -36,7 +36,7 @@ import (
 // otherwise.
 func CreateGCPServiceAccountSecret(t *testing.T, c kubernetes.Interface, namespace string, secretName string) (bool, error) {
 	t.Helper()
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	file := os.Getenv("GCP_SERVICE_ACCOUNT_KEY_PATH")

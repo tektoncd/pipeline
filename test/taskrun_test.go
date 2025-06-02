@@ -42,7 +42,7 @@ import (
 )
 
 func TestTaskRunFailure(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -165,7 +165,7 @@ spec:
 }
 
 func TestTaskRunStatus(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)
@@ -242,7 +242,7 @@ spec:
 }
 
 func TestTaskRunStepsTerminationReasons(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	c, namespace := setup(ctx, t)
 	defer tearDown(ctx, t, c, namespace)
 	fqImageName := getTestImage(busyboxImage)
@@ -516,7 +516,7 @@ func cancelTaskRun(t *testing.T, ctx context.Context, taskRunName string, c *cli
 }
 
 func TestTaskRunRetryFailure(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -606,7 +606,7 @@ spec:
 }
 
 func TestTaskRunResolveDefaultParameterSubstitutionOnStepAction(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 

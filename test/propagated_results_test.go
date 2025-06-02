@@ -61,7 +61,7 @@ func TestPropagatedResults(t *testing.T) {
 	for _, td := range tds {
 		t.Run(td.name, func(t *testing.T) {
 			t.Parallel()
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 

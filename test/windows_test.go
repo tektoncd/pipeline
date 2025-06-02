@@ -40,7 +40,7 @@ var (
 )
 
 func TestWindows(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -97,7 +97,7 @@ spec:
 }
 
 func TestWindowsFailure(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 

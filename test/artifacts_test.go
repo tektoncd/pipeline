@@ -58,7 +58,7 @@ func TestSurfaceArtifacts(t *testing.T) {
 			featureFlags := getFeatureFlagsBaseOnAPIFlag(t)
 			checkFlagsEnabled := requireAllGates(requireEnableStepArtifactsGate)
 
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			c, namespace := setup(ctx, t)
@@ -132,7 +132,7 @@ func TestSurfaceArtifactsThroughTerminationMessageScriptProducesArtifacts(t *tes
 	featureFlags := getFeatureFlagsBaseOnAPIFlag(t)
 	checkFlagsEnabled := requireAllGates(requireEnableStepArtifactsGate)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)
@@ -220,7 +220,7 @@ func TestConsumeArtifacts(t *testing.T) {
 				"enable-artifacts": "true",
 			})
 
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			c, namespace := setup(ctx, t)
@@ -314,7 +314,7 @@ func TestStepProduceResultsAndArtifacts(t *testing.T) {
 				"enable-artifacts": "true",
 			})
 
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			c, namespace := setup(ctx, t)
