@@ -83,7 +83,7 @@ func TestRef_Valid(t *testing.T) {
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if ts.wc != nil {
 				ctx = ts.wc(ctx)
 			}
@@ -162,7 +162,7 @@ func TestRef_Invalid(t *testing.T) {
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if ts.wc != nil {
 				ctx = ts.wc(ctx)
 			}
@@ -212,7 +212,7 @@ func TestStepValidate(t *testing.T) {
 	}}
 	for _, st := range tests {
 		t.Run(st.name, func(t *testing.T) {
-			ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
+			ctx := cfgtesting.EnableAlphaAPIFields(t.Context())
 			if err := st.Step.Validate(ctx); err != nil {
 				t.Errorf("Step.Validate() = %v", err)
 			}
@@ -292,7 +292,7 @@ func TestStepValidateError(t *testing.T) {
 	}}
 	for _, st := range tests {
 		t.Run(st.name, func(t *testing.T) {
-			ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
+			ctx := cfgtesting.EnableAlphaAPIFields(t.Context())
 			err := st.Step.Validate(ctx)
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing for %v", st.Step)
@@ -318,7 +318,7 @@ func TestSidecarValidate(t *testing.T) {
 
 	for _, sct := range tests {
 		t.Run(sct.name, func(t *testing.T) {
-			err := sct.sidecar.Validate(context.Background())
+			err := sct.sidecar.Validate(t.Context())
 			if err != nil {
 				t.Errorf("Sidecar.Validate() returned error for valid Sidecar: %v", err)
 			}
@@ -368,7 +368,7 @@ func TestSidecarValidateError(t *testing.T) {
 
 	for _, sct := range tests {
 		t.Run(sct.name, func(t *testing.T) {
-			err := sct.sidecar.Validate(context.Background())
+			err := sct.sidecar.Validate(t.Context())
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing for %v", sct.sidecar)
 			}

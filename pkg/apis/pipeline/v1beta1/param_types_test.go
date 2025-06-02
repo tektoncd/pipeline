@@ -18,7 +18,6 @@ package v1beta1_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"reflect"
 	"testing"
@@ -150,7 +149,7 @@ func TestParamSpec_SetDefaults(t *testing.T) {
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			tc.before.SetDefaults(ctx)
 			if d := cmp.Diff(tc.defaultsApplied, tc.before); d != "" {
 				t.Error(diff.PrintWantGot(d))

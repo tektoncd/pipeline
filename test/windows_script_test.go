@@ -31,7 +31,7 @@ import (
 )
 
 func TestWindowsScript(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -102,7 +102,7 @@ spec:
 }
 
 func TestWindowsScriptFailure(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 

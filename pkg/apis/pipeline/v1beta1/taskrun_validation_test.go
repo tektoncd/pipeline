@@ -163,7 +163,7 @@ func TestTaskRun_Invalidate(t *testing.T) {
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if ts.wc != nil {
 				ctx = ts.wc(ctx)
 			}
@@ -471,7 +471,7 @@ func TestTaskRun_Validate(t *testing.T) {
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if ts.wc != nil {
 				ctx = ts.wc(ctx)
 			}
@@ -519,7 +519,7 @@ func TestTaskRun_Workspaces_Invalid(t *testing.T) {
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			err := ts.tr.Validate(context.Background())
+			err := ts.tr.Validate(t.Context())
 			if err == nil {
 				t.Errorf("Expected error for invalid TaskRun but got none")
 			}
@@ -848,7 +848,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if ts.wc != nil {
 				ctx = ts.wc(ctx)
 			}
@@ -946,7 +946,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if ts.wc != nil {
 				ctx = ts.wc(ctx)
 			}
@@ -1083,7 +1083,7 @@ func TestTaskRunSpec_ValidateUpdate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := config.ToContext(context.Background(), &config.Config{
+			ctx := config.ToContext(t.Context(), &config.Config{
 				FeatureFlags: &config.FeatureFlags{},
 				Defaults:     &config.Defaults{},
 			})

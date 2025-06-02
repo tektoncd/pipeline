@@ -93,7 +93,7 @@ spec:
 	for i, td := range tds {
 		t.Run(td.name, func(t *testing.T) {
 			t.Parallel()
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			c, namespace := setup(ctx, t)
@@ -297,7 +297,7 @@ spec:
 	for i, td := range tds {
 		t.Run(td.name, func(t *testing.T) {
 			t.Parallel()
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			c, namespace := setup(ctx, t)
@@ -419,7 +419,7 @@ spec:
 // TestPipelineRunRefDeleted tests that a running PipelineRun doesn't fail when the Pipeline
 // it references is deleted.
 func TestPipelineRunRefDeleted(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)
@@ -492,7 +492,7 @@ spec:
 // transition PipelineRun states during the test, which the TestPipelineRun suite does not
 // support.
 func TestPipelineRunPending(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)
@@ -951,7 +951,7 @@ func getLimitRange(name, namespace, resourceCPU, resourceMemory, resourceEphemer
 }
 
 func TestPipelineRunTaskFailed(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)

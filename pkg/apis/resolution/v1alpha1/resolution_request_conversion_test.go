@@ -18,7 +18,6 @@
 package v1alpha1_test
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -34,11 +33,11 @@ import (
 func TestResolutionRequestConversionBadType(t *testing.T) {
 	good, bad := &v1alpha1.ResolutionRequest{}, &pipelinev1.Task{}
 
-	if err := good.ConvertTo(context.Background(), bad); err == nil {
+	if err := good.ConvertTo(t.Context(), bad); err == nil {
 		t.Errorf("ConvertTo() = %#v, wanted error", bad)
 	}
 
-	if err := good.ConvertFrom(context.Background(), bad); err == nil {
+	if err := good.ConvertFrom(t.Context(), bad); err == nil {
 		t.Errorf("ConvertFrom() = %#v, wanted error", good)
 	}
 }
@@ -103,7 +102,7 @@ func TestResolutionRequestConvertTo(t *testing.T) {
 		for _, version := range versions {
 			t.Run(tc.name, func(t *testing.T) {
 				got := version
-				if err := tc.in.ConvertTo(context.Background(), got); err != nil {
+				if err := tc.in.ConvertTo(t.Context(), got); err != nil {
 					t.Fatalf("ConvertTo() = %v", err)
 				}
 				t.Logf("ConvertTo() = %#v", got)
@@ -203,7 +202,7 @@ func TestResolutionRequestConvertFrom(t *testing.T) {
 		for _, version := range versions {
 			t.Run(tc.name, func(t *testing.T) {
 				got := version
-				err := got.ConvertFrom(context.Background(), tc.in)
+				err := got.ConvertFrom(t.Context(), tc.in)
 				if tc.expectedErr != nil {
 					if err == nil {
 						t.Fatalf("expected error '%s', but did not get an error", tc.expectedErr.Error())

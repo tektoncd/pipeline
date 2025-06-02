@@ -59,7 +59,7 @@ func TestTaskValidate(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if tt.wc != nil {
 				ctx = tt.wc(ctx)
 			}
@@ -134,7 +134,7 @@ func TestTaskSpecValidatePropagatedParamsAndWorkspaces(t *testing.T) {
 				Workspaces:   tt.fields.Workspaces,
 				Results:      tt.fields.Results,
 			}
-			ctx := cfgtesting.EnableBetaAPIFields(context.Background())
+			ctx := cfgtesting.EnableBetaAPIFields(t.Context())
 			ts.SetDefaults(ctx)
 			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
@@ -501,7 +501,7 @@ func TestTaskSpecValidate(t *testing.T) {
 				Workspaces:   tt.fields.Workspaces,
 				Results:      tt.fields.Results,
 			}
-			ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
+			ctx := cfgtesting.EnableAlphaAPIFields(t.Context())
 			ts.SetDefaults(ctx)
 			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
@@ -538,7 +538,7 @@ func TestTaskSpecStepActionReferenceValidate(t *testing.T) {
 			ts := &v1.TaskSpec{
 				Steps: tt.Steps,
 			}
-			ctx := context.Background()
+			ctx := t.Context()
 			ts.SetDefaults(ctx)
 			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
@@ -742,7 +742,7 @@ func TestTaskValidateError(t *testing.T) {
 					Steps:  tt.fields.Steps,
 				},
 			}
-			ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
+			ctx := cfgtesting.EnableAlphaAPIFields(t.Context())
 			task.SetDefaults(ctx)
 			err := task.Validate(ctx)
 			if err == nil {
@@ -1351,7 +1351,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 				Workspaces:   tt.fields.Workspaces,
 				Results:      tt.fields.Results,
 			}
-			ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
+			ctx := cfgtesting.EnableAlphaAPIFields(t.Context())
 			ts.SetDefaults(ctx)
 			err := ts.Validate(ctx)
 			if err == nil {
@@ -1493,7 +1493,7 @@ func TestTaskSpecValidateErrorWithStepActionRef(t *testing.T) {
 			ts := v1.TaskSpec{
 				Steps: tt.Steps,
 			}
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx = apis.WithinCreate(ctx)
 			ts.SetDefaults(ctx)
 			err := ts.Validate(ctx)
@@ -1598,7 +1598,7 @@ func TestTaskSpecValidateErrorWithStepResultRef(t *testing.T) {
 			ts := v1.TaskSpec{
 				Steps: tt.Steps,
 			}
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx = apis.WithinCreate(ctx)
 			ts.SetDefaults(ctx)
 			err := ts.Validate(ctx)
@@ -1678,7 +1678,7 @@ func TestTaskSpecValidateSuccessWithArtifactsRefFlagEnabled(t *testing.T) {
 			ts := v1.TaskSpec{
 				Steps: tt.Steps,
 			}
-			ctx := config.ToContext(context.Background(), &config.Config{
+			ctx := config.ToContext(t.Context(), &config.Config{
 				FeatureFlags: &config.FeatureFlags{
 					EnableArtifacts: true,
 				},
@@ -1711,7 +1711,7 @@ func TestTaskSpecValidateSuccessWithArtifactsRefFlagNotEnabled(t *testing.T) {
 			ts := v1.TaskSpec{
 				Steps: tt.Steps,
 			}
-			ctx := config.ToContext(context.Background(), &config.Config{
+			ctx := config.ToContext(t.Context(), &config.Config{
 				FeatureFlags: nil,
 			})
 			ctx = apis.WithinCreate(ctx)
@@ -1816,7 +1816,7 @@ func TestTaskSpecValidateErrorWithArtifactsRefFlagNotEnabled(t *testing.T) {
 			ts := v1.TaskSpec{
 				Steps: tt.Steps,
 			}
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx = apis.WithinCreate(ctx)
 			ts.SetDefaults(ctx)
 			err := ts.Validate(ctx)
@@ -1912,7 +1912,7 @@ func TestTaskSpecValidateErrorWithArtifactsRef(t *testing.T) {
 			ts := v1.TaskSpec{
 				Steps: tt.Steps,
 			}
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx = apis.WithinCreate(ctx)
 			ts.SetDefaults(ctx)
 			err := ts.Validate(ctx)
@@ -1960,7 +1960,7 @@ func TestStepAndSidecarWorkspaces(t *testing.T) {
 				Sidecars:   tt.fields.Sidecars,
 				Workspaces: tt.fields.Workspaces,
 			}
-			ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
+			ctx := cfgtesting.EnableAlphaAPIFields(t.Context())
 			ts.SetDefaults(ctx)
 			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
@@ -2017,7 +2017,7 @@ func TestStepAndSidecarWorkspacesErrors(t *testing.T) {
 				Sidecars: tt.fields.Sidecars,
 			}
 
-			ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
+			ctx := cfgtesting.EnableAlphaAPIFields(t.Context())
 			ts.SetDefaults(ctx)
 			err := ts.Validate(ctx)
 			if err == nil {
@@ -2081,7 +2081,7 @@ func TestStepOnError(t *testing.T) {
 				Params: tt.params,
 				Steps:  tt.steps,
 			}
-			ctx := context.Background()
+			ctx := t.Context()
 			ts.SetDefaults(ctx)
 			err := ts.Validate(ctx)
 			if tt.expectedError == nil && err != nil {
@@ -2190,7 +2190,7 @@ func TestIncompatibleAPIVersions(t *testing.T) {
 			testName := fmt.Sprintf("(using %s) %s", version, tt.name)
 			t.Run(testName, func(t *testing.T) {
 				ts := tt.spec
-				ctx := context.Background()
+				ctx := t.Context()
 				if version == "alpha" {
 					ctx = cfgtesting.EnableAlphaAPIFields(ctx)
 				}
@@ -2403,7 +2403,7 @@ func TestTaskSpecValidateUsageOfDeclaredParams(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := v1.ValidateUsageOfDeclaredParameters(context.Background(), tt.Steps, tt.Params)
+			err := v1.ValidateUsageOfDeclaredParameters(t.Context(), tt.Steps, tt.Params)
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing")
 			}
@@ -2627,7 +2627,7 @@ func TestParamEnum_Success(t *testing.T) {
 
 	for _, tc := range tcs {
 		cfg := map[string]string{"enable-param-enum": "true"}
-		ctx := cfgtesting.SetFeatureFlags(context.Background(), t, cfg)
+		ctx := cfgtesting.SetFeatureFlags(t.Context(), t, cfg)
 
 		err := v1.ValidateParameterVariables(ctx, []v1.Step{{Image: "foo"}}, tc.params)
 		if err != nil {
@@ -2704,7 +2704,7 @@ func TestParamEnum_Failure(t *testing.T) {
 	}}
 
 	for _, tc := range tcs {
-		ctx := cfgtesting.SetFeatureFlags(context.Background(), t, tc.configMap)
+		ctx := cfgtesting.SetFeatureFlags(t.Context(), t, tc.configMap)
 
 		err := v1.ValidateParameterVariables(ctx, []v1.Step{{Image: "foo"}}, tc.params)
 
@@ -2785,7 +2785,7 @@ func TestTaskSpecValidate_StepResults(t *testing.T) {
 					Results: tt.fields.Results,
 				}},
 			}
-			ctx := config.ToContext(context.Background(), &config.Config{
+			ctx := config.ToContext(t.Context(), &config.Config{
 				FeatureFlags: &config.FeatureFlags{},
 			})
 			ts.SetDefaults(ctx)
@@ -2845,7 +2845,7 @@ func TestTaskSpecValidate_StepResults_Error(t *testing.T) {
 					Results: tt.fields.Results,
 				}},
 			}
-			ctx := context.Background()
+			ctx := t.Context()
 			if tt.isCreate {
 				ctx = apis.WithinCreate(ctx)
 			}
@@ -2885,7 +2885,7 @@ func TestTaskSpecValidate_StepWhen_Error(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := config.ToContext(context.Background(), &config.Config{
+			ctx := config.ToContext(t.Context(), &config.Config{
 				FeatureFlags: &config.FeatureFlags{
 					EnableCELInWhenExpression: tt.EnableCEL,
 				},

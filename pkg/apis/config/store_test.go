@@ -17,7 +17,6 @@ limitations under the License.
 package config_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -59,7 +58,7 @@ func TestStoreLoadWithContext(t *testing.T) {
 	store.OnConfigChanged(eventsConfig)
 	store.OnConfigChanged(tracingConfig)
 
-	cfg := config.FromContext(store.ToContext(context.Background()))
+	cfg := config.FromContext(store.ToContext(t.Context()))
 
 	if d := cmp.Diff(expected, cfg); d != "" {
 		t.Errorf("Unexpected config %s", diff.PrintWantGot(d))
@@ -78,7 +77,7 @@ func TestStoreLoadWithContext_Empty(t *testing.T) {
 
 	store := config.NewStore(logtesting.TestLogger(t))
 
-	got := config.FromContext(store.ToContext(context.Background()))
+	got := config.FromContext(store.ToContext(t.Context()))
 
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("Unexpected config %s", diff.PrintWantGot(d))

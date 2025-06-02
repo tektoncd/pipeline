@@ -17,7 +17,6 @@ limitations under the License.
 package resources
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -1916,7 +1915,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 				FinalTasksGraph: dfinally,
 				TimeoutsState:   timeoutsState,
 			}
-			c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock)
+			c := facts.GetPipelineConditionStatus(t.Context(), pr, zap.NewNop().Sugar(), testClock)
 			wantCondition := &apis.Condition{
 				Type:   apis.ConditionSucceeded,
 				Status: tc.expectedStatus,
@@ -2060,7 +2059,7 @@ func TestGetPipelineConditionStatus_WithFinalTasks(t *testing.T) {
 					Clock: testClock,
 				},
 			}
-			c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock)
+			c := facts.GetPipelineConditionStatus(t.Context(), pr, zap.NewNop().Sugar(), testClock)
 			wantCondition := &apis.Condition{
 				Type:   apis.ConditionSucceeded,
 				Status: tc.expectedStatus,
@@ -2102,7 +2101,7 @@ func TestGetPipelineConditionStatus_PipelineTimeoutDeprecated(t *testing.T) {
 			Clock: testClock,
 		},
 	}
-	c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock)
+	c := facts.GetPipelineConditionStatus(t.Context(), pr, zap.NewNop().Sugar(), testClock)
 	if c.Status != corev1.ConditionFalse && c.Reason != v1.PipelineRunReasonTimedOut.String() {
 		t.Fatalf("Expected to get status %s but got %s for state %v", corev1.ConditionFalse, c.Status, oneFinishedState)
 	}
@@ -2135,7 +2134,7 @@ func TestGetPipelineConditionStatus_PipelineTimeouts(t *testing.T) {
 			Clock: testClock,
 		},
 	}
-	c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock)
+	c := facts.GetPipelineConditionStatus(t.Context(), pr, zap.NewNop().Sugar(), testClock)
 	if c.Status != corev1.ConditionFalse && c.Reason != v1.PipelineRunReasonTimedOut.String() {
 		t.Fatalf("Expected to get status %s but got %s for state %v", corev1.ConditionFalse, c.Status, oneFinishedState)
 	}
@@ -2210,7 +2209,7 @@ func TestGetPipelineConditionStatus_OnError(t *testing.T) {
 			Clock: testClock,
 		},
 	}
-	c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock)
+	c := facts.GetPipelineConditionStatus(t.Context(), pr, zap.NewNop().Sugar(), testClock)
 	if c.Status != corev1.ConditionTrue {
 		t.Fatalf("Expected to get status %s but got %s", corev1.ConditionTrue, c.Status)
 	}

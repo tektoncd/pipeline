@@ -17,7 +17,6 @@ limitations under the License.
 package taskrun
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -30,7 +29,7 @@ import (
 )
 
 func TestValidateResolvedTask_ValidParams(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	task := &v1.Task{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
 		Spec: v1.TaskSpec{
@@ -130,7 +129,7 @@ func TestValidateResolvedTask_ValidParams(t *testing.T) {
 }
 
 func TestValidateResolvedTask_ExtraValidParams(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	tcs := []struct {
 		name   string
 		task   v1.Task
@@ -231,7 +230,7 @@ func TestValidateResolvedTask_ExtraValidParams(t *testing.T) {
 }
 
 func TestValidateResolvedTask_InvalidParams(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	tcs := []struct {
 		name    string
 		task    v1.Task
@@ -919,7 +918,7 @@ func TestEnumValidation_Success(t *testing.T) {
 	}}
 
 	for _, tc := range tcs {
-		if err := ValidateEnumParam(context.Background(), tc.params, tc.paramSpecs); err != nil {
+		if err := ValidateEnumParam(t.Context(), tc.params, tc.paramSpecs); err != nil {
 			t.Errorf("expected err is nil, but got %v", err)
 		}
 	}
@@ -952,7 +951,7 @@ func TestEnumValidation_Failure(t *testing.T) {
 	}}
 
 	for _, tc := range tcs {
-		if err := ValidateEnumParam(context.Background(), tc.params, tc.paramSpecs); err == nil {
+		if err := ValidateEnumParam(t.Context(), tc.params, tc.paramSpecs); err == nil {
 			t.Errorf("expected error from ValidateEnumParam() = %v, but got none", tc.expectedErr)
 		} else if d := cmp.Diff(tc.expectedErr.Error(), err.Error()); d != "" {
 			t.Errorf("expected error does not match: %s", diff.PrintWantGot(d))

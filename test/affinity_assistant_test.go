@@ -34,7 +34,7 @@ import (
 
 // TestAffinityAssistant_PerWorkspace tests the taskrun pod scheduling and the PVC lifecycle status
 func TestAffinityAssistant_PerWorkspace(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)
@@ -118,7 +118,7 @@ spec:
 // TestAffinityAssistant_PerPipelineRun tests that mounting multiple PVC based workspaces to a pipeline task is allowed and
 // all the pods are scheduled to the same node in AffinityAssistantPerPipelineRuns mode
 func TestAffinityAssistant_PerPipelineRun(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)

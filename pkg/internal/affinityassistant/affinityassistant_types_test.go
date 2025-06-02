@@ -14,7 +14,6 @@ limitations under the License.
 package affinityassistant
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -56,7 +55,7 @@ func Test_GetAffinityAssistantBehavior(t *testing.T) {
 	}}
 
 	for _, tc := range tcs {
-		ctx := cfgtesting.SetFeatureFlags(context.Background(), t, tc.configMap)
+		ctx := cfgtesting.SetFeatureFlags(t.Context(), t, tc.configMap)
 		get, err := GetAffinityAssistantBehavior(ctx)
 		if err != nil {
 			t.Fatalf("%s: unexpected error when getting affinity assistant behavior: %v", tc.name, err)
