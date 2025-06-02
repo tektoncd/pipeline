@@ -65,13 +65,16 @@ func (e *TaskNotFoundError) Error() string {
 type ResolvedPipelineTask struct {
 	TaskRunNames []string
 	TaskRuns     []*v1.TaskRun
+	ResolvedTask *resources.ResolvedTask
+
 	// If the PipelineTask is a Custom Task, CustomRunName and CustomRun will be set.
 	CustomTask     bool
 	CustomRunNames []string
 	CustomRuns     []*v1beta1.CustomRun
-	PipelineTask   *v1.PipelineTask
-	ResolvedTask   *resources.ResolvedTask
-	ResultsCache   map[string][]string
+
+	PipelineTask *v1.PipelineTask
+	ResultsCache map[string][]string
+
 	// EvaluatedCEL is used to store the results of evaluated CEL expression
 	EvaluatedCEL map[string]bool
 }
@@ -95,7 +98,7 @@ func (t *ResolvedPipelineTask) EvaluateCEL() error {
 				if iss.Err() != nil {
 					return iss.Err()
 				}
-				// Generate an evaluable instance of the Ast within the environment
+				// Generate an evaluatable instance of the Ast within the environment
 				prg, err := env.Program(ast)
 				if err != nil {
 					return err
@@ -633,6 +636,7 @@ func ResolvePipelineTask(
 			}
 		}
 	}
+
 	return &rpt, nil
 }
 
@@ -748,27 +752,27 @@ func getTaskRunNamesFromChildRefs(childRefs []v1.ChildStatusReference, ptName st
 }
 
 func getNewRunNames(ptName, prName string, numberOfRuns int) []string {
-	var taskRunNames []string
+	var runNames []string
 	// If it is a singular TaskRun/CustomRun, we only append the ptName
 	if numberOfRuns == 1 {
-		taskRunName := kmeta.ChildName(prName, "-"+ptName)
-		return append(taskRunNames, taskRunName)
+		runName := kmeta.ChildName(prName, "-"+ptName)
+		return append(runNames, runName)
 	}
-	// For a matrix we append i to then end of the fanned out TaskRuns "matrixed-pr-taskrun-0"
+	// For a matrix we append i to the end of the fanned out TaskRuns/CustomRun "matrixed-pr-taskrun-0"
 	for i := range numberOfRuns {
-		taskRunName := kmeta.ChildName(prName, fmt.Sprintf("-%s-%d", ptName, i))
+		runName := kmeta.ChildName(prName, fmt.Sprintf("-%s-%d", ptName, i))
 		// check if the taskRun name ends with a matrix instance count
-		if !strings.HasSuffix(taskRunName, fmt.Sprintf("-%d", i)) {
-			taskRunName = kmeta.ChildName(prName, "-"+ptName)
+		if !strings.HasSuffix(runName, fmt.Sprintf("-%d", i)) {
+			runName = kmeta.ChildName(prName, "-"+ptName)
 			// kmeta.ChildName limits the size of a name to max of 63 characters based on k8s guidelines
-			// truncate the name such that "-<matrix-id>" can be appended to the taskRun name
+			// truncate the name such that "-<matrix-id>" can be appended to the TaskRun/CustomRun name
 			longest := 63 - len(fmt.Sprintf("-%d", numberOfRuns))
-			taskRunName = taskRunName[0:longest]
-			taskRunName = fmt.Sprintf("%s-%d", taskRunName, i)
+			runName = runName[0:longest]
+			runName = fmt.Sprintf("%s-%d", runName, i)
 		}
-		taskRunNames = append(taskRunNames, taskRunName)
+		runNames = append(runNames, runName)
 	}
-	return taskRunNames
+	return runNames
 }
 
 // getCustomRunName should return a unique name for a `Run` if one has not already
