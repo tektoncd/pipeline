@@ -42,7 +42,7 @@ type conditionFn func(name string) ConditionAccessorFn
 // searve as part of the OSS conformance test suite but aims to keep the
 // devel conformant and to prevent regressions.
 func TestTaskRun(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)

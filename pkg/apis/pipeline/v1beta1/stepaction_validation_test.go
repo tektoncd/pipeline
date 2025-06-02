@@ -47,7 +47,7 @@ func TestStepActionValidate(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if tt.wc != nil {
 				ctx = tt.wc(ctx)
 			}
@@ -280,7 +280,7 @@ func TestStepActionSpecValidate(t *testing.T) {
 				Results:      tt.fields.Results,
 				VolumeMounts: tt.fields.VolumeMounts,
 			}
-			ctx := context.Background()
+			ctx := t.Context()
 			sa.SetDefaults(ctx)
 			if err := sa.Validate(ctx); err != nil {
 				t.Errorf("StepActionSpec.Validate() = %v", err)
@@ -556,7 +556,7 @@ func TestStepActionValidateError(t *testing.T) {
 					VolumeMounts: tt.fields.VolumeMounts,
 				},
 			}
-			ctx := context.Background()
+			ctx := t.Context()
 			sa.SetDefaults(ctx)
 			err := sa.Validate(ctx)
 			if err == nil {
@@ -961,7 +961,7 @@ func TestStepActionSpecValidateError(t *testing.T) {
 				Params:  tt.fields.Params,
 				Results: tt.fields.Results,
 			}
-			ctx := context.Background()
+			ctx := t.Context()
 			sa.SetDefaults(ctx)
 			err := sa.Validate(ctx)
 			if err == nil {

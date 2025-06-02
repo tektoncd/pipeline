@@ -16,7 +16,6 @@ limitations under the License.
 package v1_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -87,7 +86,7 @@ func TestTask_SetDefaults(t *testing.T) {
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := cfgtesting.SetDefaults(context.Background(), t, map[string]string{
+			ctx := cfgtesting.SetDefaults(t.Context(), t, map[string]string{
 				"default-resolver-type": "git",
 			})
 			got := tc.in

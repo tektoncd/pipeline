@@ -111,7 +111,7 @@ func TestWorkspaceBindingValidateValid(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if tc.wc != nil {
 				ctx = tc.wc(ctx)
 			}
@@ -178,7 +178,7 @@ func TestWorkspaceBindingValidateInvalid(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if tc.wc != nil {
 				ctx = tc.wc(ctx)
 			}

@@ -42,7 +42,7 @@ const (
 )
 
 func TestFromPolicy_Success(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	_, key256, k8sclient, vps := test.SetupVerificationPolicies(t)
 	keyInDataVp, keyInSecretVp := vps[0], vps[1]
 
@@ -68,7 +68,7 @@ func TestFromPolicy_Success(t *testing.T) {
 			},
 		},
 	}
-	ctx = context.WithValue(context.TODO(), fakekms.KmsCtxKey{}, key256)
+	ctx = context.WithValue(t.Context(), fakekms.KmsCtxKey{}, key256)
 
 	_, key384, pub, err := test.GenerateKeys(elliptic.P384(), crypto.SHA256)
 	if err != nil {
@@ -221,7 +221,7 @@ func TestFromPolicy_Error(t *testing.T) {
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := FromPolicy(context.Background(), fakek8s.NewSimpleClientset(), tc.policy)
+			_, err := FromPolicy(t.Context(), fakek8s.NewSimpleClientset(), tc.policy)
 			if !errors.Is(err, tc.expectedError) {
 				t.Errorf("FromPolicy got: %v, want: %v", err, tc.expectedError)
 			}
@@ -230,7 +230,7 @@ func TestFromPolicy_Error(t *testing.T) {
 }
 
 func TestFromKeyRef_Success(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	fileKey, keypath := test.GetKeysFromFile(ctx, t)
 
 	_, secretKey, pub, err := test.GenerateKeys(elliptic.P256(), crypto.SHA256)
@@ -272,7 +272,7 @@ func TestFromKeyRef_Success(t *testing.T) {
 }
 
 func TestFromKeyRef_Error(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	_, keypath := test.GetKeysFromFile(ctx, t)
 	tcs := []struct {
 		name          string
@@ -320,7 +320,7 @@ func TestFromSecret_Success(t *testing.T) {
 
 	k8sclient := fakek8s.NewSimpleClientset(secretData)
 
-	v, err := fromSecret(context.Background(), fmt.Sprintf("k8s://%s/secret", namespace), crypto.SHA256, k8sclient)
+	v, err := fromSecret(t.Context(), fmt.Sprintf("k8s://%s/secret", namespace), crypto.SHA256, k8sclient)
 	checkVerifier(t, keys, v)
 	if err != nil {
 		t.Errorf("couldn't construct expected verifier from secret: %v", err)
@@ -382,7 +382,7 @@ func TestFromSecret_Error(t *testing.T) {
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := fromSecret(context.Background(), tc.secretref, crypto.SHA256, k8sclient)
+			_, err := fromSecret(t.Context(), tc.secretref, crypto.SHA256, k8sclient)
 			if !errors.Is(err, tc.expectedError) {
 				t.Errorf("FromSecret got: %v, want: %v", err, tc.expectedError)
 			}

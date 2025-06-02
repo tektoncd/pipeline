@@ -240,7 +240,7 @@ func TestLocalTaskRef(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			tektonclient := fake.NewSimpleClientset(tc.tasks...)
@@ -610,7 +610,7 @@ func TestStepActionRef(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			tektonclient := fake.NewSimpleClientset(tc.stepactions...)
@@ -673,7 +673,7 @@ func TestStepActionRef_Error(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			tektonclient := fake.NewSimpleClientset(tc.stepactions...)
@@ -695,7 +695,7 @@ func TestStepActionRef_Error(t *testing.T) {
 }
 
 func TestGetTaskFunc_Local(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	testcases := []struct {
 		name         string
@@ -772,7 +772,7 @@ func TestGetTaskFunc_Local(t *testing.T) {
 }
 
 func TestGetStepActionFunc_Local(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	testcases := []struct {
 		name             string
@@ -825,7 +825,7 @@ func TestGetStepActionFunc_Local(t *testing.T) {
 }
 
 func TestGetStepActionFunc_RemoteResolution_Success(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	stepRef := &v1.Ref{ResolverRef: v1.ResolverRef{Resolver: "git"}}
 
 	testcases := []struct {
@@ -891,7 +891,7 @@ func TestGetStepActionFunc_RemoteResolution_Success(t *testing.T) {
 }
 
 func TestGetStepActionFunc_RemoteResolution_Error(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	stepRef := &v1.Ref{ResolverRef: v1.ResolverRef{Resolver: "git"}}
 
 	testcases := []struct {
@@ -936,7 +936,7 @@ func TestGetStepActionFunc_RemoteResolution_Error(t *testing.T) {
 }
 
 func TestGetTaskFuncFromTaskRunSpecAlreadyFetched(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	tektonclient := fake.NewSimpleClientset(simpleNamespacedTask)
@@ -1000,7 +1000,7 @@ echo hello
 }
 
 func TestGetTaskFunc_RemoteResolution(t *testing.T) {
-	ctx := cfgtesting.EnableStableAPIFields(context.Background())
+	ctx := cfgtesting.EnableStableAPIFields(t.Context())
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
 	taskRef := &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "git"}}
@@ -1072,7 +1072,7 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 }
 
 func TestGetTaskFunc_RemoteResolution_ValidationFailure(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
 	taskRef := &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "git"}}
@@ -1126,7 +1126,7 @@ func TestGetTaskFunc_RemoteResolution_ValidationFailure(t *testing.T) {
 }
 
 func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
 	task := parse.MustParseV1TaskAndSetDefaults(t, taskYAMLString)
@@ -1234,7 +1234,7 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 }
 
 func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
 	taskRef := &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "git"}}
@@ -1255,7 +1255,7 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 }
 
 func TestGetTaskFunc_V1beta1Task_VerifyNoError(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 	tektonclient := fake.NewSimpleClientset()
 
@@ -1359,7 +1359,7 @@ func TestGetTaskFunc_V1beta1Task_VerifyNoError(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := test.SetupTrustedResourceConfig(context.Background(), tc.verificationNoMatchPolicy)
+			ctx := test.SetupTrustedResourceConfig(t.Context(), tc.verificationNoMatchPolicy)
 			tr := &v1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
 				Spec: v1.TaskRunSpec{
@@ -1389,7 +1389,7 @@ func TestGetTaskFunc_V1beta1Task_VerifyNoError(t *testing.T) {
 }
 
 func TestGetTaskFunc_V1beta1Task_VerifyError(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 	tektonclient := fake.NewSimpleClientset()
 
@@ -1509,7 +1509,7 @@ func TestGetTaskFunc_V1beta1Task_VerifyError(t *testing.T) {
 }
 
 func TestGetTaskFunc_V1Task_VerifyNoError(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 	tektonclient := fake.NewSimpleClientset()
 
@@ -1653,7 +1653,7 @@ func TestGetTaskFunc_V1Task_VerifyNoError(t *testing.T) {
 }
 
 func TestGetTaskFunc_V1Task_VerifyError(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 	tektonclient := fake.NewSimpleClientset()
 
@@ -1768,7 +1768,7 @@ func TestGetTaskFunc_V1Task_VerifyError(t *testing.T) {
 }
 
 func TestGetTaskFunc_GetFuncError(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	_, k8sclient, vps := test.SetupMatchAllVerificationPolicies(t, "trusted-resources")
 	tektonclient := fake.NewSimpleClientset()
 

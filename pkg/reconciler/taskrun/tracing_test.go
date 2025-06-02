@@ -14,7 +14,6 @@ limitations under the License.
 package taskrun
 
 import (
-	"context"
 	"testing"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -91,7 +90,7 @@ func TestInitTracing(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			tr := tc.taskRun
-			ctx := initTracing(context.Background(), tc.tracerProvider, tr)
+			ctx := initTracing(t.Context(), tc.tracerProvider, tr)
 
 			if ctx == nil {
 				t.Fatalf("returned nil context from initTracing")

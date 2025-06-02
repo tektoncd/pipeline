@@ -41,7 +41,7 @@ func TestRealRunnerSignalForwarding(t *testing.T) {
 	rr := realRunner{}
 	rr.signals = make(chan os.Signal, 1)
 	rr.signal(syscall.SIGINT)
-	if err := rr.Run(context.Background(), "sleep", "3600"); err.Error() == "signal: interrupt" {
+	if err := rr.Run(t.Context(), "sleep", "3600"); err.Error() == "signal: interrupt" {
 		t.Logf("SIGINT forwarded to Entrypoint")
 	} else {
 		t.Fatalf("Unexpected error received: %v", err)
@@ -66,7 +66,7 @@ func TestRealRunnerStdoutAndStderrPaths(t *testing.T) {
 	errReader, errWriter, _ := os.Pipe()
 	os.Stderr = errWriter
 
-	if err := rr.Run(context.Background(), "sh", "-c", fmt.Sprintf("echo %s && echo %s >&2", expectedString, expectedString)); err != nil {
+	if err := rr.Run(t.Context(), "sh", "-c", fmt.Sprintf("echo %s && echo %s >&2", expectedString, expectedString)); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
@@ -116,7 +116,7 @@ func TestRealRunnerStdoutAndStderrSamePath(t *testing.T) {
 		stdoutPath: path,
 		stderrPath: path,
 	}
-	if err := rr.Run(context.Background(), "sh", "-c", fmt.Sprintf("echo %s && echo %s >&2", expectedString, expectedString)); err != nil {
+	if err := rr.Run(t.Context(), "sh", "-c", fmt.Sprintf("echo %s && echo %s >&2", expectedString, expectedString)); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
@@ -156,7 +156,7 @@ func TestRealRunnerStdoutPathWithSignal(t *testing.T) {
 		rr.signal(syscall.SIGINT)
 	}()
 
-	if err := rr.Run(context.Background(), "sh", "-c", fmt.Sprintf("echo %s && sleep 20", expectedString)); err == nil || err.Error() != expectedError {
+	if err := rr.Run(t.Context(), "sh", "-c", fmt.Sprintf("echo %s && sleep 20", expectedString)); err == nil || err.Error() != expectedError {
 		t.Fatalf("Expected error %v but got %v", expectedError, err)
 	}
 	if got, err := os.ReadFile(path); err != nil {
@@ -170,7 +170,7 @@ func TestRealRunnerStdoutPathWithSignal(t *testing.T) {
 func TestRealRunnerTimeout(t *testing.T) {
 	rr := realRunner{}
 	timeout := time.Millisecond
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(t.Context(), timeout)
 	defer cancel()
 
 	if err := rr.Run(ctx, "sleep", "0.01"); err != nil {
@@ -206,7 +206,7 @@ func TestRealRunnerCancel(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		rr := realRunner{}
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(t.Context())
 		go func() {
 			time.Sleep(tc.timeout)
 			cancel()

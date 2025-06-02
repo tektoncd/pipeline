@@ -17,7 +17,6 @@ limitations under the License.
 package defaultresourcerequirements
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -392,7 +391,7 @@ func TestNewTransformer(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			// add default container resource requirements on the context
 			ctx = config.ToContext(ctx, &config.Config{
 				Defaults: &config.Defaults{

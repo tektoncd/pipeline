@@ -54,7 +54,7 @@ const (
 
 func TestGetSelector(t *testing.T) {
 	resolver := cluster.Resolver{}
-	sel := resolver.GetSelector(context.Background())
+	sel := resolver.GetSelector(t.Context())
 	if typ, has := sel[resolutioncommon.LabelKeyResolverType]; !has {
 		t.Fatalf("unexpected selector: %v", sel)
 	} else if typ != cluster.LabelValueClusterResolverType {
@@ -76,7 +76,7 @@ func TestValidate(t *testing.T) {
 		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 
-	ctx := framework.InjectResolverConfigToContext(context.Background(), map[string]string{
+	ctx := framework.InjectResolverConfigToContext(t.Context(), map[string]string{
 		clusterresolution.AllowedNamespacesKey: "foo,bar",
 		clusterresolution.BlockedNamespacesKey: "abc,def",
 	})
@@ -193,7 +193,7 @@ func TestValidateFailure(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			resolver := &cluster.Resolver{}
 
-			ctx := context.Background()
+			ctx := t.Context()
 			if len(tc.conf) > 0 {
 				ctx = framework.InjectResolverConfigToContext(ctx, tc.conf)
 			}

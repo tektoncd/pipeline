@@ -60,7 +60,7 @@ var (
 )
 
 func TestCustomTask(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)
@@ -254,7 +254,7 @@ spec:
 // the metric that is emitted to track how long it took.
 func WaitForCustomRunSpecCancelled(ctx context.Context, c *clients, name string, desc string) error {
 	metricName := fmt.Sprintf("WaitForRunSpecCancelled/%s/%s", name, desc)
-	_, span := trace.StartSpan(context.Background(), metricName)
+	_, span := trace.StartSpan(ctx, metricName)
 	defer span.End()
 
 	return pollImmediateWithContext(ctx, func() (bool, error) {
@@ -270,11 +270,11 @@ func WaitForCustomRunSpecCancelled(ctx context.Context, c *clients, name string,
 // verify that pipelinerun timeout works and leads to the correct Run Spec.status
 func TestPipelineRunCustomTaskTimeout(t *testing.T) {
 	// cancel the context after we have waited a suitable buffer beyond the given deadline.
-	ctx, cancel := context.WithTimeout(context.Background(), timeout+2*time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), timeout+2*time.Minute)
 	defer cancel()
 	c, namespace := setup(ctx, t)
-	knativetest.CleanupOnInterrupt(func() { tearDown(context.Background(), t, c, namespace) }, t.Logf)
-	defer tearDown(context.Background(), t, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t.Context(), t, c, namespace) }, t.Logf)
+	defer tearDown(t.Context(), t, c, namespace)
 
 	pipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
 metadata:
@@ -405,7 +405,7 @@ func cleanUpV1beta1Controller(t *testing.T) {
 }
 
 func TestWaitCustomTask_V1_PipelineRun(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)

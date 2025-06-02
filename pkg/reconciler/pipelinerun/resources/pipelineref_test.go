@@ -154,7 +154,7 @@ func TestLocalPipelineRef(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			tektonclient := fake.NewSimpleClientset(tc.pipelines...)
@@ -183,7 +183,7 @@ func TestLocalPipelineRef(t *testing.T) {
 }
 
 func TestGetPipelineFunc_Local(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	testcases := []struct {
 		name            string
@@ -241,7 +241,7 @@ func TestGetPipelineFunc_Local(t *testing.T) {
 }
 
 func TestGetPipelineFuncSpecAlreadyFetched(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	tektonclient := fake.NewSimpleClientset(simplePipeline(), samplePipeline)
@@ -564,7 +564,7 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 }
 
 func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 	tektonclient := fake.NewSimpleClientset()
 
@@ -741,7 +741,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyNoError(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := test.SetupTrustedResourceConfig(context.Background(), tc.verificationNoMatchPolicy)
+			ctx := test.SetupTrustedResourceConfig(t.Context(), tc.verificationNoMatchPolicy)
 			fn := resources.GetPipelineFunc(ctx, k8sclient, tektonclient, tc.requester, &tc.pipelinerun, tc.policies)
 
 			gotResolvedPipeline, gotSource, gotVerificationResult, err := fn(ctx, pipelineRef.Name)
@@ -862,7 +862,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyError(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := test.SetupTrustedResourceConfig(context.Background(), tc.verificationNoMatchPolicy)
+			ctx := test.SetupTrustedResourceConfig(t.Context(), tc.verificationNoMatchPolicy)
 			pr := &v1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
 				Spec: v1.PipelineRunSpec{
@@ -886,7 +886,7 @@ func TestGetPipelineFunc_V1beta1Pipeline_VerifyError(t *testing.T) {
 }
 
 func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	signer, _, k8sclient, vps := test.SetupVerificationPolicies(t)
 	tektonclient := fake.NewSimpleClientset()
 
@@ -1071,7 +1071,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyNoError(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := test.SetupTrustedResourceConfig(context.Background(), tc.verificationNoMatchPolicy)
+			ctx := test.SetupTrustedResourceConfig(t.Context(), tc.verificationNoMatchPolicy)
 			fn := resources.GetPipelineFunc(ctx, k8sclient, tektonclient, tc.requester, &tc.pipelinerun, tc.policies)
 
 			gotResolvedPipeline, gotSource, gotVerificationResult, err := fn(ctx, pipelineRef.Name)
@@ -1191,7 +1191,7 @@ func TestGetPipelineFunc_V1Pipeline_VerifyError(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := test.SetupTrustedResourceConfig(context.Background(), tc.verificationNoMatchPolicy)
+			ctx := test.SetupTrustedResourceConfig(t.Context(), tc.verificationNoMatchPolicy)
 			pr := &v1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
 				Spec: v1.PipelineRunSpec{
@@ -1256,7 +1256,7 @@ func TestGetPipelineFunc_GetFuncError(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
 			featureflags := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{

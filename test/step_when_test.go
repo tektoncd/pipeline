@@ -198,7 +198,7 @@ spec:
 	}
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			c, namespace := setup(ctx, t)
@@ -402,7 +402,7 @@ spec:
 		t.Run(tc.desc, func(t *testing.T) {
 			featureFlags := getFeatureFlagsBaseOnAPIFlag(t)
 
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			c, namespace := setup(ctx, t)
