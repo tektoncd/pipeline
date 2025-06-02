@@ -65,13 +65,16 @@ func (e *TaskNotFoundError) Error() string {
 type ResolvedPipelineTask struct {
 	TaskRunNames []string
 	TaskRuns     []*v1.TaskRun
+	ResolvedTask *resources.ResolvedTask
+
 	// If the PipelineTask is a Custom Task, CustomRunName and CustomRun will be set.
 	CustomTask     bool
 	CustomRunNames []string
 	CustomRuns     []*v1beta1.CustomRun
-	PipelineTask   *v1.PipelineTask
-	ResolvedTask   *resources.ResolvedTask
-	ResultsCache   map[string][]string
+
+	PipelineTask *v1.PipelineTask
+	ResultsCache map[string][]string
+
 	// EvaluatedCEL is used to store the results of evaluated CEL expression
 	EvaluatedCEL map[string]bool
 }
@@ -95,7 +98,7 @@ func (t *ResolvedPipelineTask) EvaluateCEL() error {
 				if iss.Err() != nil {
 					return iss.Err()
 				}
-				// Generate an evaluable instance of the Ast within the environment
+				// Generate an evaluatable instance of the Ast within the environment
 				prg, err := env.Program(ast)
 				if err != nil {
 					return err
@@ -156,6 +159,7 @@ func (t ResolvedPipelineTask) getReason() string {
 			return t.CustomRuns[0].Status.Conditions[0].Reason
 		}
 	}
+
 	if len(t.TaskRuns) == 0 {
 		return ""
 	}
@@ -167,6 +171,7 @@ func (t ResolvedPipelineTask) getReason() string {
 	if len(t.TaskRuns) >= 1 && len(t.TaskRuns[0].Status.Conditions) >= 1 {
 		return t.TaskRuns[0].Status.Conditions[0].Reason
 	}
+
 	return ""
 }
 
@@ -184,6 +189,7 @@ func (t ResolvedPipelineTask) isSuccessful() bool {
 		}
 		return true
 	}
+
 	if len(t.TaskRuns) == 0 {
 		return false
 	}
@@ -309,10 +315,11 @@ func (t ResolvedPipelineTask) haveAnyRunsFailed() bool {
 	if t.IsCustomTask() {
 		return t.haveAnyCustomRunsFailed()
 	}
+
 	return t.haveAnyTaskRunsFailed()
 }
 
-// haveAnyTaskRunsFailed returns true when any of the taskRuns have succeeded condition with status set to false
+// haveAnyTaskRunsFailed returns true when any of the TaskRuns have succeeded condition with status set to false
 func (t ResolvedPipelineTask) haveAnyTaskRunsFailed() bool {
 	for _, taskRun := range t.TaskRuns {
 		if taskRun.IsFailure() {
@@ -322,7 +329,7 @@ func (t ResolvedPipelineTask) haveAnyTaskRunsFailed() bool {
 	return false
 }
 
-// haveAnyCustomRunsFailed returns true when a CustomRun has succeeded condition with status set to false
+// haveAnyCustomRunsFailed returns true when any of the CustomRuns have succeeded condition with status set to false
 func (t ResolvedPipelineTask) haveAnyCustomRunsFailed() bool {
 	for _, customRun := range t.CustomRuns {
 		if customRun.IsFailure() {
@@ -633,6 +640,7 @@ func ResolvePipelineTask(
 			}
 		}
 	}
+
 	return &rpt, nil
 }
 
@@ -748,27 +756,27 @@ func getTaskRunNamesFromChildRefs(childRefs []v1.ChildStatusReference, ptName st
 }
 
 func getNewRunNames(ptName, prName string, numberOfRuns int) []string {
-	var taskRunNames []string
+	var runNames []string
 	// If it is a singular TaskRun/CustomRun, we only append the ptName
 	if numberOfRuns == 1 {
-		taskRunName := kmeta.ChildName(prName, "-"+ptName)
-		return append(taskRunNames, taskRunName)
+		runName := kmeta.ChildName(prName, "-"+ptName)
+		return append(runNames, runName)
 	}
-	// For a matrix we append i to then end of the fanned out TaskRuns "matrixed-pr-taskrun-0"
+	// For a matrix we append i to the end of the fanned out TaskRuns/CustomRun "matrixed-pr-taskrun-0"
 	for i := range numberOfRuns {
-		taskRunName := kmeta.ChildName(prName, fmt.Sprintf("-%s-%d", ptName, i))
+		runName := kmeta.ChildName(prName, fmt.Sprintf("-%s-%d", ptName, i))
 		// check if the taskRun name ends with a matrix instance count
-		if !strings.HasSuffix(taskRunName, fmt.Sprintf("-%d", i)) {
-			taskRunName = kmeta.ChildName(prName, "-"+ptName)
+		if !strings.HasSuffix(runName, fmt.Sprintf("-%d", i)) {
+			runName = kmeta.ChildName(prName, "-"+ptName)
 			// kmeta.ChildName limits the size of a name to max of 63 characters based on k8s guidelines
-			// truncate the name such that "-<matrix-id>" can be appended to the taskRun name
+			// truncate the name such that "-<matrix-id>" can be appended to the TaskRun/CustomRun name
 			longest := 63 - len(fmt.Sprintf("-%d", numberOfRuns))
-			taskRunName = taskRunName[0:longest]
-			taskRunName = fmt.Sprintf("%s-%d", taskRunName, i)
+			runName = runName[0:longest]
+			runName = fmt.Sprintf("%s-%d", runName, i)
 		}
-		taskRunNames = append(taskRunNames, taskRunName)
+		runNames = append(runNames, runName)
 	}
-	return taskRunNames
+	return runNames
 }
 
 // getCustomRunName should return a unique name for a `Run` if one has not already
@@ -866,7 +874,7 @@ func CheckMissingResultReferences(pipelineRunState PipelineRunState, target *Res
 }
 
 // createResultsCacheMatrixedTaskRuns creates a cache of results that have been fanned out from a
-// referenced matrixed PipelintTask so that you can easily access these results in subsequent Pipeline Tasks
+// referenced matrixed PipelineTask so that you can easily access these results in subsequent Pipeline Tasks
 func createResultsCacheMatrixedTaskRuns(rpt *ResolvedPipelineTask) (resultsCache map[string][]string) {
 	if len(rpt.ResultsCache) == 0 {
 		resultsCache = make(map[string][]string)

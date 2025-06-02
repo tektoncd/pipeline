@@ -1360,7 +1360,7 @@ func TestReconcile_InvalidPipelineRunNames(t *testing.T) {
 func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	// TestReconcileOnCompletedPipelineRun runs "Reconcile" on a PipelineRun that already reached completion
 	// and that does not have the latest status from TaskRuns yet. It checks that the TaskRun status is updated
-	// in the PipelineRun status, that the completion status is not altered, that not error is returned and
+	// in the PipelineRun status, that the completion status is not altered, that no error is returned and
 	// a successful event is triggered
 	namespace := "foo"
 	taskRunName := "test-pipeline-run-completed-hello-world-task-run"

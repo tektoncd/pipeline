@@ -150,12 +150,14 @@ func (state PipelineRunState) AdjustStartTime(unadjustedStartTime *metav1.Time) 
 				adjustedStartTime = &creationTime
 			}
 		}
+
 		for _, taskRun := range rpt.TaskRuns {
 			if taskRun.CreationTimestamp.Time.Before(adjustedStartTime.Time) {
 				adjustedStartTime = &taskRun.CreationTimestamp
 			}
 		}
 	}
+
 	return adjustedStartTime.DeepCopy()
 }
 
@@ -251,7 +253,7 @@ func (facts *PipelineRunFacts) GetChildReferences() []v1.ChildStatusReference {
 	var childRefs []v1.ChildStatusReference
 
 	for _, rpt := range facts.State {
-		// try to replace the parameters of the reference result of whenexpression in the taskrun that has ended
+		// try to replace the parameters of the reference result of when expression in the TaskRun that has ended
 		if rpt.isDone(facts) {
 			resolvedResultRefs, _, err := ResolveResultRefs(facts.State, PipelineRunState{rpt})
 			if err == nil {
@@ -284,6 +286,7 @@ func (t *ResolvedPipelineTask) getDisplayName(customRun *v1beta1.CustomRun, task
 			}
 		}
 	}
+
 	if customRun != nil {
 		for _, p := range customRun.Spec.Params {
 			if p.Value.Type == v1beta1.ParamTypeString {
@@ -642,6 +645,7 @@ func (facts *PipelineRunFacts) GetPipelineTaskStatus() map[string]string {
 			tStatus[PipelineTaskStatusPrefix+t.PipelineTask.Name+PipelineTaskReasonSuffix] = t.getReason()
 		}
 	}
+
 	// initialize aggregate status of all dag tasks to None
 	aggregateStatus := PipelineTaskStateNone
 	if facts.checkDAGTasksDone() {
@@ -663,6 +667,7 @@ func (facts *PipelineRunFacts) GetPipelineTaskStatus() map[string]string {
 			}
 		}
 	}
+
 	tStatus[v1.PipelineTasksAggregateStatus] = aggregateStatus
 	return tStatus
 }
