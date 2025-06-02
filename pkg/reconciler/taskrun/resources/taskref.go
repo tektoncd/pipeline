@@ -50,7 +50,7 @@ func GetTaskKind(taskrun *v1.TaskRun) v1.TaskKind {
 
 // GetTaskFuncFromTaskRun is a factory function that will use the given TaskRef as context to return a valid GetTask function.
 // It also requires a kubeclient, tektonclient, namespace, and service account in case it needs to find that task in
-// cluster or authorize against an external repositroy. It will figure out whether it needs to look in the cluster or in
+// cluster or authorize against an external repository. It will figure out whether it needs to look in the cluster or in
 // a remote image to fetch the  reference. It will also return the "kind" of the task being referenced.
 // OCI bundle and remote resolution tasks will be verified by trusted resources if the feature is enabled
 func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester, taskrun *v1.TaskRun, verificationPolicies []*v1alpha1.VerificationPolicy) GetTask {
@@ -76,7 +76,7 @@ func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekto
 
 // GetTaskFunc is a factory function that will use the given TaskRef as context to return a valid GetTask function.
 // It also requires a kubeclient, tektonclient, namespace, and service account in case it needs to find that task in
-// cluster or authorize against an external repositroy. It will figure out whether it needs to look in the cluster or in
+// cluster or authorize against an external repository. It will figure out whether it needs to look in the cluster or in
 // a remote image to fetch the  reference. It will also return the "kind" of the task being referenced.
 // OCI bundle and remote resolution tasks will be verified by trusted resources if the feature is enabled
 func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester,

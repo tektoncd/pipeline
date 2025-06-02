@@ -332,29 +332,49 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, pr *v1
 	return errs
 }
 
-// resolvePipelineState will attempt to resolve each referenced task in the pipeline's spec and all of the resources
+// resolvePipelineState will attempt to resolve each referenced pipeline task in the pipeline's spec and all of the resources
 // specified by those tasks.
 func (c *Reconciler) resolvePipelineState(
 	ctx context.Context,
-	tasks []v1.PipelineTask,
+	pipelineTasks []v1.PipelineTask,
 	pipelineMeta *metav1.ObjectMeta,
 	pr *v1.PipelineRun,
 	pst resources.PipelineRunState,
 ) (resources.PipelineRunState, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "resolvePipelineState")
 	defer span.End()
-	// Resolve each task individually because they each could have a different reference context (remote or local).
-	for _, task := range tasks {
+	// Resolve each pipeline task individually because they each could have a different reference context (remote or local).
+	for _, pipelineTask := range pipelineTasks {
 		// We need the TaskRun name to ensure that we don't perform an additional remote resolution request for a PipelineTask
 		// in the TaskRun reconciler.
-		trName := resources.GetTaskRunName(pr.Status.ChildReferences, task.Name, pr.Name)
+		trName := resources.GetTaskRunName(
+			pr.Status.ChildReferences,
+			pipelineTask.Name,
+			pr.Name,
+		)
 
 		// list VerificationPolicies for trusted resources
 		vp, err := c.verificationPolicyLister.VerificationPolicies(pr.Namespace).List(labels.Everything())
 		if err != nil {
 			return nil, fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %w", pr.Namespace, err)
 		}
-		fn := tresources.GetTaskFunc(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, pr, task.TaskRef, trName, pr.Namespace, pr.Spec.TaskRunTemplate.ServiceAccountName, vp)
+
+		getTaskFunc := tresources.GetTaskFunc(
+			ctx,
+			c.KubeClientSet,
+			c.PipelineClientSet,
+			c.resolutionRequester,
+			pr,
+			pipelineTask.TaskRef,
+			trName,
+			pr.Namespace,
+			pr.Spec.TaskRunTemplate.ServiceAccountName,
+			vp,
+		)
+
+		getTaskRunFunc := func(name string) (*v1.TaskRun, error) {
+			return c.taskRunLister.TaskRuns(pr.Namespace).Get(name)
+		}
 
 		getCustomRunFunc := func(name string) (*v1beta1.CustomRun, error) {
 			r, err := c.customRunLister.CustomRuns(pr.Namespace).Get(name)
@@ -366,12 +386,10 @@ func (c *Reconciler) resolvePipelineState(
 
 		resolvedTask, err := resources.ResolvePipelineTask(ctx,
 			*pr,
-			fn,
-			func(name string) (*v1.TaskRun, error) {
-				return c.taskRunLister.TaskRuns(pr.Namespace).Get(name)
-			},
+			getTaskFunc,
+			getTaskRunFunc,
 			getCustomRunFunc,
-			task,
+			pipelineTask,
 			pst,
 		)
 		if err != nil {
@@ -393,8 +411,9 @@ func (c *Reconciler) resolvePipelineState(
 			}
 			return nil, controller.NewPermanentError(err)
 		}
+
 		if resolvedTask.ResolvedTask != nil && resolvedTask.ResolvedTask.VerificationResult != nil {
-			cond, err := conditionFromVerificationResult(resolvedTask.ResolvedTask.VerificationResult, pr, task.Name)
+			cond, err := conditionFromVerificationResult(resolvedTask.ResolvedTask.VerificationResult, pr, pipelineTask.Name)
 			pr.Status.SetCondition(cond)
 			if err != nil {
 				pr.Status.MarkFailed(v1.PipelineRunReasonResourceVerificationFailed.String(), err.Error())
@@ -403,6 +422,7 @@ func (c *Reconciler) resolvePipelineState(
 		}
 		pst = append(pst, resolvedTask)
 	}
+
 	return pst, nil
 }
 
@@ -549,7 +569,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	}
 
 	resources.ApplyParametersToWorkspaceBindings(ctx, pr)
-	// Make a deep copy of the Pipeline and its Tasks before value substution.
+	// Make a deep copy of the Pipeline and its Tasks before value substitution.
 	// This is used to find referenced pipeline-level params at each PipelineTask when validate param enum subset requirement
 	originalPipeline := pipelineSpec.DeepCopy()
 	originalTasks := originalPipeline.Tasks
@@ -571,9 +591,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		return controller.NewPermanentError(err)
 	}
 
-	// pipelineState holds a list of pipeline tasks after fetching their resolved Task specs.
-	// pipelineState also holds a taskRun for each pipeline task after the taskRun is created
-	// pipelineState is instantiated and updated on every reconcile cycle
+	// pipelineRunState holds a list of pipeline tasks after fetching their resolved Task specs.
+	// pipelineRunState also holds a taskRun for each pipeline task after the taskRun is created
+	// pipelineRunState is instantiated and updated on every reconcile cycle
 	// Resolve the set of tasks (and possibly task runs).
 	tasks := pipelineSpec.Tasks
 	if len(pipelineSpec.Finally) > 0 {
@@ -584,7 +604,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	// - those with a completed (Task|Custom)Run reference (i.e. those that finished running)
 	// - those without a (Task|Custom)Run reference
 	// We resolve the status for the former first, to collect all results available at this stage
-	// We know that tasks in progress or completed have had their fan-out alteady calculated so
+	// We know that tasks in progress or completed have had their fan-out already calculated so
 	// they can be safely processed in the first iteration. The underlying assumption is that if
 	// a PipelineTask has at least one TaskRun associated, then all its TaskRuns have been
 	// created already.
@@ -604,9 +624,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 			notStartedTasks = append(notStartedTasks, task)
 		}
 	}
+
 	// First iteration
-	pst := resources.PipelineRunState{}
-	pipelineRunState, err := c.resolvePipelineState(ctx, ranOrRunningTasks, pipelineMeta.ObjectMeta, pr, pst)
+	pipelineRunState, err := c.resolvePipelineState(ctx, ranOrRunningTasks, pipelineMeta.ObjectMeta, pr, resources.PipelineRunState{})
 	switch {
 	case errors.Is(err, remote.ErrRequestInProgress):
 		message := fmt.Sprintf("PipelineRun %s/%s awaiting remote resource", pr.Namespace, pr.Name)
@@ -692,7 +712,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		}
 	}
 
-	// check if pipeline run is not gracefully cancelled and there are active task runs, which require cancelling
+	// check if pipeline run is gracefully cancelled and there are active pipeline task runs, which require cancelling
 	if pr.IsGracefullyCancelled() && pipelineRunFacts.IsRunning() {
 		// If the pipelinerun is cancelled, cancel tasks, but run finally
 		err := gracefullyCancelPipelineRun(ctx, logger, pr, c.PipelineClientSet)
@@ -781,6 +801,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 			}
 		}
 	}
+
 	if err := c.runNextSchedulableTask(ctx, pr, pipelineRunFacts); err != nil {
 		return err
 	}
@@ -811,14 +832,18 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	pr.Status.ChildReferences = pipelineRunFacts.GetChildReferences()
 
 	pr.Status.SkippedTasks = pipelineRunFacts.GetSkippedTasks()
-
-	taskStatus := pipelineRunFacts.GetPipelineTaskStatus()
-	finalTaskStatus := pipelineRunFacts.GetPipelineFinalTaskStatus()
-	taskStatus = kmap.Union(taskStatus, finalTaskStatus)
+	pipelineTaskStatus := pipelineRunFacts.GetPipelineTaskStatus()
+	finalPipelineTaskStatus := pipelineRunFacts.GetPipelineFinalTaskStatus()
+	pipelineTaskStatus = kmap.Union(pipelineTaskStatus, finalPipelineTaskStatus)
 
 	if after.Status == corev1.ConditionTrue || after.Status == corev1.ConditionFalse {
-		pr.Status.Results, err = resources.ApplyTaskResultsToPipelineResults(ctx, pipelineSpec.Results,
-			pipelineRunFacts.State.GetTaskRunsResults(), pipelineRunFacts.State.GetRunsResults(), taskStatus)
+		pr.Status.Results, err = resources.ApplyTaskResultsToPipelineResults(
+			ctx,
+			pipelineSpec.Results,
+			pipelineRunFacts.State.GetTaskRunsResults(),
+			pipelineRunFacts.State.GetRunsResults(),
+			pipelineTaskStatus,
+		)
 		if err != nil {
 			pr.Status.MarkFailed(v1.PipelineRunReasonCouldntGetPipelineResult.String(),
 				"Failed to get PipelineResult from TaskRun Results for PipelineRun %s: %s",
@@ -944,6 +969,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -960,11 +986,12 @@ func (c *Reconciler) setFinallyStartedTimeIfNeeded(pr *v1.PipelineRun, facts *re
 func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.ResolvedPipelineTask, pr *v1.PipelineRun, facts *resources.PipelineRunFacts) ([]*v1.TaskRun, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createTaskRuns")
 	defer span.End()
-	var taskRuns []*v1.TaskRun
+
 	var matrixCombinations []v1.Params
 	if rpt.PipelineTask.IsMatrixed() {
 		matrixCombinations = rpt.PipelineTask.Matrix.FanOut()
 	}
+
 	// validate the param values meet resolved Task Param Enum requirements before creating TaskRuns
 	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableParamEnum {
 		for i := range rpt.TaskRunNames {
@@ -981,6 +1008,8 @@ func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.Resolved
 			}
 		}
 	}
+
+	var taskRuns []*v1.TaskRun
 	for i, taskRunName := range rpt.TaskRunNames {
 		var params v1.Params
 		if len(matrixCombinations) > i {
@@ -993,6 +1022,7 @@ func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.Resolved
 		}
 		taskRuns = append(taskRuns, taskRun)
 	}
+
 	return taskRuns, nil
 }
 
