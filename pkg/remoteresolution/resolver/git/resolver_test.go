@@ -53,7 +53,7 @@ import (
 
 func TestGetSelector(t *testing.T) {
 	resolver := Resolver{}
-	sel := resolver.GetSelector(context.Background())
+	sel := resolver.GetSelector(t.Context())
 	if typ, has := sel[common.LabelKeyResolverType]; !has {
 		t.Fatalf("unexpected selector: %v", sel)
 	} else if typ != labelValueGitResolverType {
@@ -128,7 +128,7 @@ func TestValidateParams(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resolver := Resolver{}
-			err := resolver.Validate(context.Background(), &v1beta1.ResolutionRequestSpec{Params: toParams(tt.params)})
+			err := resolver.Validate(t.Context(), &v1beta1.ResolutionRequestSpec{Params: toParams(tt.params)})
 			if tt.wantErr == "" {
 				if err != nil {
 					t.Fatalf("unexpected error validating params: %v", err)
@@ -204,7 +204,7 @@ func TestValidateParams_Failure(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			resolver := &Resolver{}
-			err := resolver.Validate(context.Background(), &v1beta1.ResolutionRequestSpec{Params: toParams(tc.params)})
+			err := resolver.Validate(t.Context(), &v1beta1.ResolutionRequestSpec{Params: toParams(tc.params)})
 			if err == nil {
 				t.Fatalf("got no error, but expected: %s", tc.expectedErr)
 			}
@@ -218,7 +218,7 @@ func TestValidateParams_Failure(t *testing.T) {
 func TestGetResolutionTimeoutDefault(t *testing.T) {
 	resolver := Resolver{}
 	defaultTimeout := 30 * time.Minute
-	timeout, err := resolver.GetResolutionTimeout(context.Background(), defaultTimeout, map[string]string{})
+	timeout, err := resolver.GetResolutionTimeout(t.Context(), defaultTimeout, map[string]string{})
 	if err != nil {
 		t.Fatalf("couldn't get default-timeout: %v", err)
 	}
@@ -234,7 +234,7 @@ func TestGetResolutionTimeoutCustom(t *testing.T) {
 	config := map[string]string{
 		gitresolution.DefaultTimeoutKey: configTimeout.String(),
 	}
-	ctx := resolutionframework.InjectResolverConfigToContext(context.Background(), config)
+	ctx := resolutionframework.InjectResolverConfigToContext(t.Context(), config)
 	timeout, err := resolver.GetResolutionTimeout(ctx, defaultTimeout, map[string]string{})
 	if err != nil {
 		t.Fatalf("couldn't get default-timeout: %v", err)
@@ -253,7 +253,7 @@ func TestGetResolutionTimeoutCustomIdentifier(t *testing.T) {
 		gitresolution.DefaultTimeoutKey:          configTimeout.String(),
 		"foo." + gitresolution.DefaultTimeoutKey: identifierConfigTImeout.String(),
 	}
-	ctx := resolutionframework.InjectResolverConfigToContext(context.Background(), config)
+	ctx := resolutionframework.InjectResolverConfigToContext(t.Context(), config)
 	timeout, err := resolver.GetResolutionTimeout(ctx, defaultTimeout, map[string]string{"configKey": "foo"})
 	if err != nil {
 		t.Fatalf("couldn't get default-timeout: %v", err)

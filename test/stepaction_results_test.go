@@ -57,7 +57,7 @@ func TestStepResultsStepActions(t *testing.T) {
 
 	for _, td := range tds {
 		t.Run(td.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 

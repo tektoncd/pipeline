@@ -17,7 +17,6 @@ limitations under the License.
 package oci_test
 
 import (
-	"context"
 	"fmt"
 	"net/http/httptest"
 	"net/url"
@@ -167,7 +166,7 @@ func TestOCIResolver(t *testing.T) {
 			}
 
 			resolver := oci.NewResolver(ref, authn.DefaultKeychain)
-			listActual, err := resolver.List(context.Background())
+			listActual, err := resolver.List(t.Context())
 			if tc.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
 					t.Fatalf("expected error containing %q but got: %v", tc.wantErr, err)
@@ -186,7 +185,7 @@ func TestOCIResolver(t *testing.T) {
 			}
 
 			for _, obj := range tc.objs {
-				actual, refSource, err := resolver.Get(context.Background(), strings.ToLower(obj.GetObjectKind().GroupVersionKind().Kind), test.GetObjectName(obj))
+				actual, refSource, err := resolver.Get(t.Context(), strings.ToLower(obj.GetObjectKind().GroupVersionKind().Kind), test.GetObjectName(obj))
 				if err != nil {
 					t.Fatalf("could not retrieve object from image: %#v", err)
 				}

@@ -1,7 +1,6 @@
 package apiserver_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -54,7 +53,7 @@ func TestDryRunCreate_Valid_DifferentGVKs(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			tektonclient := fake.NewSimpleClientset()
-			mutatedObj, err := apiserver.DryRunValidate(context.Background(), "default", tc.obj, tektonclient)
+			mutatedObj, err := apiserver.DryRunValidate(t.Context(), "default", tc.obj, tektonclient)
 			if (err != nil) != tc.wantErr {
 				t.Errorf("wantErr was %t but got err %v", tc.wantErr, err)
 			}
@@ -107,7 +106,7 @@ func TestDryRunCreate_Invalid_DifferentGVKs(t *testing.T) {
 			tektonclient.PrependReactor("create", "stepactions", func(action ktesting.Action) (bool, runtime.Object, error) {
 				return true, nil, apierrors.NewBadRequest("bad request")
 			})
-			_, err := apiserver.DryRunValidate(context.Background(), "default", tc.obj, tektonclient)
+			_, err := apiserver.DryRunValidate(t.Context(), "default", tc.obj, tektonclient)
 			if d := cmp.Diff(tc.wantErr, err, cmpopts.EquateErrors()); d != "" {
 				t.Errorf("wrong error: %s", d)
 			}
@@ -161,7 +160,7 @@ func TestDryRunCreate_DifferentErrTypes(t *testing.T) {
 			tektonclient.PrependReactor("create", "tasks", func(action ktesting.Action) (bool, runtime.Object, error) {
 				return true, nil, tc.webhookErr
 			})
-			_, err := apiserver.DryRunValidate(context.Background(), "default", &v1.Task{}, tektonclient)
+			_, err := apiserver.DryRunValidate(t.Context(), "default", &v1.Task{}, tektonclient)
 			if d := cmp.Diff(tc.wantErr, err, cmpopts.EquateErrors()); d != "" {
 				t.Errorf("wrong error: %s", d)
 			}

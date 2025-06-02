@@ -14,7 +14,6 @@
 package parse
 
 import (
-	"context"
 	"testing"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -83,7 +82,7 @@ kind: Task
 func MustParseV1beta1TaskAndSetDefaults(t *testing.T, yaml string) *v1beta1.Task {
 	t.Helper()
 	task := MustParseV1beta1Task(t, yaml)
-	task.SetDefaults(context.Background())
+	task.SetDefaults(t.Context())
 	return task
 }
 
@@ -113,7 +112,7 @@ kind: Task
 func MustParseV1TaskAndSetDefaults(t *testing.T, yaml string) *v1.Task {
 	t.Helper()
 	task := MustParseV1Task(t, yaml)
-	task.SetDefaults(context.Background())
+	task.SetDefaults(t.Context())
 	return task
 }
 
@@ -154,7 +153,7 @@ kind: Pipeline
 func MustParseV1beta1PipelineAndSetDefaults(t *testing.T, yaml string) *v1beta1.Pipeline {
 	t.Helper()
 	p := MustParseV1beta1Pipeline(t, yaml)
-	p.SetDefaults(context.Background())
+	p.SetDefaults(t.Context())
 	return p
 }
 
@@ -173,7 +172,7 @@ kind: Pipeline
 func MustParseV1PipelineAndSetDefaults(t *testing.T, yaml string) *v1.Pipeline {
 	t.Helper()
 	p := MustParseV1Pipeline(t, yaml)
-	p.SetDefaults(context.Background())
+	p.SetDefaults(t.Context())
 	return p
 }
 

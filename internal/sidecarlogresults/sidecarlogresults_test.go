@@ -18,7 +18,6 @@ package sidecarlogresults
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -544,7 +543,7 @@ func TestGetResultsFromSidecarLogs(t *testing.T) {
 		wantError: true,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			clientset := fakekubeclientset.NewSimpleClientset()
 			pod := &corev1.Pod{
 				TypeMeta: metav1.TypeMeta{
@@ -567,7 +566,7 @@ func TestGetResultsFromSidecarLogs(t *testing.T) {
 					Phase: c.podPhase,
 				},
 			}
-			pod, err := clientset.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+			pod, err := clientset.CoreV1().Pods(pod.Namespace).Create(t.Context(), pod, metav1.CreateOptions{})
 			if err != nil {
 				t.Errorf("Error occurred while creating pod %s: %s", pod.Name, err.Error())
 			}

@@ -49,7 +49,7 @@ const sleepDuration = 15 * time.Second
 //	                            |
 //	                     pipeline-task-4
 func TestDAGPipelineRun(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)

@@ -17,7 +17,6 @@ limitations under the License.
 package pipelinerun
 
 import (
-	"context"
 	"regexp"
 	"strings"
 	"testing"
@@ -563,7 +562,7 @@ metadata:
 
 	for _, tc := range tcs {
 		t.Run(tc.prName, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			cfg := config.NewStore(logtesting.TestLogger(t))
 
 			ctx = cfg.ToContext(ctx)
@@ -659,7 +658,7 @@ func TestValidateChildObjectsInPipelineRunStatus(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			cfg := config.NewStore(logtesting.TestLogger(t))
 			cfg.OnConfigChanged(&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},

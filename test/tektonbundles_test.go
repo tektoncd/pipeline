@@ -54,7 +54,7 @@ var resolverFeatureFlags = requireAllGates(map[string]string{
 // TestTektonBundlesResolver is an integration test which tests a simple, working Tekton bundle using OCI
 // images using the remote resolution bundles resolver.
 func TestTektonBundlesResolver(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	c, namespace := setup(ctx, t, withRegistry, resolverFeatureFlags)
 
 	t.Parallel()

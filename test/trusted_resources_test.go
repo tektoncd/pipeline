@@ -56,7 +56,7 @@ func init() {
 }
 
 func TestTrustedResourcesVerify_VerificationPolicy_Success(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -170,7 +170,7 @@ spec:
 }
 
 func TestTrustedResourcesVerify_VerificationPolicy_Error(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 

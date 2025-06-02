@@ -17,7 +17,6 @@ limitations under the License.
 package pod
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -2645,7 +2644,7 @@ _EOF_
 				KubeClient:      kubeclient,
 				EntrypointCache: entrypointCache,
 			}
-			got, err := builder.Build(store.ToContext(context.Background()), tr, c.ts)
+			got, err := builder.Build(store.ToContext(t.Context()), tr, c.ts)
 			if err != nil {
 				t.Fatalf("builder.Build: %v", err)
 			}
@@ -2852,7 +2851,7 @@ debug-fail-continue-heredoc-randomly-generated-mz4c7
 				EntrypointCache: entrypointCache,
 			}
 
-			got, err := builder.Build(store.ToContext(context.Background()), tr, c.ts)
+			got, err := builder.Build(store.ToContext(t.Context()), tr, c.ts)
 			if err != nil {
 				t.Fatalf("builder.Build: %v", err)
 			}
@@ -3058,7 +3057,7 @@ func TestPodBuild_TaskLevelResourceRequirements(t *testing.T) {
 				Spec: tc.trs,
 			}
 
-			gotPod, err := builder.Build(store.ToContext(context.Background()), tr, tc.ts)
+			gotPod, err := builder.Build(store.ToContext(t.Context()), tr, tc.ts)
 			if err != nil {
 				t.Fatalf("builder.Build: %v", err)
 			}
@@ -3210,7 +3209,7 @@ func TestPodBuildwithSpireEnabled(t *testing.T) {
 				EntrypointCache: entrypointCache,
 			}
 
-			got, err := builder.Build(store.ToContext(context.Background()), tr, c.ts)
+			got, err := builder.Build(store.ToContext(t.Context()), tr, c.ts)
 			if err != nil {
 				t.Fatalf("builder.Build: %v", err)
 			}
@@ -3768,7 +3767,7 @@ func TestPodBuildWithK8s129(t *testing.T) {
 		KubeClient:      kubeclient,
 		EntrypointCache: entrypointCache,
 	}
-	got, err := builder.Build(store.ToContext(context.Background()), tr, ts)
+	got, err := builder.Build(store.ToContext(t.Context()), tr, ts)
 	if err != nil {
 		t.Errorf("Pod build failed: %s", err)
 	}

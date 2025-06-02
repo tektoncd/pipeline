@@ -135,7 +135,7 @@ func TestPipelineTask_OnError(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if tt.wc != nil {
 				ctx = tt.wc(ctx)
 			}
@@ -347,7 +347,7 @@ func TestPipelineTask_ValidateRefOrSpec(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if tt.wc != nil {
 				ctx = tt.wc(ctx)
 			}
@@ -422,7 +422,7 @@ func TestPipelineTask_ValidateRefOrSpec_APIVersionsCompatibility(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if test.wc != nil {
 				ctx = test.wc(ctx)
 			}
@@ -558,7 +558,7 @@ func TestPipelineTask_ValidateRegularTask_Success(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := cfgtesting.SetFeatureFlags(context.Background(), t, tt.configMap)
+			ctx := cfgtesting.SetFeatureFlags(t.Context(), t, tt.configMap)
 			err := tt.tasks.validateTask(ctx)
 			if err != nil {
 				t.Errorf("PipelineTask.validateTask() returned error for valid pipeline task: %v", err)
@@ -669,7 +669,7 @@ func TestPipelineTask_ValidateRegularTask_Failure(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := cfgtesting.SetFeatureFlags(context.Background(), t, tt.configMap)
+			ctx := cfgtesting.SetFeatureFlags(t.Context(), t, tt.configMap)
 			err := tt.task.validateTask(ctx)
 			if err == nil {
 				t.Error("PipelineTask.validateTask() did not return error for invalid pipeline task")
@@ -719,7 +719,7 @@ func TestPipelineTask_Validate_Failure(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if tt.wc != nil {
 				ctx = tt.wc(ctx)
 			}
@@ -1127,7 +1127,7 @@ func TestPipelineTask_ValidateMatrix(t *testing.T) {
 				FeatureFlags: featureFlags,
 				Defaults:     defaults,
 			}
-			ctx := config.ToContext(context.Background(), cfg)
+			ctx := config.ToContext(t.Context(), cfg)
 			if d := cmp.Diff(tt.wantErrs.Error(), tt.pt.validateMatrix(ctx).Error()); d != "" {
 				t.Errorf("PipelineTask.validateMatrix() errors diff %s", diff.PrintWantGot(d))
 			}

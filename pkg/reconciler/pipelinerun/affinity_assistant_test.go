@@ -350,7 +350,7 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerPipelineRun(t *testing.T) {
 			}
 
 			kubeClientSet := fakek8s.NewSimpleClientset()
-			ctx := cfgtesting.SetFeatureFlags(context.Background(), t, featureFlags)
+			ctx := cfgtesting.SetFeatureFlags(t.Context(), t, featureFlags)
 			c := Reconciler{
 				KubeClientSet: kubeClientSet,
 				pvcHandler:    volumeclaim.NewPVCHandler(kubeClientSet, zap.NewExample().Sugar()),
@@ -510,7 +510,7 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerWorkspaceOrDisabled(t *testin
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			kubeClientSet := fakek8s.NewSimpleClientset()
 			c := Reconciler{
 				KubeClientSet: kubeClientSet,
@@ -586,7 +586,7 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCs_Failure(t *testing.T) {
 	}}
 
 	for _, tc := range testCases {
-		ctx := context.Background()
+		ctx := t.Context()
 		kubeClientSet := fakek8s.NewSimpleClientset()
 		c := Reconciler{
 			KubeClientSet: kubeClientSet,
@@ -1069,7 +1069,7 @@ func TestCleanupAffinityAssistants_Success(t *testing.T) {
 		}
 
 		_, c, _ := seedTestData(data)
-		ctx := cfgtesting.SetFeatureFlags(context.Background(), t, tc.cfgMap)
+		ctx := cfgtesting.SetFeatureFlags(t.Context(), t, tc.cfgMap)
 
 		// mocks `kubernetes.io/pvc-protection` finalizer behavior by adding DeletionTimestamp when deleting pvcs with the finalizer
 		// see details in: https://kubernetes.io/docs/concepts/overview/working-with-objects/finalizers/#how-finalizers-work
@@ -1130,7 +1130,7 @@ func TestCleanupAffinityAssistantsAndPVCs_Failure(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	c := Reconciler{
 		KubeClientSet: fakek8s.NewSimpleClientset(),
 	}
@@ -1174,7 +1174,7 @@ func TestThatCleanupIsAvoided(t *testing.T) {
 	store := config.NewStore(logtesting.TestLogger(t))
 	store.OnConfigChanged(configMap)
 
-	_ = c.cleanupAffinityAssistantsAndPVCs(store.ToContext(context.Background()), testPRWithPVC)
+	_ = c.cleanupAffinityAssistantsAndPVCs(store.ToContext(t.Context()), testPRWithPVC)
 
 	if len(fakeClientSet.Actions()) != 0 {
 		t.Errorf("Expected 0 k8s client requests, did %d request", len(fakeClientSet.Actions()))

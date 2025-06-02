@@ -58,7 +58,7 @@ const (
 
 func TestGetSelector(t *testing.T) {
 	resolver := bundle.Resolver{}
-	sel := resolver.GetSelector(context.Background())
+	sel := resolver.GetSelector(t.Context())
 	if typ, has := sel[resolutioncommon.LabelKeyResolverType]; !has {
 		t.Fatalf("unexpected selector: %v", sel)
 	} else if typ != bundle.LabelValueBundleResolverType {
@@ -71,7 +71,7 @@ func TestValidateParamsSecret(t *testing.T) {
 	config := map[string]string{
 		bundleresolution.ConfigServiceAccount: "default",
 	}
-	ctx := framework.InjectResolverConfigToContext(context.Background(), config)
+	ctx := framework.InjectResolverConfigToContext(t.Context(), config)
 
 	paramsWithTask := []pipelinev1.Param{{
 		Name:  bundleresolution.ParamKind,
@@ -115,7 +115,7 @@ func TestValidateParamsServiceAccount(t *testing.T) {
 	config := map[string]string{
 		bundleresolution.ConfigServiceAccount: "default",
 	}
-	ctx := framework.InjectResolverConfigToContext(context.Background(), config)
+	ctx := framework.InjectResolverConfigToContext(t.Context(), config)
 
 	paramsWithTask := []pipelinev1.Param{{
 		Name:  bundleresolution.ParamKind,
@@ -149,7 +149,7 @@ func TestValidateParamsServiceAccount(t *testing.T) {
 		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 	req = v1beta1.ResolutionRequestSpec{Params: paramsWithPipeline}
-	if err := resolver.Validate(context.Background(), &req); err != nil {
+	if err := resolver.Validate(t.Context(), &req); err != nil {
 		t.Fatalf("unexpected error validating params: %v", err)
 	}
 }
@@ -199,7 +199,7 @@ func TestValidateMissing(t *testing.T) {
 		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 	req := v1beta1.ResolutionRequestSpec{Params: paramsMissingBundle}
-	err = resolver.Validate(context.Background(), &req)
+	err = resolver.Validate(t.Context(), &req)
 	if err == nil {
 		t.Fatalf("expected missing kind err")
 	}
@@ -215,7 +215,7 @@ func TestValidateMissing(t *testing.T) {
 		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 	req = v1beta1.ResolutionRequestSpec{Params: paramsMissingName}
-	err = resolver.Validate(context.Background(), &req)
+	err = resolver.Validate(t.Context(), &req)
 	if err == nil {
 		t.Fatalf("expected missing name err")
 	}

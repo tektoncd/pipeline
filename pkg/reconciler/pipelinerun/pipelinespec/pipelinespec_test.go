@@ -57,7 +57,7 @@ func TestGetPipelineSpec_Ref(t *testing.T) {
 	gt := func(ctx context.Context, n string) (*v1.Pipeline, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return pipeline, nil, nil, nil
 	}
-	resolvedObjectMeta, pipelineSpec, err := pipelinespec.GetPipelineData(context.Background(), pr, gt)
+	resolvedObjectMeta, pipelineSpec, err := pipelinespec.GetPipelineData(t.Context(), pr, gt)
 
 	if err != nil {
 		t.Fatalf("Did not expect error getting pipeline spec but got: %s", err)
@@ -95,7 +95,7 @@ func TestGetPipelineSpec_Embedded(t *testing.T) {
 	gt := func(ctx context.Context, n string) (*v1.Pipeline, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return nil, nil, nil, errors.New("shouldn't be called")
 	}
-	resolvedObjectMeta, pipelineSpec, err := pipelinespec.GetPipelineData(context.Background(), pr, gt)
+	resolvedObjectMeta, pipelineSpec, err := pipelinespec.GetPipelineData(t.Context(), pr, gt)
 
 	if err != nil {
 		t.Fatalf("Did not expect error getting pipeline spec but got: %s", err)
@@ -123,7 +123,7 @@ func TestGetPipelineSpec_Invalid(t *testing.T) {
 	gt := func(ctx context.Context, n string) (*v1.Pipeline, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return nil, nil, nil, errors.New("shouldn't be called")
 	}
-	_, _, err := pipelinespec.GetPipelineData(context.Background(), tr, gt)
+	_, _, err := pipelinespec.GetPipelineData(t.Context(), tr, gt)
 	if err == nil {
 		t.Fatalf("Expected error resolving spec with no embedded or referenced pipeline spec but didn't get error")
 	}
@@ -216,7 +216,7 @@ func TestGetPipelineData_ResolutionSuccess(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := cfgtesting.SetDefaults(context.Background(), t, tc.defaults)
+			ctx := cfgtesting.SetDefaults(t.Context(), t, tc.defaults)
 			getPipeline := func(ctx context.Context, n string) (*v1.Pipeline, *v1.RefSource, *trustedresources.VerificationResult, error) {
 				return &v1.Pipeline{
 					ObjectMeta: *tc.sourceMeta.DeepCopy(),
@@ -256,7 +256,7 @@ func TestGetPipelineSpec_Error(t *testing.T) {
 	gt := func(ctx context.Context, n string) (*v1.Pipeline, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return nil, nil, nil, errors.New("something went wrong")
 	}
-	_, _, err := pipelinespec.GetPipelineData(context.Background(), tr, gt)
+	_, _, err := pipelinespec.GetPipelineData(t.Context(), tr, gt)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Pipeline but got none")
 	}
@@ -278,7 +278,7 @@ func TestGetPipelineData_ResolutionError(t *testing.T) {
 	getPipeline := func(ctx context.Context, n string) (*v1.Pipeline, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return nil, nil, nil, errors.New("something went wrong")
 	}
-	ctx := context.Background()
+	ctx := t.Context()
 	_, _, err := pipelinespec.GetPipelineData(ctx, pr, getPipeline)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Pipeline but got none")
@@ -301,7 +301,7 @@ func TestGetPipelineData_ResolvedNilPipeline(t *testing.T) {
 	getPipeline := func(ctx context.Context, n string) (*v1.Pipeline, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return nil, nil, nil, nil
 	}
-	ctx := context.Background()
+	ctx := t.Context()
 	_, _, err := pipelinespec.GetPipelineData(ctx, pr, getPipeline)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Pipeline but got none")
