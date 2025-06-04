@@ -1054,7 +1054,7 @@ spec:
 			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
 
-			wantEvents := append(tc.wantEvents, "Warning InternalError 1 error occurred") //nolint:gocritic
+			wantEvents := append(tc.wantEvents, "Warning InternalError") //nolint:gocritic
 			reconciledRun, _ := prt.reconcileRun("foo", tc.pipelineRun.Name, wantEvents, tc.permanentError)
 
 			if reconciledRun.Status.CompletionTime == nil {
@@ -3555,7 +3555,7 @@ spec:
 			// See https://github.com/tektoncd/pipeline/issues/2647 for further details.
 			wantEvents := []string{
 				"Normal PipelineRunCouldntCancel PipelineRun \"test-pipeline-fails-to-cancel\" was cancelled but had errors trying to cancel TaskRuns",
-				"Warning InternalError 1 error occurred",
+				"Warning InternalError",
 			}
 			err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, prName, wantEvents)
 			if err != nil {
@@ -3673,7 +3673,7 @@ spec:
 	// See https://github.com/tektoncd/pipeline/issues/2647 for further details.
 	wantEvents := []string{
 		"Normal PipelineRunCouldntTimeOut PipelineRun \"test-pipeline-fails-to-timeout\" was timed out but had errors trying to time out TaskRuns and/or Runs",
-		"Warning InternalError 1 error occurred",
+		"Warning InternalError",
 	}
 	err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, prName, wantEvents)
 	if err != nil {
@@ -13947,7 +13947,7 @@ spec:
 			wantEvents := []string{
 				"Normal Started",
 				"Warning Failed [User error] PipelineRun foo/pr can't be Run; couldn't resolve all references: array Result Index 3 for Task pt-with-result Result platforms is out of bound of size 3",
-				"Warning InternalError 1 error occurred:",
+				"Warning InternalError",
 			}
 			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
@@ -16939,7 +16939,7 @@ spec:
 		"Normal Started ",
 		"Warning TaskRunsCreationFailed Failed to create TaskRuns [\"test-pipeline-run-with-create-run-failed-hello-world\"]: expected workspace \"source\" to be provided by pipelinerun for pipeline task \"hello-world\"",
 		"Warning Failed expected workspace \"source\" to be provided by pipelinerun for pipeline task \"hello-world\"",
-		"Warning InternalError 1 error occurred:\n\t* error creating TaskRuns called [test-pipeline-run-with-create-run-failed-hello-world] for PipelineTask hello-world from PipelineRun test-pipeline-run-with-create-run-failed: expected workspace \"source\" to be provided by pipelinerun for pipeline task \"hello-world\"\n\n",
+		"Warning InternalError error creating TaskRuns called [test-pipeline-run-with-create-run-failed-hello-world] for PipelineTask hello-world from PipelineRun test-pipeline-run-with-create-run-failed: expected workspace \"source\" to be provided by pipelinerun for pipeline task \"hello-world\"",
 	}
 	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-with-create-run-failed", wantEvents, true /* permanentError */)
 
