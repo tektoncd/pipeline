@@ -10,7 +10,7 @@ require (
 	github.com/google/go-containerregistry v0.20.5
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/hashicorp/go-multierror v1.1.1
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru v1.0.2
 	github.com/jenkins-x/go-scm v1.14.58
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
