@@ -1627,7 +1627,7 @@ status:
     startTime: "2021-12-31T23:59:59Z"
     completionTime: "2022-01-01T00:00:00Z"
 `)
-		prepareError                    = errors.New("1 error occurred:\n\t* error when listing tasks for taskRun test-taskrun-run-retry-prepare-failure: tasks.tekton.dev \"test-task\" not found")
+		prepareError                    = errors.New("error when listing tasks for taskRun test-taskrun-run-retry-prepare-failure: tasks.tekton.dev \"test-task\" not found")
 		toFailOnReconcileFailureTaskRun = parse.MustParseV1TaskRun(t, `
 metadata:
   name: test-taskrun-results-type-mismatched
@@ -1692,7 +1692,7 @@ status:
       coschedule: "workspaces"
       disableInlineSpec: ""
 `, pipelineErrors.UserErrorLabel, pipelineErrors.UserErrorLabel))
-		reconciliatonError = errors.New("1 error occurred:\n\t* Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\"")
+		reconciliatonError = errors.New("Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\"")
 		toBeRetriedTaskRun = parse.MustParseV1TaskRun(t, `
 metadata:
   name: test-taskrun-to-be-retried
@@ -6218,7 +6218,7 @@ spec:
 		}},
 	}
 
-	expectedErr := errors.New("1 error occurred:\n\t* param `param1` value: invalid is not in the enum list")
+	expectedErr := errors.New("param `param1` value: invalid is not in the enum list")
 	expectedFailureReason := "InvalidParamValue"
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
@@ -6380,13 +6380,13 @@ status:
 		name:             "taskrun results type mismatched",
 		taskRun:          taskRunResultsTypeMismatched,
 		wantFailedReason: v1.TaskRunReasonFailedValidation.String(),
-		expectedError:    errors.New("1 error occurred:\n\t* Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\", \"objectResult\": task result is expected to be \"object\" type but was initialized to a different type \"string\""),
+		expectedError:    errors.New("Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\", \"objectResult\": task result is expected to be \"object\" type but was initialized to a different type \"string\""),
 		expectedResults:  nil,
 	}, {
 		name:             "taskrun results object miss key",
 		taskRun:          taskRunResultsObjectMissKey,
 		wantFailedReason: v1.TaskRunReasonFailedValidation.String(),
-		expectedError:    errors.New("1 error occurred:\n\t* missing keys for these results which are required in TaskResult's properties map[objectResult:[commit]]"),
+		expectedError:    errors.New("missing keys for these results which are required in TaskResult's properties map[objectResult:[commit]]"),
 		expectedResults: []v1.TaskRunResult{
 			{
 				Name:  "aResult",
