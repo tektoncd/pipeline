@@ -621,7 +621,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 			if err := c.pvcHandler.CreatePVCFromVolumeClaimTemplate(ctx, ws, *kmeta.NewControllerRef(tr), tr.Namespace); err != nil {
 				logger.Errorf("Failed to create PVC for TaskRun %s: %v", tr.Name, err)
 				tr.Status.MarkResourceFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
-					fmt.Errorf("Failed to create PVC for TaskRun %s workspaces correctly: %w",
+					fmt.Errorf("failed to create PVC for TaskRun %s workspaces correctly: %w",
 						fmt.Sprintf("%s/%s", tr.Namespace, tr.Name), err))
 				return controller.NewPermanentError(err)
 			}
