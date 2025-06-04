@@ -251,6 +251,7 @@ func TestPurgeFinalizerAndDeletePVCForWorkspace(t *testing.T) {
 	// seed data
 	namespace := "my-ns"
 	pvcName := "my-pvc"
+	nonExistingPvcName := "non-existing-pvc"
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pvcName,
@@ -279,6 +280,10 @@ func TestPurgeFinalizerAndDeletePVCForWorkspace(t *testing.T) {
 	pvcHandler := defaultPVCHandler{kubeClientSet, zap.NewExample().Sugar()}
 	if err := pvcHandler.PurgeFinalizerAndDeletePVCForWorkspace(ctx, pvcName, namespace); err != nil {
 		t.Fatalf("unexpected error when calling PurgeFinalizerAndDeletePVCForWorkspace: %v", err)
+	}
+	// check that pvc deletion is skipped when the pvc does not exist
+	if err := pvcHandler.PurgeFinalizerAndDeletePVCForWorkspace(ctx, nonExistingPvcName, namespace); err != nil {
+		t.Fatalf("the deletion of non existing pvc %s was not skipped; an unexpected error occurred: %v", nonExistingPvcName, err)
 	}
 
 	// validate the `kubernetes.io/pvc-protection` finalizer is removed
