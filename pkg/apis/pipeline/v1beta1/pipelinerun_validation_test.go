@@ -522,6 +522,27 @@ func TestPipelineRun_Invalid(t *testing.T) {
 		},
 		want: &apis.FieldError{Message: "must not set the field(s)", Paths: []string{"spec.pipelineRef.bundle"}},
 		wc:   apis.WithinCreate,
+	}, {
+		name: "when pipeline timeout is no timeout (0s), task timeouts can exceed it without error",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 0 * time.Minute}, // No timeout
+				},
+				TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{{
+					PipelineTaskName:       "task1",
+					TaskPodTemplate:        &pod.PodTemplate{},
+					TaskServiceAccountName: "default",
+				}},
+			},
+		},
+		want: nil, // No error expected when pipeline has no timeout
 	}}
 
 	for _, tc := range tests {
@@ -531,7 +552,11 @@ func TestPipelineRun_Invalid(t *testing.T) {
 				ctx = tc.wc(ctx)
 			}
 			err := tc.pr.Validate(ctx)
-			if d := cmp.Diff(tc.want.Error(), err.Error()); d != "" {
+			if tc.want == nil {
+				if err != nil {
+					t.Errorf("Expected no error but got: %v", err)
+				}
+			} else if d := cmp.Diff(tc.want.Error(), err.Error()); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
 		})
@@ -1530,13 +1555,38 @@ func TestPipelineRun_InvalidTimeouts(t *testing.T) {
 			},
 		},
 		want: apis.ErrDisallowedFields("spec.timeout", "spec.timeouts"),
+	}, {
+		name: "when pipeline timeout is no timeout (0s), task timeouts can exceed it without error",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 0 * time.Minute}, // No timeout
+				},
+				TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{{
+					PipelineTaskName:       "task1",
+					TaskPodTemplate:        &pod.PodTemplate{},
+					TaskServiceAccountName: "default",
+				}},
+			},
+		},
+		want: nil, // No error expected when pipeline has no timeout
 	}}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 			err := tc.pr.Validate(ctx)
-			if d := cmp.Diff(tc.want.Error(), err.Error()); d != "" {
+			if tc.want == nil {
+				if err != nil {
+					t.Errorf("Expected no error but got: %v", err)
+				}
+			} else if d := cmp.Diff(tc.want.Error(), err.Error()); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
 		})

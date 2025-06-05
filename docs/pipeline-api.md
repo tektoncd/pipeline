@@ -3322,6 +3322,21 @@ Kubernetes core/v1.ResourceRequirements
 <p>Compute resources to use for this TaskRun</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>timeout</code><br/>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time after which the TaskRun times out.
+Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.PipelineTaskRunTemplate">PipelineTaskRunTemplate
