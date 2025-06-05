@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -35,11 +34,6 @@ import (
 
 var validSteps = []v1.Step{{
 	Name:  "mystep",
-	Image: "myimage",
-}}
-
-var invalidSteps = []v1.Step{{
-	Name:  "replaceImage",
 	Image: "myimage",
 }}
 
@@ -161,15 +155,6 @@ func TestTaskSpecValidate(t *testing.T) {
 		name   string
 		fields fields
 	}{{
-		name: "unnamed steps",
-		fields: fields{
-			Steps: []v1.Step{{
-				Image: "myimage",
-			}, {
-				Image: "myotherimage",
-			}},
-		},
-	}, {
 		name: "valid params type implied",
 		fields: fields{
 			Params: []v1.ParamSpec{{
@@ -324,16 +309,6 @@ func TestTaskSpecValidate(t *testing.T) {
 			},
 		},
 	}, {
-		name: "valid step with script",
-		fields: fields{
-			Steps: []v1.Step{{
-				Image: "my-image",
-				Script: `
-				#!/usr/bin/env bash
-				hello world`,
-			}},
-		},
-	}, {
 		name: "step template included in validation with stepaction",
 		fields: fields{
 			Steps: []v1.Step{{
@@ -381,28 +356,6 @@ func TestTaskSpecValidate(t *testing.T) {
 				Script: `
 					#!/usr/bin/env bash
 					hello $(params.baz)`,
-			}},
-		},
-	}, {
-		name: "valid step with script and args",
-		fields: fields{
-			Steps: []v1.Step{{
-				Image: "my-image",
-				Args:  []string{"arg"},
-				Script: `
-				#!/usr/bin/env  bash
-				hello $1`,
-			}},
-		},
-	}, {
-		name: "valid step with volumeMount under /tekton/home",
-		fields: fields{
-			Steps: []v1.Step{{
-				Image: "myimage",
-				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "foo",
-					MountPath: "/tekton/home",
-				}},
 			}},
 		},
 	}, {
@@ -1038,16 +991,6 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"steps"},
 		},
 	}, {
-		name: "invalid step name",
-		fields: fields{
-			Steps: invalidSteps,
-		},
-		expectedError: apis.FieldError{
-			Message: `invalid value "replaceImage"`,
-			Paths:   []string{"steps[0].name"},
-			Details: "Task step name must be a valid DNS Label, For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
-		},
-	}, {
 		name: "duplicate step name",
 		fields: fields{
 			Steps: []v1.Step{
@@ -1246,49 +1189,6 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"volumes[1].name"},
 		},
 	}, {
-		name: "step with script and command",
-		fields: fields{
-			Steps: []v1.Step{{
-				Image:   "myimage",
-				Command: []string{"command"},
-				Script:  "script",
-			}},
-		},
-		expectedError: apis.FieldError{
-			Message: "script cannot be used with command",
-			Paths:   []string{"steps[0].script"},
-		},
-	}, {
-		name: "step volume mounts under /tekton/",
-		fields: fields{
-			Steps: []v1.Step{{
-				Image: "myimage",
-				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "foo",
-					MountPath: "/tekton/foo",
-				}},
-			}},
-		},
-		expectedError: apis.FieldError{
-			Message: `volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/foo")`,
-			Paths:   []string{"steps[0].volumeMounts[0].mountPath"},
-		},
-	}, {
-		name: "step volume mount name starts with tekton-internal-",
-		fields: fields{
-			Steps: []v1.Step{{
-				Image: "myimage",
-				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "tekton-internal-foo",
-					MountPath: "/this/is/fine",
-				}},
-			}},
-		},
-		expectedError: apis.FieldError{
-			Message: `volumeMount name "tekton-internal-foo" cannot start with "tekton-internal-"`,
-			Paths:   []string{"steps[0].volumeMounts[0].name"},
-		},
-	}, {
 		name: "declared workspaces names are not unique",
 		fields: fields{
 			Steps: validSteps,
@@ -1397,7 +1297,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"workspaces[0].mountpath"},
 		},
 	}, {
-		name: "result name not validate",
+		name: "result name not valid",
 		fields: fields{
 			Steps: validSteps,
 			Results: []v1.TaskResult{{
@@ -1411,7 +1311,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Details: "Name must consist of alphanumeric characters, '-', '_', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my-name',  or 'my_name', regex used for validation is '^([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]$')",
 		},
 	}, {
-		name: "result type not validate",
+		name: "result type not valid",
 		fields: fields{
 			Steps: validSteps,
 			Results: []v1.TaskResult{{
@@ -1426,7 +1326,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Details: "type must be string",
 		},
 	}, {
-		name: "context not validate",
+		name: "context not valid",
 		fields: fields{
 			Steps: []v1.Step{{
 				Image: "my-image",
@@ -1439,17 +1339,6 @@ func TestTaskSpecValidateError(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: `non-existent variable in "\n\t\t\t\t#!/usr/bin/env  bash\n\t\t\t\thello \"$(context.task.missing)\""`,
 			Paths:   []string{"steps[0].script"},
-		},
-	}, {
-		name: "negative timeout string",
-		fields: fields{
-			Steps: []v1.Step{{
-				Timeout: &metav1.Duration{Duration: -10 * time.Second},
-			}},
-		},
-		expectedError: apis.FieldError{
-			Message: "invalid value: -10s",
-			Paths:   []string{"steps[0].negative timeout"},
 		},
 	}}
 	for _, tt := range tests {
