@@ -18,7 +18,6 @@ package pod
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -105,9 +104,9 @@ func TestSetTaskRunStatusBasedOnStepStatus(t *testing.T) {
 			for _, cs := range c.ContainerStatuses {
 				originalStatuses = append(originalStatuses, *cs.DeepCopy())
 			}
-			merr := setTaskRunStatusBasedOnStepStatus(context.Background(), logger, c.ContainerStatuses, &tr, corev1.PodRunning, kubeclient, &v1.TaskSpec{})
-			if merr != nil {
-				t.Errorf("setTaskRunStatusBasedOnStepStatus: %s", merr)
+			gotErr := setTaskRunStatusBasedOnStepStatus(t.Context(), logger, c.ContainerStatuses, &tr, corev1.PodRunning, kubeclient, &v1.TaskSpec{})
+			if gotErr != nil {
+				t.Errorf("setTaskRunStatusBasedOnStepStatus: %s", gotErr)
 			}
 			if d := cmp.Diff(originalStatuses, c.ContainerStatuses); d != "" {
 				t.Errorf("container statuses changed:  %s", diff.PrintWantGot(d))
@@ -238,12 +237,11 @@ func TestSetTaskRunStatusBasedOnStepStatus_sidecar_logs(t *testing.T) {
 			ctx := config.ToContext(context.Background(), &config.Config{
 				FeatureFlags: featureFlags,
 			})
-			wantErr := errors.Join(c.wantErr)
-			merr := setTaskRunStatusBasedOnStepStatus(ctx, logger, []corev1.ContainerStatus{{}}, &c.tr, pod.Status.Phase, kubeclient, ts)
-			if merr == nil {
+			gotErr := setTaskRunStatusBasedOnStepStatus(ctx, logger, []corev1.ContainerStatus{{}}, &c.tr, pod.Status.Phase, kubeclient, ts)
+			if gotErr == nil {
 				t.Fatalf("Expected error but got nil")
 			}
-			if d := cmp.Diff(wantErr.Error(), merr.Error()); d != "" {
+			if d := cmp.Diff(c.wantErr.Error(), gotErr.Error()); d != "" {
 				t.Errorf("Got unexpected error  %s", diff.PrintWantGot(d))
 			}
 		})
