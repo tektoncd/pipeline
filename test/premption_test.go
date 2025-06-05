@@ -36,7 +36,7 @@ import (
 // TestTaskRunPremption tests that Taskrun can run again
 // after its pod has been prempted before completion.
 func TestTaskRunPremption(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)

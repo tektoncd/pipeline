@@ -14,7 +14,6 @@ limitations under the License.
 package v1beta1_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -85,7 +84,7 @@ func TestTaskResult_SetDefaults(t *testing.T) {
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			tc.before.SetDefaults(ctx)
 			if d := cmp.Diff(tc.after, tc.before); d != "" {
 				t.Error(diff.PrintWantGot(d))

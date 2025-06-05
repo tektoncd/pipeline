@@ -17,7 +17,6 @@ limitations under the License.
 package v1beta1_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -181,7 +180,7 @@ func TestCustomRun_Invalid(t *testing.T) {
 		want: apis.ErrMultipleOneOf("spec.params[foo].name"),
 	}} {
 		t.Run(c.name, func(t *testing.T) {
-			err := c.customRun.Validate(context.Background())
+			err := c.customRun.Validate(t.Context())
 			if d := cmp.Diff(c.want.Error(), err.Error()); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
@@ -289,7 +288,7 @@ func TestRun_Valid(t *testing.T) {
 		},
 	}} {
 		t.Run(c.name, func(t *testing.T) {
-			if err := c.customRun.Validate(context.Background()); err != nil {
+			if err := c.customRun.Validate(t.Context()); err != nil {
 				t.Fatalf("validating valid customRun: %v", err)
 			}
 		})
@@ -345,7 +344,7 @@ func TestRun_Workspaces_Invalid(t *testing.T) {
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			err := ts.customRun.Validate(context.Background())
+			err := ts.customRun.Validate(t.Context())
 			if err == nil {
 				t.Errorf("Expected error for invalid customRun but got none")
 			} else if d := cmp.Diff(ts.wantErr.Error(), err.Error()); d != "" {

@@ -33,7 +33,7 @@ import (
 )
 
 func TestWorkingDirCreated(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)
@@ -106,7 +106,7 @@ spec:
 }
 
 func TestWorkingDirIgnoredNonSlashWorkspace(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)

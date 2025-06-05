@@ -39,21 +39,18 @@ func TestRealWaiterWaitMissingFile(t *testing.T) {
 	}
 	os.Remove(tmp.Name())
 	rw := realWaiter{}
-	doneCh := make(chan struct{})
+	errCh := make(chan error)
 	go func() {
-		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(context.Background(), tmp.Name(), false, false)
-		if err != nil {
-			t.Errorf("error waiting on tmp file %q", tmp.Name())
-		}
-		close(doneCh)
+		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(t.Context(), tmp.Name(), false, false)
+		errCh <- err
 	}()
 
 	delay := time.NewTimer(2 * testWaitPollingInterval)
 	select {
 	case <-delay.C:
 		// Success
-	case <-doneCh:
-		t.Errorf("did not expect Wait() to have detected a file at path %q", tmp.Name())
+	case err := <-errCh:
+		t.Errorf("did not expect Wait() to have detected a file at path %q, err: %v", tmp.Name(), err)
 		if !delay.Stop() {
 			<-delay.C
 		}
@@ -69,7 +66,7 @@ func TestRealWaiterWaitWithFile(t *testing.T) {
 	rw := realWaiter{}
 	doneCh := make(chan struct{})
 	go func() {
-		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(context.Background(), tmp.Name(), false, false)
+		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(t.Context(), tmp.Name(), false, false)
 		if err != nil {
 			t.Errorf("error waiting on tmp file %q", tmp.Name())
 		}
@@ -91,20 +88,19 @@ func TestRealWaiterWaitMissingContent(t *testing.T) {
 	}
 	defer os.Remove(tmp.Name())
 	rw := realWaiter{}
-	doneCh := make(chan struct{})
+	errCh := make(chan error)
 	go func() {
-		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(context.Background(), tmp.Name(), true, false)
-		if err != nil {
-			t.Errorf("error waiting on tmp file %q", tmp.Name())
-		}
-		close(doneCh)
+		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(t.Context(), tmp.Name(), true, false)
+		errCh <- err
 	}()
 	delay := time.NewTimer(2 * testWaitPollingInterval)
 	select {
 	case <-delay.C:
 		// Success
-	case <-doneCh:
-		t.Errorf("no data was written to tmp file, did not expect Wait() to have detected a non-zero file size and returned")
+	case err := <-errCh:
+		if err == nil {
+			t.Errorf("no data was written to tmp file, did not expect Wait() to have detected a non-zero file size and returned")
+		}
 		if !delay.Stop() {
 			<-delay.C
 		}
@@ -120,7 +116,7 @@ func TestRealWaiterWaitWithContent(t *testing.T) {
 	rw := realWaiter{}
 	doneCh := make(chan struct{})
 	go func() {
-		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(context.Background(), tmp.Name(), true, false)
+		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(t.Context(), tmp.Name(), true, false)
 		if err != nil {
 			t.Errorf("error waiting on tmp file %q", tmp.Name())
 		}
@@ -149,7 +145,7 @@ func TestRealWaiterWaitWithErrorWaitfile(t *testing.T) {
 	doneCh := make(chan struct{})
 	go func() {
 		// error of type skipError is returned after encountering a error waitfile
-		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(context.Background(), tmpFileName, false, false)
+		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(t.Context(), tmpFileName, false, false)
 		if err == nil {
 			t.Errorf("expected skipError upon encounter error waitfile")
 		}
@@ -180,7 +176,7 @@ func TestRealWaiterWaitWithBreakpointOnFailure(t *testing.T) {
 	doneCh := make(chan struct{})
 	go func() {
 		// When breakpoint on failure is enabled skipError shouldn't be returned for a error waitfile
-		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(context.Background(), tmpFileName, false, true)
+		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(t.Context(), tmpFileName, false, true)
 		if err != nil {
 			t.Errorf("error waiting on tmp file %q", tmp.Name())
 		}
@@ -201,7 +197,7 @@ func TestRealWaiterWaitWithContextCanceled(t *testing.T) {
 		t.Errorf("error creating temp file: %v", err)
 	}
 	defer os.Remove(tmp.Name())
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	rw := realWaiter{}
 	errCh := make(chan error)
 	go func() {
@@ -229,7 +225,7 @@ func TestRealWaiterWaitWithTimeout(t *testing.T) {
 		t.Errorf("error creating temp file: %v", err)
 	}
 	defer os.Remove(tmp.Name())
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Millisecond)
 	defer cancel()
 	rw := realWaiter{}
 	errCh := make(chan error)
@@ -262,7 +258,7 @@ func TestRealWaiterWaitContextWithBreakpointOnFailure(t *testing.T) {
 	doneCh := make(chan struct{})
 	go func() {
 		// When breakpoint on failure is enabled skipError shouldn't be returned for a error waitfile
-		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(context.Background(), tmpFileName, false, true)
+		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(t.Context(), tmpFileName, false, true)
 		if err != nil {
 			t.Errorf("error waiting on tmp file %q", tmp.Name())
 		}
@@ -288,7 +284,7 @@ func TestRealWaiterWaitContextWithErrorWaitfile(t *testing.T) {
 	doneCh := make(chan struct{})
 	go func() {
 		// error of type skipError is returned after encountering a error waitfile
-		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(context.Background(), tmpFileName, false, false)
+		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(t.Context(), tmpFileName, false, false)
 		if err == nil {
 			t.Errorf("expected skipError upon encounter error waitfile")
 		}
@@ -317,7 +313,7 @@ func TestRealWaiterWaitContextWithContent(t *testing.T) {
 	rw := realWaiter{}
 	doneCh := make(chan struct{})
 	go func() {
-		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(context.Background(), tmp.Name(), true, false)
+		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(t.Context(), tmp.Name(), true, false)
 		if err != nil {
 			t.Errorf("error waiting on tmp file %q", tmp.Name())
 		}
@@ -345,21 +341,18 @@ func TestRealWaiterWaitContextMissingFile(t *testing.T) {
 	}
 	os.Remove(tmp.Name())
 	rw := realWaiter{}
-	doneCh := make(chan struct{})
+	errCh := make(chan error)
 	go func() {
-		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(context.Background(), tmp.Name(), false, false)
-		if err != nil {
-			t.Errorf("error waiting on tmp file %q", tmp.Name())
-		}
-		close(doneCh)
+		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(t.Context(), tmp.Name(), false, false)
+		errCh <- err
 	}()
 
 	delay := time.NewTimer(2 * testWaitPollingInterval)
 	select {
 	case <-delay.C:
 		// Success
-	case <-doneCh:
-		t.Errorf("did not expect Wait() to have detected a file at path %q", tmp.Name())
+	case err := <-errCh:
+		t.Errorf("did not expect Wait() to have detected a file at path %q, err: %v", tmp.Name(), err)
 		if !delay.Stop() {
 			<-delay.C
 		}

@@ -17,7 +17,6 @@ limitations under the License.
 package workspace_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -742,7 +741,7 @@ func TestApply(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			vols := workspace.CreateVolumes(tc.workspaces)
-			ts, err := workspace.Apply(context.Background(), tc.ts, tc.workspaces, vols)
+			ts, err := workspace.Apply(t.Context(), tc.ts, tc.workspaces, vols)
 			if err != nil {
 				t.Fatalf("Did not expect error but got %v", err)
 			}
@@ -799,7 +798,7 @@ func TestApply_PropagatedWorkspacesFromWorkspaceBindingToDeclarations(t *testing
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			vols := workspace.CreateVolumes(tc.workspaces)
-			ts, err := workspace.Apply(context.Background(), tc.ts, tc.workspaces, vols)
+			ts, err := workspace.Apply(t.Context(), tc.ts, tc.workspaces, vols)
 			if err != nil {
 				t.Fatalf("Did not expect error but got %v", err)
 			}
@@ -1118,7 +1117,7 @@ func TestApply_IsolatedWorkspaces(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := config.ToContext(context.Background(), &config.Config{
+			ctx := config.ToContext(t.Context(), &config.Config{
 				FeatureFlags: &config.FeatureFlags{
 					EnableAPIFields: "alpha",
 				},
@@ -1149,7 +1148,7 @@ func TestApplyWithMissingWorkspaceDeclaration(t *testing.T) {
 		},
 	}}
 	vols := workspace.CreateVolumes(bindings)
-	if _, err := workspace.Apply(context.Background(), ts, bindings, vols); err != nil {
+	if _, err := workspace.Apply(t.Context(), ts, bindings, vols); err != nil {
 		t.Errorf("Did not expect error because of workspace propagation but got %v", err)
 	}
 }

@@ -17,7 +17,6 @@ limitations under the License.
 package resources_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -1201,7 +1200,7 @@ func TestApplyWorkspaces(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			vols := workspace.CreateVolumes(tc.binds)
-			got := resources.ApplyWorkspaces(context.Background(), tc.spec, tc.decls, tc.binds, vols)
+			got := resources.ApplyWorkspaces(t.Context(), tc.spec, tc.decls, tc.binds, vols)
 			if d := cmp.Diff(tc.want, got); d != "" {
 				t.Errorf("TestApplyWorkspaces() got diff %s", diff.PrintWantGot(d))
 			}
@@ -1268,7 +1267,7 @@ func TestApplyWorkspaces_IsolatedWorkspaces(t *testing.T) {
 		}}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			vols := workspace.CreateVolumes(tc.binds)
 			got := resources.ApplyWorkspaces(ctx, tc.spec, tc.decls, tc.binds, vols)
 			if d := cmp.Diff(tc.want, got); d != "" {

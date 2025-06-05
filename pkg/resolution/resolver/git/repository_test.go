@@ -53,7 +53,7 @@ func TestClone(t *testing.T) {
 			}
 
 			mockCmdRemote := remote{url: test.url, username: test.username, password: test.password, cmdExecutor: executor}
-			repo, cleanup, err := mockCmdRemote.clone(context.Background())
+			repo, cleanup, err := mockCmdRemote.clone(t.Context())
 			defer cleanup()
 			if test.expectErr != "" {
 				if err.Error() != test.expectErr {
@@ -116,7 +116,7 @@ func TestCheckout(t *testing.T) {
 		t.Fatalf("coun't delete branch to orphan commit: %v", err)
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	type testCase struct {
 		revision         string

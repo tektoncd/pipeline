@@ -2282,7 +2282,7 @@ status:
 			" got %d. Actions: %#v", len(actions), actions)
 	}
 
-	newTr, err := clients.Pipeline.TektonV1().TaskRuns(noTaskRun.Namespace).Get(context.Background(), noTaskRun.Name, metav1.GetOptions{})
+	newTr, err := clients.Pipeline.TektonV1().TaskRuns(noTaskRun.Namespace).Get(t.Context(), noTaskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", noTaskRun.Name, err)
 	}
@@ -3982,7 +3982,7 @@ spec:
 		Kind:     "Task",
 		TaskSpec: &v1.TaskSpec{Steps: simpleTask.Spec.Steps, Workspaces: simpleTask.Spec.Workspaces},
 	}
-	ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
+	ctx := cfgtesting.EnableAlphaAPIFields(t.Context())
 	workspaceVolumes := workspace.CreateVolumes(taskRun.Spec.Workspaces)
 	taskSpec, err := applyParamsContextsResultsAndWorkspaces(ctx, taskRun, rtr, workspaceVolumes)
 	if err != nil {
@@ -4092,7 +4092,7 @@ spec:
 	}
 
 	workspaceVolumes := workspace.CreateVolumes(taskRun.Spec.Workspaces)
-	ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
+	ctx := cfgtesting.EnableAlphaAPIFields(t.Context())
 	taskSpec, err := applyParamsContextsResultsAndWorkspaces(ctx, taskRun, rtr, workspaceVolumes)
 	if err != nil {
 		t.Errorf("update task spec threw an error: %v", err)
@@ -4254,7 +4254,7 @@ status:
 
 	createServiceAccount(t, testAssets, "default", taskRun.Namespace)
 
-	err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun))
+	err := testAssets.Controller.Reconciler.Reconcile(t.Context(), getRunName(taskRun))
 	isRequeued, _ := controller.IsRequeueKey(err)
 	if err != nil && !isRequeued {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
@@ -4335,7 +4335,7 @@ status:
 
 	createServiceAccount(t, testAssets, "default", taskRun.Namespace)
 
-	err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun))
+	err := testAssets.Controller.Reconciler.Reconcile(t.Context(), getRunName(taskRun))
 	isRequeued, _ := controller.IsRequeueKey(err)
 	if err != nil && !isRequeued {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
@@ -4403,7 +4403,7 @@ spec:
 	defer cancel()
 	clients := testAssets.Clients
 
-	err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun))
+	err := testAssets.Controller.Reconciler.Reconcile(t.Context(), getRunName(taskRun))
 	if err == nil {
 		t.Fatalf("expected error reconciling invalid TaskRun but got none")
 	}
@@ -4542,7 +4542,7 @@ spec:
 		t.Fatal(err)
 	}
 
-	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err == nil {
+	if err := testAssets.Controller.Reconciler.Reconcile(t.Context(), getRunName(taskRun)); err == nil {
 		t.Errorf("Expected error reconciling invalid TaskRun due to invalid workspace but got %v", err)
 	}
 }
@@ -5317,7 +5317,7 @@ spec:
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// mock first reconcile
-			if err := storeTaskSpecAndMergeMeta(context.Background(), tr, tc.reconcile1Args.taskSpec, tc.reconcile1Args.resolvedObjectMeta); err != nil {
+			if err := storeTaskSpecAndMergeMeta(t.Context(), tr, tc.reconcile1Args.taskSpec, tc.reconcile1Args.resolvedObjectMeta); err != nil {
 				t.Errorf("storePipelineSpec() error = %v", err)
 			}
 			if d := cmp.Diff(tc.wantTaskRun, tr); d != "" {
@@ -5325,7 +5325,7 @@ spec:
 			}
 
 			// mock second reconcile
-			if err := storeTaskSpecAndMergeMeta(context.Background(), tr, tc.reconcile2Args.taskSpec, tc.reconcile2Args.resolvedObjectMeta); err != nil {
+			if err := storeTaskSpecAndMergeMeta(t.Context(), tr, tc.reconcile2Args.taskSpec, tc.reconcile2Args.resolvedObjectMeta); err != nil {
 				t.Errorf("storePipelineSpec() error = %v", err)
 			}
 			if d := cmp.Diff(tc.wantTaskRun, tr); d != "" {
@@ -5350,7 +5350,7 @@ func Test_storeTaskSpec_metadata(t *testing.T) {
 		ObjectMeta: &metav1.ObjectMeta{Labels: tasklabels, Annotations: taskannotations},
 	}
 
-	if err := storeTaskSpecAndMergeMeta(context.Background(), tr, &v1.TaskSpec{}, &resolvedMeta); err != nil {
+	if err := storeTaskSpecAndMergeMeta(t.Context(), tr, &v1.TaskSpec{}, &resolvedMeta); err != nil {
 		t.Errorf("storeTaskSpecAndMergeMeta error = %v", err)
 	}
 	if d := cmp.Diff(wantedlabels, tr.ObjectMeta.Labels); d != "" {
@@ -6123,7 +6123,7 @@ status:
 					Phase: corev1.PodRunning,
 				},
 			}
-			pod, err := clientset.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+			pod, err := clientset.CoreV1().Pods(pod.Namespace).Create(t.Context(), pod, metav1.CreateOptions{})
 			if err != nil {
 				t.Errorf("Error occurred while creating pod %s: %s", pod.Name, err.Error())
 			}

@@ -2397,7 +2397,7 @@ spec:
 		t.Errorf("expected skipped reason to be '%s', but was '%s", v1.PipelineTimedOutSkip, reconciledRun.Status.SkippedTasks[0].Reason)
 	}
 
-	updatedTaskRun, err := clients.Pipeline.TektonV1().TaskRuns("foo").Get(context.Background(), trs[0].Name, metav1.GetOptions{})
+	updatedTaskRun, err := clients.Pipeline.TektonV1().TaskRuns("foo").Get(t.Context(), trs[0].Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("error getting updated TaskRun: %#v", err)
 	}
@@ -2912,7 +2912,7 @@ status:
 			t.Errorf("expected skipped reason to be '%s', but was '%s", v1.TasksTimedOutSkip, reconciledRun.Status.SkippedTasks[0].Reason)
 		}
 
-		updatedTaskRun, err := clients.Pipeline.TektonV1().TaskRuns("foo").Get(context.Background(), trs[0].Name, metav1.GetOptions{})
+		updatedTaskRun, err := clients.Pipeline.TektonV1().TaskRuns("foo").Get(t.Context(), trs[0].Name, metav1.GetOptions{})
 		if err != nil {
 			t.Fatalf("error getting updated TaskRun: %#v", err)
 		}
@@ -3122,7 +3122,7 @@ status:
 		}
 
 		if tc.wantFinallyTimeout {
-			updatedTaskRun, err := clients.Pipeline.TektonV1().TaskRuns("foo").Get(context.Background(), tc.trs[1].Name, metav1.GetOptions{})
+			updatedTaskRun, err := clients.Pipeline.TektonV1().TaskRuns("foo").Get(t.Context(), tc.trs[1].Name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("error getting updated TaskRun: %#v", err)
 			}
@@ -5799,7 +5799,7 @@ spec:
 			defer prt.Cancel()
 
 			_, clients := prt.reconcileRun("foo", prName, []string{}, false)
-			trs, _ := clients.Pipeline.TektonV1().TaskRuns(namespace).List(context.TODO(), metav1.ListOptions{})
+			trs, _ := clients.Pipeline.TektonV1().TaskRuns(namespace).List(t.Context(), metav1.ListOptions{})
 
 			if d := cmp.Diff(tt.expected, trs.Items[0].Spec.Workspaces[0], cmpopts.IgnoreFields(v1.WorkspaceBinding{}, "Name")); d != "" {
 				t.Errorf("expected to see Workspace %v created. Diff %s", tt.expected, diff.PrintWantGot(d))
@@ -6893,7 +6893,7 @@ metadata:
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// mock first reconcile
-			if err := storePipelineSpecAndMergeMeta(context.Background(), pr, tc.reconcile1Args.pipelineSpec, tc.reconcile1Args.resolvedObjectMeta); err != nil {
+			if err := storePipelineSpecAndMergeMeta(t.Context(), pr, tc.reconcile1Args.pipelineSpec, tc.reconcile1Args.resolvedObjectMeta); err != nil {
 				t.Errorf("storePipelineSpec() error = %v", err)
 			}
 			if d := cmp.Diff(tc.wantPipelineRun, pr); d != "" {
@@ -6901,7 +6901,7 @@ metadata:
 			}
 
 			// mock second reconcile
-			if err := storePipelineSpecAndMergeMeta(context.Background(), pr, tc.reconcile2Args.pipelineSpec, tc.reconcile2Args.resolvedObjectMeta); err != nil {
+			if err := storePipelineSpecAndMergeMeta(t.Context(), pr, tc.reconcile2Args.pipelineSpec, tc.reconcile2Args.resolvedObjectMeta); err != nil {
 				t.Errorf("storePipelineSpec() error = %v", err)
 			}
 			if d := cmp.Diff(tc.wantPipelineRun, pr); d != "" {
@@ -6923,7 +6923,7 @@ func Test_storePipelineSpec_metadata(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", Labels: pipelinerunlabels, Annotations: pipelinerunannotations},
 	}
 	meta := metav1.ObjectMeta{Name: "bar", Labels: pipelinelabels, Annotations: pipelineannotations}
-	if err := storePipelineSpecAndMergeMeta(context.Background(), pr, &v1.PipelineSpec{}, &resolutionutil.ResolvedObjectMeta{
+	if err := storePipelineSpecAndMergeMeta(t.Context(), pr, &v1.PipelineSpec{}, &resolutionutil.ResolvedObjectMeta{
 		ObjectMeta: &meta,
 	}); err != nil {
 		t.Errorf("storePipelineSpecAndMergeMeta error = %v", err)
@@ -6942,7 +6942,7 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 	// the reconciler is able to coverge back to a consistent state with the orphaned
 	// TaskRuns back in the PipelineRun status.
 	// For more details, see https://github.com/tektoncd/pipeline/issues/2558
-	ctx := context.Background()
+	ctx := t.Context()
 
 	namespace := "foo"
 	prOutOfSyncName := "test-pipeline-run-out-of-sync"
@@ -8765,7 +8765,7 @@ func TestReconcile_OptionalWorkspacesOmitted(t *testing.T) {
 	prName := "test-pipeline-run-success"
 	trName := "test-pipeline-run-success-unit-test-1"
 
-	ctx := context.Background()
+	ctx := t.Context()
 	cfg := config.NewStore(logtesting.TestLogger(t))
 	ctx = cfg.ToContext(ctx)
 
@@ -8840,7 +8840,7 @@ spec:
 func TestReconcile_DependencyValidationsImmediatelyFailPipelineRun(t *testing.T) {
 	names.TestingSeed()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	cfg := config.NewStore(logtesting.TestLogger(t))
 	ctx = cfg.ToContext(ctx)
 
@@ -9620,7 +9620,7 @@ spec:
 			expectedError: `expected workspace "not-source" to be provided by pipelinerun for pipeline task "resolved-pipelinetask"`,
 		},
 	}
-	ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
+	ctx := cfgtesting.EnableAlphaAPIFields(t.Context())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := Reconciler{
@@ -9737,7 +9737,7 @@ spec:
 			c := Reconciler{
 				KubeClientSet: fakek8s.NewSimpleClientset(),
 			}
-			_, _, err := c.getTaskrunWorkspaces(context.Background(), tt.pr, tt.rprt)
+			_, _, err := c.getTaskrunWorkspaces(t.Context(), tt.pr, tt.rprt)
 			if err != nil {
 				t.Errorf("Pipeline.getTaskrunWorkspaces() returned error for valid pipeline: %v", err)
 			}
@@ -9804,7 +9804,7 @@ func Test_taskWorkspaceByWorkspaceVolumeSource(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			c := Reconciler{}
-			ctx := context.Background()
+			ctx := t.Context()
 			binding := c.taskWorkspaceByWorkspaceVolumeSource(ctx, tc.pipelineWorkspaceName, tc.prName, tc.wb, tc.taskWorkspaceName, "", *kmeta.NewControllerRef(testPr), tc.aaBehavior)
 			if d := cmp.Diff(tc.expectedBinding, binding); d != "" {
 				t.Errorf("WorkspaceBinding diff: %s", diff.PrintWantGot(d))

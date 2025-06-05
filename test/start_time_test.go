@@ -41,7 +41,7 @@ import (
 // duration of the test so smaller is better (while still supporting the
 // test's intended purpose).
 func TestStartTime(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)

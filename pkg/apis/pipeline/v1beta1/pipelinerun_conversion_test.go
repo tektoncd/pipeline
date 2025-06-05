@@ -17,7 +17,6 @@ limitations under the License.
 package v1beta1_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -131,11 +130,11 @@ var (
 func TestPipelineRunConversionBadType(t *testing.T) {
 	good, bad := &v1beta1.PipelineRun{}, &v1beta1.Pipeline{}
 
-	if err := good.ConvertTo(context.Background(), bad); err == nil {
+	if err := good.ConvertTo(t.Context(), bad); err == nil {
 		t.Errorf("ConvertTo() = %#v, wanted error", bad)
 	}
 
-	if err := good.ConvertFrom(context.Background(), bad); err == nil {
+	if err := good.ConvertFrom(t.Context(), bad); err == nil {
 		t.Errorf("ConvertFrom() = %#v, wanted error", good)
 	}
 }
@@ -384,7 +383,7 @@ func TestPipelineRunConversion(t *testing.T) {
 		for _, version := range versions {
 			t.Run(test.name, func(t *testing.T) {
 				ver := version
-				ctx := context.Background()
+				ctx := t.Context()
 				if err := test.in.ConvertTo(ctx, ver); err != nil {
 					t.Errorf("ConvertTo() = %v", err)
 					return
@@ -472,12 +471,12 @@ func TestPipelineRunConversionFromDeprecated(t *testing.T) {
 		for _, version := range versions {
 			t.Run(test.name, func(t *testing.T) {
 				ver := version
-				if err := test.in.ConvertTo(context.Background(), ver); err != nil {
+				if err := test.in.ConvertTo(t.Context(), ver); err != nil {
 					t.Errorf("ConvertTo() = %v", err)
 				}
 				t.Logf("ConvertTo() = %#v", ver)
 				got := &v1beta1.PipelineRun{}
-				if err := got.ConvertFrom(context.Background(), ver); err != nil {
+				if err := got.ConvertFrom(t.Context(), ver); err != nil {
 					t.Errorf("ConvertFrom() = %v", err)
 				}
 				t.Logf("ConvertFrom() = %#v", got)
@@ -520,7 +519,7 @@ func TestPipelineRunConversionRoundTrip(t *testing.T) {
 		for _, version := range versions {
 			t.Run(test.name, func(t *testing.T) {
 				ver := version
-				ctx := context.Background()
+				ctx := t.Context()
 
 				if err := test.in.ConvertTo(ctx, ver); err != nil {
 					t.Errorf("ConvertTo() = %v", err)

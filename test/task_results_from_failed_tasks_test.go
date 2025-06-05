@@ -32,7 +32,7 @@ import (
 )
 
 func TestTaskResultsFromFailedTasks(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)

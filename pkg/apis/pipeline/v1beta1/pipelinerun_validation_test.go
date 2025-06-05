@@ -526,7 +526,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if tc.wc != nil {
 				ctx = tc.wc(ctx)
 			}
@@ -986,7 +986,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if ts.wc != nil {
 				ctx = ts.wc(ctx)
 			}
@@ -1248,7 +1248,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 
 	for _, ps := range tests {
 		t.Run(ps.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if ps.withContext != nil {
 				ctx = ps.withContext(ctx)
 			}
@@ -1331,7 +1331,7 @@ func TestPipelineRunSpec_Validate(t *testing.T) {
 
 	for _, ps := range tests {
 		t.Run(ps.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if ps.withContext != nil {
 				ctx = ps.withContext(ctx)
 			}
@@ -1534,7 +1534,7 @@ func TestPipelineRun_InvalidTimeouts(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			err := tc.pr.Validate(ctx)
 			if d := cmp.Diff(tc.want.Error(), err.Error()); d != "" {
 				t.Error(diff.PrintWantGot(d))
@@ -1618,7 +1618,7 @@ func TestPipelineRunWithTimeout_Validate(t *testing.T) {
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if ts.wc != nil {
 				ctx = ts.wc(ctx)
 			}
@@ -1682,12 +1682,12 @@ func TestPipelineRunSpecBetaFeatures(t *testing.T) {
 			pr := v1beta1.PipelineRun{ObjectMeta: metav1.ObjectMeta{Name: "foo"}, Spec: v1beta1.PipelineRunSpec{
 				PipelineSpec: &tt.spec,
 			}}
-			ctx := cfgtesting.EnableStableAPIFields(context.Background())
+			ctx := cfgtesting.EnableStableAPIFields(t.Context())
 			if err := pr.Validate(ctx); err == nil {
 				t.Errorf("no error when using beta field when `enable-api-fields` is stable")
 			}
 
-			ctx = cfgtesting.EnableBetaAPIFields(context.Background())
+			ctx = cfgtesting.EnableBetaAPIFields(t.Context())
 			if err := pr.Validate(ctx); err != nil {
 				t.Errorf("unexpected error when using beta field: %s", err)
 			}
@@ -1852,7 +1852,7 @@ func TestPipelineRunSpec_ValidateUpdate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := config.ToContext(context.Background(), &config.Config{
+			ctx := config.ToContext(t.Context(), &config.Config{
 				FeatureFlags: &config.FeatureFlags{},
 				Defaults:     &config.Defaults{},
 			})

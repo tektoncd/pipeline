@@ -80,7 +80,7 @@ func TestRef_Valid(t *testing.T) {
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if ts.wc != nil {
 				ctx = ts.wc(ctx)
 			}
@@ -159,7 +159,7 @@ func TestRef_Invalid(t *testing.T) {
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if ts.wc != nil {
 				ctx = ts.wc(ctx)
 			}
@@ -185,7 +185,7 @@ func TestSidecarValidate(t *testing.T) {
 
 	for _, sct := range tests {
 		t.Run(sct.name, func(t *testing.T) {
-			err := sct.sidecar.Validate(context.Background())
+			err := sct.sidecar.Validate(t.Context())
 			if err != nil {
 				t.Errorf("Sidecar.Validate() returned error for valid Sidecar: %v", err)
 			}
@@ -235,7 +235,7 @@ func TestSidecarValidateError(t *testing.T) {
 
 	for _, sct := range tests {
 		t.Run(sct.name, func(t *testing.T) {
-			err := sct.sidecar.Validate(context.Background())
+			err := sct.sidecar.Validate(t.Context())
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing for %v", sct.sidecar)
 			}

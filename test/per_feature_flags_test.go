@@ -124,7 +124,7 @@ func testMinimumEndToEndSubSet(t *testing.T, configMapData map[string]string) {
 // testFanInFanOut tests DAG built with a small fan-in fan-out pipeline and
 // examines the sequence of the PipelineTasks being run.
 func testFanInFanOut(t *testing.T, configMapData map[string]string) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)
@@ -241,7 +241,7 @@ spec:
 // verifies the TaskRun produced by the Finally Task after a failed TaskRun
 // with its results.
 func testResultsAndFinally(t *testing.T, configMapData map[string]string) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)
@@ -326,7 +326,7 @@ spec:
 // testParams tests the parameter propagation by comparing the expected
 // TaskRuns run from the PipelineRun specified in Finally Task.
 func testParams(t *testing.T, configMapData map[string]string) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)

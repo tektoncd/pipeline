@@ -2378,7 +2378,7 @@ func TestResolvePipelineRun_CustomTask(t *testing.T) {
 		return nil, kerrors.NewNotFound(v1.Resource("run"), name)
 	}
 	pipelineState := PipelineRunState{}
-	ctx := context.Background()
+	ctx := t.Context()
 	cfg := config.NewStore(logtesting.TestLogger(t))
 	ctx = cfg.ToContext(ctx)
 	for _, task := range pts {
@@ -2433,7 +2433,7 @@ func TestResolvePipelineRun_PipelineTaskHasNoResources(t *testing.T) {
 	}
 	pipelineState := PipelineRunState{}
 	for _, task := range pts {
-		ps, err := ResolvePipelineTask(context.Background(), pr, getTask, getTaskRun, nopGetCustomRun, task, nil)
+		ps, err := ResolvePipelineTask(t.Context(), pr, getTask, getTaskRun, nopGetCustomRun, task, nil)
 		if err != nil {
 			t.Errorf("Error getting tasks for fake pipeline %s: %s", p.ObjectMeta.Name, err)
 		}
@@ -2470,7 +2470,7 @@ func TestResolvePipelineRun_PipelineTaskHasPipelineRef(t *testing.T) {
 		},
 	}
 
-	_, err := ResolvePipelineTask(context.Background(), pr, getTask, getTaskRun, nopGetCustomRun, pt, nil)
+	_, err := ResolvePipelineTask(t.Context(), pr, getTask, getTaskRun, nopGetCustomRun, pt, nil)
 	if err == nil {
 		t.Errorf("Error getting tasks for fake pipeline %s, expected an error but got nil.", p.ObjectMeta.Name)
 	}
@@ -2522,7 +2522,7 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 		},
 	}
 	for _, pt := range pts {
-		_, err := ResolvePipelineTask(context.Background(), pr, getTask, getTaskRun, nopGetCustomRun, pt, nil)
+		_, err := ResolvePipelineTask(t.Context(), pr, getTask, getTaskRun, nopGetCustomRun, pt, nil)
 		var tnf *TaskNotFoundError
 		switch {
 		case err == nil:
@@ -2566,7 +2566,7 @@ func TestResolvePipelineRun_VerificationFailed(t *testing.T) {
 		},
 	}
 	for _, pt := range pts {
-		rt, _ := ResolvePipelineTask(context.Background(), pr, getTask, getTaskRun, nopGetCustomRun, pt, nil)
+		rt, _ := ResolvePipelineTask(t.Context(), pr, getTask, getTaskRun, nopGetCustomRun, pt, nil)
 		if d := cmp.Diff(verificationResult, rt.ResolvedTask.VerificationResult, cmpopts.EquateErrors()); d != "" {
 			t.Error(diff.PrintWantGot(d))
 		}
@@ -2588,7 +2588,7 @@ func TestResolvePipelineRun_TransientError(t *testing.T) {
 			Name: "pipelinerun",
 		},
 	}
-	_, err := ResolvePipelineTask(context.Background(), pr, getTask, getTaskRun, nopGetCustomRun, pt, nil)
+	_, err := ResolvePipelineTask(t.Context(), pr, getTask, getTaskRun, nopGetCustomRun, pt, nil)
 	if !resolutioncommon.IsErrTransient(err) {
 		t.Error("Transient error while getting Task did not result in a transient error")
 	}
@@ -2831,7 +2831,7 @@ func TestResolvePipeline_WhenExpressions(t *testing.T) {
 	}
 
 	t.Run("When Expressions exist", func(t *testing.T) {
-		_, err := ResolvePipelineTask(context.Background(), pr, getTask, getTaskRun, nopGetCustomRun, pt, nil)
+		_, err := ResolvePipelineTask(t.Context(), pr, getTask, getTaskRun, nopGetCustomRun, pt, nil)
 		if err != nil {
 			t.Fatalf("Did not expect error when resolving PipelineRun: %v", err)
 		}
@@ -2930,7 +2930,7 @@ func TestIsCustomTask(t *testing.T) {
 		want: false,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			cfg := config.NewStore(logtesting.TestLogger(t))
 			ctx = cfg.ToContext(ctx)
 			rpt, err := ResolvePipelineTask(ctx, pr, getTask, getTaskRun, getRun, tc.pt, nil)
@@ -3672,7 +3672,7 @@ func TestIsMatrixed(t *testing.T) {
 		want: false,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			cfg := config.NewStore(logtesting.TestLogger(t))
 			cfg.OnConfigChanged(&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
@@ -3831,7 +3831,7 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 		pst: pipelineRunState,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			cfg := config.NewStore(logtesting.TestLogger(t))
 			cfg.OnConfigChanged(&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
@@ -3996,7 +3996,7 @@ func TestResolvePipelineRunTask_WithMatrixedCustomTask(t *testing.T) {
 		pst: pipelineRunState,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			cfg := config.NewStore(logtesting.TestLogger(t))
 			cfg.OnConfigChanged(&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},

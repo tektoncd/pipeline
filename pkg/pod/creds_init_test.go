@@ -60,7 +60,7 @@ func TestCredsInit(t *testing.T) {
 		},
 		wantArgs:         nil,
 		wantVolumeMounts: nil,
-		ctx:              context.Background(),
+		ctx:              t.Context(),
 	}, {
 		desc: "service account has no annotated secrets; nothing to initialize",
 		objs: []runtime.Object{
@@ -82,7 +82,7 @@ func TestCredsInit(t *testing.T) {
 		},
 		wantArgs:         nil,
 		wantVolumeMounts: nil,
-		ctx:              context.Background(),
+		ctx:              t.Context(),
 	}, {
 		desc: "service account has annotated secret and no HOME env var passed in; initialize creds in /tekton/creds",
 		objs: []runtime.Object{
@@ -121,7 +121,7 @@ func TestCredsInit(t *testing.T) {
 			Name:      "tekton-internal-secret-volume-my-creds-9l9zj",
 			MountPath: "/tekton/creds-secrets/my-creds",
 		}},
-		ctx: context.Background(),
+		ctx: t.Context(),
 	}, {
 		desc: "service account has duplicate dockerconfigjson secret and no HOME env var passed in; initialize creds in /tekton/creds",
 		objs: []runtime.Object{
@@ -154,7 +154,7 @@ func TestCredsInit(t *testing.T) {
 			Name:      "tekton-internal-secret-volume-my-docker-creds-9l9zj",
 			MountPath: "/tekton/creds-secrets/my-docker-creds",
 		}},
-		ctx: context.Background(),
+		ctx: t.Context(),
 	}, {
 		desc: "service account with secret and HOME env var passed in",
 		objs: []runtime.Object{
@@ -193,7 +193,7 @@ func TestCredsInit(t *testing.T) {
 			Name:      "tekton-internal-secret-volume-my-creds-9l9zj",
 			MountPath: "/tekton/creds-secrets/my-creds",
 		}},
-		ctx: context.Background(),
+		ctx: t.Context(),
 	}, {
 		desc: "disabling legacy credential helper (creds-init) via feature-flag results in no args or volumes",
 		objs: []runtime.Object{
@@ -224,7 +224,7 @@ func TestCredsInit(t *testing.T) {
 		envVars:          []corev1.EnvVar{customHomeEnvVar},
 		wantArgs:         nil,
 		wantVolumeMounts: nil,
-		ctx: config.ToContext(context.Background(), &config.Config{
+		ctx: config.ToContext(t.Context(), &config.Config{
 			FeatureFlags: &config.FeatureFlags{
 				DisableCredsInit: true,
 			},
@@ -257,7 +257,7 @@ func TestCredsInit(t *testing.T) {
 			Name:      "tekton-internal-secret-volume-foo-bar-com-9l9zj",
 			MountPath: "/tekton/creds-secrets/foo.bar.com",
 		}},
-		ctx: context.Background(),
+		ctx: t.Context(),
 	}, {
 		desc: "service account has empty-named secrets",
 		objs: []runtime.Object{
@@ -290,7 +290,7 @@ func TestCredsInit(t *testing.T) {
 			Name:      "tekton-internal-secret-volume-my-creds-9l9zj",
 			MountPath: "/tekton/creds-secrets/my-creds",
 		}},
-		ctx: context.Background(),
+		ctx: t.Context(),
 	}, {
 		desc: "service account has not found secrets",
 		objs: []runtime.Object{
@@ -328,7 +328,7 @@ func TestCredsInit(t *testing.T) {
 		events: []string{
 			`Warning FailedToRetrieveSecret Unable to retrieve some secrets (not-exist-1, not-exist-2); attempting to use them may not succeed.`,
 		},
-		ctx: context.Background(),
+		ctx: t.Context(),
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
@@ -438,7 +438,7 @@ func TestCheckGitSSHSecret(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			store := config.NewStore(logtesting.TestLogger(t))
 			store.OnConfigChanged(tc.configMap)
-			err := checkGitSSHSecret(store.ToContext(context.Background()), tc.secret)
+			err := checkGitSSHSecret(store.ToContext(t.Context()), tc.secret)
 
 			if wantError := tc.wantErrorMsg != ""; wantError {
 				if err == nil {

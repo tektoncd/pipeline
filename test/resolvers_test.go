@@ -79,7 +79,7 @@ var (
 )
 
 func TestHubResolver(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	c, namespace := setup(ctx, t, hubFeatureFlags)
 
 	t.Parallel()
@@ -138,7 +138,7 @@ spec:
 }
 
 func TestHubResolver_Failure(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	c, namespace := setup(ctx, t, hubFeatureFlags)
 
 	t.Parallel()
@@ -201,7 +201,7 @@ spec:
 }
 
 func TestGitResolver_Clone(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	c, namespace := setup(ctx, t, gitFeatureFlags)
 
 	t.Parallel()
@@ -302,7 +302,7 @@ func TestGitResolver_Clone_Failure(t *testing.T) {
 				commit = defaultCommit
 			}
 
-			ctx := context.Background()
+			ctx := t.Context()
 			c, namespace := setup(ctx, t, gitFeatureFlags)
 
 			t.Parallel()
@@ -367,7 +367,7 @@ spec:
 }
 
 func TestClusterResolver(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	c, namespace := setup(ctx, t, clusterFeatureFlags)
 
 	t.Parallel()
@@ -430,7 +430,7 @@ spec:
 }
 
 func TestClusterResolver_Failure(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	c, namespace := setup(ctx, t, clusterFeatureFlags)
 
 	t.Parallel()
@@ -472,7 +472,7 @@ spec:
 }
 
 func TestGitResolver_API(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	c, namespace := setup(ctx, t, gitFeatureFlags)
 
 	t.Parallel()
@@ -534,7 +534,7 @@ spec:
 }
 
 func TestGitResolver_API_Identifier(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	c, namespace := setup(ctx, t, gitFeatureFlags)
 
 	t.Parallel()

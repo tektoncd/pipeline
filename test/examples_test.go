@@ -102,7 +102,7 @@ type waitFunc func(ctx context.Context, t *testing.T, c *clients, name string)
 func exampleTest(path string, waitValidateFunc waitFunc, createFunc createFunc, kind string) func(t *testing.T) {
 	return func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
+		ctx := t.Context()
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 

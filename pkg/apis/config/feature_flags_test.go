@@ -17,7 +17,6 @@ limitations under the License.
 package config_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -333,7 +332,7 @@ func TestGetVerificationNoMatchPolicy(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
 			featureflags := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -387,7 +386,7 @@ func TestIsSpireEnabled(t *testing.T) {
 		},
 		want: true,
 	}}
-	ctx := context.Background()
+	ctx := t.Context()
 	store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
 	for _, tc := range testCases {
 		featureflags := &corev1.ConfigMap{

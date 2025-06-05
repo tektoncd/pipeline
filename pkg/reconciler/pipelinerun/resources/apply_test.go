@@ -1794,7 +1794,7 @@ func TestApplyParameters(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			ctx := context.Background()
+			ctx := t.Context()
 			if tt.wc != nil {
 				ctx = tt.wc(ctx)
 			}
@@ -2108,7 +2108,7 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 					Params: tt.params,
 				},
 			}
-			got := resources.ApplyParameters(context.Background(), &tt.original, run)
+			got := resources.ApplyParameters(t.Context(), &tt.original, run)
 			if d := cmp.Diff(&tt.expected, got); d != "" {
 				t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 			}
@@ -2360,7 +2360,7 @@ func TestApplyReplacementsMatrix(t *testing.T) {
 					Params: tt.params,
 				},
 			}
-			got := resources.ApplyParameters(context.Background(), &tt.original, run)
+			got := resources.ApplyParameters(t.Context(), &tt.original, run)
 			if d := cmp.Diff(&tt.expected, got); d != "" {
 				t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 			}
@@ -3839,7 +3839,7 @@ func TestApplyFinallyResultsToPipelineResults(t *testing.T) {
 		},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
-			received, _ := resources.ApplyTaskResultsToPipelineResults(context.Background(), tc.results, tc.taskResults, tc.runResults, nil /* skippedTasks */)
+			received, _ := resources.ApplyTaskResultsToPipelineResults(t.Context(), tc.results, tc.taskResults, tc.runResults, nil /* skippedTasks */)
 			if d := cmp.Diff(tc.expected, received); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
@@ -4172,7 +4172,7 @@ func TestApplyTaskResultsToPipelineResults_Success(t *testing.T) {
 		}},
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			received, err := resources.ApplyTaskResultsToPipelineResults(context.Background(), tc.results, tc.taskResults, tc.runResults, tc.taskstatus)
+			received, err := resources.ApplyTaskResultsToPipelineResults(t.Context(), tc.results, tc.taskResults, tc.runResults, tc.taskstatus)
 			if err != nil {
 				t.Errorf("Got unecpected error:%v", err)
 			}
@@ -4388,7 +4388,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 		expectedError:   errors.New("invalid pipelineresults [foo], the referenced results don't exist"),
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			received, err := resources.ApplyTaskResultsToPipelineResults(context.Background(), tc.results, tc.taskResults, tc.runResults, nil /*skipped tasks*/)
+			received, err := resources.ApplyTaskResultsToPipelineResults(t.Context(), tc.results, tc.taskResults, tc.runResults, nil /*skipped tasks*/)
 			if err == nil {
 				t.Errorf("Expect error but got nil")
 				return
@@ -5294,7 +5294,7 @@ func TestApplyParametersToWorkspaceBindings(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			resources.ApplyParametersToWorkspaceBindings(context.TODO(), tt.pr)
+			resources.ApplyParametersToWorkspaceBindings(t.Context(), tt.pr)
 			if d := cmp.Diff(tt.expectedPr, tt.pr); d != "" {
 				t.Fatalf("TestApplyParametersToWorkspaceBindings() %s, got: %v", tt.name, diff.PrintWantGot(d))
 			}

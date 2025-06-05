@@ -115,7 +115,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if tc.withContext != nil {
 				ctx = tc.withContext(ctx)
 			}
@@ -163,7 +163,7 @@ func TestPipelineRef_Valid(t *testing.T) {
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if ts.wc != nil {
 				ctx = ts.wc(ctx)
 			}
