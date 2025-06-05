@@ -81,7 +81,7 @@ spec:
       # Login to the container registry
       DOCKER_CONFIG=$(cat ${CONTAINER_REGISTRY_CREDENTIALS} | \
         crane auth login -u ${CONTAINER_REGISTRY_USER} --password-stdin $(params.imageRegistry) 2>&1 | \
-        sed 's,^.*logged in via \(.*\)$,\1,g')
+        sed -n 's,^.*logged in via \(.*\)$,\1,p')
 
       # Auth with account credentials for all regions.
       for region in ${REGIONS}
