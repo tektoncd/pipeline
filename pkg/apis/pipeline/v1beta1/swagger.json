@@ -472,6 +472,10 @@
           },
           "x-kubernetes-list-type": "atomic"
         },
+        "podTemplate": {
+          "description": "PodTemplate holds pod specific configuration",
+          "$ref": "#/definitions/pod.Template"
+        },
         "resources": {
           "description": "Resources is a list input and output resource to run the task Resources are represented in TaskRuns as bindings to instances of PipelineResources.\n\nDeprecated: Unused, preserved only for backwards compatibility",
           "$ref": "#/definitions/v1beta1.TaskResources"
@@ -3275,6 +3279,10 @@
             "$ref": "#/definitions/v1beta1.ParamSpec"
           },
           "x-kubernetes-list-type": "atomic"
+        },
+        "podTemplate": {
+          "description": "PodTemplate holds pod specific configuration",
+          "$ref": "#/definitions/pod.Template"
         },
         "resources": {
           "description": "Resources is a list input and output resource to run the task Resources are represented in TaskRuns as bindings to instances of PipelineResources.\n\nDeprecated: Unused, preserved only for backwards compatibility",
