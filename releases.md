@@ -41,6 +41,12 @@ Further documentation available:
 
 ## Release
 
+### v1.1
+- **Latest Release**: [v1.1.0][v1.1-0] (2025-06-04) ([docs][v1.1-0-docs], [examples][v1.1-0-examples])
+- **Initial Release**: [v1.1.0][v1.1-0] (2025-06-04)
+- **End of Life**: 2025-07-04
+- **Patch Releases**: [v1.1.0][v1.1-0]
+
 ### v1.0 (LTS)
 - **Latest Release**: [v1.0.0][v1.0-0] (2025-04-29) ([docs][v1.0-0-docs], [examples][v1.0-0-examples])
 - **Initial Release**: [v1.0.0][v1.0-0] (2025-04-29)
@@ -48,31 +54,31 @@ Further documentation available:
 - **Patch Releases**: [v1.0.0][v1.0-0]
 
 ### v0.68 (LTS)
-- **Latest Release**: [v0.68.0][v0.68-0] (2025-01-30) ([docs][v0.68-0-docs], [examples][v0.68-0-examples])
+- **Latest Release**: [v0.68.1][v0.68-1] (2025-03-20) ([docs][v0.68-1-docs], [examples][v0.68-1-examples])
 - **Initial Release**: [v0.68.0][v0.68-0] (2025-01-30)
 - **End of Life**: 2026-01-30
-- **Patch Releases**: [v0.68.0][v0.68-0]
+- **Patch Releases**: [v0.68.0][v0.68-0], [v0.68.1][v0.68-1]
 
 ### v0.65 (LTS)
-- **Latest Release**: [v0.65.0][v0.65-0] (2024-10-28) ([docs][v0.65-0-docs], [examples][v0.65-0-examples])
+- **Latest Release**: [v0.65.6][v0.65-6] (2025-01-28) ([docs][v0.65-6-docs], [examples][v0.65-6-examples])
 - **Initial Release**: [v0.65.0][v0.65-0] (2024-10-28)
 - **End of Life**: 2025-10-28
-- **Patch Releases**: [v0.65.0][v0.65-0], [v0.65.1][v0.65-1], [v0.65.2][v0.65-2], [v0.65.3][v0.65-3], [v0.65.4][v0.65-4], [v0.65.5][v0.65-5], [v0.65.0][v0.65-6]
+- **Patch Releases**: [v0.65.0][v0.65-0], [v0.65.1][v0.65-1], [v0.65.2][v0.65-2], [v0.65.3][v0.65-3], [v0.65.4][v0.65-4], [v0.65.5][v0.65-5], [v0.65.6][v0.65-6]
 
 ### v0.62 (LTS)
-- **Latest Release**: [v0.62.2][v0.62-2] (2024-08-23) ([docs][v0.62-2-docs], [examples][v0.62-2-examples])
+- **Latest Release**: [v0.62.8][v0.62-8] (2025-01-28) ([docs][v0.62-8-docs], [examples][v0.62-8-examples])
 - **Initial Release**: [v0.62.0][v0.62-0] (2024-07-23)
 - **End of Life**: 2025-07-23
 - **Patch Releases**: [v0.62.0][v0.62-0], [v0.62.1][v0.62-1], [v0.62.2][v0.62-2], [v0.62.3][v0.62-3], [v0.62.4][v0.62-4], [v0.62.5][v0.62-5], [v0.62.6][v0.62-6], [v0.62.7][v0.62-7], [v0.62.8][v0.62-8]
 
+## End of Life Releases
+
 ### v0.59 (LTS)
 
-- **Latest Release**: [v0.59.2][v0.59-2] (2024-07-04) ([docs][v0.59-2-docs], [examples][v0.59-2-examples])
+- **Latest Release**: [v0.59.6][v0.59-6] (2025-04-29) ([docs][v0.59-6-docs], [examples][v0.59-6-examples])
 - **Initial Release**: [v0.59.0][v0.59-0] (2024-04-25)
-- **Estimated End of Life**: 2025-04-24
-- **Patch Releases**: [v0.59.0][v0.59-0], [v0.59.1][v0.59-1], [v0.59.2][v0.59-2], [v0.59.3][v0.59-3], [v0.59.4][v0.59-4], [v0.59.5][v0.59-5]
-
-## End of Life Releases
+- **End of Life**: 2025-04-29
+- **Patch Releases**: [v0.59.0][v0.59-0], [v0.59.1][v0.59-1], [v0.59.2][v0.59-2], [v0.59.3][v0.59-3], [v0.59.4][v0.59-4], [v0.59.5][v0.59-5], [v0.59.6][v0.59-6]
 
 ### v0.70
 - **Latest Release**: [v0.70.0][v0.70-0] (2025-03-28) ([docs][v0.70-0-docs], [examples][v0.70-0-examples])
@@ -274,21 +280,39 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 [release-notes-standards]:
     https://github.com/tektoncd/community/blob/main/standards.md#release-notes
 
-[v0.1-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.1.0
+[v1.1-0]: https://github.com/tektoncd/pipeline/releases/tag/v1.1.0
+[v1.0-0]: https://github.com/tektoncd/pipeline/releases/tag/v1.0.0
 [v0.70-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.70.0
 [v0.69-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.69.0
+[v0.68-1]: https://github.com/tektoncd/pipeline/releases/tag/v0.68.1
 [v0.68-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.68.0
 [v0.67-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.67.0
 [v0.66-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.66.0
+[v0.65-6]: https://github.com/tektoncd/pipeline/releases/tag/v0.65.6
+[v0.65-5]: https://github.com/tektoncd/pipeline/releases/tag/v0.65.5
+[v0.65-4]: https://github.com/tektoncd/pipeline/releases/tag/v0.65.4
+[v0.65-3]: https://github.com/tektoncd/pipeline/releases/tag/v0.65.3
+[v0.65-2]: https://github.com/tektoncd/pipeline/releases/tag/v0.65.2
+[v0.65-1]: https://github.com/tektoncd/pipeline/releases/tag/v0.65.1
 [v0.65-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.65.0
 [v0.64-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.64.0
 [v0.63-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.63.0
+[v0.62-8]: https://github.com/tektoncd/pipeline/releases/tag/v0.62.8
+[v0.62-7]: https://github.com/tektoncd/pipeline/releases/tag/v0.62.7
+[v0.62-6]: https://github.com/tektoncd/pipeline/releases/tag/v0.62.6
+[v0.62-5]: https://github.com/tektoncd/pipeline/releases/tag/v0.62.5
+[v0.62-4]: https://github.com/tektoncd/pipeline/releases/tag/v0.62.4
+[v0.62-3]: https://github.com/tektoncd/pipeline/releases/tag/v0.62.3
 [v0.62-2]: https://github.com/tektoncd/pipeline/releases/tag/v0.62.2
 [v0.62-1]: https://github.com/tektoncd/pipeline/releases/tag/v0.62.1
 [v0.62-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.62.0
 [v0.61-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.61.0
 [v0.60-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.60.0
 [v0.60-1]: https://github.com/tektoncd/pipeline/releases/tag/v0.60.1
+[v0.59-6]: https://github.com/tektoncd/pipeline/releases/tag/v0.59.6
+[v0.59-5]: https://github.com/tektoncd/pipeline/releases/tag/v0.59.5
+[v0.59-4]: https://github.com/tektoncd/pipeline/releases/tag/v0.59.4
+[v0.59-3]: https://github.com/tektoncd/pipeline/releases/tag/v0.59.3
 [v0.59-2]: https://github.com/tektoncd/pipeline/releases/tag/v0.59.2
 [v0.59-1]: https://github.com/tektoncd/pipeline/releases/tag/v0.59.1
 [v0.59-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.59.0
@@ -351,24 +375,22 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 [v0-37-5]: https://github.com/tektoncd/pipeline/releases/tag/v0.37.5
 [v0-37-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.37.0
 
-[v0.1-0-docs]: https://github.com/tektoncd/pipeline/tree/v0.1.0/docs#tekton-pipelines
+[v1.1-0-docs]: https://github.com/tektoncd/pipeline/tree/v1.1.0/docs#tekton-pipelines
+[v1.0-0-docs]: https://github.com/tektoncd/pipeline/tree/v1.0.0/docs#tekton-pipelines
 [v0.70-0-docs]: https://github.com/tektoncd/pipeline/tree/v0.70.0/docs#tekton-pipelines
 [v0.69-0-docs]: https://github.com/tektoncd/pipeline/tree/v0.69.0/docs#tekton-pipelines
-[v0.68-0-docs]: https://github.com/tektoncd/pipeline/tree/v0.68.0/docs#tekton-pipelines
+[v0.68-1-docs]: https://github.com/tektoncd/pipeline/tree/v0.68.1/docs#tekton-pipelines
 [v0.67-0-docs]: https://github.com/tektoncd/pipeline/tree/v0.67.0/docs#tekton-pipelines
 [v0.66-0-docs]: https://github.com/tektoncd/pipeline/tree/v0.66.0/docs#tekton-pipelines
-[v0.65-0-docs]: https://github.com/tektoncd/pipeline/tree/v0.65.0/docs#tekton-pipelines
+[v0.65-6-docs]: https://github.com/tektoncd/pipeline/tree/v0.65.6/docs#tekton-pipelines
 [v0.64-0-docs]: https://github.com/tektoncd/pipeline/tree/v0.64.0/docs#tekton-pipelines
 [v0.63-0-docs]: https://github.com/tektoncd/pipeline/tree/v0.63.0/docs#tekton-pipelines
-[v0.62-2-docs]: https://github.com/tektoncd/pipeline/tree/v0.62.2/docs#tekton-pipelines
-[v0.62-1-docs]: https://github.com/tektoncd/pipeline/tree/v0.62.1/docs#tekton-pipelines
-[v0.62-0-docs]: https://github.com/tektoncd/pipeline/tree/v0.62.0/docs#tekton-pipelines
+[v0.62-8-docs]: https://github.com/tektoncd/pipeline/tree/v0.62.8/docs#tekton-pipelines
+[v0.62-7-docs]: https://github.com/tektoncd/pipeline/tree/v0.62.7/docs#tekton-pipelines
 [v0.61-0-docs]: https://github.com/tektoncd/pipeline/tree/v0.61.0/docs#tekton-pipelines
 [v0.60-0-docs]: https://github.com/tektoncd/pipeline/tree/v0.60.0/docs#tekton-pipelines
 [v0.60-1-docs]: https://github.com/tektoncd/pipeline/tree/v0.60.1/docs#tekton-pipelines
-[v0.59-2-docs]: https://github.com/tektoncd/pipeline/tree/v0.59.2/docs#tekton-pipelines
-[v0.59-1-docs]: https://github.com/tektoncd/pipeline/tree/v0.59.1/docs#tekton-pipelines
-[v0.59-0-docs]: https://github.com/tektoncd/pipeline/tree/v0.59.0/docs#tekton-pipelines
+[v0.59-6-docs]: https://github.com/tektoncd/pipeline/tree/v0.59.6/docs#tekton-pipelines
 [v0.58-0-docs]: https://github.com/tektoncd/pipeline/tree/v0.58.0/docs#tekton-pipelines
 [v0.57-0-docs]: https://github.com/tektoncd/pipeline/tree/v0.57.0/docs#tekton-pipelines
 [v0.56-3-docs]: https://github.com/tektoncd/pipeline/tree/v0.56.3/docs#tekton-pipelines
@@ -391,24 +413,21 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 [v0-38-4-docs]: https://github.com/tektoncd/pipeline/tree/v0.38.4/docs#tekton-pipelines
 [v0-37-5-docs]: https://github.com/tektoncd/pipeline/tree/v0.37.5/docs#tekton-pipelines
 
-[v0.1-0-examples]: https://github.com/tektoncd/pipeline/tree/v0.1.0/examples#examples
+[v1.1-0-examples]: https://github.com/tektoncd/pipeline/tree/v1.1.0/examples#examples
+[v1.0-0-examples]: https://github.com/tektoncd/pipeline/tree/v1.0.0/examples#examples
 [v0.70-0-examples]: https://github.com/tektoncd/pipeline/tree/v0.70.0/examples#examples
 [v0.69-0-examples]: https://github.com/tektoncd/pipeline/tree/v0.69.0/examples#examples
-[v0.68-0-examples]: https://github.com/tektoncd/pipeline/tree/v0.68.0/examples#examples
+[v0.68-1-examples]: https://github.com/tektoncd/pipeline/tree/v0.68.1/examples#examples
 [v0.67-0-examples]: https://github.com/tektoncd/pipeline/tree/v0.67.0/examples#examples
 [v0.66-0-examples]: https://github.com/tektoncd/pipeline/tree/v0.66.0/examples#examples
-[v0.65-0-examples]: https://github.com/tektoncd/pipeline/tree/v0.65.0/examples#examples
+[v0.65-6-examples]: https://github.com/tektoncd/pipeline/tree/v0.65.6/examples#examples
 [v0.64-0-examples]: https://github.com/tektoncd/pipeline/tree/v0.64.0/examples#examples
 [v0.63-0-examples]: https://github.com/tektoncd/pipeline/tree/v0.63.0/examples#examples
-[v0.62-2-examples]: https://github.com/tektoncd/pipeline/tree/v0.62.2/examples#examples
-[v0.62-1-examples]: https://github.com/tektoncd/pipeline/tree/v0.62.1/examples#examples
-[v0.62-0-examples]: https://github.com/tektoncd/pipeline/tree/v0.62.0/examples#examples
+[v0.62-8-examples]: https://github.com/tektoncd/pipeline/tree/v0.62.8/examples#examples
 [v0.61-0-examples]: https://github.com/tektoncd/pipeline/tree/v0.61.0/examples#examples
+[v0.60-1-examples]: https://github.com/tektoncd/pipeline/tree/v0.60.0/examples#examples
 [v0.60-0-examples]: https://github.com/tektoncd/pipeline/tree/v0.60.0/examples#examples
-[v0.60-1-examples]: https://github.com/tektoncd/pipeline/tree/v0.60.1/examples#examples
-[v0.59-2-examples]: https://github.com/tektoncd/pipeline/tree/v0.59.2/examples#examples
-[v0.59-1-examples]: https://github.com/tektoncd/pipeline/tree/v0.59.1/examples#examples
-[v0.59-0-examples]: https://github.com/tektoncd/pipeline/tree/v0.59.0/examples#examples
+[v0.59-6-examples]: https://github.com/tektoncd/pipeline/tree/v0.59.6/examples#examples
 [v0.58-0-examples]: https://github.com/tektoncd/pipeline/tree/v0.58.0/examples#examples
 [v0.57-0-examples]: https://github.com/tektoncd/pipeline/tree/v0.57.0/examples#examples
 [v0.56-3-examples]: https://github.com/tektoncd/pipeline/tree/v0.56.3/examples#examples
