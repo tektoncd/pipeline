@@ -140,6 +140,9 @@ linters:
     gosec:
       excludes:
         - G601
+    usetesting:
+      context-background: false
+      context-todo: false
   exclusions:
     generated: lax
     presets:
