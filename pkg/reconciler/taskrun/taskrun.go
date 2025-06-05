@@ -432,7 +432,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	default:
 		// Store the fetched TaskSpec on the TaskRun for auditing
 		if err := storeTaskSpecAndMergeMeta(ctx, tr, taskSpec, taskMeta); err != nil {
-			logger.Errorf("Failed to store TaskSpec on TaskRun.Statusfor taskrun %s: %v", tr.Name, err)
+			logger.Errorf("Failed to store TaskSpec on TaskRun.Status for taskrun %s: %v", tr.Name, err)
 		}
 	}
 
@@ -458,7 +458,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		// Store the fetched StepActions to TaskSpec, and update the stored TaskSpec again
 		taskSpec.Steps = steps
 		if err := storeTaskSpecAndMergeMeta(ctx, tr, taskSpec, taskMeta); err != nil {
-			logger.Errorf("Failed to store TaskSpec on TaskRun.Statusfor taskrun %s: %v", tr.Name, err)
+			logger.Errorf("Failed to store TaskSpec on TaskRun.Status for taskrun %s: %v", tr.Name, err)
 		}
 	}
 
