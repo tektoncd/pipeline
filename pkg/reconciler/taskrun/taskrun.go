@@ -369,10 +369,7 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 	// Send k8s events and cloud events (when configured)
 	events.Emit(ctx, beforeCondition, afterCondition, tr)
 
-	var errs []error
-	if previousError != nil {
-		errs = append(errs, previousError)
-	}
+	errs := []error{previousError}
 
 	// If the Run has been completed before and remains so at present,
 	// no need to update the labels and annotations

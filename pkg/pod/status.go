@@ -156,16 +156,12 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.Tas
 		}
 	}
 
-	var errs []error
-	if err := setTaskRunStatusBasedOnStepStatus(ctx, logger, stepStatuses, &tr, pod.Status.Phase, kubeclient, ts); err != nil {
-		errs = append(errs, err)
-	}
-
+	err := setTaskRunStatusBasedOnStepStatus(ctx, logger, stepStatuses, &tr, pod.Status.Phase, kubeclient, ts)
 	setTaskRunStatusBasedOnSidecarStatus(sidecarStatuses, trs)
 
 	trs.Results = removeDuplicateResults(trs.Results)
 
-	return *trs, errors.Join(errs...)
+	return *trs, err
 }
 
 func createTaskResultsFromStepResults(stepRunRes []v1.TaskRunStepResult, neededStepResults map[string]string) []v1.TaskRunResult {
