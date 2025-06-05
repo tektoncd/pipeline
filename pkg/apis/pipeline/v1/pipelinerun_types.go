@@ -47,6 +47,7 @@ import (
 // PipelineRun creates TaskRuns for Tasks in the referenced Pipeline.
 //
 // +k8s:openapi-gen=true
+// +kubebuilder:storageversion
 type PipelineRun struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
@@ -257,7 +258,6 @@ type PipelineRunSpec struct {
 	// +kubebuilder:validation:Schemaless
 	PipelineSpec *PipelineSpec `json:"pipelineSpec,omitempty"`
 	// Params is a list of parameter names and values.
-	// +listType=atomic
 	Params Params `json:"params,omitempty"`
 
 	// Used for cancelling a pipelinerun (and maybe more later on)

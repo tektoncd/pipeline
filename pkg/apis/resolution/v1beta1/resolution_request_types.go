@@ -29,6 +29,7 @@ import (
 //
 // +genclient
 // +genreconciler
+// +kubebuilder:storageversion
 type ResolutionRequest struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional

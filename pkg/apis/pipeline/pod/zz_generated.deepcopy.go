@@ -106,7 +106,7 @@ func (in *Template) DeepCopyInto(out *Template) {
 	}
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
-		*out = make([]v1.Volume, len(*in))
+		*out = make(Volumes, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

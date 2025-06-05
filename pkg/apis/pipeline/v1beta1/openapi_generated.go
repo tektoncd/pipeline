@@ -284,7 +284,6 @@ func schema_pkg_apis_pipeline_pod_Template(ref common.ReferenceCallback) common.
 					"volumes": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
-								"x-kubernetes-list-type":       "atomic",
 								"x-kubernetes-patch-merge-key": "name",
 								"x-kubernetes-patch-strategy":  "merge,retainKeys",
 							},
@@ -839,11 +838,6 @@ func schema_pkg_apis_pipeline_v1beta1_CustomRunSpec(ref common.ReferenceCallback
 						},
 					},
 					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"array"},
 							Items: &spec.SchemaOrArray{
@@ -994,11 +988,6 @@ func schema_pkg_apis_pipeline_v1beta1_EmbeddedTask(ref common.ReferenceCallback)
 						},
 					},
 					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Params is a list of input parameters required to run the task. Params must be supplied as inputs in TaskRuns unless they declare a default value.",
 							Type:        []string{"array"},
@@ -1046,11 +1035,6 @@ func schema_pkg_apis_pipeline_v1beta1_EmbeddedTask(ref common.ReferenceCallback)
 						},
 					},
 					"volumes": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Volumes is a collection of volumes that are available to mount into the steps of the build. See Pod.spec.volumes (API version: v1)",
 							Type:        []string{"array"},
@@ -1150,11 +1134,6 @@ func schema_pkg_apis_pipeline_v1beta1_IncludeParams(ref common.ReferenceCallback
 						},
 					},
 					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Params takes only `Parameters` of type `\"string\"` The names of the `params` must match the names of the `params` in the underlying `Task`",
 							Type:        []string{"array"},
@@ -1254,11 +1233,6 @@ func schema_pkg_apis_pipeline_v1beta1_Matrix(ref common.ReferenceCallback) commo
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Params is a list of parameters used to fan out the pipelineTask Params takes only `Parameters` of type `\"array\"` Each array element is supplied to the `PipelineTask` by substituting `params` of type `\"string\"` in the underlying `Task`. The names of the `params` in the `Matrix` must match the names of the `params` in the underlying `Task` that they will be substituting.",
 							Type:        []string{"array"},
@@ -1273,11 +1247,6 @@ func schema_pkg_apis_pipeline_v1beta1_Matrix(ref common.ReferenceCallback) commo
 						},
 					},
 					"include": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Include is a list of IncludeParams which allows passing in specific combinations of Parameters into the Matrix.",
 							Type:        []string{"array"},
@@ -1942,11 +1911,6 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunSpec(ref common.ReferenceCallba
 						},
 					},
 					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Params is a list of parameter names and values.",
 							Type:        []string{"array"},
@@ -2479,11 +2443,6 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineSpec(ref common.ReferenceCallback)
 						},
 					},
 					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Params declares a list of input parameters that must be supplied when this Pipeline is run.",
 							Type:        []string{"array"},
@@ -2650,11 +2609,6 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineTask(ref common.ReferenceCallback)
 						},
 					},
 					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Parameters declares parameters passed to this task.",
 							Type:        []string{"array"},
@@ -3194,11 +3148,6 @@ func schema_pkg_apis_pipeline_v1beta1_ResolverRef(ref common.ReferenceCallback) 
 						},
 					},
 					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Params contains the parameters used to identify the referenced Tekton resource. Example entries might include \"repo\" or \"path\" but the set of params ultimately depends on the chosen resolver.",
 							Type:        []string{"array"},
@@ -3973,11 +3922,6 @@ func schema_pkg_apis_pipeline_v1beta1_Step(ref common.ReferenceCallback) common.
 						},
 					},
 					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Params declares parameters passed to this step action.",
 							Type:        []string{"array"},
@@ -4165,11 +4109,6 @@ func schema_pkg_apis_pipeline_v1beta1_StepActionSpec(ref common.ReferenceCallbac
 						},
 					},
 					"args": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Arguments to the entrypoint. The image's CMD is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. \"$$(VAR_NAME)\" will produce the string literal \"$(VAR_NAME)\". Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
 							Type:        []string{"array"},
@@ -4220,11 +4159,6 @@ func schema_pkg_apis_pipeline_v1beta1_StepActionSpec(ref common.ReferenceCallbac
 						},
 					},
 					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Params is a list of input parameters required to run the stepAction. Params must be supplied as inputs in Steps unless they declare a defaultvalue.",
 							Type:        []string{"array"},
@@ -5393,11 +5327,6 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunSpec(ref common.ReferenceCallback) 
 						},
 					},
 					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"array"},
 							Items: &spec.SchemaOrArray{
@@ -5648,11 +5577,6 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunStatus(ref common.ReferenceCallback
 						},
 					},
 					"retriesStatus": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant. See TaskRun.status (API version: tekton.dev/v1beta1)",
 							Type:        []string{"array"},
@@ -5826,11 +5750,6 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunStatusFields(ref common.ReferenceCa
 						},
 					},
 					"retriesStatus": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant. See TaskRun.status (API version: tekton.dev/v1beta1)",
 							Type:        []string{"array"},
@@ -5983,11 +5902,6 @@ func schema_pkg_apis_pipeline_v1beta1_TaskSpec(ref common.ReferenceCallback) com
 						},
 					},
 					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Params is a list of input parameters required to run the task. Params must be supplied as inputs in TaskRuns unless they declare a default value.",
 							Type:        []string{"array"},
@@ -6035,11 +5949,6 @@ func schema_pkg_apis_pipeline_v1beta1_TaskSpec(ref common.ReferenceCallback) com
 						},
 					},
 					"volumes": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Volumes is a collection of volumes that are available to mount into the steps of the build. See Pod.spec.volumes (API version: v1)",
 							Type:        []string{"array"},
