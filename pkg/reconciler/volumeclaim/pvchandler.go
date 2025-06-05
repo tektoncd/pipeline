@@ -92,6 +92,11 @@ func (c *defaultPVCHandler) CreatePVCFromVolumeClaimTemplate(ctx context.Context
 func (c *defaultPVCHandler) PurgeFinalizerAndDeletePVCForWorkspace(ctx context.Context, pvcName, namespace string) error {
 	p, err := c.clientset.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, pvcName, metav1.GetOptions{})
 	if err != nil {
+		// check if the PVC exists, otherwise skip the deletion
+		if apierrors.IsNotFound(err) {
+			c.logger.Debugf("PVC %s no longer exists, skipping deletion as it has already been removed", pvcName)
+			return nil
+		}
 		return fmt.Errorf("failed to get the PVC %s: %w", pvcName, err)
 	}
 
