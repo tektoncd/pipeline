@@ -1,0 +1,38 @@
+kind: PipelineRun
+metadata:
+  generateName: matrixed-pipelinerun-
+spec:
+  pipelineSpec:
+    tasks:
+      - name: build-and-push-manifest
+        matrix:
+          params:
+          - name: arch
+            value:
+              - "amd64"
+              - "arm64"
+        taskSpec:
+          results:
+            - name: manifest
+              type: string
+          params:
+            - name: arch
+          podTemplate:
+            nodeSelector:
+              kubernetes.io/arch: $(params.arch)
+          steps:
+            - name: build-and-push
+              image: mirror.gcr.io/ubuntu
+              script: |
+                echo "building on $(params.arch)"
+                echo "testmanifest-$(params.arch)" | tee $(results.manifest.path)
+      - name: create-manifest-list
+        params:
+          - name: manifest
+            value: $(tasks.build-and-push-manifest.results.manifest[*])
+        taskSpec:
+          steps:
+            - name: echo-manifests
+              image: mirror.gcr.io/ubuntu
+              args: ["$(params.manifest[*])"]
+              script: echo "$@"
