@@ -34,6 +34,18 @@ accompanying [resolver-template](./resolver-template).
 For a table of the interfaces and methods a resolver must implement
 along with those that are optional, see [resolver-reference.md](./resolver-reference.md).
 
+## Resolver Cache Configuration
+
+The resolver cache is used to improve performance by caching resolved resources for bundle and git resolver. By default, the cache uses:
+- 5 minutes ("5m") as the time-to-live (TTL) for cache entries
+- 1000 entries as the maximum cache size
+
+You can override these defaults by editing the `resolver-cache-config.yaml` ConfigMap in the `tekton-pipelines-resolvers` namespace. Set the following keys:
+- `max-size`: Set the maximum number of cache entries (e.g., "500")
+- `default-ttl`: Set the default TTL for cache entries (e.g., "10m", "30s")
+
+If these values are missing or invalid, the defaults will be used.
+
 ---
 
 Except as otherwise noted, the content of this page is licensed under the
