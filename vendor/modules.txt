@@ -82,7 +82,7 @@ github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime
 github.com/Azure/azure-sdk-for-go/sdk/azcore/streaming
 github.com/Azure/azure-sdk-for-go/sdk/azcore/to
 github.com/Azure/azure-sdk-for-go/sdk/azcore/tracing
-# github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.9.0
+# github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.10.0
 ## explicit; go 1.23.0
 github.com/Azure/azure-sdk-for-go/sdk/azidentity
 github.com/Azure/azure-sdk-for-go/sdk/azidentity/internal
@@ -771,7 +771,7 @@ github.com/sigstore/sigstore/pkg/signature/payload
 # github.com/sigstore/sigstore/pkg/signature/kms/aws v1.9.4
 ## explicit; go 1.23.0
 github.com/sigstore/sigstore/pkg/signature/kms/aws
-# github.com/sigstore/sigstore/pkg/signature/kms/azure v1.9.4
+# github.com/sigstore/sigstore/pkg/signature/kms/azure v1.9.5
 ## explicit; go 1.23.0
 github.com/sigstore/sigstore/pkg/signature/kms/azure
 # github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.9.4
