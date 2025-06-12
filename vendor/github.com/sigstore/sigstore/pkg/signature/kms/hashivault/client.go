@@ -289,9 +289,24 @@ func (h hashivaultClient) sign(digest []byte, alg crypto.Hash, opts ...signature
 		}
 	}
 
+	prehashed := alg != crypto.Hash(0)
+
+	pub, err := h.public()
+	if err != nil {
+		return nil, fmt.Errorf("determining key type: %w", err)
+	}
+	switch pub.(type) {
+	case ed25519.PublicKey:
+		if alg == crypto.SHA512 {
+			prehashed = true
+			break
+		}
+		prehashed = false
+	}
+
 	signResult, err := client.Write(fmt.Sprintf("/%s/sign/%s%s", h.transitSecretEnginePath, h.keyPath, hashString(alg)), map[string]interface{}{
 		"input":               base64.StdEncoding.Strict().EncodeToString(digest),
-		"prehashed":           alg != crypto.Hash(0),
+		"prehashed":           prehashed,
 		"key_version":         keyVersion,
 		"signature_algorithm": "pkcs1v15",
 	})
@@ -337,10 +352,24 @@ func (h hashivaultClient) verify(sig, digest []byte, alg crypto.Hash, opts ...si
 			}
 		}
 	}
+	prehashed := alg != crypto.Hash(0)
+
+	pub, err := h.public()
+	if err != nil {
+		return fmt.Errorf("determining key type: %w", err)
+	}
+	switch pub.(type) {
+	case ed25519.PublicKey:
+		if alg == crypto.SHA512 {
+			prehashed = true
+			break
+		}
+		prehashed = false
+	}
 
 	result, err := client.Write(fmt.Sprintf("/%s/verify/%s/%s", h.transitSecretEnginePath, h.keyPath, hashString(alg)), map[string]interface{}{
 		"input":     base64.StdEncoding.EncodeToString(digest),
-		"prehashed": alg != crypto.Hash(0),
+		"prehashed": prehashed,
 		"signature": fmt.Sprintf("%s%s", vaultDataPrefix, encodedSig),
 	})
 	if err != nil {
