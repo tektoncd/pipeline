@@ -768,7 +768,7 @@ github.com/sigstore/sigstore/pkg/signature/kms/cliplugin/internal/signerverifier
 github.com/sigstore/sigstore/pkg/signature/kms/fake
 github.com/sigstore/sigstore/pkg/signature/options
 github.com/sigstore/sigstore/pkg/signature/payload
-# github.com/sigstore/sigstore/pkg/signature/kms/aws v1.9.4
+# github.com/sigstore/sigstore/pkg/signature/kms/aws v1.9.5
 ## explicit; go 1.23.0
 github.com/sigstore/sigstore/pkg/signature/kms/aws
 # github.com/sigstore/sigstore/pkg/signature/kms/azure v1.9.5
